@@ -3,6 +3,10 @@
 
 ## Unreleased
 
+- The group row units of the collection are the cases of the recipe `tests/collection/collection.json`, which all six runtimes run through `ir.answer`; the chain `group_count_views` reads the length, the order, the values and `COLUMN_UNSELECTED` of a group result. The forms of a count that only a driver cell holds stay native as `group-row-driver-cell-forms`
+- The PHP extension answers a markdown value of the wrong type with `CODEC_DECODE`, as the other runtimes do, not `INTERNAL`
+- Rust refuses SQL NULL in a selected group column that is not nullable with `CODEC_DECODE`, as the other runtimes do
+- A group row count of text must be the canonical decimal in Go and Rust, which took `00` and `+1`, and PHP and the PHP extension take a whole float count, as INT-90 states
 - The `dsn.connect` recipe op runs `SELECT 1` through `utils().run` on the connection that it opens, in all six runtimes, so that a DSN connects to a database that answers; the PHP `CoverageDsnTest` keeps only the SQLite minimum version check, which stays native (DSL-150), and reads no feature environment.
 - The refusals of vector 17 (`errors`) have a test before any request in each runtime, `make conformance-refusal-check`: a run on a SQLite file with no table and a statement subscriber in all six, and in Go, TypeScript and Rust a type check that accepts each chain with its error and refuses a use that drops the error. A statement whose prepare fails in Go publishes its statement event with the error, as INT-91 states and the other runtimes do; before, it published none.
 - The last catalog_connection coverage tests of the six runtimes are gone: the recipe cases temporal_precision_limit, row_character_capacity, descriptor_column_name, missing_row_conflict, catalog_close_twice and deferred_foreign_key_at_commit hold what they asserted on the three databases. A descriptor with an invalid column name now fails with ROW_SNAPSHOT_INVALID and the cause in its message in Python and the PHP extension, and a second close of a TypeScript catalog does nothing.

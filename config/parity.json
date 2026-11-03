@@ -1214,6 +1214,7 @@
   "suites": [
     "contracts/fixtures/**/!(dbspec-set|complex_query|composite_key_collision).json",
     "tests/codec/*.json",
+    "tests/collection/collection.json",
     "tests/conformance/*.json",
     "tests/dbspec/*.json",
     "tests/dsn/sqlite-paths.json",
@@ -15948,51 +15949,6 @@
       ]
     },
     {
-      "id": "group-row-count-exactness",
-      "kind": "feature",
-      "requirements": [
-        "PRT-69",
-        "INT-90"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/group_rows_test.go",
-          "id": "TestGroupRowCountEnforcesExactness"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/GroupRowsTest.php",
-          "id": "GroupRowsTest::testGroupRowCountEnforcesExactness"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelAssemblyTest.php",
-          "id": "ModelAssemblyTest::testGroupRowCountEnforcesExactness"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelReadNativeTest.php",
-          "id": "ModelReadNativeTest::testGroupBooleanIsStrictAndRowCountStaysRawForGroupRowValidation"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/group_rows.mjs",
-          "id": "group_rows/count_exactness"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_group_rows.py",
-          "id": "test_count_exactness"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/collection.rs",
-          "id": "collection::group_count_exactness_tests::count_exactness_matches_the_safe_integer_contract"
-        }
-      ]
-    },
-    {
       "id": "dbspec-apply-pooler",
       "kind": "feature",
       "requirements": [
@@ -24252,112 +24208,6 @@
       ]
     },
     {
-      "id": "group-rows-negative-count",
-      "kind": "feature",
-      "requirements": [
-        "INT-90"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/group_rows_test.go",
-          "id": "TestGroupRowNegativeCountIsCodecDecode"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/GroupRowsTest.php",
-          "id": "GroupRowsTest::testGroupRowCountEnforcesExactness"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelAssemblyTest.php",
-          "id": "ModelAssemblyTest::testGroupRowCountEnforcesExactness"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/group_rows.mjs",
-          "id": "group_rows/negative_count_codec_decode"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_group_rows.py",
-          "id": "test_negative_row_count_is_codec_decode"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/collection.rs",
-          "id": "collection::group_tests::grouped_rows_contain_only_group_values_and_checked_counts"
-        }
-      ]
-    },
-    {
-      "id": "group-row-owner",
-      "kind": "feature",
-      "requirements": [
-        "INT-68",
-        "INT-69",
-        "INT-70",
-        "INT-71"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/group_rows_test.go",
-          "id": "TestGroupRowsRejectInvalidCountsAndPreserveSelectedValues"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/group_rows_test.go",
-          "id": "TestGroupColumnDeclarationRejectsMissingAndDuplicateCount"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/GroupRowsTest.php",
-          "id": "GroupRowsTest::testOwner"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/GroupRowsTestExtensionTest.php",
-          "id": "GroupRowsTestExtensionTest::testOwner"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelAssemblyTest.php",
-          "id": "ModelAssemblyTest::testGroupRowsUseAKeyPreservingSnapshotIterator"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/group_rows.mjs",
-          "id": "group_rows/owner"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_group_rows.py",
-          "id": "test_count_exactness"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_group_rows.py",
-          "id": "test_group_rows_length_and_to_array_follow_result_order"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_group_rows.py",
-          "id": "test_group_boolean_rejects_non_boolean_float"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_group_rows.py",
-          "id": "test_group_result_preserves_exact_i64_value"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/collection.rs",
-          "id": "collection::group_tests::grouped_rows_contain_only_group_values_and_checked_counts"
-        }
-      ]
-    },
-    {
       "id": "error-code-query-read-only",
       "kind": "api",
       "requirements": [
@@ -28916,47 +28766,6 @@
           "owner/typescript"
         ]
       }
-    },
-    {
-      "id": "group-row-output-collections",
-      "kind": "feature",
-      "requirements": [
-        "INT-69",
-        "INT-70",
-        "INT-71"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/group_rows_test.go",
-          "id": "TestGroupRowsRejectInvalidCountsAndPreserveSelectedValues"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/GroupRowsTest.php",
-          "id": "GroupRowsTest::testOwner"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelAssemblyTest.php",
-          "id": "ModelAssemblyTest::testGroupRowsUseAKeyPreservingSnapshotIterator"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/group_rows.mjs",
-          "id": "group_rows/owner"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_group_rows.py",
-          "id": "test_group_rows_length_and_to_array_follow_result_order"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/collection.rs",
-          "id": "collection::group_tests::grouped_rows_contain_only_group_values_and_checked_counts"
-        }
-      ]
     },
     {
       "id": "group-rows-database-query-preserves-values",
@@ -43946,6 +43755,105 @@
           "owner/python"
         ]
       }
+    },
+    {
+      "id": "collection-recipe",
+      "kind": "suite",
+      "requirements": [
+        "INT-68",
+        "INT-69",
+        "INT-70",
+        "INT-71",
+        "INT-90",
+        "PRT-69"
+      ],
+      "file": "tests/collection/collection.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/markdownmodel/recipe_collection_test.go",
+          "symbol": "TestRecipeCollectionNone"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CollectionRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\CollectionRecipeTest::testNone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CollectionRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CollectionRecipeTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/collection-none.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_collection_none.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/collection_none.rs",
+          "symbol": "collection_none"
+        }
+      ]
+    },
+    {
+      "id": "group-row-driver-cell-forms",
+      "kind": "feature",
+      "requirements": [
+        "INT-68",
+        "INT-90"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/group_rows_test.go",
+          "id": "TestGroupRowDriverCellForms"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/group_rows_test.go",
+          "id": "TestGroupColumnDeclarationRejectsMissingAndDuplicateCount"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/GroupRowsTest.php",
+          "id": "GroupRowsTest::testGroupRowDriverCellForms"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelAssemblyTest.php",
+          "id": "ModelAssemblyTest::testGroupRowDriverCellForms"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/GroupRowsTestExtensionTest.php",
+          "id": "GroupRowsTestExtensionTest::testGroupRowDriverCellForms"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelReadNativeTest.php",
+          "id": "ModelReadNativeTest::testGroupBooleanIsStrictAndRowCountStaysRawForGroupRowValidation"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/group_rows.mjs",
+          "id": "group_rows/driver_cell_forms"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_group_rows.py",
+          "id": "test_driver_cell_forms"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/collection.rs",
+          "id": "collection::group_tests::driver_cell_forms"
+        }
+      ]
     },
     {
       "id": "dbspec-limits",

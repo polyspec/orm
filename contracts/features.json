@@ -1205,7 +1205,9 @@
         "model_queries-mysql",
         "model_queries-postgres",
         "model_queries-sqlite",
-        "dsl-dynamic"
+        "dsl-dynamic",
+        "collection-recipe",
+        "group-row-driver-cell-forms"
       ],
       "fixtures": [
         "tests/conformance/vectors.json",
@@ -1220,6 +1222,13 @@
         "contracts/fixtures/model_queries/model_queries.json"
       ],
       "tests": [
+        "packages/python/tests/test_collection_none.py",
+        "packages/ts/tests/collection-none.test.mjs",
+        "packages/php-ext/tests/CollectionRecipeTestExtensionTest.php",
+        "packages/php/tests/CollectionRecipeTest.php",
+        "packages/go/markdownmodel/recipe_collection_test.go",
+        "packages/rust/tests/tests/collection_none.rs",
+        "tests/collection/collection.json",
         "packages/python/tests/test_dsl_dynamic_none.py",
         "packages/ts/tests/dsl_dynamic-none.test.mjs",
         "packages/php-ext/tests/DslDynamicRecipeTestExtensionTest.php",
