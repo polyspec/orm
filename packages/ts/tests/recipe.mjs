@@ -14,7 +14,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { AesKeyring, BindCell, CORE, Collection, Db, OrmError, loadSet, StyledValue, blindIndex, chainPlans, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, orm, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
 import { analyzeDbspec, formatDbspec, parseDbspecSet as parseDbspecSetBrowser, readDbspecBytes } from '../dist/dbspec/entry.js';
-import { addTablesAndColumnsSteps, exportMermaid, importMermaid, introspectDbspec } from '../dist/dbspec/index.js';
+import { DbspecApplyError, addTablesAndColumnsSteps, applyPlans, exportMermaid, importMermaid, introspectDbspec, rollbackPlans } from '../dist/dbspec/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
 import { Slots, connect as connectSlots } from '../dist/models/bind_fixture/models.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
@@ -74,6 +74,7 @@ export function runRecipe(path, database) {
           else if (step.op === 'dsn.connect') await checkDsnConnect(step, database);
           else if (step.op === 'keyring.versions') checkKeyring(step, database);
           else if (step.op === 'dbspec.introspect_shown') await checkIntrospectShown(step, dir, database);
+          else if (step.op === 'dbspec.apply_fault') await checkApplyFault(step, bound, database);
           else if (step.op === 'dbspec.introspect_sqlite') await checkIntrospectSqlite(step, database);
           else if (step.op === 'markdown.builder') await checkBuilder(step, database);
           else if (step.op === 'generator.generate') checkGenerator(step, dir, database);
@@ -2189,6 +2190,47 @@ function shownCatalogRows(sql, catalog, vector) {
   if (sql.includes('SHOW CREATE TABLE')) return [[catalog.table, vector.create.join('\n') + '\n']];
   if (sql.includes('information_schema.TRIGGERS') || sql.includes('information_schema.ROUTINES') || sql.includes('information_schema.EVENTS')) return [];
   throw new Error(`no canned answer for ${sql}`);
+}
+
+// checkApplyFault runs a dbspec.apply_fault step (FCV-4): the public applyPlans or rollbackPlans on a memory SQLite connection,
+// after applied_first and sql, with the fail_catalog_read-th read of the SQLite master query in the call failing. An injected
+// failure must reach the apply error as its cause (PLN-92, PLN-93, PLN-96).
+async function checkApplyFault(step, bound, database) {
+  const expect = step.expect[database];
+  const plans = [dbspecPlan(step.plan, bound)];
+  const now = () => Date.UTC(2026, 9, 1) * 1000;
+  const db = new DatabaseSync(':memory:');
+  let reads = 0;
+  let failAt = 0;
+  let cause;
+  const connection = {
+    exec: sql => db.exec(sql),
+    prepare(sql) {
+      if (sql.startsWith('SELECT type, name, tbl_name')) {
+        reads++;
+        if (reads === failAt) throw cause;
+      }
+      return db.prepare(sql);
+    },
+  };
+  try {
+    if (step.applied_first) await applyPlans(connection, 'sqlite', plans, now, null);
+    for (const statement of step.sql ?? []) db.exec(statement);
+    if (step.fail_catalog_read !== undefined) {
+      cause = new Error('catalog read failed');
+      failAt = reads + step.fail_catalog_read;
+    }
+    const kinds = [];
+    const call = step.call === 'rollback' ? rollbackPlans : applyPlans;
+    const failure = await call(connection, 'sqlite', plans, now, event => { kinds.push(event.kind); }).then(() => null, error => error);
+    assert(failure instanceof DbspecApplyError, `the call returned ${failure}, want the code ${expect.code}`);
+    assert.equal(failure.code, expect.code);
+    if (cause !== undefined) assert.equal(failure.cause, cause);
+    if (expect.history_state !== undefined) assert.equal(db.prepare('SELECT state FROM "dbspec$plans"').get().state, expect.history_state);
+    for (const kind of expect.absent_events ?? []) assert.equal(kinds.includes(kind), false, `the events hold ${kind}`);
+  } finally {
+    db.close();
+  }
 }
 
 // checkIntrospectShown runs a dbspec.introspect_shown step: the public introspectDbspec on the canned catalog of a case of the

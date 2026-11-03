@@ -250,6 +250,115 @@ fn dbspec_introspect_shown(step: &Value, database: &str, dir: &Path) -> Result<(
     }
 }
 
+/// The connection of dbspec.apply_fault: read `fail_at` of the SQLite master query fails with `cause`.
+struct FaultConnection {
+    inner: sqlx::SqliteConnection,
+    cause: Option<String>,
+    fail_at: usize,
+    reads: usize,
+}
+
+impl dbspec::CatalogQuerier for FaultConnection {
+    async fn rows(&mut self, query: &str) -> Result<Vec<Vec<dbspec::CatalogValue>>, sqlx::Error> {
+        use dbspec::CatalogQuerier as _;
+        if query.starts_with("SELECT type, name, tbl_name") {
+            self.reads += 1;
+            if let Some(cause) = self.cause.as_ref().filter(|_| self.reads == self.fail_at) {
+                return Err(sqlx::Error::Protocol(cause.clone()));
+            }
+        }
+        self.inner.rows(query).await
+    }
+}
+
+impl dbspec::ApplyConnection for FaultConnection {
+    async fn execute(&mut self, statement: &str) -> Result<(), sqlx::Error> {
+        use dbspec::ApplyConnection as _;
+        self.inner.execute(statement).await
+    }
+
+    async fn execute_bound(&mut self, statement: &str, args: &[dbspec::CatalogValue]) -> Result<(), sqlx::Error> {
+        use dbspec::ApplyConnection as _;
+        self.inner.execute_bound(statement, args).await
+    }
+
+    async fn query_bound(&mut self, query: &str, args: &[dbspec::CatalogValue]) -> Result<Vec<Vec<dbspec::CatalogValue>>, sqlx::Error> {
+        use dbspec::ApplyConnection as _;
+        self.inner.query_bound(query, args).await
+    }
+}
+
+/// The clock of dbspec.apply_fault.
+fn apply_fault_now() -> chrono::DateTime<chrono::Utc> {
+    chrono::DateTime::from_timestamp(1_790_000_000, 0).expect("the fixed time is in range")
+}
+
+/// The dbspec.apply_fault op (FCV-4): the public apply or rollback on a memory SQLite connection, after applied_first and
+/// sql, with the fail_catalog_read-th read of the SQLite master query in the call failing. An injected failure must reach
+/// the apply error as its cause (PLN-92, PLN-93, PLN-96).
+fn dbspec_apply_fault(step: &Value, bound: &HashMap<String, Outcome>, database: &str) -> Result<(), String> {
+    use dbspec::{ApplyConnection as _, ApplyError, ApplyEvent, ApplyEventError, IntrospectError};
+    use sqlx::Connection as _;
+    let expect = &step["expect"][database];
+    let want = expect["code"].as_str().ok_or("the expect has no code")?;
+    let plans = vec![bound_plan(&step["plan"], bound)?];
+    let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|error| error.to_string())?;
+    runtime.block_on(async {
+        let inner = sqlx::SqliteConnection::connect("sqlite::memory:").await.map_err(|error| error.to_string())?;
+        let mut fault = FaultConnection { inner, cause: None, fail_at: 0, reads: 0 };
+        if step["applied_first"].as_bool() == Some(true) {
+            let mut quiet = |_: &ApplyEvent| -> Result<(), ApplyEventError> { Ok(()) };
+            dbspec::apply(&mut fault, Dialect::Sqlite, &plans, &apply_fault_now, &mut quiet).await.map_err(|error| format!("apply: {error}"))?;
+        }
+        if let Some(statements) = step["sql"].as_array() {
+            for statement in statements {
+                fault.execute(statement.as_str().ok_or("a statement is not a string")?).await.map_err(|error| error.to_string())?;
+            }
+        }
+        if let Some(read) = step["fail_catalog_read"].as_u64() {
+            fault.cause = Some("catalog read failed".to_owned());
+            fault.fail_at = fault.reads + usize::try_from(read).map_err(|error| error.to_string())?;
+        }
+        let mut kinds: Vec<String> = Vec::new();
+        let result = {
+            let mut events = |event: &ApplyEvent| -> Result<(), ApplyEventError> {
+                kinds.push(event.kind.as_str().to_owned());
+                Ok(())
+            };
+            if step["call"] == "rollback" {
+                dbspec::rollback(&mut fault, Dialect::Sqlite, &plans, &apply_fault_now, &mut events).await
+            } else {
+                dbspec::apply(&mut fault, Dialect::Sqlite, &plans, &apply_fault_now, &mut events).await
+            }
+        };
+        match (&result, want) {
+            (Err(ApplyError::Drift { .. }), "drift") => {}
+            (Err(ApplyError::Verify { source, .. }), "verify") => {
+                if let Some(cause) = &fault.cause {
+                    let held = matches!(source, Some(IntrospectError::Query(sqlx::Error::Protocol(message))) if message == cause);
+                    if !held {
+                        return Err(format!("{result:?} does not hold the catalog read error"));
+                    }
+                }
+            }
+            _ => return Err(format!("the call returned {result:?}, want the code {want}")),
+        }
+        if let Some(state) = expect["history_state"].as_str() {
+            let rows = fault.query_bound("SELECT state FROM \"dbspec$plans\"", &[]).await.map_err(|error| error.to_string())?;
+            match rows.first().and_then(|row| row.first()) {
+                Some(dbspec::CatalogValue::Text(got)) if got == state => {}
+                got => return Err(format!("the history state is {got:?}, want {state}")),
+            }
+        }
+        if let Some(absent) = expect["absent_events"].as_array() {
+            if let Some(kind) = absent.iter().filter_map(Value::as_str).find(|kind| kinds.iter().any(|got| got == kind)) {
+                return Err(format!("the events {kinds:?} hold {kind}"));
+            }
+        }
+        fault.inner.close().await.map_err(|error| error.to_string())
+    })
+}
+
 /// The dbspec.introspect_sqlite op (FCV-4): the statements on a memory SQLite connection of its own, then the
 /// public introspect, whose unsupported objects it compares with the expect of `database` (DIA-191).
 fn dbspec_introspect_sqlite(step: &Value, database: &str) -> Result<(), String> {
@@ -327,6 +436,7 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
         "dsn.connect" => return dsn_connect(step, database),
         "dbspec.introspect_shown" => return dbspec_introspect_shown(step, database, dir),
         "dbspec.introspect_sqlite" => return dbspec_introspect_sqlite(step, database),
+        "dbspec.apply_fault" => return dbspec_apply_fault(step, bound, database),
         "keyring.versions" => return keyring_versions(step, database),
         "markdown.builder" => return markdown_builder(step, database),
         "planner.compile" => return planner_compile(step, database, dir),

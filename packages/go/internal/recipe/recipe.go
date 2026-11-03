@@ -92,8 +92,12 @@ type step struct {
 	Params      []json.RawMessage          `json:"params"`
 	Begin       json.RawMessage            `json:"begin"`
 	ProcessZone string                     `json:"process_zone"`
-	// SQL is the statements of dbspec.introspect_sqlite.
+	// SQL is the statements of dbspec.introspect_sqlite or dbspec.apply_fault.
 	SQL []string `json:"sql"`
+	// Call, AppliedFirst and FailCatalogRead are the fields of dbspec.apply_fault.
+	Call            string `json:"call"`
+	AppliedFirst    bool   `json:"applied_first"`
+	FailCatalogRead int    `json:"fail_catalog_read"`
 	// Vectors is the file of dbspec.introspect_shown, relative to the recipe, and Case the id of its case.
 	Vectors string `json:"vectors"`
 	Case    string `json:"case"`
@@ -281,6 +285,9 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 	}
 	if s.Op == "dbspec.introspect_shown" {
 		return checkIntrospectShown(t, o.dir, s, database)
+	}
+	if s.Op == "dbspec.apply_fault" {
+		return checkApplyFault(t, s, bound, database)
 	}
 	if s.Op == "dbspec.introspect_sqlite" {
 		return checkIntrospectSQLite(t, s, database)

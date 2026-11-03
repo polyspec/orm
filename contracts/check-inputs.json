@@ -3298,18 +3298,23 @@
         "packages/php-ext/src/config.m4",
         "packages/php-ext/scripts/build.sh",
         "packages/php/src/Dbspec/PlanApply.php",
-        "packages/php-ext/tests/DbspecVerifyErrorsTest.php",
+        "packages/php-ext/tests/DbspecReleaseHooksTest.php",
         "packages/php-ext/tests/bootstrap.php",
         "packages/php/tests/DbspecApplyCleanupTest.php",
         "packages/php/tests/dbspec_verify_errors_case.php",
         "packages/php/tests/bootstrap.php",
         "packages/php/tests/FailingPdo.php",
         "packages/python/src/polyspec/orm/dbspec/apply.py",
-        "packages/python/tests/test_dbspec_verify_errors.py",
+        "packages/python/tests/test_dbspec_apply_verification_errors_none.py",
         "packages/rust/orm/src/dbspec/apply.rs",
         "packages/rust/orm/tests/dbspec_apply_cleanup.rs",
         "packages/ts/src/dbspec/apply.ts",
-        "packages/ts/tests/dbspec-apply-verify-errors.mjs"
+        "packages/ts/tests/dbspec_apply_verification_errors-none.test.mjs",
+        "tests/dbspec/apply-verification-errors.json",
+        "packages/php/tests/DbspecApplyVerificationErrorsRecipeTest.php",
+        "packages/php-ext/tests/DbspecApplyVerificationErrorsRecipeTestExtensionTest.php",
+        "packages/rust/tests/tests/dbspec_apply_verification_errors_none.rs",
+        "packages/go/orm/recipe_dbspec_apply_verification_errors_test.go"
       ]
     },
     "dbspec-apply-ts-check": {

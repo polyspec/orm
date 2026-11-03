@@ -67,6 +67,7 @@ from polyspec.orm.dbspec.add_tables import add_tables_and_columns_steps
 from polyspec.orm.dbspec.compare import compare_schemas
 from polyspec.orm.dbspec.introspect import introspect_dbspec
 from polyspec.orm.dbspec.mermaid import export_mermaid, import_mermaid
+from polyspec.orm.dbspec.apply import DbspecApplyError, apply_plans, rollback_plans
 from polyspec.orm.dbspec.plan import chain_plans, emit_plan, parse_plan
 from polyspec.orm.dbspec.plan_diff import diff_plan
 from polyspec.orm.dbspec.plan_steps import effect_text, plan_steps
@@ -179,6 +180,9 @@ def recipe_tests(path: str, database: str):
                     continue
                 if step["op"] == "dbspec.introspect_shown":
                     _dbspec_introspect_shown(step, ROOT / Path(path).parent, database)
+                    continue
+                if step["op"] == "dbspec.apply_fault":
+                    _dbspec_apply_fault(step, bound, database)
                     continue
                 if step["op"] == "dbspec.introspect_sqlite":
                     _dbspec_introspect_sqlite(step, database)
@@ -1029,6 +1033,65 @@ class _ShownCatalogConnection:
         else:
             raise AssertionError(f"no canned answer for {sql}")
         return {"rows": rows}
+
+
+class _FaultConnection:
+    """A memory SQLite connection for dbspec.apply_fault: read fail_at of the SQLite master query raises cause."""
+
+    def __init__(self) -> None:
+        self.connection = sqlite3.connect(":memory:")
+        self.connection.isolation_level = None
+        self.cause: Exception | None = None
+        self.fail_at = 0
+        self.reads = 0
+
+    def execute(self, sql: str, args: Any) -> dict:
+        if sql.startswith("SELECT type, name, tbl_name"):
+            self.reads += 1
+            if self.cause is not None and self.reads == self.fail_at:
+                raise self.cause
+        cursor = self.connection.execute(sql, tuple(args))
+        rows = [list(row) for row in cursor.fetchall()]
+        cursor.close()
+        return {"rows": rows, "insert_id": None, "affected": 0}
+
+
+def _dbspec_apply_fault(step: dict, bound: dict, database: str) -> None:
+    """Runs the dbspec.apply_fault op (FCV-4): the public apply_plans or rollback_plans on a memory SQLite connection,
+    after applied_first and sql, with the fail_catalog_read-th read of the SQLite master query in the call failing. An
+    injected failure must reach the apply error as its cause (PLN-92, PLN-93, PLN-96)."""
+    expect = step["expect"][database]
+    plans = [_dbspec_value(step["plan"], bound, "plan")]
+    now = lambda: 1_790_000_000_000_000  # noqa: E731 - the clock of the call
+    fault = _FaultConnection()
+    try:
+        if step.get("applied_first"):
+            apply_plans(fault, "sqlite", plans, now)
+        for statement in step.get("sql", []):
+            fault.execute(statement, [])
+        if "fail_catalog_read" in step:
+            fault.cause = RuntimeError("catalog read failed")
+            fault.fail_at = fault.reads + step["fail_catalog_read"]
+        kinds: list[str] = []
+        call = rollback_plans if step["call"] == "rollback" else apply_plans
+        try:
+            call(fault, "sqlite", plans, now, lambda event: kinds.append(event["kind"]))
+        except DbspecApplyError as error:
+            if error.code != expect["code"]:
+                raise AssertionError(f"the call raised {error.code}, want {expect['code']}") from error
+            if fault.cause is not None and error.cause is not fault.cause:
+                raise AssertionError(f"the error {error} does not hold the catalog read error") from error
+        else:
+            raise AssertionError(f"the call succeeded, want {expect['code']}")
+        if "history_state" in expect:
+            state = fault.connection.execute('SELECT state FROM "dbspec$plans"').fetchone()[0]
+            if state != expect["history_state"]:
+                raise AssertionError(f"the history state is {state}, want {expect['history_state']}")
+        for kind in expect.get("absent_events", []):
+            if kind in kinds:
+                raise AssertionError(f"the events {kinds} hold {kind}")
+    finally:
+        fault.connection.close()
 
 
 def _dbspec_introspect_shown(step: dict, recipe_dir: Path, database: str) -> None:

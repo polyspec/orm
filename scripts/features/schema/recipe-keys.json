@@ -19,6 +19,15 @@
     "steps"
   ],
   "step": {
+    "dbspec.apply_fault": [
+      "applied_first",
+      "call",
+      "expect",
+      "fail_catalog_read",
+      "op",
+      "plan",
+      "sql"
+    ],
     "dbspec.ddl_behavior": [
       "case",
       "op",

@@ -767,6 +767,7 @@
             "dsn.connect",
             "keyring.versions",
             "dbspec.introspect_sqlite",
+            "dbspec.apply_fault",
             "dbspec.ddl_behavior",
             "dbspec.introspect_shown",
             "markdown.builder",
@@ -868,6 +869,9 @@
         },
         {
           "$ref": "#/$defs/ops/dbspec.introspect_sqlite"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.apply_fault"
         },
         {
           "$ref": "#/$defs/ops/dbspec.ddl_behavior"
@@ -1386,6 +1390,77 @@
           },
           "expect": {
             "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "dbspec.apply_fault": {
+        "description": "The public apply or rollback on a memory SQLite connection that the op wraps: after applied_first and sql, the nth read of the SQLite master query in the call fails with an error of the op. The result is the code of the apply error (PLN-92, PLN-93, PLN-96).",
+        "type": "object",
+        "required": [
+          "op",
+          "plan",
+          "call",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.apply_fault"
+          },
+          "plan": {
+            "$ref": "#/$defs/ref"
+          },
+          "call": {
+            "enum": [
+              "apply",
+              "rollback"
+            ]
+          },
+          "applied_first": {
+            "const": true
+          },
+          "sql": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "fail_catalog_read": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "expect": {
+            "type": "object",
+            "required": [
+              "none"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "type": "object",
+                "required": [
+                  "code"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "code": {
+                    "enum": [
+                      "verify",
+                      "drift"
+                    ]
+                  },
+                  "history_state": {
+                    "type": "string"
+                  },
+                  "absent_events": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       },

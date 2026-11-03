@@ -169,6 +169,10 @@ final class Recipe
                     self::dbspecIntrospectShownStep($step, dirname(__DIR__, 3) . '/' . dirname($path), $database);
                     continue;
                 }
+                if ($step['op'] === 'dbspec.apply_fault') {
+                    self::dbspecApplyFaultStep($step, $bound, $database);
+                    continue;
+                }
                 if ($step['op'] === 'dbspec.introspect_sqlite') {
                     self::dbspecIntrospectSqliteStep($step, $database);
                     continue;
@@ -1323,6 +1327,64 @@ final class Recipe
             }
         });
         self::checkMessage($step['expect'], $message, $code);
+    }
+
+    /**
+     * Runs one dbspec.apply_fault step (FCV-4): the public apply or rollback on a SQLite connection, after applied_first
+     * and sql, with the fail_catalog_read-th read of the SQLite master query in the call failing. An injected failure must
+     * reach the apply error as its cause (PLN-92, PLN-93, PLN-96).
+     *
+     * @param array<string, mixed> $step
+     * @param array<string, mixed> $bound
+     */
+    private static function dbspecApplyFaultStep(array $step, array $bound, string $database): void
+    {
+        $expect = $step['expect'][$database];
+        $master = "SELECT type, name, tbl_name, IFNULL(sql, '') FROM sqlite_master\n"
+            . "WHERE name NOT LIKE 'sqlite_%' AND tbl_name NOT LIKE 'dbspec$%' ORDER BY type, name";
+        $plans = [self::dbspecBound($step['plan'], $bound)];
+        $now = static fn(): \DateTimeImmutable => new \DateTimeImmutable('2026-10-01T00:00:00Z');
+        $pdo = dbspec_failing_pdo('dbspec_apply_fault', []);
+        if (($step['applied_first'] ?? false) === true) {
+            Dbspec::apply($pdo, 'sqlite', $plans, $now, null);
+        }
+        foreach ($step['sql'] ?? [] as $statement) {
+            $pdo->exec($statement);
+        }
+        $cause = null;
+        if (isset($step['fail_catalog_read'])) {
+            $cause = new \PDOException('catalog read failed');
+            $pdo->failQuery($master, $cause, $step['fail_catalog_read']);
+        }
+        $kinds = [];
+        $events = static function (\Polyspec\Orm\Dbspec\ApplyEvent $event) use (&$kinds): void {
+            $kinds[] = $event->kind;
+        };
+        $error = null;
+        try {
+            if ($step['call'] === 'rollback') {
+                Dbspec::rollback($pdo, 'sqlite', $plans, $now, $events);
+            } else {
+                Dbspec::apply($pdo, 'sqlite', $plans, $now, $events);
+            }
+        } catch (\Polyspec\Orm\Dbspec\ApplyError $caught) {
+            $error = $caught;
+        }
+        Assert::assertNotNull($error, "the call succeeded, want {$expect['code']}");
+        Assert::assertSame($expect['code'], $error->code_);
+        if ($cause !== null) {
+            $previous = $error->getPrevious();
+            Assert::assertTrue(
+                $previous === $cause || $previous?->getPrevious() === $cause,
+                'the apply error holds the catalog read error'
+            );
+        }
+        if (isset($expect['history_state'])) {
+            Assert::assertSame($expect['history_state'], $pdo->query('SELECT state FROM "dbspec$plans"')->fetchColumn());
+        }
+        foreach ($expect['absent_events'] ?? [] as $kind) {
+            Assert::assertNotContains($kind, $kinds);
+        }
     }
 
     /**

@@ -196,6 +196,12 @@ name = "dbspec_set_decimal_sqlite"
 path = "tests/dbspec_set_decimal_sqlite.rs"
 harness = false
 
+# Each case of the recipe tests/dbspec/apply-verification-errors.json, as dbspec_apply_verification_errors_none::<case id> (FCV-3, FCV-4).
+[[test]]
+name = "dbspec_apply_verification_errors_none"
+path = "tests/dbspec_apply_verification_errors_none.rs"
+harness = false
+
 # Each case of the statement_events recipe, contracts/fixtures/statement_events/statement_events.json, is the trial
 # statement_events_mysql::<case id> on a case database of its own (FCV-3, FCV-4).
 [[test]]
