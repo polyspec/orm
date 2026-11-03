@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/polyspec/orm/packages/go/internal/testdb"
 	"github.com/polyspec/orm/packages/go/orm"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
@@ -300,131 +299,6 @@ func TestPoolDiscardsEndedIdleConnection(t *testing.T) {
 				t.Fatalf("pool after replacement connection: %+v, want one idle connection", stats)
 			}
 		})
-	}
-}
-
-// TestStatementTimeout bounds every statement of the connection. MySQL bounds
-// SELECT statements, PostgreSQL bounds every statement, and SQLite has no
-// session timeout. The bounded statement is a locking read of a row that
-// another connection holds in an open transaction, so it waits for the lock
-// past the bound.
-// Requirements: CFG-6.
-func TestStatementTimeout(t *testing.T) {
-	testcase.Start(t, testcase.Database)
-	s := fixtureSchema(t, "zone")
-	for _, driver := range []string{"mysql", "postgres"} {
-		t.Run(driver, func(t *testing.T) {
-			dsn := newDatabase(t, driver)
-			// The table and its rows are created without a statement timeout;
-			// only the checked statement runs on the connection with the timeout.
-			setup := connectInstalled(t, dsn, s)
-			defer testcase.Close(t, setup)
-			ent := zoneEntity(s)
-			createZoneRow(t, setup, ent)
-			release := holdRows(t, driver, dsn, "zone_event")
-			db, err := orm.ConnectSchema(dsn, s, orm.Config{PoolSize: 1, StatementTimeoutMs: 200})
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer testcase.Close(t, db)
-			if err := lockedRead(db, ent); orm.ErrorCode(err) != orm.CodeCanceled {
-				t.Fatalf("a statement past the timeout: %v (code %q)", err, orm.ErrorCode(err))
-			}
-			release()
-			after := orm.NewCore(ent)
-			ent.New(after)
-			after.Connect(db)
-			if count, err := after.GetCount(); err != nil || count != 1 {
-				t.Fatalf("a connection after its statement timeout: count %d, err %v", count, err)
-			}
-		})
-	}
-}
-
-// lockedRead reads the row of ent with FOR UPDATE in db's transaction. If another connection holds that row,
-// it waits for the lock.
-func lockedRead(db *orm.DB, ent *orm.Entity) error {
-	return db.Transaction(func() error {
-		c := orm.NewCore(ent)
-		ent.New(c)
-		// Keep the same parameterized SELECT across transactions and client handles.
-		c.Set("seq", int64(1))
-		c.Connect(db)
-		c.Lock("update")
-		_, err := c.Get()
-		return err
-	}, orm.Retry(0))
-}
-
-// TestStatementTimeoutThroughAPooler checks that the statement timeout of one
-// connection bounds only the statements of that connection when a pooler in
-// transaction mode hands one server session to every client in turn: through
-// ORM_TEST_PGBOUNCER_SINGLE_DSN every client shares one server connection.
-// PgBouncer's orm_test_single is bound to the database of ORM_TEST_POSTGRES_DSN, so the case cannot
-// reach any other database, so the case creates one table named testdb.Name in that database
-// and, when it ends, drops only that table, even after a failure.
-// Requirements: CFG-27, CFG-28, CFG-29.
-func TestStatementTimeoutThroughAPooler(t *testing.T) {
-	c := testcase.Start(t, testcase.Database)
-	base := requireDSN(t, "ORM_TEST_POSTGRES_DSN")
-	single := requireDSN(t, "ORM_TEST_PGBOUNCER_SINGLE_DSN")
-	table := testdb.Name()
-	s := documentSchema(t, "dbspec 1 zone\n\ntable "+table+" {\n  seq i64 identity\n  start_dt datetime(6)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n")
-	t.Cleanup(func() {
-		raw := openNative(t, "postgres", base)
-		defer testcase.Close(t, raw)
-		if _, err := raw.Exec(`DROP TABLE IF EXISTS "` + table + `"`); err != nil {
-			t.Errorf("drop case table %s: %v", table, err)
-			return
-		}
-		c.Step("table %s dropped", table)
-	})
-	setup := connectInstalled(t, base, s)
-	defer testcase.Close(t, setup)
-	c.Step("table %s created", table)
-	ent := rowEntity(table, s, zoneColumns...)
-	for i := 0; i < 3; i++ {
-		createZoneRow(t, setup, ent)
-	}
-	// A direct connection holds the rows, so a locking read through the pooler
-	// waits for the lock.
-	release := holdRows(t, "postgres", base, table)
-	bounded, err := orm.ConnectSchema(single, s, orm.Config{StatementTimeoutMs: 200})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer testcase.Close(t, bounded)
-	if err := lockedRead(bounded, ent); orm.ErrorCode(err) != orm.CodeCanceled {
-		t.Fatalf("the bounded connection through the pooler: %v", err)
-	}
-	plain, err := orm.ConnectSchema(single, s, orm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer testcase.Close(t, plain)
-	// The holder keeps the rows for a declared 400 ms, past the 200 ms bound of
-	// the other connection, so the plain read waits that long and then succeeds.
-	held := time.AfterFunc(400*time.Millisecond, release)
-	defer held.Stop()
-	started := time.Now()
-	if err := lockedRead(plain, ent); err != nil {
-		t.Fatalf("a connection without a timeout after the bounded one: %v", err)
-	}
-	if waited := time.Since(started); waited < 200*time.Millisecond {
-		t.Fatalf("the plain read waited %s, not past the bound of the other connection", waited)
-	}
-	// Both client sessions issue the same locking query repeatedly through PgBouncer.
-	for i := 0; i < 6; i++ {
-		if err := lockedRead(bounded, ent); err != nil {
-			t.Fatalf("prepared query %d through bounded client: %v", i, err)
-		}
-		if err := lockedRead(plain, ent); err != nil {
-			t.Fatalf("prepared query %d through plain client: %v", i, err)
-		}
-	}
-	holdRows(t, "postgres", base, table)
-	if err := lockedRead(bounded, ent); orm.ErrorCode(err) != orm.CodeCanceled {
-		t.Fatalf("the bounded connection after the plain one: %v", err)
 	}
 }
 

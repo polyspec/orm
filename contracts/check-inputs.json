@@ -2966,22 +2966,6 @@
         "packages/php/tests/bootstrap.php"
       ]
     },
-    "connection-statement-timeout-php-extension-check": {
-      "scope": "owner",
-      "needs": [
-        "php",
-        "composer",
-        "php-extension-tools",
-        "databases"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/php-ext/scripts/build.sh",
-        "packages/php-ext/src/db.c",
-        "packages/php-ext/tests/ConnectionStatementTimeoutNativeTest.php",
-        "packages/php/src/OrmException.php"
-      ]
-    },
     "connection-busy-timeout-php-extension-check": {
       "scope": "owner",
       "needs": [
@@ -2995,20 +2979,6 @@
         "packages/php-ext/src/db.c",
         "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php",
         "packages/php/src/OrmException.php"
-      ]
-    },
-    "connection-statement-timeout-typescript-check": {
-      "scope": "owner",
-      "needs": [
-        "node-modules",
-        "databases"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/ts/tests/statement_timeout.mjs",
-        "packages/ts/tests/bench-set.mjs",
-        "packages/ts/tests/case-database.mjs",
-        "tests/testcase.mts"
       ]
     },
     "connection-pool-resource-bounds-typescript-check": {

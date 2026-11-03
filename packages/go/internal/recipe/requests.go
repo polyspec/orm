@@ -51,7 +51,7 @@ func auditValues(raw json.RawMessage, c *databaseContext) (map[string]any, error
 // connectConfig is the configuration of a model.connect: the keys of the bench set or the keyring of the step, and the
 // audit source of the step.
 func connectConfig(s databaseStep, c *databaseContext) (orm.Config, error) {
-	cfg := orm.Config{PoolSize: s.PoolSize, AESKey: benchAESKey, BlindIndexKey: benchBlindIndexKey}
+	cfg := orm.Config{PoolSize: s.PoolSize, AESKey: benchAESKey, BlindIndexKey: benchBlindIndexKey, StatementTimeoutMs: s.StatementTimeoutMs}
 	if s.AuditSource != nil {
 		var values map[string]any
 		if s.AuditSource.Values != nil {

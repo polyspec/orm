@@ -125,6 +125,13 @@ pub fn connect_dsn(dsn: Option<&str>, database: &str, case_dsn: &str, socket: Op
             let separator = if case_dsn.contains('?') { '&' } else { '?' };
             Ok(format!("{case_dsn}{separator}{}", &dsn["case?".len()..]))
         }
+        Some("case-pooler") => {
+            let pooler = std::env::var("ORM_TEST_PGBOUNCER_DSN").map_err(|_| "dsn case-pooler: ORM_TEST_PGBOUNCER_DSN is required; database tests never skip".to_owned())?;
+            let name = case_dsn.split('?').next().unwrap_or_default().rsplit('/').next().unwrap_or_default();
+            let (head, query) = pooler.split_once('?').unwrap_or((&pooler, ""));
+            let (server, _) = head.rsplit_once('/').ok_or_else(|| format!("dsn case-pooler: {pooler} names no database"))?;
+            Ok(if query.is_empty() { format!("{server}/{name}") } else { format!("{server}/{name}?{query}") })
+        }
         Some("case-socket") => {
             if database != "mysql" {
                 return Err(format!("dsn case-socket needs mysql, not {database}"));
@@ -2580,6 +2587,11 @@ mod database {
             let refusal = format!("model.connect {name}: this recipe binds no audited models");
             Box::pin(async move { Err(refusal) })
         }
+        /// model.connect with statement_timeout_ms (FCV-4, CFG-6); a dispatcher on generated models refuses it by name.
+        fn connect_bounded<'a>(&'a mut self, name: &'a str, _dsn: &'a str, _pool_size: u32, _ms: u32) -> ModelFuture<'a> {
+            let refusal = format!("model.connect {name}: this recipe binds no bounded connection");
+            Box::pin(async move { Err(refusal) })
+        }
         fn connect_keyring<'a>(&'a mut self, name: &'a str, _dsn: &'a str, _pool_size: u32, _keyring: &'a Value) -> ModelFuture<'a> {
             Box::pin(async move { Err(format!("model.connect {name}: this recipe binds no AES models")) })
         }
@@ -3680,6 +3692,11 @@ mod database {
                 std::env::var_os("ORM_TEST_MYSQL_SOCKET").as_deref().and_then(std::ffi::OsStr::to_str),
             )
             .map_err(Failure::Step)?;
+            if let Some(ms) = step["statement_timeout_ms"].as_u64() {
+                let ms = u32::try_from(ms).map_err(|_| Failure::Step(format!("statement_timeout_ms {ms} is out of range")))?;
+                context.models.connect_bounded(name, &dsn, pool_size, ms).await.map_err(Failure::Call)?;
+                return Ok(Output::fields(json!({})));
+            }
             match (step.get("aes_keyring"), step.get("audit_source")) {
                 (Some(keyring), _) => context.models.connect_keyring(name, &dsn, pool_size, keyring).await.map_err(Failure::Call)?,
                 (None, Some(source)) => {
@@ -5242,6 +5259,12 @@ mod tables {
         async fn connect(&mut self, connections: &mut Connections, name: &str, dsn: &str, pool_size: u32) -> Result<Value, String> {
             self.bases.remove(name);
             connections.open(name, dsn, self.schema, pool_size, bench_config()).await.map_err(orm)
+        }
+
+        async fn connect_bounded(&mut self, connections: &mut Connections, name: &str, dsn: &str, pool_size: u32, ms: u32) -> Result<Value, String> {
+            let config = Config { statement_timeout_ms: ms, ..bench_config() };
+            self.bases.remove(name);
+            connections.open(name, dsn, self.schema, pool_size, config).await.map_err(orm)
         }
 
         async fn connect_keyring(&mut self, connections: &mut Connections, name: &str, dsn: &str, pool_size: u32, keyring: &Value) -> Result<Value, String> {

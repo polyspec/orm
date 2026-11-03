@@ -16,7 +16,7 @@ const clientScans = [
   'tests/coverage_transactions.mjs', 'tests/decimal_model_type.ts', 'tests/group_rows.types.ts',
   'tests/model-new-output-name.mjs', 'tests/model.mjs', 'tests/model_json_output.test.mts',
   'tests/paginate-order.mjs', 'tests/parent-slot-expansion.mjs', 'tests/replica.mjs',
-  'tests/split-plan.test.mjs', 'tests/sqlite-concurrency.mjs', 'tests/statement_timeout.mjs', 'tests/styled-value-checks.mjs',
+  'tests/split-plan.test.mjs', 'tests/sqlite-concurrency.mjs', 'tests/styled-value-checks.mjs',
   'tests/transaction-flow.mjs', 'tests/typecheck.ts',
   '../../examples/thin-slice/ts/main.mts',
 ];

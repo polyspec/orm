@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: cca31955be5a17619a86a49c74dabe8bc74c8b429b74e1b9ce93418d449901c2 -->
+<!-- source-sha256: 4ef44c4eacaa14e6429cbb5a6e4528665f454cf78419077420f1cab81d4188a7 -->
 # 변경 이력
 
 ## Unreleased
@@ -438,6 +438,7 @@
 - drop 단계는 복제본이 적용하지 않은 binary log 정리를 거부하고, 거부 메시지에 복제본 SQL thread의 상태와 마지막 오류를 적는다. 테스트 서버 시작은 SQL thread가 멈춘 MySQL 복제본을 재사용하지 않고, 마지막 오류와 함께 보고한 뒤 다시 시작한다 (G5.55-2).
 - UTC 연결 동작(CFG-2, DIA-57, DSL-141)을 모든 client에서 `dsn_connection` recipe의 사례로 실행하고, `model.connect`가 `case?<query>`를 받는다. TLS handshake가 인증서를 거부한 TypeScript MySQL 연결은 이제 CFG-16대로 `DRIVER`가 아니라 `CONFIG`를 돌려준다.
 - Go `DriverFromDSN`은 별도 요구사항(CFG-40)이 되고, Go와 Rust의 generated model 연결은 그 연결을 하는 recipe 밖에 시험을 더 두지 않는다.
+- statement timeout(CFG-6)과 transaction pooler를 거친 격리(CFG-27, CFG-28, CFG-29)를 모든 client에서 `dsn_connection` recipe의 사례로 실행하고, `model.connect`가 `statement_timeout_ms`와 DSN `case-pooler`를 받는다. pooler를 거친 Python catalog session은 별도 요구사항(CFG-41)이 된다.
 
 ## 0.0.21
 

@@ -75,7 +75,8 @@
         "dsn_connection-sqlite",
         "dsn-reject-checked",
         "dsn-reject-parameters",
-        "connection-driver-from-dsn"
+        "connection-driver-from-dsn",
+        "connection-catalog-session-through-a-pooler"
       ],
       "fixtures": [
         "packages/go/orm/test_helpers_test.go",
@@ -99,7 +100,6 @@
         "packages/ts/tests/dsn.mjs",
         "packages/ts/tests/dsn_features.mjs",
         "packages/ts/tests/model.mjs",
-        "packages/ts/tests/statement_timeout.mjs",
         "packages/ts/tests/pool_bounds.mjs",
         "packages/ts/tests/idle-connection-end.mjs",
         "packages/rust/orm/tests/zone.rs",
@@ -111,7 +111,6 @@
         "packages/php/tests/SqliteWithoutMysqlTest.php",
         "packages/go/orm/mysql_tls_test.go",
         "packages/php/tests/MysqlTlsTest.php",
-        "packages/php-ext/tests/ConnectionStatementTimeoutNativeTest.php",
         "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php",
         "packages/php-ext/tests/OrmExceptionNativeTest.php",
         "packages/rust/orm/tests/mysql_tls.rs",

@@ -13632,33 +13632,53 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/timezone_test.go",
-          "id": "TestStatementTimeout"
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionMysql/statement_timeout_cancels_and_keeps_the_connection"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionPostgres/statement_timeout_cancels_and_keeps_the_connection"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testStatementTimeout"
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testMysql with data set \"statement_timeout_cancels_and_keeps_the_connection\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testPostgres with data set \"statement_timeout_cancels_and_keeps_the_connection\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ConnectionStatementTimeoutNativeTest.php",
-          "id": "ConnectionStatementTimeoutNativeTest::testNativeStatementTimeoutCancelsAndReusesConnection"
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testMysql with data set \"statement_timeout_cancels_and_keeps_the_connection\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testPostgres with data set \"statement_timeout_cancels_and_keeps_the_connection\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/statement_timeout.mjs",
-          "id": "connection/statement-timeout-canceled"
+          "test": "packages/ts/tests/dsn_connection-postgres.test.mjs",
+          "id": "statement_timeout_cancels_and_keeps_the_connection"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/connection_config.py",
-          "id": "test_statement_timeout"
+          "test": "packages/python/tests/test_dsn_connection_postgres.py",
+          "id": "statement_timeout_cancels_and_keeps_the_connection"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/zone.rs",
-          "id": "statement_timeout"
+          "test": "packages/rust/tests/tests/dsn_connection_mysql.rs",
+          "id": "dsn_connection_mysql::statement_timeout_cancels_and_keeps_the_connection"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
+          "id": "dsn_connection_postgres::statement_timeout_cancels_and_keeps_the_connection"
         }
       ]
     },
@@ -13673,33 +13693,52 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/timezone_test.go",
-          "id": "TestStatementTimeoutThroughAPooler"
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionPostgres/statement_timeout_through_a_pooler"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testStatementTimeoutThroughAPooler"
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testPostgres with data set \"statement_timeout_through_a_pooler\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ConnectionStatementTimeoutNativeTest.php",
-          "id": "ConnectionStatementTimeoutNativeTest::testNativeStatementTimeoutIsIsolatedByTransactionPooler"
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testPostgres with data set \"statement_timeout_through_a_pooler\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/statement_timeout.mjs",
-          "id": "connection/statement-timeout-through-pooler"
+          "test": "packages/ts/tests/dsn_connection-postgres.test.mjs",
+          "id": "statement_timeout_through_a_pooler"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/connection_config.py",
-          "id": "test_statement_timeout_through_a_pooler"
+          "test": "packages/python/tests/test_dsn_connection_postgres.py",
+          "id": "statement_timeout_through_a_pooler"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/zone.rs",
-          "id": "statement_timeout_through_a_pooler"
+          "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
+          "id": "dsn_connection_postgres::statement_timeout_through_a_pooler"
+        }
+      ]
+    },
+    {
+      "id": "connection-catalog-session-through-a-pooler",
+      "kind": "feature",
+      "requirements": [
+        "CFG-41"
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "dsn_connection",
+        "part": "owner/python"
+      },
+      "bindings": [
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/connection_config.py",
+          "id": "test_catalog_session_after_a_schema_change_through_a_pooler"
         }
       ]
     },

@@ -54,6 +54,18 @@ pub trait CaseModels: Send + 'static {
         let refusal = format!("model.connect {name}: this recipe binds no AES models");
         async move { Err(refusal) }
     }
+    /// model.connect with statement_timeout_ms (FCV-4, CFG-6); a recipe on generated models refuses it by name.
+    fn connect_bounded(
+        &mut self,
+        _connections: &mut Connections,
+        name: &str,
+        _dsn: &str,
+        _pool_size: u32,
+        _ms: u32,
+    ) -> impl Future<Output = Result<Value, String>> {
+        let refusal = format!("model.connect {name}: this recipe binds no bounded connection");
+        async move { Err(refusal) }
+    }
     /// model.connect with audit_source (FCV-4, CFG-8); a recipe without audited models refuses it by name.
     fn connect_audited(
         &mut self,
@@ -90,6 +102,10 @@ impl<M: CaseModels> ModelDispatcher for Dispatcher<M> {
 
     fn connect<'a>(&'a mut self, name: &'a str, dsn: &'a str, pool_size: u32) -> ModelFuture<'a> {
         Box::pin(self.models.connect(&mut self.connections, name, dsn, pool_size))
+    }
+
+    fn connect_bounded<'a>(&'a mut self, name: &'a str, dsn: &'a str, pool_size: u32, ms: u32) -> ModelFuture<'a> {
+        Box::pin(self.models.connect_bounded(&mut self.connections, name, dsn, pool_size, ms))
     }
 
     fn connect_keyring<'a>(&'a mut self, name: &'a str, dsn: &'a str, pool_size: u32, keyring: &'a Value) -> ModelFuture<'a> {

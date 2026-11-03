@@ -94,7 +94,12 @@ trait RecipeModel
                     aesKeys: self::aesKeys($s['aes_keyring']),
                     auditSource: $source,
                 )
-                : new Config(aesKey: self::BENCH_AES_KEY, blindIndexKey: self::BENCH_BLIND_INDEX_KEY, auditSource: $source);
+                : new Config(
+                    aesKey: self::BENCH_AES_KEY,
+                    blindIndexKey: self::BENCH_BLIND_INDEX_KEY,
+                    auditSource: $source,
+                    statementTimeoutMs: $s['statement_timeout_ms'] ?? 0,
+                );
             $dsn = self::connectDsn($s['dsn'] ?? null, $context['database'], $context['dsn']);
             $db = Orm::connectSchema($dsn, $context['schema'], $config);
             self::$modelConnections[] = $db;
@@ -149,6 +154,17 @@ trait RecipeModel
         }
         if (str_starts_with($dsn, 'case?')) {
             return $caseDsn . (str_contains($caseDsn, '?') ? '&' : '?') . substr($dsn, strlen('case?'));
+        }
+        if ($dsn === 'case-pooler') {
+            $pooler = getenv('ORM_TEST_PGBOUNCER_DSN');
+            if (!is_string($pooler) || $pooler === '') {
+                Assert::fail('dsn case-pooler: ORM_TEST_PGBOUNCER_DSN is required; database tests never skip');
+            }
+            $replaced = preg_replace('~^(\w+://[^/]*)/[^?]*~', '$1' . (string) parse_url($caseDsn, PHP_URL_PATH), $pooler);
+            if (!is_string($replaced)) {
+                Assert::fail("dsn case-pooler: $pooler is not a DSN");
+            }
+            return $replaced;
         }
         if ($dsn !== 'case-socket') {
             return $dsn;

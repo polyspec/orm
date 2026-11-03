@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -157,6 +158,8 @@ type databaseStep struct {
 	Keyring    *aesKeyringSpec   `json:"keyring"`
 	// The audit source of a model.connect (FCV-4).
 	AuditSource *auditSourceSpec `json:"audit_source"`
+	// The statement bound of a model.connect (FCV-4, CFG-6).
+	StatementTimeoutMs int `json:"statement_timeout_ms"`
 	// The chain fields of a transaction, of utils.lock, utils.set_local and utils.local, and of events.captured (FCV-4):
 	// the audit values, the name and value of a utility, and the binds that an expect does not compare by value.
 	Audit json.RawMessage        `json:"audit"`
@@ -272,6 +275,20 @@ func caseSocketDSN(caseDSN, socket string) (string, error) {
 // mysqlCaseDSN splits a MySQL DSN into its user and its database: mysql://user@host:port/database.
 var mysqlCaseDSN = regexp.MustCompile(`^mysql://([^@/]+)@[^/]+/([^?]+)`)
 
+// casePoolerDSN is the DSN of the case database through the transaction pooler of the environment (CFG-27).
+func casePoolerDSN(caseDSN string) (string, error) {
+	pooler, err := url.Parse(os.Getenv("ORM_TEST_PGBOUNCER_DSN"))
+	if err != nil || pooler.Host == "" {
+		return "", errors.New("dsn case-pooler: ORM_TEST_PGBOUNCER_DSN is required; database tests never skip")
+	}
+	target, err := url.Parse(caseDSN)
+	if err != nil {
+		return "", err
+	}
+	pooler.Path = target.Path
+	return pooler.String(), nil
+}
+
 // connectDSN resolves the DSN of a model.connect step (FCV-4): an absent DSN or "case" is the case database, "case-socket" is
 // the MySQL case database through the socket ORM_TEST_MYSQL_SOCKET (CFG-10, a MySQL-only parameter, CFG-19), and other text
 // is the DSN it names.
@@ -285,6 +302,8 @@ func connectDSN(dsn, database, caseDSN string) (string, error) {
 	switch dsn {
 	case "", "case":
 		return caseDSN, nil
+	case "case-pooler":
+		return casePoolerDSN(caseDSN)
 	case "case-socket":
 		if database != "mysql" {
 			return "", fmt.Errorf("dsn case-socket needs mysql, not %s", database)
