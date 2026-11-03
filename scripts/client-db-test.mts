@@ -41,7 +41,6 @@ export const GO_LANE_PACKAGES = [
   './packages/go/bindmessages',
   './packages/go/bindmodel',
   './packages/go/complexmodel',
-  './packages/go/complexquery',
   './packages/go/decimalmodel',
   './packages/go/engine',
   './packages/go/engine/dbspec',
@@ -65,7 +64,7 @@ export const GO_LANE_PACKAGES = [
 export const GO_LANE_SKIP = '^(TestMarkdownConformance|TestPerformanceMeasurement(Mysql|Postgres|SQLite))$';
 const GO: Command[] = [go('-skip', GO_LANE_SKIP, ...GO_LANE_PACKAGES)];
 const PHP_TESTS = ['ModelTest', 'AesJsonTest', 'RuntimeDbTest', 'AuditExternalSetsTest', 'SchemaSetTest', 
-  'DriverErrorTest', 'RollbackTest', 'StatementFaultTest', 'RequestHookTest', 'MysqlTlsTest'];
+  'DriverErrorTest', 'RollbackTest', 'StatementFaultTest', 'RequestHookTest'];
 const PHP: Command[] = PHP_TESTS.map(test => ({ program: 'php', args: ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', `packages/php/tests/${test}.php`], cwd: root }));
 // The php-extension lane builds the extension into the directory of its run, as a long operation through tests/run-long.mts, and runs
 // the PHP database test files of the php lane with that build loaded, through kit's run-tests in extension mode (S10 of

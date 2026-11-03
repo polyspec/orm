@@ -101,6 +101,7 @@
       "audit_source",
       "dsn",
       "op",
+      "pool_idle_size",
       "pool_size",
       "statement_timeout_ms"
     ],
@@ -139,6 +140,12 @@
       "key",
       "op",
       "value"
+    ],
+    "collection.connect": [
+      "connection",
+      "expect",
+      "op",
+      "row"
     ],
     "collection.key": [
       "expect",
@@ -853,6 +860,18 @@
       "op"
     ],
     "utils.groups": [
+      "connection",
+      "expect",
+      "op"
+    ],
+    "pool.transactions": [
+      "connection",
+      "expect",
+      "hold",
+      "op",
+      "transactions"
+    ],
+    "utils.stats": [
       "connection",
       "expect",
       "op"

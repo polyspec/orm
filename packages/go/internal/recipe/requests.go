@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"slices"
 	"strconv"
+	"sync/atomic"
 
 	"github.com/polyspec/orm/packages/go/engine/ir"
 	"github.com/polyspec/orm/packages/go/internal/irwhere"
@@ -51,7 +52,7 @@ func auditValues(raw json.RawMessage, c *databaseContext) (map[string]any, error
 // connectConfig is the configuration of a model.connect: the keys of the bench set or the keyring of the step, and the
 // audit source of the step.
 func connectConfig(s databaseStep, c *databaseContext) (orm.Config, error) {
-	cfg := orm.Config{PoolSize: s.k("pool_size").PoolSize, AESKey: benchAESKey, BlindIndexKey: benchBlindIndexKey, StatementTimeoutMs: s.k("statement_timeout_ms").StatementTimeoutMs}
+	cfg := orm.Config{PoolSize: s.k("pool_size").PoolSize, PoolIdleSize: s.k("pool_idle_size").PoolIdle, AESKey: benchAESKey, BlindIndexKey: benchBlindIndexKey, StatementTimeoutMs: s.k("statement_timeout_ms").StatementTimeoutMs}
 	if s.k("audit_source").AuditSource != nil {
 		var values map[string]any
 		if s.k("audit_source").AuditSource.Values != nil {
@@ -96,8 +97,46 @@ func requestOp(s databaseStep, c *databaseContext) (outcome, error) {
 			counts[r.entity]++
 		}
 		return outcome{fields: map[string]any{"value": map[string]any{"array": list}, "counts": counts}}, nil
-	case "utils.lock", "utils.set_local", "utils.local", "utils.was_inserted", "utils.backend_waiting_for_lock", "utils.groups":
+	case "utils.lock", "utils.set_local", "utils.local", "utils.was_inserted", "utils.backend_waiting_for_lock", "utils.groups", "utils.stats":
 		return utilsOp(s, c)
+	case "pool.transactions":
+		// Count transactions in flows of their own: the first hold of them stay open until hold have begun, so the pool
+		// shows the connections that they take at once (CFG-4, CFG-5).
+		db, err := connectionOf(s, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		var active, peak, open, begun atomic.Int32
+		gate := make(chan struct{})
+		note := func(max *atomic.Int32, value int32) {
+			for {
+				seen := max.Load()
+				if value <= seen || max.CompareAndSwap(seen, value) {
+					return
+				}
+			}
+		}
+		errs := make(chan error, s.k("transactions").Transactions)
+		for range s.Transactions {
+			go func() {
+				errs <- db.Transaction(func() error {
+					note(&peak, active.Add(1))
+					note(&open, int32(db.Stats().OpenConnections))
+					if begun.Add(1) == int32(s.k("hold").Hold) {
+						close(gate)
+					}
+					<-gate
+					active.Add(-1)
+					return nil
+				})
+			}()
+		}
+		for range s.Transactions {
+			if err := <-errs; err != nil {
+				return outcome{}, err
+			}
+		}
+		return jsonOutcome(map[string]any{"peak": peak.Load(), "open": open.Load()}), nil
 	case "db.last_affected":
 		db, err := connectionOf(s, c)
 		if err != nil {

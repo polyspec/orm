@@ -3,6 +3,7 @@
   "requirements": [
     "CFG-1",
     "CFG-2",
+    "CFG-3",
     "CFG-12",
     "CFG-16",
     "CFG-19",
@@ -218,6 +219,39 @@
           "expect": {
             "sqlite": {
               "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "mysql_session_settings",
+      "requirements": [
+        "CFG-3"
+      ],
+      "only": [
+        "mysql"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "case",
+          "config": {
+            "statement_timeout_ms": 237,
+            "session_read": {
+              "sql": "SELECT @@SESSION.sql_mode, @@SESSION.time_zone, @@SESSION.max_execution_time",
+              "row": [
+                "ONLY_FULL_GROUP_BY,STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
+                "+00:00",
+                "237"
+              ]
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "text": "mysql"
+              }
             }
           }
         }

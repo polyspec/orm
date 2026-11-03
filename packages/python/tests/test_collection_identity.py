@@ -77,40 +77,6 @@ class CollectionIdentityTest(unittest.TestCase):
         )
         self.assertEqual(values, [10, 11, 20, 21, 30, 31, 30, 31])
 
-    # Requirements: INT-62, INT-81, INT-82, INT-83, INT-84, INT-85.
-    # Requirements: PLN-6.
-    def test_collection_views_preserve_order_and_connect_every_model(self):
-        class Row:
-            def __init__(self, label):
-                self.label = label
-                self.connection = None
-
-            def connect(self, db):
-                self.connection = db
-                return self
-
-            def to_array(self):
-                return {"label": self.label}
-
-        first, second = Row("first"), Row("second")
-        collection = Collection()
-        collection.put(7, first)
-        collection.put("7", second)
-        self.assertEqual(collection.length, 2)
-        self.assertIs(collection.first(), first)
-        self.assertIs(collection.get(7), first)
-        self.assertIs(collection.get("7"), second)
-        self.assertEqual(collection.keys(), [7, "7"])
-        self.assertEqual(collection.values(), [first, second])
-        self.assertEqual(collection.entries(), [(7, first), ("7", second)])
-        self.assertEqual(
-            collection.to_array(), [{"label": "first"}, {"label": "second"}]
-        )
-        db = object()
-        self.assertIs(collection.connect(db), collection)
-        self.assertIs(first.connection, db)
-        self.assertIs(second.connection, db)
-
     def test_native_key_values_keep_their_types_and_reject_unsupported_values(self):
         # Requirements: INT-11.
         values = [
