@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Go runs the conformance vectors through the recipe conformance_verification and its fixed-clock bodies only: the tagged test `coverage_conformance_verification_test.go`, its helper, `testdb.FeatureDatabase`, the runner `packages/go/testing/feature-json.mts`, the target `feature-go-unit` and the build tag `featurecoverage` are gone (#T334-3-12-2)
 - The nine refusals of the vector `errors` (a missing or dangling connector, an empty list, no connection, a lock outside a transaction, a join child with a connection, a page with a limit, a relation with a limit and an unjoined model placement) run as the case `errors` of the recipe conformance_verification in all six runtimes, with an empty event list as the proof that no request left; the recipe takes `connect` on a join, `limit` on a relation, `{"placed": {"model": <name>}}`, and `plan_page` without `plan` for `getsPage` (#T334-3-12-2)
 - The native tests of `orm-gen gen --check` in Go, PHP and TypeScript are gone: the case `check_reports_differences_without_writing` of the recipe `generator` holds them, and `go-model-check` and `php-model-check` hold the generated models; the TypeScript build writes its own.
 - INT-78a states that the `root` of a hooked handle is the connection in Go, TypeScript and Python, the runtimes that have one; a Rust compiler fixture states that a request hook cannot write a bound value.
