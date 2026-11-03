@@ -2048,21 +2048,6 @@
         "tests/dbspec/ddl.json"
       ]
     },
-    "conformance-ts-suite-check": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "node-modules",
-        "databases"
-      ],
-      "inputs": [
-        "packages/ts/tests/coverage_conformance_mysql.mjs",
-        "packages/ts/tests/coverage_conformance_postgres.mjs",
-        "packages/ts/tests/coverage_conformance_sqlite.mjs",
-        "packages/ts/tests/conformance_case.mjs",
-        "packages/ts/tests/conformance_vector_count.test.mts"
-      ]
-    },
     "dbspec-introspect-ts-check": {
       "scope": "owner",
       "needs": [
@@ -2674,7 +2659,6 @@
       "inputs": [
         "Makefile",
         "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
-        "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
         "packages/php/testing/conformance/runner.php",
         "tests/conformance/vectors.json",
         "tests/conformance/vectors.postgres.json",

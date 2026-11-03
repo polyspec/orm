@@ -1114,7 +1114,6 @@
           "inputs": [
             "Makefile",
             "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
-            "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
             "packages/php-ext/src/model_read.c",
             "packages/php-ext/src/model_assembly.c",
             "packages/php-ext/src/model_query.c"
@@ -1964,7 +1963,6 @@
           "inputs": [
             "Makefile",
             "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
-            "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
             "packages/php-ext/src/model_write.c",
             "packages/php-ext/src/model_read.c",
             "packages/php-ext/src/model_query.c"
@@ -8272,25 +8270,25 @@
         "packages/ts/testing/conformance/runner_typescript.mts",
         "packages/rust/tests/src/conformance.rs",
         "packages/go/orm/recipe_conformance_verification_test.go",
-        "packages/php/tests/CoverageConformanceVerificationTest.php",
-        "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
-        "packages/rust/tests/tests/coverage_conformance_verification.rs",
-        "packages/ts/tests/coverage_conformance_verification.mjs",
-        "packages/ts/tests/coverage_conformance_mysql.mjs",
-        "packages/ts/tests/coverage_conformance_postgres.mjs",
-        "packages/ts/tests/coverage_conformance_sqlite.mjs",
-        "packages/ts/tests/conformance_case.mjs",
-        "packages/python/tests/conformance_case.py",
-        "packages/python/tests/conformance_mysql.py",
-        "packages/python/tests/conformance_postgres.py",
-        "packages/python/tests/conformance_sqlite.py",
         "packages/python/tests/test_conformance_verification_mysql.py",
         "packages/python/tests/test_conformance_verification_postgres.py",
         "packages/python/tests/test_conformance_verification_sqlite.py",
         "packages/python/tests/conformance_result.py",
         "packages/php-ext/tests/MarkdownConformanceNativeTest.php",
         "packages/rust/orm/src/value.rs",
-        "packages/php-ext/tests/IrAnswersTestExtensionTest.php"
+        "packages/php-ext/tests/IrAnswersTestExtensionTest.php",
+        "packages/ts/tests/conformance_verification-mysql.test.mjs",
+        "packages/ts/tests/conformance_verification-postgres.test.mjs",
+        "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+        "packages/php/tests/ConformanceVerificationMysqlRecipeTest.php",
+        "packages/php/tests/ConformanceVerificationPostgresRecipeTest.php",
+        "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+        "packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+        "packages/rust/tests/tests/conformance_verification_mysql.rs",
+        "packages/rust/tests/tests/conformance_verification_postgres.rs",
+        "packages/rust/tests/tests/conformance_verification_sqlite.rs"
       ],
       "docs": [
         "tests/conformance/README.md",
@@ -8462,51 +8460,33 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/CoverageConformanceVerificationTest.php"
-            ],
-            "inputs": [
-              "tests/conformance/vectors.json",
-              "tests/conformance/vectors.postgres.json",
-              "tests/conformance/vectors.sqlite.json"
+              "packages/php/tests/ConformanceVerificationMysqlRecipeTest.php",
+              "packages/php/tests/ConformanceVerificationPostgresRecipeTest.php",
+              "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-                  "cases": [
-                    "conformance_vector"
-                  ],
-                  "symbols": {
-                    "conformance_vector": "testConformanceVector"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "test": "packages/php/tests/ConformanceVerificationMysqlRecipeTest.php",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json",
+                  "symbol": "testMysql"
                 }
               ],
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-                  "cases": [
-                    "conformance_vector"
-                  ],
-                  "symbols": {
-                    "conformance_vector": "testConformanceVector"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "test": "packages/php/tests/ConformanceVerificationPostgresRecipeTest.php",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json",
+                  "symbol": "testPostgres"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-                  "cases": [
-                    "conformance_vector"
-                  ],
-                  "symbols": {
-                    "conformance_vector": "testConformanceVector"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json",
+                  "symbol": "testSqlite"
                 }
               ]
             }
@@ -8514,103 +8494,69 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php"
-            ],
-            "inputs": [
-              "tests/conformance/vectors.json",
-              "tests/conformance/vectors.postgres.json",
-              "tests/conformance/vectors.sqlite.json"
+              "packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php",
+              "packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php",
+              "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
-                  "cases": [
-                    "conformance_vector"
-                  ],
-                  "symbols": {
-                    "conformance_vector": "testConformanceVector"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "test": "packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json",
+                  "symbol": "testMysql"
                 }
               ],
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
-                  "cases": [
-                    "conformance_vector"
-                  ],
-                  "symbols": {
-                    "conformance_vector": "testConformanceVector"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "test": "packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json",
+                  "symbol": "testPostgres"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
-                  "cases": [
-                    "conformance_vector"
-                  ],
-                  "symbols": {
-                    "conformance_vector": "testConformanceVector"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json",
+                  "symbol": "testSqlite"
                 }
               ]
-            }
+            },
+            "inputs": [
+              "packages/php/tests/ConformanceVerificationMysqlRecipeTest.php",
+              "packages/php/tests/ConformanceVerificationPostgresRecipeTest.php",
+              "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php"
+            ]
           },
           "rust": {
             "part": "packages/rust/tests",
             "tests": [
-              "packages/rust/tests/tests/coverage_conformance_verification.rs"
-            ],
-            "inputs": [
-              "tests/conformance/vectors.json",
-              "tests/conformance/vectors.postgres.json",
-              "tests/conformance/vectors.sqlite.json"
+              "packages/rust/tests/tests/conformance_verification_mysql.rs",
+              "packages/rust/tests/tests/conformance_verification_postgres.rs",
+              "packages/rust/tests/tests/conformance_verification_sqlite.rs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-                  "cases": [
-                    "conformance_vector"
-                  ],
-                  "symbols": {
-                    "conformance_vector": "coverage_conformance_vector_mysql"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "test": "packages/rust/tests/tests/conformance_verification_mysql.rs",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-                  "cases": [
-                    "conformance_vector"
-                  ],
-                  "symbols": {
-                    "conformance_vector": "coverage_conformance_vector_postgres"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "test": "packages/rust/tests/tests/conformance_verification_postgres.rs",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-                  "cases": [
-                    "conformance_vector"
-                  ],
-                  "symbols": {
-                    "conformance_vector": "coverage_conformance_vector_sqlite"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json"
                 }
               ]
             }
@@ -8618,42 +8564,30 @@
           "typescript": {
             "part": "packages/ts/tests",
             "tests": [
-              "packages/ts/tests/coverage_conformance_verification.mjs"
-            ],
-            "inputs": [
-              "tests/conformance/vectors.json",
-              "tests/conformance/vectors.postgres.json",
-              "tests/conformance/vectors.sqlite.json"
+              "packages/ts/tests/conformance_verification-mysql.test.mjs",
+              "packages/ts/tests/conformance_verification-postgres.test.mjs",
+              "packages/ts/tests/conformance_verification-sqlite.test.mjs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_conformance_verification.mjs",
-                  "cases": [
-                    "conformance_vector"
-                  ],
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "test": "packages/ts/tests/conformance_verification-mysql.test.mjs",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_conformance_verification.mjs",
-                  "cases": [
-                    "conformance_vector"
-                  ],
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "test": "packages/ts/tests/conformance_verification-postgres.test.mjs",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_conformance_verification.mjs",
-                  "cases": [
-                    "conformance_vector"
-                  ],
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json"
                 }
               ]
             }
