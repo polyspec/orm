@@ -2330,7 +2330,6 @@
         "php-extension-native-write-layer",
         "model-codec-columns",
         "model-ip-input-rejects-whitespace",
-        "dynamic-model-new-output-name-rejects-stored-column",
         "coverage-model-create-parts",
         "ts-revision-update-match",
         "ts-revision-update-mismatch",
@@ -4436,6 +4435,7 @@
       ],
       "parity": [
         "generator",
+        "dynamic-model-new-output-name-rejects-stored-column",
         "generated-typed-getter-public-column-api",
         "generated-nonnull-styled-setter-rejects-sql-null",
         "coverage-model-generation-model-generation-check",
@@ -4457,6 +4457,10 @@
         "packages/python/tests/coverage_case.py"
       ],
       "tests": [
+        "packages/php/tests/RuntimeModelTest.php",
+        "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
+        "packages/ts/tests/model-new-output-name.mjs",
+        "packages/python/tests/test_new_values.py",
         "packages/rust/orm/tests/compiler_fixtures.rs",
         "packages/ts/tests/chain-types.mjs",
         "packages/go/model/chain_types_test.go",
@@ -4648,6 +4652,7 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
+              "packages/php/tests/RuntimeModelTest.php",
               "packages/php/tests/CoverageModelGenerationTest.php"
             ],
             "commands": {
@@ -4671,6 +4676,7 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
+              "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
               "packages/php-ext/tests/CoverageModelGenerationNativeTest.php"
             ],
             "commands": {
@@ -4712,6 +4718,7 @@
           "typescript": {
             "part": "packages/ts/tests",
             "tests": [
+              "packages/ts/tests/model-new-output-name.mjs",
               "packages/ts/tests/chain-types.mjs",
               "packages/ts/tests/coverage_model_generation.mjs"
             ],
@@ -4730,6 +4737,7 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
+              "packages/python/tests/test_new_values.py",
               "packages/python/tests/coverage_model_generation.py"
             ],
             "commands": {
