@@ -9369,6 +9369,249 @@
       ]
     },
     {
+      "id": "conformance_verification-mysql",
+      "kind": "suite",
+      "requirements": [
+        "FCV-2",
+        "FCV-3",
+        "FCV-4",
+        "DSL-11",
+        "DSL-12",
+        "DSL-13",
+        "DSL-14",
+        "DSL-18",
+        "DSL-15",
+        "DSL-16",
+        "DSL-20",
+        "DSL-21",
+        "DSL-22",
+        "DSL-90",
+        "DSL-91",
+        "DSL-92",
+        "DSL-93",
+        "DSL-94",
+        "DSL-95",
+        "DSL-97",
+        "DSL-79",
+        "DSL-80",
+        "DSL-81",
+        "DSL-82",
+        "DSL-83",
+        "DSL-84",
+        "DSL-85",
+        "DSL-86",
+        "DSL-88",
+        "DSL-89",
+        "DSL-65",
+        "DSL-68",
+        "DSL-100",
+        "DSL-102",
+        "DSL-103",
+        "DSL-106",
+        "DSL-107",
+        "DSL-110",
+        "DSL-112",
+        "DSL-10",
+        "DSL-118",
+        "DSL-119",
+        "DSL-123"
+      ],
+      "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "symbol": "TestRecipeConformanceVerificationMysql"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationMysqlRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ConformanceVerificationMysqlRecipeTest::testMysql"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ConformanceVerificationMysqlRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification-mysql.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_mysql.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_mysql.rs",
+          "symbol": "conformance_verification_mysql"
+        }
+      ]
+    },
+    {
+      "id": "conformance_verification-postgres",
+      "kind": "suite",
+      "requirements": [
+        "FCV-2",
+        "FCV-3",
+        "FCV-4",
+        "DSL-11",
+        "DSL-12",
+        "DSL-13",
+        "DSL-14",
+        "DSL-18",
+        "DSL-15",
+        "DSL-16",
+        "DSL-20",
+        "DSL-21",
+        "DSL-22",
+        "DSL-90",
+        "DSL-91",
+        "DSL-92",
+        "DSL-93",
+        "DSL-94",
+        "DSL-95",
+        "DSL-97",
+        "DSL-79",
+        "DSL-80",
+        "DSL-81",
+        "DSL-82",
+        "DSL-83",
+        "DSL-84",
+        "DSL-85",
+        "DSL-86",
+        "DSL-88",
+        "DSL-89",
+        "DSL-65",
+        "DSL-68",
+        "DSL-100",
+        "DSL-102",
+        "DSL-103",
+        "DSL-106",
+        "DSL-107",
+        "DSL-110",
+        "DSL-112",
+        "DSL-10",
+        "DSL-118",
+        "DSL-119",
+        "DSL-123"
+      ],
+      "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "symbol": "TestRecipeConformanceVerificationPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationPostgresRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ConformanceVerificationPostgresRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ConformanceVerificationPostgresRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_postgres.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_postgres.rs",
+          "symbol": "conformance_verification_postgres"
+        }
+      ]
+    },
+    {
+      "id": "conformance_verification-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "FCV-2",
+        "FCV-3",
+        "FCV-4",
+        "DSL-11",
+        "DSL-12",
+        "DSL-13",
+        "DSL-14",
+        "DSL-18",
+        "DSL-15",
+        "DSL-16",
+        "DSL-20",
+        "DSL-21",
+        "DSL-22",
+        "DSL-90",
+        "DSL-91",
+        "DSL-92",
+        "DSL-93",
+        "DSL-94",
+        "DSL-95",
+        "DSL-97",
+        "DSL-79",
+        "DSL-80",
+        "DSL-81",
+        "DSL-82",
+        "DSL-83",
+        "DSL-84",
+        "DSL-85",
+        "DSL-86",
+        "DSL-88",
+        "DSL-89",
+        "DSL-65",
+        "DSL-68",
+        "DSL-100",
+        "DSL-102",
+        "DSL-103",
+        "DSL-106",
+        "DSL-107",
+        "DSL-110",
+        "DSL-112",
+        "DSL-10",
+        "DSL-118",
+        "DSL-119",
+        "DSL-123"
+      ],
+      "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "symbol": "TestRecipeConformanceVerificationSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ConformanceVerificationSqliteRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "symbol": "conformance_verification_sqlite"
+        }
+      ]
+    },
+    {
       "id": "fulltext-search-recipe-mysql",
       "kind": "suite",
       "requirements": [

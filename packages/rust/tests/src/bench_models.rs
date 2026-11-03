@@ -37,6 +37,9 @@ impl Connections {
 
 /// The model ops of one recipe: the dispatcher holds the connections of the case and gives them to each op.
 pub trait CaseModels: Send + 'static {
+    /// Whether the ops run on the table path (FCV-4).
+    const TABLE_PATH: bool = false;
+
     /// model.connect: opens the connection `name` on `dsn` with `pool_size` connections.
     fn connect(&mut self, connections: &mut Connections, name: &str, dsn: &str, pool_size: u32) -> impl Future<Output = Result<Value, String>>;
     /// model.connect with aes_keyring; a recipe without AES models refuses it by name.
@@ -69,6 +72,10 @@ pub fn case_dispatcher<M: CaseModels>(models: M) -> Box<dyn ModelDispatcher> {
 }
 
 impl<M: CaseModels> ModelDispatcher for Dispatcher<M> {
+    fn table_path(&self) -> bool {
+        M::TABLE_PATH
+    }
+
     fn connect<'a>(&'a mut self, name: &'a str, dsn: &'a str, pool_size: u32) -> ModelFuture<'a> {
         Box::pin(self.models.connect(&mut self.connections, name, dsn, pool_size))
     }
@@ -113,7 +120,7 @@ pub fn bench_dispatcher<M: BenchModels>(schema: &'static Schema, models: M) -> B
 }
 
 /// The keys that the generated models of the bench set read their encrypted columns with (the native model tests use them).
-fn bench_config() -> Config {
+pub fn bench_config() -> Config {
     Config { aes_key: "bench-salt".into(), blind_index_key: "bench-blind-index".into(), ..Default::default() }
 }
 

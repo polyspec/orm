@@ -113,6 +113,19 @@ type databaseStep struct {
 	Hooks      []json.RawMessage `json:"hooks"`
 	AESKeyring *aesKeyringSpec   `json:"aes_keyring"`
 	Keyring    *aesKeyringSpec   `json:"keyring"`
+	// The chain fields of a transaction, of utils.lock, utils.set_local and utils.local, and of events.captured (FCV-4):
+	// the audit values, the name and value of a utility, and the binds that an expect does not compare by value.
+	Audit json.RawMessage        `json:"audit"`
+	Name  string                 `json:"name"`
+	Value json.RawMessage        `json:"value"`
+	Masks map[string][]eventMask `json:"masks"`
+}
+
+// eventMask replaces one bind of one captured event with a name, for a value that no recipe can fix (FCV-4).
+type eventMask struct {
+	Event int    `json:"event"`
+	Bind  int    `json:"bind"`
+	Value string `json:"value"`
 }
 
 // bound is what a step bound with `as`: the API value that a later argument takes, the fields of its result that a dotted
@@ -121,7 +134,6 @@ type bound struct {
 	api    any
 	fields map[string]any
 	value  any
-	row    *boundRow
 	// hookBase is the connection that model.connect opened, when hook.install bound api to it with a request hook.
 	hookBase *orm.DB
 }
@@ -137,8 +149,6 @@ type snapshotOf struct {
 type outcome struct {
 	api    any
 	fields map[string]any
-	// row records the path and connection of a bound row, when the step binds one (see boundRow).
-	row *boundRow
 }
 
 type databaseContext struct {
@@ -151,6 +161,8 @@ type databaseContext struct {
 	database  string
 	dsn       string
 	schema    *orm.Schema
+	// tablePath is true for a fixture that generates no models: its model ops run on the entities of its tables (FCV-4).
+	tablePath bool
 	bound     map[string]bound
 	// closers close the connections that model.connect opened, when the case ends.
 	closers []func() error
@@ -304,7 +316,7 @@ func runCase(t *testing.T, path string, f databaseFile, c databaseCase, database
 		name = strings.TrimSuffix(filepath.Base(strings.TrimPrefix(dsn, "sqlite://")), ".sqlite")
 	}
 	state := &databaseContext{
-		t: t, ctx: ctx, db: db, dir: filepath.Dir(path), catalog: catalog, namespace: namespace, database: database, dsn: dsn, schema: schema,
+		t: t, ctx: ctx, db: db, dir: filepath.Dir(path), catalog: catalog, namespace: namespace, database: database, dsn: dsn, schema: schema, tablePath: f.Fixture != generatedFixture,
 		bound: map[string]bound{"database": {value: map[string]any{"text": name}}},
 	}
 	defer func() {
@@ -329,14 +341,11 @@ func runCase(t *testing.T, path string, f databaseFile, c databaseCase, database
 	}
 	step.Step("seed rows inserted")
 	for index, raw := range c.Steps {
-		var s databaseStep
-		if err := json.Unmarshal(raw, &s); err != nil {
-			t.Fatalf("recipe %s case %s step %d on %s: %v", path, c.ID, index, database, err)
+		op, err := runRawStep(raw, state)
+		if err != nil {
+			t.Fatalf("recipe %s case %s step %d (%s) on %s: %v", path, c.ID, index, op, database, err)
 		}
-		if err := runDatabaseStep(s, state); err != nil {
-			t.Fatalf("recipe %s case %s step %d (%s) on %s: %v", path, c.ID, index, s.Op, database, err)
-		}
-		step.Step("step %d %s", index, s.Op)
+		step.Step("step %d %s", index, op)
 	}
 }
 
@@ -369,8 +378,38 @@ func insertSeed(c *databaseContext, rows json.RawMessage) error {
 	return nil
 }
 
+// runRawStep decodes one step and runs it. A model op of a fixture that generates no models has the query fields, which
+// chain.go reads; every other step is a databaseStep. It returns the name of the op.
+func runRawStep(raw json.RawMessage, c *databaseContext) (string, error) {
+	if c.tablePath {
+		var head struct {
+			Op     string                     `json:"op"`
+			As     string                     `json:"as"`
+			Only   []string                   `json:"only"`
+			Expect map[string]json.RawMessage `json:"expect"`
+		}
+		if err := json.Unmarshal(raw, &head); err != nil {
+			return "", err
+		}
+		if chainOps[head.Op] {
+			s := databaseStep{Op: head.Op, As: head.As, Only: head.Only, Expect: head.Expect}
+			return head.Op, runStepWith(s, c, func(databaseStep, *databaseContext) (outcome, error) { return chainOp(raw, c) })
+		}
+	}
+	var s databaseStep
+	if err := json.Unmarshal(raw, &s); err != nil {
+		return "", err
+	}
+	return s.Op, runDatabaseStep(s, c)
+}
+
 // runDatabaseStep maps the op of s to its call and compares the fields that its expect names.
 func runDatabaseStep(s databaseStep, c *databaseContext) error {
+	return runStepWith(s, c, databaseOp)
+}
+
+// runStepWith runs a step through op and compares the fields that its expect names.
+func runStepWith(s databaseStep, c *databaseContext, op func(databaseStep, *databaseContext) (outcome, error)) error {
 	// A step with only runs on the databases it names, and its expect names exactly those (scripts/features/schema/recipe.schema.json).
 	if len(s.Only) > 0 && !slices.Contains(s.Only, c.database) {
 		return nil
@@ -391,7 +430,7 @@ func runDatabaseStep(s databaseStep, c *databaseContext) error {
 		}
 		expected = object
 	}
-	result, err := databaseOp(s, c)
+	result, err := op(s, c)
 	if err != nil {
 		code := orm.ErrorCode(err)
 		if errors.Is(err, errCallback) {
@@ -410,7 +449,7 @@ func runDatabaseStep(s databaseStep, c *databaseContext) error {
 		return nil
 	}
 	if s.As != "" {
-		c.bound[s.As] = bound{api: result.api, fields: result.fields, value: result.fields["value"], row: result.row}
+		c.bound[s.As] = bound{api: result.api, fields: result.fields, value: result.fields["value"]}
 	}
 	if expected == nil {
 		return nil
@@ -795,6 +834,13 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		// The options of the transaction (INT-46): a nested transaction that names one is refused with CONFIG.
 		options := []orm.TransactionOption{orm.Retry(0)}
+		if len(s.Audit) > 0 {
+			var audit map[string]any
+			if err := json.Unmarshal(s.Audit, &audit); err != nil {
+				return outcome{}, err
+			}
+			options = append(options, orm.Audit(audit))
+		}
 		if s.Isolation != "" {
 			options = append(options, orm.Isolation(orm.IsolationLevel(s.Isolation)))
 		}
@@ -884,12 +930,9 @@ func okOutcome() outcome {
 // runNested runs the nested steps of a statements.count or transaction op, each with its own expect (FCV-4).
 func runNested(raw []json.RawMessage, c *databaseContext) error {
 	for index, nested := range raw {
-		var s databaseStep
-		if err := json.Unmarshal(nested, &s); err != nil {
-			return fmt.Errorf("nested step %d: %w", index, err)
-		}
-		if err := runDatabaseStep(s, c); err != nil {
-			return fmt.Errorf("nested step %d (%s): %w", index, s.Op, err)
+		op, err := runRawStep(nested, c)
+		if err != nil {
+			return fmt.Errorf("nested step %d (%s): %w", index, op, err)
 		}
 	}
 	return nil

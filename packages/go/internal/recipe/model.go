@@ -5,6 +5,7 @@ package recipe
 // recipe passes on a call that the helper does not make.
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"slices"
@@ -39,13 +40,14 @@ func sortedColumns(values map[string]any) []string {
 // modelOp runs one model op of s. model.connect opens the connection and binds it with as; every other op uses the
 // connection that its connection name names.
 func modelOp(s databaseStep, c *databaseContext) (outcome, error) {
-	if len(s.Row) > 0 && s.Connection == "" {
-		return rowOp(s, c)
-	}
 	if s.Op == "model.connect" {
 		cfg, err := connectConfig(s)
 		if err != nil {
 			return outcome{}, err
+		}
+		if c.tablePath {
+			// An audited transaction of the table path takes its values from the option of the transaction.
+			cfg.AuditSource = func(context.Context) (map[string]any, error) { return map[string]any{}, nil }
 		}
 		var named string
 		if s.DSN != nil {
@@ -81,28 +83,7 @@ func modelOp(s databaseStep, c *databaseContext) (outcome, error) {
 	case "NoteReader":
 		return noteReaderOp(s, c, db)
 	}
-	if table, ok := tableModels[s.Model]; ok {
-		return tableModelOp(s, c, db, table)
-	}
 	return outcome{}, fmt.Errorf("model %s has no recipe entry", s.Model)
-}
-
-// rowOp runs a model op of the {row} form, which names no model and no connection: the bound row records the path that
-// made it and the connection, and the op runs on that path and connection. A row that no bound row holds fails by name.
-func rowOp(s databaseStep, c *databaseContext) (outcome, error) {
-	name := refName(s.Row)
-	b, ok := c.bound[name]
-	if !ok || b.row == nil {
-		return outcome{}, fmt.Errorf("model op %s names row %q, which no bound row holds", s.Op, name)
-	}
-	if b.row.path != "table" {
-		return outcome{}, fmt.Errorf("model op %s: row %q was bound by the %s path, which has no row form", s.Op, name, b.row.path)
-	}
-	table, ok := tableModels[b.row.model]
-	if !ok {
-		return outcome{}, fmt.Errorf("model %s has no table entry", b.row.model)
-	}
-	return tableModelOp(s, c, b.row.db, table)
 }
 
 // modelValues reads an object of assignments of a model op into native values.

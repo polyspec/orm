@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The conformance vectors begin to move into the `conformance_verification` recipe, run on the three databases by all six runtimes: the first eight cases cover connectors, groups, chain reuse, joins, relations, a write cycle, transactions and getQuery. Model ops of a fixture that generates no models now reach the public builder through one path in every helper, including `statement_events`. Rust reads an integer column that MySQL returns as text bytes after an `ALTER`.
 - The eight generator scan units are the cases of the `generator-scan` recipe, and their native tests are gone from the five runtimes; TypeScript keeps its test of a parse error on the first line, the one position rule of its own.
 - The Go tests that assert only Go mechanics lie in internal test files with their reasons in `config/parity.json`, and `TestGenerateUsesRequestedGoPackageName` is bound to the Go-only generator unit.
 - `make client-db-rust-check` runs only the cases that no other target owns, the crate's public connection test needs no outside variable, the compiler fixtures run in order, and generate.mjs leaves no temporary directory.
