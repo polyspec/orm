@@ -12,7 +12,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// Requirements: CFG-33.
+// A server of this repository gives 3819 only; 4025 of errors.yaml reaches the map only here (FCV-2).
 func TestMapMySQLErrClassifiesCheckConstraint(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for _, number := range []uint16{3819, 4025} {

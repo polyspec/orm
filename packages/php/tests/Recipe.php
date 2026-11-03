@@ -350,12 +350,17 @@ final class Recipe
         if (isset($outcome['error'])) {
             foreach ($dialects as $dialect) {
                 $code = 'no error';
+                $message = '';
                 try {
                     (new Engine($model, $dialect, 8))->compile($request);
                 } catch (OrmException $error) {
                     $code = $error->code_;
+                    $message = $error->getMessage();
                 }
                 Assert::assertSame($outcome['error'], $code, "$dialect planner.compile");
+                if (isset($outcome['message'])) {
+                    Assert::assertSame($outcome['message'], $message, "$dialect planner.compile message");
+                }
             }
             return;
         }
@@ -761,8 +766,9 @@ final class Recipe
         $server = \Polyspec\Orm\Tests\start_markdown_test_server([$step['reply']]);
         $code = null;
         $message = '';
+        $port = parse_url($server[2], PHP_URL_PORT);
         try {
-            self::connectDriver($server[2]);
+            self::connectDriver("markdown://127.0.0.1:$port/{$step['corpus']}?token={$step['token']}");
         } catch (OrmException $error) {
             $code = $error->code_;
             $message = $error->getMessage();

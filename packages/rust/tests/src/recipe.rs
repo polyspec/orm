@@ -833,9 +833,15 @@ fn planner_compile(step: &Value, database: &str, dir: &Path) -> Result<(), Strin
     let input = ir_request::request(&step["input"], &manifest.manifest_hash);
     if let Some(code) = want.get("error").and_then(Value::as_str) {
         for (name, dialect) in PLAN_DIALECTS {
-            let got = engine::compile(&manifest, dialect, &input).err().map(|error| error.code().to_owned());
+            let error = engine::compile(&manifest, dialect, &input).err();
+            let got = error.as_ref().map(|error| error.code().to_owned());
             if got.as_deref() != Some(code) {
                 return Err(format!("{name}: error {got:?}, want {code}"));
+            }
+            if let (Some(error), Some(message)) = (&error, want.get("message").and_then(Value::as_str)) {
+                if error.to_string() != message {
+                    return Err(format!("{name}: message {error}, want {message}"));
+                }
             }
         }
         return Ok(());
@@ -3175,7 +3181,7 @@ mod database {
 
     /// A DSN that the catalog refuses fails with its code. A SQLite file that the case does not create is refused, and the
     /// connect does not create it.
-    async fn connect_check(dsn: &Value) -> Result<(), Failure> {
+    async fn connect_check(dsn: &Value, file_created: bool) -> Result<(), Failure> {
         if let Some(url) = dsn["url"].as_str() {
             let connection = CatalogConnection::connect(url).await.map_err(Failure::Call)?;
             connection.close().await;
@@ -3188,8 +3194,8 @@ mod database {
         let outcome = CatalogConnection::connect(&format!("sqlite://{}", path.display())).await;
         let created = path.exists();
         std::fs::remove_dir_all(&directory).map_err(|e| Failure::Step(e.to_string()))?;
-        if created {
-            return Err(Failure::Step("the connect created the SQLite file".into()));
+        if created != file_created {
+            return Err(Failure::Step(format!("file_created is {created}, want {file_created}")));
         }
         match outcome {
             Ok(connection) => {
@@ -3458,7 +3464,7 @@ mod database {
                 Output::fields(json!({ "value": { "array": events } }))
             }
             "catalog.connect" => {
-                connect_check(&step["dsn"]).await?;
+                connect_check(&step["dsn"], step["expect"][context.database]["file_created"].as_bool().unwrap_or(false)).await?;
                 Output::fields(json!({}))
             }
             "catalog.close" => {

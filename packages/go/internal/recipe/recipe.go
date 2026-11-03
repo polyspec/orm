@@ -1426,8 +1426,9 @@ func checkPlanner(dir string, s step, database string) error {
 		return fmt.Errorf("planner.compile has no expect for %s", database)
 	}
 	var outcome struct {
-		Value json.RawMessage `json:"value"`
-		Error string          `json:"error"`
+		Value   json.RawMessage `json:"value"`
+		Error   string          `json:"error"`
+		Message string          `json:"message"`
 	}
 	if err := json.Unmarshal(raw, &outcome); err != nil {
 		return err
@@ -1458,8 +1459,12 @@ func checkPlanner(dir string, s step, database string) error {
 			if err != nil {
 				return err
 			}
-			if _, err := e.Compile(request); err == nil || orm.ErrorCode(err) != outcome.Error {
+			_, err = e.Compile(request)
+			if err == nil || orm.ErrorCode(err) != outcome.Error {
 				return fmt.Errorf("%s: compile = %w; want %s", dialect, err, outcome.Error)
+			}
+			if outcome.Message != "" && err.Error() != outcome.Message {
+				return fmt.Errorf("%s: message %q, want %q", dialect, err.Error(), outcome.Message)
 			}
 		}
 		return nil

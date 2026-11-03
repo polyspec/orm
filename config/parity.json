@@ -343,7 +343,6 @@
         "packages/php/tests/FailingStatement.php",
         "packages/php/tests/FakeSqliteLockStatement.php",
         "packages/php/tests/GroupRowsCases.php",
-        "packages/php/tests/GroupRowsModelFixture.php",
         "packages/php/tests/ListenNotifyCases.php",
         "packages/php/tests/ModelTestFailingPdo.php",
         "packages/php/tests/ModelTypesWeakCallerCases.php",
@@ -16224,50 +16223,6 @@
       ]
     },
     {
-      "id": "group-count-boolean-decode",
-      "kind": "feature",
-      "requirements": [
-        "PRT-36"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/group_rows_test.go",
-          "id": "TestGroupCountRejectsInvalidStoredBoolean"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/group_rows_test.go",
-          "id": "TestGroupColumnValueChecksDeclaredType"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/GroupRowsTest.php",
-          "id": "GroupRowsTest::testGroupValueRejectsInvalidStoredBoolean"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelAssemblyTest.php",
-          "id": "ModelAssemblyTest::testGroupValueRejectsInvalidStoredBoolean"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/group_rows.mjs",
-          "id": "group_rows/boolean_invalid_stored_value"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_group_rows.py",
-          "id": "test_group_boolean_rejects_non_boolean_float"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/row.rs",
-          "id": "row::declared_boolean_tests::invalid_stored_boolean_is_codec_decode"
-        }
-      ]
-    },
-    {
       "id": "dbspec-apply-pooler",
       "kind": "feature",
       "requirements": [
@@ -26259,28 +26214,18 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/driver_error_test.go",
-          "id": "TestMapMySQLErrClassifiesCheckConstraint"
+          "test": "packages/go/orm/recipe_constraints_and_relations_test.go",
+          "id": "TestRecipeConstraintsAndRelationsMysql/constraint_errors"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_driver_errors.py",
-          "id": "test_a_duplicate_unique_key_is_duplicate_key"
+          "test": "packages/python/tests/test_constraints_and_relations_mysql.py",
+          "id": "constraint_errors"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/refusal.rs",
-          "id": "check_refused_sqlite"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/refusal.rs",
-          "id": "check_refused_mysql"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/refusal.rs",
-          "id": "check_refused_postgres"
+          "test": "packages/rust/tests/tests/constraints_and_relations_mysql.rs",
+          "id": "constraints_and_relations_mysql::constraint_errors"
         },
         {
           "implementation": "php",
@@ -26307,6 +26252,11 @@
       ],
       "bindings": [
         {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/immutable_write_sqlite.rs",
+          "id": "immutable_write_sqlite::immutable_write"
+        },
+        {
           "implementation": "go",
           "test": "packages/go/orm/recipe_immutable_write_test.go",
           "id": "TestRecipeImmutableWriteSqlite/immutable_write"
@@ -26330,21 +26280,6 @@
           "implementation": "python",
           "test": "packages/python/tests/test_immutable_write_sqlite.py",
           "id": "immutable_write"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/refusal.rs",
-          "id": "trigger_refused_sqlite"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/refusal.rs",
-          "id": "trigger_refused_mysql"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/refusal.rs",
-          "id": "trigger_refused_postgres"
         }
       ]
     },
@@ -43455,6 +43390,7 @@
         "INT-84",
         "INT-86",
         "INT-90",
+        "PRT-36",
         "PRT-35",
         "PRT-69"
       ],
