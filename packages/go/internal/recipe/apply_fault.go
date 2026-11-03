@@ -69,10 +69,10 @@ func checkApplyFault(t *testing.T, s step, bound map[string]result, database str
 		HistoryState string   `json:"history_state"`
 		AbsentEvents []string `json:"absent_events"`
 	}
-	if err := json.Unmarshal(s.Expect[database], &want); err != nil {
+	if err := json.Unmarshal(s.k("expect").Expect[database], &want); err != nil {
 		return err
 	}
-	plan, err := dbspecPlan(s.Plan, bound)
+	plan, err := dbspecPlan(s.k("plan").Plan, bound)
 	if err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func checkApplyFault(t *testing.T, s step, bound map[string]result, database str
 	}
 	defer testcase.Close(t, conn)
 	fault := &faultConn{Conn: conn}
-	if s.AppliedFirst {
+	if s.k("applied_first").AppliedFirst {
 		result, err := dbspec.Apply(ctx, fault, dbspec.DialectSQLite, plans, now, nil)
 		if err != nil {
 			return err
@@ -99,19 +99,19 @@ func checkApplyFault(t *testing.T, s step, bound map[string]result, database str
 			return result.Failure
 		}
 	}
-	for _, statement := range s.SQL {
+	for _, statement := range s.k("sql").SQL {
 		if _, err := conn.ExecContext(ctx, statement); err != nil {
 			return err
 		}
 	}
-	if s.FailCatalogRead > 0 {
+	if s.k("fail_catalog_read").FailCatalogRead > 0 {
 		fault.cause = errors.New("catalog read failed")
-		fault.failAt = fault.reads + s.FailCatalogRead
+		fault.failAt = fault.reads + s.k("fail_catalog_read").FailCatalogRead
 	}
-	fault.noRow = s.NoRowQueries
-	if s.FailStatements != nil {
+	fault.noRow = s.k("no_row_queries").NoRowQueries
+	if s.k("fail_statements").FailStatements != nil {
 		fault.fail = map[string]error{}
-		for _, f := range s.FailStatements {
+		for _, f := range s.k("fail_statements").FailStatements {
 			var injected error = errors.New(f.Message)
 			if f.SQLiteResult != 0 {
 				injected = sqliteResult{message: f.Message, code: f.SQLiteResult}
@@ -122,13 +122,13 @@ func checkApplyFault(t *testing.T, s step, bound map[string]result, database str
 	var kinds []string
 	events := func(event dbspec.ApplyEvent) error {
 		kinds = append(kinds, event.Kind)
-		if s.StopOnApplied != "" && event.Kind == "applied" {
-			return errors.New(s.StopOnApplied)
+		if s.k("stop_on_applied").StopOnApplied != "" && event.Kind == "applied" {
+			return errors.New(s.k("stop_on_applied").StopOnApplied)
 		}
 		return nil
 	}
 	var failure error
-	if s.Call == "rollback" {
+	if s.k("call").Call == "rollback" {
 		failure = dbspec.Rollback(ctx, fault, dbspec.DialectSQLite, plans, now, events)
 	} else {
 		result, err := dbspec.Apply(ctx, fault, dbspec.DialectSQLite, plans, now, events)

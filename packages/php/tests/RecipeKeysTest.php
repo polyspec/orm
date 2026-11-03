@@ -88,4 +88,27 @@ class RecipeKeysTest extends TestCase
             }
         }
     }
+
+    public function testAStepKeyThatTheRunDoesNotReadFailsByName(): void
+    {
+        $step = new RecipeStep(['op' => 'dsn.connect', 'dsn' => 'case', 'reason' => 'for the reader', 'bogus' => 1]);
+        self::assertSame('case', $step['dsn']);
+        try {
+            $step->check();
+            self::fail('the unread key passed');
+        } catch (\PHPUnit\Framework\AssertionFailedError $failure) {
+            self::assertSame('the helper did not read bogus of dsn.connect', $failure->getMessage());
+        }
+        self::assertSame(1, $step['bogus']);
+        $step->check();
+    }
+
+    public function testAnOutcomeKeyThatTheRunDoesNotReadFailsByName(): void
+    {
+        $step = new RecipeStep(['op' => 'dsn.connect', 'expect' => ['none' => ['error' => 'X', 'bogus' => 1]]], 'none');
+        self::assertSame('X', $step['expect']['none']['error']);
+        $this->expectException(\PHPUnit\Framework\AssertionFailedError::class);
+        $this->expectExceptionMessage('the helper did not read expect.bogus of dsn.connect');
+        $step->check();
+    }
 }

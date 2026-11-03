@@ -30,7 +30,7 @@ final class RecipeIntrospect
      * @param array<string, mixed> $context
      * @return array{queries: int}
      */
-    public static function step(array $step, array $context): array
+    public static function step(RecipeStep $step, array $context): array
     {
         $database = $context['database'];
         if (isset($step['catalog_of'])) {
@@ -113,7 +113,7 @@ final class RecipeIntrospect
      * @param array<string, mixed> $step
      * @return array{0: array<string, string>, 1: array<string, mixed>}
      */
-    private static function source(array $step, string $dir): array
+    private static function source(RecipeStep $step, string $dir): array
     {
         $texts = [];
         if (isset($step['paths'])) {

@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+- PHP와 PHP extension은 described read에서 SQLite TIME 또는 DATETIME column에 저장된 숫자를 다른 runtime처럼 GRID_TEMPORAL_VALUE로 거부하며, temporal_write_and_limits가 temporal 쓰기, key, 한계를 담습니다.
+- 바이트 예산과 정확히 같은 Rust page는 응답하고, 모든 runtime이 예산 거부를 같은 message로 알리며, INT-115가 이 message를 정합니다.
+- plain read-only query는 여섯 runtime 모두에서 binary 값을 그 byte로 돌려주며, INT-153이 이 형식을 정합니다.
+- catalog은 UNION ALL 피연산자나 + 항이 200개인 PostgreSQL 읽기를 더 이상 거부하지 않고, Rust는 다른 dialect에서도 읽기의 깊이를 제한하지 않으며, catalog_read가 이 읽기의 응답을 확인합니다.
 - apply chain, history와 state, lock 범위, finalize, stress plan, pooler는 여섯 런타임의 recipe `dbspec_apply`이며, 각 명령은 이름 있는 연결에서 공개 apply API를 한 번 호출하고, 그 native 시험은 사라졌다.
 - ordered-json 값의 model JSON 출력은 새 step key `json_output`으로 여섯 runtime의 recipe case `ordered_json_keeps_its_text_in_the_model_json_output`가 되고 native 시험은 없앤다. SQL NULL과 빈 text 읽기는 recipe `catalog_connection`만 담는다. Python에만 있는 `to_json_text`는 COD-68이다.
 - Secret의 statement event bind와 secret bind slot이 사라졌다. AES가 client로 옮겨간 뒤 어떤 statement도 secret을 bind하지 않으므로 `$SECRET`을 INT-91, DSL-68, PRT-32와 모든 client에서 뺐다.

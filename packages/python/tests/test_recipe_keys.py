@@ -5,6 +5,7 @@ import unittest
 
 from .recipe_keys import check_keys
 from .recipe_model import connect_dsn
+from .recipe_reads import ReadStep
 
 # A recipe at a path whose $schema is the recipe schema of this checkout, so the key table beside it is read.
 PATH = "contracts/fixtures/model_writes/model_writes.json"
@@ -19,6 +20,22 @@ def recipe(file=None, case=None, step=None):
         "cases": [{"id": "case-under-test", "steps": [step], **(case or {})}],
     }
     return json.dumps(body)
+
+
+class ReadStepTest(unittest.TestCase):
+    def test_a_step_key_that_the_run_does_not_read_fails_by_name(self):
+        reads = ReadStep({"op": "dsn.connect", "dsn": "case", "reason": "for the reader", "bogus": 1}, "none")
+        self.assertEqual(reads["dsn"], "case")
+        with self.assertRaisesRegex(AssertionError, r"the helper did not read bogus of dsn\.connect$"):
+            reads.check()
+        self.assertEqual(reads["bogus"], 1)
+        reads.check()
+
+    def test_an_outcome_key_that_the_run_does_not_read_fails_by_name(self):
+        reads = ReadStep({"op": "dsn.connect", "expect": {"none": {"error": "X", "bogus": 1}}}, "none")
+        self.assertEqual(reads["expect"]["none"]["error"], "X")
+        with self.assertRaisesRegex(AssertionError, r"the helper did not read expect\.bogus of dsn\.connect$"):
+            reads.check()
 
 
 class CheckKeysTest(unittest.TestCase):
