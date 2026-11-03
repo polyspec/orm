@@ -50,6 +50,9 @@ func newGroupRow(values []groupValue) (GroupRow, error) {
 			if _, ok := item.value.(bool); ok {
 				return GroupRow{}, codecErr(CodeCodecDecode, "group result row_count is boolean")
 			}
+			if err := checkCountText(item.value); err != nil {
+				return GroupRow{}, err
+			}
 			var err error
 			count, err = AsInt64(item.value)
 			if err != nil {
@@ -92,6 +95,27 @@ func (r GroupRow) ToArray() map[string]any {
 }
 
 func (r GroupRow) MarshalJSON() ([]byte, error) { return json.Marshal(r.ToArray()) }
+
+// checkCountText refuses a driver cell of text that is not the canonical decimal of a nonnegative integer (INT-90).
+func checkCountText(value any) error {
+	var text string
+	switch cell := value.(type) {
+	case string:
+		text = cell
+	case []byte:
+		text = string(cell)
+	default:
+		return nil
+	}
+	valid := text != "" && (text == "0" || text[0] != '0')
+	for _, digit := range text {
+		valid = valid && digit >= '0' && digit <= '9'
+	}
+	if !valid {
+		return codecErr(CodeCodecDecode, "group result row_count is not an exact integer")
+	}
+	return nil
+}
 
 // GroupRows contains grouped values without constructing partial models.
 type GroupRows struct{ rows []GroupRow }

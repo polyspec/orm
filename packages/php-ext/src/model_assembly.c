@@ -9,6 +9,7 @@
 #include "orm_exception_object.h"
 #include "ext/json/php_json.h"
 #include "ext/spl/spl_exceptions.h"
+#include <math.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -269,6 +270,13 @@ static bool group_row_checked_count(zval *value, zend_long *out)
         if (Z_LVAL_P(value) > 9007199254740991LL) return orm_fail("CODEC_DECODE", zend_string_init(ZEND_STRL("group result row_count is outside the exact integer range"), 0));
         *out = Z_LVAL_P(value);
         return true;
+    }
+    if (Z_TYPE_P(value) == IS_DOUBLE) {
+        double number = Z_DVAL_P(value);
+        if (zend_finite(number) && floor(number) == number && number >= 0.0 && number <= 9007199254740991.0) {
+            *out = (zend_long)number;
+            return true;
+        }
     }
     if (Z_TYPE_P(value) == IS_STRING) {
         zend_string *s = Z_STR_P(value);

@@ -25,6 +25,7 @@ const CASES: &[&str] = &[
     "count",
     "group_count",
     "group_count_no_rows",
+    "group_count_views",
     "sum",
     "avg",
     "paginate",

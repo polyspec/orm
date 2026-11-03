@@ -3,6 +3,10 @@
 
 ## Unreleased
 
+- The group row units of the collection are the cases of the recipe `tests/collection/collection.json`, which all six runtimes run through `ir.answer`; the chain `group_count_views` reads the length, the order, the values and `COLUMN_UNSELECTED` of a group result. The forms of a count that only a driver cell holds stay native as `group-row-driver-cell-forms`
+- The PHP extension answers a markdown value of the wrong type with `CODEC_DECODE`, as the other runtimes do, not `INTERNAL`
+- Rust refuses SQL NULL in a selected group column that is not nullable with `CODEC_DECODE`, as the other runtimes do
+- A group row count of text must be the canonical decimal in Go and Rust, which took `00` and `+1`, and PHP and the PHP extension take a whole float count, as INT-90 states
 - The audit foreign key is held in both directions: the recipe `audit_triggers` refuses a raw insert with a missing parent and the delete of a referenced parent. The case `soft_delete_statements` holds the guarded update of a soft delete and the filter of each read. A `sql.exec` step takes `refused`, and `events.captured` takes the compare mode `statements`. (#T334-3-4-12)
 - `make lint-ts` passes: the Rust lane skip list reads its JSON through validated readers, and `config/parity.json` declares the `command` of a binding in its schema.
 - The MySQL test server has the account `'orm'@'localhost'` next to `'orm'@'127.0.0.1'`, on a new start and on a server that already runs, so the `case-socket` DSN connects when the case DSN carries the user `orm` of ProxySQL.

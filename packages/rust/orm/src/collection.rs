@@ -373,7 +373,7 @@ fn checked_group_row_count(value: &Val) -> Result<i64> {
     let count = match value {
         Val::I64(count) => *count,
         Val::F64(count) if count.is_finite() && count.fract() == 0.0 && *count >= 0.0 && *count <= MAX_SAFE as f64 => *count as i64,
-        Val::Str(text) => text.parse::<i64>().map_err(|_parse_error| invalid())?,
+        Val::Str(text) if !text.is_empty() && text.bytes().all(|digit| digit.is_ascii_digit()) && (text == "0" || !text.starts_with('0')) => text.parse::<i64>().map_err(|_parse_error| invalid())?,
         _ => return Err(invalid()),
     };
     if count < 0 {
@@ -425,67 +425,37 @@ impl serde::Serialize for GroupRows {
 
 #[cfg(test)]
 mod group_tests {
-    use super::{GroupRow, GroupRows, Val};
-
-    #[test]
-    // Requirements: INT-68, INT-69, INT-70, INT-71.
-    fn grouped_rows_contain_only_group_values_and_checked_counts() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-        let row = GroupRow::new(vec![("is_close".into(), Val::Bool(false)), ("row_count".into(), Val::I64(3))]).unwrap();
-        assert_eq!(row.count(), 3);
-        assert_eq!(row.value("is_close").unwrap(), &Val::Bool(false));
-        assert_eq!(row.value("name").unwrap_err().code(), crate::codes::COLUMN_UNSELECTED);
-        let nullable = GroupRow::new(vec![("name".into(), Val::Null), ("row_count".into(), Val::I64(0))]).unwrap();
-        assert_eq!(nullable.value("name").unwrap(), &Val::Null);
-        assert_eq!(nullable.to_array().unwrap(), serde_json::json!({"name": null, "row_count": 0}));
-        let second = GroupRow::new(vec![("is_close".into(), Val::Bool(true)), ("row_count".into(), Val::I64(2))]).unwrap();
-        let groups = GroupRows::new(vec![row, second]);
-        assert_eq!(groups.len(), 2);
-        assert_eq!(groups.to_json().unwrap(), r#"[{"is_close":false,"row_count":3},{"is_close":true,"row_count":2}]"#);
-        assert_eq!(
-            groups.to_array().unwrap(),
-            serde_json::json!([
-                {"is_close": false, "row_count": 3},
-                {"is_close": true, "row_count": 2}
-            ])
-        );
-        // Requirements: INT-90.
-        assert_eq!(GroupRow::new(vec![("row_count".into(), Val::I64(-1))]).err().unwrap().code(), "CODEC_DECODE");
-        assert_eq!(GroupRow::new(vec![("row_count".into(), Val::Str("invalid".into()))]).err().unwrap().code(), "CODEC_DECODE");
-        assert_eq!(GroupRow::new(vec![("row_count".into(), Val::I64(1)), ("row_count".into(), Val::I64(2))]).err().unwrap().code(), "CONFIG");
-    }
-}
-
-#[cfg(test)]
-mod group_count_exactness_tests {
     use super::{GroupRow, Val};
 
-    // Requirements: PRT-69, INT-90. The grouped row exposes its count as an exact nonnegative value.
+    // The forms of a count that only a driver cell holds: a text, a float and a repeated column. The answer of a listener holds
+    // none of them, since its count is a JSON number and its row a JSON object (PRT-69), so the collection recipe cannot write
+    // them (FCV-2). Requirements: INT-68, INT-90.
     #[test]
-    fn count_exactness_matches_the_safe_integer_contract() {
+    fn driver_cell_forms() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         for invalid in [
-            Val::Bool(true),
-            Val::F64(1.5),
-            Val::F64(9_007_199_254_740_992.0),
-            Val::I64(-1),
-            Val::I64(9_007_199_254_740_992),
+            Val::Str("three".into()),
+            Val::Str("-1".into()),
+            Val::Str("00".into()),
+            Val::Str("+1".into()),
+            Val::Str(String::new()),
             Val::Str("9007199254740992".into()),
+            Val::F64(1.5),
+            Val::F64(-1.0),
+            Val::F64(9_007_199_254_740_992.0),
         ] {
             assert_eq!(GroupRow::new(vec![("row_count".into(), invalid)]).err().unwrap().code(), "CODEC_DECODE");
         }
-        assert_eq!(GroupRow::new(vec![("selected".into(), Val::Str("x".into()))]).err().unwrap().code(), "INTERNAL");
         for (input, count) in [
-            (Val::I64(0), 0),
             (Val::Str("0".into()), 0),
-            (Val::F64(0.0), 0),
-            (Val::I64(9_007_199_254_740_991), 9_007_199_254_740_991),
             (Val::Str("9007199254740991".into()), 9_007_199_254_740_991),
+            (Val::F64(3.0), 3),
             (Val::F64(9_007_199_254_740_991.0), 9_007_199_254_740_991),
         ] {
             let row = GroupRow::new(vec![("row_count".into(), input)]).unwrap();
             assert_eq!(row.count(), count);
             assert_eq!(row.to_json().unwrap(), format!(r#"{{"row_count":{count}}}"#));
         }
+        assert_eq!(GroupRow::new(vec![("row_count".into(), Val::I64(1)), ("row_count".into(), Val::I64(2))]).err().unwrap().code(), "CONFIG");
     }
 }
