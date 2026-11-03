@@ -1,0 +1,4532 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "DBS-2",
+    "DBS-3",
+    "DBS-34",
+    "DBS-35",
+    "DBS-36",
+    "DBS-39",
+    "DBS-40",
+    "DBS-47",
+    "DBS-57",
+    "DBS-58",
+    "DBS-61",
+    "DBS-63",
+    "DBS-64",
+    "DBS-91",
+    "DBS-122",
+    "DBS-125",
+    "DBS-126",
+    "DBS-127",
+    "DBS-128",
+    "DBS-129",
+    "DBS-131",
+    "DBS-132",
+    "DBS-144",
+    "DBS-145",
+    "DBS-146",
+    "DBS-147",
+    "DBS-148",
+    "DBS-149",
+    "DBS-153",
+    "DBS-154",
+    "DBS-156",
+    "DBS-157",
+    "DBS-158",
+    "DBS-159",
+    "DBS-161",
+    "DBS-162",
+    "DBS-163",
+    "DBS-164",
+    "DBS-165",
+    "DBS-166",
+    "DBS-167",
+    "DBS-168",
+    "DBS-169",
+    "DBS-171",
+    "DBS-181"
+  ],
+  "cases": [
+    {
+      "id": "bare-cr",
+      "requirements": [
+        "DBS-2",
+        "DBS-171"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table users {\r  id i64",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "encoding",
+                  "line": 3,
+                  "column": 14
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "version-2",
+      "requirements": [
+        "DBS-154",
+        "DBS-156"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 2 shop",
+            "table Users {"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "header",
+                  "line": 1,
+                  "column": 8
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "leading-blank-line",
+      "requirements": [
+        "DBS-154",
+        "DBS-156"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "",
+            "dbspec 1 shop"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "header",
+                  "line": 1,
+                  "column": 1
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "syntax-and-order",
+      "requirements": [
+        "DBS-3",
+        "DBS-149",
+        "DBS-154",
+        "DBS-157",
+        "DBS-158",
+        "DBS-168"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity extra",
+            "  primary key (id)",
+            "  name varchar(8)",
+            "  settings {",
+            "  }",
+            "  index ix_users_name (name)",
+            "}",
+            "use core { users }",
+            "diagram main {",
+            "}",
+            "table late {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}",
+            "bogus"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "syntax",
+                  "line": 3,
+                  "column": 19
+                },
+                {
+                  "rule": "order",
+                  "line": 5,
+                  "column": 3
+                },
+                {
+                  "rule": "order",
+                  "line": 8,
+                  "column": 3
+                },
+                {
+                  "rule": "order",
+                  "line": 10,
+                  "column": 1
+                },
+                {
+                  "rule": "use",
+                  "line": 10,
+                  "column": 5
+                },
+                {
+                  "rule": "order",
+                  "line": 13,
+                  "column": 1
+                },
+                {
+                  "rule": "syntax",
+                  "line": 17,
+                  "column": 1
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "unclosed-block",
+      "requirements": [
+        "DBS-157"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  primary key (id)"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "syntax",
+                  "line": 2,
+                  "column": 13
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "unclosed-settings-block",
+      "requirements": [
+        "DBS-157"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "  settings {"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "syntax",
+                  "line": 5,
+                  "column": 12
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "unclosed-diagram",
+      "requirements": [
+        "DBS-157"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}",
+            "diagram main {",
+            "  users at 0 0"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "syntax",
+                  "line": 6,
+                  "column": 14
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "unterminated-string",
+      "requirements": [
+        "DBS-157"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id varchar(8) default 'x",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "syntax",
+                  "line": 3,
+                  "column": 25
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "duplicate-names",
+      "requirements": [
+        "DBS-159",
+        "DBS-161"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  id i64",
+            "  primary key (id)",
+            "  check primary (id > 0)",
+            "}",
+            "table users {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}",
+            "diagram main {",
+            "}",
+            "diagram main {",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "name.duplicate",
+                  "line": 4,
+                  "column": 3
+                },
+                {
+                  "rule": "name.format",
+                  "line": 6,
+                  "column": 9
+                },
+                {
+                  "rule": "name.duplicate",
+                  "line": 8,
+                  "column": 7
+                },
+                {
+                  "rule": "name.duplicate",
+                  "line": 14,
+                  "column": 9
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "type-parameters",
+      "requirements": [
+        "DBS-162"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  id i64 identity",
+            "  a varchar(0)",
+            "  b varchar(16384)",
+            "  c time(7)",
+            "  d datetime",
+            "  e i32(4)",
+            "  f decimal(5,6)",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "type",
+                  "line": 4,
+                  "column": 5
+                },
+                {
+                  "rule": "type",
+                  "line": 5,
+                  "column": 5
+                },
+                {
+                  "rule": "type",
+                  "line": 6,
+                  "column": 5
+                },
+                {
+                  "rule": "type",
+                  "line": 7,
+                  "column": 5
+                },
+                {
+                  "rule": "type",
+                  "line": 8,
+                  "column": 5
+                },
+                {
+                  "rule": "type",
+                  "line": 9,
+                  "column": 5
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "table-without-columns",
+      "requirements": [
+        "DBS-148",
+        "DBS-163",
+        "DBS-164"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "column",
+                  "line": 2,
+                  "column": 7
+                },
+                {
+                  "rule": "key",
+                  "line": 2,
+                  "column": 7
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "keys",
+      "requirements": [
+        "DBS-146",
+        "DBS-164",
+        "DBS-181"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  id i64 identity",
+            "  maybe i32 null",
+            "  c0 i32",
+            "  c1 i32",
+            "  c2 i32",
+            "  c3 i32",
+            "  c4 i32",
+            "  c5 i32",
+            "  c6 i32",
+            "  c7 i32",
+            "  c8 i32",
+            "  c9 i32",
+            "  c10 i32",
+            "  c11 i32",
+            "  c12 i32",
+            "  c13 i32",
+            "  c14 i32",
+            "  c15 i32",
+            "  c16 i32",
+            "  a varchar(400)",
+            "  b varchar(241)",
+            "  primary key (id)",
+            "  primary key (maybe)",
+            "  index ix_many (c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14, c15, c16)",
+            "  index ix_wide (a, b)",
+            "  unique uq_repeat (a, a)",
+            "  unique uq_unknown (nope)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "key",
+                  "line": 25,
+                  "column": 3
+                },
+                {
+                  "rule": "key",
+                  "line": 26,
+                  "column": 9
+                },
+                {
+                  "rule": "key",
+                  "line": 27,
+                  "column": 9
+                },
+                {
+                  "rule": "key",
+                  "line": 28,
+                  "column": 24
+                },
+                {
+                  "rule": "key",
+                  "line": 29,
+                  "column": 22
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "composite-identity-key",
+      "requirements": [
+        "DBS-40",
+        "DBS-163"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  id i64 identity",
+            "  other i64",
+            "  primary key (id, other)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "column",
+                  "line": 3,
+                  "column": 10
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "foreign-keys",
+      "requirements": [
+        "DBS-145",
+        "DBS-165"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  code varchar(8)",
+            "  primary key (id)",
+            "}",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i32",
+            "  code varchar(8)",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id, code)",
+            "  foreign key fk_type (user_id) references users (id)",
+            "  foreign key fk_arity (user_id, code) references users (id)",
+            "  foreign key fk_not_key (code) references users (code)",
+            "  foreign key fk_target (user_id) references nobody (id)",
+            "  foreign key fk_column (nope) references users (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "foreign_key",
+                  "line": 13,
+                  "column": 15
+                },
+                {
+                  "rule": "foreign_key",
+                  "line": 14,
+                  "column": 15
+                },
+                {
+                  "rule": "foreign_key",
+                  "line": 15,
+                  "column": 15
+                },
+                {
+                  "rule": "foreign_key",
+                  "line": 15,
+                  "column": 15
+                },
+                {
+                  "rule": "foreign_key",
+                  "line": 16,
+                  "column": 46
+                },
+                {
+                  "rule": "foreign_key",
+                  "line": 17,
+                  "column": 26
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "check-expression-form",
+      "requirements": [
+        "DBS-57",
+        "DBS-131"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  id i64 identity",
+            "  status varchar(8)",
+            "  qty i32 null",
+            "  primary key (id)",
+            "  check ck_t ((qty>=-007 and qty<>0)or status not in('a','it''s') or qty is not null or (qty <= 1 and (qty >= 2)))",
+            "  check ck_u ((((qty = 1) or (qty = 2))) and ((status <> 'x')))",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "text": [
+                "dbspec 1 shop",
+                "",
+                "table t {",
+                "  id i64 identity",
+                "  status varchar(8)",
+                "  qty i32 null",
+                "  primary key (id)",
+                "  check ck_t (qty >= -7 and qty <> 0 or status not in ('a', 'it''s') or qty is not null or qty <= 1 and qty >= 2)",
+                "  check ck_u ((qty = 1 or qty = 2) and status <> 'x')",
+                "}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "check-outside-the-neutral-set",
+      "requirements": [
+        "DBS-61",
+        "DBS-166"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "  check ck_a (nope > 0)",
+            "  check ck_b (id like 'x')",
+            "  check ck_c (id > )",
+            "  check ck_d (id in (id))",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "check",
+                  "line": 5,
+                  "column": 15
+                },
+                {
+                  "rule": "check",
+                  "line": 6,
+                  "column": 18
+                },
+                {
+                  "rule": "check",
+                  "line": 7,
+                  "column": 20
+                },
+                {
+                  "rule": "check",
+                  "line": 8,
+                  "column": 22
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "check-literal-on-the-left-takes-the-column-form",
+      "requirements": [
+        "DBS-58",
+        "DBS-131"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  id i64 identity",
+            "  qty i32",
+            "  small i16",
+            "  price decimal(13,2)",
+            "  active bool",
+            "  name varchar(4)",
+            "  note text",
+            "  t0 time(0)",
+            "  t3 time(3)",
+            "  primary key (id)",
+            "  check ck_t (0 < qty and 007 >= small and 0 <= price and small <= qty and note = name and note <> 'longer than four')",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "text": [
+                "dbspec 1 shop",
+                "",
+                "table t {",
+                "  id i64 identity",
+                "  qty i32",
+                "  small i16",
+                "  price decimal(13,2)",
+                "  active bool",
+                "  name varchar(4)",
+                "  note text",
+                "  t0 time(0)",
+                "  t3 time(3)",
+                "  primary key (id)",
+                "  check ck_t (0 < qty and 7 >= small and 0.00 <= price and small <= qty and note = name and note <> 'longer than four')",
+                "}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "check-typed-predicates",
+      "requirements": [
+        "DBS-58",
+        "DBS-166"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  id i64 identity",
+            "  qty i32",
+            "  small i16",
+            "  price decimal(13,2)",
+            "  active bool",
+            "  name varchar(4)",
+            "  note text",
+            "  t0 time(0)",
+            "  t3 time(3)",
+            "  primary key (id)",
+            "  check ck_a (active < true)",
+            "  check ck_b (false >= active)",
+            "  check ck_c (t0 < t3)",
+            "  check ck_d ('a' = qty)",
+            "  check ck_e (qty < 1.5 or qty + 1 > 2)",
+            "  check ck_f (1 in (1, 2))",
+            "  check ck_g (true)",
+            "  check ck_h (active <> 1 and active in (true, 0))",
+            "  check ck_i (name in ('abcde'))",
+            "  check ck_j (active > false)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "check",
+                  "line": 13,
+                  "column": 22
+                },
+                {
+                  "rule": "check",
+                  "line": 14,
+                  "column": 21
+                },
+                {
+                  "rule": "check",
+                  "line": 15,
+                  "column": 20
+                },
+                {
+                  "rule": "check",
+                  "line": 16,
+                  "column": 15
+                },
+                {
+                  "rule": "check",
+                  "line": 17,
+                  "column": 32
+                },
+                {
+                  "rule": "check",
+                  "line": 18,
+                  "column": 15
+                },
+                {
+                  "rule": "check",
+                  "line": 19,
+                  "column": 15
+                },
+                {
+                  "rule": "check",
+                  "line": 20,
+                  "column": 25
+                },
+                {
+                  "rule": "check",
+                  "line": 21,
+                  "column": 24
+                },
+                {
+                  "rule": "check",
+                  "line": 22,
+                  "column": 22
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "check-forms-outside-the-predicates",
+      "requirements": [
+        "DBS-61",
+        "DBS-166"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  id i64 identity",
+            "  qty i32",
+            "  small i16",
+            "  price decimal(13,2)",
+            "  active bool",
+            "  name varchar(4)",
+            "  note text",
+            "  t0 time(0)",
+            "  t3 time(3)",
+            "  primary key (id)",
+            "  check ck_a (not (qty > 1))",
+            "  check ck_b (qty > 1 and not qty = 2)",
+            "  check ck_c (qty between 1 and 2)",
+            "  check ck_d (qty not between 1 and 2)",
+            "  check ck_e (active)",
+            "  check ck_f ((active) or qty > 1)",
+            "  check ck_g (qty > 1 and t0)",
+            "  check ck_h (nope or qty > 1)",
+            "  check ck_i (1 not between 0 and 2)",
+            "  check ck_j (qty > 1 or 2)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "check",
+                  "line": 13,
+                  "column": 15
+                },
+                {
+                  "rule": "check",
+                  "line": 14,
+                  "column": 27
+                },
+                {
+                  "rule": "check",
+                  "line": 15,
+                  "column": 19
+                },
+                {
+                  "rule": "check",
+                  "line": 16,
+                  "column": 19
+                },
+                {
+                  "rule": "check",
+                  "line": 17,
+                  "column": 15
+                },
+                {
+                  "rule": "check",
+                  "line": 18,
+                  "column": 16
+                },
+                {
+                  "rule": "check",
+                  "line": 19,
+                  "column": 27
+                },
+                {
+                  "rule": "check",
+                  "line": 20,
+                  "column": 15
+                },
+                {
+                  "rule": "check",
+                  "line": 21,
+                  "column": 17
+                },
+                {
+                  "rule": "check",
+                  "line": 22,
+                  "column": 26
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "settings",
+      "requirements": [
+        "DBS-147",
+        "DBS-167"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}",
+            "table t {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  secret bytes",
+            "  version i32 null",
+            "  name varchar(8)",
+            "  changed_at datetime(6)",
+            "  primary key (id)",
+            "  index ix_t_user (user_id)",
+            "  foreign key fk_t_user (user_id) references users (id) on delete cascade",
+            "  settings {",
+            "    updated name",
+            "    updated changed_at",
+            "    soft_delete changed_at",
+            "    codec secret aes zip",
+            "    aes_version version",
+            "    blind_index name secret",
+            "    navigation fk_nope child parent",
+            "    select explicit name name",
+            "    immutable",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "setting",
+                  "line": 17,
+                  "column": 13
+                },
+                {
+                  "rule": "setting",
+                  "line": 18,
+                  "column": 5
+                },
+                {
+                  "rule": "setting",
+                  "line": 19,
+                  "column": 17
+                },
+                {
+                  "rule": "setting",
+                  "line": 20,
+                  "column": 22
+                },
+                {
+                  "rule": "setting",
+                  "line": 21,
+                  "column": 17
+                },
+                {
+                  "rule": "setting",
+                  "line": 22,
+                  "column": 5
+                },
+                {
+                  "rule": "setting",
+                  "line": 22,
+                  "column": 22
+                },
+                {
+                  "rule": "setting",
+                  "line": 23,
+                  "column": 16
+                },
+                {
+                  "rule": "setting",
+                  "line": 24,
+                  "column": 26
+                },
+                {
+                  "rule": "setting",
+                  "line": 25,
+                  "column": 5
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "aes-without-aes-version",
+      "requirements": [
+        "DBS-147",
+        "DBS-167"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  id i64 identity",
+            "  secret bytes",
+            "  primary key (id)",
+            "  settings {",
+            "    codec secret ordered_json aes",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "setting",
+                  "line": 7,
+                  "column": 5
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "audit",
+      "requirements": [
+        "DBS-91",
+        "DBS-147",
+        "DBS-167"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table service {",
+            "  id i64 identity",
+            "  name varchar(191)",
+            "  audit_seq i64 null",
+            "  primary key (id)",
+            "  settings {",
+            "    audit into service_history column audit_seq references audit action change previous previous_audit_seq",
+            "  }",
+            "}",
+            "table service_history {",
+            "  history_id i64 identity",
+            "  change varchar(16)",
+            "  previous_audit_seq i64",
+            "  id i64",
+            "  name varchar(64)",
+            "  extra i32",
+            "  primary key (history_id)",
+            "  settings {",
+            "    soft_delete history_id",
+            "    audit into service column id references service_history action name previous id",
+            "  }",
+            "}",
+            "table audit {",
+            "  seq i64 identity",
+            "  primary key (seq)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "setting",
+                  "line": 8,
+                  "column": 16
+                },
+                {
+                  "rule": "setting",
+                  "line": 8,
+                  "column": 16
+                },
+                {
+                  "rule": "setting",
+                  "line": 8,
+                  "column": 16
+                },
+                {
+                  "rule": "setting",
+                  "line": 8,
+                  "column": 16
+                },
+                {
+                  "rule": "setting",
+                  "line": 8,
+                  "column": 39
+                },
+                {
+                  "rule": "setting",
+                  "line": 8,
+                  "column": 39
+                },
+                {
+                  "rule": "setting",
+                  "line": 8,
+                  "column": 73
+                },
+                {
+                  "rule": "setting",
+                  "line": 8,
+                  "column": 89
+                },
+                {
+                  "rule": "setting",
+                  "line": 20,
+                  "column": 17
+                },
+                {
+                  "rule": "setting",
+                  "line": 21,
+                  "column": 16
+                },
+                {
+                  "rule": "setting",
+                  "line": 21,
+                  "column": 16
+                },
+                {
+                  "rule": "setting",
+                  "line": 21,
+                  "column": 16
+                },
+                {
+                  "rule": "setting",
+                  "line": 21,
+                  "column": 16
+                },
+                {
+                  "rule": "setting",
+                  "line": 21,
+                  "column": 16
+                },
+                {
+                  "rule": "setting",
+                  "line": 21,
+                  "column": 16
+                },
+                {
+                  "rule": "setting",
+                  "line": 21,
+                  "column": 16
+                },
+                {
+                  "rule": "setting",
+                  "line": 21,
+                  "column": 16
+                },
+                {
+                  "rule": "setting",
+                  "line": 21,
+                  "column": 45
+                },
+                {
+                  "rule": "setting",
+                  "line": 21,
+                  "column": 68
+                },
+                {
+                  "rule": "setting",
+                  "line": 21,
+                  "column": 82
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "settings-order-and-comments-move-with-their-lines",
+      "requirements": [
+        "DBS-126",
+        "DBS-132"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  id i64 identity",
+            "  b bytes",
+            "  a bytes",
+            "  v i16",
+            "  token uuid default '0E2B5E8C-3B0F-4C59-9A0F-6A2F2C2E1B10'",
+            "  ratio f64 default 0012.500",
+            "  zero f64 default -0.0",
+            "  primary key (id)",
+            "  # second",
+            "  unique uq_b (v)",
+            "  # first",
+            "  unique uq_a (token)",
+            "  settings {",
+            "    immutable",
+            "    # codec of b",
+            "    codec b gz",
+            "    codec a ordered_json aes",
+            "    aes_version v",
+            "    select explicit b a",
+            "    entity thing",
+            "    # closing the settings",
+            "  }",
+            "}",
+            "# end of document"
+          ],
+          "expect": {
+            "none": {
+              "text": [
+                "dbspec 1 shop",
+                "",
+                "table t {",
+                "  id i64 identity",
+                "  b bytes",
+                "  a bytes",
+                "  v i16",
+                "  token uuid default '0e2b5e8c-3b0f-4c59-9a0f-6a2f2c2e1b10'",
+                "  ratio f64 default 12.5",
+                "  zero f64 default 0",
+                "  primary key (id)",
+                "  # first",
+                "  unique uq_a (token)",
+                "  # second",
+                "  unique uq_b (v)",
+                "  settings {",
+                "    entity thing",
+                "    select explicit b a",
+                "    codec a ordered_json aes",
+                "    # codec of b",
+                "    codec b gz",
+                "    aes_version v",
+                "    immutable",
+                "    # closing the settings",
+                "  }",
+                "}",
+                "",
+                "# end of document"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "use",
+      "requirements": [
+        "DBS-35",
+        "DBS-149",
+        "DBS-161",
+        "DBS-168"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "use core { users, groups }",
+            "use broken { x }",
+            "use renamed { x }",
+            "use core { teams }",
+            "table orders {",
+            "  id i64 identity",
+            "  code varchar(8)",
+            "  primary key (id)",
+            "  unique uq_code (code)",
+            "}",
+            "table users {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}"
+          ],
+          "set": {
+            "core": [
+              "dbspec 1 core",
+              "",
+              "table users {",
+              "  id i64 identity",
+              "  primary key (id)",
+              "}",
+              "",
+              "table teams {",
+              "  id i64 identity",
+              "  code varchar(8)",
+              "  primary key (id)",
+              "  unique uq_code (code)",
+              "}"
+            ],
+            "broken": [
+              "dbspec 1 broken",
+              "table X {"
+            ],
+            "renamed": [
+              "dbspec 1 other"
+            ]
+          },
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "use",
+                  "line": 2,
+                  "column": 19
+                },
+                {
+                  "rule": "use",
+                  "line": 3,
+                  "column": 5
+                },
+                {
+                  "rule": "use",
+                  "line": 4,
+                  "column": 5
+                },
+                {
+                  "rule": "name.duplicate",
+                  "line": 5,
+                  "column": 5
+                },
+                {
+                  "rule": "name.duplicate",
+                  "line": 10,
+                  "column": 10
+                },
+                {
+                  "rule": "name.duplicate",
+                  "line": 12,
+                  "column": 7
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "use-cycle",
+      "requirements": [
+        "DBS-149",
+        "DBS-168"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "use core { users }"
+          ],
+          "set": {
+            "core": [
+              "dbspec 1 core",
+              "use shop { orders }",
+              "table users {",
+              "  id i64 identity",
+              "  primary key (id)",
+              "}"
+            ],
+            "shop": [
+              "dbspec 1 shop",
+              "table orders {",
+              "  id i64 identity",
+              "  primary key (id)",
+              "}"
+            ]
+          },
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "use",
+                  "line": 2,
+                  "column": 5
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "foreign-key-to-a-used-table-and-use-order",
+      "requirements": [
+        "DBS-35",
+        "DBS-125"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "use zeta { z }",
+            "use core { users }",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64 null",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references users (id) on update cascade",
+            "}"
+          ],
+          "set": {
+            "core": [
+              "dbspec 1 core",
+              "",
+              "table users {",
+              "  id i64 identity",
+              "  primary key (id)",
+              "}",
+              "",
+              "table teams {",
+              "  id i64 identity",
+              "  code varchar(8)",
+              "  primary key (id)",
+              "  unique uq_code (code)",
+              "}"
+            ],
+            "zeta": [
+              "dbspec 1 zeta",
+              "table z {",
+              "  id i64 identity",
+              "  primary key (id)",
+              "}"
+            ]
+          },
+          "expect": {
+            "none": {
+              "text": [
+                "dbspec 1 shop",
+                "",
+                "use core { users }",
+                "use zeta { z }",
+                "",
+                "table orders {",
+                "  id i64 identity",
+                "  user_id i64 null",
+                "  primary key (id)",
+                "  index ix_orders_user (user_id)",
+                "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update cascade",
+                "}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "diagrams",
+      "requirements": [
+        "DBS-122",
+        "DBS-169"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}",
+            "diagram main {",
+            "  users at 1 2",
+            "  users at 3 4",
+            "}",
+            "diagram other {",
+            "  users at 1.5 -0x1",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "diagram",
+                  "line": 8,
+                  "column": 3
+                },
+                {
+                  "rule": "diagram",
+                  "line": 11,
+                  "column": 12
+                },
+                {
+                  "rule": "diagram",
+                  "line": 11,
+                  "column": 16
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "columns-count-code-points",
+      "requirements": [
+        "DBS-144",
+        "DBS-157"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  id i64 identity",
+            "  name varchar(1) default '😀😀' x",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "syntax",
+                  "line": 4,
+                  "column": 32
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "foreign-key-actions-in-grammar-order",
+      "requirements": [
+        "DBS-47",
+        "DBS-157"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references users (id) on update cascade on delete cascade",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "syntax",
+                  "line": 11,
+                  "column": 80
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "codec-storage-and-stage-order",
+      "requirements": [
+        "DBS-64",
+        "DBS-167"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  id i64 identity",
+            "  doc text",
+            "  blob bytes",
+            "  note varchar(64)",
+            "  packed text",
+            "  primary key (id)",
+            "  settings {",
+            "    codec doc gz ordered_json",
+            "    codec blob base64",
+            "    codec note serialize",
+            "    codec packed ordered_json gz",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "setting",
+                  "line": 10,
+                  "column": 18
+                },
+                {
+                  "rule": "setting",
+                  "line": 11,
+                  "column": 11
+                },
+                {
+                  "rule": "setting",
+                  "line": 13,
+                  "column": 11
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "blind-index-accepted",
+      "requirements": [
+        "DBS-63",
+        "DBS-126"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  id i64 identity",
+            "  version i32",
+            "  email bytes null",
+            "  hash varchar(64) null",
+            "  primary key (id)",
+            "  unique uq_t_hash (hash)",
+            "  settings {",
+            "    blind_index email hash",
+            "    aes_version version",
+            "    codec email ordered_json aes",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "text": [
+                "dbspec 1 shop",
+                "",
+                "table t {",
+                "  id i64 identity",
+                "  version i32",
+                "  email bytes null",
+                "  hash varchar(64) null",
+                "  primary key (id)",
+                "  unique uq_t_hash (hash)",
+                "  settings {",
+                "    codec email ordered_json aes",
+                "    aes_version version",
+                "    blind_index email hash",
+                "  }",
+                "}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "constraint-named-like-a-used-table",
+      "requirements": [
+        "DBS-34",
+        "DBS-161"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "use core { users }",
+            "table orders {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "  index teams (id)",
+            "}"
+          ],
+          "set": {
+            "core": [
+              "dbspec 1 core",
+              "",
+              "table users {",
+              "  id i64 identity",
+              "  primary key (id)",
+              "}",
+              "",
+              "table teams {",
+              "  id i64 identity",
+              "  code varchar(8)",
+              "  primary key (id)",
+              "  unique uq_code (code)",
+              "}"
+            ]
+          },
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "name.duplicate",
+                  "line": 6,
+                  "column": 9
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "references-to-failed-lines-report-nothing-more",
+      "requirements": [
+        "DBS-153",
+        "DBS-157"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "use core { users users2",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id (i64",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references users (id)",
+            "  check ck_orders_user (user_id > 0)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "syntax",
+                  "line": 2,
+                  "column": 18
+                },
+                {
+                  "rule": "syntax",
+                  "line": 5,
+                  "column": 11
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "empty-settings-block-keeps-its-comments",
+      "requirements": [
+        "DBS-132"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "  # no settings yet",
+            "  settings {",
+            "    # inside",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "text": [
+                "dbspec 1 shop",
+                "",
+                "table users {",
+                "  id i64 identity",
+                "  primary key (id)",
+                "  # no settings yet",
+                "  # inside",
+                "}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "f64-shortest-decimal-without-exponent",
+      "requirements": [
+        "DBS-131"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  id i64 identity",
+            "  big f64 default 1000000000000000000000000",
+            "  tiny f64 default 0.0000001",
+            "  third f64 default 0.33333333333333333333",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "text": [
+                "dbspec 1 shop",
+                "",
+                "table t {",
+                "  id i64 identity",
+                "  big f64 default 1000000000000000000000000",
+                "  tiny f64 default 0.0000001",
+                "  third f64 default 0.3333333333333333",
+                "  primary key (id)",
+                "}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "bare-cr-2",
+      "requirements": [
+        "DBS-2",
+        "DBS-171"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {\r  id i64"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "encoding",
+                  "line": 2,
+                  "column": 14
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "use-after-table",
+      "requirements": [
+        "DBS-3",
+        "DBS-158"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table orders {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}",
+            "use core { users }"
+          ],
+          "set": {
+            "core": [
+              "dbspec 1 core",
+              "",
+              "table users {",
+              "  id i64 identity",
+              "  code varchar(8)",
+              "  primary key (id)",
+              "  unique uq_users_code (code)",
+              "}"
+            ]
+          },
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "order",
+                  "line": 6,
+                  "column": 1
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "table-after-diagram",
+      "requirements": [
+        "DBS-3",
+        "DBS-158"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "diagram main {",
+            "}",
+            "table users {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "order",
+                  "line": 4,
+                  "column": 1
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "table-lines-out-of-order",
+      "requirements": [
+        "DBS-3",
+        "DBS-36",
+        "DBS-158",
+        "DBS-165"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  a i32",
+            "  index ix_a (a)",
+            "  primary key (id)",
+            "  b i32",
+            "  check ck_a (a > 0)",
+            "  foreign key fk_a (a) references users (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "order",
+                  "line": 7,
+                  "column": 3
+                },
+                {
+                  "rule": "foreign_key",
+                  "line": 9,
+                  "column": 15
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "primary-is-not-a-name",
+      "requirements": [
+        "DBS-159"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "  index primary (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "name.format",
+                  "line": 5,
+                  "column": 9
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "duplicate-column-table-diagram",
+      "requirements": [
+        "DBS-161"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  id i32",
+            "  primary key (id)",
+            "}",
+            "table users {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}",
+            "diagram main {",
+            "}",
+            "diagram main {",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "name.duplicate",
+                  "line": 4,
+                  "column": 3
+                },
+                {
+                  "rule": "name.duplicate",
+                  "line": 7,
+                  "column": 7
+                },
+                {
+                  "rule": "name.duplicate",
+                  "line": 13,
+                  "column": 9
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "constraint-name-across-kinds",
+      "requirements": [
+        "DBS-34",
+        "DBS-161"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  a i32",
+            "  primary key (id)",
+            "  index ck_a (a)",
+            "  check ck_a (a > 0)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "name.duplicate",
+                  "line": 7,
+                  "column": 9
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "constraint-name-across-documents",
+      "requirements": [
+        "DBS-34",
+        "DBS-161"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "use core { users }",
+            "table teams {",
+            "  id i64 identity",
+            "  code varchar(8)",
+            "  primary key (id)",
+            "  unique uq_users_code (code)",
+            "}"
+          ],
+          "set": {
+            "core": [
+              "dbspec 1 core",
+              "",
+              "table users {",
+              "  id i64 identity",
+              "  code varchar(8)",
+              "  primary key (id)",
+              "  unique uq_users_code (code)",
+              "}"
+            ]
+          },
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "name.duplicate",
+                  "line": 7,
+                  "column": 10
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "table-name-of-used-table",
+      "requirements": [
+        "DBS-34",
+        "DBS-161"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "use core { users }",
+            "table users {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}"
+          ],
+          "set": {
+            "core": [
+              "dbspec 1 core",
+              "",
+              "table users {",
+              "  id i64 identity",
+              "  code varchar(8)",
+              "  primary key (id)",
+              "  unique uq_users_code (code)",
+              "}"
+            ]
+          },
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "name.duplicate",
+                  "line": 3,
+                  "column": 7
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "type-parameters-2",
+      "requirements": [
+        "DBS-162"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  a varchar(16384)",
+            "  b time(7)",
+            "  c decimal(5,6)",
+            "  d i64(3)",
+            "  e varchar",
+            "  f datetime(6)",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "type",
+                  "line": 4,
+                  "column": 5
+                },
+                {
+                  "rule": "type",
+                  "line": 5,
+                  "column": 5
+                },
+                {
+                  "rule": "type",
+                  "line": 6,
+                  "column": 5
+                },
+                {
+                  "rule": "type",
+                  "line": 7,
+                  "column": 5
+                },
+                {
+                  "rule": "type",
+                  "line": 8,
+                  "column": 5
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "column-combinations",
+      "requirements": [
+        "DBS-39",
+        "DBS-148",
+        "DBS-163",
+        "DBS-164"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 null identity",
+            "  a i64 identity default 1",
+            "  body text default 'x'",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "column",
+                  "line": 3,
+                  "column": 15
+                },
+                {
+                  "rule": "column",
+                  "line": 4,
+                  "column": 9
+                },
+                {
+                  "rule": "column",
+                  "line": 4,
+                  "column": 18
+                },
+                {
+                  "rule": "column",
+                  "line": 5,
+                  "column": 13
+                },
+                {
+                  "rule": "key",
+                  "line": 6,
+                  "column": 16
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "defaults-that-do-not-fit",
+      "requirements": [
+        "DBS-40",
+        "DBS-163"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  a i16 default 32768",
+            "  b decimal(13,2) default 1.234",
+            "  c date default now",
+            "  d uuid default 'not-a-uuid'",
+            "  e date default '2026-02-30'",
+            "  f time(0) default '24:00:00'",
+            "  g varchar(2) default 'abc'",
+            "  h bool default 1",
+            "  i i32 default 1.5",
+            "  j decimal(3,1) default 100",
+            "  k datetime(0) default '2026-01-01 00:00:00.5'",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "column",
+                  "line": 4,
+                  "column": 17
+                },
+                {
+                  "rule": "column",
+                  "line": 5,
+                  "column": 27
+                },
+                {
+                  "rule": "column",
+                  "line": 6,
+                  "column": 18
+                },
+                {
+                  "rule": "column",
+                  "line": 7,
+                  "column": 18
+                },
+                {
+                  "rule": "column",
+                  "line": 8,
+                  "column": 18
+                },
+                {
+                  "rule": "column",
+                  "line": 9,
+                  "column": 21
+                },
+                {
+                  "rule": "column",
+                  "line": 10,
+                  "column": 24
+                },
+                {
+                  "rule": "column",
+                  "line": 11,
+                  "column": 18
+                },
+                {
+                  "rule": "column",
+                  "line": 12,
+                  "column": 17
+                },
+                {
+                  "rule": "column",
+                  "line": 13,
+                  "column": 26
+                },
+                {
+                  "rule": "column",
+                  "line": 14,
+                  "column": 25
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "identity-rules",
+      "requirements": [
+        "DBS-40",
+        "DBS-163"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  other i64 identity",
+            "  primary key (id, other)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "column",
+                  "line": 3,
+                  "column": 10
+                },
+                {
+                  "rule": "column",
+                  "line": 4,
+                  "column": 13
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "table-without-columns-2",
+      "requirements": [
+        "DBS-148",
+        "DBS-163",
+        "DBS-164"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "column",
+                  "line": 2,
+                  "column": 7
+                },
+                {
+                  "rule": "key",
+                  "line": 2,
+                  "column": 7
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "literal-forms",
+      "requirements": [
+        "DBS-40",
+        "DBS-163",
+        "DBS-164"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  a i32 default -0",
+            "  b i64 default 007",
+            "  c decimal(5,0) default -00012",
+            "  d decimal(4,3) default .5",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "key",
+                  "line": 2,
+                  "column": 7
+                },
+                {
+                  "rule": "column",
+                  "line": 3,
+                  "column": 10
+                },
+                {
+                  "rule": "column",
+                  "line": 7,
+                  "column": 26
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "canonical-literals",
+      "requirements": [
+        "DBS-128",
+        "DBS-131"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  a i32 default -0",
+            "  b i64 default 007",
+            "  c decimal(5,0) default -00012",
+            "  d decimal(4,3) default 0.50",
+            "  e f64 default 001.2500",
+            "  f f64 default -0.0",
+            "  g uuid default 'ABCDEF01-2345-6789-ABCD-EF0123456789'",
+            "  h time(3) default '23:59:59'",
+            "  i datetime(2) default '2024-02-29 01:02:03.4'",
+            "  j varchar(8) default 'it''s'",
+            "  k bool null default false",
+            "  l date default '0001-01-01'",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "text": [
+                "dbspec 1 shop",
+                "",
+                "table users {",
+                "  id i64 identity",
+                "  a i32 default 0",
+                "  b i64 default 7",
+                "  c decimal(5,0) default -12",
+                "  d decimal(4,3) default 0.500",
+                "  e f64 default 1.25",
+                "  f f64 default 0",
+                "  g uuid default 'abcdef01-2345-6789-abcd-ef0123456789'",
+                "  h time(3) default '23:59:59.000'",
+                "  i datetime(2) default '2024-02-29 01:02:03.40'",
+                "  j varchar(8) default 'it''s'",
+                "  k bool null default false",
+                "  l date default '0001-01-01'",
+                "  primary key (id)",
+                "}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "key-columns",
+      "requirements": [
+        "DBS-146",
+        "DBS-164"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64",
+            "  a i32 null",
+            "  b varchar(400)",
+            "  c varchar(241)",
+            "  primary key (id, a)",
+            "  primary key (id)",
+            "  unique uq_users_b (b, b)",
+            "  index ix_users_bc (b, c)",
+            "  index ix_users_x (x)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "key",
+                  "line": 7,
+                  "column": 20
+                },
+                {
+                  "rule": "key",
+                  "line": 8,
+                  "column": 3
+                },
+                {
+                  "rule": "key",
+                  "line": 9,
+                  "column": 25
+                },
+                {
+                  "rule": "key",
+                  "line": 10,
+                  "column": 9
+                },
+                {
+                  "rule": "key",
+                  "line": 11,
+                  "column": 21
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "key-at-most-16-columns",
+      "requirements": [
+        "DBS-146",
+        "DBS-164"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  c01 i32",
+            "  c02 i32",
+            "  c03 i32",
+            "  c04 i32",
+            "  c05 i32",
+            "  c06 i32",
+            "  c07 i32",
+            "  c08 i32",
+            "  c09 i32",
+            "  c10 i32",
+            "  c11 i32",
+            "  c12 i32",
+            "  c13 i32",
+            "  c14 i32",
+            "  c15 i32",
+            "  c16 i32",
+            "  c17 i32",
+            "  primary key (c01)",
+            "  index ix_t (c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "key",
+                  "line": 21,
+                  "column": 9
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "foreign-key-rules",
+      "requirements": [
+        "DBS-145",
+        "DBS-165"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  code varchar(8)",
+            "  primary key (id)",
+            "}",
+            "table orders {",
+            "  id i64 identity",
+            "  a i32",
+            "  b i64",
+            "  c varchar(8)",
+            "  primary key (id)",
+            "  index ix_orders_abc (a, b, c)",
+            "  foreign key fk_a (a) references users (id)",
+            "  foreign key fk_b (b) references users (code)",
+            "  foreign key fk_c (a, b) references users (id)",
+            "  foreign key fk_d (b) references teams (id)",
+            "  foreign key fk_e (x) references users (y)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "foreign_key",
+                  "line": 14,
+                  "column": 15
+                },
+                {
+                  "rule": "foreign_key",
+                  "line": 15,
+                  "column": 15
+                },
+                {
+                  "rule": "foreign_key",
+                  "line": 15,
+                  "column": 15
+                },
+                {
+                  "rule": "foreign_key",
+                  "line": 15,
+                  "column": 15
+                },
+                {
+                  "rule": "foreign_key",
+                  "line": 16,
+                  "column": 15
+                },
+                {
+                  "rule": "foreign_key",
+                  "line": 17,
+                  "column": 15
+                },
+                {
+                  "rule": "foreign_key",
+                  "line": 17,
+                  "column": 35
+                },
+                {
+                  "rule": "foreign_key",
+                  "line": 18,
+                  "column": 21
+                },
+                {
+                  "rule": "foreign_key",
+                  "line": 18,
+                  "column": 42
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "foreign-key-to-used-table",
+      "requirements": [
+        "DBS-35",
+        "DBS-127"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "use core { users }",
+            "table orders {",
+            "  id i64 identity",
+            "  user_code varchar(8) null",
+            "  primary key (id)",
+            "  unique uq_orders_code (user_code, id)",
+            "  foreign key fk_orders_user (user_code) references users (code) on update set_null",
+            "}",
+            "diagram main {",
+            "  users at -10 0",
+            "  orders at 10 0",
+            "}"
+          ],
+          "set": {
+            "core": [
+              "dbspec 1 core",
+              "",
+              "table users {",
+              "  id i64 identity",
+              "  code varchar(8)",
+              "  primary key (id)",
+              "  unique uq_users_code (code)",
+              "}"
+            ]
+          },
+          "expect": {
+            "none": {
+              "text": [
+                "dbspec 1 shop",
+                "",
+                "use core { users }",
+                "",
+                "table orders {",
+                "  id i64 identity",
+                "  user_code varchar(8) null",
+                "  primary key (id)",
+                "  unique uq_orders_code (user_code, id)",
+                "  foreign key fk_orders_user (user_code) references users (code) on delete restrict on update set_null",
+                "}",
+                "",
+                "diagram main {",
+                "  users at -10 0",
+                "  orders at 10 0",
+                "}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "check-rules",
+      "requirements": [
+        "DBS-157",
+        "DBS-166"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  a i32",
+            "  primary key (id)",
+            "  check ck_a (b > 0)",
+            "  check ck_b (a > 0 and)",
+            "  check ck_c (a in (a))",
+            "  check ck_d (a > 0) extra",
+            "  check ck_e (a != 0)",
+            "  check ck_f (-a > 0)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "check",
+                  "line": 6,
+                  "column": 15
+                },
+                {
+                  "rule": "check",
+                  "line": 7,
+                  "column": 24
+                },
+                {
+                  "rule": "check",
+                  "line": 8,
+                  "column": 21
+                },
+                {
+                  "rule": "syntax",
+                  "line": 9,
+                  "column": 27
+                },
+                {
+                  "rule": "syntax",
+                  "line": 10,
+                  "column": 17
+                },
+                {
+                  "rule": "check",
+                  "line": 11,
+                  "column": 15
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "check-canonical",
+      "requirements": [
+        "DBS-57",
+        "DBS-131"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  a i32",
+            "  s varchar(8) null",
+            "  p decimal(6,2)",
+            "  primary key (id)",
+            "  check ck_b ( a>=-007 and((a<>10)or s is not null) )",
+            "  check ck_a ((s not in ('x','it''s') and p >= 0.5) and (p<=2 and s=  'y'))",
+            "  check ck_c ((a > 0 or a < -9) and s is null or (a = 1))",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "text": [
+                "dbspec 1 shop",
+                "",
+                "table users {",
+                "  id i64 identity",
+                "  a i32",
+                "  s varchar(8) null",
+                "  p decimal(6,2)",
+                "  primary key (id)",
+                "  check ck_a (s not in ('x', 'it''s') and p >= 0.50 and p <= 2.00 and s = 'y')",
+                "  check ck_b (a >= -7 and (a <> 10 or s is not null))",
+                "  check ck_c ((a > 0 or a < -9) and s is null or a = 1)",
+                "}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "check-removed-forms",
+      "requirements": [
+        "DBS-61",
+        "DBS-166"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  id i64 identity",
+            "  a i32",
+            "  f bool",
+            "  primary key (id)",
+            "  check ck_a (not (a > 0))",
+            "  check ck_b (a > 0 and not a > 1)",
+            "  check ck_c (a between 1 and 2)",
+            "  check ck_d (a not between 1 and 2)",
+            "  check ck_e (1 between 0 and 2)",
+            "  check ck_f (f)",
+            "  check ck_g (f and a > 0)",
+            "  check ck_h ((f) or a > 0)",
+            "  check ck_i (a > 0 or a)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "check",
+                  "line": 7,
+                  "column": 15
+                },
+                {
+                  "rule": "check",
+                  "line": 8,
+                  "column": 25
+                },
+                {
+                  "rule": "check",
+                  "line": 9,
+                  "column": 17
+                },
+                {
+                  "rule": "check",
+                  "line": 10,
+                  "column": 17
+                },
+                {
+                  "rule": "check",
+                  "line": 11,
+                  "column": 17
+                },
+                {
+                  "rule": "check",
+                  "line": 12,
+                  "column": 15
+                },
+                {
+                  "rule": "check",
+                  "line": 13,
+                  "column": 15
+                },
+                {
+                  "rule": "check",
+                  "line": 14,
+                  "column": 16
+                },
+                {
+                  "rule": "check",
+                  "line": 15,
+                  "column": 24
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "check-literal-left-takes-column-form",
+      "requirements": [
+        "DBS-58",
+        "DBS-131"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  id i64 identity",
+            "  qty i32",
+            "  r f64",
+            "  at datetime(3)",
+            "  note text",
+            "  primary key (id)",
+            "  check ck_t (0 < qty and 1.50 >= r and '2100-01-01 00:00:00' > at and 'any length' <> note)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "text": [
+                "dbspec 1 shop",
+                "",
+                "table t {",
+                "  id i64 identity",
+                "  qty i32",
+                "  r f64",
+                "  at datetime(3)",
+                "  note text",
+                "  primary key (id)",
+                "  check ck_t (0 < qty and 1.5 >= r and '2100-01-01 00:00:00.000' > at and 'any length' <> note)",
+                "}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "check-type-rules",
+      "requirements": [
+        "DBS-58",
+        "DBS-166"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  id i64 identity",
+            "  flag bool",
+            "  t0 time(0)",
+            "  t3 time(3)",
+            "  qty i32",
+            "  name varchar(4)",
+            "  note text",
+            "  primary key (id)",
+            "  check ck_a (flag <= false)",
+            "  check ck_b (false >= flag)",
+            "  check ck_c (t0 < t3)",
+            "  check ck_d (true > flag)",
+            "  check ck_e (name = 'abcde')",
+            "  check ck_f (qty in (1, 2) and flag in (true, 1))",
+            "  check ck_g (1 + qty > 0)",
+            "  check ck_h (1 is null)",
+            "  check ck_i ('a')",
+            "  check ck_j (qty = - qty)",
+            "  check ck_k (flag = true and qty = 'x' or zz > 0)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "check",
+                  "line": 11,
+                  "column": 20
+                },
+                {
+                  "rule": "check",
+                  "line": 12,
+                  "column": 21
+                },
+                {
+                  "rule": "check",
+                  "line": 13,
+                  "column": 20
+                },
+                {
+                  "rule": "check",
+                  "line": 14,
+                  "column": 20
+                },
+                {
+                  "rule": "check",
+                  "line": 15,
+                  "column": 22
+                },
+                {
+                  "rule": "check",
+                  "line": 16,
+                  "column": 48
+                },
+                {
+                  "rule": "check",
+                  "line": 17,
+                  "column": 17
+                },
+                {
+                  "rule": "check",
+                  "line": 18,
+                  "column": 15
+                },
+                {
+                  "rule": "check",
+                  "line": 19,
+                  "column": 15
+                },
+                {
+                  "rule": "check",
+                  "line": 20,
+                  "column": 21
+                },
+                {
+                  "rule": "check",
+                  "line": 21,
+                  "column": 37
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "check-on-set-null-column",
+      "requirements": [
+        "DBS-166"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  parent_id i64 null",
+            "  primary key (id)",
+            "  index ix_users_parent (parent_id)",
+            "  foreign key fk_users_parent (parent_id) references users (id) on update set_null",
+            "  check ck_users_parent (parent_id is null or parent_id <> id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "check",
+                  "line": 8,
+                  "column": 26
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "setting-columns-and-repeats",
+      "requirements": [
+        "DBS-63",
+        "DBS-147",
+        "DBS-159",
+        "DBS-167"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  a i32",
+            "  at datetime(6)",
+            "  body text",
+            "  version i32 null",
+            "  primary key (id)",
+            "  settings {",
+            "    updated a",
+            "    updated at",
+            "    soft_delete at",
+            "    select explicit body body x",
+            "    codec a ordered_json",
+            "    codec body aes zip",
+            "    aes_version version",
+            "    navigation fk_x child parent",
+            "    entity User",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "setting",
+                  "line": 10,
+                  "column": 13
+                },
+                {
+                  "rule": "setting",
+                  "line": 11,
+                  "column": 5
+                },
+                {
+                  "rule": "setting",
+                  "line": 12,
+                  "column": 17
+                },
+                {
+                  "rule": "setting",
+                  "line": 13,
+                  "column": 26
+                },
+                {
+                  "rule": "setting",
+                  "line": 13,
+                  "column": 31
+                },
+                {
+                  "rule": "setting",
+                  "line": 14,
+                  "column": 11
+                },
+                {
+                  "rule": "setting",
+                  "line": 15,
+                  "column": 20
+                },
+                {
+                  "rule": "setting",
+                  "line": 16,
+                  "column": 17
+                },
+                {
+                  "rule": "setting",
+                  "line": 17,
+                  "column": 16
+                },
+                {
+                  "rule": "name.format",
+                  "line": 18,
+                  "column": 12
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "aes-requires-aes-version",
+      "requirements": [
+        "DBS-147",
+        "DBS-167"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  secret bytes",
+            "  primary key (id)",
+            "  settings {",
+            "    codec secret aes",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "setting",
+                  "line": 7,
+                  "column": 5
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "blind-index",
+      "requirements": [
+        "DBS-147",
+        "DBS-167"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  email varchar(255)",
+            "  email_hash varchar(64)",
+            "  phone varchar(255)",
+            "  phone_hash varchar(32)",
+            "  key_version i32",
+            "  primary key (id)",
+            "  unique uq_users_email_hash (email_hash)",
+            "  index ix_users_phone_hash (phone_hash)",
+            "  settings {",
+            "    codec email aes hex",
+            "    aes_version key_version",
+            "    blind_index email email_hash",
+            "    blind_index phone phone_hash",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "setting",
+                  "line": 16,
+                  "column": 5
+                },
+                {
+                  "rule": "setting",
+                  "line": 16,
+                  "column": 23
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "immutable-and-audit-on-cascade-child",
+      "requirements": [
+        "DBS-147",
+        "DBS-167"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  audit_seq i64",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references users (id) on delete cascade",
+            "  settings {",
+            "    immutable",
+            "    audit into users column audit_seq references users action change previous previous_id",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "setting",
+                  "line": 14,
+                  "column": 5
+                },
+                {
+                  "rule": "setting",
+                  "line": 15,
+                  "column": 5
+                },
+                {
+                  "rule": "setting",
+                  "line": 15,
+                  "column": 16
+                },
+                {
+                  "rule": "setting",
+                  "line": 15,
+                  "column": 16
+                },
+                {
+                  "rule": "setting",
+                  "line": 15,
+                  "column": 16
+                },
+                {
+                  "rule": "setting",
+                  "line": 15,
+                  "column": 50
+                },
+                {
+                  "rule": "setting",
+                  "line": 15,
+                  "column": 63
+                },
+                {
+                  "rule": "setting",
+                  "line": 15,
+                  "column": 79
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "audit-history-shape",
+      "requirements": [
+        "DBS-91",
+        "DBS-147",
+        "DBS-167"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table service {",
+            "  id i64 identity",
+            "  name varchar(191)",
+            "  audit_seq uuid",
+            "  deleted_at datetime(6) null",
+            "  primary key (id)",
+            "  index ix_service_audit (audit_seq)",
+            "  foreign key fk_service_audit (audit_seq) references audit (id) on delete restrict on update restrict",
+            "  settings {",
+            "    soft_delete deleted_at",
+            "    audit into service_history column audit_seq references audit action change previous previous_audit_seq",
+            "  }",
+            "}",
+            "table service_history {",
+            "  history_id i64 identity",
+            "  change varchar(16)",
+            "  previous_audit_seq i64 null",
+            "  id i64",
+            "  name varchar(64)",
+            "  audit_seq uuid null",
+            "  note text",
+            "  primary key (history_id)",
+            "}",
+            "table audit {",
+            "  id uuid",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "setting",
+                  "line": 12,
+                  "column": 16
+                },
+                {
+                  "rule": "setting",
+                  "line": 12,
+                  "column": 16
+                },
+                {
+                  "rule": "setting",
+                  "line": 12,
+                  "column": 16
+                },
+                {
+                  "rule": "setting",
+                  "line": 12,
+                  "column": 73
+                },
+                {
+                  "rule": "setting",
+                  "line": 12,
+                  "column": 89
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "settings-canonical-order",
+      "requirements": [
+        "DBS-126"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table audit {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}",
+            "table users {",
+            "  id i64 identity",
+            "  b text",
+            "  a varchar(16) null",
+            "  key_version i64",
+            "  touched_at datetime(3)",
+            "  deleted_at datetime(3) null",
+            "  audit_seq i64",
+            "  parent_id i64 null",
+            "  primary key (id)",
+            "  index ix_users_audit (audit_seq)",
+            "  index ix_users_parent (parent_id)",
+            "  foreign key fk_users_audit (audit_seq) references audit (id) on delete restrict on update restrict",
+            "  foreign key fk_users_parent (parent_id) references users (id)",
+            "  settings {",
+            "    # audit last",
+            "    audit into users_history column audit_seq references audit action action previous previous_audit_seq",
+            "    navigation fk_users_parent children parent",
+            "    codec b ordered_json",
+            "    # encrypted",
+            "    codec a aes base64",
+            "    aes_version key_version",
+            "    select explicit b a",
+            "    soft_delete deleted_at",
+            "    updated touched_at",
+            "    entity user",
+            "    # closing",
+            "  }",
+            "}",
+            "table users_history {",
+            "  history_id i64 identity",
+            "  action varchar(8)",
+            "  previous_audit_seq i64 null",
+            "  id i64 null",
+            "  b text null",
+            "  a varchar(16) null",
+            "  key_version i64",
+            "  touched_at datetime(3)",
+            "  deleted_at datetime(3) null",
+            "  audit_seq i64",
+            "  parent_id i64 null",
+            "  primary key (history_id)",
+            "}",
+            "# end of document"
+          ],
+          "expect": {
+            "none": {
+              "text": [
+                "dbspec 1 shop",
+                "",
+                "table audit {",
+                "  id i64 identity",
+                "  primary key (id)",
+                "}",
+                "",
+                "table users {",
+                "  id i64 identity",
+                "  b text",
+                "  a varchar(16) null",
+                "  key_version i64",
+                "  touched_at datetime(3)",
+                "  deleted_at datetime(3) null",
+                "  audit_seq i64",
+                "  parent_id i64 null",
+                "  primary key (id)",
+                "  index ix_users_audit (audit_seq)",
+                "  index ix_users_parent (parent_id)",
+                "  foreign key fk_users_audit (audit_seq) references audit (id) on delete restrict on update restrict",
+                "  foreign key fk_users_parent (parent_id) references users (id) on delete restrict on update restrict",
+                "  settings {",
+                "    entity user",
+                "    updated touched_at",
+                "    soft_delete deleted_at",
+                "    select explicit b a",
+                "    # encrypted",
+                "    codec a aes base64",
+                "    codec b ordered_json",
+                "    aes_version key_version",
+                "    navigation fk_users_parent children parent",
+                "    # audit last",
+                "    audit into users_history column audit_seq references audit action action previous previous_audit_seq",
+                "    # closing",
+                "  }",
+                "}",
+                "",
+                "table users_history {",
+                "  history_id i64 identity",
+                "  action varchar(8)",
+                "  previous_audit_seq i64 null",
+                "  id i64 null",
+                "  b text null",
+                "  a varchar(16) null",
+                "  key_version i64",
+                "  touched_at datetime(3)",
+                "  deleted_at datetime(3) null",
+                "  audit_seq i64",
+                "  parent_id i64 null",
+                "  primary key (history_id)",
+                "}",
+                "",
+                "# end of document"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "use-rules",
+      "requirements": [
+        "DBS-35",
+        "DBS-149",
+        "DBS-161",
+        "DBS-168"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "use core { users, teams }",
+            "use broken { things }",
+            "use core { users }",
+            "table orders {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}"
+          ],
+          "set": {
+            "core": [
+              "dbspec 1 core",
+              "",
+              "table users {",
+              "  id i64 identity",
+              "  code varchar(8)",
+              "  primary key (id)",
+              "  unique uq_users_code (code)",
+              "}"
+            ],
+            "broken": [
+              "dbspec 1 broken",
+              "table things {",
+              "}"
+            ]
+          },
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "use",
+                  "line": 2,
+                  "column": 19
+                },
+                {
+                  "rule": "use",
+                  "line": 3,
+                  "column": 5
+                },
+                {
+                  "rule": "name.duplicate",
+                  "line": 4,
+                  "column": 5
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "use-cycle-through-foreign-keys",
+      "requirements": [
+        "DBS-149",
+        "DBS-168"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "use core { users }",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references users (id)",
+            "}"
+          ],
+          "set": {
+            "core": [
+              "dbspec 1 core",
+              "use shop { orders }",
+              "table users {",
+              "  id i64 identity",
+              "  last_order_id i64 null",
+              "  primary key (id)",
+              "  index ix_users_last_order (last_order_id)",
+              "  foreign key fk_users_last_order (last_order_id) references orders (id)",
+              "}"
+            ]
+          },
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "use",
+                  "line": 2,
+                  "column": 5
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "diagram-rules",
+      "requirements": [
+        "DBS-122",
+        "DBS-169"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}",
+            "diagram main {",
+            "  users at 1.5 0",
+            "  users at 0 x",
+            "  users at 0 0",
+            "  users at 1 1",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "diagram",
+                  "line": 7,
+                  "column": 12
+                },
+                {
+                  "rule": "diagram",
+                  "line": 8,
+                  "column": 3
+                },
+                {
+                  "rule": "diagram",
+                  "line": 8,
+                  "column": 14
+                },
+                {
+                  "rule": "diagram",
+                  "line": 9,
+                  "column": 3
+                },
+                {
+                  "rule": "diagram",
+                  "line": 10,
+                  "column": 3
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "syntax-recovery",
+      "requirements": [
+        "DBS-154",
+        "DBS-157"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity # key",
+            "  primary key (id)",
+            "}",
+            "view v {",
+            "  x",
+            "}",
+            "table teams {",
+            "  id i64 identity",
+            "  primary key (id)"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "syntax",
+                  "line": 3,
+                  "column": 19
+                },
+                {
+                  "rule": "syntax",
+                  "line": 6,
+                  "column": 1
+                },
+                {
+                  "rule": "syntax",
+                  "line": 7,
+                  "column": 3
+                },
+                {
+                  "rule": "syntax",
+                  "line": 8,
+                  "column": 1
+                },
+                {
+                  "rule": "syntax",
+                  "line": 9,
+                  "column": 13
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "header-exact-form",
+      "requirements": [
+        "DBS-154",
+        "DBS-156"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1  shop"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "header",
+                  "line": 1,
+                  "column": 10
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "header-tab",
+      "requirements": [
+        "DBS-154",
+        "DBS-156"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec\t1 shop"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "header",
+                  "line": 1,
+                  "column": 7
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "bare-cr-after-earlier-errors",
+      "requirements": [
+        "DBS-154",
+        "DBS-159",
+        "DBS-171"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table Users {",
+            "  id i64 identity\r  x i64",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "name.format",
+                  "line": 2,
+                  "column": 7
+                },
+                {
+                  "rule": "encoding",
+                  "line": 3,
+                  "column": 18
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "check-first-diagnostic-only",
+      "requirements": [
+        "DBS-153",
+        "DBS-159",
+        "DBS-166"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "  check ck_a (x > 0 and Y > 0)",
+            "  check ck_b (Y > 0 and x > 0)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "check",
+                  "line": 5,
+                  "column": 15
+                },
+                {
+                  "rule": "name.format",
+                  "line": 6,
+                  "column": 15
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "codec-storage-follows-last-stage",
+      "requirements": [
+        "DBS-64",
+        "DBS-167"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  a text",
+            "  b bytes",
+            "  c varchar(64)",
+            "  d bytes",
+            "  e text",
+            "  primary key (id)",
+            "  settings {",
+            "    codec a ordered_json gz",
+            "    codec b ordered_json gz",
+            "    codec c serialize ordered_json",
+            "    codec d yaml base64",
+            "    codec e gz base64",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "setting",
+                  "line": 11,
+                  "column": 11
+                },
+                {
+                  "rule": "setting",
+                  "line": 13,
+                  "column": 23
+                },
+                {
+                  "rule": "setting",
+                  "line": 14,
+                  "column": 11
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "blind-index-bytes-not-allowed",
+      "requirements": [
+        "DBS-147",
+        "DBS-167"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  email bytes",
+            "  email_hash bytes",
+            "  key_version i32",
+            "  primary key (id)",
+            "  settings {",
+            "    codec email aes",
+            "    aes_version key_version",
+            "    blind_index email email_hash",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "setting",
+                  "line": 11,
+                  "column": 23
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "constraint-named-like-used-table",
+      "requirements": [
+        "DBS-34",
+        "DBS-161"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "use core { users }",
+            "table orders {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "  check users (id > 0)",
+            "}"
+          ],
+          "set": {
+            "core": [
+              "dbspec 1 core",
+              "table users {",
+              "  id i64 identity",
+              "  primary key (id)",
+              "}",
+              "table teams {",
+              "  id i64 identity",
+              "  primary key (id)",
+              "}"
+            ]
+          },
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "name.duplicate",
+                  "line": 6,
+                  "column": 9
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "constraint-named-like-unlisted-used-table",
+      "requirements": [
+        "DBS-34",
+        "DBS-161"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "use core { users }",
+            "table orders {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "  check teams (id > 0)",
+            "}"
+          ],
+          "set": {
+            "core": [
+              "dbspec 1 core",
+              "table users {",
+              "  id i64 identity",
+              "  primary key (id)",
+              "}",
+              "table teams {",
+              "  id i64 identity",
+              "  primary key (id)",
+              "}"
+            ]
+          },
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "name.duplicate",
+                  "line": 6,
+                  "column": 9
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "used-documents-repeat-a-constraint",
+      "requirements": [
+        "DBS-34",
+        "DBS-149",
+        "DBS-161"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "use core { users }",
+            "use extra { teams }",
+            "table orders {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}"
+          ],
+          "set": {
+            "core": [
+              "dbspec 1 core",
+              "",
+              "table users {",
+              "  id i64 identity",
+              "  code varchar(8)",
+              "  primary key (id)",
+              "  unique uq_users_code (code)",
+              "}"
+            ],
+            "extra": [
+              "dbspec 1 extra",
+              "table teams {",
+              "  id i64 identity",
+              "  code varchar(8)",
+              "  primary key (id)",
+              "  unique uq_users_code (code)",
+              "}"
+            ]
+          },
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "name.duplicate",
+                  "line": 3,
+                  "column": 5
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "unclosed-settings-and-table",
+      "requirements": [
+        "DBS-157"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "  settings {",
+            "    entity user"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "syntax",
+                  "line": 5,
+                  "column": 12
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "empty-settings-comments-move",
+      "requirements": [
+        "DBS-132"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "  # before settings",
+            "  settings {",
+            "      # inside settings",
+            "  }",
+            "  # before close",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "text": [
+                "dbspec 1 shop",
+                "",
+                "table users {",
+                "  id i64 identity",
+                "  primary key (id)",
+                "  # before settings",
+                "  # inside settings",
+                "  # before close",
+                "}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "f64-shortest-round-trip",
+      "requirements": [
+        "DBS-131"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  a f64 default 0.1000000000000000055511151231257827",
+            "  b f64 default 100000000000000000000",
+            "  c f64 default 0.000001",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "text": [
+                "dbspec 1 shop",
+                "",
+                "table users {",
+                "  id i64 identity",
+                "  a f64 default 0.1",
+                "  b f64 default 100000000000000000000",
+                "  c f64 default 0.000001",
+                "  primary key (id)",
+                "}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "time-fraction-beyond-precision",
+      "requirements": [
+        "DBS-40",
+        "DBS-163"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  t time(0) default '10:00:00.0'",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "column",
+                  "line": 4,
+                  "column": 21
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "diagram-coordinate-i32",
+      "requirements": [
+        "DBS-122",
+        "DBS-129"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}",
+            "diagram main {",
+            "  users at -2147483648 2147483647",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "text": [
+                "dbspec 1 shop",
+                "",
+                "table users {",
+                "  id i64 identity",
+                "  primary key (id)",
+                "}",
+                "",
+                "diagram main {",
+                "  users at -2147483648 2147483647",
+                "}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "reserved-word-reference",
+      "requirements": [
+        "DBS-153",
+        "DBS-159"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "  index ix_users (Id, null)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "name.format",
+                  "line": 5,
+                  "column": 19
+                },
+                {
+                  "rule": "name.format",
+                  "line": 5,
+                  "column": 23
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "comment-attachment",
+      "requirements": [
+        "DBS-126",
+        "DBS-132"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "# core document",
+            "use core { users }",
+            "table orders {",
+            "  id i64 identity",
+            "  code varchar(8)",
+            "  primary key (id)",
+            "  # second",
+            "  index ix_b (code)",
+            "        # first",
+            "  index ix_a (code)",
+            "  # before close",
+            "}",
+            "",
+            "",
+            "# a diagram",
+            "diagram main {",
+            "  # place",
+            "  orders at 0 0",
+            "  # empty",
+            "}"
+          ],
+          "set": {
+            "core": [
+              "dbspec 1 core",
+              "",
+              "table users {",
+              "  id i64 identity",
+              "  code varchar(8)",
+              "  primary key (id)",
+              "  unique uq_users_code (code)",
+              "}"
+            ]
+          },
+          "expect": {
+            "none": {
+              "text": [
+                "dbspec 1 shop",
+                "",
+                "# core document",
+                "use core { users }",
+                "",
+                "table orders {",
+                "  id i64 identity",
+                "  code varchar(8)",
+                "  primary key (id)",
+                "  # first",
+                "  index ix_a (code)",
+                "  # second",
+                "  index ix_b (code)",
+                "  # before close",
+                "}",
+                "",
+                "# a diagram",
+                "diagram main {",
+                "  # place",
+                "  orders at 0 0",
+                "  # empty",
+                "}"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
