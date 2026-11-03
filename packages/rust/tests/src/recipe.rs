@@ -2886,6 +2886,12 @@ mod database {
             }
         }
         // The seed rows are written; the steps reach the catalog through the option, so the seed's borrow ends here.
+        for after in [&recipe["seed"]["after"], &case["seed"]["after"]] {
+            let named = after["only"].as_array().is_none_or(|only| only.iter().any(|name| name.as_str() == Some(database)));
+            if after.is_object() && named {
+                run_step(catalog, after, context).await.map_err(|failure| format!("seed after, database {database}: {failure:?}"))?;
+            }
+        }
         polyspec_orm_testcase::step("seed rows inserted");
         for (index, current) in case["steps"].as_array().into_iter().flatten().enumerate() {
             let op = current["op"].as_str().unwrap_or_default();
@@ -5085,7 +5091,13 @@ mod tables {
         /// The written model is bound with as, and its toArray is the result.
         async fn write(&mut self, op: &str, step: &Value, db: &Db) -> Result<Value, String> {
             let model = step["model"].as_str().ok_or_else(|| format!("{op} names no model"))?;
-            let mut row = self.row(model, db, &step["values"])?;
+            let mut row = if step["unconnected"].as_bool() == Some(true) {
+                let mut row = TableRow::from_core(core_of(model)?);
+                assign_values(&mut row, &step["values"])?;
+                row
+            } else {
+                self.row(model, db, &step["values"])?
+            };
             for (name, value) in members(&step["attached"]) {
                 let plain = match param(value)? {
                     Param::Null => Value::Null,

@@ -2383,6 +2383,11 @@ final class Recipe
                         }
                     }
                 }
+                foreach ([$recipe['seed']['after'] ?? null, $case['seed']['after'] ?? null] as $after) {
+                    if ($after !== null && (!isset($after['only']) || in_array($database, $after['only'], true))) {
+                        self::databaseStep($after, $context);
+                    }
+                }
                 foreach ($case['steps'] as $index => $step) {
                     // A step with `only` runs on the databases that it names, and no other.
                     if (isset($step['only']) && !in_array($database, $step['only'], true)) {
@@ -3955,7 +3960,9 @@ final class Recipe
     /** A write through a model set from values, then its terminal; the written model is bound, and its JSON is the result. */
     private static function chainWrite(array $s, array $context, \Closure $terminal): array
     {
-        $table = self::tableModel($s['model'], self::connectionOf($s, $context), $context);
+        $table = ($s['unconnected'] ?? false) === true
+            ? self::chainModel($s['model'], $context)
+            : self::tableModel($s['model'], self::connectionOf($s, $context), $context);
         $model = self::chainAssign($table, $s['values'] ?? [], $context);
         foreach ($s['attached'] ?? [] as $name => $value) {
             $model->{'new' . self::pascal((string) $name)}(self::chainValue($value, $context));
