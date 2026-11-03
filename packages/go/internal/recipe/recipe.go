@@ -97,16 +97,16 @@ type step struct {
 	Path     string              `json:"path"`
 	// Name, Mermaid and SkeletonOf are the fields of dbspec.import_mermaid: the name of the imported document, its Mermaid
 	// text or a ref to an export, and the .dbs file whose skeleton the import must equal (FCV-4).
-	Name        string                     `json:"name"`
-	Corpus      string                     `json:"corpus"`
-	Token       string                     `json:"token"`
-	Reply       string                     `json:"reply"`
-	Received    string                     `json:"received"`
+	Name     string `json:"name"`
+	Corpus   string `json:"corpus"`
+	Token    string `json:"token"`
+	Reply    string `json:"reply"`
+	Received string `json:"received"`
 	// Replies and Messages are the fields of markdown.session: the lines the listener answers and the lines it must receive.
 	Replies  []string `json:"replies"`
 	Messages []string `json:"messages"`
 	// Surface is the public call of a markdown.send step that has no form on a markdown connection.
-	Surface string `json:"surface"`
+	Surface     string                     `json:"surface"`
 	Mermaid     json.RawMessage            `json:"mermaid"`
 	SkeletonOf  string                     `json:"skeleton_of"`
 	Expect      map[string]json.RawMessage `json:"expect"`
@@ -287,7 +287,7 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 		return checkGeneratedFiles(o.dir, s)
 	case "generator.refused":
 		return checkRefusedGeneration(o.dir, s)
-	case "dbspec.parse", "dbspec.parse_plan", "dbspec.emit_plan", "dbspec.diff", "dbspec.plan_steps", "dbspec.add_tables_steps", "dbspec.chain", "dbspec.compare":
+	case "dbspec.parse", "dbspec.parse_plan", "dbspec.emit_plan", "dbspec.diff", "dbspec.plan_steps", "dbspec.introspect_refusal", "dbspec.add_tables_steps", "dbspec.chain", "dbspec.compare":
 		return dbspecStep(s, bound, database)
 	case "dbspec.parse_emit", "dbspec.manifest", "dbspec.render", "dbspec.analyze", "dbspec.parse_positions", "dbspec.format",
 		"dbspec.parse_set", "dbspec.set", "dbspec.load_set", "dbspec.runtime_model", "dbspec.read_file", "dbspec.read_bytes":
@@ -1569,6 +1569,8 @@ func dbspecStep(s step, bound map[string]result, database string) error {
 		got, err = dbspecDiff(s, bound)
 	case "dbspec.plan_steps":
 		got, err = dbspecPlanSteps(s, bound)
+	case "dbspec.introspect_refusal":
+		got, err = dbspecIntrospectRefusal(s)
 	case "dbspec.add_tables_steps":
 		got, err = dbspecAddTablesSteps(s, bound)
 	case "dbspec.chain":

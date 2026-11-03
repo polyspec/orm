@@ -76,6 +76,14 @@
       "op",
       "vectors"
     ],
+    "dbspec.introspect": [
+      "case",
+      "catalog_of",
+      "expect",
+      "op",
+      "paths",
+      "vectors"
+    ],
     "dbspec.introspect_shown": [
       "case",
       "expect",
@@ -566,6 +574,11 @@
       "op",
       "plan",
       "source"
+    ],
+    "dbspec.introspect_refusal": [
+      "dialect",
+      "expect",
+      "op"
     ],
     "dbspec.add_tables_steps": [
       "dialect",
