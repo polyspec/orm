@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: 411e4118bbe0f42d86303c69b1002884f9624264a31aee58729778eeee1d62d3 -->
+<!-- source-sha256: 681776eae2c60e18c1e7c898e479c5d32056684543b3d2211ed656bab7d7aa1d -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 언어별 테스트 명령을 선언한다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-check`가 실패한다.
@@ -35,6 +35,7 @@
   - `connection-driver-from-dsn`(CFG-40)는 Go에서 native로 남는다. `DriverFromDSN`은 연결을 열지 않고 데이터베이스를 돌려주는 Go 고유 함수이며, recipe 형식의 어떤 op도 그것을 호출하지 않는다.
   - `connection-catalog-session-through-a-pooler`(CFG-41)는 Python에서 native로 남는다. `ORM_TEST_PGBOUNCER_SINGLE_DSN`의 server connection 하나에 두 번째 client가 필요한데, 그 DSN은 고정 데이터베이스에 닿고 recipe 사례는 case 데이터베이스에서 실행되기 때문이다.
   - `connection-sqlite-several-process-writers`(CFG-42)는 Go, Python, Rust에서 native로 남는다. 그 runtime의 recipe op `transaction.writers`는 test process 하나의 연결에서 실행되고, recipe step이 거기서 process를 시작하지 않기 때문이다. TypeScript, PHP, PHP extension은 사례 `sqlite_writers_commit_every_row`에서 실행하며, 그 op는 거기서 process를 시작한다.
+  - `pool-idle-server-end`(INT-92)는 native로 남는다. recipe 사례는 자기 데이터베이스의 모든 runtime에서 실행되고 runtime별로 좁힐 수 없는데, 이 동작은 Go, TypeScript, Python, Rust의 pool에 속하고, PHP와 PHP extension은 pool이 없어 pool option을 거부하며 끝난 session을 `CONNECTION_LOST`로 보고하기 때문이다(CFG-38).
   - `connection-first-statement-lost`(CFG-38)는 이 동작이 PHP와 PHP extension에만 있으므로 두 runtime에서 native로 남는다. 두 runtime은 pool 없이 connection 하나를 두므로 첫 statement가 종료된 session을 만난다. 다른 runtime의 pool은 server가 종료한 idle connection을 버리고(INT-92, `pool-idle-server-end`), 다음 statement는 새 connection에서 성공한다.
   - `dbspec-introspect-silent-failure`(DIA-133a)는 PHP와 PHP extension에서, `dbspec-introspect-extension-method`(DIA-133b)는 PHP extension에서 native로 남는다. PDO connection의 error mode와 library의 method를 대신하는 method는 거기에만 있다. introspection의 다른 모든 동작은 recipe dbspec_introspect의 case다.
   - `connection-mysql-tls-unsupported-options`, `connection-statement-timeout-negative-refused`, `connection-dsn-other-parameters`(CFG-6, CFG-18, CFG-20)는 FCV-2의 driver entry로 Rust에서, 마지막은 Go에서도 native로 남는다. sqlx와 go-sql-driver가 매개변수에서 읽는 것은 어떤 public call도 돌려주지 않는 driver option이고, Rust 설정의 부호 없는 타입은 음수 값을 컴파일 때 거부한다. 다른 runtime의 거부는 `dsn-reject-checked`와 `dsn-reject-parameters`의 case다.
