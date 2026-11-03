@@ -132,6 +132,22 @@ name = "dbspec_apply_sqlite"
 path = "tests/dbspec_apply_sqlite.rs"
 harness = false
 
+# Each case of the connection_pool recipe is a trial of its program (FCV-3).
+[[test]]
+name = "connection_pool_mysql"
+path = "tests/connection_pool_mysql.rs"
+harness = false
+
+[[test]]
+name = "connection_pool_postgres"
+path = "tests/connection_pool_postgres.rs"
+harness = false
+
+[[test]]
+name = "connection_pool_sqlite"
+path = "tests/connection_pool_sqlite.rs"
+harness = false
+
 # Each case of the utils recipe, contracts/fixtures/utils/utils.json, is the trial utils_recipe_<database>::<case id> on a
 # case database of its own (FCV-3, FCV-4).
 [[test]]

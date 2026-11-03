@@ -91,6 +91,8 @@ export const conformanceCases = {
     return {
       length: rows.length,
       keys: rows.keys(),
+      values: rows.values().map(id),
+      entries: rows.entries().map(([key, row]) => [key, id(row)]),
       first: id(rows.first()),
       get: id(rows.get(1)),
       get_text: id(rows.get('1')),

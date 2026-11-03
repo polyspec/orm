@@ -397,6 +397,28 @@ func conformanceCases() map[string]caseFunc {
 				return nil, err
 			}
 			got["keys"] = keys
+			values := []any{}
+			for _, row := range rows.Slice() {
+				value, err := id(row, nil)
+				if err != nil {
+					return nil, err
+				}
+				values = append(values, value)
+			}
+			got["values"] = values
+			entries := []any{}
+			for key, row := range rows.All() {
+				name, err := key.Value()
+				if err != nil {
+					return nil, err
+				}
+				value, err := id(row, nil)
+				if err != nil {
+					return nil, err
+				}
+				entries = append(entries, []any{name, value})
+			}
+			got["entries"] = entries
 			if got["first"], err = id(rows.First(), nil); err != nil {
 				return nil, err
 			}

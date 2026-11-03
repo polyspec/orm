@@ -11,7 +11,7 @@ final class Orm
     private const SQLITE_BUSY_TIMEOUT_MS = 5000;
     /**
      * The session sql_mode decided per MySQL connection. The result does not depend on server settings
-     * (tests/dsn/mysql-session.json).
+     * (case mysql_session_settings of contracts/fixtures/dsn_connection).
      */
     private const MYSQL_SQL_MODE = 'STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_DATE,'
         . 'NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
