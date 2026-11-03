@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d0a6cdcc35d0e8423603e4ac6e8a765619e0240034553641fc98711d8002ee83 -->
+<!-- source-sha256: 99f6953a88ef1e837650777f45d9d73851ca08daa9bc022c5a1a67aff5872ba6 -->
 # 변경 이력
 
 ## Unreleased
@@ -323,6 +323,7 @@
 - 문장 runner(INT-150)의 parity unit은 여섯 런타임 모두에서 `Utils.run`과 frame `run`을 이름으로 쓰고, 모든 데이터베이스에서 statement_runner 테스트를 바인딩한다 (T345-7).
 - Python 런타임은 `utils().run(fn)`을 public으로 만들어, 연결의 트랜잭션 frame으로 `fn`을 호출한다 (INT-150, T345-6).
 - Python 설치는 이미 make uv-install을 거친다. Makefile:768이 `$(MAKE) uv-install DIR=packages/python`을 호출하고 직접 실행하는 uv sync는 남아 있지 않으므로, 이 row는 Verification으로 닫는다 (KSTD-5-118).
+- 값 타입, styled SQL NULL 읽기, decimal 왕복의 native 시험은 typed getter가 돌려주는 값만 남긴다. 저장된 값, 거부, 조건, row 출력은 `conformance_verification`의 case `core_value_types`, `core_styled_null`, `core_styled_states`, `core_decimal_values`로, `i16`에 넣는 소수는 bind vector `i16-fraction`으로 옮긴다.
 - CR15-2: `scripts/features/recipes.test.mts`는 helper가 읽지 않는 recipe schema key를 거부하고, Go, Python, Rust는 `file_created`를 비교하며, PHP는 `markdown.connect`의 `corpus`와 `token`으로 연결한다.
 - 타입 값, styled null, decimal 값은 새 표 `typed_value`와 `decimal_value`의 새 case `core_value_types`, `core_styled_null`, `core_decimal_values`이고, 중첩된 ordered JSON 값은 `model_writes_chain`의 case이다. Go의 native ordered JSON 시험은 없어졌다. FCV-2는 native value unit 세 개가 남는 이유를 적는다. Go recipe 읽기의 temporal cell은 다른 runtime처럼 value model 텍스트이고, 범위를 벗어난 `i16`은 쓰기에 닿아 `CODEC_ENCODE`로 거부된다.
 - CR15-2: recipe schema는 `connection` 없는 `model.create`와 `model.count`를 받고 FCV-4는 이를 case 연결에서 실행하며, schema_install과 statement_events의 owner 목록은 recipe의 모든 case를 담는다.

@@ -44,6 +44,7 @@ from polyspec.orm import (
     codes,
     transaction_conflict,
 )
+from polyspec.orm.core import styled_field
 from polyspec.orm.engine.model import field_of
 from polyspec.orm.testing import last_affected
 from polyspec.orm.engine.params import param_uses
@@ -2817,9 +2818,12 @@ def _column_value(model: Model, column: str, raw: dict, context: dict) -> Any:
     """The value of a column for a wrapper: an object is the styled value of its codec."""
     if "styled" in raw:
         return StyledValue.value(_chain_value(raw["styled"], context))
+    field = field_of(model.core.ent.entity, column)
+    # A null of a styled column is SQL NULL, the styled value its typed setter takes.
+    if "null" in raw and field is not None and styled_field(field):
+        return StyledValue.sql_null()
     if "object" not in raw:
         return _chain_value(raw, context)
-    field = field_of(model.core.ent.entity, column)
     return _styled_argument(raw, [] if field is None else list(field.stages), {})
 
 
