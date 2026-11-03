@@ -19,6 +19,11 @@
     "steps"
   ],
   "step": {
+    "dsn.connect": [
+      "dsn",
+      "expect",
+      "op"
+    ],
     "keyring.versions": [
       "expect",
       "keyring",
@@ -26,11 +31,6 @@
     ],
     "markdown.builder": [
       "calls",
-      "expect",
-      "op"
-    ],
-    "dsn.connect": [
-      "dsn",
       "expect",
       "op"
     ],
@@ -223,14 +223,17 @@
     ],
     "transaction": [
       "audit",
+      "conflicts",
       "connection",
+      "default_retry",
       "expect",
       "fail",
       "isolation",
       "op",
       "read_only",
       "retry",
-      "steps"
+      "steps",
+      "timeout_ms"
     ],
     "model.create": [
       "as",
@@ -240,6 +243,7 @@
       "model",
       "op",
       "restore_or_create",
+      "unconnected",
       "values"
     ],
     "model.creates": [
@@ -311,6 +315,7 @@
       "key",
       "model",
       "op",
+      "unconnected",
       "where"
     ],
     "model.get_by": [
@@ -565,6 +570,18 @@
     "hook.records": [
       "expect",
       "op"
+    ],
+    "transaction.attempts": [
+      "expect",
+      "op"
+    ],
+    "transaction.deadlock": [
+      "column",
+      "connections",
+      "expect",
+      "model",
+      "op",
+      "rows"
     ],
     "utils.aes_rotate": [
       "connection",

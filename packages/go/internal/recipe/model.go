@@ -61,6 +61,9 @@ func modelOp(s databaseStep, c *databaseContext) (outcome, error) {
 		c.closers = append(c.closers, func() error { return db.Close() })
 		return outcome{api: db, fields: map[string]any{}}, nil
 	}
+	if s.Unconnected {
+		return unconnectedAccountOp(s, c)
+	}
 	bound, ok := c.bound[s.Connection]
 	db, isDB := bound.api.(*orm.DB)
 	if !ok || !isDB {
@@ -200,7 +203,43 @@ func deleteRows[R interface{ Delete(...bool) error }](rows []R) (outcome, error)
 
 // compositeAccount is a CompositeAccount model set from the values of a model op.
 func compositeAccount(db *orm.DB, values map[string]any) (*model.CompositeAccountModel, error) {
-	m := model.CompositeAccount().Connect(db)
+	return setCompositeAccount(model.CompositeAccount().Connect(db), values)
+}
+
+// unconnectedAccountOp runs model.create and model.count of a CompositeAccount built with no connection (PLN-16).
+func unconnectedAccountOp(s databaseStep, c *databaseContext) (outcome, error) {
+	if s.Model != "CompositeAccount" {
+		return outcome{}, fmt.Errorf("model op %s: %s has no unconnected recipe op", s.Op, s.Model)
+	}
+	switch s.Op {
+	case "model.create":
+		values, err := modelValues(s.Values, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		m, err := setCompositeAccount(model.CompositeAccount(), values)
+		if err != nil {
+			return outcome{}, err
+		}
+		_, err = m.Create()
+		return outcome{fields: map[string]any{}}, err
+	case "model.count":
+		where, err := modelValues(s.Where, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		m, err := compositeAccountFilter(model.CompositeAccount(), where)
+		if err != nil {
+			return outcome{}, err
+		}
+		n, err := m.GetCount()
+		return outcome{fields: map[string]any{"value": map[string]any{"int": strconv.FormatInt(n, 10)}}}, err
+	}
+	return outcome{}, fmt.Errorf("model op %s has no unconnected form", s.Op)
+}
+
+// setCompositeAccount sets the columns of values on m.
+func setCompositeAccount(m *model.CompositeAccountModel, values map[string]any) (*model.CompositeAccountModel, error) {
 	err := setColumns("CompositeAccount", values, map[string]columnSetter{
 		"tenant_id":  int64Setter(m.SetTenantId),
 		"account_id": int64Setter(m.SetAccountId),
