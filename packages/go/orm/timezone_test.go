@@ -3,7 +3,6 @@ package orm_test
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -18,91 +17,6 @@ var zoneColumns = []string{"seq", "start_dt", "created_ts"}
 
 func zoneEntity(s *orm.Schema) *orm.Entity {
 	return rowEntity("zone_event", s, zoneColumns...)
-}
-
-// TestConnectionsUseUTC checks that every connection reads and writes datetime as UTC,
-// regardless of the server's time zone (docs/spec/dialects.md "Date and time"). The test
-// server's MySQL is SYSTEM (KST) and PostgreSQL is Asia/Seoul. A value with an offset is
-// stored as UTC wall clock, read back in the UTC location, and the clock default is also UTC.
-// Requirements: CFG-2.
-func TestConnectionsUseUTC(t *testing.T) {
-	// The test of DSL-141, DIA-57 (docs/spec).
-	testcase.Start(t, testcase.Database)
-	s := fixtureSchema(t, "zone")
-	manifest := s
-	for _, driver := range []string{"sqlite", "mysql", "postgres"} {
-		for _, zone := range []string{"", "UTC", "+00:00"} {
-			t.Run(driver+"/"+zone, func(t *testing.T) {
-				base := newDatabase(t, driver)
-				dsn := base
-				if zone != "" {
-					sep := "?"
-					if strings.Contains(base, "?") {
-						sep = "&"
-					}
-					dsn = base + sep + "timezone=" + strings.ReplaceAll(zone, "+", "%2B")
-				}
-				db := connectSchemaDB(t, dsn, s)
-				defer testcase.Close(t, db)
-				if err := db.Utils().Schema().Install(manifest); err != nil {
-					t.Fatal(err)
-				}
-				ent := zoneEntity(s)
-				model := coreFunc(db, ent)
-				start := time.Date(2026, 1, 2, 0, 0, 0, 0, time.FixedZone("+09:00", 9*3600))
-				c := model()
-				c.Set("start_dt", start.UTC().Format("2006-01-02 15:04:05.000000"))
-				before := time.Now()
-				if _, err := c.Create(); err != nil {
-					t.Fatal(err)
-				}
-				row, err := model().Get()
-				if err != nil || row == nil {
-					t.Fatalf("get: %v %v", row, err)
-				}
-				vals := as[*keywordRow](t, row).vals
-				got, ok := vals["start_dt"].(time.Time)
-				if !ok || !got.Equal(start) || got.Location() != time.UTC || got.Format("2006-01-02 15:04") != "2026-01-01 15:00" {
-					t.Fatalf("start_dt = %v, want %v in UTC", vals["start_dt"], start.UTC())
-				}
-				created, ok := vals["created_ts"].(time.Time)
-				if !ok || created.Location() != time.UTC || created.Sub(before).Abs() > time.Minute {
-					t.Fatalf("created_ts = %v, want about %v in UTC", vals["created_ts"], before.UTC())
-				}
-				text := model()
-				text.Set("start_dt", "2026-01-03 00:00:00")
-				if _, err := text.Create(); err != nil {
-					t.Fatal(err)
-				}
-				for _, filter := range []struct {
-					name string
-					key  orm.ChainKey
-					arg  any
-					want int64
-				}{
-					{"instant", orm.ChainKey{Column: "start_dt"}, start.UTC().Format("2006-01-02 15:04:05.000000"), 1},
-					{"equal", orm.ChainKey{Column: "start_dt"}, "2026-01-01 15:00:00", 1},
-					{"fraction", orm.ChainKey{Column: "start_dt"}, "2026-01-03T00:00:00.0", 1},
-					{"in", orm.ChainKey{Column: "start_dt"}, []string{"2026-01-01 15:00:00", "2026-01-03 00:00:00"}, 2},
-					{"between", orm.ChainKey{Op: "between", Column: "start_dt"}, [2]string{"2026-01-01 15:00:00", "2026-01-02 23:59:59"}, 1},
-				} {
-					q := model()
-					q.Where("", []orm.ChainKey{filter.key}, filter.arg)
-					got, err := q.GetCount()
-					if err != nil || got != filter.want {
-						t.Fatalf("%s: %d %v, want %d", filter.name, got, err, filter.want)
-					}
-				}
-				if driver == "sqlite" {
-					bad := model()
-					bad.Where("", []orm.ChainKey{{Column: "start_dt"}}, "2026-01-02")
-					if _, err := bad.GetCount(); orm.ErrorCode(err) != orm.CodeCodecEncode {
-						t.Fatalf("date-only datetime text: %v, want CODEC_ENCODE", err)
-					}
-				}
-			})
-		}
-	}
 }
 
 // TestPoolSize applies the configured maximum of open connections, 10 when

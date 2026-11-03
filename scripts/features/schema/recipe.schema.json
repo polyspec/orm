@@ -81,7 +81,8 @@
                           "enum": [
                             "model.connect",
                             "sql.exec",
-                            "dbspec.ddl_behavior"
+                            "dbspec.ddl_behavior",
+                            "dbspec.introspect"
                           ]
                         }
                       }
@@ -163,6 +164,10 @@
       ],
       "additionalProperties": false,
       "properties": {
+        "after": {
+          "$ref": "#/$defs/ops/sql.exec",
+          "description": "The statement that runs once the rows of the seed are written, for what those rows leave behind (FCV-13)."
+        },
         "rows": {
           "type": "object",
           "propertyNames": {
@@ -715,6 +720,10 @@
               "type": "string",
               "pattern": "^[A-Z][A-Z0-9_]*$"
             },
+            "keeps_callback": {
+              "description": "A ROLLBACK error keeps the error that the callback of its transaction returned (CFG-15).",
+              "const": true
+            },
             "driver_cause": {
               "description": "The error keeps the error of the driver as its cause (Go errors.Unwrap, PHP getPrevious, TypeScript cause, Python __cause__, Rust source).",
               "const": true
@@ -740,9 +749,6 @@
               }
             }
           }
-        },
-        {
-          "$ref": "#/$defs/withinValue"
         },
         {
           "$ref": "#/$defs/outcomes/json"
@@ -798,6 +804,7 @@
             "dbspec.introspect_sqlite",
             "dbspec.apply_fault",
             "dbspec.ddl_behavior",
+            "dbspec.introspect",
             "dbspec.introspect_shown",
             "markdown.builder",
             "model.connect",
@@ -809,6 +816,7 @@
             "collection.key",
             "sql.exec",
             "session.end",
+            "fault.next_rollback",
             "query.search",
             "query.search_chain",
             "ir.validate",
@@ -852,6 +860,7 @@
             "events.unsubscribe",
             "utils.run",
             "events.captured",
+            "events.server_transactions",
             "planner.compile",
             "dbspec.parse",
             "dbspec.parse_plan",
@@ -860,6 +869,7 @@
             "dbspec.compare",
             "dbspec.emit_plan",
             "dbspec.plan_steps",
+            "dbspec.introspect_refusal",
             "dbspec.add_tables_steps",
             "utils.aes_status",
             "dbspec.parse_emit",
@@ -877,11 +887,15 @@
             "catalog.connect",
             "catalog.close",
             "catalog.reconnect",
+            "sql.hold_connection",
+            "sql.release_connection",
             "catalog.revision",
+            "catalog.revision_compare",
             "catalog.row_cells",
             "model.read_bind_cell",
             "generator.generate",
             "generator.check",
+            "generator.refused",
             "dbspec.export_mermaid",
             "dbspec.import_mermaid",
             "hook.install",
@@ -933,6 +947,9 @@
           "$ref": "#/$defs/ops/dbspec.ddl_behavior"
         },
         {
+          "$ref": "#/$defs/ops/dbspec.introspect"
+        },
+        {
           "$ref": "#/$defs/ops/dbspec.introspect_shown"
         },
         {
@@ -973,6 +990,9 @@
         },
         {
           "$ref": "#/$defs/ops/session.end"
+        },
+        {
+          "$ref": "#/$defs/ops/fault.next_rollback"
         },
         {
           "$ref": "#/$defs/ops/query.search"
@@ -1018,6 +1038,9 @@
         },
         {
           "$ref": "#/$defs/ops/dbspec.plan_steps"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.introspect_refusal"
         },
         {
           "$ref": "#/$defs/ops/dbspec.add_tables_steps"
@@ -1125,6 +1148,9 @@
           "$ref": "#/$defs/ops/events.captured"
         },
         {
+          "$ref": "#/$defs/ops/events.server_transactions"
+        },
+        {
           "$ref": "#/$defs/ops/utils.aes_status"
         },
         {
@@ -1173,7 +1199,16 @@
           "$ref": "#/$defs/ops/catalog.reconnect"
         },
         {
+          "$ref": "#/$defs/ops/sql.hold_connection"
+        },
+        {
+          "$ref": "#/$defs/ops/sql.release_connection"
+        },
+        {
           "$ref": "#/$defs/ops/catalog.revision"
+        },
+        {
+          "$ref": "#/$defs/ops/catalog.revision_compare"
         },
         {
           "$ref": "#/$defs/ops/catalog.row_cells"
@@ -1186,6 +1221,9 @@
         },
         {
           "$ref": "#/$defs/ops/generator.check"
+        },
+        {
+          "$ref": "#/$defs/ops/generator.refused"
         },
         {
           "$ref": "#/$defs/ops/dbspec.export_mermaid"
@@ -1924,6 +1962,66 @@
           }
         }
       },
+      "dbspec.introspect": {
+        "description": "Renders a document set for the database, applies it on one native connection of the case database with the statements of its vector, introspects that database and compares the result (DIA-133) and the catalog queries (DIA-198).",
+        "type": "object",
+        "required": [
+          "op",
+          "expect"
+        ],
+        "oneOf": [
+          {
+            "properties": { "paths": true },
+            "required": ["paths"]
+          },
+          {
+            "properties": { "vectors": true, "case": true },
+            "required": ["vectors", "case"]
+          },
+          {
+            "properties": { "catalog_of": true },
+            "required": ["catalog_of"]
+          }
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.introspect"
+          },
+          "paths": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "vectors": {
+            "type": "string"
+          },
+          "case": {
+            "type": "string"
+          },
+          "catalog_of": {
+            "type": "string",
+            "description": "Introspects the empty case database with the catalog queries of this other dialect, which fail."
+          },
+          "expect": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "failed": {
+                  "const": true
+                },
+                "queries": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      },
       "dbspec.introspect_shown": {
         "type": "object",
         "required": [
@@ -2188,7 +2286,7 @@
           "dsn": {
             "type": "string",
             "minLength": 1,
-            "description": "Absent: the case database. \"case\" is its DSN, \"case-socket\" its MySQL DSN through the socket ORM_TEST_MYSQL_SOCKET (CFG-10, CFG-19; a MySQL-only recipe unit, FCV-3); otherwise the DSN text of the step (FCV-4)."
+            "description": "Absent: the case database. \"case\" is its DSN, \"case?<query>\" its DSN with those parameters, \"case-socket\" its MySQL DSN through the socket ORM_TEST_MYSQL_SOCKET (CFG-10, CFG-19; a MySQL-only recipe unit, FCV-3); otherwise the DSN text of the step (FCV-4)."
           },
           "as": {
             "$ref": "#/$defs/name"
@@ -2561,6 +2659,10 @@
                     "properties": {
                       "error": {
                         "type": "string"
+                      },
+                      "message": {
+                        "type": "string",
+                        "description": "The exact text of the error of every dialect, when the case holds it."
                       }
                     }
                   }
@@ -2761,6 +2863,45 @@
                   "text": {
                     "type": "string",
                     "description": "The plan text of EmitPlan: the lines of the plan, each ended by a newline."
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "dbspec.introspect_refusal": {
+        "type": "object",
+        "description": "Introspection on an in-memory SQLite connection with a dialect that is none of DBS-174.",
+        "required": [
+          "op",
+          "dialect",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.introspect_refusal"
+          },
+          "dialect": {
+            "type": "string"
+          },
+          "expect": {
+            "type": "object",
+            "required": [
+              "none"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "type": "object",
+                "required": [
+                  "refused"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "refused": {
+                    "type": "string"
                   }
                 }
               }
@@ -3370,6 +3511,20 @@
           }
         }
       },
+      "fault.next_rollback": {
+        "description": "Arms the rollback fault of the test entry point of the client on the connection (PRT-43 and its peers).",
+        "type": "object",
+        "required": ["op", "connection"],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "fault.next_rollback"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          }
+        }
+      },
       "session.end": {
         "description": "Ends, through the native driver on the server DSN of the database, the server session that holds a lock on the table (CFG-15).",
         "type": "object",
@@ -3572,6 +3727,12 @@
           "op": {
             "const": "catalog.read_only_grid_query"
           },
+          "binds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/argument"
+            }
+          },
           "sql": {
             "$ref": "#/$defs/sql"
           },
@@ -3645,6 +3806,43 @@
               "column_name": {
                 "description": "The name that replaces the name of the first column of the descriptor of the page.",
                 "type": "string"
+              },
+              "primary_key": {
+                "description": "The key columns that replace the primary key of the descriptor of the page.",
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/name"
+                }
+              },
+              "limit": {
+                "description": "The limit that replaces the limit of the page.",
+                "type": "integer"
+              },
+              "result_column_name": {
+                "description": "The name that replaces the name of the first column of the result of the page.",
+                "type": "string"
+              },
+              "drop_last_cell": {
+                "description": "Removes the last cell of the first row of the page.",
+                "const": true
+              },
+              "fill_last_cell": {
+                "description": "Replaces the last cell of the first row of the page with the text fill repeated count times.",
+                "type": "object",
+                "required": [
+                  "fill",
+                  "count"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "fill": {
+                    "type": "string"
+                  },
+                  "count": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                }
               }
             }
           },
@@ -3669,8 +3867,7 @@
         "required": [
           "op",
           "metadata",
-          "values",
-          "expect"
+          "values"
         ],
         "additionalProperties": false,
         "properties": {
@@ -4574,6 +4771,10 @@
             ],
             "additionalProperties": false,
             "properties": {
+                            "json_output": {
+                              "description": "The result is the model JSON output text of the row: its members in row order, and each styled value with its stored document text (COD-26).",
+                              "const": true
+                            },
                             "ordered_text": {
                 "description": "The result is the text of the ordered-json value that the row holds in this column (DIA-26).",
                 "$ref": "#/$defs/name"
@@ -4620,6 +4821,10 @@
             ],
             "additionalProperties": false,
             "properties": {
+                            "json_output": {
+                              "description": "The result is the model JSON output text of the row: its members in row order, and each styled value with its stored document text (COD-26).",
+                              "const": true
+                            },
                             "ordered_text": {
                 "description": "The result is the text of the ordered-json value that the row holds in this column (DIA-26).",
                 "$ref": "#/$defs/name"
@@ -5071,6 +5276,50 @@
           },
           "as": {
             "$ref": "#/$defs/name"
+          }
+        }
+      },
+      "events.server_transactions": {
+        "type": "object",
+        "required": ["op", "connection", "probe", "first_run_prepare_clients", "steps", "expect"],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "events.server_transactions",
+            "description": "Runs steps twice on the connection and reads, by the difference of probe, the server transactions of each run (INT-149)."
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "probe": {
+            "type": "string",
+            "description": "One statement whose single integer cell grows with the server transactions of the connection."
+          },
+          "first_run_prepare_clients": {
+            "type": "array",
+            "items": {
+              "enum": ["go", "php", "php-extension", "python", "rust", "typescript"]
+            },
+            "description": "The clients whose first run prepares each distinct text in a round trip of its own, one more transaction for each."
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/step"
+            }
+          },
+          "expect": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": false,
+            "properties": {
+              "mysql": {
+                "$ref": "#/$defs/outcomes/serverTransactions"
+              },
+              "postgres": {
+                "$ref": "#/$defs/outcomes/serverTransactions"
+              }
+            }
           }
         }
       },
@@ -6406,6 +6655,75 @@
             "description": "The prefix of the user of the new connection: the prefix and the last 28 characters of the name of the case database, on the DSN of the case without a password.",
             "type": "string",
             "minLength": 1
+          },
+          "refused_message": {
+            "description": "The server must refuse the connection: the text that the error message of the driver holds, compared in lower case. The connection of the case stays.",
+            "type": "string",
+            "minLength": 1
+          },
+          "refused_code": {
+            "description": "With refused_message: the code of the error of that refusal.",
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]*$"
+          }
+        }
+      },
+      "sql.hold_connection": {
+        "type": "object",
+        "required": [
+          "op",
+          "user_from_database"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "sql.hold_connection"
+          },
+          "user_from_database": {
+            "description": "The user whose place the native connection holds, named as catalog.reconnect names it. The connection stays open until sql.release_connection.",
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "sql.release_connection": {
+        "type": "object",
+        "required": [
+          "op"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "sql.release_connection"
+          }
+        }
+      },
+      "catalog.revision_compare": {
+        "description": "Compares the revision of a snapshot with the revision of another: the outcome is the json {\"length\": the characters of the revision, \"differs\": whether the two differ}.",
+        "type": "object",
+        "required": [
+          "op",
+          "snapshot",
+          "other",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "catalog.revision_compare"
+          },
+          "snapshot": {
+            "$ref": "#/$defs/ref"
+          },
+          "other": {
+            "$ref": "#/$defs/ref"
+          },
+          "expect": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+              "$ref": "#/$defs/outcomes/json"
+            }
           }
         }
       },
@@ -6459,7 +6777,8 @@
           "op",
           "document_set",
           "unchanged",
-          "changed"
+          "changed",
+          "removed"
         ],
         "additionalProperties": false,
         "properties": {
@@ -6480,6 +6799,70 @@
           "changed": {
             "description": "The lines of the check after one byte of one generated file changed; <file> is that file as the runtime names it.",
             "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "removed": {
+            "description": "The lines of the check after that file was removed.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "generator.refused": {
+        "type": "object",
+        "required": [
+          "op",
+          "files",
+          "parts"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "generator.refused"
+          },
+          "files": {
+            "description": "The tree of the generation, with dbspec-set.json at its root: a name to its text, or to the path of a file to copy, relative to the recipe file.",
+            "type": "object",
+            "required": [
+              "dbspec-set.json"
+            ],
+            "properties": {
+              "dbspec-set.json": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "path"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "check": {
+            "description": "True runs the check of the generated files in place of the generation.",
+            "type": "boolean"
+          },
+          "parts": {
+            "description": "The texts that the output of the refusal holds, each after the one before it.",
+            "type": "array",
+            "minItems": 1,
             "items": {
               "type": "string"
             }
@@ -7834,6 +8217,34 @@
       }
     },
     "outcomes": {
+      "serverTransactions": {
+        "type": "object",
+        "required": ["probe_cost", "events", "texts", "first_excess", "second_excess"],
+        "additionalProperties": false,
+        "properties": {
+          "probe_cost": {
+            "type": "integer"
+          },
+          "events": {
+            "type": "integer"
+          },
+          "texts": {
+            "type": "integer"
+          },
+          "first_excess": {
+            "type": "integer"
+          },
+          "second_excess": {
+            "type": "integer"
+          },
+          "time_zone": {
+            "type": "string"
+          },
+          "time_zone_from_startup": {
+            "type": "boolean"
+          }
+        }
+      },
       "deadlock": {
         "type": "object",
         "required": [
@@ -7993,6 +8404,18 @@
             ],
             "additionalProperties": false,
             "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "table",
+                  "partitioned",
+                  "view",
+                  "materialized_view",
+                  "foreign",
+                  "virtual",
+                  "shadow"
+                ]
+              },
               "columns": {
                 "type": "array",
                 "items": {
@@ -8128,9 +8551,6 @@
                     "oneOf": [
                       {
                         "$ref": "#/$defs/value"
-                      },
-                      {
-                        "$ref": "#/$defs/withinValue"
                       },
                       {
                         "$ref": "#/$defs/ref"
@@ -8358,7 +8778,6 @@
     },
     "assignments": {
       "type": "array",
-      "minItems": 1,
       "items": {
         "type": "array",
         "prefixItems": [
@@ -8540,6 +8959,7 @@
             "months_ago",
             "months_later",
             "seconds_ago",
+            "seconds_later",
             "now"
           ]
         },
@@ -8919,6 +9339,18 @@
       "items": {
         "oneOf": [
           {
+            "type": "object",
+            "required": [
+              "random"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "random": {
+                "const": true
+              }
+            }
+          },
+          {
             "$ref": "#/$defs/name"
           },
           {
@@ -9275,28 +9707,6 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/value"
-          }
-        }
-      }
-    },
-    "withinValue": {
-      "type": "object",
-      "required": [
-        "within"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "within": {
-          "type": "object",
-          "required": [
-            "seconds"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "seconds": {
-              "type": "integer",
-              "minimum": 0
-            }
           }
         }
       }

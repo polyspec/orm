@@ -48,6 +48,7 @@ type chainOrder struct {
 	Column string   `json:"column"`
 	Fn     *chainFn `json:"fn"`
 	Dir    string   `json:"dir"`
+	Random bool     `json:"random"`
 }
 
 // UnmarshalJSON reads an order entry: an object, or a column name that is descending when it begins with "-" (FCV-4).
@@ -123,6 +124,7 @@ type chainStep struct {
 	Pick            []string                   `json:"pick"`
 	KeyBy           string                     `json:"key_by"`
 	OrderedText     string                     `json:"ordered_text"`
+	JSONOutput      bool                       `json:"json_output"`
 	GroupValue      string                     `json:"group_value"`
 	DerivedIntegers []string                   `json:"derived_integers"`
 	Page            bool                       `json:"page"`
@@ -314,6 +316,8 @@ func chainFunc(f *chainFn) (orm.Func, error) {
 		return orm.MonthsLater(n), nil
 	case "seconds_ago":
 		return orm.SecondsAgo(n), nil
+	case "seconds_later":
+		return orm.SecondsLater(n), nil
 	}
 	return orm.Func{}, fmt.Errorf("function %s has no recipe entry", f.Fn)
 }
@@ -760,7 +764,11 @@ func (b *chainBuild) query(core *orm.Core, q chainQuery) error {
 			return err
 		}
 	}
-	for _, o := range q.k("order").Order {
+	for _, o := range q.Order {
+		if o.Random {
+			core.OrderByRandom()
+			continue
+		}
 		var fn []orm.Func
 		column := o.Column
 		if o.Fn != nil {
@@ -937,6 +945,13 @@ func chainOp(raw json.RawMessage, c *databaseContext, reads *stepReads) (outcome
 		row, ok := m.(*tableRow)
 		if !ok && m != nil {
 			return outcome{}, fmt.Errorf("model.get_by: the row is a %T", m)
+		}
+		if s.k("json_output").JSONOutput && row != nil {
+			text, err := json.Marshal(row.m)
+			if err != nil {
+				return outcome{}, err
+			}
+			return jsonOutcome(string(text)), nil
 		}
 		if s.k("ordered_text").OrderedText != "" && row != nil {
 			text, err := orderedText(row, s.k("ordered_text").OrderedText)
@@ -1320,16 +1335,40 @@ func chainAssign(core *orm.Core, raw json.RawMessage, c *databaseContext) error 
 			core.SetNull(member.key)
 			continue
 		}
+		if text, ok := value.(string); ok && temporalColumn(core, member.key, c) {
+			// A generated setter of a temporal column takes its text through SetTimeText, which records a bad text.
+			core.SetTimeText(member.key, text)
+			continue
+		}
 		core.Set(member.key, value)
 	}
 	return nil
+}
+
+// temporalColumn reports whether column of the model of core is a time or a datetime.
+func temporalColumn(core *orm.Core, column string, c *databaseContext) bool {
+	if c.schema == nil {
+		return false
+	}
+	model, err := c.schema.Model()
+	if err != nil {
+		return false
+	}
+	entity := model.Entities[core.Entity().Name]
+	if entity == nil {
+		return false
+	}
+	field := entity.Field(column)
+	return field != nil && (field.Type == "time" || field.Type == "datetime")
 }
 
 // chainWrite runs model.create, model.save, model.duplicate_create and model.restore: a model set from values, then its
 // terminal. The written model is bound with as, and its toArray is the result.
 func chainWrite(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
 	core := chainCore(s.k("model").Model, c)
-	core.Connect(db)
+	if !s.k("unconnected").Unconnected {
+		core.Connect(db)
+	}
 	if err := chainAssign(core, s.k("values").Values, c); err != nil {
 		return outcome{}, err
 	}

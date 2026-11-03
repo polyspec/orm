@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: b1acd163bc6b1a5f3514fa35b49e666bc0211415ba358794c1da34e2c11241d3 -->
+<!-- source-sha256: e1ea43420d48b38639832693affc1d2b1859c998c2ac83366c2b18fab8a3b111 -->
 # dbspec
 
 [English](dbspec.md)
@@ -99,7 +99,7 @@ table users {
 - **DBS-25** `set.path`: 경로에 정규형이 없거나, `documents` 경로에 `..` segment가 있거나, `external` 경로에서 다른 segment 뒤에 `..`이 있다
 - **DBS-26** `set.duplicate`: 경로의 파일이 앞의 경로의 파일과 같다
 
-- **DBS-27** 오류가 있는 set 파일이나 diagnostic이 있는 나열된 파일을 받은 generator는 오류 상태로 끝나며, 모든 오류와 diagnostic을 출력하고, 아무것도 쓰지 않는다. 공유 vector `tests/dbspec/set-files.json`은 각 rule을 받아들이는 case와 거부하는 case로 file tree(일반 파일, directory, symbolic link, hard link) 형태로 담으며, 모든 client의 set reader가 이를 실행한다; TypeScript의 `parseSet`은 file tree가 필요 없는 case도 실행한다. file tree case에는 symbolic link와 hard link를 가진 file system이 필요하다: Windows에서는 NTFS와 symbolic link를 만들 권한.
+- **DBS-27** 오류가 있는 set 파일이나 diagnostic이 있는 나열된 파일을 받은 generator는 오류 상태로 끝나며, 모든 오류와 diagnostic을 출력하되 parse된 문서의 diagnostic은 파일이나 set 이름 뒤에 SCH-12 형식 `<line>:<column> <rule>: document <name>: <message>`로 출력하고, 아무것도 쓰지 않는다. 공유 vector `tests/dbspec/set-files.json`은 각 rule을 받아들이는 case와 거부하는 case로 file tree(일반 파일, directory, symbolic link, hard link) 형태로 담으며, 모든 client의 set reader가 이를 실행한다; TypeScript의 `parseSet`은 file tree가 필요 없는 case도 실행한다. file tree case에는 symbolic link와 hard link를 가진 file system이 필요하다: Windows에서는 NTFS와 symbolic link를 만들 권한.
 
 
 ### Set parse {#parsing-a-set}
@@ -340,7 +340,9 @@ client는 문서 집합으로 runtime model 하나를 만들고, 생성 코드�
 - **DBS-118** **Relation.** 생성 코드는 이전처럼 column의 match method로 두 entity를 join한다. join 결과는 호출이 준 alias나 `<entity>_model`, `<entity>_models`로 얻는다.
 - **DBS-119** **Connection.** raw connection은 DSN URI와 설정을 받고 set을 등록하지 않으며, schema 경로는 받지 않는다. 생성 코드는 manifest text와 `manifestHash`를 담고, 그 connect helper가 connection을 열어 그 set을 등록한다. `utils().schema().register(schema)`는 열린 connection에 set을 등록하고, `install`은 자기가 설치한 set을 등록한다. 등록은 database를 읽지 않는다. schema 값으로 등록한 set은 manifest text와 external text에서 runtime model을 얻으므로 읽은 생성 코드가 필요 없다. PHP는 생성 class의 bootstrap이 실행된 뒤에는 그 array를 쓴다. request는 `manifestHash`를 담고 그 set이 등록된 connection에서만 실행된다([protocol](protocol.md)).
 - **DBS-120** **Generated metadata.** manifest는 각 ORM client runtime model의 원천이며 생성 코드는 이를 어기지 않는다. Go, TypeScript, Rust, Python은 생성 코드가 가진 manifest와 external text에서 runtime model을 만들고, generated entity는 이름과 set만 가진다(Rust model은 build script가 다시 생성하기도 한다). PHP client는 생성 class의 `meta()` array를 쓰며 `manifest_hash`를 뺀 array를 manifest와 external text가 정의한 entity와 비교한다. manifest에 없는 entity를 포함한 차이는 어떤 statement보다 먼저 `CONFIG`로 실패하고 class, entity, 처음 다른 field 경로(`columns.name.length`), 재생성 명령 `orm-gen gen`을 알린다. PHP extension은 PHP model runtime을 C로 구현한다. PHP generator는 PHP library와 extension이 함께 불러오는 typed model class를 생성하고, extension의 native `Model` class가 그 기반 class다.
-- **DBS-175** `orm-gen gen --check`는 아무것도 쓰지 않는다. generator가 `--out` 아래에 쓸 파일을 그 자리의 파일과 비교한다. 모든 파일이 같으면 0으로 끝나고, 다른 파일마다 `differs: <path>`를 출력한 뒤 1로 끝난다.
+- **DBS-175** `orm-gen gen --check`는 아무것도 쓰지 않는다. generator가 `--out` 아래에 쓸 파일을 그 자리의 파일과 비교한다. 모든 파일이 같으면 0으로 끝나고, 다른 파일마다 `differs: <path>`를, 없는 파일마다 `missing: <path>`를 출력한 뒤 1로 끝난다. 쓰지 않을 파일은 비교하지 않는다.
+- **DBS-182** Go의 `github.com/polyspec/orm/packages/go` generator는 `--check`에서 `--out`의 파일 중 쓰지 않을 파일이 생성 header를 지니면 `extra: <path>`도 출력하고, 생성이 실패한 검사는 `--out` 아래 파일을 그대로 둔다.
+- **DBS-183** `polyspec/orm` PHP generator는 `--check`에서 `--out`의 파일 중 쓰지 않을 파일이 생성 표지를 지니면 `extra: <path>`도 출력한다.
 - **DBS-177** `polyspec/orm` PHP client는 생성된 집합의 runtime model을 manifest parse 없이 읽는다. `schema_declarations.php`는 parse된 entity를 상수 `PARSED_ENTITIES`로, 그것을 쓴 manifest hash와 runtime model 형식을 `PARSED_HASH`와 `PARSED_FORMAT`으로 가지며, `bootstrap.php`가 이를 `Registry::parsed`에 넘긴다. `PARSED_HASH`로 manifest text가 등록되어 있고 `PARSED_FORMAT`이 `RuntimeModel::FORMAT`과 같을 때만 parse를 대신하며, 그렇지 않으면 process가 manifest를 parse한다. 어느 경우에도 각 class의 `meta()`는 DBS-179가 정한 시점에 DBS-120대로 비교한다.
 - **DBS-178** `polyspec/orm-php-ext` package의 PHP extension은 같은 `Registry::parsed`와 `RuntimeModel::FORMAT`으로 DBS-177의 규칙에 따라 생성된 집합의 runtime model을 읽는다.
 - **DBS-179** `polyspec/orm` PHP client의 process는 생성된 model을 쓸 때만 그 file을 읽어 들인다. `bootstrap.php`는 각 entity의 class를 `Registry::classes`에 넘기며, 이 호출은 class를 읽어 들이지 않고 `Registry::models`가 그 map을 돌려준다. 이미 다른 class로 등록된 entity는 `CONFIG`로 실패한다. `PARSED_ENTITIES`로 만든 runtime model은 class를 읽어 들이지 않으며, chain이 집합의 어느 entity에서든 찾는 column 이름도 같은 데이터에서 읽는다. `Registry::verify`는 요청이 class를 처음 쓸 때 process당 한 번 그 class를 DBS-120대로 entity와 비교한다. 그래서 수정된 class는 첫 statement 전에 `CONFIG`로 실패하고, 그 class를 쓰지 않는 요청에는 영향을 주지 않는다. 쓸 수 있는 `PARSED_ENTITIES`가 없는 process는 runtime model을 만들 때 등록된 모든 class를 비교한다.

@@ -44,8 +44,9 @@ from polyspec.orm import (
     codes,
     transaction_conflict,
 )
+from polyspec.orm.core import styled_field
 from polyspec.orm.engine.model import field_of
-from polyspec.orm.testing import last_affected
+from polyspec.orm.testing import fail_next_rollback, last_affected
 from polyspec.orm.engine.params import param_uses
 from polyspec.orm.codec import (
     CodecError,
@@ -85,7 +86,8 @@ from . import chain_answer, testcase
 from .case_database import case_database
 from .recipe_apply import apply_ops
 from .coverage_case import native_query, native_session
-from .recipe_generator import check_generated_files, check_generator
+from .recipe_generator import check_generated_files, check_refused_generation, check_generator
+from .recipe_introspect import _introspect_refusal, _op_dbspec_introspect
 from .server_database import with_database
 from .recipe_keys import check_keys
 from .recipe_model import model_ops
@@ -181,6 +183,9 @@ def recipe_tests(path: str, database: str):
             return
         if step["op"] == "generator.generate":
             check_generator(step, ROOT / Path(path).parent, database)
+            return
+        if step["op"] == "generator.refused":
+            check_refused_generation(step, ROOT / Path(path).parent)
             return
         if step["op"] == "generator.check":
             check_generated_files(step, ROOT / Path(path).parent)
@@ -1546,13 +1551,19 @@ def _plan(step: dict, recipe_dir: Path, database: str) -> None:
     if "error" in outcome:
         for dialect in _PLAN_DIALECTS:
             got = None
+            message = ""
             try:
                 Engine(model, dialect).compile(request)
             except OrmError as error:
                 got = error.code
+                message = str(error)
             if got != outcome["error"]:
                 raise AssertionError(
                     f"{dialect}: got {got or 'a plan'}, want {outcome['error']}"
+                )
+            if "message" in outcome and message != outcome["message"]:
+                raise AssertionError(
+                    f"{dialect}: message {message}, want {outcome['message']}"
                 )
         return
     got = {}
@@ -1586,6 +1597,7 @@ _DBSPEC_OPS = (
     "dbspec.emit_plan",
     "dbspec.diff",
     "dbspec.plan_steps",
+    "dbspec.introspect_refusal",
     "dbspec.add_tables_steps",
     "dbspec.chain",
     "dbspec.compare",
@@ -1608,6 +1620,8 @@ def _dbspec(step: dict, bound: dict, database: str) -> None:
         got = {"diagnostics": _rows(diagnostics, False)}
     elif op == "dbspec.emit_plan":
         got = {"text": emit_plan(_dbspec_value(step["plan"], bound, "plan"))}
+    elif op == "dbspec.introspect_refusal":
+        got = _introspect_refusal(step["dialect"])
     elif op == "dbspec.plan_steps" and step["dialect"] not in ("mysql", "postgres", "sqlite"):
         got = _dialect_refusal(
             step["dialect"],
@@ -2384,6 +2398,9 @@ def _run_case_on(
                             f"recipe {path}, case {case['id']}, {part} seed row {index} of {table}, database {database}: "
                             f"{error!r}"
                         ) from error
+        for owner in (recipe, case):
+            if "after" in owner.get("seed", {}):
+                _run_database_step(owner["seed"]["after"], context)
         for index, step in enumerate(case["steps"]):
             try:
                 _run_database_step(step, context)
@@ -2490,19 +2507,54 @@ def _op_close(_step: dict, context: dict) -> dict:
     return {}
 
 
+def _user_from_database_dsn(dsn: str, prefix: str) -> str:
+    """The case DSN with the user that user_from_database names: the prefix and the last 28 characters of the name of the
+    case database, without a password."""
+    database = re.search(r"/([^/?]+)(?:\?.*)?$", dsn).group(1)
+    return re.sub(r"^mysql://[^@]+@", f"mysql://{prefix}{database[-28:]}@", dsn)
+
+
 def _op_reconnect(step: dict, context: dict) -> dict:
     dsn = context["dsn"]
     if "user_from_database" in step:
-        database = re.search(r"/([^/?]+)(?:\?.*)?$", dsn).group(1)
-        dsn = re.sub(r"^mysql://[^@]+@", f"mysql://{step['user_from_database']}{database[-28:]}@", dsn)
-    context["catalog"] = connect_catalog(dsn)
-    context["namespace"] = context["catalog"].current_namespace()
+        dsn = _user_from_database_dsn(dsn, step["user_from_database"])
+    if "refused_message" in step:
+        try:
+            connect_catalog(dsn).current_namespace()
+        except Exception as error:  # noqa: BLE001 - any error of the refused connection
+            if step["refused_message"] not in str(error).lower():
+                raise AssertionError(f"the server refused the connection for another reason: {error}") from error
+            if getattr(error, "code", None) != step["refused_code"]:
+                raise AssertionError(f"the refused connection has another code than {step['refused_code']}: {error}") from error
+            return {}
+        raise AssertionError("the server accepted the connection that the step expects it to refuse")
+    catalog = connect_catalog(dsn)
+    context["namespace"] = catalog.current_namespace()
+    context["catalog"] = catalog
     context["closed"] = False
+    return {}
+
+
+def _op_hold_connection(step: dict, context: dict) -> dict:
+    session = native_session(context["database"], _user_from_database_dsn(context["dsn"], step["user_from_database"]))
+    session.__enter__()
+    context["held"] = session
+    return {}
+
+
+def _op_release_connection(_step: dict, context: dict) -> dict:
+    context.pop("held").__exit__(None, None, None)
     return {}
 
 
 def _op_revision(step: dict, context: dict) -> dict:
     return {"value": {"text": _step_argument(step["snapshot"], context).revision}}
+
+
+def _op_revision_compare(step: dict, context: dict) -> dict:
+    revision = _step_argument(step["snapshot"], context).revision
+    other = _step_argument(step["other"], context).revision
+    return {"json": {"length": len(revision), "differs": revision != other}}
 
 
 def _op_row_cells(step: dict, context: dict) -> dict:
@@ -2551,6 +2603,39 @@ def _op_row_snapshot(step: dict, context: dict) -> dict:
             columns = [first, *page.metadata.columns[1:]]
             page = dataclasses.replace(
                 page, metadata=dataclasses.replace(page.metadata, columns=columns)
+            )
+        with_ = step["page_with"]
+        if "primary_key" in with_:
+            page = dataclasses.replace(
+                page,
+                metadata=dataclasses.replace(
+                    page.metadata, primary_key=with_["primary_key"]
+                ),
+            )
+        if "limit" in with_:
+            page = dataclasses.replace(page, limit=with_["limit"])
+        if "result_column_name" in with_:
+            first = dataclasses.replace(
+                page.result.columns[0], name=with_["result_column_name"]
+            )
+            page = dataclasses.replace(
+                page,
+                result=dataclasses.replace(
+                    page.result, columns=[first, *page.result.columns[1:]]
+                ),
+            )
+        if "drop_last_cell" in with_ or "fill_last_cell" in with_:
+            row = list(page.result.rows[0])
+            if "drop_last_cell" in with_:
+                row.pop()
+            if "fill_last_cell" in with_:
+                fill = with_["fill_last_cell"]
+                row[-1] = fill["fill"] * fill["count"]
+            page = dataclasses.replace(
+                page,
+                result=dataclasses.replace(
+                    page.result, rows=[row, *page.result.rows[1:]]
+                ),
             )
     else:
         page = _step_argument(step["page"], context)
@@ -2814,9 +2899,12 @@ def _column_value(model: Model, column: str, raw: dict, context: dict) -> Any:
     """The value of a column for a wrapper: an object is the styled value of its codec."""
     if "styled" in raw:
         return StyledValue.value(_chain_value(raw["styled"], context))
+    field = field_of(model.core.ent.entity, column)
+    # A null of a styled column is SQL NULL, the styled value its typed setter takes.
+    if "null" in raw and field is not None and styled_field(field):
+        return StyledValue.sql_null()
     if "object" not in raw:
         return _chain_value(raw, context)
-    field = field_of(model.core.ent.entity, column)
     return _styled_argument(raw, [] if field is None else list(field.stages), {})
 
 
@@ -3000,7 +3088,9 @@ class _ChainBuild:
         if "where" in q:
             self.predicate(model, "", q["where"])
         for entry in q.get("order", []):
-            if isinstance(entry, str):
+            if isinstance(entry, dict) and entry.get("random") is True:
+                model.order_by_random()
+            elif isinstance(entry, str):
                 model.core.order_by(entry.removeprefix("-"), entry.startswith("-"), [])
             elif "fn" in entry:
                 model.core.order_by(
@@ -3143,7 +3233,11 @@ def _chain_write(step: dict, context: dict, terminal) -> dict:
     """A write through a model set from values, then its terminal; the written model is bound, and its JSON is the result."""
     db = _connection_of(step, context)
     model = _chain_assign(
-        _new_row(context, db, step["model"]), step.get("values"), context
+        _new_core_model(context, step["model"])
+        if step.get("unconnected") is True
+        else _new_row(context, db, step["model"]),
+        step.get("values"),
+        context,
     )
     for name, value in step.get("attached", {}).items():
         model.core.set_new(name, _chain_value(value, context))
@@ -3205,6 +3299,11 @@ def _table_model_query(step: dict, context: dict) -> dict:
             steps = model.get_page_plan_steps(
                 limit["offset"] // limit["count"] + 1, limit["count"]
             )
+        holds_sql = step.get("plan_sql") is True
+
+        def statement(plan_step: dict) -> dict:
+            return {"sql": plan_step["sql"]} if holds_sql else {}
+
         return {
             "json": [
                 {
@@ -3214,7 +3313,7 @@ def _table_model_query(step: dict, context: dict) -> dict:
                         text: plan_step["sql"].upper().count(text)
                         for text in step["plan_count"]
                     },
-                    **({"sql": plan_step["sql"]} if step.get("plan_sql") is True else {}),
+                    **statement(plan_step),
                 }
                 for plan_step in steps
             ]
@@ -3287,6 +3386,8 @@ def _table_model_count(step: dict, context: dict) -> dict:
 
 def _table_model_get_by(step: dict, context: dict) -> dict:
     row = _chain_built(step, context).get()
+    if step.get("json_output") is True and row is not None:
+        return {"json": row.to_json_text()}
     if "ordered_text" in step and row is not None:
         return {"json": row.core.values[step["ordered_text"]].payload().raw}
     fields = {"json": _row_json(row, step.get("pick"))}
@@ -3416,6 +3517,11 @@ def _op_events_subscribe(step: dict, context: dict) -> dict:
     recording = _Recording()
     stop = _connection_of(step, context).subscribe(recording.receive)
     return {"bind": _Subscription(stop, recording)}
+
+
+def _op_fault_next_rollback(step: dict, context: dict) -> dict:
+    fail_next_rollback(_connection_of(step, context))
+    return {}
 
 
 def _op_events_fail_subscriber(step: dict, context: dict) -> dict:
@@ -3766,12 +3872,14 @@ _DATABASE_OPS = {
     "transaction": lambda step, context: _op_transaction(step, context),
     "transaction.attempts": lambda step, context: _op_transaction_attempts(step, context),
     "transaction.deadlock": lambda step, context: _op_transaction_deadlock(step, context),
+    "events.server_transactions": lambda step, context: _op_server_transactions(step, context),
     "dsn.connect": _op_dsn_connect,
     "dsn.sqlite_file": _op_dsn_sqlite_file,
     "catalog.connect": _op_connect,
     "catalog.close": _op_close,
     "catalog.reconnect": _op_reconnect,
     "catalog.revision": _op_revision,
+    "catalog.revision_compare": _op_revision_compare,
     "catalog.row_cells": _op_row_cells,
     "model.read_bind_cell": _op_read_bind_cell,
     "catalog.current_namespace": _op_current_namespace,
@@ -3785,9 +3893,13 @@ _DATABASE_OPS = {
     "catalog.delete_row": _op_delete_row,
     "session.end": _op_session_end,
     "dbspec.ddl_behavior": _op_ddl_behavior,
+    "dbspec.introspect": _op_dbspec_introspect,
     "sql.exec": _op_sql_exec,
+    "sql.hold_connection": _op_hold_connection,
+    "sql.release_connection": _op_release_connection,
     "events.subscribe": _op_events_subscribe,
     "events.fail_subscriber": _op_events_fail_subscriber,
+    "fault.next_rollback": lambda step, context: _op_fault_next_rollback(step, context),
     "events.stop_failing": _op_events_stop,
     "events.unsubscribe": _op_events_stop,
     "utils.run": _op_utils_run,
@@ -3849,6 +3961,10 @@ def _run_database_step(raw_step: dict, context: dict) -> None:
                 raise AssertionError(
                     f"error {str(error)!r} keeps the rollback error {rollback!r}, want code {expected['rollback']}"
                 ) from error
+        if expected.get("keeps_callback") is True and not isinstance(error.cause, CallbackError):
+            raise AssertionError(
+                f"error {str(error)!r} does not keep the error of the callback"
+            ) from error
         if expected.get("driver_cause") is True and error.__cause__ is None:
             raise AssertionError(
                 f"error {str(error)!r} has no driver cause"
@@ -4174,6 +4290,53 @@ def _op_transaction(step: dict, context: dict) -> dict:
 
 def _op_transaction_attempts(_: dict, context: dict) -> dict:
     return {"value": {"int": str(context["attempts"])}}
+
+
+def _op_server_transactions(step: dict, context: dict) -> dict:
+    """events.server_transactions (FCV-4, INT-149): the nested steps run twice, and the difference of the probe counts the
+    server transactions of each run. The probe runs in a frame of its own, so its cost is measured first."""
+    db = _connection_of(step, context)
+
+    def frame_rows(text: str) -> list:
+        return db.utils().run(
+            lambda frame: frame.run(text, [], kind="utility", tables=[])
+        )["rows"]
+
+    def probe() -> int:
+        return int(frame_rows(step["probe"])[0][0])
+
+    fields: dict = {}
+    if context["database"] == "postgres":
+        [[setting, source]] = frame_rows(
+            "SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'"
+        )
+        # Through a pooler the pooler applies the startup parameters with SET, so the source says nothing about the client.
+        pooled = os.environ.get("ORM_TEST_POSTGRES_DSN") != os.environ.get(
+            "ORM_TEST_POSTGRES_SERVER_DSN"
+        )
+        fields["time_zone"] = setting
+        fields["time_zone_from_startup"] = pooled or source == "client"
+    first = probe()
+    before = probe()
+    cost = before - first
+    for run in ("first", "second"):
+        texts: list = []
+        stop = db.subscribe(lambda event: texts.append(event.sql))
+        try:
+            for nested in step["steps"]:
+                _run_database_step(nested, context)
+        finally:
+            stop()
+        after = probe()
+        spent = after - before - cost
+        before = after
+        distinct = len(set(texts))
+        prepares = run == "first" and "python" in step["first_run_prepare_clients"]
+        fields[f"{run}_excess"] = spent - len(texts) - (distinct if prepares else 0)
+        fields["events"] = len(texts)
+        fields["texts"] = distinct
+    fields["probe_cost"] = cost
+    return fields
 
 
 def _op_transaction_deadlock(step: dict, context: dict) -> dict:

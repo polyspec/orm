@@ -353,7 +353,33 @@ fn group(r: &mut Req, items: &[CondNode], owner: &Core, f: &mut Frame<'_>) -> Op
     Some(out)
 }
 
+/// Refuses a condition value of an `ip` column here, since a dialect that encodes it in SQL would read it as NULL (COD-38).
+fn validate_host_input(owner: &Core, p: &PredSpec) -> Result<()> {
+    let values: Vec<(&str, &Param)> = match &p.value {
+        PredValue::One(v) | PredValue::ColumnFn(_, v) => vec![(p.column.as_str(), v)],
+        PredValue::List(list) => list.iter().map(|v| (p.column.as_str(), v)).collect(),
+        PredValue::Pair(a, b) => vec![(p.column.as_str(), a), (p.column.as_str(), b)],
+        PredValue::Tuples(cols, rows) => rows.iter().flat_map(|row| cols.iter().copied().zip(row)).collect(),
+        _ => return Ok(()),
+    };
+    let manifest = owner.ent.schema.manifest()?;
+    let ent = manifest.entity(owner.ent.name)?;
+    for (column, value) in values {
+        if matches!(value, Param::Null) {
+            continue;
+        }
+        if let Some(field) = ent.field(column) {
+            crate::model::validate_host_value(&field.codec, value)?;
+        }
+    }
+    Ok(())
+}
+
 fn pred(r: &mut Req, p: &PredSpec, owner: &Core, f: &mut Frame<'_>) -> Option<ir::Pred> {
+    if let Err(e) = validate_host_input(owner, p) {
+        r.fail(e);
+        return None;
+    }
     let mut out = ir::Pred { column: p.column.clone(), op: p.op.to_owned(), ..Default::default() };
     match &p.value {
         PredValue::None => {}

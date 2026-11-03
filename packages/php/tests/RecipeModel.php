@@ -149,6 +149,9 @@ trait RecipeModel
         if ($dsn === null || $dsn === 'case') {
             return $caseDsn;
         }
+        if (str_starts_with($dsn, 'case?')) {
+            return $caseDsn . (str_contains($caseDsn, '?') ? '&' : '?') . substr($dsn, strlen('case?'));
+        }
         if ($dsn !== 'case-socket') {
             return $dsn;
         }

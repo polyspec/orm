@@ -448,7 +448,12 @@ abstract class Model implements \JsonSerializable, ModelMetadata
                 throw new OrmException(Code::CODEC_ENCODE, "$column requires its text form");
             }
             // The text is checked now; the getter returns the parsed time in the connection's zone (T189).
-            $stored = self::timeValue($value, $this->conn?->zone() ?? new \DateTimeZone('UTC'));
+            try {
+                $stored = self::timeValue($value, $this->conn?->zone() ?? new \DateTimeZone('UTC'));
+            } catch (OrmException $error) {
+                // A text that no time form reads is refused as a write (PRT-67); timeValue reports a read.
+                throw new OrmException(Code::CODEC_ENCODE, "$column: invalid date value $value", $error);
+            }
         }
         $this->values[$column] = $stored;
         $sqlNull = $value === null || ($value instanceof StyledValue && $value->kind === 'sql-null');
@@ -787,6 +792,7 @@ abstract class Model implements \JsonSerializable, ModelMetadata
             $value = $args[$i++];
             try {
                 [$pred, $extra] = $this->predicate($key, $value, array_slice($args, $i), count($keys) === 1);
+                self::validateHostInput(static::meta()['columns'], $pred);
             } catch (OrmException $error) {
                 $this->error ??= $error;
                 return;
@@ -797,6 +803,30 @@ abstract class Model implements \JsonSerializable, ModelMetadata
         if ($i !== count($args)) {
             $this->fail('the condition expects ' . count($keys) . ' values, got ' . count($args));
         }
+    }
+
+    /** Refuses a condition value of an `ip` column here, since a dialect that encodes it in SQL would read it as NULL (COD-38). */
+    private static function validateHostInput(array $columns, array $pred): void
+    {
+        if (!array_key_exists('value', $pred) || ($pred['kind'] ?? '') === 'fulltext') {
+            return;
+        }
+        $check = static function (string $column, mixed $value) use ($columns): void {
+            foreach (is_array($value) ? $value : [$value] as $item) {
+                if ($item !== null && in_array('ip', $columns[$column]['codec'] ?? [], true)) {
+                    Codec::hostEncode($item, ['ip'], '');
+                }
+            }
+        };
+        if ($pred['kind'] === 'tuple') {
+            foreach ($pred['value'] as $row) {
+                foreach ($pred['cols'] as $index => $column) {
+                    $check($column, $row[$index]);
+                }
+            }
+            return;
+        }
+        $check($pred['column'], $pred['value']);
     }
 
     private const OPERATORS = ['' => 'eq', 'ne' => 'not_eq', 'gt' => 'gt', 'lt' => 'lt', 'ge' => 'gte',

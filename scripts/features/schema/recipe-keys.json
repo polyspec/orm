@@ -76,6 +76,14 @@
       "op",
       "vectors"
     ],
+    "dbspec.introspect": [
+      "case",
+      "catalog_of",
+      "expect",
+      "op",
+      "paths",
+      "vectors"
+    ],
     "dbspec.introspect_shown": [
       "case",
       "expect",
@@ -147,6 +155,10 @@
     "session.end": [
       "op",
       "table"
+    ],
+    "fault.next_rollback": [
+      "connection",
+      "op"
     ],
     "query.search": [
       "columns",
@@ -240,6 +252,7 @@
       "sql"
     ],
     "catalog.read_only_grid_query": [
+      "binds",
       "expect",
       "max_bytes",
       "max_rows",
@@ -420,6 +433,7 @@
       "expect",
       "from",
       "joins",
+      "json_output",
       "key",
       "limit",
       "lock",
@@ -505,6 +519,14 @@
       "op",
       "ref"
     ],
+    "events.server_transactions": [
+      "connection",
+      "expect",
+      "first_run_prepare_clients",
+      "op",
+      "probe",
+      "steps"
+    ],
     "planner.compile": [
       "assemble_types",
       "expect",
@@ -552,6 +574,11 @@
       "op",
       "plan",
       "source"
+    ],
+    "dbspec.introspect_refusal": [
+      "dialect",
+      "expect",
+      "op"
     ],
     "dbspec.add_tables_steps": [
       "dialect",
@@ -654,12 +681,27 @@
     ],
     "catalog.reconnect": [
       "op",
+      "refused_code",
+      "refused_message",
       "user_from_database"
+    ],
+    "sql.hold_connection": [
+      "op",
+      "user_from_database"
+    ],
+    "sql.release_connection": [
+      "op"
     ],
     "catalog.revision": [
       "as",
       "expect",
       "op",
+      "snapshot"
+    ],
+    "catalog.revision_compare": [
+      "expect",
+      "op",
+      "other",
       "snapshot"
     ],
     "catalog.row_cells": [
@@ -682,7 +724,14 @@
       "changed",
       "document_set",
       "op",
+      "removed",
       "unchanged"
+    ],
+    "generator.refused": [
+      "check",
+      "files",
+      "op",
+      "parts"
     ],
     "dbspec.export_mermaid": [
       "as",

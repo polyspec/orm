@@ -59,6 +59,8 @@ type CatalogConnection struct {
 	db      *DB
 	dialect string
 	closed  atomic.Bool
+	// reopenUntil is when, in Unix nanoseconds, a refused connect stops being a socket of this catalog still on the server (CFG-35).
+	reopenUntil atomic.Int64
 }
 
 // ConnectCatalog opens the catalog connection of a mysql, postgres or sqlite DSN. A markdown DSN is refused. A SQLite
@@ -115,6 +117,9 @@ func (c *CatalogConnection) ensureOpen() error {
 // catalogSession is one pooled connection inside one transaction. The connection is discarded when the session ends, so
 // a session setting such as the SQLite query_only pragma never returns to the pool.
 type catalogSession struct {
+	catalog *CatalogConnection
+	// stopped is set when a budget stopped a read: the cancel of the read closed the socket on MySQL and PostgreSQL.
+	stopped bool
 	ctx     context.Context
 	conn    *sql.Conn
 	dialect string
@@ -128,16 +133,17 @@ func (c *CatalogConnection) begin(ctx context.Context, readOnly bool) (*catalogS
 		return nil, err
 	}
 	conn, err := c.db.sql.Conn(ctx)
-	// The socket that a budget stop closed holds its place in max_user_connections until the server ends that thread, which
-	// it announces to no one, so the connect is tried again: within 40 ms measured, and the 2 s of CFG-35 at most.
-	for deadline := time.Now().Add(2 * time.Second); catalogConnectionsFull(err) && time.Now().Before(deadline); {
+	// A socket that this catalog closed holds its place in max_user_connections until the server ends that thread. The server
+	// announces that to no one, so this is a timer: the reopen is tried again within the 2 s of CFG-35 from the close (within
+	// 40 ms measured). A connect that follows no close of this catalog fails at once.
+	for catalogConnectionsFull(err) && time.Now().UnixNano() < c.reopenUntil.Load() {
 		time.Sleep(10 * time.Millisecond)
 		conn, err = c.db.sql.Conn(ctx)
 	}
 	if err != nil {
 		return nil, mapDriverErrContext(err, ctx)
 	}
-	s := &catalogSession{ctx: ctx, conn: conn, dialect: c.dialect}
+	s := &catalogSession{catalog: c, ctx: ctx, conn: conn, dialect: c.dialect}
 	if readOnly && c.dialect == "sqlite" {
 		if _, err := conn.ExecContext(ctx, "PRAGMA query_only=ON"); err != nil {
 			return nil, s.discard(mapDriverErrContext(err, ctx))
@@ -195,6 +201,9 @@ func (s *catalogSession) discard(err error) error {
 	if rawErr := s.conn.Raw(func(any) error { return driver.ErrBadConn }); rawErr != nil && !errors.Is(rawErr, driver.ErrBadConn) {
 		err = errors.Join(err, mapDriverErr(rawErr))
 	}
+	if s.dialect == "mysql" {
+		s.catalog.reopenUntil.Store(time.Now().Add(2 * time.Second).UnixNano())
+	}
 	return err
 }
 
@@ -202,6 +211,11 @@ func (s *catalogSession) discard(err error) error {
 // SQLite already rolled back by itself is not rolled back again (INT-155).
 func (s *catalogSession) end(err error) error {
 	if !s.rollbacks.open() {
+		return s.discard(err)
+	}
+	// The stop closed the connection on purpose, which ends the server's transaction: there is nothing to roll back, and the
+	// error is the one that stopped the read. SQLite stops the read with its handle and rolls back as usual.
+	if s.stopped && s.dialect != "sqlite" {
 		return s.discard(err)
 	}
 	if _, rollbackErr := s.conn.ExecContext(s.ctx, "ROLLBACK"); rollbackErr != nil {
@@ -332,12 +346,10 @@ func (s *catalogSession) querySized(query string, args []any, maxRows int, maxBy
 	stopped := false
 	defer func() {
 		if stopped {
-			// The budget error is the one reported: a close that the stop interrupted may fail, and that failure is joined
-			// after it, not in place of it.
+			// The budget error is the one reported: a close that the stop interrupted may fail, as the stop ended the read.
+			s.stopped = true
 			cancel()
-			if closeErr := rows.Close(); closeErr != nil {
-				err = errors.Join(err, mapDriverErrContext(closeErr, s.ctx))
-			}
+			_ = rows.Close()
 			return
 		}
 		if closeErr := rows.Close(); closeErr != nil {
@@ -436,10 +448,10 @@ func catalogConvert(raw catalogRaw, nativeTypes []string) ([][]any, error) {
 }
 
 // catalogValue converts one driver value to the catalog value of its native type. Text is a string, binary a copy of its
-// bytes, integers int64, floats float64, datetimes time.Time and decimals their plain text. Other types fail explicitly.
+// bytes, integers int64 (uint64 for a MySQL unsigned value beyond it), floats float64, datetimes time.Time and decimals their plain text. Other types fail explicitly.
 func catalogValue(value any, nativeType string) (any, error) {
 	switch v := value.(type) {
-	case nil, bool, int64, float64, time.Time:
+	case nil, bool, int64, uint64, float64, time.Time:
 		return v, nil
 	case string:
 		if !utf8.ValidString(v) {
@@ -469,6 +481,10 @@ func catalogBytesValue(value []byte, nativeType string) (any, error) {
 	case strings.Contains(t, "INT"):
 		n, err := strconv.ParseInt(string(value), 10, 64)
 		if err != nil {
+			// A MySQL BIGINT UNSIGNED reaches past int64 (INT-102).
+			if u, unsigned := strconv.ParseUint(string(value), 10, 64); unsigned == nil {
+				return u, nil
+			}
 			return nil, catalogErr(catalogCodeValue, "integer of native type %q: %v", nativeType, err)
 		}
 		return n, nil

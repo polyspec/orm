@@ -1,13 +1,10 @@
 package model_test
 
 import (
-	"database/sql"
 	"encoding/json"
-	"fmt"
 	"strings"
 	"testing"
 
-	orderedjson "github.com/polyspec/ordered-json/packages/go"
 	"github.com/polyspec/orm/packages/go/model"
 	"github.com/polyspec/orm/packages/go/orm"
 	"github.com/polyspec/orm/packages/go/testcase"
@@ -70,54 +67,26 @@ func TestGeneratedStyledGetterAndSetterStates(t *testing.T) {
 	}
 }
 
-// TestModelOrderedJSONOutputPreservesExactText exercises the production Model MarshalJSON path.
-// Requirements: COD-16, COD-26.
-func TestModelOrderedJSONOutputPreservesExactText(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	const stored = `{"z":9007199254740993,"b":1.50,"a":1e2}`
-	value, err := orderedjson.Parse(stored)
-	if err != nil {
-		t.Fatal(err)
-	}
-	row, err := model.Author().SetJsonSetting(orm.Value(value))
-	if err != nil {
-		t.Fatal(err)
-	}
-	got, err := json.Marshal(row)
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := `{"json_setting":{"kind":"value","value":{"z":9007199254740993,"b":1.50,"a":1e2}}}`
-	if string(got) != want {
-		t.Fatalf("Model.MarshalJSON() = %s; want %s", got, want)
-	}
-}
-
 func TestStyledStatesAcrossDatabases(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {
 		f := seed(t, db)
 		id := readColumn(t, f.authors[0].GetSeq)
-		if _, err := model.Author().Connect(db).GetBySeq(id); err != nil {
-			t.Fatal(err)
-		}
 		plain := must(model.Author().Connect(db).GetBySeq(id))
 		if _, err := plain.GetJsonSetting(); orm.ErrorCode(err) != orm.CodeColumnUnselected {
 			t.Fatalf("unselected json_setting getter: %v", err)
 		}
 		for _, tc := range []struct {
-			name   string
-			value  orm.StyledValue
-			stored sql.NullString
-			kind   string
+			name  string
+			value orm.StyledValue
+			kind  string
 		}{
-			{"sql_null", orm.SqlNull(), sql.NullString{}, "sql-null"},
-			{"encoded_null", orm.Value(nil), sql.NullString{String: "null", Valid: true}, "value"},
+			{"sql_null", orm.SqlNull(), "sql-null"},
+			{"encoded_null", orm.Value(nil), "value"},
 		} {
 			t.Run(tc.name, func(t *testing.T) {
 				row := must(model.Author().Connect(db).GetBySeq(id))
-				var err error
-				row, err = row.SetJsonSetting(tc.value)
+				row, err := row.SetJsonSetting(tc.value)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -132,59 +101,12 @@ func TestStyledStatesAcrossDatabases(t *testing.T) {
 				if _, err := row.Update(); err != nil {
 					t.Fatal(err)
 				}
-
 				read := must(model.Author().Connect(db).AddColumnJsonSetting().AddColumnJsonsTags().AddColumnSerializeData().GetBySeq(id))
 				for _, getter := range []func() (orm.StyledValue, error){read.GetJsonSetting, read.GetJsonsTags, read.GetSerializeData} {
 					got, err := getter()
 					if err != nil || got.Kind() != tc.kind {
 						t.Fatalf("getter = %v, %v", got, err)
 					}
-				}
-				for _, name := range []string{"json_setting", "jsons_tags", "serialize_data"} {
-					got := read.ToArray()[name]
-					encoded, err := json.Marshal(got)
-					if err != nil {
-						t.Fatal(err)
-					}
-					if !strings.Contains(string(encoded), `"kind":"`+tc.kind+`"`) {
-						t.Fatalf("%s row array = %s", name, encoded)
-					}
-				}
-				if _, err := json.Marshal(read); err != nil {
-					t.Fatal(err)
-				}
-
-				dsn := dsnOf(t, db)
-				driver := strings.SplitN(dsn, ":", 2)[0]
-				var raw *sql.DB
-				if driver == "sqlite" {
-					raw, err = sql.Open("sqlite", strings.TrimPrefix(dsn, "sqlite://"))
-					if err != nil {
-						t.Fatal(err)
-					}
-				} else {
-					raw = openNative(t, driver, dsn)
-				}
-				defer testcase.Close(t, raw)
-				bind := "?"
-				if driver == "postgres" {
-					bind = "$1"
-				}
-				var jsonText, jsonsText, serializeText sql.NullString
-				if err := raw.QueryRow(fmt.Sprintf("SELECT json_setting, jsons_tags, serialize_data FROM author WHERE seq = %s", bind), id).Scan(&jsonText, &jsonsText, &serializeText); err != nil {
-					t.Fatal(err)
-				}
-				for _, cell := range []sql.NullString{jsonText, jsonsText} {
-					if cell != tc.stored {
-						t.Fatalf("JSON stored cell = %+v; want %+v", cell, tc.stored)
-					}
-				}
-				wantSerialize := sql.NullString{}
-				if tc.kind == "value" {
-					wantSerialize = sql.NullString{String: "N;", Valid: true}
-				}
-				if serializeText != wantSerialize {
-					t.Fatalf("serialize stored cell = %+v; want %+v", serializeText, wantSerialize)
 				}
 			})
 		}

@@ -4,6 +4,8 @@
   "COD-11",
   "COD-12",
   "COD-15",
+  "COD-16",
+  "COD-26",
   "COD-38",
   "DIA-26",
   "DSL-104",
@@ -589,6 +591,43 @@
      }
     },
     {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "gz_extend"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "gz_extend": {
+         "kind": "sql-null"
+        }
+       }
+      },
+      "postgres": {
+       "json": {
+        "gz_extend": {
+         "kind": "sql-null"
+        }
+       }
+      },
+      "sqlite": {
+       "json": {
+        "gz_extend": {
+         "kind": "sql-null"
+        }
+       }
+      }
+     }
+    },
+    {
      "op": "model.update",
      "connection": "db",
      "row": "row",
@@ -813,6 +852,122 @@
       },
       "sqlite": {
        "error": "CODEC_ENCODE"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "ip": {
+       "text": "10. 0.0.1"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CODEC_ENCODE"
+      },
+      "postgres": {
+       "error": "CODEC_ENCODE"
+      },
+      "sqlite": {
+       "error": "CODEC_ENCODE"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "ip": {
+       "text": "10.0.0.1"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "0"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "0"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "0"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.update",
+     "connection": "db",
+     "row": "row",
+     "set": {
+      "ip": {
+       "null": "text"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "ip"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "ip": null
+       }
+      },
+      "postgres": {
+       "json": {
+        "ip": null
+       }
+      },
+      "sqlite": {
+       "json": {
+        "ip": null
+       }
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "ip": {
+       "null": "text"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "1"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "1"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "1"
+       }
       }
      }
     }
@@ -2678,6 +2833,190 @@
          "name": "existing"
         }
        ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "ordered_json_keeps_its_text_in_the_model_json_output",
+   "requirements": [
+    "COD-16",
+    "COD-26"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "name"
+     ],
+     "as": "row",
+     "expect": {
+      "mysql": {
+       "json": {
+        "name": "author-1"
+       }
+      },
+      "postgres": {
+       "json": {
+        "name": "author-1"
+       }
+      },
+      "sqlite": {
+       "json": {
+        "name": "author-1"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.update",
+     "connection": "db",
+     "row": "row",
+     "set": {
+      "json_setting": {
+       "object": [
+        [
+         "z",
+         {
+          "int": "9007199254740993"
+         }
+        ],
+        [
+         "b",
+         {
+          "float": "1.50"
+         }
+        ],
+        [
+         "a",
+         {
+          "float": "1e2"
+         }
+        ]
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "connection": "db",
+     "model": "Author",
+     "columns": [
+      "json_setting"
+     ],
+     "json_output": true,
+     "expect": {
+      "mysql": {
+       "json": "{\"seq\":1,\"user_seq\":1,\"service_member_seq\":1,\"json_setting\":{\"kind\":\"value\",\"value\":{\"z\":9007199254740993,\"b\":1.50,\"a\":1e2}}}"
+      },
+      "postgres": {
+       "json": "{\"seq\":1,\"user_seq\":1,\"service_member_seq\":1,\"json_setting\":{\"kind\":\"value\",\"value\":{\"z\":9007199254740993,\"b\":1.50,\"a\":1e2}}}"
+      },
+      "sqlite": {
+       "json": "{\"seq\":1,\"user_seq\":1,\"service_member_seq\":1,\"json_setting\":{\"kind\":\"value\",\"value\":{\"z\":9007199254740993,\"b\":1.50,\"a\":1e2}}}"
+      }
+     }
+    },
+    {
+     "op": "model.update",
+     "connection": "db",
+     "row": "row",
+     "set": {
+      "json_setting": {
+       "object": [
+        [
+         "n",
+         {
+          "float": "1e400"
+         }
+        ]
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "connection": "db",
+     "model": "Author",
+     "columns": [
+      "json_setting"
+     ],
+     "json_output": true,
+     "expect": {
+      "mysql": {
+       "json": "{\"seq\":1,\"user_seq\":1,\"service_member_seq\":1,\"json_setting\":{\"kind\":\"value\",\"value\":{\"n\":1e400}}}"
+      },
+      "postgres": {
+       "json": "{\"seq\":1,\"user_seq\":1,\"service_member_seq\":1,\"json_setting\":{\"kind\":\"value\",\"value\":{\"n\":1e400}}}"
+      },
+      "sqlite": {
+       "json": "{\"seq\":1,\"user_seq\":1,\"service_member_seq\":1,\"json_setting\":{\"kind\":\"value\",\"value\":{\"n\":1e400}}}"
+      }
+     }
+    },
+    {
+     "op": "utils.run",
+     "connection": "db",
+     "statements": [
+      {
+       "kind": "update",
+       "tables": [
+        "author"
+       ],
+       "sql": {
+        "mysql": "UPDATE `author` SET `json_setting` = '{\"b\":1,\"1\":2,\"a\":1.50,\"e\":1E2,\"s\":\"\\\\u00e9\"}' WHERE `seq` = 1",
+        "postgres": "UPDATE \"author\" SET \"json_setting\" = '{\"b\":1,\"1\":2,\"a\":1.50,\"e\":1E2,\"s\":\"\\u00e9\"}' WHERE \"seq\" = 1",
+        "sqlite": "UPDATE \"author\" SET \"json_setting\" = '{\"b\":1,\"1\":2,\"a\":1.50,\"e\":1E2,\"s\":\"\\u00e9\"}' WHERE \"seq\" = 1"
+       }
+      }
+     ]
+    },
+    {
+     "op": "model.get_by",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "connection": "db",
+     "model": "Author",
+     "columns": [
+      "json_setting"
+     ],
+     "json_output": true,
+     "expect": {
+      "mysql": {
+       "json": "{\"seq\":1,\"user_seq\":1,\"service_member_seq\":1,\"json_setting\":{\"kind\":\"value\",\"value\":{\"b\":1,\"1\":2,\"a\":1.50,\"e\":1E2,\"s\":\"\\u00e9\"}}}"
+      },
+      "postgres": {
+       "json": "{\"seq\":1,\"user_seq\":1,\"service_member_seq\":1,\"json_setting\":{\"kind\":\"value\",\"value\":{\"b\":1,\"1\":2,\"a\":1.50,\"e\":1E2,\"s\":\"\\u00e9\"}}}"
+      },
+      "sqlite": {
+       "json": "{\"seq\":1,\"user_seq\":1,\"service_member_seq\":1,\"json_setting\":{\"kind\":\"value\",\"value\":{\"b\":1,\"1\":2,\"a\":1.50,\"e\":1E2,\"s\":\"\\u00e9\"}}}"
       }
      }
     }

@@ -1,6 +1,6 @@
 <?php
 
-// Requirements: COD-31, INT-4, INT-8
+// Requirements: INT-107, COD-31, INT-4, INT-8
 
 // The catalog connection recipe, contracts/fixtures/catalog_connection/catalog_connection.json, on each database
 // (docs/spec/feature-coverage.md FCV-3).

@@ -11,7 +11,7 @@ import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 import { DatabaseSync } from 'node:sqlite';
 import { isDeepStrictEqual } from 'node:util';
-import { lastAffected } from '../dist/testing.js';
+import { failNextRollback, lastAffected } from '../dist/testing.js';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { AesKeyring, BindCell, CORE, Collection, transactionConflict, Db, OrmError, loadSet, StyledValue, blindIndex, chainPlans, codes, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, orm, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
 import { analyzeDbspec, formatDbspec, parseDbspecSet as parseDbspecSetBrowser, readDbspecBytes } from '../dist/dbspec/entry.js';
@@ -22,11 +22,13 @@ import { modelOfDocuments, parseDocumentSet } from '../dist/engine/model.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
 import { paramUses } from '../dist/engine/params.js';
 import { Engine } from '../dist/index.js';
+import { styledField } from '../dist/core.js';
 import { relatedDsn, withCaseDatabase } from './case-database.mjs';
 import { checkKeys } from './recipe_keys.mjs';
-import { checkGeneratedFiles, checkGenerator } from './recipe_generator.mjs';
+import { checkGeneratedFiles, checkRefusedGeneration, checkGenerator } from './recipe_generator.mjs';
 import { modelOps } from './recipe_model.mjs';
 import { applyOps } from './recipe_apply.mjs';
+import { introspectStep } from './recipe_introspect.mjs';
 import { classesFromModel } from './registered_models.mjs';
 import { nativeQuery, nativeSession, within } from './coverage_case.mjs';
 import { readStep } from './recipe_reads.mjs';
@@ -90,6 +92,7 @@ export function runRecipe(path, database) {
           else if (step.op === 'markdown.builder') await checkBuilder(step, database);
           else if (step.op === 'generator.generate') checkGenerator(step, dir, database);
           else if (step.op === 'generator.check') checkGeneratedFiles(step, dir);
+          else if (step.op === 'generator.refused') checkRefusedGeneration(step, dir);
           else if (dbspecFileOps.includes(step.op)) await checkDbspecFiles(step, dir, database);
           else if (mermaidOps.includes(step.op)) checkMermaid(step, mermaidStep(step, bound, dir), database);
           else if (step.op === 'markdown.send') await withProcessZone(step.process_zone, () => checkSend(step, member(member(member(wrapped, 'cases').array[caseIndex], 'steps').array[index], 'expect')));
@@ -536,6 +539,7 @@ export async function prepareRecipeDatabase(path, database, dsn) {
       const metadata = await catalog.describeTable({ namespace, name: table });
       for (const row of values) await catalog.insertRow(metadata, assignments(row, context));
     }
+    if (recipe.seed?.after !== undefined) await runStep(recipe.seed.after, context);
   } finally {
     await catalog.close();
     await db.close();
@@ -570,6 +574,9 @@ async function runCaseOn({ name, recipe, recipeCase, database, schema, caseDatab
         const metadata = await catalog.describeTable({ namespace, name: table });
         for (const row of values) await catalog.insertRow(metadata, assignments(row, context));
       }
+    }
+    for (const after of [recipe.seed?.after, recipeCase.seed?.after]) {
+      if (after !== undefined) await runStep(after, context);
     }
     step('seed rows inserted');
     for (const [index, current] of recipeCase.steps.entries()) {
@@ -644,6 +651,12 @@ const connectionOf = (s, context) => (s.connection === undefined ? context.db : 
 /** The one recipe fixture that generates models (packages/ts/src/models). A model op of any other fixture names a model of a table of its own (FCV-4). */
 const GENERATED_FIXTURE = 'contracts/fixtures/bench/dbspec-set.json';
 
+/** The case DSN with the user that user_from_database names: the prefix and the last 28 characters of the name of the case database, without a password. */
+function userFromDatabaseDsn(dsn, prefix) {
+  const database = /\/([^/?]+)(?:\?.*)?$/.exec(dsn)[1];
+  return dsn.replace(/^mysql:\/\/[^@]+@/, `mysql://${prefix}${database.slice(-28)}@`);
+}
+
 const OPS = {
   // dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step.
   async 'dsn.connect'(s, context) {
@@ -699,19 +712,35 @@ const OPS = {
     return {};
   },
   async 'catalog.reconnect'(s, context) {
-    let dsn = context.dsn;
-    if (s.user_from_database !== undefined) {
-      const database = /\/([^/?]+)(?:\?.*)?$/.exec(dsn)[1];
-      dsn = dsn.replace(/^mysql:\/\/[^@]+@/, `mysql://${s.user_from_database}${database.slice(-28)}@`);
+    const dsn = s.user_from_database === undefined ? context.dsn : userFromDatabaseDsn(context.dsn, s.user_from_database);
+    if (s.refused_message !== undefined) {
+      const refused = await connectCatalog(dsn).then(catalog => catalog.close().then(() => null), error => error);
+      if (refused === null) throw new Error('the server accepted the connection that the step expects it to refuse');
+      if (!refused.message.toLowerCase().includes(s.refused_message)) throw new Error(`the server refused the connection for another reason: ${refused.message}`);
+      if (refused.code !== s.refused_code) throw new Error(`the refused connection has the code ${refused.code}, want ${s.refused_code}`);
+      return {};
     }
-    context.catalog = await connectCatalog(dsn);
+    const catalog = await connectCatalog(dsn);
+    context.namespace = await catalog.currentNamespace();
+    context.catalog = catalog;
     context.closed = false;
-    context.namespace = await context.catalog.currentNamespace();
+    return {};
+  },
+  async 'sql.hold_connection'(s, context) {
+    context.held = await nativeSession(context.database, userFromDatabaseDsn(context.dsn, s.user_from_database));
+    return {};
+  },
+  async 'sql.release_connection'(_, context) {
+    await context.held.close();
     return {};
   },
   async 'catalog.revision'(s, context) {
     const snapshot = stepArgument(s.snapshot, context);
     return { value: { text: snapshot.revision } };
+  },
+  async 'catalog.revision_compare'(s, context) {
+    const { revision } = stepArgument(s.snapshot, context);
+    return { json: { length: revision.length, differs: revision !== stepArgument(s.other, context).revision } };
   },
   async 'catalog.current_namespace'(_, { catalog }) {
     return { value: { text: await catalog.currentNamespace() } };
@@ -748,7 +777,7 @@ const OPS = {
     return { columns: result.columns, row_count: result.rows.length, rows: result.rows.map(row => row.map(cell => plain(cell, null))) };
   },
   async 'catalog.read_only_grid_query'(s, context) {
-    const result = await context.catalog.readOnlyGridQuery(sql(s.sql, context), [], limits(s));
+    const result = await context.catalog.readOnlyGridQuery(sql(s.sql, context), (s.binds ?? []).map(bind => native(databaseValue(bind, context))), limits(s));
     return { columns: result.columns.map(c => c.name), rows: result.rows.map(row => row.map(grid)) };
   },
   async 'catalog.row_snapshot'(s, context) {
@@ -756,6 +785,18 @@ const OPS = {
     if (s.page_with?.column_name !== undefined) {
       const [first, ...rest] = page.metadata.columns;
       page.metadata = { ...page.metadata, columns: [{ ...first, name: s.page_with.column_name }, ...rest] };
+    }
+    if (s.page_with?.primary_key !== undefined) page.metadata = { ...page.metadata, primaryKey: s.page_with.primary_key };
+    if (s.page_with?.limit !== undefined) page.limit = s.page_with.limit;
+    if (s.page_with?.result_column_name !== undefined) {
+      const [first, ...rest] = page.result.columns;
+      page.result = { ...page.result, columns: [{ ...first, name: s.page_with.result_column_name }, ...rest] };
+    }
+    if (s.page_with?.drop_last_cell === true || s.page_with?.fill_last_cell !== undefined) {
+      const [first, ...rest] = page.result.rows;
+      const row = s.page_with.drop_last_cell === true ? first.slice(0, -1) : [...first];
+      if (s.page_with.fill_last_cell !== undefined) row[row.length - 1] = s.page_with.fill_last_cell.fill.repeat(s.page_with.fill_last_cell.count);
+      page.result = { ...page.result, rows: [row, ...rest] };
     }
     const snapshot = context.catalog.rowSnapshotFromPage(page, s.index);
     return { bind: snapshot, keys: snapshot.keys().map(key => plain(key, null)), key_indexes: snapshot.keyIndexList() };
@@ -830,6 +871,9 @@ const OPS = {
       }
     } finally { await session.close(); }
     return {};
+  },
+  async 'dbspec.introspect'(s, context) {
+    return introspectStep(s, context);
   },
   async 'sql.exec'(s, context) {
     // An object form runs only on the databases whose key it holds (FCV-4): an absent key runs nothing.
@@ -906,6 +950,7 @@ async function runStep(rawStep, context) {
       assert.equal(error.rollback?.code, expected.rollback, `the rollback error of ${JSON.stringify(error.message)}`);
       assert.ok(error.message.includes(error.rollback.message), `the error message ${JSON.stringify(error.message)} holds the rollback error`);
     }
+    if (expected.keeps_callback === true) assert.equal(error.cause, callbackError, `the error ${JSON.stringify(error.message)} keeps the error of the callback`);
     if (expected.driver_cause === true) assert.ok(error.cause !== undefined, `the error ${JSON.stringify(error.message)} keeps its driver cause`);
     reads.checkOutcome();
     return;
@@ -1192,8 +1237,10 @@ function checkPlanner(step, recipeDir, database) {
   if (outcome.error !== undefined) {
     for (const dialect of plannerDialects) {
       let code = null;
-      try { new Engine(model, dialect).compile(request); } catch (error) { code = error.code ?? String(error); }
+      let message = '';
+      try { new Engine(model, dialect).compile(request); } catch (error) { code = error.code ?? String(error); message = error.message; }
       if (code !== outcome.error) throw new Error(`${dialect}: got ${code ?? 'a plan'}, want ${outcome.error}`);
+      if (outcome.message !== undefined && message !== outcome.message) throw new Error(`${dialect}: message ${message}, want ${outcome.message}`);
     }
     return;
   }
@@ -1586,8 +1633,11 @@ function chainValue(raw, context) {
 /** The value of a column for a wrapper: an object is the styled value of its codec. */
 function columnValue(m, column, raw, context) {
   if ('styled' in raw) return StyledValue.value(chainValue(raw.styled, context));
+  const field = m[CORE].ent.entity.fields.find(entry => entry.name === column);
+  // A null of a styled column is SQL NULL, the styled value its typed setter takes.
+  if ('null' in raw && field !== undefined && styledField(field)) return StyledValue.sqlNull();
   if (!('object' in raw)) return chainValue(raw, context);
-  return styledArgument(raw, m[CORE].ent.entity.fields.find(field => field.name === column)?.stages ?? [], new Map());
+  return styledArgument(raw, field?.stages ?? [], new Map());
 }
 /** The public function of a function call (F5). */
 function chainFunc({ fn, args = [] }) {
@@ -1733,7 +1783,8 @@ class ChainBuild {
     for (const relation of q.relations ?? []) m[CORE].relation(relation.many === true, this.relation(relation));
     if (q.where !== undefined) this.predicate(m, '', q.where);
     for (const entry of q.order ?? []) {
-      if (typeof entry === 'string') m[CORE].orderBy(entry.replace(/^-/, ''), entry.startsWith('-'), []);
+      if (entry.random === true) m.orderByRandom();
+      else if (typeof entry === 'string') m[CORE].orderBy(entry.replace(/^-/, ''), entry.startsWith('-'), []);
       else if (entry.fn !== undefined) m[CORE].orderBy(fnColumn(entry.fn), entry.dir === 'desc', [chainFunc(entry.fn)]);
       else m[CORE].orderBy(entry.column, entry.dir === 'desc', []);
     }
@@ -1845,7 +1896,8 @@ function chainAssign(m, values, context) {
 
 /** A write through a model set from values, then its terminal; the written model is bound, and its toArray is the result. */
 async function chainWrite(s, context, terminal) {
-  const m = chainAssign(coreModel(s.model, context).connect(connectionOf(s, context)), s.values, context);
+  const model = coreModel(s.model, context);
+  const m = chainAssign(s.unconnected === true ? model : model.connect(connectionOf(s, context)), s.values, context);
   for (const [name, value] of Object.entries(s.attached ?? {})) m[CORE].setNew(name, chainValue(value, context));
   if (s.duplication !== undefined) m.duplication(chainAssign(coreModel(s.model, context), s.duplication, context));
   const row = await terminal(m);
@@ -1910,6 +1962,7 @@ const TABLE_OPS = {
   },
   async 'model.get_by'(s, context) {
     const row = await chainBuilt(s, context).get();
+    if (s.json_output === true && row !== null) return { json: row.toJSONText() };
     if (s.ordered_text !== undefined && row !== null) return { json: row[CORE].values.get(s.ordered_text).payload().raw };
     return { bind: row ?? undefined, json: rowJson(row, s.pick) };
   },
@@ -2113,6 +2166,10 @@ Object.assign(OPS, {
     subscription.stop = connectionOf(s, context).subscribe(event => recordEvent(subscription, event));
     return { bind: subscription };
   },
+  async 'fault.next_rollback'(s, context) {
+    failNextRollback(connectionOf(s, context));
+    return {};
+  },
   async 'events.fail_subscriber'(s, context) {
     const { kind, refusal } = s;
     const stop = connectionOf(s, context).subscribe(event => {
@@ -2141,6 +2198,42 @@ Object.assign(OPS, {
       return last;
     });
     return { value: { array: result.rows.map(row => ({ array: row.map(cell => plain(cell)) })) } };
+  },
+  // events.server_transactions (FCV-4, INT-149): the nested steps run twice, and the difference of the probe counts the
+  // server transactions of each run. The probe runs in a frame of its own, so its cost is measured first.
+  async 'events.server_transactions'(s, context) {
+    const db = connectionOf(s, context);
+    const frameRows = async text => (await db.utils().run(frame => frame.run('utility', [], text, []))).rows;
+    const probe = async () => Number((await frameRows(s.probe))[0][0]);
+    const fields = {};
+    if (context.database === 'postgres') {
+      const [[setting, source]] = await frameRows("SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'");
+      // Through a pooler the pooler applies the startup parameters with SET, so the source says nothing about the client.
+      const pooled = process.env.ORM_TEST_POSTGRES_DSN !== process.env.ORM_TEST_POSTGRES_SERVER_DSN;
+      fields.time_zone = setting;
+      fields.time_zone_from_startup = pooled || source === 'client';
+    }
+    const first = await probe();
+    let before = await probe();
+    const cost = before - first;
+    for (const run of ['first', 'second']) {
+      const texts = [];
+      const stop = db.subscribe(event => { texts.push(event.sql); });
+      try {
+        for (const nested of s.steps) await runStep(nested, context);
+      } finally {
+        stop();
+      }
+      const after = await probe();
+      const spent = after - before - cost;
+      before = after;
+      const distinct = new Set(texts).size;
+      fields[`${run}_excess`] = spent - texts.length - (run === 'first' && s.first_run_prepare_clients.includes('typescript') ? distinct : 0);
+      fields.events = texts.length;
+      fields.texts = distinct;
+    }
+    fields.probe_cost = cost;
+    return fields;
   },
   async 'events.captured'(s, context) {
     const subscription = refOf(s.ref, context);
@@ -2314,7 +2407,7 @@ function checkSet(step, expect) {
 }
 
 // dbspecFileOps are the dbspec ops whose documents are files relative to the recipe, which checkDbspecFiles runs.
-const dbspecFileOps = ['dbspec.runtime_model', 'dbspec.parse_emit', 'dbspec.manifest', 'dbspec.render', 'dbspec.analyze', 'dbspec.parse_positions', 'dbspec.format', 'dbspec.parse_set', 'dbspec.set', 'dbspec.load_set', 'dbspec.read_file', 'dbspec.read_bytes'];
+const dbspecFileOps = ['dbspec.introspect_refusal', 'dbspec.runtime_model', 'dbspec.parse_emit', 'dbspec.manifest', 'dbspec.render', 'dbspec.analyze', 'dbspec.parse_positions', 'dbspec.format', 'dbspec.parse_set', 'dbspec.set', 'dbspec.load_set', 'dbspec.read_file', 'dbspec.read_bytes'];
 
 // checkDbspecFiles runs one dbspec op of a step through the public dbspec API and checks the result against the expect of database.
 // dir is the directory of the recipe: the paths of a step are relative to it (FCV-4).
@@ -2334,6 +2427,16 @@ async function checkDbspecFiles(step, dir, database) {
       assert.deepEqual(diagnostics, [], 'the document set has a manifest');
       assert.ok(expect.manifest_hash, 'the expect names a manifest hash');
       assert.equal(manifest.manifestHash, expect.manifest_hash, 'manifest hash');
+      break;
+    }
+    case 'dbspec.introspect_refusal': {
+      const connection = new DatabaseSync(':memory:');
+      try {
+        await assert.rejects(introspectDbspec(connection, step.dialect, 'introspected'), { name: 'TypeError', message: new RegExp(step.dialect) });
+      } finally {
+        connection.close();
+      }
+      assert.deepEqual({ refused: step.dialect }, expect, 'refused dialect');
       break;
     }
     case 'dbspec.render': {

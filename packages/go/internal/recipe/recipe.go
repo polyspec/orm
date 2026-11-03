@@ -54,6 +54,10 @@ type step struct {
 	GenSet  string                     `json:"document_set"`
 	Same    []string                   `json:"unchanged"`
 	Diff    []string                   `json:"changed"`
+	Gone    []string                   `json:"removed"`
+	Tree    map[string]json.RawMessage `json:"files"`
+	Parts   []string                   `json:"parts"`
+	Compare bool                       `json:"check"`
 	Keys    []collectionKey            `json:"keys"`
 	Styles  []string                   `json:"styles"`
 	Raw     json.RawMessage            `json:"raw"`
@@ -288,7 +292,9 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 		return checkGenerator(t, o.dir, s, database)
 	case "generator.check":
 		return checkGeneratedFiles(o.dir, s)
-	case "dbspec.parse", "dbspec.parse_plan", "dbspec.emit_plan", "dbspec.diff", "dbspec.plan_steps", "dbspec.add_tables_steps", "dbspec.chain", "dbspec.compare":
+	case "generator.refused":
+		return checkRefusedGeneration(o.dir, s)
+	case "dbspec.parse", "dbspec.parse_plan", "dbspec.emit_plan", "dbspec.diff", "dbspec.plan_steps", "dbspec.introspect_refusal", "dbspec.add_tables_steps", "dbspec.chain", "dbspec.compare":
 		return dbspecStep(s, bound, database)
 	case "dbspec.parse_emit", "dbspec.manifest", "dbspec.render", "dbspec.analyze", "dbspec.parse_positions", "dbspec.format",
 		"dbspec.parse_set", "dbspec.set", "dbspec.load_set", "dbspec.runtime_model", "dbspec.read_file", "dbspec.read_bytes":
@@ -1433,8 +1439,9 @@ func checkPlanner(dir string, s step, database string) error {
 		return fmt.Errorf("planner.compile has no expect for %s", database)
 	}
 	var outcome struct {
-		Value json.RawMessage `json:"value"`
-		Error string          `json:"error"`
+		Value   json.RawMessage `json:"value"`
+		Error   string          `json:"error"`
+		Message string          `json:"message"`
 	}
 	if err := decodeOutcome(raw, &outcome); err != nil {
 		return err
@@ -1465,8 +1472,12 @@ func checkPlanner(dir string, s step, database string) error {
 			if err != nil {
 				return err
 			}
-			if _, err := e.Compile(request); err == nil || orm.ErrorCode(err) != outcome.Error {
+			_, err = e.Compile(request)
+			if err == nil || orm.ErrorCode(err) != outcome.Error {
 				return fmt.Errorf("%s: compile = %w; want %s", dialect, err, outcome.Error)
+			}
+			if outcome.Message != "" && err.Error() != outcome.Message {
+				return fmt.Errorf("%s: message %q, want %q", dialect, err.Error(), outcome.Message)
 			}
 		}
 		return nil
@@ -1565,6 +1576,8 @@ func dbspecStep(s step, bound map[string]result, database string) error {
 		got, err = dbspecDiff(s, bound)
 	case "dbspec.plan_steps":
 		got, err = dbspecPlanSteps(s, bound)
+	case "dbspec.introspect_refusal":
+		got, err = dbspecIntrospectRefusal(s)
 	case "dbspec.add_tables_steps":
 		got, err = dbspecAddTablesSteps(s, bound)
 	case "dbspec.chain":

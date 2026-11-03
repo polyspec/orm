@@ -1,6 +1,9 @@
 {
   "$schema": "../../../scripts/features/schema/recipe.schema.json",
   "requirements": [
+    "INT-8",
+    "INT-4",
+    "COD-31",
     "INT-101",
     "INT-103",
     "INT-104",
@@ -24,7 +27,8 @@
     "INT-34",
     "CFG-34",
     "CFG-35",
-    "INT-118"
+    "INT-118",
+    "INT-107"
   ],
   "fixture": "contracts/fixtures/catalog_connection/dbspec-set.json",
   "seed": {
@@ -9055,6 +9059,11 @@
         },
         {
           "op": "sql.exec",
+          "reason": "a rerun finds the user of a run that failed",
+          "sql": "CALL one_connection_user('drop')"
+        },
+        {
+          "op": "sql.exec",
           "reason": "creates that user",
           "sql": "CALL one_connection_user('create')"
         },
@@ -9068,7 +9077,8 @@
           "max_rows": 3,
           "expect": {
             "mysql": {
-              "error": "CATALOG_LIMIT"
+              "error": "CATALOG_LIMIT",
+              "message_suffix": "result has more than 3 rows"
             }
           }
         },
@@ -9094,6 +9104,5965 @@
           "op": "sql.exec",
           "reason": "drops that user",
           "sql": "CALL one_connection_user('drop')"
+        }
+      ]
+    },
+    {
+      "id": "plain_connect_on_a_held_place_is_refused_once",
+      "requirements": [
+        "CFG-1",
+        "CFG-35"
+      ],
+      "only": [
+        "mysql"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "reason": "a user of this case that the server allows one connection, so the connection of a kill is refused; its name is in the database of the case, as runners on one server share users",
+          "sql": "CREATE PROCEDURE one_connection_user(IN verb VARCHAR(16)) BEGIN DECLARE name VARCHAR(40) DEFAULT CONCAT('o1_', RIGHT(DATABASE(), 28)); IF verb = 'create' THEN SET @statement = CONCAT('CREATE USER IF NOT EXISTS ''', name, '''@''%'' WITH MAX_USER_CONNECTIONS 1'); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT SELECT ON `', DATABASE(), '`.* TO ''', name, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; ELSE SET @statement = CONCAT('DROP USER IF EXISTS ''', name, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; END IF; END"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a rerun finds the user of a run that failed",
+          "sql": "CALL one_connection_user('drop')"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "creates that user",
+          "sql": "CALL one_connection_user('create')"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the refusals that the server has counted for that name until now",
+          "sql": "CREATE TABLE refusals_before AS SELECT COALESCE(SUM(SUM_ERROR_RAISED), 0) AS n FROM performance_schema.events_errors_summary_by_user_by_error WHERE USER = CONCAT('o1_', RIGHT(DATABASE(), 28)) AND ERROR_NUMBER = 1226"
+        },
+        {
+          "op": "sql.hold_connection",
+          "user_from_database": "o1_"
+        },
+        {
+          "op": "catalog.reconnect",
+          "user_from_database": "o1_",
+          "refused_code": "DRIVER",
+          "refused_message": "max_user_connections"
+        },
+        {
+          "op": "sql.release_connection"
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT CAST(refused.n - before_it.n AS CHAR) AS refusals FROM (SELECT COALESCE(SUM(SUM_ERROR_RAISED), 0) AS n FROM performance_schema.events_errors_summary_by_user_by_error WHERE USER = CONCAT('o1_', RIGHT(DATABASE(), 28)) AND ERROR_NUMBER = 1226) refused CROSS JOIN refusals_before before_it",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "1"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.close"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "drops that user",
+          "sql": "CALL one_connection_user('drop')"
+        }
+      ]
+    },
+    {
+      "id": "read_only_grid_shapes",
+      "requirements": [
+        "INT-136"
+      ],
+      "steps": [
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT 1",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "-- query\nSELECT ';'",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": ";"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": ";"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": ";"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT 1 UNION ALL SELECT 2",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT (SELECT 1)",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT '/*! not executable */'",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "/*! not executable */"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "/*! not executable */"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "/*! not executable */"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT 1 /*! INTO OUTFILE '/secret' */",
+          "expect": {
+            "mysql": {
+              "error": "QUERY_READ_ONLY"
+            },
+            "postgres": {
+              "error": "QUERY_READ_ONLY"
+            },
+            "sqlite": {
+              "error": "QUERY_READ_ONLY"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "WITH x AS (DELETE FROM t RETURNING n) SELECT n FROM x",
+          "expect": {
+            "mysql": {
+              "error": "QUERY_READ_ONLY"
+            },
+            "postgres": {
+              "error": "QUERY_READ_ONLY"
+            },
+            "sqlite": {
+              "error": "QUERY_READ_ONLY"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT (SELECT n FROM t FOR UPDATE)",
+          "expect": {
+            "mysql": {
+              "error": "QUERY_READ_ONLY"
+            },
+            "postgres": {
+              "error": "QUERY_READ_ONLY"
+            },
+            "sqlite": {
+              "error": "QUERY_READ_ONLY"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT '",
+          "expect": {
+            "mysql": {
+              "error": "QUERY_READ_ONLY"
+            },
+            "postgres": {
+              "error": "QUERY_READ_ONLY"
+            },
+            "sqlite": {
+              "error": "QUERY_READ_ONLY"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "UPDATE t SET n = 2",
+          "expect": {
+            "mysql": {
+              "error": "QUERY_READ_ONLY"
+            },
+            "postgres": {
+              "error": "QUERY_READ_ONLY"
+            },
+            "sqlite": {
+              "error": "QUERY_READ_ONLY"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "grid_binary_row",
+      "requirements": [
+        "INT-115"
+      ],
+      "steps": [
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": {
+            "mysql": "SELECT X'00FF', X'6869', X'', 'hi', NULL",
+            "postgres": "SELECT decode('00ff','hex'), decode('6869','hex'), decode('','hex'), 'hi', NULL",
+            "sqlite": "SELECT X'00FF', X'6869', X'', 'hi', NULL"
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "bytes_hex": "00ff"
+                  },
+                  {
+                    "bytes_hex": "6869"
+                  },
+                  {
+                    "bytes_hex": ""
+                  },
+                  {
+                    "text": "hi"
+                  },
+                  {
+                    "null": "null"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "bytes_hex": "00ff"
+                  },
+                  {
+                    "bytes_hex": "6869"
+                  },
+                  {
+                    "bytes_hex": ""
+                  },
+                  {
+                    "text": "hi"
+                  },
+                  {
+                    "null": "null"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "bytes_hex": "00ff"
+                  },
+                  {
+                    "bytes_hex": "6869"
+                  },
+                  {
+                    "bytes_hex": ""
+                  },
+                  {
+                    "text": "hi"
+                  },
+                  {
+                    "null": "null"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": {
+            "mysql": "SELECT X'00FF', X'6869', X'', 'hi', NULL",
+            "postgres": "SELECT decode('00ff','hex'), decode('6869','hex'), decode('','hex'), 'hi', NULL",
+            "sqlite": "SELECT X'00FF', X'6869', X'', 'hi', NULL"
+          },
+          "max_rows": 1,
+          "max_bytes": 2,
+          "expect": {
+            "mysql": {
+              "error": "CATALOG_LIMIT"
+            },
+            "postgres": {
+              "error": "CATALOG_LIMIT"
+            },
+            "sqlite": {
+              "error": "CATALOG_LIMIT"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": {
+            "mysql": "SELECT X'FF' UNION ALL SELECT X'FF'",
+            "postgres": "SELECT decode('ff','hex') UNION ALL SELECT decode('ff','hex')",
+            "sqlite": "SELECT X'FF' UNION ALL SELECT X'FF'"
+          },
+          "max_rows": 1,
+          "max_bytes": 1024,
+          "expect": {
+            "mysql": {
+              "error": "CATALOG_LIMIT"
+            },
+            "postgres": {
+              "error": "CATALOG_LIMIT"
+            },
+            "sqlite": {
+              "error": "CATALOG_LIMIT"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "DELETE FROM grid_test_should_not_exist",
+          "expect": {
+            "mysql": {
+              "error": "QUERY_READ_ONLY"
+            },
+            "postgres": {
+              "error": "QUERY_READ_ONLY"
+            },
+            "sqlite": {
+              "error": "QUERY_READ_ONLY"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": {
+            "mysql": "SELECT 'x' AS a, 'y' AS b FROM (SELECT 1 AS one) d WHERE 1=0",
+            "postgres": "SELECT 'x' AS a, 'y' AS b WHERE 1=0",
+            "sqlite": "SELECT 'x' AS a, 'y' AS b WHERE 1=0"
+          },
+          "expect": {
+            "mysql": {
+              "columns": [
+                "a",
+                "b"
+              ],
+              "rows": []
+            },
+            "postgres": {
+              "columns": [
+                "a",
+                "b"
+              ],
+              "rows": []
+            },
+            "sqlite": {
+              "columns": [
+                "a",
+                "b"
+              ],
+              "rows": []
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "binds": [
+            {
+              "text": "text"
+            }
+          ],
+          "sql": {
+            "mysql": "SELECT ?",
+            "postgres": "SELECT CAST($1 AS TEXT)",
+            "sqlite": "SELECT ?"
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "text"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "text"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "text"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_baseline_exact_values",
+      "requirements": [
+        "INT-107"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "reason": "a row of a float, bytes and a generated column",
+          "sql": {
+            "mysql": "CREATE TABLE baseline_cell (id BIGINT NOT NULL PRIMARY KEY, b VARBINARY(4) NOT NULL, v VARCHAR(20) NOT NULL, vlen BIGINT GENERATED ALWAYS AS (LENGTH(v)) STORED)",
+            "postgres": "CREATE TABLE baseline_cell (id BIGINT NOT NULL PRIMARY KEY, b BYTEA NOT NULL, v VARCHAR(20) NOT NULL, vlen BIGINT GENERATED ALWAYS AS (length(v)) STORED)",
+            "sqlite": "CREATE TABLE baseline_cell (id BIGINT NOT NULL PRIMARY KEY, b BLOB NOT NULL, v VARCHAR(20) NOT NULL, vlen BIGINT GENERATED ALWAYS AS (length(v)) STORED)"
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the baseline",
+          "sql": {
+            "mysql": "INSERT INTO baseline_cell (id, b, v) VALUES (1, X'00FF', 'four')",
+            "postgres": "INSERT INTO baseline_cell (id, b, v) VALUES (1, '\\x00ff', 'four')",
+            "sqlite": "INSERT INTO baseline_cell (id, b, v) VALUES (1, X'00FF', 'four')"
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "baseline_cell",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "id",
+            "v",
+            "vlen"
+          ],
+          "as": "first",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "b",
+                "v",
+                "vlen"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "four"
+                  },
+                  {
+                    "int": "4"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "id",
+                "b",
+                "v",
+                "vlen"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "four"
+                  },
+                  {
+                    "int": "4"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "id",
+                "b",
+                "v",
+                "vlen"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "four"
+                  },
+                  {
+                    "int": "4"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "first"
+          },
+          "index": 0,
+          "as": "base",
+          "expect": {
+            "mysql": {
+              "keys": [
+                {
+                  "int": "1"
+                }
+              ],
+              "key_indexes": [
+                0
+              ]
+            },
+            "postgres": {
+              "keys": [
+                {
+                  "int": "1"
+                }
+              ],
+              "key_indexes": [
+                0
+              ]
+            },
+            "sqlite": {
+              "keys": [
+                {
+                  "int": "1"
+                }
+              ],
+              "key_indexes": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "another byte",
+          "sql": {
+            "mysql": "UPDATE baseline_cell SET b = X'00FE'",
+            "postgres": "UPDATE baseline_cell SET b = '\\x00fe'",
+            "sqlite": "UPDATE baseline_cell SET b = X'00FE'"
+          }
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "base"
+          },
+          "set": [
+            [
+              "v",
+              {
+                "text": "x"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_CONFLICT"
+            },
+            "postgres": {
+              "error": "ROW_CONFLICT"
+            },
+            "sqlite": {
+              "error": "ROW_CONFLICT"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the byte back",
+          "sql": {
+            "mysql": "UPDATE baseline_cell SET b = X'00FF'",
+            "postgres": "UPDATE baseline_cell SET b = '\\x00ff'",
+            "sqlite": "UPDATE baseline_cell SET b = X'00FF'"
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the generated original changes with its source",
+          "sql": "UPDATE baseline_cell SET v = 'seven77'"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "base"
+          },
+          "set": [
+            [
+              "v",
+              {
+                "text": "x"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_CONFLICT"
+            },
+            "postgres": {
+              "error": "ROW_CONFLICT"
+            },
+            "sqlite": {
+              "error": "ROW_CONFLICT"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the source back",
+          "sql": "UPDATE baseline_cell SET v = 'four'"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "base"
+          },
+          "set": [
+            [
+              "v",
+              {
+                "text": "done"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "bytes_hex": "00ff"
+                  },
+                  {
+                    "text": "done"
+                  },
+                  {
+                    "int": "4"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "bytes_hex": "00ff"
+                  },
+                  {
+                    "text": "done"
+                  },
+                  {
+                    "int": "4"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "bytes_hex": "00ff"
+                  },
+                  {
+                    "text": "done"
+                  },
+                  {
+                    "int": "4"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_baseline_exact_values_postgres",
+      "only": [
+        "postgres"
+      ],
+      "requirements": [
+        "INT-107"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "reason": "a float whose zero has two bit forms",
+          "sql": "CREATE TABLE baseline_float (id BIGINT PRIMARY KEY, f DOUBLE PRECISION NOT NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the positive zero",
+          "sql": "INSERT INTO baseline_float VALUES (1, 0)"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "baseline_float",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "id"
+          ],
+          "as": "floats",
+          "expect": {
+            "postgres": {
+              "columns": [
+                "id",
+                "f"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "floats"
+          },
+          "index": 0,
+          "as": "zero"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the other zero: its bits differ",
+          "sql": "UPDATE baseline_float SET f = '-0'::float8"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "zero"
+          },
+          "set": [
+            [
+              "f",
+              {
+                "int": "2"
+              }
+            ]
+          ],
+          "expect": {
+            "postgres": {
+              "error": "ROW_CONFLICT"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a decimal that keeps its written scale",
+          "sql": "CREATE TABLE baseline_scale (id BIGINT PRIMARY KEY, d NUMERIC NOT NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "five digits of scale",
+          "sql": "INSERT INTO baseline_scale VALUES (1, 100.23000)"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "baseline_scale",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "d"
+          ],
+          "as": "scaled",
+          "expect": {
+            "postgres": {
+              "columns": [
+                "id",
+                "d"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "decimal": "100.23000"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "scaled"
+          },
+          "index": 0,
+          "as": "scale"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the same number in another scale",
+          "sql": "UPDATE baseline_scale SET d = 100.23"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "scale"
+          },
+          "set": [
+            [
+              "d",
+              {
+                "decimal": "1.5"
+              }
+            ]
+          ],
+          "expect": {
+            "postgres": {
+              "error": "ROW_CONFLICT"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_byte_capacity_mysql",
+      "only": [
+        "mysql"
+      ],
+      "requirements": [
+        "INT-111"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "reason": "columns whose capacity counts bytes",
+          "sql": "CREATE TABLE byte_cell (id BIGINT NOT NULL PRIMARY KEY, vb VARBINARY(3) NOT NULL, bn BINARY(3) NOT NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the start",
+          "sql": "INSERT INTO byte_cell VALUES (1, X'00', X'000000')"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "byte_cell",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "id"
+          ],
+          "as": "bytes",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "vb",
+                "bn"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "bytes"
+          },
+          "index": 0,
+          "as": "start"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "start"
+          },
+          "set": [
+            [
+              "vb",
+              {
+                "bytes_hex": "00010203"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_UPDATE_INVALID"
+            }
+          }
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "start"
+          },
+          "set": [
+            [
+              "bn",
+              {
+                "text": "éé"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_UPDATE_INVALID"
+            }
+          }
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "start"
+          },
+          "set": [
+            [
+              "vb",
+              {
+                "bytes_hex": "000102"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "bytes_hex": "000102"
+                  },
+                  {
+                    "bytes_hex": "000000"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "byte_cell",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "id"
+          ],
+          "as": "bytes2"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "bytes2"
+          },
+          "index": 0,
+          "as": "next"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "next"
+          },
+          "set": [
+            [
+              "bn",
+              {
+                "bytes_hex": "c3a961"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "bytes_hex": "000102"
+                  },
+                  {
+                    "bytes_hex": "c3a961"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_byte_capacity_postgres",
+      "only": [
+        "postgres"
+      ],
+      "requirements": [
+        "INT-111"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "reason": "a capacity spelled in the long form",
+          "sql": "CREATE TABLE char_cell (id BIGINT PRIMARY KEY, c CHARACTER VARYING(3) NOT NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the start",
+          "sql": "INSERT INTO char_cell VALUES (1, 'a')"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "char_cell",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "id"
+          ],
+          "as": "chars",
+          "expect": {
+            "postgres": {
+              "columns": [
+                "id",
+                "c"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "chars"
+          },
+          "index": 0,
+          "as": "char_start"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "char_start"
+          },
+          "set": [
+            [
+              "c",
+              {
+                "text": "界界界界"
+              }
+            ]
+          ],
+          "expect": {
+            "postgres": {
+              "error": "ROW_UPDATE_INVALID"
+            }
+          }
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "char_start"
+          },
+          "set": [
+            [
+              "c",
+              {
+                "text": "界界界"
+              }
+            ]
+          ],
+          "expect": {
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "界界界"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "described_temporal_matrix",
+      "requirements": [
+        "INT-101"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "reason": "each precision that MySQL declares",
+          "sql": "CREATE TABLE temporal_row (id BIGINT PRIMARY KEY, dt DATETIME, dt3 DATETIME(3), dt6 DATETIME(6), d DATE, t3 TIME(3), t TIME)",
+          "only": [
+            "mysql"
+          ]
+        },
+        {
+          "op": "sql.exec",
+          "reason": "values of each",
+          "sql": "INSERT INTO temporal_row VALUES (1, '2026-01-02 03:04:05', '2026-01-02 03:04:05.123', '2026-01-02 03:04:05.123', '2024-02-29', '12:34:56.5', '12:34:56')",
+          "only": [
+            "mysql"
+          ]
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "temporal_row",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "dt",
+            "dt3",
+            "dt6",
+            "d",
+            "t3",
+            "t"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "dt",
+                "dt3",
+                "dt6",
+                "d",
+                "t3",
+                "t"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "datetime": "2026-01-02 03:04:05"
+                  },
+                  {
+                    "datetime": "2026-01-02 03:04:05.123"
+                  },
+                  {
+                    "datetime": "2026-01-02 03:04:05.123000"
+                  },
+                  {
+                    "date": "2024-02-29"
+                  },
+                  {
+                    "time": "12:34:56.500"
+                  },
+                  {
+                    "time": "12:34:56"
+                  }
+                ]
+              ]
+            }
+          },
+          "only": [
+            "mysql"
+          ]
+        },
+        {
+          "op": "sql.exec",
+          "reason": "TIMESTAMP is no dbspec type",
+          "sql": "CREATE TABLE stamp_row (id BIGINT PRIMARY KEY, s TIMESTAMP NULL)",
+          "only": [
+            "mysql"
+          ]
+        },
+        {
+          "op": "sql.exec",
+          "reason": "its value",
+          "sql": "INSERT INTO stamp_row VALUES (1, '2026-01-02 03:04:05')",
+          "only": [
+            "mysql"
+          ]
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "stamp_row",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "id"
+          ],
+          "expect": {
+            "mysql": {
+              "error": "CATALOG_VALUE"
+            }
+          },
+          "only": [
+            "mysql"
+          ]
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a MySQL TIME reaches past a day",
+          "sql": "CREATE TABLE day_row (id BIGINT PRIMARY KEY, t TIME)",
+          "only": [
+            "mysql"
+          ]
+        },
+        {
+          "op": "sql.exec",
+          "reason": "outside a day",
+          "sql": "INSERT INTO day_row VALUES (1, '25:00:00')",
+          "only": [
+            "mysql"
+          ]
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "day_row",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "id"
+          ],
+          "expect": {
+            "mysql": {
+              "error": "GRID_TEMPORAL_VALUE"
+            }
+          },
+          "only": [
+            "mysql"
+          ]
+        },
+        {
+          "op": "sql.exec",
+          "reason": "MySQL zero dates",
+          "sql": "CREATE TABLE zero_row (id BIGINT PRIMARY KEY, d DATE, dt DATETIME(3))",
+          "only": [
+            "mysql"
+          ]
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a zero date",
+          "sql": "INSERT IGNORE INTO zero_row VALUES (1, '0000-00-00', NULL)",
+          "only": [
+            "mysql"
+          ]
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "zero_row",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "id"
+          ],
+          "expect": {
+            "mysql": {
+              "error": "GRID_TEMPORAL_VALUE"
+            }
+          },
+          "only": [
+            "mysql"
+          ]
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a zero datetime",
+          "sql": "UPDATE IGNORE zero_row SET d = NULL, dt = '0000-00-00 00:00:00.000'",
+          "only": [
+            "mysql"
+          ]
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "zero_row",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "id"
+          ],
+          "expect": {
+            "mysql": {
+              "error": "GRID_TEMPORAL_VALUE"
+            }
+          },
+          "only": [
+            "mysql"
+          ]
+        },
+        {
+          "op": "sql.exec",
+          "reason": "each precision that PostgreSQL declares",
+          "sql": "CREATE TABLE temporal_row (id BIGINT PRIMARY KEY, ts TIMESTAMP WITHOUT TIME ZONE, ts3 TIMESTAMP(3) WITHOUT TIME ZONE, d DATE, t3 TIME(3) WITHOUT TIME ZONE, t TIME WITHOUT TIME ZONE)",
+          "only": [
+            "postgres"
+          ]
+        },
+        {
+          "op": "sql.exec",
+          "reason": "values of each",
+          "sql": "INSERT INTO temporal_row VALUES (1, '2026-01-02 03:04:05.123', '2026-01-02 03:04:05.123', '2024-02-29', '12:34:56.5', '12:34:56')",
+          "only": [
+            "postgres"
+          ]
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "temporal_row",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "ts",
+            "ts3",
+            "d",
+            "t3",
+            "t"
+          ],
+          "expect": {
+            "postgres": {
+              "columns": [
+                "id",
+                "ts",
+                "ts3",
+                "d",
+                "t3",
+                "t"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "datetime": "2026-01-02 03:04:05.123000"
+                  },
+                  {
+                    "datetime": "2026-01-02 03:04:05.123"
+                  },
+                  {
+                    "date": "2024-02-29"
+                  },
+                  {
+                    "time": "12:34:56.500"
+                  },
+                  {
+                    "time": "12:34:56.000000"
+                  }
+                ]
+              ]
+            }
+          },
+          "only": [
+            "postgres"
+          ]
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a zone is no dbspec type",
+          "sql": "CREATE TABLE zone_row (id BIGINT PRIMARY KEY, s TIMESTAMP WITH TIME ZONE)",
+          "only": [
+            "postgres"
+          ]
+        },
+        {
+          "op": "sql.exec",
+          "reason": "its value",
+          "sql": "INSERT INTO zone_row VALUES (1, '2026-01-02 03:04:05+00')",
+          "only": [
+            "postgres"
+          ]
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "zone_row",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "id"
+          ],
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE"
+            }
+          },
+          "only": [
+            "postgres"
+          ]
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a time with a zone",
+          "sql": "CREATE TABLE timetz_row (id BIGINT PRIMARY KEY, t TIME WITH TIME ZONE)",
+          "only": [
+            "postgres"
+          ]
+        },
+        {
+          "op": "sql.exec",
+          "reason": "its value",
+          "sql": "INSERT INTO timetz_row VALUES (1, '12:34:56+00')",
+          "only": [
+            "postgres"
+          ]
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "timetz_row",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "id"
+          ],
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE"
+            }
+          },
+          "only": [
+            "postgres"
+          ]
+        },
+        {
+          "op": "sql.exec",
+          "reason": "TIME(3) is no dbspec declaration of SQLite: its text is returned as it is",
+          "sql": "CREATE TABLE plain_temporal (id INTEGER PRIMARY KEY, d DATE, t TIME(3))",
+          "only": [
+            "sqlite"
+          ]
+        },
+        {
+          "op": "sql.exec",
+          "reason": "its values",
+          "sql": "INSERT INTO plain_temporal VALUES (1, '2024-02-29', '12:34:56.5')",
+          "only": [
+            "sqlite"
+          ]
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "plain_temporal",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "d",
+            "t"
+          ],
+          "expect": {
+            "sqlite": {
+              "columns": [
+                "id",
+                "d",
+                "t"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "date": "2024-02-29"
+                  },
+                  {
+                    "time": "12:34:56.5"
+                  }
+                ]
+              ]
+            }
+          },
+          "only": [
+            "sqlite"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "generated_identity_sqlite",
+      "only": [
+        "sqlite"
+      ],
+      "requirements": [
+        "SCH-6a",
+        "INT-123",
+        "DBS-113"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "reason": "a SQLite automatic key",
+          "sql": "CREATE TABLE sample (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)"
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "sample",
+          "as": "auto",
+          "expect": {
+            "sqlite": {
+              "columns": [
+                "id",
+                "payload"
+              ],
+              "primary_key": [
+                "id"
+              ],
+              "reliable_row_identity": true,
+              "native_types": [
+                "INTEGER",
+                "TEXT"
+              ],
+              "nullable": [
+                false,
+                false
+              ],
+              "generated": [
+                false,
+                false
+              ],
+              "automatic_keys": [
+                true,
+                false
+              ],
+              "defaults": [
+                false,
+                false
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "auto"
+          },
+          "values": [
+            [
+              "payload",
+              {
+                "text": "generated"
+              }
+            ]
+          ],
+          "expect": {
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "generated"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "auto"
+          },
+          "values": [
+            [
+              "payload",
+              {
+                "text": "second"
+              }
+            ]
+          ],
+          "expect": {
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "second"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "auto"
+          },
+          "values": [
+            [
+              "id",
+              {
+                "int": "20"
+              }
+            ],
+            [
+              "payload",
+              {
+                "text": "explicit"
+              }
+            ]
+          ],
+          "expect": {
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "20"
+                  },
+                  {
+                    "text": "explicit"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT id, payload FROM sample ORDER BY id",
+          "expect": {
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "generated"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "second"
+                  }
+                ],
+                [
+                  {
+                    "int": "20"
+                  },
+                  {
+                    "text": "explicit"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a text key that the database does not generate",
+          "sql": "CREATE TABLE required_identity (id TEXT NOT NULL PRIMARY KEY, payload TEXT NOT NULL)"
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "required_identity",
+          "as": "required",
+          "expect": {
+            "sqlite": {
+              "columns": [
+                "id",
+                "payload"
+              ],
+              "primary_key": [
+                "id"
+              ],
+              "reliable_row_identity": true
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "required"
+          },
+          "values": [
+            [
+              "payload",
+              {
+                "text": "missing-key"
+              }
+            ]
+          ],
+          "expect": {
+            "sqlite": {
+              "error": "ROW_INSERT_IDENTITY_REQUIRED"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a key of defaults alone",
+          "sql": "CREATE TABLE generated_defaults_only (tenant BIGINT NOT NULL DEFAULT 2, seq VARCHAR(30) NOT NULL DEFAULT 'generated', n BIGINT NOT NULL DEFAULT 50, PRIMARY KEY (tenant, seq))"
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "generated_defaults_only",
+          "as": "defaults",
+          "expect": {
+            "sqlite": {
+              "columns": [
+                "tenant",
+                "seq",
+                "n"
+              ],
+              "primary_key": [
+                "tenant",
+                "seq"
+              ],
+              "reliable_row_identity": true
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "defaults"
+          },
+          "values": [],
+          "expect": {
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "generated"
+                  },
+                  {
+                    "int": "50"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a key the database draws at random from its default expression",
+          "sql": "CREATE TABLE generated_expression (seq TEXT NOT NULL PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))), n BIGINT NOT NULL UNIQUE, label VARCHAR(20) NULL)"
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "generated_expression",
+          "as": "random_key",
+          "expect": {
+            "sqlite": {
+              "columns": [
+                "seq",
+                "n",
+                "label"
+              ],
+              "primary_key": [
+                "seq"
+              ],
+              "reliable_row_identity": true,
+              "defaults": [
+                true,
+                false,
+                false
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "random_key"
+          },
+          "values": [
+            [
+              "n",
+              {
+                "int": "1"
+              }
+            ],
+            [
+              "label",
+              {
+                "null": "text"
+              }
+            ]
+          ]
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT length(seq), seq = lower(seq), seq GLOB '*[^0-9a-f]*', n, label IS NULL FROM generated_expression",
+          "expect": {
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "32"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "random_key"
+          },
+          "values": [
+            [
+              "n",
+              {
+                "int": "1"
+              }
+            ],
+            [
+              "label",
+              {
+                "null": "text"
+              }
+            ]
+          ],
+          "expect": {
+            "sqlite": {
+              "error": "DUPLICATE_KEY"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT COUNT(*) FROM generated_expression",
+          "expect": {
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "temporal_text_row_cycle_sqlite",
+      "only": [
+        "sqlite"
+      ],
+      "requirements": [
+        "INT-103",
+        "INT-117"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "reason": "each TIME and DATETIME column has the CHECK of the dbspec renderer that fixes its fraction digits",
+          "sql": "CREATE TABLE temporal_cycle (id INTEGER PRIMARY KEY AUTOINCREMENT, d DATE NOT NULL CHECK (\"d\" IS date(\"d\")), t3 TIME NOT NULL CHECK (length(\"t3\") = 12 AND substr(\"t3\", 1, 8) IS time(substr(\"t3\", 1, 8)) AND substr(\"t3\", 9, 1) = '.' AND substr(\"t3\", 10) GLOB '[0-9][0-9][0-9]'), dt6 DATETIME NOT NULL CHECK (length(\"dt6\") = 26 AND substr(\"dt6\", 1, 19) IS datetime(substr(\"dt6\", 1, 19)) AND substr(\"dt6\", 20, 1) = '.' AND substr(\"dt6\", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]'))"
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "temporal_cycle",
+          "as": "cycle",
+          "expect": {
+            "sqlite": {
+              "columns": [
+                "id",
+                "d",
+                "t3",
+                "dt6"
+              ],
+              "primary_key": [
+                "id"
+              ],
+              "reliable_row_identity": true
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "cycle"
+          },
+          "values": [
+            [
+              "d",
+              {
+                "date": "2024-02-29"
+              }
+            ],
+            [
+              "t3",
+              {
+                "time": "12:34:56.500"
+              }
+            ],
+            [
+              "dt6",
+              {
+                "datetime": "2024-02-29 01:02:03.500000"
+              }
+            ]
+          ],
+          "expect": {
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "date": "2024-02-29"
+                  },
+                  {
+                    "time": "12:34:56.500"
+                  },
+                  {
+                    "datetime": "2024-02-29 01:02:03.500000"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "temporal_cycle",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "d",
+            "t3",
+            "dt6"
+          ],
+          "as": "before",
+          "expect": {
+            "sqlite": {
+              "columns": [
+                "id",
+                "d",
+                "t3",
+                "dt6"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "date": "2024-02-29"
+                  },
+                  {
+                    "time": "12:34:56.500"
+                  },
+                  {
+                    "datetime": "2024-02-29 01:02:03.500000"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "before"
+          },
+          "index": 0,
+          "as": "original"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "original"
+          },
+          "set": [
+            [
+              "dt6",
+              {
+                "datetime": "2024-03-01 00:00:00.000001"
+              }
+            ]
+          ],
+          "expect": {
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "date": "2024-02-29"
+                  },
+                  {
+                    "time": "12:34:56.500"
+                  },
+                  {
+                    "datetime": "2024-03-01 00:00:00.000001"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "temporal_cycle",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "d",
+            "t3",
+            "dt6"
+          ],
+          "as": "after",
+          "expect": {
+            "sqlite": {
+              "columns": [
+                "id",
+                "d",
+                "t3",
+                "dt6"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "date": "2024-02-29"
+                  },
+                  {
+                    "time": "12:34:56.500"
+                  },
+                  {
+                    "datetime": "2024-03-01 00:00:00.000001"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "after"
+          },
+          "index": 0,
+          "as": "current"
+        },
+        {
+          "op": "catalog.delete_row",
+          "snapshot": {
+            "ref": "current"
+          },
+          "expect": {
+            "sqlite": {
+              "value": {
+                "int": "1"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_baseline_unsigned_mysql",
+      "only": [
+        "mysql"
+      ],
+      "requirements": [
+        "INT-107"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "reason": "the two largest unsigned values differ in the last bit",
+          "sql": "CREATE TABLE baseline_unsigned (id BIGINT PRIMARY KEY, u BIGINT UNSIGNED NOT NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the largest",
+          "sql": "INSERT INTO baseline_unsigned VALUES (1, 18446744073709551615)"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "baseline_unsigned",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "id"
+          ],
+          "as": "unsigned",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "u"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "unsigned"
+          },
+          "index": 0,
+          "as": "largest"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "one below",
+          "sql": "UPDATE baseline_unsigned SET u = 18446744073709551614"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "largest"
+          },
+          "set": [
+            [
+              "u",
+              {
+                "int": "2"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_CONFLICT"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "view_table_page",
+      "requirements": [
+        "INT-113"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "sql": "CREATE TABLE viewed_row (seq INTEGER NOT NULL PRIMARY KEY, name VARCHAR(40) NOT NULL)",
+          "reason": "dbspec declares no such table, so only the native driver creates it"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO viewed_row (seq, name) VALUES (1, 'first')",
+          "reason": "the row that the view shows"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "CREATE VIEW viewed_row_view AS SELECT seq, name FROM viewed_row",
+          "reason": "dbspec declares no view"
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "viewed_row_view",
+          "expect": {
+            "mysql": {
+              "kind": "view",
+              "columns": [
+                "seq",
+                "name"
+              ],
+              "primary_key": [],
+              "reliable_row_identity": false
+            },
+            "postgres": {
+              "kind": "view",
+              "columns": [
+                "seq",
+                "name"
+              ],
+              "primary_key": [],
+              "reliable_row_identity": false
+            },
+            "sqlite": {
+              "kind": "view",
+              "columns": [
+                "seq",
+                "name"
+              ],
+              "primary_key": [],
+              "reliable_row_identity": false
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "viewed_row_view",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "name"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "seq",
+                "name"
+              ],
+              "order_by": [],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "first"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "seq",
+                "name"
+              ],
+              "order_by": [],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "first"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "seq",
+                "name"
+              ],
+              "order_by": [],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "first"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_update_verification",
+      "requirements": [
+        "INT-106",
+        "INT-110",
+        "INT-111"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "sql": "CREATE TABLE audited_row (seq INTEGER NOT NULL PRIMARY KEY, name VARCHAR(40) NOT NULL, note VARCHAR(40) NOT NULL)",
+          "reason": "dbspec declares no such table, so only the native driver creates it"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO audited_row (seq, name, note) VALUES (1, 'first', 'original')",
+          "reason": "the row is there before the trigger, so that only the update fires it"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "CREATE TRIGGER audited_row_change BEFORE UPDATE ON audited_row FOR EACH ROW SET NEW.note = 'touched'",
+            "postgres": "CREATE FUNCTION audited_row_touch() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN NEW.note := 'touched'; RETURN NEW; END$$",
+            "sqlite": "CREATE TRIGGER audited_row_change AFTER UPDATE OF name ON audited_row BEGIN UPDATE audited_row SET note = 'touched' WHERE seq = NEW.seq; END"
+          },
+          "reason": "dbspec declares no trigger that changes a written row, so only the native driver creates it"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "CREATE TRIGGER audited_row_change BEFORE UPDATE ON audited_row FOR EACH ROW EXECUTE FUNCTION audited_row_touch()",
+            "sqlite": "SELECT 1"
+          },
+          "reason": "dbspec declares no trigger that changes a written row, so only the native driver creates it"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "audited_row",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "name",
+            "note"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "seq",
+                "name",
+                "note"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "first"
+                  },
+                  {
+                    "text": "original"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "seq",
+                "name",
+                "note"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "first"
+                  },
+                  {
+                    "text": "original"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "seq",
+                "name",
+                "note"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "first"
+                  },
+                  {
+                    "text": "original"
+                  }
+                ]
+              ]
+            }
+          },
+          "as": "audited"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "audited"
+          },
+          "index": 0,
+          "as": "audited_row"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "audited_row"
+          },
+          "set": [
+            [
+              "name",
+              {
+                "text": "assigned"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_MUTATION_UNSUPPORTED"
+            },
+            "postgres": {
+              "error": "ROW_WRITE_MISMATCH"
+            },
+            "sqlite": {
+              "error": "ROW_WRITE_MISMATCH"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "audited_row",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "name",
+            "note"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "seq",
+                "name",
+                "note"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "first"
+                  },
+                  {
+                    "text": "original"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "seq",
+                "name",
+                "note"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "first"
+                  },
+                  {
+                    "text": "original"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "seq",
+                "name",
+                "note"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "first"
+                  },
+                  {
+                    "text": "original"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "CREATE TABLE coerced_row (seq INTEGER NOT NULL PRIMARY KEY, name VARCHAR(40) NOT NULL)",
+          "reason": "dbspec declares no such table, so only the native driver creates it"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO coerced_row (seq, name) VALUES (1, 'first')",
+          "reason": "the row is there before the trigger, so that only the update fires it"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "CREATE FUNCTION coerced_row_upper() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN NEW.name := upper(NEW.name); RETURN NEW; END$$",
+            "sqlite": "CREATE TRIGGER coerced_row_change AFTER UPDATE OF name ON coerced_row BEGIN UPDATE coerced_row SET name = upper(NEW.name) WHERE seq = NEW.seq; END"
+          },
+          "reason": "dbspec declares no trigger that changes a written row, so only the native driver creates it"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "CREATE TRIGGER coerced_row_change BEFORE UPDATE ON coerced_row FOR EACH ROW SET NEW.name = upper(NEW.name)",
+            "postgres": "CREATE TRIGGER coerced_row_change BEFORE UPDATE ON coerced_row FOR EACH ROW EXECUTE FUNCTION coerced_row_upper()",
+            "sqlite": "SELECT 1"
+          },
+          "reason": "dbspec declares no trigger that changes a written row, so only the native driver creates it"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "coerced_row",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "name"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "seq",
+                "name"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "first"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "seq",
+                "name"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "first"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "seq",
+                "name"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "first"
+                  }
+                ]
+              ]
+            }
+          },
+          "as": "coerced"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "coerced"
+          },
+          "index": 0,
+          "as": "coerced_row"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "coerced_row"
+          },
+          "set": [
+            [
+              "name",
+              {
+                "text": "assigned"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_MUTATION_UNSUPPORTED"
+            },
+            "postgres": {
+              "error": "ROW_WRITE_MISMATCH"
+            },
+            "sqlite": {
+              "error": "ROW_WRITE_MISMATCH"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "coerced_row",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "name"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "seq",
+                "name"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "first"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "seq",
+                "name"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "first"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "seq",
+                "name"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "first"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "CREATE TABLE computed_row (seq INTEGER NOT NULL PRIMARY KEY, amount INTEGER NOT NULL, doubled INTEGER GENERATED ALWAYS AS (amount * 2) STORED, note VARCHAR(40) NOT NULL)",
+          "reason": "dbspec declares no such table, so only the native driver creates it"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO computed_row (seq, amount, note) VALUES (1, 21, 'kept')",
+          "reason": "the row of the generated column"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "computed_row",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "amount",
+            "doubled",
+            "note"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "seq",
+                "amount",
+                "doubled",
+                "note"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "21"
+                  },
+                  {
+                    "int": "42"
+                  },
+                  {
+                    "text": "kept"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "seq",
+                "amount",
+                "doubled",
+                "note"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "21"
+                  },
+                  {
+                    "int": "42"
+                  },
+                  {
+                    "text": "kept"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "seq",
+                "amount",
+                "doubled",
+                "note"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "21"
+                  },
+                  {
+                    "int": "42"
+                  },
+                  {
+                    "text": "kept"
+                  }
+                ]
+              ]
+            }
+          },
+          "as": "computed"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "computed"
+          },
+          "index": 0,
+          "as": "computed_snapshot"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "computed_snapshot"
+          },
+          "set": [
+            [
+              "doubled",
+              {
+                "int": "7"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_UPDATE_INVALID"
+            },
+            "postgres": {
+              "error": "ROW_UPDATE_INVALID"
+            },
+            "sqlite": {
+              "error": "ROW_UPDATE_INVALID"
+            }
+          }
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "computed_snapshot"
+          },
+          "set": [],
+          "expect": {
+            "mysql": {
+              "error": "ROW_UPDATE_INVALID"
+            },
+            "postgres": {
+              "error": "ROW_UPDATE_INVALID"
+            },
+            "sqlite": {
+              "error": "ROW_UPDATE_INVALID"
+            }
+          }
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "computed_snapshot"
+          },
+          "set": [
+            [
+              "amount",
+              {
+                "int": "50"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "50"
+                  },
+                  {
+                    "int": "100"
+                  },
+                  {
+                    "text": "kept"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "50"
+                  },
+                  {
+                    "int": "100"
+                  },
+                  {
+                    "text": "kept"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "50"
+                  },
+                  {
+                    "int": "100"
+                  },
+                  {
+                    "text": "kept"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_baseline_key_order",
+      "requirements": [
+        "INT-108"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "sql": "CREATE TABLE reordered_key (seq INTEGER NOT NULL, label VARCHAR(40) NOT NULL, note VARCHAR(40) NOT NULL, PRIMARY KEY (label, seq))",
+          "reason": "dbspec declares no such table, so only the native driver creates it"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO reordered_key (seq, label, note) VALUES (7, 'second-first', 'private-original')",
+          "reason": "the row whose key is not in column order"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "reordered_key",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "label",
+            "note"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "seq",
+                "label",
+                "note"
+              ],
+              "order_by": [
+                "label",
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "7"
+                  },
+                  {
+                    "text": "second-first"
+                  },
+                  {
+                    "text": "private-original"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "seq",
+                "label",
+                "note"
+              ],
+              "order_by": [
+                "label",
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "7"
+                  },
+                  {
+                    "text": "second-first"
+                  },
+                  {
+                    "text": "private-original"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "seq",
+                "label",
+                "note"
+              ],
+              "order_by": [
+                "label",
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "7"
+                  },
+                  {
+                    "text": "second-first"
+                  },
+                  {
+                    "text": "private-original"
+                  }
+                ]
+              ]
+            }
+          },
+          "as": "first"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "first"
+          },
+          "index": 0,
+          "as": "original",
+          "expect": {
+            "mysql": {
+              "keys": [
+                {
+                  "text": "second-first"
+                },
+                {
+                  "int": "7"
+                }
+              ],
+              "key_indexes": [
+                1,
+                0
+              ]
+            },
+            "postgres": {
+              "keys": [
+                {
+                  "text": "second-first"
+                },
+                {
+                  "int": "7"
+                }
+              ],
+              "key_indexes": [
+                1,
+                0
+              ]
+            },
+            "sqlite": {
+              "keys": [
+                {
+                  "text": "second-first"
+                },
+                {
+                  "int": "7"
+                }
+              ],
+              "key_indexes": [
+                1,
+                0
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "UPDATE reordered_key SET note = 'private-changed' WHERE seq = 7",
+          "reason": "a writer that the snapshot did not see"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "reordered_key",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "label",
+            "note"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "seq",
+                "label",
+                "note"
+              ],
+              "order_by": [
+                "label",
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "7"
+                  },
+                  {
+                    "text": "second-first"
+                  },
+                  {
+                    "text": "private-changed"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "seq",
+                "label",
+                "note"
+              ],
+              "order_by": [
+                "label",
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "7"
+                  },
+                  {
+                    "text": "second-first"
+                  },
+                  {
+                    "text": "private-changed"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "seq",
+                "label",
+                "note"
+              ],
+              "order_by": [
+                "label",
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "7"
+                  },
+                  {
+                    "text": "second-first"
+                  },
+                  {
+                    "text": "private-changed"
+                  }
+                ]
+              ]
+            }
+          },
+          "as": "second"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "second"
+          },
+          "index": 0,
+          "as": "changed"
+        },
+        {
+          "op": "catalog.row_cells",
+          "snapshot": {
+            "ref": "original"
+          },
+          "expect": {
+            "mysql": {
+              "cells": [
+                {
+                  "int": "7"
+                },
+                {
+                  "text": "second-first"
+                },
+                {
+                  "text": "private-original"
+                }
+              ]
+            },
+            "postgres": {
+              "cells": [
+                {
+                  "int": "7"
+                },
+                {
+                  "text": "second-first"
+                },
+                {
+                  "text": "private-original"
+                }
+              ]
+            },
+            "sqlite": {
+              "cells": [
+                {
+                  "int": "7"
+                },
+                {
+                  "text": "second-first"
+                },
+                {
+                  "text": "private-original"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.revision_compare",
+          "snapshot": {
+            "ref": "original"
+          },
+          "other": {
+            "ref": "changed"
+          },
+          "expect": {
+            "mysql": {
+              "json": {
+                "length": 64,
+                "differs": true
+              }
+            },
+            "postgres": {
+              "json": {
+                "length": 64,
+                "differs": true
+              }
+            },
+            "sqlite": {
+              "json": {
+                "length": 64,
+                "differs": true
+              }
+            }
+          }
+        },
+        {
+          "op": "catalog.revision_compare",
+          "snapshot": {
+            "ref": "changed"
+          },
+          "other": {
+            "ref": "changed"
+          },
+          "expect": {
+            "mysql": {
+              "json": {
+                "length": 64,
+                "differs": false
+              }
+            },
+            "postgres": {
+              "json": {
+                "length": 64,
+                "differs": false
+              }
+            },
+            "sqlite": {
+              "json": {
+                "length": 64,
+                "differs": false
+              }
+            }
+          }
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "original"
+          },
+          "set": [
+            [
+              "note",
+              {
+                "text": "stale"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_CONFLICT"
+            },
+            "postgres": {
+              "error": "ROW_CONFLICT"
+            },
+            "sqlite": {
+              "error": "ROW_CONFLICT"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_baseline_rejected",
+      "requirements": [
+        "INT-109"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "sql": "CREATE TABLE baseline_row (seq INTEGER NOT NULL PRIMARY KEY, name VARCHAR(40) NOT NULL)",
+          "reason": "dbspec declares no such table, so only the native driver creates it"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO baseline_row (seq, name) VALUES (1, 'first')",
+          "reason": "the row of the baseline"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "CREATE VIEW baseline_view AS SELECT seq, name FROM baseline_row",
+          "reason": "dbspec declares no view"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "CREATE TABLE baseline_no_key (seq INTEGER NOT NULL, name VARCHAR(40) NOT NULL)",
+          "reason": "dbspec declares no such table, so only the native driver creates it"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO baseline_no_key (seq, name) VALUES (1, 'first')",
+          "reason": "the row of the table without a key"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "baseline_row",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "name"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "seq",
+                "name"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "first"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "seq",
+                "name"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "first"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "seq",
+                "name"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "first"
+                  }
+                ]
+              ]
+            }
+          },
+          "as": "row_page"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "row_page"
+          },
+          "index": 1,
+          "expect": {
+            "mysql": {
+              "error": "ROW_SNAPSHOT_INVALID"
+            },
+            "postgres": {
+              "error": "ROW_SNAPSHOT_INVALID"
+            },
+            "sqlite": {
+              "error": "ROW_SNAPSHOT_INVALID"
+            }
+          }
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page_with": {
+            "page": {
+              "ref": "row_page"
+            },
+            "order_by": [
+              "seq"
+            ],
+            "primary_key": []
+          },
+          "index": 0,
+          "expect": {
+            "mysql": {
+              "error": "ROW_SNAPSHOT_INVALID"
+            },
+            "postgres": {
+              "error": "ROW_SNAPSHOT_INVALID"
+            },
+            "sqlite": {
+              "error": "ROW_SNAPSHOT_INVALID"
+            }
+          }
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page_with": {
+            "page": {
+              "ref": "row_page"
+            },
+            "order_by": [
+              "seq"
+            ],
+            "primary_key": [
+              "seq",
+              "name"
+            ]
+          },
+          "index": 0,
+          "expect": {
+            "mysql": {
+              "error": "ROW_SNAPSHOT_INVALID"
+            },
+            "postgres": {
+              "error": "ROW_SNAPSHOT_INVALID"
+            },
+            "sqlite": {
+              "error": "ROW_SNAPSHOT_INVALID"
+            }
+          }
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page_with": {
+            "page": {
+              "ref": "row_page"
+            },
+            "order_by": [
+              "seq"
+            ],
+            "primary_key": [
+              "seq",
+              "seq"
+            ]
+          },
+          "index": 0,
+          "expect": {
+            "mysql": {
+              "error": "ROW_SNAPSHOT_INVALID"
+            },
+            "postgres": {
+              "error": "ROW_SNAPSHOT_INVALID"
+            },
+            "sqlite": {
+              "error": "ROW_SNAPSHOT_INVALID"
+            }
+          }
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page_with": {
+            "page": {
+              "ref": "row_page"
+            },
+            "order_by": [
+              "seq"
+            ],
+            "result_column_name": "other"
+          },
+          "index": 0,
+          "expect": {
+            "mysql": {
+              "error": "ROW_SNAPSHOT_INVALID"
+            },
+            "postgres": {
+              "error": "ROW_SNAPSHOT_INVALID"
+            },
+            "sqlite": {
+              "error": "ROW_SNAPSHOT_INVALID"
+            }
+          }
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page_with": {
+            "page": {
+              "ref": "row_page"
+            },
+            "order_by": [
+              "seq"
+            ],
+            "drop_last_cell": true
+          },
+          "index": 0,
+          "expect": {
+            "mysql": {
+              "error": "ROW_SNAPSHOT_INVALID"
+            },
+            "postgres": {
+              "error": "ROW_SNAPSHOT_INVALID"
+            },
+            "sqlite": {
+              "error": "ROW_SNAPSHOT_INVALID"
+            }
+          }
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page_with": {
+            "page": {
+              "ref": "row_page"
+            },
+            "order_by": [
+              "seq"
+            ],
+            "limit": 0
+          },
+          "index": 0,
+          "expect": {
+            "mysql": {
+              "error": "ROW_SNAPSHOT_INVALID"
+            },
+            "postgres": {
+              "error": "ROW_SNAPSHOT_INVALID"
+            },
+            "sqlite": {
+              "error": "ROW_SNAPSHOT_INVALID"
+            }
+          }
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page_with": {
+            "page": {
+              "ref": "row_page"
+            },
+            "order_by": [
+              "seq"
+            ],
+            "fill_last_cell": {
+              "fill": "private",
+              "count": 2097152
+            }
+          },
+          "index": 0,
+          "expect": {
+            "mysql": {
+              "error": "ROW_SNAPSHOT_LIMIT"
+            },
+            "postgres": {
+              "error": "ROW_SNAPSHOT_LIMIT"
+            },
+            "sqlite": {
+              "error": "ROW_SNAPSHOT_LIMIT"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "baseline_view",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "name"
+          ],
+          "as": "view_page"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "baseline_no_key",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "name"
+          ],
+          "as": "no_key_page"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "view_page"
+          },
+          "index": 0,
+          "expect": {
+            "mysql": {
+              "error": "ROW_SNAPSHOT_INVALID"
+            },
+            "postgres": {
+              "error": "ROW_SNAPSHOT_INVALID"
+            },
+            "sqlite": {
+              "error": "ROW_SNAPSHOT_INVALID"
+            }
+          }
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "no_key_page"
+          },
+          "index": 0,
+          "expect": {
+            "mysql": {
+              "error": "ROW_SNAPSHOT_INVALID"
+            },
+            "postgres": {
+              "error": "ROW_SNAPSHOT_INVALID"
+            },
+            "sqlite": {
+              "error": "ROW_SNAPSHOT_INVALID"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "CREATE TABLE baseline_null_key (label VARCHAR(40) PRIMARY KEY, name VARCHAR(40) NOT NULL)",
+          "reason": "dbspec declares no such table, so only the native driver creates it"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "INSERT INTO baseline_null_key (label, name) VALUES ('held', 'first')",
+            "postgres": "INSERT INTO baseline_null_key (label, name) VALUES ('held', 'first')",
+            "sqlite": "INSERT INTO baseline_null_key (label, name) VALUES (NULL, 'first')"
+          },
+          "reason": "SQLite alone keeps a NULL in a primary key column that is not an INTEGER PRIMARY KEY"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "baseline_null_key",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "label",
+            "name"
+          ],
+          "as": "null_key_page"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "null_key_page"
+          },
+          "index": 0,
+          "expect": {
+            "mysql": {
+              "keys": [
+                {
+                  "text": "held"
+                }
+              ],
+              "key_indexes": [
+                0
+              ]
+            },
+            "postgres": {
+              "keys": [
+                {
+                  "text": "held"
+                }
+              ],
+              "key_indexes": [
+                0
+              ]
+            },
+            "sqlite": {
+              "error": "ROW_SNAPSHOT_INVALID"
+            }
+          }
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "row_page"
+          },
+          "index": 0,
+          "as": "row_snapshot"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "ALTER TABLE baseline_row ADD COLUMN added VARCHAR(40)",
+          "reason": "a descriptor that changes after the snapshot"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "row_snapshot"
+          },
+          "set": [
+            [
+              "name",
+              {
+                "text": "second"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_SCHEMA_CHANGED"
+            },
+            "postgres": {
+              "error": "ROW_SCHEMA_CHANGED"
+            },
+            "sqlite": {
+              "error": "ROW_SCHEMA_CHANGED"
+            }
+          }
+        },
+        {
+          "op": "catalog.delete_row",
+          "snapshot": {
+            "ref": "row_snapshot"
+          },
+          "expect": {
+            "mysql": {
+              "error": "ROW_SCHEMA_CHANGED"
+            },
+            "postgres": {
+              "error": "ROW_SCHEMA_CHANGED"
+            },
+            "sqlite": {
+              "error": "ROW_SCHEMA_CHANGED"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "grid_decimal_values",
+      "requirements": [
+        "INT-97"
+      ],
+      "steps": [
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": {
+            "mysql": "SELECT CAST('123456789012345678901234567890123456789012345678901234567890123.45' AS DECIMAL(65,2)), CAST('100.23000' AS DECIMAL(10,5)), CAST('0.00000' AS DECIMAL(10,5))",
+            "postgres": "SELECT '123456789012345678901234567890123456789012345678901234567890123.45'::numeric(65,2), '100.23000'::numeric(10,5), '0.00000'::numeric(10,5)",
+            "sqlite": "SELECT '123456789012345678901234567890123456789012345678901234567890123.45', 123, 1.5"
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "decimal": "123456789012345678901234567890123456789012345678901234567890123.45"
+                  },
+                  {
+                    "decimal": "100.23000"
+                  },
+                  {
+                    "decimal": "0.00000"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "decimal": "123456789012345678901234567890123456789012345678901234567890123.45"
+                  },
+                  {
+                    "decimal": "100.23000"
+                  },
+                  {
+                    "decimal": "0.00000"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "123456789012345678901234567890123456789012345678901234567890123.45"
+                  },
+                  {
+                    "int": "123"
+                  },
+                  {
+                    "f64_bits": "4609434218613702656"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": {
+            "mysql": "SELECT CAST('123456789012345678901234567890123456789012345678901234567890123.45' AS DECIMAL(65,2)), CAST('100.23000' AS DECIMAL(10,5)), CAST('0.00000' AS DECIMAL(10,5))",
+            "postgres": "SELECT '123456789012345678901234567890123456789012345678901234567890123.45'::numeric(65,2), '100.23000'::numeric(10,5), '0.00000'::numeric(10,5)",
+            "sqlite": "SELECT '123456789012345678901234567890123456789012345678901234567890123.45', 123, 1.5"
+          },
+          "max_bytes": 2,
+          "expect": {
+            "mysql": {
+              "error": "CATALOG_LIMIT"
+            },
+            "postgres": {
+              "error": "CATALOG_LIMIT"
+            },
+            "sqlite": {
+              "error": "CATALOG_LIMIT"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": {
+            "mysql": "SELECT CAST(NULL AS DECIMAL(10,5))",
+            "postgres": "SELECT NULL::numeric(10,5)",
+            "sqlite": "SELECT NULL"
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "null": "null"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "null": "null"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "null": "null"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT '99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999'::numeric, '1e-20'::numeric",
+          "only": [
+            "postgres"
+          ],
+          "expect": {
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "decimal": "99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999"
+                  },
+                  {
+                    "decimal": "0.00000000000000000001"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT 'NaN'::numeric",
+          "only": [
+            "postgres"
+          ],
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "grid_number_values",
+      "requirements": [
+        "INT-102"
+      ],
+      "steps": [
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": {
+            "mysql": "SELECT CAST(1.5 AS DOUBLE)",
+            "postgres": "SELECT 1.5::double precision",
+            "sqlite": "SELECT 1.5"
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "f64_bits": "4609434218613702656"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "f64_bits": "4609434218613702656"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "f64_bits": "4609434218613702656"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": {
+            "mysql": "SELECT CAST(1.5 AS DOUBLE)",
+            "postgres": "SELECT 1.5::double precision",
+            "sqlite": "SELECT 1.5"
+          },
+          "max_bytes": 2,
+          "expect": {
+            "mysql": {
+              "error": "CATALOG_LIMIT"
+            },
+            "postgres": {
+              "error": "CATALOG_LIMIT"
+            },
+            "sqlite": {
+              "error": "CATALOG_LIMIT"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": {
+            "mysql": "SELECT CAST(NULL AS DOUBLE)",
+            "postgres": "SELECT NULL::double precision",
+            "sqlite": "SELECT CAST(NULL AS REAL)"
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "null": "null"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "null": "null"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "null": "null"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT CAST(18446744073709551615 AS UNSIGNED)",
+          "only": [
+            "mysql"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "18446744073709551615"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_commit_outcomes",
+      "only": [
+        "postgres"
+      ],
+      "requirements": [
+        "INT-118",
+        "PRT-79"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "sql": "CREATE TABLE commit_row (id INTEGER NOT NULL PRIMARY KEY, n BIGINT NOT NULL)",
+          "reason": "dbspec declares no such table, so only the native driver creates it"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO commit_row (id, n) VALUES (1, 10)",
+          "reason": "the row of the update"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "commit_row",
+          "limit": 5,
+          "offset": 0,
+          "columns": [
+            "id",
+            "n"
+          ],
+          "expect": {
+            "postgres": {
+              "columns": [
+                "id",
+                "n"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "10"
+                  }
+                ]
+              ]
+            }
+          },
+          "as": "first"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "first"
+          },
+          "index": 0,
+          "as": "original"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "CREATE FUNCTION commit_row_reject() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RAISE EXCEPTION 'owned commit rejection' USING ERRCODE = '23514'; RETURN NULL; END$$",
+          "reason": "dbspec declares no trigger that fails at commit, so only the native driver creates it"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "CREATE CONSTRAINT TRIGGER commit_row_rejected AFTER UPDATE ON commit_row DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION commit_row_reject()",
+          "reason": "dbspec declares no trigger that fails at commit, so only the native driver creates it"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "original"
+          },
+          "set": [
+            [
+              "n",
+              {
+                "int": "11"
+              }
+            ]
+          ],
+          "expect": {
+            "postgres": {
+              "error": "ROW_COMMIT_REJECTED"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "commit_row",
+          "limit": 5,
+          "offset": 0,
+          "columns": [
+            "id",
+            "n"
+          ],
+          "expect": {
+            "postgres": {
+              "columns": [
+                "id",
+                "n"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "10"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "DROP TRIGGER commit_row_rejected ON commit_row",
+          "reason": "dbspec declares no trigger that fails at commit, so only the native driver creates it"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "CREATE FUNCTION commit_row_end() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN PERFORM pg_terminate_backend(pg_backend_pid()); RETURN NULL; END$$",
+          "reason": "dbspec declares no trigger that fails at commit, so only the native driver creates it"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "CREATE CONSTRAINT TRIGGER commit_row_ended AFTER UPDATE ON commit_row DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION commit_row_end()",
+          "reason": "dbspec declares no trigger that fails at commit, so only the native driver creates it"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "original"
+          },
+          "set": [
+            [
+              "n",
+              {
+                "int": "12"
+              }
+            ]
+          ],
+          "expect": {
+            "postgres": {
+              "error": "ROW_COMMIT_INDETERMINATE"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "DROP TRIGGER commit_row_ended ON commit_row",
+          "reason": "dbspec declares no trigger that fails at commit, so only the native driver creates it"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "commit_row",
+          "limit": 5,
+          "offset": 0,
+          "columns": [
+            "id",
+            "n"
+          ],
+          "expect": {
+            "postgres": {
+              "columns": [
+                "id",
+                "n"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "10"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "original"
+          },
+          "set": [
+            [
+              "n",
+              {
+                "int": "13"
+              }
+            ]
+          ],
+          "expect": {
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "13"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_mutation_lifecycle",
+      "requirements": [
+        "INT-106",
+        "INT-123"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "CREATE TABLE mutated_row (id INTEGER NOT NULL PRIMARY KEY, n BIGINT NOT NULL UNIQUE, g BIGINT GENERATED ALWAYS AS (n + 1) STORED) ENGINE=InnoDB",
+            "postgres": "CREATE TABLE mutated_row (id INTEGER NOT NULL PRIMARY KEY, n BIGINT NOT NULL UNIQUE, g BIGINT GENERATED ALWAYS AS (n + 1) STORED)",
+            "sqlite": "CREATE TABLE mutated_row (id INTEGER NOT NULL PRIMARY KEY, n BIGINT NOT NULL UNIQUE, g BIGINT GENERATED ALWAYS AS (n + 1) STORED)"
+          },
+          "reason": "dbspec declares no such table, so only the native driver creates it"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO mutated_row (id, n) VALUES (1, 10), (2, 20)",
+          "reason": "the rows of the update"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "mutated_row",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "id",
+            "n",
+            "g"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "10"
+                  },
+                  {
+                    "int": "11"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "10"
+                  },
+                  {
+                    "int": "11"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "10"
+                  },
+                  {
+                    "int": "11"
+                  }
+                ]
+              ]
+            }
+          },
+          "as": "first"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "first"
+          },
+          "index": 0,
+          "as": "original"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "original"
+          },
+          "set": [
+            [
+              "n",
+              {
+                "int": "11"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "11"
+                  },
+                  {
+                    "int": "12"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "11"
+                  },
+                  {
+                    "int": "12"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "11"
+                  },
+                  {
+                    "int": "12"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "original"
+          },
+          "set": [
+            [
+              "n",
+              {
+                "int": "12"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_CONFLICT"
+            },
+            "postgres": {
+              "error": "ROW_CONFLICT"
+            },
+            "sqlite": {
+              "error": "ROW_CONFLICT"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "mutated_row",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "id",
+            "n",
+            "g"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "11"
+                  },
+                  {
+                    "int": "12"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "11"
+                  },
+                  {
+                    "int": "12"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "11"
+                  },
+                  {
+                    "int": "12"
+                  }
+                ]
+              ]
+            }
+          },
+          "as": "second"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "second"
+          },
+          "index": 0,
+          "as": "updated"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "updated"
+          },
+          "set": [
+            [
+              "n",
+              {
+                "int": "20"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "DUPLICATE_KEY"
+            },
+            "postgres": {
+              "error": "DUPLICATE_KEY"
+            },
+            "sqlite": {
+              "error": "DUPLICATE_KEY"
+            }
+          }
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "updated"
+          },
+          "set": [
+            [
+              "n",
+              {
+                "text": "12"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_WRITE_MISMATCH"
+            },
+            "postgres": {
+              "error": "ROW_WRITE_MISMATCH"
+            },
+            "sqlite": {
+              "error": "ROW_WRITE_MISMATCH"
+            }
+          }
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "updated"
+          },
+          "set": [
+            [
+              "g",
+              {
+                "int": "99"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_UPDATE_INVALID"
+            },
+            "postgres": {
+              "error": "ROW_UPDATE_INVALID"
+            },
+            "sqlite": {
+              "error": "ROW_UPDATE_INVALID"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "mutated_row",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "id",
+            "n",
+            "g"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "11"
+                  },
+                  {
+                    "int": "12"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "11"
+                  },
+                  {
+                    "int": "12"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "11"
+                  },
+                  {
+                    "int": "12"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "updated"
+          },
+          "set": [
+            [
+              "id",
+              {
+                "int": "0"
+              }
+            ],
+            [
+              "n",
+              {
+                "int": "12"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "int": "12"
+                  },
+                  {
+                    "int": "13"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "int": "12"
+                  },
+                  {
+                    "int": "13"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "int": "12"
+                  },
+                  {
+                    "int": "13"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "mutated_row",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "id",
+            "n",
+            "g"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "int": "12"
+                  },
+                  {
+                    "int": "13"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "int": "12"
+                  },
+                  {
+                    "int": "13"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "int": "12"
+                  },
+                  {
+                    "int": "13"
+                  }
+                ]
+              ]
+            }
+          },
+          "as": "third"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "third"
+          },
+          "index": 0,
+          "as": "moved"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "ALTER TABLE mutated_row ADD COLUMN extra INTEGER",
+          "reason": "a descriptor that changes after the snapshot"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "moved"
+          },
+          "set": [
+            [
+              "n",
+              {
+                "int": "13"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_SCHEMA_CHANGED"
+            },
+            "postgres": {
+              "error": "ROW_SCHEMA_CHANGED"
+            },
+            "sqlite": {
+              "error": "ROW_SCHEMA_CHANGED"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "ALTER TABLE mutated_row DROP COLUMN extra",
+          "reason": "the descriptor of the snapshot again"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "moved"
+          },
+          "set": [
+            [
+              "n",
+              {
+                "int": "12"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "int": "12"
+                  },
+                  {
+                    "int": "13"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "int": "12"
+                  },
+                  {
+                    "int": "13"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "int": "12"
+                  },
+                  {
+                    "int": "13"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "CREATE TABLE mutated_child (id BIGINT NOT NULL PRIMARY KEY, parent_id INTEGER NOT NULL, FOREIGN KEY (parent_id) REFERENCES mutated_row (id)) ENGINE=InnoDB",
+            "postgres": "CREATE TABLE mutated_child (id BIGINT NOT NULL PRIMARY KEY, parent_id INTEGER NOT NULL, FOREIGN KEY (parent_id) REFERENCES mutated_row (id))",
+            "sqlite": "CREATE TABLE mutated_child (id BIGINT NOT NULL PRIMARY KEY, parent_id INTEGER NOT NULL, FOREIGN KEY (parent_id) REFERENCES mutated_row (id))"
+          },
+          "reason": "dbspec declares no such table, so only the native driver creates it"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO mutated_child (id, parent_id) VALUES (1, 0)",
+          "reason": "the row that refers to the row of the delete"
+        },
+        {
+          "op": "catalog.delete_row",
+          "snapshot": {
+            "ref": "moved"
+          },
+          "expect": {
+            "mysql": {
+              "error": "FOREIGN_KEY"
+            },
+            "postgres": {
+              "error": "FOREIGN_KEY"
+            },
+            "sqlite": {
+              "error": "FOREIGN_KEY"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "mutated_row",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "id",
+            "n",
+            "g"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "int": "12"
+                  },
+                  {
+                    "int": "13"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "int": "12"
+                  },
+                  {
+                    "int": "13"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "int": "12"
+                  },
+                  {
+                    "int": "13"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "DROP TABLE mutated_child",
+          "reason": "the delete is free again"
+        },
+        {
+          "op": "catalog.delete_row",
+          "snapshot": {
+            "ref": "moved"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "1"
+              }
+            }
+          }
+        },
+        {
+          "op": "catalog.delete_row",
+          "snapshot": {
+            "ref": "moved"
+          },
+          "expect": {
+            "mysql": {
+              "error": "ROW_CONFLICT"
+            },
+            "postgres": {
+              "error": "ROW_CONFLICT"
+            },
+            "sqlite": {
+              "error": "ROW_CONFLICT"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "mutated_row",
+          "limit": 2,
+          "offset": 0,
+          "columns": [
+            "id",
+            "n",
+            "g"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "int": "20"
+                  },
+                  {
+                    "int": "21"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "int": "20"
+                  },
+                  {
+                    "int": "21"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "int": "20"
+                  },
+                  {
+                    "int": "21"
+                  }
+                ]
+              ]
+            }
+          },
+          "as": "after"
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "mutated_row",
+          "as": "descriptor"
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "descriptor"
+          },
+          "values": [
+            [
+              "id",
+              {
+                "int": "3"
+              }
+            ],
+            [
+              "n",
+              {
+                "int": "30"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "int": "30"
+                  },
+                  {
+                    "int": "31"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "int": "30"
+                  },
+                  {
+                    "int": "31"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "int": "30"
+                  },
+                  {
+                    "int": "31"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "descriptor"
+          },
+          "values": [
+            [
+              "id",
+              {
+                "int": "3"
+              }
+            ],
+            [
+              "n",
+              {
+                "int": "40"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_CONFLICT"
+            },
+            "postgres": {
+              "error": "ROW_CONFLICT"
+            },
+            "sqlite": {
+              "error": "ROW_CONFLICT"
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "descriptor"
+          },
+          "values": [
+            [
+              "id",
+              {
+                "int": "4"
+              }
+            ],
+            [
+              "n",
+              {
+                "int": "30"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "DUPLICATE_KEY"
+            },
+            "postgres": {
+              "error": "DUPLICATE_KEY"
+            },
+            "sqlite": {
+              "error": "DUPLICATE_KEY"
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "descriptor"
+          },
+          "values": [
+            [
+              "id",
+              {
+                "int": "4"
+              }
+            ],
+            [
+              "n",
+              {
+                "text": "40"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_WRITE_MISMATCH"
+            },
+            "postgres": {
+              "error": "ROW_WRITE_MISMATCH"
+            },
+            "sqlite": {
+              "error": "ROW_WRITE_MISMATCH"
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "descriptor"
+          },
+          "values": [
+            [
+              "id",
+              {
+                "int": "4"
+              }
+            ],
+            [
+              "g",
+              {
+                "int": "40"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_INSERT_INVALID"
+            },
+            "postgres": {
+              "error": "ROW_INSERT_INVALID"
+            },
+            "sqlite": {
+              "error": "ROW_INSERT_INVALID"
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "descriptor"
+          },
+          "values": [
+            [
+              "id",
+              {
+                "int": "4"
+              }
+            ],
+            [
+              "id",
+              {
+                "int": "5"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_INSERT_INVALID"
+            },
+            "postgres": {
+              "error": "ROW_INSERT_INVALID"
+            },
+            "sqlite": {
+              "error": "ROW_INSERT_INVALID"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "mutated_row",
+          "limit": 9,
+          "offset": 0,
+          "columns": [
+            "id",
+            "n",
+            "g"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "int": "20"
+                  },
+                  {
+                    "int": "21"
+                  }
+                ],
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "int": "30"
+                  },
+                  {
+                    "int": "31"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "int": "20"
+                  },
+                  {
+                    "int": "21"
+                  }
+                ],
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "int": "30"
+                  },
+                  {
+                    "int": "31"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "int": "20"
+                  },
+                  {
+                    "int": "21"
+                  }
+                ],
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "int": "30"
+                  },
+                  {
+                    "int": "31"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "CREATE TABLE mutated_defaults (id BIGINT NOT NULL PRIMARY KEY, n BIGINT NOT NULL DEFAULT 7, label VARCHAR(20))",
+          "reason": "dbspec declares no such table, so only the native driver creates it"
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "mutated_defaults",
+          "as": "defaults"
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "defaults"
+          },
+          "values": [
+            [
+              "id",
+              {
+                "int": "5"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "5"
+                  },
+                  {
+                    "int": "7"
+                  },
+                  {
+                    "null": "text"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "5"
+                  },
+                  {
+                    "int": "7"
+                  },
+                  {
+                    "null": "text"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "5"
+                  },
+                  {
+                    "int": "7"
+                  },
+                  {
+                    "null": "text"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "defaults"
+          },
+          "values": [
+            [
+              "id",
+              {
+                "int": "6"
+              }
+            ],
+            [
+              "label",
+              {
+                "null": "text"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "6"
+                  },
+                  {
+                    "int": "7"
+                  },
+                  {
+                    "null": "text"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "6"
+                  },
+                  {
+                    "int": "7"
+                  },
+                  {
+                    "null": "text"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "6"
+                  },
+                  {
+                    "int": "7"
+                  },
+                  {
+                    "null": "text"
+                  }
+                ]
+              ]
+            }
+          }
         }
       ]
     }

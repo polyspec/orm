@@ -97,19 +97,6 @@ final class RuntimeDbTest extends TestCase
             'date and time'
         );
         self::check($row->getPayload()->kind === 'sql-null', 'selected styled SQL NULL');
-        self::check(
-            (new Sample())($db)->level(32767)->getCount() === 1 && (new Sample())($db)->ltLevel(0)->getCount() === 1,
-            'i16 conditions'
-        );
-        self::check(
-            (new Sample())($db)->token('0f8fad5b-d9cb-469f-a165-70867728950e')->getCount() === 1,
-            'uuid condition'
-        );
-        self::check(
-            self::errorCode(fn() => (new Sample())($db)->setAmount(1)->create()) === Code::IR_INVALID,
-            'an omitted non-null column without a default'
-        );
-        self::check((new Sample())($db)->getCount() === 2, 'the rejected insert stays out of the database');
     }
 
     private static function caseInvalidStoredCellsFailTypedReads(Db $db, string $driver): void

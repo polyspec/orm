@@ -83,18 +83,8 @@ path = "tests/dbspec_plan_apply.rs"
 harness = false
 
 [[test]]
-name = "dbspec_introspect"
-path = "tests/dbspec_introspect.rs"
-harness = false
-
-[[test]]
 name = "decimal_model"
 path = "tests/decimal_model.rs"
-harness = false
-
-[[test]]
-name = "statement_events"
-path = "tests/statement_events.rs"
 harness = false
 
 [[test]]

@@ -74,78 +74,6 @@ class RollbackTest extends TestCase
         return $server;
     }
 
-    /** Checks a ROLLBACK error: both errors are kept and the message names both. */
-    private static function checkRollback(?Throwable $e, string $subject): void
-    {
-        $e = self::checkedOrmException($e, $subject);
-        if ($e === null) {
-            return;
-        }
-        self::check($e->code_ === Code::ROLLBACK, "$subject code {$e->code_}: {$e->getMessage()}");
-        self::check($e->getPrevious() !== null, "$subject keeps the callback error");
-        self::check($e->rollback !== null, "$subject keeps the rollback error");
-        if ($e->getPrevious() !== null && $e->rollback !== null) {
-            self::check(
-                str_contains(
-                    $e->getMessage(),
-                    $e->getPrevious()->getMessage()
-                ) && str_contains($e->getMessage(), $e->rollback->getMessage()),
-                "$subject message names both errors: {$e->getMessage()}"
-            );
-        }
-    }
-
-    /**
-     * The rollback fault of the test entry point. A committed transaction leaves a fault behind,
-     * a transaction after a failed callback is rolled back, and that rollback reports FAULT
-     * and the transaction throws the callback error and a ROLLBACK with the fault. The fault
-     * is consumed: the transaction after it throws only the callback error, and the connection
-     * handles later requests.
-     */
-    private static function rollbackFault(string $dsn): void
-    {
-        // Requirements: PRT-46, PRT-56, PRT-61.
-        self::check(self::$faultsAutoloaded === false, 'the package autoloader loads Polyspec\\Orm\\Testing\\Faults');
-        foreach (['fixClock', 'lastAffected'] as $entry) {
-            self::check(method_exists(Faults::class, $entry), "Polyspec\\Orm\\Testing\\Faults has no {$entry}");
-        }
-        $db = self::connect($dsn);
-        Faults::failNextRollback($db);
-        $committed = self::raised(fn() => $db->transaction(function () use ($db): void {
-            (new RollbackProbe())($db)->setLabel('committed')->create();
-        }, retry: 0));
-        self::check(
-            $committed === null,
-            'a committed transaction with an armed fault raises ' . (
-                $committed === null ? '' : $committed->getMessage()
-            )
-        );
-        $callback = new RuntimeException('rollback fault callback failed');
-        $failing = function () use ($db, $callback): void {
-            (new RollbackProbe())($db)->setLabel('rolled back')->create();
-            throw $callback;
-        };
-        $e = self::raised(fn() => $db->transaction($failing, retry: 0));
-        self::checkRollback($e, 'transaction');
-        if ($e instanceof OrmException) {
-            self::check($e->getPrevious() === $callback, 'the ROLLBACK error keeps the callback error itself');
-            self::check(
-                $e->rollback instanceof OrmException && $e->rollback->code_ === Code::FAULT,
-                'the rollback error is FAULT: ' . ($e->rollback === null ? 'none' : $e->rollback->getMessage())
-            );
-        }
-        self::check((new RollbackProbe())($db)->getCount() === 1, 'the faulted rollback keeps only the committed row');
-        $again = self::raised(fn() => $db->transaction($failing, retry: 0));
-        self::check(
-            $again === $callback,
-            'the transaction after the consumed fault raises the callback error: ' . (
-                $again === null ? 'nothing' : $again->getMessage()
-            )
-        );
-        self::check((new RollbackProbe())($db)->getCount() === 1, 'the second rollback keeps only the committed row');
-        $db->close();
-    }
-
     /**
      * The server ends the session of a new Db before its first statement. The
      * statement fails with CONNECTION_LOST and is sent once: the client opens no
@@ -202,13 +130,13 @@ class RollbackTest extends TestCase
         self::fixture();
     }
 
-    #[DataProvider('drivers')]
-    // Requirements: INT-72.
-    public function testRollbackFault(string $driver): void
+    // Requirements: PRT-46, PRT-56, PRT-61.
+    public function testFaultEntry(): void
     {
-        // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
-        with_case_database($driver, static function (string $step): void {
-        }, static fn(string $dsn) => self::rollbackFault($dsn));
+        self::check(self::$faultsAutoloaded === false, 'the package autoloader loads Polyspec\\Orm\\Testing\\Faults');
+        foreach (['failNextRollback', 'fixClock', 'lastAffected'] as $entry) {
+            self::check(method_exists(Faults::class, $entry), "Polyspec\\Orm\\Testing\\Faults has no {$entry}");
+        }
     }
 
     #[DataProvider('serverDrivers')]
