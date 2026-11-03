@@ -263,12 +263,39 @@ class Core:
             i += 1
             try:
                 pred, extra = self._predicate(key, value, args[i:], len(keys) == 1)
+                self._validate_host_input(pred)
             except OrmError as error:
                 return self.fail_error(error)
             i += extra
             self.where.add(self, conn if index == 0 else key.conn, {"pred": pred})
         if i != len(args):
             self.fail(f"the condition expects {len(keys)} values, got {len(args)}")
+
+    def _validate_host_input(self, pred: dict) -> None:
+        """Refuses a condition value of an `ip` column here, since a dialect that encodes it in SQL would read it as NULL (COD-38)."""
+        if "value" not in pred or pred["kind"] == "fulltext":
+            return
+
+        def check(column: str, value) -> None:
+            field = field_of(self.ent.entity, column)
+            if field is None or "ip" not in field.stages:
+                return
+            for item in value if isinstance(value, (list, tuple)) else [value]:
+                if item is None:
+                    continue
+                try:
+                    host_encode(item, ["ip"], "")
+                except CodecError as error:
+                    raise OrmError(
+                        error.code, str(error).partition(": ")[2], error
+                    ) from error
+
+        if pred["kind"] == "tuple":
+            for row in pred["value"]:
+                for column, item in zip(pred["cols"], row):
+                    check(column, item)
+            return
+        check(pred["column"], pred["value"])
 
     def _predicate(self, key: ChainKey, value, rest, single: bool):
         def p(**fields) -> dict:

@@ -1,9 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 49ffac27669aff2943d211044405ee54249fed1ab07cabeb6f9a29ce37ef0b87 -->
+<!-- source-sha256: 5af39ae242336b39db154c98a5d3495e9e36ae2f240dcc2a42dcdd48046b4592 -->
 # 변경 이력
 
 ## Unreleased
 
+- 공백이 든 `ip` column의 조건 값은 Go와 TypeScript처럼 PHP, PHP extension, Python, Rust에서도 조건을 만들 때 `CODEC_ENCODE`로 실패한다(COD-38). `INET6_ATON`으로 SQL에서 인코딩하는 MySQL에서는 NULL로 읽혀 어떤 행과도 맞지 않았고, SQLite와 PostgreSQL의 Python은 `OrmError`가 아닌 `CodecError`를 올렸다.
+- `model-ip-input-rejects-whitespace`, `model-codec-columns`, `coverage-model-create-parts`의 native 시험을 없앤다. recipe `model_writes_chain`이 그 값을 담으며, 거부되는 count, SQL NULL 쓰기, `IS NULL` 조건을 더했다.
 - `errors` vector의 거부 아홉 가지(연결자 누락·끊긴 연결자, 빈 목록, 연결 없음, transaction 밖 lock, 연결된 join child, limit 있는 page, limit 있는 relation, join하지 않은 model 배치)가 recipe conformance_verification의 `errors` case로 여섯 runtime 모두에서 돌며, 빈 event 목록이 요청이 나가지 않았다는 증거다. recipe는 join의 `connect`, relation의 `limit`, `{"placed": {"model": <name>}}`, `plan` 없는 `plan_page`(`getsPage`)를 받는다 (#T334-3-12-2)
 - Go, PHP, TypeScript의 `orm-gen gen --check` native 시험을 없앴다. recipe `generator`의 case `check_reports_differences_without_writing`가 그 내용을 맡고, `go-model-check`와 `php-model-check`가 생성된 모델을 맡고, TypeScript build는 자기 모델을 직접 쓴다.
 - INT-78a는 hook을 건 handle의 `root`가 연결임을 root가 있는 runtime인 Go, TypeScript, Python에 대해 정한다. Rust compiler fixture는 request hook이 bind된 값을 쓸 수 없음을 나타낸다.
