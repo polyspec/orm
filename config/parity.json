@@ -44028,7 +44028,10 @@
         "DBS-168",
         "DBS-169",
         "DBS-171",
-        "DBS-181"
+        "DBS-181",
+        "DBS-73",
+        "DBS-74",
+        "ORES-19"
       ],
       "file": "tests/dbspec/rules.json",
       "cases": "$.cases[*].id",
