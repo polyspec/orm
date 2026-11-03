@@ -4251,6 +4251,18 @@
     "exported": false,
     "signature": "private static array"
   },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Registry::$verified": {
+    "exported": false,
+    "signature": "private static array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Registry::classes": {
+    "exported": true,
+    "signature": "public static function classes(string $hash, array $classes): void"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Registry::entities": {
+    "exported": true,
+    "signature": "public static function entities(string $hash): array"
+  },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Registry::generated": {
     "exported": true,
     "signature": "public static function generated(string $hash, string $text, string $external=\"\"): void"
@@ -4286,6 +4298,10 @@
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Registry::unloaded": {
     "exported": false,
     "signature": "private static function unloaded(string $hash): Polyspec\\Orm\\OrmException"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Registry::verify": {
+    "exported": true,
+    "signature": "public static function verify(string $class): void"
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Request": {
     "exported": true,
@@ -4377,7 +4393,11 @@
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\RuntimeModel::fromModels": {
     "exported": true,
-    "signature": "public static function fromModels(string $manifestHash, string $manifestText, array $classes, string $externalText=\"\", ?array $parsed=null): Polyspec\\Orm\\RuntimeModel"
+    "signature": "public static function fromModels(string $manifestHash, string $manifestText, array $classes, string $externalText=\"\"): Polyspec\\Orm\\RuntimeModel"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\RuntimeModel::fromParsed": {
+    "exported": true,
+    "signature": "public static function fromParsed(string $manifestHash, string $manifestText, array $entities, string $externalText=\"\"): Polyspec\\Orm\\RuntimeModel"
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\RuntimeModel::loadSet": {
     "exported": true,
@@ -4406,6 +4426,10 @@
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\RuntimeModel::styled": {
     "exported": true,
     "signature": "public static function styled(array $column): bool"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\RuntimeModel::verifyModel": {
+    "exported": true,
+    "signature": "public static function verifyModel(string $class, array $manifest): array"
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Schema": {
     "exported": true,

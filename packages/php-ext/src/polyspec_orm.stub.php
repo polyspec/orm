@@ -1983,14 +1983,18 @@ final class Registry
     private static array $models = [];
     private static array $runtime = [];
     private static array $parsed = [];
+    private static array $verified = [];
     public static function generated(string $hash, string $text, string $external = ''): void {}
     public static function parsed(string $hash, int $format, array $entities): void {}
     public static function schema(Schema $schema): void {}
     public static function register(string $class): void {}
+    public static function classes(string $hash, array $classes): void {}
+    public static function verify(string $class): void {}
     public static function loaded(string $hash): bool {}
     public static function manifestText(string $hash): string {}
     public static function model(string $hash): RuntimeModel {}
     public static function models(string $hash): array {}
+    public static function entities(string $hash): array {}
     private static function unloaded(string $hash): OrmException {}
 }
 
@@ -2053,7 +2057,9 @@ final class RuntimeModel
     /** @param array $documents */
     public static function build(array $documents): RuntimeModel {}
     /** @param array $classes */
-    public static function fromModels(string $manifestHash, string $manifestText, array $classes, string $externalText = '', ?array $parsed = null): RuntimeModel {}
+    public static function fromModels(string $manifestHash, string $manifestText, array $classes, string $externalText = ''): RuntimeModel {}
+    public static function verifyModel(string $class, array $manifest): array {}
+    public static function fromParsed(string $manifestHash, string $manifestText, array $entities, string $externalText = ''): RuntimeModel {}
     public function entity(string $name): ?array {}
     public static function column(array $entity, string $name): ?array {}
     public static function styled(array $column): bool {}

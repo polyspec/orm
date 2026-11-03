@@ -137,11 +137,11 @@ final class Chain
         return self::index($meta)[$pascal] ?? '';
     }
 
-    /** The column with the PascalCase name of any loaded entity of the document set. */
+    /** The column with the PascalCase name of any entity of the document set. */
     public static function schemaColumnName(string $hash, string $pascal): string
     {
-        foreach (Registry::models($hash) as $class) {
-            $column = self::index($class::meta())[$pascal] ?? '';
+        foreach (Registry::entities($hash) as $entity) {
+            $column = self::index($entity)[$pascal] ?? '';
             if ($column !== '') {
                 return $column;
             }

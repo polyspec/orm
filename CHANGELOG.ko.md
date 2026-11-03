@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- PHP process는 생성된 model을 쓸 때만 그 file을 읽어 들인다. `bootstrap.php`는 class를 `Registry::classes`에 넘기고, runtime model과 chain의 column 조회는 parse된 entity를 읽으며, `Registry::verify`가 class를 처음 쓸 때 entity와 비교하므로 수정된 class는 여전히 첫 statement 전에 `CONFIG`로 실패한다. 이 변경을 받으려면 model을 다시 생성해야 한다(T358).
 - `make recipe-runners-check`가 runtime마다 recipe runner가 하나임을 강제한다(FCV-15). PHP runner는 `model.` 접두사로 dispatch하지 않고 model op의 이름을 적으며, 어떤 recipe와 runner도 쓰지 않던 `utils.set_local`, `utils.local`, `utils.lock`을 schema에서 뺐다(T334-3-25).
 - Author model의 생성된 fulltext method `fulltextBooleanNameWithDescription`과 `fulltextNameWithDescription`은 새 op `query.search_chain`으로 모든 runtime이 세 database에서 실행하는 recipe 사례다. 전에는 어떤 recipe도 이 method에 닿지 않았다(T334-3-17-9).
 - CFG-17이 거부하는 DSN은 모든 runtime이 실행하는 recipe 사례이며 전보다 3개 늘었다. 한 번도 실행되지 않던 Rust recipe 시험 `dsn_reject_none`과 `dbspec_plan_comparisons_none`도 이제 실행된다. Cargo 항목에 `harness = false`가 없어 각 recipe의 Rust 시험이 0개였다(T334-3-23-1).

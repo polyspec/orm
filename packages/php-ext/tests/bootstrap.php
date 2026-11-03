@@ -38,6 +38,8 @@ require_once dirname(__DIR__, 2) . '/php/tests/RecipeKeysTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CodecRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/FulltextSearchRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/OrmGenParsedModelTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/OrmGenProcessCase.php';
+require_once dirname(__DIR__, 2) . '/php/tests/OrmGenLazyModelTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/IrValidateRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/PlannerCompileTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DbspecPlanCasesTest.php';

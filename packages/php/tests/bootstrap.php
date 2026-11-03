@@ -87,6 +87,7 @@ require_once __DIR__ . '/OrmGenScanFailureCase.php';
 require_once dirname(__DIR__) . '/testing/dbspec/apply/runner.php';
 require_once dirname(__DIR__) . '/testing/dbspec/introspect/runner.php';
 require_once __DIR__ . '/OrmGenTestSupport.php';
+require_once __DIR__ . '/OrmGenProcessCase.php';
 require_once __DIR__ . '/Stop.php';
 require_once __DIR__ . '/generated_classes.php';
 require_once __DIR__ . '/case_database.php';

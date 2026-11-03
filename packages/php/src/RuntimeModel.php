@@ -263,30 +263,42 @@ final class RuntimeModel
         string $manifestHash,
         string $manifestText,
         array $classes,
-        string $externalText = '',
-        ?array $parsed = null
+        string $externalText = ''
     ): self {
-        $manifest = $parsed ?? self::build(self::loadSet($manifestText, $externalText))->entities;
+        $manifest = self::build(self::loadSet($manifestText, $externalText))->entities;
         $entities = [];
         foreach ($classes as $class) {
-            $meta = $class::meta();
-            // manifest_hash points at the document set that the model class belongs to, and is not part of an entity.
-            unset($meta['manifest_hash']);
-            $name = $meta['entity'] ?? null;
-            $want = is_string($name) ? ($manifest[$name] ?? null) : null;
-            $path = $want === null ? 'entity' : self::firstDifference($meta, $want, '');
-            if ($path !== null) {
-                $entity = is_string($name) ? $name : '?';
-                throw new OrmException(
-                    Code::CONFIG,
-                    "generated model $class of entity $entity differs from its manifest at $path: "
-                    . 'generate the models again (orm-gen gen --set <dbspec-set.json> '
-                    . '--out <dir> --namespace <namespace>)'
-                );
-            }
-            $entities[$name] = $meta;
+            $meta = self::verifyModel($class, $manifest);
+            $entities[$meta['entity']] = $meta;
         }
         return new self($manifestHash, $manifestText, $entities, $externalText);
+    }
+
+    /**
+     * Compares the meta() of one generated class with its entity in $manifest and returns it without manifest_hash, the
+     * rule and the failure of fromModels.
+     *
+     * @param class-string<Model> $class
+     * @param array<string, array> $manifest entity => its fields
+     */
+    public static function verifyModel(string $class, array $manifest): array
+    {
+        $meta = $class::meta();
+        // manifest_hash points at the document set that the model class belongs to, and is not part of an entity.
+        unset($meta['manifest_hash']);
+        $name = $meta['entity'] ?? null;
+        $want = is_string($name) ? ($manifest[$name] ?? null) : null;
+        $path = $want === null ? 'entity' : self::firstDifference($meta, $want, '');
+        if ($path !== null) {
+            $entity = is_string($name) ? $name : '?';
+            throw new OrmException(
+                Code::CONFIG,
+                "generated model $class of entity $entity differs from its manifest at $path: "
+                . 'generate the models again (orm-gen gen --set <dbspec-set.json> '
+                . '--out <dir> --namespace <namespace>)'
+            );
+        }
+        return $meta;
     }
 
     /**

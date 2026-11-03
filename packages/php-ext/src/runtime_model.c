@@ -597,78 +597,105 @@ static str difference_path(zval *got, zval *want, str path) {
     ZEND_HASH_FOREACH_END();
     return zend_is_identical(got, want) ? SNULL : (path.n ? path : SL("(entity)"));
 }
+/* Compares the meta() of one generated class with its entity in manifest and leaves it, without manifest_hash, in meta;
+ * false with an exception on a difference (RuntimeModel::verifyModel). */
+static bool verify_model(zval *cl, zval *manifest, zval *meta) {
+    ZVAL_DEREF(cl);
+    if (Z_TYPE_P(cl) != IS_STRING) {
+        zend_throw_exception(spl_ce_InvalidArgumentException, "Expected generated model class names", 0);
+        return false;
+    }
+    zval callable;
+    array_init_size(&callable, 2);
+    Z_TRY_ADDREF_P(cl);
+    add_next_index_zval(&callable, cl);
+    add_next_index_string(&callable, "meta");
+    if (call_user_function(NULL, NULL, &callable, meta, 0, NULL) != SUCCESS || EG(exception)) {
+        zval_ptr_dtor(&callable);
+        return false;
+    }
+    zval_ptr_dtor(&callable);
+    if (Z_TYPE_P(meta) != IS_ARRAY) {
+        zval_ptr_dtor(meta);
+        zend_throw_exception(spl_ce_UnexpectedValueException, "Generated model meta() must return an array", 0);
+        return false;
+    }
+    SEPARATE_ARRAY(meta);
+    zend_hash_str_del(Z_ARRVAL_P(meta), "manifest_hash", sizeof("manifest_hash") - 1);
+    zval *nv = zend_hash_str_find(Z_ARRVAL_P(meta), "entity", sizeof("entity") - 1);
+    bool named = nv && Z_TYPE_P(nv) == IS_STRING;
+    zval *want = named ? zend_hash_find(Z_ARRVAL_P(manifest), Z_STR_P(nv)) : NULL;
+    str path = want ? difference_path(meta, want, SL("")) : SL("entity");
+    if (path.s) {
+        str entity = named ? zs(Z_STR_P(nv)) : SL("?");
+        orm_error("CONFIG", fmt("generated model %S of entity %S differs from its manifest at %S: generate the models again "
+                                "(orm-gen gen --set <dbspec-set.json> --out <dir> --namespace <namespace>)",
+                                zs(Z_STR_P(cl)), entity, path));
+        zval_ptr_dtor(meta);
+        return false;
+    }
+    return true;
+}
+PHP_METHOD(Polyspec_Orm_RuntimeModel, verifyModel) {
+    zval *cl, *manifest;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+    Z_PARAM_ZVAL(cl) Z_PARAM_ARRAY(manifest)
+    ZEND_PARSE_PARAMETERS_END();
+    ENTER();
+    zval meta;
+    bool ok = verify_model(cl, manifest, &meta);
+    LEAVE();
+    if (!ok) RETURN_THROWS();
+    RETURN_COPY_VALUE(&meta);
+}
+PHP_METHOD(Polyspec_Orm_RuntimeModel, fromParsed) {
+    zend_string *hash, *text, *external = NULL;
+    zval *entities;
+    ZEND_PARSE_PARAMETERS_START(3, 4)
+    Z_PARAM_STR(hash) Z_PARAM_STR(text) Z_PARAM_ARRAY(entities) Z_PARAM_OPTIONAL Z_PARAM_STR(external)
+    ZEND_PARSE_PARAMETERS_END();
+    ENTER();
+    construct_model(return_value, zs(hash), zs(text), entities, external ? zs(external) : SL(""));
+    LEAVE();
+}
 PHP_METHOD(Polyspec_Orm_RuntimeModel, fromModels) {
     zend_string *hash, *text, *external = NULL;
-    zval *classes, *parsed = NULL;
-    ZEND_PARSE_PARAMETERS_START(3, 5)
-    Z_PARAM_STR(hash) Z_PARAM_STR(text) Z_PARAM_ARRAY(classes) Z_PARAM_OPTIONAL Z_PARAM_STR(external) Z_PARAM_ARRAY_OR_NULL(parsed) ZEND_PARSE_PARAMETERS_END();
+    zval *classes;
+    ZEND_PARSE_PARAMETERS_START(3, 4)
+    Z_PARAM_STR(hash) Z_PARAM_STR(text) Z_PARAM_ARRAY(classes) Z_PARAM_OPTIONAL Z_PARAM_STR(external)
+    ZEND_PARSE_PARAMETERS_END();
     ENTER();
-    zval built;
+    zval built, docs, args[2];
     ZVAL_UNDEF(&built);
-    if (parsed == NULL) {
-        zval docs, args[2];
-        ZVAL_UNDEF(&docs);
-        ZVAL_STR_COPY(&args[0], text);
-        if (external)
-            ZVAL_STR_COPY(&args[1], external);
-        else
-            ZVAL_EMPTY_STRING(&args[1]);
-        zend_call_method_with_2_params(NULL, polyspec_runtime_model_ce, NULL, "loadset", &docs, &args[0], &args[1]);
-        zval_ptr_dtor(&args[0]);
-        zval_ptr_dtor(&args[1]);
-        if (EG(exception)) {
-            LEAVE();
-            RETURN_THROWS();
-        }
-        documentv dv = {0};
-        if (in_documents(&docs, &dv, "RuntimeModel::fromModels"))
-            build_docs(&dv, &built);
-        zval_ptr_dtor(&docs);
-        if (EG(exception)) {
-            LEAVE();
-            RETURN_THROWS();
-        }
+    ZVAL_UNDEF(&docs);
+    ZVAL_STR_COPY(&args[0], text);
+    if (external)
+        ZVAL_STR_COPY(&args[1], external);
+    else
+        ZVAL_EMPTY_STRING(&args[1]);
+    zend_call_method_with_2_params(NULL, polyspec_runtime_model_ce, NULL, "loadset", &docs, &args[0], &args[1]);
+    zval_ptr_dtor(&args[0]);
+    zval_ptr_dtor(&args[1]);
+    if (EG(exception)) {
+        LEAVE();
+        RETURN_THROWS();
     }
-    zval *manifest = parsed != NULL ? parsed : prop(&built, "entities");
+    documentv dv = {0};
+    if (in_documents(&docs, &dv, "RuntimeModel::fromModels"))
+        build_docs(&dv, &built);
+    zval_ptr_dtor(&docs);
+    if (EG(exception)) {
+        LEAVE();
+        RETURN_THROWS();
+    }
+    zval *manifest = prop(&built, "entities");
     zval entities;
     array_init(&entities);
     zval *cl;
     ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(classes), cl) {
-        ZVAL_DEREF(cl);
-        if (Z_TYPE_P(cl) != IS_STRING) {
-            zend_throw_exception(spl_ce_InvalidArgumentException, "Expected generated model class names", 0);
-            break;
-        }
-        zval callable, meta;
-        array_init_size(&callable, 2);
-        Z_TRY_ADDREF_P(cl);
-        add_next_index_zval(&callable, cl);
-        add_next_index_string(&callable, "meta");
-        if (call_user_function(NULL, NULL, &callable, &meta, 0, NULL) != SUCCESS || EG(exception)) {
-            zval_ptr_dtor(&callable);
-            break;
-        }
-        zval_ptr_dtor(&callable);
-        if (Z_TYPE(meta) != IS_ARRAY) {
-            zval_ptr_dtor(&meta);
-            zend_throw_exception(spl_ce_UnexpectedValueException, "Generated model meta() must return an array", 0);
-            break;
-        }
-        SEPARATE_ARRAY(&meta);
-        zend_hash_str_del(Z_ARRVAL(meta), "manifest_hash", sizeof("manifest_hash") - 1);
-        zval *nv = zend_hash_str_find(Z_ARRVAL(meta), "entity", sizeof("entity") - 1);
-        bool named = nv && Z_TYPE_P(nv) == IS_STRING;
-        zval *want = named ? zend_hash_find(Z_ARRVAL_P(manifest), Z_STR_P(nv)) : NULL;
-        str path = want ? difference_path(&meta, want, SL("")) : SL("entity");
-        if (path.s) {
-            str entity = named ? zs(Z_STR_P(nv)) : SL("?");
-            orm_error("CONFIG", fmt("generated model %S of entity %S differs from its manifest at %S: generate the models again "
-                                    "(orm-gen gen --set <dbspec-set.json> --out <dir> --namespace <namespace>)",
-                                    zs(Z_STR_P(cl)), entity, path));
-            zval_ptr_dtor(&meta);
-            break;
-        }
-        zend_hash_update(Z_ARRVAL(entities), Z_STR_P(nv), &meta);
+        zval meta;
+        if (!verify_model(cl, manifest, &meta)) break;
+        zend_hash_update(Z_ARRVAL(entities), Z_STR_P(zend_hash_str_find(Z_ARRVAL(meta), "entity", sizeof("entity") - 1)), &meta);
     }
     ZEND_HASH_FOREACH_END();
     zval_ptr_dtor(&built);

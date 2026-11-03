@@ -8,6 +8,8 @@
 
 zend_class_entry *polyspec_chain_ce;
 
+static zend_string *schema_column(zend_string *hash, zend_string *pascal);
+
 static void chain_fail(zend_string *message)
 {
     zend_string *exception_name = zend_string_init(ZEND_STRL("Polyspec\\Orm\\OrmException"), 0);
@@ -353,25 +355,7 @@ static bool parse_key(zval *meta, zval *schema, zval *words, uint32_t start, uin
             zend_string *right_col = schema ? listed_column(schema, right) : ZSTR_EMPTY_ALLOC();
             if (!schema) {
                 zval *hash = field(meta, "manifest_hash");
-                if (hash && Z_TYPE_P(hash) == IS_STRING) {
-                    zval arg, models; ZVAL_STR_COPY(&arg, Z_STR_P(hash)); ZVAL_UNDEF(&models);
-                    zend_string *registry = zend_string_init(ZEND_STRL("Polyspec\\Orm\\Registry"), 0);
-                    if (call_static(registry, "models", &models, 1, &arg) && Z_TYPE(models) == IS_ARRAY) {
-                        zval *class_name; ZEND_HASH_FOREACH_VAL(Z_ARRVAL(models), class_name) {
-                            if (Z_TYPE_P(class_name) != IS_STRING) continue;
-                            zval model_meta; ZVAL_UNDEF(&model_meta);
-                            if (class_meta(Z_STR_P(class_name), &model_meta)) {
-                                zend_string *f = column_for(&model_meta, right);
-                                zval_ptr_dtor(&model_meta);
-                                if (ZSTR_LEN(f)) { zend_string_release(right_col); right_col = f; break; }
-                                zend_string_release(f);
-                            }
-                            if (EG(exception) != NULL) break;
-                        } ZEND_HASH_FOREACH_END();
-                        zval_ptr_dtor(&models);
-                    }
-                    zval_ptr_dtor(&arg); zend_string_release(registry);
-                }
+                if (hash && Z_TYPE_P(hash) == IS_STRING) { zend_string_release(right_col); right_col = schema_column(Z_STR_P(hash), right); }
             }
             if (EG(exception) != NULL) {
                 zend_string_release(right_col); zend_string_release(left_col); zend_string_release(left); zend_string_release(right);
@@ -462,19 +446,14 @@ static zend_string *schema_column(zend_string *hash, zend_string *pascal)
 {
     zval arg, models; ZVAL_STR_COPY(&arg, hash); ZVAL_UNDEF(&models);
     zend_string *registry = zend_string_init(ZEND_STRL("Polyspec\\Orm\\Registry"), 0);
-    if (!call_static(registry, "models", &models, 1, &arg) || Z_TYPE(models) != IS_ARRAY) {
+    if (!call_static(registry, "entities", &models, 1, &arg) || Z_TYPE(models) != IS_ARRAY) {
         zval_ptr_dtor(&arg); zend_string_release(registry); if (!Z_ISUNDEF(models)) zval_ptr_dtor(&models); return ZSTR_EMPTY_ALLOC();
     }
-    zend_string *result = ZSTR_EMPTY_ALLOC(); zval *class_name;
-    ZEND_HASH_FOREACH_VAL(Z_ARRVAL(models), class_name) {
-        if (Z_TYPE_P(class_name) != IS_STRING) continue;
-        zval meta; ZVAL_UNDEF(&meta);
-        if (class_meta(Z_STR_P(class_name), &meta)) {
-            zend_string *candidate = column_for(&meta, pascal); zval_ptr_dtor(&meta);
-            if (ZSTR_LEN(candidate)) { zend_string_release(result); result = candidate; break; }
-            zend_string_release(candidate);
-        }
-        if (EG(exception) != NULL) break;
+    zend_string *result = ZSTR_EMPTY_ALLOC(); zval *entity;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL(models), entity) {
+        zend_string *candidate = column_for(entity, pascal);
+        if (ZSTR_LEN(candidate)) { zend_string_release(result); result = candidate; break; }
+        zend_string_release(candidate);
     } ZEND_HASH_FOREACH_END();
     zval_ptr_dtor(&models); zval_ptr_dtor(&arg); zend_string_release(registry); return result;
 }

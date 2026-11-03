@@ -19,6 +19,8 @@ use Polyspec\Orm\RuntimeModel;
 #[Small]
 class OrmGenParsedModelTest extends TestCase
 {
+    use OrmGenProcessCase;
+
     private const NAMESPACE = 'Polyspec\\Orm\\Tests\\ParsedModel';
     private const UNPARSABLE = 'not a dbspec document';
     /** The sha256 of the JSON of the entities of the bench set, in RuntimeModel::FORMAT 1. */
@@ -42,48 +44,26 @@ class OrmGenParsedModelTest extends TestCase
     }
     READER;
 
-    private static string $work;
-
-    public static function setUpBeforeClass(): void
+    protected static function workPrefix(): string
     {
-        self::$work = OrmGenTestSupport::createWorkDirectory('orm-php-parsed-model-');
-    }
-
-    public static function tearDownAfterClass(): void
-    {
-        OrmGenTestSupport::removeWorkDirectory(self::$work);
+        return 'orm-php-parsed-model-';
     }
 
     /** Generates the models of a set of one document into a new directory and returns the directory of the models. */
     private static function generate(string $name): string
     {
-        $dir = self::$work . "/$name";
-        mkdir("$dir/model", 0o700, true);
-        file_put_contents(
-            "$dir/parsed.dbs",
-            "dbspec 1 parsed\n\ntable item {\n  seq i64\n  name varchar(32)\n  primary key (seq)\n}\n"
+        return self::generateDocument(
+            $name,
+            'parsed.dbs',
+            "dbspec 1 parsed\n\ntable item {\n  seq i64\n  name varchar(32)\n  primary key (seq)\n}\n",
+            self::NAMESPACE
         );
-        [$code, $out, $err] = OrmGenTestSupport::run([
-            'gen', '--set', OrmGenTestSupport::setFile($dir, ['parsed.dbs']),
-            '--out', "$dir/model", '--namespace', self::NAMESPACE,
-        ]);
-        self::assertSame(0, $code, "$out $err");
-        return "$dir/model";
     }
 
     /** Reads the generated models of $model in a new process and returns what the reader printed. */
     private static function read(string $model): array
     {
-        $reader = dirname($model) . '/reader.php';
-        file_put_contents($reader, self::READER);
-        $root = dirname(__DIR__, 3);
-        $result = OrmGenTestSupport::runProcess(
-            [PHP_BINARY, $reader, "$root/vendor-php/autoload.php", $model, self::NAMESPACE],
-            $root
-        ) ?? throw new \RuntimeException('cannot start the reader');
-        [$code, $out, $err] = $result;
-        self::assertSame(0, $code, "$out $err");
-        return json_decode($out, true, 512, JSON_THROW_ON_ERROR);
+        return self::readInProcess($model, self::READER, [self::NAMESPACE]);
     }
 
     /**
@@ -152,19 +132,6 @@ class OrmGenParsedModelTest extends TestCase
             (string) file_get_contents($declarations)
         ));
         self::assertSame(Code::SCHEMA_INVALID, self::read($model)['code'] ?? null);
-    }
-
-    public function testAModelThatDiffersFromTheDataFailsAsItDoesFromItsManifest(): void
-    {
-        $model = self::generate('differs');
-        $class = "$model/Item.php";
-        $source = (string) file_get_contents($class);
-        $changed = str_replace("'length' => 32", "'length' => 33", $source);
-        self::assertNotSame($source, $changed);
-        file_put_contents($class, $changed);
-        $result = self::read($model);
-        self::assertSame(Code::CONFIG, $result['code'] ?? null);
-        self::assertStringContainsString('columns.name.length', $result['message']);
     }
 
     public function testTheFormatNamesWhatBuildMakes(): void

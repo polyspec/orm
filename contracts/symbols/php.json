@@ -13115,6 +13115,18 @@
     "exported": false,
     "signature": "private static array"
   },
+  "packages/php/src/Registry.php::Polyspec\\Orm\\Registry::$verified": {
+    "exported": false,
+    "signature": "private static array"
+  },
+  "packages/php/src/Registry.php::Polyspec\\Orm\\Registry::classes": {
+    "exported": true,
+    "signature": "public static function classes(string $hash, array $classes): void"
+  },
+  "packages/php/src/Registry.php::Polyspec\\Orm\\Registry::entities": {
+    "exported": true,
+    "signature": "public static function entities(string $hash): array"
+  },
   "packages/php/src/Registry.php::Polyspec\\Orm\\Registry::generated": {
     "exported": true,
     "signature": "public static function generated(string $hash, string $text, string $external=\"\"): void"
@@ -13150,6 +13162,10 @@
   "packages/php/src/Registry.php::Polyspec\\Orm\\Registry::unloaded": {
     "exported": false,
     "signature": "private static function unloaded(string $hash): Polyspec\\Orm\\OrmException"
+  },
+  "packages/php/src/Registry.php::Polyspec\\Orm\\Registry::verify": {
+    "exported": true,
+    "signature": "public static function verify(string $class): void"
   },
   "packages/php/src/Request.php::Polyspec\\Orm\\Request": {
     "exported": true,
@@ -13249,7 +13265,7 @@
   },
   "packages/php/src/RuntimeModel.php::Polyspec\\Orm\\RuntimeModel::fromModels": {
     "exported": true,
-    "signature": "public static function fromModels(string $manifestHash, string $manifestText, array $classes, string $externalText=\"\", ?array $parsed=null): Polyspec\\Orm\\RuntimeModel"
+    "signature": "public static function fromModels(string $manifestHash, string $manifestText, array $classes, string $externalText=\"\"): Polyspec\\Orm\\RuntimeModel"
   },
   "packages/php/src/RuntimeModel.php::Polyspec\\Orm\\RuntimeModel::loadSet": {
     "exported": true,
@@ -13282,6 +13298,10 @@
   "packages/php/src/RuntimeModel.php::Polyspec\\Orm\\RuntimeModel::tableEntity": {
     "exported": false,
     "signature": "private static function tableEntity(Polyspec\\Orm\\Dbspec\\Table $table): array"
+  },
+  "packages/php/src/RuntimeModel.php::Polyspec\\Orm\\RuntimeModel::verifyModel": {
+    "exported": true,
+    "signature": "public static function verifyModel(string $class, array $manifest): array"
   },
   "packages/php/src/Scan.php::Polyspec\\Orm\\Scan": {
     "exported": true,
