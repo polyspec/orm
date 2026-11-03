@@ -88,7 +88,6 @@ class Builder {
     return this.typed(s);
   }
   /** A key of the executor configuration; a key is text. */
-  public secret(name: string): string { return this.typed(slot({ from: 'secret', name, col_type: 'text' })); }
   /** A value of the executor configuration; type is the type of the column it is written to. */
   public config(name: string, type: string): string { return this.typed(slot({ from: 'config', name, col_type: type })); }
   /** The executor clock with p fraction digits (docs/spec/protocol.md "Clock"). */

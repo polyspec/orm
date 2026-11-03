@@ -1545,7 +1545,6 @@ final class Markdown
  */
 final class Db
 {
-    public const string SECRET = '$SECRET';
     public const string NOW = '$NOW';
     private readonly DbState $state;
     private array $masks;
