@@ -850,7 +850,15 @@
             "utils.local",
             "utils.was_inserted",
             "utils.backend_waiting_for_lock",
-            "utils.groups"
+            "utils.groups",
+            "dbspec.plan",
+            "dbspec.connect",
+            "dbspec.exec",
+            "dbspec.other_database",
+            "dbspec.apply",
+            "dbspec.recover",
+            "dbspec.rollback",
+            "dbspec.finalize"
           ]
         }
       },
@@ -1118,6 +1126,30 @@
         },
         {
           "$ref": "#/$defs/ops/utils.groups"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.plan"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.connect"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.exec"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.other_database"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.apply"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.recover"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.rollback"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.finalize"
         }
       ]
     },
@@ -6117,6 +6149,364 @@
           },
           "connection": {
             "$ref": "#/$defs/name"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "dbspec.plan": {
+        "type": "object",
+        "required": [
+          "op",
+          "lines",
+          "as"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.plan"
+          },
+          "lines": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "as": {
+            "$ref": "#/$defs/name"
+          }
+        }
+      },
+      "dbspec.connect": {
+        "type": "object",
+        "required": [
+          "op",
+          "as"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.connect"
+          },
+          "as": {
+            "$ref": "#/$defs/name"
+          },
+          "through": {
+            "description": "pooler connects through ORM_TEST_PGBOUNCER_DSN; a missing variable fails the case.",
+            "const": "pooler"
+          }
+        }
+      },
+      "dbspec.exec": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "sql"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.exec"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "sql": {
+            "$ref": "#/$defs/sql"
+          },
+          "only": {
+            "$ref": "#/$defs/only"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "dbspec.other_database": {
+        "type": "object",
+        "required": [
+          "op",
+          "as",
+          "steps"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.other_database"
+          },
+          "as": {
+            "$ref": "#/$defs/name"
+          },
+          "steps": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/$defs/step"
+            }
+          }
+        }
+      },
+      "dbspec.apply": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "plans",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.apply"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "plans": {
+            "description": "The bound plans of dbspec.plan, in chain order.",
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/name"
+            }
+          },
+          "count": {
+            "description": "The event kind whose reports the value counts; every event when absent.",
+            "type": "string",
+            "minLength": 1
+          },
+          "detail": {
+            "description": "A text that the message of the failure holds.",
+            "type": "string",
+            "minLength": 1
+          },
+          "on": {
+            "description": "Nested steps that run inside the event handler, at the first event of the kind or at each with every.",
+            "type": "object",
+            "required": [
+              "event",
+              "steps"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "event": {
+                "type": "string",
+                "minLength": 1
+              },
+              "every": {
+                "const": true
+              },
+              "steps": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "$ref": "#/$defs/step"
+                }
+              }
+            }
+          },
+          "only": {
+            "$ref": "#/$defs/only"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "dbspec.recover": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "plans",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.recover"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "plans": {
+            "description": "The bound plans of dbspec.plan, in chain order.",
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/name"
+            }
+          },
+          "count": {
+            "description": "The event kind whose reports the value counts; every event when absent.",
+            "type": "string",
+            "minLength": 1
+          },
+          "detail": {
+            "description": "A text that the message of the failure holds.",
+            "type": "string",
+            "minLength": 1
+          },
+          "on": {
+            "description": "Nested steps that run inside the event handler, at the first event of the kind or at each with every.",
+            "type": "object",
+            "required": [
+              "event",
+              "steps"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "event": {
+                "type": "string",
+                "minLength": 1
+              },
+              "every": {
+                "const": true
+              },
+              "steps": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "$ref": "#/$defs/step"
+                }
+              }
+            }
+          },
+          "only": {
+            "$ref": "#/$defs/only"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "dbspec.rollback": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "plans",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.rollback"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "plans": {
+            "description": "The bound plans of dbspec.plan, in chain order.",
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/name"
+            }
+          },
+          "count": {
+            "description": "The event kind whose reports the value counts; every event when absent.",
+            "type": "string",
+            "minLength": 1
+          },
+          "detail": {
+            "description": "A text that the message of the failure holds.",
+            "type": "string",
+            "minLength": 1
+          },
+          "on": {
+            "description": "Nested steps that run inside the event handler, at the first event of the kind or at each with every.",
+            "type": "object",
+            "required": [
+              "event",
+              "steps"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "event": {
+                "type": "string",
+                "minLength": 1
+              },
+              "every": {
+                "const": true
+              },
+              "steps": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "$ref": "#/$defs/step"
+                }
+              }
+            }
+          },
+          "only": {
+            "$ref": "#/$defs/only"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "dbspec.finalize": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "plans",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.finalize"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "plans": {
+            "description": "The bound plans of dbspec.plan, in chain order.",
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/name"
+            }
+          },
+          "count": {
+            "description": "The event kind whose reports the value counts; every event when absent.",
+            "type": "string",
+            "minLength": 1
+          },
+          "detail": {
+            "description": "A text that the message of the failure holds.",
+            "type": "string",
+            "minLength": 1
+          },
+          "on": {
+            "description": "Nested steps that run inside the event handler, at the first event of the kind or at each with every.",
+            "type": "object",
+            "required": [
+              "event",
+              "steps"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "event": {
+                "type": "string",
+                "minLength": 1
+              },
+              "every": {
+                "const": true
+              },
+              "steps": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "$ref": "#/$defs/step"
+                }
+              }
+            }
+          },
+          "only": {
+            "$ref": "#/$defs/only"
           },
           "expect": {
             "$ref": "#/$defs/expect"

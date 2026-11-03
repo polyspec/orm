@@ -84,6 +84,14 @@ type databaseStep struct {
 	Expect    map[string]json.RawMessage `json:"expect"`
 	Schema    json.RawMessage            `json:"schema"`
 	Steps     []json.RawMessage          `json:"steps"`
+	// The fields of the dbspec apply ops (FCV-4): the lines of dbspec.plan, the pooler of dbspec.connect, and the chain, the
+	// counted event kind, the failure text and the nested steps of a command.
+	Lines   []string `json:"lines"`
+	Through string   `json:"through"`
+	Plans   []string `json:"plans"`
+	Count   string   `json:"count"`
+	Detail  string   `json:"detail"`
+	On      *applyOn `json:"on"`
 	// Statements are the statements of utils.run (INT-150), which its one frame runs in order.
 	// MessageContains is the text that the message of the expected error of schema.add_tables_and_columns holds.
 	MessageContains string           `json:"message_contains"`
@@ -176,6 +184,8 @@ type databaseContext struct {
 	bound     map[string]bound
 	// closers close the connections that model.connect opened, when the case ends.
 	closers []func() error
+	// applyStep is the step of the apply event whose handler runs nested steps; {step} of dbspec.exec is this number.
+	applyStep int
 	// records are the requests that a record action of the installed hook saw (hook.records).
 	records []hookRecord
 }
@@ -942,6 +952,9 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 	}
 	if out, handled, err := statementOp(s, c); handled {
 		return out, err
+	}
+	if applyOps[s.Op] {
+		return applyOp(s, c)
 	}
 	return requestOp(s, c)
 }

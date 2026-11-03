@@ -650,6 +650,68 @@
       "connection",
       "expect",
       "op"
+    ],
+    "dbspec.plan": [
+      "as",
+      "lines",
+      "op"
+    ],
+    "dbspec.connect": [
+      "as",
+      "op",
+      "through"
+    ],
+    "dbspec.exec": [
+      "connection",
+      "expect",
+      "only",
+      "op",
+      "sql"
+    ],
+    "dbspec.other_database": [
+      "as",
+      "op",
+      "steps"
+    ],
+    "dbspec.apply": [
+      "connection",
+      "count",
+      "detail",
+      "expect",
+      "on",
+      "only",
+      "op",
+      "plans"
+    ],
+    "dbspec.recover": [
+      "connection",
+      "count",
+      "detail",
+      "expect",
+      "on",
+      "only",
+      "op",
+      "plans"
+    ],
+    "dbspec.rollback": [
+      "connection",
+      "count",
+      "detail",
+      "expect",
+      "on",
+      "only",
+      "op",
+      "plans"
+    ],
+    "dbspec.finalize": [
+      "connection",
+      "count",
+      "detail",
+      "expect",
+      "on",
+      "only",
+      "op",
+      "plans"
     ]
   }
 }
