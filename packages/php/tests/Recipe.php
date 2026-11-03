@@ -2697,10 +2697,13 @@ final class Recipe
                 return ['bind' => new RecipeSubscription($stop, $recording)];
             case 'events.fail_subscriber':
                 $kind = $s['kind'];
+                $refusal = $s['refusal'] ?? null;
                 $stop = self::connectionOf($s, $context)->subscribe(
-                    static function (StatementEvent $e) use ($kind): void {
+                    static function (StatementEvent $e) use ($kind, $refusal): void {
                         if ($e->kind === $kind) {
-                            throw new RuntimeException('subscriber refused the event');
+                            throw $refusal === null
+                                ? new RuntimeException('subscriber refused the event')
+                                : new OrmException($refusal['code'], $refusal['message']);
                         }
                     }
                 );

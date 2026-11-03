@@ -3284,10 +3284,13 @@ def _op_events_subscribe(step: dict, context: dict) -> dict:
 
 def _op_events_fail_subscriber(step: dict, context: dict) -> dict:
     kind = step["kind"]
+    refusal: Exception = RuntimeError("subscriber refused the event")
+    if "refusal" in step:
+        refusal = OrmError(step["refusal"]["code"], step["refusal"]["message"])
 
     def refuse(event) -> None:
         if event.kind == kind:
-            raise RuntimeError("subscriber refused the event")
+            raise refusal
 
     stop = _connection_of(step, context).subscribe(refuse)
     return {"bind": _Subscription(stop, None)}

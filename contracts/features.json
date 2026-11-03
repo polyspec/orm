@@ -3382,8 +3382,7 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
-              "packages/php-ext/tests/AuditLazyFakePdoTest.php"
+              "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php"
             ],
             "inputs": [
               "contracts/fixtures/bench/dbspec-set.json"
@@ -3463,10 +3462,7 @@
         "contracts/fixtures/statement_events/statement_events.dbs",
         "tests/events/vectors.json",
         "packages/ts/tests/statement-events-run.mjs",
-        "packages/php/tests/statement_events_run.php",
-        "packages/php/tests/coverage_cases.php",
-        "packages/ts/tests/coverage_case.mjs",
-        "packages/python/tests/coverage_case.py"
+        "packages/php/tests/statement_events_run.php"
       ],
       "tests": [
         "packages/go/orm/statement_events_test.go",
@@ -3476,8 +3472,6 @@
         "packages/rust/orm/tests/statement_events.rs",
         "packages/python/tests/statement_events.py",
         "packages/python/tests/statement_events_server_transactions.py",
-        "packages/python/tests/test_event_placeholders.py",
-        "packages/python/tests/test_subscriber_error.py",
         "packages/python/tests/test_statement_events_mysql.py",
         "packages/python/tests/test_statement_events_postgres.py",
         "packages/python/tests/test_statement_events_sqlite.py",
@@ -3486,9 +3480,6 @@
         "packages/ts/tests/statement_events-mysql.test.mjs",
         "packages/ts/tests/statement_events-postgres.test.mjs",
         "packages/ts/tests/statement_events-sqlite.test.mjs",
-        "packages/python/tests/test_statement_events_mysql.py",
-        "packages/python/tests/test_statement_events_postgres.py",
-        "packages/python/tests/test_statement_events_sqlite.py",
         "packages/rust/tests/tests/statement_events_mysql.rs",
         "packages/rust/tests/tests/statement_events_postgres.rs",
         "packages/rust/tests/tests/statement_events_sqlite.rs",
@@ -3578,16 +3569,6 @@
             "packages/python/tests/statement_events_server_transactions.py",
             "tests/events/vectors.json"
           ]
-        },
-        {
-          "id": "statement-events-python-unit",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_event_placeholders && packages/python/.venv/bin/python -m packages.python.tests.test_subscriber_error",
-          "shard": "other",
-          "inputs": [
-            "packages/python/tests/test_event_placeholders.py",
-            "packages/python/tests/test_subscriber_error.py",
-            "packages/python/src/polyspec/orm/events.py"
-          ]
         }
       ],
       "public_constraints": [
@@ -3597,7 +3578,20 @@
       "coverage": {
         "kind": "database",
         "cases": [
-          "statement_events"
+          "model_statements",
+          "transaction_savepoint",
+          "transaction_rollback",
+          "savepoint_rollback",
+          "failed_statement",
+          "subscriber_error",
+          "subscriber_orm_error",
+          "unsubscribe",
+          "install",
+          "schema_set_several_fixture_first",
+          "schema_set_several_other_first",
+          "schema_set_unregistered",
+          "schema_set_edited_manifest",
+          "notify"
         ],
         "owners": {
           "go": {
@@ -3606,7 +3600,7 @@
               "packages/go/orm/recipe_statement_events_test.go"
             ],
             "inputs": [
-              "tests/events/vectors.json"
+              "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
               "mysql": [
@@ -3641,50 +3635,31 @@
               "packages/php/tests/StatementEventsRecipeTest.php"
             ],
             "inputs": [
-              "packages/php/tests/statement_events_run.php",
-              "packages/php/tests/StatementEventsCoverageCases.php",
-              "packages/php/tests/case_database.php",
-              "contracts/fixtures/statement_events/statement_events.dbs",
-              "tests/events/vectors.json"
+              "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
                   "test": "packages/php/tests/StatementEventsRecipeTest.php",
-                  "cases": [
-                    "statement_events"
-                  ],
-                  "symbols": {
-                    "statement_events": "testMysql"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/statement_events/statement_events.json",
+                  "symbol": "testMysql"
                 }
               ],
               "postgres": [
                 {
                   "runner": "php",
                   "test": "packages/php/tests/StatementEventsRecipeTest.php",
-                  "cases": [
-                    "statement_events"
-                  ],
-                  "symbols": {
-                    "statement_events": "testPostgres"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/statement_events/statement_events.json",
+                  "symbol": "testPostgres"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "php",
                   "test": "packages/php/tests/StatementEventsRecipeTest.php",
-                  "cases": [
-                    "statement_events"
-                  ],
-                  "symbols": {
-                    "statement_events": "testSqlite"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/statement_events/statement_events.json",
+                  "symbol": "testSqlite"
                 }
               ]
             }
@@ -3695,101 +3670,65 @@
               "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php"
             ],
             "inputs": [
-              "packages/php/tests/statement_events_run.php",
-              "packages/php/tests/StatementEventsCoverageCases.php",
-              "packages/php/tests/case_database.php",
-              "contracts/fixtures/statement_events/statement_events.dbs",
-              "tests/events/vectors.json"
+              "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
                   "test": "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
-                  "cases": [
-                    "statement_events"
-                  ],
-                  "symbols": {
-                    "statement_events": "testMysql"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/statement_events/statement_events.json",
+                  "symbol": "testMysql"
                 }
               ],
               "postgres": [
                 {
                   "runner": "php",
                   "test": "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
-                  "cases": [
-                    "statement_events"
-                  ],
-                  "symbols": {
-                    "statement_events": "testPostgres"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/statement_events/statement_events.json",
+                  "symbol": "testPostgres"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "php",
                   "test": "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
-                  "cases": [
-                    "statement_events"
-                  ],
-                  "symbols": {
-                    "statement_events": "testSqlite"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/statement_events/statement_events.json",
+                  "symbol": "testSqlite"
                 }
               ]
             }
           },
           "rust": {
-            "part": "packages/rust/orm",
+            "part": "packages/rust/tests",
             "tests": [
-              "packages/rust/orm/tests/statement_events.rs"
+              "packages/rust/tests/tests/statement_events_mysql.rs",
+              "packages/rust/tests/tests/statement_events_postgres.rs",
+              "packages/rust/tests/tests/statement_events_sqlite.rs"
             ],
             "inputs": [
-              "contracts/fixtures/statement_events/statement_events.dbs",
-              "tests/events/vectors.json"
+              "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/orm/tests/statement_events.rs",
-                  "cases": [
-                    "statement_events"
-                  ],
-                  "symbols": {
-                    "statement_events": "coverage_statement_events"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "test": "packages/rust/tests/tests/statement_events_mysql.rs",
+                  "recipe": "contracts/fixtures/statement_events/statement_events.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/orm/tests/statement_events.rs",
-                  "cases": [
-                    "statement_events"
-                  ],
-                  "symbols": {
-                    "statement_events": "coverage_statement_events"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "test": "packages/rust/tests/tests/statement_events_postgres.rs",
+                  "recipe": "contracts/fixtures/statement_events/statement_events.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/orm/tests/statement_events.rs",
-                  "cases": [
-                    "statement_events"
-                  ],
-                  "symbols": {
-                    "statement_events": "coverage_statement_events"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "test": "packages/rust/tests/tests/statement_events_sqlite.rs",
+                  "recipe": "contracts/fixtures/statement_events/statement_events.json"
                 }
               ]
             }
@@ -3802,40 +3741,28 @@
               "packages/ts/tests/statement_events-sqlite.test.mjs"
             ],
             "inputs": [
-              "packages/ts/tests/case-database.mjs",
-              "packages/ts/tests/statement-events-run.mjs",
-              "contracts/fixtures/statement_events/statement_events.dbs",
-              "tests/events/vectors.json"
+              "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "node",
                   "test": "packages/ts/tests/statement_events-mysql.test.mjs",
-                  "cases": [
-                    "statement_events"
-                  ],
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/statement_events/statement_events.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "node",
                   "test": "packages/ts/tests/statement_events-postgres.test.mjs",
-                  "cases": [
-                    "statement_events"
-                  ],
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/statement_events/statement_events.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "node",
                   "test": "packages/ts/tests/statement_events-sqlite.test.mjs",
-                  "cases": [
-                    "statement_events"
-                  ],
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/statement_events/statement_events.json"
                 }
               ]
             }
@@ -3848,8 +3775,7 @@
               "packages/python/tests/test_statement_events_sqlite.py"
             ],
             "inputs": [
-              "contracts/fixtures/statement_events/statement_events.json",
-              "contracts/fixtures/statement_events/statement_events.dbs"
+              "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
               "mysql": [

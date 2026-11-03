@@ -1304,6 +1304,9 @@
               },
               "connection": {
                 "$ref": "#/$defs/name"
+              },
+              "expect": {
+                "$ref": "#/$defs/expect"
               }
             }
           }
@@ -1632,11 +1635,7 @@
           "expect": {
             "description": "attempts counts the callback runs of both flows, deadlocks the first attempts that ended with DEADLOCK, and same_flow holds when both rows hold the name of one flow.",
             "type": "object",
-            "required": [
-              "mysql",
-              "postgres",
-              "sqlite"
-            ],
+            "minProperties": 1,
             "additionalProperties": false,
             "properties": {
               "mysql": {
@@ -4283,6 +4282,25 @@
             "type": "object",
             "required": [
               "op",
+              "model"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "op": {
+                "const": "model.count"
+              },
+              "model": {
+                "$ref": "#/$defs/model"
+              },
+              "expect": {
+                "$ref": "#/$defs/expect"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "op",
               "unconnected",
               "model"
             ],
@@ -4953,6 +4971,22 @@
         "properties": {
           "op": {
             "const": "events.fail_subscriber"
+          },
+          "refusal": {
+            "type": "object",
+            "required": [
+              "code",
+              "message"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
           },
           "connection": {
             "$ref": "#/$defs/name"

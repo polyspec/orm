@@ -133,6 +133,11 @@ type databaseStep struct {
 	Row     json.RawMessage `json:"row"`
 	Fail    bool            `json:"fail"`
 	Kind    string          `json:"kind"`
+	// The ORM error of a failing subscriber (INT-96).
+	Refusal *struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	} `json:"refusal"`
 	Compare string          `json:"compare"`
 	// The request hook and AES ops (FCV-4): the hooks of hook.install, the keyring of a model.connect and the keyring
 	// that utils.aes_status and utils.aes_rotate take.

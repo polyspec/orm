@@ -3170,10 +3170,19 @@ mod database {
                 let name = bound_name(step).map_err(fault)?;
                 let db = connection_db(step, context).map_err(fault)?;
                 let kind = step["kind"].as_str().ok_or_else(|| fault("events.fail_subscriber names no kind".into()))?.to_owned();
+                let refusal = step["refusal"].is_object().then(|| {
+                    (
+                        step["refusal"]["code"].as_str().unwrap_or_default().to_owned(),
+                        step["refusal"]["message"].as_str().unwrap_or_default().to_owned(),
+                    )
+                });
                 let subscription = db
                     .subscribe(move |event: &StatementEvent<'_>| {
                         if event.kind == kind {
-                            return Err("subscriber refused the event".into());
+                            return Err(match &refusal {
+                                Some((code, msg)) => polyspec_orm::Error::Engine { code: code.clone(), msg: msg.clone() }.into(),
+                                None => "subscriber refused the event".into(),
+                            });
                         }
                         Ok(())
                     })
