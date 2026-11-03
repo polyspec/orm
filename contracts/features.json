@@ -13996,7 +13996,8 @@
                     "opened_transaction_commits_its_writes",
                     "failed_statement_is_its_database_code_and_rolls_back",
                     "refused_write_is_its_database_code",
-                    "joined_statements_roll_back_with_the_outer_transaction"
+                    "joined_statements_roll_back_with_the_outer_transaction",
+                    "retryable_error_of_the_function_runs_it_once"
                   ],
                   "recipe": "contracts/fixtures/statement_runner/statement_runner.json",
                   "symbol": "TestRecipeStatementRunnerSqlite"
@@ -14013,7 +14014,8 @@
                     "opened_transaction_commits_its_writes",
                     "failed_statement_is_its_database_code_and_rolls_back",
                     "refused_write_is_its_database_code",
-                    "joined_statements_roll_back_with_the_outer_transaction"
+                    "joined_statements_roll_back_with_the_outer_transaction",
+                    "retryable_error_of_the_function_runs_it_once"
                   ],
                   "recipe": "contracts/fixtures/statement_runner/statement_runner.json",
                   "symbol": "TestRecipeStatementRunnerMysql"
@@ -14030,7 +14032,8 @@
                     "opened_transaction_commits_its_writes",
                     "failed_statement_is_its_database_code_and_rolls_back",
                     "refused_write_is_its_database_code",
-                    "joined_statements_roll_back_with_the_outer_transaction"
+                    "joined_statements_roll_back_with_the_outer_transaction",
+                    "retryable_error_of_the_function_runs_it_once"
                   ],
                   "recipe": "contracts/fixtures/statement_runner/statement_runner.json",
                   "symbol": "TestRecipeStatementRunnerPostgres"
@@ -14240,7 +14243,8 @@
                     "opened_transaction_commits_its_writes",
                     "failed_statement_is_its_database_code_and_rolls_back",
                     "refused_write_is_its_database_code",
-                    "joined_statements_roll_back_with_the_outer_transaction"
+                    "joined_statements_roll_back_with_the_outer_transaction",
+                    "retryable_error_of_the_function_runs_it_once"
                   ],
                   "recipe": "contracts/fixtures/statement_runner/statement_runner.json"
                 }
@@ -14256,7 +14260,8 @@
                     "opened_transaction_commits_its_writes",
                     "failed_statement_is_its_database_code_and_rolls_back",
                     "refused_write_is_its_database_code",
-                    "joined_statements_roll_back_with_the_outer_transaction"
+                    "joined_statements_roll_back_with_the_outer_transaction",
+                    "retryable_error_of_the_function_runs_it_once"
                   ],
                   "recipe": "contracts/fixtures/statement_runner/statement_runner.json"
                 }
@@ -14272,7 +14277,8 @@
                     "opened_transaction_commits_its_writes",
                     "failed_statement_is_its_database_code_and_rolls_back",
                     "refused_write_is_its_database_code",
-                    "joined_statements_roll_back_with_the_outer_transaction"
+                    "joined_statements_roll_back_with_the_outer_transaction",
+                    "retryable_error_of_the_function_runs_it_once"
                   ],
                   "recipe": "contracts/fixtures/statement_runner/statement_runner.json"
                 }
