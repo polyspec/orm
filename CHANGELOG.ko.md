@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 8970d95f051e3fba7bac2ff76b72d1d1c1b1969571b6d98a922446ccf30a39d5 -->
+<!-- source-sha256: a4995292020efcb8ccddbf8f03f960f1748375417e6b83709073a5de49afe03c -->
 # 변경 이력
 
 ## Unreleased
 
+- make group-rows-db-rust는 자기 SQLite case database를 만드는 시험에 DSN을 넘기지 않는다 (#T334-3-4-20)
 - conformance vector를 `conformance_verification` recipe로 옮기기 시작했다. 여섯 런타임이 세 데이터베이스에서 실행하며, 서른아홉 case는 연결자, group, chain 재사용, 식, column, join, relation, subquery, aggregate, 빈 read, 함수, AES와 hex 값, 쓰기 순환, 일괄 create, restore, audit, transaction, getQuery를 다룬다. 모델을 생성하지 않는 fixture의 model op는 `statement_events`를 포함해 모든 helper에서 하나의 경로로 공개 builder에 닿는다. Rust는 `ALTER` 뒤 MySQL이 text byte로 돌려주는 정수 열을 읽는다.
 - conformance vector를 `conformance_verification` recipe로 옮기기 시작했다. 여섯 런타임이 세 데이터베이스에서 실행하며, 서른아홉 case는 연결자, group, chain 재사용, 식, column, join, relation, subquery, aggregate, 빈 read, 함수, AES와 hex 값, 쓰기 순환, 일괄 create, restore, audit, transaction, getQuery를 다룬다. 모델을 생성하지 않는 fixture의 model op는 `statement_events`를 포함해 모든 helper에서 하나의 경로로 공개 builder에 닿는다. Rust는 `ALTER` 뒤 MySQL이 text byte로 돌려주는 정수 열을 읽는다.
 - parameter 쓰임, plan의 출력 열, blind index source, 복합 upsert key, 열 타입별 연산자, 다른 manifest의 요청을 새 op `ir.param_uses`, `planner.columns`로 여섯 runtime의 recipe 사례로 옮겼고, TypeScript와 Python도 다른 runtime처럼 `uuid` 순서 비교를 거부한다.

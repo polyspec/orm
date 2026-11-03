@@ -910,8 +910,7 @@
       "scope": "owner",
       "needs": [
         "go",
-        "rust",
-        "databases"
+        "rust"
       ],
       "inputs": [
         "packages/rust/tests/tests/integration/coverage_group_rows_db.rs"

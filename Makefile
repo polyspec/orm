@@ -2016,9 +2016,9 @@ group-rows-db-php-extension: php-vendor-check
 	mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
 	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/GroupRowsDbNativeTest.php
-# group-rows-db-rust runs coverage_group_rows_db on BENCH_SQLITE_DSN.
+# group-rows-db-rust runs coverage_group_rows_db, which creates its own SQLite case database and reads no DSN.
 group-rows-db-rust:
-	$(MAKE) -s feature-rust-database FEATURE_CRATE=packages/rust/tests FEATURE_CARGO_TARGET='--test integration' FEATURE_DATABASE=sqlite FEATURE_DSN_ENV=BENCH_SQLITE_DSN FEATURE_TEST=coverage_group_rows_db::coverage_group_rows_db
+	$(MAKE) -s feature-rust-unit FEATURE_CRATE=packages/rust/tests FEATURE_CARGO_TARGET='--test integration' FEATURE_TEST=coverage_group_rows_db::coverage_group_rows_db
 
 unselected-column-physical-check: php-vendor-check
 	$(WITH_TEST_ENV) node scripts/unselected-column-physical-check.mts
