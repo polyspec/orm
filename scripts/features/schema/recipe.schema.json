@@ -3611,28 +3611,6 @@
           "model",
           "values"
         ],
-        "anyOf": [
-          {
-            "required": [
-              "connection"
-            ],
-            "properties": {
-              "connection": {
-                "$ref": "#/$defs/name"
-              }
-            }
-          },
-          {
-            "required": [
-              "unconnected"
-            ],
-            "properties": {
-              "unconnected": {
-                "const": true
-              }
-            }
-          }
-        ],
         "additionalProperties": false,
         "properties": {
           "op": {
