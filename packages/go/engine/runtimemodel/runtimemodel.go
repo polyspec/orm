@@ -186,25 +186,29 @@ func externalTables(d *dbspec.Document, used []string) []dbspec.Table {
 // Load parses manifest text (the canonical documents the set owns, joined in document-name
 // order) and returns the runtime model. A line that begins with "dbspec " starts a document.
 // LoadSet parses manifest text and external text (the tables that external documents write)
-func Load(text string) (*Model, []dbspec.Diagnostic) {
+func Load(text string) (*Model, *SetLoadError) {
 	return LoadSet(text, "")
 }
 
 // and returns the runtime model. External documents are parsed among themselves, and owned documents are parsed
 // with all documents as the set.
 // LoadDocuments parses a list of document texts as one document set and
-func LoadSet(text, external string) (*Model, []dbspec.Diagnostic) {
+func LoadSet(text, external string) (*Model, *SetLoadError) {
 	texts, diagnostics := splitDocuments(text)
 	if len(diagnostics) > 0 {
-		return nil, diagnostics
+		return nil, invalidSet(diagnostics)
 	}
 	var externalTexts []string
 	if external != "" {
 		if externalTexts, diagnostics = splitDocuments(external); len(diagnostics) > 0 {
-			return nil, diagnostics
+			return nil, invalidSet(diagnostics)
 		}
 	}
-	return LoadDocumentSet(texts, externalTexts)
+	m, diagnostics := LoadDocumentSet(texts, externalTexts)
+	if len(diagnostics) > 0 {
+		return nil, invalidSet(diagnostics)
+	}
+	return m, nil
 }
 
 // returns the runtime model. A document name is the header name of each text.
@@ -356,14 +360,29 @@ func LoadFiles(paths ...string) (*Model, error) {
 	return m, nil
 }
 
-// SetLoadError is every problem of a set that LoadSetFile could not load: the errors
+// SetLoadError is every problem of a set that LoadSet or LoadSetFile could not load: the errors
 // of the set file, or the diagnostics of its listed files, or those of the set.
-// Each problem is one line that names its file.
+// LoadSetFile's problems each name their file; its code is SCHEMA_INVALID (SCH-12).
 type SetLoadError struct {
 	Problems []string
 }
 
-func (e *SetLoadError) Error() string { return "SCHEMA_INVALID: " + strings.Join(e.Problems, "; ") }
+// Code is the code of a set that did not load.
+func (e *SetLoadError) Code() string { return "SCHEMA_INVALID" }
+
+// Message is the problems of the set, without the code.
+func (e *SetLoadError) Message() string { return strings.Join(e.Problems, "; ") }
+
+func (e *SetLoadError) Error() string { return e.Code() + ": " + e.Message() }
+
+// invalidSet is the error of a set whose diagnostics are the problems.
+func invalidSet(diagnostics []dbspec.Diagnostic) *SetLoadError {
+	problems := make([]string, len(diagnostics))
+	for i, d := range diagnostics {
+		problems[i] = fmt.Sprintf("%d:%d %s: %s", d.Line, d.Column, d.Rule, d.Message)
+	}
+	return &SetLoadError{Problems: problems}
+}
 
 // LoadSetFile reads the set file at path with dbspec.ReadSet (docs/spec/dbspec.md
 // "Document sets"), gives the bytes of each listed file to dbspec.ReadBytes with

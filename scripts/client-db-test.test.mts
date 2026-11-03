@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { caseTest, COMPUTE } from '../tests/testcase.mts';
 import { dirname, relative, resolve } from 'node:path';
-import { GO_LANE_PACKAGES, GO_LANE_SKIP, rustDatabaseCoverageSkipArguments, rustOwnedElsewhereSkipArguments, rustPoolerThreadArguments, rustTargetPoolSize } from './client-db-test.mts';
+import { GO_LANE_PACKAGES, GO_LANE_SKIP, poolerRecipeCommands, poolerRecipeUnits, rustDatabaseCoverageSkipArguments, rustOwnedElsewhereSkipArguments, rustPoolerThreadArguments, rustTargetPoolSize } from './client-db-test.mts';
+import { readParityConfig } from './json/formats.mts';
 import { readFeatures, type CoverageOwner, type Language, type NativeCommand } from './features/manifest.mts';
 
 const root = resolve(import.meta.dirname, '..');
@@ -14,6 +15,26 @@ caseTest('the pooler lane caps the Rust test threads at the backend count per po
   assert.deepEqual(rustPoolerThreadArguments(4, 4), ['--test-threads=1']);
   assert.deepEqual(rustPoolerThreadArguments(8, 4), ['--test-threads=2']);
   assert.deepEqual(rustPoolerThreadArguments(2, 4), ['--test-threads=1']);
+});
+
+caseTest('every lane without a whole run runs every recipe unit with a database through the poolers (T343-12)', COMPUTE, () => {
+  const units = readParityConfig(resolve(root, 'config/parity.json')).units;
+  const recipes = poolerRecipeUnits(units);
+  assert.ok(recipes.length > 0, 'the recipe units are found');
+  assert.ok(recipes.every(unit => /-(mysql|postgres)$/.test(unit.id)), 'a unit without a database server is not listed');
+  for (const lane of ['php', 'php-extension', 'typescript', 'python'] as const) {
+    const commands = poolerRecipeCommands(lane, units, '/extension.so');
+    assert.equal(commands.length, recipes.length, `${lane} has one command per unit`);
+    recipes.forEach((unit, index) => {
+      const test = unit.bindings?.find(binding => binding.implementation === lane)?.test ?? '';
+      const named = lane === 'python' ? test.replace(/\.py$/, '').replaceAll('/', '.') : test;
+      assert.ok(commands[index]?.args.includes(named), `${lane} runs ${unit.id} with ${named}`);
+    });
+  }
+  const catalog = recipes.find(unit => unit.id === 'catalog_connection-mysql');
+  assert.ok(catalog, 'catalog_connection-mysql is listed');
+  const php = poolerRecipeCommands('php', [catalog], '/extension.so')[0];
+  assert.deepEqual(php?.args.slice(3, 5), ['--filter', 'testMysql']);
 });
 
 caseTest('the Rust pool size of the integration program is read from its declaration', COMPUTE, () => {

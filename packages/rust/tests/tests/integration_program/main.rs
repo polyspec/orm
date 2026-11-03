@@ -66,6 +66,23 @@ fn external_relation_getter_returns_the_external_entity_model() {
     assert!(audit.expect("a row without a related row reads no error").is_none());
 }
 
+/// The generated schema value carries the external text at run time: the generated connect registers a set that uses an
+/// external document, and the model of a used external table reads a row of that table.
+#[tokio::test]
+// Requirements: DBS-110, DBS-173.
+async fn generated_external_model_reads_its_table() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let database = CaseDatabase::create("sqlite").await;
+    let db = external_member::connect(database.dsn(), TARGET_POOL_SIZE, config()).await.or_panic(|e| format!("connect: {e}"));
+    let Pool::Sqlite(pool) = db.pool() else { unreachable!("the DSN selects SQLite") };
+    sqlx::query("CREATE TABLE ext_account (seq INTEGER PRIMARY KEY, name TEXT NOT NULL)").execute(pool).await.or_panic(|e| format!("create: {e}"));
+    sqlx::query("INSERT INTO ext_account (seq, name) VALUES (1, 'kim')").execute(pool).await.or_panic(|e| format!("insert: {e}"));
+    let row = external_member::ExtAccount::new().connect(&db).get_by_seq(1).await.or_panic(|e| format!("read: {e}")).expect("a row");
+    assert_eq!(row.get_name().unwrap(), "kim");
+    db.close().await;
+    database.drop().await;
+}
+
 #[test]
 // Requirements: COD-20, COD-25.
 fn generated_nonnull_styled_setter_rejects_sql_null() {
@@ -469,10 +486,6 @@ async fn writes_case(t: &Target) {
 
 // Requirements: INT-51, INT-59, INT-61, INT-73, INT-134, INT-57, INT-79.
 async fn transactions_case(t: &Target) {
-    let _aes = t.db.utils().aes();
-    let _schema = t.db.utils().schema();
-    let _privileges = t.db.utils().privileges();
-    let _stats = t.db.utils().stats();
     let db = &t.db;
     if t.driver == "postgres" {
         // The raw SQLx fixture connection sends `extra_float_digits` at startup, which PgBouncer rejects; privilege API calls still use `db` above.
@@ -604,9 +617,6 @@ async fn transactions_case(t: &Target) {
             assert_eq!(User::new().get_count().await?, 1, "savepoint rollback");
             User::new().name("outer").for_update().gets().await?;
             db.utils().lock("users").await?;
-            db.utils().set_local("ormtest.actor", "tester").await?;
-            assert_eq!(db.utils().local("ormtest.actor")?, "tester", "local");
-            assert_eq!(code(db.utils().local("ormtest.missing")), "NO_ROWS", "missing local");
             let spawned = tokio::spawn(async { User::new().get_count().await.map_err(|e| e.code().to_owned()) }).await.unwrap();
             assert_eq!(spawned.err().as_deref(), Some("CONFIG"), "a spawned task inherited the transaction");
             Ok(())

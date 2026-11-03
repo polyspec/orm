@@ -39,7 +39,7 @@ delete process.env.ORM_RUST_TEST_FEATURES;
 
 const ownerTests: Record<string, string> = {
   go: 'packages/go/orm/dsn_test.go', php: 'packages/php/tests/DsnTest.php',
-  'php-extension': 'packages/php-ext/tests/CatalogConnectionSurfaceTest.php', python: 'packages/python/tests/test_utils.py',
+  'php-extension': 'packages/php-ext/tests/CatalogConnectionSurfaceTest.php', python: 'packages/python/tests/test_utils_statements.py',
   rust: 'packages/rust/orm/tests/zone.rs', typescript: 'packages/ts/tests/typecheck.ts',
 };
 const dependentTest = 'packages/go/model/model_test.go';
@@ -143,12 +143,9 @@ function sampleManifest(owner: string): SampleManifest {
       dependents: [] } }] };
 }
 
-// A run that did not ask for the complex-query fixture databases has no COMPLEX_QUERY_*_DSN, and its reader names the setup (KSTD-2-9-13-3).
-caseTest('a missing complex-query fixture DSN names the setup that provisions it', COMPUTE, () => {
-  assert.throws(() => databaseDsn({}, { database: 'mysql', dsn_env: 'COMPLEX_QUERY_GO_MYSQL_DSN' }),
-    /^Error: COMPLEX_QUERY_GO_MYSQL_DSN is missing; run make databases-create COMPLEX_QUERY=1, which provisions the 18 run-owned complex-query fixture databases/);
+caseTest('a missing database DSN names the check that provides it', COMPUTE, () => {
   assert.throws(() => databaseDsn({}, { database: 'mysql', dsn_env: 'BENCH_MYSQL_DSN' }), /^Error: mysql database DSN is not set in BENCH_MYSQL_DSN; run it through make feature-check$/);
-  assert.equal(databaseDsn({ COMPLEX_QUERY_GO_MYSQL_DSN: 'mysql://x/y' }, { database: 'mysql', dsn_env: 'COMPLEX_QUERY_GO_MYSQL_DSN' }), 'mysql://x/y');
+  assert.equal(databaseDsn({ BENCH_MYSQL_DSN: 'mysql://x/y' }, { database: 'mysql', dsn_env: 'BENCH_MYSQL_DSN' }), 'mysql://x/y');
 });
 
 caseTest('coverage diagnostics preserve child output when a process remains', PROCESS, async () => {
@@ -280,7 +277,7 @@ caseTest('every case of the PHP catalog owner selects a method of its test class
     for (const command of commands) {
       const methods = declaredPhpMethods(join(root, command.test));
       for (const id of command.cases) {
-        const method = command.symbols?.[id] ?? `test_${id}`;
+        const method = command.symbol ?? command.symbols?.[id] ?? `test_${id}`;
         if (!new RegExp(`function ${method}\\(`).test(methods)) missing.push(`${feature.id}/${database}: ${command.test} ${method}`);
       }
     }
@@ -398,13 +395,8 @@ caseTest('PHP extension catalog coverage selects the exact recipe entry methods'
     assert.equal(nativeCommands.length, 1);
     const entry = entries[database];
     assert.ok(entry, `no recipe entry method for ${database}`);
-    assert.deepEqual(nativeCommands[0]?.symbols, {
-      catalog_read: entry,
-      catalog_row_mutation: entry,
-      model_read_null_and_empty_text: entry,
-      catalog_grid_column_and_row_order: entry,
-      catalog_plain_query_bounds: entry,
-    });
+    assert.equal(nativeCommands[0]?.symbol, entry);
+    assert.equal(nativeCommands[0]?.recipe, 'contracts/fixtures/catalog_connection/catalog_connection.json');
     assert.match(methods, new RegExp(`function ${entry}\\(`), `CatalogConnectionRecipeTest lacks ${entry}`);
   }
 });

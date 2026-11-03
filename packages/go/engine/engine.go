@@ -38,9 +38,9 @@ func New(m *runtimemodel.Model, dialectName string) (*Engine, error) {
 // (runtimemodel.LoadSet; the external text is empty when the set has no external document).
 // Malformed text is SCHEMA_INVALID.
 func Load(manifestText, externalText, dialectName string) (*Engine, error) {
-	m, diagnostics := runtimemodel.LoadSet(manifestText, externalText)
-	if len(diagnostics) > 0 {
-		return nil, &ir.Error{Code: "SCHEMA_INVALID", Msg: runtimemodel.DiagnosticsError(diagnostics)}
+	m, invalid := runtimemodel.LoadSet(manifestText, externalText)
+	if invalid != nil {
+		return nil, &ir.Error{Code: invalid.Code(), Msg: invalid.Message()}
 	}
 	return New(m, dialectName)
 }
