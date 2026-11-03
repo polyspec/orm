@@ -133,6 +133,10 @@
       "refused_message",
       "sql"
     ],
+    "session.end": [
+      "op",
+      "table"
+    ],
     "query.search": [
       "columns",
       "connection",
@@ -450,6 +454,11 @@
       "unconnected",
       "where"
     ],
+    "db.last_affected": [
+      "connection",
+      "expect",
+      "op"
+    ],
     "events.subscribe": [
       "as",
       "connection",
@@ -459,7 +468,8 @@
       "as",
       "connection",
       "kind",
-      "op"
+      "op",
+      "refusal"
     ],
     "events.stop_failing": [
       "op",
@@ -737,6 +747,7 @@
     ],
     "utils.set_local": [
       "connection",
+      "expect",
       "name",
       "op",
       "value"
@@ -768,6 +779,82 @@
     "utils.groups": [
       "connection",
       "expect",
+      "op"
+    ],
+    "dbspec.plan": [
+      "as",
+      "lines",
+      "op"
+    ],
+    "dbspec.connect": [
+      "as",
+      "op",
+      "through"
+    ],
+    "dbspec.exec": [
+      "connection",
+      "expect",
+      "only",
+      "op",
+      "sql"
+    ],
+    "dbspec.other_database": [
+      "as",
+      "op",
+      "steps"
+    ],
+    "dbspec.apply": [
+      "connection",
+      "count",
+      "detail",
+      "elapsed",
+      "expect",
+      "message",
+      "on",
+      "only",
+      "op",
+      "plans"
+    ],
+    "dbspec.recover": [
+      "connection",
+      "count",
+      "detail",
+      "elapsed",
+      "expect",
+      "message",
+      "on",
+      "only",
+      "op",
+      "plans"
+    ],
+    "dbspec.rollback": [
+      "connection",
+      "count",
+      "detail",
+      "elapsed",
+      "expect",
+      "message",
+      "on",
+      "only",
+      "op",
+      "plans"
+    ],
+    "dbspec.finalize": [
+      "connection",
+      "count",
+      "detail",
+      "elapsed",
+      "expect",
+      "message",
+      "on",
+      "only",
+      "op",
+      "plans"
+    ],
+    "dbspec.schema": [
+      "connection",
+      "expect",
+      "only",
       "op"
     ]
   }

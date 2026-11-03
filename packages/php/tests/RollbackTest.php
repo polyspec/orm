@@ -4,23 +4,9 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-// A transaction or savepoint whose callback fails and whose rollback fails
-// too, on SQLite, MySQL and PostgreSQL. The client reports one
-// OrmException with the code ROLLBACK that keeps the callback error as its
-// previous exception and the rollback error as its rollback. The callback
-// runs only model calls. On SQLite a trigger of the test fixture raises
-// ROLLBACK when a row labeled `end` is inserted, which ends the transaction;
-// the client then sends no ROLLBACK and reports the trigger's error alone
-// (INT-155). On MySQL and PostgreSQL a
-// test connection ends the server session that holds the transaction, so the
-// next statement and the rollback fail; that connection reaches the server
-// through ORM_TEST_MYSQL_SERVER_DSN or ORM_TEST_POSTGRES_SERVER_DSN (the server
-// DSNs that make orm-test-servers writes into TEST_ENV), not through a pooler.
-// Each case runs in a case database of its own (case_database.php) created
-// through ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN; the test fails when
-// one of the four is unset. The case first_statement_lost ends the session of
-// a new Db before its first statement, which then fails with CONNECTION_LOST
-// and is sent once.
+// The rollback fault of the test entry point, and a server that ends the session of a new Db before its first statement,
+// which then fails with CONNECTION_LOST and is sent once (CFG-38). The failed rollbacks of CFG-15 and INT-155 are cases of
+// contracts/fixtures/transactions/transactions.json. Each case runs in a case database of its own (case_database.php).
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RollbackTest.php
 // [--filter <case>]
 
@@ -67,58 +53,12 @@ class RollbackTest extends TestCase
         return self::nativeConnection($dsn);
     }
 
-    /** Opens the client, installs the fixture and, on SQLite, the trigger that raises ROLLBACK. */
+    /** Opens the client and installs the fixture. */
     private static function connect(string $dsn): Db
     {
         $db = Orm::connect($dsn, new Config());
         $db->utils()->schema()->install(\Polyspec\Orm\Tests\RollbackCase\schema());
-        [$driver, $pdo] = self::native($dsn);
-        if ($driver === 'sqlite') {
-            $pdo->exec(
-                "CREATE TRIGGER rollback_probe_end BEFORE INSERT ON rollback_probe WHEN NEW.label = 'end' BEGIN "
-                . "SELECT RAISE(ROLLBACK, 'rollback probe ended the transaction'); END"
-            );
-        }
         return $db;
-    }
-
-    /**
-     * Ends the server session that holds a lock on rollback_probe in the case
-     * database of $dsn. The test connects to that database through
-     * ORM_TEST_MYSQL_SERVER_DSN or ORM_TEST_POSTGRES_SERVER_DSN, the server
-     * itself, because a pooler in front of it may handle the statement on its
-     * own: ProxySQL takes a text-protocol KILL as a command for its own client
-     * sessions. The lock on the table of the case database marks the session that
-     * holds the transaction behind the pooler. SQLite needs no session end: its
-     * trigger ends the transaction.
-     */
-    private static function endSession(string $dsn): void
-    {
-        [$driver] = Orm::parseDsn($dsn);
-        if ($driver === 'sqlite') {
-            return;
-        }
-        $server = self::serverDsn($driver);
-        // The case database name is the path of the case DSN. The server connection opens that database too.
-        $database = ltrim((string) parse_url($dsn, PHP_URL_PATH), '/');
-        [, $pdo] = self::native(case_dsn_with_database($server, $database));
-        if ($driver === 'postgres') {
-            $pid = $pdo->query(
-                "SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid "
-                . "FROM pg_database WHERE datname = current_database()) AND c.relname = 'rollback_probe' AND l.pid "
-                . "<> pg_backend_pid() LIMIT 1"
-            )->fetchColumn();
-            self::check($pid !== false, 'the transaction session holds a lock on rollback_probe');
-            $pdo->prepare('SELECT pg_terminate_backend(?, 5000)')->execute([(int) $pid]);
-        } else {
-            $id = $pdo->query(
-                "SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t ON "
-                . "t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = 'rollback_probe' "
-                . "LIMIT 1"
-            )->fetchColumn();
-            self::check($id !== false, 'the transaction session holds a lock on rollback_probe');
-            $pdo->exec('KILL ' . (int) $id);
-        }
     }
 
     private static function serverDsn(string $driver): string
@@ -153,100 +93,6 @@ class RollbackTest extends TestCase
                 "$subject message names both errors: {$e->getMessage()}"
             );
         }
-    }
-
-    private static function writeAroundSessionEnd(Db $db, string $dsn, string $label): void
-    {
-        (new RollbackProbe())($db)->setLabel($label)->create();
-        self::endSession($dsn);
-        (new RollbackProbe())($db)->setLabel('end')->create();
-    }
-
-    /**
-     * Checks the error of a transaction that the rollback_probe trigger ended: SQLite rolled it back by itself, so the
-     * error is the trigger's, with no rollback failure stacked on it, and no row stayed (INT-155).
-     */
-    private static function checkSqliteRolledBack(Db $db, ?Throwable $e): void
-    {
-        $e = self::checkedOrmException($e, 'transaction');
-        if ($e !== null) {
-            self::check($e->code_ === Code::DRIVER, "transaction code {$e->code_}: {$e->getMessage()}");
-            self::check($e->rollback === null, 'transaction keeps no rollback error: ' . $e->getMessage());
-            self::check(
-                str_contains($e->getMessage(), 'rollback probe ended the transaction')
-                    && str_ends_with($e->getMessage(), ' (SQLITE_CONSTRAINT_TRIGGER)'),
-                "transaction error {$e->getMessage()} is not the trigger's"
-            );
-        }
-        self::check(
-            (new RollbackProbe())($db)->getCount() === 0,
-            'the trigger rolled the transaction back and the connection serves later requests'
-        );
-    }
-
-    /** On SQLite, checks the transaction that the trigger ended and closes the connection; elsewhere it does nothing. */
-    private static function endedBySqlite(Db $db, ?Throwable $e): bool
-    {
-        if ($db->driver() !== 'sqlite') {
-            return false;
-        }
-        self::checkSqliteRolledBack($db, $e);
-        $db->close();
-        return true;
-    }
-
-    /**
-     * The session of a transaction ends behind the client. On MySQL and PostgreSQL the server ends it, so the callback
-     * fails and the rollback fails (CFG-15); on SQLite the trigger makes SQLite roll the transaction back, so the
-     * trigger's error is reported (INT-155).
-     */
-    private static function rollbackFailed(string $dsn): void
-    {
-        $db = self::connect($dsn);
-        $e = self::raised(fn() => $db->transaction(function () use ($db, $dsn): void {
-            self::writeAroundSessionEnd($db, $dsn, 'kept');
-        }, retry: 0));
-        if (self::endedBySqlite($db, $e)) {
-            return;
-        }
-        self::checkRollback($e, 'transaction');
-        if ($e instanceof OrmException) {
-            // A next statement and a rollback on a session the server ended fail with a lost-connection error.
-            $callback = $e->getPrevious();
-            self::check(
-                $callback instanceof OrmException && $callback->code_ === Code::CONNECTION_LOST,
-                'the callback error is CONNECTION_LOST: ' . ($callback === null ? 'none' : $callback->getMessage())
-            );
-            self::check(
-                $e->rollback instanceof OrmException && $e->rollback->code_ === Code::CONNECTION_LOST,
-                'the rollback error is CONNECTION_LOST: ' . (
-                    $e->rollback === null ? 'none' : $e->rollback->getMessage()
-                )
-            );
-        }
-        $db->close();
-    }
-
-    /**
-     * The session ends inside a savepoint. On MySQL and PostgreSQL the savepoint rollback and then the transaction
-     * rollback fail (CFG-15); on SQLite the trigger's error is reported (INT-155).
-     */
-    private static function savepointRollbackFailed(string $dsn): void
-    {
-        $db = self::connect($dsn);
-        $e = self::raised(fn() => $db->transaction(function () use ($db, $dsn): void {
-            (new RollbackProbe())($db)->setLabel('kept')->create();
-            $db->transaction(function () use ($db, $dsn): void {
-                self::writeAroundSessionEnd($db, $dsn, 'nested');
-            });
-        }, retry: 0));
-        if (self::endedBySqlite($db, $e)) {
-            return;
-        }
-        self::checkRollback($e, 'transaction');
-        $inner = $e instanceof OrmException ? $e->getPrevious() : null;
-        self::checkRollback($inner, 'savepoint');
-        $db->close();
     }
 
     /**
@@ -357,22 +203,6 @@ class RollbackTest extends TestCase
     }
 
     #[DataProvider('drivers')]
-    public function testRollbackFailed(string $driver): void
-    {
-        // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
-        with_case_database($driver, static function (string $step): void {
-        }, static fn(string $dsn) => self::rollbackFailed($dsn));
-    }
-
-    #[DataProvider('drivers')]
-    public function testSavepointRollbackFailed(string $driver): void
-    {
-        // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
-        with_case_database($driver, static function (string $step): void {
-        }, static fn(string $dsn) => self::savepointRollbackFailed($dsn));
-    }
-
-    #[DataProvider('drivers')]
     // Requirements: INT-72.
     public function testRollbackFault(string $driver): void
     {
@@ -382,7 +212,7 @@ class RollbackTest extends TestCase
     }
 
     #[DataProvider('serverDrivers')]
-    // Requirements: CFG-15.
+    // Requirements: CFG-38.
     public function testFirstStatementLost(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.

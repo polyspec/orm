@@ -7,7 +7,6 @@ namespace Polyspec\Orm\Tests;
 // The invariants of the planner that the compile recipe tests/planner/compile.json (PlannerCompileTest.php) does not state.
 
 
-use Polyspec\Orm\Engine;
 use Polyspec\Orm\Dialect;
 use Polyspec\Orm\OrmException;
 use Polyspec\Orm\Planner;
@@ -33,19 +32,6 @@ function plannerScalarColumnSubqueryRequest(string $root): array
     return [$model, ['manifest_hash' => $model->manifestHash] + $case['input']];
 }
 
-/** The scalar column subquery request with the aggregate $aggregate of $column, without its limit and order. */
-function plannerScalarAggregateRequest(array $baseRequest, string $aggregate, string $column): array
-{
-    $request = $baseRequest;
-    $request['columns']['sub']['first_author']['agg'] = $aggregate;
-    $request['columns']['sub']['first_author']['column'] = $column;
-    unset(
-        $request['columns']['sub']['first_author']['query']['limit'],
-        $request['columns']['sub']['first_author']['query']['order']
-    );
-    return $request;
-}
-
 #[Small]
 final class CoveragePlannerTest extends TestCase
 {
@@ -61,24 +47,6 @@ final class CoveragePlannerTest extends TestCase
         return plannerScalarColumnSubqueryRequest(dirname(__DIR__, 3));
     }
 
-    public function testFunctionAndSubqueryCannotReuseAnOutputName(): void
-    {
-        [$model, $request] = $this->scalarColumnSubqueryRequest();
-        $request['entity'] = 'author';
-        $request['columns']['fn']['first_author'] = ['column' => 'created_ts', 'fn' => ['name' => 'year']];
-
-        try {
-            (new Engine($model, 'sqlite', 8))->compile($request);
-            Assert::fail('planner accepted a function and subquery with the same output name');
-        } catch (OrmException $error) {
-            Assert::assertSame('COLUMN_ALIAS_CONFLICT', $error->code_);
-            Assert::assertSame(
-                'COLUMN_ALIAS_CONFLICT: author.first_author is already a row name',
-                $error->getMessage()
-            );
-        }
-    }
-
     public function testScalarSubqueryMissingPostValidationColumnIsInternal(): void
     {
         [$model, $request] = $this->scalarColumnSubqueryRequest();
@@ -90,21 +58,6 @@ final class CoveragePlannerTest extends TestCase
         } catch (OrmException $error) {
             Assert::assertSame('INTERNAL', $error->code_);
             Assert::assertStringContainsString('author.missing_column', $error->getMessage());
-        }
-    }
-
-    public function testScalarSubqueryAggregateTypesRemainI64AndF64(): void
-    {
-        [$model, $baseRequest] = $this->scalarColumnSubqueryRequest();
-        foreach ([['count', '', 'i64'], ['avg', 'read_count', 'f64']] as [$aggregate, $column, $expected]) {
-            $request = plannerScalarAggregateRequest($baseRequest, $aggregate, $column);
-            (new \Polyspec\Orm\Validator($model))->validate($request);
-            $plan = (new Planner($model, new Dialect('sqlite')))->compile($request);
-            $output = array_values(array_filter(
-                $plan['steps'][0]['assemble']['columns'],
-                static fn(array $col): bool => $col['name'] === 'first_author'
-            ))[0];
-            Assert::assertSame($expected, $output['type'], "$aggregate output type");
         }
     }
 
