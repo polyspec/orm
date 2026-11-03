@@ -38,7 +38,7 @@ export type Report = { feature: string; role: string; language: string; database
 /** The step writer of a running case or build. */
 type StepWriter = (text: string) => void;
 /** The outcome of run: an error message, or the collected output. */
-type RunResult = { error?: string | null | undefined; value?: string | undefined; stdout: string };
+type RunResult = { error?: string | null | undefined; value?: string | undefined; stdout: string; pid?: number | undefined };
 /** A native test planned for one execution. */
 type Spec = ({ format: 'case'; program: string; args: string[]; cwd?: string } | { format: 'phpunit'; program: string; args: string[]; cwd: string; symbols: string[]; env?: Record<string, string> } | { format: 'go'; cwd: string; symbols: string[] } | { format: 'cargo'; cwd: string; testPath: string; symbols: string[] }) & { recipe?: string[]; recipeDatabase?: string };
 type CargoSpec = Extract<Spec, { format: 'cargo' }>;
@@ -347,7 +347,7 @@ export function run(program: string, args: string[], cwd: string | undefined, ti
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      finish({ error, value, stdout });
+      finish({ error, value, stdout, pid: child.pid });
     };
     const append = (chunk: Buffer) => {
       output += String(chunk);
@@ -377,7 +377,11 @@ export function run(program: string, args: string[], cwd: string | undefined, ti
     // When timeoutMs is null, it is a long-running build, so no timer is set.
     const timer: NodeJS.Timeout | undefined = timeoutMs === null ? undefined : setTimeout(() => {
       stop();
-      done(`timeout after ${timeoutMs} ms`);
+      // The run reports a process that has ended: a killed child is gone once its exit event fires. A child that did not start
+      // or has already exited sends no further exit event.
+      const timedOut = () => done(`timeout after ${timeoutMs} ms`);
+      if (child.pid === undefined || child.exitCode !== null || child.signalCode !== null) timedOut();
+      else child.once('exit', timedOut);
     }, timeoutMs);
   });
 }
