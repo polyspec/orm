@@ -20,9 +20,12 @@ import { keepAll, render, run, runLanes, variable, type Command } from './check/
 import { COMMANDS as TYPESCRIPT_COMMANDS, sqliteTest } from './typescript/sqlite-test.mts';
 import { implementationLanguages } from './features/languages.mts';
 import { readFeatures, type FeatureManifest, type NativeCommand } from './features/manifest.mts';
+import { readParityConfig } from './json/formats.mts';
+import { readJsonFile } from './json/schema.mts';
 import { PROXYSQL_BACKEND_CONNECTIONS } from './test-servers.mts';
 
 const root = resolve(import.meta.dirname, '..');
+const MARKDOWN_CASES_SCHEMA = new URL('./json/schema/markdown-cases.schema.json', import.meta.url).pathname;
 // The lanes are the declared implementations of config/parity.json, the one language set.
 const LANES = implementationLanguages();
 const isLane = (name: string): boolean => LANES.includes(name);
@@ -150,12 +153,12 @@ export function rustDatabaseCoverageSkipArguments(manifest: FeatureManifest, rep
  * (T334-3-28), and the markdown conformance cases, which markdown-conformance-check/rust runs against the flowmark server.
  */
 export function rustOwnedElsewhereSkipArguments(repository: string): string[] {
-  const parity = JSON.parse(readFileSync(resolve(repository, 'config/parity.json'), 'utf8')) as { units: { bindings?: { implementation: string; command?: string[] }[] }[] };
+  const parity = readParityConfig(resolve(repository, 'config/parity.json'));
   const featureTests = parity.units
     .flatMap(unit => unit.bindings ?? [])
     .filter(binding => binding.implementation === 'rust' && binding.command?.includes('feature-rust-database'))
     .flatMap(binding => (binding.command ?? []).filter(part => part.startsWith('FEATURE_TEST=')).map(part => part.slice('FEATURE_TEST='.length)));
-  const markdown = JSON.parse(readFileSync(resolve(repository, 'tests/markdown/cases.json'), 'utf8')) as { cases: { id: string }[] };
+  const markdown = readJsonFile<{ cases: { id: string }[] }>(resolve(repository, 'tests/markdown/cases.json'), MARKDOWN_CASES_SCHEMA);
   const symbols = new Set([...featureTests, ...markdown.cases.map(testCase => `markdown_conformance::${testCase.id}`)]);
   return [...symbols].sort().flatMap(symbol => ['--skip', symbol]);
 }

@@ -46,7 +46,11 @@
             "items": {
               "type": "object",
               "required": ["implementation"],
-              "properties": { "implementation": { "type": "string" }, "test": { "type": "string" } }
+              "properties": {
+                "implementation": { "type": "string" },
+                "test": { "type": "string" },
+                "command": { "type": "array", "items": { "type": "string" } }
+              }
             }
           },
           "symbols": {
