@@ -13,7 +13,7 @@ export interface GeneratedModels {
 const clientScans = [
   'testing/conformance/runner_typescript.mts', 'tests/chain-types.mjs', 'tests/connection_utc.mjs',
   'tests/coverage_performance_gate.mjs',
-  'tests/coverage_transactions.mjs', 'tests/decimal_model_type.ts', 'tests/group_rows.types.ts', 'tests/group_rows_db.mjs',
+  'tests/coverage_transactions.mjs', 'tests/decimal_model_type.ts', 'tests/group_rows.types.ts',
   'tests/model-new-output-name.mjs', 'tests/model.mjs', 'tests/model_json_output.test.mts',
   'tests/paginate-order.mjs', 'tests/parent-slot-expansion.mjs', 'tests/replica.mjs',
   'tests/split-plan.test.mjs', 'tests/sqlite-concurrency.mjs', 'tests/statement_timeout.mjs', 'tests/styled-value-checks.mjs',
@@ -24,7 +24,7 @@ const clientScans = [
 /** The client's models and each fixture model set in its own generated directory. */
 export const generatedModels: readonly GeneratedModels[] = [
   { out: 'src/models', set: '../../contracts/fixtures/bench/dbspec-set.json', scans: clientScans },
-  { out: 'src/models/complex_query', set: '../../contracts/fixtures/complex_query/dbspec-set.json', scans: ['tests/complex-query-request.mjs', 'tests/complex-query.types.ts', 'tests/complex-query-request.types.ts'] },
+  { out: 'src/models/complex_query', set: '../../contracts/fixtures/complex_query/dbspec-set.json', scans: ['tests/complex-query.types.ts', 'tests/complex-query-request.types.ts'] },
   { out: 'src/models/decimal_fixture', set: '../../contracts/fixtures/dbspec-set.json', scans: ['tests/decimal_model_db.mjs'] },
   { out: 'src/models/markdown_fixture', set: '../../tests/markdown/corpus/dbspec/dbspec-set.json', scans: ['tests/markdown_cases.mjs'] },
   { out: 'src/models/bind_fixture', set: '../../tests/bind/dbspec-set.json', scans: ['tests/recipe.mjs'] },

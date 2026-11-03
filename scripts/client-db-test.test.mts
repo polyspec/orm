@@ -6,6 +6,7 @@ import { caseTest, COMPUTE } from '../tests/testcase.mts';
 import { dirname, relative, resolve } from 'node:path';
 import { GO_LANE_PACKAGES, GO_LANE_SKIP, poolerRecipeCommands, poolerRecipeUnits, rustDatabaseCoverageSkipArguments, rustOwnedElsewhereSkipArguments, rustPoolerThreadArguments, rustTargetPoolSize } from './client-db-test.mts';
 import { readParityConfig } from './json/formats.mts';
+import { COMMANDS as PERF_COMMANDS } from './perf-test.mts';
 import { readFeatures, type CoverageOwner, type Language, type NativeCommand } from './features/manifest.mts';
 
 const root = resolve(import.meta.dirname, '..');
@@ -66,10 +67,17 @@ caseTest('model_writes declares the repeated member name case on every owner (T3
   }
 });
 
-// A case that needs what another target passes (the database of feature-rust-database, the server of FLOWMARK) stays out of the Rust lane (T334-3-28).
-caseTest('the Rust lane skips the cases that parity bindings and markdown-conformance-check own', COMPUTE, () => {
+caseTest('the Go lane leaves the measurements of PERF-1 to perf-check, which reads the bench DSNs', COMPUTE, () => {
+  const skip = new RegExp(GO_LANE_SKIP);
+  for (const test of ['TestPerformanceMeasurementMysql', 'TestPerformanceMeasurementPostgres', 'TestPerformanceMeasurementSQLite']) {
+    assert.ok(skip.test(test), test);
+    assert.ok(PERF_COMMANDS.some(command => command.includes(`^${test}$`)), `perf-check runs ${test}`);
+  }
+});
+
+// A case that needs what another target passes (the server of FLOWMARK) stays out of the Rust lane (T334-3-28).
+caseTest('the Rust lane skips the cases that markdown-conformance-check owns', COMPUTE, () => {
   const skipped = rustOwnedElsewhereSkipArguments(root).filter((_, index) => index % 2 === 1);
-  assert.ok(skipped.includes('aes_rotation'), 'the parity binding of the AES rotation');
   assert.ok(skipped.includes('markdown_conformance::insert_one'), 'a markdown conformance case');
 });
 
@@ -88,7 +96,9 @@ caseTest('the Go lane runs every package of packages/go that go-test-check does 
 caseTest('the Go lane leaves the markdown conformance test to the target that passes its server (T334-3-27)', COMPUTE, () => {
   const makefile = readFileSync(resolve(root, 'Makefile'), 'utf8');
   assert.match(makefile, /^\tFLOWMARK=\$\(FLOWMARK\) \$\(GO_TEST\) \.\/packages\/go\/markdownmodel -run '\^TestMarkdownConformance\$\$' -count=1$/m);
-  assert.equal(GO_LANE_SKIP, '^TestMarkdownConformance$');
+  const skip = new RegExp(GO_LANE_SKIP);
+  assert.ok(skip.test('TestMarkdownConformance'), 'the markdown conformance test');
+  assert.ok(!skip.test('TestMarkdownConformanceHelper'), 'a skip names the whole test');
 });
 
 caseTest('the feature matrix owns the program of a Rust recipe owner, one per database (FCV-12)', COMPUTE, () => {

@@ -50,9 +50,7 @@ def main() -> None:
 
     def on_statement(event) -> None:
         last["sql"] = event.sql
-        last["binds"] = [
-            AES_KEY if value == "$SECRET" else value for value in event.binds
-        ]
+        last["binds"] = list(event.binds)
 
     db = connect(target, aesKey=AES_KEY, blindIndexKey="bench-blind-index")
     try:

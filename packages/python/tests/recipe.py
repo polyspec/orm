@@ -45,6 +45,7 @@ from polyspec.orm import (
     transaction_conflict,
 )
 from polyspec.orm.engine.model import field_of
+from polyspec.orm.testing import last_affected
 from polyspec.orm.engine.params import param_uses
 from polyspec.orm.codec import (
     CodecError,
@@ -82,8 +83,10 @@ from polyspec.orm.styled_value import StyledValue
 
 from . import chain_answer, testcase
 from .case_database import case_database
+from .recipe_apply import apply_ops
 from .coverage_case import native_query, native_session
 from .recipe_generator import check_generated_files, check_generator
+from .server_database import with_database
 from .recipe_keys import check_keys
 from .recipe_model import model_ops
 from .markdown_conformance import same
@@ -204,6 +207,9 @@ def recipe_tests(path: str, database: str):
                     continue
                 if step["op"] == "markdown.connect":
                     _markdown_connect(step, database)
+                    continue
+                if step["op"] == "markdown.session":
+                    _markdown_session(step, database)
                     continue
                 if step["op"] == "markdown.builder":
                     _markdown_builder(step, database)
@@ -766,8 +772,16 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
             documents = RuntimeModel.load_set(text(step["owned"]), text(step["external"]))
         except OrmError as error:
             _expect_equal(error.code, expect.get("error"), "error")
-            if "rule" in expect and expect["rule"] not in str(error):
-                raise AssertionError(f"the error {error} does not name the rule {expect['rule']}")
+            # Each diagnostic is "<line>:<column> <rule>: <message>", in order (SCH-12).
+            if "diagnostics" in expect:
+                prefix = f"{expect['error']}: "
+                if not str(error).startswith(prefix):
+                    raise AssertionError(f"the error {error} does not start with its code")
+                problems = str(error)[len(prefix):].split("; ")
+                _expect_equal(len(problems), len(expect["diagnostics"]), str(error))
+                for problem, want in zip(problems, expect["diagnostics"]):
+                    if not problem.startswith(f"{want}: "):
+                        raise AssertionError(f"the error {error} does not hold the diagnostic {want}")
         else:
             _expect_equal(
                 [{"name": d.name, "external": d.external} for d in documents],
@@ -1003,6 +1017,29 @@ def _send_in_process_zone(step: dict) -> None:
         time.tzset()
 
 
+def _refused_surface(surface: str, models, db) -> None:
+    """Runs the public call of a markdown.send surface, one that has no form on a markdown connection (DIA-183 to DIA-189)."""
+    utils = db.utils()
+    calls = {
+        "audit": lambda: db.transaction(lambda: None, {"audit": {"actor": "tester"}}),
+        "isolation": lambda: db.transaction(lambda: None, {"isolation": "serializable"}),
+        "timeout_ms": lambda: db.transaction(lambda: None, {"timeoutMs": 100}),
+        "get_query": lambda: models.Slots().connect(db).get_query(),
+        "subscribe": lambda: db.subscribe(lambda event: None),
+        "lock": lambda: utils.lock("k"),
+        "set_local": lambda: utils.set_local("k", "v"),
+        "local": lambda: utils.local("k"),
+        "backend_waiting_for_lock": lambda: utils.backend_waiting_for_lock(),
+        "privileges": lambda: utils.privileges().inspect_table("public.items"),
+        "aes_status": lambda: utils.aes().status(None, None),
+        "aes_rotate": lambda: utils.aes().rotate(None, None),
+        "schema_install": lambda: utils.schema().install(None),
+        "schema_evolution": lambda: utils.schema().add_tables_and_columns(None),
+        "schema_exists": lambda: utils.schema().exists("orm"),
+    }
+    calls[surface]()
+
+
 def _send(step: dict, call=None) -> None:
     """Runs one markdown.send step and checks its expect, which is not per database: {"message": JSON} against the first
     message the listener received (the whole message of a begin, the one parameter of a statement), or {"error": CODE} against
@@ -1020,6 +1057,8 @@ def _send(step: dict, call=None) -> None:
         try:
             if call is not None:
                 call(models, db)
+            elif "surface" in step:
+                _refused_surface(step["surface"], models, db)
             elif "begin" in step:
                 db.transaction(
                     lambda: None, {"readOnly": step["begin"].get("read_only") is True}
@@ -1110,8 +1149,14 @@ class _FaultConnection:
         self.cause: Exception | None = None
         self.fail_at = 0
         self.reads = 0
+        self.fail: dict[str, Exception] = {}
+        self.no_row: list[str] = []
 
     def execute(self, sql: str, args: Any) -> dict:
+        if sql in self.fail:
+            raise self.fail[sql]
+        if sql in self.no_row:
+            return {"rows": [], "insert_id": None, "affected": 0}
         if sql.startswith("SELECT type, name, tbl_name"):
             self.reads += 1
             if self.cause is not None and self.reads == self.fail_at:
@@ -1138,17 +1183,40 @@ def _dbspec_apply_fault(step: dict, bound: dict, database: str) -> None:
         if "fail_catalog_read" in step:
             fault.cause = RuntimeError("catalog read failed")
             fault.fail_at = fault.reads + step["fail_catalog_read"]
+        fault.no_row = step.get("no_row_queries", [])
+        for f in step.get("fail_statements", []):
+            injected = sqlite3.OperationalError(f["message"])
+            if "sqlite_result" in f:
+                injected.sqlite_errorcode = f["sqlite_result"]
+            fault.fail[f["statement"]] = injected
         kinds: list[str] = []
+
+        def events(event: dict) -> None:
+            kinds.append(event["kind"])
+            if "stop_on_applied" in step and event["kind"] == "applied":
+                raise RuntimeError(step["stop_on_applied"])
+
         call = rollback_plans if step["call"] == "rollback" else apply_plans
         try:
-            call(fault, "sqlite", plans, now, lambda event: kinds.append(event["kind"]))
-        except DbspecApplyError as error:
-            if error.code != expect["code"]:
-                raise AssertionError(f"the call raised {error.code}, want {expect['code']}") from error
+            call(fault, "sqlite", plans, now, events)
+        except Exception as error:  # noqa: BLE001 - the expect states the failure of any type
+            if "code" in expect and getattr(error, "code", None) != expect["code"]:
+                raise AssertionError(f"the call raised {error!r}, want {expect['code']}") from error
+            if "failure" in expect:
+                _expect_equal(str(error), expect["failure"], "failure")
+            if not str(error).endswith(expect.get("failure_ends_with", "")):
+                raise AssertionError(f"the failure {error} does not end with {expect['failure_ends_with']}")
+            # The failure holds a note for each cleanup error, in order (PLN-101, PLN-106).
+            if "cleanup" in expect:
+                _expect_equal(
+                    getattr(error, "__notes__", []),
+                    [f"cleanup failed: {message}" for message in expect["cleanup"]],
+                    "cleanup",
+                )
             if fault.cause is not None and error.cause is not fault.cause:
                 raise AssertionError(f"the error {error} does not hold the catalog read error") from error
         else:
-            raise AssertionError(f"the call succeeded, want {expect['code']}")
+            raise AssertionError(f"the call succeeded, want {expect}")
         if "history_state" in expect:
             state = fault.connection.execute('SELECT state FROM "dbspec$plans"').fetchone()[0]
             if state != expect["history_state"]:
@@ -1814,6 +1882,49 @@ def _markdown_connect(step: dict, database: str) -> None:
         raise AssertionError(f"message {message}, want one that holds {outcome['message_holds']}")
 
 
+def _markdown_session(step: dict, database: str) -> None:
+    """Runs the markdown.session op (FCV-4, PRT-64): on a listener that answers each line with the next of the replies of the
+    step, a read-only transaction that holds a nested one, then a transaction, whose error is compared with the expect."""
+    listener = socket.create_server(("127.0.0.1", 0))
+    received = []
+
+    def serve() -> None:
+        connection, _ = listener.accept()
+        with connection, connection.makefile("rwb") as stream:
+            for reply in step["replies"]:
+                line = stream.readline()
+                if not line:
+                    break
+                received.append(line.decode().rstrip("\n"))
+                stream.write(reply.encode() + b"\n")
+                stream.flush()
+
+    server = threading.Thread(target=serve, daemon=True)
+    server.start()
+    port = listener.getsockname()[1]
+    outcome = step["expect"][database]
+    db = Db.connect(f"markdown://127.0.0.1:{port}/{step['corpus']}?token={step['token']}")
+    got = None
+    message = ""
+    try:
+        db.transaction(lambda: db.transaction(lambda: None), {"readOnly": True})
+        try:
+            db.transaction(lambda: None)
+        except OrmError as error:
+            got = error.code
+            message = str(error)
+    finally:
+        db.close()
+    server.join(10)
+    listener.close()
+    if received != step["messages"]:
+        raise AssertionError(f"the listener received {received}, want {step['messages']}")
+    if got != outcome["error"]:
+        raise AssertionError(f"got {got}, want {outcome['error']}")
+    if outcome.get("message_holds", "") not in message:
+        raise AssertionError(f"message {message}, want one that holds {outcome['message_holds']}")
+
+
 def _dsn_connect(step: dict, database: str) -> None:
     """Runs the dsn.connect op (FCV-4) on the DSN text of the step, and checks the outcome of the expect of database:
     {error: CODE} for a refused DSN, {value: {text: DRIVER}} for an opened one."""
@@ -2373,8 +2484,12 @@ def _op_close(_step: dict, context: dict) -> dict:
     return {}
 
 
-def _op_reconnect(_step: dict, context: dict) -> dict:
-    context["catalog"] = connect_catalog(context["dsn"])
+def _op_reconnect(step: dict, context: dict) -> dict:
+    dsn = context["dsn"]
+    if "user_from_database" in step:
+        database = re.search(r"/([^/?]+)(?:\?.*)?$", dsn).group(1)
+        dsn = re.sub(r"^mysql://[^@]+@", f"mysql://{step['user_from_database']}{database[-28:]}@", dsn)
+    context["catalog"] = connect_catalog(dsn)
     context["namespace"] = context["catalog"].current_namespace()
     context["closed"] = False
     return {}
@@ -2458,6 +2573,36 @@ def _op_update_row(step: dict, context: dict) -> dict:
 def _op_delete_row(step: dict, context: dict) -> dict:
     deleted = context["catalog"].delete_row(_step_argument(step["snapshot"], context))
     return {"value": {"int": str(deleted)}}
+
+
+def _op_session_end(step: dict, context: dict) -> dict:
+    """Ends the server session that holds a lock on the table (CFG-15), through the server DSN, not a pooler, which may
+    handle KILL on its own."""
+    database, table = context["database"], step["table"]
+    variable = f"ORM_TEST_{database.upper()}_SERVER_DSN"
+    server = os.environ.get(variable)
+    if not server:
+        raise AssertionError(f"{variable} is required; database tests never skip")
+    session = with_database(server, urlsplit(context["dsn"]).path.lstrip("/"))
+    query = (
+        f"SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = '{table}' AND l.pid <> pg_backend_pid() LIMIT 1"
+        if database == "postgres"
+        else f"SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = '{table}' LIMIT 1"
+    )
+    rows = native_query(database, session, [query])[0]
+    if len(rows) != 1:
+        raise AssertionError(f"the transaction session holds a lock on {table}: {rows}")
+    session_id = int(next(iter(rows[0].values())))
+    native_query(
+        database,
+        session,
+        [
+            f"SELECT pg_terminate_backend({session_id}, 5000)"
+            if database == "postgres"
+            else f"KILL {session_id}"
+        ],
+    )
+    return {}
 
 
 # The statement that every client runs on a new connection (docs/spec/dbspec.md "Types", docs/spec/dialects.md "Foreign keys").
@@ -2693,6 +2838,7 @@ class _ChainBuild:
         self.context = context
         self.outer = outer
         self.joined: dict = {}
+        self.db = None
 
     def predicate(self, model: Model, conn: str, raw: dict) -> None:
         """Adds the predicate raw to model, joined by conn."""
@@ -2707,6 +2853,10 @@ class _ChainBuild:
                     conn, lambda group: self.predicate(group, "", value)
                 )
             if name == "placed":
+                if isinstance(value, dict):
+                    return model.core.connector(
+                        conn, [_new_core_model(self.context, value["model"])]
+                    )
                 if value not in self.joined:
                     raise AssertionError(f"placed {value} names no join")
                 return model.core.connector(conn, [self.joined[value]])
@@ -2834,6 +2984,8 @@ class _ChainBuild:
                 child.core.set_on(lambda group, on=on: inner.predicate(group, "", on))
             inner.query(child, join)
             kind = join.get("kind", "inner")
+            if join.get("connect") is True:
+                child.connect(self.db)
             model.core.join(kind, join["match"][0], join["match"][1], child)
             if "as" in join:
                 self.joined[join["as"]] = child
@@ -2940,8 +3092,13 @@ def _chain_built(step: dict, context: dict) -> Model:
     if "from" in step:
         return _by_key(_bound_value(step["from"], context), step, context)
     db = _connection_of(step, context)
-    model = _new_row(context, db, step["model"])
+    model = (
+        _new_core_model(context, step["model"])
+        if step.get("unconnected") is True
+        else _new_row(context, db, step["model"])
+    )
     build = _ChainBuild(context)
+    build.db = db
     paged = step.get("page") is True
     build.query(model, step, not paged and "offset" not in step)
     if not paged and "offset" in step and "limit" in step:
@@ -3026,10 +3183,15 @@ def _table_model_query(step: dict, context: dict) -> dict:
     if step.get("compile") is True:
         return {"json": _plain_json(model.get_query())}
     if step.get("plan") is True:
-        limit = step["limit"]
-        steps = model.get_page_plan_steps(
-            limit["offset"] // limit["count"] + 1, limit["count"]
-        )
+        if "plan_page" in step:
+            steps = model.get_page_plan_steps(
+                step["plan_page"]["page"], step["plan_page"]["per_page"]
+            )
+        else:
+            limit = step["limit"]
+            steps = model.get_page_plan_steps(
+                limit["offset"] // limit["count"] + 1, limit["count"]
+            )
         return {
             "json": [
                 {
@@ -3039,6 +3201,7 @@ def _table_model_query(step: dict, context: dict) -> dict:
                         text: plan_step["sql"].upper().count(text)
                         for text in step["plan_count"]
                     },
+                    **({"sql": plan_step["sql"]} if step.get("plan_sql") is True else {}),
                 }
                 for plan_step in steps
             ]
@@ -3057,15 +3220,19 @@ def _table_model_query(step: dict, context: dict) -> dict:
                 )
             return {"json": _plain_json(rows[0].value(step["group_value"]))}
         return {"json": _plain_json(model.gets_count().to_array())}
-    if step.get("page") is True:
+    if step.get("page") is True or "plan_page" in step:
         limit = step.get("limit")
         count = limit if isinstance(limit, int) else (limit or {}).get("count", 0)
-        if count <= 0:
+        if count <= 0 and "plan_page" not in step:
             raise AssertionError("a page needs a limit count above 0")
         offset = step.get("offset", 0)
         if isinstance(limit, dict):
             offset += limit.get("offset", 0)
-        page = model.gets_page(offset // count + 1, count)
+        page = (
+            model.gets_page(step["plan_page"]["page"], step["plan_page"]["per_page"])
+            if "plan_page" in step
+            else model.gets_page(offset // count + 1, count)
+        )
         fields = {
             "json": _plain_json(
                 {
@@ -3184,6 +3351,10 @@ def _utils_lock(step: dict, context: dict) -> dict:
     return {}
 
 
+def _db_last_affected(step: dict, context: dict) -> dict:
+    return {"value": {"int": str(last_affected(_connection_of(step, context)))}}
+
+
 def _db_notify(step: dict, context: dict) -> dict:
     _connection_of(step, context).notify(step["channel"], step["payload"])
     return {}
@@ -3236,10 +3407,13 @@ def _op_events_subscribe(step: dict, context: dict) -> dict:
 
 def _op_events_fail_subscriber(step: dict, context: dict) -> dict:
     kind = step["kind"]
+    refusal: Exception = RuntimeError("subscriber refused the event")
+    if "refusal" in step:
+        refusal = OrmError(step["refusal"]["code"], step["refusal"]["message"])
 
     def refuse(event) -> None:
         if event.kind == kind:
-            raise RuntimeError("subscriber refused the event")
+            raise refusal
 
     stop = _connection_of(step, context).subscribe(refuse)
     return {"bind": _Subscription(stop, None)}
@@ -3596,6 +3770,7 @@ _DATABASE_OPS = {
     "catalog.insert_row": _op_insert_row,
     "catalog.update_row": _op_update_row,
     "catalog.delete_row": _op_delete_row,
+    "session.end": _op_session_end,
     "dbspec.ddl_behavior": _op_ddl_behavior,
     "sql.exec": _op_sql_exec,
     "events.subscribe": _op_events_subscribe,
@@ -3654,6 +3829,12 @@ def _run_database_step(step: dict, context: dict) -> None:
             raise AssertionError(
                 f"error message {str(error)!r} does not hold {holds!r}"
             ) from error
+        if "rollback" in expected:
+            rollback = error.rollback
+            if rollback.code != expected["rollback"] or str(rollback) not in str(error):
+                raise AssertionError(
+                    f"error {str(error)!r} keeps the rollback error {rollback!r}, want code {expected['rollback']}"
+                ) from error
         if expected.get("driver_cause") is True and error.__cause__ is None:
             raise AssertionError(
                 f"error {str(error)!r} has no driver cause"
@@ -4085,6 +4266,7 @@ _TABLE_OPS = {
     "model.creates": _table_model_creates,
     "model.restore": _table_model_restore,
     "model.query": _table_model_query,
+    "db.last_affected": _db_last_affected,
     "db.notify": _db_notify,
     "utils.lock": _utils_lock,
     "utils.set_local": _utils_set_local,
@@ -4115,3 +4297,5 @@ def _dispatch_model_op(name: str):
 
 for _name in _TABLE_OPS:
     _MODEL_OPS[_name] = _dispatch_model_op(_name)
+
+_DATABASE_OPS.update(apply_ops(_sql, _run_database_step))

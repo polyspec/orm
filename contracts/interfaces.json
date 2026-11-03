@@ -39,10 +39,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:f348ea7728c034ac02a68c1922d528aeac22bf1b58cf1a6c9abb3d8225aba6fd",
+    "go": "sha256:64183f1b3c4db62aa5f150037603c2563ada83dc668af1f8f865d539039de582",
     "php": "sha256:18ffbe75e39282754e0dd5ab1d761fcd6b29c05d39523f389838b5c387581cb2",
     "rust": "sha256:883ce1c9c0521690d7d541b35b046849d07a89d5f889100977c6ba9367d37aa1",
-    "typescript": "sha256:422af3626e58a2b496480a4eecbe9dea5ca6a7843710c199accddef907207a2c",
+    "typescript": "sha256:6f866988006f53c5c5395097dd6f72936f5506bc6c6f820570ed0eb0f8e52103",
     "python": "sha256:7823f9babebff6bb1d1607fa04605a5372257f42e04038a76531e4648b377674"
   },
   "native_surfaces": [
@@ -133,8 +133,16 @@
           "surface": "Db.withFuture",
           "cases": [
             {
-              "test": "packages/python/tests/coverage_transactions.py",
-              "id": "test_handle_abandoned_query"
+              "test": "packages/python/tests/test_query_cancel.py",
+              "id": "test_abandoned_query_is_canceled_and_rolled_back_sqlite"
+            },
+            {
+              "test": "packages/python/tests/test_query_cancel.py",
+              "id": "test_abandoned_query_is_canceled_and_rolled_back_mysql"
+            },
+            {
+              "test": "packages/python/tests/test_query_cancel.py",
+              "id": "test_abandoned_query_is_canceled_and_rolled_back_postgres"
             },
             {
               "test": "packages/python/tests/test_query_cancel.py",

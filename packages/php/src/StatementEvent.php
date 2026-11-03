@@ -25,7 +25,7 @@ final readonly class StatementEvent
     public const string UTILITY = 'utility';
 
     /**
-     * @param list<mixed> $binds the bound values in order; a secret is "$SECRET" and an executor clock value "$NOW"
+     * @param list<mixed> $binds the bound values in order; an executor clock value is "$NOW"
      * @param list<string> $tables the tables the statement names, sorted; transaction control names none
      * @param float $elapsed seconds from sending the statement until its result was read
      * @param ?int $transaction the number of the transaction of the connection, counted from 1 by every
