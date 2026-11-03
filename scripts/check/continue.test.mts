@@ -9,7 +9,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
-import { complexQueryDatabaseEnvironment, complexQueryDatabasePlan, complexQuerySeedSql, dropComplexQueryFixtures, environmentFile, parseComplexQueryFixture } from './databases.mts';
+import { environmentFile } from './databases.mts';
 import { readFeatures } from '../features/manifest.mts';
 import { COMMANDS as CLIENT_DB_COMMANDS, rustDatabaseCoverageSkipArguments } from '../client-db-test.mts';
 
@@ -28,7 +28,6 @@ caseTest('Rust workspace dispatch skips only the database cases owned by the fea
     assert.ok(skipped.has(`schema_install_${database}`));
   }
   assert.ok(skipped.has('coverage_group_rows_db::coverage_group_rows_db'));
-  assert.ok(skipped.has('coverage_complex_query::coverage_complex_query_product_search'));
   assert.ok(!skipped.has('coverage_'));
   assert.ok(!skipped.has('coverage_request_hook_'));
   const rustCommand = CLIENT_DB_COMMANDS.find(command => command.includes('tests/cargo-test.mts workspace-tests'));
@@ -61,71 +60,6 @@ function fake(programs: string[], failing: string) {
     throw error;
   }
 }
-
-caseTest('complex-query fixture setup maps every owner DSN and tears down every database', COMPUTE, () => {
-  const plan = complexQueryDatabasePlan('orm_check_2147483647_ffffffff', '/tmp/complex-query-run', {
-    ORM_RUN_MYSQL_DSN: 'mysql://runner@127.0.0.1:3306/orm_run?timezone=UTC',
-    ORM_RUN_POSTGRES_DSN: 'postgres://runner@127.0.0.1:5432/orm_run?sslmode=disable',
-    ORM_RUN_SQLITE_QUERY: '_pragma=busy_timeout(5000)&timezone=%2B00:00',
-  });
-  assert.equal(plan.length, 18);
-  assert.equal(new Set(plan.map(item => item.database)).size, 18);
-  assert.ok(plan.every(item => item.database.length <= 63));
-  const environment = complexQueryDatabaseEnvironment(plan);
-  assert.equal(Object.keys(environment).length, 18);
-  const read = environmentFile(Object.entries(environment).map(([key, value]) => `export ${key}='${value}'`).join('\n'));
-  assert.deepEqual(read, environment);
-  assert.equal(environment['COMPLEX_QUERY_PHP_EXTENSION_POSTGRES_DSN'], plan.find(item => item.runtime === 'php_extension' && item.dialect === 'postgres')?.dsn);
-  assert.equal(environment['COMPLEX_QUERY_TYPESCRIPT_SQLITE_DSN'], plan.find(item => item.runtime === 'typescript' && item.dialect === 'sqlite')?.dsn);
-  const fixture = parseComplexQueryFixture(JSON.parse(readFileSync(join(repo, 'contracts/fixtures/complex_query/complex_query.json'), 'utf8')));
-  assert.throws(() => parseComplexQueryFixture({
-    schema: '', mysql_setup: [], seed_order: ['t'], seed_columns: { t: ['value'] }, seed: { t: [{ value: { unsupported: true } }] },
-  }), /is not a supported SQL scalar/);
-  const sqliteSeed = complexQuerySeedSql(fixture, 'sqlite');
-  const expectedRows = Object.values(fixture.seed).reduce((total, rows) => total + rows.length, 0);
-  assert.equal((sqliteSeed.match(/INSERT INTO /g) ?? []).length, expectedRows);
-  assert.match(sqliteSeed, /"product_lang" \("seq", "product_seq", "lang_id"/);
-  assert.match(sqliteSeed, /'widget-1002-ko'/);
-
-  const removed: string[] = [];
-  const complete = dropComplexQueryFixtures(plan, {
-    mysql: database => { removed.push(`mysql:${database}`); return true; },
-    postgres: database => { removed.push(`postgres:${database}`); return true; },
-    sqlite: file => { removed.push(`sqlite:${file}`); return true; },
-  });
-  assert.equal(complete, true);
-  assert.equal(removed.length, 18);
-  assert.equal(removed.filter(value => value.startsWith('mysql:')).length, 6);
-  assert.equal(removed.filter(value => value.startsWith('postgres:')).length, 6);
-  assert.equal(removed.filter(value => value.startsWith('sqlite:')).length, 6);
-
-  let attempted = 0;
-  const partialFailure = dropComplexQueryFixtures(plan, {
-    mysql: () => { attempted++; return attempted !== 1; },
-    postgres: () => { attempted++; return true; },
-    sqlite: () => { attempted++; return true; },
-  });
-  assert.equal(partialFailure, false);
-  assert.equal(attempted, 18, 'teardown attempts independent databases after a drop fails');
-});
-
-// The servers file of make orm-test-servers gives the PostgreSQL run DSN the client parameter timezone, which psql refuses with
-// invalid URI query parameter "timezone"; the seed of a complex-query PostgreSQL database connects psql without it and keeps
-// the rest of the DSN. A MySQL or SQLite fixture is not seeded through psql.
-caseTest('complex-query PostgreSQL fixtures are seeded through a DSN that psql accepts', COMPUTE, () => {
-  const plan = complexQueryDatabasePlan('orm_check_2147483647_ffffffff', '/tmp/complex-query-run', {
-    ORM_RUN_MYSQL_DSN: 'mysql://runner@127.0.0.1:3306/orm_run?timezone=UTC',
-    ORM_RUN_POSTGRES_DSN: 'postgres://runner@127.0.0.1:5432/orm_run?sslmode=disable&timezone=%2B00:00',
-    ORM_RUN_SQLITE_QUERY: '_pragma=busy_timeout(5000)&timezone=%2B00:00',
-  });
-  const postgres = plan.filter(item => item.dialect === 'postgres');
-  assert.equal(postgres.length, 6);
-  for (const item of postgres) {
-    assert.match(item.dsn, /[?&]timezone=/, `${item.dsnEnv}: the client DSN keeps its timezone`);
-    assert.equal(item.psqlDsn, `postgres://runner@127.0.0.1:5432/${item.database}?sslmode=disable`, `${item.dsnEnv}: the DSN of psql`);
-  }
-  assert.ok(plan.filter(item => item.dialect !== 'postgres').every(item => item.psqlDsn === null), 'a MySQL or SQLite fixture has no psql DSN');
-});
 
 // declared reads the commands the script runs from COMMANDS (scripts/check/commands.mts), which the script exports. The expected commands and
 // their count are not hand-written, so the case still matches when test files are added to or removed from a lane. It returns the commands that start with a program, in run order.
@@ -276,10 +210,8 @@ caseTest('dropping the run databases removes every part after a failed one and n
     // The server file supplies the replica needed to purge its binary logs.
     const result = f.run(['scripts/check/databases.mts', 'drop', servers, dir, 'orm_x']);
     assert.notEqual(result.status, 0, result.stdout + result.stderr);
-    // The 18 complex-query fixture databases go first: six MySQL and six PostgreSQL drops (the SQLite files are removed),
-    // then the bench and decimal databases of MySQL, which fail, and of PostgreSQL, and the two MySQL purges.
-    const fixtureDrops = Array.from({ length: 6 }, () => ['mysql', 'psql']).flat();
-    assert.deepEqual(f.ran().map(line => line.split(' ')[0]), [...fixtureDrops, 'mysql', 'psql', 'mysql', 'mysql']);
+    // The bench and decimal databases of MySQL, which fail, and of PostgreSQL go first, then the two MySQL purges.
+    assert.deepEqual(f.ran().map(line => line.split(' ')[0]), ['mysql', 'psql', 'mysql', 'mysql']);
     assert.ok(!existsSync(dir), 'the run directory is left');
     assert.match(result.stderr, /databases: drop failed:\n {2}mysql /);
     assert.match(result.stderr, /\n {2}purge the binary logs \(exit 1\)/);
@@ -314,12 +246,11 @@ esac
       assert.ok(!(result.stdout + result.stderr).includes('127.0.0.1'), 'no DSN or address is printed');
       if (applied === '7') {
         assert.equal(result.status, 0, result.stdout + result.stderr);
-        // The drops come first: the six MySQL complex-query fixture databases, then the bench and decimal databases.
-        assert.deepEqual(ran.slice(0, 7), [
-          ...['g', 'p', 'pe', 'ts', 'py', 'rs'].map(code => `primary DROP DATABASE IF EXISTS \`orm_x_cq_${code}_m\``),
+        // The drop of the bench and decimal databases comes first.
+        assert.deepEqual(ran.slice(0, 1), [
           'primary DROP DATABASE IF EXISTS `orm_x_bench`; DROP DATABASE IF EXISTS `orm_x_decimal`',
         ]);
-        assert.deepEqual(ran.slice(7), ['primary FLUSH BINARY LOGS', 'primary SHOW BINARY LOG STATUS', "replica SELECT IFNULL(SOURCE_POS_WAIT('binlog.000012', 157, 120), 'NULL')",
+        assert.deepEqual(ran.slice(1), ['primary FLUSH BINARY LOGS', 'primary SHOW BINARY LOG STATUS', "replica SELECT IFNULL(SOURCE_POS_WAIT('binlog.000012', 157, 120), 'NULL')",
           "primary PURGE BINARY LOGS TO 'binlog.000012'", 'replica FLUSH BINARY LOGS; FLUSH RELAY LOGS', 'replica SHOW BINARY LOG STATUS', "replica PURGE BINARY LOGS TO 'binlog.000031'"]);
         assert.match(result.stdout, /databases: binary logs purged up to binlog.000012 on the primary and binlog.000031 on the replica/);
       } else {

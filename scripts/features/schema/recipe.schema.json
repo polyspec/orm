@@ -819,6 +819,7 @@
             "dbspec.compare",
             "dbspec.emit_plan",
             "dbspec.plan_steps",
+            "dbspec.add_tables_steps",
             "utils.aes_status",
             "dbspec.parse_emit",
             "dbspec.manifest",
@@ -929,6 +930,9 @@
         },
         {
           "$ref": "#/$defs/ops/dbspec.plan_steps"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.add_tables_steps"
         },
         {
           "$ref": "#/$defs/ops/dbspec.chain"
@@ -1252,6 +1256,11 @@
           },
           "schema": {
             "$ref": "#/$defs/schemaArgument"
+          },
+          "message_contains": {
+            "description": "With an expected error: the text that its message holds.",
+            "type": "string",
+            "minLength": 1
           },
           "expect": {
             "$ref": "#/$defs/expect"
@@ -2127,6 +2136,75 @@
                   }
                   }
                 ]
+              }
+            }
+          }
+        }
+      },
+      "dbspec.add_tables_steps": {
+        "type": "object",
+        "required": [
+          "op",
+          "source",
+          "target",
+          "dialect",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.add_tables_steps"
+          },
+          "source": {
+            "$ref": "#/$defs/ref",
+            "description": "The installed schema."
+          },
+          "target": {
+            "$ref": "#/$defs/ref",
+            "description": "The newer schema."
+          },
+          "dialect": {
+            "enum": [
+              "mysql",
+              "postgres",
+              "sqlite"
+            ]
+          },
+          "expect": {
+            "type": "object",
+            "required": [
+              "none"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "type": "object",
+                "required": [
+                  "added",
+                  "statements",
+                  "differences"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "added": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "statements": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "differences": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
               }
             }
           }
@@ -4040,11 +4118,33 @@
                   "$ref": "#/$defs/name"
                 }
               },
+              "derived_integers": {
+                "description": "The fields of each result row read as a derived integer (COD-45): an added column whose database cell may be the text of an integer, such as a MySQL SUM.",
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/name"
+                }
+              },
               "as": {
                 "$ref": "#/$defs/name"
               },
               "page": {
                 "type": "boolean"
+              },
+              "plan": {
+                "description": "The page is read by getPagePlanSteps (DSL-159): the role and tables of each step, with the counts of plan_count.",
+                "const": true
+              },
+              "plan_count": {
+                "description": "The texts counted in the upper-cased statement of each step of plan.",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "items": {
+                "description": "The json of a page also holds items, the rows of the page narrowed to pick.",
+                "const": true
               },
               "compile": {
                 "description": "The query is read by getQuery: its text and binds, not its rows.",
@@ -4218,14 +4318,15 @@
             "enum": [
               "all",
               "tables",
-              "statements"
+              "statements",
+              "shape"
             ]
           },
           "expect": {
             "$ref": "#/$defs/expect"
           },
           "masks": {
-            "description": "The bind values no recipe can fix, per database, by event and bind position: a random nonce or the clock, named in value.",
+            "description": "The bind values no recipe can fix, per database, by event and bind position: a random nonce or the clock, named in value, with the reason.",
             "type": "object",
             "propertyNames": {
               "enum": [
@@ -4241,7 +4342,8 @@
                 "required": [
                   "event",
                   "bind",
-                  "value"
+                  "value",
+                  "reason"
                 ],
                 "additionalProperties": false,
                 "properties": {
@@ -4259,6 +4361,11 @@
                       "$TS",
                       "$NOW"
                     ]
+                  },
+                  "reason": {
+                    "description": "Why no recipe can fix this value.",
+                    "type": "string",
+                    "minLength": 1
                   }
                 }
               }
@@ -6993,6 +7100,36 @@
           "properties": {
             "placed": {
               "$ref": "#/$defs/name"
+            }
+          }
+        },
+        {
+          "description": "The boolean full-text search of a text in the columns of the model (DSL-32).",
+          "type": "object",
+          "required": [
+            "fulltext_boolean"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "fulltext_boolean": {
+              "type": "object",
+              "required": [
+                "columns",
+                "text"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "columns": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "$ref": "#/$defs/name"
+                  }
+                },
+                "text": {
+                  "type": "string"
+                }
+              }
             }
           }
         },

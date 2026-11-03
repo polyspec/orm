@@ -62,7 +62,7 @@ export const GO_LANE_PACKAGES = [
 // TestMarkdownConformance needs the flowmark server that markdown-conformance-check/go passes.
 export const GO_LANE_SKIP = '^TestMarkdownConformance$';
 const GO: Command[] = [go('-skip', GO_LANE_SKIP, ...GO_LANE_PACKAGES)];
-const PHP_TESTS = ['ModelTest', 'AesJsonTest', 'RuntimeDbTest', 'AuditExternalSetsTest', 'SqliteConcurrencyTest', 'SchemaSetTest', 'AddTablesAndColumnsTest',
+const PHP_TESTS = ['ModelTest', 'AesJsonTest', 'RuntimeDbTest', 'AuditExternalSetsTest', 'SqliteConcurrencyTest', 'SchemaSetTest', 
   'ClockTest', 'DriverErrorTest', 'RollbackTest', 'StatementFaultTest', 'RequestHookTest', 'MysqlTlsTest'];
 const PHP: Command[] = PHP_TESTS.map(test => ({ program: 'php', args: ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', `packages/php/tests/${test}.php`], cwd: root }));
 // The php-extension lane builds the extension into the directory of its run, as a long operation through tests/run-long.mts, and runs

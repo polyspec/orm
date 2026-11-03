@@ -632,11 +632,11 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   }
   for (const [group, expected] of Object.entries({
     client_db_go: ['client-db-go-check', 'group-rows-db-go', 'dialect-facts-check'],
-    client_db_php: ['client-db-php-check', 'group-rows-db-php', 'complex-query-php-db-check'],
-    client_db_php_extension: ['client-db-php-extension-check', 'group-rows-db-php-extension', 'complex-query-php-extension-db-check'],
-    client_db_typescript: ['client-db-typescript-check', 'group-rows-db-typescript', 'complex-query-typescript-check'],
-    client_db_python: ['client-db-python-check', 'group-rows-db-python', 'complex-query-python-sqlite-check'],
-    client_db_rust: ['client-db-rust-check', 'group-rows-db-rust', 'complex-query-rust-check'],
+    client_db_php: ['client-db-php-check', 'group-rows-db-php', 'complex-query-check/php'],
+    client_db_php_extension: ['client-db-php-extension-check', 'group-rows-db-php-extension', 'complex-query-check/php-extension'],
+    client_db_typescript: ['client-db-typescript-check', 'group-rows-db-typescript', 'complex-query-check/typescript'],
+    client_db_python: ['client-db-python-check', 'group-rows-db-python', 'complex-query-check/python'],
+    client_db_rust: ['client-db-rust-check', 'group-rows-db-rust', 'complex-query-check/rust'],
     dbspec_go: ['dbspec-introspect-check', 'dbspec-apply-check'],
     dbspec_php: ['dbspec-introspect-php-check', 'dbspec-apply-php-check'],
     dbspec_php_extension: ['dbspec-introspect-php-extension-check', 'dbspec-apply-php-extension-check'],
@@ -866,7 +866,7 @@ caseTest('every CI group runs the setup steps of its needs and of the setup step
 
 caseTest('feature helper checks provision the databases and PHP extension their owners execute', COMPUTE, () => {
   const needs = declaredNeeds(repository.pathname)['feature-helper-check'] ?? [];
-  assert.ok(needs.includes('complex-query'), 'Go complex-query helper requires its run-owned owner databases');
+  assert.ok(needs.includes('databases'), 'the helper target reads the run-owned databases');
   assert.ok(needs.includes('php-extension-tools'), 'the helper target builds the PHP extension');
   const recipe = makeRecipes(text('Makefile')).find(unit => unit.name === 'Makefile feature-helper-check')?.commands.join('\n') ?? '';
   assert.match(recipe, /\$\(call php_ext_build,/);

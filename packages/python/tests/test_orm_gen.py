@@ -4,6 +4,7 @@ import hashlib
 import inspect
 import json
 import os
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -88,6 +89,62 @@ class OrmGenTest(unittest.TestCase):
                 (models.SCHEMA.manifest_text + models.SCHEMA.external_text).encode()
             ).hexdigest(),
         )
+
+    def test_generated_external_model_reads_its_table(self):
+        # The generated schema value carries the external text at run time: the generated connect registers a set that
+        # uses an external document, and the model of a used external table reads a row of that table.
+        # Requirements: DBS-110, DBS-173.
+        external = ROOT / "contracts" / "fixtures" / "external"
+        with tempfile.TemporaryDirectory(prefix="orm-gen-external-") as work:
+            work_path = Path(work)
+            (work_path / "core").mkdir()
+            (work_path / "out").mkdir()
+            (work_path / "member.dbs").write_text(
+                (external / "member.dbs").read_text(encoding="utf-8"), encoding="utf-8"
+            )
+            (work_path / "core" / "core.dbs").write_text(
+                (external / "core.dbs").read_text(encoding="utf-8"), encoding="utf-8"
+            )
+            set_file = work_path / "dbspec-set.json"
+            set_file.write_text(
+                json.dumps(
+                    {
+                        "schema": 1,
+                        "documents": ["member.dbs"],
+                        "external": ["core/core.dbs"],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            subprocess.run(
+                args=ORM_GEN
+                + ["gen", "--set", str(set_file), "--out", str(work_path / "out")],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            source = work_path / "out" / "models.py"
+            module = types.ModuleType("external_models")
+            module.__file__ = str(source)
+            sys.modules["external_models"] = module
+            self.addCleanup(sys.modules.pop, "external_models", None)
+            exec(compile(source.read_text(), module.__file__, "exec"), module.__dict__)
+            path = work_path / "external.sqlite"
+            raw = sqlite3.connect(path)
+            try:
+                raw.execute(
+                    "CREATE TABLE ext_account (seq INTEGER PRIMARY KEY, name TEXT NOT NULL)"
+                )
+                raw.execute("INSERT INTO ext_account (seq, name) VALUES (1, 'kim')")
+                raw.commit()
+            finally:
+                raw.close()
+            db = module.connect(f"sqlite://{path}")
+            try:
+                row = module.ExtAccount().connect(db).get_by_seq(1)
+                self.assertEqual(row.get_name(), "kim")
+            finally:
+                db.close()
 
     def test_a_time_setter_takes_the_text_form(self):
         # Requirements: DBS-121.

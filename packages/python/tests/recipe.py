@@ -62,6 +62,7 @@ from polyspec.orm.dbspec import (
     read_dbspec_set,
     render_dbspec,
 )
+from polyspec.orm.dbspec.add_tables import add_tables_and_columns_steps
 from polyspec.orm.dbspec.compare import compare_schemas
 from polyspec.orm.dbspec.mermaid import export_mermaid, import_mermaid
 from polyspec.orm.dbspec.plan import chain_plans, emit_plan, parse_plan
@@ -1236,6 +1237,7 @@ _DBSPEC_OPS = (
     "dbspec.emit_plan",
     "dbspec.diff",
     "dbspec.plan_steps",
+    "dbspec.add_tables_steps",
     "dbspec.chain",
     "dbspec.compare",
 )
@@ -1275,6 +1277,18 @@ def _dbspec(step: dict, bound: dict, database: str) -> None:
         if result["diagnostics"]:
             raise AssertionError(f"{op}: {result['diagnostics'][:1]}")
         got = {"steps": [_plan_step_fields(s) for s in result["steps"]]}
+    elif op == "dbspec.add_tables_steps":
+        result = add_tables_and_columns_steps(
+            _dbspec_document(step["source"], bound),
+            [],
+            _dbspec_document(step["target"], bound),
+            step["dialect"],
+        )
+        got = {
+            "added": result["added"],
+            "statements": [s["statement"] for s in result["steps"]],
+            "differences": result["differences"],
+        }
     elif op == "dbspec.diff":
         result = diff_plan(
             _dbspec_document(step["source"], bound),
@@ -2228,6 +2242,9 @@ class _ChainBuild:
                 return model.core.connector(conn, [self.joined[value]])
             if name == "tuple":
                 return self.tuple(model, conn, value)
+            if name == "fulltext_boolean":
+                key = ChainKey(op=name, columns=tuple(value["columns"]))
+                return model.core.where_chain(conn, [key], (value["text"],))
         if "expr" in raw and "cmp" in raw:
             return self.function_leaf(model, conn, raw["expr"], raw["cmp"])
         for i, (column, value) in enumerate(raw.items()):
@@ -2411,6 +2428,14 @@ def _row_json(row, pick) -> Any:
     return {name: values[name] for name in pick}
 
 
+def _derived_integers(row: dict, step: dict) -> dict:
+    """The row with the named fields read as a derived integer (COD-45): the text of an integer is its number."""
+    for name in step.get("derived_integers", []):
+        if isinstance(row[name], str):
+            row[name] = int(row[name])
+    return row
+
+
 def _wants_rows(step: dict, context: dict) -> bool:
     """The expect of the database of the case compares rows of wrappers."""
     return "rows" in (step.get("expect", {}).get(context["database"]) or {})
@@ -2534,6 +2559,24 @@ def _table_model_query(step: dict, context: dict) -> dict:
     model = _chain_built(step, context)
     if step.get("compile") is True:
         return {"json": _plain_json(model.get_query())}
+    if step.get("plan") is True:
+        limit = step["limit"]
+        steps = model.get_page_plan_steps(
+            limit["offset"] // limit["count"] + 1, limit["count"]
+        )
+        return {
+            "json": [
+                {
+                    "role": plan_step["role"],
+                    "tables": plan_step["tables"],
+                    "count": {
+                        text: plan_step["sql"].upper().count(text)
+                        for text in step["plan_count"]
+                    },
+                }
+                for plan_step in steps
+            ]
+        }
     aggregate = step.get("aggregate")
     if aggregate is not None:
         if aggregate["agg"] == "sum":
@@ -2558,6 +2601,16 @@ def _table_model_query(step: dict, context: dict) -> dict:
                     "pages": page["totalPages"],
                     "page": page["page"],
                     "per_page": page["perPage"],
+                    **(
+                        {
+                            "items": [
+                                _row_json(row, step.get("pick"))
+                                for row in page["items"].values()
+                            ]
+                        }
+                        if step.get("items") is True
+                        else {}
+                    ),
                 }
             ),
             "total": page["totalCount"],
@@ -2568,7 +2621,10 @@ def _table_model_query(step: dict, context: dict) -> dict:
     rows = model.gets()
     fields = {
         "bind": rows,
-        "json": [_row_json(row, step.get("pick")) for row in rows.values()],
+        "json": [
+            _derived_integers(_row_json(row, step.get("pick")), step)
+            for row in rows.values()
+        ],
     }
     if _wants_rows(step, context):
         fields["rows"] = _chain_cells(list(rows.values()), step)
@@ -2740,6 +2796,12 @@ def _op_events_captured(step: dict, context: dict) -> dict:
         # The bound clock of a soft delete differs on each run, so the sql and the kind are compared.
         events = [
             {"object": [m for m in event["object"] if m[0] in ("sql", "kind")]}
+            for event in events
+        ]
+    if step.get("compare") == "shape":
+        # The kind and the tables are the shape of a plan, whatever its text and binds on the database.
+        events = [
+            {"object": [m for m in event["object"] if m[0] in ("kind", "tables")]}
             for event in events
         ]
     return {"value": {"array": events}}
@@ -3308,12 +3370,19 @@ def _op_schema_connect(step: dict, context: dict) -> dict:
 
 
 def _op_schema_add_tables(step: dict, context: dict) -> dict:
-    added = (
-        context["db"]
-        .utils()
-        .schema()
-        .add_tables_and_columns(_schema_argument(step["schema"], context))
-    )
+    try:
+        added = (
+            context["db"]
+            .utils()
+            .schema()
+            .add_tables_and_columns(_schema_argument(step["schema"], context))
+        )
+    except OrmError as error:
+        if step.get("message_contains", "") not in str(error):
+            raise AssertionError(
+                f"the message {error} holds no {step['message_contains']}"
+            ) from error
+        raise
     return {"value": {"array": [{"text": name} for name in added]}}
 
 
