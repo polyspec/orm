@@ -1301,7 +1301,6 @@
         "packages/ts/tests/typecheck.ts",
         "packages/ts/tests/decimal_model_type.ts",
         "packages/ts/src/bin/orm-gen.ts",
-        "packages/python/tests/test_collection.py",
         "packages/python/tests/test_aggregate_numeric.py",
         "packages/python/tests/test_aggregate_numeric_driver_values.py",
         "packages/python/tests/test_alias_columns.py",
@@ -1340,9 +1339,7 @@
         "packages/ts/tests/model_json_output.test.mts",
         "packages/php-ext/tests/PlanCacheBoundNativeTest.php",
         "packages/php/tests/PageCacheBoundCases.php",
-        "packages/ts/tests/split-null.test.mjs",
         "packages/python/tests/test_group_rows_db.py",
-        "packages/python/tests/test_split_null.py",
         "packages/php-ext/tests/ChainNativeSurfaceTest.php",
         "packages/go/model/group_rows_db_test.go",
         "packages/rust/orm/src/collection.rs",
@@ -1350,7 +1347,6 @@
         "packages/rust/orm/src/model.rs",
         "packages/rust/orm/src/driver/tests.rs",
         "packages/rust/orm/tests/compiler_fixtures.rs",
-        "packages/rust/tests/tests/collection_get_fetched.rs",
         "packages/php-ext/tests/CollectionIdentityTestExtensionTest.php",
         "packages/php-ext/tests/DecimalModelTestExtensionTest.php",
         "packages/php-ext/tests/GroupRowsTestExtensionTest.php",
@@ -1762,10 +1758,9 @@
         },
         {
           "id": "queries-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_collection && packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric && packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric_driver_values && packages/python/.venv/bin/python -m packages.python.tests.test_alias_columns && packages/python/.venv/bin/python -m packages.python.tests.test_subqueries && packages/python/.venv/bin/python -m packages.python.tests.test_terminal_by && packages/python/.venv/bin/python -m packages.python.tests.test_related_output && packages/python/.venv/bin/python -m packages.python.tests.test_remove_columns && packages/python/.venv/bin/python -m packages.python.tests.test_model_json_text && packages/python/.venv/bin/python -m packages.python.tests.test_styled_column_states && packages/python/.venv/bin/python -m packages.python.tests.test_styled_sql_null && packages/python/.venv/bin/python -m packages.python.tests.test_values",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric && packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric_driver_values && packages/python/.venv/bin/python -m packages.python.tests.test_alias_columns && packages/python/.venv/bin/python -m packages.python.tests.test_subqueries && packages/python/.venv/bin/python -m packages.python.tests.test_terminal_by && packages/python/.venv/bin/python -m packages.python.tests.test_related_output && packages/python/.venv/bin/python -m packages.python.tests.test_remove_columns && packages/python/.venv/bin/python -m packages.python.tests.test_model_json_text && packages/python/.venv/bin/python -m packages.python.tests.test_styled_column_states && packages/python/.venv/bin/python -m packages.python.tests.test_styled_sql_null && packages/python/.venv/bin/python -m packages.python.tests.test_values",
           "shard": "other",
           "inputs": [
-            "packages/python/tests/test_collection.py",
             "packages/python/tests/test_aggregate_numeric.py",
             "packages/python/tests/test_aggregate_numeric_driver_values.py",
             "packages/python/tests/test_alias_columns.py",
@@ -1804,7 +1799,7 @@
         },
         {
           "id": "collection-identity-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestCollectionKeyIdentityFromFixture|TestCollectionKeyNullIsCodecDecodeFromFixture)$' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestCompositeCollectionKeyTypedComponentsFromFixture|TestNullableCompositeRowHasNoCollectionKey)$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/collection_identity_test.go",
@@ -4432,6 +4427,7 @@
       ],
       "parity": [
         "generator",
+        "php-generator-scan-vector-in-both-php-modes",
         "dynamic-model-new-output-name-rejects-stored-column",
         "generated-typed-getter-public-column-api",
         "generated-nonnull-styled-setter-rejects-sql-null",
@@ -4439,7 +4435,6 @@
         "rust-model-generation-repeat-and-build-equivalence",
         "dynamic-vs-scanned-model-chain-dispatch",
         "model-connection-and-join-methods",
-        "mechanically-derived-chain-method-names",
         "static-model-chain-generation",
         "dynamic-model-chain-resolution",
         "dsl-50-operator-value-shapes",
@@ -4454,6 +4449,7 @@
         "packages/python/tests/coverage_case.py"
       ],
       "tests": [
+        "packages/php-ext/tests/OrmGenScanTestExtensionTest.php",
         "packages/php/tests/RuntimeModelTest.php",
         "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
         "packages/ts/tests/model-new-output-name.mjs",
@@ -4462,7 +4458,6 @@
         "packages/ts/tests/chain-types.mjs",
         "packages/go/model/chain_types_test.go",
         "packages/go/generator/gen_go_check_test.go",
-        "packages/go/generator/gen_go_key_prefix_test.go",
         "packages/go/generator/gen_go_output_test.go",
         "packages/go/generator/gen_go_output_internal_test.go",
         "packages/go/generator/gen_go_packages_test.go",
@@ -4673,6 +4668,7 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
+              "packages/php-ext/tests/OrmGenScanTestExtensionTest.php",
               "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
               "packages/php-ext/tests/CoverageModelGenerationNativeTest.php"
             ],
@@ -7899,7 +7895,8 @@
       "parity": [
         "composite_keys-mysql",
         "composite_keys-postgres",
-        "composite_keys-sqlite"
+        "composite_keys-sqlite",
+        "coverage-composite-keys-native"
       ],
       "fixtures": [
         "tests/conformance/vectors.json",
@@ -8768,7 +8765,6 @@
         "packages/go/model/chunk_test.go",
         "packages/rust/tests/tests/integration_program/main.rs",
         "packages/php/tests/RelationKeysTest.php",
-        "packages/php/tests/ParentSlotPaddingTest.php",
         "packages/php/tests/ModelTest.php",
         "packages/ts/tests/model.mjs",
         "packages/rust/tests/tests/integration/result_chains.rs",
@@ -8832,11 +8828,10 @@
         },
         {
           "id": "chunking-php-keys",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RelationKeysTest.php packages/php/tests/ParentSlotPaddingTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RelationKeysTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/RelationKeysTest.php",
-            "packages/php/tests/ParentSlotPaddingTest.php"
+            "packages/php/tests/RelationKeysTest.php"
           ]
         },
         {
