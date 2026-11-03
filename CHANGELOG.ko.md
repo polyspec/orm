@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 4c24a01cb688178e519756e419a5b1a3e93878ddb7f5e0c10fe0d86b12677f24 -->
+<!-- source-sha256: 40cf054bfb5add0a44f88312697c21db688d2bcf61cecbc578dfd40ba31d4101 -->
 # 변경 이력
 
 ## Unreleased
 
+- recipe `performance_gate`는 기본 키 읽기와 내림차순 100행 읽기의 계획된 statement(순서대로 27개 column의 projection, database별 limit bind)를 `pk_statement`와 `list_statement`로, AES key 버전과 복호화된 cell을 `aes_cells`로 검증하므로, TypeScript 시간 측정 파일은 정확성을 검증하지 않는다. 이 파일은 seed된 database를 `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN` 또는 `BENCH_SQLITE_DSN`에서 읽으며, 더는 feature 환경에서 읽지 않는다.
 - `getPagePlanSteps(page, perPage)`는 여섯 런타임 모두의 공개 종단 작업이다(DSL-159). `getsPage`가 실행하는 plan의 각 step의 role, tables, 문장을 실행 없이 돌려준다. request와 plan 호출을 `getsPage`와 공유한다.
 - 컬렉션의 group row 단위는 recipe `tests/collection/collection.json`의 case이며 여섯 runtime 모두 `ir.answer`로 실행한다. chain `group_count_views`는 group 결과의 길이, 순서, 값과 `COLUMN_UNSELECTED`를 읽는다. driver cell만 담는 count 형태는 `group-row-driver-cell-forms`로 native에 남는다.
 - PHP extension은 타입이 맞지 않는 markdown 값에 다른 runtime처럼 `INTERNAL`이 아니라 `CODEC_DECODE`로 답한다.
@@ -17,6 +18,7 @@
 - audit 트랜잭션, 선택한 audit 컬럼, soft delete된 행의 복원은 레시피 `audit_triggers`의 케이스가 되어 여섯 런타임이 MySQL, PostgreSQL, SQLite에서 실행한다. 수기 테스트는 없어졌고, audit source의 Go context(CFG-8a)와 Rust의 트랜잭션 형태(INT-44a)는 native로 남는다(T334-3-4-11).
 - PostgreSQL의 catalog session은 Go, Rust, TypeScript, Python에서 `BEGIN` 직후 `DEALLOCATE ALL`을 실행하므로, PgBouncer를 거쳐도 schema 변경이 문의 타입을 바꾼 뒤에 표를 읽고 쓴다(CFG-28).
 - audit 트랜잭션, 선택한 audit 컬럼, soft delete된 행의 복원은 레시피 `audit_triggers`의 케이스가 되어 여섯 런타임이 MySQL, PostgreSQL, SQLite에서 실행한다. 수기 테스트는 없어졌고, audit source의 Go context(CFG-8a)와 Rust의 트랜잭션 형태(INT-44a)는 native로 남는다(T334-3-4-11).
+- PostgreSQL의 catalog session은 Go, Rust, TypeScript, Python에서 `BEGIN` 직후 `DEALLOCATE ALL`을 실행하므로, PgBouncer를 거쳐도 schema 변경이 문의 타입을 바꾼 뒤에 표를 읽고 쓴다(CFG-28).
 - audit foreign key를 양방향으로 검증한다. 레시피 `audit_triggers`는 부모가 없는 raw insert와 참조된 부모의 삭제를 모두 거부하는지 확인한다. 케이스 `soft_delete_statements`는 soft delete의 guard가 있는 update와 각 read의 filter를 확인한다. `sql.exec` step은 `refused`를, `events.captured`는 비교 mode `statements`를 받는다. (#T334-3-4-12)
 - `make lint-ts`가 통과한다: Rust lane의 skip 목록은 JSON을 검증하는 reader로 읽고, `config/parity.json`은 binding의 `command`를 schema에 선언한다.
 - MySQL 시험 서버는 `'orm'@'127.0.0.1'` 옆에 `'orm'@'localhost'` 계정을 새 시작에서도 이미 실행 중인 서버에서도 가지므로, case DSN이 ProxySQL의 사용자 `orm`을 담을 때 `case-socket` DSN이 연결된다.

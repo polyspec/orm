@@ -28471,9 +28471,6 @@
           "test": "packages/ts/tests/coverage_performance_gate_mysql.mjs",
           "id": "hot_path_gate",
           "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=mysql",
-            "ORM_FEATURE_DSN=${BENCH_MYSQL_DSN}",
             "node",
             "--conditions=orm-test",
             "--test",
@@ -28581,9 +28578,6 @@
           "test": "packages/ts/tests/coverage_performance_gate_postgres.mjs",
           "id": "hot_path_gate",
           "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=postgres",
-            "ORM_FEATURE_DSN=${BENCH_POSTGRES_DSN}",
             "node",
             "--conditions=orm-test",
             "--test",
@@ -28691,9 +28685,6 @@
           "test": "packages/ts/tests/coverage_performance_gate_sqlite.mjs",
           "id": "hot_path_gate",
           "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
             "node",
             "--conditions=orm-test",
             "--test",
