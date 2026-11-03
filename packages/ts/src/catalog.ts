@@ -233,7 +233,8 @@ function utf8Of(value: Uint8Array, type: string): string {
 /** The Go catalog conversion of a binary driver value by its native type (catalogBytesValue): the MySQL and PostgreSQL text types arrive as bytes. */
 function bytesValue(value: Uint8Array, type: string): CatalogValue {
   const upper = type.toUpperCase();
-  if (/BLOB|BINARY|BYTEA/.test(upper)) return new Uint8Array(value);
+  // A SQLite expression has no declared type, and its driver reads a BLOB value as bytes (INT-153).
+  if (upper === '' || /BLOB|BINARY|BYTEA/.test(upper)) return new Uint8Array(value);
   if (/DECIMAL|NUMERIC|MONEY/.test(upper)) return utf8Of(value, type);
   if (upper.includes('INT')) return integerValue(integerOf(utf8Of(value, type), type));
   if (/FLOAT|DOUBLE|REAL/.test(upper)) {

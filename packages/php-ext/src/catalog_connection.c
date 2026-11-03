@@ -4761,6 +4761,9 @@ static bool cat_query_row(zval *row, zval *types, const char *dialect, zval *cel
             }
             ZVAL_COPY(&v, catalog_prop(&cell, "value", &rv));
             zval_ptr_dtor(&cell);
+        } else if (Z_TYPE_P(value) == IS_STRING && !cat_utf8_valid(Z_STRVAL_P(value), Z_STRLEN_P(value))) {
+            /* A value that is not text is its bytes (INT-153): an expression reports no binary type. */
+            ZVAL_COPY(&v, value);
         } else if (!cat_cell_value(value, Z_STR_P(t), dialect, &v)) {
             zval_ptr_dtor(cells);
             return false;

@@ -59,8 +59,7 @@ async fn sqlite_catalog_cells_use_the_shared_decoder_path() {
 #[test]
 fn grid_value_decoders_preserve_conversion_causes() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let error = super::decode_bytes(Some(vec![0xff])).expect_err("invalid UTF-8 database bytes must fail");
-    assert!(error.to_string().contains("invalid utf-8 sequence"), "{error}");
+    assert_eq!(super::decode_bytes(Some(vec![0xff])).expect("bytes that are not text"), super::Val::Binary(vec![0xff]));
 
     let error = super::decode_unsigned(Some(u64::MAX)).expect_err("out-of-range unsigned database integer must fail");
     assert!(error.to_string().contains("number too large to fit in target type"), "{error}");

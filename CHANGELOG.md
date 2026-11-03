@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- A plain read-only query returns a binary value as its bytes in all six runtimes, and INT-153 states the form.
 - The catalog no longer refuses a PostgreSQL read for 200 UNION ALL operands or + terms, and Rust no longer bounds the depth of a read on the other dialects; catalog_read asserts that these reads answer.
 - The nine refusals of the vector `errors` (a missing or dangling connector, an empty list, no connection, a lock outside a transaction, a join child with a connection, a page with a limit, a relation with a limit and an unjoined model placement) run as the case `errors` of the recipe conformance_verification in all six runtimes, with an empty event list as the proof that no request left; the recipe takes `connect` on a join, `limit` on a relation, `{"placed": {"model": <name>}}`, and `plan_page` without `plan` for `getsPage` (#T334-3-12-2)
 - The native tests of `orm-gen gen --check` in Go, PHP and TypeScript are gone: the case `check_reports_differences_without_writing` of the recipe `generator` holds them, and `go-model-check` and `php-model-check` hold the generated models; the TypeScript build writes its own.

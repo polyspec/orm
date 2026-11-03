@@ -1975,6 +1975,10 @@ final class Catalog
         if ($value !== null && self::temporalKind($this->dialect, $native) !== null) {
             return self::gridCell($value, $this->dialect, $native, false, false)->value;
         }
+        // A value that is not text is its bytes (INT-153): an expression reports no binary type on MySQL and SQLite.
+        if (is_string($value) && !self::isUtf8($value)) {
+            return $value;
+        }
         return self::value($value, $native, $this->dialect);
     }
 

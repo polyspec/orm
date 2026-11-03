@@ -3929,6 +3929,7 @@ mod database {
             Val::Float(f) => json!({ "float": f.to_string() }),
             Val::Text(text) => json!({ "text": text }),
             Val::Bool(b) => json!({ "bool": b }),
+            Val::Binary(bytes) => json!({ "bytes_hex": bytes.iter().map(|byte| format!("{byte:02x}")).collect::<String>() }),
         }
     }
 

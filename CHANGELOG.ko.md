@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 4ed87e85dffc87bbd42f832747266c7cea4005a6466734fbd2bc2455deaf9c83 -->
+<!-- source-sha256: 8f401421d4d9fcb835ab4735df5a25180dec165d88644fd3f87951f9e3be2fbc -->
 # 변경 이력
 
 ## Unreleased
 
+- plain read-only query는 여섯 runtime 모두에서 binary 값을 그 byte로 돌려주며, INT-153이 이 형식을 정합니다.
 - catalog은 UNION ALL 피연산자나 + 항이 200개인 PostgreSQL 읽기를 더 이상 거부하지 않고, Rust는 다른 dialect에서도 읽기의 깊이를 제한하지 않으며, catalog_read가 이 읽기의 응답을 확인합니다.
 - recipe가 닿지 못하는 catalog native는 internal test로 남고, generated_identity_sqlite, read_only_grid_shapes, temporal_text_row_cycle_sqlite가 random key, 거부되는 grid 쓰기, temporal row cycle을 담습니다.
 - Go와 PHP와 PHP extension은 signed 범위를 넘는 MySQL `BIGINT UNSIGNED`를 거부하지 않고 읽으며, row baseline은 가장 큰 두 값을 구분합니다.

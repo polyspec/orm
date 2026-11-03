@@ -44,6 +44,7 @@ impl CellSize for super::Val {
         match self {
             super::Val::Text(text) => text.len(),
             super::Val::Binary(bytes) => bytes.len(),
+            super::Val::Binary(bytes) => bytes.len(),
             super::Val::Null | super::Val::Int(_) | super::Val::Float(_) | super::Val::Bool(_) => 8,
         }
     }

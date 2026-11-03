@@ -11492,6 +11492,60 @@
           }
         }
       ]
+    },
+    {
+      "id": "plain_binary_value",
+      "requirements": [
+        "INT-153"
+      ],
+      "steps": [
+        {
+          "op": "catalog.read_only_query",
+          "sql": {
+            "mysql": "SELECT X'00FF', X'FF'",
+            "postgres": "SELECT decode('00ff','hex'), decode('ff','hex')",
+            "sqlite": "SELECT X'00FF', X'FF'"
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "bytes_hex": "00ff"
+                  },
+                  {
+                    "bytes_hex": "ff"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "bytes_hex": "00ff"
+                  },
+                  {
+                    "bytes_hex": "ff"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "bytes_hex": "00ff"
+                  },
+                  {
+                    "bytes_hex": "ff"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
     }
   ]
 }
