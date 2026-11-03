@@ -163,6 +163,7 @@
 
 A SQLite lock wait between two connections that write the same row ends with `CANCELED` after the busy timeout and is not retried, because SQLite reports no row-lock deadlock: SQLITE_LOCKED (6, 262) is `DRIVER` in every runtime, and transaction_deadlock_retry runs the sqlite case in all six runtimes (PLN-24, CFG-12) (T343-3)
 
+- CR15-2: the add tables and columns behaviour is five cases of the schema_install recipe, `dbspec.add_tables_steps` is a recipe of its own, the native tests are gone, and a refusal case can check its message with `message_contains`.
 - The Rust restore reads the key of the request as the request hook left it, before the planner renumbers its parameters, so a hook that sets the key after the label restores the row again (T326-15-1-1).
 - Every dbspec compare runner refuses a missing recipes directory with its own path before it reads any recipe file of it; an empty directory is still refused with the recipe file it lacks (T334-3-18-3-1).
 - Every dbspec compare and apply runner refuses an unreadable input with its path again: the PHP runners refuse an unreadable plans file instead of ending in a fatal error, the Rust apply runner reads the plans file it is given, and the recipes directory cases expect the recipe file the runner names in it (CR58).

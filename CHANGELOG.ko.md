@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 6475cacfa4195801da3ebf8a8ab9f6d0eb28690c21ec8a27964c9f40e4468dbb -->
+<!-- source-sha256: d80c6f73fe1332aca78b4f02ae143829e149cdcc20eb30d267488d78108b1f9b -->
 # 변경 이력
 
 ## Unreleased
@@ -161,6 +161,7 @@
 - 문장 runner(INT-150)의 parity unit은 여섯 런타임 모두에서 `Utils.run`과 frame `run`을 이름으로 쓰고, 모든 데이터베이스에서 statement_runner 테스트를 바인딩한다 (T345-7).
 - Python 런타임은 `utils().run(fn)`을 public으로 만들어, 연결의 트랜잭션 frame으로 `fn`을 호출한다 (INT-150, T345-6).
 - Python 설치는 이미 make uv-install을 거친다. Makefile:768이 `$(MAKE) uv-install DIR=packages/python`을 호출하고 직접 실행하는 uv sync는 남아 있지 않으므로, 이 row는 Verification으로 닫는다 (KSTD-5-118).
+- CR15-2: add tables and columns 동작은 schema_install recipe의 case 다섯이 되었고, `dbspec.add_tables_steps`는 별도 recipe가 되었으며, native 시험은 없어졌고, 거부 case는 `message_contains`로 message를 확인할 수 있다.
 - Rust restore는 planner가 parameter를 재번호하기 전, request hook이 남긴 요청에서 key를 읽는다. 그래서 hook이 label 뒤에 key를 set해도 다시 그 행을 복원한다 (T326-15-1-1).
 - 모든 dbspec compare runner는 없는 recipes directory를 그 안의 recipe 파일을 읽기 전에 그 경로로 거부한다; 빈 directory는 여전히 없는 recipe 파일로 거부한다 (T334-3-18-3-1).
 - 모든 dbspec compare·apply runner가 다시 읽을 수 없는 입력을 그 경로와 함께 거부한다: PHP runner는 읽을 수 없는 plans 파일에서 fatal error로 끝나지 않고 거부하며, Rust apply runner는 받은 plans 파일을 읽고, recipes directory 사례는 runner가 그 안에서 보고하는 recipe 파일을 기대한다 (CR58).
