@@ -3571,6 +3571,12 @@
           "op": {
             "const": "catalog.read_only_grid_query"
           },
+          "binds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/argument"
+            }
+          },
           "sql": {
             "$ref": "#/$defs/sql"
           },

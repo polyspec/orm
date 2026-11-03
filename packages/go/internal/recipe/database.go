@@ -694,7 +694,11 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		if err != nil {
 			return outcome{}, err
 		}
-		result, err := c.catalog.ReadOnlyGridQuery(c.ctx, query, nil, orm.CatalogQueryLimits{MaxRows: s.MaxRows, MaxBytes: s.MaxBytes})
+		binds, err := queryBinds(s.Binds, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		result, err := c.catalog.ReadOnlyGridQuery(c.ctx, query, binds, orm.CatalogQueryLimits{MaxRows: s.MaxRows, MaxBytes: s.MaxBytes})
 		if err != nil {
 			return outcome{}, err
 		}
