@@ -1040,7 +1040,7 @@ php-codec-causes-check: php-models build-php-ext
 dbspec-php-extension-check/%: RUN_DIR = $(if $(DBSPEC_PHP_EXTENSION_CHILD_RUN_DIR),$(DBSPEC_PHP_EXTENSION_CHILD_RUN_DIR),$(abspath .runtime/run)/dbspec-php-extension-check-$$PPID)
 dbspec-php-extension-check/analyze: DBSPEC_PHP_EXTENSION_CHILD_RUN_DIR = $(abspath .runtime/run)/dbspec-php-extension-check-analyze-$$PPID
 .PHONY: dbspec-php-extension-check/arginfo dbspec-php-extension-check/prepare dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/sets dbspec-php-extension-check/render dbspec-php-extension-check/graph dbspec-php-extension-check/behaviour dbspec-php-extension-check/schema-definition dbspec-php-extension-check/analyze dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/plan-apply dbspec-php-extension-check/show-create dbspec-php-extension-check/set dbspec-php-extension-check/set-parse dbspec-php-extension-check/codec dbspec-php-extension-check/code-catalog dbspec-php-extension-check/aes dbspec-php-extension-check/hostcodec dbspec-php-extension-check/planner dbspec-php-extension-check/executor
-DBSPEC_PHP_EXTENSION_PARTS = dbspec-php-extension-check/arginfo dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/sets dbspec-php-extension-check/render dbspec-php-extension-check/graph dbspec-php-extension-check/behaviour dbspec-php-extension-check/schema-definition dbspec-php-extension-check/limits dbspec-php-extension-check/rules-recipe dbspec-php-extension-check/analyze dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/plan-apply dbspec-php-extension-check/show-create dbspec-php-extension-check/set dbspec-php-extension-check/set-parse dbspec-php-extension-check/codec dbspec-php-extension-check/code-catalog dbspec-php-extension-check/aes dbspec-php-extension-check/hostcodec dbspec-php-extension-check/planner dbspec-php-extension-check/executor
+DBSPEC_PHP_EXTENSION_PARTS = dbspec-php-extension-check/arginfo dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/sets dbspec-php-extension-check/render dbspec-php-extension-check/graph dbspec-php-extension-check/behaviour dbspec-php-extension-check/schema-definition dbspec-php-extension-check/limits dbspec-php-extension-check/rules-recipe dbspec-php-extension-check/dialect-refusal dbspec-php-extension-check/analyze dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/plan-apply dbspec-php-extension-check/show-create dbspec-php-extension-check/set dbspec-php-extension-check/set-parse dbspec-php-extension-check/codec dbspec-php-extension-check/code-catalog dbspec-php-extension-check/aes dbspec-php-extension-check/hostcodec dbspec-php-extension-check/planner dbspec-php-extension-check/executor
 .PHONY: dbspec-php-extension-check
 dbspec-php-extension-check:
 	@set -eu; \
@@ -1241,6 +1241,10 @@ dbspec-php-extension-check/limits: php-vendor-check dbspec-php-extension-check/p
 # dbspec-php-extension-check/rules-recipe runs DbspecRulesRecipeTestExtensionTest with the extension: the cases of tests/dbspec/rules.json.
 dbspec-php-extension-check/rules-recipe: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecRulesRecipeTestExtensionTest.php
+
+# dbspec-php-extension-check/dialect-refusal runs DbspecDialectRefusalRecipeTestExtensionTest with the extension: the cases of tests/dbspec/dialect-refusal.json.
+dbspec-php-extension-check/dialect-refusal: php-vendor-check dbspec-php-extension-check/prepare
+	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecDialectRefusalRecipeTestExtensionTest.php
 
 # dbspec-php-extension-check/analyze runs DbspecAnalyzeTest with the extension: the syntax analysis and format of the focused cases and of the limit errors, the analyze steps of the recipes (hashes.json, sets.json) run in their own recipe tests; DbspecRulesNativeTest checks the global column and foreign-key limits through the native parser.
 dbspec-php-extension-check/analyze: php-vendor-check dbspec-php-extension-check/prepare
@@ -2637,7 +2641,7 @@ ts-min-check: lease-tool orm-codes-typescript
 dbspec-ts-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	$(NODE) --test packages/ts/tests/browser-entry.mjs packages/ts/tests/recipe_canonical.mjs packages/ts/tests/recipe_normalize.mjs packages/ts/tests/recipe_positions.mjs packages/ts/tests/recipe_invalid.mjs packages/ts/tests/recipe_files.mjs packages/ts/tests/dbspec-set.mjs packages/ts/tests/dbspec-set-edges.mjs packages/ts/tests/recipe_set_parse.mjs packages/ts/tests/recipe_hashes.mjs packages/ts/tests/recipe_sets.mjs packages/ts/tests/dbspec-analyze.mjs packages/ts/tests/dbspec-rules.mjs packages/ts/tests/dbspec-render.mjs packages/ts/tests/dbspec-render-dialect.mjs packages/ts/tests/dbspec-plan.mjs packages/ts/tests/dbspec-plan-cases.mjs packages/ts/tests/dbspec-plan-invalid.mjs packages/ts/tests/dbspec-plan-chains.mjs packages/ts/tests/dbspec-plan-parse.mjs packages/ts/tests/dbspec-plan-comparisons.mjs packages/ts/tests/dbspec-mermaid-none.test.mjs packages/ts/tests/dbspec-apply-cleanup.mjs packages/ts/tests/dbspec-unicode.mjs packages/ts/tests/dbspec-show-create.mjs packages/ts/tests/dbspec-show-create-introspect.mjs
+	$(NODE) --test packages/ts/tests/browser-entry.mjs packages/ts/tests/recipe_canonical.mjs packages/ts/tests/recipe_normalize.mjs packages/ts/tests/recipe_positions.mjs packages/ts/tests/recipe_invalid.mjs packages/ts/tests/recipe_files.mjs packages/ts/tests/dbspec-set.mjs packages/ts/tests/dbspec-set-edges.mjs packages/ts/tests/recipe_set_parse.mjs packages/ts/tests/recipe_hashes.mjs packages/ts/tests/recipe_sets.mjs packages/ts/tests/dbspec-analyze.mjs packages/ts/tests/dbspec-rules.mjs packages/ts/tests/dbspec-render.mjs packages/ts/tests/dbspec_dialect_refusal-none.test.mjs packages/ts/tests/dbspec-plan-cases.mjs packages/ts/tests/dbspec-plan-invalid.mjs packages/ts/tests/dbspec-plan-chains.mjs packages/ts/tests/dbspec-plan-parse.mjs packages/ts/tests/dbspec-plan-comparisons.mjs packages/ts/tests/dbspec-mermaid-none.test.mjs packages/ts/tests/dbspec-apply-cleanup.mjs packages/ts/tests/dbspec-unicode.mjs packages/ts/tests/dbspec-show-create.mjs packages/ts/tests/dbspec-show-create-introspect.mjs
 	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/dbspec-render-physical.mjs
 
 # dbspec-language-check builds the TypeScript client and @polyspec/dbspec-language, and checks that the language service's module graph does not reach
@@ -2984,21 +2988,26 @@ CHECK_TARGETS += model-queries-check/go model-queries-check/rust model-queries-c
 .PHONY: constraints-and-relations-check constraints-and-relations-check/go constraints-and-relations-check/rust constraints-and-relations-check/typescript constraints-and-relations-check/python constraints-and-relations-check/php constraints-and-relations-check/php-extension
 constraints-and-relations-check: constraints-and-relations-check/go constraints-and-relations-check/rust constraints-and-relations-check/typescript constraints-and-relations-check/python constraints-and-relations-check/php constraints-and-relations-check/php-extension
 constraints-and-relations-check/go: lease-tool
-	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeConstraintsAndRelations(Mysql|Postgres|Sqlite)$$' -count=1
+	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipe(ConstraintsAndRelations|ImmutableWrite)(Mysql|Postgres|Sqlite)$$' -count=1
 constraints-and-relations-check/rust: lease-tool
-	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) constraints-and-relations-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test constraints_and_relations_mysql --test constraints_and_relations_postgres --test constraints_and_relations_sqlite
+	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) constraints-and-relations-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test constraints_and_relations_mysql --test constraints_and_relations_postgres --test constraints_and_relations_sqlite --test immutable_write_mysql --test immutable_write_postgres --test immutable_write_sqlite
 constraints-and-relations-check/typescript: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/constraints_and_relations-mysql.test.mjs packages/ts/tests/constraints_and_relations-postgres.test.mjs packages/ts/tests/constraints_and_relations-sqlite.test.mjs
+	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/constraints_and_relations-mysql.test.mjs packages/ts/tests/constraints_and_relations-postgres.test.mjs packages/ts/tests/constraints_and_relations-sqlite.test.mjs packages/ts/tests/immutable_write-mysql.test.mjs packages/ts/tests/immutable_write-postgres.test.mjs packages/ts/tests/immutable_write-sqlite.test.mjs
 constraints-and-relations-check/python: lease-tool python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_constraints_and_relations_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_constraints_and_relations_postgres
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_constraints_and_relations_sqlite
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_immutable_write_mysql
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_immutable_write_postgres
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_immutable_write_sqlite
 constraints-and-relations-check/php: lease-tool php-vendor-check php-models
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ConstraintsAndRelationsRecipeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ImmutableWriteRecipeTest.php
 constraints-and-relations-check/php-extension: lease-tool php-vendor-check build-php-ext
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ConstraintsAndRelationsRecipeTestExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ImmutableWriteRecipeTestExtensionTest.php
 CHECK_TARGETS += constraints-and-relations-check/go constraints-and-relations-check/rust constraints-and-relations-check/typescript constraints-and-relations-check/python constraints-and-relations-check/php constraints-and-relations-check/php-extension
 
 
