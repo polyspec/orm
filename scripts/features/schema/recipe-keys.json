@@ -148,6 +148,10 @@
       "op",
       "table"
     ],
+    "fault.next_rollback": [
+      "connection",
+      "op"
+    ],
     "query.search": [
       "columns",
       "connection",
@@ -505,6 +509,14 @@
       "masks",
       "op",
       "ref"
+    ],
+    "events.server_transactions": [
+      "connection",
+      "expect",
+      "first_run_prepare_clients",
+      "op",
+      "probe",
+      "steps"
     ],
     "planner.compile": [
       "assemble_types",

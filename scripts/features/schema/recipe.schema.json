@@ -810,6 +810,7 @@
             "collection.key",
             "sql.exec",
             "session.end",
+            "fault.next_rollback",
             "query.search",
             "query.search_chain",
             "ir.validate",
@@ -853,6 +854,7 @@
             "events.unsubscribe",
             "utils.run",
             "events.captured",
+            "events.server_transactions",
             "planner.compile",
             "dbspec.parse",
             "dbspec.parse_plan",
@@ -974,6 +976,9 @@
         },
         {
           "$ref": "#/$defs/ops/session.end"
+        },
+        {
+          "$ref": "#/$defs/ops/fault.next_rollback"
         },
         {
           "$ref": "#/$defs/ops/query.search"
@@ -1124,6 +1129,9 @@
         },
         {
           "$ref": "#/$defs/ops/events.captured"
+        },
+        {
+          "$ref": "#/$defs/ops/events.server_transactions"
         },
         {
           "$ref": "#/$defs/ops/utils.aes_status"
@@ -3375,6 +3383,20 @@
           }
         }
       },
+      "fault.next_rollback": {
+        "description": "Arms the rollback fault of the test entry point of the client on the connection (PRT-43 and its peers).",
+        "type": "object",
+        "required": ["op", "connection"],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "fault.next_rollback"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          }
+        }
+      },
       "session.end": {
         "description": "Ends, through the native driver on the server DSN of the database, the server session that holds a lock on the table (CFG-15).",
         "type": "object",
@@ -5080,6 +5102,50 @@
           },
           "as": {
             "$ref": "#/$defs/name"
+          }
+        }
+      },
+      "events.server_transactions": {
+        "type": "object",
+        "required": ["op", "connection", "probe", "first_run_prepare_clients", "steps", "expect"],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "events.server_transactions",
+            "description": "Runs steps twice on the connection and reads, by the difference of probe, the server transactions of each run (INT-149)."
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "probe": {
+            "type": "string",
+            "description": "One statement whose single integer cell grows with the server transactions of the connection."
+          },
+          "first_run_prepare_clients": {
+            "type": "array",
+            "items": {
+              "enum": ["go", "php", "php-extension", "python", "rust", "typescript"]
+            },
+            "description": "The clients whose first run prepares each distinct text in a round trip of its own, one more transaction for each."
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/step"
+            }
+          },
+          "expect": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": false,
+            "properties": {
+              "mysql": {
+                "$ref": "#/$defs/outcomes/serverTransactions"
+              },
+              "postgres": {
+                "$ref": "#/$defs/outcomes/serverTransactions"
+              }
+            }
           }
         }
       },
@@ -7843,6 +7909,34 @@
       }
     },
     "outcomes": {
+      "serverTransactions": {
+        "type": "object",
+        "required": ["probe_cost", "events", "texts", "first_excess", "second_excess"],
+        "additionalProperties": false,
+        "properties": {
+          "probe_cost": {
+            "type": "integer"
+          },
+          "events": {
+            "type": "integer"
+          },
+          "texts": {
+            "type": "integer"
+          },
+          "first_excess": {
+            "type": "integer"
+          },
+          "second_excess": {
+            "type": "integer"
+          },
+          "time_zone": {
+            "type": "string"
+          },
+          "time_zone_from_startup": {
+            "type": "boolean"
+          }
+        }
+      },
       "deadlock": {
         "type": "object",
         "required": [

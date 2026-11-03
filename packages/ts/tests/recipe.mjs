@@ -11,7 +11,7 @@ import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 import { DatabaseSync } from 'node:sqlite';
 import { isDeepStrictEqual } from 'node:util';
-import { lastAffected } from '../dist/testing.js';
+import { failNextRollback, lastAffected } from '../dist/testing.js';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { AesKeyring, BindCell, CORE, Collection, transactionConflict, Db, OrmError, loadSet, StyledValue, blindIndex, chainPlans, codes, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, orm, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
 import { analyzeDbspec, formatDbspec, parseDbspecSet as parseDbspecSetBrowser, readDbspecBytes } from '../dist/dbspec/entry.js';
@@ -2102,6 +2102,10 @@ Object.assign(OPS, {
     subscription.stop = connectionOf(s, context).subscribe(event => recordEvent(subscription, event));
     return { bind: subscription };
   },
+  async 'fault.next_rollback'(s, context) {
+    failNextRollback(connectionOf(s, context));
+    return {};
+  },
   async 'events.fail_subscriber'(s, context) {
     const stop = connectionOf(s, context).subscribe(event => {
       if (event.kind === s.kind) {
@@ -2129,6 +2133,42 @@ Object.assign(OPS, {
       return last;
     });
     return { value: { array: result.rows.map(row => ({ array: row.map(cell => plain(cell)) })) } };
+  },
+  // events.server_transactions (FCV-4, INT-149): the nested steps run twice, and the difference of the probe counts the
+  // server transactions of each run. The probe runs in a frame of its own, so its cost is measured first.
+  async 'events.server_transactions'(s, context) {
+    const db = connectionOf(s, context);
+    const frameRows = async text => (await db.utils().run(frame => frame.run('utility', [], text, []))).rows;
+    const probe = async () => Number((await frameRows(s.probe))[0][0]);
+    const fields = {};
+    if (context.database === 'postgres') {
+      const [[setting, source]] = await frameRows("SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'");
+      // Through a pooler the pooler applies the startup parameters with SET, so the source says nothing about the client.
+      const pooled = process.env.ORM_TEST_POSTGRES_DSN !== process.env.ORM_TEST_POSTGRES_SERVER_DSN;
+      fields.time_zone = setting;
+      fields.time_zone_from_startup = pooled || source === 'client';
+    }
+    const first = await probe();
+    let before = await probe();
+    const cost = before - first;
+    for (const run of ['first', 'second']) {
+      const texts = [];
+      const stop = db.subscribe(event => { texts.push(event.sql); });
+      try {
+        for (const nested of s.steps) await runStep(nested, context);
+      } finally {
+        stop();
+      }
+      const after = await probe();
+      const spent = after - before - cost;
+      before = after;
+      const distinct = new Set(texts).size;
+      fields[`${run}_excess`] = spent - texts.length - (run === 'first' && s.first_run_prepare_clients.includes('typescript') ? distinct : 0);
+      fields.events = texts.length;
+      fields.texts = distinct;
+    }
+    fields.probe_cost = cost;
+    return fields;
   },
   async 'events.captured'(s, context) {
     const subscription = refOf(s.ref, context);

@@ -96,9 +96,9 @@ type databaseStep struct {
 	Steps     []json.RawMessage          `json:"steps"`
 	// The fields of the dbspec apply ops (FCV-4): the lines of dbspec.plan, the pooler of dbspec.connect, and the chain, the
 	// counted event kind, the failure text and the nested steps of a command.
-	Lines   []string `json:"lines"`
-	Through string   `json:"through"`
-	Plans   []string `json:"plans"`
+	Lines   []string      `json:"lines"`
+	Through string        `json:"through"`
+	Plans   []string      `json:"plans"`
 	Count   []string      `json:"count"`
 	Detail  string        `json:"detail"`
 	Message string        `json:"message"`
@@ -137,21 +137,24 @@ type databaseStep struct {
 	DefaultRetry bool `json:"default_retry"`
 	Conflicts    int  `json:"conflicts"`
 	// The connections of transaction.deadlock, and a model that names no connection (PLN-16).
-	Connections []string        `json:"connections"`
-	Unconnected bool            `json:"unconnected"`
-	Amount      json.RawMessage `json:"amount"`
+	Connections []string `json:"connections"`
+	Unconnected bool     `json:"unconnected"`
+	// The fields of events.server_transactions (INT-149).
+	Probe                  string          `json:"probe"`
+	FirstRunPrepareClients []string        `json:"first_run_prepare_clients"`
+	Amount                 json.RawMessage `json:"amount"`
 	// The event fields (FCV-4): the subscription ref or the bound row, the kind that a failing subscriber refuses, the
 	// compare mode of the captured events, and whether a transaction callback fails after its steps.
-	Ref     json.RawMessage `json:"ref"`
-	Row     json.RawMessage `json:"row"`
-	Fail    bool            `json:"fail"`
-	Kind    string          `json:"kind"`
+	Ref  json.RawMessage `json:"ref"`
+	Row  json.RawMessage `json:"row"`
+	Fail bool            `json:"fail"`
+	Kind string          `json:"kind"`
 	// The ORM error of a failing subscriber (INT-96).
 	Refusal *struct {
 		Code    string `json:"code"`
 		Message string `json:"message"`
 	} `json:"refusal"`
-	Compare string          `json:"compare"`
+	Compare string `json:"compare"`
 	// The request hook and AES ops (FCV-4): the hooks of hook.install, the keyring of a model.connect and the keyring
 	// that utils.aes_status and utils.aes_rotate take.
 	Hooks      []json.RawMessage `json:"hooks"`
@@ -495,7 +498,7 @@ func runStepWith(s databaseStep, c *databaseContext, op func(databaseStep, *data
 	result, err := op(s, c)
 	if err != nil {
 		code := orm.ErrorCode(err)
-		if errors.Is(err, errCallback) {
+		if code == "" && errors.Is(err, errCallback) {
 			code = callbackCode
 		}
 		want, wantsError := expected["error"]
@@ -1032,6 +1035,8 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		return countOutcome(int64(c.attempts)), nil
 	case "transaction.deadlock":
 		return transactionDeadlock(s, c)
+	case "events.server_transactions":
+		return serverTransactions(s, c)
 	case "dbspec.ddl_behavior":
 		if err := ddlBehavior(s, c); err != nil {
 			return outcome{}, err

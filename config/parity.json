@@ -29,7 +29,6 @@
         "packages/go/engine/dbspec/vector_reader_test.go",
         "packages/go/orm/failing_driver_test.go",
         "packages/go/orm/schema_helpers_test.go",
-        "packages/go/orm/statement_events_export_test.go",
         "packages/go/orm/test_helpers_test.go",
         "packages/go/bench/process_cpu_unix_test.go",
         "packages/go/bench/process_cpu_windows_test.go",
@@ -398,7 +397,6 @@
         "packages/php/tests/request_hook_cases.php",
         "packages/php/tests/request_termination_child.php",
         "packages/php/tests/sqlite_concurrency_writer.php",
-        "packages/php/tests/statement_events_run.php",
         "packages/php/tests/three_drivers.php",
         "packages/php/tests/transaction_deadlock_child.php",
         "packages/php/tests/was_inserted_child.php",
@@ -705,7 +703,6 @@
         "packages/ts/tests/coverage_*.mjs",
         "packages/ts/tests/model.mjs",
         "packages/ts/tests/decimal_model_db.mjs",
-        "packages/ts/tests/statement_events_server_transactions.mjs",
         "packages/ts/tests/dsn_features.mjs",
         "packages/ts/tests/engine_features.mjs"
       ],
@@ -729,7 +726,6 @@
         "packages/ts/tests/markdown_cases.mjs",
         "packages/ts/tests/plan_case.mjs",
         "packages/ts/tests/request_hook_run.mjs",
-        "packages/ts/tests/statement-events-run.mjs",
         "packages/ts/tests/statement-runner-run.mjs",
         "packages/ts/tests/coverage_performance_report.mjs",
         "packages/ts/tests/was-inserted-child.mjs",
@@ -987,10 +983,6 @@
           "reason": "test: tests the Python-only installed_differences helper with constructed parsed schemas and unsupported-object records; public database comparison and install errors are covered by the six-client add_tables_and_columns and install feature cases"
         },
         {
-          "glob": "packages/python/tests/statement_events.py",
-          "reason": "harness: the helper module of the statement events of tests/events/vectors.json (EventRun, run_case, VECTORS and setUpModule) that the coverage and server-transactions tests import; it holds no test of its own, and the cases run as the statement_events recipe units"
-        },
-        {
           "glob": "packages/python/tests/test_scalar_subquery_type.py",
           "reason": "test: a column that the planner finds missing after validation is INTERNAL; a request cannot reach it, so no recipe can state it."
         },
@@ -1023,7 +1015,6 @@
         "packages/python/tests/was_inserted_child.py",
         "packages/python/tests/coverage_performance_gate.py",
         "packages/python/tests/recipe.py",
-        "packages/python/tests/statement_events.py",
         "packages/python/tests/recipe_model.py",
         "packages/python/tests/recipe_apply.py",
         "packages/python/tests/recipe_keys.py",
@@ -8560,7 +8551,8 @@
         "FCV-13",
         "FCV-14",
         "SCH-11",
-        "SCH-7"
+        "SCH-7",
+        "INT-149"
       ],
       "file": "contracts/fixtures/statement_events/statement_events.json",
       "cases": "$.cases[*].id",
@@ -8614,7 +8606,8 @@
         "FCV-13",
         "FCV-14",
         "SCH-11",
-        "SCH-7"
+        "SCH-7",
+        "INT-149"
       ],
       "file": "contracts/fixtures/statement_events/statement_events.json",
       "cases": "$.cases[*].id",
@@ -12439,38 +12432,63 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/statement_events_test.go",
-          "id": "TestStatementEventsServerTransactions"
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsMysql/server_transactions_mysql"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/StatementEventsTest.php",
-          "id": "StatementEventsTest::testServerTransactions"
+          "test": "packages/php/tests/StatementEventsRecipeTest.php",
+          "id": "StatementEventsRecipeTest::testMysql with data set \"server_transactions_mysql\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/StatementEventsTestExtensionTest.php",
-          "id": "StatementEventsTestExtensionTest::testServerTransactions"
+          "test": "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
+          "id": "StatementEventsRecipeTestExtensionTest::testMysql with data set \"server_transactions_mysql\""
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/statement_events_server_transactions.py",
-          "id": "test_server_transactions"
+          "test": "packages/python/tests/test_statement_events_mysql.py",
+          "id": "server_transactions_mysql"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/statement_events.rs",
-          "id": "statement_events_server_transactions"
+          "test": "packages/rust/tests/tests/statement_events_mysql.rs",
+          "id": "statement_events_mysql::server_transactions_mysql"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/statement_events_server_transactions.mjs",
-          "id": "server-transactions/mysql"
+          "test": "packages/ts/tests/statement_events-mysql.test.mjs",
+          "id": "server_transactions_mysql"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsPostgres/server_transactions_postgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementEventsRecipeTest.php",
+          "id": "StatementEventsRecipeTest::testPostgres with data set \"server_transactions_postgres\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
+          "id": "StatementEventsRecipeTestExtensionTest::testPostgres with data set \"server_transactions_postgres\""
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_events_postgres.py",
+          "id": "server_transactions_postgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/statement_events_postgres.rs",
+          "id": "statement_events_postgres::server_transactions_postgres"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/statement_events_server_transactions.mjs",
-          "id": "server-transactions/postgres"
+          "test": "packages/ts/tests/statement_events-postgres.test.mjs",
+          "id": "server_transactions_postgres"
         }
       ]
     },
@@ -43634,6 +43652,30 @@
         "artifact": "git-tag",
         "package": "polyspec-orm-build"
       }
+    },
+    {
+      "id": "statement-event-subscription-php-extension",
+      "kind": "feature",
+      "requirements": [
+        "INT-77a"
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm-php-ext"
+      },
+      "bindings": [
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementEventsTestExtensionTest.php",
+          "id": "StatementEventsTestExtensionTest::testUnsubscribeFreesClosure"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementEventsTestExtensionTest.php",
+          "id": "StatementEventsTestExtensionTest::testStatementEventEntryPointsAreNative"
+        }
+      ]
     }
   ],
   "errors": {

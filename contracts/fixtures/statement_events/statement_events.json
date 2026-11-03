@@ -6391,6 +6391,272 @@
           }
         }
       ]
+    },
+    {
+      "id": "server_transactions_mysql",
+      "requirements": [
+        "INT-149"
+      ],
+      "only": [
+        "mysql"
+      ],
+      "install": false,
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "conn"
+        },
+        {
+          "op": "schema.install",
+          "connection": "conn"
+        },
+        {
+          "op": "utils.run",
+          "connection": "conn",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": "SELECT CAST((SELECT COUNT(*) FROM performance_schema.setup_instruments WHERE NAME = 'transaction' AND ENABLED = 'YES') + (SELECT COUNT(*) FROM performance_schema.setup_consumers WHERE NAME IN ('global_instrumentation', 'thread_instrumentation', 'events_transactions_current') AND ENABLED = 'YES') + (SELECT COUNT(*) FROM performance_schema.threads WHERE THREAD_ID = PS_CURRENT_THREAD_ID() AND INSTRUMENTED = 'YES') AS SIGNED)"
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "5"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "events.server_transactions",
+          "connection": "conn",
+          "probe": "SELECT CAST(COALESCE(SUM(COUNT_STAR), 0) AS SIGNED) FROM performance_schema.events_transactions_summary_by_thread_by_event_name WHERE THREAD_ID = PS_CURRENT_THREAD_ID() AND EVENT_NAME = 'transaction'",
+          "first_run_prepare_clients": [],
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "conn",
+              "model": "EventProbe",
+              "values": {
+                "label": {
+                  "text": "a"
+                }
+              }
+            },
+            {
+              "op": "model.get_by",
+              "connection": "conn",
+              "model": "EventProbe",
+              "where": {
+                "label": {
+                  "text": "a"
+                }
+              }
+            },
+            {
+              "op": "model.count",
+              "connection": "conn",
+              "model": "EventProbe",
+              "expect": {
+                "mysql": {
+                  "value": {
+                    "int": "1"
+                  }
+                }
+              }
+            },
+            {
+              "op": "model.get_by",
+              "connection": "conn",
+              "model": "EventProbe",
+              "where": {
+                "label": {
+                  "text": "a"
+                }
+              },
+              "as": "row"
+            },
+            {
+              "op": "model.update",
+              "row": "row",
+              "set": {
+                "label": {
+                  "text": "b"
+                }
+              }
+            },
+            {
+              "op": "model.get_by",
+              "connection": "conn",
+              "model": "EventProbe",
+              "where": {
+                "label": {
+                  "text": "b"
+                }
+              },
+              "as": "row"
+            },
+            {
+              "op": "model.delete",
+              "row": "row"
+            },
+            {
+              "op": "model.count",
+              "connection": "conn",
+              "model": "EventProbe",
+              "expect": {
+                "mysql": {
+                  "value": {
+                    "int": "0"
+                  }
+                }
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "probe_cost": 1,
+              "events": 8,
+              "texts": 5,
+              "first_excess": 0,
+              "second_excess": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "server_transactions_postgres",
+      "requirements": [
+        "INT-149"
+      ],
+      "only": [
+        "postgres"
+      ],
+      "install": false,
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "conn"
+        },
+        {
+          "op": "schema.install",
+          "connection": "conn"
+        },
+        {
+          "op": "events.server_transactions",
+          "connection": "conn",
+          "probe": "SELECT split_part(virtualtransaction, '/', 2)::bigint FROM pg_locks WHERE pid = pg_backend_pid() AND locktype = 'virtualxid'",
+          "first_run_prepare_clients": [
+            "go",
+            "python",
+            "rust"
+          ],
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "conn",
+              "model": "EventProbe",
+              "values": {
+                "label": {
+                  "text": "a"
+                }
+              }
+            },
+            {
+              "op": "model.get_by",
+              "connection": "conn",
+              "model": "EventProbe",
+              "where": {
+                "label": {
+                  "text": "a"
+                }
+              }
+            },
+            {
+              "op": "model.count",
+              "connection": "conn",
+              "model": "EventProbe",
+              "expect": {
+                "postgres": {
+                  "value": {
+                    "int": "1"
+                  }
+                }
+              }
+            },
+            {
+              "op": "model.get_by",
+              "connection": "conn",
+              "model": "EventProbe",
+              "where": {
+                "label": {
+                  "text": "a"
+                }
+              },
+              "as": "row"
+            },
+            {
+              "op": "model.update",
+              "row": "row",
+              "set": {
+                "label": {
+                  "text": "b"
+                }
+              }
+            },
+            {
+              "op": "model.get_by",
+              "connection": "conn",
+              "model": "EventProbe",
+              "where": {
+                "label": {
+                  "text": "b"
+                }
+              },
+              "as": "row"
+            },
+            {
+              "op": "model.delete",
+              "row": "row"
+            },
+            {
+              "op": "model.count",
+              "connection": "conn",
+              "model": "EventProbe",
+              "expect": {
+                "postgres": {
+                  "value": {
+                    "int": "0"
+                  }
+                }
+              }
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "probe_cost": 1,
+              "events": 8,
+              "texts": 5,
+              "first_excess": 0,
+              "second_excess": 0,
+              "time_zone": "UTC",
+              "time_zone_from_startup": true
+            }
+          }
+        }
+      ]
     }
   ]
 }
