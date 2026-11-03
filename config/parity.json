@@ -304,6 +304,18 @@
         {
           "glob": "packages/go/orm/values_test.go",
           "reason": "test: the private irFunc of every value and column function of Go; what a request carries is the case value_function_parameter_indexes."
+        },
+        {
+          "glob": "packages/go/orm/catalog_auto_identity_test.go",
+          "reason": "harness: the helpers that open a SQLite catalog fixture and compare its rows, used by the internal catalog tests of this directory; the file holds no test"
+        },
+        {
+          "glob": "packages/go/orm/catalog_mutation_test.go",
+          "reason": "test: calls the private catalogSameCell and catalogBytesValue with values no server stores, such as a TIME(7) native type; the cases row_baseline_exact_values and described_temporal_matrix hold what a server can return"
+        },
+        {
+          "glob": "packages/go/orm/catalog_temporal_test.go",
+          "reason": "test: passes a Go time.Time, which a recipe value cannot express, and calls the private bool, zero date and temporal text conversions with values no server returns; temporal_text_row_cycle_sqlite and described_temporal_text hold the public reads"
         }
       ]
     },
@@ -573,6 +585,10 @@
         {
           "glob": "packages/php/tests/CodecErrorCauseTest.php",
           "reason": "test: the native cause that a PHP codec exception chains to; the code of each failure is the case decode_errors of the codec recipe."
+        },
+        {
+          "glob": "packages/php/tests/CatalogQueryBoundsTest.php",
+          "reason": "test: invokes the private verifyInsertedRow and sameRow by reflection; a server cannot make the returned row differ, and PHP false against 0 reaches no public read"
         }
       ]
     },
@@ -976,6 +992,10 @@
         {
           "glob": "packages/python/tests/test_scalar_subquery_type.py",
           "reason": "test: a column that the planner finds missing after validation is INTERNAL; a request cannot reach it, so no recipe can state it."
+        },
+        {
+          "glob": "packages/python/tests/test_catalog_described_temporal.py",
+          "reason": "test: calls the private temporal conversions and passes a datetime value, which a recipe cannot express; temporal_text_row_cycle_sqlite, described_temporal_matrix and described_temporal_text hold the public reads"
         }
       ],
       "roots": [
@@ -1267,6 +1287,10 @@
         {
           "glob": "packages/rust/schema/src/dbspec/mod.rs",
           "reason": "test: the private operator tables of the Rust schema crate; what a request can reach is the case operators_follow_type_and_codec of tests/ir/validate.json."
+        },
+        {
+          "glob": "packages/rust/build/tests/unit/read_only_policy.rs",
+          "reason": "test: calls the private validate for its parser failure cause and its PostgreSQL operand limit; read_statements and read_only_grid_shapes hold the shapes"
         }
       ]
     }

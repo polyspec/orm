@@ -7,7 +7,6 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// Requirements: INT-117, INT-123.
 func TestCatalogSameCellComparesWrittenTemporalTextExactly(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	tests := []struct {
@@ -32,3 +31,17 @@ func TestCatalogSameCellComparesWrittenTemporalTextExactly(t *testing.T) {
 	}
 }
 
+func TestCatalogBytesValuePreservesNativeTimeAsText(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	for _, nativeType := range []string{"TIME", "TIME(3)", "time without time zone", "time(3) without time zone"} {
+		got, err := catalogBytesValue([]byte("12:34:56.123"), nativeType)
+		if err != nil || got != "12:34:56.123" {
+			t.Errorf("catalogBytesValue(%q) = %T(%v), %v; want time text", nativeType, got, got, err)
+		}
+	}
+	for _, nativeType := range []string{"TIMETZ", "TIME WITH TIME ZONE", "TIME(7)"} {
+		if _, err := catalogBytesValue([]byte("12:34:56.123"), nativeType); err == nil {
+			t.Errorf("catalogBytesValue(%q) accepted an unsupported time type", nativeType)
+		}
+	}
+}

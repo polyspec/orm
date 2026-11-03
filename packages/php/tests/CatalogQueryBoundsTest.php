@@ -6,7 +6,6 @@ namespace Polyspec\Orm\Tests;
 
 use PDO;
 use Polyspec\Orm\Catalog;
-use Polyspec\Orm\CatalogGridCell;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\OrmException;
 use PHPUnit\Framework\Attributes\Small;
@@ -41,45 +40,6 @@ final class CatalogQueryBoundsTest extends TestCase
         if ($this->path !== '') {
             unlink($this->path);
         }
-    }
-
-    public function testPlainAndGridConsumersPreserveSuccessfulRows(): void
-    {
-        $sql = 'SELECT value FROM values_table ORDER BY id';
-        $plain = $this->catalog->readOnlyQuery($sql, [], 2, 128);
-        self::assertSame([['alpha'], ['beta']], $plain->rows);
-        $grid = $this->catalog->readOnlyGridQuery($sql, [], 2, 128);
-        self::assertSame(
-            [[['text', 'alpha']], [['text', 'beta']]],
-            array_map(
-                static fn (array $row): array => array_map(
-                    static fn (CatalogGridCell $cell): array => [$cell->kind, $cell->value],
-                    $row
-                ),
-                $grid->rows
-            )
-        );
-    }
-
-    public function testRowMutationsCheckTheLockedOriginalSnapshot(): void
-    {
-        $table = ['namespace' => $this->catalog->currentNamespace(), 'name' => 'values_table'];
-        $page = $this->catalog->tablePage($table, 10, 0);
-        $original = $this->catalog->rowSnapshotFromPage($page, 0);
-        $updated = $this->catalog->updateRow($original, ['value' => 'alpha-updated']);
-        self::assertSame([[1, 'alpha-updated']], $updated->rows);
-
-        try {
-            $this->catalog->deleteRow($original);
-            self::fail('a stale row snapshot was accepted for deletion');
-        } catch (OrmException $error) {
-            self::assertSame(Code::ROW_CONFLICT, $error->code_);
-        }
-
-        $page = $this->catalog->tablePage($table, 10, 0);
-        $current = $this->catalog->rowSnapshotFromPage($page, 0);
-        self::assertSame(1, $this->catalog->deleteRow($current));
-        self::assertSame([['beta']], $this->catalog->readOnlyQuery('SELECT value FROM values_table ORDER BY id')->rows);
     }
 
     public function testGeneratedKeyInsertVerifiesItsReturnedRow(): void
@@ -122,14 +82,34 @@ final class CatalogQueryBoundsTest extends TestCase
         }
     }
 
-    private function assertLimit(\Closure $query, string $message): void
+    public function testRowBaselineComparesExactValuesIncludingGeneratedOriginals(): void
     {
+        $sameRow = new \ReflectionMethod(Catalog::class, 'sameRow');
+        foreach (
+            [
+                [[0.0], [-0.0]],
+                [['100.23000'], ['100.23']],
+                [["\x00\xff"], ["\x00\xfe"]],
+                [[false], [0]],
+                [[1, 'generated-original'], [1, 'generated-current']],
+            ] as [$original, $current]
+        ) {
+            self::assertFalse($sameRow->invoke(null, $current, $original));
+        }
+
+        $table = ['namespace' => $this->catalog->currentNamespace(), 'name' => 'computed_values'];
+        $metadata = $this->catalog->describeTable($table);
+        self::assertTrue($metadata->columns[2]->generated);
+        $this->catalog->insertRow($metadata, ['id' => 1, 'value' => 'four']);
+        $snapshot = $this->catalog->rowSnapshotFromPage($this->catalog->tablePage($table, 1, 0), 0);
+        self::assertSame(4, $snapshot->cells[2]);
+        $setup = new PDO('sqlite:' . $this->path, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $setup->exec("UPDATE computed_values SET value = 'changed' WHERE id = 1");
         try {
-            $query();
-            self::fail('the bounded catalog query accepted an over-limit result');
+            $this->catalog->updateRow($snapshot, ['value' => 'write']);
+            self::fail('a changed generated-column value was accepted by the old baseline');
         } catch (OrmException $error) {
-            self::assertSame(Code::CATALOG_LIMIT, $error->code_);
-            self::assertStringContainsString($message, $error->getMessage());
+            self::assertSame(Code::ROW_CONFLICT, $error->code_);
         }
     }
 }

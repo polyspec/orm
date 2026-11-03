@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ad8d8ea759cd0e6048d6a2e89accc30132e80890442101c031e3606b5f750bfb -->
+<!-- source-sha256: 6ce600c0d2318bebf25ba7a497e0376bd6ba204b51ab19975f3af1cef51666aa -->
 # 변경 이력
 
 ## Unreleased
 
+- recipe가 닿지 못하는 catalog native는 internal test로 남고, generated_identity_sqlite, read_only_grid_shapes, temporal_text_row_cycle_sqlite가 random key, 거부되는 grid 쓰기, temporal row cycle을 담습니다.
 - Go와 PHP와 PHP extension은 signed 범위를 넘는 MySQL `BIGINT UNSIGNED`를 거부하지 않고 읽으며, row baseline은 가장 큰 두 값을 구분합니다.
 - catalog 읽기 형태, grid binary 행, row baseline, byte 용량, 선언 temporal 표, SQLite identity native를 catalog_connection recipe 사례로 옮겼다. default만으로 된 key의 catalog insert는 Go, Rust처럼 TypeScript, Python, PHP, extension에서도 assignment 없이 들어가고, PHP는 page의 PostgreSQL bytea와 binary 셀 snapshot을 거부하지 않는다.
 - Rust의 catalog 연결, read-only 거부, describe, table page 시험을 여섯 runtime의 catalog_connection recipe 사례로 옮겼고, TypeScript가 SQLite view를 TABLE_METADATA_INVALID 없이 describe한다.

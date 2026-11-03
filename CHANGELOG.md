@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The catalog natives a recipe cannot reach stay as internal tests, and generated_identity_sqlite, read_only_grid_shapes and temporal_text_row_cycle_sqlite hold the random key, the refused grid write and the temporal row cycle.
 - Go, PHP and the PHP extension read a MySQL `BIGINT UNSIGNED` past the signed range instead of refusing it, and the row baseline tells the two largest values apart.
 - The catalog read shapes, grid binary row, row baseline, byte capacity, described temporal matrix and SQLite identity natives are cases of the catalog_connection recipe. A catalog insert of a key of defaults alone takes no assignment in TypeScript, Python, PHP and the extension as in Go and Rust, and PHP reads a PostgreSQL bytea of a page and takes a snapshot of a binary cell instead of refusing them.
 - The catalog connection, read-only refusal, describe and table page tests of Rust are cases of the catalog_connection recipe in all six runtimes, and TypeScript describes a SQLite view instead of failing with TABLE_METADATA_INVALID.

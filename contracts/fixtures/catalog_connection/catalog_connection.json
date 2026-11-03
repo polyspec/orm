@@ -9273,6 +9273,21 @@
               "error": "QUERY_READ_ONLY"
             }
           }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "UPDATE t SET n = 2",
+          "expect": {
+            "mysql": {
+              "error": "QUERY_READ_ONLY"
+            },
+            "postgres": {
+              "error": "QUERY_READ_ONLY"
+            },
+            "sqlite": {
+              "error": "QUERY_READ_ONLY"
+            }
+          }
         }
       ]
     },
@@ -10877,6 +10892,344 @@
                   }
                 ]
               ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a key the database draws at random from its default expression",
+          "sql": "CREATE TABLE generated_expression (seq TEXT NOT NULL PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))), n BIGINT NOT NULL UNIQUE, label VARCHAR(20) NULL)"
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "generated_expression",
+          "as": "random_key",
+          "expect": {
+            "sqlite": {
+              "columns": [
+                "seq",
+                "n",
+                "label"
+              ],
+              "primary_key": [
+                "seq"
+              ],
+              "reliable_row_identity": true,
+              "defaults": [
+                true,
+                false,
+                false
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "random_key"
+          },
+          "values": [
+            [
+              "n",
+              {
+                "int": "1"
+              }
+            ],
+            [
+              "label",
+              {
+                "null": "text"
+              }
+            ]
+          ]
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT length(seq), seq = lower(seq), seq GLOB '*[^0-9a-f]*', n, label IS NULL FROM generated_expression",
+          "expect": {
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "32"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "random_key"
+          },
+          "values": [
+            [
+              "n",
+              {
+                "int": "1"
+              }
+            ],
+            [
+              "label",
+              {
+                "null": "text"
+              }
+            ]
+          ],
+          "expect": {
+            "sqlite": {
+              "error": "DUPLICATE_KEY"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT COUNT(*) FROM generated_expression",
+          "expect": {
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "temporal_text_row_cycle_sqlite",
+      "only": [
+        "sqlite"
+      ],
+      "requirements": [
+        "INT-103",
+        "INT-117"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "reason": "each TIME and DATETIME column has the CHECK of the dbspec renderer that fixes its fraction digits",
+          "sql": "CREATE TABLE temporal_cycle (id INTEGER PRIMARY KEY AUTOINCREMENT, d DATE NOT NULL CHECK (\"d\" IS date(\"d\")), t3 TIME NOT NULL CHECK (length(\"t3\") = 12 AND substr(\"t3\", 1, 8) IS time(substr(\"t3\", 1, 8)) AND substr(\"t3\", 9, 1) = '.' AND substr(\"t3\", 10) GLOB '[0-9][0-9][0-9]'), dt6 DATETIME NOT NULL CHECK (length(\"dt6\") = 26 AND substr(\"dt6\", 1, 19) IS datetime(substr(\"dt6\", 1, 19)) AND substr(\"dt6\", 20, 1) = '.' AND substr(\"dt6\", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]'))"
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "temporal_cycle",
+          "as": "cycle",
+          "expect": {
+            "sqlite": {
+              "columns": [
+                "id",
+                "d",
+                "t3",
+                "dt6"
+              ],
+              "primary_key": [
+                "id"
+              ],
+              "reliable_row_identity": true
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "cycle"
+          },
+          "values": [
+            [
+              "d",
+              {
+                "date": "2024-02-29"
+              }
+            ],
+            [
+              "t3",
+              {
+                "time": "12:34:56.500"
+              }
+            ],
+            [
+              "dt6",
+              {
+                "datetime": "2024-02-29 01:02:03.500000"
+              }
+            ]
+          ],
+          "expect": {
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "date": "2024-02-29"
+                  },
+                  {
+                    "time": "12:34:56.500"
+                  },
+                  {
+                    "datetime": "2024-02-29 01:02:03.500000"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "temporal_cycle",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "d",
+            "t3",
+            "dt6"
+          ],
+          "as": "before",
+          "expect": {
+            "sqlite": {
+              "columns": [
+                "id",
+                "d",
+                "t3",
+                "dt6"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "date": "2024-02-29"
+                  },
+                  {
+                    "time": "12:34:56.500"
+                  },
+                  {
+                    "datetime": "2024-02-29 01:02:03.500000"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "before"
+          },
+          "index": 0,
+          "as": "original"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "original"
+          },
+          "set": [
+            [
+              "dt6",
+              {
+                "datetime": "2024-03-01 00:00:00.000001"
+              }
+            ]
+          ],
+          "expect": {
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "date": "2024-02-29"
+                  },
+                  {
+                    "time": "12:34:56.500"
+                  },
+                  {
+                    "datetime": "2024-03-01 00:00:00.000001"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "temporal_cycle",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "d",
+            "t3",
+            "dt6"
+          ],
+          "as": "after",
+          "expect": {
+            "sqlite": {
+              "columns": [
+                "id",
+                "d",
+                "t3",
+                "dt6"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "date": "2024-02-29"
+                  },
+                  {
+                    "time": "12:34:56.500"
+                  },
+                  {
+                    "datetime": "2024-03-01 00:00:00.000001"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "after"
+          },
+          "index": 0,
+          "as": "current"
+        },
+        {
+          "op": "catalog.delete_row",
+          "snapshot": {
+            "ref": "current"
+          },
+          "expect": {
+            "sqlite": {
+              "value": {
+                "int": "1"
+              }
             }
           }
         }
