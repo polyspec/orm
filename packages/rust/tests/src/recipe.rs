@@ -2393,7 +2393,7 @@ mod database {
             Ok(output) => output,
             Err(Failure::Step(message)) => return Err(message),
             Err(Failure::Call(message)) => {
-                let (message, cause) = match message.strip_suffix(DRIVER_CAUSE) {
+                let (message, cause) = match message.strip_suffix(super::DRIVER_CAUSE) {
                     Some(text) => (text.to_owned(), true),
                     None => (message, false),
                 };

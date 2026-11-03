@@ -1739,10 +1739,16 @@
                   ]
                 },
                 "value": {
-                  "type": [
-                    "string",
-                    "boolean",
-                    "integer"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "integer"
+                    }
                   ]
                 },
                 "hex": {
