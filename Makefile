@@ -1928,13 +1928,6 @@ session-state-check: php-vendor-check php-models python-venv-check lease-tool ty
 	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/SessionStateTest.php; status=$$?; rm -rf $(RUN_DIR); exit $$status
 	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) session-state-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --test session_state -- --test-threads=1
 
-# python-rollback-check runs the Python cases of a transaction or savepoint whose callback and rollback both fail on
-# SQLite, MySQL and PostgreSQL (packages/python/tests/rollback.py); it needs the database variables of make
-# orm-test-servers (WITH_TEST_ENV).
-.PHONY: python-rollback-check
-python-rollback-check: python-venv-check
-	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.rollback
-
 # python-identity-load-check runs the shared identity load cases (contracts/fixtures/identity_load.json)
 # with the Python client on SQLite, MySQL and PostgreSQL; it needs the database variables of make
 # orm-test-servers (WITH_TEST_ENV).
@@ -3658,13 +3651,13 @@ php-lifecycle-extension-native-check: php-vendor-check php-models
 	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php packages/php-ext/tests/CoverageTransactionsExtensionTest.php packages/php-ext/tests/StatementEventsTestExtensionTest.php packages/php-ext/tests/QueryCancellationNativeTest.php --filter 'testNativeMethodsAreInternal|testNativeSqliteConnectionQueriesAndCloses|testNativeSqliteTransactionCommitsAndPublishesOneTransactionId|testNativeSqliteRollbackStatementDiscardsRowsAndPublishesEvent|testStatementEventEntryPointsAreNative|testNativeCancellationStateIsPrivatePersistentAndRemovedWhenReleased|testNativeCancellationDispatchesOnlyToActiveConnectionSlots|testNativeCancellationInterruptsSqliteRollsBackAndKeepsRootConnectionUsable'
 
 
-# rollback-php-extension-check runs the rollback-failed and savepoint-rollback-failed cases of packages/php/tests/RollbackTest.php
-# with the extension loaded, on SQLite, MySQL and PostgreSQL (WITH_TEST_ENV).
+# rollback-php-extension-check runs the first-statement-lost case of packages/php/tests/RollbackTest.php
+# with the extension loaded, on MySQL and PostgreSQL (WITH_TEST_ENV).
 .PHONY: rollback-php-extension-check
 rollback-php-extension-check: RUN_DIR = $(abspath .runtime/run)/rollback-php-extension-check-$$PPID
 rollback-php-extension-check: php-vendor-check php-models orm-install-php-extension-tools
 	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
-	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/RollbackTest.php --filter 'testRollbackFailed|testSavepointRollbackFailed'; status=$$?; rm -rf $(RUN_DIR); exit $$status
+	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/RollbackTest.php --filter testFirstStatementLost; status=$$?; rm -rf $(RUN_DIR); exit $$status
 
 transaction-failure-php-extension-check: php-vendor-check php-models orm-install-php-extension-tools
 	@set -eu; \

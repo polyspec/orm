@@ -18,7 +18,7 @@ var errRollbackFaultCallback = errors.New("rollback fault callback failed")
 // The fault is consumed: after that, the transaction returns only the callback error
 // and the connection serves later requests.
 func rollbackFault(t *testing.T, driver string) {
-	db, model, _ := rollbackFixture(t, driver)
+	db, model := rollbackFixture(t, driver)
 	orm.FailNextRollback(db)
 	if err := db.Transaction(func() error { return probeCreate(model, "committed") }, orm.Retry(0)); err != nil {
 		t.Fatalf("a committed transaction with an armed fault: %v", err)
