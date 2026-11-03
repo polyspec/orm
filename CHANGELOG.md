@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The recipe `transactions` holds what the native transaction tests held: a model on no connection, the four row locks, every isolation level, a read-only write, `timeoutMs`, retry attempts, the default retry, a retry of 0, a real two-flow deadlock and the SQLite busy writer.
 - A generated model of a set that uses an external document connects and reads a row of the used external table in a native test of every runtime, which fails when the generated schema value drops the external text; Go also compiles that output, and the PHPStan check of the query methods is bound in both PHP modes again.
 - A Python model read of a cell that its codec refuses raises `OrmError` with the code, as a write does, in place of `CodecError`; a direct codec call keeps `CodecError`.
 - TypeScript `toJSONText()` and `JSON.stringify(row)` no longer throw on a row that holds a bigint: both write the exact integer as a JSON number, also inside a styled value.

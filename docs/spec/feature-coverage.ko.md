@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: d15ca522cc142235491e8dd29c3a14e180f085da4b6ea18e9727e7727b34f14a -->
+<!-- source-sha256: df2502efd558309c4f5d4737e6d2a0c9b4971f24b57ce3ea32015a31ecc624a9 -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 언어별 테스트 명령을 선언한다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-check`가 실패한다.
@@ -127,6 +127,7 @@
   - `model.update`와 `model.delete`의 `revision`의 `value`는 정수 또는 `ref`일 수 있다. API unit: error-code-revision-changed(INT-65)와 DSL-114.
   - `model.delete`는 `relations`를 받는다. 이는 `model.query`가 받는 행의 적재된 relation이다. `recursive: true`이면 적재된 행을 삭제하되, `delete_lock: true`인 relation의 행은 제외한다. API unit: DSL-111, DSL-87, client-model-terminal-write(INT-37).
   - `transaction`은 `audit`(audit 기록 테이블의 컬럼 이름과 값의 객체로, 트랜잭션이 이 값으로 audit 기록을 삽입한다, CFG-8, INT-44; 빈 객체는 자기 값이 없는 audit 트랜잭션이다)과 음이 아닌 정수 `retry`를 받는다. API unit: client-db-transaction (INT-72)과 레시피 `audit_triggers`; `retry`는 PLN-24.
+  - `transaction`은 `timeout_ms`(INT-42), retry를 넘기지 않아 INT-43의 기본값이 적용되게 하는 `default_retry`(이것이 없으면 step은 retry 0을 넘긴다), step을 실행한 뒤 공개 transaction conflict로 끝나는 첫 시도 수 `conflicts`(INT-48)도 받는다. `transaction.attempts`는 결과와 상관없이 마지막에 끝난 transaction step의 callback 실행 횟수를 읽는다. `transaction.deadlock {connections, model, rows, column}`은 read_committed, retry 3으로 두 흐름을 실행한다. 흐름 `i`는 `rows[i]`에 `flow-<i>`를 쓰고, 다른 흐름이 자기 행을 잡을 때까지 기다린 뒤 `rows[1-i]`에 쓴다. expect는 두 흐름을 합친 `attempts`, DEADLOCK으로 끝난 첫 시도 수 `deadlocks`, 두 행이 한 흐름의 이름을 갖는지를 나타내는 `same_flow`를 적는다(PLN-24). `model.create`와 `model.count`는 연결 없이 model을 만드는 `unconnected`를 받는다(PLN-16).
   - `model.create`의 `as`, `model.update`의 `row`, `model.delete`의 `row`는 묶인 행을 지정한다. `schema.install`은 `connection`을 받아 그 연결에 recipe fixture를 설치한다(FCV-9). API unit: coverage-model-create-parts(INT-35), client-model-terminal-write(INT-35와 INT-37), client-schema-utils-add-tables-and-columns(INT-56).
   - 값의 `null`은 `{"null": <type>}`이며 `<type>`은 recipe schema의 열 type 가운데 하나다: `int`, `text`, `date`, `time`, `datetime`, `decimal`, `bytes_hex`, `bool`, `float`. 어휘는 닫혀 있다. API: contains_null(INT-20, PRT-67)과 null_into_not_null(PRT-67, PRT-5)의 타입이 있는 NULL, 그리고 styled value의 null인 COD-20.
   - `model.create`의 `attached: {<name>: <argument>}`는 열이 아닌 값을 만들어진 행에 붙인다(DSL-101). 이 값은 `INSERT`, `UPDATE`, `SELECT` 문장에 쓰지 않으며, 만들어진 모델이 그 값을 갖는다(DSL-115). API: write_cycle vector(`NewLabel("created")`), DSL-101과 DSL-115. parity unit이 명명하지 않으므로 vector와 requirement로 선언한다.

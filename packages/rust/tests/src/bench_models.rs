@@ -122,6 +122,11 @@ impl<M: CaseModels> ModelDispatcher for Dispatcher<M> {
 pub trait BenchModels: Send + 'static {
     /// The op `op` of `step` on `db`: its fields, which the expect of the step compares.
     fn run(&self, db: &Db, op: &str, step: &Value) -> impl Future<Output = Result<Value, String>>;
+    /// The op `op` of a `step` whose model is built with no connection (PLN-16); no recipe has one by default.
+    fn run_unconnected(&self, op: &str, _step: &Value) -> impl Future<Output = Result<Value, String>> {
+        let message = format!("{op} has no unconnected form");
+        async move { Err(message) }
+    }
 }
 
 /// The ops of `models` on connections of the generated models of `schema` with the bench keys.
@@ -146,6 +151,9 @@ impl<M: BenchModels> CaseModels for Bench<M> {
     }
 
     async fn run(&mut self, connections: &mut Connections, op: &str, connection: &str, step: &Value) -> Result<Value, String> {
+        if step["unconnected"].as_bool() == Some(true) {
+            return self.models.run_unconnected(op, step).await;
+        }
         let db = connections.bound(connection)?;
         self.models.run(&db, op, step).await
     }
