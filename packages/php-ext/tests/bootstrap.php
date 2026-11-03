@@ -53,6 +53,7 @@ require_once dirname(__DIR__, 2) . '/php/tests/DbspecPositionsRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DbspecFilesRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DbspecSetParseRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CatalogConnectionRecipeTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/CatalogOneConnectionTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/SchemaInstallRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DsnConnectionRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ModelWritesRecipeTest.php';

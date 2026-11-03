@@ -779,6 +779,12 @@
             "sqlite": {
               "error": "CATALOG_LIMIT"
             }
+          },
+          "pdo_mysql": {
+            "reason": "pdo_mysql reports neither the UNSIGNED flag nor the charset, and the column definition that gives them exists only for a column of a table under its own name, so PHP refuses an expression or an alias rather than guess its cell (INT-157)",
+            "expect": {
+              "error": "CATALOG_VALUE"
+            }
           }
         },
         {
@@ -795,6 +801,12 @@
             },
             "sqlite": {
               "error": "CATALOG_LIMIT"
+            }
+          },
+          "pdo_mysql": {
+            "reason": "pdo_mysql reports neither the UNSIGNED flag nor the charset, and the column definition that gives them exists only for a column of a table under its own name, so PHP refuses an expression or an alias rather than guess its cell (INT-157)",
+            "expect": {
+              "error": "CATALOG_VALUE"
             }
           }
         },
@@ -830,6 +842,12 @@
                   }
                 ]
               ]
+            }
+          },
+          "pdo_mysql": {
+            "reason": "pdo_mysql reports neither the UNSIGNED flag nor the charset, and the column definition that gives them exists only for a column of a table under its own name, so PHP refuses an expression or an alias rather than guess its cell (INT-157)",
+            "expect": {
+              "error": "CATALOG_VALUE"
             }
           }
         },
@@ -867,6 +885,12 @@
                   }
                 ]
               ]
+            }
+          },
+          "pdo_mysql": {
+            "reason": "pdo_mysql reports neither the UNSIGNED flag nor the charset, and the column definition that gives them exists only for a column of a table under its own name, so PHP refuses an expression or an alias rather than guess its cell (INT-157)",
+            "expect": {
+              "error": "CATALOG_VALUE"
             }
           }
         },
@@ -946,6 +970,12 @@
                   }
                 ]
               ]
+            }
+          },
+          "pdo_mysql": {
+            "reason": "pdo_mysql reports neither the UNSIGNED flag nor the charset, and the column definition that gives them exists only for a column of a table under its own name, so PHP refuses an expression or an alias rather than guess its cell (INT-157)",
+            "expect": {
+              "error": "CATALOG_VALUE"
             }
           }
         },
@@ -1906,6 +1936,12 @@
                 ]
               ]
             }
+          },
+          "pdo_mysql": {
+            "reason": "pdo_mysql reports neither the UNSIGNED flag nor the charset, and the column definition that gives them exists only for a column of a table under its own name, so PHP refuses an expression or an alias rather than guess its cell (INT-157)",
+            "expect": {
+              "error": "CATALOG_VALUE"
+            }
           }
         },
         {
@@ -1938,6 +1974,12 @@
                   }
                 ]
               ]
+            }
+          },
+          "pdo_mysql": {
+            "reason": "pdo_mysql reports neither the UNSIGNED flag nor the charset, and the column definition that gives them exists only for a column of a table under its own name, so PHP refuses an expression or an alias rather than guess its cell (INT-157)",
+            "expect": {
+              "error": "CATALOG_VALUE"
             }
           }
         },
@@ -2205,6 +2247,12 @@
             "sqlite": {
               "error": "CATALOG_LIMIT"
             }
+          },
+          "pdo_mysql": {
+            "reason": "pdo_mysql reports neither the UNSIGNED flag nor the charset, and the column definition that gives them exists only for a column of a table under its own name, so PHP refuses an expression or an alias rather than guess its cell (INT-157)",
+            "expect": {
+              "error": "CATALOG_VALUE"
+            }
           }
         },
         {
@@ -2239,6 +2287,12 @@
                   }
                 ]
               ]
+            }
+          },
+          "pdo_mysql": {
+            "reason": "pdo_mysql reports neither the UNSIGNED flag nor the charset, and the column definition that gives them exists only for a column of a table under its own name, so PHP refuses an expression or an alias rather than guess its cell (INT-157)",
+            "expect": {
+              "error": "CATALOG_VALUE"
             }
           }
         },
@@ -2279,6 +2333,12 @@
             },
             "sqlite": {
               "error": "CATALOG_LIMIT"
+            }
+          },
+          "pdo_mysql": {
+            "reason": "pdo_mysql reports neither the UNSIGNED flag nor the charset, and the column definition that gives them exists only for a column of a table under its own name, so PHP refuses an expression or an alias rather than guess its cell (INT-157)",
+            "expect": {
+              "error": "CATALOG_VALUE"
             }
           }
         },
@@ -2554,6 +2614,12 @@
             },
             "sqlite": {
               "error": "CATALOG_LIMIT"
+            }
+          },
+          "pdo_mysql": {
+            "reason": "pdo_mysql reports neither the UNSIGNED flag nor the charset, and the column definition that gives them exists only for a column of a table under its own name, so PHP refuses an expression or an alias rather than guess its cell (INT-157)",
+            "expect": {
+              "error": "CATALOG_VALUE"
             }
           }
         }
@@ -3360,6 +3426,12 @@
                   }
                 ]
               ]
+            }
+          },
+          "pdo_mysql": {
+            "reason": "pdo_mysql reports neither the UNSIGNED flag nor the charset, and the column definition that gives them exists only for a column of a table under its own name, so PHP refuses an expression or an alias rather than guess its cell (INT-157)",
+            "expect": {
+              "error": "CATALOG_VALUE"
             }
           }
         }
@@ -4832,6 +4904,12 @@
                 ]
               ]
             }
+          },
+          "pdo_mysql": {
+            "reason": "pdo_mysql reports neither the UNSIGNED flag nor the charset, and the column definition that gives them exists only for a column of a table under its own name, so PHP refuses an expression or an alias rather than guess its cell (INT-157)",
+            "expect": {
+              "error": "CATALOG_VALUE"
+            }
           }
         },
         {
@@ -4897,6 +4975,12 @@
                   }
                 ]
               ]
+            }
+          },
+          "pdo_mysql": {
+            "reason": "pdo_mysql reports neither the UNSIGNED flag nor the charset, and the column definition that gives them exists only for a column of a table under its own name, so PHP refuses an expression or an alias rather than guess its cell (INT-157)",
+            "expect": {
+              "error": "CATALOG_VALUE"
             }
           }
         },
@@ -5009,6 +5093,12 @@
                 ]
               ]
             }
+          },
+          "pdo_mysql": {
+            "reason": "pdo_mysql reports neither the UNSIGNED flag nor the charset, and the column definition that gives them exists only for a column of a table under its own name, so PHP refuses an expression or an alias rather than guess its cell (INT-157)",
+            "expect": {
+              "error": "CATALOG_VALUE"
+            }
           }
         },
         {
@@ -5046,6 +5136,12 @@
                 ]
               ]
             }
+          },
+          "pdo_mysql": {
+            "reason": "pdo_mysql reports neither the UNSIGNED flag nor the charset, and the column definition that gives them exists only for a column of a table under its own name, so PHP refuses an expression or an alias rather than guess its cell (INT-157)",
+            "expect": {
+              "error": "CATALOG_VALUE"
+            }
           }
         },
         {
@@ -5082,6 +5178,12 @@
                   }
                 ]
               ]
+            }
+          },
+          "pdo_mysql": {
+            "reason": "pdo_mysql reports neither the UNSIGNED flag nor the charset, and the column definition that gives them exists only for a column of a table under its own name, so PHP refuses an expression or an alias rather than guess its cell (INT-157)",
+            "expect": {
+              "error": "CATALOG_VALUE"
             }
           }
         },

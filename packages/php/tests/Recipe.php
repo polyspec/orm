@@ -1697,6 +1697,10 @@ final class Recipe
                     if (isset($step['only']) && !in_array($database, $step['only'], true)) {
                         continue;
                     }
+                    // PHP reads the MySQL expect of a step that pdo_mysql cannot give from its pdo_mysql key (INT-157).
+                    if ($database === 'mysql' && isset($step['pdo_mysql'])) {
+                        $step['expect']['mysql'] = $step['pdo_mysql']['expect'];
+                    }
                     try {
                         self::databaseStep($step, $context);
                     } catch (\Throwable $failure) {

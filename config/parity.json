@@ -536,9 +536,6 @@
       "support": [
         "packages/php-ext/tests/AuditLazyFakePdo.php",
         "packages/php-ext/tests/AuditLazyFakeStatement.php",
-        "packages/php-ext/tests/CatalogCommitFailureLink.php",
-        "packages/php-ext/tests/CatalogCommitFailureResult.php",
-        "packages/php-ext/tests/CatalogCommitFailureStatement.php",
         "packages/php-ext/tests/CatalogMetadataFailurePdo.php",
         "packages/php-ext/tests/CatalogMetadataFailureStatement.php",
         "packages/php-ext/tests/ChainNativeRegistryFixture.php",
@@ -9000,6 +8997,44 @@
           "symbol": "catalog_connection_sqlite"
         }
       ]
+    },
+    {
+      "id": "php-catalog-mysql-holds-one-connection",
+      "kind": "feature",
+      "requirements": [
+        "INT-157"
+      ],
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CatalogOneConnectionTest.php",
+          "id": "CatalogOneConnectionTest::testMysqlCatalogHoldsOneConnection"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm"
+      }
+    },
+    {
+      "id": "php-extension-catalog-mysql-holds-one-connection",
+      "kind": "feature",
+      "requirements": [
+        "INT-158"
+      ],
+      "bindings": [
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CatalogOneConnectionTestExtensionTest.php",
+          "id": "CatalogOneConnectionTestExtensionTest::testMysqlCatalogHoldsOneConnection"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm-php-ext"
+      }
     },
     {
       "id": "performance_gate-mysql",

@@ -1320,7 +1320,6 @@ final class OrmException extends \RuntimeException
     public static function rollback(\Throwable $cause, \Throwable $rollback): OrmException {}
     public static function withCleanup(\Throwable $primary, \Throwable $cleanup): OrmException {}
     public static function fromDriver(\PDOException $e, string $driver, \PDO $pdo): OrmException {}
-    public static function fromMysqli(\mysqli_sql_exception $e): OrmException {}
 
     private static function mysqlCode(?int $num, string $state): string {}
     private static function postgresCode(string $state): string {}
@@ -1835,8 +1834,7 @@ final class Catalog
 {
     private readonly Db $db;
     private readonly string $dialect;
-    private readonly ?array $mysqlTarget;
-    private ?\mysqli $gridLink;
+    private readonly string $dsn;
     private bool $closed = false;
 
     public static function connect(string $dsn): Catalog {}

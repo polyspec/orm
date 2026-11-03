@@ -80,18 +80,12 @@ final class Catalog
         'ANALYZE' => true,
     ];
 
-    /** The MySQL connection of the grid queries: a mysqli connection, opened on first use, with the target of the DSN. */
-    private ?\mysqli $gridLink = null;
     private bool $closed = false;
 
-    /**
-     * @param ?array{host: ?string, port: int, user: string, password: string, database: string, socket: ?string,
-     *     sslCa: ?string} $mysqlTarget
-     */
     private function __construct(
         private readonly Db $db,
         private readonly string $dialect,
-        private readonly ?array $mysqlTarget,
+        private readonly string $dsn,
     ) {
     }
 
@@ -107,7 +101,7 @@ final class Catalog
                 'CATALOG_DSN: a markdown corpus has no database catalog; give a mysql, postgres or sqlite DSN'
             );
         }
-        [$driver, $pdoDsn, , , , $sslCa] = Orm::parseDsn($dsn);
+        [$driver, $pdoDsn] = Orm::parseDsn($dsn);
         if ($driver === 'sqlite') {
             // A symbolic link is not a regular file.
             $path = substr($pdoDsn, strlen('sqlite:'));
@@ -115,8 +109,7 @@ final class Catalog
                 throw new OrmException(Code::CONFIG, 'CATALOG_SQLITE_FILE: expected an existing regular file');
             }
         }
-        $target = $driver === 'mysql' ? self::mysqlTarget($dsn, $sslCa) : null;
-        return new self(Orm::connect($dsn, new Config()), $driver, $target);
+        return new self(Orm::connect($dsn, new Config()), $driver, $dsn);
     }
 
     /** The database of the connection: mysql, postgres or sqlite. */
@@ -125,99 +118,14 @@ final class Catalog
         return $this->dialect;
     }
 
-    /** Releases the connection and the MySQL connection of the grid queries. */
+    /** Releases the connection. */
     public function close(): void
     {
         if ($this->closed) {
             return;
         }
         $this->closed = true;
-        $failure = null;
-        try {
-            $this->gridLink?->close();
-        } catch (\Throwable $e) {
-            $failure = $e;
-        }
-        $this->gridLink = null;
-        try {
-            $this->db->close();
-        } catch (\Throwable $e) {
-            $failure = $failure === null ? $e : OrmException::withCleanup($failure, $e);
-        }
-        if ($failure !== null) {
-            throw $failure;
-        }
-    }
-
-    /**
-     * The target of the MySQL grid connection, read from the DSN the connection was opened with.
-     *
-     * @return array{host: ?string, port: int, user: string, password: string, database: string, socket: ?string,
-     *     sslCa: ?string}
-     */
-    private static function mysqlTarget(string $dsn, ?string $sslCa): array
-    {
-        [$parts, $query] = DsnUrl::parse($dsn, 'mysql');
-        return [
-            'host' => isset($parts['host']) ? $parts['host'] : null,
-            'port' => $parts['port'] ?? 3306,
-            'user' => rawurldecode($parts['user'] ?? ''),
-            'password' => rawurldecode($parts['pass'] ?? ''),
-            'database' => ltrim((string) ($parts['path'] ?? ''), '/'),
-            'socket' => isset($query['socket']) ? (string) $query['socket'] : null,
-            'sslCa' => $sslCa,
-        ];
-    }
-
-    /** The MySQL connection of the grid queries, opened with the target of the DSN on first use. */
-    private function mysqlGridLink(): \mysqli
-    {
-        $this->assertOpen();
-        if ($this->gridLink === null) {
-            $this->gridLink = $this->openMysqli();
-        }
-        return $this->gridLink;
-    }
-
-    /** Opens one MySQL connection with the target of the DSN, the TLS settings included and the UTC session. */
-    private function openMysqli(): \mysqli
-    {
-        $target = $this->mysqlTarget
-            ?? throw new OrmException(Code::CONFIG, 'the catalog connection has no MySQL target');
-        try {
-            $link = mysqli_init();
-            if (!$link instanceof \mysqli) {
-                throw new OrmException(Code::DRIVER, 'cannot initialize the MySQL grid connection');
-            }
-            $flags = 0;
-            if ($target['sslCa'] !== null) {
-                if (!$link->ssl_set(null, null, $target['sslCa'], null, null)) {
-                    throw new OrmException(Code::CONFIG, 'cannot set the MySQL grid connection CA');
-                }
-                if (!$link->options(MYSQLI_OPT_SSL_VERIFY_SERVER_CERT, true)) {
-                    throw new OrmException(Code::CONFIG, 'cannot verify the MySQL grid server certificate');
-                }
-                $flags = MYSQLI_CLIENT_SSL;
-            }
-            if (
-                !$link->real_connect(
-                    $target['host'] ?? 'localhost',
-                    $target['user'],
-                    $target['password'],
-                    $target['database'],
-                    (int) $target['port'],
-                    $target['socket'] ?? null,
-                    $flags
-                )
-            ) {
-                throw new \mysqli_sql_exception($link->connect_error ?? 'MySQL grid connection failed');
-            }
-            $link->set_charset('utf8mb4');
-            $link->query("SET time_zone = '+00:00'");
-        } catch (\mysqli_sql_exception $e) {
-            throw OrmException::fromMysqli($e);
-        }
-        return $link;
+        $this->db->close();
     }
 
     /**
@@ -226,9 +134,9 @@ final class Catalog
      */
     private function killQuery(int $connectionId): void
     {
-        $killer = $this->openMysqli();
+        $killer = Orm::connect($this->dsn, new Config());
         try {
-            $killer->query('KILL QUERY ' . $connectionId);
+            $killer->pdo()->exec('KILL QUERY ' . $connectionId);
         } finally {
             $killer->close();
         }
@@ -403,12 +311,20 @@ final class Catalog
         foreach (array_values($params) as $param) {
             $args[] = self::param($param);
         }
-        if ($grid && $this->dialect === 'mysql') {
-            return $this->mysqlGridQuery($sql, $args, $maxRows, $maxBytes);
-        }
         return $this->session(true, function (\PDO $pdo) use ($sql, $args, $maxRows, $maxBytes, $grid): CatalogResult {
             if ($grid) {
-                $raw = $this->gridQuery($pdo, $sql, $args, $maxRows, $maxBytes);
+                try {
+                    $raw = $this->gridQuery($pdo, $sql, $args, $maxRows, $maxBytes);
+                } catch (OrmException $e) {
+                    if ($this->dialect === 'mysql' && $e->code_ === Code::READ_ONLY) {
+                        throw new OrmException(
+                            Code::QUERY_READ_ONLY,
+                            'the database rejected a read-only grid query',
+                            $e
+                        );
+                    }
+                    throw $e;
+                }
                 return new CatalogResult($raw['names'], $raw['rows']);
             }
             $raw = $this->query(
@@ -795,131 +711,6 @@ final class Catalog
         return $descriptor;
     }
 
-    /**
-     * The MySQL grid query: one read-only transaction on the grid connection, a prepared statement, and the flags of
-     * its
-     * fields for the UNSIGNED and binary charset of each cell. The cells follow the binding of SCH-6a. A failed query
-     * rolls back, and a
-     * failed rollback is reported with the query error as its cause.
-     *
-     * @param list<mixed> $args
-     */
-    private function mysqlGridQuery(string $sql, array $args, int $maxRows, int $maxBytes): CatalogResult
-    {
-        $link = $this->mysqlGridLink();
-        try {
-            $link->begin_transaction(MYSQLI_TRANS_START_READ_ONLY);
-            $result = $this->mysqlGridRun($link, $sql, $args, $maxRows, $maxBytes);
-            $link->commit();
-            return $result;
-        } catch (\Throwable $error) {
-            $cause = $error instanceof \mysqli_sql_exception ? OrmException::fromMysqli($error) : $error;
-            try {
-                $link->rollback();
-            } catch (\mysqli_sql_exception $rollbackError) {
-                throw OrmException::rollback($cause, OrmException::fromMysqli($rollbackError));
-            }
-            if ($cause instanceof OrmException && $cause->code_ === Code::READ_ONLY) {
-                throw new OrmException(
-                    Code::QUERY_READ_ONLY,
-                    'the database rejected a read-only grid query',
-                    $cause
-                );
-            }
-            throw $cause;
-        }
-    }
-
-    /** @param list<mixed> $args */
-    private function mysqlGridRun(\mysqli $link, string $sql, array $args, int $maxRows, int $maxBytes): CatalogResult
-    {
-        // A query without parameters reads its rows as the server sends them (MYSQLI_USE_RESULT), so a budget stops it
-        // before the rest of a result is read. A query with parameters is a prepared statement, which buffers its
-        // result.
-        $connectionId = $link->thread_id;
-        if ($args === []) {
-            $link->real_query($sql);
-            $result = $link->use_result();
-        } else {
-            $statement = $link->prepare($sql);
-            $types = '';
-            foreach ($args as $arg) {
-                $types .= match (true) {
-                    is_int($arg) || is_bool($arg) => 'i',
-                    is_float($arg) => 'd',
-                    default => 's',
-                };
-            }
-            $statement->bind_param($types, ...$args);
-            $statement->execute();
-            $result = $statement->get_result();
-        }
-        if ($result === false || $result === null) {
-            throw new OrmException(Code::DRIVER, 'the grid query returned no result set');
-        }
-        $fields = $result->fetch_fields();
-        $names = array_map(static fn (object $field): string => $field->name, $fields);
-        try {
-            $rows = $this->boundedRows(
-                static fn (): array|false => $result->fetch_row() ?? false,
-                $maxRows,
-                $maxBytes,
-                static function (array $row) use ($fields): array {
-                    $cells = [];
-                    foreach ($row as $i => $value) {
-                        $cells[] = self::mysqlGridCell($value, $fields[$i]);
-                    }
-                    return $cells;
-                }
-            );
-        } catch (\Throwable $stop) {
-            if ($stop instanceof OrmException && $stop->code_ === Code::CATALOG_LIMIT) {
-                // The server ends the stopped query; the interrupted result is freed, and its error is the expected
-                // end.
-                $this->killQuery($connectionId);
-            }
-            // A failed row leaves the result unread; freeing it returns the link to the transaction that ends it.
-            // A free that fails does not replace the stop: it is recorded on the stop as cleanup.
-            try {
-                $result->free();
-            } catch (\mysqli_sql_exception $freeError) {
-                throw OrmException::withCleanup($stop, OrmException::fromMysqli($freeError));
-            }
-            throw $stop;
-        }
-        $result->free();
-        return new CatalogResult($names, $rows);
-    }
-
-    /** The grid cell of one MySQL value, by the type, the UNSIGNED flag and the charset of its field (mysqli). */
-    private static function mysqlGridCell(mixed $value, object $field): CatalogGridCell
-    {
-        if ($value === null) {
-            return new CatalogGridCell('null');
-        }
-        $unsigned = ($field->flags & MYSQLI_UNSIGNED_FLAG) !== 0;
-        $binary = $field->charsetnr === 63;
-        return match ((int) $field->type) {
-            MYSQLI_TYPE_FLOAT => self::float32Cell($value),
-            MYSQLI_TYPE_DOUBLE => self::float64Cell($value),
-            MYSQLI_TYPE_TIMESTAMP => throw self::refused('MySQL TIMESTAMP follows a time zone'),
-            MYSQLI_TYPE_DATE => new CatalogGridCell('date', self::dateText(self::gridText($value))),
-            MYSQLI_TYPE_DATETIME => new CatalogGridCell('datetime', self::dateTimeText(self::gridText($value))),
-            MYSQLI_TYPE_TIME => new CatalogGridCell('time', self::timeText(self::gridText($value))),
-            MYSQLI_TYPE_DECIMAL, MYSQLI_TYPE_NEWDECIMAL => new CatalogGridCell('decimal', self::gridText($value)),
-            MYSQLI_TYPE_TINY,
-            MYSQLI_TYPE_SHORT,
-            MYSQLI_TYPE_LONG,
-            MYSQLI_TYPE_LONGLONG,
-            MYSQLI_TYPE_INT24
-                => self::integerCell($value, $unsigned),
-            // A MySQL YEAR has no grid cell (Go's rule for the YEAR native type, also an expression's YEAR()).
-            MYSQLI_TYPE_YEAR => throw self::refused('MySQL YEAR has no grid cell'),
-            default => $binary ? new CatalogGridCell('binary', self::bytes($value))
-                : new CatalogGridCell('text', self::utf8Text($value)),
-        };
-    }
-
     /** A text cell: its value must be valid UTF-8. */
     private static function utf8Text(mixed $value): string
     {
@@ -943,63 +734,151 @@ final class Catalog
             if ($this->dialect === 'postgres' && $args === []) {
                 return $this->cursorGrid($pdo, $sql, $maxRows, $maxBytes);
             }
-            $st = $this->prepareQuery($pdo, $sql, $args);
-            $names = [];
-            $columns = [];
-            for ($i = 0, $n = $st->columnCount(); $i < $n; $i++) {
-                $meta = $st->getColumnMeta($i) ?: [];
-                $name = (string) ($meta['name'] ?? '');
-                $names[] = $name;
-                $native = strtoupper((string) ($meta['native_type'] ?? ''));
-                $unsigned = false;
-                $binary = false;
-                if (
-                    $this->dialect === 'mysql' && (in_array($native, self::MYSQL_INTEGER_TYPES, true)
-                    || in_array($native, self::MYSQL_STRING_TYPES, true))
-                ) {
-                    // PDO reports neither the UNSIGNED flag nor the binary charset, so both come from the column
-                    // definition of the table. An expression has no column definition, and its type is refused rather
-                    // than guessed.
-                    $table = (string) ($meta['table'] ?? '');
-                    if ($table === '') {
-                        throw self::refused(
-                            "expression "
-                            . "\"$name\" of type $native has no column definition, so PDO does not report its "
-                                . "signedness or charset; select a table column"
-                        );
-                    }
-                    [$dataType, $columnType] = $this->mysqlColumnDefinition($pdo, $table, $name);
-                    $unsigned = str_contains($columnType, 'unsigned');
-                    $binary = in_array(
-                        $dataType,
-                        ['binary', 'varbinary', 'tinyblob', 'blob', 'mediumblob', 'longblob'],
-                        true
-                    );
-                }
-                $columns[] = [$native, $unsigned, $binary];
-            }
-            $rows = $this->boundedRows(
-                static fn (): array|false => $st->fetch(\PDO::FETCH_NUM),
+            // MySQL streams the rows, so that a budget stops a read before the rest of its result; PDO reports neither
+            // the UNSIGNED flag nor the binary charset, so the column definitions are read first, with no result open.
+            $streamed = $this->dialect === 'mysql';
+            $columns = $streamed ? $this->mysqlGridColumns($pdo, $sql, $args) : null;
+            $connectionId = $streamed ? $this->mysqlConnectionId($pdo) : null;
+            $st = $this->prepareQuery($pdo, $sql, $args, $streamed);
+            return $this->readStatement($st, $connectionId, function () use (
+                $st,
+                $columns,
                 $maxRows,
-                $maxBytes,
-                function (array $row) use ($st, $columns): array {
-                    $cells = [];
-                    foreach ($row as $i => $value) {
-                        [$native, $unsigned, $binary] = $columns[$i];
-                        if ($this->dialect === 'sqlite') {
-                            // SQLite reports each value's type and whether it is a blob.
-                            $cellMeta = $st->getColumnMeta($i) ?: [];
-                            $native = strtoupper((string) ($cellMeta['native_type'] ?? ''));
-                            $binary = in_array('blob', (array) ($cellMeta['flags'] ?? []), true);
+                $maxBytes
+            ): array {
+                $metas = self::columnMetas($st);
+                $columns ??= array_map(
+                    static fn (array $meta): array => [strtoupper((string) ($meta['native_type'] ?? '')), false, false],
+                    $metas
+                );
+                $rows = $this->boundedRows(
+                    static fn (): array|false => $st->fetch(\PDO::FETCH_NUM),
+                    $maxRows,
+                    $maxBytes,
+                    function (array $row) use ($st, $columns): array {
+                        $cells = [];
+                        foreach ($row as $i => $value) {
+                            [$native, $unsigned, $binary] = $columns[$i];
+                            if ($this->dialect === 'sqlite') {
+                                // SQLite reports each value's type and whether it is a blob.
+                                $cellMeta = $st->getColumnMeta($i) ?: [];
+                                $native = strtoupper((string) ($cellMeta['native_type'] ?? ''));
+                                $binary = in_array('blob', (array) ($cellMeta['flags'] ?? []), true);
+                            }
+                            $cells[] = self::gridCell($value, $this->dialect, $native, $unsigned, $binary);
                         }
-                        $cells[] = self::gridCell($value, $this->dialect, $native, $unsigned, $binary);
+                        return $cells;
                     }
-                    return $cells;
-                }
-            );
-            return ['names' => $names, 'rows' => $rows];
+                );
+                return [
+                    'names' => array_map(static fn (array $meta): string => (string) ($meta['name'] ?? ''), $metas),
+                    'rows' => $rows,
+                ];
+            });
         } catch (\PDOException $e) {
             throw $this->db->driverError($e);
+        }
+    }
+
+    /**
+     * The native type, the UNSIGNED flag and the binary charset of each column of a MySQL grid query. The query runs
+     * once with sql_select_limit 0, which gives its columns and no row. PDO reports neither the flag nor the charset,
+     * so both come from the column definition of the table; an expression has none, and its type is refused.
+     *
+     * @param list<mixed> $args
+     * @return list<array{string, bool, bool}>
+     */
+    private function mysqlGridColumns(\PDO $pdo, string $sql, array $args): array
+    {
+        $pdo->exec('SET SESSION sql_select_limit = 0');
+        try {
+            $st = $this->prepareQuery($pdo, $sql, $args, true);
+            $metas = self::columnMetas($st);
+            $st->closeCursor();
+        } finally {
+            $pdo->exec('SET SESSION sql_select_limit = DEFAULT');
+        }
+        $columns = [];
+        foreach ($metas as $meta) {
+            $name = (string) ($meta['name'] ?? '');
+            $native = strtoupper((string) ($meta['native_type'] ?? ''));
+            $unsigned = false;
+            $binary = false;
+            $defined = in_array($native, self::MYSQL_INTEGER_TYPES, true)
+                || in_array($native, self::MYSQL_STRING_TYPES, true);
+            if ($defined) {
+                $table = (string) ($meta['table'] ?? '');
+                if ($table === '') {
+                    throw self::refused(
+                        "expression \"$name\" of type $native has no column definition, so PDO does not report its "
+                        . 'signedness or charset; select a table column'
+                    );
+                }
+                [$dataType, $columnType] = $this->mysqlColumnDefinition($pdo, $table, $name);
+                $unsigned = str_contains($columnType, 'unsigned');
+                $binary = in_array(
+                    $dataType,
+                    ['binary', 'varbinary', 'tinyblob', 'blob', 'mediumblob', 'longblob'],
+                    true
+                );
+            }
+            $columns[] = [$native, $unsigned, $binary];
+        }
+        return $columns;
+    }
+
+    /**
+     * The column metadata of a statement that ran.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function columnMetas(\PDOStatement $st): array
+    {
+        $metas = [];
+        for ($i = 0, $n = $st->columnCount(); $i < $n; $i++) {
+            $metas[] = $st->getColumnMeta($i) ?: [];
+        }
+        return $metas;
+    }
+
+    /** The id of a MySQL connection, which a budget stop kills its query by; it is read before the query runs. */
+    private function mysqlConnectionId(\PDO $pdo): ?int
+    {
+        $statement = $pdo->prepare('SELECT CONNECTION_ID()');
+        $statement->execute();
+        $row = $statement->fetch(\PDO::FETCH_NUM);
+        $id = is_array($row) ? $row[0] : null;
+        return is_numeric($id) ? (int) $id : null;
+    }
+
+    /**
+     * Reads a statement that ran. A budget that stops the read leaves the rest of the result unread, so a MySQL stop
+     * kills the query. The killed query ends its cursor with an interrupted error, which is the expected end of a stop,
+     * so only a failure without a stop is raised.
+     *
+     * @template T
+     * @param \Closure(): T $read
+     * @return T
+     */
+    private function readStatement(\PDOStatement $st, ?int $connectionId, \Closure $read): mixed
+    {
+        $stopped = false;
+        try {
+            return $read();
+        } catch (OrmException $stop) {
+            $stopped = $connectionId !== null && $stop->code_ === Code::CATALOG_LIMIT;
+            if ($stopped) {
+                $this->killQuery($connectionId);
+            }
+            throw $stop;
+        } finally {
+            try {
+                $st->closeCursor();
+            } catch (\PDOException $cursorError) {
+                if (!$stopped) {
+                    throw $cursorError;
+                }
+            }
         }
     }
 
@@ -1039,8 +918,10 @@ final class Catalog
                 case 'SHORT':
                 case 'TINY':
                 case 'INT24':
-                case 'YEAR':
                     return self::integerCell($value, $unsigned);
+                case 'YEAR':
+                    // A MySQL YEAR is an integer-valued type with no temporal meaning that orm declares (INT-103).
+                    throw self::refused('MySQL YEAR has no grid cell');
             }
         }
         if ($dialect === 'postgres') {
@@ -1557,49 +1438,31 @@ final class Catalog
             if ($this->dialect === 'postgres' && $args === []) {
                 return $this->cursorQuery($pdo, $sql, $maxRows, $maxBytes, $convert);
             }
-            // A MySQL budget stop kills the server query by its connection id, which is read before the query runs.
-            $connectionId = null;
-            if ($this->dialect === 'mysql') {
-                $idStatement = $pdo->prepare('SELECT CONNECTION_ID()');
-                $idStatement->execute();
-                $idRow = $idStatement->fetch(\PDO::FETCH_NUM);
-                $id = is_array($idRow) ? $idRow[0] : null;
-                $connectionId = is_numeric($id) ? (int) $id : null;
-            }
+            $connectionId = $this->dialect === 'mysql' ? $this->mysqlConnectionId($pdo) : null;
             $st = $this->prepareQuery($pdo, $sql, $args, true);
-            try {
-                $names = [];
-                $types = [];
-                for ($i = 0, $n = $st->columnCount(); $i < $n; $i++) {
-                    $meta = $st->getColumnMeta($i);
-                    $names[] = (string) ($meta['name'] ?? '');
-                    $types[] = strtoupper((string) ($meta['native_type'] ?? ''));
-                }
+            return $this->readStatement($st, $connectionId, function () use (
+                $st,
+                $maxRows,
+                $maxBytes,
+                $convert
+            ): array {
+                $metas = self::columnMetas($st);
+                $types = array_map(
+                    static fn (array $meta): string => strtoupper((string) ($meta['native_type'] ?? '')),
+                    $metas
+                );
                 $rows = $this->boundedRows(
                     static fn (): array|false => $st->fetch(\PDO::FETCH_NUM),
                     $maxRows,
                     $maxBytes,
                     $convert === null ? null : static fn (array $row): array => array_map($convert, $row, $types)
                 );
-            } catch (OrmException $stop) {
-                $stopped = $connectionId !== null && $stop->code_ === Code::CATALOG_LIMIT;
-                if ($stopped) {
-                    $this->killQuery($connectionId);
-                }
-                throw $stop;
-            } finally {
-                // A budget that stops the read leaves the rest of the result unread. The killed query ends its cursor
-                // with an interrupted error, which is the expected end of a stop, so only a failure without a stop is
-                // raised.
-                try {
-                    $st->closeCursor();
-                } catch (\PDOException $cursorError) {
-                    if (empty($stopped)) {
-                        throw $cursorError;
-                    }
-                }
-            }
-            return ['names' => $names, 'types' => $types, 'rows' => $rows];
+                return [
+                    'names' => array_map(static fn (array $meta): string => (string) ($meta['name'] ?? ''), $metas),
+                    'types' => $types,
+                    'rows' => $rows,
+                ];
+            });
         } catch (\PDOException $e) {
             throw $this->db->driverError($e);
         }

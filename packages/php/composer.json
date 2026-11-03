@@ -19,7 +19,6 @@
     },
     "suggest": {
         "ext-pdo_mysql": "mysql:// DSNs",
-        "ext-mysqli": "mysql:// catalog grid queries, whose UNSIGNED and binary cells pdo_mysql column metadata does not report",
         "ext-pdo_pgsql": "postgres:// PDO handle type and DSNs",
         "ext-pgsql": "postgres:// query, notification, and in-flight cancellation support",
         "ext-pcntl": "delivery of process signals while a postgres:// query waits",

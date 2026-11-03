@@ -103,12 +103,6 @@ final class OrmException extends \RuntimeException
         };
     }
 
-    /** Reports a mysqli error with the code of its MySQL error number (the mysqli client of the catalog grid query). */
-    public static function fromMysqli(\mysqli_sql_exception $e): self
-    {
-        return new self(self::mysqlCode($e->getCode(), $e->getSqlState()), $e->getMessage(), $e);
-    }
-
     /** The code of a PostgreSQL error that the server reported as SQLSTATE. */
     private static function postgresCode(string $state): string
     {

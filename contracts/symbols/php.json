@@ -5315,17 +5315,13 @@
     "exported": false,
     "signature": "private readonly string"
   },
-  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::$gridLink": {
+  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::$dsn": {
     "exported": false,
-    "signature": "private ?mysqli"
-  },
-  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::$mysqlTarget": {
-    "exported": false,
-    "signature": "private readonly ?array"
+    "signature": "private readonly string"
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::__construct": {
     "exported": false,
-    "signature": "private function __construct(Polyspec\\Orm\\Db $db, string $dialect, ?array $mysqlTarget): "
+    "signature": "private function __construct(Polyspec\\Orm\\Db $db, string $dialect, string $dsn): "
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::assertOpen": {
     "exported": false,
@@ -5386,6 +5382,10 @@
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::close": {
     "exported": true,
     "signature": "public function close(): void"
+  },
+  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::columnMetas": {
+    "exported": false,
+    "signature": "private static function columnMetas(PDOStatement $st): array"
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::columnNames": {
     "exported": false,
@@ -5575,37 +5575,21 @@
     "exported": false,
     "signature": "private function mysqlColumnDefinition(PDO $pdo, string $table, string $column): array"
   },
-  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::mysqlGridCell": {
+  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::mysqlConnectionId": {
     "exported": false,
-    "signature": "private static function mysqlGridCell(mixed $value, object $field): Polyspec\\Orm\\CatalogGridCell"
+    "signature": "private function mysqlConnectionId(PDO $pdo): ?int"
   },
-  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::mysqlGridLink": {
+  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::mysqlGridColumns": {
     "exported": false,
-    "signature": "private function mysqlGridLink(): mysqli"
-  },
-  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::mysqlGridQuery": {
-    "exported": false,
-    "signature": "private function mysqlGridQuery(string $sql, array $args, int $maxRows, int $maxBytes): Polyspec\\Orm\\CatalogResult"
-  },
-  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::mysqlGridRun": {
-    "exported": false,
-    "signature": "private function mysqlGridRun(mysqli $link, string $sql, array $args, int $maxRows, int $maxBytes): Polyspec\\Orm\\CatalogResult"
+    "signature": "private function mysqlGridColumns(PDO $pdo, string $sql, array $args): array"
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::mysqlSafety": {
     "exported": false,
     "signature": "private function mysqlSafety(PDO $pdo, Polyspec\\Orm\\CatalogTableMetadata $metadata): void"
   },
-  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::mysqlTarget": {
-    "exported": false,
-    "signature": "private static function mysqlTarget(string $dsn, ?string $sslCa): array"
-  },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::nativeTypes": {
     "exported": false,
     "signature": "private static function nativeTypes(Polyspec\\Orm\\CatalogTableMetadata $metadata): array"
-  },
-  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::openMysqli": {
-    "exported": false,
-    "signature": "private function openMysqli(): mysqli"
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::param": {
     "exported": false,
@@ -5646,6 +5630,10 @@
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::readOnlyQuery": {
     "exported": true,
     "signature": "public function readOnlyQuery(string $sql, array $params=[], int $maxRows=0, int $maxBytes=0): Polyspec\\Orm\\CatalogResult"
+  },
+  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::readStatement": {
+    "exported": false,
+    "signature": "private function readStatement(PDOStatement $st, ?int $connectionId, Closure $read): mixed"
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::refused": {
     "exported": false,
@@ -12458,10 +12446,6 @@
   "packages/php/src/OrmException.php::Polyspec\\Orm\\OrmException::fromDriver": {
     "exported": true,
     "signature": "public static function fromDriver(PDOException $e, string $driver, PDO $pdo): Polyspec\\Orm\\OrmException"
-  },
-  "packages/php/src/OrmException.php::Polyspec\\Orm\\OrmException::fromMysqli": {
-    "exported": true,
-    "signature": "public static function fromMysqli(mysqli_sql_exception $e): Polyspec\\Orm\\OrmException"
   },
   "packages/php/src/OrmException.php::Polyspec\\Orm\\OrmException::mysqlCode": {
     "exported": false,

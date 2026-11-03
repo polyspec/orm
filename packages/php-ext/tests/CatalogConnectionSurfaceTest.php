@@ -25,7 +25,6 @@ use Polyspec\Orm\OrmException;
 use ReflectionClass;
 use ReflectionProperty;
 use RuntimeException;
-use mysqli;
 
 #[Small]
 final class CatalogConnectionSurfaceTest extends TestCase
@@ -154,33 +153,6 @@ final class CatalogConnectionSurfaceTest extends TestCase
         self::assertContains('ROLLBACK', $pdo->statements);
     }
 
-    public function testNativeGridCommitFailureRollsBackAndComposesRollbackFailure(): void
-    {
-        require_once __DIR__ . '/CatalogMetadataFailurePdo.php';
-        require_once __DIR__ . '/CatalogMetadataFailureStatement.php';
-        require_once __DIR__ . '/CatalogCommitFailureLink.php';
-        require_once __DIR__ . '/CatalogCommitFailureStatement.php';
-        require_once __DIR__ . '/CatalogCommitFailureResult.php';
-        $link = new CatalogCommitFailureLink(true);
-        $db = new Db(new CatalogMetadataFailurePdo(), 'mysql', new Config(), new DateTimeZone('UTC'));
-        $catalog = self::catalogWith($db, 'mysql');
-        (new ReflectionProperty(Catalog::class, 'gridLink'))->setValue($catalog, $link);
-
-        try {
-            $catalog->readOnlyGridQuery('SELECT 1 AS value');
-            self::fail('a failed grid commit returned a result');
-        } catch (OrmException $error) {
-            self::assertSame(Code::ROLLBACK, $error->code_);
-            self::assertSame(1, $link->rollbackCalls);
-            self::assertInstanceOf(OrmException::class, $error->getPrevious());
-            self::assertSame(Code::DRIVER, $error->getPrevious()->code_);
-            self::assertInstanceOf(\mysqli_sql_exception::class, $error->getPrevious()->getPrevious());
-            self::assertInstanceOf(OrmException::class, $error->rollback);
-            self::assertSame(Code::DRIVER, $error->rollback->code_);
-            self::assertInstanceOf(\mysqli_sql_exception::class, $error->rollback->getPrevious());
-        }
-    }
-
     // Requirements: INT-118, PRT-79.
     public function testNativeInsertCommitFailurePreservesTheDriverCause(): void
     {
@@ -256,7 +228,6 @@ final class CatalogConnectionSurfaceTest extends TestCase
     {
         $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
         $catalog = self::catalogWith($db, 'sqlite');
-        (new ReflectionProperty(Catalog::class, 'gridLink'))->setValue($catalog, null);
         return [$catalog, $catalog->describeTable(['namespace' => 'main', 'name' => $table])];
     }
 
@@ -460,18 +431,12 @@ final class CatalogConnectionSurfaceTest extends TestCase
         $catalog = (new ReflectionClass(Catalog::class))->newInstanceWithoutConstructor();
         (new ReflectionProperty(Catalog::class, 'db'))->setValue($catalog, $db);
         (new ReflectionProperty(Catalog::class, 'dialect'))->setValue($catalog, 'sqlite');
-        $grid = (new ReflectionClass(mysqli::class))->newInstanceWithoutConstructor();
-        (new ReflectionProperty(Catalog::class, 'gridLink'))->setValue($catalog, $grid);
 
         try {
             $catalog->close();
-            self::fail('both cleanup failures were ignored');
-        } catch (OrmException $error) {
-            self::assertSame(Code::DRIVER, $error->code_);
-            self::assertInstanceOf(Error::class, $error->getPrevious());
-            self::assertCount(1, $error->cleanup);
-            self::assertInstanceOf(RuntimeException::class, $error->cleanup[0]);
-            self::assertSame('database cleanup failed', $error->cleanup[0]->getMessage());
+            self::fail('the cleanup failure was ignored');
+        } catch (RuntimeException $error) {
+            self::assertSame('database cleanup failed', $error->getMessage());
         }
 
         $catalog->close();

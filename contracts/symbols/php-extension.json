@@ -231,13 +231,9 @@
     "exported": false,
     "signature": "private readonly string"
   },
-  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Catalog::$gridLink": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Catalog::$dsn": {
     "exported": false,
-    "signature": "private ?mysqli"
-  },
-  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Catalog::$mysqlTarget": {
-    "exported": false,
-    "signature": "private readonly ?array"
+    "signature": "private readonly string"
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Catalog::close": {
     "exported": true,
@@ -4102,10 +4098,6 @@
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\OrmException::fromDriver": {
     "exported": true,
     "signature": "public static function fromDriver(PDOException $e, string $driver, PDO $pdo): Polyspec\\Orm\\OrmException"
-  },
-  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\OrmException::fromMysqli": {
-    "exported": true,
-    "signature": "public static function fromMysqli(mysqli_sql_exception $e): Polyspec\\Orm\\OrmException"
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\OrmException::mysqlCode": {
     "exported": false,

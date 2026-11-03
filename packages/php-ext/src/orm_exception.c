@@ -227,35 +227,6 @@ ZEND_METHOD(Polyspec_Orm_OrmException, postgresCode)
     RETURN_STR(postgres_code(state));
 }
 
-ZEND_METHOD(Polyspec_Orm_OrmException, fromMysqli)
-{
-    zend_object *error;
-    ZEND_PARSE_PARAMETERS_START(1, 1)
-        Z_PARAM_OBJ(error)
-    ZEND_PARSE_PARAMETERS_END();
-    zval code_rv, state_rv;
-    zend_call_method_with_0_params(error, error->ce, NULL, "getcode", &code_rv);
-    if (EG(exception) != NULL) RETURN_THROWS();
-    zend_long number = zval_get_long(&code_rv);
-    zval_ptr_dtor(&code_rv);
-    zend_call_method_with_0_params(error, error->ce, NULL, "getsqlstate", &state_rv);
-    if (EG(exception) != NULL) RETURN_THROWS();
-    zend_string *state = zval_get_string(&state_rv);
-    zval_ptr_dtor(&state_rv);
-    zend_string *code = mysql_code(number, true, state);
-    zend_string_release(state);
-    zend_string *message = NULL;
-    if (!call_message(error, &message)) {
-        zend_string_release(code);
-        RETURN_THROWS();
-    }
-    zend_class_entry *ce = zend_get_called_scope(execute_data);
-    bool ok = ce != NULL && construct_error(return_value, ce, code, message, error, NULL, NULL);
-    zend_string_release(code);
-    zend_string_release(message);
-    if (!ok) RETURN_THROWS();
-}
-
 ZEND_METHOD(Polyspec_Orm_OrmException, fromDriver)
 {
     zval *error_value, *pdo_value;
