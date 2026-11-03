@@ -474,6 +474,12 @@ func runStepWith(s databaseStep, c *databaseContext, op func(databaseStep, *data
 				return fmt.Errorf("error cause %v, want %q", cause, want)
 			}
 		}
+		if holds, ok := expected["message_holds"].(string); ok && !strings.Contains(err.Error(), holds) {
+			return fmt.Errorf("error message %q does not hold %q", err.Error(), holds)
+		}
+		if expected["driver_cause"] == true && errors.Unwrap(err) == nil {
+			return fmt.Errorf("error %q has no driver cause", err.Error())
+		}
 		return nil
 	}
 	if s.As != "" {

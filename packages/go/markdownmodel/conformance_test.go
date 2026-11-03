@@ -367,6 +367,64 @@ func conformanceCases() map[string]caseFunc {
 			}
 			return map[string]any{"length": rows.Len(), "counts": counts, "rows": rows.ToArray(), "first": first}, nil
 		},
+		"group_count_i64": func(s *served) (any, error) {
+			rows, err := markdownmodel.Logs().Connect(s.db).GroupById().OrderByIdAsc().GetsCount()
+			if err != nil {
+				return nil, err
+			}
+			return rows.ToArray(), nil
+		},
+		"collection_typed_key": func(s *served) (any, error) {
+			rows, err := markdownmodel.Logs().Connect(s.db).FetchValue(func(row *markdownmodel.LogsModel) any {
+				note, err := row.GetNote()
+				if err != nil {
+					return err.Error()
+				}
+				return note
+			}).Gets()
+			if err != nil {
+				return nil, err
+			}
+			id := func(row *markdownmodel.LogsModel, err error) (any, error) {
+				if err != nil || row == nil {
+					return nil, err
+				}
+				return row.GetId()
+			}
+			got := map[string]any{"length": rows.Len(), "array": rows.ToArray()}
+			keys, err := keyValues(rows.Keys())
+			if err != nil {
+				return nil, err
+			}
+			got["keys"] = keys
+			if got["first"], err = id(rows.First(), nil); err != nil {
+				return nil, err
+			}
+			for name, key := range map[string]any{"get": int64(1), "get_text": "1", "get_missing": int64(2)} {
+				row, err := rows.Get(key)
+				if got[name], err = id(row, err); err != nil {
+					return nil, err
+				}
+			}
+			for name, key := range map[string]any{"has": int64(1), "has_text": "1"} {
+				if got[name], err = rows.Has(key); err != nil {
+					return nil, err
+				}
+			}
+			for name, key := range map[string]any{"fetched": int64(1), "fetched_text": "1", "fetched_missing": int64(2)} {
+				if got[name], err = rows.FetchedValue(key); err != nil {
+					return nil, err
+				}
+			}
+			return got, nil
+		},
+		"collection_key_name": func(s *served) (any, error) {
+			rows, err := markdownmodel.People().Connect(s.db).KeyNameAge().Gets()
+			if err != nil {
+				return nil, err
+			}
+			return keyValues(rows.Keys())
+		},
 		"sum": func(s *served) (any, error) {
 			return markdownmodel.Tasks().Connect(s.db).SumPoints().GetSum()
 		},
@@ -1038,4 +1096,17 @@ func jsonText(t *testing.T, v any) string {
 		t.Fatalf("result %#v: %v", v, err)
 	}
 	return string(b)
+}
+
+// keyValues is the value of each collection key.
+func keyValues(keys []orm.Key) ([]any, error) {
+	out := make([]any, 0, len(keys))
+	for _, key := range keys {
+		value, err := key.Value()
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, value)
+	}
+	return out, nil
 }
