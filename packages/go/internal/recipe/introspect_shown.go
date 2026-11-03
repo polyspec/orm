@@ -101,7 +101,7 @@ func (q shownQuerier) answer(query string) ([][]any, int, error) {
 // file, whose check lines and unsupported objects, or error, it compares with the expect of database (DIA-84). A reason compares by
 // its rule, the text before the first ": ", since its text differs between the clients.
 func checkIntrospectShown(t *testing.T, dir string, s step, database string) error {
-	text, err := os.ReadFile(filepath.Join(dir, s.Vectors))
+	text, err := os.ReadFile(filepath.Join(dir, s.k("vectors").Vectors))
 	if err != nil {
 		return err
 	}
@@ -114,7 +114,7 @@ func checkIntrospectShown(t *testing.T, dir string, s step, database string) err
 		Unsupported []string `json:"unsupported"`
 		Error       string   `json:"error"`
 	}
-	if err := json.Unmarshal(s.Expect[database], &want); err != nil {
+	if err := json.Unmarshal(s.k("expect").Expect[database], &want); err != nil {
 		return err
 	}
 	at := slices.IndexFunc(vectors.Cases, func(c struct {
@@ -122,10 +122,10 @@ func checkIntrospectShown(t *testing.T, dir string, s step, database string) err
 		Create []string `json:"create"`
 		Name   string   `json:"name"`
 	}) bool {
-		return c.ID == s.Case
+		return c.ID == s.k("case").Case
 	})
 	if at < 0 {
-		return fmt.Errorf("%s has no case %s", s.Vectors, s.Case)
+		return fmt.Errorf("%s has no case %s", s.k("vectors").Vectors, s.k("case").Case)
 	}
 	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
