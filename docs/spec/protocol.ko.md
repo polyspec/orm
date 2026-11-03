@@ -125,7 +125,7 @@ primary key나 identity 컬럼을 할당하는 `update`는 `IR_INVALID`("cannot 
 
 `insert`는 `p` 또는 `null`로 할당한다. `plus_p`와 `minus_p`는 `insert`의 `set`에서 `IR_INVALID`이고 `on_duplicate`와 `update`에서는 유효하다. `VALUES` 목록에는 읽을 현재 행이 없기 때문이며, MySQL은 거기서 컬럼의 default를 읽고(3 + 5 = 8) PostgreSQL과 SQLite는 문장을 거절한다.
 
-- **PRT-81** default가 있는 컬럼을 빼먹은 `insert`는 database default를 받으며 planner는 값을 더하지 않는다. default가 없는 non-null 컬럼을 빼먹은 `insert`는 `IR_INVALID`로 실패한다.
+- **PRT-81** default가 있는 컬럼을 빼먹은 `insert`는 database default를 받으며 planner는 값을 더하지 않는다. 다만 PostgreSQL과 SQLite의 `default now` 컬럼은 `now` slot을 bind한다(PRT-33). default가 없는 non-null 컬럼을 빼먹은 `insert`는 `IR_INVALID`로 실패한다.
 - **PRT-82** planner는 실행기가 소유한 컬럼을 할당한다. AES 키 버전, 모든 `update`의 `updated` 컬럼, 그리고 `audit` setting이 있는 테이블에서는 모든 `insert`, `update`, soft delete, restore, duplicate update의 audit 컬럼이다. AES 키 버전이나 audit 컬럼을 할당하는 요청은 `IR_INVALID`로 실패한다.
 
 ### 1.5 Restore

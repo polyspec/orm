@@ -692,6 +692,14 @@
               "type": "string",
               "pattern": "^[A-Z][A-Z0-9_]*$"
             },
+            "message": {
+              "type": "string",
+              "minLength": 1
+            },
+            "cause": {
+              "type": "string",
+              "minLength": 1
+            },
             "message_suffix": {
               "description": "The text that the message of the error ends with.",
               "type": "string",
@@ -870,6 +878,8 @@
             "dbspec.import_mermaid",
             "hook.install",
             "hook.records",
+            "transaction.attempts",
+            "transaction.deadlock",
             "utils.aes_rotate",
             "model.restore",
             "model.chain",
@@ -1162,6 +1172,12 @@
         },
         {
           "$ref": "#/$defs/ops/hook.records"
+        },
+        {
+          "$ref": "#/$defs/ops/transaction.attempts"
+        },
+        {
+          "$ref": "#/$defs/ops/transaction.deadlock"
         },
         {
           "$ref": "#/$defs/ops/utils.aes_rotate"
@@ -1532,6 +1548,98 @@
           "read_only": {
             "description": "A read-only transaction; a nested transaction that names it is refused with CONFIG.",
             "type": "boolean"
+          },
+          "timeout_ms": {
+            "description": "The timeout of the transaction (INT-42); a nested transaction that names it is refused with CONFIG.",
+            "type": "integer",
+            "minimum": 1
+          },
+          "default_retry": {
+            "description": "The transaction names no retry and takes the default of INT-43; without it and without retry the helper passes a retry of 0.",
+            "const": true
+          },
+          "conflicts": {
+            "description": "The first attempts that end with the public transaction conflict (INT-48) after their steps.",
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "transaction.attempts": {
+        "type": "object",
+        "required": [
+          "op",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "transaction.attempts",
+            "description": "The runs of the callback of the transaction step that ended last, whatever its outcome."
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "transaction.deadlock": {
+        "type": "object",
+        "required": [
+          "op",
+          "connections",
+          "model",
+          "rows",
+          "column",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "transaction.deadlock",
+            "description": "Two execution flows at read_committed with a retry of 3: flow i writes flow-<i> to column of rows[i], holds it until the other flow holds its row, then writes rows[1-i] (PLN-24)."
+          },
+          "connections": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "$ref": "#/$defs/name"
+            }
+          },
+          "model": {
+            "$ref": "#/$defs/model"
+          },
+          "rows": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "$ref": "#/$defs/columnValues"
+            }
+          },
+          "column": {
+            "$ref": "#/$defs/name"
+          },
+          "expect": {
+            "description": "attempts counts the callback runs of both flows, deadlocks the first attempts that ended with DEADLOCK, and same_flow holds when both rows hold the name of one flow.",
+            "type": "object",
+            "required": [
+              "mysql",
+              "postgres",
+              "sqlite"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "mysql": {
+                "$ref": "#/$defs/outcomes/deadlock"
+              },
+              "postgres": {
+                "$ref": "#/$defs/outcomes/deadlock"
+              },
+              "sqlite": {
+                "$ref": "#/$defs/outcomes/deadlock"
+              }
+            }
           }
         }
       },
@@ -3500,14 +3608,39 @@
         "type": "object",
         "required": [
           "op",
-          "connection",
           "model",
           "values"
+        ],
+        "anyOf": [
+          {
+            "required": [
+              "connection"
+            ],
+            "properties": {
+              "connection": {
+                "$ref": "#/$defs/name"
+              }
+            }
+          },
+          {
+            "required": [
+              "unconnected"
+            ],
+            "properties": {
+              "unconnected": {
+                "const": true
+              }
+            }
+          }
         ],
         "additionalProperties": false,
         "properties": {
           "op": {
             "const": "model.create"
+          },
+          "unconnected": {
+            "description": "The model is built with no connection: it runs in the active transaction of the flow, or is refused with CONFIG (PLN-16).",
+            "const": true
           },
           "connection": {
             "$ref": "#/$defs/name"
@@ -4142,6 +4275,33 @@
       },
       "model.count": {
         "anyOf": [
+          {
+            "type": "object",
+            "required": [
+              "op",
+              "unconnected",
+              "model"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "op": {
+                "const": "model.count"
+              },
+              "unconnected": {
+                "description": "The model is built with no connection: it runs in the active transaction of the flow, or is refused with CONFIG (PLN-16).",
+                "const": true
+              },
+              "model": {
+                "$ref": "#/$defs/model"
+              },
+              "where": {
+                "$ref": "#/$defs/predicate"
+              },
+              "expect": {
+                "$ref": "#/$defs/expect"
+              }
+            }
+          },
           {
             "type": "object",
             "required": [
@@ -5446,6 +5606,9 @@
                       }
                     }
                   },
+                  "rule": {
+                    "type": "string"
+                  },
                   "manifest_hash": {
                     "type": "string"
                   },
@@ -5693,6 +5856,14 @@
             },
             "description": "The documents of one set, relative to the recipe file."
           },
+          "external": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "\\.dbs$"
+            },
+            "description": "The external documents of the set, relative to the recipe file."
+          },
           "expect": {
             "type": "object",
             "required": [
@@ -5707,6 +5878,15 @@
                 ],
                 "additionalProperties": false,
                 "properties": {
+                  "manifest_text": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "manifest_hash": {
+                    "type": "string"
+                  },
                   "entities": {
                     "type": "array",
                     "items": {
@@ -5719,7 +5899,7 @@
                     "additionalProperties": {
                       "type": "object"
                     },
-                    "description": "The values to compare, by entity name: the keys it names of table, primary_key, identity, updated, soft_delete, aes_version, audit_column, audit_record, key_names and fields, and of a field type, nullable, default, default_now, codec, blind_index, primary_key and foreign_key."
+                    "description": "The values to compare, by entity name: the keys it names of table, primary_key, identity, updated, soft_delete, aes_version, audit_column, audit_record, key_names and fields, and of a field type, nullable, default, default_now, select_explicit, codec, blind_index, primary_key and foreign_key."
                   }
                 }
               }
@@ -6913,6 +7093,28 @@
       }
     },
     "outcomes": {
+      "deadlock": {
+        "type": "object",
+        "required": [
+          "attempts",
+          "deadlocks",
+          "same_flow"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "attempts": {
+            "type": "integer",
+            "minimum": 2
+          },
+          "deadlocks": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "same_flow": {
+            "type": "boolean"
+          }
+        }
+      },
       "count": {
         "oneOf": [
           {
@@ -8282,7 +8484,9 @@
     "lockMode": {
       "enum": [
         "share",
-        "update"
+        "share_nowait",
+        "update",
+        "update_nowait"
       ]
     },
     "compileValue": {

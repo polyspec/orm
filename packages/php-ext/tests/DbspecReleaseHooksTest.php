@@ -13,7 +13,6 @@ use Polyspec\Orm\Dbspec\Dbspec;
 #[Small]
 final class DbspecReleaseHooksTest extends TestCase
 {
-    // Requirements: PRT-18.
     public function testReleaseExtensionOmitsPrivateHooks(): void
     {
         self::assertTrue(extension_loaded('polyspec_orm'));

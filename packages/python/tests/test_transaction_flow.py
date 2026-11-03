@@ -61,7 +61,7 @@ class TransactionFlowTest(unittest.TestCase):
 
 
 class TransactionConcurrencyTest(unittest.TestCase):
-    # Requirements: DSL-121, PLN-18 (docs/spec/dsl.md "Transactions").
+    # Requirements: DSL-121, INT-47, PLN-18 (docs/spec/dsl.md "Transactions").
     def test_overlapping_statement_is_rejected(self):
         executor = Executor(None, TxFrame(None, 1, {}))
         result = {}
