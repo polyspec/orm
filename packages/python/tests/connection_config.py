@@ -224,24 +224,5 @@ class ConnectionConfigTest(unittest.TestCase):
             setup.close()
 
 
-class ConnectionConfigComputeTest(unittest.TestCase):
-    deadline = testcase.COMPUTE
-
-    # Requirements: CFG-6.
-    def test_statement_timeout_negative_refused(self):
-        models, _ = probe_models(TEMP["dir"].name, "timeout_negative")
-        dsns = {
-            "sqlite": "sqlite:///tmp/orm-negative-statement-timeout.sqlite",
-            "mysql": "mysql://orm@127.0.0.1/orm_example",
-            "postgres": "postgres://orm@127.0.0.1/orm_example",
-        }
-        for dialect, dsn in dsns.items():
-            self.assertEqual(
-                code_of(lambda: models.connect(dsn, statementTimeoutMs=-1)),
-                "CONFIG",
-                f"{dialect}: negative",
-            )
-
-
 if __name__ == "__main__":
     testcase.main()

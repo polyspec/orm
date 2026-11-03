@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 9c165761a471a7b2e708a8634fa61bcc0df3879b4dfdc900310a0d6c7f388cdd -->
+<!-- source-sha256: 767e2f451e144f06fe7051eba2b41f92a6ee797828507f205ee6cd2d9874580d -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `packages/go/engine/ir/ir.go`와 `packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -101,7 +101,7 @@ Sub   = {"query": Query, "column": "user_seq", "agg": "sum | avg | count"}
 - **PRT-19** `fn`은 `p`와 비교하기 전에 `column`에 컬럼 함수를 적용한다. `value`는 `column`을 값 함수와 비교한다. 0001-01-01부터 9999-12-31 23:59:59.999999 밖이거나 그 폭을 넘는 interval의 상대 시간 함수는 NULL이므로 비교도 그 부정도 어떤 행과도 맞지 않는다([dialects](dialects.ko.md)). 함수는 구조만 전달하며 각 dialect가 [dialect](dialects.md)의 설명대로 SQL을 만든다. 알 수 없는 함수는 `FUNCTION_UNKNOWN`을 반환한다.
 - **PRT-20** 열 비교의 두 컬럼, 컬럼 `in`/`not_in` subquery 컬럼, join의 `left`와 `right`, 각 relation key 쌍은 dbspec check 피연산자가 만나는 대로([dbspec](dbspec.md)) 만난다: 정수는 정수와, `decimal`은 같은 scale의 `decimal`과, `f64`, `bool`, `varchar`와 `text`는 서로, `uuid`, `date`, 같은 precision의 `time` 또는 `datetime`, `bytes`는 `bytes`와 만난다. 그 밖의 쌍은 `OPERATOR_NOT_ALLOWED`로 실패한다. database마다 답이 다르기 때문이다(PostgreSQL은 `integer = varchar`를 거절하고 MySQL은 강제 변환하며 SQLite는 affinity로 비교한다). validator는 dbspec check 검증의 표를 읽으며, conformance vector `column_pairs`가 두 종류의 쌍을 모두 실행한다.
 - **PRT-21** 스칼라 컬럼 subquery(`agg` 없는 `columns.sub`)는 count가 1인 `limit`(`offset`은 무엇이든)과, 모든 primary key 컬럼을 포함하고 `random` 항목이 없는 `order`를 가지므로 모든 database에서 많아야 한 행을 내고 일치하는 행이 없으면 NULL이다. 그것이 없으면 요청은 `IR_INVALID`이다. 여러 행에 MySQL은 1242, PostgreSQL은 21000으로 답하고 SQLite는 첫 행을 돌려주기 때문이다. `limit`은 `in` subquery(MySQL 1235)와 집계 subquery에서는 계속 `IR_INVALID`이다.
-- **PRT-22** 열 비교(`eq_col` 등)는 기본 연산자(`eq_col`이면 `eq`)가 왼쪽 컬럼 type의 연산자이고 어느 컬럼도 codec이 없을 때 허용되므로, `bool gt_col`, `bytes gt_col`, `aes` 컬럼의 `eq_col`은 `OPERATOR_NOT_ALLOWED`로 실패한다. codec이 `ip` 하나뿐인 두 컬럼은 양쪽이 dialect의 같은 저장 형태이므로 `eq_col`과 `not_eq_col`을 받는다.
+- **PRT-22** 열 비교(`eq_col` 등)는 기본 연산자(`eq_col`이면 `eq`)가 왼쪽 컬럼 type의 연산자이고 어느 컬럼도 codec이 없을 때 허용되므로, `bool gt_col`, `bytes gt_col`, `aes` 컬럼의 `eq_col`은 `OPERATOR_NOT_ALLOWED`로 실패한다. codec이 `ip` 하나뿐인 두 컬럼은 양쪽이 dialect의 같은 저장 형태이므로 `eq_col`과 `not_eq_col`을 받는다. `uuid`나 `bytes` 열은 `eq`, `not_eq`, `in`, `not_in`, `is_null`, `is_not_null`만 받으므로 `uuid gt`는 `OPERATOR_NOT_ALLOWED`로 실패한다.
 - **PRT-23** `not`은 하위 묶음을 부정하며 `NOT (…)`로 렌더링된다. `not`을 가진 top-level `where`나 `on` 묶음은 `IR_INVALID`다.
 - **PRT-24** 요청은 SQL text를 싣지 않는다. 모든 조건, 출력, 정렬, 그룹, 할당은 위 형식 중 하나이며 plan의 모든 bind slot은 dbspec type을 가진다.
 - **PRT-25** `contains`와 `contains_binary`는 값을 와일드카드 사이에 바인드한다. `contains`는 ASCII 글자를 대소문자 구분 없이, 다른 모든 문자를 code point로 비교하고, `contains_binary`는 code point로 비교한다([dialects](dialects.md)).
@@ -125,7 +125,8 @@ primary key나 identity 컬럼을 할당하는 `update`는 `IR_INVALID`("cannot 
 
 `insert`는 `p` 또는 `null`로 할당한다. `plus_p`와 `minus_p`는 `insert`의 `set`에서 `IR_INVALID`이고 `on_duplicate`와 `update`에서는 유효하다. `VALUES` 목록에는 읽을 현재 행이 없기 때문이며, MySQL은 거기서 컬럼의 default를 읽고(3 + 5 = 8) PostgreSQL과 SQLite는 문장을 거절한다.
 
-default가 있는 컬럼을 빼먹은 `insert`는 database default를 받으며 planner는 값을 더하지 않는다. default가 없는 non-null 컬럼을 빼먹은 `insert`는 `IR_INVALID`로 실패한다. planner는 실행기가 소유한 컬럼을 할당한다. AES 키 버전, 모든 `update`의 `updated` 컬럼, 그리고 `audit` setting이 있는 테이블에서는 모든 `insert`, `update`, soft delete, restore, duplicate update의 audit 컬럼이다. AES 키 버전이나 audit 컬럼을 할당하는 요청은 `IR_INVALID`로 실패한다.
+- **PRT-81** default가 있는 컬럼을 빼먹은 `insert`는 database default를 받으며 planner는 값을 더하지 않는다. 다만 PostgreSQL과 SQLite의 `default now` 컬럼은 `now` slot을 bind한다(PRT-33). default가 없는 non-null 컬럼을 빼먹은 `insert`는 `IR_INVALID`로 실패한다.
+- **PRT-82** planner는 실행기가 소유한 컬럼을 할당한다. AES 키 버전, 모든 `update`의 `updated` 컬럼, 그리고 `audit` setting이 있는 테이블에서는 모든 `insert`, `update`, soft delete, restore, duplicate update의 audit 컬럼이다. AES 키 버전이나 audit 컬럼을 할당하는 요청은 `IR_INVALID`로 실패한다. 문장은 요청 `set`의 컬럼을 요청 순서로 쓰고 이어서 planner가 할당하는 컬럼을 쓴다. `insert`는 AES 키 버전, audit 컬럼, bind하는 `default now` 컬럼(컬럼 순서)이고, `update`는 AES 키 버전, `updated` 컬럼, audit 컬럼이며, soft delete는 soft delete 컬럼 다음에 audit 컬럼을 쓴다.
 
 ### 1.5 Restore
 

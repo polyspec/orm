@@ -7,9 +7,8 @@ import math
 import unittest
 
 
-from polyspec.orm.database import Db, parse_dsn
+from polyspec.orm.database import Db
 from polyspec.orm.errors import OrmError
-from polyspec.orm.markdown import MarkdownDsn
 from . import testcase
 
 TOKEN = "0123456789abcdef0123456789abcdef"
@@ -69,32 +68,6 @@ def raised(run):
 
 
 class MarkdownTest(unittest.TestCase):
-    def test_parse_markdown_dsn(self):
-        # Requirements: PRT-63.
-        parsed = parse_dsn(f"markdown://127.0.0.1:4100/tracker?token={TOKEN}")
-        self.assertEqual(parsed.driver, "markdown")
-        self.assertEqual(parsed.zone, "+00:00")
-        self.assertEqual(
-            parsed.markdown, MarkdownDsn("127.0.0.1:4100", "tracker", TOKEN)
-        )
-        for dsn in (
-            "markdown://127.0.0.1:4100/tracker",
-            "markdown://127.0.0.1:4100/tracker?token=",
-            "markdown://127.0.0.1:4100/tracker?token=a&token=b",
-            "markdown://127.0.0.1:4100/tracker?token=a&mode=ro",
-            "markdown://127.0.0.1/tracker?token=a",
-            "markdown://127.0.0.1:0/tracker?token=a",
-            "markdown://127.0.0.1:port/tracker?token=a",
-            "markdown://localhost:4100/tracker?token=a",
-            "markdown://10.0.0.1:4100/tracker?token=a",
-            "markdown://user@127.0.0.1:4100/tracker?token=a",
-            "markdown://127.0.0.1:4100/?token=a",
-            "markdown://127.0.0.1:4100/a/b?token=a",
-        ):
-            error = raised(lambda: parse_dsn(dsn))
-            self.assertIsInstance(error, OrmError, dsn)
-            self.assertEqual(error.code, "CONFIG", f"{dsn}: {error}")
-
     def test_markdown_session_messages(self):
         # Requirements: PRT-64.
         server = MarkdownTestServer(
@@ -130,21 +103,6 @@ class MarkdownTest(unittest.TestCase):
                 '{"op":"commit"}',
             ],
         )
-
-    def test_markdown_connect_refused(self):
-        # Requirements: PRT-64.
-        server = MarkdownTestServer(
-            self,
-            '{"error":{"code":"CONFIG","message":"connect: the token is not the corpus\'s '
-            'token"}}',
-        )
-        error = raised(lambda: Db.connect(server.dsn()).close())
-        self.assertIsInstance(error, OrmError)
-        self.assertEqual(error.code, "CONFIG")
-        self.assertEqual(
-            str(error), "CONFIG: connect: the token is not the corpus's token"
-        )
-        self.assertEqual(server.received_messages(), [CONNECT_LINE])
 
     def test_markdown_rejected_surfaces(self):
         # Requirements: DIA-183, DIA-184, DIA-185, DIA-188, DIA-189.

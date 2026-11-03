@@ -81,7 +81,6 @@ caseTest('the recipe schema refuses each break of the format', COMPUTE, () => {
     ['a case without an id', change(database, ['cases', 0, 'id'])],
     ['a recipe without cases', change(database, ['cases'], [])],
     ['an op outside the list', change(database, ['cases', 0, 'steps', decode, 'op'], 'codec.reverse')],
-    ['an expect without one database', change(database, ['cases', 0, 'steps', decode, 'expect', 'postgres'])],
     ['an expect of none in a recipe with a fixture', change(database, ['cases', 0, 'steps', decode, 'expect'], { none: { value: { text: 'a' } } })],
     ['an expect of the databases in a recipe without one', change(none, ['cases', 0, 'steps', 0, 'expect'], { mysql: { value: { text: 'a' } }, postgres: { value: { text: 'a' } }, sqlite: { value: { text: 'a' } } })],
     ['a step that compares its result without expect', change(database, ['cases', 0, 'steps', decode, 'expect'])],
@@ -110,6 +109,49 @@ caseTest('the recipe schema refuses each break of the format', COMPUTE, () => {
   for (const [name, recipe] of breaks) assert.notDeepEqual(refused(recipe, name), [], `the schema accepts ${name}`);
 });
 
+// expectFaults are the steps of a recipe with a fixture whose expect names another set than the databases that run the step:
+// those of the only of the step, else of its case, else all three (FCV-4, FCV-10).
+const DATABASES = ['mysql', 'postgres', 'sqlite'];
+function expectFaults(recipe: Json): string[] {
+  const faults: string[] = [];
+  const walk = (steps: Json, inherited: string[], where: string) => {
+    if (!Array.isArray(steps)) return;
+    for (const step of steps) {
+      if (step === null || typeof step !== 'object' || Array.isArray(step)) continue;
+      const only = Array.isArray(step.only) ? step.only.map(String) : inherited;
+      for (const key of ['expect', 'expect_unnamed']) {
+        const expect = step[key];
+        if (expect === null || typeof expect !== 'object' || Array.isArray(expect) || expect === undefined) continue;
+        const named = Object.keys(expect).sort().join(',');
+        if (named !== [...only].sort().join(',')) faults.push(`${where} ${String(step.op)} ${key} names ${named}, want ${[...only].sort().join(',')}`);
+      }
+      walk(step.steps ?? null, only, where);
+    }
+  };
+  if (recipe === null || typeof recipe !== 'object' || Array.isArray(recipe) || !('fixture' in recipe) || !Array.isArray(recipe.cases)) return faults;
+  for (const kase of recipe.cases) {
+    if (kase === null || typeof kase !== 'object' || Array.isArray(kase)) continue;
+    walk(kase.steps ?? null, Array.isArray(kase.only) ? kase.only.map(String) : DATABASES, String(kase.id));
+  }
+  return faults;
+}
+
+caseTest('an expect names exactly the databases that run its step', COMPUTE, () => {
+  const database = read(resolve(fixtures, 'database.json'));
+  const decode = 2;
+  const expect = at(database, ['cases', 0, 'steps', decode, 'expect']);
+  assert.ok(expect !== null && typeof expect === 'object' && !Array.isArray(expect), 'the expect is an object');
+  const postgres = { postgres: expect.postgres ?? null };
+  assert.deepEqual(expectFaults(database), []);
+  assert.deepEqual(expectFaults(change(change(database, ['cases', 0, 'only'], ['postgres']), ['cases', 0, 'steps', decode, 'expect'], postgres)).filter(fault => fault.includes(' names postgres,')), [], 'a case with only names that database');
+  assert.notDeepEqual(expectFaults(change(database, ['cases', 0, 'steps', decode, 'expect', 'postgres'])), [], 'an expect without one database');
+  assert.notDeepEqual(expectFaults(change(database, ['cases', 0, 'only'], ['postgres'])), [], 'a case with only whose expect names the others');
+  assert.notDeepEqual(expectFaults(change(change(database, ['cases', 0, 'steps', decode, 'only'], ['postgres']), ['cases', 0, 'steps', decode, 'expect', 'postgres'])), [], 'a step with only whose expect leaves it out');
+  const parity = readParityConfig(resolve(root, 'config/parity.json'));
+  const files = (parity.suites ?? []).flatMap(glob => globSync(glob, { cwd: root }));
+  assert.deepEqual(files.flatMap(file => expectFaults(JSON.parse(readFileSync(resolve(root, file), 'utf8')) as Json).map(fault => `${file}: ${fault}`)), []);
+});
+
 caseTest('every recipe of the parity suites names the recipe schema and is valid against it', COMPUTE, () => {
   const parity = readParityConfig(resolve(root, 'config/parity.json'));
   const files = (parity.suites ?? []).flatMap(glob => globSync(glob, { cwd: root }));
@@ -126,6 +168,22 @@ caseTest('every recipe of the parity suites names the recipe schema and is valid
 // Requirements: FCV-12.
 caseTest('the recipe is the list of the cases of its owners', COMPUTE, () => {
   const differences: string[] = [];
+  // The manifest holds no copy of what the recipe lists: a copy goes stale when a lane adds a case to the recipe.
+  const written = JSON.parse(readFileSync(resolve(root, 'contracts/features.json'), 'utf8')) as Manifest;
+  for (const feature of written.features ?? []) {
+    const owners = Object.entries(feature.coverage?.owners ?? {});
+    const recipeOnly = owners.length > 0 && owners.every(([, owner]) => {
+      const lists = Object.values(owner.commands ?? {});
+      return lists.length > 0 && lists.every(list => (list ?? []).some(command => command.recipe));
+    });
+    if (recipeOnly && feature.coverage?.cases !== undefined) differences.push(`${feature.id}: coverage.cases copies its recipe`);
+    for (const [language, owner] of owners) {
+      for (const [database, list] of Object.entries(owner.commands ?? {})) {
+        for (const command of list ?? [])
+          if (command.recipe && command.cases !== undefined) differences.push(`${feature.id}/${language}/${database}: cases copies ${command.recipe}`);
+      }
+    }
+  }
   for (const feature of readFeatures(root).features ?? []) {
     const owners = Object.entries(feature.coverage?.owners ?? {});
     const whole = new Set<string>();
@@ -136,7 +194,7 @@ caseTest('the recipe is the list of the cases of its owners', COMPUTE, () => {
       for (const [database, list] of commands) {
         for (const command of list ?? []) {
           if (!command.recipe) continue;
-          const ids = recipeCaseIds(readFileSync(resolve(root, command.recipe), 'utf8'), database);
+          const ids = recipeCaseIds(readFileSync(resolve(root, command.recipe), 'utf8'), command.database ?? database);
           ids.forEach(id => whole.add(id));
           if (JSON.stringify([...command.cases].sort()) !== JSON.stringify([...ids].sort()))
             differences.push(`${feature.id}/${language}/${database}: ${command.cases.length} declared, ${ids.length} in ${command.recipe}`);

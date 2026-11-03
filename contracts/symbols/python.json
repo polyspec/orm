@@ -2763,6 +2763,10 @@
     "exported": true,
     "signature": "def rollback_failed(cause: object, rollback: object) -\u003e OrmError"
   },
+  "packages/python/src/polyspec/orm/errors.py::transaction_conflict": {
+    "exported": true,
+    "signature": "def transaction_conflict(message: str) -\u003e OrmError"
+  },
   "packages/python/src/polyspec/orm/events.py::StatementEvent": {
     "exported": true,
     "signature": "class StatementEvent"

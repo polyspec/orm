@@ -12,6 +12,59 @@ use PHPUnit\Framework\Assert;
  */
 final class RecipeGenerator
 {
+    /**
+     * Runs one generator.check step (FCV-4, DBS-175) through orm-gen gen --check of this client.
+     *
+     * @param array<string, mixed> $step
+     */
+    public static function checkFiles(array $step, string $dir): void
+    {
+        $root = dirname(__DIR__, 3);
+        $work = sys_get_temp_dir() . '/orm-recipe-generator-check-' . bin2hex(random_bytes(8));
+        mkdir($work, 0o700, true);
+        $out = "$work/model";
+        $gen = static function (string ...$extra) use ($root, $dir, $step, $out): array {
+            [$status, $stdout, $stderr] = coverageProcess(
+                [PHP_BINARY, 'vendor-php/bin/orm-gen', 'gen', '--set', "$dir/{$step['document_set']}", '--out', $out,
+                    '--namespace', 'Polyspec\\Orm\\Tests\\RecipeCheck', ...$extra],
+                $root,
+            );
+            return [$status, $stdout . $stderr];
+        };
+        $expect = static function (array $lines, string $file) use ($gen): void {
+            $want = implode('', array_map(static fn (string $line): string => str_replace('<file>', $file, $line) . "\n", $lines));
+            Assert::assertSame([$lines === [] ? 0 : 1, $want], $gen('--check'));
+        };
+        try {
+            [$status, $output] = $gen();
+            Assert::assertSame(0, $status, $output);
+            $expect($step['unchanged'], '');
+            $files = glob("$out/*") ?: [];
+            sort($files);
+            $file = null;
+            foreach ($files as $candidate) {
+                if (is_file($candidate) && filesize($candidate) > 0) {
+                    $file = $candidate;
+                    break;
+                }
+            }
+            Assert::assertNotNull($file, "$out holds no generated file");
+            $text = (string) file_get_contents($file);
+            $text[0] = chr(ord($text[0]) ^ 1);
+            file_put_contents($file, $text);
+            $expect($step['changed'], $file);
+            Assert::assertSame($text, file_get_contents($file), 'the check wrote the file');
+        } finally {
+            foreach (glob("$out/*") ?: [] as $file) {
+                unlink($file);
+            }
+            if (is_dir($out)) {
+                rmdir($out);
+            }
+            rmdir($work);
+        }
+    }
+
     /** Runs one generator.generate step and checks it against the expect of $database. */
     public static function check(array $step, string $dir, string $database): void
     {

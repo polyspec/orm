@@ -1,0 +1,282 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "DBS-65",
+    "DBS-85",
+    "DBS-111",
+    "DBS-112",
+    "DBS-100",
+    "DBS-103"
+  ],
+  "cases": [
+    {
+      "id": "entities-of-the-bench-set",
+      "requirements": [
+        "DBS-111",
+        "DBS-112"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.runtime_model",
+          "documents": [
+            "../../contracts/fixtures/bench/bench.dbs",
+            "../../contracts/fixtures/bench/bench_reader.dbs"
+          ],
+          "expect": {
+            "none": {
+              "entities": [
+                "author",
+                "user",
+                "service",
+                "service_region",
+                "service_member",
+                "composite_account",
+                "composite_membership",
+                "soft_record",
+                "soft_link",
+                "account",
+                "project",
+                "account_project",
+                "task",
+                "hex_cell",
+                "time_cell",
+                "clock_cell",
+                "day_cell",
+                "upsert_cell",
+                "uuid_cell",
+                "ip_hex_cell",
+                "bind_cell",
+                "audit_record",
+                "audited_note",
+                "audited_note_history",
+                "note_reader",
+                "shared_note"
+              ],
+              "models": {
+                "author": {
+                  "table": "author",
+                  "primary_key": [
+                    "seq"
+                  ],
+                  "identity": "seq",
+                  "updated": "updated_ts",
+                  "soft_delete": "",
+                  "aes_version": "aes_key_version",
+                  "audit_column": "",
+                  "fields": {
+                    "seq": {
+                      "type": "i64",
+                      "nullable": false,
+                      "primary_key": true
+                    },
+                    "price": {
+                      "type": "decimal",
+                      "nullable": true
+                    },
+                    "created_ts": {
+                      "default": true,
+                      "default_now": true
+                    },
+                    "is_close": {
+                      "default": true,
+                      "default_now": false
+                    },
+                    "user_seq": {
+                      "default": false,
+                      "foreign_key": true
+                    },
+                    "name": {
+                      "foreign_key": false,
+                      "codec": []
+                    },
+                    "aes_hex_email": {
+                      "codec": [
+                        "aes",
+                        "hex"
+                      ],
+                      "blind_index": "email_blind_index"
+                    },
+                    "json_setting": {
+                      "codec": [
+                        "ordered_json"
+                      ]
+                    },
+                    "gz_extend": {
+                      "codec": [
+                        "gz"
+                      ]
+                    }
+                  },
+                  "key_names": [
+                    "ik",
+                    "ix_author_service_member",
+                    "ix_email_blind_index",
+                    "ix_phone_blind_index",
+                    "ix_service",
+                    "ix_user",
+                    "uq_author_uuid"
+                  ]
+                },
+                "composite_membership": {
+                  "primary_key": [
+                    "tenant_id",
+                    "account_id"
+                  ],
+                  "identity": ""
+                },
+                "soft_record": {
+                  "soft_delete": "deleted_at"
+                }
+              }
+            }
+          },
+          "external": [
+            "../../contracts/fixtures/bench/bench_shared.dbs"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "entities-of-a-set-and-their-settings",
+      "requirements": [
+        "DBS-65",
+        "DBS-85",
+        "DBS-111",
+        "DBS-112"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.runtime_model",
+          "documents": [
+            "runtime-model-shop.dbs",
+            "../../contracts/fixtures/audit.dbs"
+          ],
+          "expect": {
+            "none": {
+              "entities": [
+                "item",
+                "item_history",
+                "audit",
+                "member",
+                "member_history",
+                "member_record"
+              ],
+              "models": {
+                "member": {
+                  "table": "service_member",
+                  "audit_column": "audit_seq",
+                  "audit_record": "member_audit",
+                  "fields": {
+                    "rank": {
+                      "type": "i16"
+                    },
+                    "key": {
+                      "type": "uuid"
+                    },
+                    "opens": {
+                      "type": "time"
+                    }
+                  }
+                },
+                "item": {
+                  "audit_column": "audit_seq",
+                  "audit_record": "audit"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "manifest-text-holds-no-comment-or-diagram",
+      "requirements": [
+        "DBS-100",
+        "DBS-103",
+        "DBS-111"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.runtime_model",
+          "documents": [
+            "runtime-model-members.dbs",
+            "runtime-model-accounts.dbs"
+          ],
+          "expect": {
+            "none": {
+              "entities": [
+                "tenant",
+                "member"
+              ],
+              "manifest_text": [
+                "dbspec 1 accounts",
+                "",
+                "table tenant {",
+                "  id i64 identity",
+                "  name varchar(50)",
+                "  primary key (id)",
+                "}",
+                "dbspec 1 members",
+                "",
+                "use accounts { tenant }",
+                "",
+                "table member_row {",
+                "  id i64 identity",
+                "  tenant_id i64",
+                "  note text",
+                "  secret bytes null",
+                "  aes_key_version i32",
+                "  updated_at datetime(6) default now",
+                "  deleted_at datetime(6) null",
+                "  primary key (id)",
+                "  index ix_member_tenant (tenant_id)",
+                "  foreign key fk_member_tenant (tenant_id) references tenant (id) on delete restrict on update restrict",
+                "  settings {",
+                "    entity member",
+                "    updated updated_at",
+                "    soft_delete deleted_at",
+                "    select explicit aes_key_version",
+                "    codec secret ordered_json aes",
+                "    aes_version aes_key_version",
+                "  }",
+                "}"
+              ],
+              "manifest_hash": "sha256:2e217b76a2ae17adcc3afdae1ff64e41f32244e575f06d51c507fcf5ba65f652",
+              "models": {
+                "member": {
+                  "table": "member_row",
+                  "identity": "id",
+                  "updated": "updated_at",
+                  "soft_delete": "deleted_at",
+                  "aes_version": "aes_key_version",
+                  "fields": {
+                    "secret": {
+                      "type": "bytes",
+                      "nullable": true,
+                      "codec": [
+                        "ordered_json",
+                        "aes"
+                      ]
+                    },
+                    "aes_key_version": {
+                      "select_explicit": true
+                    },
+                    "note": {
+                      "select_explicit": false
+                    },
+                    "tenant_id": {
+                      "foreign_key": true
+                    },
+                    "updated_at": {
+                      "default": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

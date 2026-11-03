@@ -101,7 +101,26 @@
   "COD-3",
   "INT-101",
   "DSL-99",
-  "INT-160"
+  "INT-160",
+  "PLN-7",
+  "PLN-23",
+  "PLN-28",
+  "PLN-37",
+  "PLN-38",
+  "PLN-39",
+  "PLN-8",
+  "PLN-9",
+  "PLN-14",
+  "PLN-12",
+  "PLN-27",
+  "DSL-115",
+  "DSL-155",
+  "CPX-5",
+  "DSL-128",
+  "CPX-4",
+  "PRT-2",
+  "PRT-34",
+  "PRT-77"
  ],
  "fixture": "contracts/fixtures/conformance_verification/dbspec-set.json",
  "seed": {
@@ -52391,6 +52410,4155 @@
       },
       "sqlite": {
        "error": "CODEC_DECODE"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "core_conditions",
+   "requirements": [
+    "PLN-7",
+    "PLN-23",
+    "PLN-28",
+    "PLN-37",
+    "PLN-38",
+    "PLN-39"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "chain": [
+       [
+        "",
+        {
+         "service_seq": {
+          "int": "7"
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "is_close": {
+          "bool": false
+         }
+        }
+       ],
+       [
+        "or"
+       ],
+       [
+        "",
+        {
+         "is_close": {
+          "bool": true
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 43
+      },
+      "postgres": {
+       "json": 43
+      },
+      "sqlite": {
+       "json": 43
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "chain": [
+       [
+        "",
+        {
+         "service_seq": {
+          "int": "7"
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "chain": [
+          [
+           "",
+           {
+            "read_count": {
+             "ge": {
+              "int": "100"
+             }
+            }
+           }
+          ],
+          [
+           "and",
+           {
+            "read_count": {
+             "lt": {
+              "int": "400"
+             }
+            }
+           }
+          ],
+          [
+           "or",
+           {
+            "name": {
+             "text": "author-6"
+            }
+           }
+          ]
+         ]
+        }
+       ]
+      ]
+     },
+     "order": [
+      {
+       "column": "read_count",
+       "dir": "desc"
+      },
+      {
+       "column": "seq",
+       "dir": "asc"
+      }
+     ],
+     "pick": [
+      "seq"
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "seq": 306
+        },
+        {
+         "seq": 1306
+        },
+        {
+         "seq": 2306
+        },
+        {
+         "seq": 206
+        },
+        {
+         "seq": 1206
+        },
+        {
+         "seq": 2206
+        },
+        {
+         "seq": 90206
+        },
+        {
+         "seq": 95206
+        },
+        {
+         "seq": 106
+        },
+        {
+         "seq": 1106
+        },
+        {
+         "seq": 2106
+        },
+        {
+         "seq": 90106
+        },
+        {
+         "seq": 95106
+        },
+        {
+         "seq": 6
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "seq": 306
+        },
+        {
+         "seq": 1306
+        },
+        {
+         "seq": 2306
+        },
+        {
+         "seq": 206
+        },
+        {
+         "seq": 1206
+        },
+        {
+         "seq": 2206
+        },
+        {
+         "seq": 90206
+        },
+        {
+         "seq": 95206
+        },
+        {
+         "seq": 106
+        },
+        {
+         "seq": 1106
+        },
+        {
+         "seq": 2106
+        },
+        {
+         "seq": 90106
+        },
+        {
+         "seq": 95106
+        },
+        {
+         "seq": 6
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "seq": 306
+        },
+        {
+         "seq": 1306
+        },
+        {
+         "seq": 2306
+        },
+        {
+         "seq": 206
+        },
+        {
+         "seq": 1206
+        },
+        {
+         "seq": 2206
+        },
+        {
+         "seq": 90206
+        },
+        {
+         "seq": 95206
+        },
+        {
+         "seq": 106
+        },
+        {
+         "seq": 1106
+        },
+        {
+         "seq": 2106
+        },
+        {
+         "seq": 90106
+        },
+        {
+         "seq": 95106
+        },
+        {
+         "seq": 6
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "and": [
+       {
+        "service_seq": {
+         "int": "7"
+        }
+       },
+       {
+        "not": {
+         "is_close": {
+          "bool": true
+         }
+        }
+       }
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 33
+      },
+      "postgres": {
+       "json": 33
+      },
+      "sqlite": {
+       "json": 33
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "and": [
+       {
+        "seq": {
+         "in": {
+          "array": [
+           {
+            "int": "6"
+           },
+           {
+            "int": "106"
+           }
+          ]
+         }
+        }
+       },
+       {
+        "name": {
+         "ne": {
+          "text": "author-106"
+         }
+        }
+       }
+      ]
+     },
+     "order": [
+      {
+       "column": "seq",
+       "dir": "asc"
+      }
+     ],
+     "pick": [
+      "seq"
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "seq": 6
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "seq": 6
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "seq": 6
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "read_count": {
+       "between": [
+        {
+         "int": "10"
+        },
+        {
+         "int": "120"
+        }
+       ]
+      }
+     },
+     "expect": {
+      "mysql": {
+       "json": 12
+      },
+      "postgres": {
+       "json": 12
+      },
+      "sqlite": {
+       "json": 12
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "read_count": {
+       "ge": {
+        "int": "500"
+       }
+      }
+     },
+     "expect": {
+      "mysql": {
+       "json": 19
+      },
+      "postgres": {
+       "json": 19
+      },
+      "sqlite": {
+       "json": 19
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "read_count": {
+       "le": {
+        "int": "6"
+       }
+      }
+     },
+     "expect": {
+      "mysql": {
+       "json": 8
+      },
+      "postgres": {
+       "json": 8
+      },
+      "sqlite": {
+       "json": 8
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "name": {
+       "like": {
+        "text": "or-99"
+       }
+      }
+     },
+     "expect": {
+      "mysql": {
+       "json": 6
+      },
+      "postgres": {
+       "json": 6
+      },
+      "sqlite": {
+       "json": 6
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "start_dt": {
+       "gt": {
+        "datetime": "2026-05-31 23:59:59.000000"
+       }
+      }
+     },
+     "expect": {
+      "mysql": {
+       "json": 54
+      },
+      "postgres": {
+       "json": 54
+      },
+      "sqlite": {
+       "json": 54
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "start_dt": {
+       "gt": {
+        "datetime": "2026-06-01 00:00:00.000000"
+       }
+      }
+     },
+     "expect": {
+      "mysql": {
+       "json": 0
+      },
+      "postgres": {
+       "json": 0
+      },
+      "sqlite": {
+       "json": 0
+      }
+     }
+    },
+    {
+     "op": "model.update",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "6"
+      }
+     },
+     "set": {
+      "photo_url": {
+       "null": "text"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "photo_url": {
+       "is_null": true
+      }
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "and": [
+       {
+        "photo_url": {
+         "not_null": true
+        }
+       },
+       {
+        "name": {
+         "like": {
+          "text": "author-10"
+         }
+        }
+       }
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 3
+      },
+      "postgres": {
+       "json": 3
+      },
+      "sqlite": {
+       "json": 3
+      }
+     }
+    },
+    {
+     "op": "model.chain",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "as": "q"
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "from": "q",
+     "key": {
+      "is_close": {
+       "bool": true
+      }
+     },
+     "expect": {
+      "mysql": {
+       "json": 7
+      },
+      "postgres": {
+       "json": 7
+      },
+      "sqlite": {
+       "json": 7
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "from": "q",
+     "expect": {
+      "mysql": {
+       "json": 40
+      },
+      "postgres": {
+       "json": 40
+      },
+      "sqlite": {
+       "json": 40
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "name": {
+       "text": "author-106"
+      }
+     },
+     "pick": [
+      "seq"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "seq": 106
+       }
+      },
+      "postgres": {
+       "json": {
+        "seq": 106
+       }
+      },
+      "sqlite": {
+       "json": {
+        "seq": 106
+       }
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "name": {
+       "text": "missing"
+      }
+     },
+     "pick": [
+      "seq"
+     ],
+     "expect": {
+      "mysql": {
+       "json": null
+      },
+      "postgres": {
+       "json": null
+      },
+      "sqlite": {
+       "json": null
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "seq": {
+       "in": {
+        "array": []
+       }
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "EMPTY_IN"
+      },
+      "postgres": {
+       "error": "EMPTY_IN"
+      },
+      "sqlite": {
+       "error": "EMPTY_IN"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "chain": [
+       [
+        "",
+        {
+         "name": {
+          "text": "a"
+         }
+        }
+       ],
+       [
+        "",
+        {
+         "is_close": {
+          "bool": true
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "error": "CONFIG"
+      },
+      "postgres": {
+       "error": "CONFIG"
+      },
+      "sqlite": {
+       "error": "CONFIG"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "chain": [
+       [
+        "",
+        {
+         "name": {
+          "text": "a"
+         }
+        }
+       ],
+       [
+        "and"
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "error": "CONFIG"
+      },
+      "postgres": {
+       "error": "CONFIG"
+      },
+      "sqlite": {
+       "error": "CONFIG"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "core_columns_and_pages",
+   "requirements": [
+    "PLN-8",
+    "PLN-9",
+    "PLN-14"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "aggregate": {
+      "agg": "sum",
+      "column": "read_count"
+     },
+     "expect": {
+      "mysql": {
+       "json": 17540
+      },
+      "postgres": {
+       "json": 17540
+      },
+      "sqlite": {
+       "json": 17540
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "seq": {
+       "in": {
+        "array": [
+         {
+          "int": "6"
+         },
+         {
+          "int": "106"
+         },
+         {
+          "int": "206"
+         },
+         {
+          "int": "306"
+         }
+        ]
+       }
+      }
+     },
+     "aggregate": {
+      "agg": "avg",
+      "column": "read_count"
+     },
+     "expect": {
+      "mysql": {
+       "json": 156
+      },
+      "postgres": {
+       "json": 156
+      },
+      "sqlite": {
+       "json": 156
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "aggregate": {
+      "agg": "count",
+      "group_by": [
+       "is_close"
+      ]
+     },
+     "order": [
+      {
+       "column": "is_close",
+       "dir": "asc"
+      }
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "is_close": false,
+         "row_count": 33
+        },
+        {
+         "is_close": true,
+         "row_count": 7
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "is_close": false,
+         "row_count": 33
+        },
+        {
+         "is_close": true,
+         "row_count": 7
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "is_close": false,
+         "row_count": 33
+        },
+        {
+         "is_close": true,
+         "row_count": 7
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "order": [
+      {
+       "column": "seq",
+       "dir": "asc"
+      }
+     ],
+     "page": true,
+     "limit": {
+      "offset": 10,
+      "count": 10
+     },
+     "expect": {
+      "mysql": {
+       "json": {
+        "keys": [
+         1006,
+         1106,
+         1206,
+         1306,
+         1406,
+         1506,
+         1606,
+         1706,
+         1806,
+         1906
+        ],
+        "total": 40,
+        "pages": 4,
+        "page": 2,
+        "per_page": 10
+       }
+      },
+      "postgres": {
+       "json": {
+        "keys": [
+         1006,
+         1106,
+         1206,
+         1306,
+         1406,
+         1506,
+         1606,
+         1706,
+         1806,
+         1906
+        ],
+        "total": 40,
+        "pages": 4,
+        "page": 2,
+        "per_page": 10
+       }
+      },
+      "sqlite": {
+       "json": {
+        "keys": [
+         1006,
+         1106,
+         1206,
+         1306,
+         1406,
+         1506,
+         1606,
+         1706,
+         1806,
+         1906
+        ],
+        "total": 40,
+        "pages": 4,
+        "page": 2,
+        "per_page": 10
+       }
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "6"
+      }
+     },
+     "remove_columns": [
+      "name"
+     ],
+     "pick": [
+      "seq",
+      "read_count"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "seq": 6,
+        "read_count": 6
+       }
+      },
+      "postgres": {
+       "json": {
+        "seq": 6,
+        "read_count": 6
+       }
+      },
+      "sqlite": {
+       "json": {
+        "seq": 6,
+        "read_count": 6
+       }
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "6"
+      }
+     },
+     "columns": [
+      "read_count"
+     ],
+     "pick": [
+      "seq",
+      "read_count"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "seq": 6,
+        "read_count": 6
+       }
+      },
+      "postgres": {
+       "json": {
+        "seq": 6,
+        "read_count": 6
+       }
+      },
+      "sqlite": {
+       "json": {
+        "seq": 6,
+        "read_count": 6
+       }
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "User",
+     "where": {
+      "seq": {
+       "in": {
+        "sub": {
+         "model": "Author",
+         "columns": [
+          "user_seq"
+         ],
+         "where": {
+          "seq": {
+           "int": "6"
+          }
+         }
+        }
+       }
+      }
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "core_writes",
+   "requirements": [
+    "PLN-12",
+    "PLN-27",
+    "DSL-115",
+    "DSL-155"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
+     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\"));",
+     "only": [
+      "postgres"
+     ]
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "106"
+      }
+     },
+     "columns": "all",
+     "as": "loaded"
+    },
+    {
+     "op": "model.update",
+     "connection": "db",
+     "row": "loaded",
+     "set": {
+      "name": {
+       "text": "renamed"
+      },
+      "read_count": {
+       "arith": {
+        "operation": "plus",
+        "amount": {
+         "int": "5"
+        }
+       }
+      }
+     },
+     "optimistic": true
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "106"
+      }
+     },
+     "pick": [
+      "name",
+      "read_count"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "name": "renamed",
+        "read_count": 111
+       }
+      },
+      "postgres": {
+       "json": {
+        "name": "renamed",
+        "read_count": 111
+       }
+      },
+      "sqlite": {
+       "json": {
+        "name": "renamed",
+        "read_count": 111
+       }
+      }
+     }
+    },
+    {
+     "op": "model.update",
+     "connection": "db",
+     "row": "loaded",
+     "set": {
+      "name": {
+       "text": "stale"
+      }
+     },
+     "optimistic": true,
+     "expect": {
+      "mysql": {
+       "error": "CONFIG"
+      },
+      "postgres": {
+       "error": "CONFIG"
+      },
+      "sqlite": {
+       "error": "CONFIG"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "106"
+      }
+     },
+     "pick": [
+      "name",
+      "read_count"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "name": "renamed",
+        "read_count": 111
+       }
+      },
+      "postgres": {
+       "json": {
+        "name": "renamed",
+        "read_count": 111
+       }
+      },
+      "sqlite": {
+       "json": {
+        "name": "renamed",
+        "read_count": 111
+       }
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "206"
+      }
+     },
+     "columns": [
+      "seq",
+      "name"
+     ],
+     "as": "partial"
+    },
+    {
+     "op": "model.update",
+     "connection": "db",
+     "row": "partial",
+     "set": {
+      "name": {
+       "text": "stale"
+      }
+     },
+     "optimistic": true,
+     "expect": {
+      "mysql": {
+       "error": "CONFIG"
+      },
+      "postgres": {
+       "error": "CONFIG"
+      },
+      "sqlite": {
+       "error": "CONFIG"
+      }
+     }
+    },
+    {
+     "op": "model.update",
+     "connection": "db",
+     "row": "partial",
+     "set": {
+      "name": {
+       "text": "plain"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "206"
+      }
+     },
+     "pick": [
+      "name",
+      "read_count"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "name": "plain",
+        "read_count": 206
+       }
+      },
+      "postgres": {
+       "json": {
+        "name": "plain",
+        "read_count": 206
+       }
+      },
+      "sqlite": {
+       "json": {
+        "name": "plain",
+        "read_count": 206
+       }
+      }
+     }
+    },
+    {
+     "op": "events.subscribe",
+     "connection": "db",
+     "as": "events"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "Service",
+     "values": {
+      "name": {
+       "text": "acc"
+      }
+     },
+     "attached": {
+      "label": {
+       "text": "shown"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "json": {
+        "label": "shown",
+        "name": "acc",
+        "seq": 1000
+       }
+      },
+      "postgres": {
+       "json": {
+        "label": "shown",
+        "name": "acc",
+        "seq": 1000
+       }
+      },
+      "sqlite": {
+       "json": {
+        "label": "shown",
+        "name": "acc",
+        "seq": 1000
+       }
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "events",
+     "compare": "statements",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO `service` (`name`) VALUES (?)"
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO \"service\" (\"name\") VALUES ($1) RETURNING \"seq\""
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO \"service\" (\"name\") VALUES (?) RETURNING \"seq\""
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "op": "model.save",
+     "connection": "db",
+     "model": "Service",
+     "values": {
+      "seq": {
+       "int": "1"
+      },
+      "name": {
+       "text": "saved"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Service",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "pick": [
+      "name"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "name": "saved"
+       }
+      },
+      "postgres": {
+       "json": {
+        "name": "saved"
+       }
+      },
+      "sqlite": {
+       "json": {
+        "name": "saved"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "is_close": {
+       "bool": true
+      }
+     },
+     "expect": {
+      "mysql": {
+       "json": 10
+      },
+      "postgres": {
+       "json": 10
+      },
+      "sqlite": {
+       "json": 10
+      }
+     }
+    },
+    {
+     "op": "model.delete",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "is_close": {
+       "bool": true
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "is_close": {
+       "bool": true
+      }
+     },
+     "expect": {
+      "mysql": {
+       "json": 0
+      },
+      "postgres": {
+       "json": 0
+      },
+      "sqlite": {
+       "json": 0
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "values": {
+      "tenant_id": {
+       "int": "9"
+      },
+      "account_id": {
+       "int": "9"
+      },
+      "name": {
+       "text": "first"
+      }
+     }
+    },
+    {
+     "op": "model.duplicate_create",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "values": {
+      "tenant_id": {
+       "int": "9"
+      },
+      "account_id": {
+       "int": "9"
+      },
+      "name": {
+       "text": "first"
+      }
+     },
+     "duplication": {
+      "name": {
+       "text": "second"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "where": {
+      "tenant_id": {
+       "int": "9"
+      },
+      "account_id": {
+       "int": "9"
+      }
+     },
+     "pick": [
+      "name"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "name": "second"
+       }
+      },
+      "postgres": {
+       "json": {
+        "name": "second"
+       }
+      },
+      "sqlite": {
+       "json": {
+        "name": "second"
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "core_duplicate_relation",
+   "requirements": [
+    "CPX-5",
+    "DSL-128"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "relations": [
+      {
+       "model": "User",
+       "match": [
+        [
+         "user_seq",
+         "seq"
+        ]
+       ]
+      },
+      {
+       "model": "User",
+       "match": [
+        [
+         "user_seq",
+         "seq"
+        ]
+       ]
+      }
+     ],
+     "compile": true,
+     "expect": {
+      "mysql": {
+       "error": "CONFIG",
+       "message_contains": "user_model"
+      },
+      "postgres": {
+       "error": "CONFIG",
+       "message_contains": "user_model"
+      },
+      "sqlite": {
+       "error": "CONFIG",
+       "message_contains": "user_model"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "relations": [
+      {
+       "model": "User",
+       "match": [
+        [
+         "user_seq",
+         "seq"
+        ]
+       ]
+      },
+      {
+       "model": "User",
+       "match": [
+        [
+         "user_seq",
+         "seq"
+        ]
+       ]
+      }
+     ],
+     "compile": true,
+     "expect": {
+      "mysql": {
+       "error": "CONFIG",
+       "message_contains": "alias<Name>()"
+      },
+      "postgres": {
+       "error": "CONFIG",
+       "message_contains": "alias<Name>()"
+      },
+      "sqlite": {
+       "error": "CONFIG",
+       "message_contains": "alias<Name>()"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "relations": [
+      {
+       "model": "User",
+       "match": [
+        [
+         "user_seq",
+         "seq"
+        ]
+       ]
+      },
+      {
+       "model": "User",
+       "match": [
+        [
+         "user_seq",
+         "seq"
+        ]
+       ]
+      }
+     ],
+     "pick": [
+      "seq"
+     ],
+     "expect": {
+      "mysql": {
+       "error": "CONFIG",
+       "message_contains": "user_model"
+      },
+      "postgres": {
+       "error": "CONFIG",
+       "message_contains": "user_model"
+      },
+      "sqlite": {
+       "error": "CONFIG",
+       "message_contains": "user_model"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "relations": [
+      {
+       "model": "User",
+       "match": [
+        [
+         "user_seq",
+         "seq"
+        ]
+       ]
+      },
+      {
+       "model": "User",
+       "match": [
+        [
+         "user_seq",
+         "seq"
+        ]
+       ]
+      }
+     ],
+     "pick": [
+      "seq"
+     ],
+     "expect": {
+      "mysql": {
+       "error": "CONFIG",
+       "message_contains": "alias<Name>()"
+      },
+      "postgres": {
+       "error": "CONFIG",
+       "message_contains": "alias<Name>()"
+      },
+      "sqlite": {
+       "error": "CONFIG",
+       "message_contains": "alias<Name>()"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "core_in_list_padding",
+   "requirements": [
+    "CPX-4"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "events.subscribe",
+     "connection": "db",
+     "as": "events"
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "chain": [
+       [
+        "",
+        {
+         "seq": {
+          "in": {
+           "array": [
+            {
+             "int": "6"
+            }
+           ]
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "service_seq": {
+          "int": "7"
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "chain": [
+       [
+        "",
+        {
+         "seq": {
+          "in": {
+           "array": [
+            {
+             "int": "6"
+            },
+            {
+             "int": "106"
+            }
+           ]
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "service_seq": {
+          "int": "7"
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 2
+      },
+      "postgres": {
+       "json": 2
+      },
+      "sqlite": {
+       "json": 2
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "chain": [
+       [
+        "",
+        {
+         "seq": {
+          "in": {
+           "array": [
+            {
+             "int": "6"
+            },
+            {
+             "int": "106"
+            },
+            {
+             "int": "206"
+            }
+           ]
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "service_seq": {
+          "int": "7"
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 3
+      },
+      "postgres": {
+       "json": 3
+      },
+      "sqlite": {
+       "json": 3
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "chain": [
+       [
+        "",
+        {
+         "seq": {
+          "in": {
+           "array": [
+            {
+             "int": "6"
+            },
+            {
+             "int": "106"
+            },
+            {
+             "int": "206"
+            },
+            {
+             "int": "306"
+            }
+           ]
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "service_seq": {
+          "int": "7"
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 4
+      },
+      "postgres": {
+       "json": 4
+      },
+      "sqlite": {
+       "json": 4
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "chain": [
+       [
+        "",
+        {
+         "seq": {
+          "in": {
+           "array": [
+            {
+             "int": "6"
+            },
+            {
+             "int": "106"
+            },
+            {
+             "int": "206"
+            },
+            {
+             "int": "306"
+            },
+            {
+             "int": "406"
+            }
+           ]
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "service_seq": {
+          "int": "7"
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 5
+      },
+      "postgres": {
+       "json": 5
+      },
+      "sqlite": {
+       "json": 5
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "events",
+     "compare": "all",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`seq` IN (?) AND `a`.`service_seq` = ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "7"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`seq` IN (?, ?) AND `a`.`service_seq` = ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "106"
+              },
+              {
+               "int": "7"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`seq` IN (?, ?, ?, ?) AND `a`.`service_seq` = ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "106"
+              },
+              {
+               "int": "206"
+              },
+              {
+               "int": "206"
+              },
+              {
+               "int": "7"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`seq` IN (?, ?, ?, ?) AND `a`.`service_seq` = ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "106"
+              },
+              {
+               "int": "206"
+              },
+              {
+               "int": "306"
+              },
+              {
+               "int": "7"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`seq` IN (?, ?, ?, ?, ?, ?, ?, ?) AND `a`.`service_seq` = ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "106"
+              },
+              {
+               "int": "206"
+              },
+              {
+               "int": "306"
+              },
+              {
+               "int": "406"
+              },
+              {
+               "int": "406"
+              },
+              {
+               "int": "406"
+              },
+              {
+               "int": "406"
+              },
+              {
+               "int": "7"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" IN ($1) AND \"a\".\"service_seq\" = $2"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "7"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" IN ($1, $2) AND \"a\".\"service_seq\" = $3"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "106"
+              },
+              {
+               "int": "7"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" IN ($1, $2, $3, $4) AND \"a\".\"service_seq\" = $5"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "106"
+              },
+              {
+               "int": "206"
+              },
+              {
+               "int": "206"
+              },
+              {
+               "int": "7"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" IN ($1, $2, $3, $4) AND \"a\".\"service_seq\" = $5"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "106"
+              },
+              {
+               "int": "206"
+              },
+              {
+               "int": "306"
+              },
+              {
+               "int": "7"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" IN ($1, $2, $3, $4, $5, $6, $7, $8) AND \"a\".\"service_seq\" = $9"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "106"
+              },
+              {
+               "int": "206"
+              },
+              {
+               "int": "306"
+              },
+              {
+               "int": "406"
+              },
+              {
+               "int": "406"
+              },
+              {
+               "int": "406"
+              },
+              {
+               "int": "406"
+              },
+              {
+               "int": "7"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" IN (?) AND \"a\".\"service_seq\" = ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "7"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" IN (?, ?) AND \"a\".\"service_seq\" = ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "106"
+              },
+              {
+               "int": "7"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" IN (?, ?, ?, ?) AND \"a\".\"service_seq\" = ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "106"
+              },
+              {
+               "int": "206"
+              },
+              {
+               "int": "206"
+              },
+              {
+               "int": "7"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" IN (?, ?, ?, ?) AND \"a\".\"service_seq\" = ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "106"
+              },
+              {
+               "int": "206"
+              },
+              {
+               "int": "306"
+              },
+              {
+               "int": "7"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" IN (?, ?, ?, ?, ?, ?, ?, ?) AND \"a\".\"service_seq\" = ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "106"
+              },
+              {
+               "int": "206"
+              },
+              {
+               "int": "306"
+              },
+              {
+               "int": "406"
+              },
+              {
+               "int": "406"
+              },
+              {
+               "int": "406"
+              },
+              {
+               "int": "406"
+              },
+              {
+               "int": "7"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "core_projected_reads",
+   "requirements": [
+    "PRT-2",
+    "PRT-34"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "events.subscribe",
+     "connection": "db",
+     "as": "events"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "seq": {
+       "int": "6"
+      }
+     },
+     "order": [],
+     "columns": [
+      "name"
+     ],
+     "remove_columns": [
+      "user_seq",
+      "service_seq",
+      "service_region_seq",
+      "service_member_seq"
+     ],
+     "limit": {
+      "offset": 0,
+      "count": 1
+     },
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "seq": 6,
+         "name": "author-6"
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "seq": 6,
+         "name": "author-6"
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "seq": 6,
+         "name": "author-6"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "chain": [
+       [
+        "",
+        {
+         "service_seq": {
+          "int": "7"
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "is_close": {
+          "bool": false
+         }
+        }
+       ]
+      ]
+     },
+     "order": [
+      {
+       "column": "seq",
+       "dir": "desc"
+      }
+     ],
+     "columns": [
+      "name"
+     ],
+     "remove_columns": [
+      "user_seq",
+      "service_seq",
+      "service_region_seq",
+      "service_member_seq"
+     ],
+     "limit": {
+      "offset": 0,
+      "count": 100
+     },
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "seq": 99906,
+         "name": "author-99906"
+        },
+        {
+         "seq": 99706,
+         "name": "author-99706"
+        },
+        {
+         "seq": 99606,
+         "name": "author-99606"
+        },
+        {
+         "seq": 99506,
+         "name": "author-99506"
+        },
+        {
+         "seq": 95206,
+         "name": "author-95206"
+        },
+        {
+         "seq": 95106,
+         "name": "author-95106"
+        },
+        {
+         "seq": 95006,
+         "name": "author-95006"
+        },
+        {
+         "seq": 90206,
+         "name": "author-90206"
+        },
+        {
+         "seq": 90106,
+         "name": "author-90106"
+        },
+        {
+         "seq": 4906,
+         "name": "author-4906"
+        },
+        {
+         "seq": 2906,
+         "name": "author-2906"
+        },
+        {
+         "seq": 2406,
+         "name": "author-2406"
+        },
+        {
+         "seq": 2306,
+         "name": "author-2306"
+        },
+        {
+         "seq": 2206,
+         "name": "author-2206"
+        },
+        {
+         "seq": 2106,
+         "name": "author-2106"
+        },
+        {
+         "seq": 2006,
+         "name": "author-2006"
+        },
+        {
+         "seq": 1906,
+         "name": "author-1906"
+        },
+        {
+         "seq": 1706,
+         "name": "author-1706"
+        },
+        {
+         "seq": 1606,
+         "name": "author-1606"
+        },
+        {
+         "seq": 1506,
+         "name": "author-1506"
+        },
+        {
+         "seq": 1406,
+         "name": "author-1406"
+        },
+        {
+         "seq": 1306,
+         "name": "author-1306"
+        },
+        {
+         "seq": 1206,
+         "name": "author-1206"
+        },
+        {
+         "seq": 1006,
+         "name": "author-1006"
+        },
+        {
+         "seq": 906,
+         "name": "author-906"
+        },
+        {
+         "seq": 806,
+         "name": "author-806"
+        },
+        {
+         "seq": 706,
+         "name": "author-706"
+        },
+        {
+         "seq": 606,
+         "name": "author-606"
+        },
+        {
+         "seq": 506,
+         "name": "author-506"
+        },
+        {
+         "seq": 306,
+         "name": "author-306"
+        },
+        {
+         "seq": 206,
+         "name": "author-206"
+        },
+        {
+         "seq": 106,
+         "name": "author-106"
+        },
+        {
+         "seq": 6,
+         "name": "author-6"
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "seq": 99906,
+         "name": "author-99906"
+        },
+        {
+         "seq": 99706,
+         "name": "author-99706"
+        },
+        {
+         "seq": 99606,
+         "name": "author-99606"
+        },
+        {
+         "seq": 99506,
+         "name": "author-99506"
+        },
+        {
+         "seq": 95206,
+         "name": "author-95206"
+        },
+        {
+         "seq": 95106,
+         "name": "author-95106"
+        },
+        {
+         "seq": 95006,
+         "name": "author-95006"
+        },
+        {
+         "seq": 90206,
+         "name": "author-90206"
+        },
+        {
+         "seq": 90106,
+         "name": "author-90106"
+        },
+        {
+         "seq": 4906,
+         "name": "author-4906"
+        },
+        {
+         "seq": 2906,
+         "name": "author-2906"
+        },
+        {
+         "seq": 2406,
+         "name": "author-2406"
+        },
+        {
+         "seq": 2306,
+         "name": "author-2306"
+        },
+        {
+         "seq": 2206,
+         "name": "author-2206"
+        },
+        {
+         "seq": 2106,
+         "name": "author-2106"
+        },
+        {
+         "seq": 2006,
+         "name": "author-2006"
+        },
+        {
+         "seq": 1906,
+         "name": "author-1906"
+        },
+        {
+         "seq": 1706,
+         "name": "author-1706"
+        },
+        {
+         "seq": 1606,
+         "name": "author-1606"
+        },
+        {
+         "seq": 1506,
+         "name": "author-1506"
+        },
+        {
+         "seq": 1406,
+         "name": "author-1406"
+        },
+        {
+         "seq": 1306,
+         "name": "author-1306"
+        },
+        {
+         "seq": 1206,
+         "name": "author-1206"
+        },
+        {
+         "seq": 1006,
+         "name": "author-1006"
+        },
+        {
+         "seq": 906,
+         "name": "author-906"
+        },
+        {
+         "seq": 806,
+         "name": "author-806"
+        },
+        {
+         "seq": 706,
+         "name": "author-706"
+        },
+        {
+         "seq": 606,
+         "name": "author-606"
+        },
+        {
+         "seq": 506,
+         "name": "author-506"
+        },
+        {
+         "seq": 306,
+         "name": "author-306"
+        },
+        {
+         "seq": 206,
+         "name": "author-206"
+        },
+        {
+         "seq": 106,
+         "name": "author-106"
+        },
+        {
+         "seq": 6,
+         "name": "author-6"
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "seq": 99906,
+         "name": "author-99906"
+        },
+        {
+         "seq": 99706,
+         "name": "author-99706"
+        },
+        {
+         "seq": 99606,
+         "name": "author-99606"
+        },
+        {
+         "seq": 99506,
+         "name": "author-99506"
+        },
+        {
+         "seq": 95206,
+         "name": "author-95206"
+        },
+        {
+         "seq": 95106,
+         "name": "author-95106"
+        },
+        {
+         "seq": 95006,
+         "name": "author-95006"
+        },
+        {
+         "seq": 90206,
+         "name": "author-90206"
+        },
+        {
+         "seq": 90106,
+         "name": "author-90106"
+        },
+        {
+         "seq": 4906,
+         "name": "author-4906"
+        },
+        {
+         "seq": 2906,
+         "name": "author-2906"
+        },
+        {
+         "seq": 2406,
+         "name": "author-2406"
+        },
+        {
+         "seq": 2306,
+         "name": "author-2306"
+        },
+        {
+         "seq": 2206,
+         "name": "author-2206"
+        },
+        {
+         "seq": 2106,
+         "name": "author-2106"
+        },
+        {
+         "seq": 2006,
+         "name": "author-2006"
+        },
+        {
+         "seq": 1906,
+         "name": "author-1906"
+        },
+        {
+         "seq": 1706,
+         "name": "author-1706"
+        },
+        {
+         "seq": 1606,
+         "name": "author-1606"
+        },
+        {
+         "seq": 1506,
+         "name": "author-1506"
+        },
+        {
+         "seq": 1406,
+         "name": "author-1406"
+        },
+        {
+         "seq": 1306,
+         "name": "author-1306"
+        },
+        {
+         "seq": 1206,
+         "name": "author-1206"
+        },
+        {
+         "seq": 1006,
+         "name": "author-1006"
+        },
+        {
+         "seq": 906,
+         "name": "author-906"
+        },
+        {
+         "seq": 806,
+         "name": "author-806"
+        },
+        {
+         "seq": 706,
+         "name": "author-706"
+        },
+        {
+         "seq": 606,
+         "name": "author-606"
+        },
+        {
+         "seq": 506,
+         "name": "author-506"
+        },
+        {
+         "seq": 306,
+         "name": "author-306"
+        },
+        {
+         "seq": 206,
+         "name": "author-206"
+        },
+        {
+         "seq": 106,
+         "name": "author-106"
+        },
+        {
+         "seq": 6,
+         "name": "author-6"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "events",
+     "compare": "all",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT ?, ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "0"
+              },
+              {
+               "int": "1"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? ORDER BY `a`.`seq` DESC LIMIT ?, ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "7"
+              },
+              {
+               "bool": false
+              },
+              {
+               "int": "0"
+              },
+              {
+               "int": "100"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = $1 LIMIT $2 OFFSET $3"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "1"
+              },
+              {
+               "int": "0"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = $1 AND \"a\".\"is_close\" = $2 ORDER BY \"a\".\"seq\" DESC LIMIT $3 OFFSET $4"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "7"
+              },
+              {
+               "bool": false
+              },
+              {
+               "int": "100"
+              },
+              {
+               "int": "0"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT ? OFFSET ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "1"
+              },
+              {
+               "int": "0"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = ? AND \"a\".\"is_close\" = ? ORDER BY \"a\".\"seq\" DESC LIMIT ? OFFSET ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "7"
+              },
+              {
+               "bool": false
+              },
+              {
+               "int": "100"
+              },
+              {
+               "int": "0"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "value_function_parameter_indexes",
+   "requirements": [
+    "PRT-77"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "start_dt": {
+          "lt": {
+           "fn": "now",
+           "args": []
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 54
+      },
+      "postgres": {
+       "json": 54
+      },
+      "sqlite": {
+       "json": 54
+      }
+     }
+    },
+    {
+     "op": "events.subscribe",
+     "connection": "db",
+     "as": "events"
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "name": {
+          "eq": {
+           "text": "nobody"
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "start_dt": {
+          "gt": {
+           "fn": "seconds_ago",
+           "args": [
+            {
+             "int": "30"
+            }
+           ]
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 0
+      },
+      "postgres": {
+       "json": 0
+      },
+      "sqlite": {
+       "json": 0
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "events",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`name` = ? AND `a`.`start_dt` > CASE WHEN DATE_SUB(NOW(6), INTERVAL CASE WHEN ? BETWEEN -315537897600 AND 315537897600 THEN ? END SECOND) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN DATE_SUB(NOW(6), INTERVAL CASE WHEN ? BETWEEN -315537897600 AND 315537897600 THEN ? END SECOND) END"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "nobody"
+              },
+              {
+               "int": "30"
+              },
+              {
+               "int": "30"
+              },
+              {
+               "int": "30"
+              },
+              {
+               "int": "30"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"name\" = $1 AND \"a\".\"start_dt\" > CASE WHEN (CAST($2 AS timestamp(6)) - make_interval(secs => CAST(CASE WHEN CAST($3 AS double precision) BETWEEN -315537897600 AND 315537897600 THEN CAST($4 AS double precision) END AS double precision))) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN (CAST($5 AS timestamp(6)) - make_interval(secs => CAST(CASE WHEN CAST($6 AS double precision) BETWEEN -315537897600 AND 315537897600 THEN CAST($7 AS double precision) END AS double precision))) END"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "nobody"
+              },
+              {
+               "text": "$NOW"
+              },
+              {
+               "int": "30"
+              },
+              {
+               "int": "30"
+              },
+              {
+               "text": "$NOW"
+              },
+              {
+               "int": "30"
+              },
+              {
+               "int": "30"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"name\" = ? AND \"a\".\"start_dt\" > CASE WHEN (datetime(?, '-' || CAST(? AS TEXT) || ' seconds') || substr(?, 20)) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN (datetime(?, '-' || CAST(? AS TEXT) || ' seconds') || substr(?, 20)) END"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "nobody"
+              },
+              {
+               "text": "$NOW"
+              },
+              {
+               "int": "30"
+              },
+              {
+               "text": "$NOW"
+              },
+              {
+               "text": "$NOW"
+              },
+              {
+               "int": "30"
+              },
+              {
+               "text": "$NOW"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
       }
      }
     }

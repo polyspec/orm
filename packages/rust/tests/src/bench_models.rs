@@ -10,7 +10,7 @@ use std::pin::Pin;
 use polyspec_orm::{Config, Db, Schema};
 use serde_json::{json, Map, Value};
 
-use crate::recipe::{ModelDispatcher, ModelFuture};
+use crate::recipe::{ModelDispatcher, ModelFuture, CASE_CONNECTION};
 
 /// The connections that model.connect opened in one case, by name.
 #[derive(Default)]
@@ -108,11 +108,17 @@ impl<M: CaseModels> ModelDispatcher for Dispatcher<M> {
         self.connections.0.get(name).cloned()
     }
 
+    fn adopt(&mut self, name: &str, db: Db) {
+        self.connections.0.insert(name.to_owned(), db);
+    }
+
     fn close<'a>(&'a mut self) -> Pin<Box<dyn Future<Output = ()> + Send + 'a>> {
         self.models.clear();
         Box::pin(async move {
-            for (_, db) in self.connections.0.drain() {
-                db.close().await;
+            for (name, db) in self.connections.0.drain() {
+                if name != CASE_CONNECTION {
+                    db.close().await;
+                }
             }
         })
     }
@@ -122,6 +128,11 @@ impl<M: CaseModels> ModelDispatcher for Dispatcher<M> {
 pub trait BenchModels: Send + 'static {
     /// The op `op` of `step` on `db`: its fields, which the expect of the step compares.
     fn run(&self, db: &Db, op: &str, step: &Value) -> impl Future<Output = Result<Value, String>>;
+    /// The op `op` of a `step` whose model is built with no connection (PLN-16); no recipe has one by default.
+    fn run_unconnected(&self, op: &str, _step: &Value) -> impl Future<Output = Result<Value, String>> {
+        let message = format!("{op} has no unconnected form");
+        async move { Err(message) }
+    }
 }
 
 /// The ops of `models` on connections of the generated models of `schema` with the bench keys.
@@ -146,6 +157,9 @@ impl<M: BenchModels> CaseModels for Bench<M> {
     }
 
     async fn run(&mut self, connections: &mut Connections, op: &str, connection: &str, step: &Value) -> Result<Value, String> {
+        if step["unconnected"].as_bool() == Some(true) {
+            return self.models.run_unconnected(op, step).await;
+        }
         let db = connections.bound(connection)?;
         self.models.run(&db, op, step).await
     }

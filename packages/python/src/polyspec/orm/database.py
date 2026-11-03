@@ -1436,7 +1436,8 @@ def _connection_config(options: dict) -> _PoolConfig:
         if isinstance(value, bool) or not isinstance(value, int):
             raise OrmError(codes.CONFIG, f"{name} must be an integer")
         if value < 0:
-            raise OrmError(codes.CONFIG, f"{name} must not be negative")
+            label = "statement timeout" if name == "statementTimeoutMs" else name
+            raise OrmError(codes.CONFIG, f"{label} must not be negative")
         values[name] = value
     size = values["poolSize"] or DEFAULT_POOL_SIZE
     if values["poolIdleSize"] > size:
@@ -1863,8 +1864,23 @@ class Db:
                 codes.DRIVER,
                 "a PostgreSQL notification payload must be shorter than 8000 bytes and contain no U+0000",
             )
-        self._connection.execute(
-            "SELECT pg_notify($1, $2)", [channel, payload], self._cancellation
+        sql = "SELECT pg_notify($1, $2)"
+        values = [channel, payload]
+        frame = _active_for(self)
+        if frame is not None:
+            frame.run(sql, values)
+            return
+        self.events.send(
+            "utility",
+            (),
+            None,
+            values,
+            sql,
+            lambda: self._sent(
+                lambda: _execute_cancellable(
+                    self._connection, sql, values, self._cancellation
+                )
+            ),
         )
 
     def listen(self, channel: str) -> Subscription:

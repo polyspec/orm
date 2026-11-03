@@ -2,28 +2,31 @@
 // <recipe>-<database>.test.mjs, calls runRecipe with the recipe and the database, and each case of the recipe is one test
 // whose steps call the public API of @polyspec/orm that each op names. It has no command line and no output of its own.
 import assert from 'node:assert/strict';
-import { appendFileSync, existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
+import { DatabaseSync } from 'node:sqlite';
 import { isDeepStrictEqual } from 'node:util';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
-import { AesKeyring, BindCell, CORE, Collection, Db, OrmError, loadSet, StyledValue, blindIndex, chainPlans, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, orm, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
+import { AesKeyring, BindCell, CORE, Collection, transactionConflict, Db, OrmError, loadSet, StyledValue, blindIndex, chainPlans, codes, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, orm, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
 import { analyzeDbspec, formatDbspec, parseDbspecSet as parseDbspecSetBrowser, readDbspecBytes } from '../dist/dbspec/entry.js';
-import { addTablesAndColumnsSteps, exportMermaid, importMermaid } from '../dist/dbspec/index.js';
+import { DbspecApplyError, addTablesAndColumnsSteps, applyPlans, exportMermaid, importMermaid, introspectDbspec, rollbackPlans } from '../dist/dbspec/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
 import { Slots, connect as connectSlots } from '../dist/models/bind_fixture/models.js';
+import { modelOfDocuments, parseDocumentSet } from '../dist/engine/model.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
+import { paramUses } from '../dist/engine/params.js';
 import { Engine } from '../dist/index.js';
 import { withCaseDatabase } from './case-database.mjs';
 import { checkKeys } from './recipe_keys.mjs';
-import { checkGenerator } from './recipe_generator.mjs';
+import { checkGeneratedFiles, checkGenerator } from './recipe_generator.mjs';
 import { modelOps } from './recipe_model.mjs';
 import { classesFromModel } from './registered_models.mjs';
-import { nativeQuery, within } from './coverage_case.mjs';
+import { nativeQuery, nativeSession, within } from './coverage_case.mjs';
 import { conformanceCases, normalize } from './markdown_cases.mjs';
 import { listenMarkdownTestServer } from './markdown_test_listener.mjs';
 import { caseTest, COMPUTE, DATABASE } from '../../../tests/testcase.mts';
@@ -67,13 +70,20 @@ export function runRecipe(path, database) {
         try {
           if (step.op === 'ir.validate') checkValidate(step, requestText(literal, caseIndex, index), schema, database);
           else if (step.op === 'planner.compile') checkPlanner(step, dirname(path), database);
+          else if (step.op === 'ir.param_uses') checkParamUses(step, dirname(path), database);
+          else if (step.op === 'planner.columns') checkPlannerColumns(step, dirname(path), database);
           else if (dbspecOps.includes(step.op)) checkDbspec(step, bound, database);
           else if (step.op === 'ir.answer') await checkAnswer(step, database, answerText(literal, caseIndex, index));
           else if (step.op === 'collection.key') checkCollectionKey(step, database);
           else if (step.op === 'dsn.connect') await checkDsnConnect(step, database);
+          else if (step.op === 'markdown.connect') await checkMarkdownConnect(step, database);
           else if (step.op === 'keyring.versions') checkKeyring(step, database);
+          else if (step.op === 'dbspec.introspect_shown') await checkIntrospectShown(step, dir, database);
+          else if (step.op === 'dbspec.apply_fault') await checkApplyFault(step, bound, database);
+          else if (step.op === 'dbspec.introspect_sqlite') await checkIntrospectSqlite(step, database);
           else if (step.op === 'markdown.builder') await checkBuilder(step, database);
           else if (step.op === 'generator.generate') checkGenerator(step, dir, database);
+          else if (step.op === 'generator.check') checkGeneratedFiles(step, dir);
           else if (dbspecFileOps.includes(step.op)) await checkDbspecFiles(step, dir, database);
           else if (mermaidOps.includes(step.op)) checkMermaid(step, mermaidStep(step, bound, dir), database);
           else if (step.op === 'markdown.send') await withProcessZone(step.process_zone, () => checkSend(step, member(member(member(wrapped, 'cases').array[caseIndex], 'steps').array[index], 'expect')));
@@ -89,12 +99,22 @@ export function runRecipe(path, database) {
 
 // connectDriver opens a DSN with Db.connect, runs SELECT 1 through the statement runner (INT-150), closes it and returns its
 // driver: the one implementation of dsn.connect (FCV-4).
-async function connectDriver(dsn) {
-  const db = await Db.connect(dsn);
+async function connectDriver(dsn, config = {}) {
+  const db = await Db.connect(dsn, {
+    ...(config.pool_size === undefined ? {} : { poolSize: config.pool_size }),
+    ...(config.pool_idle_size === undefined ? {} : { poolIdleSize: config.pool_idle_size }),
+    ...(config.pool_lifetime_ms === undefined ? {} : { poolLifetimeMs: config.pool_lifetime_ms }),
+    ...(config.statement_timeout_ms === undefined ? {} : { statementTimeoutMs: config.statement_timeout_ms }),
+  });
   try {
     const { rows } = await db.utils().run(async frame => frame.run('utility', [], 'SELECT 1'));
     if (rows.length !== 1 || rows[0].length !== 1 || Number(rows[0][0]) !== 1) {
       throw new Error(`SELECT 1 on the connection of ${db.driver} returned ${JSON.stringify(rows)}`);
+    }
+    if (config.tls_version === true) {
+      const status = await db.utils().run(async frame => frame.run('utility', [], "SHOW SESSION STATUS LIKE 'Ssl_version'"));
+      const version = status.rows[0]?.[1];
+      if (version !== 'TLSv1.2' && version !== 'TLSv1.3') throw new Error(`the connection has Ssl_version ${JSON.stringify(version)}`);
     }
     return db.driver;
   } finally {
@@ -102,15 +122,42 @@ async function connectDriver(dsn) {
   }
 }
 
+// checkMarkdownConnect runs the markdown.connect op (FCV-4, PRT-64): Db.connect on a listener that answers the first line with the
+// reply of the step.
+async function checkMarkdownConnect(step, database) {
+  const received = [];
+  const server = await listenMarkdownTestServer(createServer(socket => {
+    createInterface({ input: socket }).once('line', line => {
+      received.push(line);
+      socket.end(`${step.reply}\n`);
+    });
+    socket.on('error', () => {});
+  }));
+  const expect = step.expect[database];
+  let failure;
+  try {
+    await connectDriver(`markdown://127.0.0.1:${new URL(server.dsn).port}/${step.corpus}?token=${step.token}`);
+  } catch (error) {
+    failure = error;
+  } finally {
+    await server.close();
+  }
+  if (!isDeepStrictEqual(received, [step.received])) throw new Error(`the listener received ${JSON.stringify(received)}, want ${step.received}`);
+  if (failure?.code !== expect.error) throw new Error(`error ${failure?.code ?? 'none'}, want ${expect.error}`);
+  if (!failure.message.includes(expect.message_holds ?? '')) throw new Error(`message ${failure.message}, want one that holds ${expect.message_holds}`);
+}
+
 // checkDsnConnect runs the dsn.connect op (FCV-4) on the DSN text of the step, and checks the refusal code or the driver of its expect.
 async function checkDsnConnect(step, database) {
   const expect = step.expect?.[database];
   let driver;
   let code = '';
+  let message = '';
   try {
-    driver = await connectDriver(step.dsn);
+    driver = await connectDriver(step.dsn, step.config);
   } catch (error) {
     code = error?.code ?? '';
+    message = error?.message ?? '';
   }
   if (expect === undefined) {
     if (code !== '') throw new Error(`unexpected error ${code}`);
@@ -118,6 +165,7 @@ async function checkDsnConnect(step, database) {
   }
   if (expect.error !== undefined) {
     if (code !== expect.error) throw new Error(`error ${code || 'none'}, want ${expect.error}`);
+    if (!message.includes(expect.message_holds ?? '')) throw new Error(`message ${message}, want one that holds ${expect.message_holds}`);
     return;
   }
   if (code !== '') throw new Error(`unexpected error ${code}`);
@@ -167,6 +215,12 @@ function run(step, bound, database) {
     return;
   }
   if (result.error !== undefined) throw new Error(`unexpected error ${result.error}`);
+  if (expect.bytes_prefix_hex !== undefined) {
+    // An envelope has a random nonce, so its form is its prefix and its length (COD-5).
+    const cell = Buffer.from(result.value);
+    if (cell.length !== expect.bytes_length || !cell.toString('hex').startsWith(expect.bytes_prefix_hex)) throw new Error(`cell ${cell.toString('hex')}, want ${expect.bytes_length} bytes with the prefix ${expect.bytes_prefix_hex}`);
+    return;
+  }
   if (!result.decoded) return compareCell(expect.value, result.value);
   if (result.value.kind === 'sql-null') {
     if (!('null' in expect.value)) throw new Error(`SQL NULL, want ${JSON.stringify(expect.value)}`);
@@ -432,6 +486,29 @@ async function fixtureSchema(setPath) {
 
 const NONE_FIXTURE = 'none';
 
+/**
+ * Installs the fixture of a recipe on the empty database of dsn and inserts its seed rows, so that a native conformance
+ * body reads the rows that the expects of the recipe state (tests/conformance/check/recipe_vectors.mts).
+ */
+export async function prepareRecipeDatabase(path, database, dsn) {
+  const recipe = JSON.parse(readFileSync(path, 'utf8'));
+  const { schema, installFirst } = await fixtureSchema(resolve(root, recipe.fixture));
+  const db = await Db.connect(dsn);
+  const catalog = await connectCatalog(dsn);
+  try {
+    for (const shared of [...installFirst, schema]) await db.utils().schema().install(shared);
+    const namespace = await catalog.currentNamespace();
+    const context = { catalog, namespace, database, dsn, bound: new Map(), tablePath: true, db, schema, dir: resolve(root, dirname(path)) };
+    for (const [table, values] of Object.entries(recipe.seed?.rows ?? {})) {
+      const metadata = await catalog.describeTable({ namespace, name: table });
+      for (const row of values) await catalog.insertRow(metadata, assignments(row, context));
+    }
+  } finally {
+    await catalog.close();
+    await db.close();
+  }
+}
+
 async function runCase({ name, recipe, recipeCase, database, schema, installFirst, caseDatabase, step }) {
   const db = await Db.connect(caseDatabase.dsn);
   try {
@@ -454,7 +531,7 @@ async function runCaseOn({ name, recipe, recipeCase, database, schema, caseDatab
     const namespace = await catalog.currentNamespace();
     const bound = new Map([['database', { text: caseDatabase.name }]]);
     const classes = schema === undefined ? {} : classesFromModel(registerModel(schema.manifestText, schema.manifestHash, schema.externalText));
-    context = { catalog, namespace, database, dsn: caseDatabase.dsn, bound, tablePath: recipe.fixture !== GENERATED_FIXTURE, db, schema, classes, dir: dirname(resolve(root, name)), closers, closed: false, records: [], hookBases: new Map(), fields: new Map() };
+    context = { catalog, namespace, database, caseOnly: recipeCase.only, dsn: caseDatabase.dsn, bound, tablePath: recipe.fixture !== GENERATED_FIXTURE, db, schema, classes, dir: dirname(resolve(root, name)), closers, closed: false, records: [], hookBases: new Map(), fields: new Map() };
     for (const rows of [recipe.seed?.rows, recipeCase.seed?.rows]) {
       for (const [table, values] of Object.entries(rows ?? {})) {
         const metadata = await catalog.describeTable({ namespace, name: table });
@@ -487,6 +564,7 @@ const callbackError = new Error('the transaction callback failed');
 /** Records one statement event as a recipe object (FCV-4): transactions are numbered from 1 in order of appearance. */
 function recordEvent(subscription, event) {
   if (!(typeof event.elapsed === 'number' && event.elapsed >= 0)) subscription.negative = true;
+  if (event.error !== null && !(event.error instanceof OrmError)) subscription.uncoded = true;
   let transaction = null;
   if (event.transaction !== null) {
     if (!subscription.numbers.has(event.transaction)) subscription.numbers.set(event.transaction, subscription.numbers.size + 1);
@@ -536,7 +614,31 @@ const GENERATED_FIXTURE = 'contracts/fixtures/bench/dbspec-set.json';
 const OPS = {
   // dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step.
   async 'dsn.connect'(s, context) {
-    return { value: { text: await connectDriver(s.dsn === 'case' ? context.dsn : s.dsn) } };
+    if (s.dsn.startsWith('env:')) {
+      const dsn = process.env[s.dsn.slice(4)];
+      if (!dsn) throw new Error(`dsn.connect: ${s.dsn.slice(4)} is unset; run make orm-test-servers`);
+      return { value: { text: await connectDriver(dsn, s.config) } };
+    }
+    if (s.dsn !== 'case') return { value: { text: await connectDriver(s.dsn, s.config) } };
+    const dsn = s.query === undefined ? context.dsn : `${context.dsn}${context.dsn.includes('?') ? '&' : '?'}${s.query}`;
+    return { value: { text: await connectDriver(dsn, s.config) } };
+  },
+  // dsn.sqlite_file (FCV-4, CFG-26): the names in a new directory, other than the journals, after a connection to a file of it.
+  async 'dsn.sqlite_file'(s) {
+    const directory = mkdtempSync(join(tmpdir(), 'orm-recipe-sqlite-name-'));
+    try {
+      try {
+        await connectDriver(`sqlite://${directory}/${s.name}?${s.query}`);
+      } catch (refused) {
+        const left = readdirSync(directory);
+        if (left.length !== 0) throw new Error(`a refused DSN left the files ${left.join(',')}`);
+        throw refused;
+      }
+      const journals = [`${s.name}-journal`, `${s.name}-shm`, `${s.name}-wal`];
+      return { value: { text: readdirSync(directory).filter(name => !journals.includes(name)).join(',') } };
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
   },
   async 'catalog.connect'(s) {
     if (s.dsn.url !== undefined) {
@@ -646,6 +748,35 @@ const OPS = {
   async 'catalog.delete_row'(s, context) {
     return { value: { int: String(await context.catalog.deleteRow(stepArgument(s.snapshot, context))) } };
   },
+  // dbspec.ddl_behavior (FCV-4, DIA-113): on one native connection of the case database, the connection rules, the
+  // statements of the case for the database, then its behavior steps. A step with dialects runs only on those; a step with
+  // fails must fail; a query compares its first value, as text, with want, and a NULL or absent value fails it.
+  async 'dbspec.ddl_behavior'(s, context) {
+    const vectors = JSON.parse(readFileSync(resolve(context.dir, s.vectors), 'utf8'));
+    const vector = vectors.cases.find(candidate => candidate.id === s.case);
+    if (vector === undefined) throw new Error(`the vectors have no case ${s.case}`);
+    const { database } = context;
+    const rule = { mysql: "SET time_zone = '+00:00'", postgres: "SET TimeZone = 'UTC'", sqlite: 'PRAGMA foreign_keys = ON' }[database];
+    const session = await nativeSession(database, context.dsn);
+    try {
+      for (const statement of [rule, ...vector.statements[database]]) await session.query(statement);
+      for (const step of vector.behavior) {
+        if (step.dialects !== undefined && !step.dialects.includes(database)) continue;
+        if (step.sql !== undefined) {
+          const refused = await session.query(step.sql).then(() => null, error => error);
+          if (step.fails && refused === null) throw new Error(`${step.sql} must fail`);
+          if (!step.fails && refused !== null) throw new Error(`${step.sql}: ${refused.message}`, { cause: refused });
+          continue;
+        }
+        const rows = await session.query(step.query);
+        if (rows.length === 0) throw new Error(`${step.query}: no row`);
+        const value = Object.values(rows[0])[0];
+        if (value === null) throw new Error(`${step.query}: NULL value`);
+        if (String(value) !== step.want) throw new Error(`${step.query}: got ${String(value)}, want ${step.want}`);
+      }
+    } finally { await session.close(); }
+    return {};
+  },
   async 'sql.exec'(s, context) {
     // An object form runs only on the databases whose key it holds (FCV-4): an absent key runs nothing.
     const statement = typeof s.sql === 'string' ? s.sql : s.sql[context.database];
@@ -693,11 +824,11 @@ const OP_DEADLINE_MS = 20000;
 async function runStep(s, context) {
   const op = OPS[s.op] ?? MODEL_OPS[s.op];
   if (op === undefined) throw new Error(`OP_UNKNOWN ${s.op}`);
-  // A step with only runs on the databases it names, and its expect names exactly those; a step without only names every database.
+  // A step runs on the databases of its only, else of the only of its case, else on every database, and its expect names exactly those.
   if (s.only !== undefined && !s.only.includes(context.database)) return;
   if (s.expect !== undefined) {
     const named = Object.keys(s.expect).sort().join(',');
-    const want = (s.only ?? ['mysql', 'postgres', 'sqlite']).slice().sort().join(',');
+    const want = (s.only ?? context.caseOnly ?? ['mysql', 'postgres', 'sqlite']).slice().sort().join(',');
     if (named !== want) throw new Error(`the expect of ${s.op} names ${named}, want ${want}`);
   }
   const expected = s.expect === undefined ? undefined : resolveRefs(s.expect[context.database], context);
@@ -709,6 +840,8 @@ async function runStep(s, context) {
     if (expected?.error === undefined || typeof code !== 'string') throw error;
     assert.equal(code, expected.error, `the error code (${error.message})`);
     if (expected.message_suffix !== undefined) assert.ok(error.message.endsWith(expected.message_suffix), `the error message ${JSON.stringify(error.message)} ends with ${JSON.stringify(expected.message_suffix)}`);
+    if (expected.message !== undefined) assert.equal(error.message, expected.message, 'the error message');
+    if (expected.cause !== undefined) assert.equal(error.cause?.message, expected.cause, 'the error cause');
     if (expected.message_holds !== undefined) assert.ok(error.message.includes(expected.message_holds), `the error message ${JSON.stringify(error.message)} holds ${expected.message_holds}`);
     if (expected.driver_cause === true) assert.ok(error.cause !== undefined, `the error ${JSON.stringify(error.message)} keeps its driver cause`);
     return;
@@ -924,7 +1057,7 @@ function checkValidate(step, text, schema, database) {
   try {
     const request = decodeRequest(text);
     if ('manifest_hash' in request) throw new Error('request already holds manifest_hash');
-    validate(schema.model, { ...request, manifest_hash: schema.hash });
+    validate(schema.model, { ...request, manifest_hash: step.manifest_hash ?? schema.hash });
   } catch (error) {
     got = error.code ?? String(error);
   }
@@ -949,7 +1082,33 @@ function plannerSlot(slot) {
   if (slot.col_type === 'datetime' || slot.col_type === 'time') out.precision = slot.precision ?? 0;
   if (slot.from === 'param' && slot.col_type === 'varchar') out.length = slot.length ?? 0;
   if (slot.not_null === true) out.not_null = true;
+  if (slot.from === 'audit') out.name = slot.name;
   return out;
+}
+
+// checkParamUses states the uses of each parameter of a validated request (DIA-31, PRT-67).
+function checkParamUses(step, recipeDir, database) {
+  const { model, hash } = validationModel(resolve(root, recipeDir, step.schema));
+  const request = { ...structuredClone(step.input), manifest_hash: hash };
+  validate(model, request);
+  const uses = paramUses(model, request).map(list => list.map(use => use.column === undefined
+    ? { type: use.type }
+    : { type: use.type, ...(use.assign === true ? { assign: true } : {}), column: use.column.name, length: use.column.length, null: use.column.nullable, precision: use.column.precision, scale: use.column.scale }));
+  if (!isDeepStrictEqual({ uses }, step.expect[database].value)) throw new Error(`ir.param_uses: got ${JSON.stringify(uses)}, want ${JSON.stringify(step.expect[database].value)}`);
+}
+
+// checkPlannerColumns states the output columns that the names of the step select from the first statement of the plan of each
+// dialect: their type and whether they are hidden (PRT-69, DIA-33).
+function checkPlannerColumns(step, recipeDir, database) {
+  const { model, hash } = validationModel(resolve(root, recipeDir, step.schema));
+  const request = { ...structuredClone(step.input), manifest_hash: hash };
+  for (const dialect of plannerDialects) {
+    const { assemble } = new Engine(model, dialect).compile(request).steps[0];
+    const got = step.names.flatMap(name => assemble.columns.flatMap(column => column.name === name
+      ? [{ name, type: column.type, hidden: column.hidden === true }]
+      : []));
+    if (!isDeepStrictEqual(got, step.expect[database].value)) throw new Error(`planner.columns ${dialect}: got ${JSON.stringify(got)}, want ${JSON.stringify(step.expect[database].value)}`);
+  }
 }
 
 // checkPlanner compiles the request of a planner.compile step with the client engine of each dialect, against the manifest of
@@ -973,7 +1132,13 @@ function checkPlanner(step, recipeDir, database) {
   const got = {};
   for (const dialect of plannerDialects) {
     const plan = new Engine(model, dialect).compile(request);
-    got[dialect] = plan.steps.map(planStep => ({ role: planStep.role, sql: planStep.sql, slots: planStep.bind_slots.map(plannerSlot), tables: planStep.tables }));
+    got[dialect] = plan.steps.map(planStep => ({
+      role: planStep.role,
+      sql: planStep.sql,
+      slots: planStep.bind_slots.map(plannerSlot),
+      tables: planStep.tables,
+      ...(step.assemble_types === true ? { assemble_types: Object.fromEntries(planStep.assemble.columns.map(column => [column.name, column.type])) } : {}),
+    }));
   }
   const actual = JSON.parse(JSON.stringify(got));
   if (!isDeepStrictEqual(actual, outcome.value)) throw new Error(`planner.compile: got ${JSON.stringify(actual)}, want ${JSON.stringify(outcome.value)}`);
@@ -1213,6 +1378,12 @@ async function schemaArgument(arg, context) {
 // okValue is the value of an op that returns without error (FCV-4).
 const okValue = { value: { bool: true } };
 
+// inspectedSchema is the schema argument of schema.exists and schema.installed: the name, or that of the database, where $database is the name of the case database.
+function inspectedSchema(value, context) {
+  const name = typeof value === 'string' ? value : value[context.database];
+  return name === '$database' ? new URL(context.dsn).pathname.slice(1) : name;
+}
+
 // runNested runs the nested steps of statements.count or transaction, each with its own expect, through the same runStep (FCV-4).
 async function runNested(steps, context) {
   for (const nested of steps) await runStep(nested, context);
@@ -1230,6 +1401,15 @@ Object.assign(OPS, {
   async 'schema.register'(s, context) {
     context.db.utils().schema().register(await schemaArgument(s.schema, context));
     return okValue;
+  },
+  async 'schema.empty'(_s, context) {
+    return { value: { bool: await context.db.utils().schema().empty() } };
+  },
+  async 'schema.exists'(s, context) {
+    return { value: { bool: await context.db.utils().schema().exists(inspectedSchema(s.schema, context)) } };
+  },
+  async 'schema.installed'(s, context) {
+    return { value: { bool: await context.db.utils().schema().installed(inspectedSchema(s.schema, context), s.table) } };
   },
   async 'schema.connect'(s, context) {
     const connected = await Db.connectSchema(context.dsn, await schemaArgument(s.schema, context));
@@ -1255,15 +1435,62 @@ Object.assign(OPS, {
   },
   async transaction(s, context) {
     // The options of the transaction (INT-46): a nested transaction that names one is refused with CONFIG.
-    const options = { retry: 0 };
+    // An absent retry passes 0 unless default_retry leaves it out, and the first conflicts attempts end with the public conflict (INT-43, INT-48).
+    const options = s.default_retry === true ? {} : { retry: s.retry ?? 0 };
     if (s.isolation !== undefined) options.isolation = s.isolation;
     if (s.read_only === true) options.readOnly = true;
+    if (s.timeout_ms !== undefined) options.timeoutMs = s.timeout_ms;
     if (s.audit !== undefined) options.audit = auditValues(s.audit, context);
-    await connectionOf(s, context).transaction(async () => {
-      await runNested(s.steps, context);
-      if (s.fail) throw callbackError;
-    }, options);
+    let attempts = 0;
+    try {
+      await connectionOf(s, context).transaction(async () => {
+        attempts++;
+        await runNested(s.steps, context);
+        if (s.fail) throw callbackError;
+        if (attempts <= (s.conflicts ?? 0)) throw transactionConflict('the recipe conflict');
+      }, options);
+    } finally {
+      context.attempts = attempts;
+    }
     return okValue;
+  },
+  'transaction.attempts': (_, context) => ({ value: { int: String(context.attempts) } }),
+  // Two flows write two rows in opposite order (PLN-24): each holds its first row until the other holds its own, so the
+  // database ends one flow with its deadlock error, the client retries it, and both commit.
+  async 'transaction.deadlock'(s, context) {
+    const write = (connection, key, name) => MODEL_OPS['model.update']({ op: 'model.update', connection, model: s.model, key, set: { [s.column]: { text: name } } }, context);
+    let held = 0;
+    let releaseBoth;
+    const bothHeld = new Promise(resolve => { releaseBoth = resolve; });
+    let attempts = 0;
+    let deadlocks = 0;
+    const flow = (connection, index) => {
+      const name = `flow-${index}`;
+      let runs = 0;
+      return refOf(connection, context).transaction(async () => {
+        attempts++;
+        const first = ++runs === 1;
+        try {
+          await write(connection, s.rows[index], name);
+        } finally {
+          if (first && ++held === 2) releaseBoth();
+          if (first) await bothHeld;
+        }
+        try {
+          await write(connection, s.rows[1 - index], name);
+        } catch (error) {
+          if (first && error?.code === codes.DEADLOCK) deadlocks++;
+          throw error;
+        }
+      }, { isolation: 'read_committed', retry: 3 });
+    };
+    await Promise.all(s.connections.map(flow));
+    const names = [];
+    for (const key of s.rows) {
+      const { rows } = await MODEL_OPS['model.get_by']({ op: 'model.get_by', connection: s.connections[0], model: s.model, key, columns: [s.column] }, context);
+      names.push(rows[0][0].text);
+    }
+    return { attempts, deadlocks, same_flow: names[0] === names[1] && ['flow-0', 'flow-1'].includes(names[0]) };
   },
 });
 
@@ -1288,8 +1515,9 @@ function chainValue(raw, context) {
 }
 /** The value of a column for a wrapper: an object is the styled value of its codec. */
 function columnValue(m, column, raw, context) {
+  if ('styled' in raw) return StyledValue.value(chainValue(raw.styled, context));
   if (!('object' in raw)) return chainValue(raw, context);
-  return styledArgument(raw, m[CORE].ent.entity.fields.find(field => field.name === column)?.codec ?? [], new Map());
+  return styledArgument(raw, m[CORE].ent.entity.fields.find(field => field.name === column)?.stages ?? [], new Map());
 }
 /** The public function of a function call (F5). */
 function chainFunc({ fn, args = [] }) {
@@ -1442,6 +1670,8 @@ class ChainBuild {
       else m.limit(q.limit.offset ?? 0, q.limit.count);
     }
     if (q.lock !== undefined) m[CORE].lock = q.lock;
+    if (q.force_index !== undefined) m[CORE].index = q.force_index;
+    if (q.key_by !== undefined) m[CORE].keyName = q.key_by;
   }
 
   /** The child model of a relation. */
@@ -1509,7 +1739,8 @@ function chainBuilt(s, context) {
   };
   // A bound chain is read again: a terminal leaves it as it was (DSL-98).
   if (s.from !== undefined) return byKey(refOf(s.from, context));
-  const m = coreModel(s.model, context).connect(connectionOf(s, context));
+  const model = coreModel(s.model, context);
+  const m = s.unconnected === true ? model : model.connect(connectionOf(s, context));
   const build = new ChainBuild(context);
   const paged = s.page === true;
   build.query(m, s, { limit: !paged && s.offset === undefined });
@@ -1560,14 +1791,22 @@ const TABLE_OPS = {
     const m = chainBuilt(s, context);
     if (s.compile === true) return { json: plainJson(await m.getQuery()) };
     if (s.plan === true) {
-      const steps = await m.getPagePlanSteps(Math.floor(s.limit.offset / s.limit.count) + 1, s.limit.count);
+      const steps = s.plan_page === undefined
+        ? await m.getPagePlanSteps(Math.floor(s.limit.offset / s.limit.count) + 1, s.limit.count)
+        : await m.getPagePlanSteps(s.plan_page.page, s.plan_page.per_page);
       return { json: steps.map(step => {
         const sql = step.sql.toUpperCase();
-        return { role: step.role, tables: step.tables, count: Object.fromEntries(s.plan_count.map(text => [text, sql.split(text).length - 1])) };
+        const shown = { role: step.role, tables: step.tables, count: Object.fromEntries(s.plan_count.map(text => [text, sql.split(text).length - 1])) };
+        return s.plan_sql === true ? { ...shown, sql: step.sql } : shown;
       }) };
     }
     if (s.aggregate?.agg === 'sum') return { json: await m.getSum() };
     if (s.aggregate?.agg === 'avg') return { json: await m.getAvg() };
+    if (s.group_value !== undefined) {
+      const [row] = await m.getsCount();
+      if (row === undefined) throw new Error(`group_value ${s.group_value}: the aggregate has no group row`);
+      return { json: plainJson(row.value(s.group_value)) };
+    }
     if (s.aggregate !== undefined) return { json: plainJson((await m.getsCount()).toArray()) };
     if (s.page === true) {
       const count = typeof s.limit === 'number' ? s.limit : s.limit?.count;
@@ -1588,6 +1827,7 @@ const TABLE_OPS = {
   },
   async 'model.get_by'(s, context) {
     const row = await chainBuilt(s, context).get();
+    if (s.ordered_text !== undefined && row !== null) return { json: row[CORE].values.get(s.ordered_text).payload().raw };
     return { bind: row ?? undefined, json: rowJson(row, s.pick) };
   },
   'model.create': (s, context) => chainWrite(s, context, m => (s.restore_or_create === true ? m.restoreOrCreate() : m.create())),
@@ -1622,6 +1862,10 @@ const TABLE_OPS = {
       return {};
     }
     await chainTarget(s, context).delete(s.recursive === true);
+    return {};
+  },
+  async 'db.notify'(s, context) {
+    await connectionOf(s, context).notify(s.channel, s.payload);
     return {};
   },
   async 'utils.lock'(s, context) {
@@ -1805,6 +2049,7 @@ Object.assign(OPS, {
       for (const statement of s.statements) {
         last = await frame.run(statement.kind, statement.tables, sql(statement.sql, context), (statement.params ?? []).map(toValue));
       }
+      if (s.conflict !== undefined) throw transactionConflict(s.conflict);
       return last;
     });
     return { value: { array: result.rows.map(row => ({ array: row.map(cell => plain(cell)) })) } };
@@ -1812,6 +2057,7 @@ Object.assign(OPS, {
   async 'events.captured'(s, context) {
     const subscription = refOf(s.ref, context);
     if (subscription.negative) throw new Error('an event has a negative elapsed time');
+    if (subscription.uncoded) throw new Error('an event has an error that is not an OrmError');
     const records = s.compare === 'tables' ? subscription.records.filter(r => r.tables.length > 0) : subscription.records;
     const events = records.map(eventObject);
     // A mask replaces a bind that no recipe can fix (FCV-4 events.captured).
@@ -1980,7 +2226,7 @@ function checkSet(step, expect) {
 }
 
 // dbspecFileOps are the dbspec ops whose documents are files relative to the recipe, which checkDbspecFiles runs.
-const dbspecFileOps = ['dbspec.parse_emit', 'dbspec.manifest', 'dbspec.render', 'dbspec.analyze', 'dbspec.parse_positions', 'dbspec.format', 'dbspec.parse_set', 'dbspec.set', 'dbspec.load_set', 'dbspec.read_file', 'dbspec.read_bytes'];
+const dbspecFileOps = ['dbspec.runtime_model', 'dbspec.parse_emit', 'dbspec.manifest', 'dbspec.render', 'dbspec.analyze', 'dbspec.parse_positions', 'dbspec.format', 'dbspec.parse_set', 'dbspec.set', 'dbspec.load_set', 'dbspec.read_file', 'dbspec.read_bytes'];
 
 // checkDbspecFiles runs one dbspec op of a step through the public dbspec API and checks the result against the expect of database.
 // dir is the directory of the recipe: the paths of a step are relative to it (FCV-4).
@@ -2059,10 +2305,34 @@ async function checkDbspecFiles(step, dir, database) {
         documents = loadSet(text(step.owned), text(step.external));
       } catch (error) {
         if (error.code !== expect.error) throw error;
+        if (expect.rule !== undefined) assert.ok(error.message.includes(expect.rule), error.message);
         break;
       }
       assert.equal(expect.error, undefined, 'the set loaded');
       assert.deepEqual(documents.map(d => ({ name: d.name, external: d.external === true })), expect.documents, 'documents');
+      if (expect.manifest_hash !== undefined) assert.equal(dbspecManifest(documents).manifest.manifestHash, expect.manifest_hash, 'manifest hash');
+      break;
+    }
+    case 'dbspec.runtime_model': {
+      const read = paths => Promise.all(paths.map(path => readFile(resolve(dir, path), 'utf8')));
+      const model = modelOfDocuments(parseDocumentSet(await read(step.documents), await read(step.external ?? [])));
+      assert.deepEqual([...model.entities.keys()], expect.entities, 'entities');
+      if (expect.manifest_text !== undefined) assert.equal(model.manifestText, `${expect.manifest_text.join('\n')}\n`, 'manifest text');
+      if (expect.manifest_hash !== undefined) assert.equal(model.manifestHash, expect.manifest_hash, 'manifest hash');
+      for (const [name, values] of Object.entries(expect.models ?? {})) {
+        const entity = model.entities.get(name);
+        const got = {
+          table: entity.table, primary_key: [...entity.primaryKey], identity: entity.identity, updated: entity.updated, soft_delete: entity.softDelete,
+          aes_version: entity.aesVersion, audit_column: entity.auditColumn, audit_record: entity.auditRecord,
+          key_names: [...entity.indexes].sort(),
+          fields: Object.fromEntries(entity.fields.map(f => [f.name, {
+            type: f.type, nullable: f.nullable, default: f.hasDefault, default_now: f.defaultNow, select_explicit: !f.selected, codec: [...f.stages],
+            blind_index: f.blindIndex, primary_key: f.primary, foreign_key: f.foreign,
+          }])),
+        };
+        const named = (have, want) => Object.fromEntries(Object.entries(want).map(([key, value]) => [key, value !== null && typeof value === 'object' && !Array.isArray(value) ? named(have[key], value) : have[key]]));
+        assert.deepEqual(named(got, values), values, `entity ${name}`);
+      }
       break;
     }
     case 'dbspec.parse_set': {
@@ -2144,6 +2414,96 @@ async function checkSend(step, wrappedExpect) {
   }, step, wrappedExpect);
 }
 
+// shownCatalogRows answers one catalog query of the MySQL introspection from a case of the vectors of dbspec.introspect_shown.
+function shownCatalogRows(sql, catalog, vector) {
+  if (sql.includes('information_schema.TABLES')) return [[catalog.table, 'BASE TABLE', '']];
+  if (sql.includes('information_schema.COLUMNS')) {
+    return catalog.columns.map(column => [catalog.table, column.name, column.type, column.nullable, null, '', column.charset, column.collation, '']);
+  }
+  if (sql.includes('information_schema.STATISTICS')) return [[catalog.table, 'PRIMARY', 0, catalog.primary_key, 'A', 0, 0, 'BTREE']];
+  if (sql.includes('REFERENTIAL_CONSTRAINTS')) return [];
+  if (sql.includes('information_schema.CHECK_CONSTRAINTS')) return [[vector.name, catalog.stored_clause]];
+  if (sql.includes('information_schema.TABLE_CONSTRAINTS')) return [[catalog.table, vector.name, 'YES']];
+  if (sql.includes('SHOW CREATE TABLE')) return [[catalog.table, vector.create.join('\n') + '\n']];
+  if (sql.includes('information_schema.TRIGGERS') || sql.includes('information_schema.ROUTINES') || sql.includes('information_schema.EVENTS')) return [];
+  throw new Error(`no canned answer for ${sql}`);
+}
+
+// checkApplyFault runs a dbspec.apply_fault step (FCV-4): the public applyPlans or rollbackPlans on a memory SQLite connection,
+// after applied_first and sql, with the fail_catalog_read-th read of the SQLite master query in the call failing. An injected
+// failure must reach the apply error as its cause (PLN-92, PLN-93, PLN-96).
+async function checkApplyFault(step, bound, database) {
+  const expect = step.expect[database];
+  const plans = [dbspecPlan(step.plan, bound)];
+  const now = () => Date.UTC(2026, 9, 1) * 1000;
+  const db = new DatabaseSync(':memory:');
+  let reads = 0;
+  let failAt = 0;
+  let cause;
+  const connection = {
+    exec: sql => db.exec(sql),
+    prepare(sql) {
+      if (sql.startsWith('SELECT type, name, tbl_name')) {
+        reads++;
+        if (reads === failAt) throw cause;
+      }
+      return db.prepare(sql);
+    },
+  };
+  try {
+    if (step.applied_first) await applyPlans(connection, 'sqlite', plans, now, null);
+    for (const statement of step.sql ?? []) db.exec(statement);
+    if (step.fail_catalog_read !== undefined) {
+      cause = new Error('catalog read failed');
+      failAt = reads + step.fail_catalog_read;
+    }
+    const kinds = [];
+    const call = step.call === 'rollback' ? rollbackPlans : applyPlans;
+    const failure = await call(connection, 'sqlite', plans, now, event => { kinds.push(event.kind); }).then(() => null, error => error);
+    assert(failure instanceof DbspecApplyError, `the call returned ${failure}, want the code ${expect.code}`);
+    assert.equal(failure.code, expect.code);
+    if (cause !== undefined) assert.equal(failure.cause, cause);
+    if (expect.history_state !== undefined) assert.equal(db.prepare('SELECT state FROM "dbspec$plans"').get().state, expect.history_state);
+    for (const kind of expect.absent_events ?? []) assert.equal(kinds.includes(kind), false, `the events hold ${kind}`);
+  } finally {
+    db.close();
+  }
+}
+
+// checkIntrospectShown runs a dbspec.introspect_shown step: the public introspectDbspec on the canned catalog of a case of the
+// vectors file, whose check lines and unsupported objects, or error, it compares with the expect of database (DIA-84). A reason
+// compares by its rule, the text before the first ": ", since its text differs between the clients.
+async function checkIntrospectShown(step, dir, database) {
+  const vectors = JSON.parse(readFileSync(resolve(dir, step.vectors), 'utf8'));
+  const vector = vectors.cases.find(c => c.id === step.case);
+  if (vector === undefined) throw new Error(`${step.vectors} has no case ${step.case}`);
+  const connection = { query: async ({ sql }) => [shownCatalogRows(sql, vectors.catalog, vector)] };
+  const expect = step.expect[database];
+  if (expect.error !== undefined) {
+    await assert.rejects(introspectDbspec(connection, 'mysql', 'introspected'), error => error.message === expect.error);
+    return;
+  }
+  const result = await introspectDbspec(connection, 'mysql', 'introspected');
+  const checks = emitDbspec(result.document).split('\n').map(line => line.trim()).filter(line => line.startsWith('check '));
+  const unsupported = result.unsupported.map(item => `${item.kind} ${item.name}: ${item.reason.split(': ', 1)[0]}`);
+  assert.deepEqual(checks, expect.checks, 'introspected checks');
+  assert.deepEqual(unsupported, expect.unsupported, 'introspected unsupported objects');
+}
+
+// checkIntrospectSqlite runs a dbspec.introspect_sqlite step: the statements on a memory SQLite connection of its own, then the
+// public introspectDbspec, whose unsupported objects it compares with the expect of database (DIA-191).
+async function checkIntrospectSqlite(step, database) {
+  const connection = new DatabaseSync(':memory:');
+  try {
+    for (const statement of step.sql) connection.exec(statement);
+    const result = await introspectDbspec(connection, 'sqlite', 'introspected');
+    const got = result.unsupported.map(({ kind, table, name, reason }) => ({ kind, table, name, reason }));
+    assert.deepEqual(got, step.expect[database].unsupported);
+  } finally {
+    connection.close();
+  }
+}
+
 // checkKeyring runs a keyring.versions step: the public constructor of the keyring, then its current version and its versions (INT-74,
 // INT-130).
 function checkKeyring(step, database) {
@@ -2186,8 +2546,8 @@ async function checkBuilder(step, database) {
   }
   if (received.length > 0) throw new Error(`the terminal sent ${received[0]} before its error`);
   const expect = step.expect[database];
-  if (!(callError instanceof OrmError) || callError.code !== expect.error || !callError.message.includes(expect.message_contains)) {
-    throw new Error(`the terminal returned ${callError}, want ${expect.error} with ${expect.message_contains}`, { cause: callError });
+  if (!(callError instanceof OrmError) || callError.code !== expect.error || callError.message !== expect.message) {
+    throw new Error(`the terminal returned ${callError}, want ${expect.error} ${expect.message}`, { cause: callError });
   }
 }
 

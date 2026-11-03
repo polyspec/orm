@@ -9,8 +9,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"slices"
 	"strings"
 
+	orderedjson "github.com/polyspec/ordered-json/packages/go"
 	"github.com/polyspec/orm/packages/go/orm"
 )
 
@@ -35,6 +37,7 @@ type chainQuery struct {
 	Aggregate     *chainAggregate   `json:"aggregate"`
 	Joins         []chainJoin       `json:"joins"`
 	Relations     []chainRelation   `json:"relations"`
+	ForceIndex    string            `json:"force_index"`
 }
 
 type chainOrder struct {
@@ -113,9 +116,16 @@ type chainStep struct {
 	As              string                     `json:"as"`
 	From            string                     `json:"from"`
 	Pick            []string                   `json:"pick"`
+	KeyBy           string                     `json:"key_by"`
+	OrderedText     string                     `json:"ordered_text"`
+	GroupValue      string                     `json:"group_value"`
+	DerivedIntegers []string                   `json:"derived_integers"`
 	Page            bool                       `json:"page"`
 	Compile         bool                       `json:"compile"`
 	Plan            bool                       `json:"plan"`
+	PlanPage        *chainPlanPage             `json:"plan_page"`
+	PlanSQL         bool                       `json:"plan_sql"`
+	Unconnected     bool                       `json:"unconnected"`
 	PlanCount       []string                   `json:"plan_count"`
 	Items           bool                       `json:"items"`
 	Values          json.RawMessage            `json:"values"`
@@ -210,6 +220,48 @@ func chainValue(raw json.RawMessage, c *databaseContext) (any, error) {
 		}
 	}
 	return assignmentValue(raw, c)
+}
+
+// columnValue is the value of a column for a wrapper: a styled wrapper is the styled value of its value, and an object is
+// the styled value of the codec of its column, so that an ordered_json column keeps its member order and number text.
+func columnValue(core *orm.Core, column string, raw json.RawMessage, c *databaseContext) (any, error) {
+	var entries map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &entries); err != nil {
+		return chainValue(raw, c)
+	}
+	if styled, ok := entries["styled"]; ok && len(entries) == 1 {
+		value, err := chainPlain(styled, c)
+		if err != nil {
+			return nil, err
+		}
+		return orm.Value(value), nil
+	}
+	if _, ok := entries["object"]; ok && len(entries) == 1 {
+		model, err := c.schema.Model()
+		if err != nil {
+			return nil, err
+		}
+		if entity := model.Entities[core.Entity().Name]; entity != nil {
+			if field := entity.Field(column); field != nil && slices.Contains(field.Codec, "ordered_json") {
+				return styledArgument(raw, field.Codec, nil)
+			}
+		}
+	}
+	return chainValue(raw, c)
+}
+
+// orderedText is the text of the ordered-json value that a read holds in column, with its repeated members (DIA-26).
+func orderedText(row *tableRow, column string) (string, error) {
+	styled, ok := row.vals[column].(orm.StyledValue)
+	if !ok {
+		return "", fmt.Errorf("ordered_text: the column %s is a %T", column, row.vals[column])
+	}
+	data, _ := styled.Data()
+	value, ok := data.(*orderedjson.Value)
+	if !ok {
+		return "", fmt.Errorf("ordered_text: the value of %s is a %T", column, data)
+	}
+	return value.Raw(), nil
 }
 
 // chainPlain is a member of a styled object: the native value of its wrapper, without the styled-value wrapping.
@@ -713,6 +765,9 @@ func (b *chainBuild) query(core *orm.Core, q chainQuery) error {
 	if q.Lock != "" {
 		core.Lock(q.Lock)
 	}
+	if q.ForceIndex != "" {
+		core.ForceIndex(q.ForceIndex)
+	}
 	return nil
 }
 
@@ -820,7 +875,11 @@ func chainOp(raw json.RawMessage, c *databaseContext) (outcome, error) {
 	if err := json.Unmarshal(raw, &s); err != nil {
 		return outcome{}, err
 	}
-	var db *orm.DB
+	// A model op that names no connection and no row runs on the case connection (FCV-4).
+	db := c.db
+	if len(s.Row) > 0 {
+		db = nil
+	}
 	if s.Connection != "" {
 		bound, ok := c.bound[s.Connection]
 		if !ok {
@@ -862,6 +921,13 @@ func chainOp(raw json.RawMessage, c *databaseContext) (outcome, error) {
 		if !ok && m != nil {
 			return outcome{}, fmt.Errorf("model.get_by: the row is a %T", m)
 		}
+		if s.OrderedText != "" && row != nil {
+			text, err := orderedText(row, s.OrderedText)
+			if err != nil {
+				return outcome{}, err
+			}
+			return jsonOutcome(text), nil
+		}
 		value, err := chainRow(row, s.Pick)
 		if err != nil {
 			return outcome{}, err
@@ -894,7 +960,9 @@ func chainBuilt(s chainStep, db *orm.DB, c *databaseContext) (*orm.Core, error) 
 		return chainByKey(core, s, c)
 	}
 	core := chainCore(s.Model, c)
-	core.Connect(db)
+	if !s.Unconnected {
+		core.Connect(db)
+	}
 	q := s.chainQuery
 	if q.Limit != nil && s.Offset > 0 {
 		q.Limit = &chainLimit{Offset: s.Offset, Count: q.Limit.Count}
@@ -905,6 +973,9 @@ func chainBuilt(s chainStep, db *orm.DB, c *databaseContext) (*orm.Core, error) 
 	build := &chainBuild{c: c, joined: map[string]*orm.Core{}}
 	if err := build.query(core, q); err != nil {
 		return nil, err
+	}
+	if s.KeyBy != "" {
+		core.KeyName(s.KeyBy)
 	}
 	if len(s.Relation) > 0 {
 		var r chainRelation
@@ -968,20 +1039,36 @@ func chainGets(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
 		if err != nil {
 			return outcome{}, err
 		}
+		if s.GroupValue != "" {
+			for row := range groups.All() {
+				value, err := row.Value(s.GroupValue)
+				if err != nil {
+					return outcome{}, err
+				}
+				return jsonOutcome(value), nil
+			}
+			return outcome{}, fmt.Errorf("group_value %s: the aggregate has no group row", s.GroupValue)
+		}
 		return jsonOutcome(groups.ToArray()), nil
 	case s.Plan:
-		var limit chainLimit
-		if s.Limit != nil {
-			limit = *s.Limit
+		var page chainPlanPage
+		if s.PlanPage != nil {
+			page = *s.PlanPage
+		} else {
+			var limit chainLimit
+			if s.Limit != nil {
+				limit = *s.Limit
+			}
+			if limit.Count <= 0 {
+				return outcome{}, fmt.Errorf("a plan needs a limit count above 0")
+			}
+			page = chainPlanPage{Page: limit.Offset/limit.Count + 1, PerPage: limit.Count}
 		}
-		if limit.Count <= 0 {
-			return outcome{}, fmt.Errorf("a plan needs a limit count above 0")
-		}
-		steps, err := core.GetPagePlanSteps(limit.Offset/limit.Count+1, limit.Count)
+		steps, err := core.GetPagePlanSteps(page.Page, page.PerPage)
 		if err != nil {
 			return outcome{}, err
 		}
-		return jsonOutcome(chainPlanSteps(steps, s.PlanCount)), nil
+		return jsonOutcome(chainPlanSteps(steps, s.PlanCount, s.PlanSQL)), nil
 	case s.Page:
 		var limit chainLimit
 		if s.Limit != nil {
@@ -1115,9 +1202,15 @@ func relatedTableRows(p *tableRow, rel *tableRelation) ([]*tableRow, error) {
 	return []*tableRow{child}, nil
 }
 
+// chainPlanPage is the page and the size that a plan step passes to GetPagePlanSteps as they are, refused values included.
+type chainPlanPage struct {
+	Page    int `json:"page"`
+	PerPage int `json:"per_page"`
+}
+
 // chainPlanSteps is the role and the tables of each step, with how many times its upper-cased statement holds each text of
-// plan_count.
-func chainPlanSteps(steps []orm.QueryPlanStep, texts []string) []any {
+// plan_count, and its statement when withSQL is set.
+func chainPlanSteps(steps []orm.QueryPlanStep, texts []string, withSQL bool) []any {
 	out := make([]any, len(steps))
 	for i, step := range steps {
 		sql := strings.ToUpper(step.SQL)
@@ -1125,7 +1218,11 @@ func chainPlanSteps(steps []orm.QueryPlanStep, texts []string) []any {
 		for _, text := range texts {
 			count[text] = strings.Count(sql, text)
 		}
-		out[i] = map[string]any{"role": step.Role, "tables": step.Tables, "count": count}
+		shown := map[string]any{"role": step.Role, "tables": step.Tables, "count": count}
+		if withSQL {
+			shown["sql"] = step.SQL
+		}
+		out[i] = shown
 	}
 	return out
 }
@@ -1196,7 +1293,7 @@ func chainAssign(core *orm.Core, raw json.RawMessage, c *databaseContext) error 
 			}
 			continue
 		}
-		value, err := chainValue(member.value, c)
+		value, err := columnValue(core, member.key, member.value, c)
 		if err != nil {
 			return err
 		}

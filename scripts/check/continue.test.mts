@@ -20,14 +20,14 @@ caseTest('Rust workspace dispatch skips only the database cases owned by the fea
   const args = rustDatabaseCoverageSkipArguments(readFeatures(repo), repo);
   assert.equal(args.length % 2, 0);
   const skipped = new Set(args.filter((_, index) => index % 2 === 1));
-  assert.ok(skipped.has('coverage_request_hook_insert_assign'));
+  assert.ok(skipped.has('coverage_statement_events'));
   // The catalog_connection and schema_install recipes replaced their native coverage tests (T334-3-3-2, T334-3-4): the feature
   // matrix owns their recipe binaries, one per database.
   for (const database of ['mysql', 'postgres', 'sqlite']) {
     assert.ok(skipped.has(`catalog_connection_${database}`));
     assert.ok(skipped.has(`schema_install_${database}`));
   }
-  assert.ok(skipped.has('coverage_group_rows_db::coverage_group_rows_db'));
+  assert.ok(skipped.has('coverage_transactions::coverage_transaction_rollback'));
   assert.ok(!skipped.has('coverage_'));
   assert.ok(!skipped.has('coverage_request_hook_'));
   const rustCommand = CLIENT_DB_COMMANDS.find(command => command.includes('tests/cargo-test.mts workspace-tests'));

@@ -10,3 +10,28 @@ table rot_row {
     aes_version aes_key_version
   }
 }
+
+table rot_pair {
+  seq i64 identity
+  aes_key_version i32
+  token varchar(255) null
+  memo varchar(255) null
+  primary key (seq)
+  settings {
+    codec token aes hex
+    codec memo aes hex
+    aes_version aes_key_version
+  }
+}
+
+table secret_config {
+  seq i64 identity
+  aes_key_version i32
+  config bytes
+  primary key (seq)
+  settings {
+    select explicit aes_key_version config
+    codec config ordered_json aes
+    aes_version aes_key_version
+  }
+}

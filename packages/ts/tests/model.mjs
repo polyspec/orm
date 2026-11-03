@@ -79,35 +79,6 @@ async function install(dsn) {
   } finally { await db.close(); }
 }
 
-/**
- * Checks schema().empty() on a new case database, with an empty PostgreSQL
- * schema other than public, and with the installed tables.
- * Requirements: DBS-108, INT-58, SCH-7.
- */
-// Requirements: DBS-108, INT-58, SCH-7.
-async function schemaEmpty(dialect, dsn) {
-  const db = await connect(dsn);
-  try {
-    check(await db.utils().schema().empty(), 'a database without tables');
-    if (dialect === 'postgres') {
-      await postgres(dsn, ['CREATE SCHEMA unowned_empty']);
-      try {
-        check(!(await db.utils().schema().empty()), 'an empty schema other than public');
-      } finally { await postgres(dsn, ['DROP SCHEMA unowned_empty']); }
-      check(await db.utils().schema().empty(), 'the empty schema dropped');
-    }
-    await installBench(db);
-    check(!(await db.utils().schema().empty()), 'installed tables');
-  } finally { await db.close(); }
-}
-
-// Requirements: INT-57.
-async function schemaExistsUnderscore(db) {
-  await db.pool.execute('CREATE TABLE "fooXbar__schema_probe" (id INTEGER)', [], undefined, () => undefined);
-  check(!(await db.utils().schema().exists('foo_bar')), 'an underscore in a schema prefix is literal');
-  check(await db.utils().schema().exists('fooXbar'), 'the exact schema prefix exists');
-}
-
 // A datetime parameter is its canonical text, YYYY-MM-DD HH:MM:SS in UTC (docs/spec/interfaces.md).
 const start = Date.UTC(2026, 0, 2, 3, 4, 5);
 const datetime = ms => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
@@ -473,35 +444,6 @@ async function transactions(db, dsn) {
 }
 
 // Requirements: COD-8, PLN-44, INT-60, INT-75, INT-131.
-async function aesRotation(db, dsn) {
-  const f = await seed(db);
-  const b = await new Author().connect(db).getBySeq(f.authors[0].getSeq());
-  await b.setAesHexEmail('person@example.com').setAesHexPhone('01012345678').update();
-  const found = await new Author().connect(db).aesHexEmail('person@example.com').getBySeq(b.getSeq());
-  check(found?.getAesHexEmail() === 'person@example.com', 'aes round trip and blind index');
-  const keyring = new AesKeyring(new Map([[1, 'test-aes-key'], [2, 'next-aes-key']]), 2);
-  let status = await db.utils().aes().status(new Author(), keyring);
-  check(status.current === 2 && status.total === 4 && status.pending === 4 && status.versions.get(1) === 4 && status.versions.size === 1, `status: ${JSON.stringify(status)}`);
-  const rotated = await db.utils().aes().rotate(new Author(), keyring);
-  check(rotated === 4, `rotated ${rotated}`);
-  status = await db.utils().aes().status(new Author(), keyring);
-  check(status.current === 2 && status.total === 4 && status.pending === 0 && status.versions.get(2) === 4 && status.versions.size === 1, `after rotation: ${JSON.stringify(status)}`);
-  // A write with only aesKeys and aesVersion encrypts with aesKeys[aesVersion].
-  const versioned = await connectBench(dsn, { blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: new Map([[1, 'test-aes-key'], [2, 'next-aes-key']]) });
-  const current = await connectBench(dsn, { blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: new Map([[2, 'next-aes-key']]) });
-  try {
-    const rotated = await new Author().connect(current).getBySeq(f.authors[0].getSeq());
-    check(rotated?.getAesHexEmail() === 'person@example.com', 'rotated email uses current key');
-    check(rotated?.getAesHexPhone() === '01012345678', 'rotated phone uses current key');
-    check(await code((async () => { await (await new Author().connect(versioned).getBySeq(f.authors[1].getSeq())).setAesHexEmail('second@example.com').update(); })()) === null, 'write with aesKeys and aesVersion');
-    check((await new Author().connect(current).getBySeq(f.authors[1].getSeq())).getAesHexEmail() === 'second@example.com', 'write with the key of aesVersion');
-    check(await code(connectBench(dsn, { aesKey: 'other-key', aesKeys: new Map([[1, 'test-aes-key']]) })) === 'CONFIG', 'aesKey differs from aesKeys[aesVersion]');
-  } finally {
-    await versioned.close();
-    await current.close();
-  }
-}
-
 function connect(dsn) {
   return connectBench(dsn, { aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key' });
 }
@@ -587,76 +529,7 @@ function documentModels(text) {
   return models;
 }
 
-/**
- * Writes a JSON value to an encrypted `ordered_json aes` column, reads it
- * back, rotates the row to the next key version, and updates it with the
- * first key version.
- */
-// Requirements: COD-7.
-async function aesJsonColumn(dialect, dsn, sqlitePath) {
-  const secret = await readFile(join(root, 'contracts/fixtures/secret_config.dbs'), 'utf8');
-  const { secret_config: SecretConfig } = documentModels(secret);
-  const text = '{"b":1,"a":[],"c":{},"n":1.50,"token":"s3cret-token"}';
-  const updatedText = '{"token":"next-token","list":[1,"two",null]}';
-  const open = (keys, version) => Db.connectSchema(dsn, schemaOf(secret), { aesKey: keys.get(version), aesVersion: version, aesKeys: keys });
-  const read = async db => {
-    const rows = [...(await new SecretConfig().connect(db).addAllColumns().gets()).values()];
-    check(rows.length === 1, `rows ${rows.length}`);
-    const config = rows[0][CORE].column('config');
-    check(config instanceof StyledValue && config.kind === 'value' && config.payload() instanceof JsonValue, 'the json aes column reads a styled ordered-json value');
-    return stringifyJson(config.payload());
-  };
-  const one = new Map([[1, 'config-key-one']]);
-  const both = new Map([[1, 'config-key-one'], [2, 'config-key-two']]);
-  const first = await open(one, 1);
-  let seq;
-  try {
-    await first.utils().schema().install(schemaOf(secret));
-    const created = new SecretConfig().connect(first);
-    created[CORE].setValue('config', StyledValue.value(parseJson(text)));
-    seq = (await created.create())[CORE].column('seq');
-    check(await read(first) === text, `read back ${await read(first)}`);
-    const [cell, version] = await storedCell(dialect, dsn, sqlitePath);
-    check(Buffer.from(cell).subarray(0, 9).toString('latin1') === 'ORM-AES2\0' && !Buffer.from(cell).includes('s3cret-token') && Number(version) === 1, `stored version ${version}`);
-  } finally { await first.close(); }
-  const second = await open(both, 2);
-  try {
-    check(await read(second) === text, 'mixed-version read');
-    const keyring = new AesKeyring(both, 2);
-    check(await second.utils().aes().rotate(new SecretConfig(), keyring) === 1, 'rotate');
-    check(Number((await storedCell(dialect, dsn, sqlitePath))[1]) === 2, 'rotated version');
-  } finally { await second.close(); }
-  const rotated = await open(new Map([[2, 'config-key-two']]), 2);
-  try { check(await read(rotated) === text, 'rotated read'); } finally { await rotated.close(); }
-  const again = await open(both, 1);
-  try {
-    const changed = new SecretConfig().connect(again);
-    changed[CORE].setValue('seq', seq);
-    changed[CORE].setValue('config', StyledValue.value(JSON.parse(updatedText)));
-    await changed.update();
-    check(Number((await storedCell(dialect, dsn, sqlitePath))[1]) === 1, 'updated version');
-    check(await read(again) === updatedText, `updated read ${await read(again)}`);
-  } finally { await again.close(); }
-}
-
-/** The stored config cell and key version of the single secret_config row. */
-async function storedCell(dialect, dsn, sqlitePath) {
-  const sql = 'SELECT config, aes_key_version FROM secret_config';
-  if (dialect === 'sqlite') {
-    const { DatabaseSync } = await import('node:sqlite');
-    const db = new DatabaseSync(sqlitePath);
-    try { const row = db.prepare(sql).get(); return [row.config, row.aes_key_version]; } finally { db.close(); }
-  }
-  if (dialect === 'mysql') {
-    const conn = await mysqlConnection(dsn);
-    try { const [rows] = await conn.query(sql); return [rows[0].config, rows[0].aes_key_version]; } finally { await conn.end(); }
-  }
-  const client = postgresClient(dsn);
-  await client.connect();
-  try { const { rows } = await client.query(sql); return [rows[0].config, rows[0].aes_key_version]; } finally { await client.end(); }
-}
-
-const cases = { conditions, joinsAndRelations, columnsAndSubqueries, writes, styledStates, transactions, aesRotation, bindLimitSplitting, insertParts };
+const cases = { conditions, joinsAndRelations, columnsAndSubqueries, writes, styledStates, transactions, bindLimitSplitting, insertParts };
 
 /**
  * Runs body(dsn, database) on a new case database for the dialect, and drops it when done. A SQLite DSN has a
@@ -680,9 +553,7 @@ const failureMessage = async promise => { try { await promise; return 'no error'
 // Checks that the message is a ROLLBACK that includes both the cause and the error at the end of the transaction.
 const checkBoth = (what, message, cause, end) => check(message.startsWith('ROLLBACK: transaction failed (') && message.includes(cause) && message.includes(`and rollback failed (`) && message.includes(end), `${what} reports the cause and the failed transaction end: ${message}`);
 
-modelCase('schemaEmpty', DIALECTS, (dialect, step) => inCaseDatabase(dialect, step, dsn => schemaEmpty(dialect, dsn)));
 for (const [name, fn] of Object.entries(cases)) modelCase(name, DIALECTS, installed(fn));
-modelCase('schemaExistsUnderscore', ['sqlite'], installed(schemaExistsUnderscore));
 // Requirements: CFG-9.
 modelCase('cancellation', DIALECTS, installed(async (db, dsn, dialect) => {
   const fixture = await seed(db);
@@ -707,8 +578,6 @@ modelCase('cancellation', DIALECTS, installed(async (db, dsn, dialect) => {
   }
   check(typeof await new Author().connect(db).getCount() === 'number', 'the connection is usable after a cancellation');
 }));
-// The SQLite case connects with a DSN without busy_timeout and reads the stored cells directly from the file.
-modelCase('aesJsonColumn', DIALECTS, (dialect, step) => inCaseDatabase(dialect, step, (dsn, database) => aesJsonColumn(dialect, database.dsn, database.path)));
 modelCase('installInsideTransaction', ['mysql'], installed(mysqlInstallInsideTransaction));
 // If the MySQL local value reset at the end of a transaction fails, commit and rollback report that error.
 // A MySQL user variable survives COMMIT and ROLLBACK (mysql.context.user_variable_session_scope).

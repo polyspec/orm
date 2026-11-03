@@ -8,7 +8,6 @@ import { createInterface } from 'node:readline';
 import { isDeepStrictEqual } from 'node:util';
 import { COMPUTE, caseTest } from '../../../tests/testcase.mts';
 import { Db, OrmError } from '../dist/index.js';
-import { parseDsn } from '../dist/driver.js';
 import { checkAssign, checkParam, transformParam } from '../dist/bind_check.js';
 import * as publicIndex from '../dist/index.js';
 import { readFileSync } from 'node:fs';
@@ -56,31 +55,6 @@ async function codeOf(work) {
   return '';
 }
 
-// Requirements: PRT-63.
-caseTest('markdown/parse-dsn', COMPUTE, () => {
-  const parsed = parseDsn(`markdown://127.0.0.1:4100/tracker?token=${token}`);
-  const want = { driver: 'markdown', zone: '+00:00', markdown: { address: '127.0.0.1:4100', corpus: 'tracker', token } };
-  if (!isDeepStrictEqual(parsed, want)) throw new Error(`parseDsn() = ${JSON.stringify(parsed)}; want ${JSON.stringify(want)}`);
-  for (const input of [
-    'markdown://127.0.0.1:4100/tracker',
-    'markdown://127.0.0.1:4100/tracker?token=',
-    'markdown://127.0.0.1:4100/tracker?token=a&token=b',
-    'markdown://127.0.0.1:4100/tracker?token=a&mode=ro',
-    'markdown://127.0.0.1/tracker?token=a',
-    'markdown://127.0.0.1:0/tracker?token=a',
-    'markdown://127.0.0.1:port/tracker?token=a',
-    'markdown://localhost:4100/tracker?token=a',
-    'markdown://10.0.0.1:4100/tracker?token=a',
-    'markdown://user@127.0.0.1:4100/tracker?token=a',
-    'markdown://127.0.0.1:4100/?token=a',
-    'markdown://127.0.0.1:4100/a/b?token=a',
-  ]) {
-    let code = '';
-    try { parseDsn(input); } catch (error) { code = error?.code; }
-    if (code !== 'CONFIG') throw new Error(`parseDsn(${input}) gave ${code || 'no error'}; want CONFIG`);
-  }
-});
-
 // The connect and control messages the client sends, and the parsing of error lines.
 // Requirements: PRT-64.
 caseTest('markdown/session-messages', COMPUTE, async () => {
@@ -112,23 +86,6 @@ caseTest('markdown/session-messages', COMPUTE, async () => {
     ];
     const got = await s.receivedMessages;
     if (!isDeepStrictEqual(got, want)) throw new Error(`messages:\n${got.join('\n')}\nwant:\n${want.join('\n')}`);
-  } finally {
-    await s.close();
-  }
-});
-
-// The CONFIG the server answers to connect is the error of connect.
-// Requirements: PRT-64.
-caseTest('markdown/connect-refused', COMPUTE, async () => {
-  const s = await startMarkdownTestServer('{"error":{"code":"CONFIG","message":"connect: the token is not the corpus\'s token"}}');
-  try {
-    let failure;
-    try { await (await Db.connect(s.dsn)).close(); } catch (error) { failure = error; }
-    if (!(failure instanceof OrmError) || failure.code !== 'CONFIG' || failure.message !== "CONFIG: connect: the token is not the corpus's token") {
-      throw new Error(`connect error = ${failure}; want the server's CONFIG`);
-    }
-    const got = await s.receivedMessages;
-    if (!isDeepStrictEqual(got, [connectLine])) throw new Error(`messages = ${JSON.stringify(got)}`);
   } finally {
     await s.close();
   }
