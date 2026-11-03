@@ -262,7 +262,7 @@ async fn through_pooler(dsn: &str) -> Result<Conn, String> {
 
 /// The text of a step field that holds SQL: the string itself, or the entry of the database.
 fn sql_of(step: &Value, database: &str, event_step: usize) -> Result<String, String> {
-    let field = &step["sql"];
+    let field = &crate::recipe_reads::read(step, "sql")["sql"];
     let text = field.as_str().or_else(|| field[database].as_str()).ok_or_else(|| format!("no statement for {database}: {step}"))?;
     Ok(text.replace("{step}", &event_step.to_string()))
 }
@@ -277,12 +277,12 @@ fn cell(value: &CatalogValue) -> Value {
 }
 
 fn skipped(step: &Value, database: &str) -> bool {
-    step["only"].as_array().is_some_and(|only| !only.iter().any(|name| name.as_str() == Some(database)))
+    crate::recipe_reads::read(step, "only")["only"].as_array().is_some_and(|only| !only.iter().any(|name| name.as_str() == Some(database)))
 }
 
 /// Compares the value of a nested step with its expect; the steps of a case are compared by the helper.
 fn checked(step: &Value, database: &str, got: &Value) -> Result<(), String> {
-    match step.get("expect") {
+    match crate::recipe_reads::read(step, "expect").get("expect") {
         Some(expect) if expect[database]["value"] != got["value"] => {
             Err(format!("got {}, want {}", got["value"], expect[database]["value"]))
         }
@@ -292,7 +292,7 @@ fn checked(step: &Value, database: &str, got: &Value) -> Result<(), String> {
 
 /// Runs the statement of dbspec.exec on its connection; its value is the rows, when the step expects them.
 async fn exec_on(session: &mut Conn, step: &Value, text: &str) -> Result<Value, String> {
-    if step.get("expect").is_none() {
+    if crate::recipe_reads::read(step, "expect").get("expect").is_none() {
         ApplyConnection::execute(session, text).await.map_err(|e| format!("{text}: {e}"))?;
         return Ok(json!({}));
     }
@@ -308,27 +308,27 @@ fn run_op<'a>(state: &'a mut State, step: &'a Value, database: &'a str, dsn: &'a
 }
 
 async fn op_body(state: &mut State, step: &Value, database: &str, dsn: &str) -> Result<Value, String> {
-    let name = step["as"].as_str().unwrap_or_default();
-    match step["op"].as_str().unwrap_or_default() {
+    let name = crate::recipe_reads::read(step, "as")["as"].as_str().unwrap_or_default();
+    match crate::recipe_reads::read(step, "op")["op"].as_str().unwrap_or_default() {
         "dbspec.plan" => {
-            let lines: Vec<&str> = step["lines"].as_array().ok_or("lines")?.iter().filter_map(Value::as_str).collect();
+            let lines: Vec<&str> = crate::recipe_reads::read(step, "lines")["lines"].as_array().ok_or("lines")?.iter().filter_map(Value::as_str).collect();
             let plan = dbspec::parse_plan(&format!("{}\n", lines.join("\n"))).map_err(|d| format!("dbspec.plan {name}: {d:?}"))?;
             state.plans.insert(name.to_owned(), plan);
             Ok(json!({}))
         }
         "dbspec.connect" => {
-            let session = if step["through"] == "pooler" { through_pooler(dsn).await? } else { direct(database, dsn).await? };
+            let session = if crate::recipe_reads::read(step, "through")["through"] == "pooler" { through_pooler(dsn).await? } else { direct(database, dsn).await? };
             state.sessions.insert(name.to_owned(), session);
             Ok(json!({}))
         }
         "dbspec.exec" => {
             let text = sql_of(step, database, state.step)?;
-            let connection = step["connection"].as_str().unwrap_or_default();
+            let connection = crate::recipe_reads::read(step, "connection")["connection"].as_str().unwrap_or_default();
             let session = state.sessions.get_mut(connection).ok_or_else(|| format!("connection {connection} is not bound"))?;
             exec_on(session, step, &text).await
         }
         "dbspec.schema" => {
-            let connection = step["connection"].as_str().unwrap_or_default();
+            let connection = crate::recipe_reads::read(step, "connection")["connection"].as_str().unwrap_or_default();
             let session = state.sessions.get_mut(connection).ok_or_else(|| format!("connection {connection} is not bound"))?;
             let introspection = dbspec::introspect(session, dialect_of(database)?, "x").await.map_err(|e| format!("introspect: {e}"))?;
             if !introspection.unsupported.is_empty() {
@@ -353,10 +353,10 @@ async fn op_body(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
 
 /// The nested steps of dbspec.other_database, on a new connection to the other database that ends with them.
 async fn other_steps(state: &mut State, step: &Value, database: &str, other: &str) -> Result<(), String> {
-    let name = step["as"].as_str().unwrap_or_default();
+    let name = crate::recipe_reads::read(step, "as")["as"].as_str().unwrap_or_default();
     state.sessions.insert(name.to_owned(), direct(database, other).await?);
     let mut result = Ok(());
-    for nested in step["steps"].as_array().into_iter().flatten() {
+    for nested in crate::recipe_reads::read(step, "steps")["steps"].as_array().into_iter().flatten() {
         if skipped(nested, database) {
             continue;
         }
@@ -388,15 +388,15 @@ fn first_failure(error: &ApplyError) -> &ApplyError {
 /// Makes one call of the command; its value is the code of its failure, or ok, and the events that count names.
 async fn command(state: &mut State, step: &Value, database: &str, dsn: &str) -> Result<Value, String> {
     let dialect = dialect_of(database)?;
-    let target = step["connection"].as_str().unwrap_or_default().to_owned();
+    let target = crate::recipe_reads::read(step, "connection")["connection"].as_str().unwrap_or_default().to_owned();
     let mut plans: Vec<Plan> = Vec::new();
-    for name in step["plans"].as_array().ok_or("plans")?.iter().filter_map(Value::as_str) {
+    for name in crate::recipe_reads::read(step, "plans")["plans"].as_array().ok_or("plans")?.iter().filter_map(Value::as_str) {
         plans.push(state.plans.get(name).cloned().ok_or_else(|| format!("plan {name} is not bound"))?);
     }
     // The command borrows its connection, so it is out of the map while the nested steps reach the others.
     let session = state.sessions.remove(&target).ok_or_else(|| format!("connection {target} is not bound"))?;
     let shared = Arc::new(Mutex::new(session));
-    let on = step.get("on");
+    let on = crate::recipe_reads::read(step, "on").get("on");
     let mut kinds: HashMap<String, u64> = HashMap::new();
     let mut events = 0_u64;
     let mut ran = false;
@@ -441,7 +441,7 @@ async fn command(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
             Ok(())
         };
         let mut connection = Shared { inner: Arc::clone(&shared) };
-        match step["op"].as_str().unwrap_or_default() {
+        match crate::recipe_reads::read(step, "op")["op"].as_str().unwrap_or_default() {
             "dbspec.apply" => dbspec::apply(&mut connection, dialect, &plans, &now, &mut handler).await,
             "dbspec.recover" => dbspec::recover(&mut connection, dialect, &plans, &now, &mut handler).await,
             "dbspec.rollback" => dbspec::rollback(&mut connection, dialect, &plans, &now, &mut handler).await,
@@ -461,11 +461,11 @@ async fn command(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
                 ApplyError::Event(stop) if stop.is::<Stop>() => "stopped".to_owned(),
                 other => match other.code() {
                     Some(code) => code.to_owned(),
-                    None if step["message"].as_str() == Some(message.as_str()) => "message".to_owned(),
-                    None => return Err(format!("{}: {message}", step["op"])),
+                    None if crate::recipe_reads::read(step, "message")["message"].as_str() == Some(message.as_str()) => "message".to_owned(),
+                    None => return Err(format!("{}: {message}", crate::recipe_reads::read(step, "op")["op"])),
                 },
             };
-            if let Some(detail) = step["detail"].as_str() {
+            if let Some(detail) = crate::recipe_reads::read(step, "detail")["detail"].as_str() {
                 if !message.to_lowercase().contains(&detail.to_lowercase()) {
                     return Err(format!("the message {message:?} does not hold {detail:?}"));
                 }
@@ -473,14 +473,14 @@ async fn command(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
             code
         }
     };
-    if let Some(bounds) = step.get("elapsed") {
+    if let Some(bounds) = crate::recipe_reads::read(step, "elapsed").get("elapsed") {
         let (least, below) = (bounds["at_least_ms"].as_u64().unwrap_or(0), bounds["below_ms"].as_u64().unwrap_or(0));
         if elapsed < u128::from(least) || elapsed >= u128::from(below) {
             return Err(format!("the command took {elapsed} ms, want at least {least} and below {below}"));
         }
     }
     let mut members = vec![json!(["code", { "text": code }])];
-    match step["count"].as_array() {
+    match crate::recipe_reads::read(step, "count")["count"].as_array() {
         None => members.push(json!(["events", { "int": events.to_string() }])),
         Some(counted) => {
             for kind in counted.iter().filter_map(Value::as_str) {

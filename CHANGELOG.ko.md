@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e4df31ef291dd9e3c1994e1de42fc0b692fd83dc0385bb84dfeda93f62cc06e9 -->
+<!-- source-sha256: 53d0aa0d8c8fbb9ba8bdc26ae6079a76aa4568642cdc801e3b4f46343b555011 -->
 # 변경 이력
 
 ## Unreleased
@@ -18,6 +18,7 @@
 - 문서: FCV-2가 `ts-dbspec-plan`과 `ts-dbspec-render-dialect`의 Rust compile fixture를 native binding 규칙이 읽는 형식으로 적는다.
 - PHP와 PHP extension은 described read에서 SQLite TIME 또는 DATETIME column에 저장된 숫자를 다른 runtime처럼 GRID_TEMPORAL_VALUE로 거부하며, temporal_write_and_limits가 temporal 쓰기, key, 한계를 담습니다.
 - 바이트 예산과 정확히 같은 Rust page는 응답하고, 모든 runtime이 예산 거부를 같은 message로 알리며, INT-115가 이 message를 정합니다.
+- recipe 실행은 runtime마다 읽은 key를 기록하고, 읽지 않은 key가 남으면 그 이름과 함께 case가 실패한다.
 - plain read-only query는 여섯 runtime 모두에서 binary 값을 그 byte로 돌려주며, INT-153이 이 형식을 정합니다.
 - catalog은 UNION ALL 피연산자나 + 항이 200개인 PostgreSQL 읽기를 더 이상 거부하지 않고, Rust는 다른 dialect에서도 읽기의 깊이를 제한하지 않으며, catalog_read가 이 읽기의 응답을 확인합니다.
 - apply chain, history와 state, lock 범위, finalize, stress plan, pooler는 여섯 런타임의 recipe `dbspec_apply`이며, 각 명령은 이름 있는 연결에서 공개 apply API를 한 번 호출하고, 그 native 시험은 사라졌다.

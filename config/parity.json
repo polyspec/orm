@@ -1088,6 +1088,7 @@
         "packages/rust/tests/src/lib.rs",
         "packages/rust/tests/src/recipe.rs",
         "packages/rust/tests/src/recipe_apply.rs",
+        "packages/rust/tests/src/recipe_reads.rs",
         "packages/rust/tests/src/recipe_generator.rs",
         "packages/rust/tests/tests/common/or_panic.rs",
         "packages/rust/tests/tests/model_writes/dispatch.rs",

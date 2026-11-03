@@ -14,6 +14,10 @@
 - The PHP and PHP extension tests that read the vector files are gone, with the coverage helpers only they used; the bindings of their units name the recipe test `conformance_verification` of each database.
 - The Python conformance modules that read the vector files are gone with the target `conformance-check/python`: the bindings of their units name the recipe test `conformance_verification` of each database.
 - The TypeScript conformance tests that read the vector files are gone: each vector is a case of the recipe `conformance_verification`, and the TypeScript bindings of its units name that recipe test.
+- The connection pool of CFG-4 and CFG-5 on MySQL and PostgreSQL runs as the new recipe `connection_pool` in Go, TypeScript, Python and Rust, through the new op `pool.transactions` and `pool_idle_size` of `model.connect`; the native tests keep the SQLite pool and the lifetime expiry, which `docs/spec/feature-coverage.md` lists (#T334-3-12-2)
+- The pool statistics of INT-79 run as the case `stats_report_the_pool_of_the_connection` of the recipe utils in all six runtimes, through the new op `utils.stats` (#T334-3-12-2)
+- The Go lane and the parity roots no longer name `packages/go/complexquery`, which has no Go file left (#T334-3-12-2)
+- Recipe runs record the keys they read in each runtime, and a key that a run leaves unread fails the case by name.
 - Docs: FCV-2 states the Rust compile fixtures of `ts-dbspec-plan` and `ts-dbspec-render-dialect` in the form the native-binding rule reads.
 - PHP and the PHP extension refuse a number stored in a SQLite TIME or DATETIME column of a described read with GRID_TEMPORAL_VALUE, as the other runtimes do, and temporal_write_and_limits holds the temporal writes, keys and limits.
 - A Rust page of exactly its byte budget answers, and all runtimes state a budget refusal in the same message, which INT-115 states.
@@ -32,21 +36,19 @@
 - The generators print a diagnostic of a parsed document in the form of SCH-12, `<line>:<column> <rule>: document <name>: <message>`: PHP and its extension and the Rust builder printed their own (#T334-3-20)
 - A PHP catalog whose commit lost its connection reads over a new connection at its next call instead of failing with `CONNECTION_LOST` from then on (INT-118). The recipe case `row_commit_outcomes` of `catalog_connection` holds it, with a PostgreSQL deferred trigger that rejects the commit and one that ends the backend during it.
 - The natives of the rollback fault are gone from all runtimes: the case of the recipe transactions states them, with the new expect key `keeps_callback` for the callback error that a ROLLBACK keeps. `packages/ts/tests/rollback.mjs` and `packages/go/orm/rollback_fault_test.go` are removed, and the two Rust forms stay native as INT-72a.
-- The connection pool of CFG-4 and CFG-5 on MySQL and PostgreSQL runs as the new recipe `connection_pool` in Go, TypeScript, Python and Rust, through the new op `pool.transactions` and `pool_idle_size` of `model.connect`; the native tests keep the SQLite pool and the lifetime expiry, which `docs/spec/feature-coverage.md` lists (#T334-3-12-2)
 - The set errors, the file diagnostics and the `differs:` and `missing:` lines of the generated file check are cases of the `generator` recipe in all six runtimes through `generator.refused` and `generator.check`, and their natives are gone (#T334-3-20)
 - `read_only_query` of a MySQL unsigned value beyond the signed 64-bit range returns its exact digits in every runtime (INT-102): Go, Rust, the PHP library and the PHP extension refused it. The recipe case `grid_number_values` holds it.
 - The decimal and number cells of a read-only grid query are the recipe cases `grid_decimal_values` and `grid_number_values` of `catalog_connection`; the Rust tests `grid_decimals` and `grid_numbers` are gone.
 - Python and PHP, library and extension, refuse a nonfinite PostgreSQL numeric grid cell with `CATALOG_VALUE`, as the catalog grid section of `docs/spec/interfaces.md` states; they returned `NaN` as a decimal cell. The recipe case `grid_decimal_values` holds it.
 - The row baseline and the verification of a native update are the recipe cases `row_update_verification`, `row_baseline_key_order` and `row_baseline_rejected` of `catalog_connection` in all six runtimes on the three databases, with the op `catalog.revision_compare` and more replacements of `page_with`; the Rust tests of them are gone, except what only the forms of Rust hold (`rust-row-snapshot-cell-forms`). TypeScript no longer refuses a SQLite view as a table without one definition text.
 - TypeScript describes a SQLite view: it read the view's definition from `sqlite_master` with `type = 'table'`, found no row and refused the view with `TABLE_METADATA_INVALID`; the recipe case `view_table_page` of `catalog_connection` holds it (INT-113).
-- The pool statistics of INT-79 run as the case `stats_report_the_pool_of_the_connection` of the recipe utils in all six runtimes, through the new op `utils.stats` (#T334-3-12-2)
-- The Go lane and the parity roots no longer name `packages/go/complexquery`, which has no Go file left (#T334-3-12-2)
 - The recipe form F16 `within` is removed: no runner or fixture used it.
 - A test states that every conformance vector equals its recipe case on each database, field by field for statements, until the vector files lose their expect.
 - The constraint errors and the immutable write are held by the recipes in Rust, Go and Python too: the recipes compare the check name, the unique key, the SQLite code name and the driver cause, and `refusal.rs` is gone (#T334-3-18).
 
 Docs: FCV-2 states each public-surface unit of `interface_contract` with its own native reason, in the form the native-binding rule reads.
 
+- The native refusal tests of vector 17 give way to the case `errors` of the recipe conformance_verification; Go, TypeScript and Rust keep only their compile fixtures for a use that drops a refusal, and the private SQLite fixture helper of Rust goes with its one test (#T334-3-12-2)
 - The native tests of `orm-gen gen --check` in Go, PHP and TypeScript are gone: the case `check_reports_differences_without_writing` of the recipe `generator` holds them, and `go-model-check` and `php-model-check` hold the generated models; the TypeScript build writes its own.
 - A connection that the server refuses is `DRIVER` in every client; PHP and its extension reported `CONFIG`, and the Rust catalog an uncoded text.
 - A catalog retries a connection that `max_user_connections` refuses only within 2 s of closing one of its own, and a budget stop in Go reports `CATALOG_LIMIT` alone, with no rollback attempted.
@@ -73,7 +75,6 @@ Docs: FCV-2 states each public-surface unit of `interface_contract` with its own
 - A catalog budget stop whose kill fails no longer reads the rest of the result: PHP waits for the server to end the stream and reopens, and Python closes its socket.
 - The statement event bind of a secret and the secret bind slot are gone: no statement has bound a secret since AES moved to the client, so `$SECRET` left INT-91, DSL-68, PRT-32 and every client.
 - A catalog budget stop whose kill fails no longer reads the rest of the result: PHP waits for the server to end the stream and reopens, and Python closes its socket.
-- The native refusal tests of vector 17 give way to the case `errors` of the recipe conformance_verification; Go, TypeScript and Rust keep only their compile fixtures for a use that drops a refusal, and the private SQLite fixture helper of Rust goes with its one test (#T334-3-12-2)
 - The constraint errors and the immutable write are held by the recipes in Rust, Go and Python too: the recipes compare the check name, the unique key, the SQLite code name and the driver cause, and `refusal.rs` is gone (#T334-3-18).
 - The manifest, analysis and format units of the schema definition bind only their recipe: Go `TestFormat` is gone, the invalid byte joins the stated native unit `dbspec-encoding-and-limit-natives`, and the test of the origin of the extension classes is internal (#T334-3-18).
 - An effect query without a row is `<query> returned no row` in every runtime (Rust said `returned 0 rows; want one`), and the `dbspec.apply_fault` recipe holds it; the native tests are gone (#T334-3-18).
