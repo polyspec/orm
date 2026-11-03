@@ -41,6 +41,14 @@
       "reply",
       "token"
     ],
+    "markdown.session": [
+      "corpus",
+      "expect",
+      "messages",
+      "op",
+      "replies",
+      "token"
+    ],
     "keyring.versions": [
       "expect",
       "keyring",
@@ -188,7 +196,8 @@
       "op",
       "operator",
       "params",
-      "process_zone"
+      "process_zone",
+      "surface"
     ],
     "model.assign": [
       "column",

@@ -6467,45 +6467,6 @@
       ]
     },
     {
-      "id": "markdown-session-messages",
-      "kind": "feature",
-      "requirements": [
-        "PRT-64"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/markdown_test.go",
-          "id": "TestMarkdownSessionMessages"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/MarkdownTest.php",
-          "id": "MarkdownTest::testSessionMessages"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/MarkdownTestExtensionTest.php",
-          "id": "MarkdownTestExtensionTest::testSessionMessages"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/markdown.mjs",
-          "id": "markdown/session-messages"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_markdown.py",
-          "id": "test_markdown_session_messages"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/markdown.rs",
-          "id": "markdown_session_messages"
-        }
-      ]
-    },
-    {
       "id": "ts-package-declarations",
       "kind": "feature",
       "requirements": [
@@ -29940,7 +29901,13 @@
       "id": "markdown-message-vectors",
       "kind": "suite",
       "requirements": [
-        "PRT-67"
+        "PRT-67",
+        "PRT-64",
+        "DIA-183",
+        "DIA-184",
+        "DIA-185",
+        "DIA-188",
+        "DIA-189"
       ],
       "file": "tests/bind/messages.json",
       "cases": "$.cases[*].id",
@@ -30233,49 +30200,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/statement_events_sqlite.rs",
           "id": "statement_events_sqlite::subscriber_orm_error"
-        }
-      ]
-    },
-    {
-      "id": "markdown-rejected-surfaces",
-      "kind": "feature",
-      "requirements": [
-        "DIA-183",
-        "DIA-184",
-        "DIA-185",
-        "DIA-188",
-        "DIA-189"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/markdown_test.go",
-          "id": "TestMarkdownRejectedSurfaces"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/MarkdownTest.php",
-          "id": "MarkdownTest::testRejectedSurfaces"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/MarkdownTestExtensionTest.php",
-          "id": "MarkdownTestExtensionTest::testRejectedSurfaces"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/markdown.mjs",
-          "id": "markdown/rejected-surfaces"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_markdown.py",
-          "id": "test_markdown_rejected_surfaces"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/markdown.rs",
-          "id": "markdown_rejected_surfaces"
         }
       ]
     },

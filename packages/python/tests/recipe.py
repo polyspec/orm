@@ -208,6 +208,9 @@ def recipe_tests(path: str, database: str):
                 if step["op"] == "markdown.connect":
                     _markdown_connect(step, database)
                     continue
+                if step["op"] == "markdown.session":
+                    _markdown_session(step, database)
+                    continue
                 if step["op"] == "markdown.builder":
                     _markdown_builder(step, database)
                     continue
@@ -1014,6 +1017,29 @@ def _send_in_process_zone(step: dict) -> None:
         time.tzset()
 
 
+def _refused_surface(surface: str, models, db) -> None:
+    """Runs the public call of a markdown.send surface, one that has no form on a markdown connection (DIA-183 to DIA-189)."""
+    utils = db.utils()
+    calls = {
+        "audit": lambda: db.transaction(lambda: None, {"audit": {"actor": "tester"}}),
+        "isolation": lambda: db.transaction(lambda: None, {"isolation": "serializable"}),
+        "timeout_ms": lambda: db.transaction(lambda: None, {"timeoutMs": 100}),
+        "get_query": lambda: models.Slots().connect(db).get_query(),
+        "subscribe": lambda: db.subscribe(lambda event: None),
+        "lock": lambda: utils.lock("k"),
+        "set_local": lambda: utils.set_local("k", "v"),
+        "local": lambda: utils.local("k"),
+        "backend_waiting_for_lock": lambda: utils.backend_waiting_for_lock(),
+        "privileges": lambda: utils.privileges().inspect_table("public.items"),
+        "aes_status": lambda: utils.aes().status(None, None),
+        "aes_rotate": lambda: utils.aes().rotate(None, None),
+        "schema_install": lambda: utils.schema().install(None),
+        "schema_evolution": lambda: utils.schema().add_tables_and_columns(None),
+        "schema_exists": lambda: utils.schema().exists("orm"),
+    }
+    calls[surface]()
+
+
 def _send(step: dict, call=None) -> None:
     """Runs one markdown.send step and checks its expect, which is not per database: {"message": JSON} against the first
     message the listener received (the whole message of a begin, the one parameter of a statement), or {"error": CODE} against
@@ -1031,6 +1057,8 @@ def _send(step: dict, call=None) -> None:
         try:
             if call is not None:
                 call(models, db)
+            elif "surface" in step:
+                _refused_surface(step["surface"], models, db)
             elif "begin" in step:
                 db.transaction(
                     lambda: None, {"readOnly": step["begin"].get("read_only") is True}
@@ -1844,6 +1872,49 @@ def _markdown_connect(step: dict, database: str) -> None:
     listener.close()
     if received != [step["received"]]:
         raise AssertionError(f"the listener received {received}, want {step['received']}")
+    if got != outcome["error"]:
+        raise AssertionError(f"got {got}, want {outcome['error']}")
+    if outcome.get("message_holds", "") not in message:
+        raise AssertionError(f"message {message}, want one that holds {outcome['message_holds']}")
+
+
+def _markdown_session(step: dict, database: str) -> None:
+    """Runs the markdown.session op (FCV-4, PRT-64): on a listener that answers each line with the next of the replies of the
+    step, a read-only transaction that holds a nested one, then a transaction, whose error is compared with the expect."""
+    listener = socket.create_server(("127.0.0.1", 0))
+    received = []
+
+    def serve() -> None:
+        connection, _ = listener.accept()
+        with connection, connection.makefile("rwb") as stream:
+            for reply in step["replies"]:
+                line = stream.readline()
+                if not line:
+                    break
+                received.append(line.decode().rstrip("\n"))
+                stream.write(reply.encode() + b"\n")
+                stream.flush()
+
+    server = threading.Thread(target=serve, daemon=True)
+    server.start()
+    port = listener.getsockname()[1]
+    outcome = step["expect"][database]
+    db = Db.connect(f"markdown://127.0.0.1:{port}/{step['corpus']}?token={step['token']}")
+    got = None
+    message = ""
+    try:
+        db.transaction(lambda: db.transaction(lambda: None), {"readOnly": True})
+        try:
+            db.transaction(lambda: None)
+        except OrmError as error:
+            got = error.code
+            message = str(error)
+    finally:
+        db.close()
+    server.join(10)
+    listener.close()
+    if received != step["messages"]:
+        raise AssertionError(f"the listener received {received}, want {step['messages']}")
     if got != outcome["error"]:
         raise AssertionError(f"got {got}, want {outcome['error']}")
     if outcome.get("message_holds", "") not in message:

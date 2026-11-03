@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- - The session messages and the refused surfaces of a markdown connection are cases of the recipe tests/bind/messages.json in all six runtimes, by the new op markdown.session and the markdown.send form surface; the natives that held them are gone (#T334-3-6-2)
 - The Python test of a Future abandoning a query in a transaction (CFG-9) stays native in `test_query_cancel.py`, on its own empty database per dialect, and the Python feature runner `feature_items`, `each_item` and `run_cases` is removed, so Python reads neither `ORM_FEATURE_DATABASE` nor `ORM_FEATURE_DSN`.
 - The statement event bind of a secret and the secret bind slot are gone: no statement has bound a secret since AES moved to the client, so `$SECRET` left INT-91, DSL-68, PRT-32 and every client.
 - The four expected revision natives are gone from all six runtimes: the case `expect_revision` of the recipe conformance_verification holds a match, a mismatch, an update and a delete on every database (#T334-3-6-2)
