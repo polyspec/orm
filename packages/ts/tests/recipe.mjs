@@ -115,6 +115,9 @@ async function connectDriver(dsn, config = {}) {
     ...(config.pool_idle_size === undefined ? {} : { poolIdleSize: config.pool_idle_size }),
     ...(config.pool_lifetime_ms === undefined ? {} : { poolLifetimeMs: config.pool_lifetime_ms }),
     ...(config.statement_timeout_ms === undefined ? {} : { statementTimeoutMs: config.statement_timeout_ms }),
+    ...(config.aes_key === undefined ? {} : { aesKey: config.aes_key }),
+    ...(config.aes_version === undefined ? {} : { aesVersion: config.aes_version }),
+    ...(config.aes_keys === undefined ? {} : { aesKeys: new Map(Object.entries(config.aes_keys).map(([version, key]) => [Number(version), key])) }),
   });
   try {
     const { rows } = await db.utils().run(async frame => frame.run('utility', [], 'SELECT 1'));

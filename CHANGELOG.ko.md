@@ -1,10 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 79269f3d5f3cd2bd3afec391b0cc55c1735b999ca1d814d6a251a4771a996263 -->
+<!-- source-sha256: 34b0a17450401c11dd02889317c6f54ef4c50d5ed63a35bce885cb8c65427404 -->
 # 변경 이력
 
 ## Unreleased
 
 - dbspec rule `type`의 모든 message가 여섯 runtime에서 DBS-162가 적은 문장이다. Go, PHP, PHP extension, Rust가 parameter 오류를 각자 다르게 적지 않으며, generator case가 message 전체를 담는다. make rule이 없는 CHECK_TARGETS의 target은 사라졌고, `catalog-rust`는 없는 시험 파일을 가리키지 않는다 (#T334-3-12-6)
+- 현재 version의 key와 다른 AES key를 가진 연결은 `dsn.connect`의 `config`에 있는 `aes_key`, `aes_version`, `aes_keys`를 통해 여섯 runtime 모두에서 recipe `aes_rotation`의 case `an_aes_key_that_differs_from_the_current_version_is_refused`로 실행한다. Go 시험 `TestAESKeyMustMatchKeyOfCurrentVersion`은 제거했다 (#T334-3-12-2)
+- CR15-F: MySQL insert 문장을 보는 TypeScript와 Python 시험을 c55a726cf에서 소유 unit으로 되살린다(INT-123b, INT-123c). 가짜 driver가 관찰하는 문장만 맡는다.
 - CR15-F: `generated_key_lifecycle`은 PostgreSQL과 SQLite에서 더 큰 키의 행을 더하는 trigger 옆에 insert하므로, 표에서 읽은 키는 실패한다. INT-123은 생성 키의 출처를 적는다.
 - conformance vector 파일의 expected field를 chain, calls와 함께 없앴다. `tests/conformance/vectors.json`은 vector 이름과 requirement만 담고, `vectors.postgres.json`과 `vectors.sqlite.json`은 recipe `conformance_verification`의 expect로 합쳤다.
 - 전체 실행 conformance 검사기를 없앴다. `make conformance-check`는 남은 native body와 결과 helper를 실행하고, `contracts/interfaces.json`의 state contract는 시험에서 recipe case와 비교하며, database state 읽기는 `tests/conformance/check/state.mts`다.
@@ -19,6 +21,8 @@
 - CR15-F: 생성 키는 recipe case `generated_keys`와 `generated_key_lifecycle`이 맡는다. 가짜 driver로 이를 반복하던 TypeScript와 Python native를 지우고, Rust 시험은 INT-123a의 phase, 취소, join된 insert만 남긴다.
 - CR15-F: 행을 읽다 실패한 TypeScript의 SQLite 문장을 reset한다. cache에 reset 없이 남으면 다음 실행이 무엇을 bind하든 같은 오류를 보고했다.
 - CR15-F: 할당이 없는 insert가 생성 키를 돌려준다. TypeScript는 MySQL에서 bind 없는 문장의 insert id를 유지하고, PHP와 확장은 PostgreSQL에서 그 문장에 cursor를 선언하지 않는다.
+- Tests: CFG-3의 MySQL 세션 설정은 모든 runtime에서 `dsn_connection` recipe의 case `mysql_session_settings`가 `dsn.connect`의 새 key `session_read`로 확인하며, `sql_mode` native와 `tests/dsn/mysql-session.json`은 사라졌다.
+- recipe 실행은 runtime마다 읽은 key를 기록하고, 읽지 않은 key가 남으면 그 이름과 함께 case가 실패한다.
 - MySQL와 PostgreSQL에서 CFG-4와 CFG-5의 connection pool은 새 op `pool.transactions`와 `model.connect`의 `pool_idle_size`를 통해 Go, TypeScript, Python, Rust에서 새 recipe `connection_pool`로 실행한다. native 시험에는 SQLite pool과 lifetime 만료가 남으며, 그 목록은 `docs/spec/feature-coverage.md`에 있다 (#T334-3-12-2)
 - INT-79의 pool 통계가 새 op `utils.stats`로 recipe utils의 case `stats_report_the_pool_of_the_connection`에서 여섯 runtime 모두 돈다 (#T334-3-12-2)
 - Go lane과 parity root가 Go 파일이 남지 않은 `packages/go/complexquery`를 더 이상 가리키지 않는다 (#T334-3-12-2)
@@ -64,6 +68,7 @@
 - TypeScript가 SQLite view를 기술한다. `sqlite_master`에서 `type = 'table'`로 view의 정의를 읽어 행을 찾지 못하고 `TABLE_METADATA_INVALID`로 거부했다. `catalog_connection` recipe case `view_table_page`가 이를 담는다(INT-113).
 - `request_hook`과 `statement_events`의 Go coverage 파일은 사라졌다. 그 case는 같은 이름의 recipe이며 `config/parity.json`이 그곳에 묶는다. PERF-1의 Go 측정은 feature build tag 없는 `packages/go/bench/performance_measurement_test.go`다. recipe는 결과를 정할 뿐 시간을 정하지 않기 때문이다. `make perf-check`는 그 MySQL 시험을 실행한다.
 - constraint error와 immutable write는 Rust, Go, Python에서도 recipe가 시험한다: recipe는 check 이름, unique key, SQLite code 이름, driver cause를 비교하고, `refusal.rs`는 없앴다 (#T334-3-18).
+- Go, PHP, TypeScript의 `orm-gen gen --check` native 시험을 없앴다. recipe `generator`의 case `check_reports_differences_without_writing`가 그 내용을 맡고, `go-model-check`와 `php-model-check`가 생성된 모델을 맡고, TypeScript build는 자기 모델을 직접 쓴다.
 - vector 17의 native 거부 시험을 recipe conformance_verification의 case `errors`로 대체했다. Go, TypeScript, Rust는 거부를 버리는 사용에 대한 compile fixture만 유지하며, Rust의 private SQLite fixture helper도 그 유일한 시험과 함께 없앴다 (#T334-3-12-2)
 - Go, PHP, TypeScript의 `orm-gen gen --check` native 시험을 없앴다. recipe `generator`의 case `check_reports_differences_without_writing`가 그 내용을 맡고, `go-model-check`, `php-model-check`, `ts-model-check`가 생성된 모델을 맡는다. `ts-model-check`는 TypeScript 모델 다섯 묶음을 모두 맡고, 그 scan 목록은 모델을 부르는 source를 적는다.
 - Go, PHP, TypeScript의 `orm-gen gen --check` native 시험을 없앴다. recipe `generator`의 case `check_reports_differences_without_writing`가 그 내용을 맡고, `go-model-check`와 `php-model-check`가 생성된 모델을 맡고, TypeScript build는 자기 모델을 직접 쓴다.

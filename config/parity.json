@@ -15255,6 +15255,44 @@
       }
     },
     {
+      "id": "ts-catalog-mysql-insert-statements",
+      "kind": "feature",
+      "requirements": [
+        "INT-123b"
+      ],
+      "bindings": [
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog-mutation-helper.test.mjs",
+          "id": "uses the MySQL statement insertId for an omitted automatic key"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "@polyspec/orm"
+      }
+    },
+    {
+      "id": "py-catalog-mysql-insert-statements",
+      "kind": "feature",
+      "requirements": [
+        "INT-123c"
+      ],
+      "bindings": [
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_auto_key.py",
+          "id": "test_mysql_automatic_key_uses_insert_acknowledgement"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec-orm"
+      }
+    },
+    {
       "id": "rust-native-updates-lock-compare-verify-and-rollback",
       "kind": "feature",
       "requirements": [
@@ -27797,14 +27835,29 @@
           "id": "invalid_aes_configuration_fails_before_connection"
         },
         {
-          "implementation": "go",
-          "test": "packages/go/orm/aes_keys_test.go",
-          "id": "TestAESKeyMustMatchKeyOfCurrentVersion"
-        },
-        {
           "implementation": "python",
           "test": "packages/python/tests/test_aes_version_codes.py",
           "id": "test_connection_rejects_aes_key_that_differs_from_current_keyring_key"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationSqlite/an_aes_key_that_differs_from_the_current_version_is_refused"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/aes_rotation-sqlite.test.mjs",
+          "id": "an_aes_key_that_differs_from_the_current_version_is_refused"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_aes_rotation_sqlite.py",
+          "id": "an_aes_key_that_differs_from_the_current_version_is_refused"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+          "id": "aes_rotation_sqlite::an_aes_key_that_differs_from_the_current_version_is_refused"
         }
       ]
     },
