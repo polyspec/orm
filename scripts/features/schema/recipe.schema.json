@@ -2247,6 +2247,10 @@
           "op": {
             "const": "sql.exec"
           },
+          "refused": {
+            "description": "The database must refuse the statement; the step fails when it succeeds. A driver error of any code passes.",
+            "const": true
+          },
           "sql": {
             "$ref": "#/$defs/sql"
           },
@@ -3440,7 +3444,8 @@
           "compare": {
             "enum": [
               "all",
-              "tables"
+              "tables",
+              "statements"
             ]
           },
           "expect": {
