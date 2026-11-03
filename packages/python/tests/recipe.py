@@ -3253,6 +3253,11 @@ def _table_model_query(step: dict, context: dict) -> dict:
             steps = model.get_page_plan_steps(
                 limit["offset"] // limit["count"] + 1, limit["count"]
             )
+        holds_sql = step.get("plan_sql") is True
+
+        def statement(plan_step: dict) -> dict:
+            return {"sql": plan_step["sql"]} if holds_sql else {}
+
         return {
             "json": [
                 {
@@ -3262,7 +3267,7 @@ def _table_model_query(step: dict, context: dict) -> dict:
                         text: plan_step["sql"].upper().count(text)
                         for text in step["plan_count"]
                     },
-                    **({"sql": plan_step["sql"]} if step.get("plan_sql") is True else {}),
+                    **statement(plan_step),
                 }
                 for plan_step in steps
             ]
@@ -3904,6 +3909,10 @@ def _run_database_step(step: dict, context: dict) -> None:
                 raise AssertionError(
                     f"error {str(error)!r} keeps the rollback error {rollback!r}, want code {expected['rollback']}"
                 ) from error
+        if expected.get("keeps_callback") is True and not isinstance(error.cause, CallbackError):
+            raise AssertionError(
+                f"error {str(error)!r} does not keep the error of the callback"
+            ) from error
         if expected.get("driver_cause") is True and error.__cause__ is None:
             raise AssertionError(
                 f"error {str(error)!r} has no driver cause"

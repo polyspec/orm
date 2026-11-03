@@ -23,8 +23,8 @@ class CatalogConnectionSqliteOnlyRecipeTest extends TestCase
     }
 
     #[DataProvider('cases')]
-    public function testSqlite(array $case): void
+    public function testSqlite(string $id): void
     {
-        $this->runCase($case, 'sqlite');
+        $this->runCase($id, 'sqlite');
     }
 }

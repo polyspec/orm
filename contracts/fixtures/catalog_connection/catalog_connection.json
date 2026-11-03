@@ -13429,6 +13429,229 @@
       ]
     },
     {
+      "id": "row_commit_outcomes",
+      "only": [
+        "postgres"
+      ],
+      "requirements": [
+        "INT-118",
+        "PRT-79"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "sql": "CREATE TABLE commit_row (id INTEGER NOT NULL PRIMARY KEY, n BIGINT NOT NULL)",
+          "reason": "dbspec declares no such table, so only the native driver creates it"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO commit_row (id, n) VALUES (1, 10)",
+          "reason": "the row of the update"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "commit_row",
+          "limit": 5,
+          "offset": 0,
+          "columns": [
+            "id",
+            "n"
+          ],
+          "expect": {
+            "postgres": {
+              "columns": [
+                "id",
+                "n"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "10"
+                  }
+                ]
+              ]
+            }
+          },
+          "as": "first"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "first"
+          },
+          "index": 0,
+          "as": "original"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "CREATE FUNCTION commit_row_reject() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RAISE EXCEPTION 'owned commit rejection' USING ERRCODE = '23514'; RETURN NULL; END$$",
+          "reason": "dbspec declares no trigger that fails at commit, so only the native driver creates it"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "CREATE CONSTRAINT TRIGGER commit_row_rejected AFTER UPDATE ON commit_row DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION commit_row_reject()",
+          "reason": "dbspec declares no trigger that fails at commit, so only the native driver creates it"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "original"
+          },
+          "set": [
+            [
+              "n",
+              {
+                "int": "11"
+              }
+            ]
+          ],
+          "expect": {
+            "postgres": {
+              "error": "ROW_COMMIT_REJECTED"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "commit_row",
+          "limit": 5,
+          "offset": 0,
+          "columns": [
+            "id",
+            "n"
+          ],
+          "expect": {
+            "postgres": {
+              "columns": [
+                "id",
+                "n"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "10"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "DROP TRIGGER commit_row_rejected ON commit_row",
+          "reason": "dbspec declares no trigger that fails at commit, so only the native driver creates it"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "CREATE FUNCTION commit_row_end() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN PERFORM pg_terminate_backend(pg_backend_pid()); RETURN NULL; END$$",
+          "reason": "dbspec declares no trigger that fails at commit, so only the native driver creates it"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "CREATE CONSTRAINT TRIGGER commit_row_ended AFTER UPDATE ON commit_row DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION commit_row_end()",
+          "reason": "dbspec declares no trigger that fails at commit, so only the native driver creates it"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "original"
+          },
+          "set": [
+            [
+              "n",
+              {
+                "int": "12"
+              }
+            ]
+          ],
+          "expect": {
+            "postgres": {
+              "error": "ROW_COMMIT_INDETERMINATE"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "DROP TRIGGER commit_row_ended ON commit_row",
+          "reason": "dbspec declares no trigger that fails at commit, so only the native driver creates it"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "commit_row",
+          "limit": 5,
+          "offset": 0,
+          "columns": [
+            "id",
+            "n"
+          ],
+          "expect": {
+            "postgres": {
+              "columns": [
+                "id",
+                "n"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "10"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "original"
+          },
+          "set": [
+            [
+              "n",
+              {
+                "int": "13"
+              }
+            ]
+          ],
+          "expect": {
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "13"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "plain_binary_value",
       "requirements": [
         "INT-153"

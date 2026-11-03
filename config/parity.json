@@ -9562,7 +9562,8 @@
         "COD-20",
         "DIA-25",
         "COD-2",
-        "INT-91"
+        "INT-91",
+        "PRT-78"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -9727,7 +9728,8 @@
         "COD-20",
         "DIA-25",
         "COD-2",
-        "INT-91"
+        "INT-91",
+        "PRT-78"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -9892,7 +9894,8 @@
         "COD-20",
         "DIA-25",
         "COD-2",
-        "INT-91"
+        "INT-91",
+        "PRT-78"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -14447,48 +14450,63 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/internal/dialects/apply_physical_test.go",
-          "id": "TestApplyChain"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/dbspec/apply_test.go",
-          "id": "TestFinalizeMarksPlanDone"
+          "test": "packages/go/orm/recipe_dbspec_apply_test.go",
+          "id": "TestRecipeDbspecApplySqlite/rows_between_rollback_apply_and_finalize"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecApplyTest.php",
-          "id": "DbspecApplyTest::testScenario"
+          "test": "packages/php/tests/DbspecApplyRecipeTest.php",
+          "id": "DbspecApplyRecipeTest::testSqlite with data set \"rows_between_rollback_apply_and_finalize\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecApplyTestExtensionTest.php",
-          "id": "DbspecApplyTestExtensionTest::testScenario"
+          "test": "packages/php-ext/tests/DbspecApplyRecipeTestExtensionTest.php",
+          "id": "DbspecApplyRecipeTestExtensionTest::testSqlite with data set \"rows_between_rollback_apply_and_finalize\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-apply-physical.mjs",
-          "id": "mysql.apply.chain_history_and_again"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-apply-physical.mjs",
-          "id": "postgres.apply.chain_history_and_again"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-apply-physical.mjs",
-          "id": "sqlite.apply.chain_history_and_again"
+          "test": "packages/ts/tests/dbspec_apply-sqlite.test.mjs",
+          "id": "rows_between_rollback_apply_and_finalize"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/dbspec_plan_physical.py",
-          "id": "test_every_plan_case_runs_on_every_dialect"
+          "test": "packages/python/tests/test_dbspec_apply_sqlite.py",
+          "id": "rows_between_rollback_apply_and_finalize"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_apply.rs",
-          "id": "apply_chain_on_three_databases"
+          "test": "packages/rust/tests/tests/dbspec_apply_sqlite.rs",
+          "id": "dbspec_apply_sqlite::rows_between_rollback_apply_and_finalize"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_apply_test.go",
+          "id": "TestRecipeDbspecApplySqlite/finalize_of_a_plan_that_hides_nothing"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecApplyRecipeTest.php",
+          "id": "DbspecApplyRecipeTest::testSqlite with data set \"finalize_of_a_plan_that_hides_nothing\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecApplyRecipeTestExtensionTest.php",
+          "id": "DbspecApplyRecipeTestExtensionTest::testSqlite with data set \"finalize_of_a_plan_that_hides_nothing\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_apply-sqlite.test.mjs",
+          "id": "finalize_of_a_plan_that_hides_nothing"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_apply_sqlite.py",
+          "id": "finalize_of_a_plan_that_hides_nothing"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_apply_sqlite.rs",
+          "id": "dbspec_apply_sqlite::finalize_of_a_plan_that_hides_nothing"
         }
       ]
     },
@@ -17989,7 +18007,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/RollbackTest.php",
-          "id": "RollbackTest::testRollbackFault"
+          "id": "RollbackTest::testFaultEntry"
         }
       ],
       "owner": {
@@ -25757,83 +25775,33 @@
       ]
     },
     {
-      "id": "transaction-failure-rollback-fault",
+      "id": "transaction-forms-rollback-fault",
       "kind": "feature",
       "requirements": [
-        "INT-72"
+        "INT-72a"
       ],
       "bindings": [
         {
-          "implementation": "go",
-          "test": "packages/go/orm/rollback_fault_test.go",
-          "id": "TestRollbackFaultSQLite"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/rollback_fault_test.go",
-          "id": "TestRollbackFaultMySQL"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/rollback_fault_test.go",
-          "id": "TestRollbackFaultPostgres"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/TransactionFailureTest.php",
-          "id": "TransactionFailureTest::testRollbackFaultIsConsumedAfterTransactionRollback"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RollbackTest.php",
-          "id": "RollbackTest::testRollbackFault"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/TransactionFailureNativeTest.php",
-          "id": "TransactionFailureNativeTest::testRollbackFaultIsConsumedAfterTransactionRollback"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/transaction-failure.mjs",
-          "id": "transaction-failure/rollback-fault-consumption"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/rollback.mjs",
-          "id": "rollback/rollback_fault/sqlite"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/rollback.mjs",
-          "id": "rollback/rollback_fault/mysql"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/rollback.mjs",
-          "id": "rollback/rollback_fault/postgres"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_rollback_fault.py",
-          "id": "test_the_fault_reports_the_next_failed_rollback"
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/rollback.rs",
+          "id": "transaction_forms_rollback_fault_sqlite"
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/rollback.rs",
-          "id": "rollback_fault_sqlite"
+          "id": "transaction_forms_rollback_fault_mysql"
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/rollback.rs",
-          "id": "rollback_fault_mysql"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/rollback.rs",
-          "id": "rollback_fault_postgres"
+          "id": "transaction_forms_rollback_fault_postgres"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm"
+      }
     },
     {
       "id": "transaction-failure-savepoint-end",
@@ -42002,6 +41970,7 @@
         "INT-46",
         "INT-48",
         "INT-49",
+        "INT-72",
         "PLN-13",
         "PLN-16",
         "PLN-17",
@@ -42061,6 +42030,7 @@
         "INT-46",
         "INT-48",
         "INT-49",
+        "INT-72",
         "PLN-13",
         "PLN-16",
         "PLN-17",
@@ -42120,6 +42090,7 @@
         "INT-46",
         "INT-48",
         "INT-49",
+        "INT-72",
         "PLN-13",
         "PLN-16",
         "PLN-17",

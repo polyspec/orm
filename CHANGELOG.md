@@ -3,6 +3,11 @@
 
 ## Unreleased
 
+- The natives of the rollback fault are gone from all runtimes: the case of the recipe transactions states them, with the new expect key `keeps_callback` for the callback error that a ROLLBACK keeps. `packages/ts/tests/rollback.mjs` and `packages/go/orm/rollback_fault_test.go` are removed, and the two Rust forms stay native as INT-72a.
+- Tests: the finalization of a chain is held by the `dbspec_apply` recipe in every runtime, with a new case for a plan that hides nothing: its finalize event comes while the row is `applied`, no statement runs and the row becomes `done`; the Go `TestFinalizeMarksPlanDone` is gone.
+- Docs: FCV-2 states each public-surface unit of `interface_contract` with its own native reason, in the form the native-binding rule reads.
+- The generators print a diagnostic of a parsed document in the form of SCH-12, `<line>:<column> <rule>: document <name>: <message>`: PHP and its extension and the Rust builder printed their own (#T334-3-20)
+- A PHP catalog whose commit lost its connection reads over a new connection at its next call instead of failing with `CONNECTION_LOST` from then on (INT-118). The recipe case `row_commit_outcomes` of `catalog_connection` holds it, with a PostgreSQL deferred trigger that rejects the commit and one that ends the backend during it.
 - The set errors, the file diagnostics and the `differs:` and `missing:` lines of the generated file check are cases of the `generator` recipe in all six runtimes through `generator.refused` and `generator.check`, and their natives are gone (#T334-3-20)
 - `read_only_query` of a MySQL unsigned value beyond the signed 64-bit range returns its exact digits in every runtime (INT-102): Go, Rust, the PHP library and the PHP extension refused it. The recipe case `grid_number_values` holds it.
 - The decimal and number cells of a read-only grid query are the recipe cases `grid_decimal_values` and `grid_number_values` of `catalog_connection`; the Rust tests `grid_decimals` and `grid_numbers` are gone.
@@ -14,6 +19,9 @@
 
 Docs: FCV-2 states each public-surface unit of `interface_contract` with its own native reason, in the form the native-binding rule reads.
 
+- The case `a_rollback_fault_is_consumed_by_the_next_failed_rollback` of the recipe transactions states INT-72 in every runtime through the new op `fault.next_rollback`: the fault outlives a committed transaction, the next failed callback reports ROLLBACK carrying FAULT, and the transaction after it reports only the callback error.
+- The recipe `statement_events` holds the server transactions of a statement event, and the vector `tests/events/vectors.json` with its native runners is gone.
+- The conformance vectors begin to move into the `conformance_verification` recipe, run on the three databases by all six runtimes: its fifty-nine cases cover connectors, groups, chain reuse, expressions, columns, joins, relations, subqueries, aggregates, empty reads, functions, AES and hex values, a write cycle, batch creates, restores, audits, transactions and getQuery. Model ops of a fixture that generates no models now reach the public builder through one path in every helper, including `statement_events`. Rust reads an integer column that MySQL returns as text bytes after an `ALTER`.
 - The query forms of the Go physical test are recipe cases on every database: `{"random": true}` orders a `model.query` by `orderByRandom` and the case `query_now_and_random_order` holds it with `now`; the tuple and the date functions were cases already (#T334-3-18).
 - The case `a_rollback_fault_is_consumed_by_the_next_failed_rollback` of the recipe transactions states INT-72 in every runtime through the new op `fault.next_rollback`: the fault outlives a committed transaction, the next failed callback reports ROLLBACK carrying FAULT, and the transaction after it reports only the callback error.
 - The recipe `statement_events` holds the server transactions of a statement event, and the vector `tests/events/vectors.json` with its native runners is gone.

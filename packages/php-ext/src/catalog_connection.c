@@ -3051,6 +3051,12 @@ static bool cat_commit(zval *db, zval *pdo)
         zval rb_native, rb_mapped, rb_message;
         ZVAL_OBJ(&rb_native, EG(exception));
         EG(exception) = NULL;
+        /* The connection is gone with the commit, so the next call opens a new one (INT-118). */
+        zval rv_commit_state, *commit_state = catalog_prop(db, "state", &rv_commit_state);
+        zval rv_commit_owner, *commit_owner = zend_read_property(Z_OBJCE_P(commit_state), Z_OBJ_P(commit_state), "catalogOwner", sizeof("catalogOwner") - 1, 1, &rv_commit_owner);
+        if (Z_TYPE_P(commit_owner) == IS_OBJECT) {
+            init_bool(commit_owner, "streamLeft", true);
+        }
         ZVAL_UNDEF(&rb_mapped);
         if (pdo_call(db, "driverError", &rb_mapped, 1, &rb_native, NULL)) {
             if (pdo_call(&rb_mapped, "getMessage", &rb_message, 0, NULL, NULL)) {
