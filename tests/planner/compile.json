@@ -12271,6 +12271,73 @@
    ]
   },
   {
+   "id": "planner_function_and_subquery_share_an_output_name",
+   "requirements": [
+    "DSL-128"
+   ],
+   "steps": [
+    {
+     "op": "planner.compile",
+     "schema": "../../contracts/fixtures/bench/bench.dbs",
+     "input": {
+      "columns": {
+       "sub": {
+        "first_author": {
+         "column": "name",
+         "query": {
+          "entity": "author",
+          "limit": {
+           "count": 1,
+           "offset": 0
+          },
+          "order": [
+           {
+            "column": "description"
+           },
+           {
+            "column": "seq"
+           }
+          ],
+          "where": {
+           "items": [
+            {
+             "pred": {
+              "column": "user_seq",
+              "op": "eq_col",
+              "ref": {
+               "column": "seq",
+               "path": "^"
+              }
+             }
+            }
+           ]
+          }
+         }
+        }
+       },
+       "fn": {
+        "first_author": {
+         "column": "created_ts",
+         "fn": {
+          "name": "year"
+         }
+        }
+       }
+      },
+      "entity": "author",
+      "ir_version": 1,
+      "kind": "all",
+      "n_params": 1
+     },
+     "expect": {
+      "none": {
+       "error": "COLUMN_ALIAS_CONFLICT"
+      }
+     }
+    }
+   ]
+  },
+  {
    "id": "planner_scalar_subquery_aggregate_types",
    "requirements": [
     "PRT-69"

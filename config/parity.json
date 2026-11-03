@@ -672,10 +672,6 @@
         {
           "glob": "packages/php-ext/tests/CodecErrorCauseTestExtensionTest.php",
           "reason": "test: the PHP cause test run in the extension; see packages/php/tests/CodecErrorCauseTest.php."
-        },
-        {
-          "glob": "packages/php-ext/tests/CoveragePlannerExtensionTest.php",
-          "reason": "harness: a post-validation invariant of the planner that no public input reaches, so no recipe can state it; the planner suite target runs this file."
         }
       ],
       "shares": "php"
