@@ -221,8 +221,9 @@ func catalogGridSQLite(value any, refuse func(string, ...any) (CatalogGridCell, 
 	case float64:
 		return cell(CatalogGridFloat64, math.Float64bits(v))
 	case string:
+		// A stored value that is not valid UTF-8 is its bytes (INT-153).
 		if !utf8.ValidString(v) {
-			return refuse("text is not valid UTF-8")
+			return cell(CatalogGridBinary, []byte(v))
 		}
 		return cell(CatalogGridText, v)
 	case []byte:
@@ -318,8 +319,9 @@ func catalogGridTextual(text string, native, dialect string, refuse func(string,
 		return cell(CatalogGridDateTime, date+" "+clock)
 	}
 	if catalogGridTextName(native) {
+		// A value that is not valid UTF-8 is its bytes (INT-153).
 		if !utf8.ValidString(text) {
-			return refuse("text is not valid UTF-8")
+			return cell(CatalogGridBinary, []byte(text))
 		}
 		return cell(CatalogGridText, text)
 	}

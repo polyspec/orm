@@ -124,6 +124,10 @@ async function connectDriver(dsn, config = {}) {
     if (rows.length !== 1 || rows[0].length !== 1 || Number(rows[0][0]) !== 1) {
       throw new Error(`SELECT 1 on the connection of ${db.driver} returned ${JSON.stringify(rows)}`);
     }
+    if (config.session_read !== undefined) {
+      const read = await db.utils().run(async frame => frame.run('utility', [], config.session_read.sql));
+      assert.deepEqual(read.rows.map(row => row.map(String)), [config.session_read.row], config.session_read.sql);
+    }
     if (config.tls_version === true) {
       const status = await db.utils().run(async frame => frame.run('utility', [], "SHOW SESSION STATUS LIKE 'Ssl_version'"));
       const version = status.rows[0]?.[1];
@@ -776,7 +780,7 @@ const OPS = {
     return { bind: page, columns: page.result.columns.map(c => c.name), order_by: page.orderBy, has_more: page.hasMore, rows: page.result.rows.map(row => indexes.map(at => plain(row[at], types[at]))) };
   },
   async 'catalog.read_only_query'(s, context) {
-    const result = await context.catalog.readOnlyQuery(sql(s.sql, context), (s.binds ?? []).map(bind => native(databaseValue(bind, context))), limits(s));
+    const result = await context.catalog.readOnlyQuery(sql(s.sql, context), (s.binds ?? []).map(bind => native(databaseValue(stepArgument(bind, context), context))), limits(s));
     return { columns: result.columns, row_count: result.rows.length, rows: result.rows.map(row => row.map(cell => plain(cell, null))) };
   },
   async 'catalog.read_only_grid_query'(s, context) {
@@ -1575,6 +1579,13 @@ Object.assign(OPS, {
     return okValue;
   },
   'transaction.attempts': (_, context) => ({ value: { int: String(context.attempts) } }),
+  // A client write takes wallMicros, which stays within the millisecond that Date.now reports, so that millisecond
+  // bounds it: its first microsecond below and its last above (FCV-4).
+  'clock.read': s => {
+    if (s.edge !== 'lower' && s.edge !== 'upper') throw new Error(`clock.read has no edge ${s.edge}`);
+    const text = new Date().toISOString().slice(0, 23).replace('T', ' ');
+    return { value: { text: `${text}${s.edge === 'upper' ? '999' : '000'}` } };
+  },
   // Two flows write two rows in opposite order (PLN-24): each holds its first row until the other holds its own, so the
   // database ends one flow with its deadlock error, the client retries it, and both commit.
   async 'transaction.deadlock'(s, context) {
@@ -1990,6 +2001,11 @@ const TABLE_OPS = {
     chainAssign(m, s.set, context);
     await m.update(s.optimistic === true);
     return {};
+  },
+  // connect of a bound collection (INT-85): true when it returns that collection.
+  'collection.connect': (s, context) => {
+    const rows = refOf(s.row, context);
+    return { value: { bool: rows.connect(connectionOf(s, context)) === rows } };
   },
   async 'model.delete'(s, context) {
     if (s.row !== undefined && s.connection !== undefined) connectionOf(s, context);

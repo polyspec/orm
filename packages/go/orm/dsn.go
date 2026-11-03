@@ -43,7 +43,7 @@ type parsedDSN struct {
 
 // mysqlSQLMode is the session sql_mode of every MySQL connection, so that a
 // coercion, truncation or grouping result does not depend on the server's
-// setting (tests/dsn/mysql-session.json, docs/spec/config.md "Runtime connection").
+// setting (case mysql_session_settings of contracts/fixtures/dsn_connection, docs/spec/config.md "Runtime connection").
 const mysqlSQLMode = "STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"
 
 func parseDSN(raw string, statementTimeoutMs int) (parsedDSN, error) {

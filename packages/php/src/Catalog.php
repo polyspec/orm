@@ -21,7 +21,6 @@ final class Catalog
     private const DEFAULT_BYTES = 67108864;
     /** Added to net_write_timeout: a server at 60 s ended an unread stream at 65.1 s, measured. */
     private const STREAM_END_MARGIN_SECONDS = 6;
-    private const SQL_BYTES = 262144;
     private const MYSQL_TYPES_TABLE = 'orm_grid_column_types';
 
     /** Selects the native kind of a relation by its namespace and name. */
@@ -1024,14 +1023,8 @@ final class Catalog
         }
         if (is_string($value)) {
             if (!self::isUtf8($value)) {
-                // The bytes of a MySQL column whose charset the server did not report are its binary value (INT-157).
-                if ($dialect === 'mysql') {
-                    return new CatalogGridCell('binary', $value);
-                }
-                throw new OrmException(
-                    Code::CATALOG_VALUE,
-                    'unsupported grid value: text of native type "' . $native . '" is not valid UTF-8'
-                );
+                // A value that is not valid UTF-8 is its bytes (INT-153, INT-157).
+                return new CatalogGridCell('binary', $value);
             }
             return new CatalogGridCell('text', $value);
         }
@@ -1493,7 +1486,8 @@ final class Catalog
         ?\Closure $convert = null
     ): array {
         try {
-            if ($this->dialect === 'postgres' && $args === []) {
+            // A cursor holds a read, never a write: an insert with no assignment has no argument either (INT-123).
+            if ($this->dialect === 'postgres' && $args === [] && !str_starts_with($sql, 'INSERT ')) {
                 return $this->cursorQuery($pdo, $sql, $maxRows, $maxBytes, $convert);
             }
             $connectionId = $this->dialect === 'mysql' ? $this->mysqlConnectionId($pdo) : null;
@@ -1982,10 +1976,6 @@ final class Catalog
         if ($value !== null && self::temporalKind($this->dialect, $native) !== null) {
             return self::gridCell($value, $this->dialect, $native, false, false)->value;
         }
-        // A value that is not text is its bytes (INT-153): an expression reports no binary type on MySQL and SQLite.
-        if (is_string($value) && !self::isUtf8($value)) {
-            return $value;
-        }
         return self::value($value, $native, $this->dialect);
     }
 
@@ -2252,6 +2242,10 @@ final class Catalog
         if (!is_string($value)) {
             throw new OrmException(Code::CATALOG_VALUE, 'unsupported driver value ' . get_debug_type($value));
         }
+        // A value that is not valid UTF-8 is its bytes: a database tool shows the cell (INT-153).
+        if (!self::isUtf8($value)) {
+            return $value;
+        }
         return match (self::typeClass($nativeType)) {
             'binary', 'decimal' => $value,
             'int' => filter_var($value, FILTER_VALIDATE_INT) !== false
@@ -2265,9 +2259,7 @@ final class Catalog
                 : ($dialect === 'sqlite'
                     ? $value
                     : throw new OrmException(Code::CATALOG_VALUE, "float of native type \"$nativeType\"")),
-            default => self::isUtf8($value)
-                ? $value
-                : throw new OrmException(Code::CATALOG_VALUE, "text of native type \"$nativeType\" is not valid UTF-8"),
+            default => $value,
         };
     }
 
@@ -2651,7 +2643,7 @@ final class Catalog
             Code::QUERY_READ_ONLY,
             'expected one supported non-locking read query'
         );
-        if ($query === '' || strlen($query) > self::SQL_BYTES) {
+        if ($query === '') {
             throw $refused();
         }
         $words = self::words($query, $dialect);
