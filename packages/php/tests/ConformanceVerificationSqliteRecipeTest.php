@@ -1,6 +1,6 @@
 <?php
 
-// Requirements: PRT-77.
+// Requirements: DSL-54, DSL-99, DSL-137, DSL-139, DSL-144, DIA-11, DIA-14, PRT-77.
 // The conformance_verification recipe, contracts/fixtures/conformance_verification/conformance_verification.json, on
 // sqlite (docs/spec/feature-coverage.md FCV-3 and FCV-4).
 declare(strict_types=1);
@@ -31,8 +31,8 @@ class ConformanceVerificationSqliteRecipeTest extends TestCase
     }
 
     #[DataProvider('cases')]
-    public function testSqlite(array $case): void
+    public function testSqlite(string $id): void
     {
-        $this->runCase($case, 'sqlite');
+        $this->runCase($id, 'sqlite');
     }
 }

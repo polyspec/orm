@@ -27,8 +27,8 @@ class RequestHookPostgresRecipeTest extends TestCase
     }
 
     #[DataProvider('cases')]
-    public function testPostgres(array $case): void
+    public function testPostgres(string $id): void
     {
-        $this->runCase($case, 'postgres');
+        $this->runCase($id, 'postgres');
     }
 }

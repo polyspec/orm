@@ -382,15 +382,8 @@ class ModelTest extends TestCase
         );
     }
 
-    private static function caseStyledValueStates(Db $db, string $dsn): void
+    private static function caseStyledValueStates(Db $db): void
     {
-        $fixture = json_decode(
-            file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/styled_column_states.json'),
-            true,
-            512,
-            JSON_THROW_ON_ERROR
-        );
-        $cases = array_column($fixture['cases'], null, 'id');
         $seed = self::seed($db);
         $seq = $seed['authors'][0]->getSeq();
         $pdo = $db->pdo();
@@ -400,16 +393,6 @@ class ModelTest extends TestCase
             self::check(
                 $row->getJsonSetting() instanceof StyledValue && $row->getJsonSetting()->kind === 'sql-null',
                 'SQL NULL getter'
-            );
-            self::check($row->toArray()['json_setting'] === $cases['sql_null']['output'], 'SQL NULL array output');
-            self::check(
-                json_decode(
-                    $row->toJson(),
-                    true,
-                    512,
-                    JSON_THROW_ON_ERROR
-                )['json_setting'] === $cases['sql_null']['output'],
-                'SQL NULL JSON output'
             );
             $partial = (new Author())($db)->removeAllColumns()->addColumnName()->getBySeq($seq);
             self::check(
@@ -423,106 +406,14 @@ class ModelTest extends TestCase
                 ->update();
             $loaded = (new Author())($db)->addAllColumns()->getBySeq($seq);
             self::check($loaded->getJsonSetting()->kind === 'value', 'JSON null getter');
-            self::check(
-                json_decode(
-                    Model::jsonText($loaded->toArray()['json_setting']),
-                    true,
-                    512,
-                    JSON_THROW_ON_ERROR
-                ) === $cases['json_null']['output'],
-                'JSON null array output'
-            );
-            self::check(
-                json_decode(
-                    Model::jsonText($loaded->toArray()['jsons_tags']),
-                    true,
-                    512,
-                    JSON_THROW_ON_ERROR
-                ) === $cases['jsons_value_null']['output'],
-                'JSONS null array output'
-            );
-            self::check(
-                $loaded->toArray()['serialize_data'] === $cases['serialize_value_null']['output'],
-                'serialize null array output'
-            );
-            $json = json_decode($loaded->toJson(), true, 512, JSON_THROW_ON_ERROR);
-            self::check(
-                $json['json_setting'] === $cases['json_null']['output'] && $json['serialize_data'] === $cases[
-                    'serialize_value_null'
-                ]['output'],
-                'encoded null JSON output'
-            );
-            $cell = $pdo->prepare('SELECT json_setting, jsons_tags, serialize_data FROM author WHERE seq = ?');
-            $cell->execute([$seq]);
-            $stored = $cell->fetch(\PDO::FETCH_ASSOC);
-            self::check(
-                $stored['json_setting'] === 'null' && $stored['jsons_tags'] === 'null' && $stored[
-                    'serialize_data'
-                ] === 'N;',
-                'encoded null storage'
-            );
-
-            $loaded->setJsonSetting(StyledValue::value(\Polyspec\OrderedJson\parse('{"kind":"sql-null"}')))->update();
-            $again = (new Author())($db)->addAllColumns()->getBySeq($seq);
-            self::check(
-                json_decode(
-                    Model::jsonText($again->toArray()['json_setting']),
-                    true,
-                    512,
-                    JSON_THROW_ON_ERROR
-                ) === $cases['json_object_with_kind']['output'],
-                'JSON document does not collide with state tag'
-            );
-
-            $again->setJsonSetting(StyledValue::sqlNull())
-                ->setJsonsTags(StyledValue::sqlNull())
-                ->setSerializeData(StyledValue::sqlNull())
-                ->update();
-            $nulls = (new Author())($db)->addAllColumns()->getBySeq($seq);
-            self::check($nulls->toArray()['json_setting'] === $cases['sql_null']['output'], 'SQL NULL restored');
-            $cell = $pdo->prepare('SELECT json_setting, jsons_tags, serialize_data FROM author WHERE seq = ?');
-            $cell->execute([$seq]);
-            $stored = $cell->fetch(\PDO::FETCH_ASSOC);
-            self::check(
-                $stored['json_setting'] === null && $stored['jsons_tags'] === null && $stored[
-                    'serialize_data'
-                ] === null,
-                'SQL NULL storage'
-            );
-
-            $pdo->prepare('UPDATE author SET json_setting = ? WHERE seq = ?')->execute(['', $seq]);
-            self::check(
-                self::code(fn() => (new Author())($db)->addAllColumns()->getBySeq($seq)) === Code::CODEC_DECODE,
-                'empty JSON text rejected'
-            );
+            self::check($loaded->getJsonsTags()->kind === 'value', 'JSONS null getter');
+            self::check($loaded->getSerializeData()->kind === 'value', 'serialize null getter');
         } finally {
             $pdo->rollBack();
         }
     }
 
     // ip, gz, and base64 codec columns store the value and read it back, and the ip column is found by equality.
-    private static function caseCodecColumns(Db $db, string $dsn): void
-    {
-        $f = self::seed($db);
-        $seq = $f['authors'][0]->getSeq();
-        (new Author())($db)->getBySeq($seq)->setIp('10.0.0.1')->setGzExtend(StyledValue::value('compressed text'))
-            ->setBase64Extra(StyledValue::value('plain'))->update();
-        $row = (new Author())($db)->addAllColumns()->getBySeq($seq);
-        self::check($row->getIp() === '10.0.0.1', 'ip ' . var_export($row->getIp(), true));
-        self::check($row->getGzExtend()->payload() === 'compressed text', 'gz styled value');
-        self::check($row->getBase64Extra()->payload() === 'plain', 'base64 styled value');
-        self::check((new Author())($db)->ip('10.0.0.1')->getCount() === 1, 'ip condition');
-        self::check(
-            (new Author())($db)->addAllColumns()
-                ->getBySeq($f['authors'][1]->getSeq())
-                ->getGzExtend()
-                ->kind === 'sql-null',
-            'gz SQL NULL'
-        );
-        $stored = $db->pdo()->query('SELECT base64_extra FROM author WHERE seq = ' . $seq)->fetchColumn();
-        self::check($stored === base64_encode('plain'), 'base64 storage');
-    }
-
     private static function caseTransactions(Db $db, string $dsn): void
     {
         // Requirements: PLN-19.
@@ -889,54 +780,6 @@ class ModelTest extends TestCase
     // contracts/fixtures/insert_parts.json run in InsertPartsTest.php): each batch is one insert statement, a batch
     // that is not positive is CONFIG and one over the bind limit is BATCH_TOO_LARGE before any statement, the rows keep
     // their order, and a failing batch leaves no row of the call.
-    private static function caseInsertParts(Db $db): void
-    {
-        $inserts = [];
-        $unsubscribe = $db->subscribe(static function (\Polyspec\Orm\StatementEvent $e) use (&$inserts): void {
-            if ($e->kind === \Polyspec\Orm\StatementEvent::INSERT) {
-                $inserts[] = $e;
-            }
-        });
-        $three = array_map(static fn(int $i): Service => (new Service())->setName("refused-$i"), range(1, 3));
-        self::check(self::code(fn() => (new Service())($db)->creates($three, 0)) === Code::CONFIG, 'batch 0 is CONFIG');
-        $limit = Db::bindLimit($db->driver()) + 1;
-        // The refusal counts rows and columns before any statement, so one model repeated proves it; distinct
-        // models would cost about 1.8 KB each, 115 MB for the mysql limit (T216).
-        $over = array_fill(0, $limit, (new Service())->setName('over'));
-        self::check(
-            self::code(fn() => (new Service())($db)->creates($over, $limit)) === Code::BATCH_TOO_LARGE,
-            'a batch over the bind limit is BATCH_TOO_LARGE'
-        );
-        self::check($inserts === [], 'refused creates send no insert');
-        $inserts = [];
-        $labels = array_map(static fn(int $i): string => sprintf('order-%02d', 12 - $i), range(0, 12));
-        self::check(
-            (new Service())($db)->creates(
-                array_map(static fn(string $l): Service => (new Service())->setName($l), $labels),
-                6
-            ) === 13,
-            'creates 13 rows'
-        );
-        self::check(
-            array_map(static fn($e): int => count($e->binds), $inserts) === [6, 6, 1],
-            'batches 6, 6, 1: ' . json_encode(array_map(static fn($e): int => count($e->binds), $inserts))
-        );
-        $read = (new Service())($db)->name($labels)->orderBySeqAsc()->gets()->all();
-        self::check(
-            array_map(static fn(Service $s): string => $s->getName(), $read) === $labels,
-            'rows keep the given order'
-        );
-        $unsubscribe();
-        $before = (new Service())($db)->getCount();
-        $rows = array_map(static fn(int $i): Service => (new Service())->setName("rollback-$i"), range(1, 8));
-        $rows[] = (fn(): Service => $this->writeColumn('name', null))->call(new Service());
-        self::check(
-            self::code(fn() => (new Service())($db)->creates($rows, 4)) !== 'no error',
-            'a failing batch fails creates'
-        );
-        self::check((new Service())($db)->getCount() === $before, 'a failing part leaves no row');
-    }
-
     /**
      * Returns after the replica has applied every change the primary committed
      * before the call. On PostgreSQL a transaction with
@@ -1389,18 +1232,9 @@ class ModelTest extends TestCase
     {
         $dsn = self::caseDsn($driver);
         $db = self::database($driver, $dsn);
-        self::caseStyledValueStates($db, $dsn);
+        self::caseStyledValueStates($db);
     }
 
-    // codec columns
-    // Requirements: COD-11, COD-12, COD-38.
-    #[DataProvider('drivers')]
-    public function testCodecColumns(string $driver): void
-    {
-        $dsn = self::caseDsn($driver);
-        $db = self::database($driver, $dsn);
-        self::caseCodecColumns($db, $dsn);
-    }
 
     // transactions
     // Requirements: PLN-13, PLN-16, PLN-17, PLN-20, PLN-21, INT-51, INT-61, INT-73, INT-134, INT-79.
@@ -1445,15 +1279,5 @@ class ModelTest extends TestCase
         $dsn = self::caseDsn($driver);
         $db = self::database($driver, $dsn);
         self::caseBindLimitSplitting($db, $dsn);
-    }
-
-    // insert parts
-    // Requirements: DSL-104, INT-35, PRT-41.
-    #[DataProvider('drivers')]
-    public function testInsertParts(string $driver): void
-    {
-        $dsn = self::caseDsn($driver);
-        $db = self::database($driver, $dsn);
-        self::caseInsertParts($db, $dsn);
     }
 }

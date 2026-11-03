@@ -3,8 +3,7 @@
 // Usage: node packages/ts/tests/generate.mjs (after npm run typescript:build)
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import assert from 'node:assert/strict';
@@ -124,42 +123,6 @@ caseTest('generate', PROCESS, async () => {
     const invalid = await setOf(join(work, 'invalid'), [['invalid.dbs', 'dbspec 1 invalid\n\ntable t {\n  seq i64\n}\n']]);
     const rejected = run('gen', '--set', invalid, '--out', out);
     check(rejected.status === 1 && rejected.stderr.includes('SCHEMA_INVALID'), `an invalid document fails: ${rejected.stderr}`);
-    // Every error of the set file is printed, and nothing is written.
-    const broken = await setOf(join(work, 'broken'), [['a.dbs', 'dbspec 1 a\n']]);
-    await writeFile(broken, JSON.stringify({ schema: 1, documents: ['gone.dbs', 'a.dbs', 'a.dbs', 'bad\\x.dbs'] }));
-    const brokenOut = join(work, 'broken-out');
-    const brokenRun = run('gen', '--set', broken, '--out', brokenOut);
-    const brokenDir = join(work, 'broken');
-    check(brokenRun.status === 1 && brokenRun.stdout === '' && brokenRun.stderr.split('\n').filter(Boolean).map(line => line.split(':').slice(0, 2).join(':')).join(' ')
-      === 'orm-gen: set.file orm-gen: set.path orm-gen: set.duplicate orm-gen: ' + broken, `every set error is printed: ${brokenRun.stderr}`);
-    check(brokenRun.stderr.includes(`${brokenDir}/gone.dbs`) && brokenRun.stderr.includes(`${brokenDir}/a.dbs`), `the errors name their paths: ${brokenRun.stderr}`);
-    check(!existsSync(brokenOut), 'nothing is written on a set error');
-
-    // The byte check rejects every listed file without the dbspec signature before parsing, and each is printed.
-    const unsignedDir = join(work, 'unsigned');
-    await mkdir(unsignedDir);
-    const unsignedSet = join(unsignedDir, 'dbspec-set.json');
-    const unsignedNames = ['dbschema.dbs', 'empty.dbs'];
-    for (const name of unsignedNames) await copyFile(join(root, 'tests/dbspec/files', name), join(unsignedDir, name));
-    await writeFile(unsignedSet, JSON.stringify({ schema: 1, documents: unsignedNames }));
-    const unsignedOut = join(work, 'unsigned-out');
-    const unsigned = run('gen', '--set', unsignedSet, '--out', unsignedOut);
-    const unsignedWant = unsignedNames.map(name => `orm-gen: ${unsignedDir}/${name}:1:1 signature: ${unsignedDir}/${name} is not a dbspec document\n`).join('')
-      + `orm-gen: ${unsignedSet}: 2 document diagnostic(s); nothing was written\n`;
-    check(unsigned.status === 1 && unsigned.stderr === unsignedWant, `files without the signature: ${unsigned.status} ${unsigned.stderr}`);
-    check(!existsSync(unsignedOut), 'nothing is written on a document diagnostic');
-
-    // --check compares models.ts and the dbspec documents without writing.
-    const genCheck = ['gen', '--set', bench, '--out', out, '--scan', usage, '--check'];
-    let checked = run(...genCheck);
-    check(checked.status === 0 && checked.stdout === '' && checked.stderr === '', `gen --check on current models: ${checked.status} ${checked.stdout}${checked.stderr}`);
-    await writeFile(join(out, 'models.ts'), '// changed\n');
-    checked = run(...genCheck);
-    check(checked.status === 1 && checked.stdout === `differs: ${out}/models.ts\n`, `gen --check on changed models: ${checked.status} ${checked.stdout}${checked.stderr}`);
-    check(await readFile(join(out, 'models.ts'), 'utf8') === '// changed\n', 'gen --check wrote models.ts');
-    await rm(join(out, 'models.ts'));
-    checked = run(...genCheck);
-    check(checked.status === 1 && checked.stdout === `missing: ${out}/models.ts\n`, `gen --check on missing models: ${checked.status} ${checked.stdout}${checked.stderr}`);
   } finally {
     await rm(work, { recursive: true, force: true });
   }

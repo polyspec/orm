@@ -149,6 +149,10 @@
       "op",
       "table"
     ],
+    "fault.next_rollback": [
+      "connection",
+      "op"
+    ],
     "query.search": [
       "columns",
       "connection",
@@ -241,6 +245,7 @@
       "sql"
     ],
     "catalog.read_only_grid_query": [
+      "binds",
       "expect",
       "max_bytes",
       "max_rows",
@@ -506,6 +511,14 @@
       "op",
       "ref"
     ],
+    "events.server_transactions": [
+      "connection",
+      "expect",
+      "first_run_prepare_clients",
+      "op",
+      "probe",
+      "steps"
+    ],
     "planner.compile": [
       "assemble_types",
       "expect",
@@ -663,6 +676,12 @@
       "op",
       "snapshot"
     ],
+    "catalog.revision_compare": [
+      "expect",
+      "op",
+      "other",
+      "snapshot"
+    ],
     "catalog.row_cells": [
       "expect",
       "op",
@@ -683,7 +702,14 @@
       "changed",
       "document_set",
       "op",
+      "removed",
       "unchanged"
+    ],
+    "generator.refused": [
+      "check",
+      "files",
+      "op",
+      "parts"
     ],
     "dbspec.export_mermaid": [
       "as",

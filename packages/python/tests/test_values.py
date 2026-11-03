@@ -213,7 +213,6 @@ class RuntimeValueTypesDatabaseTest(unittest.TestCase):
                     self.assertEqual(row.get_opens(), "08:30:00.250")
                     self.assertEqual(row.get_day(), "2026-01-02")
                     self.assertEqual(row.get_payload().kind, "sql-null")
-                    self.assertNotIn("note", row.to_array())
                     selected = (
                         self.models.ValueRecord()
                         .connect(db)

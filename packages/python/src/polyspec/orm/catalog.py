@@ -893,7 +893,8 @@ def _check_write_precision(
 def _changes(metadata: CatalogTableMetadata, values, code: str, dialect: str) -> list:
     """Checks named assignments against a descriptor and returns (column index, normalized value) in the order given."""
     values = list(values)
-    if not values or len(values) > len(metadata.columns):
+    # A key of defaults alone takes no assignment (INT-123).
+    if (not values and code != codes.ROW_INSERT_INVALID) or len(values) > len(metadata.columns):
         raise _error(code, "invalid column assignments")
     normalized = _params([value for _, value in values])
     seen = set()
@@ -1138,6 +1139,9 @@ def _grid_cell(value, dialect: str, code, unsigned: bool) -> GridCell:
         if code == _PG_FLOAT8:
             return GridCell("float64", _float64_bits(value))
         if code == _PG_NUMERIC and isinstance(value, str):
+            # PostgreSQL writes NaN and the infinities of numeric as text.
+            if value == "NaN" or "Infinity" in value:
+                raise _refuse(f"PostgreSQL numeric {value} is not finite")
             return GridCell("decimal", value)
         if code in (_PG_TIMESTAMPTZ, _PG_TIMETZ):
             raise _refuse("PostgreSQL timestamptz and timetz are unsupported")

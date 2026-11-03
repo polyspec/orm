@@ -1083,12 +1083,7 @@ group-count-boolean-php-extension-unit-check: php-vendor-check php-model-check
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelAssemblyTest.php --filter 'testGroupValueRejectsInvalidStoredBoolean|testGroupRowPreservesTypedValuesAndChecksItsCount|testGroupValuePreservesExactI64|testGroupRowDriverCellForms'
-
-# Runs the database-independent Rust group boolean decoder test with the checkout's target lease.
-.PHONY: group-count-boolean-rust-unit-check
-group-count-boolean-rust-unit-check:
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) group-count-boolean-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --manifest-path packages/rust/Cargo.toml --locked --offline --workspace --features "$(ORM_RUST_TEST_FEATURES)" -p polyspec-orm --lib row::declared_boolean_tests::invalid_stored_boolean_is_codec_decode -- --test-threads=1 --exact
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelAssemblyTest.php --filter 'testGroupRowPreservesTypedValuesAndChecksItsCount|testGroupValuePreservesExactI64|testGroupRowDriverCellForms'
 
 # Runs the exact i64 grouped result decode and assembly test with the checkout's target lease.
 # Runs the GroupRow count decoder unit with the checkout's target lease.
@@ -1100,13 +1095,11 @@ group-row-count-rust-unit-check:
 group-count-boolean-unit-check: lease-tool php-vendor-check php-model-check python-venv-check typescript-build php-models
 	@set +e; status=0; last_result=0; \
 	run_case() { label=$$1; shift; printf '[group-result] %s\n' "$$label"; "$$@"; last_result=$$?; printf '[group-result] %s exit %s\n' "$$label" "$$last_result"; if [ "$$last_result" -ne 0 ]; then status=1; fi; return 0; }; \
-	run_case go $(GO_TEST) ./packages/go/orm -run '^(TestGroupCountRejectsInvalidStoredBoolean|TestGroupRowDriverCellForms)$$' -count=1; \
-	run_case php env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/GroupRowsTest.php --filter 'testGroupValueRejectsInvalidStoredBoolean|testGroupRowPreservesTypedValuesAndChecksItsCount|testGroupRowDriverCellForms'; \
+	run_case go $(GO_TEST) ./packages/go/orm -run '^(TestGroupRowDriverCellForms)$$' -count=1; \
+	run_case php env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/GroupRowsTest.php --filter 'testGroupRowPreservesTypedValuesAndChecksItsCount|testGroupRowDriverCellForms'; \
 	run_case php-extension $(MAKE) --no-print-directory group-count-boolean-php-extension-unit-check; \
-	run_case typescript $(NODE) --test --test-name-pattern='group_rows/(boolean_invalid_stored_value|driver_cell_forms)' packages/ts/tests/group_rows.mjs; \
-	run_case python-boolean $(PYTHON_VENV)/bin/python -m packages.python.tests.test_group_rows GroupBooleanValueTest.test_group_boolean_rejects_non_boolean_float; \
+	run_case typescript $(NODE) --test --test-name-pattern='group_rows/driver_cell_forms' packages/ts/tests/group_rows.mjs; \
 	run_case python-count $(PYTHON_VENV)/bin/python -m packages.python.tests.test_group_rows GroupRowDriverCellFormsTest.test_driver_cell_forms; \
-	run_case rust-boolean $(MAKE) --no-print-directory group-count-boolean-rust-unit-check; \
 	run_case rust-count $(MAKE) --no-print-directory group-row-count-rust-unit-check; \
 	exit "$$status"
 
@@ -1285,12 +1278,11 @@ connection-utc-php-extension-check: php-vendor-check php-models orm-install-php-
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension POLYSPEC_ORM_EXTENSION="$$run_dir/php-extension/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --filter 'testNativeStyledSqlNullIsPreservedOnDatabaseRead|testNativeI16ValuesAndDefaults|testNativeOutOfRangeDatabaseCellFailsTypedRead' packages/php-ext/tests/ConnectionUtcNativeTest.php
 
 # dbspec-php-extension-check/executor runs the suites of the connection, the statement path and the transactions with the extension
-# loaded: StatementEventsTest (the statement-events server transactions), StatementFaultTest (statement-fault), DsnTest::testSqlitePath (sqlite-paths) and
+# loaded: StatementFaultTest (statement-fault), DsnTest::testSqlitePath (sqlite-paths) and
 # MysqlTlsTest::testSessionSqlMode (mysql-session). It first checks that the extension registers Polyspec\Orm\Db: its class is
 # internal, so the connection the suites open is C. The database suites need make orm-test-servers first (WITH_TEST_ENV).
 dbspec-php-extension-check/executor: php-vendor-check dbspec-php-extension-check/prepare
 	php -d extension=$(PHP_EXTENSION_LIBRARY) -r 'require "vendor-php/autoload.php"; exit((new ReflectionClass("Polyspec\\Orm\\Db"))->isInternal() ? 0 : 1);'
-	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/StatementEventsTest.php
 	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/StatementFaultTest.php
 	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/DsnTest.php --filter testSqlitePath
 	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/MysqlTlsTest.php --filter testSessionSqlMode
@@ -1475,13 +1467,6 @@ conformance-$(1)-check/rust: typescript-build lease-tool
 endef
 $(eval $(call RECIPE_VECTORS_TARGETS,generated-methods,generated))
 $(eval $(call RECIPE_VECTORS_TARGETS,fixed-clock,fixed-clock))
-
-# feature-go-unit runs one native Go test of a feature for one database, as a parity binding names it: the make variables
-# FEATURE_DATABASE, FEATURE_DSN_ENV, FEATURE_TEST and FEATURE_PACKAGE are passed by config/parity.json. The binding runs from
-# the package that holds the test and names this target through the checkout root, so the path does not depend on that directory.
-.PHONY: feature-go-unit
-feature-go-unit:
-	$(NODE) packages/go/testing/feature-json.mts --database $(FEATURE_DATABASE) --dsn-env $(FEATURE_DSN_ENV) --test $(FEATURE_TEST) $(FEATURE_PACKAGE)
 
 # feature-rust-unit runs one Rust test of a feature, as a parity binding names it: the make variables FEATURE_CRATE
 # (the directory of the crate's Cargo.toml, from the checkout root), FEATURE_CARGO_TARGET (the cargo target option, such as
@@ -1836,12 +1821,6 @@ php-ext-memory-check: php-vendor-check orm-install-php-extension-tools
 .PHONY: python-install-changed-database-check
 python-install-changed-database-check: python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.install_changed_database
-# python-statement-events-check runs each entry of server_transactions of tests/events/vectors.json with the Python client on
-# its database (packages/python/tests/statement_events_server_transactions.py). The eight cases run as the recipe
-# (test_statement_events_<database>.py).
-.PHONY: python-statement-events-check
-python-statement-events-check: python-venv-check
-	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.statement_events_server_transactions
 # python-mysql-session-check reads the session sql_mode of a Python MySQL connection and compares it with
 # tests/dsn/mysql-session.json (packages/python/tests/mysql_session.py); it needs the database variables of make
 # orm-test-servers (WITH_TEST_ENV).

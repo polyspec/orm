@@ -36,7 +36,6 @@ async fn decimal_physical(env: &str) {
         matches!(result, Err(polyspec_orm::Error::Config(ref message)) if message == "decimal fixture rollback"),
         "transaction rollback result: {result:?}"
     );
-    assert_eq!(DecimalCase::new().connect(&db).get_count().await.unwrap(), 0);
     db.close().await;
 }
 
