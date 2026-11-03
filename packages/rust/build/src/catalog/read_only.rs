@@ -1,5 +1,5 @@
 use sqlparser::{
-    ast::{Expr, Query, Select, SetExpr, Statement, Visit, Visitor},
+    ast::{Query, Select, SetExpr, Statement, Visit, Visitor},
     dialect::{Dialect, MySqlDialect, PostgreSqlDialect, SQLiteDialect},
     parser::Parser,
     tokenizer::{Token, Tokenizer, Whitespace},
@@ -9,15 +9,10 @@ use std::ops::ControlFlow;
 #[derive(Debug)]
 pub(super) struct ReadOnlyError {
     cause: Option<Box<dyn std::error::Error + Send + Sync>>,
-    /// A PostgreSQL read over the operand or term bound, which is a budget refusal and not a write (INT-136).
-    limit: bool,
 }
 
 impl std::fmt::Display for ReadOnlyError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.limit {
-            return formatter.write_str("CATALOG_LIMIT: a PostgreSQL read has 200 or more UNION ALL operands or + terms");
-        }
         formatter.write_str("QUERY_READ_ONLY: expected one supported non-locking read query")
     }
 }
@@ -28,11 +23,22 @@ impl std::error::Error for ReadOnlyError {
     }
 }
 
+/// The stack of the walk of one statement. A chain of operands parses into a left-deep tree, which the visitor and the drop
+/// of the tree walk by recursion; the length bound of a statement keeps it under 128 Ki levels. Only what the walk touches is
+/// committed, so this is an address range and not memory in use.
+const WALK_STACK: usize = 512 * 1024 * 1024;
+
 pub(super) fn validate(sql: &str, dialect: &str) -> Result<(), ReadOnlyError> {
+    std::thread::scope(|scope| {
+        let walk = std::thread::Builder::new().stack_size(WALK_STACK).spawn_scoped(scope, || validate_statement(sql, dialect));
+        walk.map_err(error_with)?.join().unwrap_or_else(|_| Err(error()))
+    })
+}
+
+fn validate_statement(sql: &str, dialect: &str) -> Result<(), ReadOnlyError> {
     if sql.is_empty() || sql.len() > 256 * 1024 {
         return Err(error());
     }
-    let postgres = dialect == "postgres";
     let dialect: Box<dyn Dialect> = match dialect {
         "mysql" => Box::new(MySqlDialect {}),
         "postgres" => Box::new(PostgreSqlDialect {}),
@@ -47,80 +53,37 @@ pub(super) fn validate(sql: &str, dialect: &str) -> Result<(), ReadOnlyError> {
         return Err(error());
     }
     let statements = Parser::new(dialect.as_ref()).with_recursion_limit(64).with_tokens(tokens).parse_statements().map_err(error_with)?;
-    let mut visitor = ReadOnly { expression_depth: 0, postgres, limit: false };
-    if statements.len() != 1 || !matches!(statements[0], Statement::Query(_)) || statements.visit(&mut visitor).is_break() {
-        return Err(if visitor.limit { limit() } else { error() });
+    if statements.len() != 1 || !matches!(statements[0], Statement::Query(_)) || statements.visit(&mut ReadOnly).is_break() {
+        return Err(error());
     }
     Ok(())
 }
 fn error() -> ReadOnlyError {
-    ReadOnlyError { cause: None, limit: false }
-}
-
-fn limit() -> ReadOnlyError {
-    ReadOnlyError { cause: None, limit: true }
+    ReadOnlyError { cause: None }
 }
 
 fn error_with(error: impl std::error::Error + Send + Sync + 'static) -> ReadOnlyError {
-    ReadOnlyError { cause: Some(Box::new(error)), limit: false }
+    ReadOnlyError { cause: Some(Box::new(error)) }
 }
 
-/// The operands of a PostgreSQL read, a UNION ALL operand or a + term, at which the read is refused with CATALOG_LIMIT (INT-136).
-const POSTGRES_OPERANDS: usize = 200;
+struct ReadOnly;
 
-struct ReadOnly {
-    expression_depth: usize,
-    postgres: bool,
-    /// Set when the read is refused for its PostgreSQL operand or term bound, not for a write.
-    limit: bool,
-}
-
-/// What the set operations of a query body allow: the body is read, refused, or over the PostgreSQL operand bound.
-enum Walk {
-    Allowed,
-    Refused,
-    Limit,
-}
-
-fn body_allowed(body: &SetExpr, postgres: bool) -> Walk {
-    let mut pending = vec![(body, 0)];
-    let mut operands = 0usize;
-    while let Some((body, depth)) = pending.pop() {
-        if !postgres && depth >= 64 {
-            return Walk::Refused;
-        }
+fn body_allowed(body: &SetExpr) -> bool {
+    let mut pending = vec![body];
+    while let Some(body) = pending.pop() {
         match body {
-            SetExpr::Select(_) | SetExpr::Values(_) | SetExpr::Query(_) => operands += 1,
+            SetExpr::Select(_) | SetExpr::Values(_) | SetExpr::Query(_) => {}
             SetExpr::SetOperation { left, right, .. } => {
-                pending.push((left, depth + 1));
-                pending.push((right, depth + 1));
+                pending.push(left);
+                pending.push(right);
             }
-            _ => return Walk::Refused,
+            _ => return false,
         }
     }
-    if postgres && operands >= POSTGRES_OPERANDS {
-        Walk::Limit
-    } else {
-        Walk::Allowed
-    }
+    true
 }
 impl Visitor for ReadOnly {
     type Break = ();
-    fn pre_visit_expr(&mut self, _: &Expr) -> ControlFlow<()> {
-        self.expression_depth += 1;
-        if self.postgres && self.expression_depth >= POSTGRES_OPERANDS {
-            self.limit = true;
-            ControlFlow::Break(())
-        } else if !self.postgres && self.expression_depth > 64 {
-            ControlFlow::Break(())
-        } else {
-            ControlFlow::Continue(())
-        }
-    }
-    fn post_visit_expr(&mut self, _: &Expr) -> ControlFlow<()> {
-        self.expression_depth -= 1;
-        ControlFlow::Continue(())
-    }
     fn pre_visit_statement(&mut self, statement: &Statement) -> ControlFlow<()> {
         if matches!(statement, Statement::Query(_)) {
             ControlFlow::Continue(())
@@ -132,13 +95,10 @@ impl Visitor for ReadOnly {
         if !query.locks.is_empty() {
             return ControlFlow::Break(());
         }
-        match body_allowed(&query.body, self.postgres) {
-            Walk::Allowed => ControlFlow::Continue(()),
-            Walk::Refused => ControlFlow::Break(()),
-            Walk::Limit => {
-                self.limit = true;
-                ControlFlow::Break(())
-            }
+        if body_allowed(&query.body) {
+            ControlFlow::Continue(())
+        } else {
+            ControlFlow::Break(())
         }
     }
     fn pre_visit_select(&mut self, select: &Select) -> ControlFlow<()> {

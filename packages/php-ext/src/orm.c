@@ -707,7 +707,7 @@ ZEND_METHOD(Polyspec_Orm_Orm, mysqlTlsOptions)
     zval_ptr_dtor(&ca_name); zval_ptr_dtor(&verify_name); zval_ptr_dtor(&ca); zval_ptr_dtor(&verify);
 }
 
-static void orm_connect_failure(zend_object *cause)
+static void orm_connect_failure(zend_object *cause, zend_string *driver)
 {
     zend_string *name = zend_string_init("PDOException", sizeof("PDOException") - 1, 0);
     zend_class_entry *pdo_exception = zend_lookup_class(name);
@@ -725,11 +725,20 @@ static void orm_connect_failure(zend_object *cause)
             cause, ZSTR_KNOWN(ZEND_STR_MESSAGE), true, &rv);
         detail = zval_get_string(property);
     }
-    zend_string *message = strpprintf(
-        0, strstr(ZSTR_VAL(detail), "SSL") != NULL ? "mysql TLS connection failed: %s" : "cannot connect: %s", ZSTR_VAL(detail));
+    bool tls = strstr(ZSTR_VAL(detail), "SSL") != NULL;
+    zend_long number = 0;
+    if (cause != NULL) {
+        zval rv;
+        zval *property = zend_read_property_ex(instanceof_function(cause->ce, zend_ce_error) ? zend_ce_error : zend_ce_exception,
+            cause, ZSTR_KNOWN(ZEND_STR_CODE), true, &rv);
+        number = zval_get_long(property);
+    }
+    zend_string *message = strpprintf(0, tls ? "mysql TLS connection failed: %s" : "cannot connect: %s", ZSTR_VAL(detail));
     zend_string_release(detail);
     zval args[3], exception;
-    ZVAL_STRING(&args[0], "CONFIG");
+    /* A connection that the server refuses is DRIVER, as any other error of the driver (CFG-1). A certificate, a file and a
+     * time zone that the server does not know are what the DSN gives. */
+    ZVAL_STRING(&args[0], !tls && !zend_string_equals_literal(driver, "sqlite") && number != 1298 ? "DRIVER" : "CONFIG");
     ZVAL_STR(&args[1], message);
     if (cause == NULL) ZVAL_NULL(&args[2]); else ZVAL_OBJ(&args[2], cause);
     if (!newobj("Polyspec\\Orm\\OrmException", &exception, 3, args)) {
@@ -1109,7 +1118,7 @@ static bool orm_connect_sql(zend_string *dsn, zval *config, zval *out, bool list
     for (int i = 0; i < 4; i++) zval_ptr_dtor(&connect_args[i]);
     if (!connected) {
         zend_object *cause = EG(exception) != NULL ? take_exception() : NULL;
-        orm_connect_failure(cause);
+        orm_connect_failure(cause, Z_STR_P(driver));
         goto fail;
     }
     if (!orm_set_attribute(&pdo, "PDO::ATTR_ERRMODE", "PDO::ERRMODE_EXCEPTION")) goto pdo_fail;
@@ -1196,7 +1205,7 @@ static bool orm_connect_sql(zend_string *dsn, zval *config, zval *out, bool list
 pdo_fail:
     if (EG(exception) != NULL) {
         zend_object *cause = take_exception();
-        orm_connect_failure(cause);
+        orm_connect_failure(cause, Z_STR_P(driver));
     }
     if (Z_TYPE(pdo) == IS_OBJECT) zval_ptr_dtor(&pdo);
 fail:
