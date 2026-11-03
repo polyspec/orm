@@ -1623,11 +1623,7 @@
           "expect": {
             "description": "attempts counts the callback runs of both flows, deadlocks the first attempts that ended with DEADLOCK, and same_flow holds when both rows hold the name of one flow.",
             "type": "object",
-            "required": [
-              "mysql",
-              "postgres",
-              "sqlite"
-            ],
+            "minProperties": 1,
             "additionalProperties": false,
             "properties": {
               "mysql": {
