@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- schema 정의의 manifest, analysis, format unit은 recipe만 묶는다: Go `TestFormat`은 없앴고, 잘못된 byte는 native로 명시한 unit `dbspec-encoding-and-limit-natives`에 들어가고, extension class의 출처 시험은 internal이다 (#T334-3-18).
 - 행이 없는 effect 질의는 모든 runtime에서 `<query> returned no row`이고(Rust는 `returned 0 rows; want one`이었다), `dbspec.apply_fault` recipe가 그것을 시험하며, native 시험은 없앴다 (#T334-3-18).
 - apply의 cleanup error(PLN-97~PLN-101, PLN-106)와 plan 밖의 기록된 step rollback은 주입한 statement로 모든 runtime에서 `dbspec.apply_fault` recipe의 case이고, native 시험은 없앴다 (#T334-3-18).
 - schema 값 읽기(SCH-12)는 모든 runtime에서 모든 diagnostic을 한 형식 `<line>:<column> <rule>: <message>`로 `; `로 이어 보고하고, 줄은 문서부터 세며, `dbspec.load_set` recipe가 그것을 비교한다 (#T334-3-18).

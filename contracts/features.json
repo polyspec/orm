@@ -4901,7 +4901,6 @@
         "packages/python/tests/test_requires_python.py",
         "packages/python/tests/coverage_model_generation.py",
         "packages/php-ext/tests/ModelDslNativeTest.php",
-        "packages/php-ext/tests/RegistrySchemaNativeTest.php",
         "packages/php-ext/tests/RuntimeModelTest.php",
         "packages/rust/build/src/manifest.rs",
         "packages/rust/build/src/lib.rs",
@@ -5257,6 +5256,7 @@
         "tests/dbspec/schema-definition.json"
       ],
       "tests": [
+        "packages/php-ext/tests/RegistrySchemaNativeTest.php",
         "packages/go/orm/recipe_dbspec_apply_verification_errors_test.go",
         "packages/ts/tests/dbspec_apply_verification_errors-none.test.mjs",
         "packages/rust/tests/tests/dbspec_apply_verification_errors_none.rs",

@@ -636,6 +636,10 @@
       },
       "internal": [
         {
+          "glob": "packages/php-ext/tests/RegistrySchemaNativeTest.php",
+          "reason": "test: reads by reflection that Registry and Schema are classes of the extension, and its own runtime cache; the manifest hash is the case dbspec_manifest_hash of tests/dbspec/schema-definition.json"
+        },
+        {
           "glob": "packages/php-ext/tests/DbspecApplyCleanupTestExtensionTest.php",
           "reason": "test: runs DbspecApplyCleanupTest on the extension, the close failure of the private effect query, and the recover and finalize cases until they reach the recipe contracts/fixtures/dbspec_apply/dbspec_apply.json"
         },
@@ -26792,11 +26796,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/schema_definition_none.rs",
           "id": "schema_definition_none::dbspec_manifest_hash"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/RegistrySchemaNativeTest.php",
-          "id": "RegistrySchemaNativeTest::testNativeOriginsAndReadonlySchemaRoundTrip"
         }
       ]
     },
@@ -26876,21 +26875,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/schema_definition_none.rs",
           "id": "schema_definition_none::dbspec_analyze_tokens"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecAnalyzeTest.php",
-          "id": "DbspecAnalyzeTest::testFocused with data set \"analyze/invalid-byte-stop-line\""
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecAnalyzeTestExtensionTest.php",
-          "id": "DbspecAnalyzeTestExtensionTest::testFocused with data set \"analyze/invalid-byte-stop-line\""
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/dbspec/analyze_test.go",
-          "id": "TestAnalyzeInvalidByte"
         }
       ]
     },
@@ -26930,11 +26914,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/schema_definition_none.rs",
           "id": "schema_definition_none::dbspec_format"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/dbspec/analyze_test.go",
-          "id": "TestFormat"
         }
       ]
     },
@@ -29063,6 +29042,21 @@
         "DBS-144"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/engine/dbspec/analyze_test.go",
+          "id": "TestAnalyzeInvalidByte"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecAnalyzeTest.php",
+          "id": "DbspecAnalyzeTest::testFocused with data set \"analyze/invalid-byte-stop-line\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecAnalyzeTestExtensionTest.php",
+          "id": "DbspecAnalyzeTestExtensionTest::testFocused with data set \"analyze/invalid-byte-stop-line\""
+        },
         {
           "implementation": "go",
           "test": "packages/go/engine/dbspec/rules_test.go",
