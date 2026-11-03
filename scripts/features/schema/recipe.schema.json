@@ -3881,6 +3881,13 @@
                   "$ref": "#/$defs/outcomes/rows"
                 }
               },
+              "expect_unnamed": {
+                "type": "object",
+                "minProperties": 1,
+                "additionalProperties": {
+                  "$ref": "#/$defs/outcomes/rows"
+                }
+              },
               "lock": {
                 "description": "The row lock of the query; outside a transaction it is refused with CONFIG.",
                 "enum": [
@@ -4054,6 +4061,9 @@
                 "const": true
               },
               "expect": {
+                "$ref": "#/$defs/expect"
+              },
+              "expect_unnamed": {
                 "$ref": "#/$defs/expect"
               }
             }

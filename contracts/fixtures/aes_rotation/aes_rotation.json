@@ -2494,8 +2494,90 @@
           "only": [
             "postgres"
           ],
-          "reason": "changes the result type again, for the statement of the connection that ran it again",
+          "reason": "changes the result type again, for the read inside a transaction",
           "sql": "ALTER TABLE rot_row ALTER COLUMN token TYPE VARCHAR(255)"
+        },
+        {
+          "op": "transaction",
+          "connection": "aes",
+          "fail": true,
+          "steps": [
+            {
+              "op": "model.query",
+              "connection": "aes",
+              "model": "RotRow",
+              "where": {},
+              "columns": [
+                "token"
+              ],
+              "order": [
+                "seq"
+              ],
+              "expect": {
+                "mysql": {
+                  "rows": [
+                    [
+                      {
+                        "text": "secret-stale"
+                      }
+                    ]
+                  ]
+                },
+                "postgres": {
+                  "error": "DRIVER"
+                },
+                "sqlite": {
+                  "rows": [
+                    [
+                      {
+                        "text": "secret-stale"
+                      }
+                    ]
+                  ]
+                }
+              },
+              "expect_unnamed": {
+                "mysql": {
+                  "rows": [
+                    [
+                      {
+                        "text": "secret-stale"
+                      }
+                    ]
+                  ]
+                },
+                "postgres": {
+                  "rows": [
+                    [
+                      {
+                        "text": "secret-stale"
+                      }
+                    ]
+                  ]
+                },
+                "sqlite": {
+                  "rows": [
+                    [
+                      {
+                        "text": "secret-stale"
+                      }
+                    ]
+                  ]
+                }
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "error": "CALLBACK"
+            },
+            "postgres": {
+              "error": "CALLBACK"
+            },
+            "sqlite": {
+              "error": "CALLBACK"
+            }
+          }
         },
         {
           "op": "model.query",

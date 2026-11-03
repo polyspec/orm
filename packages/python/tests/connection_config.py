@@ -161,28 +161,6 @@ class ConnectionConfigTest(unittest.TestCase):
                 catalog.close()
                 setup.execute(f"DROP TABLE {table}")
 
-    # Requirements: CFG-28. The PHP client names no statement, so a shared recipe case cannot hold this expected value.
-    def test_a_stale_statement_inside_a_transaction_reaches_the_caller(self):
-        direct = required_dsn("postgres")
-        table = f"pooler_{uuid.uuid4().hex[:8]}"
-        models, model = probe_models(TEMP["dir"].name, table)
-        db = models.connect(direct)
-        try:
-            db.utils().schema().install(models.SCHEMA)
-            model().connect(db).set_label("probe").create()
-            read = lambda: model().connect(db).seq(1).get()
-            read()
-            with psycopg.connect(direct, autocommit=True) as change:
-                change.execute(f"ALTER TABLE {table} ALTER COLUMN label TYPE text")
-            self.assertEqual(
-                code_of(lambda: db.transaction(read, {"retry": 0})), "DRIVER"
-            )
-            read()
-        finally:
-            with psycopg.connect(direct, autocommit=True) as change:
-                change.execute(f"DROP TABLE IF EXISTS {table}")
-            db.close()
-
     # Requirements: CFG-27, CFG-28, CFG-29.
     def test_statement_timeout_through_a_pooler(self):
         single = os.environ.get("ORM_TEST_PGBOUNCER_SINGLE_DSN")
