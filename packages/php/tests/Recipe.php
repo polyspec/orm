@@ -154,6 +154,10 @@ final class Recipe
                     self::planStep($step, $path, $database);
                     continue;
                 }
+                if ($step['op'] === 'generator.check') {
+                    RecipeGenerator::checkFiles($step, dirname(__DIR__, 3) . '/' . dirname($path));
+                    continue;
+                }
                 if ($step['op'] === 'ir.param_uses') {
                     self::paramUsesStep($step, $path, $database);
                     continue;
@@ -3787,7 +3791,13 @@ final class Recipe
                 $codec = $model::meta()['columns'][$column]['codec'] ?? [];
                 $model->{'set' . $name}(self::styledArgument($value, $codec, []));
             } else {
-                $model->{'set' . $name}(self::chainValue($value, $context));
+                $argument = self::chainValue($value, $context);
+                if ($argument === null && !(new \ReflectionMethod($model, 'set' . $name))->getParameters()[0]->allowsNull()) {
+                    // The typed setter of a non-null column takes no NULL, so the row writes it through the column writer.
+                    (new \ReflectionMethod($model, 'writeColumn'))->invoke($model, $column, null);
+                } else {
+                    $model->{'set' . $name}($argument);
+                }
             }
         }
         return $model;
