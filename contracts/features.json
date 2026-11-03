@@ -1259,7 +1259,6 @@
         "packages/rust/orm/tests/value_types.rs",
         "packages/rust/tests/tests/integration/result_chains.rs",
         "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
-        "packages/rust/tests/tests/integration/coverage_model_queries.rs",
         "packages/go/orm/shape_test.go",
         "packages/go/orm/shape_internal_test.go",
         "packages/go/orm/styled_state_test.go",
@@ -15167,8 +15166,7 @@
         "packages/rust/tests/tests/common/temp_sqlite.rs"
       ],
       "tests": [
-        "packages/rust/tests/tests/coverage_hot_path_read_correctness.rs",
-        "packages/rust/tests/tests/integration/coverage_model_queries.rs"
+        "packages/rust/tests/tests/coverage_hot_path_read_correctness.rs"
       ],
       "command": "make --no-print-directory temp-sqlite-fixture-rust-helper-check"
     },

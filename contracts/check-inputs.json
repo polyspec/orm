@@ -3949,8 +3949,7 @@
         "packages/rust/tests/Cargo.toml",
         "packages/rust/tests/tests/common/temp_sqlite.rs",
         "packages/rust/tests/tests/coverage_hot_path_read_correctness.rs",
-        "packages/rust/tests/tests/integration/main.rs",
-        "packages/rust/tests/tests/integration/coverage_model_queries.rs"
+        "packages/rust/tests/tests/integration/main.rs"
       ]
     },
     "native-api-equivalence-check": {
