@@ -6107,7 +6107,7 @@
       "id": "request-hook-root-is-the-connection",
       "kind": "feature",
       "requirements": [
-        "INT-78"
+        "INT-78a"
       ],
       "bindings": [
         {
@@ -6124,23 +6124,17 @@
           "implementation": "python",
           "test": "packages/python/tests/test_request_hook.py",
           "id": "test_without_hook"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RequestHookSqliteRecipeTest.php",
-          "id": "RequestHookSqliteRecipeTest::testSqlite with data set \"without_hook\""
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php",
-          "id": "RequestHookSqliteRecipeTestExtensionTest::testSqlite with data set \"without_hook\""
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
-          "id": "request_hook_sqlite::without_hook"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "request_hook",
+        "parts": [
+          "owner/go",
+          "owner/typescript",
+          "owner/python"
+        ]
+      }
     },
     {
       "id": "request-hook-params-are-read-only",
@@ -6176,8 +6170,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
-          "id": "request_hook_sqlite::reads_params"
+          "test": "packages/rust/orm/tests/compiler_fixtures.rs",
+          "id": "compiler_fixtures::int78-bound-param-write-e0594"
         }
       ]
     },
@@ -26275,23 +26269,23 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/coverage_model_generation_test.go",
-          "id": "TestCoverageModelGenerationCheck"
+          "test": "packages/go/orm/recipe_generator_test.go",
+          "id": "TestRecipeGeneratorNone/check_reports_differences_without_writing"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageModelGenerationTest.php",
-          "id": "CoverageModelGenerationTest::testModelGenerationCheck"
+          "test": "packages/php/tests/GeneratorTest.php",
+          "id": "GeneratorTest::testNone with data set \"check_reports_differences_without_writing\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageModelGenerationNativeTest.php",
-          "id": "CoverageModelGenerationNativeTest::testModelGenerationCheck"
+          "test": "packages/php-ext/tests/GeneratorTestExtensionTest.php",
+          "id": "GeneratorTestExtensionTest::testNone with data set \"check_reports_differences_without_writing\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_model_generation.mjs",
-          "id": "model_generation_check"
+          "test": "packages/ts/tests/generator-none.test.mjs",
+          "id": "check_reports_differences_without_writing"
         },
         {
           "implementation": "python",
@@ -26300,8 +26294,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_model_generation.rs",
-          "id": "coverage_model_generation_check"
+          "test": "packages/rust/tests/tests/generator_none.rs",
+          "id": "generator_none::check_reports_differences_without_writing"
         }
       ]
     },

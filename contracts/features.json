@@ -3746,11 +3746,8 @@
         "packages/php/tests/OrmGenScanParityTest.php",
         "packages/ts/tests/generate-scan.mjs",
         "packages/ts/tests/models-scan.mjs",
-        "packages/go/model/coverage_model_generation_test.go",
-        "packages/php/tests/CoverageModelGenerationTest.php",
         "packages/php-ext/tests/CoverageModelGenerationNativeTest.php",
         "packages/rust/tests/tests/coverage_model_generation.rs",
-        "packages/ts/tests/coverage_model_generation.mjs",
         "packages/python/tests/test_orm_gen.py",
         "packages/python/tests/test_query_methods.py",
         "packages/python/tests/test_packaging.py",
@@ -3769,7 +3766,12 @@
         "packages/php-ext/tests/ModelMethodsTestExtensionTest.php",
         "packages/php-ext/tests/OrmGenCliTestExtensionTest.php",
         "packages/php-ext/tests/OrmGenScanTestExtensionTest.php",
-        "packages/python/tests/test_generator_none.py"
+        "packages/python/tests/test_generator_none.py",
+        "packages/go/orm/recipe_generator_test.go",
+        "packages/php/tests/GeneratorTest.php",
+        "packages/php-ext/tests/GeneratorTestExtensionTest.php",
+        "packages/ts/tests/generator-none.test.mjs",
+        "packages/rust/tests/tests/generator_none.rs"
       ],
       "docs": [
         "docs/spec/dsl.md",
@@ -3897,19 +3899,15 @@
             "part": "packages/go",
             "tests": [
               "packages/go/model/chain_types_test.go",
-              "packages/go/model/coverage_model_generation_test.go"
+              "packages/go/orm/recipe_generator_test.go"
             ],
             "commands": {
               "none": [
                 {
                   "runner": "go",
-                  "test": "packages/go/model/coverage_model_generation_test.go",
-                  "cases": [
-                    "model_generation_check"
-                  ],
-                  "symbols": {
-                    "model_generation_check": "TestCoverageModelGenerationCheck"
-                  }
+                  "test": "packages/go/orm/recipe_generator_test.go",
+                  "recipe": "contracts/fixtures/generator/generator.json",
+                  "symbol": "TestRecipeGeneratorNone"
                 }
               ]
             }
@@ -3918,19 +3916,15 @@
             "part": "packages/php/tests",
             "tests": [
               "packages/php/tests/RuntimeModelTest.php",
-              "packages/php/tests/CoverageModelGenerationTest.php"
+              "packages/php/tests/GeneratorTest.php"
             ],
             "commands": {
               "none": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageModelGenerationTest.php",
-                  "cases": [
-                    "model_generation_check"
-                  ],
-                  "symbols": {
-                    "model_generation_check": "testModelGenerationCheck"
-                  }
+                  "test": "packages/php/tests/GeneratorTest.php",
+                  "recipe": "contracts/fixtures/generator/generator.json",
+                  "symbol": "testNone"
                 }
               ]
             },
@@ -3943,19 +3937,16 @@
             "tests": [
               "packages/php-ext/tests/OrmGenScanTestExtensionTest.php",
               "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
-              "packages/php-ext/tests/CoverageModelGenerationNativeTest.php"
+              "packages/php-ext/tests/CoverageModelGenerationNativeTest.php",
+              "packages/php-ext/tests/GeneratorTestExtensionTest.php"
             ],
             "commands": {
               "none": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageModelGenerationNativeTest.php",
-                  "cases": [
-                    "model_generation_check"
-                  ],
-                  "symbols": {
-                    "model_generation_check": "testModelGenerationCheck"
-                  }
+                  "test": "packages/php-ext/tests/GeneratorTestExtensionTest.php",
+                  "recipe": "contracts/fixtures/generator/generator.json",
+                  "symbol": "testNone"
                 }
               ]
             }
@@ -3964,19 +3955,16 @@
             "part": "packages/rust",
             "tests": [
               "packages/rust/orm/tests/compiler_fixtures.rs",
-              "packages/rust/tests/tests/coverage_model_generation.rs"
+              "packages/rust/tests/tests/coverage_model_generation.rs",
+              "packages/rust/tests/tests/generator_none.rs"
             ],
             "commands": {
               "none": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/coverage_model_generation.rs",
-                  "cases": [
-                    "model_generation_check"
-                  ],
-                  "symbols": {
-                    "model_generation_check": "coverage_model_generation_check"
-                  }
+                  "test": "packages/rust/tests/tests/generator_none.rs",
+                  "recipe": "contracts/fixtures/generator/generator.json",
+                  "symbol": "generator_none"
                 }
               ]
             }
@@ -3986,16 +3974,14 @@
             "tests": [
               "packages/ts/tests/model-new-output-name.mjs",
               "packages/ts/tests/chain-types.mjs",
-              "packages/ts/tests/coverage_model_generation.mjs"
+              "packages/ts/tests/generator-none.test.mjs"
             ],
             "commands": {
               "none": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_model_generation.mjs",
-                  "cases": [
-                    "model_generation_check"
-                  ]
+                  "test": "packages/ts/tests/generator-none.test.mjs",
+                  "recipe": "contracts/fixtures/generator/generator.json"
                 }
               ]
             }
@@ -9503,7 +9489,8 @@
         "coverage-request-hook-without-hook",
         "request_hook-mysql",
         "request_hook-postgres",
-        "request_hook-sqlite"
+        "request_hook-sqlite",
+        "request-hook-root-is-the-connection"
       ],
       "fixtures": [
         "contracts/fixtures/request_hook/request_hook.dbs",
