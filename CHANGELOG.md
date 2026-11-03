@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- make group-rows-db-rust passes no DSN to a test that creates its own SQLite case database (#T334-3-4-20)
 - The coverage test binds no healthy run by a number of its own, and a process that never ends tests the process deadline (#T334-3-4-19)
 - orm pins kit 0.0.93 and takes its `ci-pipeline.yml`, where the install of the PHP symbol extractor moved into `ci-setup`. (#T334-3-4-18)
 - The feature checker reads a recipe owner from the results its runner writes (FCV-12): every recipe runner appends a `CASE` line to the file of `ORM_RECIPE_RESULTS` when a case passes, the owner names its recipe, and the recipe is its list of cases, so request_hook lists its sixteen cases rather than fourteen.

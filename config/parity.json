@@ -28881,11 +28881,9 @@
             "-s",
             "-C",
             "${ORM_CHECKOUT}",
-            "feature-rust-database",
+            "feature-rust-unit",
             "FEATURE_CRATE=packages/rust/tests",
             "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_group_rows_db::coverage_group_rows_db"
           ]
         }
