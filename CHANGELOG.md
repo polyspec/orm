@@ -3,6 +3,10 @@
 
 ## Unreleased
 
+- CR32 gives the times that rule out a harness stop of the tool call.
+- The owners of parameter_chunking declare model_parameter_after_schema_change.
+- catalog_read_budgets names its wait for all three databases, as a recipe's sql must.
+- The Python and Rust native tests of constraints_and_relations are gone; the recipes hold their cases (#T334-3-4-21)
 - TypeScript exports `transactionConflict(message)` and Python exports `transaction_conflict(message)`, the retryable `DEADLOCK` error of INT-48, which only the other runtimes had; the utilities of both use it and the recipe helpers call it. The recipe `model_queries_chain` reads the scalar SUM of a joined child as the integer of INT-160 and compares the message of the NULL collection key.
 - The recipe `tests/dbspec/runtime-model.json` with the new op `dbspec.runtime_model` holds what Rust `dbspec_runtime.rs` asserted of entity names, tables, keys, settings and field values, and all six runtimes run it (DBS-65, DBS-85, DBS-111, DBS-112). `dbspec.load_set` also checks that a manifest text reads back to its hash (DBS-100, DBS-103). What only Rust exposes stays native, named in FCV-2.
 - The recipe `tests/planner/runtime-model.json` holds what Go `runtime_model_test.go` held and all six runtimes run it: i16 read and plus, the insert of a default or a missing required column (PRT-81), and the audit slot of audited writes (PRT-32, PRT-82). `planner.compile` compares an audit slot with its `name` and, with `assemble_types`, the output types.
@@ -229,6 +233,10 @@
 
 A SQLite lock wait between two connections that write the same row ends with `CANCELED` after the busy timeout and is not retried, because SQLite reports no row-lock deadlock: SQLITE_LOCKED (6, 262) is `DRIVER` in every runtime, and transaction_deadlock_retry runs the sqlite case in all six runtimes (PLN-24, CFG-12) (T343-3)
 
+- FCV-2 states why `recipe-unknown-keys` and the three `hot-path-performance-measurement` units stay native: a loader refusal comes before any case, and a time is no value that a case can expect
+- The markdown DSN refusals of PRT-63 are cases of `dsn_reject`; DSL-60, DSL-115, DSL-155, CPX-5 and DSL-128 are held by `conformance_verification`, with the new cases `core_conditions`, `core_columns_and_pages`, `core_writes` and `core_duplicate_relation`, and their native units went. FCV-2 states why the four model core units stay native.
+- The padding of an `IN` list (CPX-4) is the case `core_in_list_padding`, which reads the statements of one to five values on three databases, and the padded tuples of `composite_key_rows`. The native padding tests of the runtimes went. The native `Request::padIn` of the PHP extension is CPX-6.
+- The projection, binds and rows of the hot path reads (PRT-2, PRT-34) are the case `core_projected_reads` of `conformance_verification` on three databases, and their native tests went.
 - CR15-2: several sets on a connection, an unregistered set and an edited manifest are cases of the statement_events recipe, and a model op with no connection runs on the case connection in every runtime.
 - CR15-2: `sqlite-row-lock-restoration` stays native as an FCV-2 entry, since no public call makes `PRAGMA busy_timeout` fail.
 - CR15-2: `schema.empty`, `schema.exists` and `schema.installed` are recipe ops, schema emptiness, existence and the rendered install are cases of schema_install, and PERF-1 states the `BENCH_*` variables of the timing.

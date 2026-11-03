@@ -329,7 +329,6 @@
         "packages/php/tests/ColumnFunctionMetadataAssertions.php",
         "packages/php/tests/ComplexQueryDbCase.php",
         "packages/php/tests/CountingPdo.php",
-        "packages/php/tests/Cpx5DuplicateRelationCases.php",
         "packages/php/tests/DatabaseTestAssertions.php",
         "packages/php/tests/DbspecIntrospectQueryCountCases.php",
         "packages/php/tests/DbspecSqliteLockCases.php",
@@ -386,7 +385,6 @@
         "packages/php/tests/fixtures/CodecProbeYamlStream.php",
         "packages/php/tests/generated_classes.php",
         "packages/php/tests/generated_fixture.php",
-        "packages/php/tests/hot_path_read_correctness.php",
         "packages/php/tests/limit_columns_peak.php",
         "packages/php/tests/markdown_test_server.php",
         "packages/php/tests/model-types-weak-caller.php",
@@ -6809,45 +6807,6 @@
       ]
     },
     {
-      "id": "ts-markdown",
-      "kind": "feature",
-      "requirements": [
-        "PRT-63"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/markdown.mjs",
-          "id": "markdown/parse-dsn"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/markdown_test.go",
-          "id": "TestParseMarkdownDSN"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/MarkdownTest.php",
-          "id": "MarkdownTest::testParseDsn"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
-          "id": "OrmExceptionNativeTest::testNativeOrmParsesMarkdownDsnAndCreatesFunctionValues"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_markdown.py",
-          "id": "test_parse_markdown_dsn"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/markdown.rs",
-          "id": "parse_markdown_dsn"
-        }
-      ]
-    },
-    {
       "id": "markdown-session-messages",
       "kind": "feature",
       "requirements": [
@@ -7883,60 +7842,6 @@
       ]
     },
     {
-      "id": "in-list-padding-keeps-compiled-shape",
-      "kind": "feature",
-      "requirements": [
-        "CPX-4"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/plan_cache_test.go",
-          "id": "TestInListPaddingKeepsTheCompiledShape"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/PlanCacheBoundTest.php",
-          "id": "PlanCacheBoundTest::testInListPaddingKeepsTheCompiledShape"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/PlanCacheBoundNativeTest.php",
-          "id": "PlanCacheBoundNativeTest::testInListPaddingKeepsTheCompiledShape"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelTypesSurfaceTest.php",
-          "id": "ModelTypesSurfaceTest::testPadInMatchesUserlandForBucketSizesSparseAndStringKeys"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/plan-cache-in.mjs",
-          "id": "an IN list pads to its bucket by repeating its last value and renumbers its parameters"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_plan_cache_bound.py",
-          "id": "test_in_list_padding_keeps_the_compiled_shape"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/request.rs",
-          "id": "request::plan_cache_tests::in_list_padding_keeps_the_compiled_shape"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/plan_cache_test.go",
-          "id": "TestCanonicalizePadsInListAndRejectsOutOfRangeParam"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/plan_cache_test.go",
-          "id": "TestPadInRepeatsTheLastCompositeTuple"
-        }
-      ]
-    },
-    {
       "id": "aggregate-numeric",
       "kind": "suite",
       "requirements": [
@@ -8559,46 +8464,6 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/styled_column_states.rs",
           "symbol": "styled_column_state_fixture"
-        }
-      ]
-    },
-    {
-      "id": "hot-path-read-correctness",
-      "kind": "feature",
-      "requirements": [
-        "PRT-2",
-        "PRT-34"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_hot_path_read_correctness_test.go",
-          "id": "TestHotPathReadCorrectness"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageHotPathReadCorrectnessTest.php",
-          "id": "CoverageHotPathReadCorrectnessTest::testHotPathReadCorrectness"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageHotPathReadCorrectnessExtensionTest.php",
-          "id": "CoverageHotPathReadCorrectnessExtensionTest::testHotPathReadCorrectness"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_hot_path_read_correctness.mjs",
-          "id": "hot_path_read_correctness"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_hot_path_read_correctness.py",
-          "id": "test_hot_path_read_correctness"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_hot_path_read_correctness.rs",
-          "id": "hot_path_read_correctness"
         }
       ]
     },
@@ -9969,7 +9834,14 @@
         "DSL-104",
         "DSL-109",
         "INT-38",
-        "INT-39"
+        "INT-39",
+        "DSL-115",
+        "DSL-155",
+        "CPX-5",
+        "DSL-128",
+        "CPX-4",
+        "PRT-2",
+        "PRT-34"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -10101,7 +9973,14 @@
         "DSL-104",
         "DSL-109",
         "INT-38",
-        "INT-39"
+        "INT-39",
+        "DSL-115",
+        "DSL-155",
+        "CPX-5",
+        "DSL-128",
+        "CPX-4",
+        "PRT-2",
+        "PRT-34"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -10233,7 +10112,14 @@
         "DSL-104",
         "DSL-109",
         "INT-38",
-        "INT-39"
+        "INT-39",
+        "DSL-115",
+        "DSL-155",
+        "CPX-5",
+        "DSL-128",
+        "CPX-4",
+        "PRT-2",
+        "PRT-34"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -26991,25 +26877,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_constraints_and_relations.py",
-          "id": "test_immutable_write"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
-          "id": "coverage_constraints_and_relations::coverage_immutable_write",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_constraints_and_relations::coverage_immutable_write"
-          ]
+          "test": "packages/python/tests/test_immutable_write_sqlite.py",
+          "id": "immutable_write"
         },
         {
           "implementation": "rust",
@@ -28391,51 +28260,6 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/clock.rs",
           "id": "clock_now_condition_postgres"
-        }
-      ]
-    },
-    {
-      "id": "coverage-model-query-duplicate-relation",
-      "kind": "feature",
-      "requirements": [
-        "CPX-5",
-        "DSL-128"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/cpx5_duplicate_relation_test.go",
-          "id": "TestCPX5DuplicateRelationNameIsRejectedDuringQueryCompilation"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/model/model_test.go",
-          "id": "TestDuplicateRelationNamesTheAliasCall"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/Cpx5DuplicateRelationTest.php",
-          "id": "Cpx5DuplicateRelationTest::testGetQueryRejectsDuplicateRelationWithAliasHint"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/Cpx5DuplicateRelationNativeTest.php",
-          "id": "Cpx5DuplicateRelationNativeTest::testNativeGetQueryRejectsDuplicateRelationWithAliasHint"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/cpx5_duplicate_relation.mjs",
-          "id": "duplicate_relation_name"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_complex_query_sqlite.py",
-          "id": "duplicate_relation_name"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_model_queries.rs",
-          "id": "coverage_model_queries::duplicate_relation_name_reports_config_alias_hint"
         }
       ]
     },
@@ -30920,159 +30744,6 @@
             "FEATURE_DATABASE=sqlite",
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=joins_and_relations"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "terminal-count-by-preserves-the-query",
-      "kind": "feature",
-      "requirements": [
-        "DSL-60"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/model_test.go",
-          "id": "TestConditions"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testConditions"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
-          "id": "ModelTestExtensionTest::testConditions"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/model.mjs",
-          "id": "conditions"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_terminal_by.py",
-          "id": "test_terminal_by_after_a_condition_counts_the_joined_rows"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration_program/main.rs",
-          "id": "conditions",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=conditions"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "model-attached-values-survive-create",
-      "kind": "feature",
-      "requirements": [
-        "DSL-115"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/model_test.go",
-          "id": "TestWrites"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testWrites"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
-          "id": "ModelTestExtensionTest::testWrites"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/model.mjs",
-          "id": "writes"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_sqlite.py",
-          "id": "test_write_cycle"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration_program/main.rs",
-          "id": "writes",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=writes"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "optimistic-update-requires-fresh-version",
-      "kind": "feature",
-      "requirements": [
-        "DSL-155"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/model_test.go",
-          "id": "TestWrites"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testWrites"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
-          "id": "ModelTestExtensionTest::testWrites"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/model.mjs",
-          "id": "writes"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_sqlite.py",
-          "id": "test_write_cycle"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration_program/main.rs",
-          "id": "writes",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=writes"
           ]
         }
       ]
@@ -41948,7 +41619,8 @@
         "CFG-19",
         "CFG-26",
         "FCV-15",
-        "PRT-64"
+        "PRT-64",
+        "PRT-63"
       ],
       "file": "contracts/fixtures/dsn_reject/dsn_reject.json",
       "cases": "$.cases[*].id",
@@ -43667,7 +43339,8 @@
         "DSL-82",
         "INT-87",
         "PRT-12",
-        "PRT-40"
+        "PRT-40",
+        "CPX-4"
       ],
       "file": "contracts/fixtures/composite_keys/composite_keys.json",
       "cases": "$.cases[*].id",
@@ -43709,7 +43382,8 @@
         "DSL-82",
         "INT-87",
         "PRT-12",
-        "PRT-40"
+        "PRT-40",
+        "CPX-4"
       ],
       "file": "contracts/fixtures/composite_keys/composite_keys.json",
       "cases": "$.cases[*].id",
@@ -43751,7 +43425,8 @@
         "DSL-82",
         "INT-87",
         "PRT-12",
-        "PRT-40"
+        "PRT-40",
+        "CPX-4"
       ],
       "file": "contracts/fixtures/composite_keys/composite_keys.json",
       "cases": "$.cases[*].id",
@@ -44630,6 +44305,25 @@
           "id": "composite_components_preserve_typed_identity_and_shared_encoding"
         }
       ]
+    },
+    {
+      "id": "php-extension-pad-in",
+      "kind": "feature",
+      "requirements": [
+        "CPX-6"
+      ],
+      "bindings": [
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelTypesSurfaceTest.php",
+          "id": "ModelTypesSurfaceTest::testPadInMatchesUserlandForBucketSizesSparseAndStringKeys"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm-php-ext"
+      }
     }
   ],
   "errors": {
