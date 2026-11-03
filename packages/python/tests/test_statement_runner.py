@@ -2,7 +2,7 @@
 # connection; outside a transaction the runner opens one and ends it without retry, inside one it joins
 # that transaction. frame.run returns the statement result with its rows and a non-text statement is CONFIG
 # (packages/ts/src/utils.ts Utils.run, packages/ts/tests/statement-runner.mjs).
-# These cases stay native (FCV-2): `active_frame()` is public only in Python (INT-160), and a statement that is not text
+# These cases stay native (FCV-2): `active_frame()` is public only in Python (INT-161), and a statement that is not text
 # can be passed only where the language does not type it. The shared behaviour is the recipe statement_runner.
 import os
 import tempfile
@@ -106,7 +106,7 @@ class StatementRunnerTest(unittest.TestCase):
         self.server_case("postgres", self.assert_frame_rows_and_config)
 
 
-    # Requirements: INT-160.
+    # Requirements: INT-161.
     def test_active_frame_is_the_frame_of_the_runner_sqlite(self):
         db = Db.connect(f"sqlite://{os.path.join(self.tmp.name, 'runner.sqlite3')}")
         try:
@@ -114,11 +114,11 @@ class StatementRunnerTest(unittest.TestCase):
         finally:
             db.close()
 
-    # Requirements: INT-160.
+    # Requirements: INT-161.
     def test_active_frame_is_the_frame_of_the_runner_mysql(self):
         self.server_case("mysql", self.assert_runner_outside_and_inside)
 
-    # Requirements: INT-160.
+    # Requirements: INT-161.
     def test_active_frame_is_the_frame_of_the_runner_postgres(self):
         self.server_case("postgres", self.assert_runner_outside_and_inside)
 

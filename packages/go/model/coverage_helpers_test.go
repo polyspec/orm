@@ -69,3 +69,22 @@ func nativeTableExists(t *testing.T, driver, dsn, table string) bool {
 	}
 	return n > 0
 }
+
+// removeTenantAccounts deletes the composite_account rows of the tenant that a failed case left
+// behind. Memberships are deleted along with them through ON DELETE CASCADE. If any row was deleted,
+// the case did not finish its cleanup, so it reports failure.
+func removeTenantAccounts(t *testing.T, db *orm.DB, tenant int64) {
+	t.Helper()
+	rows, err := model.CompositeAccount().Connect(db).TenantId(tenant).Gets()
+	if err != nil {
+		t.Errorf("read tenant %d accounts for cleanup: %v", tenant, err)
+		return
+	}
+	if rows.Len() == 0 {
+		return
+	}
+	t.Errorf("tenant %d left %d composite_account rows; removing them", tenant, rows.Len())
+	if err := rows.Delete(); err != nil {
+		t.Errorf("remove tenant %d accounts: %v", tenant, err)
+	}
+}

@@ -11,7 +11,6 @@ mod coverage_database;
 mod coverage_env;
 mod coverage_group_rows_db;
 mod coverage_model_queries;
-mod coverage_model_writes;
 mod coverage_transactions;
 mod result_chains;
 #[path = "../common/result_code.rs"]

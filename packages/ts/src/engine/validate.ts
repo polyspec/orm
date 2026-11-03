@@ -24,7 +24,7 @@ const opsByType: Readonly<Record<string, readonly string[]>> = {
   date: comparable,
   time: comparable,
   datetime: comparable,
-  uuid: comparable,
+  uuid: equality,
   varchar: ['eq', 'not_eq', 'gt', 'gte', 'lt', 'lte', 'in', 'not_in', 'contains', 'contains_binary', 'is_null', 'is_not_null'],
   text: ['eq', 'not_eq', 'gt', 'gte', 'lt', 'lte', 'contains', 'contains_binary', 'is_null', 'is_not_null'],
   bool: ['eq', 'not_eq', 'is_null', 'is_not_null'],

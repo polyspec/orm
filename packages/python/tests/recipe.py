@@ -35,12 +35,14 @@ from polyspec.orm import (
     Db,
     Model,
     OrmError,
+    RuntimeModel,
     Schema,
     connect_catalog,
     orm,
     register_model,
 )
 from polyspec.orm.engine.model import field_of
+from polyspec.orm.engine.params import param_uses
 from polyspec.orm.codec import (
     CodecError,
     blind_index,
@@ -117,6 +119,22 @@ class _Failed:
         self.error = error
 
 
+def _reporting(check, database: str):
+    """check, which then appends the pass of its case to the file that ORM_RECIPE_RESULTS names, the line the feature
+    checker reads (FCV-12). A run outside the checker names no file."""
+
+    def reported(test: unittest.TestCase, case: dict) -> None:
+        check(test, case)
+        path = os.environ.get("ORM_RECIPE_RESULTS")
+        if not path:
+            return
+        named = "" if database == NONE else f" [{database}]"
+        with open(path, "a", encoding="utf-8") as results:
+            results.write(f"CASE {case['id']}{named} PASS\n")
+
+    return reported
+
+
 def recipe_tests(path: str, database: str):
     """The load_tests protocol of an entry: one test for each case of the recipe at path, relative to the repository root."""
     if database != NONE:
@@ -148,6 +166,12 @@ def recipe_tests(path: str, database: str):
                     continue
                 if step["op"] == "planner.compile":
                     _plan(step, ROOT / Path(path).parent, database)
+                    continue
+                if step["op"] == "ir.param_uses":
+                    _param_uses(step, ROOT / Path(path).parent, database)
+                    continue
+                if step["op"] == "planner.columns":
+                    _planner_columns(step, ROOT / Path(path).parent, database)
                     continue
                 if step["op"] == "generator.generate":
                     check_generator(step, ROOT / Path(path).parent, database)
@@ -183,7 +207,9 @@ def recipe_tests(path: str, database: str):
         step["op"] == "ir.answer" for case in recipe["cases"] for step in case["steps"]
     )
     cases = recipe["cases"]
-    return vector_load_tests(ChainRecipeCase if has_chain else RecipeCase, cases, check)
+    return vector_load_tests(
+        ChainRecipeCase if has_chain else RecipeCase, cases, _reporting(check, database)
+    )
 
 
 def _mermaid(step: dict, bound: dict, database: str, directory: Path) -> None:
@@ -603,6 +629,7 @@ _DBSPEC_FILE_OPS = (
     "dbspec.format",
     "dbspec.parse_set",
     "dbspec.set",
+    "dbspec.load_set",
     "dbspec.read_file",
     "dbspec.read_bytes",
 )
@@ -659,33 +686,21 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
                 rendered["statements"], expect[dialect], f"{dialect} statements"
             )
     elif op == "dbspec.analyze":
-        if "document" not in step:
-            text, header_set = _inline_document(step)
-            analysis = analyze_dbspec(text, header_set)
-            tokens = [[t.line, t.start, t.end, t.token_class] for t in analysis.tokens]
-            _expect_equal(tokens, expect.get("tokens", []), "tokens")
+        if "document" in step:
+            text, header_set = (directory / step["document"]).read_bytes().decode("utf-8"), {}
         else:
-            text = (directory / step["document"]).read_bytes().decode("utf-8")
-            analysis = analyze_dbspec(text, {})
-            parsed_document, positions, _diagnostics = parse_dbspec(text, {})
-            if list(analysis.diagnostics):
-                raise AssertionError(
-                    f"the analysis has a diagnostic: {list(analysis.diagnostics)!r}"
-                )
-            _expect_equal(
-                emit_dbspec(analysis.document),
-                emit_dbspec(parsed_document),
-                "the analysis holds the parsed document",
-            )
-            _expect_equal(
-                analysis.positions,
-                positions,
-                "the analysis holds the positions of the parse",
-            )
-            if not expect.get("tokens"):
-                raise AssertionError("the expect names no tokens")
-            tokens = [[t.line, t.start, t.end, t.token_class] for t in analysis.tokens]
-            _expect_equal(tokens, expect["tokens"], "tokens")
+            text, header_set = _inline_document(step)
+        analysis = analyze_dbspec(text, header_set)
+        if "document" in step and list(analysis.diagnostics):
+            raise AssertionError(f"the analysis has a diagnostic: {list(analysis.diagnostics)!r}")
+        parsed_document, positions, diagnostics = parse_dbspec(text, header_set)
+        _expect_equal(analysis.document, parsed_document, "the analysis holds the parsed document")
+        _expect_equal(analysis.positions, positions, "the analysis holds the positions of the parse")
+        _expect_equal(list(analysis.diagnostics), list(diagnostics), "the analysis holds the diagnostics of the parse")
+        if "tokens" not in expect:
+            raise AssertionError("the expect names no tokens")
+        tokens = [[t.line, t.start, t.end, t.token_class] for t in analysis.tokens]
+        _expect_equal(tokens, expect["tokens"], "tokens")
     elif op == "dbspec.parse_positions":
         if "document" in step:
             text = (directory / step["document"]).read_bytes().decode("utf-8")
@@ -722,6 +737,20 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
             formatted,
             "a formatted text is its own format",
         )
+    elif op == "dbspec.load_set":
+        def text(lines):
+            return "\n".join(lines) + "\n" if lines else ""
+
+        try:
+            documents = RuntimeModel.load_set(text(step["owned"]), text(step["external"]))
+        except OrmError as error:
+            _expect_equal(error.code, expect.get("error"), "error")
+        else:
+            _expect_equal(
+                [{"name": d.name, "external": d.external} for d in documents],
+                expect.get("documents"),
+                "documents",
+            )
     elif op == "dbspec.parse_set":
         got = parse_dbspec_set(step["owned"], step.get("external", []))
         _expect_equal(len(got), len(expect["documents"]), "one result per text")
@@ -1383,6 +1412,64 @@ def _messages(diagnostics, rule: str) -> list:
     return [d.message for d in diagnostics]
 
 
+def _plan_request(step: dict, recipe_dir: Path) -> tuple[Any, dict]:
+    """The model of the schema of a planner step and its input with the manifest_hash of that schema."""
+    schema = (recipe_dir / step["schema"]).resolve()
+    if schema not in _plan_models:
+        _plan_models[schema] = _validation_model(schema)
+    model = _plan_models[schema]
+    return model, dict(
+        json.loads(json.dumps(step["input"])), manifest_hash=model.manifest_hash
+    )
+
+
+def _param_uses(step: dict, recipe_dir: Path, database: str) -> None:
+    """States the uses of each parameter of a validated request (DIA-31, PRT-67)."""
+    model, request = _plan_request(step, recipe_dir)
+    validate(model, request)
+    uses = [
+        [
+            {"type": use.type}
+            if use.column is None
+            else {
+                "type": use.type,
+                **({"assign": True} if use.assign else {}),
+                "column": use.column.name,
+                "length": use.column.length,
+                "null": use.column.nullable,
+                "precision": use.column.precision,
+                "scale": use.column.scale,
+            }
+            for use in parameter
+        ]
+        for parameter in param_uses(model, request)
+    ]
+    want = step["expect"][database]["value"]
+    if {"uses": uses} != want:
+        raise AssertionError(f"ir.param_uses: got {uses}, want {want}")
+
+
+def _planner_columns(step: dict, recipe_dir: Path, database: str) -> None:
+    """States the output columns that the names of the step select from the first statement of the plan of each dialect:
+    their type and whether they are hidden (PRT-69, DIA-33)."""
+    model, request = _plan_request(step, recipe_dir)
+    want = step["expect"][database]["value"]
+    for dialect in _PLAN_DIALECTS:
+        assemble = Engine(model, dialect).compile(request)["steps"][0]["assemble"]
+        got = [
+            {
+                "name": name,
+                "type": column["type"],
+                "hidden": column.get("hidden", False),
+            }
+            for name in step["names"]
+            for column in assemble["columns"]
+            if column["name"] == name
+        ]
+        if got != want:
+            raise AssertionError(f"planner.columns {dialect}: got {got}, want {want}")
+
+
 def _validate(step: dict, model: Any, database: str) -> None:
     """Gives the request of an ir.validate step to the validator, with the manifest_hash of the schema added, and checks the
     outcome of the expect of database: {value: {bool: true}} for an accepted request, {error: CODE} for a request that fails with CODE."""
@@ -1395,7 +1482,13 @@ def _validate(step: dict, model: Any, database: str) -> None:
         raise AssertionError("request already holds manifest_hash")
     got = None
     try:
-        validate(model, dict(step["request"], manifest_hash=model.manifest_hash))
+        validate(
+            model,
+            dict(
+                step["request"],
+                manifest_hash=step.get("manifest_hash", model.manifest_hash),
+            ),
+        )
     except OrmError as error:
         got = error.code
     if "error" in outcome:
@@ -1521,6 +1614,15 @@ def _run(step: dict, bound: dict, database: str) -> None:
         return
     if type(result) is _Failed:
         raise AssertionError(f"unexpected error {result.error!r}")
+    if "bytes_prefix_hex" in expect:
+        # An envelope has a random nonce, so its form is its prefix and its length (COD-5).
+        if (
+            not isinstance(result, bytes)
+            or len(result) != expect["bytes_length"]
+            or not result.hex().startswith(expect["bytes_prefix_hex"])
+        ):
+            raise AssertionError(f"cell {result!r}, want {expect}")
+        return
     want = expect["value"]
     if not decoded:
         _compare_cell(want, result)
@@ -1755,7 +1857,7 @@ def _database_recipe_tests(path: str, database: str):
     cases = [
         case for case in recipe["cases"] if database in case.get("only", DATABASES)
     ]
-    return vector_load_tests(DatabaseRecipeCase, cases, check)
+    return vector_load_tests(DatabaseRecipeCase, cases, _reporting(check, database))
 
 
 def _fixture_schema(set_path: Path):
@@ -2189,6 +2291,8 @@ def _chain_value(raw, context: dict) -> Any:
 
 def _column_value(model: Model, column: str, raw: dict, context: dict) -> Any:
     """The value of a column for a wrapper: an object is the styled value of its codec."""
+    if "styled" in raw:
+        return StyledValue.value(_chain_value(raw["styled"], context))
     if "object" not in raw:
         return _chain_value(raw, context)
     field = field_of(model.core.ent.entity, column)
@@ -2386,6 +2490,10 @@ class _ChainBuild:
                 model.limit(limit.get("offset", 0), limit["count"])
         if "lock" in q:
             model.core.lock = q["lock"]
+        if "force_index" in q:
+            model.core.index = q["force_index"]
+        if "key_by" in q:
+            model.core.key_name = q["key_by"]
 
     def relation(self, relation: dict) -> Model:
         """The child model of a relation."""
@@ -2422,14 +2530,6 @@ def _row_json(row, pick) -> Any:
     if missing:
         raise AssertionError(f"the row has no field {missing[0]}")
     return {name: values[name] for name in pick}
-
-
-def _derived_integers(row: dict, step: dict) -> dict:
-    """The row with the named fields read as a derived integer (COD-45): the text of an integer is its number."""
-    for name in step.get("derived_integers", []):
-        if isinstance(row[name], str):
-            row[name] = int(row[name])
-    return row
 
 
 def _wants_rows(step: dict, context: dict) -> bool:
@@ -2579,6 +2679,13 @@ def _table_model_query(step: dict, context: dict) -> dict:
             return {"json": model.get_sum()}
         if aggregate["agg"] == "avg":
             return {"json": model.get_avg()}
+        if "group_value" in step:
+            rows = list(model.gets_count())
+            if not rows:
+                raise AssertionError(
+                    f"group_value {step['group_value']}: the aggregate has no group row"
+                )
+            return {"json": _plain_json(rows[0].value(step["group_value"]))}
         return {"json": _plain_json(model.gets_count().to_array())}
     if step.get("page") is True:
         limit = step.get("limit")
@@ -2617,10 +2724,7 @@ def _table_model_query(step: dict, context: dict) -> dict:
     rows = model.gets()
     fields = {
         "bind": rows,
-        "json": [
-            _derived_integers(_row_json(row, step.get("pick")), step)
-            for row in rows.values()
-        ],
+        "json": [_row_json(row, step.get("pick")) for row in rows.values()],
     }
     if _wants_rows(step, context):
         fields["rows"] = _chain_cells(list(rows.values()), step)
@@ -2633,6 +2737,8 @@ def _table_model_count(step: dict, context: dict) -> dict:
 
 def _table_model_get_by(step: dict, context: dict) -> dict:
     row = _chain_built(step, context).get()
+    if "ordered_text" in step and row is not None:
+        return {"json": row.core.values[step["ordered_text"]].payload().raw}
     fields = {"json": _row_json(row, step.get("pick"))}
     if row is not None:
         fields["bind"] = row
@@ -2783,6 +2889,8 @@ def _op_utils_run(step: dict, context: dict) -> dict:
                 kind=statement["kind"],
                 tables=statement["tables"],
             )
+        if "conflict" in step:
+            raise OrmError("DEADLOCK", step["conflict"])
         return last
 
     result = _connection_of(step, context).utils().run(run)
@@ -3069,6 +3177,25 @@ def _op_aes_rotate(step: dict, context: dict) -> dict:
 _DATABASE_OPS = {
     "schema.install": lambda step, context: _op_schema_install(step, context),
     "schema.register": lambda step, context: _op_schema_register(step, context),
+    "schema.empty": lambda step, context: {
+        "value": {"bool": context["db"].utils().schema().empty()}
+    },
+    "schema.exists": lambda step, context: {
+        "value": {
+            "bool": context["db"]
+            .utils()
+            .schema()
+            .exists(_inspected_schema(step["schema"], context))
+        }
+    },
+    "schema.installed": lambda step, context: {
+        "value": {
+            "bool": context["db"]
+            .utils()
+            .schema()
+            .installed(_inspected_schema(step["schema"], context), step["table"])
+        }
+    },
     "schema.connect": lambda step, context: _op_schema_connect(step, context),
     "schema.add_tables_and_columns": lambda step, context: _op_schema_add_tables(
         step, context
@@ -3366,6 +3493,15 @@ def _schema_argument(arg: dict, context: dict) -> Schema:
     if replace is not None:
         text = text.replace(replace["from"], replace["to"])
     return Schema(text, manifest.manifest_hash, manifest.external_text)
+
+
+def _inspected_schema(value, context: dict) -> str:
+    """The schema argument of schema.exists and schema.installed: the name, or that of the database, where $database is
+    the name of the case database."""
+    name = value if isinstance(value, str) else value[context["database"]]
+    if name == "$database":
+        return context["dsn"].split("?", 1)[0].rsplit("/", 1)[1]
+    return name
 
 
 def _op_schema_install(step: dict, context: dict) -> dict:

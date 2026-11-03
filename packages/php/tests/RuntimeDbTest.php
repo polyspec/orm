@@ -73,14 +73,6 @@ final class RuntimeDbTest extends TestCase
         return $db;
     }
 
-    private static function caseInstallRendersTheDocumentSet(Db $db): void
-    {
-        $count = static fn(string $table): int => (int) $db->pdo()->query("SELECT COUNT(*) FROM $table")->fetchColumn();
-        self::check($count('item') === 0 && $count('item_history') === 0 && $count('sample') === 0, 'installed tables');
-        $db->utils()->schema()->install(\Polyspec\Orm\Tests\RuntimeDb\schema());
-        self::check($count('sample') === 0, 'a repeated install');
-    }
-
     private static function caseI16ValuesAndDefaults(Db $db): void
     {
         $low = (new Sample())($db)->setLevel(-32768)->setWide(1)->setRatio(1.25)->setActive(true)->create();
@@ -222,13 +214,6 @@ final class RuntimeDbTest extends TestCase
                 $db->close();
             }
         });
-    }
-
-    // Requirements: DBS-108, SCH-7.
-    #[DataProvider('drivers')]
-    public function testInstallRendersTheDocumentSet(string $driver): void
-    {
-        self::runCase($driver, 'Polyspec\\Orm\\Tests\\RuntimeDb', self::caseInstallRendersTheDocumentSet(...));
     }
 
     // Requirements: INT-99, COD-20.

@@ -108,7 +108,6 @@ require_once __DIR__ . '/CatalogPostgresTemporalCases.php';
 require_once __DIR__ . '/StatementEventsCoverageCases.php';
 require_once __DIR__ . '/dbspec_limit_cases.php';
 require_once __DIR__ . '/DbspecSqliteLockCases.php';
-require_once __DIR__ . '/BlindIndexSourcePlannerInput.php';
 require_once __DIR__ . '/DbspecApplyLockWaitPDO.php';
 require_once __DIR__ . '/request_hook_cases.php';
 require_once __DIR__ . '/statement_events_run.php';
