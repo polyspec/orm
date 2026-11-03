@@ -41,7 +41,6 @@ export const GO_LANE_PACKAGES = [
   './packages/go/bindmessages',
   './packages/go/bindmodel',
   './packages/go/complexmodel',
-  './packages/go/complexquery',
   './packages/go/decimalmodel',
   './packages/go/engine',
   './packages/go/engine/dbspec',

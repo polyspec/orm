@@ -8,7 +8,6 @@
       "roots": [
         "packages/go/bindmessages",
         "packages/go/cmd",
-        "packages/go/complexquery",
         "packages/go/decimalmodel",
         "packages/go/engine",
         "packages/go/generator",
@@ -22,8 +21,7 @@
         "packages/go/bench"
       ],
       "tests": [
-        "packages/go/{cmd,decimalmodel,engine,generator,internal,markdownmodel,model,orm,procevent,testcase}/**/coverage_*_test.go",
-        "packages/go/complexquery/coverage_*_test.go"
+        "packages/go/{cmd,decimalmodel,engine,generator,internal,markdownmodel,model,orm,procevent,testcase}/**/coverage_*_test.go"
       ],
       "support": [
         "packages/go/engine/dbspec/vector_reader_test.go",
