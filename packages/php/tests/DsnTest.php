@@ -34,12 +34,6 @@ class DsnTest extends TestCase
         self::assertSame('{"name":"now"}', json_encode(Orm::now()->ir(static fn(): int => 0), JSON_THROW_ON_ERROR));
     }
 
-    // Requirements: PRT-77.
-    public function testValueFunctionIrCarriesNameAndParameterIndexes(): void
-    {
-        self::assertValueFunctionIr();
-    }
-
     public function testParse(): void
     {
         [$driver, $pdo, $user, $password] = Orm::parseDsn('mysql://orm:p%40ss@db.local:3307/orm_example?timezone=UTC');

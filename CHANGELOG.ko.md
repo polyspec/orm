@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7b82c008e66ab61cc699c6432d0252dc6985a83fe8f707b869d671848b1deea5 -->
+<!-- source-sha256: a993a9be94bb29641acddf7da06d01f21bd49ddae0258eb42d98f03214b5d3f0 -->
 # 변경 이력
 
 ## Unreleased
 
+- value function의 parameter index를 statement event로 읽는 conformance_verification recipe 사례로, ordered-json AES 열의 거부를 invalid recipe 사례로 여섯 runtime에 옮겼다.
 - 모든 AES 열의 rotation, 현재 버전이 아닌 행의 rotation, 그 status, 현재 버전 key로의 쓰기를 여섯 runtime의 aes_rotation recipe 사례로 옮겼고 native rotation 테스트를 없앴다.
 - feature 검사기는 recipe owner를 그 runner가 쓴 결과로 읽는다(FCV-12): 모든 recipe runner가 사례가 통과하면 `ORM_RECIPE_RESULTS`의 파일에 `CASE` 줄을 덧붙이고, owner는 자기 recipe를 적으며 recipe가 사례 목록이므로 request_hook은 열네 개가 아니라 열여섯 개 사례를 적는다.
 - `packages/go/internal/buildconstraints`의 Go test는 `go.work` module의 모든 Go 파일을 읽고, platform 제약이나 `GO_TEST_TAGS`의 tag가 아닌 build tag에서 실패한다. 실패하는 dbspec harness fixture는 tag 없이 `packages/go/engine/dbspec/testdata/fixture`로 옮겼다.

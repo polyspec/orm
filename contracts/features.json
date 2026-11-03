@@ -6437,7 +6437,6 @@
         "packages/php/tests/CoveragePlannerTest.php",
         "packages/rust/orm/tests/unit/coverage_planner.rs",
         "packages/ts/tests/coverage_planner.mjs",
-        "packages/ts/tests/value_function_ir.mjs",
         "packages/go/engine/planner/restore_test.go",
         "packages/python/tests/coverage_planner.py",
         "packages/go/engine/ir/recipe_validate_test.go",
@@ -6574,14 +6573,6 @@
           "shard": "other",
           "inputs": [
             "packages/ts/tests/engine_features.mjs"
-          ]
-        },
-        {
-          "id": "value-function-ir-typescript",
-          "command": "node packages/ts/tests/value_function_ir.mjs",
-          "shard": "other",
-          "inputs": [
-            "packages/ts/tests/value_function_ir.mjs"
           ]
         },
         {

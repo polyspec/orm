@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The parameter indexes of a value function are a case of the conformance_verification recipe, read from the statement events, and the rejections of an ordered-json AES column are cases of the invalid recipe, in all six runtimes.
 - AES rotation of every AES column, of the rows not at the current version, its status, and the write with the key of the current version are cases of the aes_rotation recipe in all six runtimes, and the native rotation tests are gone.
 - The feature checker reads a recipe owner from the results its runner writes (FCV-12): every recipe runner appends a `CASE` line to the file of `ORM_RECIPE_RESULTS` when a case passes, the owner names its recipe, and the recipe is its list of cases, so request_hook lists its sixteen cases rather than fourteen.
 - A Go test of `packages/go/internal/buildconstraints` reads every Go file of the modules of `go.work` and fails on a build tag other than a platform constraint or a tag of `GO_TEST_TAGS`; the failing dbspec harness fixture moved to `packages/go/engine/dbspec/testdata/fixture` without a tag.
