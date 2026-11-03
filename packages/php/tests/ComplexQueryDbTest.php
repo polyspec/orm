@@ -10,31 +10,9 @@ use PHPUnit\Framework\TestCase;
 #[Medium]
 final class ComplexQueryDbTest extends TestCase
 {
-    public function testProductSearchFulltextNamesBuildFromGeneratedModels(): void
-    {
-        ComplexQueryDbCase::assertFulltextChains(false);
-    }
-
-    // Requirements: CPX-1.
-    public function testProductSearchPublicRequestCompilesAcrossDialects(): void
-    {
-        ComplexQueryDbCase::assertPublicRequestCompiles(false);
-    }
-
     // Requirements: DSL-159.
     public function testGetPagePlanStepsGivesTheStepsOfThePlanOfGetsPage(): void
     {
         ComplexQueryDbCase::assertPagePlanSteps(false);
-    }
-
-    public function testFeatureProductSearchPage(): void
-    {
-        ComplexQueryDbCase::runFeature(false);
-    }
-
-    // Requirements: CPX-2.
-    public function testProductSearchPage(): void
-    {
-        ComplexQueryDbCase::run(false);
     }
 }
