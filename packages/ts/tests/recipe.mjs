@@ -116,6 +116,10 @@ async function connectDriver(dsn, config = {}) {
     if (rows.length !== 1 || rows[0].length !== 1 || Number(rows[0][0]) !== 1) {
       throw new Error(`SELECT 1 on the connection of ${db.driver} returned ${JSON.stringify(rows)}`);
     }
+    if (config.session_read !== undefined) {
+      const read = await db.utils().run(async frame => frame.run('utility', [], config.session_read.sql));
+      assert.deepEqual(read.rows.map(row => row.map(String)), [config.session_read.row], config.session_read.sql);
+    }
     if (config.tls_version === true) {
       const status = await db.utils().run(async frame => frame.run('utility', [], "SHOW SESSION STATUS LIKE 'Ssl_version'"));
       const version = status.rows[0]?.[1];

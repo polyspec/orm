@@ -155,11 +155,36 @@ async fn connect_driver(dsn: &str, config: &Value) -> Result<String, (String, St
         Ok(db) => {
             let driver = db.driver().to_owned();
             let answer = db.utils().run(async |frame| frame.run("utility", &[], "SELECT 1", &[]).await).await;
+            let session_read = match config["session_read"]["sql"].as_str() {
+                Some(sql) => Some(db.utils().run(async |frame| frame.run("utility", &[], sql, &[]).await).await),
+                None => None,
+            };
             let status = match config["tls_version"].as_bool() {
                 Some(true) => Some(db.utils().run(async |frame| frame.run("utility", &[], "SHOW SESSION STATUS LIKE 'Ssl_version'", &[]).await).await),
                 _ => None,
             };
             db.close().await;
+            match session_read {
+                Some(Ok(rows)) => {
+                    let want: Vec<&str> = config["session_read"]["row"].as_array().into_iter().flatten().filter_map(Value::as_str).collect();
+                    let got: Vec<String> = rows
+                        .first()
+                        .into_iter()
+                        .flatten()
+                        .map(|cell| match cell {
+                            Val::Str(text) => text.clone(),
+                            Val::Bytes(text) => String::from_utf8_lossy(text).into_owned(),
+                            Val::I64(number) => number.to_string(),
+                            other => format!("{other:?}"),
+                        })
+                        .collect();
+                    if rows.len() != 1 || got != want {
+                        return Err(("STEP".to_owned(), format!("{} returned {rows:?}, want {want:?}", config["session_read"]["sql"])));
+                    }
+                }
+                Some(Err(error)) => return Err((error.code().to_owned(), error.to_string())),
+                None => {}
+            }
             match status {
                 Some(Ok(rows)) => {
                     let version = rows.first().and_then(|row| row.get(1));

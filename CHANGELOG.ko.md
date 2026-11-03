@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d45247ad0a6ac8cc9fe300d0ff56a7e2d687a9685aa0081a94c767cab61805d7 -->
+<!-- source-sha256: c2a847ca2291538bf26ba610147ca0a16e12d4283782f4b9bb931acccaca253e -->
 # 변경 이력
 
 ## Unreleased
 
+- Tests: CFG-3의 MySQL 세션 설정은 모든 runtime에서 `dsn_connection` recipe의 case `mysql_session_settings`가 `dsn.connect`의 새 key `session_read`로 확인하며, `sql_mode` native와 `tests/dsn/mysql-session.json`은 사라졌다.
 - 서버가 거부한 연결은 모든 클라이언트에서 `DRIVER`다. PHP와 extension은 `CONFIG`를, Rust catalog는 코드 없는 문자열을 보고했다.
 - catalog는 `max_user_connections`가 거부한 연결을 자신의 연결을 닫은 뒤 2초 안에서만 다시 시도하고, Go의 budget 중단은 rollback을 시도하지 않고 `CATALOG_LIMIT`만 보고한다.
 - rollback fault의 native가 모든 runtime에서 사라졌다: recipe transactions의 case가 그것을 말하고, ROLLBACK이 지니는 callback error는 새 expect key `keeps_callback`이 말한다. `packages/ts/tests/rollback.mjs`와 `packages/go/orm/rollback_fault_test.go`는 지워지고, Rust의 두 form은 INT-72a로 native에 남는다.

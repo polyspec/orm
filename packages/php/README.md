@@ -33,7 +33,7 @@ the client on SQLite with `php -n` and only the extensions it needs, so that `my
   `manifestHash` fails with `SCHEMA_HASH_MISMATCH` before any statement.
 - `tests/` — `ModelTest.php` (the model integration test), `RuntimeModelTest.php` and
   `RuntimeDbTest.php` (the runtime model, installation and audit), `SchemaSetTest.php` (several
-  document sets in one process), `MysqlTlsTest.php` (the DSN parameters and MySQL TLS), `ClockTest.php`, `DriverErrorTest.php`, `RollbackTest.php`,
+  document sets in one process), `ClockTest.php`, `DriverErrorTest.php`, `RollbackTest.php`,
   `EngineTest.php`, `HostcodecTest.php`, `CodecRecipeTest.php` (the codec recipe `tests/codec/codec.json`), `DsnTest.php`,
   `RelationKeysTest.php`, `PerfGateTest.php`, `OrmGenTest.php` (the command line), and the `dbspec_*`
   tests of `Dbspec/`. The conformance runner is

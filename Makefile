@@ -1253,7 +1253,7 @@ mysql-tls-php-extension-check: php-vendor-check orm-install-php-extension-tools
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php --filter mysql_tls
 
-# Runs the native PHP extension MySQL session initialization case against the declared sql_mode vector.
+# Runs the native PHP extension MySQL session test file, whose case is the PostgreSQL session startup parameters (CFG-7).
 mysql-session-php-extension-check: RUN_DIR = $(abspath .runtime/run)/mysql-session-php-extension-check-$$PPID
 mysql-session-php-extension-check: php-vendor-check orm-install-php-extension-tools
 	@set -eu; \
@@ -1281,14 +1281,12 @@ connection-utc-php-extension-check: php-vendor-check php-models orm-install-php-
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension POLYSPEC_ORM_EXTENSION="$$run_dir/php-extension/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --filter 'testNativeStyledSqlNullIsPreservedOnDatabaseRead|testNativeI16ValuesAndDefaults|testNativeOutOfRangeDatabaseCellFailsTypedRead' packages/php-ext/tests/ConnectionUtcNativeTest.php
 
 # dbspec-php-extension-check/executor runs the suites of the connection, the statement path and the transactions with the extension
-# loaded: StatementFaultTest (statement-fault), DsnTest::testSqlitePath (sqlite-paths) and
-# MysqlTlsTest::testSessionSqlMode (mysql-session). It first checks that the extension registers Polyspec\Orm\Db: its class is
+# loaded: StatementFaultTest (statement-fault) and DsnTest::testSqlitePath (sqlite-paths). It first checks that the extension registers Polyspec\Orm\Db: its class is
 # internal, so the connection the suites open is C. The database suites need make orm-test-servers first (WITH_TEST_ENV).
 dbspec-php-extension-check/executor: php-vendor-check dbspec-php-extension-check/prepare
 	php -d extension=$(PHP_EXTENSION_LIBRARY) -r 'require "vendor-php/autoload.php"; exit((new ReflectionClass("Polyspec\\Orm\\Db"))->isInternal() ? 0 : 1);'
 	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/StatementFaultTest.php
 	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/DsnTest.php --filter testSqlitePath
-	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/MysqlTlsTest.php --filter testSessionSqlMode
 	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/ModelTest.php --filter 'test(Transactions|StatementTimeout)'
 
 # repo-check checks that the paths that the root npm script uses are tracked files or
@@ -1824,9 +1822,8 @@ php-ext-memory-check: php-vendor-check orm-install-php-extension-tools
 .PHONY: python-install-changed-database-check
 python-install-changed-database-check: python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.install_changed_database
-# python-mysql-session-check reads the session sql_mode of a Python MySQL connection and compares it with
-# tests/dsn/mysql-session.json (packages/python/tests/mysql_session.py); it needs the database variables of make
-# orm-test-servers (WITH_TEST_ENV).
+# python-mysql-session-check checks the session startup parameters of a Python PostgreSQL connection
+# (packages/python/tests/mysql_session.py); it needs the database variables of make orm-test-servers (WITH_TEST_ENV).
 .PHONY: python-mysql-session-check
 python-mysql-session-check: python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.mysql_session

@@ -2795,7 +2795,6 @@
       "inputs": [
         "Makefile",
         "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
-        "packages/php/tests/MysqlTlsCases.php",
         "packages/php-ext/tests/bootstrap.php"
       ]
     },
@@ -2810,9 +2809,7 @@
       "inputs": [
         "Makefile",
         "packages/php-ext/tests/MysqlSessionNativeTest.php",
-        "packages/php/tests/MysqlTlsCases.php",
-        "packages/php-ext/tests/bootstrap.php",
-        "tests/dsn/mysql-session.json"
+        "packages/php-ext/tests/bootstrap.php"
       ]
     },
     "transaction-failure-php-extension-check": {

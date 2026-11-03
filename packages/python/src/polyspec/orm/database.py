@@ -91,7 +91,7 @@ DSN_PARAMETERS = {
 
 SQLITE_BUSY_TIMEOUT_MS = 5000
 # The session sql_mode of every MySQL connection, so that a result does not depend on the
-# server's setting (tests/dsn/mysql-session.json, docs/spec/config.md "Runtime connection").
+# server's setting (case mysql_session_settings of contracts/fixtures/dsn_connection, docs/spec/config.md "Runtime connection").
 MYSQL_SQL_MODE = "STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"
 ROW_LOCK_TABLES = ["orm__row_lock"]
 ROW_LOCK_DDL = (
