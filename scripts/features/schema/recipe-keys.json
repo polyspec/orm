@@ -329,6 +329,7 @@
     ],
     "schema.installed": [
       "expect",
+      "only",
       "op",
       "schema",
       "table"
@@ -531,6 +532,7 @@
       "conflict",
       "connection",
       "expect",
+      "only",
       "op",
       "statements"
     ],
@@ -858,6 +860,15 @@
       "expect",
       "op",
       "sequence",
+      "table"
+    ],
+    "utils.privilege": [
+      "call",
+      "connection",
+      "expect",
+      "op",
+      "privilege",
+      "role",
       "table"
     ],
     "utils.backend_waiting_for_lock": [

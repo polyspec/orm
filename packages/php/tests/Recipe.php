@@ -77,6 +77,7 @@ final class Recipe
         'utils.set_local',
         'utils.local',
         'utils.was_inserted',
+        'utils.privilege',
         'utils.backend_waiting_for_lock',
         'utils.groups',
         'utils.stats',
@@ -4381,6 +4382,20 @@ final class Recipe
                 return [];
             case 'utils.local':
                 return ['json' => self::connectionOf($s, $context)->utils()->local($s['name'])];
+            case 'utils.privilege':
+                // One call of the table privileges of utils() (INT-59): a call that returns nothing gives true.
+                $privileges = self::connectionOf($s, $context)->utils()->privileges();
+                switch ($s['call']) {
+                    case 'inspect':
+                        return ['json' => $privileges->inspectTable($s['table'])];
+                    case 'grant':
+                        $privileges->grantTable($s['table'], $s['role']);
+                        return ['value' => ['bool' => true]];
+                    case 'revoke':
+                        $privileges->revokeTable($s['table'], $s['privilege'], $s['role']);
+                        return ['value' => ['bool' => true]];
+                }
+                Assert::fail("utils.privilege has no call {$s['call']}");
             case 'utils.was_inserted':
                 $utils = self::connectionOf($s, $context)->utils();
                 return ['value' => ['bool' => $utils->wasInserted($s['table'], $s['sequence'])]];

@@ -189,6 +189,7 @@ The connection configuration takes `auditSource`, a function that returns the au
 - **INT-57** `schema().exists(schema)`, `schema().installed(schema, table)`: schema inspection
 - **INT-58** `schema().empty()`: reports whether the database holds no user content. On PostgreSQL a schema other than `public`, `information_schema` and the `pg_` schemas is content even without objects, and so is a table, partitioned table, view, materialized view, or foreign table in `public`; functions, types, and sequences in `public` are not content. On MySQL a table or view of the connected database is content; on SQLite a table or view other than the `sqlite_` tables and the ORM's `orm__` tables is content
 - **INT-59** `privileges().grantTable(table, role)`, `revokeTable(table, privilege, role)`, `inspectTable(table)`: table privileges; non-PostgreSQL dialects return `CAPABILITY_UNSUPPORTED`
+- **INT-59a** PHP-extension package `polyspec/orm-php-ext` implements `PrivilegeUtils` and its three table privilege methods natively.
 - **INT-60** `aes().status(model, keyring)`, `aes().rotate(model, keyring)`: AES key version status and rotation of every AES column and the version in one transaction
 - **INT-61** `stats()`: connection pool statistics
 - **INT-74** `AESKeyring.versions()` (Go `AESVersions`, PHP `versions`, TypeScript `versions`, Python `versions`) returns the declared key versions in ascending numeric order.

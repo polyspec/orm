@@ -1753,13 +1753,6 @@ replica-check: php-vendor-check php-models python-venv-check lease-tool typescri
 python-identity-load-check: python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.identity_load
 
-# python-schema-inspection-check runs schema().empty(), exists and installed, the table privileges and stats
-# of the Python client on SQLite, MySQL and PostgreSQL case databases; it needs the database variables of make
-# orm-test-servers (WITH_TEST_ENV).
-.PHONY: python-schema-inspection-check
-python-schema-inspection-check: python-venv-check
-	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.schema_inspection
-
 # dialect-facts-check runs the citation tests of the schema dialect probes of packages/go/internal/dialects: each probe has an ID
 # and cites the dialect spec. The probes themselves (TestDialectFacts), which run against the MySQL and PostgreSQL servers of
 # TEST_ENV and a SQLite file per probe, are go tests of go-test-check, which builds what they need (T334-3-6-3).

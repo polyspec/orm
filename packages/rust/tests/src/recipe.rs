@@ -3183,6 +3183,7 @@ mod database {
         "utils.set_local",
         "utils.local",
         "utils.was_inserted",
+        "utils.privilege",
         "collection.connect",
         "utils.backend_waiting_for_lock",
         "utils.groups",
@@ -5817,6 +5818,30 @@ mod tables {
                     let rows = self.collections.remove(&name).ok_or_else(|| format!("collection.connect: {name} is not a bound collection"))?;
                     self.collections.insert(name, rows.connect(&db));
                     Ok(json!({ "value": { "bool": true } }))
+                }
+                // One call of the table privileges of utils() (INT-59): a call that returns nothing gives true.
+                "utils.privilege" => {
+                    let utils = db.utils();
+                    let privileges = utils.privileges();
+                    let table = step["table"].as_str().unwrap_or_default();
+                    let role = step["role"].as_str().unwrap_or_default();
+                    match step["call"].as_str().unwrap_or_default() {
+                        "inspect" => {
+                            let got = privileges.inspect_table(table).await.map_err(orm)?;
+                            Ok(json!({ "json": {
+                                "insert": got.insert, "select": got.select, "update": got.update, "delete": got.delete, "truncate": got.truncate,
+                            } }))
+                        }
+                        "grant" => {
+                            privileges.grant_table(table, role).await.map_err(orm)?;
+                            Ok(json!({ "value": { "bool": true } }))
+                        }
+                        "revoke" => {
+                            privileges.revoke_table(table, step["privilege"].as_str().unwrap_or_default(), role).await.map_err(orm)?;
+                            Ok(json!({ "value": { "bool": true } }))
+                        }
+                        other => Err(format!("utils.privilege has no call {other}")),
+                    }
                 }
                 "utils.was_inserted" => {
                     let sequence = crate::recipe_reads::read(step, "sequence")["sequence"].as_i64().ok_or_else(|| "utils.was_inserted names no sequence".to_owned())?;

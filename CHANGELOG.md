@@ -3,6 +3,10 @@
 
 ## Unreleased
 
+- Collection views and connect on every model now come from the recipes in every client; the native extension surface has its own unit under INT-62a.
+- The generated full-text method of the Python package has its own unit under DSL-33a.
+- Schema inspection reads inside a transaction and its statement event now come from the recipe schema_install; the Python files that repeated it are gone.
+- Table privileges on PostgreSQL and their refusal on MySQL and SQLite now come from one recipe in every client; the native extension keeps its own unit under INT-59a.
 - Every message of the dbspec rule `type` has the words DBS-162 states, in all six runtimes: Go, PHP, the PHP extension and Rust no longer word a parameter error their own way, and the generator cases hold each whole message. Targets of CHECK_TARGETS with no make rule are gone, and `catalog-rust` no longer names test files that do not exist (#T334-3-12-6)
 - Tests: a driver error and its native cause (PRT-79) are the case `immutable_write` in every runtime, raised by each database; the natives that built the error are gone.
 - A connection with an AES key that differs from the key of its current version is the case `an_aes_key_that_differs_from_the_current_version_is_refused` of the recipe `aes_rotation` in all six runtimes, through `aes_key`, `aes_version` and `aes_keys` in the `config` of `dsn.connect`, and the Go test `TestAESKeyMustMatchKeyOfCurrentVersion` is gone (#T334-3-12-2)

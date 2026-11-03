@@ -8712,7 +8712,8 @@
         "INT-53",
         "INT-61",
         "INT-72",
-        "INT-73"
+        "INT-73",
+        "INT-59"
       ],
       "file": "contracts/fixtures/utils/utils.json",
       "cases": "$.cases[*].id",
@@ -8757,7 +8758,8 @@
         "INT-53",
         "INT-61",
         "INT-72",
-        "INT-73"
+        "INT-73",
+        "INT-59"
       ],
       "file": "contracts/fixtures/utils/utils.json",
       "cases": "$.cases[*].id",
@@ -8802,7 +8804,8 @@
         "INT-53",
         "INT-61",
         "INT-72",
-        "INT-73"
+        "INT-73",
+        "INT-59"
       ],
       "file": "contracts/fixtures/utils/utils.json",
       "cases": "$.cases[*].id",
@@ -29300,75 +29303,6 @@
       }
     },
     {
-      "id": "privilege-table-operations",
-      "kind": "feature",
-      "requirements": [
-        "INT-59"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_schema_inspection.py",
-          "id": "test_privileges_are_unsupported_off_postgres"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/model/model_test.go",
-          "id": "TestTransactions"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testUtilities"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
-          "id": "ModelTestExtensionTest::testUtilities"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/PrivilegeUtilsNativeTest.php",
-          "id": "PrivilegeUtilsNativeTest::testNativeTablePrivilegesArePostgresOnly"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/model.mjs",
-          "id": "transactions"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/schema_inspection.py",
-          "id": "test_sqlite"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/schema_inspection.py",
-          "id": "test_mysql"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/schema_inspection.py",
-          "id": "test_postgres"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration_program/main.rs",
-          "id": "transactions",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-unit",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_TEST=transactions"
-          ]
-        }
-      ]
-    },
-    {
       "id": "remove-columns-keeps-primary-foreign-and-added",
       "kind": "feature",
       "requirements": [
@@ -43226,16 +43160,30 @@
           "id": "chain_fulltext"
         },
         {
-          "implementation": "python",
-          "test": "packages/python/tests/test_complex_query.py",
-          "id": "test_public_fulltext_boolean_chain_builds_typed_ir"
-        },
-        {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/fulltext_search_recipe_mysql.rs",
           "id": "fulltext_search_recipe_mysql::chain_fulltext"
         }
       ]
+    },
+    {
+      "id": "python-fulltext-generated-method",
+      "kind": "feature",
+      "requirements": [
+        "DSL-33a"
+      ],
+      "bindings": [
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_complex_query.py",
+          "id": "test_public_fulltext_boolean_chain_builds_typed_ir"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "complex_query",
+        "part": "owner/python"
+      }
     },
     {
       "id": "dsl",
@@ -43727,6 +43675,25 @@
         "kind": "coverage-part",
         "feature": "schema_definition",
         "part": "owner/python"
+      }
+    },
+    {
+      "id": "php-extension-privileges-native",
+      "kind": "feature",
+      "requirements": [
+        "INT-59a"
+      ],
+      "bindings": [
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/PrivilegeUtilsNativeTest.php",
+          "id": "PrivilegeUtilsNativeTest::testNativeTablePrivilegesArePostgresOnly"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "schema_install",
+        "part": "owner/php-extension"
       }
     }
   ],

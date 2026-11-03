@@ -1,9 +1,13 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ef96035693efc2376cc5a23ea49ea2a10ea2888ab5bba999f779910d4d114f5d -->
+<!-- source-sha256: 82b8d4b971292bbb61547fd5cc9a0682dd8b79a2ef96218f81979f5ec52494c1 -->
 # 변경 이력
 
 ## Unreleased
 
+- 이제 모든 client에서 collection view와 모든 model의 connect를 recipe가 확인하며, native extension 표면은 INT-62a 아래 자기 unit을 가진다.
+- Python package의 생성된 full-text method는 DSL-33a 아래 자기 unit을 가진다.
+- 이제 transaction 안의 schema inspection 읽기와 그 statement event를 recipe schema_install이 확인하며, 이를 반복하던 Python 파일은 사라졌다.
+- 이제 모든 client에서 PostgreSQL의 table 권한과 MySQL, SQLite의 거부를 recipe 하나가 확인하며, native extension은 INT-59a 아래 자기 unit을 유지한다.
 - dbspec rule `type`의 모든 message가 여섯 runtime에서 DBS-162가 적은 문장이다. Go, PHP, PHP extension, Rust가 parameter 오류를 각자 다르게 적지 않으며, generator case가 message 전체를 담는다. make rule이 없는 CHECK_TARGETS의 target은 사라졌고, `catalog-rust`는 없는 시험 파일을 가리키지 않는다 (#T334-3-12-6)
 - Tests: driver 오류와 native cause(PRT-79)는 모든 runtime에서 각 database가 일으킨 오류로 case `immutable_write`가 확인하며, 오류를 만들어 쓰던 native는 사라졌다.
 - 현재 version의 key와 다른 AES key를 가진 연결은 `dsn.connect`의 `config`에 있는 `aes_key`, `aes_version`, `aes_keys`를 통해 여섯 runtime 모두에서 recipe `aes_rotation`의 case `an_aes_key_that_differs_from_the_current_version_is_refused`로 실행한다. Go 시험 `TestAESKeyMustMatchKeyOfCurrentVersion`은 제거했다 (#T334-3-12-2)

@@ -4580,7 +4580,7 @@
         "schema_install-mysql",
         "schema_install-postgres",
         "schema_install-sqlite",
-        "privilege-table-operations",
+        "php-extension-privileges-native",
         "schema-exists-literal-underscore-sqlite",
         "dbspec-apply-chain-finalization",
         "schema-set-external-audit-record-mysql",
@@ -4647,8 +4647,6 @@
         "packages/ts/tests/dbspec_runtime_db.mjs",
         "packages/python/tests/test_installed_differences.py",
         "packages/python/tests/install_changed_database.py",
-        "packages/python/tests/schema_inspection.py",
-        "packages/python/tests/test_schema_inspection.py",
         "packages/python/tests/test_schema_utils.py",
         "packages/python/tests/test_dbspec_load_set_none.py",
         "packages/python/tests/case_database.py",
@@ -4689,7 +4687,8 @@
         "packages/php-ext/tests/SchemaInstallRecipeTestExtensionTest.php",
         "packages/go/model/coverage_schema_install_test.go",
         "packages/php/tests/AuditExternalSetsTest.php",
-        "packages/ts/tests/engine_features.mjs"
+        "packages/ts/tests/engine_features.mjs",
+        "packages/php-ext/tests/PrivilegeUtilsNativeTest.php"
       ],
       "docs": [
         "docs/spec/schema.md",
@@ -4795,11 +4794,10 @@
         },
         {
           "id": "orm-install-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_installed_differences && packages/python/.venv/bin/python -m packages.python.tests.test_schema_inspection && packages/python/.venv/bin/python -m packages.python.tests.test_schema_utils && packages/python/.venv/bin/python -m packages.python.tests.test_dbspec_load_set_none && packages/python/.venv/bin/python -m packages.python.tests.test_schema_set",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_installed_differences && packages/python/.venv/bin/python -m packages.python.tests.test_schema_utils && packages/python/.venv/bin/python -m packages.python.tests.test_dbspec_load_set_none && packages/python/.venv/bin/python -m packages.python.tests.test_schema_set",
           "shard": "other",
           "inputs": [
             "packages/python/tests/test_installed_differences.py",
-            "packages/python/tests/test_schema_inspection.py",
             "packages/python/tests/test_schema_utils.py",
             "packages/python/tests/test_dbspec_load_set_none.py",
             "packages/python/src/polyspec/orm/schema.py",
@@ -4820,14 +4818,6 @@
           "inputs": [
             "packages/python/tests/install_changed_database.py",
             "contracts/fixtures/install/changed_database.json"
-          ]
-        },
-        {
-          "id": "schema-inspection-python",
-          "command": "make python-schema-inspection-check",
-          "shard": "other",
-          "inputs": [
-            "packages/python/tests/schema_inspection.py"
           ]
         },
         {
@@ -9425,7 +9415,8 @@
         "complex_query-sqlite",
         "fulltext-search-recipe-mysql",
         "fulltext-search-recipe-postgres",
-        "fulltext-search-recipe-sqlite"
+        "fulltext-search-recipe-sqlite",
+        "python-fulltext-generated-method"
       ],
       "fixtures": [
         "contracts/fixtures/complex_query/complex_query.dbs",
@@ -9460,7 +9451,8 @@
         "packages/rust/tests/tests/fulltext_search_recipe_mysql.rs",
         "packages/rust/tests/tests/fulltext_search_recipe_postgres.rs",
         "packages/rust/tests/tests/fulltext_search_recipe_sqlite.rs",
-        "packages/rust/orm/src/request.rs"
+        "packages/rust/orm/src/request.rs",
+        "packages/python/tests/test_complex_query.py"
       ],
       "docs": [
         "docs/spec/complex-query.md",
