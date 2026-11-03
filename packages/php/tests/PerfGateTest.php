@@ -109,6 +109,8 @@ final class PerfGateTest extends TestCase
         $wallStarted = hrtime(true);
         $usageStarted = getrusage();
         [$clientNs, $nativeNs, $ratio] = self::pairedRatio(static fn() => self::query($name)->gets(), $native);
+        self::assertGreaterThan(0, $clientNs, 'the client read was measured');
+        self::assertGreaterThan(0, $nativeNs, 'the native read was measured');
         $wallMs = (hrtime(true) - $wallStarted) / 1_000_000;
         $usageEnded = getrusage();
         $cpuMs = (self::usageMicros($usageEnded) - self::usageMicros($usageStarted)) / 1000;

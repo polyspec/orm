@@ -145,7 +145,15 @@
   "DSL-96",
   "DSL-98",
   "PRT-14",
-  "PRT-78"
+  "PRT-78",
+  "DIA-18",
+  "DIA-56",
+  "PLN-10",
+  "PLN-41",
+  "PLN-42",
+  "PLN-43",
+  "DBS-118",
+  "PLN-35"
  ],
  "fixture": "contracts/fixtures/conformance_verification/dbspec-set.json",
  "seed": {
@@ -13066,7 +13074,8 @@
     "DSL-85",
     "DSL-86",
     "DSL-88",
-    "DSL-89"
+    "DSL-89",
+    "PLN-41"
    ],
    "steps": [
     {
@@ -14420,6 +14429,280 @@
             "error",
             {
              "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "relation_child_on_another_connection",
+   "requirements": [
+    "PLN-10",
+    "PLN-42",
+    "DBS-118",
+    "PLN-35"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "other"
+    },
+    {
+     "op": "events.subscribe",
+     "connection": "db",
+     "as": "on_db"
+    },
+    {
+     "op": "events.subscribe",
+     "connection": "other",
+     "as": "on_other"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "seq": {
+       "int": "6"
+      }
+     },
+     "order": [],
+     "columns": [
+      "name"
+     ],
+     "remove_columns": [
+      "service_seq",
+      "service_region_seq",
+      "service_member_seq"
+     ],
+     "relations": [
+      {
+       "model": "User",
+       "match": [
+        [
+         "user_seq",
+         "seq"
+        ]
+       ],
+       "alias": "Owner",
+       "connection": "other"
+      }
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "seq": 6,
+         "user_seq": 7,
+         "name": "author-6",
+         "owner": {
+          "seq": 7,
+          "name": "user-7"
+         }
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "seq": 6,
+         "user_seq": 7,
+         "name": "author-6",
+         "owner": {
+          "seq": 7,
+          "name": "user-7"
+         }
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "seq": 6,
+         "user_seq": 7,
+         "name": "author-6",
+         "owner": {
+          "seq": 7,
+          "name": "user-7"
+         }
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "on_db",
+     "compare": "shape",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "on_other",
+     "compare": "shape",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "user"
+              }
+             ]
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "user"
+              }
+             ]
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "user"
+              }
+             ]
             }
            ]
           ]
@@ -54088,7 +54371,8 @@
     "DSL-96",
     "DSL-98",
     "DSL-123",
-    "PRT-14"
+    "PRT-14",
+    "PLN-43"
    ],
    "steps": [
     {
@@ -78377,6 +78661,2477 @@
          "seq": 6
         }
        ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "clock_microseconds",
+   "requirements": [
+    "DIA-18"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "e0"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "e1"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "e2"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "e3"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "e4"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "e5"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "e6"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "e7"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "e8"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "e9"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "e10"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "e11"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "e12"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "e13"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "e14"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "e15"
+      }
+     }
+    },
+    {
+     "op": "catalog.read_only_query",
+     "sql": {
+      "mysql": "SELECT COUNT(*) FROM clock_cell WHERE at6 > UTC_TIMESTAMP(6) - INTERVAL 1 MINUTE AND at6 < UTC_TIMESTAMP(6) + INTERVAL 1 MINUTE",
+      "postgres": "SELECT COUNT(*) FROM clock_cell WHERE at6 > (now() AT TIME ZONE 'UTC') - INTERVAL '1 minute' AND at6 < (now() AT TIME ZONE 'UTC') + INTERVAL '1 minute'",
+      "sqlite": "SELECT COUNT(*) FROM clock_cell WHERE at6 > datetime('now', '-1 minute') AND at6 < datetime('now', '+1 minute') AND at6 LIKE '____-__-__ __:__:__.______'"
+     },
+     "expect": {
+      "mysql": {
+       "rows": [
+        [
+         {
+          "int": "16"
+         }
+        ]
+       ]
+      },
+      "postgres": {
+       "rows": [
+        [
+         {
+          "int": "16"
+         }
+        ]
+       ]
+      },
+      "sqlite": {
+       "rows": [
+        [
+         {
+          "int": "16"
+         }
+        ]
+       ]
+      }
+     }
+    },
+    {
+     "op": "catalog.read_only_query",
+     "sql": {
+      "mysql": "SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END FROM clock_cell WHERE MICROSECOND(at6) % 1000 <> 0",
+      "postgres": "SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END FROM clock_cell WHERE CAST(EXTRACT(MICROSECONDS FROM at6) AS bigint) % 1000 <> 0",
+      "sqlite": "SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END FROM clock_cell WHERE substr(at6, -3) <> '000'"
+     },
+     "expect": {
+      "mysql": {
+       "rows": [
+        [
+         {
+          "int": "1"
+         }
+        ]
+       ]
+      },
+      "postgres": {
+       "rows": [
+        [
+         {
+          "int": "1"
+         }
+        ]
+       ]
+      },
+      "sqlite": {
+       "rows": [
+        [
+         {
+          "int": "1"
+         }
+        ]
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "clock_soft_delete_microseconds",
+   "requirements": [
+    "DIA-18"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "SoftRecord",
+     "values": {
+      "name": {
+       "text": "mark-0"
+      }
+     },
+     "as": "mark0"
+    },
+    {
+     "op": "model.delete",
+     "connection": "db",
+     "row": "mark0"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "SoftRecord",
+     "values": {
+      "name": {
+       "text": "mark-1"
+      }
+     },
+     "as": "mark1"
+    },
+    {
+     "op": "model.delete",
+     "connection": "db",
+     "row": "mark1"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "SoftRecord",
+     "values": {
+      "name": {
+       "text": "mark-2"
+      }
+     },
+     "as": "mark2"
+    },
+    {
+     "op": "model.delete",
+     "connection": "db",
+     "row": "mark2"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "SoftRecord",
+     "values": {
+      "name": {
+       "text": "mark-3"
+      }
+     },
+     "as": "mark3"
+    },
+    {
+     "op": "model.delete",
+     "connection": "db",
+     "row": "mark3"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "SoftRecord",
+     "values": {
+      "name": {
+       "text": "mark-4"
+      }
+     },
+     "as": "mark4"
+    },
+    {
+     "op": "model.delete",
+     "connection": "db",
+     "row": "mark4"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "SoftRecord",
+     "values": {
+      "name": {
+       "text": "mark-5"
+      }
+     },
+     "as": "mark5"
+    },
+    {
+     "op": "model.delete",
+     "connection": "db",
+     "row": "mark5"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "SoftRecord",
+     "values": {
+      "name": {
+       "text": "mark-6"
+      }
+     },
+     "as": "mark6"
+    },
+    {
+     "op": "model.delete",
+     "connection": "db",
+     "row": "mark6"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "SoftRecord",
+     "values": {
+      "name": {
+       "text": "mark-7"
+      }
+     },
+     "as": "mark7"
+    },
+    {
+     "op": "model.delete",
+     "connection": "db",
+     "row": "mark7"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "SoftRecord",
+     "values": {
+      "name": {
+       "text": "mark-8"
+      }
+     },
+     "as": "mark8"
+    },
+    {
+     "op": "model.delete",
+     "connection": "db",
+     "row": "mark8"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "SoftRecord",
+     "values": {
+      "name": {
+       "text": "mark-9"
+      }
+     },
+     "as": "mark9"
+    },
+    {
+     "op": "model.delete",
+     "connection": "db",
+     "row": "mark9"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "SoftRecord",
+     "values": {
+      "name": {
+       "text": "mark-10"
+      }
+     },
+     "as": "mark10"
+    },
+    {
+     "op": "model.delete",
+     "connection": "db",
+     "row": "mark10"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "SoftRecord",
+     "values": {
+      "name": {
+       "text": "mark-11"
+      }
+     },
+     "as": "mark11"
+    },
+    {
+     "op": "model.delete",
+     "connection": "db",
+     "row": "mark11"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "SoftRecord",
+     "values": {
+      "name": {
+       "text": "mark-12"
+      }
+     },
+     "as": "mark12"
+    },
+    {
+     "op": "model.delete",
+     "connection": "db",
+     "row": "mark12"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "SoftRecord",
+     "values": {
+      "name": {
+       "text": "mark-13"
+      }
+     },
+     "as": "mark13"
+    },
+    {
+     "op": "model.delete",
+     "connection": "db",
+     "row": "mark13"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "SoftRecord",
+     "values": {
+      "name": {
+       "text": "mark-14"
+      }
+     },
+     "as": "mark14"
+    },
+    {
+     "op": "model.delete",
+     "connection": "db",
+     "row": "mark14"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "SoftRecord",
+     "values": {
+      "name": {
+       "text": "mark-15"
+      }
+     },
+     "as": "mark15"
+    },
+    {
+     "op": "model.delete",
+     "connection": "db",
+     "row": "mark15"
+    },
+    {
+     "op": "catalog.read_only_query",
+     "sql": {
+      "mysql": "SELECT COUNT(*) FROM soft_record WHERE deleted_at > UTC_TIMESTAMP(6) - INTERVAL 1 MINUTE AND deleted_at < UTC_TIMESTAMP(6) + INTERVAL 1 MINUTE",
+      "postgres": "SELECT COUNT(*) FROM soft_record WHERE deleted_at > (now() AT TIME ZONE 'UTC') - INTERVAL '1 minute' AND deleted_at < (now() AT TIME ZONE 'UTC') + INTERVAL '1 minute'",
+      "sqlite": "SELECT COUNT(*) FROM soft_record WHERE deleted_at > datetime('now', '-1 minute') AND deleted_at < datetime('now', '+1 minute') AND deleted_at LIKE '____-__-__ __:__:__.______'"
+     },
+     "expect": {
+      "mysql": {
+       "rows": [
+        [
+         {
+          "int": "16"
+         }
+        ]
+       ]
+      },
+      "postgres": {
+       "rows": [
+        [
+         {
+          "int": "16"
+         }
+        ]
+       ]
+      },
+      "sqlite": {
+       "rows": [
+        [
+         {
+          "int": "16"
+         }
+        ]
+       ]
+      }
+     }
+    },
+    {
+     "op": "catalog.read_only_query",
+     "sql": {
+      "mysql": "SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END FROM soft_record WHERE MICROSECOND(deleted_at) % 1000 <> 0",
+      "postgres": "SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END FROM soft_record WHERE CAST(EXTRACT(MICROSECONDS FROM deleted_at) AS bigint) % 1000 <> 0",
+      "sqlite": "SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END FROM soft_record WHERE substr(deleted_at, -3) <> '000'"
+     },
+     "expect": {
+      "mysql": {
+       "rows": [
+        [
+         {
+          "int": "1"
+         }
+        ]
+       ]
+      },
+      "postgres": {
+       "rows": [
+        [
+         {
+          "int": "1"
+         }
+        ]
+       ]
+      },
+      "sqlite": {
+       "rows": [
+        [
+         {
+          "int": "1"
+         }
+        ]
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "clock_now_condition",
+   "requirements": [
+    "DSL-137",
+    "DIA-56"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "e1"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ClockCell",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "seq": {
+          "eq": {
+           "int": "1"
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "at6": {
+          "le": {
+           "fn": "now",
+           "args": []
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ClockCell",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "seq": {
+          "eq": {
+           "int": "1"
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "at6": {
+          "le": {
+           "fn": "seconds_later",
+           "args": [
+            {
+             "int": "0"
+            }
+           ]
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "e2"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ClockCell",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "seq": {
+          "eq": {
+           "int": "2"
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "at6": {
+          "le": {
+           "fn": "now",
+           "args": []
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ClockCell",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "seq": {
+          "eq": {
+           "int": "2"
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "at6": {
+          "le": {
+           "fn": "seconds_later",
+           "args": [
+            {
+             "int": "0"
+            }
+           ]
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "e3"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ClockCell",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "seq": {
+          "eq": {
+           "int": "3"
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "at6": {
+          "le": {
+           "fn": "now",
+           "args": []
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ClockCell",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "seq": {
+          "eq": {
+           "int": "3"
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "at6": {
+          "le": {
+           "fn": "seconds_later",
+           "args": [
+            {
+             "int": "0"
+            }
+           ]
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "e4"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ClockCell",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "seq": {
+          "eq": {
+           "int": "4"
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "at6": {
+          "le": {
+           "fn": "now",
+           "args": []
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ClockCell",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "seq": {
+          "eq": {
+           "int": "4"
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "at6": {
+          "le": {
+           "fn": "seconds_later",
+           "args": [
+            {
+             "int": "0"
+            }
+           ]
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "e5"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ClockCell",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "seq": {
+          "eq": {
+           "int": "5"
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "at6": {
+          "le": {
+           "fn": "now",
+           "args": []
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ClockCell",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "seq": {
+          "eq": {
+           "int": "5"
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "at6": {
+          "le": {
+           "fn": "seconds_later",
+           "args": [
+            {
+             "int": "0"
+            }
+           ]
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "e6"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ClockCell",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "seq": {
+          "eq": {
+           "int": "6"
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "at6": {
+          "le": {
+           "fn": "now",
+           "args": []
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ClockCell",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "seq": {
+          "eq": {
+           "int": "6"
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "at6": {
+          "le": {
+           "fn": "seconds_later",
+           "args": [
+            {
+             "int": "0"
+            }
+           ]
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "e7"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ClockCell",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "seq": {
+          "eq": {
+           "int": "7"
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "at6": {
+          "le": {
+           "fn": "now",
+           "args": []
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ClockCell",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "seq": {
+          "eq": {
+           "int": "7"
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "at6": {
+          "le": {
+           "fn": "seconds_later",
+           "args": [
+            {
+             "int": "0"
+            }
+           ]
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "e8"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ClockCell",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "seq": {
+          "eq": {
+           "int": "8"
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "at6": {
+          "le": {
+           "fn": "now",
+           "args": []
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ClockCell",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "seq": {
+          "eq": {
+           "int": "8"
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "at6": {
+          "le": {
+           "fn": "seconds_later",
+           "args": [
+            {
+             "int": "0"
+            }
+           ]
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "e9"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ClockCell",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "seq": {
+          "eq": {
+           "int": "9"
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "at6": {
+          "le": {
+           "fn": "now",
+           "args": []
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ClockCell",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "seq": {
+          "eq": {
+           "int": "9"
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "at6": {
+          "le": {
+           "fn": "seconds_later",
+           "args": [
+            {
+             "int": "0"
+            }
+           ]
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "e10"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ClockCell",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "seq": {
+          "eq": {
+           "int": "10"
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "at6": {
+          "le": {
+           "fn": "now",
+           "args": []
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ClockCell",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "seq": {
+          "eq": {
+           "int": "10"
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "at6": {
+          "le": {
+           "fn": "seconds_later",
+           "args": [
+            {
+             "int": "0"
+            }
+           ]
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "e11"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ClockCell",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "seq": {
+          "eq": {
+           "int": "11"
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "at6": {
+          "le": {
+           "fn": "now",
+           "args": []
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ClockCell",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "seq": {
+          "eq": {
+           "int": "11"
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "at6": {
+          "le": {
+           "fn": "seconds_later",
+           "args": [
+            {
+             "int": "0"
+            }
+           ]
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "e12"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ClockCell",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "seq": {
+          "eq": {
+           "int": "12"
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "at6": {
+          "le": {
+           "fn": "now",
+           "args": []
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ClockCell",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "seq": {
+          "eq": {
+           "int": "12"
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "at6": {
+          "le": {
+           "fn": "seconds_later",
+           "args": [
+            {
+             "int": "0"
+            }
+           ]
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "e13"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ClockCell",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "seq": {
+          "eq": {
+           "int": "13"
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "at6": {
+          "le": {
+           "fn": "now",
+           "args": []
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ClockCell",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "seq": {
+          "eq": {
+           "int": "13"
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "at6": {
+          "le": {
+           "fn": "seconds_later",
+           "args": [
+            {
+             "int": "0"
+            }
+           ]
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "e14"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ClockCell",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "seq": {
+          "eq": {
+           "int": "14"
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "at6": {
+          "le": {
+           "fn": "now",
+           "args": []
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ClockCell",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "seq": {
+          "eq": {
+           "int": "14"
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "at6": {
+          "le": {
+           "fn": "seconds_later",
+           "args": [
+            {
+             "int": "0"
+            }
+           ]
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "e15"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ClockCell",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "seq": {
+          "eq": {
+           "int": "15"
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "at6": {
+          "le": {
+           "fn": "now",
+           "args": []
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ClockCell",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "seq": {
+          "eq": {
+           "int": "15"
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "at6": {
+          "le": {
+           "fn": "seconds_later",
+           "args": [
+            {
+             "int": "0"
+            }
+           ]
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "e16"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ClockCell",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "seq": {
+          "eq": {
+           "int": "16"
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "at6": {
+          "le": {
+           "fn": "now",
+           "args": []
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "ClockCell",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "seq": {
+          "eq": {
+           "int": "16"
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "at6": {
+          "le": {
+           "fn": "seconds_later",
+           "args": [
+            {
+             "int": "0"
+            }
+           ]
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "temporal_stored_text",
+   "requirements": [
+    "DIA-24",
+    "PRT-67"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TimeCell",
+     "values": {
+      "at": {
+       "text": "2026-01-02 03:04:05"
+      },
+      "clock": {
+       "text": "10:00:00.500"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TimeCell",
+     "values": {
+      "at": {
+       "text": "2026-01-02 03:04:05.000000"
+      },
+      "clock": {
+       "text": "10:00:00.500000"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TimeCell",
+     "values": {
+      "at": {
+       "text": "2026-01-02 03:04:05"
+      },
+      "clock": {
+       "text": "10:00:00"
+      }
+     }
+    },
+    {
+     "op": "catalog.read_only_query",
+     "sql": {
+      "mysql": "SELECT DATE_FORMAT(`at`, '%Y-%m-%d %H:%i:%s'), TIME_FORMAT(`clock`, '%H:%i:%s.%f') FROM time_cell ORDER BY seq",
+      "postgres": "SELECT to_char(at, 'YYYY-MM-DD HH24:MI:SS'), to_char(clock, 'HH24:MI:SS.MS') FROM time_cell ORDER BY seq",
+      "sqlite": "SELECT CAST(at AS TEXT), CAST(clock AS TEXT) FROM time_cell ORDER BY seq"
+     },
+     "expect": {
+      "mysql": {
+       "rows": [
+        [
+         {
+          "text": "2026-01-02 03:04:05"
+         },
+         {
+          "text": "10:00:00.500000"
+         }
+        ],
+        [
+         {
+          "text": "2026-01-02 03:04:05"
+         },
+         {
+          "text": "10:00:00.500000"
+         }
+        ],
+        [
+         {
+          "text": "2026-01-02 03:04:05"
+         },
+         {
+          "text": "10:00:00.000000"
+         }
+        ]
+       ]
+      },
+      "postgres": {
+       "rows": [
+        [
+         {
+          "text": "2026-01-02 03:04:05"
+         },
+         {
+          "text": "10:00:00.500"
+         }
+        ],
+        [
+         {
+          "text": "2026-01-02 03:04:05"
+         },
+         {
+          "text": "10:00:00.500"
+         }
+        ],
+        [
+         {
+          "text": "2026-01-02 03:04:05"
+         },
+         {
+          "text": "10:00:00.000"
+         }
+        ]
+       ]
+      },
+      "sqlite": {
+       "rows": [
+        [
+         {
+          "text": "2026-01-02 03:04:05"
+         },
+         {
+          "text": "10:00:00.500"
+         }
+        ],
+        [
+         {
+          "text": "2026-01-02 03:04:05"
+         },
+         {
+          "text": "10:00:00.500"
+         }
+        ],
+        [
+         {
+          "text": "2026-01-02 03:04:05"
+         },
+         {
+          "text": "10:00:00.000"
+         }
+        ]
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "a"
+      },
+      "at0": {
+       "text": "2026-01-02 03:04:05"
+      },
+      "at3": {
+       "text": "2026-01-02 03:04:05.1"
+      },
+      "at6": {
+       "text": "2026-01-02 03:04:05.1"
+      }
+     }
+    },
+    {
+     "op": "catalog.read_only_query",
+     "sql": {
+      "mysql": "SELECT DATE_FORMAT(at6, '%Y-%m-%d %H:%i:%s.%f') FROM clock_cell",
+      "postgres": "SELECT to_char(at6, 'YYYY-MM-DD HH24:MI:SS.US') FROM clock_cell",
+      "sqlite": "SELECT CAST(at6 AS TEXT) FROM clock_cell"
+     },
+     "expect": {
+      "mysql": {
+       "rows": [
+        [
+         {
+          "text": "2026-01-02 03:04:05.100000"
+         }
+        ]
+       ]
+      },
+      "postgres": {
+       "rows": [
+        [
+         {
+          "text": "2026-01-02 03:04:05.100000"
+         }
+        ]
+       ]
+      },
+      "sqlite": {
+       "rows": [
+        [
+         {
+          "text": "2026-01-02 03:04:05.100000"
+         }
+        ]
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TimeCell",
+     "values": {
+      "at": {
+       "text": "2026-01-02 03:04:05"
+      },
+      "clock": {
+       "text": "10:00:00.5001"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CODEC_ENCODE"
+      },
+      "postgres": {
+       "error": "CODEC_ENCODE"
+      },
+      "sqlite": {
+       "error": "CODEC_ENCODE"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "time_text_refused",
+   "requirements": [
+    "PRT-67"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TimeCell",
+     "values": {
+      "at": {
+       "text": "bad1"
+      },
+      "clock": {
+       "text": "10:11:12"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CODEC_ENCODE"
+      },
+      "postgres": {
+       "error": "CODEC_ENCODE"
+      },
+      "sqlite": {
+       "error": "CODEC_ENCODE"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "TimeCell",
+     "expect": {
+      "mysql": {
+       "json": 0
+      },
+      "postgres": {
+       "json": 0
+      },
+      "sqlite": {
+       "json": 0
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TimeCell",
+     "values": {
+      "at": {
+       "text": "2026-06-01 12:34:56"
+      },
+      "clock": {
+       "text": "10:11:12"
+      }
+     },
+     "as": "row"
+    },
+    {
+     "op": "model.update",
+     "connection": "db",
+     "row": "row",
+     "set": {
+      "at": {
+       "text": "bad4"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CODEC_ENCODE"
+      },
+      "postgres": {
+       "error": "CODEC_ENCODE"
+      },
+      "sqlite": {
+       "error": "CODEC_ENCODE"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "TimeCell",
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
       }
      }
     }

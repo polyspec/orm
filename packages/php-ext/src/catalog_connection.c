@@ -2022,6 +2022,16 @@ static bool cat_described_rows(zval *rows, zval *metadata, const char *dialect)
                 zval_ptr_dtor(rows);
                 return false;
             }
+            /* SQLite keeps a number in a temporal column, and a number is not in the dbspec form (INT-103). */
+            if (native != NULL && Z_TYPE_P(native) == IS_STRING && (Z_TYPE_P(cell) == IS_LONG || Z_TYPE_P(cell) == IS_DOUBLE)
+                && strcmp(dialect, "sqlite") == 0
+                && (zend_string_equals_literal_ci(Z_STR_P(native), "TIME") || zend_string_equals_literal_ci(Z_STR_P(native), "DATETIME"))) {
+                cat_refuse_temporal("the stored value is not a dbspec temporal value");
+                zval_ptr_dtor(&out_row);
+                zval_ptr_dtor(&described);
+                zval_ptr_dtor(rows);
+                return false;
+            }
             char kind = native != NULL && Z_TYPE_P(native) == IS_STRING && Z_TYPE_P(cell) == IS_STRING
                 ? cat_temporal_kind(dialect, Z_STRVAL_P(native)) : 0;
             zend_long precision = kind != 0 ? cat_declared_precision(dialect, Z_STRVAL_P(native)) : 0;
@@ -4773,6 +4783,9 @@ static bool cat_query_row(zval *row, zval *types, const char *dialect, zval *cel
             }
             ZVAL_COPY(&v, catalog_prop(&cell, "value", &rv));
             zval_ptr_dtor(&cell);
+        } else if (Z_TYPE_P(value) == IS_STRING && !cat_utf8_valid(Z_STRVAL_P(value), Z_STRLEN_P(value))) {
+            /* A value that is not text is its bytes (INT-153): an expression reports no binary type. */
+            ZVAL_COPY(&v, value);
         } else if (!cat_cell_value(value, Z_STR_P(t), dialect, &v)) {
             zval_ptr_dtor(cells);
             return false;

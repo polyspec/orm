@@ -26,13 +26,6 @@ path = "../../../examples/complex/rust/main.rs"
 name = "demo"
 path = "../../../examples/thin-slice/rust/main.rs"
 
-# One libtest-mimic trial per conformance vector of each dialect (polyspec_orm_testcase::trial). Its trials read the
-# seeded bench databases of the run (BENCH_*_DSN), which make orm-check and the runner of a run give.
-[[test]]
-name = "coverage_conformance_verification"
-path = "tests/coverage_conformance_verification.rs"
-harness = false
-
 # Each case of the read answer recipe, tests/ir/answers.json, is the trial ir_answers::<case id> (FCV-3).
 [[test]]
 name = "collection_none"
@@ -392,6 +385,23 @@ polyspec-orm-build = { path = "../build" }
 
 [lints]
 workspace = true
+
+# Each case of the dbspec_introspect recipe, contracts/fixtures/dbspec_introspect/dbspec_introspect.json, is the trial
+# dbspec_introspect_<database>::<case id> on a case database of its own (FCV-3).
+[[test]]
+name = "dbspec_introspect_mysql"
+path = "tests/dbspec_introspect_mysql.rs"
+harness = false
+
+[[test]]
+name = "dbspec_introspect_postgres"
+path = "tests/dbspec_introspect_postgres.rs"
+harness = false
+
+[[test]]
+name = "dbspec_introspect_sqlite"
+path = "tests/dbspec_introspect_sqlite.rs"
+harness = false
 
 # Each case of the schema_install recipe, contracts/fixtures/schema_install/schema_install.json, is the trial
 # schema_install_<database>::<case id> on a case database of its own (FCV-3).

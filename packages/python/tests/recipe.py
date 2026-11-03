@@ -87,9 +87,11 @@ from .case_database import case_database
 from .recipe_apply import apply_ops
 from .coverage_case import native_query, native_session
 from .recipe_generator import check_generated_files, check_refused_generation, check_generator
+from .recipe_introspect import _introspect_refusal, _op_dbspec_introspect
 from .server_database import with_database
 from .recipe_keys import check_keys
 from .recipe_model import model_ops
+from .recipe_reads import ReadStep
 from .markdown_conformance import same
 from .test_sqlite import generate
 from .vector_case import VectorCase, vector_load_tests
@@ -160,74 +162,79 @@ def recipe_tests(path: str, database: str):
     # The path and skeleton_of fields of a dbspec step are relative to the recipe file (FCV-4).
     directory = ROOT / Path(path).parent
 
+    def dispatch(step: dict, bound: dict[str, Any]) -> None:
+        if step["op"] == "ir.validate":
+            _validate(step, model, database)
+            return
+        if step["op"] == "ir.answer":
+            _answer(step, database)
+            return
+        if step["op"] == "collection.key":
+            _collection_key(step, database)
+            return
+        if step["op"] == "planner.compile":
+            _plan(step, ROOT / Path(path).parent, database)
+            return
+        if step["op"] == "ir.param_uses":
+            _param_uses(step, ROOT / Path(path).parent, database)
+            return
+        if step["op"] == "planner.columns":
+            _planner_columns(step, ROOT / Path(path).parent, database)
+            return
+        if step["op"] == "generator.generate":
+            check_generator(step, ROOT / Path(path).parent, database)
+            return
+        if step["op"] == "generator.refused":
+            check_refused_generation(step, ROOT / Path(path).parent)
+            return
+        if step["op"] == "generator.check":
+            check_generated_files(step, ROOT / Path(path).parent)
+            return
+        if step["op"] in _DBSPEC_OPS:
+            _dbspec(step, bound, database)
+            return
+        if step["op"] == "dsn.connect":
+            _dsn_connect(step, database)
+            return
+        if step["op"] == "dbspec.introspect_shown":
+            _dbspec_introspect_shown(step, ROOT / Path(path).parent, database)
+            return
+        if step["op"] == "dbspec.apply_fault":
+            _dbspec_apply_fault(step, bound, database)
+            return
+        if step["op"] == "dbspec.introspect_sqlite":
+            _dbspec_introspect_sqlite(step, database)
+            return
+        if step["op"] == "keyring.versions":
+            _keyring_versions(step, database)
+            return
+        if step["op"] == "markdown.connect":
+            _markdown_connect(step, database)
+            return
+        if step["op"] == "markdown.session":
+            _markdown_session(step, database)
+            return
+        if step["op"] == "markdown.builder":
+            _markdown_builder(step, database)
+            return
+        if step["op"] in _DBSPEC_FILE_OPS:
+            _dbspec_files(step, ROOT / Path(path).parent, database)
+            return
+        if step["op"] in _MERMAID_OPS:
+            _mermaid(step, bound, database, directory)
+            return
+        if step["op"] == "markdown.send":
+            _send_in_process_zone(step)
+            return
+        _run(step, bound, database)
+
     def check(test: unittest.TestCase, case: dict) -> None:
         bound: dict[str, Any] = {}
-        for index, step in enumerate(case["steps"]):
+        for index, raw_step in enumerate(case["steps"]):
+            step = ReadStep(raw_step, database)
             try:
-                if step["op"] == "ir.validate":
-                    _validate(step, model, database)
-                    continue
-                if step["op"] == "ir.answer":
-                    _answer(step, database)
-                    continue
-                if step["op"] == "collection.key":
-                    _collection_key(step, database)
-                    continue
-                if step["op"] == "planner.compile":
-                    _plan(step, ROOT / Path(path).parent, database)
-                    continue
-                if step["op"] == "ir.param_uses":
-                    _param_uses(step, ROOT / Path(path).parent, database)
-                    continue
-                if step["op"] == "planner.columns":
-                    _planner_columns(step, ROOT / Path(path).parent, database)
-                    continue
-                if step["op"] == "generator.generate":
-                    check_generator(step, ROOT / Path(path).parent, database)
-                    continue
-                if step["op"] == "generator.check":
-                    check_generated_files(step, ROOT / Path(path).parent)
-                    continue
-                if step["op"] == "generator.refused":
-                    check_refused_generation(step, ROOT / Path(path).parent)
-                    continue
-                if step["op"] in _DBSPEC_OPS:
-                    _dbspec(step, bound, database)
-                    continue
-                if step["op"] == "dsn.connect":
-                    _dsn_connect(step, database)
-                    continue
-                if step["op"] == "dbspec.introspect_shown":
-                    _dbspec_introspect_shown(step, ROOT / Path(path).parent, database)
-                    continue
-                if step["op"] == "dbspec.apply_fault":
-                    _dbspec_apply_fault(step, bound, database)
-                    continue
-                if step["op"] == "dbspec.introspect_sqlite":
-                    _dbspec_introspect_sqlite(step, database)
-                    continue
-                if step["op"] == "keyring.versions":
-                    _keyring_versions(step, database)
-                    continue
-                if step["op"] == "markdown.connect":
-                    _markdown_connect(step, database)
-                    continue
-                if step["op"] == "markdown.session":
-                    _markdown_session(step, database)
-                    continue
-                if step["op"] == "markdown.builder":
-                    _markdown_builder(step, database)
-                    continue
-                if step["op"] in _DBSPEC_FILE_OPS:
-                    _dbspec_files(step, ROOT / Path(path).parent, database)
-                    continue
-                if step["op"] in _MERMAID_OPS:
-                    _mermaid(step, bound, database, directory)
-                    continue
-                if step["op"] == "markdown.send":
-                    _send_in_process_zone(step)
-                    continue
-                _run(step, bound, database)
+                dispatch(step, bound)
+                step.check()
             except AssertionError as error:
                 raise AssertionError(
                     f"recipe {path} case {case['id']} step {index} ({step['op']}) on {database}: {error}"
@@ -1590,6 +1597,7 @@ _DBSPEC_OPS = (
     "dbspec.emit_plan",
     "dbspec.diff",
     "dbspec.plan_steps",
+    "dbspec.introspect_refusal",
     "dbspec.add_tables_steps",
     "dbspec.chain",
     "dbspec.compare",
@@ -1612,6 +1620,8 @@ def _dbspec(step: dict, bound: dict, database: str) -> None:
         got = {"diagnostics": _rows(diagnostics, False)}
     elif op == "dbspec.emit_plan":
         got = {"text": emit_plan(_dbspec_value(step["plan"], bound, "plan"))}
+    elif op == "dbspec.introspect_refusal":
+        got = _introspect_refusal(step["dialect"])
     elif op == "dbspec.plan_steps" and step["dialect"] not in ("mysql", "postgres", "sqlite"):
         got = _dialect_refusal(
             step["dialect"],
@@ -2497,14 +2507,43 @@ def _op_close(_step: dict, context: dict) -> dict:
     return {}
 
 
+def _user_from_database_dsn(dsn: str, prefix: str) -> str:
+    """The case DSN with the user that user_from_database names: the prefix and the last 28 characters of the name of the
+    case database, without a password."""
+    database = re.search(r"/([^/?]+)(?:\?.*)?$", dsn).group(1)
+    return re.sub(r"^mysql://[^@]+@", f"mysql://{prefix}{database[-28:]}@", dsn)
+
+
 def _op_reconnect(step: dict, context: dict) -> dict:
     dsn = context["dsn"]
     if "user_from_database" in step:
-        database = re.search(r"/([^/?]+)(?:\?.*)?$", dsn).group(1)
-        dsn = re.sub(r"^mysql://[^@]+@", f"mysql://{step['user_from_database']}{database[-28:]}@", dsn)
-    context["catalog"] = connect_catalog(dsn)
-    context["namespace"] = context["catalog"].current_namespace()
+        dsn = _user_from_database_dsn(dsn, step["user_from_database"])
+    if "refused_message" in step:
+        try:
+            connect_catalog(dsn).current_namespace()
+        except Exception as error:  # noqa: BLE001 - any error of the refused connection
+            if step["refused_message"] not in str(error).lower():
+                raise AssertionError(f"the server refused the connection for another reason: {error}") from error
+            if getattr(error, "code", None) != step["refused_code"]:
+                raise AssertionError(f"the refused connection has another code than {step['refused_code']}: {error}") from error
+            return {}
+        raise AssertionError("the server accepted the connection that the step expects it to refuse")
+    catalog = connect_catalog(dsn)
+    context["namespace"] = catalog.current_namespace()
+    context["catalog"] = catalog
     context["closed"] = False
+    return {}
+
+
+def _op_hold_connection(step: dict, context: dict) -> dict:
+    session = native_session(context["database"], _user_from_database_dsn(context["dsn"], step["user_from_database"]))
+    session.__enter__()
+    context["held"] = session
+    return {}
+
+
+def _op_release_connection(_step: dict, context: dict) -> dict:
+    context.pop("held").__exit__(None, None, None)
     return {}
 
 
@@ -3077,6 +3116,8 @@ class _ChainBuild:
     def relation(self, relation: dict) -> Model:
         """The child model of a relation."""
         child = _new_core_model(self.context, relation["model"])
+        if "connection" in relation:
+            child.connect(_bound_value(relation["connection"], self.context))
         for left, right in relation.get("match", []):
             child.core.matches.append({"left": left, "right": right})
         if "alias" in relation:
@@ -3147,6 +3188,10 @@ def _chain_built(step: dict, context: dict) -> Model:
     """The model of a read: the fields of the step applied, then the key of a terminal by."""
     # A bound chain is read again: a terminal leaves it as it was (DSL-98).
     if "from" in step:
+        # The step names the chain that it continues, on that connection and model, which must exist.
+        _connection_of(step, context)
+        if "model" in step:
+            _new_row(context, _connection_of(step, context), step["model"])
         return _by_key(_bound_value(step["from"], context), step, context)
     db = _connection_of(step, context)
     model = (
@@ -3215,6 +3260,8 @@ def _chain_write(step: dict, context: dict, terminal) -> dict:
 def _chain_target(step: dict, context: dict) -> Model:
     """The model that an update or a delete writes through: the bound row, or a new model set from values, which writes with no read."""
     if "row" in step:
+        # A write through a bound row names the connection of that row, which must be bound.
+        _connection_of(step, context)
         model = _bound_value(step["row"], context)
     else:
         db = _connection_of(step, context)
@@ -3240,6 +3287,7 @@ def _table_model_chain(step: dict, context: dict) -> dict:
 
 
 def _table_model_query(step: dict, context: dict) -> dict:
+    pick = step.get("pick")
     model = _chain_built(step, context)
     if step.get("compile") is True:
         return {"json": _plain_json(model.get_query())}
@@ -3327,7 +3375,7 @@ def _table_model_query(step: dict, context: dict) -> dict:
     rows = model.gets()
     fields = {
         "bind": rows,
-        "json": [_row_json(row, step.get("pick")) for row in rows.values()],
+        "json": [_row_json(row, pick) for row in rows.values()],
     }
     if _wants_rows(step, context):
         fields["rows"] = _chain_cells(list(rows.values()), step)
@@ -3340,6 +3388,8 @@ def _table_model_count(step: dict, context: dict) -> dict:
 
 def _table_model_get_by(step: dict, context: dict) -> dict:
     row = _chain_built(step, context).get()
+    if step.get("json_output") is True and row is not None:
+        return {"json": row.to_json_text()}
     if "ordered_text" in step and row is not None:
         return {"json": row.core.values[step["ordered_text"]].payload().raw}
     fields = {"json": _row_json(row, step.get("pick"))}
@@ -3845,7 +3895,10 @@ _DATABASE_OPS = {
     "catalog.delete_row": _op_delete_row,
     "session.end": _op_session_end,
     "dbspec.ddl_behavior": _op_ddl_behavior,
+    "dbspec.introspect": _op_dbspec_introspect,
     "sql.exec": _op_sql_exec,
+    "sql.hold_connection": _op_hold_connection,
+    "sql.release_connection": _op_release_connection,
     "events.subscribe": _op_events_subscribe,
     "events.fail_subscriber": _op_events_fail_subscriber,
     "fault.next_rollback": lambda step, context: _op_fault_next_rollback(step, context),
@@ -3860,19 +3913,20 @@ _DATABASE_OPS = {
 }
 
 
-def _run_database_step(step: dict, context: dict) -> None:
+def _run_database_step(raw_step: dict, context: dict) -> None:
     """Maps the op of step to its call and checks the result against the expect of the database. A step whose expect is
     an error passes only when the call fails with that orm error code."""
-    if database_only := step.get("only"):
+    if database_only := raw_step.get("only"):
         if context["database"] not in database_only:
             return
+    step = ReadStep(raw_step, context["database"])
     op = _DATABASE_OPS.get(step["op"]) or _MODEL_OPS.get(step["op"])
     if op is None:
         raise AssertionError(f"OP_UNKNOWN {step['op']}")
     expected = (
         None
         if "expect" not in step
-        else _resolve_refs(step["expect"][context["database"]], context)
+        else step.outcome(_resolve_refs(raw_step["expect"][context["database"]], context))
     )
     try:
         actual = op(step, context)
@@ -3909,10 +3963,15 @@ def _run_database_step(step: dict, context: dict) -> None:
                 raise AssertionError(
                     f"error {str(error)!r} keeps the rollback error {rollback!r}, want code {expected['rollback']}"
                 ) from error
+        if expected.get("keeps_callback") is True and not isinstance(error.cause, CallbackError):
+            raise AssertionError(
+                f"error {str(error)!r} does not keep the error of the callback"
+            ) from error
         if expected.get("driver_cause") is True and error.__cause__ is None:
             raise AssertionError(
                 f"error {str(error)!r} has no driver cause"
             ) from error
+        step.check_outcome()
         return
     except CallbackError:
         # The step ends with its failed callback, so an enclosing transaction goes on, as the Go helper does (FCV-4).
@@ -3923,6 +3982,7 @@ def _run_database_step(step: dict, context: dict) -> None:
         context["bound"][step["as"]] = actual.get("bind", actual.get("value"))
         context["fields"][step["as"]] = actual
     if expected is None:
+        step.check()
         return
     if "error" in expected:
         raise AssertionError(
@@ -3931,6 +3991,7 @@ def _run_database_step(step: dict, context: dict) -> None:
     compared = {key: actual.get(key) for key in expected}
     if _normalized(compared) != _normalized(expected):
         raise AssertionError(f"got {compared}, want {expected}")
+    step.check()
 
 
 def _sql(field, context: dict) -> str:
