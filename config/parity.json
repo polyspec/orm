@@ -6687,166 +6687,6 @@
       ]
     },
     {
-      "id": "ts-revision-update-match",
-      "kind": "feature",
-      "requirements": [
-        "DSL-108",
-        "DSL-114"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/revision.mjs",
-          "id": "revision/update-match"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/revision_test.go",
-          "id": "TestRevisionUpdateMatchBumpsTheRevision"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RevisionTest.php",
-          "id": "RevisionTest::testUpdateMatchBumpsTheRevision"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/RevisionTestExtensionTest.php",
-          "id": "RevisionTestExtensionTest::testUpdateMatchBumpsTheRevision"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_revision.py",
-          "id": "test_update_match_bumps_the_revision"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/revision.rs",
-          "id": "revision_update_match_bumps_the_revision"
-        }
-      ]
-    },
-    {
-      "id": "ts-revision-update-mismatch",
-      "kind": "feature",
-      "requirements": [
-        "DSL-108",
-        "DSL-114"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/revision.mjs",
-          "id": "revision/update-mismatch"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/revision_test.go",
-          "id": "TestRevisionUpdateMismatchChangesNothing"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RevisionTest.php",
-          "id": "RevisionTest::testUpdateMismatchChangesNothing"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/RevisionTestExtensionTest.php",
-          "id": "RevisionTestExtensionTest::testUpdateMismatchChangesNothing"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_revision.py",
-          "id": "test_update_mismatch_changes_nothing"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/revision.rs",
-          "id": "revision_update_mismatch_changes_nothing"
-        }
-      ]
-    },
-    {
-      "id": "ts-revision-delete-match",
-      "kind": "feature",
-      "requirements": [
-        "DSL-108",
-        "DSL-114"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/revision.mjs",
-          "id": "revision/delete-match"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/revision_test.go",
-          "id": "TestRevisionDeleteMatchDeletes"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RevisionTest.php",
-          "id": "RevisionTest::testDeleteMatchDeletes"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/RevisionTestExtensionTest.php",
-          "id": "RevisionTestExtensionTest::testDeleteMatchDeletes"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_revision.py",
-          "id": "test_delete_match_deletes"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/revision.rs",
-          "id": "revision_delete_match_deletes"
-        }
-      ]
-    },
-    {
-      "id": "ts-revision-delete-mismatch",
-      "kind": "feature",
-      "requirements": [
-        "DSL-108",
-        "DSL-114"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/revision.mjs",
-          "id": "revision/delete-mismatch"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/revision_test.go",
-          "id": "TestRevisionDeleteMismatchChangesNothing"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RevisionTest.php",
-          "id": "RevisionTest::testDeleteMismatchChangesNothing"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/RevisionTestExtensionTest.php",
-          "id": "RevisionTestExtensionTest::testDeleteMismatchChangesNothing"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_revision.py",
-          "id": "test_delete_mismatch_changes_nothing"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/revision.rs",
-          "id": "revision_delete_mismatch_changes_nothing"
-        }
-      ]
-    },
-    {
       "id": "connection-first-statement-lost",
       "kind": "feature",
       "requirements": [
@@ -16786,34 +16626,12 @@
         {
           "implementation": "go",
           "test": "packages/go/orm/catalog_mutation_test.go",
-          "id": "TestCatalogBytesValuePreservesNativeTimeAsText",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCatalogBytesValuePreservesNativeTimeAsText",
-            "FEATURE_PACKAGE=./orm"
-          ]
+          "id": "TestCatalogBytesValuePreservesNativeTimeAsText"
         },
         {
           "implementation": "go",
           "test": "packages/go/orm/catalog_temporal_test.go",
-          "id": "TestCatalogDescribedTemporalText",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCatalogDescribedTemporalText",
-            "FEATURE_PACKAGE=./orm"
-          ]
+          "id": "TestCatalogDescribedTemporalText"
         },
         {
           "implementation": "php",
@@ -29910,18 +29728,7 @@
         {
           "implementation": "go",
           "test": "packages/go/orm/catalog_grid_order_test.go",
-          "id": "TestCoverageCatalogGridOrder",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageCatalogGridOrder",
-            "FEATURE_PACKAGE=./orm"
-          ]
+          "id": "TestCoverageCatalogGridOrder"
         },
         {
           "implementation": "go",
