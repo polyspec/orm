@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 44b83c3a6ba5a2eff944a1dd4046b9745ad7ace61049d0ef9711ccdff65d5f21 -->
+<!-- source-sha256: 6475cacfa4195801da3ebf8a8ab9f6d0eb28690c21ec8a27964c9f40e4468dbb -->
 # 변경 이력
 
 ## Unreleased
 
+- 외부 문서를 사용하는 set의 생성 모델이 사용하는 외부 테이블의 행을 연결해 읽는 것을 모든 runtime의 native 시험이 확인하며, 생성 schema 값이 외부 텍스트를 빠뜨리면 실패한다. Go는 그 출력도 컴파일하고, query 메서드의 PHPStan 검사는 두 PHP mode 모두에 다시 묶인다.
 - Python 모델 read에서 codec이 거부하는 cell은 쓰기와 같이 code를 가진 `OrmError`를 던지며 `CodecError`를 던지지 않는다. codec을 직접 호출하면 `CodecError`를 유지한다.
 - TypeScript의 `toJSONText()`와 `JSON.stringify(row)`는 bigint를 담은 행에서 더 이상 던지지 않는다. 둘은 정확한 정수를 JSON 숫자로 쓰고, 스타일 값 안에서도 그렇게 쓴다.
 - conformance vector를 `conformance_verification` recipe로 옮기기 시작했다. 여섯 런타임이 세 데이터베이스에서 실행하며, 스물일곱 case는 연결자, group, chain 재사용, 식, column, join, relation, subquery, aggregate, 빈 read, 함수, AES와 hex 값, 쓰기 순환, transaction, getQuery를 다룬다. 모델을 생성하지 않는 fixture의 model op는 `statement_events`를 포함해 모든 helper에서 하나의 경로로 공개 builder에 닿는다. Rust는 `ALTER` 뒤 MySQL이 text byte로 돌려주는 정수 열을 읽는다.

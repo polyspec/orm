@@ -4430,6 +4430,8 @@
       "parity": [
         "generator",
         "php-generator-scan-vector-in-both-php-modes",
+        "php-phpstan-finds-the-query-methods-in-both-php-modes",
+        "generated-external-model-reads-its-table",
         "dynamic-model-new-output-name-rejects-stored-column",
         "generated-typed-getter-public-column-api",
         "generated-nonnull-styled-setter-rejects-sql-null",
