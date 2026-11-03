@@ -3598,7 +3598,11 @@
             ],
             "additionalProperties": false,
             "properties": {
-              "op": {
+                            "ordered_text": {
+                "description": "The result is the text of the ordered-json value that the row holds in this column (DIA-26).",
+                "$ref": "#/$defs/name"
+              },
+"op": {
                 "const": "model.get_by"
               },
               "connection": {
@@ -3641,7 +3645,11 @@
             ],
             "additionalProperties": false,
             "properties": {
-              "op": {
+                            "ordered_text": {
+                "description": "The result is the text of the ordered-json value that the row holds in this column (DIA-26).",
+                "$ref": "#/$defs/name"
+              },
+"op": {
                 "const": "model.get_by"
               },
               "connection": {
@@ -3683,7 +3691,11 @@
             ],
             "additionalProperties": false,
             "properties": {
-              "op": {
+                            "ordered_text": {
+                "description": "The result is the text of the ordered-json value that the row holds in this column (DIA-26).",
+                "$ref": "#/$defs/name"
+              },
+"op": {
                 "const": "model.get_by"
               },
               "connection": {
@@ -6519,6 +6531,19 @@
       },
       "additionalProperties": {
         "oneOf": [
+          {
+            "description": "The styled value of its value (a column with a codec of a styled value).",
+            "type": "object",
+            "required": [
+              "styled"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "styled": {
+                "$ref": "#/$defs/value"
+              }
+            }
+          },
           {
             "$ref": "#/$defs/argument"
           },

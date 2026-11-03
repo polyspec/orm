@@ -3215,6 +3215,8 @@ final class Recipe
             if (isset($value['arith'])) {
                 $call = ($value['arith']['operation'] === 'minus' ? 'minus' : 'plus') . $name;
                 $model->$call(self::chainValue($value['arith']['amount'], $context));
+            } elseif (isset($value['styled'])) {
+                $model->{'set' . $name}(StyledValue::value(self::chainValue($value['styled'], $context)));
             } elseif (isset($value['object'])) {
                 $codec = $model::meta()['columns'][$column]['codec'] ?? [];
                 $model->{'set' . $name}(self::styledArgument($value, $codec, []));
@@ -3290,6 +3292,9 @@ final class Recipe
                     $row = $model->{'getBy' . $name}(...$args);
                 } else {
                     $row = $model->get();
+                }
+                if (isset($s['ordered_text']) && $row !== null) {
+                    return ['json' => $row->{'get' . self::pascal($s['ordered_text'])}()->payload()->raw()];
                 }
                 $fields = ['json' => self::chainRow($row, $s['pick'] ?? null)];
                 return $row === null ? $fields : ['bind' => $row] + $fields;

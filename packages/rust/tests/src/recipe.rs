@@ -3918,10 +3918,18 @@ mod tables {
     fn set_value(row: &mut TableRow, column: &str, raw: &Value) -> Result<(), String> {
         let entity = fields_of(row.core.entity()).map_err(orm)?;
         let field = entity.field(column);
+        if let Some(inner) = raw.get("styled") {
+            let value = bind_json(&param(inner)?);
+            row.core.set_json(column, value.clone());
+            row.values.insert(column.to_owned(), Val::Json(value));
+            row.core.mark_field_ready(column);
+            return Ok(());
+        }
         if raw.get("object").is_some() {
             let value = object_of(raw)?;
             if field.is_some_and(|field| field.codec.first().is_some_and(|stage| stage == "ordered_json")) {
-                let ordered = polyspec_orm::ordered_json::parse(&value.to_string()).map_err(|e| e.to_string())?;
+                // The text of the wrapper keeps the member order, a repeated member and the number text (DIA-26).
+                let ordered = polyspec_orm::ordered_json::parse(&super::json_text(raw)?).map_err(|e| e.to_string())?;
                 row.core.set_ordered(column, ordered.clone());
                 row.values.insert(column.to_owned(), Val::Ordered(ordered));
             } else {
@@ -4346,6 +4354,12 @@ mod tables {
                 "model.get_by" => {
                     let core = self.built(step, &db)?;
                     let Some(row) = get_core::<TableRow>(&core).await.map_err(orm)? else { return Ok(json!({ "json": null })) };
+                    if let Some(column) = step["ordered_text"].as_str() {
+                        return match row.value(column) {
+                            Some(Val::Ordered(value)) => Ok(json!({ "json": value.raw() })),
+                            _ => Err(format!("ordered_text: the column {column} holds no ordered-json value")),
+                        };
+                    }
                     let fields = json!({ "json": row_json(&row, &step["pick"])? });
                     if let Some(name) = step["as"].as_str() {
                         self.rows.insert(name.to_owned(), row);

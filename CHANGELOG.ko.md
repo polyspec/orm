@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7c9805affabc0894411580f2be5619eff3f417af543ac23b59160713d6bf312f -->
+<!-- source-sha256: ea1abaf5b50f456264b673ce231b93834eea7ab4cf3632791881f6e5ed2e02e3 -->
 # 변경 이력
 
 ## Unreleased
 
+- ordered-json, codec 컬럼, 일괄 create 쓰기는 모든 runtime의 builder에서 recipe `model_writes_chain`의 case다. 멤버 순서와 숫자 텍스트, 반복 멤버 이름, 저장 텍스트의 codec 컬럼, 공백이 있는 IP, 오래된 낙관적 갱신, `creates`(어떤 문장보다 먼저 거부, SQLite bind 한도 초과, batch를 넘는 행 순서, 모든 batch의 rollback)를 다룬다. 이 기능의 coverage 시험은 사라졌다. `contracts/features.json`은 schema가 요구하는 `model_writes`와 `model_queries` coverage의 빈 `dependents`를 선언한다.
 - 생성 모델 쿼리의 chain은 모든 runtime의 builder에서 recipe `model_queries_chain`의 case다: page와 total, sum, 함수 column, 제거한 column, index와 subquery가 있는 join, relation, NULL collection key, group row이며, 이 기능의 coverage 시험은 제거됐고, PRT-35는 NULL key의 메시지가 아니라 code를 정한다
 - 외부 문서를 사용하는 set의 생성 모델이 사용하는 외부 테이블의 행을 연결해 읽는 것을 모든 runtime의 native 시험이 확인하며, 생성 schema 값이 외부 텍스트를 빠뜨리면 실패한다. Go는 그 출력도 컴파일하고, query 메서드의 PHPStan 검사는 두 PHP mode 모두에 다시 묶인다.
 - Python 모델 read에서 codec이 거부하는 cell은 쓰기와 같이 code를 가진 `OrmError`를 던지며 `CodecError`를 던지지 않는다. codec을 직접 호출하면 `CodecError`를 유지한다.

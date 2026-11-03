@@ -2417,7 +2417,8 @@
               "contracts/fixtures/model_chain/model_chain.dbs"
             ]
           }
-        }
+        },
+        "dependents": []
       }
     },
     {
@@ -2485,7 +2486,10 @@
         "model_writes-sqlite",
         "markdown-message-dynamic-vectors",
         "markdown-message-untyped-null-vectors",
-        "markdown-message-python-null-vectors"
+        "markdown-message-python-null-vectors",
+        "model_writes_chain-mysql",
+        "model_writes_chain-postgres",
+        "model_writes_chain-sqlite"
       ],
       "fixtures": [
         "tests/conformance/vectors.json",
@@ -2502,7 +2506,10 @@
         "packages/ts/tests/coverage_case.mjs",
         "packages/python/tests/coverage_case.py",
         "contracts/fixtures/bench/bench.dbs",
-        "contracts/fixtures/model_writes/model_writes.json"
+        "contracts/fixtures/model_writes/model_writes.json",
+        "contracts/fixtures/model_writes_chain/model_writes_chain.json",
+        "contracts/fixtures/model_chain/dbspec-set.json",
+        "contracts/fixtures/model_chain/model_chain.dbs"
       ],
       "tests": [
         "packages/php/tests/BindMessagesDynamicRecipeTest.php",
@@ -2547,13 +2554,7 @@
         "packages/go/orm/exec_decode_test.go",
         "packages/php/tests/StyledValueTest.php",
         "packages/rust/orm/tests/decimal_model.rs",
-        "packages/go/model/coverage_model_writes_test.go",
-        "packages/php/tests/CoverageModelWritesTest.php",
-        "packages/php/tests/CoverageModelWritesCase.php",
-        "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
         "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
-        "packages/rust/tests/tests/integration/coverage_model_writes.rs",
-        "packages/ts/tests/coverage_model_writes.mjs",
         "packages/go/orm/assignment_propagation_test.go",
         "contracts/fixtures/clock.dbs",
         "contracts/fixtures/clock_mark.dbs",
@@ -2568,7 +2569,6 @@
         "packages/python/tests/test_new_values.py",
         "packages/python/tests/test_insert_parts.py",
         "packages/python/tests/test_sqlite.py",
-        "packages/python/tests/coverage_model_writes.py",
         "packages/go/orm/revision_test.go",
         "packages/php/tests/RevisionTest.php",
         "packages/ts/tests/revision.mjs",
@@ -2593,7 +2593,19 @@
         "packages/rust/tests/tests/model_writes_postgres.rs",
         "packages/ts/tests/model_writes-sqlite.test.mjs",
         "packages/python/tests/test_model_writes_sqlite.py",
-        "packages/rust/tests/tests/model_writes_sqlite.rs"
+        "packages/rust/tests/tests/model_writes_sqlite.rs",
+        "packages/go/orm/recipe_model_writes_chain_test.go",
+        "packages/php/tests/ModelWritesChainRecipeTest.php",
+        "packages/rust/tests/tests/model_writes_chain_mysql.rs",
+        "packages/rust/tests/tests/model_writes_chain_postgres.rs",
+        "packages/rust/tests/tests/model_writes_chain_sqlite.rs",
+        "packages/ts/tests/model_writes_chain-mysql.test.mjs",
+        "packages/ts/tests/model_writes_chain-postgres.test.mjs",
+        "packages/ts/tests/model_writes_chain-sqlite.test.mjs",
+        "packages/python/tests/test_model_writes_chain_mysql.py",
+        "packages/python/tests/test_model_writes_chain_postgres.py",
+        "packages/python/tests/test_model_writes_chain_sqlite.py",
+        "packages/php-ext/tests/ModelWritesChainRecipeTestExtensionTest.php"
       ],
       "docs": [
         "docs/spec/dsl.md",
@@ -2920,33 +2932,48 @@
       "coverage": {
         "kind": "database",
         "cases": [
-          "model_write_cycle",
-          "create_parts",
-          "ordered_json_repeated_member_name"
+          "ordered_json_keeps_its_member_order_and_number_text",
+          "ordered_json_keeps_a_repeated_member_name",
+          "codec_columns_round_trip",
+          "ip_with_embedded_whitespace_is_refused",
+          "stale_row_fails_the_optimistic_update_and_rollback_restores",
+          "creates_refuses_a_bad_batch_before_any_statement",
+          "creates_over_the_sqlite_bind_limit_is_refused",
+          "creates_keeps_the_rows_in_order_across_batches",
+          "creates_rolls_back_every_batch_when_a_later_one_fails"
         ],
         "owners": {
           "go": {
-            "part": "packages/go/model",
+            "part": "packages/go/orm",
             "tests": [
-              "packages/go/model/coverage_model_writes_test.go"
-            ],
-            "inputs": [
-              "contracts/fixtures/bench/bench.dbs"
+              "packages/go/orm/recipe_model_writes_chain_test.go"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "go",
-                  "test": "packages/go/model/coverage_model_writes_test.go",
+                  "test": "packages/go/orm/recipe_model_writes_chain_test.go",
                   "cases": [
-                    "model_write_cycle",
-                    "create_parts",
-                    "ordered_json_repeated_member_name"
+                    "ordered_json_keeps_its_member_order_and_number_text",
+                    "ordered_json_keeps_a_repeated_member_name",
+                    "codec_columns_round_trip",
+                    "ip_with_embedded_whitespace_is_refused",
+                    "stale_row_fails_the_optimistic_update_and_rollback_restores",
+                    "creates_refuses_a_bad_batch_before_any_statement",
+                    "creates_over_the_sqlite_bind_limit_is_refused",
+                    "creates_keeps_the_rows_in_order_across_batches",
+                    "creates_rolls_back_every_batch_when_a_later_one_fails"
                   ],
                   "symbols": {
-                    "model_write_cycle": "TestCoverageModelWriteCycle",
-                    "create_parts": "TestCoverageModelCreateParts",
-                    "ordered_json_repeated_member_name": "TestCoverageModelOrderedJsonRepeatedMemberName"
+                    "ordered_json_keeps_its_member_order_and_number_text": "TestRecipeModelWritesChainMysql",
+                    "ordered_json_keeps_a_repeated_member_name": "TestRecipeModelWritesChainMysql",
+                    "codec_columns_round_trip": "TestRecipeModelWritesChainMysql",
+                    "ip_with_embedded_whitespace_is_refused": "TestRecipeModelWritesChainMysql",
+                    "stale_row_fails_the_optimistic_update_and_rollback_restores": "TestRecipeModelWritesChainMysql",
+                    "creates_refuses_a_bad_batch_before_any_statement": "TestRecipeModelWritesChainMysql",
+                    "creates_over_the_sqlite_bind_limit_is_refused": "TestRecipeModelWritesChainMysql",
+                    "creates_keeps_the_rows_in_order_across_batches": "TestRecipeModelWritesChainMysql",
+                    "creates_rolls_back_every_batch_when_a_later_one_fails": "TestRecipeModelWritesChainMysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -2954,16 +2981,28 @@
               "postgres": [
                 {
                   "runner": "go",
-                  "test": "packages/go/model/coverage_model_writes_test.go",
+                  "test": "packages/go/orm/recipe_model_writes_chain_test.go",
                   "cases": [
-                    "model_write_cycle",
-                    "create_parts",
-                    "ordered_json_repeated_member_name"
+                    "ordered_json_keeps_its_member_order_and_number_text",
+                    "ordered_json_keeps_a_repeated_member_name",
+                    "codec_columns_round_trip",
+                    "ip_with_embedded_whitespace_is_refused",
+                    "stale_row_fails_the_optimistic_update_and_rollback_restores",
+                    "creates_refuses_a_bad_batch_before_any_statement",
+                    "creates_over_the_sqlite_bind_limit_is_refused",
+                    "creates_keeps_the_rows_in_order_across_batches",
+                    "creates_rolls_back_every_batch_when_a_later_one_fails"
                   ],
                   "symbols": {
-                    "model_write_cycle": "TestCoverageModelWriteCycle",
-                    "create_parts": "TestCoverageModelCreateParts",
-                    "ordered_json_repeated_member_name": "TestCoverageModelOrderedJsonRepeatedMemberName"
+                    "ordered_json_keeps_its_member_order_and_number_text": "TestRecipeModelWritesChainPostgres",
+                    "ordered_json_keeps_a_repeated_member_name": "TestRecipeModelWritesChainPostgres",
+                    "codec_columns_round_trip": "TestRecipeModelWritesChainPostgres",
+                    "ip_with_embedded_whitespace_is_refused": "TestRecipeModelWritesChainPostgres",
+                    "stale_row_fails_the_optimistic_update_and_rollback_restores": "TestRecipeModelWritesChainPostgres",
+                    "creates_refuses_a_bad_batch_before_any_statement": "TestRecipeModelWritesChainPostgres",
+                    "creates_over_the_sqlite_bind_limit_is_refused": "TestRecipeModelWritesChainPostgres",
+                    "creates_keeps_the_rows_in_order_across_batches": "TestRecipeModelWritesChainPostgres",
+                    "creates_rolls_back_every_batch_when_a_later_one_fails": "TestRecipeModelWritesChainPostgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -2971,44 +3010,69 @@
               "sqlite": [
                 {
                   "runner": "go",
-                  "test": "packages/go/model/coverage_model_writes_test.go",
+                  "test": "packages/go/orm/recipe_model_writes_chain_test.go",
                   "cases": [
-                    "model_write_cycle",
-                    "create_parts",
-                    "ordered_json_repeated_member_name"
+                    "ordered_json_keeps_its_member_order_and_number_text",
+                    "ordered_json_keeps_a_repeated_member_name",
+                    "codec_columns_round_trip",
+                    "ip_with_embedded_whitespace_is_refused",
+                    "stale_row_fails_the_optimistic_update_and_rollback_restores",
+                    "creates_refuses_a_bad_batch_before_any_statement",
+                    "creates_over_the_sqlite_bind_limit_is_refused",
+                    "creates_keeps_the_rows_in_order_across_batches",
+                    "creates_rolls_back_every_batch_when_a_later_one_fails"
                   ],
                   "symbols": {
-                    "model_write_cycle": "TestCoverageModelWriteCycle",
-                    "create_parts": "TestCoverageModelCreateParts",
-                    "ordered_json_repeated_member_name": "TestCoverageModelOrderedJsonRepeatedMemberName"
+                    "ordered_json_keeps_its_member_order_and_number_text": "TestRecipeModelWritesChainSqlite",
+                    "ordered_json_keeps_a_repeated_member_name": "TestRecipeModelWritesChainSqlite",
+                    "codec_columns_round_trip": "TestRecipeModelWritesChainSqlite",
+                    "ip_with_embedded_whitespace_is_refused": "TestRecipeModelWritesChainSqlite",
+                    "stale_row_fails_the_optimistic_update_and_rollback_restores": "TestRecipeModelWritesChainSqlite",
+                    "creates_refuses_a_bad_batch_before_any_statement": "TestRecipeModelWritesChainSqlite",
+                    "creates_over_the_sqlite_bind_limit_is_refused": "TestRecipeModelWritesChainSqlite",
+                    "creates_keeps_the_rows_in_order_across_batches": "TestRecipeModelWritesChainSqlite",
+                    "creates_rolls_back_every_batch_when_a_later_one_fails": "TestRecipeModelWritesChainSqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
-            }
+            },
+            "inputs": [
+              "contracts/fixtures/model_writes_chain/model_writes_chain.json",
+              "contracts/fixtures/model_chain/model_chain.dbs"
+            ]
           },
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/CoverageModelWritesTest.php"
-            ],
-            "inputs": [
-              "contracts/fixtures/bench/bench.dbs"
+              "packages/php/tests/ModelWritesChainRecipeTest.php"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageModelWritesTest.php",
+                  "test": "packages/php/tests/ModelWritesChainRecipeTest.php",
                   "cases": [
-                    "model_write_cycle",
-                    "create_parts",
-                    "ordered_json_repeated_member_name"
+                    "ordered_json_keeps_its_member_order_and_number_text",
+                    "ordered_json_keeps_a_repeated_member_name",
+                    "codec_columns_round_trip",
+                    "ip_with_embedded_whitespace_is_refused",
+                    "stale_row_fails_the_optimistic_update_and_rollback_restores",
+                    "creates_refuses_a_bad_batch_before_any_statement",
+                    "creates_over_the_sqlite_bind_limit_is_refused",
+                    "creates_keeps_the_rows_in_order_across_batches",
+                    "creates_rolls_back_every_batch_when_a_later_one_fails"
                   ],
                   "symbols": {
-                    "model_write_cycle": "testModelWriteCycle",
-                    "create_parts": "testCreateParts",
-                    "ordered_json_repeated_member_name": "testOrderedJsonRepeatedMemberName"
+                    "ordered_json_keeps_its_member_order_and_number_text": "testMysql",
+                    "ordered_json_keeps_a_repeated_member_name": "testMysql",
+                    "codec_columns_round_trip": "testMysql",
+                    "ip_with_embedded_whitespace_is_refused": "testMysql",
+                    "stale_row_fails_the_optimistic_update_and_rollback_restores": "testMysql",
+                    "creates_refuses_a_bad_batch_before_any_statement": "testMysql",
+                    "creates_over_the_sqlite_bind_limit_is_refused": "testMysql",
+                    "creates_keeps_the_rows_in_order_across_batches": "testMysql",
+                    "creates_rolls_back_every_batch_when_a_later_one_fails": "testMysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -3016,16 +3080,28 @@
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageModelWritesTest.php",
+                  "test": "packages/php/tests/ModelWritesChainRecipeTest.php",
                   "cases": [
-                    "model_write_cycle",
-                    "create_parts",
-                    "ordered_json_repeated_member_name"
+                    "ordered_json_keeps_its_member_order_and_number_text",
+                    "ordered_json_keeps_a_repeated_member_name",
+                    "codec_columns_round_trip",
+                    "ip_with_embedded_whitespace_is_refused",
+                    "stale_row_fails_the_optimistic_update_and_rollback_restores",
+                    "creates_refuses_a_bad_batch_before_any_statement",
+                    "creates_over_the_sqlite_bind_limit_is_refused",
+                    "creates_keeps_the_rows_in_order_across_batches",
+                    "creates_rolls_back_every_batch_when_a_later_one_fails"
                   ],
                   "symbols": {
-                    "model_write_cycle": "testModelWriteCycle",
-                    "create_parts": "testCreateParts",
-                    "ordered_json_repeated_member_name": "testOrderedJsonRepeatedMemberName"
+                    "ordered_json_keeps_its_member_order_and_number_text": "testPostgres",
+                    "ordered_json_keeps_a_repeated_member_name": "testPostgres",
+                    "codec_columns_round_trip": "testPostgres",
+                    "ip_with_embedded_whitespace_is_refused": "testPostgres",
+                    "stale_row_fails_the_optimistic_update_and_rollback_restores": "testPostgres",
+                    "creates_refuses_a_bad_batch_before_any_statement": "testPostgres",
+                    "creates_over_the_sqlite_bind_limit_is_refused": "testPostgres",
+                    "creates_keeps_the_rows_in_order_across_batches": "testPostgres",
+                    "creates_rolls_back_every_batch_when_a_later_one_fails": "testPostgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -3033,44 +3109,71 @@
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageModelWritesTest.php",
+                  "test": "packages/php/tests/ModelWritesChainRecipeTest.php",
                   "cases": [
-                    "model_write_cycle",
-                    "create_parts",
-                    "ordered_json_repeated_member_name"
+                    "ordered_json_keeps_its_member_order_and_number_text",
+                    "ordered_json_keeps_a_repeated_member_name",
+                    "codec_columns_round_trip",
+                    "ip_with_embedded_whitespace_is_refused",
+                    "stale_row_fails_the_optimistic_update_and_rollback_restores",
+                    "creates_refuses_a_bad_batch_before_any_statement",
+                    "creates_over_the_sqlite_bind_limit_is_refused",
+                    "creates_keeps_the_rows_in_order_across_batches",
+                    "creates_rolls_back_every_batch_when_a_later_one_fails"
                   ],
                   "symbols": {
-                    "model_write_cycle": "testModelWriteCycle",
-                    "create_parts": "testCreateParts",
-                    "ordered_json_repeated_member_name": "testOrderedJsonRepeatedMemberName"
+                    "ordered_json_keeps_its_member_order_and_number_text": "testSqlite",
+                    "ordered_json_keeps_a_repeated_member_name": "testSqlite",
+                    "codec_columns_round_trip": "testSqlite",
+                    "ip_with_embedded_whitespace_is_refused": "testSqlite",
+                    "stale_row_fails_the_optimistic_update_and_rollback_restores": "testSqlite",
+                    "creates_refuses_a_bad_batch_before_any_statement": "testSqlite",
+                    "creates_over_the_sqlite_bind_limit_is_refused": "testSqlite",
+                    "creates_keeps_the_rows_in_order_across_batches": "testSqlite",
+                    "creates_rolls_back_every_batch_when_a_later_one_fails": "testSqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
-            }
+            },
+            "inputs": [
+              "contracts/fixtures/model_writes_chain/model_writes_chain.json",
+              "contracts/fixtures/model_chain/model_chain.dbs"
+            ]
           },
           "rust": {
             "part": "packages/rust/tests",
             "tests": [
-              "packages/rust/tests/tests/integration/coverage_model_writes.rs"
-            ],
-            "inputs": [
-              "contracts/fixtures/bench/bench.dbs"
+              "packages/rust/tests/tests/model_writes_chain_mysql.rs",
+              "packages/rust/tests/tests/model_writes_chain_postgres.rs",
+              "packages/rust/tests/tests/model_writes_chain_sqlite.rs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration/coverage_model_writes.rs",
+                  "test": "packages/rust/tests/tests/model_writes_chain_mysql.rs",
                   "cases": [
-                    "model_write_cycle",
-                    "create_parts",
-                    "ordered_json_repeated_member_name"
+                    "ordered_json_keeps_its_member_order_and_number_text",
+                    "ordered_json_keeps_a_repeated_member_name",
+                    "codec_columns_round_trip",
+                    "ip_with_embedded_whitespace_is_refused",
+                    "stale_row_fails_the_optimistic_update_and_rollback_restores",
+                    "creates_refuses_a_bad_batch_before_any_statement",
+                    "creates_over_the_sqlite_bind_limit_is_refused",
+                    "creates_keeps_the_rows_in_order_across_batches",
+                    "creates_rolls_back_every_batch_when_a_later_one_fails"
                   ],
                   "symbols": {
-                    "model_write_cycle": "coverage_model_writes::coverage_model_write_cycle",
-                    "create_parts": "coverage_model_writes::coverage_model_create_parts",
-                    "ordered_json_repeated_member_name": "coverage_model_writes::coverage_ordered_json_repeated_member_name"
+                    "ordered_json_keeps_its_member_order_and_number_text": "model_writes_chain_mysql::ordered_json_keeps_its_member_order_and_number_text",
+                    "ordered_json_keeps_a_repeated_member_name": "model_writes_chain_mysql::ordered_json_keeps_a_repeated_member_name",
+                    "codec_columns_round_trip": "model_writes_chain_mysql::codec_columns_round_trip",
+                    "ip_with_embedded_whitespace_is_refused": "model_writes_chain_mysql::ip_with_embedded_whitespace_is_refused",
+                    "stale_row_fails_the_optimistic_update_and_rollback_restores": "model_writes_chain_mysql::stale_row_fails_the_optimistic_update_and_rollback_restores",
+                    "creates_refuses_a_bad_batch_before_any_statement": "model_writes_chain_mysql::creates_refuses_a_bad_batch_before_any_statement",
+                    "creates_over_the_sqlite_bind_limit_is_refused": "model_writes_chain_mysql::creates_over_the_sqlite_bind_limit_is_refused",
+                    "creates_keeps_the_rows_in_order_across_batches": "model_writes_chain_mysql::creates_keeps_the_rows_in_order_across_batches",
+                    "creates_rolls_back_every_batch_when_a_later_one_fails": "model_writes_chain_mysql::creates_rolls_back_every_batch_when_a_later_one_fails"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -3078,16 +3181,28 @@
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration/coverage_model_writes.rs",
+                  "test": "packages/rust/tests/tests/model_writes_chain_postgres.rs",
                   "cases": [
-                    "model_write_cycle",
-                    "create_parts",
-                    "ordered_json_repeated_member_name"
+                    "ordered_json_keeps_its_member_order_and_number_text",
+                    "ordered_json_keeps_a_repeated_member_name",
+                    "codec_columns_round_trip",
+                    "ip_with_embedded_whitespace_is_refused",
+                    "stale_row_fails_the_optimistic_update_and_rollback_restores",
+                    "creates_refuses_a_bad_batch_before_any_statement",
+                    "creates_over_the_sqlite_bind_limit_is_refused",
+                    "creates_keeps_the_rows_in_order_across_batches",
+                    "creates_rolls_back_every_batch_when_a_later_one_fails"
                   ],
                   "symbols": {
-                    "model_write_cycle": "coverage_model_writes::coverage_model_write_cycle",
-                    "create_parts": "coverage_model_writes::coverage_model_create_parts",
-                    "ordered_json_repeated_member_name": "coverage_model_writes::coverage_ordered_json_repeated_member_name"
+                    "ordered_json_keeps_its_member_order_and_number_text": "model_writes_chain_postgres::ordered_json_keeps_its_member_order_and_number_text",
+                    "ordered_json_keeps_a_repeated_member_name": "model_writes_chain_postgres::ordered_json_keeps_a_repeated_member_name",
+                    "codec_columns_round_trip": "model_writes_chain_postgres::codec_columns_round_trip",
+                    "ip_with_embedded_whitespace_is_refused": "model_writes_chain_postgres::ip_with_embedded_whitespace_is_refused",
+                    "stale_row_fails_the_optimistic_update_and_rollback_restores": "model_writes_chain_postgres::stale_row_fails_the_optimistic_update_and_rollback_restores",
+                    "creates_refuses_a_bad_batch_before_any_statement": "model_writes_chain_postgres::creates_refuses_a_bad_batch_before_any_statement",
+                    "creates_over_the_sqlite_bind_limit_is_refused": "model_writes_chain_postgres::creates_over_the_sqlite_bind_limit_is_refused",
+                    "creates_keeps_the_rows_in_order_across_batches": "model_writes_chain_postgres::creates_keeps_the_rows_in_order_across_batches",
+                    "creates_rolls_back_every_batch_when_a_later_one_fails": "model_writes_chain_postgres::creates_rolls_back_every_batch_when_a_later_one_fails"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -3095,39 +3210,60 @@
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration/coverage_model_writes.rs",
+                  "test": "packages/rust/tests/tests/model_writes_chain_sqlite.rs",
                   "cases": [
-                    "model_write_cycle",
-                    "create_parts",
-                    "ordered_json_repeated_member_name"
+                    "ordered_json_keeps_its_member_order_and_number_text",
+                    "ordered_json_keeps_a_repeated_member_name",
+                    "codec_columns_round_trip",
+                    "ip_with_embedded_whitespace_is_refused",
+                    "stale_row_fails_the_optimistic_update_and_rollback_restores",
+                    "creates_refuses_a_bad_batch_before_any_statement",
+                    "creates_over_the_sqlite_bind_limit_is_refused",
+                    "creates_keeps_the_rows_in_order_across_batches",
+                    "creates_rolls_back_every_batch_when_a_later_one_fails"
                   ],
                   "symbols": {
-                    "model_write_cycle": "coverage_model_writes::coverage_model_write_cycle",
-                    "create_parts": "coverage_model_writes::coverage_model_create_parts",
-                    "ordered_json_repeated_member_name": "coverage_model_writes::coverage_ordered_json_repeated_member_name"
+                    "ordered_json_keeps_its_member_order_and_number_text": "model_writes_chain_sqlite::ordered_json_keeps_its_member_order_and_number_text",
+                    "ordered_json_keeps_a_repeated_member_name": "model_writes_chain_sqlite::ordered_json_keeps_a_repeated_member_name",
+                    "codec_columns_round_trip": "model_writes_chain_sqlite::codec_columns_round_trip",
+                    "ip_with_embedded_whitespace_is_refused": "model_writes_chain_sqlite::ip_with_embedded_whitespace_is_refused",
+                    "stale_row_fails_the_optimistic_update_and_rollback_restores": "model_writes_chain_sqlite::stale_row_fails_the_optimistic_update_and_rollback_restores",
+                    "creates_refuses_a_bad_batch_before_any_statement": "model_writes_chain_sqlite::creates_refuses_a_bad_batch_before_any_statement",
+                    "creates_over_the_sqlite_bind_limit_is_refused": "model_writes_chain_sqlite::creates_over_the_sqlite_bind_limit_is_refused",
+                    "creates_keeps_the_rows_in_order_across_batches": "model_writes_chain_sqlite::creates_keeps_the_rows_in_order_across_batches",
+                    "creates_rolls_back_every_batch_when_a_later_one_fails": "model_writes_chain_sqlite::creates_rolls_back_every_batch_when_a_later_one_fails"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
-            }
+            },
+            "inputs": [
+              "contracts/fixtures/model_writes_chain/model_writes_chain.json",
+              "contracts/fixtures/model_chain/model_chain.dbs"
+            ]
           },
           "typescript": {
             "part": "packages/ts/tests",
             "tests": [
-              "packages/ts/tests/coverage_model_writes.mjs"
-            ],
-            "inputs": [
-              "contracts/fixtures/bench/bench.dbs"
+              "packages/ts/tests/model_writes_chain-mysql.test.mjs",
+              "packages/ts/tests/model_writes_chain-postgres.test.mjs",
+              "packages/ts/tests/model_writes_chain-sqlite.test.mjs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_model_writes.mjs",
+                  "test": "packages/ts/tests/model_writes_chain-mysql.test.mjs",
                   "cases": [
-                    "model_write_cycle",
-                    "create_parts",
-                    "ordered_json_repeated_member_name"
+                    "ordered_json_keeps_its_member_order_and_number_text",
+                    "ordered_json_keeps_a_repeated_member_name",
+                    "codec_columns_round_trip",
+                    "ip_with_embedded_whitespace_is_refused",
+                    "stale_row_fails_the_optimistic_update_and_rollback_restores",
+                    "creates_refuses_a_bad_batch_before_any_statement",
+                    "creates_over_the_sqlite_bind_limit_is_refused",
+                    "creates_keeps_the_rows_in_order_across_batches",
+                    "creates_rolls_back_every_batch_when_a_later_one_fails"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -3135,11 +3271,17 @@
               "postgres": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_model_writes.mjs",
+                  "test": "packages/ts/tests/model_writes_chain-postgres.test.mjs",
                   "cases": [
-                    "model_write_cycle",
-                    "create_parts",
-                    "ordered_json_repeated_member_name"
+                    "ordered_json_keeps_its_member_order_and_number_text",
+                    "ordered_json_keeps_a_repeated_member_name",
+                    "codec_columns_round_trip",
+                    "ip_with_embedded_whitespace_is_refused",
+                    "stale_row_fails_the_optimistic_update_and_rollback_restores",
+                    "creates_refuses_a_bad_batch_before_any_statement",
+                    "creates_over_the_sqlite_bind_limit_is_refused",
+                    "creates_keeps_the_rows_in_order_across_batches",
+                    "creates_rolls_back_every_batch_when_a_later_one_fails"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -3147,34 +3289,49 @@
               "sqlite": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_model_writes.mjs",
+                  "test": "packages/ts/tests/model_writes_chain-sqlite.test.mjs",
                   "cases": [
-                    "model_write_cycle",
-                    "create_parts",
-                    "ordered_json_repeated_member_name"
+                    "ordered_json_keeps_its_member_order_and_number_text",
+                    "ordered_json_keeps_a_repeated_member_name",
+                    "codec_columns_round_trip",
+                    "ip_with_embedded_whitespace_is_refused",
+                    "stale_row_fails_the_optimistic_update_and_rollback_restores",
+                    "creates_refuses_a_bad_batch_before_any_statement",
+                    "creates_over_the_sqlite_bind_limit_is_refused",
+                    "creates_keeps_the_rows_in_order_across_batches",
+                    "creates_rolls_back_every_batch_when_a_later_one_fails"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
-            }
+            },
+            "inputs": [
+              "contracts/fixtures/model_writes_chain/model_writes_chain.json",
+              "contracts/fixtures/model_chain/model_chain.dbs"
+            ]
           },
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_model_writes.py"
-            ],
-            "inputs": [
-              "contracts/fixtures/bench/bench.dbs"
+              "packages/python/tests/test_model_writes_chain_mysql.py",
+              "packages/python/tests/test_model_writes_chain_postgres.py",
+              "packages/python/tests/test_model_writes_chain_sqlite.py"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_model_writes.py",
+                  "test": "packages/python/tests/test_model_writes_chain_mysql.py",
                   "cases": [
-                    "model_write_cycle",
-                    "create_parts",
-                    "ordered_json_repeated_member_name"
+                    "ordered_json_keeps_its_member_order_and_number_text",
+                    "ordered_json_keeps_a_repeated_member_name",
+                    "codec_columns_round_trip",
+                    "ip_with_embedded_whitespace_is_refused",
+                    "stale_row_fails_the_optimistic_update_and_rollback_restores",
+                    "creates_refuses_a_bad_batch_before_any_statement",
+                    "creates_over_the_sqlite_bind_limit_is_refused",
+                    "creates_keeps_the_rows_in_order_across_batches",
+                    "creates_rolls_back_every_batch_when_a_later_one_fails"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -3182,11 +3339,17 @@
               "postgres": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_model_writes.py",
+                  "test": "packages/python/tests/test_model_writes_chain_postgres.py",
                   "cases": [
-                    "model_write_cycle",
-                    "create_parts",
-                    "ordered_json_repeated_member_name"
+                    "ordered_json_keeps_its_member_order_and_number_text",
+                    "ordered_json_keeps_a_repeated_member_name",
+                    "codec_columns_round_trip",
+                    "ip_with_embedded_whitespace_is_refused",
+                    "stale_row_fails_the_optimistic_update_and_rollback_restores",
+                    "creates_refuses_a_bad_batch_before_any_statement",
+                    "creates_over_the_sqlite_bind_limit_is_refused",
+                    "creates_keeps_the_rows_in_order_across_batches",
+                    "creates_rolls_back_every_batch_when_a_later_one_fails"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -3194,39 +3357,58 @@
               "sqlite": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_model_writes.py",
+                  "test": "packages/python/tests/test_model_writes_chain_sqlite.py",
                   "cases": [
-                    "model_write_cycle",
-                    "create_parts",
-                    "ordered_json_repeated_member_name"
+                    "ordered_json_keeps_its_member_order_and_number_text",
+                    "ordered_json_keeps_a_repeated_member_name",
+                    "codec_columns_round_trip",
+                    "ip_with_embedded_whitespace_is_refused",
+                    "stale_row_fails_the_optimistic_update_and_rollback_restores",
+                    "creates_refuses_a_bad_batch_before_any_statement",
+                    "creates_over_the_sqlite_bind_limit_is_refused",
+                    "creates_keeps_the_rows_in_order_across_batches",
+                    "creates_rolls_back_every_batch_when_a_later_one_fails"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
-            }
+            },
+            "inputs": [
+              "contracts/fixtures/model_writes_chain/model_writes_chain.json",
+              "contracts/fixtures/model_chain/model_chain.dbs"
+            ]
           },
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php-ext/tests/CoverageModelWritesExtensionTest.php"
-            ],
-            "inputs": [
-              "contracts/fixtures/bench/bench.dbs"
+              "packages/php-ext/tests/ModelWritesChainRecipeTestExtensionTest.php"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
+                  "test": "packages/php-ext/tests/ModelWritesChainRecipeTestExtensionTest.php",
                   "cases": [
-                    "model_write_cycle",
-                    "create_parts",
-                    "ordered_json_repeated_member_name"
+                    "ordered_json_keeps_its_member_order_and_number_text",
+                    "ordered_json_keeps_a_repeated_member_name",
+                    "codec_columns_round_trip",
+                    "ip_with_embedded_whitespace_is_refused",
+                    "stale_row_fails_the_optimistic_update_and_rollback_restores",
+                    "creates_refuses_a_bad_batch_before_any_statement",
+                    "creates_over_the_sqlite_bind_limit_is_refused",
+                    "creates_keeps_the_rows_in_order_across_batches",
+                    "creates_rolls_back_every_batch_when_a_later_one_fails"
                   ],
                   "symbols": {
-                    "model_write_cycle": "testModelWriteCycle",
-                    "create_parts": "testCreateParts",
-                    "ordered_json_repeated_member_name": "testOrderedJsonRepeatedMemberName"
+                    "ordered_json_keeps_its_member_order_and_number_text": "testMysql",
+                    "ordered_json_keeps_a_repeated_member_name": "testMysql",
+                    "codec_columns_round_trip": "testMysql",
+                    "ip_with_embedded_whitespace_is_refused": "testMysql",
+                    "stale_row_fails_the_optimistic_update_and_rollback_restores": "testMysql",
+                    "creates_refuses_a_bad_batch_before_any_statement": "testMysql",
+                    "creates_over_the_sqlite_bind_limit_is_refused": "testMysql",
+                    "creates_keeps_the_rows_in_order_across_batches": "testMysql",
+                    "creates_rolls_back_every_batch_when_a_later_one_fails": "testMysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -3234,16 +3416,28 @@
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
+                  "test": "packages/php-ext/tests/ModelWritesChainRecipeTestExtensionTest.php",
                   "cases": [
-                    "model_write_cycle",
-                    "create_parts",
-                    "ordered_json_repeated_member_name"
+                    "ordered_json_keeps_its_member_order_and_number_text",
+                    "ordered_json_keeps_a_repeated_member_name",
+                    "codec_columns_round_trip",
+                    "ip_with_embedded_whitespace_is_refused",
+                    "stale_row_fails_the_optimistic_update_and_rollback_restores",
+                    "creates_refuses_a_bad_batch_before_any_statement",
+                    "creates_over_the_sqlite_bind_limit_is_refused",
+                    "creates_keeps_the_rows_in_order_across_batches",
+                    "creates_rolls_back_every_batch_when_a_later_one_fails"
                   ],
                   "symbols": {
-                    "model_write_cycle": "testModelWriteCycle",
-                    "create_parts": "testCreateParts",
-                    "ordered_json_repeated_member_name": "testOrderedJsonRepeatedMemberName"
+                    "ordered_json_keeps_its_member_order_and_number_text": "testPostgres",
+                    "ordered_json_keeps_a_repeated_member_name": "testPostgres",
+                    "codec_columns_round_trip": "testPostgres",
+                    "ip_with_embedded_whitespace_is_refused": "testPostgres",
+                    "stale_row_fails_the_optimistic_update_and_rollback_restores": "testPostgres",
+                    "creates_refuses_a_bad_batch_before_any_statement": "testPostgres",
+                    "creates_over_the_sqlite_bind_limit_is_refused": "testPostgres",
+                    "creates_keeps_the_rows_in_order_across_batches": "testPostgres",
+                    "creates_rolls_back_every_batch_when_a_later_one_fails": "testPostgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -3251,21 +3445,37 @@
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
+                  "test": "packages/php-ext/tests/ModelWritesChainRecipeTestExtensionTest.php",
                   "cases": [
-                    "model_write_cycle",
-                    "create_parts",
-                    "ordered_json_repeated_member_name"
+                    "ordered_json_keeps_its_member_order_and_number_text",
+                    "ordered_json_keeps_a_repeated_member_name",
+                    "codec_columns_round_trip",
+                    "ip_with_embedded_whitespace_is_refused",
+                    "stale_row_fails_the_optimistic_update_and_rollback_restores",
+                    "creates_refuses_a_bad_batch_before_any_statement",
+                    "creates_over_the_sqlite_bind_limit_is_refused",
+                    "creates_keeps_the_rows_in_order_across_batches",
+                    "creates_rolls_back_every_batch_when_a_later_one_fails"
                   ],
                   "symbols": {
-                    "model_write_cycle": "testModelWriteCycle",
-                    "create_parts": "testCreateParts",
-                    "ordered_json_repeated_member_name": "testOrderedJsonRepeatedMemberName"
+                    "ordered_json_keeps_its_member_order_and_number_text": "testSqlite",
+                    "ordered_json_keeps_a_repeated_member_name": "testSqlite",
+                    "codec_columns_round_trip": "testSqlite",
+                    "ip_with_embedded_whitespace_is_refused": "testSqlite",
+                    "stale_row_fails_the_optimistic_update_and_rollback_restores": "testSqlite",
+                    "creates_refuses_a_bad_batch_before_any_statement": "testSqlite",
+                    "creates_over_the_sqlite_bind_limit_is_refused": "testSqlite",
+                    "creates_keeps_the_rows_in_order_across_batches": "testSqlite",
+                    "creates_rolls_back_every_batch_when_a_later_one_fails": "testSqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
-            }
+            },
+            "inputs": [
+              "contracts/fixtures/model_writes_chain/model_writes_chain.json",
+              "contracts/fixtures/model_chain/model_chain.dbs"
+            ]
           }
         },
         "dependents": []
@@ -15172,10 +15382,9 @@
         "packages/go/testcase/event_recorder.go"
       ],
       "tests": [
-        "packages/go/complexquery/complex_query_test.go",
-        "packages/go/model/coverage_model_writes_test.go"
+        "packages/go/complexquery/complex_query_test.go"
       ],
-      "command": "node scripts/features/coverage.mts --feature complex_query --part owner/go && node scripts/features/coverage.mts --feature model_writes --part owner/go"
+      "command": "node scripts/features/coverage.mts --feature complex_query --part owner/go"
     },
     {
       "id": "rust-clock-integration-test-support",
@@ -15198,17 +15407,6 @@
         "packages/rust/tests/tests/integration/coverage_model_queries.rs"
       ],
       "command": "make --no-print-directory temp-sqlite-fixture-rust-helper-check"
-    },
-    {
-      "id": "php-coverage-model-writes-case",
-      "paths": [
-        "packages/php/tests/CoverageModelWritesCase.php"
-      ],
-      "tests": [
-        "packages/php/tests/CoverageModelWritesTest.php",
-        "packages/php-ext/tests/CoverageModelWritesExtensionTest.php"
-      ],
-      "command": "node scripts/features/coverage.mts --feature model_writes --part owner/php --part owner/php-extension"
     },
     {
       "id": "php-database-test-assertions",

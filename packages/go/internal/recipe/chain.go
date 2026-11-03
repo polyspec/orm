@@ -9,8 +9,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"slices"
 	"strings"
 
+	orderedjson "github.com/polyspec/ordered-json/packages/go"
 	"github.com/polyspec/orm/packages/go/orm"
 )
 
@@ -115,6 +117,7 @@ type chainStep struct {
 	From            string                     `json:"from"`
 	Pick            []string                   `json:"pick"`
 	KeyBy           string                     `json:"key_by"`
+	OrderedText     string                     `json:"ordered_text"`
 	GroupValue      string                     `json:"group_value"`
 	DerivedIntegers []string                   `json:"derived_integers"`
 	Page            bool                       `json:"page"`
@@ -211,6 +214,48 @@ func chainValue(raw json.RawMessage, c *databaseContext) (any, error) {
 		}
 	}
 	return assignmentValue(raw, c)
+}
+
+// columnValue is the value of a column for a wrapper: a styled wrapper is the styled value of its value, and an object is
+// the styled value of the codec of its column, so that an ordered_json column keeps its member order and number text.
+func columnValue(core *orm.Core, column string, raw json.RawMessage, c *databaseContext) (any, error) {
+	var entries map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &entries); err != nil {
+		return chainValue(raw, c)
+	}
+	if styled, ok := entries["styled"]; ok && len(entries) == 1 {
+		value, err := chainPlain(styled, c)
+		if err != nil {
+			return nil, err
+		}
+		return orm.Value(value), nil
+	}
+	if _, ok := entries["object"]; ok && len(entries) == 1 {
+		model, err := c.schema.Model()
+		if err != nil {
+			return nil, err
+		}
+		if entity := model.Entities[core.Entity().Name]; entity != nil {
+			if field := entity.Field(column); field != nil && slices.Contains(field.Codec, "ordered_json") {
+				return styledArgument(raw, field.Codec, nil)
+			}
+		}
+	}
+	return chainValue(raw, c)
+}
+
+// orderedText is the text of the ordered-json value that a read holds in column, with its repeated members (DIA-26).
+func orderedText(row *tableRow, column string) (string, error) {
+	styled, ok := row.vals[column].(orm.StyledValue)
+	if !ok {
+		return "", fmt.Errorf("ordered_text: the column %s is a %T", column, row.vals[column])
+	}
+	data, _ := styled.Data()
+	value, ok := data.(*orderedjson.Value)
+	if !ok {
+		return "", fmt.Errorf("ordered_text: the value of %s is a %T", column, data)
+	}
+	return value.Raw(), nil
 }
 
 // chainPlain is a member of a styled object: the native value of its wrapper, without the styled-value wrapping.
@@ -877,6 +922,13 @@ func chainOp(raw json.RawMessage, c *databaseContext) (outcome, error) {
 		if !ok && m != nil {
 			return outcome{}, fmt.Errorf("model.get_by: the row is a %T", m)
 		}
+		if s.OrderedText != "" && row != nil {
+			text, err := orderedText(row, s.OrderedText)
+			if err != nil {
+				return outcome{}, err
+			}
+			return jsonOutcome(text), nil
+		}
 		value, err := chainRow(row, s.Pick)
 		if err != nil {
 			return outcome{}, err
@@ -1191,7 +1243,7 @@ func chainAssign(core *orm.Core, raw json.RawMessage, c *databaseContext) error 
 			}
 			continue
 		}
-		value, err := chainValue(member.value, c)
+		value, err := columnValue(core, member.key, member.value, c)
 		if err != nil {
 			return err
 		}

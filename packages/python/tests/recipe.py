@@ -2175,6 +2175,8 @@ def _chain_value(raw, context: dict) -> Any:
 
 def _column_value(model: Model, column: str, raw: dict, context: dict) -> Any:
     """The value of a column for a wrapper: an object is the styled value of its codec."""
+    if "styled" in raw:
+        return StyledValue.value(_chain_value(raw["styled"], context))
     if "object" not in raw:
         return _chain_value(raw, context)
     field = field_of(model.core.ent.entity, column)
@@ -2599,6 +2601,8 @@ def _table_model_count(step: dict, context: dict) -> dict:
 
 def _table_model_get_by(step: dict, context: dict) -> dict:
     row = _chain_built(step, context).get()
+    if "ordered_text" in step and row is not None:
+        return {"json": row.core.values[step["ordered_text"]].payload().raw}
     fields = {"json": _row_json(row, step.get("pick"))}
     if row is not None:
         fields["bind"] = row

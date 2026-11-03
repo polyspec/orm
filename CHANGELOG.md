@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The ordered-json, codec-column and batch-create writes are the cases of the recipe `model_writes_chain` on the builder of every runtime: member order and number text, a repeated member name, codec columns in the stored text, an IP with whitespace, a stale optimistic update, and `creates` (refused before any statement, over the SQLite bind limit, rows in order across batches, every batch rolled back); the coverage tests of the feature are gone. `contracts/features.json` declares the empty `dependents` of the `model_writes` and `model_queries` coverage, which the schema requires.
 - The chains of the generated-model queries are the cases of the recipe `model_queries_chain` on the builder of every runtime: page and total, sum, function column, removed columns, join with its index and subquery, relation, a NULL collection key and group rows; the coverage tests of the feature are removed, and PRT-35 fixes the code of a NULL key, not its message
 - A generated model of a set that uses an external document connects and reads a row of the used external table in a native test of every runtime, which fails when the generated schema value drops the external text; Go also compiles that output, and the PHPStan check of the query methods is bound in both PHP modes again.
 - A Python model read of a cell that its codec refuses raises `OrmError` with the code, as a write does, in place of `CodecError`; a direct codec call keeps `CodecError`.

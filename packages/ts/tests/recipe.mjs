@@ -1265,8 +1265,9 @@ function chainValue(raw, context) {
 }
 /** The value of a column for a wrapper: an object is the styled value of its codec. */
 function columnValue(m, column, raw, context) {
+  if ('styled' in raw) return StyledValue.value(chainValue(raw.styled, context));
   if (!('object' in raw)) return chainValue(raw, context);
-  return styledArgument(raw, m[CORE].ent.entity.fields.find(field => field.name === column)?.codec ?? [], new Map());
+  return styledArgument(raw, m[CORE].ent.entity.fields.find(field => field.name === column)?.stages ?? [], new Map());
 }
 /** The public function of a function call (F5). */
 function chainFunc({ fn, args = [] }) {
@@ -1574,6 +1575,7 @@ const TABLE_OPS = {
   },
   async 'model.get_by'(s, context) {
     const row = await chainBuilt(s, context).get();
+    if (s.ordered_text !== undefined && row !== null) return { json: row[CORE].values.get(s.ordered_text).payload().raw };
     return { bind: row ?? undefined, json: rowJson(row, s.pick) };
   },
   'model.create': (s, context) => chainWrite(s, context, m => (s.restore_or_create === true ? m.restoreOrCreate() : m.create())),

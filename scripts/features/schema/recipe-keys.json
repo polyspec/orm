@@ -333,6 +333,7 @@
       "model",
       "op",
       "order",
+      "ordered_text",
       "pick",
       "relations",
       "remove_columns",
