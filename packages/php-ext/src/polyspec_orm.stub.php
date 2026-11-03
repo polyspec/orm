@@ -1627,6 +1627,7 @@ final class Db
     public function writeOf(?TxFrame $frame, Request $r, ?\Closure $afterHook = null): array {}
     public function execute(array $step, array $params): void {}
     /** @internal @return array{sql: string, binds: list<mixed>} */
+    public function pagePlanSteps(?TxFrame $frame, Request $r): array {}
     public function statement(Request $r): array {}
     /** @internal */
     public function clock(): \DateTimeImmutable {}
@@ -2206,6 +2207,7 @@ abstract class Model implements \JsonSerializable, ModelMetadata
     private function aggregate(string $fn): ?float {}
     private static function aggregateNumber(mixed $value): float {}
     public function getsPage(int $page, int $perPage): Page {}
+    public function getPagePlanSteps(int $page, int $perPage): array {}
     public function getQuery(): array {}
     private static function manifestHash(): string {}
     private function writeRequest(string $kind, Db $db): Request {}

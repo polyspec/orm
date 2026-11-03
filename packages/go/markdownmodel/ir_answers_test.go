@@ -22,8 +22,13 @@ import (
 // Requirements: PRT-69, PRT-71, PRT-72.
 func TestRecipeIRAnswersNone(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	chains := conformanceCases()
-	recipe.Run(t, "../../../tests/ir/answers.json", recipe.None, recipe.WithIRAnswer(func(t *testing.T, chain string, answer json.RawMessage, answers map[string]json.RawMessage, params bool) (any, error) {
+	recipe.Run(t, "../../../tests/ir/answers.json", recipe.None, recipe.WithIRAnswer(chainAnswer(conformanceCases())))
+}
+
+// chainAnswer returns the runner of the ir.answer steps of a recipe: it runs the chain of the step on a listener that answers with
+// the answer of the step.
+func chainAnswer(chains map[string]caseFunc) recipe.IRAnswer {
+	return func(t *testing.T, chain string, answer json.RawMessage, answers map[string]json.RawMessage, params bool) (any, error) {
 		testcase.Start(t, testcase.Compute)
 		run := chains[chain]
 		if run == nil {
@@ -55,7 +60,7 @@ func TestRecipeIRAnswersNone(t *testing.T) {
 			return sent.params(t), nil
 		}
 		return result, err
-	}))
+	}
 }
 
 // requestLog keeps the lines that a listener receives after its connect, so that a case checks the request text the chain

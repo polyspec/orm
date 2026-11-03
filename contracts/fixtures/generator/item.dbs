@@ -1,0 +1,8 @@
+dbspec 1 names
+
+table item {
+  seq i64 identity
+  amount i32
+  column_under_test i32
+  primary key (seq)
+}
