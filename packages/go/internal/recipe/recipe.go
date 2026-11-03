@@ -55,6 +55,10 @@ type step struct {
 	DSN     string                     `json:"dsn"`
 	Schema  string                     `json:"schema"`
 	Input   json.RawMessage            `json:"input"`
+	// Names are the output names of a planner.columns step.
+	Names []string `json:"names"`
+	// ManifestHash is the hash an ir.validate request holds in place of the hash of the schema of the recipe.
+	ManifestHash string `json:"manifest_hash"`
 	Lines   []string                   `json:"lines"`
 	Plan    json.RawMessage            `json:"plan"`
 	Plans   []json.RawMessage          `json:"plans"`
@@ -200,6 +204,10 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 	switch s.Op {
 	case "planner.compile":
 		return checkPlanner(o.dir, s, database)
+	case "ir.param_uses":
+		return checkParamUses(o.dir, s, database)
+	case "planner.columns":
+		return checkPlannerColumns(o.dir, s, database)
 	case "generator.generate":
 		return checkGenerator(t, o.dir, s, database)
 	case "dbspec.parse", "dbspec.parse_plan", "dbspec.emit_plan", "dbspec.diff", "dbspec.plan_steps", "dbspec.chain", "dbspec.compare":
@@ -222,7 +230,7 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 		return checkMermaid(expect, got)
 	}
 	if s.Op == "ir.validate" {
-		return checkValidate(s.Expect[database], validate(model, s.Request))
+		return checkValidate(s.Expect[database], validate(model, s.Request, s.ManifestHash))
 	}
 	if s.Op == "ir.answer" {
 		return checkAnswer(t, s, database, o.irAnswer)
@@ -925,7 +933,7 @@ func sameFloat(a, b string) bool {
 
 // validate passes a request of an ir.validate step to the validator of the protocol, with the manifest_hash of the schema
 // added (the request holds none), as the native vector test did. Its literal numbers are kept as their JSON text.
-func validate(m *runtimemodel.Model, raw json.RawMessage) error {
+func validate(m *runtimemodel.Model, raw json.RawMessage, manifestHash string) error {
 	if m == nil {
 		return fmt.Errorf("ir.validate needs the schema key of the recipe")
 	}
@@ -936,7 +944,10 @@ func validate(m *runtimemodel.Model, raw json.RawMessage) error {
 	if _, ok := request["manifest_hash"]; ok {
 		return fmt.Errorf("request already holds manifest_hash")
 	}
-	hash, err := json.Marshal(m.ManifestHash)
+	if manifestHash == "" {
+		manifestHash = m.ManifestHash
+	}
+	hash, err := json.Marshal(manifestHash)
 	if err != nil {
 		return err
 	}
@@ -1054,6 +1065,126 @@ type plannerSlot struct {
 // checkPlanner compiles the request of a planner.compile step with the engine of each dialect, against the manifest of the
 // schema that the step names relative to dir, and compares the plans with the expect of database: {value: {mysql, postgres,
 // sqlite}} with the statements of each dialect, or {error: CODE}, which every dialect must fail with.
+// plannerRequest is the model of the schema of a planner step and the JSON of its input with the manifest_hash of that schema.
+func plannerRequest(dir string, s step) (*runtimemodel.Model, []byte, error) {
+	m, err := runtimemodel.LoadFiles(filepath.Join(dir, s.Schema))
+	if err != nil {
+		return nil, nil, err
+	}
+	var input map[string]json.RawMessage
+	if err := json.Unmarshal(s.Input, &input); err != nil {
+		return nil, nil, err
+	}
+	hash, err := json.Marshal(m.ManifestHash)
+	if err != nil {
+		return nil, nil, err
+	}
+	input["manifest_hash"] = hash
+	request, err := json.Marshal(input)
+	return m, request, err
+}
+
+// checkParamUses states the uses of each parameter of a validated request, the slot form that a markdown connection
+// reads for it (DIA-31, PRT-67): {uses: [[{type} or {type, assign, column, length, null, precision, scale}]]}.
+func checkParamUses(dir string, s step, database string) error {
+	var outcome struct {
+		Value json.RawMessage `json:"value"`
+	}
+	if err := json.Unmarshal(s.Expect[database], &outcome); err != nil {
+		return err
+	}
+	m, body, err := plannerRequest(dir, s)
+	if err != nil {
+		return err
+	}
+	request, err := ir.Decode(m, body)
+	if err != nil {
+		return err
+	}
+	uses, err := ir.ParamUses(m, request)
+	if err != nil {
+		return err
+	}
+	list := []any{}
+	for _, parameter := range uses {
+		entries := []any{}
+		for _, use := range parameter {
+			entry := map[string]any{"type": use.Type}
+			if f := use.Column; f != nil {
+				entry["column"], entry["length"], entry["null"], entry["precision"], entry["scale"] = f.Name, f.Length, f.Null, f.Precision, f.Scale
+				if use.Assign {
+					entry["assign"] = true
+				}
+			}
+			entries = append(entries, entry)
+		}
+		list = append(list, entries)
+	}
+	return sameJSON("ir.param_uses", map[string]any{"uses": list}, outcome.Value)
+}
+
+// checkPlannerColumns states the output columns that the names of the step select from the first statement of the plan
+// of each dialect: their type, whether they are hidden, and whether they hold the AES key version (PRT-69, DIA-33).
+func checkPlannerColumns(dir string, s step, database string) error {
+	var outcome struct {
+		Value json.RawMessage `json:"value"`
+	}
+	if err := json.Unmarshal(s.Expect[database], &outcome); err != nil {
+		return err
+	}
+	m, request, err := plannerRequest(dir, s)
+	if err != nil {
+		return err
+	}
+	for _, dialect := range plannerDialects {
+		e, err := engine.New(m, dialect)
+		if err != nil {
+			return err
+		}
+		out, err := e.Compile(request)
+		if err != nil {
+			return fmt.Errorf("%s: %w", dialect, err)
+		}
+		var compiled plan.Plan
+		if err := json.Unmarshal(out, &compiled); err != nil {
+			return err
+		}
+		assemble := compiled.Steps[0].Assemble
+		got := []any{}
+		for _, name := range s.Names {
+			for position, column := range assemble.Columns {
+				if column.Name == name {
+					aesVersion := assemble.AESVersion != nil && *assemble.AESVersion == position
+					got = append(got, map[string]any{"name": name, "type": column.Type, "hidden": column.Hidden, "aes_version": aesVersion})
+				}
+			}
+		}
+		if err := sameJSON("planner.columns "+dialect, got, outcome.Value); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// sameJSON compares a value with the JSON of an expect, whatever the order of their keys.
+func sameJSON(what string, got any, want json.RawMessage) error {
+	body, err := json.Marshal(got)
+	if err != nil {
+		return err
+	}
+	var actual, expected any
+	if err := json.Unmarshal(body, &actual); err != nil {
+		return err
+	}
+	if err := json.Unmarshal(want, &expected); err != nil {
+		return err
+	}
+	if !reflect.DeepEqual(actual, expected) {
+		return fmt.Errorf("%s: got %s, want %s", what, body, want)
+	}
+	return nil
+}
+
 func checkPlanner(dir string, s step, database string) error {
 	if database != None {
 		return fmt.Errorf("planner.compile runs without a database")

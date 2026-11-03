@@ -45,7 +45,10 @@
   "PRT-19",
   "PRT-67",
   "DSL-95",
-  "DIA-16"
+  "DIA-16",
+  "COD-4",
+  "DIA-33",
+  "PRT-69"
  ],
  "cases": [
   {
@@ -10817,6 +10820,1796 @@
      "expect": {
       "none": {
        "error": "OPERATOR_NOT_ALLOWED"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "param_uses_column_function",
+   "requirements": [
+    "DIA-31",
+    "PRT-67"
+   ],
+   "steps": [
+    {
+     "op": "ir.param_uses",
+     "schema": "../../contracts/fixtures/bench/bench.dbs",
+     "input": {
+      "entity": "author",
+      "ir_version": 1,
+      "kind": "all",
+      "n_params": 3,
+      "where": {
+       "items": [
+        {
+         "pred": {
+          "column": "created_ts",
+          "fn": {
+           "name": "year"
+          },
+          "op": "eq",
+          "p": 0
+         }
+        },
+        {
+         "pred": {
+          "column": "start_dt",
+          "conn": "and",
+          "fn": {
+           "name": "date"
+          },
+          "op": "eq",
+          "p": 1
+         }
+        },
+        {
+         "pred": {
+          "column": "name",
+          "conn": "and",
+          "op": "eq",
+          "p": 2
+         }
+        }
+       ]
+      }
+     },
+     "expect": {
+      "none": {
+       "value": {
+        "uses": [
+         [
+          {
+           "type": "i64"
+          }
+         ],
+         [
+          {
+           "type": "date"
+          }
+         ],
+         [
+          {
+           "column": "name",
+           "length": 191,
+           "null": false,
+           "precision": 0,
+           "scale": 0,
+           "type": "varchar"
+          }
+         ]
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "param_uses_interval",
+   "requirements": [
+    "DIA-31",
+    "PRT-67"
+   ],
+   "steps": [
+    {
+     "op": "ir.param_uses",
+     "schema": "../../contracts/fixtures/bench/bench.dbs",
+     "input": {
+      "entity": "author",
+      "ir_version": 1,
+      "kind": "all",
+      "n_params": 2,
+      "where": {
+       "items": [
+        {
+         "pred": {
+          "column": "start_dt",
+          "op": "gt",
+          "value": {
+           "name": "days_ago",
+           "ps": [
+            0
+           ]
+          }
+         }
+        },
+        {
+         "pred": {
+          "column": "end_dt",
+          "conn": "and",
+          "op": "lt",
+          "value": {
+           "name": "seconds_later",
+           "ps": [
+            1
+           ]
+          }
+         }
+        }
+       ]
+      }
+     },
+     "expect": {
+      "none": {
+       "value": {
+        "uses": [
+         [
+          {
+           "type": "i32"
+          }
+         ],
+         [
+          {
+           "type": "f64"
+          }
+         ]
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "param_uses_contains",
+   "requirements": [
+    "DIA-31",
+    "PRT-67"
+   ],
+   "steps": [
+    {
+     "op": "ir.param_uses",
+     "schema": "../../contracts/fixtures/bench/bench.dbs",
+     "input": {
+      "entity": "author",
+      "ir_version": 1,
+      "kind": "all",
+      "n_params": 2,
+      "where": {
+       "items": [
+        {
+         "pred": {
+          "column": "name",
+          "op": "contains",
+          "p": 0
+         }
+        },
+        {
+         "pred": {
+          "column": "photo_url",
+          "conn": "and",
+          "op": "contains_binary",
+          "p": 1
+         }
+        }
+       ]
+      }
+     },
+     "expect": {
+      "none": {
+       "value": {
+        "uses": [
+         [
+          {
+           "type": "text"
+          }
+         ],
+         [
+          {
+           "type": "text"
+          }
+         ]
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "param_uses_if_parent",
+   "requirements": [
+    "DIA-31",
+    "PRT-67"
+   ],
+   "steps": [
+    {
+     "op": "ir.param_uses",
+     "schema": "../../contracts/fixtures/bench/bench.dbs",
+     "input": {
+      "entity": "author",
+      "ir_version": 1,
+      "kind": "all",
+      "n_params": 2,
+      "relations": [
+       {
+        "keys": [
+         {
+          "left": "user_seq",
+          "right": "seq"
+         }
+        ],
+        "kind": "one",
+        "query": {
+         "entity": "user",
+         "if_parent": {
+          "column": "is_close",
+          "p": 1
+         }
+        },
+        "rel": "user"
+       }
+      ],
+      "where": {
+       "items": [
+        {
+         "pred": {
+          "column": "price",
+          "op": "eq",
+          "p": 0
+         }
+        }
+       ]
+      }
+     },
+     "expect": {
+      "none": {
+       "value": {
+        "uses": [
+         [
+          {
+           "column": "price",
+           "length": 0,
+           "null": true,
+           "precision": 13,
+           "scale": 3,
+           "type": "decimal"
+          }
+         ],
+         [
+          {
+           "column": "is_close",
+           "length": 0,
+           "null": false,
+           "precision": 0,
+           "scale": 0,
+           "type": "bool"
+          }
+         ]
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "param_uses_optimistic",
+   "requirements": [
+    "DIA-31",
+    "PRT-67"
+   ],
+   "steps": [
+    {
+     "op": "ir.param_uses",
+     "schema": "../../contracts/fixtures/bench/bench.dbs",
+     "input": {
+      "entity": "author",
+      "ir_version": 1,
+      "kind": "update",
+      "n_params": 3,
+      "optimistic": {
+       "column": "updated_ts",
+       "p": 2
+      },
+      "set": [
+       {
+        "column": "name",
+        "p": 0
+       }
+      ],
+      "where": {
+       "items": [
+        {
+         "pred": {
+          "column": "seq",
+          "op": "eq",
+          "p": 1
+         }
+        }
+       ]
+      }
+     },
+     "expect": {
+      "none": {
+       "value": {
+        "uses": [
+         [
+          {
+           "assign": true,
+           "column": "name",
+           "length": 191,
+           "null": false,
+           "precision": 0,
+           "scale": 0,
+           "type": "varchar"
+          }
+         ],
+         [
+          {
+           "column": "seq",
+           "length": 0,
+           "null": false,
+           "precision": 0,
+           "scale": 0,
+           "type": "i64"
+          }
+         ],
+         [
+          {
+           "column": "updated_ts",
+           "length": 0,
+           "null": false,
+           "precision": 6,
+           "scale": 0,
+           "type": "datetime"
+          }
+         ]
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "planner_blind_index_multi_row_source_position",
+   "requirements": [
+    "COD-4"
+   ],
+   "steps": [
+    {
+     "op": "planner.compile",
+     "schema": "shared_blind_index.dbs",
+     "input": {
+      "entity": "record",
+      "kind": "insert",
+      "n_params": 6,
+      "set": [
+       {
+        "column": "name",
+        "p": 0
+       },
+       {
+        "column": "aes_b",
+        "p": 1
+       }
+      ],
+      "rows": [
+       [
+        2,
+        3
+       ],
+       [
+        4,
+        5
+       ]
+      ],
+      "ir_version": 1
+     },
+     "expect": {
+      "none": {
+       "value": {
+        "mysql": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 0,
+            "type": "varchar"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "bytes"
+           },
+           {
+            "from": "param",
+            "length": 0,
+            "param": 1,
+            "type": "varchar"
+           },
+           {
+            "from": "config",
+            "type": "i32"
+           },
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 2,
+            "type": "varchar"
+           },
+           {
+            "from": "param",
+            "param": 3,
+            "type": "bytes"
+           },
+           {
+            "from": "param",
+            "length": 0,
+            "param": 3,
+            "type": "varchar"
+           },
+           {
+            "from": "config",
+            "type": "i32"
+           },
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 4,
+            "type": "varchar"
+           },
+           {
+            "from": "param",
+            "param": 5,
+            "type": "bytes"
+           },
+           {
+            "from": "param",
+            "length": 0,
+            "param": 5,
+            "type": "varchar"
+           },
+           {
+            "from": "config",
+            "type": "i32"
+           }
+          ],
+          "sql": "INSERT INTO `record` (`name`, `aes_b`, `idx`, `version`) VALUES (?, ?, ?, ?), (?, ?, ?, ?), (?, ?, ?, ?)",
+          "tables": [
+           "record"
+          ]
+         }
+        ],
+        "postgres": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 0,
+            "type": "varchar"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "bytes"
+           },
+           {
+            "from": "param",
+            "length": 0,
+            "param": 1,
+            "type": "varchar"
+           },
+           {
+            "from": "config",
+            "type": "i32"
+           },
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 2,
+            "type": "varchar"
+           },
+           {
+            "from": "param",
+            "param": 3,
+            "type": "bytes"
+           },
+           {
+            "from": "param",
+            "length": 0,
+            "param": 3,
+            "type": "varchar"
+           },
+           {
+            "from": "config",
+            "type": "i32"
+           },
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 4,
+            "type": "varchar"
+           },
+           {
+            "from": "param",
+            "param": 5,
+            "type": "bytes"
+           },
+           {
+            "from": "param",
+            "length": 0,
+            "param": 5,
+            "type": "varchar"
+           },
+           {
+            "from": "config",
+            "type": "i32"
+           }
+          ],
+          "sql": "INSERT INTO \"record\" (\"name\", \"aes_b\", \"idx\", \"version\") VALUES ($1, $2, $3, $4), ($5, $6, $7, $8), ($9, $10, $11, $12)",
+          "tables": [
+           "record"
+          ]
+         }
+        ],
+        "sqlite": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 0,
+            "type": "varchar"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "bytes"
+           },
+           {
+            "from": "param",
+            "length": 0,
+            "param": 1,
+            "type": "varchar"
+           },
+           {
+            "from": "config",
+            "type": "i32"
+           },
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 2,
+            "type": "varchar"
+           },
+           {
+            "from": "param",
+            "param": 3,
+            "type": "bytes"
+           },
+           {
+            "from": "param",
+            "length": 0,
+            "param": 3,
+            "type": "varchar"
+           },
+           {
+            "from": "config",
+            "type": "i32"
+           },
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 4,
+            "type": "varchar"
+           },
+           {
+            "from": "param",
+            "param": 5,
+            "type": "bytes"
+           },
+           {
+            "from": "param",
+            "length": 0,
+            "param": 5,
+            "type": "varchar"
+           },
+           {
+            "from": "config",
+            "type": "i32"
+           }
+          ],
+          "sql": "INSERT INTO \"record\" (\"name\", \"aes_b\", \"idx\", \"version\") VALUES (?, ?, ?, ?), (?, ?, ?, ?), (?, ?, ?, ?)",
+          "tables": [
+           "record"
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "planner_blind_index_ordinary_insert_has_no_slot",
+   "requirements": [
+    "COD-4"
+   ],
+   "steps": [
+    {
+     "op": "planner.compile",
+     "schema": "shared_blind_index.dbs",
+     "input": {
+      "entity": "record",
+      "kind": "insert",
+      "n_params": 1,
+      "set": [
+       {
+        "column": "name",
+        "p": 0
+       }
+      ],
+      "ir_version": 1
+     },
+     "expect": {
+      "none": {
+       "value": {
+        "mysql": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 0,
+            "type": "varchar"
+           },
+           {
+            "from": "config",
+            "type": "i32"
+           }
+          ],
+          "sql": "INSERT INTO `record` (`name`, `version`) VALUES (?, ?)",
+          "tables": [
+           "record"
+          ]
+         }
+        ],
+        "postgres": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 0,
+            "type": "varchar"
+           },
+           {
+            "from": "config",
+            "type": "i32"
+           }
+          ],
+          "sql": "INSERT INTO \"record\" (\"name\", \"version\") VALUES ($1, $2) RETURNING \"id\"",
+          "tables": [
+           "record"
+          ]
+         }
+        ],
+        "sqlite": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 0,
+            "type": "varchar"
+           },
+           {
+            "from": "config",
+            "type": "i32"
+           }
+          ],
+          "sql": "INSERT INTO \"record\" (\"name\", \"version\") VALUES (?, ?) RETURNING \"id\"",
+          "tables": [
+           "record"
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "planner_blind_index_rejects_two_sources",
+   "requirements": [
+    "COD-4"
+   ],
+   "steps": [
+    {
+     "op": "planner.compile",
+     "schema": "shared_blind_index.dbs",
+     "input": {
+      "entity": "record",
+      "kind": "insert",
+      "ir_version": 1,
+      "n_params": 3,
+      "set": [
+       {
+        "column": "name",
+        "p": 0
+       },
+       {
+        "column": "aes_a",
+        "p": 1
+       },
+       {
+        "column": "aes_b",
+        "p": 2
+       }
+      ]
+     },
+     "expect": {
+      "none": {
+       "error": "IR_INVALID"
+      }
+     }
+    },
+    {
+     "op": "planner.compile",
+     "schema": "shared_blind_index.dbs",
+     "input": {
+      "entity": "record",
+      "kind": "insert",
+      "ir_version": 1,
+      "n_params": 2,
+      "set": [
+       {
+        "column": "name",
+        "p": 0
+       },
+       {
+        "column": "aes_a",
+        "p": 1
+       },
+       {
+        "column": "aes_b",
+        "p": 1
+       }
+      ]
+     },
+     "expect": {
+      "none": {
+       "error": "IR_INVALID"
+      }
+     }
+    },
+    {
+     "op": "planner.compile",
+     "schema": "shared_blind_index.dbs",
+     "input": {
+      "entity": "record",
+      "kind": "insert",
+      "ir_version": 1,
+      "n_params": 1,
+      "set": [
+       {
+        "column": "name",
+        "p": 0
+       },
+       {
+        "column": "aes_a",
+        "null": true
+       },
+       {
+        "column": "aes_b",
+        "null": true
+       }
+      ]
+     },
+     "expect": {
+      "none": {
+       "error": "IR_INVALID"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "planner_blind_index_explicit_target_wins",
+   "requirements": [
+    "COD-4"
+   ],
+   "steps": [
+    {
+     "op": "planner.compile",
+     "schema": "shared_blind_index.dbs",
+     "input": {
+      "entity": "record",
+      "kind": "insert",
+      "n_params": 4,
+      "set": [
+       {
+        "column": "name",
+        "p": 0
+       },
+       {
+        "column": "aes_a",
+        "p": 1
+       },
+       {
+        "column": "aes_b",
+        "p": 2
+       },
+       {
+        "column": "idx",
+        "p": 3
+       }
+      ],
+      "ir_version": 1
+     },
+     "expect": {
+      "none": {
+       "value": {
+        "mysql": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 0,
+            "type": "varchar"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "bytes"
+           },
+           {
+            "from": "param",
+            "param": 2,
+            "type": "bytes"
+           },
+           {
+            "from": "param",
+            "length": 0,
+            "param": 3,
+            "type": "varchar"
+           },
+           {
+            "from": "config",
+            "type": "i32"
+           }
+          ],
+          "sql": "INSERT INTO `record` (`name`, `aes_a`, `aes_b`, `idx`, `version`) VALUES (?, ?, ?, ?, ?)",
+          "tables": [
+           "record"
+          ]
+         }
+        ],
+        "postgres": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 0,
+            "type": "varchar"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "bytes"
+           },
+           {
+            "from": "param",
+            "param": 2,
+            "type": "bytes"
+           },
+           {
+            "from": "param",
+            "length": 0,
+            "param": 3,
+            "type": "varchar"
+           },
+           {
+            "from": "config",
+            "type": "i32"
+           }
+          ],
+          "sql": "INSERT INTO \"record\" (\"name\", \"aes_a\", \"aes_b\", \"idx\", \"version\") VALUES ($1, $2, $3, $4, $5) RETURNING \"id\"",
+          "tables": [
+           "record"
+          ]
+         }
+        ],
+        "sqlite": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 0,
+            "type": "varchar"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "bytes"
+           },
+           {
+            "from": "param",
+            "param": 2,
+            "type": "bytes"
+           },
+           {
+            "from": "param",
+            "length": 0,
+            "param": 3,
+            "type": "varchar"
+           },
+           {
+            "from": "config",
+            "type": "i32"
+           }
+          ],
+          "sql": "INSERT INTO \"record\" (\"name\", \"aes_a\", \"aes_b\", \"idx\", \"version\") VALUES (?, ?, ?, ?, ?) RETURNING \"id\"",
+          "tables": [
+           "record"
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "planner_blind_index_insert_source_with_on_duplicate",
+   "requirements": [
+    "COD-4"
+   ],
+   "steps": [
+    {
+     "op": "planner.compile",
+     "schema": "shared_blind_index.dbs",
+     "input": {
+      "entity": "record",
+      "kind": "insert",
+      "n_params": 3,
+      "set": [
+       {
+        "column": "name",
+        "p": 0
+       },
+       {
+        "column": "aes_a",
+        "p": 1
+       }
+      ],
+      "on_duplicate": [
+       {
+        "column": "name",
+        "p": 2
+       }
+      ],
+      "ir_version": 1
+     },
+     "expect": {
+      "none": {
+       "value": {
+        "mysql": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 0,
+            "type": "varchar"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "bytes"
+           },
+           {
+            "from": "param",
+            "length": 0,
+            "param": 1,
+            "type": "varchar"
+           },
+           {
+            "from": "config",
+            "type": "i32"
+           },
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 2,
+            "type": "varchar"
+           }
+          ],
+          "sql": "INSERT INTO `record` (`name`, `aes_a`, `idx`, `version`) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE `name` = ?, `id` = LAST_INSERT_ID(`id`)",
+          "tables": [
+           "record"
+          ]
+         }
+        ],
+        "postgres": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 0,
+            "type": "varchar"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "bytes"
+           },
+           {
+            "from": "param",
+            "length": 0,
+            "param": 1,
+            "type": "varchar"
+           },
+           {
+            "from": "config",
+            "type": "i32"
+           },
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 2,
+            "type": "varchar"
+           }
+          ],
+          "sql": "INSERT INTO \"record\" (\"name\", \"aes_a\", \"idx\", \"version\") VALUES ($1, $2, $3, $4) ON CONFLICT (\"idx\") DO UPDATE SET \"name\" = $5 RETURNING \"id\"",
+          "tables": [
+           "record"
+          ]
+         }
+        ],
+        "sqlite": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 0,
+            "type": "varchar"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "bytes"
+           },
+           {
+            "from": "param",
+            "length": 0,
+            "param": 1,
+            "type": "varchar"
+           },
+           {
+            "from": "config",
+            "type": "i32"
+           },
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 2,
+            "type": "varchar"
+           }
+          ],
+          "sql": "INSERT INTO \"record\" (\"name\", \"aes_a\", \"idx\", \"version\") VALUES (?, ?, ?, ?) ON CONFLICT (\"idx\") DO UPDATE SET \"name\" = ? RETURNING \"id\"",
+          "tables": [
+           "record"
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "planner_blind_index_on_duplicate_explicit_target",
+   "requirements": [
+    "COD-4"
+   ],
+   "steps": [
+    {
+     "op": "planner.compile",
+     "schema": "shared_blind_index.dbs",
+     "input": {
+      "entity": "record",
+      "kind": "insert",
+      "n_params": 5,
+      "set": [
+       {
+        "column": "name",
+        "p": 0
+       },
+       {
+        "column": "idx",
+        "p": 1
+       }
+      ],
+      "on_duplicate": [
+       {
+        "column": "aes_a",
+        "p": 2
+       },
+       {
+        "column": "aes_b",
+        "p": 3
+       },
+       {
+        "column": "idx",
+        "p": 4
+       }
+      ],
+      "ir_version": 1
+     },
+     "expect": {
+      "none": {
+       "value": {
+        "mysql": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 0,
+            "type": "varchar"
+           },
+           {
+            "from": "param",
+            "length": 0,
+            "param": 1,
+            "type": "varchar"
+           },
+           {
+            "from": "config",
+            "type": "i32"
+           },
+           {
+            "from": "param",
+            "param": 2,
+            "type": "bytes"
+           },
+           {
+            "from": "param",
+            "param": 3,
+            "type": "bytes"
+           },
+           {
+            "from": "param",
+            "length": 0,
+            "param": 4,
+            "type": "varchar"
+           },
+           {
+            "from": "config",
+            "type": "i32"
+           }
+          ],
+          "sql": "INSERT INTO `record` (`name`, `idx`, `version`) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE `aes_a` = ?, `aes_b` = ?, `idx` = ?, `version` = ?, `id` = LAST_INSERT_ID(`id`)",
+          "tables": [
+           "record"
+          ]
+         }
+        ],
+        "postgres": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 0,
+            "type": "varchar"
+           },
+           {
+            "from": "param",
+            "length": 0,
+            "param": 1,
+            "type": "varchar"
+           },
+           {
+            "from": "config",
+            "type": "i32"
+           },
+           {
+            "from": "param",
+            "param": 2,
+            "type": "bytes"
+           },
+           {
+            "from": "param",
+            "param": 3,
+            "type": "bytes"
+           },
+           {
+            "from": "param",
+            "length": 0,
+            "param": 4,
+            "type": "varchar"
+           },
+           {
+            "from": "config",
+            "type": "i32"
+           }
+          ],
+          "sql": "INSERT INTO \"record\" (\"name\", \"idx\", \"version\") VALUES ($1, $2, $3) ON CONFLICT (\"idx\") DO UPDATE SET \"aes_a\" = $4, \"aes_b\" = $5, \"idx\" = $6, \"version\" = $7 RETURNING \"id\"",
+          "tables": [
+           "record"
+          ]
+         }
+        ],
+        "sqlite": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 0,
+            "type": "varchar"
+           },
+           {
+            "from": "param",
+            "length": 0,
+            "param": 1,
+            "type": "varchar"
+           },
+           {
+            "from": "config",
+            "type": "i32"
+           },
+           {
+            "from": "param",
+            "param": 2,
+            "type": "bytes"
+           },
+           {
+            "from": "param",
+            "param": 3,
+            "type": "bytes"
+           },
+           {
+            "from": "param",
+            "length": 0,
+            "param": 4,
+            "type": "varchar"
+           },
+           {
+            "from": "config",
+            "type": "i32"
+           }
+          ],
+          "sql": "INSERT INTO \"record\" (\"name\", \"idx\", \"version\") VALUES (?, ?, ?) ON CONFLICT (\"idx\") DO UPDATE SET \"aes_a\" = ?, \"aes_b\" = ?, \"idx\" = ?, \"version\" = ? RETURNING \"id\"",
+          "tables": [
+           "record"
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "planner_blind_index_on_duplicate_rejects_two_sources",
+   "requirements": [
+    "COD-4"
+   ],
+   "steps": [
+    {
+     "op": "planner.compile",
+     "schema": "shared_blind_index.dbs",
+     "input": {
+      "entity": "record",
+      "kind": "insert",
+      "ir_version": 1,
+      "n_params": 4,
+      "set": [
+       {
+        "column": "name",
+        "p": 0
+       },
+       {
+        "column": "idx",
+        "p": 1
+       }
+      ],
+      "on_duplicate": [
+       {
+        "column": "aes_a",
+        "p": 2
+       },
+       {
+        "column": "aes_b",
+        "p": 3
+       }
+      ]
+     },
+     "expect": {
+      "none": {
+       "error": "IR_INVALID"
+      }
+     }
+    },
+    {
+     "op": "planner.compile",
+     "schema": "shared_blind_index.dbs",
+     "input": {
+      "entity": "record",
+      "kind": "insert",
+      "ir_version": 1,
+      "n_params": 3,
+      "set": [
+       {
+        "column": "name",
+        "p": 0
+       },
+       {
+        "column": "idx",
+        "p": 1
+       }
+      ],
+      "on_duplicate": [
+       {
+        "column": "aes_a",
+        "p": 2
+       },
+       {
+        "column": "aes_b",
+        "p": 2
+       }
+      ]
+     },
+     "expect": {
+      "none": {
+       "error": "IR_INVALID"
+      }
+     }
+    },
+    {
+     "op": "planner.compile",
+     "schema": "shared_blind_index.dbs",
+     "input": {
+      "entity": "record",
+      "kind": "insert",
+      "ir_version": 1,
+      "n_params": 2,
+      "set": [
+       {
+        "column": "name",
+        "p": 0
+       },
+       {
+        "column": "idx",
+        "p": 1
+       }
+      ],
+      "on_duplicate": [
+       {
+        "column": "aes_a",
+        "null": true
+       },
+       {
+        "column": "aes_b",
+        "null": true
+       }
+      ]
+     },
+     "expect": {
+      "none": {
+       "error": "IR_INVALID"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "planner_scalar_subquery_aggregate_types",
+   "requirements": [
+    "PRT-69"
+   ],
+   "steps": [
+    {
+     "op": "planner.columns",
+     "schema": "../../contracts/fixtures/bench/bench.dbs",
+     "input": {
+      "columns": {
+       "sub": {
+        "first_author": {
+         "query": {
+          "entity": "author",
+          "where": {
+           "items": [
+            {
+             "pred": {
+              "column": "user_seq",
+              "op": "eq_col",
+              "ref": {
+               "column": "seq",
+               "path": "^"
+              }
+             }
+            }
+           ]
+          }
+         },
+         "agg": "count"
+        }
+       }
+      },
+      "entity": "user",
+      "ir_version": 1,
+      "kind": "all",
+      "n_params": 1
+     },
+     "names": [
+      "first_author"
+     ],
+     "expect": {
+      "none": {
+       "value": [
+        {
+         "name": "first_author",
+         "type": "i64",
+         "hidden": false,
+         "aes_version": false
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "planner.columns",
+     "schema": "../../contracts/fixtures/bench/bench.dbs",
+     "input": {
+      "columns": {
+       "sub": {
+        "first_author": {
+         "column": "read_count",
+         "query": {
+          "entity": "author",
+          "where": {
+           "items": [
+            {
+             "pred": {
+              "column": "user_seq",
+              "op": "eq_col",
+              "ref": {
+               "column": "seq",
+               "path": "^"
+              }
+             }
+            }
+           ]
+          }
+         },
+         "agg": "avg"
+        }
+       }
+      },
+      "entity": "user",
+      "ir_version": 1,
+      "kind": "all",
+      "n_params": 1
+     },
+     "names": [
+      "first_author"
+     ],
+     "expect": {
+      "none": {
+       "value": [
+        {
+         "name": "first_author",
+         "type": "f64",
+         "hidden": false,
+         "aes_version": false
+        }
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "planner_aes_version_selected_once",
+   "requirements": [
+    "DIA-33"
+   ],
+   "steps": [
+    {
+     "op": "planner.columns",
+     "schema": "../../contracts/fixtures/bench/bench.dbs",
+     "input": {
+      "ir_version": 1,
+      "kind": "one",
+      "entity": "author",
+      "n_params": 1,
+      "where": {
+       "items": [
+        {
+         "pred": {
+          "column": "seq",
+          "op": "eq",
+          "p": 0
+         }
+        }
+       ]
+      },
+      "columns": {
+       "mode": "all"
+      }
+     },
+     "names": [
+      "aes_key_version"
+     ],
+     "expect": {
+      "none": {
+       "value": [
+        {
+         "name": "aes_key_version",
+         "type": "i32",
+         "hidden": false,
+         "aes_version": true
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "planner.columns",
+     "schema": "../../contracts/fixtures/bench/bench.dbs",
+     "input": {
+      "ir_version": 1,
+      "kind": "one",
+      "entity": "author",
+      "n_params": 1,
+      "where": {
+       "items": [
+        {
+         "pred": {
+          "column": "seq",
+          "op": "eq",
+          "p": 0
+         }
+        }
+       ]
+      }
+     },
+     "names": [
+      "aes_key_version"
+     ],
+     "expect": {
+      "none": {
+       "value": [
+        {
+         "name": "aes_key_version",
+         "type": "i32",
+         "hidden": true,
+         "aes_version": true
+        }
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "planner_upsert_composite_primary_key",
+   "requirements": [
+    "PRT-6"
+   ],
+   "steps": [
+    {
+     "op": "planner.compile",
+     "schema": "../../contracts/fixtures/bench/bench.dbs",
+     "input": {
+      "entity": "composite_account",
+      "kind": "insert",
+      "n_params": 4,
+      "set": [
+       {
+        "column": "tenant_id",
+        "p": 0
+       },
+       {
+        "column": "account_id",
+        "p": 1
+       },
+       {
+        "column": "name",
+        "p": 2
+       }
+      ],
+      "on_duplicate": [
+       {
+        "column": "name",
+        "p": 3
+       }
+      ],
+      "ir_version": 1
+     },
+     "expect": {
+      "none": {
+       "value": {
+        "mysql": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "not_null": true,
+            "param": 0,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "not_null": true,
+            "param": 1,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 2,
+            "type": "varchar"
+           },
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 3,
+            "type": "varchar"
+           }
+          ],
+          "sql": "INSERT INTO `composite_account` (`tenant_id`, `account_id`, `name`) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE `name` = ?",
+          "tables": [
+           "composite_account"
+          ]
+         }
+        ],
+        "postgres": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "not_null": true,
+            "param": 0,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "not_null": true,
+            "param": 1,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 2,
+            "type": "varchar"
+           },
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 3,
+            "type": "varchar"
+           }
+          ],
+          "sql": "INSERT INTO \"composite_account\" (\"tenant_id\", \"account_id\", \"name\") VALUES ($1, $2, $3) ON CONFLICT (\"tenant_id\", \"account_id\") DO UPDATE SET \"name\" = $4",
+          "tables": [
+           "composite_account"
+          ]
+         }
+        ],
+        "sqlite": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "not_null": true,
+            "param": 0,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "not_null": true,
+            "param": 1,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 2,
+            "type": "varchar"
+           },
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 3,
+            "type": "varchar"
+           }
+          ],
+          "sql": "INSERT INTO \"composite_account\" (\"tenant_id\", \"account_id\", \"name\") VALUES (?, ?, ?) ON CONFLICT (\"tenant_id\", \"account_id\") DO UPDATE SET \"name\" = ?",
+          "tables": [
+           "composite_account"
+          ]
+         }
+        ]
+       }
       }
      }
     }

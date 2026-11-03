@@ -9,6 +9,7 @@
 - `planSteps`와 `render`의 모르는 dialect 거부는 recipe `tests/dbspec/dialect-refusal.json`의 두 case로 Go, PHP, PHP extension, TypeScript, Python에서 돈다. Rust는 dialect를 enum 타입으로 받으므로 compile fixture를 유지한다.
 - markdown 답의 정수는 소수부와 지수가 없는 JSON number다(PRT-69). 정수 열의 `3.0`은 `CODEC_DECODE`다.
 - recipe의 `sql` field는 FCV-4대로 text이거나 세 database를 모두 가진 객체다. 일부만 가진 map은 빠진 database에서 아무것도 실행하지 않았고, 이는 FCV-10이 금지한다. fulltext index step은 text에 `only`를 붙인다. (#T334-3-4-14)
+- AES envelope, 변조, 잘못된 키, blind index vector를 여섯 runtime의 codec recipe case로 옮겼고 envelope 형식을 expect로 확인한다. Go, PHP, PHP 확장의 hostcodec 테스트는 없앴다.
 - recipe schema의 step union은 `query.search_chain`을 포함하고, catalog error에 `message_suffix`를 선언하며, parity suite의 모든 recipe가 schema에 맞는다. audit recipe는 복원된 행을 key 숫자가 아니라 audit record의 actor로 찾는다. 다른 row가 지운 테스트와 owner에 맞춰 feature test를 고쳤다. (#T334-3-4-13)
 - INT-74와 INT-130의 keyring version과 INT-88, INT-89의 첫 builder 오류는 recipe `public-interface`와 `public-interface-signed`의 case이며, 모든 runtime이 새 op `keyring.versions`와 `markdown.builder`로 실행한다. PHP와 PHP extension은 이제 Go, TypeScript, Python, Rust처럼 condition 값의 거부를 chain 호출에서 기록하므로, 종단은 첫 오류를 반환한다(T334-3-24).
 - recipe `performance_gate`는 기본 키 읽기와 내림차순 100행 읽기의 계획된 statement(순서대로 27개 column의 projection, database별 limit bind)를 `pk_statement`와 `list_statement`로, AES key 버전과 복호화된 cell을 `aes_cells`로 검증하므로, TypeScript 시간 측정 파일은 정확성을 검증하지 않는다. 이 파일은 seed된 database를 `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN` 또는 `BENCH_SQLITE_DSN`에서 읽으며, 더는 feature 환경에서 읽지 않는다.

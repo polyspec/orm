@@ -19,6 +19,11 @@
     "steps"
   ],
   "step": {
+    "dsn.connect": [
+      "dsn",
+      "expect",
+      "op"
+    ],
     "keyring.versions": [
       "expect",
       "keyring",
@@ -26,11 +31,6 @@
     ],
     "markdown.builder": [
       "calls",
-      "expect",
-      "op"
-    ],
-    "dsn.connect": [
-      "dsn",
       "expect",
       "op"
     ],
@@ -104,8 +104,22 @@
     ],
     "ir.validate": [
       "expect",
+      "manifest_hash",
       "op",
       "request"
+    ],
+    "ir.param_uses": [
+      "expect",
+      "input",
+      "op",
+      "schema"
+    ],
+    "planner.columns": [
+      "expect",
+      "input",
+      "names",
+      "op",
+      "schema"
     ],
     "ir.answer": [
       "answer",

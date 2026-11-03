@@ -214,6 +214,8 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
         "keyring.versions" => return keyring_versions(step, database),
         "markdown.builder" => return markdown_builder(step, database),
         "planner.compile" => return planner_compile(step, database, dir),
+        "ir.param_uses" => return ir_param_uses(step, database, dir),
+        "planner.columns" => return planner_columns(step, database, dir),
         "generator.generate" => return recipe_generator::check(step, database, dir),
         "ir.validate" => return ir_validate(step, database),
         "dbspec.parse" | "dbspec.parse_plan" | "dbspec.emit_plan" | "dbspec.plan_steps" | "dbspec.diff" | "dbspec.chain" | "dbspec.compare" => {
@@ -369,6 +371,42 @@ fn planner_compile(step: &Value, database: &str, dir: &Path) -> Result<(), Strin
     Ok(())
 }
 
+/// The ir.param_uses op (FCV-4): the uses of each parameter of a validated request (DIA-31, PRT-67).
+fn ir_param_uses(step: &Value, database: &str, dir: &Path) -> Result<(), String> {
+    let manifest = ir_request::schema(&dir.join(step["schema"].as_str().unwrap_or_default()).to_string_lossy());
+    let input = ir_request::request(&step["input"], &manifest.manifest_hash);
+    engine::validate(&manifest, &input).map_err(|error| error.to_string())?;
+    let got = json!({"uses": polyspec_orm::testing::param_uses(&manifest, &input).map_err(|error| error.to_string())?});
+    if got != step["expect"][database]["value"] {
+        return Err(format!("ir.param_uses: got {got}, want {}", step["expect"][database]["value"]));
+    }
+    Ok(())
+}
+
+/// The planner.columns op (FCV-4): the output columns that `names` select from the first statement of the plan of each dialect,
+/// with their type, whether they are hidden, and whether they hold the AES key version (PRT-69, DIA-33).
+fn planner_columns(step: &Value, database: &str, dir: &Path) -> Result<(), String> {
+    let manifest = ir_request::schema(&dir.join(step["schema"].as_str().unwrap_or_default()).to_string_lossy());
+    let input = ir_request::request(&step["input"], &manifest.manifest_hash);
+    let names: Vec<&str> = step["names"].as_array().ok_or("the step has no names")?.iter().filter_map(Value::as_str).collect();
+    for (name, dialect) in PLAN_DIALECTS {
+        let plan = engine::compile(&manifest, dialect, &input).map_err(|error| format!("{name}: {error}"))?;
+        let assemble = plan.steps[0].assemble.as_ref().ok_or_else(|| format!("{name}: the first statement assembles no row"))?;
+        let mut got = Vec::new();
+        for wanted in &names {
+            for (position, column) in assemble.columns.iter().enumerate() {
+                if column.name == *wanted {
+                    got.push(json!({"name": wanted, "type": column.typ, "hidden": column.hidden, "aes_version": assemble.aes_version == Some(position)}));
+                }
+            }
+        }
+        if Value::Array(got.clone()) != step["expect"][database]["value"] {
+            return Err(format!("planner.columns {name}: got {got:?}, want {}", step["expect"][database]["value"]));
+        }
+    }
+    Ok(())
+}
+
 /// The ir.validate op (FCV-4): the step builds its request from its JSON with the manifest hash of the bench schema, then validates
 /// it. A request shape that the typed request refuses is IR_INVALID. The expect of `database` is {error: CODE}, or {value: {bool:
 /// true}} for an accepted request.
@@ -378,7 +416,8 @@ fn ir_validate(step: &Value, database: &str) -> Result<(), String> {
         return Err("the request already holds manifest_hash".to_owned());
     }
     let manifest = ir_request::schema(IR_VALIDATE_SCHEMA);
-    let built = std::panic::catch_unwind(|| ir_request::request(&step["request"], &manifest.manifest_hash));
+    let manifest_hash = step["manifest_hash"].as_str().unwrap_or(&manifest.manifest_hash);
+    let built = std::panic::catch_unwind(|| ir_request::request(&step["request"], manifest_hash));
     let got: Result<(), String> = match built {
         Ok(request) => engine::validate(&manifest, &request).map_err(|error| error.code().to_owned()),
         Err(payload) => {

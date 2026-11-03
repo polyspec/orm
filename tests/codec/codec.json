@@ -12417,6 +12417,34 @@
         {
           "op": "codec.decode",
           "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "value: [\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "ordered_json"
+          ],
+          "raw": {
+            "text": ""
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
             "serialize"
           ],
           "raw": {

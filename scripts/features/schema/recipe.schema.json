@@ -784,6 +784,8 @@
             "query.search",
             "query.search_chain",
             "ir.validate",
+            "ir.param_uses",
+            "planner.columns",
             "ir.answer",
             "markdown.send",
             "model.assign",
@@ -905,6 +907,12 @@
         },
         {
           "$ref": "#/$defs/ops/ir.validate"
+        },
+        {
+          "$ref": "#/$defs/ops/ir.param_uses"
+        },
+        {
+          "$ref": "#/$defs/ops/planner.columns"
         },
         {
           "$ref": "#/$defs/ops/ir.answer"
@@ -2161,6 +2169,68 @@
           }
         }
       },
+      "ir.param_uses": {
+        "type": "object",
+        "required": [
+          "op",
+          "schema",
+          "input",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "ir.param_uses"
+          },
+          "schema": {
+            "type": "string",
+            "pattern": "\\.dbs$",
+            "description": "The schema manifest of the request, relative to the recipe file."
+          },
+          "input": {
+            "type": "object",
+            "description": "A request of the protocol (docs/spec/protocol.md) without manifest_hash; the step adds the hash of the schema named by schema."
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "planner.columns": {
+        "type": "object",
+        "required": [
+          "op",
+          "schema",
+          "input",
+          "names",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "planner.columns"
+          },
+          "schema": {
+            "type": "string",
+            "pattern": "\\.dbs$",
+            "description": "The schema manifest of the request, relative to the recipe file."
+          },
+          "input": {
+            "type": "object",
+            "description": "A request of the protocol (docs/spec/protocol.md) without manifest_hash; the step adds the hash of the schema named by schema."
+          },
+          "names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The output names of the first statement whose columns the expect states."
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
       "ir.validate": {
         "type": "object",
         "required": [
@@ -2172,6 +2242,10 @@
         "properties": {
           "op": {
             "const": "ir.validate"
+          },
+          "manifest_hash": {
+            "type": "string",
+            "description": "The hash the request holds in place of the hash of the schema of the recipe: a request of another manifest."
           },
           "request": {
             "type": "object",

@@ -128,6 +128,14 @@ final class Recipe
                     self::planStep($step, $path, $database);
                     continue;
                 }
+                if ($step['op'] === 'ir.param_uses') {
+                    self::paramUsesStep($step, $path, $database);
+                    continue;
+                }
+                if ($step['op'] === 'planner.columns') {
+                    self::plannerColumnsStep($step, $path, $database);
+                    continue;
+                }
                 if ($step['op'] === 'generator.generate') {
                     RecipeGenerator::check($step, dirname(__DIR__, 3) . '/' . dirname($path), $database);
                     continue;
@@ -205,7 +213,7 @@ final class Recipe
         $model = RuntimeModel::build(RuntimeModel::files([$schema]));
         $got = 'no error';
         try {
-            (new Validator($model))->validate($step['request'] + ['manifest_hash' => $model->manifestHash]);
+            (new Validator($model))->validate($step['request'] + ['manifest_hash' => $step['manifest_hash'] ?? $model->manifestHash]);
         } catch (OrmException $error) {
             $got = $error->code_;
         }
@@ -215,6 +223,57 @@ final class Recipe
         }
         Assert::assertSame(['bool' => true], $outcome['value'] ?? null, 'ir.validate expects {bool true} or an error');
         Assert::assertSame('no error', $got);
+    }
+
+    /** The model of the schema of a planner step and its input with the manifest_hash of that schema. */
+    private static function plannerRequest(array $step, string $path): array
+    {
+        $schema = realpath(dirname(dirname(__DIR__, 3) . '/' . $path) . '/' . $step['schema']);
+        if ($schema === false) {
+            Assert::fail("{$step['op']}: the schema of $path is missing");
+        }
+        $model = RuntimeModel::build(RuntimeModel::files([$schema]));
+        return [$model, $step['input'] + ['manifest_hash' => $model->manifestHash]];
+    }
+
+    /** States the uses of each parameter of a validated request (DIA-31, PRT-67). */
+    private static function paramUsesStep(array $step, string $path, string $database): void
+    {
+        [$model, $request] = self::plannerRequest($step, $path);
+        $validator = new Validator($model);
+        $validator->validate($request);
+        $uses = array_map(static fn(array $list): array => array_map(static fn(array $use): array => $use['column'] === null
+            ? ['type' => $use['type']]
+            : ($use['assign'] ?? false ? ['assign' => true] : []) + [
+                'column' => $use['column']['name'],
+                'length' => $use['column']['length'] ?? 0,
+                'null' => $use['column']['nullable'],
+                'precision' => $use['column']['precision'] ?? 0,
+                'scale' => $use['column']['scale'] ?? 0,
+                'type' => $use['type'],
+            ], $list), $validator->paramUses($request));
+        Assert::assertSame(self::sortedKeys($step['expect'][$database]['value']), self::sortedKeys(['uses' => $uses]), 'ir.param_uses');
+    }
+
+    /**
+     * States the output columns that the names of the step select from the first statement of the plan of each dialect: their
+     * type, whether they are hidden, and whether they hold the AES key version (PRT-69, DIA-33).
+     */
+    private static function plannerColumnsStep(array $step, string $path, string $database): void
+    {
+        [$model, $request] = self::plannerRequest($step, $path);
+        foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
+            $assemble = (new Engine($model, $dialect, 8))->compile($request)['steps'][0]['assemble'];
+            $got = [];
+            foreach ($step['names'] as $name) {
+                foreach ($assemble['columns'] as $position => $column) {
+                    if ($column['name'] === $name) {
+                        $got[] = ['aes_version' => ($assemble['aes_version'] ?? null) === $position, 'hidden' => $column['hidden'] ?? false, 'name' => $name, 'type' => $column['type']];
+                    }
+                }
+            }
+            Assert::assertSame(self::sortedKeys($step['expect'][$database]['value']), self::sortedKeys($got), "$dialect planner.columns");
+        }
     }
 
     /**
