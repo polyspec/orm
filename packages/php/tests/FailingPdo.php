@@ -35,10 +35,11 @@ final class FailingPdo extends PDO
         ]);
     }
 
-    public function failQuery(string $query, PDOException $error, ?int $call = null): void
+    /** Read $reads of $query from now on throws $error. */
+    public function failQuery(string $query, PDOException $error, int $reads = 1): void
     {
         $this->queryFail[$query] = $error;
-        $this->queryFailCall[$query] = $call ?? ($this->queryCalls[$query] ?? 0) + 1;
+        $this->queryFailCall[$query] = ($this->queryCalls[$query] ?? 0) + $reads;
     }
 
     private function failQueryIfSelected(string $query): void

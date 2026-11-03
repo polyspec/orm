@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "Each case gives the SHOW CREATE TABLE text of one table as MySQL 8.4.11 writes it (create, its lines joined with LF), the name of one CHECK constraint of that table, and expected: the body of that CHECK in CHECK_CLAUSE form, that is the text between CHECK ( and its closing ) with each backslash and each single quote escaped once more (\\ becomes \\\\ and ' becomes \\'), or not found when the statement has no CHECK of that name. Every reader of a SHOW CREATE TABLE statement (mysqlShownCheck of Go, MysqlCatalog::createChecks of PHP, shown_check of the PHP extension, createChecks of TypeScript, _create_checks of Python and shown_checks of Rust) reads each case in its unit check and must give expected. The bodies without a byte of 0x80 or more equal CHECK_CLAUSE as the server stores it; the others equal it with the second encoding of their non-ASCII text undone. docs/spec/dialects.md \"Introspection\". The catalog answers the MySQL introspection of Go (packages/go/engine/dbspec show_create_introspect_test.go), of the PHP extension (packages/php-ext/tests/DbspecShowCreateTest.php) and of Rust (read_catalog, packages/rust/schema/tests/dbspec_show_create.rs, whose cases the parity check runs by their ids since the reader is private to the crate) for every case: each case with a body expects checks, the check lines of the introspected table in document order, and unsupported, the objects it leaves out as kind, name and the rule of the reason (the text before the first colon and space; reason texts differ between the clients, as in introspect.json); a case with an error expects that error message from every introspection.",
+  "note": "Each case gives the SHOW CREATE TABLE text of one table as MySQL 8.4.11 writes it (create, its lines joined with LF), the name of one CHECK constraint of that table, and expected: the body of that CHECK in CHECK_CLAUSE form, that is the text between CHECK ( and its closing ) with each backslash and each single quote escaped once more (\\ becomes \\\\ and ' becomes \\'), or not found when the statement has no CHECK of that name. Every reader of a SHOW CREATE TABLE statement (mysqlShownCheck of Go, MysqlCatalog::createChecks of PHP, shown_check of the PHP extension, createChecks of TypeScript, _create_checks of Python and shown_checks of Rust) reads each case in its unit check and must give expected. The bodies without a byte of 0x80 or more equal CHECK_CLAUSE as the server stores it; the others equal it with the second encoding of their non-ASCII text undone. docs/spec/dialects.md \"Introspection\". The catalog answers the public MySQL introspection of every runtime for every case; the recipe tests/dbspec/show-create-introspect.json, through the op dbspec.introspect_shown, holds what each case expects.",
   "catalog": {
     "note": "The catalog answers that the MySQL introspection of Go (readMySQL), of the PHP extension (mysql_read) and of Rust (read_catalog) read for every case: one base table with the columns below, one CHECK named by the case, which the server stores with a non-ASCII CHECK_CLAUSE, so that each reader goes to SHOW CREATE TABLE for its body. The stored clause is not decoded when SHOW CREATE TABLE holds the CHECK; it only selects that path. No indexes, keys, triggers, routines or events.",
     "table": "t",
@@ -14,6 +14,17 @@
   },
   "cases": [
     {
+      "id": "non-ascii-literal-with-a-valid-name",
+      "create": [
+        "CREATE TABLE `p1` (",
+        "  `mail` varchar(64) NOT NULL,",
+        "  CONSTRAINT `ck_cafe` CHECK ((`mail` <> _utf8mb4'café'))",
+        ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"
+      ],
+      "name": "ck_cafe",
+      "expected": "(`mail` <> _utf8mb4\\'café\\')"
+    },
+    {
       "id": "non-ascii-literal",
       "create": [
         "CREATE TABLE `p1` (",
@@ -22,8 +33,6 @@
         ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"
       ],
       "name": "ck_café",
-      "checks": [],
-      "unsupported": ["check ck_café: name.format"],
       "expected": "(`mail` <> _utf8mb4\\'café\\')"
     },
     {
@@ -35,8 +44,6 @@
         ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"
       ],
       "name": "ck_q",
-      "checks": ["check ck_q (name <> 'it''s')"],
-      "unsupported": [],
       "expected": "(`name` <> _utf8mb4\\'it\\\\\\'s\\')"
     },
     {
@@ -48,8 +55,6 @@
         ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"
       ],
       "name": "ck_bs",
-      "checks": ["check ck_bs (name <> 'a\\b')"],
-      "unsupported": [],
       "expected": "(`name` <> _utf8mb4\\'a\\\\\\\\b\\')"
     },
     {
@@ -61,8 +66,6 @@
         ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"
       ],
       "name": "ck_par",
-      "checks": ["check ck_par (name <> 'a)b(')"],
-      "unsupported": [],
       "expected": "(`name` <> _utf8mb4\\'a)b(\\')"
     },
     {
@@ -76,8 +79,6 @@
         ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"
       ],
       "name": "ck_two",
-      "checks": ["check ck_two (name <> 'naïve\\''x')"],
-      "unsupported": [],
       "expected": "(`name` <> _utf8mb4\\'naïve\\\\\\\\\\\\\\'x\\')"
     },
     {
@@ -91,8 +92,6 @@
         ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"
       ],
       "name": "ck_one",
-      "checks": ["check ck_one (a > 0)"],
-      "unsupported": [],
       "expected": "(`a` > 0)"
     },
     {
@@ -104,8 +103,6 @@
         ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"
       ],
       "name": "ck_end",
-      "checks": ["check ck_end (name <> 'x\\')"],
-      "unsupported": [],
       "expected": "(`name` <> _utf8mb4\\'x\\\\\\\\\\')"
     },
     {
@@ -117,8 +114,6 @@
         ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"
       ],
       "name": "ck_qq",
-      "checks": ["check ck_qq (name <> 'café''s')"],
-      "unsupported": [],
       "expected": "(`name` <> _utf8mb4\\'café\\\\\\'s\\')"
     },
     {
@@ -130,7 +125,6 @@
         ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"
       ],
       "name": "ck_missing",
-      "error": "check t.ck_missing has no CHECK in SHOW CREATE TABLE",
       "expected": "not found"
     }
   ]

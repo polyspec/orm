@@ -19,21 +19,17 @@
     "steps"
   ],
   "step": {
-    "keyring.versions": [
-      "expect",
-      "keyring",
-      "op"
-    ],
-    "markdown.builder": [
-      "calls",
-      "expect",
-      "op"
-    ],
     "dsn.connect": [
       "config",
       "dsn",
       "expect",
       "only",
+      "op",
+      "query"
+    ],
+    "dsn.sqlite_file": [
+      "expect",
+      "name",
       "op",
       "query"
     ],
@@ -45,11 +41,40 @@
       "reply",
       "token"
     ],
-    "dsn.sqlite_file": [
+    "keyring.versions": [
       "expect",
-      "name",
+      "keyring",
+      "op"
+    ],
+    "dbspec.introspect_sqlite": [
+      "expect",
       "op",
-      "query"
+      "sql"
+    ],
+    "dbspec.apply_fault": [
+      "applied_first",
+      "call",
+      "expect",
+      "fail_catalog_read",
+      "op",
+      "plan",
+      "sql"
+    ],
+    "dbspec.ddl_behavior": [
+      "case",
+      "op",
+      "vectors"
+    ],
+    "dbspec.introspect_shown": [
+      "case",
+      "expect",
+      "op",
+      "vectors"
+    ],
+    "markdown.builder": [
+      "calls",
+      "expect",
+      "op"
     ],
     "model.connect": [
       "aes_keyring",
@@ -576,6 +601,7 @@
     "dbspec.runtime_model": [
       "documents",
       "expect",
+      "external",
       "op"
     ],
     "dbspec.read_file": [
@@ -683,12 +709,6 @@
       "name",
       "op"
     ],
-    "db.notify": [
-      "channel",
-      "connection",
-      "op",
-      "payload"
-    ],
     "utils.set_local": [
       "connection",
       "name",
@@ -700,6 +720,12 @@
       "expect",
       "name",
       "op"
+    ],
+    "db.notify": [
+      "channel",
+      "connection",
+      "op",
+      "payload"
     ],
     "utils.was_inserted": [
       "connection",
