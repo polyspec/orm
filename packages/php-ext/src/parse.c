@@ -1239,6 +1239,10 @@ static void column_line(parser *p)
         fail_column(p, name->text);
         return;
     }
+    if (word_at(p, 1) == NULL) {
+        fail_column(p, name->text);
+        return;
+    }
     size_t i;
     ctype *type = read_type(p, 1, &i);
     bool nullable = false;
@@ -2335,7 +2339,16 @@ static void top_line(parser *p)
         if (p->top_phase > 0) {
             error(p, "order", p->line, first.column, SL("`use` lines come before tables and diagrams"));
         }
+        size_t uses_before = p->doc->uses.n;
         use_line(p);
+        if (p->doc->uses.n == uses_before) {
+            /* The words of a use line that fails are names of a failed line, whose references report nothing more (DBS-153). */
+            for (size_t k = 2; k < p->t.n; k++) {
+                if (str_dotted(p->t.v[k].text)) {
+                    smap_set(&p->failed_tables, p->t.v[k].text, TRUEP);
+                }
+            }
+        }
         return;
     }
     if (str_eqc(first.text, "table")) {

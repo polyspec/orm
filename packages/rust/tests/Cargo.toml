@@ -203,6 +203,27 @@ path = "tests/catalog_connection_sqlite_only.rs"
 harness = false
 
 
+# Each case of the conformance_verification recipe, contracts/fixtures/conformance_verification/conformance_verification.json, is the trial conformance_verification_mysql::<case id>
+# (docs/spec/feature-coverage.md FCV-3).
+[[test]]
+name = "conformance_verification_mysql"
+path = "tests/conformance_verification_mysql.rs"
+harness = false
+
+# Each case of the conformance_verification recipe, contracts/fixtures/conformance_verification/conformance_verification.json, is the trial conformance_verification_postgres::<case id>
+# (docs/spec/feature-coverage.md FCV-3).
+[[test]]
+name = "conformance_verification_postgres"
+path = "tests/conformance_verification_postgres.rs"
+harness = false
+
+# Each case of the conformance_verification recipe, contracts/fixtures/conformance_verification/conformance_verification.json, is the trial conformance_verification_sqlite::<case id>
+# (docs/spec/feature-coverage.md FCV-3).
+[[test]]
+name = "conformance_verification_sqlite"
+path = "tests/conformance_verification_sqlite.rs"
+harness = false
+
 # Each case of the request_hook recipe, contracts/fixtures/request_hook/request_hook.json, is the trial request_hook_mysql::<case id>
 # on a case database of its own (FCV-3 and FCV-4).
 [[test]]
@@ -512,4 +533,10 @@ harness = false
 [[test]]
 name = "dbspec_limits_none"
 path = "tests/dbspec_limits_none.rs"
+harness = false
+
+# Each case of The rule diagnostics and canonical forms of tests/dbspec/rules.json, tests/dbspec/rules.json, is the trial dbspec_rules_recipe_none::<case id> (FCV-3).
+[[test]]
+name = "dbspec_rules_recipe_none"
+path = "tests/dbspec_rules_recipe_none.rs"
 harness = false
