@@ -875,7 +875,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 	switch s.Op {
 	// The ops of the model connections (FCV-4), by their full names.
 	case "model.connect", "model.create", "model.creates", "model.save", "model.duplicate_create", "model.update",
-		"model.arithmetic", "model.delete", "model.count", "model.get_by", "model.query", "model.restore":
+		"model.arithmetic", "model.delete", "model.count", "model.get_by", "model.query", "model.restore", "model.get_query":
 		return modelOp(s, c)
 	}
 	if out, handled, err := statementOp(s, c); handled {

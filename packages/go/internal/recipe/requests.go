@@ -21,6 +21,8 @@ import (
 type hookRecord struct {
 	kind   string
 	entity string
+	// param is the wrapper of the bound value of a record_param action, or nil.
+	param any
 }
 
 // auditSourceSpec is the audit_source of a model.connect (FCV-4, CFG-8): the values that the source returns, or a source
@@ -153,6 +155,21 @@ func tableModelRequest(s databaseStep, c *databaseContext, db *orm.DB, table str
 			}
 		}
 		return okOutcome(), true, nil
+	case "model.get_query":
+		// The binds of the statement that the model plans, with no statement run (PRT-2).
+		statement, err := core.GetQuery()
+		if err != nil {
+			return outcome{}, true, err
+		}
+		binds := []any{}
+		for _, b := range statement.Binds {
+			w, err := plain(b, "", c.database)
+			if err != nil {
+				return outcome{}, true, err
+			}
+			binds = append(binds, w)
+		}
+		return outcome{fields: map[string]any{"value": map[string]any{"array": binds}}}, true, nil
 	case "model.query":
 		out, err := tableQuery(s, c, db, core)
 		return out, true, err
@@ -198,6 +215,7 @@ type tableRelation struct {
 	Match   [][2]string `json:"match"`
 	Many    bool        `json:"many"`
 	Columns []string    `json:"columns"`
+	Connect bool        `json:"connect"`
 }
 
 // tableQuery runs a model.query on a table model: the rows of the model, or one page of them with its total, and with a
@@ -219,7 +237,15 @@ func tableQuery(s databaseStep, c *databaseContext, db *orm.DB, core *orm.Core) 
 		if !ok {
 			return outcome{}, fmt.Errorf("model %s has no table entry", rel.Model)
 		}
-		child := tableCore(db, table, c.schema)
+		// Without connect the child has no handle and takes the connection of its parent (INT-87).
+		var child *orm.Core
+		if rel.Connect {
+			child = tableCore(db, table, c.schema)
+		} else {
+			ent := tableEntity(table, c.schema)
+			child = orm.NewCore(ent)
+			ent.New(child)
+		}
 		for _, pair := range rel.Match {
 			child.Match(pair[0], pair[1])
 		}
@@ -334,8 +360,11 @@ func requestOp(s databaseStep, c *databaseContext) (outcome, error) {
 		counts := map[string]int{}
 		list := []any{}
 		for _, r := range c.records {
-			list = append(list, map[string]any{"object": []any{
-				[]any{"kind", map[string]any{"text": r.kind}}, []any{"entity", map[string]any{"text": r.entity}}}})
+			members := []any{[]any{"kind", map[string]any{"text": r.kind}}, []any{"entity", map[string]any{"text": r.entity}}}
+			if r.param != nil {
+				members = append(members, []any{"param", r.param})
+			}
+			list = append(list, map[string]any{"object": members})
 			counts[r.entity]++
 		}
 		return outcome{fields: map[string]any{"value": map[string]any{"array": list}, "counts": counts}}, nil
@@ -448,14 +477,44 @@ func (c *databaseContext) installHook(s databaseStep) (outcome, error) {
 				for i := range r.Rows {
 					r.Rows[i] = append(r.Rows[i], addParam(a.value))
 				}
+			case "assign_first":
+				p := addParam(a.value)
+				r.Set = append([]ir.Assign{{Column: a.column, P: &p}}, r.Set...)
+			case "rewrite":
+				for i := range r.Set {
+					if r.Set[i].Column == a.column {
+						p := addParam(a.value)
+						r.Set[i].P = &p
+					}
+				}
+			case "invalid_param":
+				p := r.NParams + 5
+				irwhere.And(&r.Query, ir.Pred{Column: a.column, Op: "eq", P: &p})
 			case "record":
 				c.records = append(c.records, hookRecord{kind: r.Kind, entity: r.Entity})
+			case "record_param":
+				for _, assignment := range r.Set {
+					if assignment.Column != a.column || assignment.P == nil {
+						continue
+					}
+					w, err := plain(params[*assignment.P], "", c.database)
+					if err != nil {
+						return err
+					}
+					c.records = append(c.records, hookRecord{kind: r.Kind, entity: r.Entity, param: w})
+				}
 			case "fail":
 				return &ir.Error{Code: a.code, Msg: "request hook refused " + r.Kind}
 			}
 		}
 		return nil
 	})
+	// With as, the hooked handle takes that name and the connection keeps its name, unhooked (INT-78).
+	if s.As != "" {
+		out := okOutcome()
+		out.api = hooked
+		return out, nil
+	}
 	c.bound[s.Connection] = bound{api: hooked, fields: b.fields, hookBase: base}
 	return okOutcome(), nil
 }

@@ -55,6 +55,7 @@ final class Recipe
         'model.delete',
         'model.duplicate_create',
         'model.get_by',
+        'model.get_query',
         'model.query',
         'model.read_bind_cell',
         'model.restore',
@@ -2093,8 +2094,14 @@ final class Recipe
                 // hook.install on the same connection replaces the hook.
                 $base = $context['hookBases'][$s['connection']] ?? self::connectionOf($s, $context);
                 $context['records'] = [];
+                $hooked = $base->withRequestHook(self::hookFor($s['hooks'], $context));
+                // With as, the hooked handle takes that name and the connection keeps its name, unhooked (INT-78).
+                if (isset($s['as'])) {
+                    $context['hookBases'][$s['as']] = $base;
+                    return ['bind' => $hooked];
+                }
                 $context['hookBases'][$s['connection']] = $base;
-                $context['bound'][$s['connection']] = $base->withRequestHook(self::hookFor($s['hooks'], $context));
+                $context['bound'][$s['connection']] = $hooked;
                 return [];
             case 'hook.records':
                 $counts = [];
@@ -2104,6 +2111,7 @@ final class Recipe
                     $list[] = ['object' => [
                         ['kind', ['text' => $record['kind']]],
                         ['entity', ['text' => $record['entity']]],
+                        ...(isset($record['param']) ? [['param', $record['param']]] : []),
                     ]];
                 }
                 return ['value' => ['array' => $list], 'counts' => $counts];
@@ -2304,7 +2312,13 @@ final class Recipe
         }
         $rel = $s['relation'] ?? null;
         if ($rel !== null) {
-            $child = self::tableModel($rel['model'], $db, $context);
+            // Without connect the child has no handle and takes the connection of its parent (INT-87).
+            if (($rel['connect'] ?? false) === true) {
+                $child = self::tableModel($rel['model'], $db, $context);
+            } else {
+                $class = self::modelClass($context, self::TABLE_MODELS[$rel['model']]);
+                $child = new $class();
+            }
             foreach ($rel['match'] as [$left, $right]) {
                 $match = 'match' . self::pascal($left) . 'With' . self::pascal($right);
                 $child->$match();
@@ -2431,11 +2445,35 @@ final class Recipe
                             $r->ir['rows'][$i][] = $r->param($a['value']);
                         }
                         break;
+                    case 'assign_first':
+                        array_unshift($r->ir['set'], ['column' => $a['column'], 'p' => $r->param($a['value'])]);
+                        break;
+                    case 'rewrite':
+                        foreach (array_keys($r->ir['set'] ?? []) as $i) {
+                            if ($r->ir['set'][$i]['column'] === $a['column']) {
+                                $r->ir['set'][$i]['p'] = $r->param($a['value']);
+                            }
+                        }
+                        break;
+                    case 'invalid_param':
+                        self::andWhere($r->ir, ['column' => $a['column'], 'op' => 'eq', 'p' => count($r->params) + 5]);
+                        break;
                     case 'record':
                         $context['records'][] = [
                             'kind' => $r->ir['kind'],
                             'entity' => $r->ir['entity'] ?? '',
                         ];
+                        break;
+                    case 'record_param':
+                        foreach ($r->ir['set'] ?? [] as $assignment) {
+                            if ($assignment['column'] === $a['column']) {
+                                $context['records'][] = [
+                                    'kind' => $r->ir['kind'],
+                                    'entity' => $r->ir['entity'] ?? '',
+                                    'param' => self::plainWrapper($r->params[$assignment['p']], null),
+                                ];
+                            }
+                        }
                         break;
                     case 'fail':
                         throw new OrmException($a['code'], "request hook refused {$r->ir['kind']}");
@@ -2687,6 +2725,13 @@ final class Recipe
                 $restored = self::setValues($model, $s['values'], $context)->restore();
                 // With columns, the rows expect compares the row that restore returns (INT-38).
                 return isset($s['columns']) ? ['rows' => [self::project($restored, $s['columns'])]] : [];
+            case 'model.get_query':
+                // The binds of the statement that the model plans, with no statement run (PRT-2).
+                $statement = self::tableModel($s['model'], self::connectionOf($s, $context), $context)->getQuery();
+                return ['value' => ['array' => array_map(
+                    static fn (mixed $bind): array => self::plainWrapper($bind, null),
+                    $statement['binds'],
+                )]];
             case 'model.query':
                 return self::queryOp($s, $context);
         }

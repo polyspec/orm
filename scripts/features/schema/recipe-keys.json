@@ -309,6 +309,12 @@
       "op",
       "where"
     ],
+    "model.get_query": [
+      "connection",
+      "expect",
+      "model",
+      "op"
+    ],
     "model.query": [
       "columns",
       "connection",
@@ -516,6 +522,7 @@
       "skeleton_of"
     ],
     "hook.install": [
+      "as",
       "connection",
       "hooks",
       "op"

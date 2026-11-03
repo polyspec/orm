@@ -780,6 +780,7 @@
             "model.delete",
             "model.count",
             "model.get_by",
+            "model.get_query",
             "model.query",
             "events.subscribe",
             "events.fail_subscriber",
@@ -836,6 +837,9 @@
         },
         {
           "$ref": "#/$defs/ops/model.get_by"
+        },
+        {
+          "$ref": "#/$defs/ops/model.get_query"
         },
         {
           "$ref": "#/$defs/ops/codec.decode"
@@ -3173,6 +3177,30 @@
           }
         ]
       },
+      "model.get_query": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "model",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "model.get_query"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "model": {
+            "$ref": "#/$defs/model"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
       "model.query": {
         "type": "object",
         "required": [
@@ -4829,6 +4857,10 @@
           "connection": {
             "$ref": "#/$defs/name"
           },
+          "as": {
+            "description": "The name of the hooked handle; the connection keeps its name, unhooked.",
+            "$ref": "#/$defs/name"
+          },
           "hooks": {
             "type": "array",
             "minItems": 1,
@@ -6232,6 +6264,94 @@
     },
     "hook": {
       "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "action",
+            "kinds",
+            "column"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "record_param"
+            },
+            "kinds": {
+              "$ref": "#/$defs/kinds"
+            },
+            "column": {
+              "$ref": "#/$defs/name"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "action",
+            "kinds",
+            "column",
+            "value"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "assign_first"
+            },
+            "kinds": {
+              "$ref": "#/$defs/kinds"
+            },
+            "column": {
+              "$ref": "#/$defs/name"
+            },
+            "value": {
+              "$ref": "#/$defs/argument"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "action",
+            "kinds",
+            "column",
+            "value"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "rewrite"
+            },
+            "kinds": {
+              "$ref": "#/$defs/kinds"
+            },
+            "column": {
+              "$ref": "#/$defs/name"
+            },
+            "value": {
+              "$ref": "#/$defs/argument"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "action",
+            "kinds",
+            "column"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "invalid_param"
+            },
+            "kinds": {
+              "$ref": "#/$defs/kinds"
+            },
+            "column": {
+              "$ref": "#/$defs/name"
+            }
+          }
+        },
         {
           "type": "object",
           "required": [

@@ -676,13 +676,13 @@ const OPS = {
     return { value: { int: String(rotated) } };
   },
   'hook.install'(s, context) {
-    installHook(s, context);
-    return {};
+    const hooked = installHook(s, context);
+    return s.as === undefined ? {} : { bind: hooked };
   },
   'hook.records'(_, context) {
     const counts = {};
     for (const record of context.records) counts[record.entity] = (counts[record.entity] ?? 0) + 1;
-    const list = context.records.map(record => ({ object: [['kind', { text: record.kind }], ['entity', { text: record.entity }]] }));
+    const list = context.records.map(record => ({ object: [['kind', { text: record.kind }], ['entity', { text: record.entity }], ...(record.param === undefined ? [] : [['param', record.param]])] }));
     return { value: { array: list }, counts };
   },
 };
@@ -1261,6 +1261,11 @@ const TABLE_OPS = {
     // With columns, the rows expect compares the row that restore returns (INT-38).
     return s.columns === undefined ? {} : { rows: [tableCells(restored, s.columns)] };
   },
+  // The binds of the statement that the model plans, with no statement run (PRT-2).
+  async 'model.get_query'(s, context) {
+    const statement = await modelOf(tableOf(s.model), connectionOf(s, context), context).getQuery();
+    return { value: { array: statement.binds.map(bindWrapper) } };
+  },
   async 'model.query'(s, context) {
     const db = connectionOf(s, context);
     const parent = modelOf(tableOf(s.model), db, context);
@@ -1268,7 +1273,8 @@ const TABLE_OPS = {
     for (const column of s.order ?? []) parent[CORE].orderBy(column, false, []);
     const rel = s.relation;
     if (rel !== undefined) {
-      const child = modelOf(tableOf(rel.model), db, context);
+      // Without connect the child has no handle and takes the connection of its parent (INT-87).
+      const child = rel.connect === true ? modelOf(tableOf(rel.model), db, context) : new context.classes[tableOf(rel.model)]();
       for (const [left, right] of rel.match) child[`match${pascal(left)}With${pascal(right)}`]();
       if (rel.many) parent.relations(child);
       else parent.relation(child);
@@ -1360,7 +1366,7 @@ function installHook(s, context) {
     code: a.error,
   }));
   context.records = [];
-  const hooked = base.withRequestHook((query, addParam) => {
+  const hooked = base.withRequestHook((query, addParam, params) => {
     for (const a of actions) {
       if (!kindMatches(a.kinds, query.kind)) continue;
       switch (a.action) {
@@ -1374,8 +1380,22 @@ function installHook(s, context) {
           for (const row of query.rows ?? []) row.push(addParam(a.value));
           break;
         }
+        case 'assign_first':
+          query.set = [{ column: a.column, p: addParam(a.value) }, ...(query.set ?? [])];
+          break;
+        case 'rewrite':
+          for (const assignment of query.set ?? []) if (assignment.column === a.column) assignment.p = addParam(a.value);
+          break;
+        case 'invalid_param':
+          andWhere(query, { column: a.column, op: 'eq', p: query.n_params + 5 });
+          break;
         case 'record':
           context.records.push({ kind: query.kind, entity: query.entity });
+          break;
+        case 'record_param':
+          for (const assignment of query.set ?? []) {
+            if (assignment.column === a.column) context.records.push({ kind: query.kind, entity: query.entity, param: bindWrapper(params[assignment.p]) });
+          }
           break;
         case 'fail':
           throw new OrmError(a.code, `request hook refused ${query.kind}`);
@@ -1385,8 +1405,11 @@ function installHook(s, context) {
     }
     return query;
   });
-  context.hookBases.set(s.connection, base);
-  context.bound.set(s.connection, hooked);
+  // With as, the hooked handle takes that name and the connection keeps its name, unhooked (INT-78).
+  const target = s.as ?? s.connection;
+  context.hookBases.set(target, base);
+  context.bound.set(target, hooked);
+  return hooked;
 }
 
 const READS = new Set(['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate']);

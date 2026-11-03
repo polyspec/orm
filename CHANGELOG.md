@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The request_hook recipe holds what the native tests held in every runtime: the hooked handle shares the subscribers of its connection and leaves the original handle unhooked, the hook reads a bound parameter, a planned read binds the value the hook added, an invalid parameter index and a restore with no key run no statement, a child with no handle reads under the scope of its parent, and the three restore key rewrites. The ops `hook.install` with `as` and `model.get_query` and the hook actions `assign_first`, `rewrite`, `invalid_param` and `record_param` are in all six runtimes.
 - A catalog session on PostgreSQL sends `DEALLOCATE ALL` right after its `BEGIN` in Go, Rust, TypeScript and Python, so through PgBouncer it reads and writes a table after a schema change changed a statement's types (CFG-28).
 - The audit foreign key is held in both directions: the recipe `audit_triggers` refuses a raw insert with a missing parent and the delete of a referenced parent. The case `soft_delete_statements` holds the guarded update of a soft delete and the filter of each read. A `sql.exec` step takes `refused`, and `events.captured` takes the compare mode `statements`. (#T334-3-4-12)
 - `make lint-ts` passes: the Rust lane skip list reads its JSON through validated readers, and `config/parity.json` declares the `command` of a binding in its schema.

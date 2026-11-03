@@ -2175,9 +2175,10 @@ mod database {
 
     /// The ops that the model dispatcher of the case runs (FCV-4), by their full names; every other op is a call of the catalog
     /// or of the case connection.
-    const MODEL_OPS: [&str; 16] = [
+    const MODEL_OPS: [&str; 17] = [
         "model.connect",
         "model.restore",
+        "model.get_query",
         "hook.install",
         "hook.records",
         "utils.aes_status",
@@ -3138,7 +3139,7 @@ mod statement {
     }
 
     /// The recipe wrapper of a bind value of a statement event.
-    fn bind_wrapper(p: &Param) -> Value {
+    pub(super) fn bind_wrapper(p: &Param) -> Value {
         match p {
             Param::Null => json!({ "null": "text" }),
             Param::Str(text) => json!({ "text": text }),
@@ -3216,8 +3217,9 @@ mod tables {
     /// The kinds of the read requests (the hook kinds reads and reads+restore).
     const READS: [&str; 7] = ["one", "all", "count", "group_count", "sum", "avg", "paginate"];
 
-    /// A request that a record action of the installed hook saw: its kind and its table (hook.records).
-    type Record = (String, String);
+    /// A request that a record action of the installed hook saw: its kind, its table and the wrapper of the bound value of a
+    /// record_param action (hook.records).
+    type Record = (String, String, Option<Value>);
 
     /// The trials of a table recipe on `database`, over the fixture set at `fixture` (FCV-3, FCV-4).
     pub fn table_trials(entry: &str, path: &str, fixture: &str, database: &str) -> Vec<polyspec_orm_testcase::Trial> {
@@ -3336,8 +3338,12 @@ mod tables {
             let records = self.records.lock().expect("the records").clone();
             let mut counts = Map::new();
             let mut list = Vec::new();
-            for (kind, entity) in &records {
-                list.push(json!({ "object": [["kind", { "text": kind }], ["entity", { "text": entity }]] }));
+            for (kind, entity, param) in &records {
+                let mut members = vec![json!(["kind", { "text": kind }]), json!(["entity", { "text": entity }])];
+                if let Some(param) = param {
+                    members.push(json!(["param", param]));
+                }
+                list.push(json!({ "object": members }));
                 let n = counts.get(entity).and_then(Value::as_u64).map_or(1, |n| n + 1);
                 counts.insert(entity.clone(), json!(n));
             }
@@ -3356,7 +3362,12 @@ mod tables {
                 raw => Some(relation_spec(raw)?),
             };
             if let Some(spec) = &relation {
-                let mut child = self.row(&spec.model, db, &Value::Null)?;
+                // Without connect the child has no handle and takes the connection of its parent (INT-87).
+                let mut child = if spec.connect {
+                    self.row(&spec.model, db, &Value::Null)?
+                } else {
+                    TableRow::from_core(Core::new(self.entity(&spec.model)?))
+                };
                 for (left, right) in &spec.matches {
                     child.core_mut().add_match(leaked(left), leaked(right));
                 }
@@ -3462,8 +3473,10 @@ mod tables {
                     let records = self.records.clone();
                     records.lock().expect("the records").clear();
                     let hooked = base.with_request_hook(move |request: &mut Request, params: &mut RequestParams| run_hook(&actions, &records, request, params));
-                    self.bases.insert(connection.to_owned(), base);
-                    connections.insert(connection, hooked);
+                    // With as, the hooked handle takes that name and the connection keeps its name, unhooked (INT-78).
+                    let target = step["as"].as_str().unwrap_or(connection);
+                    self.bases.insert(target.to_owned(), base);
+                    connections.insert(target, hooked);
                     Ok(json!({}))
                 }
                 "utils.aes_status" | "utils.aes_rotate" => {
@@ -3504,6 +3517,13 @@ mod tables {
                     row.core_mut().duplication(other.into_core());
                     create(&mut row).await.map_err(orm)?;
                     Ok(json!({}))
+                }
+                // The binds of the statement that the model plans, with no statement run (PRT-2).
+                "model.get_query" => {
+                    let row = self.row(model, &db, &Value::Null)?;
+                    let statement = polyspec_orm::model::get_query(row.core()).await.map_err(orm)?;
+                    let binds: Vec<Value> = statement.binds.iter().map(super::statement::bind_wrapper).collect();
+                    Ok(json!({ "value": { "array": binds } }))
                 }
                 "model.restore" => {
                     let row = self.row(model, &db, &step["values"])?;
@@ -3635,6 +3655,7 @@ mod tables {
         matches: Vec<(String, String)>,
         many: bool,
         columns: Vec<String>,
+        connect: bool,
     }
 
     fn relation_spec(raw: &Value) -> Result<RelationSpec, String> {
@@ -3647,7 +3668,7 @@ mod tables {
             }
         }
         let many = raw["many"].as_bool().ok_or_else(|| "relation names no many".to_owned())?;
-        Ok(RelationSpec { model, matches, many, columns: names(&raw["columns"]) })
+        Ok(RelationSpec { model, matches, many, columns: names(&raw["columns"]), connect: raw["connect"].as_bool() == Some(true) })
     }
 
     /// The rows that a relation read attached to a parent: each row of a collection, or the one row of a single relation.
@@ -3679,7 +3700,7 @@ mod tables {
                 Value::Null => None,
                 wrapper => Some(param(wrapper)?),
             };
-            if matches!(action.as_str(), "scope" | "assign") && (value.is_none() || hook["column"].as_str().is_none()) {
+            if matches!(action.as_str(), "scope" | "assign" | "assign_first" | "rewrite") && (value.is_none() || hook["column"].as_str().is_none()) {
                 return Err(format!("hook action {action} needs a column and a value"));
             }
             out.push(HookAction {
@@ -3752,7 +3773,26 @@ mod tables {
                         row.push(q);
                     }
                 }
-                ("record", _) => records.lock().expect("the records").push((request.kind.clone(), request.query.entity.clone())),
+                ("assign_first", Some(value)) => {
+                    let p = params.add(value.clone());
+                    request.set.insert(0, Assign { column: action.column.clone(), p: Some(p), ..Default::default() });
+                }
+                ("rewrite", Some(value)) => {
+                    for assignment in request.set.iter_mut().filter(|assignment| assignment.column == action.column) {
+                        assignment.p = Some(params.add(value.clone()));
+                    }
+                }
+                ("invalid_param", _) => {
+                    let p = request.n_params + 5;
+                    and_where(&mut request.query, equal_pred(&action.column, p));
+                }
+                ("record", _) => records.lock().expect("the records").push((request.kind.clone(), request.query.entity.clone(), None)),
+                ("record_param", _) => {
+                    for assignment in request.set.iter().filter(|assignment| assignment.column == action.column) {
+                        let param = assignment.p.and_then(|p| params.get(p)).map(super::statement::bind_wrapper);
+                        records.lock().expect("the records").push((request.kind.clone(), request.query.entity.clone(), param));
+                    }
+                }
                 ("fail", _) => return Err(OrmError::Engine { code: action.code.clone(), msg: format!("request hook refused {}", request.kind) }),
                 (other, _) => return Err(OrmError::Engine { code: "STEP".into(), msg: format!("hook action {other} has no column value") }),
             }
