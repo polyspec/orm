@@ -2961,21 +2961,26 @@ CHECK_TARGETS += model-queries-check/go model-queries-check/rust model-queries-c
 .PHONY: constraints-and-relations-check constraints-and-relations-check/go constraints-and-relations-check/rust constraints-and-relations-check/typescript constraints-and-relations-check/python constraints-and-relations-check/php constraints-and-relations-check/php-extension
 constraints-and-relations-check: constraints-and-relations-check/go constraints-and-relations-check/rust constraints-and-relations-check/typescript constraints-and-relations-check/python constraints-and-relations-check/php constraints-and-relations-check/php-extension
 constraints-and-relations-check/go: lease-tool
-	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeConstraintsAndRelations(Mysql|Postgres|Sqlite)$$' -count=1
+	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipe(ConstraintsAndRelations|ImmutableWrite)(Mysql|Postgres|Sqlite)$$' -count=1
 constraints-and-relations-check/rust: lease-tool
-	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) constraints-and-relations-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test constraints_and_relations_mysql --test constraints_and_relations_postgres --test constraints_and_relations_sqlite
+	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) constraints-and-relations-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test constraints_and_relations_mysql --test constraints_and_relations_postgres --test constraints_and_relations_sqlite --test immutable_write_mysql --test immutable_write_postgres --test immutable_write_sqlite
 constraints-and-relations-check/typescript: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/constraints_and_relations-mysql.test.mjs packages/ts/tests/constraints_and_relations-postgres.test.mjs packages/ts/tests/constraints_and_relations-sqlite.test.mjs
+	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/constraints_and_relations-mysql.test.mjs packages/ts/tests/constraints_and_relations-postgres.test.mjs packages/ts/tests/constraints_and_relations-sqlite.test.mjs packages/ts/tests/immutable_write-mysql.test.mjs packages/ts/tests/immutable_write-postgres.test.mjs packages/ts/tests/immutable_write-sqlite.test.mjs
 constraints-and-relations-check/python: lease-tool python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_constraints_and_relations_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_constraints_and_relations_postgres
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_constraints_and_relations_sqlite
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_immutable_write_mysql
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_immutable_write_postgres
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_immutable_write_sqlite
 constraints-and-relations-check/php: lease-tool php-vendor-check php-models
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ConstraintsAndRelationsRecipeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ImmutableWriteRecipeTest.php
 constraints-and-relations-check/php-extension: lease-tool php-vendor-check build-php-ext
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ConstraintsAndRelationsRecipeTestExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ImmutableWriteRecipeTestExtensionTest.php
 CHECK_TARGETS += constraints-and-relations-check/go constraints-and-relations-check/rust constraints-and-relations-check/typescript constraints-and-relations-check/python constraints-and-relations-check/php constraints-and-relations-check/php-extension
 
 

@@ -678,6 +678,15 @@
               "description": "The text that the message of the error ends with.",
               "type": "string",
               "minLength": 1
+            },
+            "message_holds": {
+              "description": "The text that the message of the error holds, for a message that the driver wraps.",
+              "type": "string",
+              "minLength": 1
+            },
+            "driver_cause": {
+              "description": "The error keeps the error of the driver as its cause (Go errors.Unwrap, PHP getPrevious, TypeScript cause, Python __cause__, Rust source).",
+              "const": true
             }
           }
         },

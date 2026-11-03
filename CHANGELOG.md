@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The refusal of an immutable table is the recipe `immutable_write` (DBS-84): an update and a delete fail with `DRIVER`, the message holds `table refused_row is immutable`, the driver cause stays, and a later read gives the stored value. The outcome of an op takes `message_holds` and `driver_cause`. The delete was not checked in any runtime before. (#T334-3-4-16)
 - The recipe `schema_install` holds the difference an install names: the outcome of every op takes `message_suffix`, and `install_external_drift` expects the message to end with `column user.coverage_missing does not exist`. The three tests of `CoverageSchemaInstallNativeTest` that read `coverageItemsOf` are gone; that recipe and `SchemaSetTest` hold them. (#T334-3-4-15)
 - A `sql` field of a recipe is a text or an object with all three databases, as FCV-4 states: a partial map made a missing database run nothing, which FCV-10 forbids. The fulltext index steps are a text with `only`. (#T334-3-4-14)
 - The recipe schema names `query.search_chain` in its step union, declares `message_suffix` on the catalog errors, and every recipe of the parity suites is valid against it. The audit recipe finds a restored row by the actor of its audit record, not by a key number. The feature tests hold again after the tests and owners that other rows removed. (#T334-3-4-13)
