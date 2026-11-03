@@ -4126,6 +4126,210 @@
           }
         }
       ]
+    },
+    {
+      "id": "status_counts_the_rows_of_each_key_version",
+      "requirements": [
+        "INT-75"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "first",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "first",
+          "model": "RotRow",
+          "values": {
+            "token": {
+              "text": "one"
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "first",
+          "model": "RotRow",
+          "values": {
+            "token": {
+              "text": "two"
+            }
+          }
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "second",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 2
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "second",
+          "model": "RotRow",
+          "values": {
+            "token": {
+              "text": "three"
+            }
+          }
+        },
+        {
+          "op": "utils.aes_status",
+          "connection": "second",
+          "model": "RotRow",
+          "keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 2
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "current",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "total",
+                    {
+                      "int": "3"
+                    }
+                  ],
+                  [
+                    "pending",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "versions",
+                    {
+                      "object": [
+                        [
+                          "1",
+                          {
+                            "int": "2"
+                          }
+                        ],
+                        [
+                          "2",
+                          {
+                            "int": "1"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "object": [
+                  [
+                    "current",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "total",
+                    {
+                      "int": "3"
+                    }
+                  ],
+                  [
+                    "pending",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "versions",
+                    {
+                      "object": [
+                        [
+                          "1",
+                          {
+                            "int": "2"
+                          }
+                        ],
+                        [
+                          "2",
+                          {
+                            "int": "1"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "current",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "total",
+                    {
+                      "int": "3"
+                    }
+                  ],
+                  [
+                    "pending",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "versions",
+                    {
+                      "object": [
+                        [
+                          "1",
+                          {
+                            "int": "2"
+                          }
+                        ],
+                        [
+                          "2",
+                          {
+                            "int": "1"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        }
+      ]
     }
   ]
 }

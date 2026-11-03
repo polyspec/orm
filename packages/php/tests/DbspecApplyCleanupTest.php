@@ -4,21 +4,15 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-// Wraps a SQLite PDO to inject failures into Polyspec\Orm\Dbspec apply and checks
-// that no error is lost (docs/spec/plans.md "Apply"): a failing lock release
-// after an event stops apply, a failing foreign key restore after a failing
-// BEGIN EXCLUSIVE, a rollback of an applied row whose recorded step lies
-// outside the plan, an effect query that returns no row, and a result that
-// cannot be closed.
+// Wraps a SQLite PDO to inject failures into Polyspec\Orm\Dbspec apply (docs/spec/plans.md "Apply"): a rollback of
+// an applied row whose recorded step lies outside the plan, an effect query that returns no row, and a result that
+// cannot be closed. The cleanup errors are cases of the recipe tests/dbspec/apply-verification-errors.json.
 
 use Closure;
 use DateTimeImmutable;
 use PDO;
-use PDOException;
 use RuntimeException;
 use Throwable;
-use Polyspec\Orm\Dbspec\ApplyCleanupError;
-use Polyspec\Orm\Dbspec\ApplyError;
 use Polyspec\Orm\Dbspec\ApplyEvent;
 use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Dbspec\Effect;
@@ -26,33 +20,6 @@ use Polyspec\Orm\Dbspec\PlanApply;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
-
-/**
- * Checks that the operation fails with the failure, and that the cleanup error after it is exactly cleanup.
- * Decides whether the failure is the first expected error.
- *
- * @param Closure(Throwable): bool $failure
- * @param list<Throwable> $cleanup
- */
-function want_cleanup(Closure $operation, Closure $failure, array $cleanup): void
-{
-    try {
-        $operation();
-    } catch (Throwable $e) {
-        Assert::assertInstanceOf(
-            ApplyCleanupError::class,
-            $e,
-            get_class($e) . ' "' . $e->getMessage() . '" alone; want it with the cleanup errors'
-        );
-        Assert::assertTrue(
-            $failure($e->getPrevious()),
-            'cleanup error "' . $e->getMessage() . '" holds another failure'
-        );
-        Assert::assertSame($cleanup, $e->cleanup, 'cleanup error "' . $e->getMessage() . '" holds other errors');
-        return;
-    }
-    Assert::fail('succeeded; want the failure with the cleanup errors');
-}
 
 /** Checks that the operation fails with an error whose message is want. */
 function want_message(Closure $operation, string $want): void
@@ -92,31 +59,6 @@ class DbspecApplyCleanupTest extends TestCase
         return PlanApply::EFFECT_QUERIES['sqlite']['table'];
     }
 
-    // apply/cleanup-errors/release
-    // Requirements: PLN-98, PLN-106. The PHP case and extension run check the primary throwable and cleanup order.
-    public function testCleanupErrorsRelease(): void
-    {
-        $plans = self::$plans;
-        $now = self::now();
-        $stop = new RuntimeException('stop');
-        $restore = new PDOException('restore failed');
-        $release = new PDOException('release failed');
-        $pdo = dbspec_failing_pdo('apply_cleanup_php', [
-            'PRAGMA foreign_keys = 0' => $restore,
-            'PRAGMA locking_mode = normal' => $release,
-        ]);
-        $events = static function (ApplyEvent $event) use ($stop): void {
-            if ($event->kind === 'applied') {
-                throw $stop;
-            }
-        };
-        want_cleanup(
-            static fn() => Dbspec::apply($pdo, 'sqlite', $plans, $now, $events),
-            static fn(?Throwable $e): bool => $e === $stop,
-            [$restore, $release]
-        );
-    }
-
     public function testRecoverDoneChain(): void
     {
         $plans = self::$plans;
@@ -128,42 +70,6 @@ class DbspecApplyCleanupTest extends TestCase
             $events[] = $event->kind;
         });
         Assert::assertSame([], $events, 'recover leaves an already completed chain alone');
-    }
-
-    // Requirements: PLN-98.
-    // apply/cleanup-errors/begin-restore
-    public function testCleanupErrorsBeginRestore(): void
-    {
-        $plans = self::$plans;
-        $now = self::now();
-        $begin = new PDOException('begin failed');
-        $begin->errorInfo = ['HY000', 5, 'database is locked'];
-        $restore = new PDOException('restore failed');
-        $pdo = dbspec_failing_pdo(
-            'apply_cleanup_php',
-            ['BEGIN EXCLUSIVE' => $begin, 'PRAGMA foreign_keys = 0' => $restore]
-        );
-        want_cleanup(
-            static fn() => Dbspec::apply($pdo, 'sqlite', $plans, $now, null),
-            static fn(
-                ?Throwable $e
-            ): bool => $e instanceof ApplyError && $e->code_ === 'locked' && $e->getPrevious() === $begin,
-            [$restore],
-        );
-    }
-
-    // apply/rollback-step-outside
-    public function testRollbackStepOutside(): void
-    {
-        $plans = self::$plans;
-        $now = self::now();
-        $pdo = dbspec_failing_pdo('apply_cleanup_php', []);
-        Dbspec::apply($pdo, 'sqlite', $plans, $now, null);
-        $pdo->exec('UPDATE "dbspec$plans" SET step = 99');
-        want_message(
-            static fn() => Dbspec::rollback($pdo, 'sqlite', $plans, $now, null),
-            "chain {$plans[0]->name}: the recorded step 99 is outside the plan's 4 steps"
-        );
     }
 
     public function testRecoverAndRollbackWithNoRecordedPlan(): void
