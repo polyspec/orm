@@ -1,0 +1,1282 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "FCV-2",
+    "DIA-133",
+    "DIA-198",
+    "DBS-42",
+    "DBS-84",
+    "DBS-94",
+    "DIA-39",
+    "DIA-44",
+    "DIA-49",
+    "DIA-50",
+    "DIA-59",
+    "DIA-71",
+    "DIA-110",
+    "DIA-111",
+    "DIA-112",
+    "DIA-134",
+    "DIA-135",
+    "DIA-136",
+    "DIA-137",
+    "DIA-138",
+    "DIA-139",
+    "DIA-140",
+    "DIA-141",
+    "DIA-142",
+    "DIA-143",
+    "DIA-144",
+    "DIA-145",
+    "DIA-146",
+    "DIA-147",
+    "DIA-148",
+    "DIA-149",
+    "DIA-150",
+    "DIA-151",
+    "DIA-152",
+    "DIA-153"
+  ],
+  "fixture": "none",
+  "cases": [
+    {
+      "id": "round_trip_ddl_types_and_defaults",
+      "requirements": [
+        "DIA-133",
+        "DIA-198"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/ddl.json",
+          "case": "types-and-defaults",
+          "expect": {
+            "mysql": {
+              "queries": 9
+            },
+            "postgres": {
+              "queries": 7
+            },
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "round_trip_ddl_keys_indexes_foreign_keys",
+      "requirements": [
+        "DIA-133",
+        "DIA-198"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/ddl.json",
+          "case": "keys-indexes-foreign-keys",
+          "expect": {
+            "mysql": {
+              "queries": 9
+            },
+            "postgres": {
+              "queries": 7
+            },
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "round_trip_ddl_checks_in_dialect_form",
+      "requirements": [
+        "DIA-133",
+        "DIA-198"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/ddl.json",
+          "case": "checks-in-dialect-form",
+          "expect": {
+            "mysql": {
+              "queries": 9
+            },
+            "postgres": {
+              "queries": 7
+            },
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "round_trip_ddl_immutable_and_audit",
+      "requirements": [
+        "DIA-133",
+        "DIA-198"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/ddl.json",
+          "case": "immutable-and-audit",
+          "expect": {
+            "mysql": {
+              "queries": 9
+            },
+            "postgres": {
+              "queries": 7
+            },
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "round_trip_ddl_use_across_documents",
+      "requirements": [
+        "DIA-133",
+        "DIA-198"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/ddl.json",
+          "case": "use-across-documents",
+          "expect": {
+            "mysql": {
+              "queries": 9
+            },
+            "postgres": {
+              "queries": 7
+            },
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "round_trip_ddl_audit_columns",
+      "requirements": [
+        "DIA-133",
+        "DIA-198"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/ddl.json",
+          "case": "audit-columns",
+          "expect": {
+            "mysql": {
+              "queries": 9
+            },
+            "postgres": {
+              "queries": 7
+            },
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "round_trip_ddl_history_name_hashed_by_rule",
+      "requirements": [
+        "DIA-133",
+        "DIA-198"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/ddl.json",
+          "case": "history-name-hashed-by-rule",
+          "expect": {
+            "mysql": {
+              "queries": 9
+            },
+            "postgres": {
+              "queries": 7
+            },
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "round_trip_ddl_audit_tables",
+      "requirements": [
+        "DIA-133",
+        "DIA-198"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/ddl.json",
+          "case": "audit-tables",
+          "expect": {
+            "mysql": {
+              "queries": 9
+            },
+            "postgres": {
+              "queries": 7
+            },
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "round_trip_ddl_audit_encrypted_column",
+      "requirements": [
+        "DIA-133",
+        "DIA-198"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/ddl.json",
+          "case": "audit-encrypted-column",
+          "expect": {
+            "mysql": {
+              "queries": 9
+            },
+            "postgres": {
+              "queries": 7
+            },
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "round_trip_schema_bench",
+      "requirements": [
+        "DIA-133",
+        "DIA-198"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "paths": [
+            "../bench/bench.dbs"
+          ],
+          "expect": {
+            "mysql": {
+              "queries": 9
+            },
+            "postgres": {
+              "queries": 7
+            },
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "round_trip_schema_bench_reader",
+      "requirements": [
+        "DIA-133",
+        "DIA-198"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "paths": [
+            "../bench/bench_reader.dbs",
+            "../bench/bench_shared.dbs"
+          ],
+          "expect": {
+            "mysql": {
+              "queries": 9
+            },
+            "postgres": {
+              "queries": 7
+            },
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "round_trip_schema_bench_shared",
+      "requirements": [
+        "DIA-133",
+        "DIA-198"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "paths": [
+            "../bench/bench_shared.dbs"
+          ],
+          "expect": {
+            "mysql": {
+              "queries": 9
+            },
+            "postgres": {
+              "queries": 7
+            },
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "round_trip_schema_aes_chain",
+      "requirements": [
+        "DIA-133",
+        "DIA-198"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "paths": [
+            "../aes_chain.dbs"
+          ],
+          "expect": {
+            "mysql": {
+              "queries": 9
+            },
+            "postgres": {
+              "queries": 7
+            },
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "round_trip_schema_audit",
+      "requirements": [
+        "DIA-133",
+        "DIA-198"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "paths": [
+            "../audit.dbs"
+          ],
+          "expect": {
+            "mysql": {
+              "queries": 9
+            },
+            "postgres": {
+              "queries": 7
+            },
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "round_trip_schema_audit_columns",
+      "requirements": [
+        "DIA-133",
+        "DIA-198"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "paths": [
+            "../audit_columns.dbs"
+          ],
+          "expect": {
+            "mysql": {
+              "queries": 9
+            },
+            "postgres": {
+              "queries": 7
+            },
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "round_trip_schema_clock",
+      "requirements": [
+        "DIA-133",
+        "DIA-198"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "paths": [
+            "../clock.dbs"
+          ],
+          "expect": {
+            "mysql": {
+              "queries": 9
+            },
+            "postgres": {
+              "queries": 7
+            },
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "round_trip_schema_clock_mark",
+      "requirements": [
+        "DIA-133",
+        "DIA-198"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "paths": [
+            "../clock_mark.dbs"
+          ],
+          "expect": {
+            "mysql": {
+              "queries": 9
+            },
+            "postgres": {
+              "queries": 7
+            },
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "round_trip_schema_decimal_schema",
+      "requirements": [
+        "DIA-133",
+        "DIA-198"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "paths": [
+            "../decimal_schema.dbs"
+          ],
+          "expect": {
+            "mysql": {
+              "queries": 9
+            },
+            "postgres": {
+              "queries": 7
+            },
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "round_trip_schema_identity_load",
+      "requirements": [
+        "DIA-133",
+        "DIA-198"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "paths": [
+            "../identity_load.dbs"
+          ],
+          "expect": {
+            "mysql": {
+              "queries": 9
+            },
+            "postgres": {
+              "queries": 7
+            },
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "round_trip_schema_ip_hex",
+      "requirements": [
+        "DIA-133",
+        "DIA-198"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "paths": [
+            "../ip_hex.dbs"
+          ],
+          "expect": {
+            "mysql": {
+              "queries": 9
+            },
+            "postgres": {
+              "queries": 7
+            },
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "round_trip_schema_refusal",
+      "requirements": [
+        "DIA-133",
+        "DIA-198"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "paths": [
+            "../refusal.dbs"
+          ],
+          "expect": {
+            "mysql": {
+              "queries": 9
+            },
+            "postgres": {
+              "queries": 7
+            },
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "round_trip_schema_restore",
+      "requirements": [
+        "DIA-133",
+        "DIA-198"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "paths": [
+            "../restore.dbs"
+          ],
+          "expect": {
+            "mysql": {
+              "queries": 9
+            },
+            "postgres": {
+              "queries": 7
+            },
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "round_trip_schema_restore_keys",
+      "requirements": [
+        "DIA-133",
+        "DIA-198"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "paths": [
+            "../restore_keys.dbs"
+          ],
+          "expect": {
+            "mysql": {
+              "queries": 9
+            },
+            "postgres": {
+              "queries": 7
+            },
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "round_trip_schema_rollback",
+      "requirements": [
+        "DIA-133",
+        "DIA-198"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "paths": [
+            "../rollback.dbs"
+          ],
+          "expect": {
+            "mysql": {
+              "queries": 9
+            },
+            "postgres": {
+              "queries": 7
+            },
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "round_trip_schema_secret_config",
+      "requirements": [
+        "DIA-133",
+        "DIA-198"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "paths": [
+            "../secret_config.dbs"
+          ],
+          "expect": {
+            "mysql": {
+              "queries": 9
+            },
+            "postgres": {
+              "queries": 7
+            },
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "round_trip_schema_time_precision",
+      "requirements": [
+        "DIA-133",
+        "DIA-198"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "paths": [
+            "../time_precision.dbs"
+          ],
+          "expect": {
+            "mysql": {
+              "queries": 9
+            },
+            "postgres": {
+              "queries": 7
+            },
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "round_trip_schema_zone",
+      "requirements": [
+        "DIA-133",
+        "DIA-198"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "paths": [
+            "../zone.dbs"
+          ],
+          "expect": {
+            "mysql": {
+              "queries": 9
+            },
+            "postgres": {
+              "queries": 7
+            },
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "mysql_unsupported",
+      "requirements": [
+        "DIA-133"
+      ],
+      "only": [
+        "mysql"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/introspect.json",
+          "case": "mysql-unsupported",
+          "expect": {
+            "mysql": {
+              "queries": 9
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "postgres_unsupported",
+      "requirements": [
+        "DIA-133"
+      ],
+      "only": [
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/introspect.json",
+          "case": "postgres-unsupported",
+          "expect": {
+            "postgres": {
+              "queries": 7
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "postgres_other_schema",
+      "requirements": [
+        "DIA-133"
+      ],
+      "only": [
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/introspect.json",
+          "case": "postgres-other-schema",
+          "expect": {
+            "postgres": {
+              "queries": 7
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_unsupported",
+      "requirements": [
+        "DIA-133"
+      ],
+      "only": [
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/introspect.json",
+          "case": "sqlite-unsupported",
+          "expect": {
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "mysql_dependents_once",
+      "requirements": [
+        "DIA-133"
+      ],
+      "only": [
+        "mysql"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/introspect.json",
+          "case": "mysql-dependents-once",
+          "expect": {
+            "mysql": {
+              "queries": 9
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_table_items",
+      "requirements": [
+        "DIA-133"
+      ],
+      "only": [
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/introspect.json",
+          "case": "sqlite-table-items",
+          "expect": {
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_check_non_ascii_word",
+      "requirements": [
+        "DIA-133"
+      ],
+      "only": [
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/introspect.json",
+          "case": "sqlite-check-non-ascii-word",
+          "expect": {
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_check_non_ascii_literal",
+      "requirements": [
+        "DIA-133"
+      ],
+      "only": [
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/introspect.json",
+          "case": "sqlite-check-non-ascii-literal",
+          "expect": {
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_primary_key_null",
+      "requirements": [
+        "DIA-133"
+      ],
+      "only": [
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/introspect.json",
+          "case": "sqlite-primary-key-null",
+          "expect": {
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "mysql_checks_after_alter",
+      "requirements": [
+        "DIA-133"
+      ],
+      "only": [
+        "mysql"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/introspect.json",
+          "case": "mysql-checks-after-alter",
+          "expect": {
+            "mysql": {
+              "queries": 9
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "mysql_time_precision_after_alter",
+      "requirements": [
+        "DIA-133"
+      ],
+      "only": [
+        "mysql"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/introspect.json",
+          "case": "mysql-time-precision-after-alter",
+          "expect": {
+            "mysql": {
+              "queries": 9
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "mysql_generated_column",
+      "requirements": [
+        "DIA-133"
+      ],
+      "only": [
+        "mysql"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/introspect.json",
+          "case": "mysql-generated-column",
+          "expect": {
+            "mysql": {
+              "queries": 9
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "postgres_generated_column",
+      "requirements": [
+        "DIA-133"
+      ],
+      "only": [
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/introspect.json",
+          "case": "postgres-generated-column",
+          "expect": {
+            "postgres": {
+              "queries": 7
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "mysql_hashed_history_names",
+      "requirements": [
+        "DIA-133"
+      ],
+      "only": [
+        "mysql"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/introspect.json",
+          "case": "mysql-hashed-history-names",
+          "expect": {
+            "mysql": {
+              "queries": 9
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "postgres_hashed_history_names",
+      "requirements": [
+        "DIA-133"
+      ],
+      "only": [
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/introspect.json",
+          "case": "postgres-hashed-history-names",
+          "expect": {
+            "postgres": {
+              "queries": 7
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_hashed_history_names",
+      "requirements": [
+        "DIA-133"
+      ],
+      "only": [
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/introspect.json",
+          "case": "sqlite-hashed-history-names",
+          "expect": {
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "mysql_audit_and_immutable",
+      "requirements": [
+        "DIA-133"
+      ],
+      "only": [
+        "mysql"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/introspect.json",
+          "case": "mysql-audit-and-immutable",
+          "expect": {
+            "mysql": {
+              "queries": 9
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "postgres_audit_and_immutable",
+      "requirements": [
+        "DIA-133"
+      ],
+      "only": [
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/introspect.json",
+          "case": "postgres-audit-and-immutable",
+          "expect": {
+            "postgres": {
+              "queries": 7
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_audit_and_immutable",
+      "requirements": [
+        "DIA-133"
+      ],
+      "only": [
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/introspect.json",
+          "case": "sqlite-audit-and-immutable",
+          "expect": {
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "mysql_audit_tables",
+      "requirements": [
+        "DIA-133"
+      ],
+      "only": [
+        "mysql"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/introspect.json",
+          "case": "mysql-audit-tables",
+          "expect": {
+            "mysql": {
+              "queries": 9
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "postgres_audit_tables",
+      "requirements": [
+        "DIA-133"
+      ],
+      "only": [
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/introspect.json",
+          "case": "postgres-audit-tables",
+          "expect": {
+            "postgres": {
+              "queries": 7
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_audit_tables",
+      "requirements": [
+        "DIA-133"
+      ],
+      "only": [
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/introspect.json",
+          "case": "sqlite-audit-tables",
+          "expect": {
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "mysql_fulltext_index",
+      "requirements": [
+        "DIA-133"
+      ],
+      "only": [
+        "mysql"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/introspect.json",
+          "case": "mysql-fulltext-index",
+          "expect": {
+            "mysql": {
+              "queries": 9
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "postgres_fulltext_index",
+      "requirements": [
+        "DIA-133"
+      ],
+      "only": [
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/introspect.json",
+          "case": "postgres-fulltext-index",
+          "expect": {
+            "postgres": {
+              "queries": 7
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_fulltext_table",
+      "requirements": [
+        "DIA-133"
+      ],
+      "only": [
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/introspect.json",
+          "case": "sqlite-fulltext-table",
+          "expect": {
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "catalog_query_failure",
+      "requirements": [
+        "DIA-133"
+      ],
+      "only": [
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "catalog_of": "mysql",
+          "expect": {
+            "sqlite": {
+              "failed": true
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
