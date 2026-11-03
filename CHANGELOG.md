@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- `CONTRIBUTING.md` states the bootstrap of a fresh checkout in an order that works: `npm ci` with the npm of `devEngines` first, since the Makefile includes kit.
 - The MySQL catalog of PHP and the PHP extension holds one connection, PDO, and uses no mysqli (INT-157): `ext-mysqli` and `OrmException::fromMysqli` are gone. A grid query of an integer or string expression or alias on MySQL now fails with `CATALOG_VALUE` in these two runtimes, since pdo_mysql reports no flag or charset for it.
 - A described catalog read refuses a non-NULL value of a MySQL TIMESTAMP or a PostgreSQL timestamptz or timetz column with `CATALOG_VALUE` in every runtime, reads a CHECK-less SQLite TIME at precision 0 as a CHECK-less DATETIME reads, and returns the stored text of a SQLite TIMESTAMP (INT-103).
 - A transaction or savepoint that SQLite rolled back by itself, after `RAISE(ROLLBACK)`, an I/O error or a full disk, reports the error that ended it, in every runtime and in the catalog connection. The client no longer sends a ROLLBACK, ROLLBACK TO SAVEPOINT or RELEASE SAVEPOINT that SQLite answers with `cannot rollback - no transaction is active`, so limepie no longer logs a rollback failure stacked on a disk I/O error (INT-155, T356). The Rust catalog connection also reports a driver error of a row write with its code, as the other runtimes do.

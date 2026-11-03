@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- `CONTRIBUTING.md`가 새 checkout의 부트스트랩을 실제로 동작하는 순서로 적는다. Makefile이 kit을 include하므로 `devEngines`의 npm으로 `npm ci`를 먼저 실행한다.
 - PHP와 PHP extension의 MySQL catalog는 연결 하나, PDO만 쥐고 mysqli를 쓰지 않는다 (INT-157): `ext-mysqli`와 `OrmException::fromMysqli`가 사라졌다. MySQL grid query의 정수·문자열 식과 별칭은 이제 이 두 runtime에서 `CATALOG_VALUE`로 실패한다. pdo_mysql이 그 flag도 charset도 알려 주지 않기 때문이다.
 - catalog의 described read는 모든 runtime에서 MySQL TIMESTAMP, PostgreSQL timestamptz, timetz 열의 NULL이 아닌 값을 `CATALOG_VALUE`로 거부하고, CHECK가 없는 SQLite TIME을 CHECK가 없는 DATETIME처럼 precision 0으로 읽으며, SQLite TIMESTAMP의 저장된 텍스트를 돌려준다 (INT-103).
 - SQLite가 `RAISE(ROLLBACK)`, I/O 오류, 가득 찬 disk 뒤에 스스로 rollback한 transaction이나 savepoint는 모든 runtime과 catalog connection에서 그것을 끝낸 오류를 보고한다. client는 SQLite가 `cannot rollback - no transaction is active`로 답하는 ROLLBACK, ROLLBACK TO SAVEPOINT, RELEASE SAVEPOINT를 더는 보내지 않으므로, limepie는 disk I/O 오류 위에 쌓인 rollback 실패를 더는 기록하지 않는다 (INT-155, T356). Rust catalog connection도 다른 runtime처럼 행 쓰기의 driver 오류를 code와 함께 보고한다.
