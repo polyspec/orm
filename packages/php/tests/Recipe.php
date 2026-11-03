@@ -2093,6 +2093,7 @@ final class Recipe
                         Assert::fail('mask ' . json_encode($mask) . ' names no captured bind');
                     }
                     $events[$mask['event']]['object'][1][1]['array'][$mask['bind']] = ['text' => $mask['value']];
+                }
                 if (($s['compare'] ?? '') === 'statements') {
                     // The bound clock of a soft delete differs on each run, so the sql and the kind are compared.
                     $events = array_map(static fn (array $event): array => ['object' => array_values(array_filter(
