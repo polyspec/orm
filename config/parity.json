@@ -12110,6 +12110,45 @@
       ]
     },
     {
+      "id": "dbspec-show-create-reader-text",
+      "kind": "feature",
+      "requirements": [
+        "DIA-84"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/engine/dbspec/show_create_test.go",
+          "id": "TestMySQLShownCheckVectors"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecShowCreateTest.php",
+          "id": "DbspecShowCreateTest::testShowCreate"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecShowCreateIntrospectTestExtensionTest.php",
+          "id": "DbspecShowCreateIntrospectTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-show-create.mjs",
+          "id": "non-ascii-literal"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_show_create.py",
+          "id": "non-ascii-literal"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/schema/src/dbspec/introspect/mysql.rs",
+          "id": "dbspec::introspect::mysql::show_create_tests::every_show_create_case_reads_to_its_expected_body"
+        }
+      ]
+    },
+    {
       "id": "dbspec-show-create-check-body",
       "kind": "suite",
       "requirements": [

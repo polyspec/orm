@@ -14,6 +14,17 @@
   },
   "cases": [
     {
+      "id": "non-ascii-literal-with-a-valid-name",
+      "create": [
+        "CREATE TABLE `p1` (",
+        "  `mail` varchar(64) NOT NULL,",
+        "  CONSTRAINT `ck_cafe` CHECK ((`mail` <> _utf8mb4'café'))",
+        ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"
+      ],
+      "name": "ck_cafe",
+      "expected": "(`mail` <> _utf8mb4\\'café\\')"
+    },
+    {
       "id": "non-ascii-literal",
       "create": [
         "CREATE TABLE `p1` (",

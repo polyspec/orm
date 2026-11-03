@@ -26,6 +26,27 @@
       ]
     },
     {
+      "id": "non-ascii-literal-with-a-valid-name",
+      "requirements": [
+        "DIA-84"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect_shown",
+          "vectors": "show-create.json",
+          "case": "non-ascii-literal-with-a-valid-name",
+          "expect": {
+            "none": {
+              "checks": [
+                "check ck_cafe (mail <> 'café')"
+              ],
+              "unsupported": []
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "literal-with-quote",
       "requirements": [
         "DIA-84"
