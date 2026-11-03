@@ -140,6 +140,10 @@ final class Recipe
                     self::dsnConnectStep($step, $database);
                     continue;
                 }
+                if ($step['op'] === 'dbspec.introspect_sqlite') {
+                    self::dbspecIntrospectSqliteStep($step, $database);
+                    continue;
+                }
                 if ($step['op'] === 'keyring.versions') {
                     self::keyringVersionsStep($step, $database);
                     continue;
@@ -1230,6 +1234,31 @@ final class Recipe
             }
         });
         self::checkMessage($step['expect'], $message, $code);
+    }
+
+    /**
+     * Runs one dbspec.introspect_sqlite step (FCV-4): the statements on a memory SQLite connection of its own,
+     * then the public Dbspec::introspect, whose unsupported objects it compares (DIA-191).
+     *
+     * @param array<string, mixed> $step
+     */
+    private static function dbspecIntrospectSqliteStep(array $step, string $database): void
+    {
+        $pdo = new \PDO('sqlite::memory:', null, null, [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]);
+        foreach ($step['sql'] as $statement) {
+            $pdo->exec($statement);
+        }
+        $result = Dbspec::introspect($pdo, 'sqlite', 'introspected');
+        $got = array_map(
+            static fn($item): array => [
+                'kind' => $item->kind,
+                'table' => $item->table,
+                'name' => $item->name,
+                'reason' => $item->reason,
+            ],
+            $result->unsupported
+        );
+        Assert::assertSame($step['expect'][$database]['unsupported'], $got);
     }
 
     /**

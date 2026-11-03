@@ -163,6 +163,33 @@ fn dsn_connect(step: &Value, database: &str) -> Result<(), String> {
     }
 }
 
+/// The dbspec.introspect_sqlite op (FCV-4): the statements on a memory SQLite connection of its own, then the
+/// public introspect, whose unsupported objects it compares with the expect of `database` (DIA-191).
+fn dbspec_introspect_sqlite(step: &Value, database: &str) -> Result<(), String> {
+    use sqlx::Connection;
+    let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|error| error.to_string())?;
+    let unsupported = runtime.block_on(async {
+        let mut connection = sqlx::SqliteConnection::connect("sqlite::memory:").await.map_err(|error| error.to_string())?;
+        for statement in step["sql"].as_array().ok_or("sql is not a list")? {
+            let text = statement.as_str().ok_or("a statement is not a string")?.to_owned();
+            sqlx::query(sqlx::AssertSqlSafe(text)).execute(&mut connection).await.map_err(|error| error.to_string())?;
+        }
+        let introspection = dbspec::introspect(&mut connection, Dialect::Sqlite, "introspected").await.map_err(|error| error.to_string())?;
+        connection.close().await.map_err(|error| error.to_string())?;
+        Ok::<_, String>(introspection.unsupported)
+    })?;
+    let got: Vec<Value> = unsupported
+        .iter()
+        .map(|item| json!({ "kind": item.kind, "table": item.table, "name": item.name, "reason": item.reason }))
+        .collect();
+    let want = &step["expect"][database]["unsupported"];
+    if want.as_array().map(Vec::as_slice) == Some(got.as_slice()) {
+        Ok(())
+    } else {
+        Err(format!("unsupported objects {got:?}, want {want}"))
+    }
+}
+
 /// The keyring.versions op (FCV-4): the public constructor of the keyring, then its current version and its versions (INT-74,
 /// INT-130), against the expect of `database`.
 fn keyring_versions(step: &Value, database: &str) -> Result<(), String> {
@@ -211,6 +238,7 @@ fn markdown_builder(step: &Value, database: &str) -> Result<(), String> {
 fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: &Path) -> Result<(), String> {
     match step["op"].as_str().unwrap_or_default() {
         "dsn.connect" => return dsn_connect(step, database),
+        "dbspec.introspect_sqlite" => return dbspec_introspect_sqlite(step, database),
         "keyring.versions" => return keyring_versions(step, database),
         "markdown.builder" => return markdown_builder(step, database),
         "planner.compile" => return planner_compile(step, database, dir),

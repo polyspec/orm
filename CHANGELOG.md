@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The SQLite unsupported column reason of DIA-191 is the recipe `tests/dbspec/introspect-messages.json` in all six runtimes, through the op `dbspec.introspect_sqlite`, and each compares the whole list of unsupported objects; a test of it in a single runtime is gone
 - The refusal of an unknown dialect by `planSteps` and `render` is the two cases of the recipe `tests/dbspec/dialect-refusal.json` in Go, PHP, the PHP extension, TypeScript and Python; Rust keeps its compile fixtures, because it takes a dialect by an enum type.
 - An integer of a markdown answer is a JSON number with no fraction or exponent (PRT-69): `3.0` in an integer column is `CODEC_DECODE`
 - A `sql` field of a recipe is a text or an object with all three databases, as FCV-4 states: a partial map made a missing database run nothing, which FCV-10 forbids. The fulltext index steps are a text with `only`. (#T334-3-4-14)

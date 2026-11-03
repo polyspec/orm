@@ -751,6 +751,7 @@
           "enum": [
             "dsn.connect",
             "keyring.versions",
+            "dbspec.introspect_sqlite",
             "markdown.builder",
             "model.connect",
             "codec.decode",
@@ -841,6 +842,9 @@
         },
         {
           "$ref": "#/$defs/ops/keyring.versions"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.introspect_sqlite"
         },
         {
           "$ref": "#/$defs/ops/markdown.builder"
@@ -1330,6 +1334,72 @@
           },
           "expect": {
             "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "dbspec.introspect_sqlite": {
+        "type": "object",
+        "required": [
+          "op",
+          "sql",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.introspect_sqlite"
+          },
+          "sql": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "expect": {
+            "type": "object",
+            "required": [
+              "none"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "type": "object",
+                "required": [
+                  "unsupported"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "unsupported": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "kind",
+                        "table",
+                        "name",
+                        "reason"
+                      ],
+                      "additionalProperties": false,
+                      "properties": {
+                        "kind": {
+                          "type": "string"
+                        },
+                        "table": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "reason": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       },

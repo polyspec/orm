@@ -6,6 +6,8 @@ package recipe
 
 import (
 	"bytes"
+	"context"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -26,6 +28,7 @@ import (
 	"github.com/polyspec/orm/packages/go/engine/plan"
 	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
 	"github.com/polyspec/orm/packages/go/orm"
+	_ "modernc.org/sqlite"
 )
 
 // None is the database part of a recipe without a database (FCV-3).
@@ -87,6 +90,8 @@ type step struct {
 	Params      []json.RawMessage          `json:"params"`
 	Begin       json.RawMessage            `json:"begin"`
 	ProcessZone string                     `json:"process_zone"`
+	// SQL is the statements of dbspec.introspect_sqlite.
+	SQL []string `json:"sql"`
 	// Keyring is the keyring of keyring.versions, Calls the builder calls of markdown.builder (FCV-4).
 	Keyring *aesKeyringSpec `json:"keyring"`
 	Calls   []string        `json:"calls"`
@@ -238,6 +243,9 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 	}
 	if s.Op == "keyring.versions" {
 		return checkKeyring(s, database)
+	}
+	if s.Op == "dbspec.introspect_sqlite" {
+		return checkIntrospectSQLite(t, s, database)
 	}
 	var r result
 	switch s.Op {
@@ -1510,6 +1518,41 @@ func checkBuilder(t *testing.T, s step, database string, fn MarkdownBuilder) err
 	code, message := fn(t, s.Calls)
 	if code != want.Error || !strings.Contains(message, want.MessageContains) {
 		return fmt.Errorf("the terminal returned %q %q, want %q with %q", code, message, want.Error, want.MessageContains)
+	}
+	return nil
+}
+
+// checkIntrospectSQLite runs one dbspec.introspect_sqlite step: the statements on a memory SQLite connection of its own, then the
+// public Introspect, whose unsupported objects it compares with the expect of database (DIA-191).
+func checkIntrospectSQLite(t *testing.T, s step, database string) error {
+	var want struct {
+		Unsupported []dbspec.Unsupported `json:"unsupported"`
+	}
+	if err := json.Unmarshal(s.Expect[database], &want); err != nil {
+		return err
+	}
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("close the memory SQLite connection: %v", err)
+		}
+	}()
+	db.SetMaxOpenConns(1)
+	ctx := context.Background()
+	for _, statement := range s.SQL {
+		if _, err := db.ExecContext(ctx, statement); err != nil {
+			return err
+		}
+	}
+	_, unsupported, err := dbspec.Introspect(ctx, db, dbspec.DialectSQLite, "introspected")
+	if err != nil {
+		return err
+	}
+	if !slices.Equal(unsupported, want.Unsupported) {
+		return fmt.Errorf("unsupported objects = %+v, want %+v", unsupported, want.Unsupported)
 	}
 	return nil
 }

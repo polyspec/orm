@@ -10,6 +10,7 @@ import os
 import re
 import shutil
 import socket
+import sqlite3
 import tempfile
 import threading
 import time
@@ -61,6 +62,7 @@ from polyspec.orm.dbspec import (
     render_dbspec,
 )
 from polyspec.orm.dbspec.compare import compare_schemas
+from polyspec.orm.dbspec.introspect import introspect_dbspec
 from polyspec.orm.dbspec.mermaid import export_mermaid, import_mermaid
 from polyspec.orm.dbspec.plan import chain_plans, emit_plan, parse_plan
 from polyspec.orm.dbspec.plan_diff import diff_plan
@@ -152,6 +154,9 @@ def recipe_tests(path: str, database: str):
                     continue
                 if step["op"] == "dsn.connect":
                     _dsn_connect(step, database)
+                    continue
+                if step["op"] == "dbspec.introspect_sqlite":
+                    _dbspec_introspect_sqlite(step, database)
                     continue
                 if step["op"] == "keyring.versions":
                     _keyring_versions(step, database)
@@ -905,6 +910,39 @@ def _send(step: dict, call=None) -> None:
     if got != expect["message"]:
         raise AssertionError(
             f"message {json.dumps(got)}, want {json.dumps(expect['message'])} (message {received[0]})"
+        )
+
+
+class _SqliteCatalogConnection:
+    """The connection that introspect_dbspec reads: execute answers the rows of a statement."""
+
+    def __init__(self, connection: sqlite3.Connection) -> None:
+        self._connection = connection
+
+    def execute(self, sql: str, values: Any = None) -> dict:
+        cursor = self._connection.execute(sql, list(values or []))
+        return {"rows": [list(row) for row in cursor.fetchall()]}
+
+
+def _dbspec_introspect_sqlite(step: dict, database: str) -> None:
+    """Runs the dbspec.introspect_sqlite op (FCV-4): the statements on a memory SQLite connection of
+    its own, then the public introspect_dbspec, whose unsupported objects it compares (DIA-191)."""
+    connection = sqlite3.connect(":memory:")
+    try:
+        for statement in step["sql"]:
+            connection.execute(statement)
+        result = introspect_dbspec(
+            _SqliteCatalogConnection(connection), "sqlite", "introspected"
+        )
+    finally:
+        connection.close()
+    got = [
+        {key: item[key] for key in ("kind", "table", "name", "reason")}
+        for item in result["unsupported"]
+    ]
+    if got != step["expect"][database]["unsupported"]:
+        raise AssertionError(
+            f"unsupported objects {got}, want {step['expect'][database]['unsupported']}"
         )
 
 

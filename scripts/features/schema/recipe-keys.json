@@ -19,6 +19,11 @@
     "steps"
   ],
   "step": {
+    "dbspec.introspect_sqlite": [
+      "expect",
+      "op",
+      "sql"
+    ],
     "keyring.versions": [
       "expect",
       "keyring",

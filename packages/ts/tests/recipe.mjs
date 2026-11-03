@@ -9,11 +9,12 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
+import { DatabaseSync } from 'node:sqlite';
 import { isDeepStrictEqual } from 'node:util';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { AesKeyring, BindCell, CORE, Collection, Db, OrmError, StyledValue, blindIndex, chainPlans, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, orm, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
 import { analyzeDbspec, formatDbspec, parseDbspecSet as parseDbspecSetBrowser, readDbspecBytes } from '../dist/dbspec/entry.js';
-import { exportMermaid, importMermaid } from '../dist/dbspec/index.js';
+import { exportMermaid, importMermaid, introspectDbspec } from '../dist/dbspec/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
 import { Slots, connect as connectSlots } from '../dist/models/bind_fixture/models.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
@@ -60,6 +61,7 @@ export function runRecipe(path, database) {
           else if (step.op === 'ir.answer') await checkAnswer(step, database, answerText(literal, caseIndex, index));
           else if (step.op === 'dsn.connect') await checkDsnConnect(step, database);
           else if (step.op === 'keyring.versions') checkKeyring(step, database);
+          else if (step.op === 'dbspec.introspect_sqlite') await checkIntrospectSqlite(step, database);
           else if (step.op === 'markdown.builder') await checkBuilder(step, database);
           else if (step.op === 'generator.generate') checkGenerator(step, dir, database);
           else if (dbspecFileOps.includes(step.op)) await checkDbspecFiles(step, dir, database);
@@ -2036,6 +2038,20 @@ async function checkSend(step, wrappedExpect) {
     if (step.begin !== undefined) await db.transaction(() => {}, { readOnly: step.begin.read_only === true });
     else await queryColumn(step, db);
   }, step, wrappedExpect);
+}
+
+// checkIntrospectSqlite runs a dbspec.introspect_sqlite step: the statements on a memory SQLite connection of its own, then the
+// public introspectDbspec, whose unsupported objects it compares with the expect of database (DIA-191).
+async function checkIntrospectSqlite(step, database) {
+  const connection = new DatabaseSync(':memory:');
+  try {
+    for (const statement of step.sql) connection.exec(statement);
+    const result = await introspectDbspec(connection, 'sqlite', 'introspected');
+    const got = result.unsupported.map(({ kind, table, name, reason }) => ({ kind, table, name, reason }));
+    assert.deepEqual(got, step.expect[database].unsupported);
+  } finally {
+    connection.close();
+  }
 }
 
 // checkKeyring runs a keyring.versions step: the public constructor of the keyring, then its current version and its versions (INT-74,

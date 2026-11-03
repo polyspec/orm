@@ -542,12 +542,11 @@ dbspec-introspect-php-extension-query-count-check: php-vendor-check php-models
 
 dbspec-introspect-query-count-unit-check: php-vendor-check python-venv-check dbspec-introspect-query-count-rust-check dbspec-introspect-php-extension-query-count-check orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
-	$(GO_TEST) ./packages/go/engine/dbspec -run '^(TestQueryCountIsIndependentOfSQLiteTableCount|TestSQLiteUnsupportedColumnReasonQuotesMissingCheck)$$' -count=1
+	$(GO_TEST) ./packages/go/engine/dbspec -run '^TestQueryCountIsIndependentOfSQLiteTableCount$$' -count=1
 	$(TSC_BUILD)
-	$(NODE) --test --test-name-pattern='SQLite memory catalog query count is independent of table count|dbspec.introspect.sqlite-empty-check-reason' packages/ts/tests/dbspec-introspect-query-count.mjs
-	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_dbspec_introspect_query_count packages.python.tests.test_introspect_messages.SqliteUnsupportedMessageTest.test_a_column_without_check_is_quoted_as_the_empty_string
+	$(NODE) --test --test-name-pattern='SQLite memory catalog query count is independent of table count' packages/ts/tests/dbspec-introspect-query-count.mjs
+	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_dbspec_introspect_query_count
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecIntrospectQueryCountTest.php
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter DbspecIntrospectTest::testSQLiteUnsupportedColumnReasonQuotesMissingCheck packages/php/tests/DbspecIntrospectTest.php
 
 # dbspec-introspect-python-check runs the same round trip and unsupported cases with the Python client's
 # polyspec.orm.dbspec.introspect.introspect_dbspec on MySQL and PostgreSQL servers (packages/python/tests/dbspec_introspect.py),
@@ -1040,7 +1039,7 @@ php-codec-causes-check: php-models build-php-ext
 dbspec-php-extension-check/%: RUN_DIR = $(if $(DBSPEC_PHP_EXTENSION_CHILD_RUN_DIR),$(DBSPEC_PHP_EXTENSION_CHILD_RUN_DIR),$(abspath .runtime/run)/dbspec-php-extension-check-$$PPID)
 dbspec-php-extension-check/analyze: DBSPEC_PHP_EXTENSION_CHILD_RUN_DIR = $(abspath .runtime/run)/dbspec-php-extension-check-analyze-$$PPID
 .PHONY: dbspec-php-extension-check/arginfo dbspec-php-extension-check/prepare dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/sets dbspec-php-extension-check/render dbspec-php-extension-check/graph dbspec-php-extension-check/behaviour dbspec-php-extension-check/schema-definition dbspec-php-extension-check/analyze dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/plan-apply dbspec-php-extension-check/show-create dbspec-php-extension-check/set dbspec-php-extension-check/set-parse dbspec-php-extension-check/codec dbspec-php-extension-check/code-catalog dbspec-php-extension-check/aes dbspec-php-extension-check/hostcodec dbspec-php-extension-check/planner dbspec-php-extension-check/executor
-DBSPEC_PHP_EXTENSION_PARTS = dbspec-php-extension-check/arginfo dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/sets dbspec-php-extension-check/render dbspec-php-extension-check/graph dbspec-php-extension-check/behaviour dbspec-php-extension-check/schema-definition dbspec-php-extension-check/limits dbspec-php-extension-check/rules-recipe dbspec-php-extension-check/dialect-refusal dbspec-php-extension-check/analyze dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/plan-apply dbspec-php-extension-check/show-create dbspec-php-extension-check/set dbspec-php-extension-check/set-parse dbspec-php-extension-check/codec dbspec-php-extension-check/code-catalog dbspec-php-extension-check/aes dbspec-php-extension-check/hostcodec dbspec-php-extension-check/planner dbspec-php-extension-check/executor
+DBSPEC_PHP_EXTENSION_PARTS = dbspec-php-extension-check/introspect-messages-recipe dbspec-php-extension-check/arginfo dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/sets dbspec-php-extension-check/render dbspec-php-extension-check/graph dbspec-php-extension-check/behaviour dbspec-php-extension-check/schema-definition dbspec-php-extension-check/limits dbspec-php-extension-check/rules-recipe dbspec-php-extension-check/dialect-refusal dbspec-php-extension-check/analyze dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/plan-apply dbspec-php-extension-check/show-create dbspec-php-extension-check/set dbspec-php-extension-check/set-parse dbspec-php-extension-check/codec dbspec-php-extension-check/code-catalog dbspec-php-extension-check/aes dbspec-php-extension-check/hostcodec dbspec-php-extension-check/planner dbspec-php-extension-check/executor
 .PHONY: dbspec-php-extension-check
 dbspec-php-extension-check:
 	@set -eu; \
@@ -1237,6 +1236,10 @@ dbspec-php-extension-check/schema-definition: php-vendor-check dbspec-php-extens
 # dbspec-php-extension-check/limits runs DbspecLimitsRecipeTestExtensionTest with the extension: the cases of tests/dbspec/limits.json.
 dbspec-php-extension-check/limits: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecLimitsRecipeTestExtensionTest.php
+
+# dbspec-php-extension-check/introspect-messages-recipe runs DbspecIntrospectMessagesRecipeTestExtensionTest with the extension: the cases of tests/dbspec/introspect-messages.json.
+dbspec-php-extension-check/introspect-messages-recipe: php-vendor-check dbspec-php-extension-check/prepare
+	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecIntrospectMessagesRecipeTestExtensionTest.php
 
 # dbspec-php-extension-check/rules-recipe runs DbspecRulesRecipeTestExtensionTest with the extension: the cases of tests/dbspec/rules.json.
 dbspec-php-extension-check/rules-recipe: php-vendor-check dbspec-php-extension-check/prepare

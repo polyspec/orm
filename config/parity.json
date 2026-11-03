@@ -17018,40 +17018,40 @@
     },
     {
       "id": "dbspec-introspect-messages",
-      "kind": "feature",
+      "kind": "suite",
       "requirements": [
         "DIA-191"
       ],
+      "file": "tests/dbspec/introspect-messages.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/introspect_query_count_test.go",
-          "id": "TestSQLiteUnsupportedColumnReasonQuotesMissingCheck"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-introspect-query-count.mjs",
-          "id": "dbspec.introspect.sqlite-empty-check-reason"
+          "test": "packages/go/orm/recipe_dbspec_introspect_messages_test.go",
+          "symbol": "TestRecipeDbspecIntrospectMessagesNone"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecIntrospectTest.php",
-          "id": "DbspecIntrospectTest::testSQLiteUnsupportedColumnReasonQuotesMissingCheck"
+          "test": "packages/php/tests/DbspecIntrospectMessagesRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecIntrospectMessagesRecipeTest::testNone"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecIntrospectNativeTest.php",
-          "id": "DbspecIntrospectNativeTest::testNativeSQLiteUnsupportedColumnReasonQuotesMissingCheck"
+          "test": "packages/php-ext/tests/DbspecIntrospectMessagesRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecIntrospectMessagesRecipeTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_introspect_messages-none.test.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_introspect_messages.py",
-          "id": "test_a_column_without_check_is_quoted_as_the_empty_string"
+          "test": "packages/python/tests/test_dbspec_introspect_messages_none.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_introspect_query_count.rs",
-          "id": "sqlite_unsupported_column_reason_quotes_missing_check"
+          "test": "packages/rust/tests/tests/dbspec_introspect_messages_none.rs",
+          "symbol": "dbspec_introspect_messages_none"
         }
       ]
     },

@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b8dbb784d29c79a1529da94664d181c409a8373ae5ae80b3d682d2616d1d3188 -->
+<!-- source-sha256: d2bba63b60ca125c9142ab7478b22d9b5f42688ecd811828e705cd0ee853a88b -->
 # 변경 이력
 
 ## Unreleased
 
+- DIA-191의 SQLite unsupported column 사유는 여섯 runtime 모두에서 op `dbspec.introspect_sqlite`를 쓰는 recipe `tests/dbspec/introspect-messages.json`이고, 각 runtime은 unsupported 객체의 전체 목록을 비교한다. 한 runtime의 시험은 없앴다
 - `planSteps`와 `render`의 모르는 dialect 거부는 recipe `tests/dbspec/dialect-refusal.json`의 두 case로 Go, PHP, PHP extension, TypeScript, Python에서 돈다. Rust는 dialect를 enum 타입으로 받으므로 compile fixture를 유지한다.
 - markdown 답의 정수는 소수부와 지수가 없는 JSON number다(PRT-69). 정수 열의 `3.0`은 `CODEC_DECODE`다.
 - recipe의 `sql` field는 FCV-4대로 text이거나 세 database를 모두 가진 객체다. 일부만 가진 map은 빠진 database에서 아무것도 실행하지 않았고, 이는 FCV-10이 금지한다. fulltext index step은 text에 `only`를 붙인다. (#T334-3-4-14)

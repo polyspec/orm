@@ -2385,7 +2385,7 @@
         "packages/python/src/polyspec/orm/dbspec/introspect.py",
         "packages/python/src/polyspec/orm/dbspec/introspect_sqlite.py",
         "packages/python/tests/test_dbspec_introspect_query_count.py",
-        "packages/python/tests/test_introspect_messages.py",
+        "packages/python/tests/test_dbspec_introspect_messages_none.py",
         "packages/rust/orm/src/dbspec.rs",
         "packages/rust/orm/tests/dbspec_introspect_query_count.rs",
         "packages/ts/src/dbspec/introspect.ts",
