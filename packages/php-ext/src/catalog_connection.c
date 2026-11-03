@@ -844,8 +844,14 @@ static void cat_quote(smart_str *out, zend_string *name, const char *dialect)
     smart_str_appends(out, mark);
 }
 
+static bool cat_bytes_value(zval *v, zval *out);
+
 static bool cat_cell_value(zval *v, zend_string *type, const char *dialect, zval *out)
 {
+    /* PDO reads a PostgreSQL bytea as a stream (INT-107). */
+    if (Z_TYPE_P(v) == IS_RESOURCE) {
+        return cat_bytes_value(v, out);
+    }
     if (Z_TYPE_P(v) != IS_STRING) {
         if (Z_TYPE_P(v) == IS_DOUBLE && (strcmp(ZSTR_VAL(type), "REAL") == 0 || strcmp(ZSTR_VAL(type), "FLOAT") == 0
                 || strcmp(ZSTR_VAL(type), "FLOAT4") == 0)) {
@@ -866,20 +872,11 @@ static bool cat_cell_value(zval *v, zend_string *type, const char *dialect, zval
     if (integer) {
         zend_long n;
         if (!cat_parse_int(v, &n)) {
-            /* SQLite keeps a text that is not an integer as stored, in an INTEGER column too (INT-152). */
-            if (strcmp(dialect, "sqlite") == 0) {
-                ZVAL_COPY(out, v);
-                return true;
-            }
-            /* A MySQL unsigned value beyond the PHP integer keeps its exact digits (INT-102). */
-            size_t digits = Z_STRLEN_P(v);
-            for (size_t at = 0; at < Z_STRLEN_P(v); at++) {
-                if (Z_STRVAL_P(v)[at] < '0' || Z_STRVAL_P(v)[at] > '9') {
-                    digits = 0;
-                    break;
-                }
-            }
-            if (digits > 0) {
+            /* SQLite keeps a text that is not an integer as stored, in an INTEGER column too (INT-152);
+             * a BIGINT UNSIGNED reaches past zend_long as its digits (DIA-39). */
+            if (strcmp(dialect, "sqlite") == 0
+                || (Z_TYPE_P(v) == IS_STRING && Z_STRLEN_P(v) > 0
+                    && strspn(Z_STRVAL_P(v), "0123456789") == Z_STRLEN_P(v))) {
                 ZVAL_COPY(out, v);
                 return true;
             }
@@ -1493,6 +1490,14 @@ static bool cat_cell_key(zval *cell, smart_str *out)
         return true;
     }
     case IS_STRING:
+        /* The bytes of a binary cell are hex: the revision encodes its descriptor and cells as JSON text (INT-107). */
+        if (!cat_utf8_valid(Z_STRVAL_P(cell), Z_STRLEN_P(cell))) {
+            smart_str_appendc(out, 'x');
+            for (size_t at = 0; at < Z_STRLEN_P(cell); at++) {
+                smart_str_append_printf(out, "%02x", (unsigned char)Z_STRVAL_P(cell)[at]);
+            }
+            return true;
+        }
         smart_str_appendc(out, 's');
         smart_str_append_long(out, (zend_long)Z_STRLEN_P(cell));
         smart_str_appendc(out, ':');
@@ -3531,7 +3536,8 @@ static bool cat_changes_map(zval *metadata, zval *values, const char *code, zval
     zval rv_cols, *columns = catalog_prop(metadata, "columns", &rv_cols);
     uint32_t ncols = zend_hash_num_elements(Z_ARRVAL_P(columns));
     uint32_t nvalues = zend_hash_num_elements(Z_ARRVAL_P(values));
-    if (nvalues == 0 || nvalues > ncols) {
+    /* A key of defaults alone takes no assignment (INT-123). */
+    if ((nvalues == 0 && strcmp(code, "ROW_INSERT_INVALID") != 0) || nvalues > ncols) {
         db_throw_orm(code, "invalid column assignments");
         return false;
     }

@@ -243,7 +243,7 @@ func catalogCellKey(cell any) (string, error) {
 	case int64:
 		return "i" + strconv.FormatInt(v, 10), nil
 	case uint64:
-		return "u" + strconv.FormatUint(v, 10), nil
+		return "i" + strconv.FormatUint(v, 10), nil
 	case float64:
 		if math.IsNaN(v) || math.IsInf(v, 0) {
 			return "", catalogErr("ROW_SNAPSHOT_INVALID", "non-finite float cell")

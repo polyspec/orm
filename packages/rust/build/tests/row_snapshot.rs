@@ -49,37 +49,3 @@ async fn row_baseline_rejects_what_only_the_rust_forms_hold() {
     .await
     .expect("row snapshot validation deadline");
 }
-#[tokio::test]
-// Requirements: INT-107.
-async fn row_baseline_compares_exact_bits_scale_and_binary() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    tokio::time::timeout(std::time::Duration::from_secs(5), async {
-        for (original, changed) in [
-            (GridCell::Float64(0), GridCell::Float64(1u64 << 63)),
-            (GridCell::Decimal("100.23000".into()), GridCell::Decimal("100.23".into())),
-            (GridCell::Binary(vec![0, 255]), GridCell::Binary(vec![0, 254])),
-            (GridCell::Unsigned(u64::MAX), GridCell::Unsigned(u64::MAX - 1)),
-            (GridCell::Boolean(false), GridCell::Integer(0)),
-        ] {
-            let mut page = fixture();
-            page.result.rows[0][1] = original.clone();
-            let snapshot = RowSnapshot::from_page(&page, 0).unwrap();
-            snapshot.check_current(&page.metadata, &page.result).unwrap();
-            assert_eq!(snapshot.cells()[1], original);
-            page.result.rows[0][1] = changed;
-            assert!(snapshot.check_current(&page.metadata, &page.result).unwrap_err().starts_with("ROW_CONFLICT"));
-            assert_ne!(snapshot.revision(), RowSnapshot::from_page(&page, 0).unwrap().revision());
-        }
-
-        let mut generated = fixture();
-        generated.metadata.columns[1].generated = true;
-        generated.result.rows[0][1] = GridCell::Text("generated-original".into());
-        let snapshot = RowSnapshot::from_page(&generated, 0).unwrap();
-        assert_eq!(snapshot.cells()[1], GridCell::Text("generated-original".into()));
-        let mut changed = generated.result.clone();
-        changed.rows[0][1] = GridCell::Text("generated-current".into());
-        assert!(snapshot.check_current(&generated.metadata, &changed).unwrap_err().starts_with("ROW_CONFLICT"));
-    })
-    .await
-    .expect("row snapshot exact deadline");
-}

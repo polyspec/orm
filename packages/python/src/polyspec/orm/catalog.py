@@ -893,7 +893,8 @@ def _check_write_precision(
 def _changes(metadata: CatalogTableMetadata, values, code: str, dialect: str) -> list:
     """Checks named assignments against a descriptor and returns (column index, normalized value) in the order given."""
     values = list(values)
-    if not values or len(values) > len(metadata.columns):
+    # A key of defaults alone takes no assignment (INT-123).
+    if (not values and code != codes.ROW_INSERT_INVALID) or len(values) > len(metadata.columns):
         raise _error(code, "invalid column assignments")
     normalized = _params([value for _, value in values])
     seen = set()

@@ -240,6 +240,7 @@
       "sql"
     ],
     "catalog.read_only_grid_query": [
+      "binds",
       "expect",
       "max_bytes",
       "max_rows",

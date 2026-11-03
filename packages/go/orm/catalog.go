@@ -469,9 +469,9 @@ func catalogBytesValue(value []byte, nativeType string) (any, error) {
 	case strings.Contains(t, "INT"):
 		n, err := strconv.ParseInt(string(value), 10, 64)
 		if err != nil {
-			// A MySQL unsigned value beyond the signed 64-bit range keeps its exact digits (INT-102).
-			if unsigned, unsignedErr := strconv.ParseUint(string(value), 10, 64); unsignedErr == nil {
-				return unsigned, nil
+			// A MySQL BIGINT UNSIGNED reaches past int64 (INT-102).
+			if u, unsigned := strconv.ParseUint(string(value), 10, 64); unsigned == nil {
+				return u, nil
 			}
 			return nil, catalogErr(catalogCodeValue, "integer of native type %q: %v", nativeType, err)
 		}

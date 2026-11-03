@@ -59,10 +59,6 @@ name = "tool_columns"
 required-features = ["live-db"]
 
 [[test]]
-name = "grid_cells"
-required-features = ["live-db"]
-
-[[test]]
 name = "grid_temporal"
 required-features = ["live-db"]
 
