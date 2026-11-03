@@ -8898,12 +8898,13 @@
       "id": "utils-mysql",
       "kind": "suite",
       "requirements": [
+        "INT-134",
         "INT-51",
         "INT-52",
         "INT-53",
         "INT-61",
-        "INT-73",
-        "INT-134"
+        "INT-72",
+        "INT-73"
       ],
       "file": "contracts/fixtures/utils/utils.json",
       "cases": "$.cases[*].id",
@@ -8942,12 +8943,13 @@
       "id": "utils-postgres",
       "kind": "suite",
       "requirements": [
+        "INT-134",
         "INT-51",
         "INT-52",
         "INT-53",
         "INT-61",
-        "INT-73",
-        "INT-134"
+        "INT-72",
+        "INT-73"
       ],
       "file": "contracts/fixtures/utils/utils.json",
       "cases": "$.cases[*].id",
@@ -8986,12 +8988,13 @@
       "id": "utils-sqlite",
       "kind": "suite",
       "requirements": [
+        "INT-134",
         "INT-51",
         "INT-52",
         "INT-53",
         "INT-61",
-        "INT-73",
-        "INT-134"
+        "INT-72",
+        "INT-73"
       ],
       "file": "contracts/fixtures/utils/utils.json",
       "cases": "$.cases[*].id",
@@ -25714,11 +25717,6 @@
           "implementation": "rust",
           "test": "packages/rust/orm/src/tx.rs",
           "id": "tx::tests::failed_local_reset_is_reported"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/tx.rs",
-          "id": "tx::tests::lock_not_held_at_transaction_end_is_reported"
         },
         {
           "implementation": "rust",

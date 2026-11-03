@@ -1216,16 +1216,6 @@ class ModelTest extends TestCase
             throw new RuntimeException('callback failed');
         }, retry: 0));
         self::checkBoth('rollback', $rolledBack, 'callback failed', 'statement rejected by the test driver');
-        $pdo->rejects = null;
-        // If the lock is released in advance, RELEASE_LOCK at the end of the transaction returns 0.
-        $notHeld = self::failureMessage(fn() => $failing->transaction(function () use ($failing, $pdo, $key): void {
-            $failing->utils()->lock($key('released'));
-            $pdo->prepare('DO RELEASE_LOCK(?)')->execute([$key('released')]);
-        }, retry: 0));
-        self::check(
-            str_contains($notHeld, 'lock ' . $key('released') . ' was not held at transaction end'),
-            "a lock released early is reported: $notHeld"
-        );
     }
 
     // A PHP request that exits inside a transaction loses its server connection, which rolls back its writes and
