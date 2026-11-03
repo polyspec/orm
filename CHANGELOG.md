@@ -3,6 +3,11 @@
 
 ## Unreleased
 
+- The refusal of an immutable table is the recipe `immutable_write` (DBS-84): an update and a delete fail with `DRIVER`, the message holds `table refused_row is immutable`, the driver cause stays, and a later read gives the stored value. The outcome of an op takes `message_holds` and `driver_cause`. The delete was not checked in any runtime before. (#T334-3-4-16)
+- Key prefix methods, scanned chain methods, used external tables, the absence of lint suppressions and the manifest hash of generated code are cases of the `generator` recipe in all six runtimes, and their native tests are gone; the command line of the generator, the type of a generated member and the loading of a generated module stay native, each with its reason in docs/spec/feature-coverage.md.
+- The recipe `schema_install` holds the difference an install names: the outcome of every op takes `message_suffix`, and `install_external_drift` expects the message to end with `column user.coverage_missing does not exist`. The three tests of `CoverageSchemaInstallNativeTest` that read `coverageItemsOf` are gone; that recipe and `SchemaSetTest` hold them. (#T334-3-4-15)
+- The refusal of an unknown dialect by `planSteps` and `render` is the two cases of the recipe `tests/dbspec/dialect-refusal.json` in Go, PHP, the PHP extension, TypeScript and Python; Rust keeps its compile fixtures, because it takes a dialect by an enum type.
+- An integer of a markdown answer is a JSON number with no fraction or exponent (PRT-69): `3.0` in an integer column is `CODEC_DECODE`
 - The utility groups, the local value of a transaction, `wasInserted` and the report with no waiter are the recipe `utils` in the six runtimes; the flow and disposal units and the waiter stay native, as FCV-2 states.
 - A `sql` field of a recipe is a text or an object with all three databases, as FCV-4 states: a partial map made a missing database run nothing, which FCV-10 forbids. The fulltext index steps are a text with `only`. (#T334-3-4-14)
 - The recipe schema names `query.search_chain` in its step union, declares `message_suffix` on the catalog errors, and every recipe of the parity suites is valid against it. The audit recipe finds a restored row by the actor of its audit record, not by a key number. The feature tests hold again after the tests and owners that other rows removed. (#T334-3-4-13)

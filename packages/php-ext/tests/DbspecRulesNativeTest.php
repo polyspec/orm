@@ -4,35 +4,11 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Dbspec\Dbspec;
 
 final class DbspecRulesNativeTest extends TestCase
 {
-    // Requirements: DBS-174.
-    public function testNativeRenderRejectsUnknownDialect(): void
-    {
-        DbspecDialectRejectionCases::assertRenderRejectsUnknownDialect($this);
-    }
-
-    // Requirements: DBS-174.
-    public function testNativePlanStepsRejectUnknownDialect(): void
-    {
-        $recipePath = dirname(__DIR__, 3) . '/tests/dbspec/plan-cases.json';
-        $recipe = json_decode(file_get_contents($recipePath), true, 512, JSON_THROW_ON_ERROR);
-        $planLines = array_values(array_filter(
-            $recipe['cases'][0]['steps'],
-            static fn(array $step): bool => $step['op'] === 'dbspec.parse_plan'
-        ))[0]['lines'];
-        $text = implode("\n", $planLines) . "\n";
-        $plan = Dbspec::parsePlan($text);
-        self::assertNotNull($plan->plan, json_encode($plan->diagnostics, JSON_THROW_ON_ERROR));
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('oracle');
-        Dbspec::planSteps(null, $plan->plan, 'oracle');
-    }
-
     // Requirements: DBS-32, DBS-36, DBS-38, DBS-39, DBS-42, DBS-43, DBS-46, DBS-48, DBS-50, DBS-58.
     // Requirements: DBS-144.
     public function testNativeRuleDiagnosticsMatchGoCoordinatesAndOrdering(): void
