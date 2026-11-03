@@ -42496,6 +42496,45 @@
       ]
     },
     {
+      "id": "immutable_write-mysql",
+      "kind": "suite",
+      "requirements": [
+        "DBS-84"
+      ],
+      "file": "contracts/fixtures/immutable_write/immutable_write.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_immutable_write_test.go",
+          "symbol": "TestRecipeImmutableWriteMysql"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ImmutableWriteRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ImmutableWriteRecipeTest::testMysql"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ImmutableWriteRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ImmutableWriteRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/immutable_write-mysql.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_immutable_write_mysql.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/immutable_write_mysql.rs",
+          "symbol": "immutable_write_mysql"
+        }
+      ]
+    },
+    {
       "id": "constraints_and_relations-postgres",
       "kind": "suite",
       "requirements": [
@@ -42543,6 +42582,45 @@
       ]
     },
     {
+      "id": "immutable_write-postgres",
+      "kind": "suite",
+      "requirements": [
+        "DBS-84"
+      ],
+      "file": "contracts/fixtures/immutable_write/immutable_write.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_immutable_write_test.go",
+          "symbol": "TestRecipeImmutableWritePostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ImmutableWriteRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ImmutableWriteRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ImmutableWriteRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ImmutableWriteRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/immutable_write-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_immutable_write_postgres.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/immutable_write_postgres.rs",
+          "symbol": "immutable_write_postgres"
+        }
+      ]
+    },
+    {
       "id": "constraints_and_relations-sqlite",
       "kind": "suite",
       "requirements": [
@@ -42586,6 +42664,45 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/constraints_and_relations_sqlite.rs",
           "symbol": "constraints_and_relations_sqlite"
+        }
+      ]
+    },
+    {
+      "id": "immutable_write-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "DBS-84"
+      ],
+      "file": "contracts/fixtures/immutable_write/immutable_write.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_immutable_write_test.go",
+          "symbol": "TestRecipeImmutableWriteSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ImmutableWriteRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ImmutableWriteRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ImmutableWriteRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ImmutableWriteRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/immutable_write-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_immutable_write_sqlite.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/immutable_write_sqlite.rs",
+          "symbol": "immutable_write_sqlite"
         }
       ]
     },

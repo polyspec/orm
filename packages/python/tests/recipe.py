@@ -2979,6 +2979,15 @@ def _run_database_step(step: dict, context: dict) -> None:
             raise AssertionError(
                 f"error message {str(error)!r} does not end with {suffix!r}"
             ) from error
+        holds = expected.get("message_holds")
+        if holds is not None and holds not in str(error):
+            raise AssertionError(
+                f"error message {str(error)!r} does not hold {holds!r}"
+            ) from error
+        if expected.get("driver_cause") is True and error.__cause__ is None:
+            raise AssertionError(
+                f"error {str(error)!r} has no driver cause"
+            ) from error
         return
     except CallbackError:
         # The step ends with its failed callback, so an enclosing transaction goes on, as the Go helper does (FCV-4).
