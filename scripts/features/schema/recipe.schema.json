@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "orm recipe",
-  "description": "The recipe format of docs/spec/feature-coverage.md (FCV-2 to FCV-4). A recipe with a fixture expects exactly mysql, postgres and sqlite; a recipe without one expects exactly none.",
+  "description": "The recipe format of docs/spec/feature-coverage.md (FCV-2 to FCV-4). A recipe with a fixture expects the databases that run the step: mysql, postgres and sqlite, or those of its only; a recipe without one expects exactly none.",
   "type": "object",
   "required": [
     "$schema",
@@ -80,7 +80,8 @@
                         "not": {
                           "enum": [
                             "model.connect",
-                            "sql.exec"
+                            "sql.exec",
+                            "dbspec.ddl_behavior"
                           ]
                         }
                       }
@@ -691,6 +692,14 @@
               "type": "string",
               "pattern": "^[A-Z][A-Z0-9_]*$"
             },
+            "message": {
+              "type": "string",
+              "minLength": 1
+            },
+            "cause": {
+              "type": "string",
+              "minLength": 1
+            },
             "message_suffix": {
               "description": "The text that the message of the error ends with.",
               "type": "string",
@@ -736,15 +745,11 @@
       ]
     },
     "expect": {
-      "description": "The outcome of each database: exactly mysql, postgres and sqlite, or exactly none; the root selects which.",
+      "description": "The outcome of each database: the databases that run the step, or exactly none; the root selects which, and scripts/features/recipes.test.mts checks that the names are exactly those databases (FCV-4, FCV-10).",
       "oneOf": [
         {
           "type": "object",
-          "required": [
-            "mysql",
-            "postgres",
-            "sqlite"
-          ],
+          "minProperties": 1,
           "additionalProperties": false,
           "properties": {
             "mysql": {
@@ -784,6 +789,10 @@
             "dsn.sqlite_file",
             "markdown.connect",
             "keyring.versions",
+            "dbspec.introspect_sqlite",
+            "dbspec.apply_fault",
+            "dbspec.ddl_behavior",
+            "dbspec.introspect_shown",
             "markdown.builder",
             "model.connect",
             "codec.decode",
@@ -854,6 +863,7 @@
             "dbspec.parse_set",
             "dbspec.set",
             "dbspec.load_set",
+            "dbspec.runtime_model",
             "dbspec.read_file",
             "dbspec.read_bytes",
             "catalog.connect",
@@ -867,6 +877,8 @@
             "dbspec.import_mermaid",
             "hook.install",
             "hook.records",
+            "transaction.attempts",
+            "transaction.deadlock",
             "utils.aes_rotate",
             "model.restore",
             "model.chain",
@@ -892,6 +904,18 @@
         },
         {
           "$ref": "#/$defs/ops/keyring.versions"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.introspect_sqlite"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.apply_fault"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.ddl_behavior"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.introspect_shown"
         },
         {
           "$ref": "#/$defs/ops/markdown.builder"
@@ -1104,6 +1128,9 @@
           "$ref": "#/$defs/ops/dbspec.load_set"
         },
         {
+          "$ref": "#/$defs/ops/dbspec.runtime_model"
+        },
+        {
           "$ref": "#/$defs/ops/dbspec.read_file"
         },
         {
@@ -1141,6 +1168,12 @@
         },
         {
           "$ref": "#/$defs/ops/hook.records"
+        },
+        {
+          "$ref": "#/$defs/ops/transaction.attempts"
+        },
+        {
+          "$ref": "#/$defs/ops/transaction.deadlock"
         },
         {
           "$ref": "#/$defs/ops/utils.aes_rotate"
@@ -1511,6 +1544,98 @@
           "read_only": {
             "description": "A read-only transaction; a nested transaction that names it is refused with CONFIG.",
             "type": "boolean"
+          },
+          "timeout_ms": {
+            "description": "The timeout of the transaction (INT-42); a nested transaction that names it is refused with CONFIG.",
+            "type": "integer",
+            "minimum": 1
+          },
+          "default_retry": {
+            "description": "The transaction names no retry and takes the default of INT-43; without it and without retry the helper passes a retry of 0.",
+            "const": true
+          },
+          "conflicts": {
+            "description": "The first attempts that end with the public transaction conflict (INT-48) after their steps.",
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "transaction.attempts": {
+        "type": "object",
+        "required": [
+          "op",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "transaction.attempts",
+            "description": "The runs of the callback of the transaction step that ended last, whatever its outcome."
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "transaction.deadlock": {
+        "type": "object",
+        "required": [
+          "op",
+          "connections",
+          "model",
+          "rows",
+          "column",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "transaction.deadlock",
+            "description": "Two execution flows at read_committed with a retry of 3: flow i writes flow-<i> to column of rows[i], holds it until the other flow holds its row, then writes rows[1-i] (PLN-24)."
+          },
+          "connections": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "$ref": "#/$defs/name"
+            }
+          },
+          "model": {
+            "$ref": "#/$defs/model"
+          },
+          "rows": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "$ref": "#/$defs/columnValues"
+            }
+          },
+          "column": {
+            "$ref": "#/$defs/name"
+          },
+          "expect": {
+            "description": "attempts counts the callback runs of both flows, deadlocks the first attempts that ended with DEADLOCK, and same_flow holds when both rows hold the name of one flow.",
+            "type": "object",
+            "required": [
+              "mysql",
+              "postgres",
+              "sqlite"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "mysql": {
+                "$ref": "#/$defs/outcomes/deadlock"
+              },
+              "postgres": {
+                "$ref": "#/$defs/outcomes/deadlock"
+              },
+              "sqlite": {
+                "$ref": "#/$defs/outcomes/deadlock"
+              }
+            }
           }
         }
       },
@@ -1591,6 +1716,231 @@
           },
           "expect": {
             "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "dbspec.apply_fault": {
+        "description": "The public apply or rollback on a memory SQLite connection that the op wraps: after applied_first and sql, the nth read of the SQLite master query in the call fails with an error of the op. The result is the code of the apply error (PLN-92, PLN-93, PLN-96).",
+        "type": "object",
+        "required": [
+          "op",
+          "plan",
+          "call",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.apply_fault"
+          },
+          "plan": {
+            "$ref": "#/$defs/ref"
+          },
+          "call": {
+            "enum": [
+              "apply",
+              "rollback"
+            ]
+          },
+          "applied_first": {
+            "const": true
+          },
+          "sql": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "fail_catalog_read": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "expect": {
+            "type": "object",
+            "required": [
+              "none"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "type": "object",
+                "required": [
+                  "code"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "code": {
+                    "enum": [
+                      "verify",
+                      "drift"
+                    ]
+                  },
+                  "history_state": {
+                    "type": "string"
+                  },
+                  "absent_events": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "dbspec.ddl_behavior": {
+        "description": "On one native connection of the case database: the connection rules, the statements of the case for the database, then its behavior steps (DIA-113).",
+        "type": "object",
+        "required": [
+          "op",
+          "vectors",
+          "case"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.ddl_behavior"
+          },
+          "vectors": {
+            "type": "string"
+          },
+          "case": {
+            "type": "string"
+          }
+        }
+      },
+      "dbspec.introspect_shown": {
+        "type": "object",
+        "required": [
+          "op",
+          "vectors",
+          "case",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.introspect_shown"
+          },
+          "vectors": {
+            "type": "string"
+          },
+          "case": {
+            "type": "string"
+          },
+          "expect": {
+            "type": "object",
+            "required": [
+              "none"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "type": "object",
+                "oneOf": [
+                  {
+                    "required": [
+                      "checks",
+                      "unsupported"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "checks": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "unsupported": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "required": [
+                      "error"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "error": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "dbspec.introspect_sqlite": {
+        "type": "object",
+        "required": [
+          "op",
+          "sql",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.introspect_sqlite"
+          },
+          "sql": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "expect": {
+            "type": "object",
+            "required": [
+              "none"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "type": "object",
+                "required": [
+                  "unsupported"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "unsupported": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "kind",
+                        "table",
+                        "name",
+                        "reason"
+                      ],
+                      "additionalProperties": false,
+                      "properties": {
+                        "kind": {
+                          "type": "string"
+                        },
+                        "table": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "reason": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       },
@@ -2043,6 +2393,10 @@
             "type": "string",
             "pattern": "\\.dbs$",
             "description": "The schema manifest of the request, relative to the recipe file."
+          },
+          "assemble_types": {
+            "type": "boolean",
+            "description": "Adds the type of each output column of a plan step, by name, to the statements that the step compares."
           },
           "input": {
             "type": "object",
@@ -3253,10 +3607,36 @@
           "model",
           "values"
         ],
+        "anyOf": [
+          {
+            "required": [
+              "connection"
+            ],
+            "properties": {
+              "connection": {
+                "$ref": "#/$defs/name"
+              }
+            }
+          },
+          {
+            "required": [
+              "unconnected"
+            ],
+            "properties": {
+              "unconnected": {
+                "const": true
+              }
+            }
+          }
+        ],
         "additionalProperties": false,
         "properties": {
           "op": {
             "const": "model.create"
+          },
+          "unconnected": {
+            "description": "The model is built with no connection: it runs in the active transaction of the flow, or is refused with CONFIG (PLN-16).",
+            "const": true
           },
           "connection": {
             "$ref": "#/$defs/name"
@@ -3891,6 +4271,33 @@
       },
       "model.count": {
         "anyOf": [
+          {
+            "type": "object",
+            "required": [
+              "op",
+              "unconnected",
+              "model"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "op": {
+                "const": "model.count"
+              },
+              "unconnected": {
+                "description": "The model is built with no connection: it runs in the active transaction of the flow, or is refused with CONFIG (PLN-16).",
+                "const": true
+              },
+              "model": {
+                "$ref": "#/$defs/model"
+              },
+              "where": {
+                "$ref": "#/$defs/predicate"
+              },
+              "expect": {
+                "$ref": "#/$defs/expect"
+              }
+            }
+          },
           {
             "type": "object",
             "required": [
@@ -5193,6 +5600,12 @@
                       }
                     }
                   },
+                  "rule": {
+                    "type": "string"
+                  },
+                  "manifest_hash": {
+                    "type": "string"
+                  },
                   "error": {
                     "type": "string"
                   }
@@ -5411,6 +5824,78 @@
                     }
                   }
                 ]
+              }
+            }
+          }
+        }
+      },
+      "dbspec.runtime_model": {
+        "type": "object",
+        "required": [
+          "op",
+          "documents",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.runtime_model"
+          },
+          "documents": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "pattern": "\\.dbs$"
+            },
+            "description": "The documents of one set, relative to the recipe file."
+          },
+          "external": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "\\.dbs$"
+            },
+            "description": "The external documents of the set, relative to the recipe file."
+          },
+          "expect": {
+            "type": "object",
+            "required": [
+              "none"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "type": "object",
+                "required": [
+                  "entities"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "manifest_text": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "manifest_hash": {
+                    "type": "string"
+                  },
+                  "entities": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "The entity names, in the order of DBS-111."
+                  },
+                  "models": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "object"
+                    },
+                    "description": "The values to compare, by entity name: the keys it names of table, primary_key, identity, updated, soft_delete, aes_version, audit_column, audit_record, key_names and fields, and of a field type, nullable, default, default_now, select_explicit, codec, blind_index, primary_key and foreign_key."
+                  }
+                }
               }
             }
           }
@@ -6569,6 +7054,28 @@
       }
     },
     "outcomes": {
+      "deadlock": {
+        "type": "object",
+        "required": [
+          "attempts",
+          "deadlocks",
+          "same_flow"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "attempts": {
+            "type": "integer",
+            "minimum": 2
+          },
+          "deadlocks": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "same_flow": {
+            "type": "boolean"
+          }
+        }
+      },
       "count": {
         "oneOf": [
           {
@@ -7938,7 +8445,9 @@
     "lockMode": {
       "enum": [
         "share",
-        "update"
+        "share_nowait",
+        "update",
+        "update_nowait"
       ]
     },
     "compileValue": {

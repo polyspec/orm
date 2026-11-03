@@ -135,14 +135,14 @@ class CoverageCaseTest(unittest.TestCase):
             with patch.dict(os.environ):
                 os.environ.pop("ORM_FEATURE_DATABASE", None)
                 coverage_case.feature_items(
-                    "packages/python/tests/coverage_constraints_and_relations.py"
+                    "packages/python/tests/test_immutable_write_sqlite.py"
                 )
                 default_arguments = run.call_args.args[0]
                 self.assertNotIn("--database", default_arguments)
 
             with patch.dict(os.environ, {"ORM_FEATURE_DATABASE": "sqlite"}):
                 items = coverage_case.feature_items(
-                    "packages/python/tests/coverage_constraints_and_relations.py"
+                    "packages/python/tests/test_immutable_write_sqlite.py"
                 )
                 selected_arguments = run.call_args.args[0]
                 self.assertEqual(selected_arguments[-2:], ["--database", "sqlite"])

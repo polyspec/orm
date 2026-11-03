@@ -124,7 +124,8 @@ An `update` that assigns a primary key or identity column fails with `IR_INVALID
 
 An `insert` assigns by `p` or `null`: `plus_p` and `minus_p` are `IR_INVALID` in its `set` and valid in `on_duplicate` and in `update`, because a `VALUES` list has no current row to read, and MySQL reads the column's default there (3 + 5 = 8) while PostgreSQL and SQLite refuse the statement.
 
-An `insert` that omits a column with a default leaves it to the database default; the planner adds no value for it. An `insert` that omits a non-null column without a default fails with `IR_INVALID`. The planner assigns the columns the executor owns: the AES key version, the `updated` column on every `update`, and on a table with an `audit` setting the audit column of every `insert`, `update`, soft delete, restore and duplicate update; a request that assigns the AES key version or the audit column fails with `IR_INVALID`.
+- **PRT-81** An `insert` that omits a column with a default leaves it to the database default; the planner adds no value for it, except a `default now` column on PostgreSQL and SQLite, which binds the `now` slot (PRT-33). An `insert` that omits a non-null column without a default fails with `IR_INVALID`.
+- **PRT-82** The planner assigns the columns the executor owns: the AES key version, the `updated` column on every `update`, and on a table with an `audit` setting the audit column of every `insert`, `update`, soft delete, restore and duplicate update; a request that assigns the AES key version or the audit column fails with `IR_INVALID`.
 
 ### 1.5 Restore
 

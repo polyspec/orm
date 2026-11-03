@@ -1,0 +1,1106 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "DBS-112",
+    "PRT-32",
+    "PRT-81",
+    "PRT-82",
+    "DIA-24",
+    "PRT-33"
+  ],
+  "cases": [
+    {
+      "id": "i16-field-reads-as-i16",
+      "requirements": [
+        "DBS-112"
+      ],
+      "steps": [
+        {
+          "op": "planner.compile",
+          "schema": "runtime-model.dbs",
+          "assemble_types": true,
+          "input": {
+            "ir_version": 1,
+            "entity": "note",
+            "kind": "all",
+            "n_params": 0
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "mysql": [
+                  {
+                    "role": "main",
+                    "sql": "SELECT `a`.`id` AS `a__id`, `a`.`rank` AS `a__rank`, `a`.`body` AS `a__body`, `a`.`payload` AS `a__payload`, `a`.`meta` AS `a__meta`, `a`.`created_at` AS `a__created_at` FROM `note` AS `a`",
+                    "slots": [],
+                    "tables": [
+                      "note"
+                    ],
+                    "assemble_types": {
+                      "body": "text",
+                      "created_at": "datetime",
+                      "id": "i64",
+                      "meta": "text",
+                      "payload": "bytes",
+                      "rank": "i16"
+                    }
+                  }
+                ],
+                "postgres": [
+                  {
+                    "role": "main",
+                    "sql": "SELECT \"a\".\"id\" AS \"a__id\", \"a\".\"rank\" AS \"a__rank\", \"a\".\"body\" AS \"a__body\", \"a\".\"payload\" AS \"a__payload\", \"a\".\"meta\" AS \"a__meta\", \"a\".\"created_at\" AS \"a__created_at\" FROM \"note\" AS \"a\"",
+                    "slots": [],
+                    "tables": [
+                      "note"
+                    ],
+                    "assemble_types": {
+                      "body": "text",
+                      "created_at": "datetime",
+                      "id": "i64",
+                      "meta": "text",
+                      "payload": "bytes",
+                      "rank": "i16"
+                    }
+                  }
+                ],
+                "sqlite": [
+                  {
+                    "role": "main",
+                    "sql": "SELECT \"a\".\"id\" AS \"a__id\", \"a\".\"rank\" AS \"a__rank\", \"a\".\"body\" AS \"a__body\", \"a\".\"payload\" AS \"a__payload\", \"a\".\"meta\" AS \"a__meta\", \"a\".\"created_at\" AS \"a__created_at\" FROM \"note\" AS \"a\"",
+                    "slots": [],
+                    "tables": [
+                      "note"
+                    ],
+                    "assemble_types": {
+                      "body": "text",
+                      "created_at": "datetime",
+                      "id": "i64",
+                      "meta": "text",
+                      "payload": "bytes",
+                      "rank": "i16"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "i16-field-accepts-plus",
+      "requirements": [
+        "DBS-112"
+      ],
+      "steps": [
+        {
+          "op": "planner.compile",
+          "schema": "runtime-model.dbs",
+          "input": {
+            "ir_version": 1,
+            "entity": "note",
+            "kind": "update",
+            "n_params": 2,
+            "set": [
+              {
+                "column": "rank",
+                "plus_p": 0
+              }
+            ],
+            "where": {
+              "items": [
+                {
+                  "pred": {
+                    "column": "id",
+                    "op": "eq",
+                    "p": 1
+                  }
+                }
+              ]
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "mysql": [
+                  {
+                    "role": "main",
+                    "sql": "UPDATE `note` SET `rank` = `note`.`rank` + ? WHERE `note`.`id` = ?",
+                    "slots": [
+                      {
+                        "from": "param",
+                        "param": 0,
+                        "type": "i16"
+                      },
+                      {
+                        "from": "param",
+                        "param": 1,
+                        "type": "i64"
+                      }
+                    ],
+                    "tables": [
+                      "note"
+                    ]
+                  }
+                ],
+                "postgres": [
+                  {
+                    "role": "main",
+                    "sql": "UPDATE \"note\" SET \"rank\" = \"note\".\"rank\" + $1 WHERE \"note\".\"id\" = $2",
+                    "slots": [
+                      {
+                        "from": "param",
+                        "param": 0,
+                        "type": "i16"
+                      },
+                      {
+                        "from": "param",
+                        "param": 1,
+                        "type": "i64"
+                      }
+                    ],
+                    "tables": [
+                      "note"
+                    ]
+                  }
+                ],
+                "sqlite": [
+                  {
+                    "role": "main",
+                    "sql": "UPDATE \"note\" SET \"rank\" = \"note\".\"rank\" + ? WHERE \"note\".\"id\" = ?",
+                    "slots": [
+                      {
+                        "from": "param",
+                        "param": 0,
+                        "type": "i16"
+                      },
+                      {
+                        "from": "param",
+                        "param": 1,
+                        "type": "i64"
+                      }
+                    ],
+                    "tables": [
+                      "note"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "insert-leaves-defaults-to-the-database",
+      "requirements": [
+        "PRT-81",
+        "PRT-33"
+      ],
+      "steps": [
+        {
+          "op": "planner.compile",
+          "schema": "runtime-model.dbs",
+          "input": {
+            "ir_version": 1,
+            "entity": "note",
+            "kind": "insert",
+            "n_params": 2,
+            "set": [
+              {
+                "column": "rank",
+                "p": 0
+              },
+              {
+                "column": "body",
+                "p": 1
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "mysql": [
+                  {
+                    "role": "main",
+                    "sql": "INSERT INTO `note` (`rank`, `body`) VALUES (?, ?)",
+                    "slots": [
+                      {
+                        "from": "param",
+                        "param": 0,
+                        "type": "i16",
+                        "not_null": true
+                      },
+                      {
+                        "from": "param",
+                        "param": 1,
+                        "type": "text",
+                        "not_null": true
+                      }
+                    ],
+                    "tables": [
+                      "note"
+                    ]
+                  }
+                ],
+                "postgres": [
+                  {
+                    "role": "main",
+                    "sql": "INSERT INTO \"note\" (\"rank\", \"body\", \"created_at\") VALUES ($1, $2, $3) RETURNING \"id\"",
+                    "slots": [
+                      {
+                        "from": "param",
+                        "param": 0,
+                        "type": "i16",
+                        "not_null": true
+                      },
+                      {
+                        "from": "param",
+                        "param": 1,
+                        "type": "text",
+                        "not_null": true
+                      },
+                      {
+                        "from": "now",
+                        "type": "datetime",
+                        "precision": 6
+                      }
+                    ],
+                    "tables": [
+                      "note"
+                    ]
+                  }
+                ],
+                "sqlite": [
+                  {
+                    "role": "main",
+                    "sql": "INSERT INTO \"note\" (\"rank\", \"body\", \"created_at\") VALUES (?, ?, ?) RETURNING \"id\"",
+                    "slots": [
+                      {
+                        "from": "param",
+                        "param": 0,
+                        "type": "i16",
+                        "not_null": true
+                      },
+                      {
+                        "from": "param",
+                        "param": 1,
+                        "type": "text",
+                        "not_null": true
+                      },
+                      {
+                        "from": "now",
+                        "type": "datetime",
+                        "precision": 6
+                      }
+                    ],
+                    "tables": [
+                      "note"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "insert-without-a-required-column",
+      "requirements": [
+        "PRT-81"
+      ],
+      "steps": [
+        {
+          "op": "planner.compile",
+          "schema": "runtime-model.dbs",
+          "input": {
+            "ir_version": 1,
+            "entity": "note",
+            "kind": "insert",
+            "n_params": 1,
+            "set": [
+              {
+                "column": "rank",
+                "p": 0
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "IR_INVALID"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "audited-insert-carries-the-audit-slot",
+      "requirements": [
+        "PRT-32",
+        "PRT-82"
+      ],
+      "steps": [
+        {
+          "op": "planner.compile",
+          "schema": "runtime-model.dbs",
+          "input": {
+            "ir_version": 1,
+            "entity": "item",
+            "kind": "insert",
+            "n_params": 1,
+            "set": [
+              {
+                "column": "title",
+                "p": 0
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "mysql": [
+                  {
+                    "role": "main",
+                    "sql": "INSERT INTO `item` (`title`, `audit_seq`) VALUES (?, ?)",
+                    "slots": [
+                      {
+                        "from": "param",
+                        "param": 0,
+                        "type": "varchar",
+                        "length": 191,
+                        "not_null": true
+                      },
+                      {
+                        "from": "audit",
+                        "type": "i64",
+                        "name": "audit"
+                      }
+                    ],
+                    "tables": [
+                      "item"
+                    ]
+                  }
+                ],
+                "postgres": [
+                  {
+                    "role": "main",
+                    "sql": "INSERT INTO \"item\" (\"title\", \"audit_seq\") VALUES ($1, $2) RETURNING \"seq\"",
+                    "slots": [
+                      {
+                        "from": "param",
+                        "param": 0,
+                        "type": "varchar",
+                        "length": 191,
+                        "not_null": true
+                      },
+                      {
+                        "from": "audit",
+                        "type": "i64",
+                        "name": "audit"
+                      }
+                    ],
+                    "tables": [
+                      "item"
+                    ]
+                  }
+                ],
+                "sqlite": [
+                  {
+                    "role": "main",
+                    "sql": "INSERT INTO \"item\" (\"title\", \"audit_seq\") VALUES (?, ?) RETURNING \"seq\"",
+                    "slots": [
+                      {
+                        "from": "param",
+                        "param": 0,
+                        "type": "varchar",
+                        "length": 191,
+                        "not_null": true
+                      },
+                      {
+                        "from": "audit",
+                        "type": "i64",
+                        "name": "audit"
+                      }
+                    ],
+                    "tables": [
+                      "item"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "audited-update-carries-the-audit-slot",
+      "requirements": [
+        "PRT-32",
+        "PRT-82"
+      ],
+      "steps": [
+        {
+          "op": "planner.compile",
+          "schema": "runtime-model.dbs",
+          "input": {
+            "ir_version": 1,
+            "entity": "item",
+            "kind": "update",
+            "n_params": 2,
+            "set": [
+              {
+                "column": "title",
+                "p": 1
+              }
+            ],
+            "where": {
+              "items": [
+                {
+                  "pred": {
+                    "column": "seq",
+                    "op": "eq",
+                    "p": 0
+                  }
+                }
+              ]
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "mysql": [
+                  {
+                    "role": "main",
+                    "sql": "UPDATE `item` SET `title` = ?, `audit_seq` = ? WHERE `item`.`seq` = ? AND `item`.`deleted_at` IS NULL",
+                    "slots": [
+                      {
+                        "from": "param",
+                        "param": 1,
+                        "type": "varchar",
+                        "length": 191,
+                        "not_null": true
+                      },
+                      {
+                        "from": "audit",
+                        "type": "i64",
+                        "name": "audit"
+                      },
+                      {
+                        "from": "param",
+                        "param": 0,
+                        "type": "i64"
+                      }
+                    ],
+                    "tables": [
+                      "item"
+                    ]
+                  }
+                ],
+                "postgres": [
+                  {
+                    "role": "main",
+                    "sql": "UPDATE \"item\" SET \"title\" = $1, \"audit_seq\" = $2 WHERE \"item\".\"seq\" = $3 AND \"item\".\"deleted_at\" IS NULL",
+                    "slots": [
+                      {
+                        "from": "param",
+                        "param": 1,
+                        "type": "varchar",
+                        "length": 191,
+                        "not_null": true
+                      },
+                      {
+                        "from": "audit",
+                        "type": "i64",
+                        "name": "audit"
+                      },
+                      {
+                        "from": "param",
+                        "param": 0,
+                        "type": "i64"
+                      }
+                    ],
+                    "tables": [
+                      "item"
+                    ]
+                  }
+                ],
+                "sqlite": [
+                  {
+                    "role": "main",
+                    "sql": "UPDATE \"item\" SET \"title\" = ?, \"audit_seq\" = ? WHERE \"item\".\"seq\" = ? AND \"item\".\"deleted_at\" IS NULL",
+                    "slots": [
+                      {
+                        "from": "param",
+                        "param": 1,
+                        "type": "varchar",
+                        "length": 191,
+                        "not_null": true
+                      },
+                      {
+                        "from": "audit",
+                        "type": "i64",
+                        "name": "audit"
+                      },
+                      {
+                        "from": "param",
+                        "param": 0,
+                        "type": "i64"
+                      }
+                    ],
+                    "tables": [
+                      "item"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "audited-soft-delete-carries-the-audit-slot",
+      "requirements": [
+        "PRT-32",
+        "PRT-82",
+        "PRT-33"
+      ],
+      "steps": [
+        {
+          "op": "planner.compile",
+          "schema": "runtime-model.dbs",
+          "input": {
+            "ir_version": 1,
+            "entity": "item",
+            "kind": "delete",
+            "n_params": 1,
+            "where": {
+              "items": [
+                {
+                  "pred": {
+                    "column": "seq",
+                    "op": "eq",
+                    "p": 0
+                  }
+                }
+              ]
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "mysql": [
+                  {
+                    "role": "main",
+                    "sql": "UPDATE `item` SET `deleted_at` = CURRENT_TIMESTAMP(6), `audit_seq` = ? WHERE `item`.`seq` = ? AND `item`.`deleted_at` IS NULL",
+                    "slots": [
+                      {
+                        "from": "audit",
+                        "type": "i64",
+                        "name": "audit"
+                      },
+                      {
+                        "from": "param",
+                        "param": 0,
+                        "type": "i64"
+                      }
+                    ],
+                    "tables": [
+                      "item"
+                    ]
+                  }
+                ],
+                "postgres": [
+                  {
+                    "role": "main",
+                    "sql": "UPDATE \"item\" SET \"deleted_at\" = $1, \"audit_seq\" = $2 WHERE \"item\".\"seq\" = $3 AND \"item\".\"deleted_at\" IS NULL",
+                    "slots": [
+                      {
+                        "from": "now",
+                        "type": "datetime",
+                        "precision": 6
+                      },
+                      {
+                        "from": "audit",
+                        "type": "i64",
+                        "name": "audit"
+                      },
+                      {
+                        "from": "param",
+                        "param": 0,
+                        "type": "i64"
+                      }
+                    ],
+                    "tables": [
+                      "item"
+                    ]
+                  }
+                ],
+                "sqlite": [
+                  {
+                    "role": "main",
+                    "sql": "UPDATE \"item\" SET \"deleted_at\" = ?, \"audit_seq\" = ? WHERE \"item\".\"seq\" = ? AND \"item\".\"deleted_at\" IS NULL",
+                    "slots": [
+                      {
+                        "from": "now",
+                        "type": "datetime",
+                        "precision": 6
+                      },
+                      {
+                        "from": "audit",
+                        "type": "i64",
+                        "name": "audit"
+                      },
+                      {
+                        "from": "param",
+                        "param": 0,
+                        "type": "i64"
+                      }
+                    ],
+                    "tables": [
+                      "item"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "assigned-audit-column",
+      "requirements": [
+        "PRT-82"
+      ],
+      "steps": [
+        {
+          "op": "planner.compile",
+          "schema": "runtime-model.dbs",
+          "input": {
+            "ir_version": 1,
+            "entity": "item",
+            "kind": "insert",
+            "n_params": 2,
+            "set": [
+              {
+                "column": "title",
+                "p": 0
+              },
+              {
+                "column": "audit_seq",
+                "p": 1
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "IR_INVALID"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "i16-condition",
+      "requirements": [
+        "DBS-112"
+      ],
+      "steps": [
+        {
+          "op": "planner.compile",
+          "schema": "runtime-model.dbs",
+          "input": {
+            "ir_version": 1,
+            "entity": "note",
+            "kind": "all",
+            "n_params": 2,
+            "where": {
+              "items": [
+                {
+                  "pred": {
+                    "column": "rank",
+                    "op": "between",
+                    "ps": [
+                      0,
+                      1
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "mysql": [
+                  {
+                    "role": "main",
+                    "sql": "SELECT `a`.`id` AS `a__id`, `a`.`rank` AS `a__rank`, `a`.`body` AS `a__body`, `a`.`payload` AS `a__payload`, `a`.`meta` AS `a__meta`, `a`.`created_at` AS `a__created_at` FROM `note` AS `a` WHERE `a`.`rank` BETWEEN ? AND ?",
+                    "slots": [
+                      {
+                        "from": "param",
+                        "param": 0,
+                        "type": "i16"
+                      },
+                      {
+                        "from": "param",
+                        "param": 1,
+                        "type": "i16"
+                      }
+                    ],
+                    "tables": [
+                      "note"
+                    ]
+                  }
+                ],
+                "postgres": [
+                  {
+                    "role": "main",
+                    "sql": "SELECT \"a\".\"id\" AS \"a__id\", \"a\".\"rank\" AS \"a__rank\", \"a\".\"body\" AS \"a__body\", \"a\".\"payload\" AS \"a__payload\", \"a\".\"meta\" AS \"a__meta\", \"a\".\"created_at\" AS \"a__created_at\" FROM \"note\" AS \"a\" WHERE \"a\".\"rank\" BETWEEN $1 AND $2",
+                    "slots": [
+                      {
+                        "from": "param",
+                        "param": 0,
+                        "type": "i16"
+                      },
+                      {
+                        "from": "param",
+                        "param": 1,
+                        "type": "i16"
+                      }
+                    ],
+                    "tables": [
+                      "note"
+                    ]
+                  }
+                ],
+                "sqlite": [
+                  {
+                    "role": "main",
+                    "sql": "SELECT \"a\".\"id\" AS \"a__id\", \"a\".\"rank\" AS \"a__rank\", \"a\".\"body\" AS \"a__body\", \"a\".\"payload\" AS \"a__payload\", \"a\".\"meta\" AS \"a__meta\", \"a\".\"created_at\" AS \"a__created_at\" FROM \"note\" AS \"a\" WHERE \"a\".\"rank\" BETWEEN ? AND ?",
+                    "slots": [
+                      {
+                        "from": "param",
+                        "param": 0,
+                        "type": "i16"
+                      },
+                      {
+                        "from": "param",
+                        "param": 1,
+                        "type": "i16"
+                      }
+                    ],
+                    "tables": [
+                      "note"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "insert-of-rows-binds-the-clock-per-row",
+      "requirements": [
+        "PRT-81",
+        "DIA-24",
+        "PRT-33"
+      ],
+      "steps": [
+        {
+          "op": "planner.compile",
+          "schema": "runtime-model.dbs",
+          "input": {
+            "ir_version": 1,
+            "entity": "note",
+            "kind": "insert",
+            "n_params": 4,
+            "set": [
+              {
+                "column": "rank",
+                "p": 0
+              },
+              {
+                "column": "body",
+                "p": 1
+              }
+            ],
+            "rows": [
+              [
+                2,
+                3
+              ]
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "mysql": [
+                  {
+                    "role": "main",
+                    "sql": "INSERT INTO `note` (`rank`, `body`) VALUES (?, ?), (?, ?)",
+                    "slots": [
+                      {
+                        "from": "param",
+                        "param": 0,
+                        "type": "i16",
+                        "not_null": true
+                      },
+                      {
+                        "from": "param",
+                        "param": 1,
+                        "type": "text",
+                        "not_null": true
+                      },
+                      {
+                        "from": "param",
+                        "param": 2,
+                        "type": "i16",
+                        "not_null": true
+                      },
+                      {
+                        "from": "param",
+                        "param": 3,
+                        "type": "text",
+                        "not_null": true
+                      }
+                    ],
+                    "tables": [
+                      "note"
+                    ]
+                  }
+                ],
+                "postgres": [
+                  {
+                    "role": "main",
+                    "sql": "INSERT INTO \"note\" (\"rank\", \"body\", \"created_at\") VALUES ($1, $2, $3), ($4, $5, $6)",
+                    "slots": [
+                      {
+                        "from": "param",
+                        "param": 0,
+                        "type": "i16",
+                        "not_null": true
+                      },
+                      {
+                        "from": "param",
+                        "param": 1,
+                        "type": "text",
+                        "not_null": true
+                      },
+                      {
+                        "from": "now",
+                        "type": "datetime",
+                        "precision": 6
+                      },
+                      {
+                        "from": "param",
+                        "param": 2,
+                        "type": "i16",
+                        "not_null": true
+                      },
+                      {
+                        "from": "param",
+                        "param": 3,
+                        "type": "text",
+                        "not_null": true
+                      },
+                      {
+                        "from": "now",
+                        "type": "datetime",
+                        "precision": 6
+                      }
+                    ],
+                    "tables": [
+                      "note"
+                    ]
+                  }
+                ],
+                "sqlite": [
+                  {
+                    "role": "main",
+                    "sql": "INSERT INTO \"note\" (\"rank\", \"body\", \"created_at\") VALUES (?, ?, ?), (?, ?, ?)",
+                    "slots": [
+                      {
+                        "from": "param",
+                        "param": 0,
+                        "type": "i16",
+                        "not_null": true
+                      },
+                      {
+                        "from": "param",
+                        "param": 1,
+                        "type": "text",
+                        "not_null": true
+                      },
+                      {
+                        "from": "now",
+                        "type": "datetime",
+                        "precision": 6
+                      },
+                      {
+                        "from": "param",
+                        "param": 2,
+                        "type": "i16",
+                        "not_null": true
+                      },
+                      {
+                        "from": "param",
+                        "param": 3,
+                        "type": "text",
+                        "not_null": true
+                      },
+                      {
+                        "from": "now",
+                        "type": "datetime",
+                        "precision": 6
+                      }
+                    ],
+                    "tables": [
+                      "note"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "assigned-default-now-column-binds-no-clock",
+      "requirements": [
+        "PRT-81",
+        "DIA-24",
+        "PRT-33"
+      ],
+      "steps": [
+        {
+          "op": "planner.compile",
+          "schema": "runtime-model.dbs",
+          "input": {
+            "ir_version": 1,
+            "entity": "note",
+            "kind": "insert",
+            "n_params": 3,
+            "set": [
+              {
+                "column": "rank",
+                "p": 0
+              },
+              {
+                "column": "body",
+                "p": 1
+              },
+              {
+                "column": "created_at",
+                "p": 2
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "mysql": [
+                  {
+                    "role": "main",
+                    "sql": "INSERT INTO `note` (`rank`, `body`, `created_at`) VALUES (?, ?, ?)",
+                    "slots": [
+                      {
+                        "from": "param",
+                        "param": 0,
+                        "type": "i16",
+                        "not_null": true
+                      },
+                      {
+                        "from": "param",
+                        "param": 1,
+                        "type": "text",
+                        "not_null": true
+                      },
+                      {
+                        "from": "param",
+                        "param": 2,
+                        "type": "datetime",
+                        "precision": 6,
+                        "not_null": true
+                      }
+                    ],
+                    "tables": [
+                      "note"
+                    ]
+                  }
+                ],
+                "postgres": [
+                  {
+                    "role": "main",
+                    "sql": "INSERT INTO \"note\" (\"rank\", \"body\", \"created_at\") VALUES ($1, $2, $3) RETURNING \"id\"",
+                    "slots": [
+                      {
+                        "from": "param",
+                        "param": 0,
+                        "type": "i16",
+                        "not_null": true
+                      },
+                      {
+                        "from": "param",
+                        "param": 1,
+                        "type": "text",
+                        "not_null": true
+                      },
+                      {
+                        "from": "param",
+                        "param": 2,
+                        "type": "datetime",
+                        "precision": 6,
+                        "not_null": true
+                      }
+                    ],
+                    "tables": [
+                      "note"
+                    ]
+                  }
+                ],
+                "sqlite": [
+                  {
+                    "role": "main",
+                    "sql": "INSERT INTO \"note\" (\"rank\", \"body\", \"created_at\") VALUES (?, ?, ?) RETURNING \"id\"",
+                    "slots": [
+                      {
+                        "from": "param",
+                        "param": 0,
+                        "type": "i16",
+                        "not_null": true
+                      },
+                      {
+                        "from": "param",
+                        "param": 1,
+                        "type": "text",
+                        "not_null": true
+                      },
+                      {
+                        "from": "param",
+                        "param": 2,
+                        "type": "datetime",
+                        "precision": 6,
+                        "not_null": true
+                      }
+                    ],
+                    "tables": [
+                      "note"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
