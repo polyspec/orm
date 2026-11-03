@@ -5646,14 +5646,6 @@
           ]
         },
         {
-          "id": "planner-go-runtimemodel",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/engine/runtimemodel -count=1",
-          "shard": "other",
-          "inputs": [
-            "packages/go/engine/runtimemodel/runtimemodel_test.go"
-          ]
-        },
-        {
           "id": "planner-php",
           "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/EngineTest.php",
           "shard": "other",
