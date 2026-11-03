@@ -45925,15 +45925,15 @@
      "expect": {
       "mysql": {
        "error": "CONFIG",
-       "message_contains": "user_model"
+       "message_holds": "user_model"
       },
       "postgres": {
        "error": "CONFIG",
-       "message_contains": "user_model"
+       "message_holds": "user_model"
       },
       "sqlite": {
        "error": "CONFIG",
-       "message_contains": "user_model"
+       "message_holds": "user_model"
       }
      }
     },
@@ -45965,15 +45965,15 @@
      "expect": {
       "mysql": {
        "error": "CONFIG",
-       "message_contains": "alias<Name>()"
+       "message_holds": "alias<Name>()"
       },
       "postgres": {
        "error": "CONFIG",
-       "message_contains": "alias<Name>()"
+       "message_holds": "alias<Name>()"
       },
       "sqlite": {
        "error": "CONFIG",
-       "message_contains": "alias<Name>()"
+       "message_holds": "alias<Name>()"
       }
      }
     },
@@ -46007,15 +46007,15 @@
      "expect": {
       "mysql": {
        "error": "CONFIG",
-       "message_contains": "user_model"
+       "message_holds": "user_model"
       },
       "postgres": {
        "error": "CONFIG",
-       "message_contains": "user_model"
+       "message_holds": "user_model"
       },
       "sqlite": {
        "error": "CONFIG",
-       "message_contains": "user_model"
+       "message_holds": "user_model"
       }
      }
     },
@@ -46049,15 +46049,15 @@
      "expect": {
       "mysql": {
        "error": "CONFIG",
-       "message_contains": "alias<Name>()"
+       "message_holds": "alias<Name>()"
       },
       "postgres": {
        "error": "CONFIG",
-       "message_contains": "alias<Name>()"
+       "message_holds": "alias<Name>()"
       },
       "sqlite": {
        "error": "CONFIG",
-       "message_contains": "alias<Name>()"
+       "message_holds": "alias<Name>()"
       }
      }
     }
@@ -47263,7 +47263,6 @@
        "int": "6"
       }
      },
-     "order": [],
      "columns": [
       "name"
      ],
