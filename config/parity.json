@@ -735,6 +735,7 @@
         "packages/ts/tests/markdown-read-db.mjs",
         "packages/ts/tests/recipe.mjs",
         "packages/ts/tests/recipe_model.mjs",
+        "packages/ts/tests/sqlite_writer_child.mjs",
         "packages/ts/tests/recipe_reads.mjs",
         "packages/ts/tests/recipe_apply.mjs",
         "packages/ts/tests/recipe_introspect.mjs",
@@ -13371,33 +13372,53 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/timezone_test.go",
-          "id": "TestStatementTimeout"
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionMysql/statement_timeout_cancels_and_keeps_the_connection"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionPostgres/statement_timeout_cancels_and_keeps_the_connection"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testStatementTimeout"
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testMysql with data set \"statement_timeout_cancels_and_keeps_the_connection\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testPostgres with data set \"statement_timeout_cancels_and_keeps_the_connection\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ConnectionStatementTimeoutNativeTest.php",
-          "id": "ConnectionStatementTimeoutNativeTest::testNativeStatementTimeoutCancelsAndReusesConnection"
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testMysql with data set \"statement_timeout_cancels_and_keeps_the_connection\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testPostgres with data set \"statement_timeout_cancels_and_keeps_the_connection\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/statement_timeout.mjs",
-          "id": "connection/statement-timeout-canceled"
+          "test": "packages/ts/tests/dsn_connection-postgres.test.mjs",
+          "id": "statement_timeout_cancels_and_keeps_the_connection"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/connection_config.py",
-          "id": "test_statement_timeout"
+          "test": "packages/python/tests/test_dsn_connection_postgres.py",
+          "id": "statement_timeout_cancels_and_keeps_the_connection"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/zone.rs",
-          "id": "statement_timeout"
+          "test": "packages/rust/tests/tests/dsn_connection_mysql.rs",
+          "id": "dsn_connection_mysql::statement_timeout_cancels_and_keeps_the_connection"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
+          "id": "dsn_connection_postgres::statement_timeout_cancels_and_keeps_the_connection"
         }
       ]
     },
@@ -13412,33 +13433,52 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/timezone_test.go",
-          "id": "TestStatementTimeoutThroughAPooler"
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionPostgres/statement_timeout_through_a_pooler"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testStatementTimeoutThroughAPooler"
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testPostgres with data set \"statement_timeout_through_a_pooler\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ConnectionStatementTimeoutNativeTest.php",
-          "id": "ConnectionStatementTimeoutNativeTest::testNativeStatementTimeoutIsIsolatedByTransactionPooler"
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testPostgres with data set \"statement_timeout_through_a_pooler\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/statement_timeout.mjs",
-          "id": "connection/statement-timeout-through-pooler"
+          "test": "packages/ts/tests/dsn_connection-postgres.test.mjs",
+          "id": "statement_timeout_through_a_pooler"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/connection_config.py",
-          "id": "test_statement_timeout_through_a_pooler"
+          "test": "packages/python/tests/test_dsn_connection_postgres.py",
+          "id": "statement_timeout_through_a_pooler"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/zone.rs",
-          "id": "statement_timeout_through_a_pooler"
+          "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
+          "id": "dsn_connection_postgres::statement_timeout_through_a_pooler"
+        }
+      ]
+    },
+    {
+      "id": "connection-catalog-session-through-a-pooler",
+      "kind": "feature",
+      "requirements": [
+        "CFG-41"
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "dsn_connection",
+        "part": "owner/python"
+      },
+      "bindings": [
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/connection_config.py",
+          "id": "test_catalog_session_after_a_schema_change_through_a_pooler"
         }
       ]
     },
@@ -16285,33 +16325,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/sqlite_concurrency_test.go",
-          "id": "TestSQLiteLockWaitExpires"
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionSqlite/sqlite_lock_past_busy_timeout_is_canceled"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/SqliteConcurrencyTest.php",
-          "id": "SqliteConcurrencyTest::testLockWaitExpires"
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testSqlite with data set \"sqlite_lock_past_busy_timeout_is_canceled\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php",
-          "id": "ConnectionBusyTimeoutNativeTest::testNativeSqliteBusyTimeoutCancelsWrite"
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testSqlite with data set \"sqlite_lock_past_busy_timeout_is_canceled\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/sqlite-concurrency.mjs",
-          "id": "sqlite-concurrency/lockWaitExpires"
+          "test": "packages/ts/tests/dsn_connection-sqlite.test.mjs",
+          "id": "sqlite_lock_past_busy_timeout_is_canceled"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_driver_errors.py",
-          "id": "test_a_lock_held_past_busy_timeout_is_canceled"
+          "test": "packages/python/tests/test_dsn_connection_sqlite.py",
+          "id": "sqlite_lock_past_busy_timeout_is_canceled"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/sqlite_concurrency.rs",
-          "id": "lock_wait_expires"
+          "test": "packages/rust/tests/tests/dsn_connection_sqlite.rs",
+          "id": "dsn_connection_sqlite::sqlite_lock_past_busy_timeout_is_canceled"
         }
       ]
     },
@@ -25861,38 +25901,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/sqlite_concurrency_test.go",
-          "id": "TestSQLiteWritersOnSeveralConnections"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/model/sqlite_concurrency_test.go",
-          "id": "TestSQLiteWritersInSeveralProcesses"
+          "test": "packages/go/orm/recipe_transactions_test.go",
+          "id": "TestRecipeTransactionsSqlite/sqlite_writers_commit_every_row"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/SqliteConcurrencyTest.php",
-          "id": "SqliteConcurrencyTest::testWritersInSeveralProcesses"
+          "test": "packages/php/tests/TransactionsRecipeTest.php",
+          "id": "TransactionsRecipeTest::testSqlite with data set \"sqlite_writers_commit_every_row\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php",
-          "id": "ConnectionBusyTimeoutNativeTest::testNativeConnectionsCommitConcurrentSqliteWriters"
+          "test": "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
+          "id": "TransactionsRecipeTestExtensionTest::testSqlite with data set \"sqlite_writers_commit_every_row\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/sqlite-concurrency.mjs",
-          "id": "sqlite-concurrency/writersInSeveralProcesses"
+          "test": "packages/ts/tests/transactions-sqlite.test.mjs",
+          "id": "sqlite_writers_commit_every_row"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/connection_pool.py",
-          "id": "test_sqlite_concurrent_writers_commit_every_row"
+          "test": "packages/python/tests/test_transactions_sqlite.py",
+          "id": "sqlite_writers_commit_every_row"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/sqlite_concurrency.rs",
-          "id": "writers_on_several_connections"
+          "test": "packages/rust/tests/tests/transactions_sqlite.rs",
+          "id": "transactions_sqlite::sqlite_writers_commit_every_row"
         }
       ]
     },
@@ -25905,8 +25940,8 @@
       "bindings": [
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/sqlite-concurrency.mjs",
-          "id": "sqlite-concurrency/writersInSeveralProcesses"
+          "test": "packages/ts/tests/transactions-sqlite.test.mjs",
+          "id": "sqlite_writers_commit_every_row"
         }
       ],
       "owner": {
@@ -25914,6 +25949,45 @@
         "artifact": "archive",
         "package": "@polyspec/orm"
       }
+    },
+    {
+      "id": "connection-sqlite-several-process-writers",
+      "kind": "feature",
+      "requirements": [
+        "CFG-42"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/sqlite_concurrency_test.go",
+          "id": "TestSQLiteWritersInSeveralProcesses"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/TransactionsRecipeTest.php",
+          "id": "TransactionsRecipeTest::testSqlite with data set \"sqlite_writers_commit_every_row\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
+          "id": "TransactionsRecipeTestExtensionTest::testSqlite with data set \"sqlite_writers_commit_every_row\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/transactions-sqlite.test.mjs",
+          "id": "sqlite_writers_commit_every_row"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/connection_pool.py",
+          "id": "test_sqlite_several_process_writers_commit_every_row"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/sqlite_concurrency.rs",
+          "id": "writers_in_several_processes"
+        }
+      ]
     },
     {
       "id": "connection-sqlite-read-during-write",
@@ -25924,33 +25998,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/sqlite_concurrency_test.go",
-          "id": "TestSQLiteReadsDuringWrite"
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionSqlite/sqlite_read_during_a_write_sees_committed_rows"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/SqliteConcurrencyTest.php",
-          "id": "SqliteConcurrencyTest::testReadsDuringAWrite"
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testSqlite with data set \"sqlite_read_during_a_write_sees_committed_rows\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php",
-          "id": "ConnectionBusyTimeoutNativeTest::testNativeSqliteReadDuringWriteSeesOnlyCommittedRows"
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testSqlite with data set \"sqlite_read_during_a_write_sees_committed_rows\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/sqlite-concurrency.mjs",
-          "id": "sqlite-concurrency/readsDuringWrite"
+          "test": "packages/ts/tests/dsn_connection-sqlite.test.mjs",
+          "id": "sqlite_read_during_a_write_sees_committed_rows"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/connection_pool.py",
-          "id": "test_sqlite_read_during_write_sees_only_committed_rows"
+          "test": "packages/python/tests/test_dsn_connection_sqlite.py",
+          "id": "sqlite_read_during_a_write_sees_committed_rows"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/sqlite_concurrency.rs",
-          "id": "reads_during_write"
+          "test": "packages/rust/tests/tests/dsn_connection_sqlite.rs",
+          "id": "dsn_connection_sqlite::sqlite_read_during_a_write_sees_committed_rows"
         }
       ]
     },

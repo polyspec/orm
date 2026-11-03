@@ -25,7 +25,8 @@
     "PLN-20",
     "PLN-21",
     "PLN-24",
-    "PLN-44"
+    "PLN-44",
+    "CFG-12"
   ],
   "fixture": "contracts/fixtures/bench/dbspec-set.json",
   "cases": [
@@ -3054,6 +3055,29 @@
             "sqlite": {
               "value": {
                 "int": "1"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_writers_commit_every_row",
+      "requirements": [
+        "CFG-12"
+      ],
+      "only": [
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "transaction.writers",
+          "writers": 6,
+          "writes": 20,
+          "expect": {
+            "sqlite": {
+              "value": {
+                "int": "120"
               }
             }
           }

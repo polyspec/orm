@@ -2903,51 +2903,6 @@
         "packages/php/tests/bootstrap.php"
       ]
     },
-    "connection-statement-timeout-php-extension-check": {
-      "scope": "owner",
-      "needs": [
-        "php",
-        "composer",
-        "php-extension-tools",
-        "databases"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/php-ext/scripts/build.sh",
-        "packages/php-ext/src/db.c",
-        "packages/php-ext/tests/ConnectionStatementTimeoutNativeTest.php",
-        "packages/php/src/OrmException.php"
-      ]
-    },
-    "connection-busy-timeout-php-extension-check": {
-      "scope": "owner",
-      "needs": [
-        "php",
-        "composer",
-        "php-extension-tools"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/php-ext/scripts/build.sh",
-        "packages/php-ext/src/db.c",
-        "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php",
-        "packages/php/src/OrmException.php"
-      ]
-    },
-    "connection-statement-timeout-typescript-check": {
-      "scope": "owner",
-      "needs": [
-        "node-modules",
-        "databases"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/ts/tests/statement_timeout.mjs",
-        "packages/ts/tests/bench-set.mjs",
-        "packages/ts/tests/case-database.mjs",
-        "tests/testcase.mts"
-      ]
-    },
     "connection-pool-resource-bounds-typescript-check": {
       "scope": "owner",
       "needs": [
@@ -3214,40 +3169,6 @@
         "php-extension-tools",
         "python",
         "mysql-privilege-server"
-      ]
-    },
-    "connection-sqlite-concurrent-writers-python-check": {
-      "scope": "owner",
-      "needs": [
-        "python"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/python/tests/connection_pool.py"
-      ]
-    },
-    "connection-sqlite-read-during-write-python-check": {
-      "scope": "owner",
-      "needs": [
-        "python"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/python/tests/connection_pool.py"
-      ]
-    },
-    "connection-sqlite-read-during-write-php-extension-check": {
-      "scope": "owner",
-      "needs": [
-        "php",
-        "composer",
-        "php-extension-tools"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/php-ext/scripts/build.sh",
-        "packages/php-ext/src/db.c",
-        "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php"
       ]
     },
     "python-check": {
@@ -5072,6 +4993,16 @@
         "packages/rust/tests/tests/complex_query_postgres.rs",
         "packages/rust/tests/tests/complex_query_sqlite.rs",
         "packages/rust/tests/src/recipe.rs"
+      ]
+    },
+    "connection-sqlite-several-processes-python-check": {
+      "scope": "owner",
+      "needs": [
+        "python"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/python/tests/connection_pool.py"
       ]
     }
   },

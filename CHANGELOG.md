@@ -409,6 +409,10 @@ Docs: FCV-2 states each public-surface unit of `interface_contract` with its own
 
 A SQLite lock wait between two connections that write the same row ends with `CANCELED` after the busy timeout and is not retried, because SQLite reports no row-lock deadlock: SQLITE_LOCKED (6, 262) is `DRIVER` in every runtime, and transaction_deadlock_retry runs the sqlite case in all six runtimes (PLN-24, CFG-12) (T343-3)
 
+- The statement timeout (CFG-6) and its isolation through a transaction pooler (CFG-27, CFG-28, CFG-29) run as cases of the `dsn_connection` recipe in every client, and `model.connect` takes `statement_timeout_ms` and the DSN `case-pooler`. The Python catalog session through a pooler is a requirement of its own (CFG-41).
+- The SQLite lock wait, read during a write and concurrent writers run as recipe cases in the six runtimes; the native tests of those behaviours are gone.
+- A failed SQLite BEGIN in Go reports only its error, and a SQLite message names its result code once.
+- Several processes writing one SQLite file are a requirement (CFG-42), tested in the six runtimes.
 - The model JSON output of an ordered-json value is the recipe case `ordered_json_keeps_its_text_in_the_model_json_output` in six runtimes, with the new step key `json_output`, and its native tests leave; the read of a SQL NULL and an empty text is the recipe `catalog_connection` alone. `to_json_text` of Python alone is COD-68.
 - A PHP test run no longer holds a copy of each recipe in its data sets: at PHP's default memory limit it no longer dies while it builds the suite.
 - The UTC connection behaviour (CFG-2, DIA-57, DSL-141) runs as cases of the `dsn_connection` recipe in every client, and `model.connect` takes `case?<query>`. A TypeScript MySQL connection whose TLS handshake refuses the certificate now returns `CONFIG`, as CFG-16 states, instead of `DRIVER`.

@@ -817,6 +817,9 @@
             "collection.connect",
             "sql.exec",
             "session.end",
+            "transaction.writers",
+            "wait.start",
+            "wait.at_least",
             "fault.next_rollback",
             "query.search",
             "query.search_chain",
@@ -997,6 +1000,15 @@
         },
         {
           "$ref": "#/$defs/ops/session.end"
+        },
+        {
+          "$ref": "#/$defs/ops/transaction.writers"
+        },
+        {
+          "$ref": "#/$defs/ops/wait.start"
+        },
+        {
+          "$ref": "#/$defs/ops/wait.at_least"
         },
         {
           "$ref": "#/$defs/ops/fault.next_rollback"
@@ -2327,10 +2339,15 @@
             "type": "integer",
             "minimum": 1
           },
+          "statement_timeout_ms": {
+            "description": "The statement bound of the connection (CFG-6).",
+            "type": "integer",
+            "minimum": 1
+          },
           "dsn": {
             "type": "string",
             "minLength": 1,
-            "description": "Absent: the case database. \"case\" is its DSN, \"case?<query>\" its DSN with those parameters, \"case-socket\" its MySQL DSN through the socket ORM_TEST_MYSQL_SOCKET (CFG-10, CFG-19; a MySQL-only recipe unit, FCV-3); otherwise the DSN text of the step (FCV-4)."
+            "description": "Absent: the case database. \"case\" is its DSN, \"case?<query>\" its DSN with those parameters, \"case-pooler\" the case database through ORM_TEST_PGBOUNCER_DSN (CFG-27), \"case-socket\" its MySQL DSN through the socket ORM_TEST_MYSQL_SOCKET (CFG-10, CFG-19; a MySQL-only recipe unit, FCV-3); otherwise the DSN text of the step (FCV-4)."
           },
           "as": {
             "$ref": "#/$defs/name"
@@ -3593,6 +3610,32 @@
             "$ref": "#/$defs/name"
           }
         }
+      },
+      "transaction.writers": {
+        "description": "writers writers at the same time, each on its own connection or process, each committing writes transactions that read the Service count and insert one Service without retries; its value is the Service count (CFG-12).",
+        "type": "object",
+        "required": ["op", "writers", "writes", "expect"],
+        "additionalProperties": false,
+        "properties": {
+          "op": { "const": "transaction.writers" },
+          "writers": { "type": "integer", "minimum": 2 },
+          "writes": { "type": "integer", "minimum": 1 },
+          "expect": { "$ref": "#/$defs/expect" }
+        }
+      },
+      "wait.start": {
+        "description": "Records the time for the next wait.at_least.",
+        "type": "object",
+        "required": ["op"],
+        "additionalProperties": false,
+        "properties": { "op": { "const": "wait.start" } }
+      },
+      "wait.at_least": {
+        "description": "Fails the step when fewer than ms milliseconds passed since wait.start.",
+        "type": "object",
+        "required": ["op", "ms"],
+        "additionalProperties": false,
+        "properties": { "op": { "const": "wait.at_least" }, "ms": { "type": "integer", "minimum": 1 } }
       },
       "session.end": {
         "description": "Ends, through the native driver on the server DSN of the database, the server session that holds a lock on the table (CFG-15).",

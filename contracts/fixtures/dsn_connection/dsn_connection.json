@@ -9,7 +9,12 @@
     "CFG-19",
     "CFG-26",
     "DIA-57",
-    "DSL-141"
+    "DSL-141",
+    "CFG-6",
+    "CFG-27",
+    "CFG-28",
+    "CFG-29",
+    "CFG-13"
   ],
   "fixture": "contracts/fixtures/catalog_connection/dbspec-set.json",
   "cases": [
@@ -1291,6 +1296,1299 @@
           "expect": {
             "sqlite": {
               "error": "CODEC_ENCODE"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "statement_timeout_cancels_and_keeps_the_connection",
+      "requirements": [
+        "CFG-6"
+      ],
+      "only": [
+        "mysql",
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "holder"
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "statement_timeout_ms": 200,
+          "as": "db"
+        },
+        {
+          "op": "model.create",
+          "connection": "holder",
+          "model": "Author",
+          "values": {
+            "name": {
+              "text": "held"
+            },
+            "start_dt": {
+              "text": "2026-01-01 00:00:00"
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "holder",
+          "retry": 0,
+          "steps": [
+            {
+              "op": "model.query",
+              "connection": "holder",
+              "model": "Author",
+              "where": {
+                "name": {
+                  "text": "held"
+                }
+              },
+              "lock": "update",
+              "pick": [
+                "name"
+              ],
+              "expect": {
+                "mysql": {
+                  "json": [
+                    {
+                      "name": "held"
+                    }
+                  ]
+                },
+                "postgres": {
+                  "json": [
+                    {
+                      "name": "held"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "op": "transaction",
+              "connection": "db",
+              "retry": 0,
+              "steps": [
+                {
+                  "op": "model.query",
+                  "connection": "db",
+                  "model": "Author",
+                  "where": {
+                    "name": {
+                      "text": "held"
+                    }
+                  },
+                  "lock": "update",
+                  "pick": [
+                    "name"
+                  ]
+                }
+              ],
+              "expect": {
+                "mysql": {
+                  "error": "CANCELED"
+                },
+                "postgres": {
+                  "error": "CANCELED"
+                }
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "db",
+          "model": "Author",
+          "where": {
+            "name": {
+              "text": "held"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": 1
+            },
+            "postgres": {
+              "json": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "statement_timeout_through_a_pooler",
+      "requirements": [
+        "CFG-27",
+        "CFG-28",
+        "CFG-29"
+      ],
+      "only": [
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "holder"
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "statement_timeout_ms": 200,
+          "dsn": "case-pooler",
+          "as": "bounded"
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "dsn": "case-pooler",
+          "as": "plain"
+        },
+        {
+          "op": "model.create",
+          "connection": "holder",
+          "model": "Author",
+          "values": {
+            "name": {
+              "text": "held"
+            },
+            "start_dt": {
+              "text": "2026-01-01 00:00:00"
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "holder",
+          "retry": 0,
+          "steps": [
+            {
+              "op": "model.query",
+              "connection": "holder",
+              "model": "Author",
+              "where": {
+                "name": {
+                  "text": "held"
+                }
+              },
+              "lock": "update",
+              "pick": [
+                "name"
+              ],
+              "expect": {
+                "postgres": {
+                  "json": [
+                    {
+                      "name": "held"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "op": "transaction",
+              "connection": "bounded",
+              "retry": 0,
+              "steps": [
+                {
+                  "op": "model.query",
+                  "connection": "bounded",
+                  "model": "Author",
+                  "where": {
+                    "name": {
+                      "text": "held"
+                    }
+                  },
+                  "lock": "update",
+                  "pick": [
+                    "name"
+                  ]
+                }
+              ],
+              "expect": {
+                "postgres": {
+                  "error": "CANCELED"
+                }
+              }
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "bounded",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": "SELECT set_config('orm_test.server_connection', 'first', false)"
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "first"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "plain",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": "SELECT current_setting('orm_test.server_connection')"
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "first"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "bounded",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": "SELECT current_setting('statement_timeout')"
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "200ms"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "plain",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": "SELECT current_setting('statement_timeout')"
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "bounded",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": "SELECT current_setting('statement_timeout')"
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "200ms"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "bounded",
+          "retry": 0,
+          "steps": [
+            {
+              "op": "model.query",
+              "connection": "bounded",
+              "model": "Author",
+              "where": {
+                "name": {
+                  "text": "held"
+                }
+              },
+              "lock": "update",
+              "pick": [
+                "name"
+              ],
+              "expect": {
+                "postgres": {
+                  "json": [
+                    {
+                      "name": "held"
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "plain",
+          "retry": 0,
+          "steps": [
+            {
+              "op": "model.query",
+              "connection": "plain",
+              "model": "Author",
+              "where": {
+                "name": {
+                  "text": "held"
+                }
+              },
+              "lock": "update",
+              "pick": [
+                "name"
+              ],
+              "expect": {
+                "postgres": {
+                  "json": [
+                    {
+                      "name": "held"
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "bounded",
+          "retry": 0,
+          "steps": [
+            {
+              "op": "model.query",
+              "connection": "bounded",
+              "model": "Author",
+              "where": {
+                "name": {
+                  "text": "held"
+                }
+              },
+              "lock": "update",
+              "pick": [
+                "name"
+              ],
+              "expect": {
+                "postgres": {
+                  "json": [
+                    {
+                      "name": "held"
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "plain",
+          "retry": 0,
+          "steps": [
+            {
+              "op": "model.query",
+              "connection": "plain",
+              "model": "Author",
+              "where": {
+                "name": {
+                  "text": "held"
+                }
+              },
+              "lock": "update",
+              "pick": [
+                "name"
+              ],
+              "expect": {
+                "postgres": {
+                  "json": [
+                    {
+                      "name": "held"
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "bounded",
+          "retry": 0,
+          "steps": [
+            {
+              "op": "model.query",
+              "connection": "bounded",
+              "model": "Author",
+              "where": {
+                "name": {
+                  "text": "held"
+                }
+              },
+              "lock": "update",
+              "pick": [
+                "name"
+              ],
+              "expect": {
+                "postgres": {
+                  "json": [
+                    {
+                      "name": "held"
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "plain",
+          "retry": 0,
+          "steps": [
+            {
+              "op": "model.query",
+              "connection": "plain",
+              "model": "Author",
+              "where": {
+                "name": {
+                  "text": "held"
+                }
+              },
+              "lock": "update",
+              "pick": [
+                "name"
+              ],
+              "expect": {
+                "postgres": {
+                  "json": [
+                    {
+                      "name": "held"
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "bounded",
+          "retry": 0,
+          "steps": [
+            {
+              "op": "model.query",
+              "connection": "bounded",
+              "model": "Author",
+              "where": {
+                "name": {
+                  "text": "held"
+                }
+              },
+              "lock": "update",
+              "pick": [
+                "name"
+              ],
+              "expect": {
+                "postgres": {
+                  "json": [
+                    {
+                      "name": "held"
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "plain",
+          "retry": 0,
+          "steps": [
+            {
+              "op": "model.query",
+              "connection": "plain",
+              "model": "Author",
+              "where": {
+                "name": {
+                  "text": "held"
+                }
+              },
+              "lock": "update",
+              "pick": [
+                "name"
+              ],
+              "expect": {
+                "postgres": {
+                  "json": [
+                    {
+                      "name": "held"
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "bounded",
+          "retry": 0,
+          "steps": [
+            {
+              "op": "model.query",
+              "connection": "bounded",
+              "model": "Author",
+              "where": {
+                "name": {
+                  "text": "held"
+                }
+              },
+              "lock": "update",
+              "pick": [
+                "name"
+              ],
+              "expect": {
+                "postgres": {
+                  "json": [
+                    {
+                      "name": "held"
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "plain",
+          "retry": 0,
+          "steps": [
+            {
+              "op": "model.query",
+              "connection": "plain",
+              "model": "Author",
+              "where": {
+                "name": {
+                  "text": "held"
+                }
+              },
+              "lock": "update",
+              "pick": [
+                "name"
+              ],
+              "expect": {
+                "postgres": {
+                  "json": [
+                    {
+                      "name": "held"
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "bounded",
+          "retry": 0,
+          "steps": [
+            {
+              "op": "model.query",
+              "connection": "bounded",
+              "model": "Author",
+              "where": {
+                "name": {
+                  "text": "held"
+                }
+              },
+              "lock": "update",
+              "pick": [
+                "name"
+              ],
+              "expect": {
+                "postgres": {
+                  "json": [
+                    {
+                      "name": "held"
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "plain",
+          "retry": 0,
+          "steps": [
+            {
+              "op": "model.query",
+              "connection": "plain",
+              "model": "Author",
+              "where": {
+                "name": {
+                  "text": "held"
+                }
+              },
+              "lock": "update",
+              "pick": [
+                "name"
+              ],
+              "expect": {
+                "postgres": {
+                  "json": [
+                    {
+                      "name": "held"
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "holder",
+          "retry": 0,
+          "steps": [
+            {
+              "op": "model.query",
+              "connection": "holder",
+              "model": "Author",
+              "where": {
+                "name": {
+                  "text": "held"
+                }
+              },
+              "lock": "update",
+              "pick": [
+                "name"
+              ],
+              "expect": {
+                "postgres": {
+                  "json": [
+                    {
+                      "name": "held"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "op": "transaction",
+              "connection": "bounded",
+              "retry": 0,
+              "steps": [
+                {
+                  "op": "model.query",
+                  "connection": "bounded",
+                  "model": "Author",
+                  "where": {
+                    "name": {
+                      "text": "held"
+                    }
+                  },
+                  "lock": "update",
+                  "pick": [
+                    "name"
+                  ]
+                }
+              ],
+              "expect": {
+                "postgres": {
+                  "error": "CANCELED"
+                }
+              }
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "plain",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": "SELECT set_config('orm_test.server_connection', 'second', false)"
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "second"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "bounded",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": "SELECT current_setting('orm_test.server_connection')"
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "second"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "plain",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": "SELECT current_setting('statement_timeout')"
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "bounded",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": "SELECT current_setting('statement_timeout')"
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "200ms"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "bounded",
+          "model": "Author",
+          "where": {
+            "name": {
+              "text": "held"
+            }
+          },
+          "expect": {
+            "postgres": {
+              "json": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_lock_past_busy_timeout_is_canceled",
+      "requirements": [
+        "CFG-12",
+        "INT-154"
+      ],
+      "only": [
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "holder"
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "dsn": "case?_pragma=busy_timeout(200)",
+          "as": "waiter"
+        },
+        {
+          "op": "transaction",
+          "connection": "holder",
+          "retry": 0,
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "holder",
+              "model": "Author",
+              "values": {
+                "name": {
+                  "text": "holder"
+                },
+                "start_dt": {
+                  "text": "2026-01-01 00:00:00"
+                }
+              }
+            },
+            {
+              "op": "wait.start"
+            },
+            {
+              "op": "transaction",
+              "connection": "waiter",
+              "retry": 0,
+              "steps": [
+                {
+                  "op": "model.count",
+                  "connection": "waiter",
+                  "model": "Author",
+                  "expect": {
+                    "sqlite": {
+                      "json": 0
+                    }
+                  }
+                },
+                {
+                  "op": "model.create",
+                  "connection": "waiter",
+                  "model": "Author",
+                  "values": {
+                    "name": {
+                      "text": "waiter"
+                    },
+                    "start_dt": {
+                      "text": "2026-01-01 00:00:00"
+                    }
+                  }
+                }
+              ],
+              "expect": {
+                "sqlite": {
+                  "error": "CANCELED",
+                  "message_suffix": " (SQLITE_BUSY)"
+                }
+              }
+            },
+            {
+              "op": "wait.at_least",
+              "ms": 200
+            }
+          ],
+          "expect": {
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "holder",
+          "model": "Author",
+          "where": {
+            "name": {
+              "text": "waiter"
+            }
+          },
+          "expect": {
+            "sqlite": {
+              "json": 0
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "holder",
+          "model": "Author",
+          "where": {
+            "name": {
+              "text": "holder"
+            }
+          },
+          "expect": {
+            "sqlite": {
+              "json": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_read_during_a_write_sees_committed_rows",
+      "requirements": [
+        "CFG-13"
+      ],
+      "only": [
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "writer"
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "reader"
+        },
+        {
+          "op": "transaction",
+          "connection": "writer",
+          "retry": 0,
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "writer",
+              "model": "Author",
+              "values": {
+                "name": {
+                  "text": "pending"
+                },
+                "start_dt": {
+                  "text": "2026-01-01 00:00:00"
+                }
+              }
+            },
+            {
+              "op": "model.count",
+              "connection": "reader",
+              "model": "Author",
+              "expect": {
+                "sqlite": {
+                  "json": 0
+                }
+              }
+            },
+            {
+              "op": "transaction",
+              "connection": "reader",
+              "read_only": true,
+              "retry": 0,
+              "steps": [
+                {
+                  "op": "model.count",
+                  "connection": "reader",
+                  "model": "Author",
+                  "expect": {
+                    "sqlite": {
+                      "json": 0
+                    }
+                  }
+                }
+              ],
+              "expect": {
+                "sqlite": {
+                  "value": {
+                    "bool": true
+                  }
+                }
+              }
+            }
+          ],
+          "expect": {
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "reader",
+          "model": "Author",
+          "expect": {
+            "sqlite": {
+              "json": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_statement_timeout_keeps_the_busy_timeout",
+      "requirements": [
+        "CFG-6"
+      ],
+      "only": [
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "holder"
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "statement_timeout_ms": 1,
+          "dsn": "case?_pragma=busy_timeout(300)",
+          "as": "waiter"
+        },
+        {
+          "op": "transaction",
+          "connection": "holder",
+          "retry": 0,
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "holder",
+              "model": "Author",
+              "values": {
+                "name": {
+                  "text": "holder"
+                },
+                "start_dt": {
+                  "text": "2026-01-01 00:00:00"
+                }
+              }
+            },
+            {
+              "op": "wait.start"
+            },
+            {
+              "op": "transaction",
+              "connection": "waiter",
+              "retry": 0,
+              "steps": [
+                {
+                  "op": "model.create",
+                  "connection": "waiter",
+                  "model": "Author",
+                  "values": {
+                    "name": {
+                      "text": "waiter"
+                    },
+                    "start_dt": {
+                      "text": "2026-01-01 00:00:00"
+                    }
+                  }
+                }
+              ],
+              "expect": {
+                "sqlite": {
+                  "error": "CANCELED"
+                }
+              }
+            },
+            {
+              "op": "wait.at_least",
+              "ms": 300
+            }
+          ],
+          "expect": {
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
             }
           }
         }

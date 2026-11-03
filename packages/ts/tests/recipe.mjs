@@ -21,7 +21,8 @@ import { Slots, connect as connectSlots } from '../dist/models/bind_fixture/mode
 import { modelOfDocuments, parseDocumentSet } from '../dist/engine/model.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
 import { paramUses } from '../dist/engine/params.js';
-import { Engine } from '../dist/index.js';
+import { Engine, Service, connect as connectBench } from '../dist/index.js';
+import { spawn } from 'node:child_process';
 import { styledField } from '../dist/core.js';
 import { relatedDsn, withCaseDatabase } from './case-database.mjs';
 import { checkKeys } from './recipe_keys.mjs';
@@ -836,6 +837,32 @@ const OPS = {
   },
   // Ends the server session that holds a lock on the table (CFG-15), through the server DSN, not a pooler, which may
   // handle KILL on its own.
+  // Node runs one thread, so each writer of transaction.writers is a process (CFG-12).
+  async 'transaction.writers'(s, context) {
+    const child = fileURLToPath(new URL('./sqlite_writer_child.mjs', import.meta.url));
+    const run = index => new Promise(resolve => {
+      const writer = spawn(process.execPath, [child, context.dsn, `w${index}`, String(s.writes)]);
+      let output = '';
+      writer.stdout.on('data', chunk => { output += chunk; });
+      writer.stderr.on('data', chunk => { output += chunk; });
+      writer.on('close', code => resolve({ code, output }));
+    });
+    const results = await Promise.all(Array.from({ length: s.writers }, (_, index) => run(index)));
+    for (const { code, output } of results) if (code !== 0) throw new Error(`a writer process exited with ${code}: ${output}`);
+    const db = await connectBench(context.dsn);
+    try {
+      return { value: { int: String(await new Service().connect(db).getCount()) } };
+    } finally { await db.close(); }
+  },
+  'wait.start'(s, context) {
+    context.waitStart = performance.now();
+    return {};
+  },
+  'wait.at_least'(s, context) {
+    const waited = performance.now() - context.waitStart;
+    if (waited < s.ms) throw new Error(`wait.at_least: ${waited} ms passed since wait.start, want ${s.ms}`);
+    return {};
+  },
   async 'session.end'(s, context) {
     const variable = `ORM_TEST_${context.database.toUpperCase()}_SERVER_DSN`;
     const server = process.env[variable];

@@ -53,6 +53,12 @@ const affected = db => ({ value: { int: String(lastAffected(db)) } });
 export function connectDsn(dsn, database, caseDsn, socket = process.env.ORM_TEST_MYSQL_SOCKET) {
   if (dsn === undefined || dsn === 'case') return caseDsn;
   if (dsn.startsWith('case?')) return `${caseDsn}${caseDsn.includes('?') ? '&' : '?'}${dsn.slice('case?'.length)}`;
+  if (dsn === 'case-pooler') {
+    if (!process.env.ORM_TEST_PGBOUNCER_DSN) throw new Error('dsn case-pooler: ORM_TEST_PGBOUNCER_DSN is required; database tests never skip');
+    const pooler = new URL(process.env.ORM_TEST_PGBOUNCER_DSN);
+    pooler.pathname = new URL(caseDsn).pathname;
+    return pooler.toString();
+  }
   if (dsn !== 'case-socket') return dsn;
   if (database !== 'mysql') throw new Error(`dsn case-socket needs mysql, not ${database}`);
   if (!socket) throw new Error('dsn case-socket: ORM_TEST_MYSQL_SOCKET is unset; run make orm-test-servers');
@@ -189,7 +195,7 @@ export function modelOps({ native, databaseValue, stepArgument, auditSourceOf })
       const keys = s.aes_keyring === undefined
         ? BENCH_KEYS
         : { blindIndexKey: BENCH_KEYS.blindIndexKey, aesKeys: new Map(Object.entries(s.aes_keyring.versions).map(([version, key]) => [Number(version), key])), aesVersion: s.aes_keyring.current };
-      const db = await Db.connectSchema(connectDsn(s.dsn, context.database, context.dsn), context.schema, { poolSize: s.pool_size, ...(s.pool_idle_size === undefined ? {} : { poolIdleSize: s.pool_idle_size }), ...keys, ...auditSourceOf(s, context) });
+      const db = await Db.connectSchema(connectDsn(s.dsn, context.database, context.dsn), context.schema, { poolSize: s.pool_size, ...(s.pool_idle_size === undefined ? {} : { poolIdleSize: s.pool_idle_size }), ...(s.statement_timeout_ms === undefined ? {} : { statementTimeoutMs: s.statement_timeout_ms }), ...keys, ...auditSourceOf(s, context) });
       context.closers.push(() => db.close());
       return { bind: db };
     },

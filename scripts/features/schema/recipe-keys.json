@@ -102,7 +102,8 @@
       "dsn",
       "op",
       "pool_idle_size",
-      "pool_size"
+      "pool_size",
+      "statement_timeout_ms"
     ],
     "codec.decode": [
       "as",
@@ -158,6 +159,19 @@
       "refused",
       "refused_message",
       "sql"
+    ],
+    "transaction.writers": [
+      "expect",
+      "op",
+      "writers",
+      "writes"
+    ],
+    "wait.start": [
+      "op"
+    ],
+    "wait.at_least": [
+      "ms",
+      "op"
     ],
     "session.end": [
       "op",

@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/polyspec/orm/packages/go/internal/benchset"
 	"github.com/polyspec/orm/packages/go/model"
@@ -88,23 +87,7 @@ func serviceCount(t *testing.T, db *orm.DB) int64 {
 	return n
 }
 
-// TestSQLiteWritersOnSeveralConnections runs 8 connections that each commit
-// 10 read-then-write transactions on one file with the default lock wait.
-func TestSQLiteWritersOnSeveralConnections(t *testing.T) {
-	testcase.Start(t, testcase.Process)
-	dsn := "sqlite://" + filepath.Join(t.TempDir(), "writers.sqlite")
-	dbs := openSQLite(t, dsn, 8, true)
-	for _, err := range runWriters(dbs, "c", 10) {
-		if err != nil {
-			t.Error(err)
-		}
-	}
-	if n := serviceCount(t, dbs[0]); n != 80 {
-		t.Fatalf("services: %d, want 80", n)
-	}
-}
-
-// TestSQLiteWritersInSeveralProcesses runs 3 processes with 4 connections
+// TestSQLiteWritersInSeveralProcesses (requirement CFG-42) runs 3 processes with 4 connections
 // each; every connection commits 20 read-then-write transactions on one file.
 func TestSQLiteWritersInSeveralProcesses(t *testing.T) {
 	testcase.Start(t, testcase.Process)
@@ -138,87 +121,5 @@ func TestSQLiteWritersInSeveralProcesses(t *testing.T) {
 	}
 	if n := serviceCount(t, dbs[0]); n != 240 {
 		t.Fatalf("services: %d, want 240", n)
-	}
-}
-
-// TestSQLiteReadsDuringWrite reads from another connection, with and without
-// a read-only transaction, while a write transaction holds the write lock.
-// Requirements: CFG-13.
-func TestSQLiteReadsDuringWrite(t *testing.T) {
-	testcase.Start(t, testcase.Process)
-	dsn := "sqlite://" + filepath.Join(t.TempDir(), "reads.sqlite")
-	dbs := openSQLite(t, dsn, 2, true)
-	writer, reader := dbs[0], dbs[1]
-	written := make(chan struct{})
-	read := make(chan struct{})
-	done := make(chan error, 1)
-	go func() {
-		done <- writer.Transaction(func() error {
-			if _, err := model.Service().SetName("pending").Create(); err != nil {
-				return err
-			}
-			close(written)
-			<-read
-			return nil
-		}, orm.Retry(0))
-	}()
-	<-written
-	if n := serviceCount(t, reader); n != 0 {
-		t.Errorf("read during the write: %d services, want 0", n)
-	}
-	err := reader.Transaction(func() error {
-		n, err := model.Service().GetCount()
-		if err == nil && n != 0 {
-			t.Errorf("read-only transaction during the write: %d services, want 0", n)
-		}
-		return err
-	}, orm.ReadOnly(), orm.Retry(0))
-	if err != nil {
-		t.Errorf("read-only transaction during the write: %v", err)
-	}
-	close(read)
-	if err := <-done; err != nil {
-		t.Fatalf("write: %v", err)
-	}
-	if n := serviceCount(t, reader); n != 1 {
-		t.Fatalf("read after the write: %d services, want 1", n)
-	}
-}
-
-// TestSQLiteLockWaitExpires holds the write lock longer than the busy_timeout
-// of another connection, whose write transaction returns CANCELED after the
-// wait.
-// Requirements: CFG-12.
-func TestSQLiteLockWaitExpires(t *testing.T) {
-	testcase.Start(t, testcase.Process)
-	path := filepath.Join(t.TempDir(), "expiry.sqlite")
-	holder := openSQLite(t, "sqlite://"+path, 1, true)[0]
-	waiter := openSQLite(t, "sqlite://"+path+"?_pragma=busy_timeout(200)", 1, false)[0]
-	locked := make(chan struct{})
-	release := make(chan struct{})
-	done := make(chan error, 1)
-	go func() {
-		done <- holder.Transaction(func() error {
-			if _, err := model.Service().SetName("holder").Create(); err != nil {
-				return err
-			}
-			close(locked)
-			<-release
-			return nil
-		}, orm.Retry(0))
-	}()
-	<-locked
-	started := time.Now()
-	err := writeServices(waiter, "waiter", 1)
-	waited := time.Since(started)
-	close(release)
-	if err := <-done; err != nil {
-		t.Fatalf("holder: %v", err)
-	}
-	if orm.ErrorCode(err) != orm.CodeCanceled {
-		t.Fatalf("write past the lock wait: %v, want %s", err, orm.CodeCanceled)
-	}
-	if waited < 200*time.Millisecond {
-		t.Fatalf("write returned after %v, before the 200ms lock wait", waited)
 	}
 }

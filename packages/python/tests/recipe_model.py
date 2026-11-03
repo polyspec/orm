@@ -4,6 +4,7 @@ an entry here fails the case by name, so no recipe passes on a call that the hel
 
 import os
 import re
+from urllib.parse import urlsplit, urlunsplit
 
 from polyspec.orm import Db
 from polyspec.orm.aes import AesKeyring
@@ -29,6 +30,13 @@ def connect_dsn(dsn, database, case_dsn, socket=None):
         return case_dsn
     if dsn.startswith("case?"):
         return f"{case_dsn}{'&' if '?' in case_dsn else '?'}{dsn[len('case?'):]}"
+    if dsn == "case-pooler":
+        pooler = os.environ.get("ORM_TEST_PGBOUNCER_DSN")
+        if not pooler:
+            raise ValueError(
+                "dsn case-pooler: ORM_TEST_PGBOUNCER_DSN is required; database tests never skip"
+            )
+        return urlunsplit(urlsplit(pooler)._replace(path=urlsplit(case_dsn).path))
     if dsn != "case-socket":
         return dsn
     if database != "mysql":
@@ -305,6 +313,8 @@ def model_ops(native, database_value, step_argument, audit_source_of):
             options["aesVersion"] = keyring.current_version
         if "pool_size" in step:
             options["poolSize"] = step["pool_size"]
+        if "statement_timeout_ms" in step:
+            options["statementTimeoutMs"] = step["statement_timeout_ms"]
         if "pool_idle_size" in step:
             options["poolIdleSize"] = step["pool_idle_size"]
         options.update(audit_source_of(step, context))

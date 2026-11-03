@@ -77,7 +77,8 @@
         "dsn_connection-sqlite",
         "dsn-reject-checked",
         "dsn-reject-parameters",
-        "connection-driver-from-dsn"
+        "connection-driver-from-dsn",
+        "connection-catalog-session-through-a-pooler"
       ],
       "fixtures": [
         "packages/go/orm/test_helpers_test.go",
@@ -101,7 +102,6 @@
         "packages/ts/tests/dsn.mjs",
         "packages/ts/tests/dsn_features.mjs",
         "packages/ts/tests/model.mjs",
-        "packages/ts/tests/statement_timeout.mjs",
         "packages/ts/tests/pool_bounds.mjs",
         "packages/ts/tests/idle-connection-end.mjs",
         "packages/rust/orm/tests/zone.rs",
@@ -111,8 +111,6 @@
         "packages/go/orm/sqlite_path_test.go",
         "packages/rust/tests/tests/example_dsn.rs",
         "packages/php/tests/SqliteWithoutMysqlTest.php",
-        "packages/php-ext/tests/ConnectionStatementTimeoutNativeTest.php",
-        "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php",
         "packages/php-ext/tests/OrmExceptionNativeTest.php",
         "packages/rust/orm/tests/mysql_tls.rs",
         "tests/dsn/sqlite-paths.json",
@@ -385,17 +383,6 @@
           ]
         },
         {
-          "id": "connection-sqlite-busy-timeout-php-extension",
-          "command": "make connection-busy-timeout-php-extension-check",
-          "shard": "other",
-          "inputs": [
-            "Makefile",
-            "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php",
-            "packages/php-ext/src/db.c",
-            "packages/php/src/OrmException.php"
-          ]
-        },
-        {
           "id": "dsn-mysql-session-python",
           "command": "make python-mysql-session-check",
           "shard": "other",
@@ -528,35 +515,6 @@
           "inputs": [
             "packages/python/tests/connection_pool.py",
             "packages/python/src/polyspec/orm/database.py"
-          ]
-        },
-        {
-          "id": "connection-sqlite-concurrent-writers-python",
-          "command": "make connection-sqlite-concurrent-writers-python-check",
-          "shard": "other",
-          "inputs": [
-            "Makefile",
-            "packages/python/tests/connection_pool.py"
-          ]
-        },
-        {
-          "id": "connection-sqlite-read-during-write-python",
-          "command": "make connection-sqlite-read-during-write-python-check",
-          "shard": "other",
-          "inputs": [
-            "Makefile",
-            "packages/python/tests/connection_pool.py"
-          ]
-        },
-        {
-          "id": "connection-sqlite-read-during-write-php-extension",
-          "command": "make connection-sqlite-read-during-write-php-extension-check",
-          "shard": "other",
-          "inputs": [
-            "Makefile",
-            "packages/php-ext/scripts/build.sh",
-            "packages/php-ext/src/db.c",
-            "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php"
           ]
         },
         {
@@ -2551,12 +2509,10 @@
         "packages/rust/orm/tests/zone.rs",
         "packages/rust/tests/tests/integration_program/main.rs",
         "packages/go/orm/goexit_test.go",
-        "packages/go/orm/context_reset_test.go",
         "packages/go/model/sqlite_concurrency_test.go",
-        "packages/php/tests/SqliteConcurrencyTest.php",
-        "packages/php/tests/sqlite_concurrency_writer.php",
-        "packages/ts/tests/sqlite-concurrency.mjs",
         "packages/rust/orm/tests/sqlite_concurrency.rs",
+        "packages/go/orm/context_reset_test.go",
+        "packages/php/tests/sqlite_concurrency_writer.php",
         "packages/go/orm/coverage_transaction_failure_test.go",
         "packages/php/tests/RollbackTest.php",
         "packages/php/tests/TransactionFailureTest.php",
@@ -2665,14 +2621,6 @@
           "shard": "other",
           "inputs": [
             "packages/python/tests/test_transaction_flow.py"
-          ]
-        },
-        {
-          "id": "transactions-sqlite-locking-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/model -run 'TestSQLite' -count=1",
-          "shard": "other",
-          "inputs": [
-            "packages/go/model/sqlite_concurrency_test.go"
           ]
         },
         {
@@ -2854,12 +2802,23 @@
           ]
         },
         {
-          "id": "sqlite-concurrency-php",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/SqliteConcurrencyTest.php",
+          "id": "transactions-python",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_rollback_fault && packages/python/.venv/bin/python -m packages.python.tests.test_utils_statements && packages/python/.venv/bin/python -m packages.python.tests.test_row_lock_event",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/SqliteConcurrencyTest.php",
-            "packages/php/tests/sqlite_concurrency_writer.php"
+            "packages/python/tests/test_rollback_fault.py",
+            "packages/python/tests/test_utils_statements.py",
+            "packages/python/tests/test_row_lock_event.py",
+            "packages/python/src/polyspec/orm/database.py",
+            "packages/python/src/polyspec/orm/utils.py"
+          ]
+        },
+        {
+          "id": "transactions-sqlite-locking-go",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/model -run '^TestSQLiteWritersInSeveralProcesses$' -count=1",
+          "shard": "other",
+          "inputs": [
+            "packages/go/model/sqlite_concurrency_test.go"
           ]
         },
         {
@@ -2871,23 +2830,12 @@
           ]
         },
         {
-          "id": "sqlite-concurrency-typescript",
-          "command": "node packages/ts/tests/sqlite-concurrency.mjs",
+          "id": "connection-sqlite-several-processes-python",
+          "command": "make connection-sqlite-several-processes-python-check",
           "shard": "other",
           "inputs": [
-            "packages/ts/tests/sqlite-concurrency.mjs"
-          ]
-        },
-        {
-          "id": "transactions-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_rollback_fault && packages/python/.venv/bin/python -m packages.python.tests.test_utils_statements && packages/python/.venv/bin/python -m packages.python.tests.test_row_lock_event",
-          "shard": "other",
-          "inputs": [
-            "packages/python/tests/test_rollback_fault.py",
-            "packages/python/tests/test_utils_statements.py",
-            "packages/python/tests/test_row_lock_event.py",
-            "packages/python/src/polyspec/orm/database.py",
-            "packages/python/src/polyspec/orm/utils.py"
+            "Makefile",
+            "packages/python/tests/connection_pool.py"
           ]
         }
       ],
