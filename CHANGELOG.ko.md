@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- CR15-F: 공유되는 행 변경 결과(충돌, unique, 강제 변환, 생성 열, 스키마 변경, 외래 키, insert 형태)는 recipe case `row_mutation_lifecycle`이 맡고, Rust 시험은 INT-106a의 phase, 취소, 버려진 커밋만 남긴다.
 - 시험: chain의 finalize는 모든 runtime에서 `dbspec_apply` recipe가 맡고, 아무것도 숨기지 않는 plan의 새 case를 둔다: finalize event는 행이 `applied`일 때 오고, 문장은 실행되지 않으며, 행은 `done`이 된다. Go의 `TestFinalizeMarksPlanDone`은 삭제했다.
 - 문서: FCV-2가 `interface_contract`의 공개 표면 unit마다 native로 남는 이유를 native binding 규칙이 읽는 형식으로 적는다.
 - generator는 parse된 문서의 diagnostic을 SCH-12 형식 `<line>:<column> <rule>: document <name>: <message>`로 출력한다. PHP와 그 확장, Rust builder는 각자의 형식으로 출력했다 (#T334-3-20)
