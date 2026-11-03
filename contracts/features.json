@@ -3982,7 +3982,9 @@
         "packages/python/tests/statement_events_server_transactions.py",
         "packages/python/tests/test_event_placeholders.py",
         "packages/python/tests/test_subscriber_error.py",
-        "packages/python/tests/coverage_statement_events.py",
+        "packages/python/tests/test_statement_events_mysql.py",
+        "packages/python/tests/test_statement_events_postgres.py",
+        "packages/python/tests/test_statement_events_sqlite.py",
         "packages/php-ext/tests/StatementEventSurfaceTest.php",
         "packages/php-ext/tests/StatementEventsTestExtensionTest.php",
         "packages/ts/tests/statement_events-mysql.test.mjs",
@@ -4358,21 +4360,28 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_statement_events.py"
+              "packages/python/tests/test_statement_events_mysql.py",
+              "packages/python/tests/test_statement_events_postgres.py",
+              "packages/python/tests/test_statement_events_sqlite.py"
             ],
             "inputs": [
-              "packages/python/tests/case_database.py",
-              "packages/python/tests/statement_events.py",
-              "contracts/fixtures/statement_events/statement_events.dbs",
-              "tests/events/vectors.json"
+              "contracts/fixtures/statement_events/statement_events.json",
+              "contracts/fixtures/statement_events/statement_events.dbs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_statement_events.py",
+                  "test": "packages/python/tests/test_statement_events_mysql.py",
                   "cases": [
-                    "statement_events"
+                    "model_statements",
+                    "transaction_savepoint",
+                    "transaction_rollback",
+                    "savepoint_rollback",
+                    "failed_statement",
+                    "subscriber_error",
+                    "unsubscribe",
+                    "install"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -4380,9 +4389,16 @@
               "postgres": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_statement_events.py",
+                  "test": "packages/python/tests/test_statement_events_postgres.py",
                   "cases": [
-                    "statement_events"
+                    "model_statements",
+                    "transaction_savepoint",
+                    "transaction_rollback",
+                    "savepoint_rollback",
+                    "failed_statement",
+                    "subscriber_error",
+                    "unsubscribe",
+                    "install"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -4390,9 +4406,16 @@
               "sqlite": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_statement_events.py",
+                  "test": "packages/python/tests/test_statement_events_sqlite.py",
                   "cases": [
-                    "statement_events"
+                    "model_statements",
+                    "transaction_savepoint",
+                    "transaction_rollback",
+                    "savepoint_rollback",
+                    "failed_statement",
+                    "subscriber_error",
+                    "unsubscribe",
+                    "install"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
