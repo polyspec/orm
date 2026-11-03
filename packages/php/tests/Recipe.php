@@ -154,6 +154,10 @@ final class Recipe
                     self::planStep($step, $path, $database);
                     continue;
                 }
+                if ($step['op'] === 'generator.check') {
+                    RecipeGenerator::checkFiles($step, dirname(__DIR__, 3) . '/' . dirname($path));
+                    continue;
+                }
                 if ($step['op'] === 'ir.param_uses') {
                     self::paramUsesStep($step, $path, $database);
                     continue;
@@ -1045,6 +1049,9 @@ final class Recipe
                     $documents = RuntimeModel::loadSet($text($step['owned']), $text($step['external']));
                 } catch (OrmException $error) {
                     Assert::assertSame($expect['error'] ?? null, $error->code_, 'error');
+                    if (array_key_exists('rule', $expect)) {
+                        Assert::assertStringContainsString($expect['rule'], $error->getMessage());
+                    }
                     return;
                 }
                 Assert::assertSame(
@@ -1057,9 +1064,18 @@ final class Recipe
                 }
                 return;
             case 'dbspec.runtime_model':
-                $texts = array_map(static fn(string $path): string => self::dbspecFile($dir, $path), $step['documents']);
-                $model = RuntimeModel::build(RuntimeModel::parse($texts));
+                $read = static fn(array $paths): array => array_map(
+                    static fn(string $path): string => self::dbspecFile($dir, $path),
+                    $paths,
+                );
+                $model = RuntimeModel::build(RuntimeModel::parseSet($read($step['documents']), $read($step['external'] ?? [])));
                 Assert::assertSame($expect['entities'], array_keys($model->entities), 'entities');
+                if (array_key_exists('manifest_text', $expect)) {
+                    Assert::assertSame(implode("\n", $expect['manifest_text']) . "\n", $model->manifestText, 'manifest text');
+                }
+                if (array_key_exists('manifest_hash', $expect)) {
+                    Assert::assertSame($expect['manifest_hash'], $model->manifestHash, 'manifest hash');
+                }
                 $named = static function (array $have, array $want) use (&$named): array {
                     $out = [];
                     foreach ($want as $key => $value) {
@@ -1076,6 +1092,7 @@ final class Recipe
                             'nullable' => $column['nullable'],
                             'default' => $column['default'],
                             'default_now' => $column['default_now'],
+                            'select_explicit' => !$column['select'],
                             'codec' => $column['codec'],
                             'blind_index' => $column['blind_index'],
                             'primary_key' => $column['pk'],
@@ -2340,6 +2357,12 @@ final class Recipe
             if (isset($expected['message_suffix'])) {
                 Assert::assertStringEndsWith($expected['message_suffix'], $error->getMessage(), 'the error message');
             }
+            if (isset($expected['message'])) {
+                Assert::assertSame($expected['message'], $error->getMessage(), 'the error message');
+            }
+            if (isset($expected['cause'])) {
+                Assert::assertSame($expected['cause'], $error->getPrevious()?->getMessage(), 'the error cause');
+            }
             if (isset($expected['message_holds'])) {
                 Assert::assertStringContainsString($expected['message_holds'], $error->getMessage(), 'the error message');
             }
@@ -2462,23 +2485,44 @@ final class Recipe
                 }
                 return ['count' => $count];
             case 'transaction':
-                self::connectionOf($s, $context)->transaction(
-                    function () use ($s, &$context): void {
-                        foreach ($s['steps'] as $nested) {
-                            self::databaseStep($nested, $context);
-                        }
-                        if ($s['fail'] ?? false) {
-                            throw new CallbackFailed('the transaction callback failed');
-                        }
-                    },
-                    // The options of the transaction (INT-46): a nested transaction that names one is refused with
-                    // CONFIG.
-                    isolation: $s['isolation'] ?? '',
-                    readOnly: ($s['read_only'] ?? false) === true,
-                    retry: 0,
-                    audit: isset($s['audit']) ? self::mapAssignments($s['audit'], $context) : null,
-                );
+                // The options of the transaction (INT-46): a nested transaction that names one is refused with CONFIG. An
+                // absent retry passes 0 unless default_retry leaves it out (INT-43).
+                $options = [
+                    'isolation' => $s['isolation'] ?? '',
+                    'readOnly' => ($s['read_only'] ?? false) === true,
+                    'audit' => isset($s['audit']) ? self::mapAssignments($s['audit'], $context) : null,
+                ];
+                if (($s['default_retry'] ?? false) !== true) {
+                    $options['retry'] = $s['retry'] ?? 0;
+                }
+                if (isset($s['timeout_ms'])) {
+                    $options['timeoutMs'] = $s['timeout_ms'];
+                }
+                $attempts = 0;
+                try {
+                    self::connectionOf($s, $context)->transaction(
+                        function () use ($s, &$context, &$attempts): void {
+                            $attempts++;
+                            foreach ($s['steps'] as $nested) {
+                                self::databaseStep($nested, $context);
+                            }
+                            if ($s['fail'] ?? false) {
+                                throw new CallbackFailed('the transaction callback failed');
+                            }
+                            if ($attempts <= ($s['conflicts'] ?? 0)) {
+                                throw Orm::transactionConflict('the recipe conflict');
+                            }
+                        },
+                        ...$options,
+                    );
+                } finally {
+                    $context['attempts'] = $attempts;
+                }
                 return ['value' => ['bool' => true]];
+            case 'transaction.attempts':
+                return ['value' => ['int' => (string) $context['attempts']]];
+            case 'transaction.deadlock':
+                return self::transactionDeadlock($s, $context);
             case 'catalog.connect':
                 return self::connectOp($s, $context);
             case 'catalog.close':
@@ -3245,6 +3289,76 @@ final class Recipe
         return self::chainModel($model, $context)->connect($db);
     }
 
+    /**
+     * Two flows write two rows in opposite order (PLN-24), each a child process, as the request of PHP is one flow: each
+     * holds its first row until the other holds its own, so the database ends one flow with its deadlock error, the client
+     * retries it, and both commit.
+     */
+    private static function transactionDeadlock(array $s, array $context): array
+    {
+        $key = static fn(array $row): array => [
+            (string) self::chainValue($row['tenant_id'], $context),
+            (string) self::chainValue($row['account_id'], $context),
+        ];
+        $extension = getenv('POLYSPEC_ORM_EXTENSION');
+        $php = is_string($extension) && $extension !== '' && extension_loaded('polyspec_orm')
+            ? [PHP_BINARY, '-d', 'extension=' . $extension]
+            : [PHP_BINARY];
+        $children = [];
+        foreach ([0, 1] as $index) {
+            $process = proc_open(
+                [
+                    ...$php,
+                    __DIR__ . '/transaction_deadlock_child.php',
+                    $context['dsn'],
+                    ...$key($s['rows'][$index]),
+                    ...$key($s['rows'][1 - $index]),
+                    "flow-$index",
+                ],
+                [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+                $pipes,
+            );
+            Assert::assertIsResource($process, 'the flow process starts');
+            $children[] = [$process, $pipes];
+        }
+        // The schema of the case reaches each flow on its first line of input.
+        $schema = $context['schema'];
+        $line = json_encode([$schema->manifestText, $schema->manifestHash, $schema->externalText], JSON_THROW_ON_ERROR) . "\n";
+        foreach ($children as [, $pipes]) {
+            fwrite($pipes[0], $line);
+        }
+        foreach ($children as [, $pipes]) {
+            Assert::assertSame('locked', trim((string) fgets($pipes[1])), 'the flow holds its first row');
+        }
+        foreach ($children as [, $pipes]) {
+            fwrite($pipes[0], "go\n");
+            fclose($pipes[0]);
+        }
+        $attempts = 0;
+        $deadlocks = 0;
+        foreach ($children as [$process, $pipes]) {
+            $output = trim((string) stream_get_contents($pipes[1]));
+            $errors = (string) stream_get_contents($pipes[2]);
+            $status = proc_close($process);
+            Assert::assertSame(0, $status, "the flow process: $output $errors");
+            [, $runs, $deadlocked] = explode(' ', $output);
+            $attempts += (int) $runs;
+            $deadlocks += (int) $deadlocked;
+        }
+        $db = self::connectionOf(['connection' => $s['connections'][0]], $context);
+        $names = [];
+        foreach ($s['rows'] as $row) {
+            $read = (new \Polyspec\Orm\Tests\Model\CompositeAccount())($db)
+                ->getByTenantIdAndAccountId(...array_map(intval(...), $key($row)));
+            $names[] = $read->{'get' . self::pascal($s['column'])}();
+        }
+        return [
+            'attempts' => $attempts,
+            'deadlocks' => $deadlocks,
+            'same_flow' => $names[0] === $names[1] && in_array($names[0], ['flow-0', 'flow-1'], true),
+        ];
+    }
+
     /** The native argument of a value wrapper: null, the list of an array, or one value. */
     private static function chainValue(array $raw, array $context): mixed
     {
@@ -3567,7 +3681,9 @@ final class Recipe
             return self::boundValue($s['from'], $context);
         }
         $db = self::connectionOf($s, $context);
-        $model = self::tableModel($s['model'], $db, $context);
+        $model = ($s['unconnected'] ?? false) === true
+            ? self::chainModel($s['model'], $context)
+            : self::tableModel($s['model'], $db, $context);
         $build = self::chainState();
         $paged = ($s['page'] ?? false) === true;
         self::chainQuery($model, $s, $build, $context, !$paged && !isset($s['offset']));
@@ -3846,13 +3962,16 @@ final class Recipe
             return ['json' => $model->getQuery()];
         }
         if (($s['plan'] ?? false) === true) {
-            $steps = $model->getPagePlanSteps(intdiv($s['limit']['offset'], $s['limit']['count']) + 1, $s['limit']['count']);
+            $steps = isset($s['plan_page'])
+                ? $model->getPagePlanSteps($s['plan_page']['page'], $s['plan_page']['per_page'])
+                : $model->getPagePlanSteps(intdiv($s['limit']['offset'], $s['limit']['count']) + 1, $s['limit']['count']);
             return ['json' => array_map(static function (array $step) use ($s): array {
                 $count = [];
                 foreach ($s['plan_count'] as $text) {
                     $count[$text] = substr_count(strtoupper($step['sql']), $text);
                 }
-                return ['role' => $step['role'], 'tables' => $step['tables'], 'count' => $count];
+                $shown = ['role' => $step['role'], 'tables' => $step['tables'], 'count' => $count];
+                return ($s['plan_sql'] ?? false) === true ? $shown + ['sql' => $step['sql']] : $shown;
             }, $steps)];
         }
         $aggregate = $s['aggregate'] ?? null;

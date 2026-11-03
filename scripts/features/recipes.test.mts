@@ -168,6 +168,22 @@ caseTest('every recipe of the parity suites names the recipe schema and is valid
 // Requirements: FCV-12.
 caseTest('the recipe is the list of the cases of its owners', COMPUTE, () => {
   const differences: string[] = [];
+  // The manifest holds no copy of what the recipe lists: a copy goes stale when a lane adds a case to the recipe.
+  const written = JSON.parse(readFileSync(resolve(root, 'contracts/features.json'), 'utf8')) as Manifest;
+  for (const feature of written.features ?? []) {
+    const owners = Object.entries(feature.coverage?.owners ?? {});
+    const recipeOnly = owners.length > 0 && owners.every(([, owner]) => {
+      const lists = Object.values(owner.commands ?? {});
+      return lists.length > 0 && lists.every(list => (list ?? []).some(command => command.recipe));
+    });
+    if (recipeOnly && feature.coverage?.cases !== undefined) differences.push(`${feature.id}: coverage.cases copies its recipe`);
+    for (const [language, owner] of owners) {
+      for (const [database, list] of Object.entries(owner.commands ?? {})) {
+        for (const command of list ?? [])
+          if (command.recipe && command.cases !== undefined) differences.push(`${feature.id}/${language}/${database}: cases copies ${command.recipe}`);
+      }
+    }
+  }
   for (const feature of readFeatures(root).features ?? []) {
     const owners = Object.entries(feature.coverage?.owners ?? {});
     const whole = new Set<string>();

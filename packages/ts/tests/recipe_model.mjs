@@ -69,8 +69,10 @@ export function modelOps({ native, databaseValue, stepArgument, auditSourceOf })
     return db;
   };
 
+  // A model on no connection (PLN-16) runs in the active transaction of its flow.
+  const onConnection = (model, db) => (db === undefined ? model : model.connect(db));
   const compositeSet = (db, values) => {
-    const model = new CompositeAccount().connect(db);
+    const model = onConnection(new CompositeAccount(), db);
     for (const column of columnsOf(values)) {
       switch (column) {
         case 'tenant_id': model.setTenantId(values[column]); break;
@@ -83,7 +85,7 @@ export function modelOps({ native, databaseValue, stepArgument, auditSourceOf })
   };
   // CompositeAccount filters: the equality of its key columns, as the generated model names them, joined by and().
   const compositeFilter = (db, where) => {
-    const model = new CompositeAccount().connect(db);
+    const model = onConnection(new CompositeAccount(), db);
     for (const [index, column] of columnsOf(where).entries()) {
       if (index > 0) model.and();
       switch (column) {
@@ -191,7 +193,7 @@ export function modelOps({ native, databaseValue, stepArgument, auditSourceOf })
       return { bind: db };
     },
     async 'model.create'(s, context) {
-      await compositeSet(connection(s.connection, context), objectValues(s.values, context)).create();
+      await compositeSet(s.unconnected === true ? undefined : connection(s.connection, context), objectValues(s.values, context)).create();
       return {};
     },
     async 'model.creates'(s, context) {
@@ -260,6 +262,7 @@ export function modelOps({ native, databaseValue, stepArgument, auditSourceOf })
       return affected(db);
     },
     async 'model.count'(s, context) {
+      if (s.unconnected === true) return { value: { int: String(await compositeFilter(undefined, objectValues(s.where ?? {}, context)).getCount()) } };
       const db = connection(s.connection, context);
       if (s.model === 'Author') return { value: wrap(await chain(db, objectValues(s.where, context), []).getCount()) };
       const filter = s.model === 'CompositeMembership' ? membershipFilter : compositeFilter;

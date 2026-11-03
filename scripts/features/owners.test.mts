@@ -27,7 +27,7 @@ caseTest('a changed test selects only the commands that run it', 5000, async () 
   assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/go/orm/mysql_tls_test.go'])), ['dsn_connection/dsn-go', 'dsn_connection/dsn-mysql-tls-go']);
   assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/go/orm/register_test.go'])), ['schema_install/install-register-go']);
   assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/php/tests/DsnConnectionRecipeTest.php'])), ['dsn_connection/coverage/owner/php', 'dsn_connection/coverage/owner/php-extension']);
-  assert.ok(selected(await selectOwners(manifest, root, ['contracts/check-inputs.json'])).includes('authenticated_encryption/aes-json-php-extension'));
+  assert.ok(selected(await selectOwners(manifest, root, ['contracts/fixtures/secret_config.dbs'])).includes('authenticated_encryption/encryption-python'));
 });
 
 // An owner rule of config/owner-checks.json: its paths, and the make targets it selects when a path matches.

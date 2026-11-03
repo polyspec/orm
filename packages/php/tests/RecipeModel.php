@@ -103,6 +103,9 @@ trait RecipeModel
         if ($context['tablePath']) {
             return self::tableModelOp($s, $context);
         }
+        if (($s['unconnected'] ?? false) === true) {
+            return self::unconnectedAccountOp($s, $context);
+        }
         $db = $context['bound'][$s['connection']] ?? null;
         if (!$db instanceof Db) {
             Assert::fail("model op {$s['op']}: connection {$s['connection']} is not bound by model.connect");
@@ -114,6 +117,19 @@ trait RecipeModel
             'User' => self::userOp($s, $context, $db),
             'NoteReader' => self::noteReaderOp($s, $context, $db),
             default => Assert::fail("model {$s['model']} has no recipe entry"),
+        };
+    }
+
+    /** model.create and model.count of a CompositeAccount built with no connection (PLN-16). */
+    private static function unconnectedAccountOp(array $s, array $context): array
+    {
+        return match ($s['op']) {
+            'model.create' => (static function () use ($s, $context): array {
+                self::compositeAccountSet(null, self::modelValues($s['values'], $context))->create();
+                return [];
+            })(),
+            'model.count' => ['value' => ['int' => (string) (new \Polyspec\Orm\Tests\Model\CompositeAccount())->getCount()]],
+            default => Assert::fail("model op {$s['op']} has no unconnected form"),
         };
     }
 
@@ -168,9 +184,12 @@ trait RecipeModel
         return is_int($value) ? ['int' => (string) $value] : ['text' => (string) $value];
     }
 
-    private static function compositeAccountSet(Db $db, array $values): \Polyspec\Orm\Tests\Model\CompositeAccount
+    private static function compositeAccountSet(?Db $db, array $values): \Polyspec\Orm\Tests\Model\CompositeAccount
     {
-        $model = (new \Polyspec\Orm\Tests\Model\CompositeAccount())($db);
+        $model = new \Polyspec\Orm\Tests\Model\CompositeAccount();
+        if ($db !== null) {
+            $model($db);
+        }
         foreach ($values as $column => $value) {
             match ($column) {
                 'tenant_id' => $model->setTenantId($value),

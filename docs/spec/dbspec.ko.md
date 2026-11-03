@@ -221,7 +221,7 @@ predicate는 다음 중 하나다.
 
 - **DBS-65** `entity <name>`: 생성 코드가 table에 쓰는 model 이름. 없으면 model 이름은 table 이름이다 (Hash: manifest)
 - **DBS-66** `updated <column>`: executor가 자신이 계획하는 모든 `UPDATE`에서 `datetime` column에 UTC statement 시각을 넣는다. database에는 아무것도 렌더링하지 않는다. raw SQL은 기록되지 않는다 (Hash: manifest)
-- **DBS-67** `soft_delete <column>`: 읽기는 root, 각 join child(`ON` 조건), 각 relation, 각 subquery에서 nullable `datetime` column이 null이 아닌 row를 제외한다. 삭제는 그 column에 UTC statement 시각을 넣고, `restore`는 primary key나 unique key 값이 지정한 row 하나에서 그 column을 비운다([restore](protocol.ko.md#_1-5-restore)) (Hash: manifest)
+- **DBS-67** `soft_delete <column>`: 읽기는 root, 각 join child(`ON` 조건), 각 relation, 각 subquery에서 nullable `datetime` column이 null이 아닌 row를 제외한다. `update`와 삭제는 `WHERE`의 `<column> IS NULL`로 그 column이 null인 row에만 맞는다. 삭제는 그 column에 UTC statement 시각을 넣고, `restore`는 primary key나 unique key 값이 지정한 row 하나에서 그 column을 비운다([restore](protocol.ko.md#_1-5-restore)) (Hash: manifest)
 - **DBS-68** `select explicit <column> ...`: column을 기본 select 집합에서 뺀다. 선택하지 않은 column을 읽으면 `COLUMN_UNSELECTED`로 실패한다 (Hash: manifest)
 - **DBS-69** `codec <column> <stage> ...`: 쓸 때 stage 순서로 encode하고 읽을 때 역순으로 decode한다: `ordered_json`, `aes`, `hex`, `gz`, `base64`, `serialize`, `yaml`, `ip` ([codecs](codec.md)) (Hash: manifest)
 - **DBS-70** `aes_version <column>`: row의 AES key version을 저장하는 non-null 정수 column. `aes`를 쓰는 column이 있으면 필요하다 (Hash: manifest)
