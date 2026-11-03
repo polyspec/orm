@@ -7,7 +7,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync 
 import { randomBytes } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import type { Entity, Field as Column, RuntimeModel as Manifest } from '../engine/model.js';
-import { GENERATOR_SCAN_UNATTACHED } from '../codes.js';
+import { CONFIG, GENERATOR_SCAN_UNATTACHED } from '../codes.js';
 import { Model } from '../model.js';
 import { OrmError } from '../runtime_error.js';
 import { category, checkColumnNames, columnName, functionColumn, numeric, parseChain, pascal, splitPair, validOrder, type ChainKey } from './names.js';
@@ -172,6 +172,21 @@ class Generator {
   }
 
   /** The declaration of a method named by the chain grammar. */
+  /** The counts of values that a call of the chain or finder `name` takes, [least, most], or undefined for any other name. */
+  public takes(e: Entity, name: string): readonly [number, number] | undefined {
+    const P = name.charAt(0).toUpperCase() + name.slice(1);
+    const finder = ['GetsBy', 'GetBy', 'GetCountBy'].find(prefix => P.startsWith(prefix));
+    let chain = finder === undefined ? P : P.slice(finder.length);
+    if (finder === undefined) {
+      if (['OrderBy', 'LeftJoin', 'Join', 'Match', 'Alias', 'Possible', 'New', 'AddColumn', 'Get'].some(prefix => P.startsWith(prefix))) return undefined;
+      if (P.startsWith('And') && P.length > 3 && isUpperAt(P, 3)) chain = P.slice(3);
+      else if (P.startsWith('Or') && P.length > 2 && isUpperAt(P, 2)) chain = P.slice(2);
+    }
+    const keys = parseChain(this.m, e, chain);
+    if (keys === undefined) return undefined;
+    return this.chainParams(e, keys).startsWith('...args') ? [1, 2] : [keys.length, keys.length];
+  }
+
   public declare(e: Entity, name: string): string | undefined {
     const P = name.charAt(0).toUpperCase() + name.slice(1);
     for (const [prefix, result] of [['GetsBy', 'Promise<Collection<this>>'], ['GetBy', 'Promise<this | null>'], ['GetCountBy', 'Promise<number>']] as const) {
@@ -307,7 +322,7 @@ export function renderTypeScript(m: Manifest, outDir: string, scan: readonly str
     for (const c of e.fields) {
       const condition = pascal(c.name).replace(/^./, first => first.toLowerCase());
       if (generated.has(condition)) {
-        throw new Error(`${e.name}.${c.name}: the condition method ${condition} collides with a generated method of ${e.name}`);
+        throw new OrmError(CONFIG, `${e.name}.${c.name}: the condition method ${condition} collides with a generated method of ${e.name}`);
       }
     }
   }
@@ -350,6 +365,27 @@ export function renderTypeScript(m: Manifest, outDir: string, scan: readonly str
     for (const n of used) if (n.startsWith('addColumn') && n.endsWith(`Alias${key}`)) named = true;
     if (named) g.getters.set(name, `the value or relation result named ${key}`);
   }
+  // A scanned name that no class of the call accepts, and a call with a count of values that no such class takes, stop generation
+  // (docs/spec/dsl.md, DSL-37); a class of the call that lacks the name is not an error, since the call runs on a class that has it.
+  const accepting = new Map([...m.entities.values()].map(e => [pascal(e.name), e] as const));
+  const problems = new Set<string>();
+  for (const site of sites) {
+    if (site.name.startsWith('get') && site.name.length > 3 && isUpperAt(site.name, 3) && !/^get(?:By|CountBy)[A-Z]/.test(site.name)) continue;
+    const owners = site.classes.flatMap(cls => { const e = accepting.get(cls); return e === undefined ? [] : [e]; });
+    const known = owners.filter(e => staticNames(e).has(site.name) || g.declare(e, site.name) !== undefined);
+    if (known.length === 0) {
+      problems.add(`${site.classes[0]}.${site.name} is not a model method: no column, chain or operator accepts it`);
+      continue;
+    }
+    if (site.args === undefined) continue;
+    const counts = known.map(e => (staticNames(e).has(site.name) ? undefined : g.takes(e, site.name)));
+    const count = site.args;
+    if (counts.every(takes => takes !== undefined && (count < takes[0] || count > takes[1]))) {
+      const [least, most] = counts[0] ?? [0, 0];
+      problems.add(`${site.classes[0]}.${site.name} takes ${least === most ? least : `${least} to ${most}`} values, not ${count}`);
+    }
+  }
+  if (problems.size > 0) throw new OrmError(CONFIG, `orm-gen --scan: ${[...problems].sort(byteOrder).join('; ')}`);
   // A scanned getter call is refused only when no class the call may be on attaches it: a class of the call that lacks the getter is
   // not an error, since the call runs on a class that has it. A call that nothing attaches would leave the model without the method
   // the source calls; generation stops naming the model and the method (docs/spec/dsl.md, the scan).

@@ -35,6 +35,8 @@ type validator struct {
 	// to that document; usedTables holds every table name of those documents.
 	usedConstraints map[string]string
 	usedTables      map[string]bool
+	// failedUse holds the tables of the use lines that failed: a reference to one reports nothing more (DBS-153).
+	failedUse map[string]bool
 }
 
 func (v *validator) add(rule string, t token, format string, args ...any) {
@@ -63,7 +65,7 @@ func (v *validator) table(name string) *tableNode {
 // Each used document is parsed and validated with its own use lines.
 func (s *session) validate(doc *documentNode, stack []string) []Diagnostic {
 	v := &validator{s: s, doc: doc, local: map[string]*tableNode{}, used: map[string]*tableNode{},
-		usedConstraints: map[string]string{}, usedTables: map[string]bool{}}
+		usedConstraints: map[string]string{}, usedTables: map[string]bool{}, failedUse: map[string]bool{}}
 	v.uses(stack)
 	for _, t := range doc.tables {
 		if t.name.line == 0 {
@@ -117,7 +119,15 @@ func firstDiagnostic(diagnostics []Diagnostic) Diagnostic {
 
 func (v *validator) uses(stack []string) {
 	documents := map[string]bool{}
+	for _, name := range v.doc.failedUses {
+		v.failedUse[name] = true
+	}
 	for _, u := range v.doc.uses {
+		for _, t := range u.tables {
+			if v.used[t.text] == nil {
+				v.failedUse[t.text] = true
+			}
+		}
 		if !v.ref(u.document) {
 			continue
 		}
@@ -148,7 +158,8 @@ func (v *validator) uses(stack []string) {
 		if !parsed.stopped {
 			diagnostics = append(diagnostics, v.s.validate(parsed.document, append(slices.Clone(stack), name))...)
 		}
-		if len(diagnostics) > 0 {
+		invalid := len(diagnostics) > 0
+		if invalid {
 			first := firstDiagnostic(diagnostics)
 			v.add(RuleUse, u.document, "used document %q is invalid: line %d column %d %s: %s", name, first.Line, first.Column, first.Rule, first.Message)
 		}
@@ -186,7 +197,10 @@ func (v *validator) uses(stack []string) {
 			listed[t.text] = true
 			target, ok := defined[t.text]
 			if !ok {
-				v.add(RuleUse, t, "document %q does not define table %q", name, t.text)
+				// A used document that fails reports one use diagnostic at its name (DBS-149).
+				if !invalid {
+					v.add(RuleUse, t, "document %q does not define table %q", name, t.text)
+				}
 				continue
 			}
 			if _, ok := v.used[t.text]; ok {
@@ -194,6 +208,7 @@ func (v *validator) uses(stack []string) {
 				continue
 			}
 			v.used[t.text] = target
+			delete(v.failedUse, t.text)
 		}
 	}
 }
@@ -461,7 +476,7 @@ func (v *validator) foreignKey(t *tableNode, f *foreignKeyNode) {
 	}
 	var target *tableNode
 	if v.ref(f.target) {
-		if target = v.table(f.target.text); target == nil {
+		if target = v.table(f.target.text); target == nil && !v.failedUse[f.target.text] {
 			v.add(RuleForeignKey, f.target, "table %q is not a table of this document or a used table", f.target.text)
 		}
 	}
@@ -535,6 +550,9 @@ func (v *validator) diagrams() {
 			if v.ref(e.table) {
 				switch {
 				case v.table(e.table.text) == nil:
+					if v.failedUse[e.table.text] {
+						continue
+					}
 					v.add(RuleDiagram, e.table, "table %q is not a table of this document or a used table", e.table.text)
 				case placed[e.table.text]:
 					v.add(RuleDiagram, e.table, "table %q appears twice in the diagram", e.table.text)

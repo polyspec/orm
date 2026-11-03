@@ -8943,6 +8943,10 @@
     "exported": false,
     "signature": "private function read(string $source): void"
   },
+  "packages/php/src/Dbspec/Parser.php::Polyspec\\Orm\\Dbspec\\Parser::readUseLine": {
+    "exported": false,
+    "signature": "private function readUseLine(array $t): void"
+  },
   "packages/php/src/Dbspec/Parser.php::Polyspec\\Orm\\Dbspec\\Parser::requireTextColumn": {
     "exported": false,
     "signature": "private function requireTextColumn(array $token, int $line, string $kind, string $message): void"

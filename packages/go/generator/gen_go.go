@@ -144,7 +144,7 @@ func nearestExistingOutputParent(outDir string) (string, error) {
 
 func newGoGen(m *runtimemodel.Model, out, pkg string) (*goGen, error) {
 	if err := checkNames(m); err != nil {
-		return nil, err
+		return nil, &RefusedError{Code: "CONFIG", Text: err.Error()}
 	}
 	outDir, err := filepath.Abs(out)
 	if err != nil {
@@ -163,7 +163,7 @@ func newGoGen(m *runtimemodel.Model, out, pkg string) (*goGen, error) {
 		gm.static = g.staticNames(gm)
 		for _, c := range e.Fields {
 			if gm.static[pascal(c.Name)] {
-				return nil, fmt.Errorf("%s.%s: the condition method %s is also a fixed method of %s", name, c.Name, pascal(c.Name), gm.typ)
+				return nil, &RefusedError{Code: "CONFIG", Text: fmt.Sprintf("%s.%s: the condition method %s is also a fixed method of %s", name, c.Name, pascal(c.Name), gm.typ)}
 			}
 		}
 		g.models[name] = gm
@@ -1066,6 +1066,14 @@ func (g *goGen) chainParams(pos string, gm *goModel, name string, keys []chainKe
 			}
 		}
 		call = append(call, p)
+	}
+	takes := len(keys)
+	if trailing {
+		takes = 2
+	}
+	if len(args) < len(keys) || len(args) > takes {
+		g.fail(pos, "%s.%s takes %d values, not %d", gm.typ, name, len(keys), len(args))
+		return "", "", false
 	}
 	for i, a := range args {
 		if a.columnFunc && (len(keys) > 1 || i > 0) {

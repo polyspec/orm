@@ -829,7 +829,7 @@ pub fn generate(set: &DocumentSet, scan: &Scan, manifest_file: &str) -> Result<S
     if !g.errors.is_empty() {
         g.errors.sort();
         g.errors.dedup();
-        let code = if g.unattached { "GENERATOR_SCAN_UNATTACHED: " } else { "" };
+        let code = if g.unattached { "GENERATOR_SCAN_UNATTACHED: " } else { "CONFIG: " };
         return Err(format!("{code}{}", g.errors.join("\n")));
     }
     // A set that uses external documents loads their text from the file beside the manifest text.

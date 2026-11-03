@@ -2613,7 +2613,7 @@
   },
   "packages/go/engine/dbspec/parse.go::documentNode": {
     "exported": false,
-    "signature": "type documentNode struct { name token uses []*useNode tables []*tableNode diagrams []*diagramNode trailing []string constraints []token }"
+    "signature": "type documentNode struct { name token failedUses []string uses []*useNode tables []*tableNode diagrams []*diagramNode trailing []string constraints []token }"
   },
   "packages/go/engine/dbspec/parse.go::documentNode#field.constraints": {
     "exported": false,
@@ -2622,6 +2622,10 @@
   "packages/go/engine/dbspec/parse.go::documentNode#field.diagrams": {
     "exported": false,
     "signature": "[]*diagramNode"
+  },
+  "packages/go/engine/dbspec/parse.go::documentNode#field.failedUses": {
+    "exported": false,
+    "signature": "[]string"
   },
   "packages/go/engine/dbspec/parse.go::documentNode#field.name": {
     "exported": false,
@@ -4149,11 +4153,15 @@
   },
   "packages/go/engine/dbspec/validate.go::validator": {
     "exported": false,
-    "signature": "type validator struct { s *session doc *documentNode out []Diagnostic local map[string]*tableNode used map[string]*tableNode usedConstraints map[string]string usedTables map[string]bool }"
+    "signature": "type validator struct { s *session doc *documentNode out []Diagnostic local map[string]*tableNode used map[string]*tableNode usedConstraints map[string]string usedTables map[string]bool failedUse map[string]bool }"
   },
   "packages/go/engine/dbspec/validate.go::validator#field.doc": {
     "exported": false,
     "signature": "*documentNode"
+  },
+  "packages/go/engine/dbspec/validate.go::validator#field.failedUse": {
+    "exported": false,
+    "signature": "map[string]bool"
   },
   "packages/go/engine/dbspec/validate.go::validator#field.local": {
     "exported": false,

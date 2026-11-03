@@ -11849,7 +11849,7 @@
   },
   "packages/rust/schema/src/dbspec/parser.rs::Parser": {
     "exported": false,
-    "signature": " struct Parser  { diags : Vec \u003c Diag \u003e , declarations : Vec \u003c Declaration \u003e , pending : Vec \u003c String \u003e , document : Document , unresolved : Vec \u003c Vec \u003c String \u003e \u003e , typeless : Vec \u003c Vec \u003c (String , bool) \u003e \u003e , table_typeless : Vec \u003c (String , bool) \u003e , failed_keys : Vec \u003c FailedKeys \u003e , header_failed : Vec \u003c bool \u003e , table_header_failed : bool , defaults : Vec \u003c Vec \u003c DefaultToken \u003e \u003e , table_defaults : Vec \u003c DefaultToken \u003e , context : Context , # [doc = \" Depth of an unreadable block whose lines are skipped.\"] skip : usize , # [doc = \" Top-level phase: 0 `use`, 1 `table`, 2 `diagram`.\"] phase : u8 , table : Option \u003c Table \u003e , table_unresolved : Vec \u003c String \u003e , table_failed_keys : FailedKeys , # [doc = \" Table line phase: 0 columns, 1 key, index, foreign key and check lines, 2 settings.\"] table_phase : u8 , # [doc = \" The `{` of the open table, settings block and diagram.\"] table_brace : Option \u003c Pos \u003e , settings_brace : Option \u003c Pos \u003e , # [doc = \" A repeated settings block: its lines are read only for syntax and collected in `detached_settings`; this is Go's detached block.\"] settings_detached : bool , detached_settings : Option \u003c Settings \u003e , diagram_brace : Option \u003c Pos \u003e , diagram : Option \u003c Diagram \u003e , columns : usize , foreign_keys : usize , stopped : bool , # [doc = \" The classes of the words read so far.\"] marks : Vec \u003c (Pos , Class) \u003e , # [doc = \" How many blocks were opened; a line that opens one is not inside the block it opens.\"] opened : usize , # [doc = \" Whether the opening line of the open diagram failed (R20).\"] diagram_header_failed : bool , # [doc = \" Whether the opening line of the open settings block failed (R20); cleared at its close.\"] settings_header_failed : bool , }"
+    "signature": " struct Parser  { diags : Vec \u003c Diag \u003e , declarations : Vec \u003c Declaration \u003e , pending : Vec \u003c String \u003e , document : Document , failed_uses : Vec \u003c String \u003e , unresolved : Vec \u003c Vec \u003c String \u003e \u003e , typeless : Vec \u003c Vec \u003c (String , bool) \u003e \u003e , table_typeless : Vec \u003c (String , bool) \u003e , failed_keys : Vec \u003c FailedKeys \u003e , header_failed : Vec \u003c bool \u003e , table_header_failed : bool , defaults : Vec \u003c Vec \u003c DefaultToken \u003e \u003e , table_defaults : Vec \u003c DefaultToken \u003e , context : Context , # [doc = \" Depth of an unreadable block whose lines are skipped.\"] skip : usize , # [doc = \" Top-level phase: 0 `use`, 1 `table`, 2 `diagram`.\"] phase : u8 , table : Option \u003c Table \u003e , table_unresolved : Vec \u003c String \u003e , table_failed_keys : FailedKeys , # [doc = \" Table line phase: 0 columns, 1 key, index, foreign key and check lines, 2 settings.\"] table_phase : u8 , # [doc = \" The `{` of the open table, settings block and diagram.\"] table_brace : Option \u003c Pos \u003e , settings_brace : Option \u003c Pos \u003e , # [doc = \" A repeated settings block: its lines are read only for syntax and collected in `detached_settings`; this is Go's detached block.\"] settings_detached : bool , detached_settings : Option \u003c Settings \u003e , diagram_brace : Option \u003c Pos \u003e , diagram : Option \u003c Diagram \u003e , columns : usize , foreign_keys : usize , stopped : bool , # [doc = \" The classes of the words read so far.\"] marks : Vec \u003c (Pos , Class) \u003e , # [doc = \" How many blocks were opened; a line that opens one is not inside the block it opens.\"] opened : usize , # [doc = \" Whether the opening line of the open diagram failed (R20).\"] diagram_header_failed : bool , # [doc = \" Whether the opening line of the open settings block failed (R20); cleared at its close.\"] settings_header_failed : bool , }"
   },
   "packages/rust/schema/src/dbspec/parser.rs::Parser#field.columns": {
     "exported": false,
@@ -11894,6 +11894,10 @@
   "packages/rust/schema/src/dbspec/parser.rs::Parser#field.failed_keys": {
     "exported": false,
     "signature": "Vec \u003c FailedKeys \u003e"
+  },
+  "packages/rust/schema/src/dbspec/parser.rs::Parser#field.failed_uses": {
+    "exported": false,
+    "signature": "Vec \u003c String \u003e"
   },
   "packages/rust/schema/src/dbspec/parser.rs::Parser#field.foreign_keys": {
     "exported": false,
@@ -11981,7 +11985,7 @@
   },
   "packages/rust/schema/src/dbspec/parser.rs::Parser#wire": {
     "exported": false,
-    "signature": "{\"columns\":\"integer\",\"context\":\"Context\",\"declarations\":\"list\u003cDeclaration\u003e\",\"defaults\":\"list\u003clist\u003cDefaultToken\u003e\u003e\",\"detached_settings\":\"Settings\",\"diagram\":\"Diagram\",\"diagram_brace\":\"Pos\",\"diagram_header_failed\":\"bool\",\"diags\":\"list\u003cDiag\u003e\",\"document\":\"Document\",\"failed_keys\":\"list\u003cFailedKeys\u003e\",\"foreign_keys\":\"integer\",\"header_failed\":\"list\u003cbool\u003e\",\"marks\":\"list\u003cunsupported:(Pos , Class)\u003e\",\"opened\":\"integer\",\"pending\":\"list\u003ctext\u003e\",\"phase\":\"u8\",\"settings_brace\":\"Pos\",\"settings_detached\":\"bool\",\"settings_header_failed\":\"bool\",\"skip\":\"integer\",\"stopped\":\"bool\",\"table\":\"Table\",\"table_brace\":\"Pos\",\"table_defaults\":\"list\u003cDefaultToken\u003e\",\"table_failed_keys\":\"FailedKeys\",\"table_header_failed\":\"bool\",\"table_phase\":\"u8\",\"table_typeless\":\"list\u003cunsupported:(String , bool)\u003e\",\"table_unresolved\":\"list\u003ctext\u003e\",\"typeless\":\"list\u003clist\u003cunsupported:(String , bool)\u003e\u003e\",\"unresolved\":\"list\u003clist\u003ctext\u003e\u003e\"}"
+    "signature": "{\"columns\":\"integer\",\"context\":\"Context\",\"declarations\":\"list\u003cDeclaration\u003e\",\"defaults\":\"list\u003clist\u003cDefaultToken\u003e\u003e\",\"detached_settings\":\"Settings\",\"diagram\":\"Diagram\",\"diagram_brace\":\"Pos\",\"diagram_header_failed\":\"bool\",\"diags\":\"list\u003cDiag\u003e\",\"document\":\"Document\",\"failed_keys\":\"list\u003cFailedKeys\u003e\",\"failed_uses\":\"list\u003ctext\u003e\",\"foreign_keys\":\"integer\",\"header_failed\":\"list\u003cbool\u003e\",\"marks\":\"list\u003cunsupported:(Pos , Class)\u003e\",\"opened\":\"integer\",\"pending\":\"list\u003ctext\u003e\",\"phase\":\"u8\",\"settings_brace\":\"Pos\",\"settings_detached\":\"bool\",\"settings_header_failed\":\"bool\",\"skip\":\"integer\",\"stopped\":\"bool\",\"table\":\"Table\",\"table_brace\":\"Pos\",\"table_defaults\":\"list\u003cDefaultToken\u003e\",\"table_failed_keys\":\"FailedKeys\",\"table_header_failed\":\"bool\",\"table_phase\":\"u8\",\"table_typeless\":\"list\u003cunsupported:(String , bool)\u003e\",\"table_unresolved\":\"list\u003ctext\u003e\",\"typeless\":\"list\u003clist\u003cunsupported:(String , bool)\u003e\u003e\",\"unresolved\":\"list\u003clist\u003ctext\u003e\u003e\"}"
   },
   "packages/rust/schema/src/dbspec/parser.rs::Parser::action": {
     "exported": false,
@@ -12249,7 +12253,7 @@
   },
   "packages/rust/schema/src/dbspec/parser.rs::Syntax": {
     "exported": false,
-    "signature": "pub (crate) struct Syntax  { pub document : Document , # [doc = \" The declarations of the document, in the order they were read; positions sorts them.\"] pub declarations : Vec \u003c Declaration \u003e , pub unresolved : Vec \u003c Vec \u003c String \u003e \u003e , # [doc = \" For each table, the name of a column line whose type is wrong. Go keeps such a column, so a child of a foreign key that points to that column is treated as known.\"] pub typeless : Vec \u003c Vec \u003c (String , bool) \u003e \u003e , # [doc = \" For each table, the key and index lines that failed.\"] pub failed_keys : Vec \u003c FailedKeys \u003e , # [doc = \" For each table, whether the table line failed (it has no name, no `{`, or text after `{`). This is Go's failed table.\"] pub header_failed : Vec \u003c bool \u003e , # [doc = \" For each table, the `default` value tokens of its column lines that parsed.\"] pub defaults : Vec \u003c Vec \u003c DefaultToken \u003e \u003e , pub diags : Vec \u003c Diag \u003e , pub marks : Marks , }"
+    "signature": "pub (crate) struct Syntax  { pub document : Document , # [doc = \" The words of the use lines that failed.\"] pub failed_uses : Vec \u003c String \u003e , # [doc = \" The declarations of the document, in the order they were read; positions sorts them.\"] pub declarations : Vec \u003c Declaration \u003e , pub unresolved : Vec \u003c Vec \u003c String \u003e \u003e , # [doc = \" For each table, the name of a column line whose type is wrong. Go keeps such a column, so a child of a foreign key that points to that column is treated as known.\"] pub typeless : Vec \u003c Vec \u003c (String , bool) \u003e \u003e , # [doc = \" For each table, the key and index lines that failed.\"] pub failed_keys : Vec \u003c FailedKeys \u003e , # [doc = \" For each table, whether the table line failed (it has no name, no `{`, or text after `{`). This is Go's failed table.\"] pub header_failed : Vec \u003c bool \u003e , # [doc = \" For each table, the `default` value tokens of its column lines that parsed.\"] pub defaults : Vec \u003c Vec \u003c DefaultToken \u003e \u003e , pub diags : Vec \u003c Diag \u003e , pub marks : Marks , }"
   },
   "packages/rust/schema/src/dbspec/parser.rs::Syntax#field.declarations": {
     "exported": false,
@@ -12271,6 +12275,10 @@
     "exported": false,
     "signature": "Vec \u003c FailedKeys \u003e"
   },
+  "packages/rust/schema/src/dbspec/parser.rs::Syntax#field.failed_uses": {
+    "exported": false,
+    "signature": "Vec \u003c String \u003e"
+  },
   "packages/rust/schema/src/dbspec/parser.rs::Syntax#field.header_failed": {
     "exported": false,
     "signature": "Vec \u003c bool \u003e"
@@ -12289,7 +12297,7 @@
   },
   "packages/rust/schema/src/dbspec/parser.rs::Syntax#wire": {
     "exported": false,
-    "signature": "{\"declarations\":\"list\u003cDeclaration\u003e\",\"defaults\":\"list\u003clist\u003cDefaultToken\u003e\u003e\",\"diags\":\"list\u003cDiag\u003e\",\"document\":\"Document\",\"failed_keys\":\"list\u003cFailedKeys\u003e\",\"header_failed\":\"list\u003cbool\u003e\",\"marks\":\"Marks\",\"typeless\":\"list\u003clist\u003cunsupported:(String , bool)\u003e\u003e\",\"unresolved\":\"list\u003clist\u003ctext\u003e\u003e\"}"
+    "signature": "{\"declarations\":\"list\u003cDeclaration\u003e\",\"defaults\":\"list\u003clist\u003cDefaultToken\u003e\u003e\",\"diags\":\"list\u003cDiag\u003e\",\"document\":\"Document\",\"failed_keys\":\"list\u003cFailedKeys\u003e\",\"failed_uses\":\"list\u003ctext\u003e\",\"header_failed\":\"list\u003cbool\u003e\",\"marks\":\"Marks\",\"typeless\":\"list\u003clist\u003cunsupported:(String , bool)\u003e\u003e\",\"unresolved\":\"list\u003clist\u003ctext\u003e\u003e\"}"
   },
   "packages/rust/schema/src/dbspec/parser.rs::bare_cr": {
     "exported": false,
