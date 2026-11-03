@@ -218,6 +218,7 @@
     ],
     "schema.add_tables_and_columns": [
       "expect",
+      "message_contains",
       "op",
       "schema"
     ],
@@ -345,9 +346,9 @@
       "columns",
       "compile",
       "connection",
-      "derived_integers",
       "expect",
       "from",
+      "items",
       "joins",
       "key",
       "limit",
@@ -358,6 +359,8 @@
       "order",
       "page",
       "pick",
+      "plan",
+      "plan_count",
       "relation",
       "relations",
       "remove_columns",
@@ -443,6 +446,13 @@
       "plan",
       "source"
     ],
+    "dbspec.add_tables_steps": [
+      "dialect",
+      "expect",
+      "op",
+      "source",
+      "target"
+    ],
     "utils.aes_status": [
       "connection",
       "expect",
@@ -504,6 +514,12 @@
       "op",
       "owned",
       "parsing"
+    ],
+    "dbspec.load_set": [
+      "expect",
+      "external",
+      "op",
+      "owned"
     ],
     "dbspec.read_file": [
       "expect",
@@ -620,6 +636,23 @@
       "connection",
       "expect",
       "name",
+      "op"
+    ],
+    "utils.was_inserted": [
+      "connection",
+      "expect",
+      "op",
+      "sequence",
+      "table"
+    ],
+    "utils.backend_waiting_for_lock": [
+      "connection",
+      "expect",
+      "op"
+    ],
+    "utils.groups": [
+      "connection",
+      "expect",
       "op"
     ]
   }

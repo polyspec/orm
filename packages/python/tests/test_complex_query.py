@@ -1,15 +1,21 @@
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 from polyspec.orm import codes
 from polyspec.orm.engine import Engine, model_of_documents, parse_document_set
 from polyspec.orm.errors import OrmError
 
 from . import testcase
-from .complex_query_product import FIXTURE, SCHEMA_PATH, product_search_query
 from .test_sqlite import generate_document
+
+SCHEMA_PATH = (
+    Path(__file__).resolve().parents[3]
+    / "contracts"
+    / "fixtures"
+    / "complex_query"
+    / "complex_query.dbs"
+)
 
 
 class ComplexQueryTest(unittest.TestCase):
@@ -59,74 +65,6 @@ class ComplexQueryTest(unittest.TestCase):
             "fulltext_boolean_name_with_short_description_with_content",
             ["name", "short_description", "content"],
         )
-
-    # Requirements: CPX-1.
-    def test_public_semijoin_product_search_builds_page_plan(self):
-        from polyspec.orm import database
-
-        query = product_search_query(self.models, FIXTURE["input"])
-        limited = query.core.clone()
-        page = FIXTURE["input"]["page"]
-        per_page = FIXTURE["input"]["per_page"]
-        limited.set_limit((page - 1) * per_page, per_page)
-        built = limited.build("paginate")
-        self.assertIsNone(built.error)
-        request = built.finish()
-
-        for dialect in ("mysql", "postgres"):
-            with self.subTest(dialect=dialect):
-                plan = Engine(self.runtime, dialect).compile(request)
-                expected_steps = FIXTURE["expected_plan_steps"][dialect]
-                self.assertEqual(
-                    [
-                        {"role": step["role"], "tables": step["tables"]}
-                        for step in plan["steps"]
-                    ],
-                    expected_steps,
-                )
-                for step in plan["steps"][:2]:
-                    sql = step["sql"].upper()
-                    self.assertEqual(sql.count(" IN (SELECT "), 3)
-                    self.assertNotIn(" JOIN ", sql)
-                    self.assertNotIn("GROUP BY", sql)
-                events = []
-
-                class FakeDb:
-                    driver = dialect
-                    request_hook = None
-
-                    def plan(self, _request):
-                        return {"plan": plan}
-
-                    def _send_step(self, _ex, _sql, step, _params, events=events):
-                        events.append(step["role"])
-                        return {"rows": [[FIXTURE["expected"]["total_count"]]]}
-
-                def read_root(_ex, _cached, _step, _params, events=events):
-                    events.append("main")
-                    return []
-
-                def read_relations(_ex, cached, _params, main, events=events):
-                    events.extend(
-                        step["role"]
-                        for step in cached["plan"]["steps"][1:]
-                        if step["role"] == "relation"
-                    )
-                    return {"main": main}
-
-                with (
-                    patch.object(database, "_select", read_root),
-                    patch.object(database, "_relations", read_relations),
-                ):
-                    result = database.paginate(
-                        database.Executor(FakeDb()), request, built.params
-                    )
-                self.assertEqual(events, ["main", "count"] + ["relation"] * 6)
-                self.assertEqual(result["total"], FIXTURE["expected"]["total_count"])
-
-        with self.assertRaises(OrmError) as raised:
-            Engine(self.runtime, "sqlite").compile(request)
-        self.assertEqual(raised.exception.code, codes.OPERATOR_NOT_ALLOWED)
 
     # Requirements: DSL-159.
     def test_get_page_plan_steps_gives_the_steps_of_the_plan_of_gets_page(self):

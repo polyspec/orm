@@ -1,4 +1,4 @@
-//! INT-52 `was_inserted` and INT-53 `backend_waiting_for_lock` on the utilities of the Rust client, on SQLite, MySQL and
+//! INT-53 `backend_waiting_for_lock` with a waiter on PostgreSQL; the recipe utils holds the rest of the utilities of the Rust client,
 //! PostgreSQL. The model is the clock fixture (contracts/fixtures/clock.dbs). Each case runs in a case database of its own
 //! (polyspec-orm-case-database). The test fails when ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
 
@@ -8,7 +8,7 @@ use clock_test_support::{connected, ClockEvent, OrPanic, CLOCK_SCHEMA};
 
 use std::time::Duration;
 
-use polyspec_orm::{Db, Error, Model, Param, Val};
+use polyspec_orm::{Db, Model, Param, Val};
 use polyspec_orm_case_database::CaseDatabase;
 
 const CASE_DEADLINE: Duration = Duration::from_secs(60);
@@ -22,55 +22,6 @@ async fn insert_event(db: &Db, label: &str) -> i64 {
         Some(Val::I64(seq)) => seq,
         other => panic!("the identity of {label}: {other:?}"),
     }
-}
-
-/// A generated insert inside a transaction is recorded for its key; a key never inserted is not; a nested rollback removes its key only.
-async fn tracks_generated_rows(driver: &str, db: &Db) {
-    let utils = db.utils();
-    let result: polyspec_orm::Result<()> = db
-        .transaction(async || {
-            let outer = insert_event(db, "outer").await;
-            assert!(utils.was_inserted("clock_event", outer).unwrap(), "{driver}: the outer insert is recorded");
-            assert!(!utils.was_inserted("clock_event", outer + 1000).unwrap(), "{driver}: a key never inserted is not recorded");
-            let nested = std::cell::Cell::new(0);
-            let inner: polyspec_orm::Result<()> = db
-                .transaction(async || {
-                    let key = insert_event(db, "nested").await;
-                    nested.set(key);
-                    assert!(utils.was_inserted("clock_event", key).unwrap(), "{driver}: the nested insert is recorded");
-                    Err(Error::Config("roll back the nested savepoint".into()))
-                })
-                .retry(0)
-                .await;
-            assert!(inner.is_err(), "{driver}: the nested transaction unexpectedly committed");
-            assert!(!utils.was_inserted("clock_event", nested.get()).unwrap(), "{driver}: a rolled back insert leaves the write set");
-            assert!(utils.was_inserted("clock_event", outer).unwrap(), "{driver}: the outer insert survives a nested rollback");
-            Ok(())
-        })
-        .retry(0)
-        .await;
-    result.or_panic(|e| format!("{driver}: {e}"));
-}
-
-/// The utility needs an active transaction and a valid entity and key; each violation is CONFIG.
-async fn needs_a_transaction_and_valid_arguments(driver: &str, db: &Db) {
-    let utils = db.utils();
-    assert!(matches!(utils.was_inserted("clock_event", 1), Err(Error::Config(_))), "{driver}: outside a transaction");
-    let result: polyspec_orm::Result<()> = db
-        .transaction(async || {
-            assert!(matches!(utils.was_inserted("", 1), Err(Error::Config(_))), "{driver}: an empty entity");
-            assert!(matches!(utils.was_inserted("clock_event", 0), Err(Error::Config(_))), "{driver}: a zero key");
-            assert!(matches!(utils.was_inserted("clock_event", -1), Err(Error::Config(_))), "{driver}: a negative key");
-            Ok(())
-        })
-        .retry(0)
-        .await;
-    result.or_panic(|e| format!("{driver}: {e}"));
-}
-
-/// SQLite and MySQL answer false without a statement; PostgreSQL with no waiter answers false.
-async fn no_waiter(driver: &str, db: &Db) {
-    assert!(!db.utils().backend_waiting_for_lock().await.or_panic(|e| format!("{driver}: {e}")), "{driver}: no backend waits for a lock");
 }
 
 /// PostgreSQL: a second backend that waits for a row lock is reported. The transaction holds the row, and a task on a second
@@ -114,32 +65,13 @@ async fn bounded(driver: &str) {
     let database = CaseDatabase::create(driver).await;
     let db = Db::connect_schema(database.dsn(), &CLOCK_SCHEMA, 4, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: {e}"));
     db.utils().schema().install(&CLOCK_SCHEMA).await.or_panic(|e| format!("{driver}: install: {e}"));
-    tracks_generated_rows(driver, &db).await;
-    needs_a_transaction_and_valid_arguments(driver, &db).await;
-    no_waiter(driver, &db).await;
-    if driver == "postgres" {
-        postgres_waiter(database.dsn(), &db).await;
-    }
+    postgres_waiter(database.dsn(), &db).await;
     db.close().await;
     database.drop().await;
 }
 
 #[tokio::test]
-// Requirements: INT-52, INT-53.
-async fn was_inserted_sqlite() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    tokio::time::timeout(CASE_DEADLINE, bounded("sqlite")).await.expect("sqlite: the case ends");
-}
-
-#[tokio::test]
-// Requirements: INT-52, INT-53.
-async fn was_inserted_mysql() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    tokio::time::timeout(CASE_DEADLINE, bounded("mysql")).await.expect("mysql: the case ends");
-}
-
-#[tokio::test]
-// Requirements: INT-52, INT-53.
+// Requirements: INT-53.
 async fn was_inserted_postgres() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(CASE_DEADLINE, bounded("postgres")).await.expect("postgres: the case ends");

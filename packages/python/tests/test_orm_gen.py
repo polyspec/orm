@@ -4,6 +4,7 @@ import hashlib
 import inspect
 import json
 import os
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -13,7 +14,13 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from polyspec.orm import OrmError, RuntimeModel
+from polyspec.orm.database import Db
+from polyspec.orm.dbspec.manifest import dbspec_manifest
+from polyspec.orm.engine import model as engine_model
 from polyspec.orm.generate.python import write_text_if_changed
+from polyspec.orm.model import register_model
+from polyspec.orm.schema import Schema
 
 from . import testcase
 
@@ -82,6 +89,62 @@ class OrmGenTest(unittest.TestCase):
                 (models.SCHEMA.manifest_text + models.SCHEMA.external_text).encode()
             ).hexdigest(),
         )
+
+    def test_generated_external_model_reads_its_table(self):
+        # The generated schema value carries the external text at run time: the generated connect registers a set that
+        # uses an external document, and the model of a used external table reads a row of that table.
+        # Requirements: DBS-110, DBS-173.
+        external = ROOT / "contracts" / "fixtures" / "external"
+        with tempfile.TemporaryDirectory(prefix="orm-gen-external-") as work:
+            work_path = Path(work)
+            (work_path / "core").mkdir()
+            (work_path / "out").mkdir()
+            (work_path / "member.dbs").write_text(
+                (external / "member.dbs").read_text(encoding="utf-8"), encoding="utf-8"
+            )
+            (work_path / "core" / "core.dbs").write_text(
+                (external / "core.dbs").read_text(encoding="utf-8"), encoding="utf-8"
+            )
+            set_file = work_path / "dbspec-set.json"
+            set_file.write_text(
+                json.dumps(
+                    {
+                        "schema": 1,
+                        "documents": ["member.dbs"],
+                        "external": ["core/core.dbs"],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            subprocess.run(
+                args=ORM_GEN
+                + ["gen", "--set", str(set_file), "--out", str(work_path / "out")],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            source = work_path / "out" / "models.py"
+            module = types.ModuleType("external_models")
+            module.__file__ = str(source)
+            sys.modules["external_models"] = module
+            self.addCleanup(sys.modules.pop, "external_models", None)
+            exec(compile(source.read_text(), module.__file__, "exec"), module.__dict__)
+            path = work_path / "external.sqlite"
+            raw = sqlite3.connect(path)
+            try:
+                raw.execute(
+                    "CREATE TABLE ext_account (seq INTEGER PRIMARY KEY, name TEXT NOT NULL)"
+                )
+                raw.execute("INSERT INTO ext_account (seq, name) VALUES (1, 'kim')")
+                raw.commit()
+            finally:
+                raw.close()
+            db = module.connect(f"sqlite://{path}")
+            try:
+                row = module.ExtAccount().connect(db).get_by_seq(1)
+                self.assertEqual(row.get_name(), "kim")
+            finally:
+                db.close()
 
     def test_a_time_setter_takes_the_text_form(self):
         # Requirements: DBS-121.
@@ -620,6 +683,58 @@ class WriteTextIfChangedTest(unittest.TestCase):
             with open(path, encoding="utf-8") as handle:
                 self.assertEqual(handle.read(), "b = 1\n")
             self.assertEqual(os.listdir(directory), ["models.py"])
+
+
+REGISTRY_DOCUMENT = "dbspec 1 registry\n\ntable note {\n  seq i64\n  primary key (seq)\n}\n"
+
+
+class ModelRegistryTest(unittest.TestCase):
+    """A process builds the model of a manifest once (DBS-104): a second registration of the same texts and hash, on any
+    connection, and a second load_set of the same texts parse nothing."""
+
+    # Requirements: DBS-104.
+    def test_the_same_schema_is_parsed_once(self):
+        documents = RuntimeModel.load_set(REGISTRY_DOCUMENT, "")
+        manifest, diagnostics = dbspec_manifest(documents)
+        self.assertEqual(diagnostics, ())
+        schema = Schema(manifest.manifest_text, manifest.manifest_hash)
+        parse = mock.patch.object(
+            engine_model,
+            "parse_document_set",
+            wraps=engine_model.parse_document_set,
+        )
+        folder = tempfile.TemporaryDirectory(prefix="orm-model-registry-")
+        self.addCleanup(folder.cleanup)
+        connections = [Db(f"sqlite://{folder.name}/{i}.sqlite") for i in range(2)]
+        try:
+            with parse as parsed:
+                first = register_model(schema.manifest_text, schema.manifest_hash)
+                built = parsed.call_count
+                self.assertLessEqual(built, 1)
+                register_model(schema.manifest_text, schema.manifest_hash)
+                for db in connections:
+                    db.register(schema)
+                RuntimeModel.load_set(schema.manifest_text, "")
+                RuntimeModel.load_set(schema.manifest_text, "")
+                self.assertEqual(
+                    parsed.call_count, built, "a registered schema is not parsed again"
+                )
+        finally:
+            for db in connections:
+                db.close()
+        self.assertIs(
+            register_model(schema.manifest_text, schema.manifest_hash).runtime,
+            first.runtime,
+        )
+
+    # Requirements: DBS-104.
+    def test_a_known_text_under_another_hash_is_still_refused(self):
+        documents = RuntimeModel.load_set(REGISTRY_DOCUMENT, "")
+        manifest, _ = dbspec_manifest(documents)
+        register_model(manifest.manifest_text, manifest.manifest_hash)
+        with self.assertRaises(OrmError) as caught:
+            register_model(manifest.manifest_text, "sha256:" + "0" * 64)
+        self.assertEqual(caught.exception.code, "SCHEMA_HASH_MISMATCH")
 
 
 if __name__ == "__main__":

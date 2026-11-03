@@ -39,7 +39,7 @@ delete process.env.ORM_RUST_TEST_FEATURES;
 
 const ownerTests: Record<string, string> = {
   go: 'packages/go/orm/dsn_test.go', php: 'packages/php/tests/DsnTest.php',
-  'php-extension': 'packages/php-ext/tests/CatalogConnectionSurfaceTest.php', python: 'packages/python/tests/test_utils.py',
+  'php-extension': 'packages/php-ext/tests/CatalogConnectionSurfaceTest.php', python: 'packages/python/tests/test_utils_statements.py',
   rust: 'packages/rust/orm/tests/zone.rs', typescript: 'packages/ts/tests/typecheck.ts',
 };
 const dependentTest = 'packages/go/model/model_test.go';
@@ -132,8 +132,6 @@ function defined<T>(value: T | undefined): T {
   return value;
 }
 
-// The deadline of each case: a check in memory 1 s, a case that runs several node processes 8 s, Go test
-// binary, a case that builds and runs a Rust test binary or state reader 120 s.
 // sampleManifest is the manifest of one independent Go feature whose only test is the owner file.
 function sampleManifest(owner: string): SampleManifest {
   return { features: [{ id: 'sample', status: 'partial', parity: parityOf(['go']),
@@ -143,12 +141,9 @@ function sampleManifest(owner: string): SampleManifest {
       dependents: [] } }] };
 }
 
-// A run that did not ask for the complex-query fixture databases has no COMPLEX_QUERY_*_DSN, and its reader names the setup (KSTD-2-9-13-3).
-caseTest('a missing complex-query fixture DSN names the setup that provisions it', COMPUTE, () => {
-  assert.throws(() => databaseDsn({}, { database: 'mysql', dsn_env: 'COMPLEX_QUERY_GO_MYSQL_DSN' }),
-    /^Error: COMPLEX_QUERY_GO_MYSQL_DSN is missing; run make databases-create COMPLEX_QUERY=1, which provisions the 18 run-owned complex-query fixture databases/);
+caseTest('a missing database DSN names the check that provides it', COMPUTE, () => {
   assert.throws(() => databaseDsn({}, { database: 'mysql', dsn_env: 'BENCH_MYSQL_DSN' }), /^Error: mysql database DSN is not set in BENCH_MYSQL_DSN; run it through make feature-check$/);
-  assert.equal(databaseDsn({ COMPLEX_QUERY_GO_MYSQL_DSN: 'mysql://x/y' }, { database: 'mysql', dsn_env: 'COMPLEX_QUERY_GO_MYSQL_DSN' }), 'mysql://x/y');
+  assert.equal(databaseDsn({ BENCH_MYSQL_DSN: 'mysql://x/y' }, { database: 'mysql', dsn_env: 'BENCH_MYSQL_DSN' }), 'mysql://x/y');
 });
 
 caseTest('coverage diagnostics preserve child output when a process remains', PROCESS, async () => {
@@ -171,7 +166,7 @@ caseTest('coverage diagnostics name a child process termination signal', PROCESS
   assert.match(result.error ?? '', /signal SIGTERM/);
 });
 
-caseTest('Go performance diagnostics are retained from test2json output events', 1000, () => {
+caseTest('Go performance diagnostics are retained from test2json output events', COMPUTE, () => {
   const measurement = 'PERF hot_path_gate go sqlite pk: native p50=12.3µs client p50=45.6µs ratio=3.71 samples=1000 cpu=12.3ms wall=45.6ms machine=test reference=not-recorded';
   const output = [
     JSON.stringify({ Action: 'output', Test: 'TestHotPath', Output: `${measurement}\n` }),
@@ -181,7 +176,7 @@ caseTest('Go performance diagnostics are retained from test2json output events',
   assert.deepEqual(goPerformanceMeasurements(output), [measurement]);
 });
 
-caseTest('PHP extension coverage tests reside in the owning package', 1000, () => {
+caseTest('PHP extension coverage tests reside in the owning package', COMPUTE, () => {
   const manifest = contract();
   const reports = complete();
   const owner = manifest.features[0].coverage.owners['php-extension'];
@@ -202,7 +197,7 @@ caseTest('PHP extension coverage tests reside in the owning package', 1000, () =
   assert.match(checkSampleCoverage(manifest, reports).join('\n'), /sample\/owner\/php-extension: missing owning client part/);
 });
 
-caseTest('PHP extension catalog, schema and statement event coverage use native tests', 1000, () => {
+caseTest('PHP extension catalog, schema and statement event coverage use native tests', COMPUTE, () => {
   const manifest = readFeatures(new URL('../..', import.meta.url).pathname);
   for (const id of ['catalog_connection', 'schema_definition', 'statement_events']) {
     const feature = manifest.features.find(item => item.id === id);
@@ -269,7 +264,7 @@ function declaredPhpMethods(file: string, seen = new Set<string>()): string {
 
 // A PHP catalog owner selects the method of each case by its symbols map or as test_<id>; a method the class lacks makes
 // PHPUnit run no test, so the owner has no execution.
-caseTest('every case of the PHP catalog owner selects a method of its test class', 1000, () => {
+caseTest('every case of the PHP catalog owner selects a method of its test class', COMPUTE, () => {
   const root = new URL('../..', import.meta.url).pathname;
   const missing: string[] = [];
   const feature = readFeatures(root).features.find(item => item.id === 'catalog_connection');
@@ -280,7 +275,7 @@ caseTest('every case of the PHP catalog owner selects a method of its test class
     for (const command of commands) {
       const methods = declaredPhpMethods(join(root, command.test));
       for (const id of command.cases) {
-        const method = command.symbols?.[id] ?? `test_${id}`;
+        const method = command.symbol ?? command.symbols?.[id] ?? `test_${id}`;
         if (!new RegExp(`function ${method}\\(`).test(methods)) missing.push(`${feature.id}/${database}: ${command.test} ${method}`);
       }
     }
@@ -290,7 +285,7 @@ caseTest('every case of the PHP catalog owner selects a method of its test class
 // The node and python runners select a case by its ID, and the checker refuses a symbols map on them, so a command that
 // declares one never executes.
 // Requirements: FCV-3.
-caseTest('only the go, cargo and php runners declare a symbols map', 1000, () => {
+caseTest('only the go, cargo and php runners declare a symbols map', COMPUTE, () => {
   const root = new URL('../..', import.meta.url).pathname;
   const declared: string[] = [];
   for (const feature of readFeatures(root).features) {
@@ -379,7 +374,7 @@ caseTest('Rust coverage uses the workspace manifest and applies only supported f
   ]);
 });
 
-caseTest('PHP extension catalog coverage selects the exact recipe entry methods', 1000, () => {
+caseTest('PHP extension catalog coverage selects the exact recipe entry methods', COMPUTE, () => {
   const root = new URL('../..', import.meta.url).pathname;
   const manifest = readFeatures(root);
   const catalog = manifest.features.find(item => item.id === 'catalog_connection');
@@ -398,20 +393,15 @@ caseTest('PHP extension catalog coverage selects the exact recipe entry methods'
     assert.equal(nativeCommands.length, 1);
     const entry = entries[database];
     assert.ok(entry, `no recipe entry method for ${database}`);
-    assert.deepEqual(nativeCommands[0]?.symbols, {
-      catalog_read: entry,
-      catalog_row_mutation: entry,
-      model_read_null_and_empty_text: entry,
-      catalog_grid_column_and_row_order: entry,
-      catalog_plain_query_bounds: entry,
-    });
+    assert.equal(nativeCommands[0]?.symbol, entry);
+    assert.equal(nativeCommands[0]?.recipe, 'contracts/fixtures/catalog_connection/catalog_connection.json');
     assert.match(methods, new RegExp(`function ${entry}\\(`), `CatalogConnectionRecipeTest lacks ${entry}`);
   }
 });
 
 // These KSTD-7-4 cases use camelCase PHPUnit methods; without exact symbols, the owner runner filters for a missing
 // snake_case method and records no test execution. Keep this check scoped to the PHP extension feature's four command shapes.
-caseTest('KSTD-7-4 PHP owner commands select their declared methods', 1000, () => {
+caseTest('KSTD-7-4 PHP owner commands select their declared methods', COMPUTE, () => {
   const root = new URL('../..', import.meta.url).pathname;
   const manifest = readFeatures(root);
   const shapes = [
@@ -440,7 +430,7 @@ caseTest('KSTD-7-4 PHP owner commands select their declared methods', 1000, () =
   }
 });
 
-caseTest('one feature can run without declaring unrelated coverage complete', 1000, () => {
+caseTest('one feature can run without declaring unrelated coverage complete', COMPUTE, () => {
   const manifest = { features: [{ id: 'one' }, { id: 'two' }] };
   assert.deepEqual(selectFeatures(manifest, 'one').features, [{ id: 'one' }]);
   assert.equal(selectFeatures(manifest, undefined).features.length, 2);
@@ -448,7 +438,7 @@ caseTest('one feature can run without declaring unrelated coverage complete', 10
 });
 
 // Requirements: FCV-6.
-caseTest('selecting one feature requires only the coverage specs of that feature', 1000, async () => {
+caseTest('selecting one feature requires only the coverage specs of that feature', COMPUTE, async () => {
   // statement_events runs twice in three databases for each owner client. There is no spec for other features.
   const manifest = readFeatures(new URL('../..', import.meta.url).pathname);
   const feature = manifest.features.find(item => item.id === 'statement_events');
@@ -461,7 +451,7 @@ caseTest('selecting one feature requires only the coverage specs of that feature
   assert.deepEqual(missing.toSorted(), expected.toSorted());
 });
 
-caseTest('selecting coverage parts requires only those parts', 1000, async () => {
+caseTest('selecting coverage parts requires only those parts', COMPUTE, async () => {
   // owner-check runs only the units (--part) whose input is a changed file. It does not require items of other clients.
   const manifest = readFeatures(new URL('../..', import.meta.url).pathname);
   const selected = selectFeatures(manifest, 'statement_events', ['owner/php']);
@@ -578,7 +568,7 @@ caseTest('the coverage item CLI selects one declared database', PROCESS, () => {
 });
 
 // Requirements: FCV-6.
-caseTest('an unknown feature name fails with the list of valid names', 1000, () => {
+caseTest('an unknown feature name fails with the list of valid names', COMPUTE, () => {
   const manifest = { features: [{ id: 'one' }, { id: 'two' }] };
   assert.throws(() => selectFeatures(manifest, 'missing'),
     { message: 'unknown feature missing; valid features: one, two' });
@@ -586,7 +576,7 @@ caseTest('an unknown feature name fails with the list of valid names', 1000, () 
     { message: 'unknown feature ; valid features: one, two' });
 });
 
-caseTest('aggregate numeric TypeScript cases are owned by the client', 1000, async () => {
+caseTest('aggregate numeric TypeScript cases are owned by the client', COMPUTE, async () => {
   const root = new URL('../..', import.meta.url);
   const manifest = readFeatures(new URL('../..', import.meta.url).pathname);
   const feature = manifest.features.find(item => item.id === 'model_queries');
@@ -596,7 +586,7 @@ caseTest('aggregate numeric TypeScript cases are owned by the client', 1000, asy
   assert.ok((await stat(new URL('packages/ts/tests/aggregate_numeric.mjs', root))).isFile());
 });
 
-caseTest('TypeScript behavior tests stay in their client directory', 1000, async () => {
+caseTest('TypeScript behavior tests stay in their client directory', COMPUTE, async () => {
   const root = new URL('../..', import.meta.url);
   const expected = ['dsn', 'engine', 'generate', 'model', 'sqlite-concurrency'];
   const entries = await readdir(new URL('packages/ts/tests/', root));
@@ -634,12 +624,12 @@ function selectedSample(manifest: SampleManifest, parts: string[]): Manifest {
   return selectFeatures(manifest, feature.id, parts);
 }
 
-function runSelected(manifest: SampleManifest, root: string, timeoutMs: number, parts: string[]): Promise<string[]> {
-  return executeCoverage(selectedSample(manifest, parts), root, timeoutMs, fixtureParity);
+function runSelected(manifest: SampleManifest, root: string, parts: string[]): Promise<string[]> {
+  return executeCoverage(selectedSample(manifest, parts), root, NATIVE_DEADLINE, fixtureParity);
 }
 
-function negativeSelected(manifest: SampleManifest, root: string, timeoutMs: number, parts: string[]) {
-  return negative(selectedSample(manifest, parts), root, timeoutMs);
+function negativeSelected(manifest: SampleManifest, root: string, parts: string[]) {
+  return negative(selectedSample(manifest, parts), root);
 }
 
 function complete(kind = 'database'): Reports {
@@ -690,18 +680,18 @@ function tapFailures(lines: string[]): string[] {
 }
 
 // negative returns the execution errors and the TAP failure groups of a negative sample; the calling test checks the exact text.
-async function negative(manifest: Manifest, root: string, timeoutMs: number): Promise<{ errors: string[]; failures: string[] }> {
-  const { value, lines } = await quietly(() => executeCoverage(manifest, root, timeoutMs, fixtureParity));
+async function negative(manifest: Manifest, root: string): Promise<{ errors: string[]; failures: string[] }> {
+  const { value, lines } = await quietly(() => executeCoverage(manifest, root, NATIVE_DEADLINE, fixtureParity));
   return { errors: value.toSorted(), failures: tapFailures(lines) };
 }
 
 // Requirements: FCV-1.
-caseTest('owner and dependent cases execute in every client language and three databases', 1000, () => {
+caseTest('owner and dependent cases execute in every client language and three databases', COMPUTE, () => {
   assert.deepEqual(checkSampleCoverage(contract(), complete()), []);
   assert.deepEqual(checkSampleCoverage(contract('independent'), complete('independent')), []);
 });
 
-caseTest('a shared Markdown session case requires an owner for every client', 1000, () => {
+caseTest('a shared Markdown session case requires an owner for every client', COMPUTE, () => {
   const manifest = contract('independent');
   const feature = defined(manifest.features[0]);
   feature.id = 'markdown-session';
@@ -712,7 +702,7 @@ caseTest('a shared Markdown session case requires an owner for every client', 10
   assert.match(checkSampleCoverage(manifest, {}).join('\n'), /markdown-session\/owner\/python: missing owning client part/);
 });
 
-caseTest('an implemented feature must claim every client language in its parity units', 1000, () => {
+caseTest('an implemented feature must claim every client language in its parity units', COMPUTE, () => {
   assert.match(mutation((m, r) => {
     m.features[0].parity = parityOf(languages.filter(language => language !== 'python'));
     delete m.features[0].coverage.owners.python;
@@ -773,7 +763,7 @@ caseTest('selected independent cases retain only the files bound to the selected
 });
 
 // Requirements: FCV-5.
-caseTest('missing owner, dependent, database, case, and repeat are RED', 1000, () => {
+caseTest('missing owner, dependent, database, case, and repeat are RED', COMPUTE, () => {
   // @ts-expect-error: a missing owner is the invalid contract under test.
   assert.match(mutation((m) => { m.features[0].coverage.owners.rust = undefined; }), /sample\/owner\/rust: missing owning client part/);
   assert.match(mutation((_, r) => { delete r['sample/owner/php/mysql']; }), /sample\/owner\/php\/mysql: no executed report/);
@@ -794,7 +784,7 @@ caseTest('missing owner, dependent, database, case, and repeat are RED', 1000, (
 });
 
 // Requirements: FCV-5.
-caseTest('identity, result, state, and unknown report mutations are RED', 1000, () => {
+caseTest('identity, result, state, and unknown report mutations are RED', COMPUTE, () => {
   assert.match(mutation((m) => { m.features[0].parity = parityOf(languages.filter(language => language !== 'rust')); }), /lacks a parity unit in a client language/);
   assert.match(mutation((_, r) => { defined(defined(r['sample/owner/go/mysql'])[0]).part = 'packages/php'; }), /report identity differs/);
   assert.match(mutation((_, r) => { defined(defined(r['sample/dependent/service/go/mysql'])[0]).role = 'owner'; }), /report identity differs/);
@@ -808,7 +798,7 @@ caseTest('identity, result, state, and unknown report mutations are RED', 1000, 
   assert.match(mutation((m) => { m.features[0].coverage.cases = ['first', 'first']; }), /distinct nonempty IDs/);
 });
 
-caseTest('native owner and dependent files execute twice from their own parts', 8000, async () => {
+caseTest('native owner and dependent files execute twice from their own parts', PROCESS, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-')));
   const owner = 'packages/ts/tests/owner.mjs';
   const dependent = 'packages/ts/use/dependent.mjs';
@@ -823,7 +813,7 @@ caseTest('native owner and dependent files execute twice from their own parts', 
     await mkdir(join(root, 'packages/ts/use'), { recursive: true });
     await writeFile(join(root, owner), "for (const id of process.argv.slice(2)) { if (!['first', 'second'].includes(id)) process.exit(2); console.log(`CASE ${id} PASS`); }\n");
     await writeFile(join(root, dependent), "for (const id of process.argv.slice(2)) { if (id !== 'first') process.exit(2); console.log(`CASE ${id} PASS`); }\n");
-    assert.deepEqual(await runSelected(manifest, root, 1000, ['owner/typescript', 'dependent/use']), []);
+    assert.deepEqual(await runSelected(manifest, root, ['owner/typescript', 'dependent/use']), []);
 
     const incomplete = structuredClone(manifest);
     const sample = defined(incomplete.features[0]);
@@ -832,13 +822,13 @@ caseTest('native owner and dependent files execute twice from their own parts', 
     const noneCommands = defined(typescriptOwner.commands?.none);
     const command = defined(noneCommands[0]);
     command.cases = ['first'];
-    assert.deepEqual(await runSelected(incomplete, root, 1000, ['owner/typescript']), [
+    assert.deepEqual(await runSelected(incomplete, root, ['owner/typescript']), [
       'sample/owner/typescript/none: invalid native test command',
       'sample/owner/typescript/none: no executed report',
     ].toSorted());
 
     await writeFile(join(root, owner), '');
-    assert.deepEqual(await runSelected(manifest, root, 1000, ['owner/typescript']), [
+    assert.deepEqual(await runSelected(manifest, root, ['owner/typescript']), [
       'sample/owner/typescript/none run 1: observed no cases differ from first,second',
       'sample/owner/typescript/none: exactly two executions required',
     ].toSorted());
@@ -846,17 +836,17 @@ caseTest('native owner and dependent files execute twice from their own parts', 
     const unexpected = '{"success":true,"cases":["first","second"]}';
     await writeFile(join(root, owner), `process.stdout.write(${JSON.stringify(unexpected)});\n`);
     const missing = 'sample/owner/typescript/none: exactly two executions required';
-    assert.deepEqual(await negativeSelected(manifest, root, 1000, ['owner/typescript', 'dependent/use']), {
+    assert.deepEqual(await negativeSelected(manifest, root, ['owner/typescript', 'dependent/use']), {
       errors: [`sample/owner/typescript/none run 1: unexpected test output: ${unexpected}`, missing].toSorted(),
       failures: [`not ok - sample/owner/typescript/none run 1\n# unexpected test output: ${unexpected}`],
     });
     await writeFile(join(root, owner), "for (const id of process.argv.slice(2)) { console.log(`CASE ${id} PASS`); console.log(`CASE ${id} PASS`); }\n");
-    assert.deepEqual(await negativeSelected(manifest, root, 1000, ['owner/typescript', 'dependent/use']), {
+    assert.deepEqual(await negativeSelected(manifest, root, ['owner/typescript', 'dependent/use']), {
       errors: ['sample/owner/typescript/none run 1: duplicate observed case first', missing].toSorted(),
       failures: ['not ok - sample/owner/typescript/none run 1\n# duplicate observed case first'],
     });
     delete defined(defined(manifest.features[0].coverage.dependents[0]).commands).none;
-    assert.deepEqual(await negativeSelected(manifest, root, 1000, ['owner/typescript', 'dependent/use']), {
+    assert.deepEqual(await negativeSelected(manifest, root, ['owner/typescript', 'dependent/use']), {
       errors: ['sample/dependent/use/typescript/none: no executable command', 'sample/dependent/use/typescript/none: no executed report',
         'sample/owner/typescript/none run 1: duplicate observed case first', missing].toSorted(),
       failures: ['not ok - sample/owner/typescript/none run 1\n# duplicate observed case first'],
@@ -866,7 +856,7 @@ caseTest('native owner and dependent files execute twice from their own parts', 
 
 // If the Go test cache substitutes for the second run, it is not execution evidence, so each run
 // actually runs the test process and checks that it leaves one directory each time.
-caseTest('every Go execution runs the test instead of reading the test cache', 120000, async () => {
+caseTest('every Go execution runs the test instead of reading the test cache', PROCESS, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-go-')));
   const owner = 'packages/go/sample/sample_test.go';
   const runs = join(root, 'runs');
@@ -891,14 +881,14 @@ func TestFirst(t *testing.T) {
 	}
 }
 `);
-    assert.deepEqual(await runSelected(manifest, root, 60000, ['owner/go']), []);
+    assert.deepEqual(await runSelected(manifest, root, ['owner/go']), []);
     assert.equal((await readdir(runs)).length, 2);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
 // A slow but normal build runs to the end with no deadline. The go in front of PATH waits 1.5 s and then runs the real go, so
 // the test2json build and the test binary build each take 1.5 s or more, and both builds and both runs pass.
-caseTest('a slow but healthy coverage build runs to its end without a deadline', 120000, async () => {
+caseTest('a slow but healthy coverage build runs to its end without a deadline', PROCESS, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-slow-')));
   const owner = 'packages/go/sample/sample_test.go';
   const manifest = sampleManifest(owner);
@@ -914,7 +904,7 @@ caseTest('a slow but healthy coverage build runs to its end without a deadline',
     await writeFile(join(root, owner), '//go:build featurecoverage\n\npackage sample\n\nimport "testing"\n\nfunc TestFirst(t *testing.T) {}\n');
     process.env.PATH = `${join(root, 'bin')}:${path}`;
     const started = performance.now();
-    assert.deepEqual(await runSelected(manifest, root, 60000, ['owner/go']), []);
+    assert.deepEqual(await runSelected(manifest, root, ['owner/go']), []);
     assert.ok(performance.now() - started >= 3000, 'both builds ran through the slow go');
   } finally {
     process.env.PATH = path;
@@ -937,7 +927,7 @@ function phpArray(list: string[]): string {
 const PASSED = ["testStarted name='test_first'", "testFinished name='test_first' duration='0'"];
 
 // Requirements: FCV-2.
-caseTest('PHP coverage cases use their explicitly declared method symbols', 30000, async () => {
+caseTest('PHP coverage cases use their explicitly declared method symbols', PROCESS, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-php-symbols-')));
   const file = 'packages/php/tests/OwnerTest.php';
   const method = 'testSchemaInstallExisting';
@@ -953,14 +943,14 @@ caseTest('PHP coverage cases use their explicitly declared method symbols', 3000
       `testStarted name='${method}'`,
       `testFinished name='${method}' duration='0'`,
     ], '', method);
-    assert.deepEqual(await runSelected(manifest, root, 30000, ['owner/php']), []);
+    assert.deepEqual(await runSelected(manifest, root, ['owner/php']), []);
 
     const defaultManifest: SampleManifest = { features: [{ id: 'sample', status: 'partial', parity: parityOf(['php']),
       coverage: { kind: 'independent', cases: ['first'], dependents: [], owners: {
         php: { part: 'packages/php/tests', tests: [file], commands: { none: [{ runner: 'php', test: file, cases: ['first'] }] } },
       } } }] };
     await phpunitStub(root, file, PASSED);
-    assert.deepEqual(await runSelected(defaultManifest, root, 30000, ['owner/php']), []);
+    assert.deepEqual(await runSelected(defaultManifest, root, ['owner/php']), []);
 
     const featureCoverage = defined(manifest.features[0].coverage);
     const phpOwner = defined(defined(featureCoverage.owners).php);
@@ -972,7 +962,7 @@ caseTest('PHP coverage cases use their explicitly declared method symbols', 3000
       { schema_install_existing: 'OwnerTest::testSchemaInstallExisting' },
     ]) {
       command.symbols = symbols;
-      assert.match((await runSelected(manifest, root, 30000, ['owner/php'])).join('\n'), /invalid native test command/);
+      assert.match((await runSelected(manifest, root, ['owner/php'])).join('\n'), /invalid native test command/);
     }
     const duplicate: SampleManifest = { features: [{ id: 'sample', status: 'partial', parity: parityOf(['php']),
       coverage: { kind: 'independent', cases: ['schema_install_existing', 'model_generation_check'], dependents: [], owners: {
@@ -980,7 +970,7 @@ caseTest('PHP coverage cases use their explicitly declared method symbols', 3000
           cases: ['schema_install_existing', 'model_generation_check'],
           symbols: { schema_install_existing: method, model_generation_check: method } }] } },
       } } }] };
-    assert.match((await runSelected(duplicate, root, 30000, ['owner/php'])).join('\n'), /invalid native test command/);
+    assert.match((await runSelected(duplicate, root, ['owner/php'])).join('\n'), /invalid native test command/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -1021,7 +1011,7 @@ setup('coverage overlap fixture crate', async () => {
   execFileSync('cargo', ['test', '--no-run', '--manifest-path', join(overlapRoot, 'packages/rust/Cargo.toml'), '--package', 'coverage_overlap', '--lib'], { stdio: 'inherit' });
 });
 
-caseTest('coverage runs without cargo proceed while the Rust test build runs', 120000, async () => {
+caseTest('coverage runs without cargo proceed while the Rust test build runs', PROCESS, async () => {
   const root = overlapRoot;
   const rustFile = overlapRustFile;
   const phpFile = 'packages/php/tests/OwnerTest.php';
@@ -1047,7 +1037,7 @@ caseTest('coverage runs without cargo proceed while the Rust test build runs', 1
     await writeFile(join(root, phpFile), '<?php\n');
     await phpunitStub(root, phpFile, PASSED, `if (!file_exists(${JSON.stringify(written)})) { file_put_contents(${JSON.stringify(fifo)}, "go\\n"); touch(${JSON.stringify(written)}); }\n`);
     process.env.PATH = `${join(root, 'bin')}:${path}`;
-    assert.deepEqual(await runSelected(manifest, root, 30000, ['owner/rust', 'owner/php']), []);
+    assert.deepEqual(await runSelected(manifest, root, ['owner/rust', 'owner/php']), []);
     const cargoCalls = (await readFile(cargoArguments, 'utf8')).split('\n').filter(Boolean);
     const testBuild = cargoCalls.find(args => args.startsWith('test '));
     assert.ok(testBuild, 'Cargo test build was invoked');
@@ -1061,7 +1051,7 @@ caseTest('coverage runs without cargo proceed while the Rust test build runs', 1
   }
 });
 
-caseTest('invented JSON success from an arbitrary command is not execution evidence', 8000, async () => {
+caseTest('invented JSON success from an arbitrary command is not execution evidence', PROCESS, async () => {
   const manifest = contract('independent');
   const report = (role: string, part: string, tests: string[], language: string, cases: string[], dependent?: string) => JSON.stringify({
     feature: 'sample', role, part, tests, language, database: 'none', success: true, cases,
@@ -1075,12 +1065,12 @@ caseTest('invented JSON success from an arbitrary command is not execution evide
   // @ts-expect-error: a shell command in place of native test commands is the invalid contract under test.
   defined(defined(manifest.features[0].coverage.dependents[0]).commands).none =
     `node -e 'process.stdout.write(${JSON.stringify(report('dependent', 'packages/go/model', [dependentTest], 'go', ['first'], 'service'))})'`;
-  assert.match((await executeCoverage(manifest, new URL('../..', import.meta.url).pathname, 1000, fixtureParity)).join('\n'),
+  assert.match((await executeCoverage(manifest, new URL('../..', import.meta.url).pathname, NATIVE_DEADLINE, fixtureParity)).join('\n'),
     /invalid native test command/);
 });
 
 // Requirements: FCV-4.
-caseTest('checker reads physical database state around each native test run', 120000, async () => {
+caseTest('checker reads physical database state around each native test run', PROCESS, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-db-')));
   const owner = 'packages/ts/tests/owner.mjs';
   const databasePath = join(root, 'state.sqlite');
@@ -1108,7 +1098,7 @@ caseTest('checker reads physical database state around each native test run', 12
     // The file runs once for its three items. A state reader that fails names its own item; the run stops before the file runs,
     // so every item reports the failure and the single group failure line.
     const groupFailure = 'database state reader failed';
-    const first = await negativeSelected(manifest, root, 30000, ['owner/typescript']);
+    const first = await negativeSelected(manifest, root, ['owner/typescript']);
     assert.deepEqual(first, {
       errors: [
         `sample/owner/typescript/mysql run 1: ${sqliteOnly} "mysql"`,
@@ -1123,7 +1113,7 @@ caseTest('checker reads physical database state around each native test run', 12
     await writeFile(join(root, owner), "import { DatabaseSync } from 'node:sqlite'; const db = new DatabaseSync(new URL(process.env.ORM_COVERAGE_TEST_SQLITE_DSN).pathname); db.exec('UPDATE state SET value = value + 1'); db.close(); for (const database of ['mysql', 'postgres', 'sqlite']) console.log(`CASE first [${database}] PASS`');\n");
     // The state readers of mysql and postgres refuse the sqlite DSN, so the run never reaches the state comparison; the
     // comparison of a changed state is covered by checkCoverage in the unit tests above.
-    const changed = await negativeSelected(manifest, root, 30000, ['owner/typescript']);
+    const changed = await negativeSelected(manifest, root, ['owner/typescript']);
     assert.deepEqual(changed, first);
   } finally {
     if (previous === undefined) delete process.env.ORM_COVERAGE_TEST_SQLITE_DSN;
@@ -1133,7 +1123,7 @@ caseTest('checker reads physical database state around each native test run', 12
 });
 
 // Requirements: FCV-3.
-caseTest('Go, PHP, and Rust native cases execute through their owning files', 120000, async () => {
+caseTest('Go, PHP, and Rust native cases execute through their owning files', PROCESS, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-native-')));
   const cases: { language: string; part: string; file: string; runner: string; symbol?: string; id?: string }[] = [
     { language: 'go', part: 'packages/go/orm', file: 'packages/go/orm/owner_test.go', runner: 'go', symbol: 'TestFirst' },
@@ -1160,20 +1150,20 @@ caseTest('Go, PHP, and Rust native cases execute through their owning files', 12
               ...(item.symbol ? { symbols: { first: item.symbol } } : {}) }],
           } },
         } } }] };
-      assert.deepEqual(await runSelected(manifest, root, 30000, [`owner/${item.language}`]), [], item.language);
+      assert.deepEqual(await runSelected(manifest, root, [`owner/${item.language}`]), [], item.language);
       if (item.symbol) {
         const command = defined(defined(defined(defined(manifest.features[0].coverage.owners[item.language]).commands).none)[0]);
         const variants: Record<string, string>[] = [{}, { first: item.symbol, extra: 'Unused' }, { first: 'MissingNativeTest' }];
         for (const symbols of variants) {
           command.symbols = symbols;
-          const errors = await runSelected(manifest, root, 30000, [`owner/${item.language}`]);
+          const errors = await runSelected(manifest, root, [`owner/${item.language}`]);
           assert.match(errors.join('\n'), symbols.first === 'MissingNativeTest' ?
             /test symbol MissingNativeTest is absent/ : /invalid native test command/, item.language);
         }
         command.cases = ['first', 'second'];
         command.symbols = { first: item.symbol, second: item.symbol };
         manifest.features[0].coverage.cases = ['first', 'second'];
-        assert.match((await runSelected(manifest, root, 30000, [`owner/${item.language}`])).join('\n'), /invalid native test command/);
+        assert.match((await runSelected(manifest, root, [`owner/${item.language}`])).join('\n'), /invalid native test command/);
       }
     }
     // If there is no test binary that compiles a declared Rust test file, the same symbol in another file
@@ -1185,7 +1175,7 @@ caseTest('Go, PHP, and Rust native cases execute through their owning files', 12
         rust: { part: 'packages/rust/orm', tests: [unused], commands: { none: [{ runner: 'cargo', test: unused,
           cases: ['first'], symbols: { first: 'tests::first' } }] } },
       } } }] };
-    assert.match((await runSelected(uncompiled, root, 30000, ['owner/rust'])).join('\n'), /no test binary compiles .*unused\.rs/);
+    assert.match((await runSelected(uncompiled, root, ['owner/rust'])).join('\n'), /no test binary compiles .*unused\.rs/);
     // A PHP case is observed only from its clean TeamCity events: a failed or a missing case refuses the run.
     const php = defined(cases[1]);
     const phpManifest: SampleManifest = { features: [{ id: 'sample', status: 'partial', parity: parityOf(['php']),
@@ -1201,7 +1191,7 @@ caseTest('Go, PHP, and Rust native cases execute through their owning files', 12
     ];
     for (const [events, error] of outcomes) {
       await phpunitStub(root, php.file, events);
-      assert.match((await quietly(() => runSelected(phpManifest, root, 30000, ['owner/php']))).value.join('\n'), error);
+      assert.match((await quietly(() => runSelected(phpManifest, root, ['owner/php']))).value.join('\n'), error);
     }
     const go = defined(cases[0]);
     await writeFile(join(root, go.file), 'package orm\nimport "testing"\nfunc TestFirst(t *testing.T) { t.Skip("no executed pass") }\n');
@@ -1211,7 +1201,7 @@ caseTest('Go, PHP, and Rust native cases execute through their owning files', 12
           cases: ['first'], symbols: { first: go.symbol ?? '' } }] } },
       } } }] };
     const message = 'observed no cases differ from TestFirst';
-    assert.deepEqual(await negativeSelected(skipped, root, 30000, ['owner/go']), {
+    assert.deepEqual(await negativeSelected(skipped, root, ['owner/go']), {
       errors: [`sample/owner/go/none run 1: ${message}`, 'sample/owner/go/none: exactly two executions required'].toSorted(),
       failures: [`not ok - sample/owner/go/none run 1\n# ${message}`],
     });
@@ -1224,7 +1214,7 @@ caseTest('Go, PHP, and Rust native cases execute through their owning files', 12
 // A Python owner runs on the interpreter that make names in ORM_PYTHON, as its module of the test package from the checkout
 // root, with its case IDs. The
 // interpreter here is a stand-in that checks those arguments, so the checker's part is tested without a Python.
-caseTest('Python cases execute on the interpreter of ORM_PYTHON', 8000, async () => {
+caseTest('Python cases execute on the interpreter of ORM_PYTHON', PROCESS, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-python-')));
   const owner = 'packages/python/tests/owner.py';
   const interpreter = join(root, 'bin/python');
@@ -1240,12 +1230,12 @@ caseTest('Python cases execute on the interpreter of ORM_PYTHON', 8000, async ()
     await writeFile(interpreter, `#!/bin/sh\n[ "$#" = 3 ] && [ "$1" = -m ] && [ "$2" = packages.python.tests.owner ] && [ "$3" = first ] && [ "$PWD" = ${JSON.stringify(root)} ] || exit 2\necho 'CASE first PASS'\n`);
     await chmod(interpreter, 0o755);
     process.env.ORM_PYTHON = interpreter;
-    assert.deepEqual(await runSelected(manifest, root, 4000, ['owner/python']), []);
+    assert.deepEqual(await runSelected(manifest, root, ['owner/python']), []);
     defined(defined(defined(defined(manifest.features[0].coverage.owners.python).commands).none)[0]).runner = 'node';
-    assert.match((await runSelected(manifest, root, 4000, ['owner/python'])).join('\n'), /invalid native test command/);
+    assert.match((await runSelected(manifest, root, ['owner/python'])).join('\n'), /invalid native test command/);
     defined(defined(defined(defined(manifest.features[0].coverage.owners.python).commands).none)[0]).runner = 'python';
     delete process.env.ORM_PYTHON;
-    assert.match((await runSelected(manifest, root, 4000, ['owner/python'])).join('\n'), /ORM_PYTHON is unset; run this through make, which exports it/);
+    assert.match((await runSelected(manifest, root, ['owner/python'])).join('\n'), /ORM_PYTHON is unset; run this through make, which exports it/);
   } finally {
     if (previous === undefined) delete process.env.ORM_PYTHON;
     else process.env.ORM_PYTHON = previous;
@@ -1255,7 +1245,7 @@ caseTest('Python cases execute on the interpreter of ORM_PYTHON', 8000, async ()
 
 // executeCoverage writes each run's native command as one line, then its result as a TAP line (`ok - <case>` or
 // `not ok - <case>`). A failed run gives its reason on `# <reason>` lines.
-caseTest('every native run reports its command and TAP result', 8000, async () => {
+caseTest('every native run reports its command and TAP result', PROCESS, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-report-')));
   const owner = 'packages/ts/tests/owner.mjs';
   const manifest: SampleManifest = { features: [{ id: 'sample', status: 'partial', parity: parityOf(['typescript']),
@@ -1268,9 +1258,9 @@ caseTest('every native run reports its command and TAP result', 8000, async () =
   try {
     await mkdir(join(root, 'packages/ts/tests'), { recursive: true });
     await writeFile(join(root, owner), "console.log('CASE first PASS');\n");
-    assert.deepEqual(await runSelected(manifest, root, 1000, ['owner/typescript']), []);
+    assert.deepEqual(await runSelected(manifest, root, ['owner/typescript']), []);
     await writeFile(join(root, owner), 'process.exit(3);\n');
-    assert.match((await runSelected(manifest, root, 1000, ['owner/typescript'])).join('\n'), /run 1: exit 3/);
+    assert.match((await runSelected(manifest, root, ['owner/typescript'])).join('\n'), /run 1: exit 3/);
   } finally {
     console.log = log;
     await rm(root, { recursive: true, force: true });
@@ -1293,6 +1283,13 @@ caseTest('every native run reports its command and TAP result', 8000, async () =
 // test inside its own deadline, as it stopped the Go model_generation case (testcase.Process) after 120000 ms (T185).
 caseTest('a coverage process deadline is not shorter than the longest declared test class', COMPUTE, () => {
   assert.ok(NATIVE_DEADLINE >= PROCESS, `NATIVE_DEADLINE ${NATIVE_DEADLINE} ms is shorter than PROCESS ${PROCESS} ms`);
+});
+
+// The deadline stops a process that does not end. The process here never ends, so the case holds on any machine under any load;
+// every other case passes NATIVE_DEADLINE and no run that is merely slow can reach it.
+caseTest('a process that never ends is stopped at its deadline', PROCESS, async () => {
+  const result = await run(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], undefined, 100);
+  assert.equal(result.error, 'timeout after 100 ms');
 });
 
 // A go symbol <parent>/<case> names a subtest: go test -run applies each level of a pattern to every test, so the plain

@@ -43,9 +43,6 @@ jobs:
       - name: install common gate tools
         if: ${{ steps.plan.outputs.common_tools != '[]' }}
         run: make install-tools TOOLS="${{ join(fromJSON(steps.plan.outputs.common_tools), ' ') }}"
-      - name: install PHP symbol extractor
-        if: ${{ contains(steps.plan.outputs.extractors, 'php') }}
-        run: make kit-install-symbols EXTRACTORS=php
       - name: install shared prerequisites
         run: make kit-ci-setup GROUP=shared
       - id: context_prepare
@@ -215,9 +212,6 @@ jobs:
         run: make install-tools TOOLS="${{ join(matrix.installTools, ' ') }}"
       - name: install runtime prerequisites
         run: make kit-ci-setup GROUP=runtime RUNTIME=${{ matrix.runtime }}
-      - name: install PHP symbol extractor
-        if: ${{ matrix.runtime == 'php' && contains(needs.shared.outputs.extractors, 'php') }}
-        run: make kit-install-symbols EXTRACTORS=php
       - id: context_prepare
         name: prepare runtime CI context
         run: make kit-ci-context-prepare GROUP=runtime RUNTIME=${{ matrix.runtime }}
