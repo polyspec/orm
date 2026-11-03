@@ -5273,6 +5273,97 @@
         "packages/go/internal/recipe/requests.go"
       ]
     },
+    "conformance-verification-check/go": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/conformance_verification/**",
+        "packages/go/orm/recipe_conformance_verification_test.go",
+        "packages/go/internal/recipe/recipe.go",
+        "packages/go/internal/recipe/database.go",
+        "packages/go/internal/recipe/requests.go"
+      ]
+    },
+    "conformance-verification-check/rust": {
+      "scope": "owner",
+      "needs": [
+        "rust",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/conformance_verification/**",
+        "packages/rust/tests/tests/conformance_verification_mysql.rs",
+        "packages/rust/tests/tests/conformance_verification_postgres.rs",
+        "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+        "packages/rust/tests/src/recipe.rs"
+      ]
+    },
+    "conformance-verification-check/typescript": {
+      "scope": "owner",
+      "needs": [
+        "node-modules",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/conformance_verification/**",
+        "packages/ts/tests/conformance_verification-mysql.test.mjs",
+        "packages/ts/tests/conformance_verification-postgres.test.mjs",
+        "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+        "packages/ts/tests/recipe.mjs",
+        "packages/ts/tests/recipe_model.mjs"
+      ]
+    },
+    "conformance-verification-check/python": {
+      "scope": "owner",
+      "needs": [
+        "python",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/conformance_verification/**",
+        "packages/python/tests/test_conformance_verification_mysql.py",
+        "packages/python/tests/test_conformance_verification_postgres.py",
+        "packages/python/tests/test_conformance_verification_sqlite.py",
+        "packages/python/tests/recipe.py",
+        "packages/python/tests/recipe_model.py"
+      ]
+    },
+    "conformance-verification-check/php": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/conformance_verification/**",
+        "packages/php/tests/ConformanceVerificationMysqlRecipeTest.php",
+        "packages/php/tests/ConformanceVerificationPostgresRecipeTest.php",
+        "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php/tests/RecipeModel.php"
+      ]
+    },
+    "conformance-verification-check/php-extension": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/conformance_verification/**",
+        "packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php/tests/RecipeModel.php"
+      ]
+    },
     "audit-triggers-check/go": {
       "scope": "owner",
       "needs": [
