@@ -163,6 +163,10 @@
       ],
       "additionalProperties": false,
       "properties": {
+        "after": {
+          "$ref": "#/$defs/ops/sql.exec",
+          "description": "The statement that runs once the rows of the seed are written, for what those rows leave behind (FCV-13)."
+        },
         "rows": {
           "type": "object",
           "propertyNames": {

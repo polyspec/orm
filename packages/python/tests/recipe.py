@@ -2277,6 +2277,9 @@ def _run_case_on(
                             f"recipe {path}, case {case['id']}, {part} seed row {index} of {table}, database {database}: "
                             f"{error!r}"
                         ) from error
+        for owner in (recipe, case):
+            if "after" in owner.get("seed", {}):
+                _run_database_step(owner["seed"]["after"], context)
         for index, step in enumerate(case["steps"]):
             try:
                 _run_database_step(step, context)

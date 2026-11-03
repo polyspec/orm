@@ -504,6 +504,7 @@ export async function prepareRecipeDatabase(path, database, dsn) {
       const metadata = await catalog.describeTable({ namespace, name: table });
       for (const row of values) await catalog.insertRow(metadata, assignments(row, context));
     }
+    if (recipe.seed?.after !== undefined) await runStep(recipe.seed.after, context);
   } finally {
     await catalog.close();
     await db.close();
@@ -538,6 +539,9 @@ async function runCaseOn({ name, recipe, recipeCase, database, schema, caseDatab
         const metadata = await catalog.describeTable({ namespace, name: table });
         for (const row of values) await catalog.insertRow(metadata, assignments(row, context));
       }
+    }
+    for (const after of [recipe.seed?.after, recipeCase.seed?.after]) {
+      if (after !== undefined) await runStep(after, context);
     }
     step('seed rows inserted');
     for (const [index, current] of recipeCase.steps.entries()) {

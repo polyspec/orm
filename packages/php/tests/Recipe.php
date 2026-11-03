@@ -2289,6 +2289,11 @@ final class Recipe
                         }
                     }
                 }
+                foreach ([$recipe['seed']['after'] ?? null, $case['seed']['after'] ?? null] as $after) {
+                    if ($after !== null && (!isset($after['only']) || in_array($database, $after['only'], true))) {
+                        self::databaseStep($after, $context);
+                    }
+                }
                 foreach ($case['steps'] as $index => $step) {
                     // A step with `only` runs on the databases that it names, and no other.
                     if (isset($step['only']) && !in_array($database, $step['only'], true)) {

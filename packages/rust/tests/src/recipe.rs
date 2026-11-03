@@ -2693,6 +2693,12 @@ mod database {
             }
         }
         // The seed rows are written; the steps reach the catalog through the option, so the seed's borrow ends here.
+        for after in [&recipe["seed"]["after"], &case["seed"]["after"]] {
+            let named = after["only"].as_array().is_none_or(|only| only.iter().any(|name| name.as_str() == Some(database)));
+            if after.is_object() && named {
+                run_step(catalog, after, context).await.map_err(|failure| format!("seed after, database {database}: {failure:?}"))?;
+            }
+        }
         polyspec_orm_testcase::step("seed rows inserted");
         for (index, current) in case["steps"].as_array().into_iter().flatten().enumerate() {
             let op = current["op"].as_str().unwrap_or_default();

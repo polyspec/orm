@@ -139,6 +139,14 @@
  ],
  "fixture": "contracts/fixtures/conformance_verification/dbspec-set.json",
  "seed": {
+  "after": {
+   "op": "sql.exec",
+   "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
+   "only": [
+    "postgres"
+   ],
+   "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
+  },
   "rows": {
    "user": [
     {
@@ -6064,14 +6072,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -6431,14 +6431,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -6817,14 +6809,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -7186,14 +7170,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -7471,14 +7447,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -9488,14 +9456,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -10322,14 +10282,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -10937,14 +10889,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -11669,14 +11613,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -12270,14 +12206,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -13133,14 +13061,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -14512,14 +14432,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -14745,14 +14657,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -14834,14 +14738,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -15503,14 +15399,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -15890,14 +15778,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -16865,14 +16745,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -18920,14 +18792,6 @@
        }
       }
      }
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -20993,14 +20857,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -22230,14 +22086,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -22365,14 +22213,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -22784,14 +22624,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -24510,14 +24342,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -25174,14 +24998,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -27808,14 +27624,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -30135,14 +29943,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -30390,14 +30190,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -32312,14 +32104,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -34251,14 +34035,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -36187,14 +35963,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -38966,14 +38734,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -40530,14 +40290,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -42118,14 +41870,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -42502,14 +42246,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -43302,14 +43038,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -44098,14 +43826,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -44913,14 +44633,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -45701,14 +45413,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -47144,14 +46848,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -47929,14 +47625,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -48712,14 +48400,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -50091,14 +49771,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -50167,14 +49839,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -50238,14 +49902,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -50316,14 +49972,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -50391,14 +50039,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -50637,14 +50277,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -50962,14 +50594,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -52481,14 +52105,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -53042,14 +52658,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -55564,14 +55172,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\"));",
-     "only": [
-      "postgres"
-     ]
     },
     {
      "op": "model.get_by",
@@ -58613,14 +58213,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -59577,14 +59169,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -62518,14 +62102,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -65408,14 +64984,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -67572,14 +67140,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -68321,14 +67881,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -70448,14 +70000,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -71706,14 +71250,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -72016,14 +71552,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
