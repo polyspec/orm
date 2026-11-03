@@ -1033,7 +1033,6 @@
         "packages/ts/src/bin/orm-gen.ts",
         "packages/python/tests/test_aggregate_numeric.py",
         "packages/python/tests/test_aggregate_numeric_driver_values.py",
-        "packages/python/tests/test_related_output.py",
         "packages/python/tests/test_model_json_text.py",
         "packages/python/tests/test_styled_column_states.py",
         "packages/python/tests/test_styled_sql_null.py",
@@ -1142,7 +1141,7 @@
         },
         {
           "id": "queries-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/model -run 'Conditions|JoinsAndRelations|ColumnsAndSubqueries|TimeSetterRecordsBadText' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/model -run 'Conditions|ColumnsAndSubqueries|TimeSetterRecordsBadText' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/model/model_test.go",
@@ -1479,12 +1478,11 @@
         },
         {
           "id": "queries-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric && packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric_driver_values && packages/python/.venv/bin/python -m packages.python.tests.test_terminal_by && packages/python/.venv/bin/python -m packages.python.tests.test_related_output && packages/python/.venv/bin/python -m packages.python.tests.test_model_json_text && packages/python/.venv/bin/python -m packages.python.tests.test_styled_column_states && packages/python/.venv/bin/python -m packages.python.tests.test_styled_sql_null && packages/python/.venv/bin/python -m packages.python.tests.test_values",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric && packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric_driver_values && packages/python/.venv/bin/python -m packages.python.tests.test_terminal_by && packages/python/.venv/bin/python -m packages.python.tests.test_model_json_text && packages/python/.venv/bin/python -m packages.python.tests.test_styled_column_states && packages/python/.venv/bin/python -m packages.python.tests.test_styled_sql_null && packages/python/.venv/bin/python -m packages.python.tests.test_values",
           "shard": "other",
           "inputs": [
             "packages/python/tests/test_aggregate_numeric.py",
             "packages/python/tests/test_aggregate_numeric_driver_values.py",
-            "packages/python/tests/test_related_output.py",
             "packages/python/tests/test_model_json_text.py",
             "packages/python/tests/test_styled_column_states.py",
             "packages/python/tests/test_styled_sql_null.py",
@@ -3452,7 +3450,6 @@
         "coverage-model-generation-model-generation-check",
         "rust-model-generation-repeat-and-build-equivalence",
         "dynamic-vs-scanned-model-chain-dispatch",
-        "model-connection-and-join-methods",
         "static-model-chain-generation",
         "dynamic-model-chain-resolution",
         "dsl-50-operator-value-shapes",

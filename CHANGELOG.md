@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Docs: FCV-2 states the Rust compile fixtures of `ts-dbspec-plan` and `ts-dbspec-render-dialect` in the form the native-binding rule reads.
 - PHP and the PHP extension refuse a number stored in a SQLite TIME or DATETIME column of a described read with GRID_TEMPORAL_VALUE, as the other runtimes do, and temporal_write_and_limits holds the temporal writes, keys and limits.
 - A Rust page of exactly its byte budget answers, and all runtimes state a budget refusal in the same message, which INT-115 states.
 - A plain read-only query returns a binary value as its bytes in all six runtimes, and INT-153 states the form.

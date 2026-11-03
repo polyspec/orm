@@ -1800,6 +1800,7 @@ class ChainBuild {
   /** The child model of a relation. */
   relation(r) {
     const child = coreModel(r.model, this.context);
+    if (r.connection !== undefined) child.connect(refOf(r.connection, this.context));
     for (const [left, right] of r.match ?? []) child[CORE].matches.push({ left, right });
     if (r.alias !== undefined) child[CORE].alias = snakeOf(r.alias);
     for (const [column, value] of Object.entries(r.possible ?? {})) child[CORE].possible = { column, value: chainValue(value, this.context) };

@@ -6733,7 +6733,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testJoinsAndRelations"
+          "id": "ModelTest::testLoadedRowShortConnectionCall"
         }
       ],
       "owner": {
@@ -9287,7 +9287,13 @@
         "DIA-25",
         "COD-2",
         "INT-91",
-        "PRT-78"
+        "PRT-78",
+        "PLN-10",
+        "PLN-41",
+        "PLN-42",
+        "PLN-43",
+        "DBS-118",
+        "PLN-35"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -9453,7 +9459,13 @@
         "DIA-25",
         "COD-2",
         "INT-91",
-        "PRT-78"
+        "PRT-78",
+        "PLN-10",
+        "PLN-41",
+        "PLN-42",
+        "PLN-43",
+        "DBS-118",
+        "PLN-35"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -9619,7 +9631,13 @@
         "DIA-25",
         "COD-2",
         "INT-91",
-        "PRT-78"
+        "PRT-78",
+        "PLN-10",
+        "PLN-41",
+        "PLN-42",
+        "PLN-43",
+        "DBS-118",
+        "PLN-35"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -27496,60 +27514,6 @@
       }
     },
     {
-      "id": "model-connection-and-join-methods",
-      "kind": "feature",
-      "requirements": [
-        "PLN-10",
-        "DBS-118",
-        "PLN-35",
-        "PLN-41",
-        "PLN-42",
-        "PLN-43"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/model_test.go",
-          "id": "TestJoinsAndRelations"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testJoinsAndRelations"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
-          "id": "ModelTestExtensionTest::testJoinsAndRelations"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/model.mjs",
-          "id": "joinsAndRelations"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration_program/main.rs",
-          "id": "joins_and_relations",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-unit",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_TEST=joins_and_relations"
-          ]
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_sqlite.py",
-          "id": "test_joined_child_refuses_its_own_connection"
-        }
-      ]
-    },
-    {
       "id": "aes-current-version-write",
       "kind": "feature",
       "requirements": [
@@ -29537,55 +29501,6 @@
         "feature": "model_writes",
         "part": "owner/python"
       }
-    },
-    {
-      "id": "relation-model-output-under-relation-name",
-      "kind": "feature",
-      "requirements": [
-        "DBS-118"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/model_test.go",
-          "id": "TestJoinsAndRelations"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testJoinsAndRelations"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
-          "id": "ModelTestExtensionTest::testJoinsAndRelations"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/model.mjs",
-          "id": "joinsAndRelations"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_related_output.py",
-          "id": "test_relation_model_is_written_under_its_relation_name"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration_program/main.rs",
-          "id": "joins_and_relations",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-unit",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_TEST=joins_and_relations"
-          ]
-        }
-      ]
     },
     {
       "id": "statement-subscriber-failure-preserves-error",
