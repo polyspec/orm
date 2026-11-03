@@ -758,39 +758,10 @@
         "packages/ts/src/engine/params.ts",
         "packages/ts/src/engine/planner.ts",
         "packages/ts/src/engine/validate.ts",
-        "packages/ts/tests/complex-query.mjs",
-        "packages/ts/tests/complex-query-support.mjs",
         "packages/ts/tests/complex-query.types.ts",
         "packages/ts/tests/fulltext-chain-types.mjs",
         "packages/ts/tests/paginate-order.mjs",
         "packages/ts/tests/typecheck.ts"
-      ]
-    },
-    "complex-query-typescript-check": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "node-modules",
-        "databases"
-      ],
-      "inputs": [
-        "Makefile",
-        "contracts/fixtures/complex_query/**",
-        "scripts/typescript/models.mts",
-        "packages/ts/src/names.ts",
-        "packages/ts/src/core.ts",
-        "packages/ts/src/database.ts",
-        "packages/ts/src/bind_check.ts",
-        "packages/ts/src/engine/dialect.ts",
-        "packages/ts/src/engine/params.ts",
-        "packages/ts/src/engine/planner.ts",
-        "packages/ts/src/engine/validate.ts",
-        "packages/ts/src/generate/names.ts",
-        "packages/ts/src/generate/typescript.ts",
-        "packages/ts/tests/complex-query.mjs",
-        "packages/ts/tests/complex-query-support.mjs",
-        "packages/ts/tests/case-database.mjs",
-        "tests/testcase.mts"
       ]
     },
     "complex-query-typescript-request-check": {
@@ -812,25 +783,7 @@
         "packages/ts/src/engine/validate.ts",
         "packages/ts/tests/complex-query-request.mjs",
         "packages/ts/tests/complex-query-request.types.ts",
-        "packages/ts/tests/complex-query-request-types.mjs",
-        "packages/ts/tests/complex-query-support.mjs"
-      ]
-    },
-    "complex-query-php-db-check": {
-      "scope": "suite",
-      "needs": [
-        "php",
-        "composer",
-        "databases"
-      ]
-    },
-    "complex-query-php-extension-db-check": {
-      "scope": "suite",
-      "needs": [
-        "php",
-        "composer",
-        "php-extension-tools",
-        "databases"
+        "packages/ts/tests/complex-query-request-types.mjs"
       ]
     },
     "ts-aes-auth-check": {
@@ -1556,14 +1509,6 @@
         "composer",
         "php-extension-tools",
         "databases"
-      ]
-    },
-    "complex-query-rust-check": {
-      "scope": "suite",
-      "needs": [
-        "rust",
-        "databases",
-        "complex-query"
       ]
     },
     "codec-check": {
@@ -3528,7 +3473,6 @@
         "node-modules",
         "databases",
         "python",
-        "complex-query",
         "php-extension-tools"
       ]
     },
@@ -3548,40 +3492,6 @@
         "composer",
         "node-modules",
         "databases"
-      ]
-    },
-    "complex-query-go-plan-check": {
-      "scope": "owner",
-      "needs": [
-        "go"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/go/complexquery/public_plan_test.go",
-        "packages/go/complexquery/complex_query_test.go",
-        "packages/go/complexquery/query.go",
-        "packages/go/models.txt",
-        "contracts/fixtures/complex_query/complex_query.dbs",
-        "contracts/fixtures/complex_query/complex_query.json",
-        "contracts/fixtures/complex_query/dbspec-set.json"
-      ]
-    },
-    "complex-query-rust-plan-check": {
-      "scope": "owner",
-      "needs": [
-        "rust"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/rust/tests/tests/integration/coverage_complex_query.rs",
-        "packages/rust/tests/tests/integration/main.rs",
-        "packages/rust/tests/Cargo.toml",
-        "packages/rust/tests/build.rs",
-        "packages/rust/tests/bench_model.rs",
-        "packages/rust/Cargo.toml",
-        "contracts/fixtures/complex_query/complex_query.dbs",
-        "contracts/fixtures/complex_query/complex_query.json",
-        "contracts/fixtures/complex_query/dbspec-set.json"
       ]
     },
     "go-test-check": {
@@ -3675,33 +3585,7 @@
         "packages/python/src/polyspec/orm/engine/planner.py",
         "packages/python/src/polyspec/orm/database.py",
         "packages/python/tests/test_complex_query.py",
-        "packages/python/tests/complex_query_product.py",
-        "contracts/fixtures/complex_query/complex_query.dbs",
-        "contracts/fixtures/complex_query/complex_query.json"
-      ]
-    },
-    "complex-query-python-mysql-check": {
-      "scope": "suite",
-      "needs": [
-        "databases",
-        "complex-query",
-        "python"
-      ]
-    },
-    "complex-query-python-postgres-check": {
-      "scope": "suite",
-      "needs": [
-        "databases",
-        "complex-query",
-        "python"
-      ]
-    },
-    "complex-query-python-sqlite-check": {
-      "scope": "suite",
-      "needs": [
-        "databases",
-        "complex-query",
-        "python"
+        "contracts/fixtures/complex_query/complex_query.dbs"
       ]
     },
     "parity-declarations-check": {
@@ -4378,7 +4262,6 @@
       "needs": [
         "node-modules",
         "databases",
-        "complex-query",
         "go"
       ]
     },
@@ -4387,7 +4270,6 @@
       "needs": [
         "node-modules",
         "databases",
-        "complex-query",
         "go"
       ]
     },
@@ -4396,7 +4278,6 @@
       "needs": [
         "node-modules",
         "databases",
-        "complex-query",
         "go"
       ]
     },
@@ -4405,7 +4286,6 @@
       "needs": [
         "node-modules",
         "databases",
-        "complex-query",
         "php",
         "composer"
       ]
@@ -4415,7 +4295,6 @@
       "needs": [
         "node-modules",
         "databases",
-        "complex-query",
         "php",
         "composer"
       ]
@@ -4425,7 +4304,6 @@
       "needs": [
         "node-modules",
         "databases",
-        "complex-query",
         "php",
         "composer"
       ]
@@ -4435,7 +4313,6 @@
       "needs": [
         "node-modules",
         "databases",
-        "complex-query",
         "php",
         "composer",
         "php-extension-tools"
@@ -4446,7 +4323,6 @@
       "needs": [
         "node-modules",
         "databases",
-        "complex-query",
         "php",
         "composer",
         "php-extension-tools"
@@ -4457,7 +4333,6 @@
       "needs": [
         "node-modules",
         "databases",
-        "complex-query",
         "php",
         "composer",
         "php-extension-tools"
@@ -4468,7 +4343,6 @@
       "needs": [
         "node-modules",
         "databases",
-        "complex-query",
         "interfaces-typescript"
       ]
     },
@@ -4476,16 +4350,14 @@
       "scope": "suite",
       "needs": [
         "node-modules",
-        "databases",
-        "complex-query"
+        "databases"
       ]
     },
     "feature-coverage/typescript/sqlite": {
       "scope": "suite",
       "needs": [
         "node-modules",
-        "databases",
-        "complex-query"
+        "databases"
       ]
     },
     "feature-coverage/python/mysql": {
@@ -4493,7 +4365,6 @@
       "needs": [
         "node-modules",
         "databases",
-        "complex-query",
         "python"
       ]
     },
@@ -4502,7 +4373,6 @@
       "needs": [
         "node-modules",
         "databases",
-        "complex-query",
         "python"
       ]
     },
@@ -4511,7 +4381,6 @@
       "needs": [
         "node-modules",
         "databases",
-        "complex-query",
         "python"
       ]
     },
@@ -4520,7 +4389,6 @@
       "needs": [
         "node-modules",
         "databases",
-        "complex-query",
         "rust"
       ]
     },
@@ -4529,7 +4397,6 @@
       "needs": [
         "node-modules",
         "databases",
-        "complex-query",
         "rust"
       ]
     },
@@ -4538,7 +4405,6 @@
       "needs": [
         "node-modules",
         "databases",
-        "complex-query",
         "rust"
       ]
     },
@@ -4664,7 +4530,6 @@
         "parity-symbols",
         "php-extension-tools",
         "databases",
-        "complex-query",
         "flowmark",
         "go-lease"
       ]
@@ -4682,7 +4547,6 @@
         "parity-symbols",
         "php-extension-tools",
         "databases",
-        "complex-query",
         "flowmark",
         "go-lease"
       ]

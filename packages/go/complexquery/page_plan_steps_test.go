@@ -7,6 +7,7 @@ import (
 
 	"github.com/polyspec/orm/packages/go/complexmodel"
 	"github.com/polyspec/orm/packages/go/orm"
+	_ "github.com/polyspec/orm/packages/go/orm/sqlite"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
@@ -67,4 +68,14 @@ func TestGetPagePlanSteps(t *testing.T) {
 	if _, err := fulltext.GetPagePlanSteps(1, 20); orm.ErrorCode(err) != orm.CodeOperatorNotAllowed {
 		t.Errorf("SQLite full-text error = %v, want %s", err, orm.CodeOperatorNotAllowed)
 	}
+}
+
+func openComplexDB(t *testing.T, dsn string, config orm.Config) *orm.DB {
+	t.Helper()
+	db, err := complexmodel.Connect(dsn, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { testcase.Close(t, db) })
+	return db
 }

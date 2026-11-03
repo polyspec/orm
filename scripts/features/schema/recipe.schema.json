@@ -3784,6 +3784,21 @@
               "page": {
                 "type": "boolean"
               },
+              "plan": {
+                "description": "The page is read by getPagePlanSteps (DSL-159): the role and tables of each step, with the counts of plan_count.",
+                "const": true
+              },
+              "plan_count": {
+                "description": "The texts counted in the upper-cased statement of each step of plan.",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "items": {
+                "description": "The json of a page also holds items, the rows of the page narrowed to pick.",
+                "const": true
+              },
               "compile": {
                 "description": "The query is read by getQuery: its text and binds, not its rows.",
                 "const": true
@@ -3903,7 +3918,8 @@
             "enum": [
               "all",
               "tables",
-              "statements"
+              "statements",
+              "shape"
             ]
           },
           "expect": {
@@ -6545,6 +6561,36 @@
           "properties": {
             "placed": {
               "$ref": "#/$defs/name"
+            }
+          }
+        },
+        {
+          "description": "The boolean full-text search of a text in the columns of the model (DSL-32).",
+          "type": "object",
+          "required": [
+            "fulltext_boolean"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "fulltext_boolean": {
+              "type": "object",
+              "required": [
+                "columns",
+                "text"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "columns": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "$ref": "#/$defs/name"
+                  }
+                },
+                "text": {
+                  "type": "string"
+                }
+              }
             }
           }
         },

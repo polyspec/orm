@@ -540,3 +540,24 @@ harness = false
 name = "dbspec_rules_recipe_none"
 path = "tests/dbspec_rules_recipe_none.rs"
 harness = false
+
+# Each case of the complex_query recipe, contracts/fixtures/complex_query/complex_query.json, is the trial complex_query_mysql::<case id>
+# (docs/spec/feature-coverage.md FCV-3).
+[[test]]
+name = "complex_query_mysql"
+path = "tests/complex_query_mysql.rs"
+harness = false
+
+# Each case of the complex_query recipe, contracts/fixtures/complex_query/complex_query.json, is the trial complex_query_postgres::<case id>
+# (docs/spec/feature-coverage.md FCV-3).
+[[test]]
+name = "complex_query_postgres"
+path = "tests/complex_query_postgres.rs"
+harness = false
+
+# Each case of the complex_query recipe, contracts/fixtures/complex_query/complex_query.json, is the trial complex_query_sqlite::<case id>
+# (docs/spec/feature-coverage.md FCV-3).
+[[test]]
+name = "complex_query_sqlite"
+path = "tests/complex_query_sqlite.rs"
+harness = false
