@@ -288,7 +288,7 @@ CI_TARGETS_stress_pg_sqlite = feature-stress-pg-sqlite-check
 # the server environment of TEST_ENV has no such database.
 # databases-create is the setup step databases/create of the runner (scripts/check/run.mts) and of make owner-check: it
 # builds the TypeScript client, creates the run-owned bench and decimal databases, and writes every DSN to the run environment before coverage reads database state.
-databases-create: typescript-build
+databases-create: typescript-current
 	$(READ_TYPESCRIPT)
 	$(NODE) scripts/check/databases.mts create '$(SERVERS)' '$(DIRECTORY)' '$(NAME)'
 
@@ -509,9 +509,8 @@ dbspec-lock-python-check: python-venv-check
 dbspec-lock-rust-check:
 	cd packages/rust && $(CARGO_TEST) dbspec-lock-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --lib sqlite_lock_result_tests -- --nocapture
 
-dbspec-lock-ts-check: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+dbspec-lock-ts-check: typescript-current
+	$(READ_TYPESCRIPT)
 	$(NODE) --test packages/ts/tests/dbspec-begin-exclusive-lock.mjs
 
 # dbspec-apply-stress-bench runs the case stress_plan_commits_each_step of the dbspec_apply recipe in Go: it applies the 100-table
@@ -693,9 +692,8 @@ dbspec-stress-bench/php: php-vendor-check dbspec-stress-bench/prepare php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecStressTest.php
 dbspec-stress-bench/php-introspect: php-vendor-check dbspec-stress-bench/prepare php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecIntrospectStressTest.php
-dbspec-stress-bench/typescript: dbspec-stress-bench/prepare lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+dbspec-stress-bench/typescript: dbspec-stress-bench/prepare typescript-current
+	$(READ_TYPESCRIPT)
 	$(NODE) --test packages/ts/tests/dbspec-stress.mjs
 	$(NODE) --test packages/ts/tests/dbspec-stress.mjs
 dbspec-stress-bench/rust: dbspec-stress-bench/prepare
@@ -729,12 +727,11 @@ dbspec-verify-errors-rust-check: lease-tool
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-tests --test dbspec_apply_verification_errors_none -- --nocapture
 
 .PHONY: dbspec-verify-errors-check dbspec-verify-errors-php-extension-check
-dbspec-verify-errors-check: dbspec-verify-errors-rust-check dbspec-verify-errors-php-extension-check php-vendor-check python-venv-check lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
+dbspec-verify-errors-check: dbspec-verify-errors-rust-check dbspec-verify-errors-php-extension-check php-vendor-check python-venv-check typescript-current
+	$(READ_TYPESCRIPT)
 	$(GO_TEST) ./packages/go/orm -run '^TestRecipeDbspecApplyVerificationErrorsNone$$' -count=1
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecApplyVerificationErrorsRecipeTest.php
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_dbspec_apply_verification_errors_none
-	$(TSC_BUILD)
 	$(NODE) --test packages/ts/tests/dbspec_apply_verification_errors-none.test.mjs
 dbspec-verify-errors-php-extension-check: php-models orm-install-php-extension-tools
 	@set -eu; run_dir="$(abspath .runtime/run)/dbspec-verify-errors-php-extension-check-$$$$"; trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; $(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecReleaseHooksTest.php; env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecApplyVerificationErrorsRecipeTestExtensionTest.php
@@ -1336,15 +1333,15 @@ feature-performance-check: feature-check/build php-vendor-check php-models orm-i
 	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
 	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) node scripts/features/performance-reference.mts measure
 	rm -rf $(RUN_DIR)
-# feature-coverage/build publishes the TypeScript client only when its sources changed, and holds the exclusive lease for that build alone, so runs of
-# feature-coverage-of/<id> read the client together under the shared lease.
-.PHONY: feature-coverage/build
-feature-coverage/build: lease-tool orm-codes-typescript
+# typescript-current publishes the TypeScript client only when its sources changed, and holds the exclusive lease for that build alone, so the targets
+# that read the client ($(READ_TYPESCRIPT)) run together. A target that reads the editor packages too has typescript-build, whose build includes them.
+.PHONY: typescript-current
+typescript-current: lease-tool orm-codes-typescript
 	$(NODE) scripts/typescript/build.mts --current || $(LEASE) run $(TYPESCRIPT_LEASES) exclusive --wait -- $(RUN_LONG) typescript-build -- npm run typescript:build
 # feature-coverage-of/<id> runs the coverage of one feature on every runtime and database (FCV-6), the Verification of a row of that feature.
 # The Python owners run on the client's venv (ORM_PYTHON) with the slot models generated into the run directory (ORM_PYTHON_BIND_MODELS), and the php-extension owners on a PHP that loads the extension built into its run directory.
 feature-coverage-of/%: RUN_DIR = $(abspath .runtime/run)/feature-coverage-of-$$PPID
-feature-coverage-of/%: feature-coverage/build php-vendor-check php-models orm-install-php-extension-tools python-venv-check
+feature-coverage-of/%: typescript-current php-vendor-check php-models orm-install-php-extension-tools python-venv-check
 	$(READ_TYPESCRIPT)
 	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
 	$(PYTHON_VENV)/bin/orm-gen gen --set tests/bind/dbspec-set.json --out $(RUN_DIR)/bind-python-models
@@ -1410,10 +1407,9 @@ client-unit-check/relation-keys: php-vendor-check php-models
 client-unit-check/code-catalog: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodeCatalogTest.php
 # client-unit-check/insert-parts runs the cases of contracts/fixtures/insert_parts.json in PHP and TypeScript.
-client-unit-check/insert-parts: php-vendor-check lease-tool orm-codes-typescript php-models
-	$(HOLD_TYPESCRIPT)
+client-unit-check/insert-parts: php-vendor-check php-models typescript-current
+	$(READ_TYPESCRIPT)
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/InsertPartsTest.php
-	$(TSC_BUILD)
 	$(NODE) --conditions=orm-test --test packages/ts/tests/insert-parts.mjs
 client-unit-check/engine: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/EngineTest.php
@@ -1437,7 +1433,7 @@ client-unit-check/runtime-model: php-vendor-check php-models
 client-unit-check/orm-gen-python: python-venv-check
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_orm_gen.WriteTextIfChangedTest
 
-client-unit-check/orm-gen-typescript: typescript-build
+client-unit-check/orm-gen-typescript: typescript-current
 	$(READ_TYPESCRIPT)
 	$(NODE) --test --test-name-pattern='writeTextIfChanged' packages/ts/tests/generate.mjs
 
@@ -1468,7 +1464,7 @@ generator-consumer-check/php-extension: php-vendor-check php-models
 	mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
 	env ORM_PHP_MODE=extension POLYSPEC_ORM_EXTENSION="$$run_dir/php-extension/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelNativeTest.php packages/php-ext/tests/ModelDslNativeTest.php --filter 'testPhpGeneratedTypedGetterUsesInternalModelStorage|testDynamicConditionsAndBuilderCallsReturnTheNativeModel'
-generator-consumer-check/typescript: typescript-build
+generator-consumer-check/typescript: typescript-current
 	$(READ_TYPESCRIPT)
 	$(NODE) --test packages/ts/tests/generate.mjs
 	$(NODE) --test --test-name-pattern='generate-scan/model_calls' packages/ts/tests/generate-scan.mjs
@@ -1502,10 +1498,10 @@ rust-compiler-fixtures-check/unit: lease-tool
 .PHONY: native-error-cause-check
 .PHONY: native-error-cause-check/typescript-driver native-error-cause-check/typescript-markdown native-error-cause-check/python-driver native-error-cause-check/php
 native-error-cause-check: php-models native-error-cause-check/php-extension native-error-cause-check/rust native-error-cause-check/typescript-driver native-error-cause-check/typescript-markdown native-error-cause-check/python-driver native-error-cause-check/php
-native-error-cause-check/typescript-driver: typescript-build
+native-error-cause-check/typescript-driver: typescript-current
 	$(READ_TYPESCRIPT)
 	$(NODE) --test packages/ts/tests/driver-error-lock-wait.mjs packages/ts/tests/driver-integer-param.mjs
-native-error-cause-check/typescript-markdown: typescript-build
+native-error-cause-check/typescript-markdown: typescript-current
 	$(READ_TYPESCRIPT)
 	$(NODE) packages/ts/tests/markdown.mjs
 native-error-cause-check/python-driver: python-venv-check
@@ -1710,9 +1706,8 @@ bind-message-check/php: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/BindMessagesRecipeTest.php
 bind-message-check/php-extension: php-vendor-check php-models build-php-ext
 	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/BindMessagesRecipeTestExtensionTest.php
-bind-message-check/typescript: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+bind-message-check/typescript: typescript-current
+	$(READ_TYPESCRIPT)
 	$(NODE) --conditions=orm-test packages/ts/tests/bind_messages.mjs
 
 # BIND_PY_MODELS is the model directory of the slot fixture tests/bind/dbspec-set.json that the Python recipe helper imports (FCV-4,
@@ -1852,12 +1847,11 @@ markdown-conformance-check/python: python-venv-check
 	FLOWMARK=$(FLOWMARK) $(PYTHON_VENV)/bin/python -m packages.python.tests.markdown_conformance
 markdown-conformance-check/rust: lease-tool
 	cd packages/rust && FLOWMARK=$(FLOWMARK) PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) markdown-conformance-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test markdown_conformance -- --nocapture
-markdown-conformance-check/typescript: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+markdown-conformance-check/typescript: typescript-current
+	$(READ_TYPESCRIPT)
 	FLOWMARK=$(FLOWMARK) $(NODE) --conditions=orm-test packages/ts/tests/markdown_conformance.mjs
 
-decimal-bench-sqlite: typescript-build
+decimal-bench-sqlite: typescript-current
 	$(READ_TYPESCRIPT)
 	$(NODE) scripts/decimal-bench-sqlite.mts
 
@@ -1890,13 +1884,13 @@ interface-typescript-extractor-check: interface-typescript-check lease-tool
 interface-typescript-check:
 	test -f packages/ts/testing/interfaces/typescript/node_modules/typescript/lib/typescript.js || { echo "interface-typescript-check: packages/ts/testing/interfaces/typescript/node_modules/typescript is missing; run make orm-install-interfaces-typescript"; exit 1; }
 
-interface-check/self-test: php-vendor-check lease-tool typescript-build interface-typescript-check python-venv-check
+interface-check/self-test: php-vendor-check lease-tool typescript-current interface-typescript-check python-venv-check
 	$(READ_TYPESCRIPT)
 	ORM_PYTHON=$(PYTHON_VENV)/bin/python PATH="$(HOME)/.cargo/bin:$(PATH)" $(NODE) tests/interfaces/check/main.mts --self-test
 
 # interface-record writes the symbol snapshots and manifest hashes that interface-check compares, with the same checker and leases; LANGUAGE=<name> records one language.
 .PHONY: interface-record
-interface-record: php-vendor-check lease-tool typescript-build interface-typescript-check python-venv-check
+interface-record: php-vendor-check lease-tool typescript-current interface-typescript-check python-venv-check
 	$(READ_TYPESCRIPT)
 	ORM_PYTHON=$(PYTHON_VENV)/bin/python PATH="$(HOME)/.cargo/bin:$(PATH)" $(NODE) tests/interfaces/check/main.mts --record $(if $(LANGUAGE),-language $(LANGUAGE),)
 
@@ -1907,9 +1901,8 @@ go-model-check:
 # ts-model-check builds the TypeScript client, then fails when the models
 # script scans a source that does not call models or misses one that does,
 # or when a generated model set differs from the output of orm-gen gen --check.
-ts-model-check: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+ts-model-check: typescript-current
+	$(READ_TYPESCRIPT)
 	$(NODE) --test packages/ts/tests/models-scan.mjs
 
 perf-check:
@@ -1934,21 +1927,18 @@ ts-check/test: ts-check/hold
 	$(WITH_TEST_ENV) npm run typescript:test
 
 # ts-aes-auth-check builds the TypeScript client and runs only the AES authentication error cases.
-ts-aes-auth-check: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+ts-aes-auth-check: typescript-current
+	$(READ_TYPESCRIPT)
 	$(NODE) --test packages/ts/tests/codec-aes-errors.test.mjs
 
 # ts-codec-errors-check builds the TypeScript client and runs only codec error propagation cases.
-ts-codec-errors-check: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+ts-codec-errors-check: typescript-current
+	$(READ_TYPESCRIPT)
 	$(NODE) --test packages/ts/tests/codec-errors.test.mjs
 
 # sqlite-version-ts-check runs only the TypeScript SQLite native-version unit cases.
-sqlite-version-ts-check: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+sqlite-version-ts-check: typescript-current
+	$(READ_TYPESCRIPT)
 	$(NODE) --test packages/ts/tests/sqlite-version.test.mjs
 
 # rust-build-environment-check runs the Rust build library path-resolution unit cases.
@@ -1991,9 +1981,8 @@ column-function-metadata-check/go:
 	exit $$status
 column-function-metadata-check/rust: lease-tool
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib column_function_metadata
-column-function-metadata-check/typescript: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+column-function-metadata-check/typescript: typescript-current
+	$(READ_TYPESCRIPT)
 	$(RUN_LONG) column-function-metadata-typescript -- $(NODE) --test packages/ts/tests/column_function_metadata.mjs
 column-function-metadata-check/php: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CoveragePlannerTest.php --filter 'ColumnFunction.*MissingPostValidationFieldIsInternal'
@@ -2021,9 +2010,8 @@ scalar-subquery-column-check/go:
 	cd packages/go && $(GO) test ./engine/planner -run '^TestScalarSubquery' -count=1
 scalar-subquery-column-check/rust: lease-tool
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib scalar_subquery_
-scalar-subquery-column-check/typescript: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+scalar-subquery-column-check/typescript: typescript-current
+	$(READ_TYPESCRIPT)
 	$(RUN_LONG) scalar-subquery-column-typescript -- $(NODE) packages/ts/tests/scalar_subquery_type.mjs
 scalar-subquery-column-check/php: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CoveragePlannerTest.php --filter ScalarSubquery
@@ -2051,7 +2039,7 @@ page-cache-unit-check/go:
 	$(GO_TEST) ./packages/go/orm -run '^(TestPlanCachePagedReadBindsPageValues|TestCanonicalizeCompositeRequestParameterWalk)$$' -count=1
 page-cache-unit-check/php: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/PlanCacheBoundTest.php
-page-cache-unit-check/typescript: typescript-build
+page-cache-unit-check/typescript: typescript-current
 	$(READ_TYPESCRIPT)
 	$(NODE) --test packages/ts/tests/plan-cache-in.mjs
 page-cache-unit-check/python: python-venv-check
@@ -2074,9 +2062,8 @@ split-read-plan-check: split-read-plan-check/go split-read-plan-check/ts split-r
 split-read-plan-check/go: lease-tool
 	$(GO_TEST) ./packages/go/orm -run '^TestSplitRootInCountPlansNoStatementOverTheBindLimit$$' -count=1
 
-split-read-plan-check/ts: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+split-read-plan-check/ts: typescript-current
+	$(READ_TYPESCRIPT)
 	$(NODE) --test packages/ts/tests/split-plan.test.mjs
 
 split-read-plan-check/python: python-venv-check python-models
@@ -2119,9 +2106,8 @@ ts-min-check: lease-tool orm-codes-typescript
 # vectors, apply cleanup errors, the rules they do not yet cover, and the check that the Unicode word table matches its ranges at every code point.
 # The stress document is run by make bench.
 .PHONY: dbspec-ts-check
-dbspec-ts-check: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+dbspec-ts-check: typescript-current
+	$(READ_TYPESCRIPT)
 	$(NODE) --test packages/ts/tests/browser-entry.mjs packages/ts/tests/recipe_canonical.mjs packages/ts/tests/recipe_normalize.mjs packages/ts/tests/recipe_positions.mjs packages/ts/tests/recipe_invalid.mjs packages/ts/tests/recipe_files.mjs packages/ts/tests/dbspec_read_set-none.test.mjs packages/ts/tests/dbspec-set-edges.mjs packages/ts/tests/recipe_set_parse.mjs packages/ts/tests/recipe_hashes.mjs packages/ts/tests/recipe_sets.mjs packages/ts/tests/dbspec_show_create_introspect-none.test.mjs packages/ts/tests/dbspec-rules.mjs packages/ts/tests/dbspec_render_statements-none.test.mjs packages/ts/tests/dbspec_dialect_refusal-none.test.mjs packages/ts/tests/dbspec-plan-cases.mjs packages/ts/tests/dbspec-plan-invalid.mjs packages/ts/tests/dbspec-plan-chains.mjs packages/ts/tests/dbspec-plan-parse.mjs packages/ts/tests/dbspec-plan-comparisons.mjs packages/ts/tests/dbspec-add-tables-steps.mjs packages/ts/tests/dbspec-mermaid-none.test.mjs packages/ts/tests/dbspec-unicode.mjs packages/ts/tests/dbspec-show-create.mjs
 	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/dbspec_render_physical-mysql.test.mjs packages/ts/tests/dbspec_render_physical-postgres.test.mjs packages/ts/tests/dbspec_render_physical-sqlite.test.mjs packages/ts/tests/dbspec_set_decimal-mysql.test.mjs packages/ts/tests/dbspec_set_decimal-postgres.test.mjs packages/ts/tests/dbspec_set_decimal-sqlite.test.mjs
 
@@ -2310,9 +2296,8 @@ codec-check/go:
 	$(GO_TEST) ./packages/go/orm -run '^(TestRecipeCodecNone|TestRecipeCodecIntegerBeyondI64None|TestRecipeCodecBytesValueNone|TestOrderedJSONRefusesATextThatIsNotUnicode)$$' -count=1
 codec-check/rust: lease-tool
 	cd packages/rust && $(CARGO_TEST) codec-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test codec_none --test codec_integer_beyond_i64_none
-codec-check/typescript: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+codec-check/typescript: typescript-current
+	$(READ_TYPESCRIPT)
 	$(NODE) --test packages/ts/tests/codec-none.test.mjs packages/ts/tests/codec-integer-beyond-i64-none.test.mjs packages/ts/tests/codec-bytes-value-none.test.mjs
 codec-check/php: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecRecipeTest.php
@@ -2332,9 +2317,8 @@ ir-validate-check/go:
 ir-validate-check/rust: ir-validate-check/rust/recipe
 ir-validate-check/rust/recipe: lease-tool
 	cd packages/rust && $(CARGO_TEST) ir-validate-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-tests --test ir_validate_none
-ir-validate-check/typescript: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+ir-validate-check/typescript: typescript-current
+	$(READ_TYPESCRIPT)
 	$(NODE) --test packages/ts/tests/engine.mjs
 ir-validate-check/python: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_ir_validate_none
@@ -2361,9 +2345,8 @@ statement-events-check/go: lease-tool
 	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeStatementEvents(Mysql|Postgres|Sqlite)$$' -count=1
 statement-events-check/rust: lease-tool
 	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) statement-events-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test statement_events_mysql --test statement_events_postgres --test statement_events_sqlite
-statement-events-check/typescript: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+statement-events-check/typescript: typescript-current
+	$(READ_TYPESCRIPT)
 	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/statement_events-mysql.test.mjs packages/ts/tests/statement_events-postgres.test.mjs packages/ts/tests/statement_events-sqlite.test.mjs
 statement-events-check/python: lease-tool python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_statement_events_mysql
@@ -2373,9 +2356,8 @@ statement-events-check/php: lease-tool php-vendor-check php-models
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/StatementEventsRecipeTest.php
 statement-events-check/php-extension: lease-tool php-vendor-check build-php-ext
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php
-catalog-connection-check/typescript: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+catalog-connection-check/typescript: typescript-current
+	$(READ_TYPESCRIPT)
 	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/catalog_connection-mysql.test.mjs packages/ts/tests/catalog_connection-postgres.test.mjs packages/ts/tests/catalog_connection-sqlite.test.mjs packages/ts/tests/catalog_connection-sqlite-only.test.mjs
 catalog-connection-check/python: lease-tool python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_catalog_connection_mysql
@@ -2395,9 +2377,8 @@ catalog-connection-check/php-extension: lease-tool php-vendor-check build-php-ex
 schema-install-check: schema-install-check/go schema-install-check/typescript schema-install-check/python schema-install-check/php schema-install-check/php-extension schema-install-check/rust
 schema-install-check/go: lease-tool
 	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeSchemaInstall(Mysql|Postgres|Sqlite)$$' -count=1
-schema-install-check/typescript: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+schema-install-check/typescript: typescript-current
+	$(READ_TYPESCRIPT)
 	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/schema_install-mysql.test.mjs packages/ts/tests/schema_install-postgres.test.mjs packages/ts/tests/schema_install-sqlite.test.mjs
 schema-install-check/python: python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_schema_install_mysql
@@ -2431,9 +2412,8 @@ dsn-connection-check/go: lease-tool
 	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeDsnConnection(Mysql|Postgres|Sqlite)$$' -count=1
 dsn-connection-check/rust: lease-tool
 	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) dsn-connection-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dsn_connection_mysql --test dsn_connection_postgres --test dsn_connection_sqlite
-dsn-connection-check/typescript: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+dsn-connection-check/typescript: typescript-current
+	$(READ_TYPESCRIPT)
 	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/dsn_connection-mysql.test.mjs packages/ts/tests/dsn_connection-postgres.test.mjs packages/ts/tests/dsn_connection-sqlite.test.mjs
 dsn-connection-check/python: lease-tool python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_dsn_connection_mysql
@@ -2451,9 +2431,8 @@ model-queries-check/go: lease-tool
 	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeModelQueries(Chain)?(Mysql|Postgres|Sqlite)$$' -count=1
 model-queries-check/rust: lease-tool
 	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) model-queries-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test model_queries_mysql --test model_queries_postgres --test model_queries_sqlite --test model_queries_chain_mysql --test model_queries_chain_postgres --test model_queries_chain_sqlite
-model-queries-check/typescript: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+model-queries-check/typescript: typescript-current
+	$(READ_TYPESCRIPT)
 	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/model_queries-mysql.test.mjs packages/ts/tests/model_queries-postgres.test.mjs packages/ts/tests/model_queries-sqlite.test.mjs packages/ts/tests/model_queries_chain-mysql.test.mjs packages/ts/tests/model_queries_chain-postgres.test.mjs packages/ts/tests/model_queries_chain-sqlite.test.mjs
 model-queries-check/python: lease-tool python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_model_queries_mysql
@@ -2476,9 +2455,8 @@ constraints-and-relations-check/go: lease-tool
 	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipe(ConstraintsAndRelations|ImmutableWrite)(Mysql|Postgres|Sqlite)$$' -count=1
 constraints-and-relations-check/rust: lease-tool
 	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) constraints-and-relations-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test constraints_and_relations_mysql --test constraints_and_relations_postgres --test constraints_and_relations_sqlite --test immutable_write_mysql --test immutable_write_postgres --test immutable_write_sqlite
-constraints-and-relations-check/typescript: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+constraints-and-relations-check/typescript: typescript-current
+	$(READ_TYPESCRIPT)
 	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/constraints_and_relations-mysql.test.mjs packages/ts/tests/constraints_and_relations-postgres.test.mjs packages/ts/tests/constraints_and_relations-sqlite.test.mjs packages/ts/tests/immutable_write-mysql.test.mjs packages/ts/tests/immutable_write-postgres.test.mjs packages/ts/tests/immutable_write-sqlite.test.mjs
 constraints-and-relations-check/python: lease-tool python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_constraints_and_relations_mysql
@@ -2511,9 +2489,8 @@ aes-rotation-check/go: lease-tool
 # aes-rotation-check/typescript runs the recipe contracts/fixtures/aes_rotation/aes_rotation.json on the three databases in
 # TypeScript (docs/spec/feature-coverage.md FCV-3 and FCV-4): the entries aes_rotation-<database>.test.mjs.
 .PHONY: aes-rotation-check/typescript
-aes-rotation-check/typescript: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+aes-rotation-check/typescript: typescript-current
+	$(READ_TYPESCRIPT)
 	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/aes_rotation-mysql.test.mjs packages/ts/tests/aes_rotation-postgres.test.mjs packages/ts/tests/aes_rotation-sqlite.test.mjs
 
 # aes-rotation-check/python runs the recipe contracts/fixtures/aes_rotation/aes_rotation.json on the three databases in Python
@@ -2531,9 +2508,8 @@ audit-triggers-check/go: lease-tool
 	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipe(AuditTriggers|ExternalAudit)(Mysql|Postgres|Sqlite)$$' -count=1
 audit-triggers-check/rust: lease-tool
 	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) audit-triggers-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --no-fail-fast --test audit_triggers_mysql --test audit_triggers_postgres --test audit_triggers_sqlite --test external_audit_mysql --test external_audit_postgres --test external_audit_sqlite
-audit-triggers-check/typescript: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+audit-triggers-check/typescript: typescript-current
+	$(READ_TYPESCRIPT)
 	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/audit_triggers-mysql.test.mjs packages/ts/tests/audit_triggers-postgres.test.mjs packages/ts/tests/audit_triggers-sqlite.test.mjs packages/ts/tests/external_audit-mysql.test.mjs packages/ts/tests/external_audit-postgres.test.mjs packages/ts/tests/external_audit-sqlite.test.mjs
 audit-triggers-check/python: lease-tool python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_audit_triggers_mysql
@@ -2576,17 +2552,15 @@ request-hook-check/rust: lease-tool
 # request-hook-check/typescript runs the recipe contracts/fixtures/request_hook/request_hook.json on the three databases in
 # TypeScript (docs/spec/feature-coverage.md FCV-3 and FCV-4), with the native cases that a declarative step cannot observe.
 .PHONY: request-hook-check/typescript
-request-hook-check/typescript: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+request-hook-check/typescript: typescript-current
+	$(READ_TYPESCRIPT)
 	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/request_hook-mysql.test.mjs packages/ts/tests/request_hook-postgres.test.mjs packages/ts/tests/request_hook-sqlite.test.mjs
 
 # parameter-chunking-check/typescript runs the recipe contracts/fixtures/parameter_chunking/parameter_chunking.json on the
 # three databases in TypeScript (docs/spec/feature-coverage.md FCV-3 and FCV-4).
 .PHONY: parameter-chunking-check/typescript
-parameter-chunking-check/typescript: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+parameter-chunking-check/typescript: typescript-current
+	$(READ_TYPESCRIPT)
 	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/parameter_chunking-mysql.test.mjs packages/ts/tests/parameter_chunking-postgres.test.mjs packages/ts/tests/parameter_chunking-sqlite.test.mjs
 
 # request-hook-check/python runs the recipe contracts/fixtures/request_hook/request_hook.json on the three databases in Python
@@ -2671,9 +2645,8 @@ conformance-verification-check/rust: lease-tool
 # conformance-verification-check/typescript runs the recipe contracts/fixtures/conformance_verification/conformance_verification.json on the three
 # databases (docs/spec/feature-coverage.md FCV-3 and FCV-4).
 .PHONY: conformance-verification-check/typescript
-conformance-verification-check/typescript: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+conformance-verification-check/typescript: typescript-current
+	$(READ_TYPESCRIPT)
 	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/conformance_verification-mysql.test.mjs packages/ts/tests/conformance_verification-postgres.test.mjs packages/ts/tests/conformance_verification-sqlite.test.mjs
 
 # conformance-verification-check/python runs the recipe contracts/fixtures/conformance_verification/conformance_verification.json on the three
@@ -2715,9 +2688,8 @@ complex-query-check/rust: lease-tool
 # complex-query-check/typescript runs the recipe contracts/fixtures/complex_query/complex_query.json on the three
 # databases (docs/spec/feature-coverage.md FCV-3 and FCV-4).
 .PHONY: complex-query-check/typescript
-complex-query-check/typescript: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+complex-query-check/typescript: typescript-current
+	$(READ_TYPESCRIPT)
 	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/complex_query-mysql.test.mjs packages/ts/tests/complex_query-postgres.test.mjs packages/ts/tests/complex_query-sqlite.test.mjs
 
 # complex-query-check/python runs the recipe contracts/fixtures/complex_query/complex_query.json on the three
@@ -2757,9 +2729,8 @@ bind-check/go:
 	$(GO_TEST) ./packages/go/orm -run '^TestBindVectors$$' -count=1
 bind-check/rust: lease-tool
 	cd packages/rust && $(CARGO_TEST) bind-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --lib bind_
-bind-check/typescript: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+bind-check/typescript: typescript-current
+	$(READ_TYPESCRIPT)
 	$(NODE) packages/ts/tests/markdown.mjs
 bind-check/python: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase packages.python.tests.test_markdown.BindVectors
@@ -2775,9 +2746,8 @@ ir-answers-check/go:
 	$(GO_TEST) ./packages/go/markdownmodel -run '^TestRecipeIRAnswersNone$$' -count=1
 ir-answers-check/rust: lease-tool
 	cd packages/rust && $(CARGO_TEST) ir-answers-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test ir_answers
-ir-answers-check/typescript: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+ir-answers-check/typescript: typescript-current
+	$(READ_TYPESCRIPT)
 	$(NODE) --conditions=orm-test packages/ts/tests/ir_answers.mjs
 ir-answers-check/python: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.ir_answers
@@ -2795,9 +2765,8 @@ collection-recipe-check/go:
 	$(GO_TEST) ./packages/go/markdownmodel -run '^TestRecipeCollectionNone$$' -count=1
 collection-recipe-check/rust: lease-tool
 	cd packages/rust && $(CARGO_TEST) collection-recipe-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test collection_none
-collection-recipe-check/typescript: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+collection-recipe-check/typescript: typescript-current
+	$(READ_TYPESCRIPT)
 	$(NODE) --conditions=orm-test packages/ts/tests/collection-none.test.mjs
 collection-recipe-check/python: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_collection_none
@@ -3128,9 +3097,8 @@ collection-get-phpstan-check: php-vendor-check
 # KSTD-5-62: only the private catalog-document build failure is a Mermaid diagnostic. These owner targets run the
 # focused unexpected-error identity cases; the PHP extension variant builds a test-only module around the actual mermaid.c.
 .PHONY: mermaid-error-ts-check mermaid-error-python-check mermaid-error-php-check mermaid-error-php-extension-check
-mermaid-error-ts-check: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+mermaid-error-ts-check: typescript-current
+	$(READ_TYPESCRIPT)
 	$(NODE) --test packages/ts/tests/dbspec-mermaid-errors.mjs
 mermaid-error-python-check: python-venv-check
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.mermaid_error_boundary
@@ -3346,15 +3314,13 @@ rust-package-entry-check:
 typescript-package-entry-check: typescript-build
 	$(NODE) --conditions=orm-test --test --test-name-pattern='package-entry/runtime-exports' packages/ts/tests/statement_fault_entry.mjs
 
-complex-query-typescript-unit-check: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+complex-query-typescript-unit-check: typescript-current
+	$(READ_TYPESCRIPT)
 	$(NODE) packages/ts/tests/fulltext-chain-types.mjs
 	$(NODE) packages/ts/tests/paginate-order.mjs
 
-complex-query-typescript-request-check: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+complex-query-typescript-request-check: typescript-current
+	$(READ_TYPESCRIPT)
 	$(NODE) packages/ts/tests/complex-query-request-types.mjs
 
 python-package-entry-check: python-venv-check

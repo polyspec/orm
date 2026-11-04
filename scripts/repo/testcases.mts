@@ -504,7 +504,7 @@ export function unpublishedOutputErrors(makefile: string): string[] {
 // typescript:check, and scripts/client-db-test.mts that does it) that does not get the holding ($(HOLD_TYPESCRIPT)) of that build output.
 // A target gets the holding on the first line of its recipe, or gets it
 // through a prerequisite target that gets it (ts-check/hold of ts-check/types): make runs prerequisite targets first. A command that
-// runs inside the exclusive lease holds the build for its own length (feature-coverage/build), so readers can share the output after it.
+// runs inside the exclusive lease holds the build for its own length (typescript-current), so readers can share the output after it.
 export function typescriptHolderErrors(makefile: string): string[] {
   const HOLDS_FOR_ITS_COMMAND = '$(LEASE) run $(TYPESCRIPT_LEASES) exclusive --wait -- ';
   const builds = /\$\(TSC_BUILD\)|typescript:(?:build|test|check)\b|client-db-test\.sh|tests\/conformance\/check run\b/;
@@ -633,8 +633,9 @@ export function nodeRuns(text: string): string[] {
 
 // typescriptReaderErrors returns one error for each make target that runs with node a file writing the TypeScript client's build output and, on its first line,
 // does not get the holding of that output ($(READ_TYPESCRIPT) to read, $(HOLD_TYPESCRIPT) when building).
-// A target that only reads the output holds it with $(READ_TYPESCRIPT) and has typescript-build among its prerequisites, directly or through a
-// prerequisite, so the output exists when it runs alone (T339-5).
+// A target that only reads the output holds it with $(READ_TYPESCRIPT) and has typescript-current among its prerequisites, directly or through a
+// prerequisite, so the output exists when it runs alone (T339-5). A prerequisite that starts with $(HOLD_TYPESCRIPT), as typescript-build does, holds the
+// exclusive lease for the whole make process, so a reader under it would queue every other reader.
 export function typescriptReaderErrors(makefile: string, read: Read): string[] {
   const errors: string[] = [];
   const prerequisites = new Map<string, string[]>();
@@ -642,7 +643,17 @@ export function typescriptReaderErrors(makefile: string, read: Read): string[] {
   const builds = (target: string, seen = new Set<string>()): boolean => {
     if (seen.has(target)) return false;
     seen.add(target);
-    return (prerequisites.get(target) ?? []).some(prerequisite => prerequisite === 'typescript-build' || builds(prerequisite, seen));
+    return (prerequisites.get(target) ?? []).some(prerequisite => prerequisite === 'typescript-current' || builds(prerequisite, seen));
+  };
+  const firstLines = new Map(makeTargets(makefile).map(rule => [rule.target, (rule.commands[0] ?? '').trim()]));
+  const holder = (target: string, seen = new Set<string>()): string | undefined => {
+    if (seen.has(target)) return undefined;
+    seen.add(target);
+    for (const prerequisite of prerequisites.get(target) ?? []) {
+      const found = firstLines.get(prerequisite) === '$(HOLD_TYPESCRIPT)' ? prerequisite : holder(prerequisite, seen);
+      if (found) return found;
+    }
+    return undefined;
   };
   for (const unit of makeRecipes(makefile)) {
     if (unit.name === 'Makefile') continue;
@@ -653,9 +664,23 @@ export function typescriptReaderErrors(makefile: string, read: Read): string[] {
     const reader = files.find(file => usesTypescriptOutput(file, read));
     if (!reader) continue;
     if (first !== '$(READ_TYPESCRIPT)') errors.push(`${unit.name} runs ${reader}, which uses the TypeScript build output, without holding it; start the recipe with $(READ_TYPESCRIPT)`);
-    else if (!builds(unit.name.replace(/^Makefile /, ''))) errors.push(`${unit.name} reads the TypeScript build output without the prerequisite typescript-build, which builds it; add typescript-build to its prerequisites`);
+    else if (holder(unit.name.replace(/^Makefile /, ''))) errors.push(`${unit.name} reads the TypeScript build output under the prerequisite ${holder(unit.name.replace(/^Makefile /, ''))}, which holds the exclusive lease for the whole make; use typescript-current`);
+    else if (!builds(unit.name.replace(/^Makefile /, ''))) errors.push(`${unit.name} reads the TypeScript build output without the prerequisite typescript-current, which builds it; add typescript-current to its prerequisites`);
   }
   return errors;
+}
+
+// typescriptExclusiveReaderErrors returns one error for each make target that holds the exclusive lease of the TypeScript build output only to build it
+// and then run node on it. The lease is held for the whole make process, so such a target blocks every other run while its tests run; it reads the output, so
+// it starts with $(READ_TYPESCRIPT) and has typescript-current among its prerequisites.
+export function typescriptExclusiveReaderErrors(makefile: string): string[] {
+  const node = /^(?:\$\(RUN_LONG\) \S+ -- |\$\(WITH_TEST_ENV\) |[A-Z_]+=\S+ )*\$\(NODE\) /;
+  return makeTargets(makefile)
+    .filter(rule => {
+      const [hold, build, ...rest] = rule.commands.map(command => command.trim());
+      return hold === '$(HOLD_TYPESCRIPT)' && build === '$(TSC_BUILD)' && rest.length > 0 && rest.every(command => node.test(command));
+    })
+    .map(rule => `Makefile ${rule.target} holds the TypeScript build output exclusively only to read it; start the recipe with $(READ_TYPESCRIPT) and add typescript-current`);
 }
 
 // phpunitModelErrors returns one error for each make target that runs PHPUnit with packages/php/phpunit.xml.dist, whose bootstrap requires

@@ -27,7 +27,7 @@ import { parse as parseToml } from 'smol-toml';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mts';
 import { detachedGroupErrors, timeFailureErrors } from './sources.mts';
 import { nativeBoundUnitErrors, nativeExceptions, nativeTestLines, unboundNativeTestErrors } from './parity-units.mts';
-import { callerEnvironmentErrors, generateRuns, scriptCommands, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, generatedCodesErrors, phpExtensionBuildErrors, typescriptHolderErrors, typescriptReaderErrors, phpunitModelErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, makeTargets, rustTestCaseErrors, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
+import { callerEnvironmentErrors, generateRuns, scriptCommands, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, generatedCodesErrors, phpExtensionBuildErrors, typescriptHolderErrors, typescriptReaderErrors, typescriptExclusiveReaderErrors, phpunitModelErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, makeTargets, rustTestCaseErrors, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
 
 // yamlSteps writes steps (the values of a workflow's steps) as the list under a job's steps:, six spaces deep.
 const yamlSteps = (steps: unknown[]) => stringify(steps).split('\n').map(line => line ? `      ${line}` : line).join('\n');
@@ -1204,7 +1204,7 @@ caseTest('a target that runs code using the TypeScript build output holds it', C
     'packages/ts/tests/db.mjs': "const { Db } = await import('../dist/index.js');\n",
     'scripts/quoted.mjs': "const fixture = \"import { Db } from '../dist/index.js';\";\n",
   };
-  const makefile = 'reader:\n\tnode scripts/reads.mjs\nheld: typescript-build\n\t$(READ_TYPESCRIPT)\n\tnode scripts/reads.mjs\nquoted:\n\tnode --test scripts/quoted.mjs\n';
+  const makefile = 'reader:\n\tnode scripts/reads.mjs\nheld: typescript-current\n\t$(READ_TYPESCRIPT)\n\tnode scripts/reads.mjs\nquoted:\n\tnode --test scripts/quoted.mjs\n';
   assert.deepEqual(typescriptReaderErrors(makefile, (path: string) => sources[path]), [
     'Makefile reader runs scripts/reads.mjs, which uses the TypeScript build output, without holding it; start the recipe with $(READ_TYPESCRIPT)',
   ]);
@@ -1214,10 +1214,21 @@ caseTest('a target that runs code using the TypeScript build output holds it', C
 caseTest('a TypeScript reader holds the build output and has typescript-build as a prerequisite', COMPUTE, () => {
   const sources: Record<string, string> = { 'packages/ts/tests/db.mjs': "const { Db } = await import('../dist/index.js');\n" };
   const read = (path: string) => sources[path];
-  const reader = (target: string) => `Makefile ${target} reads the TypeScript build output without the prerequisite typescript-build, which builds it; add typescript-build to its prerequisites`;
-  const holds = 'typescript-build:\n\t$(HOLD_TYPESCRIPT)\n\tnpm run typescript:build\n';
-  assert.deepEqual(typescriptReaderErrors(`${holds}direct: typescript-build\n\t$(READ_TYPESCRIPT)\n\tnode packages/ts/tests/db.mjs\nhub: php-vendor-check\n\t$(READ_TYPESCRIPT)\n\tnode packages/ts/tests/db.mjs\nphp-vendor-check: typescript-build\n\ttrue\n`, read), []);
+  const reader = (target: string) => `Makefile ${target} reads the TypeScript build output without the prerequisite typescript-current, which builds it; add typescript-current to its prerequisites`;
+  const holds = 'typescript-build:\n\t$(HOLD_TYPESCRIPT)\n\tnpm run typescript:build\ntypescript-current:\n\t$(LEASE) run $(TYPESCRIPT_LEASES) exclusive --wait -- npm run typescript:build\n';
+  assert.deepEqual(typescriptReaderErrors(`${holds}direct: typescript-current\n\t$(READ_TYPESCRIPT)\n\tnode packages/ts/tests/db.mjs\nhub: php-vendor-check\n\t$(READ_TYPESCRIPT)\n\tnode packages/ts/tests/db.mjs\nphp-vendor-check: typescript-current\n\ttrue\n`, read), []);
+  assert.deepEqual(typescriptReaderErrors(`${holds}queues: hub2\n\t$(READ_TYPESCRIPT)\n\tnode packages/ts/tests/db.mjs\nhub2: typescript-build\n\ttrue\n`, read), ['Makefile queues reads the TypeScript build output under the prerequisite typescript-build, which holds the exclusive lease for the whole make; use typescript-current']);
   assert.deepEqual(typescriptReaderErrors(`${holds}alone:\n\t$(READ_TYPESCRIPT)\n\tnode packages/ts/tests/db.mjs\n`, read), [reader('alone')]);
+});
+
+// A target that only builds the output and runs node on it holds the shared lease, so runs of such targets go together.
+caseTest('a target that only reads the TypeScript build output does not hold it exclusively', COMPUTE, () => {
+  assert.deepEqual(typescriptExclusiveReaderErrors(text('Makefile')), []);
+  const error = (target: string) => `Makefile ${target} holds the TypeScript build output exclusively only to read it; start the recipe with $(READ_TYPESCRIPT) and add typescript-current`;
+  assert.deepEqual(typescriptExclusiveReaderErrors('a/typescript: tool\n\t$(HOLD_TYPESCRIPT)\n\t$(TSC_BUILD)\n\t$(WITH_TEST_ENV) $(NODE) --test x.mjs\n'), [error('a/typescript')]);
+  assert.deepEqual(typescriptExclusiveReaderErrors('b: tool\n\t$(HOLD_TYPESCRIPT)\n\t$(TSC_BUILD)\n\t$(RUN_LONG) label -- $(NODE) x.mjs\n'), [error('b')]);
+  assert.deepEqual(typescriptExclusiveReaderErrors('writes: tool\n\t$(HOLD_TYPESCRIPT)\n\t$(TSC_BUILD)\n\t$(NPM) run --workspace x build\n\t$(NODE) --test x.mjs\n'), []);
+  assert.deepEqual(typescriptExclusiveReaderErrors('reads: typescript-current\n\t$(READ_TYPESCRIPT)\n\t$(NODE) --test x.mjs\n'), []);
 });
 
 // T341-1: a target that runs PHPUnit with the packages/php configuration reaches php-models, which writes the bootstrap it requires, directly or through a prerequisite.

@@ -16,7 +16,7 @@ import { segments } from './shell.mts';
 import { detachedGroupErrors, timeFailureErrors } from './sources.mts';
 import { nativeBoundUnitErrors, unboundNativeTestErrors } from './parity-units.mts';
 import { readTree } from '../features/test-names.mts';
-import { callerEnvironmentErrors, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, scriptCommands, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, generatedCodesErrors, phpExtensionBuildErrors, typescriptHolderErrors, typescriptReaderErrors, phpunitModelErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, rustTestCaseErrors, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
+import { callerEnvironmentErrors, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, scriptCommands, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, generatedCodesErrors, phpExtensionBuildErrors, typescriptHolderErrors, typescriptReaderErrors, typescriptExclusiveReaderErrors, phpunitModelErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, rustTestCaseErrors, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
 import { checkInputErrors } from '../features/owners.mts';
 import { COMPUTE, sections } from '../../tests/testcase.mts';
 import { declaredNeeds, readCheckInputs } from '../check/inputs.mts';
@@ -167,6 +167,7 @@ failures.push(...generatedCodesErrors(makefile));
 // Only php-ext-build, which has php-ext-sources as a prerequisite, runs the build of the PHP extension.
 failures.push(...phpExtensionBuildErrors(makefile));
 failures.push(...typescriptReaderErrors(makefile, readTracked));
+failures.push(...typescriptExclusiveReaderErrors(makefile));
 // Every target that runs PHPUnit with the packages/php configuration has php-models, which writes the bootstrap it requires (T341-1).
 failures.push(...phpunitModelErrors(makefile));
 // make orm-check runs the generation (go generate and git diff) of the same directory only once.
