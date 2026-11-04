@@ -31,9 +31,9 @@ func TestRecipeBindMessagesNone(t *testing.T) {
 
 // TestRecipePublicInterfaceNone runs the public interface recipe, contracts/fixtures/public_interface/public_interface.json,
 // without a database (FCV-3, FCV-4).
-// Requirements: INT-74, INT-88, INT-89, INT-130.
+// Requirements: INT-17, INT-18, INT-19, INT-57, INT-61, INT-64, INT-74, INT-88, INT-89, INT-130.
 func TestRecipePublicInterfaceNone(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t, testcase.Process)
 	recipe.Run(t, "../../../contracts/fixtures/public_interface/public_interface.json", recipe.None, recipe.WithMarkdownBuilder(markdownBuilder))
 }
 

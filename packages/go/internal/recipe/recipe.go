@@ -16,6 +16,7 @@ import (
 	"math/big"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"slices"
@@ -331,6 +332,9 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 	}
 	if s.k("op").Op == "markdown.builder" {
 		return checkBuilder(t, s, database, o.markdownBuilder)
+	}
+	if s.k("op").Op == "interface.symbols" {
+		return checkInterfaceSymbols(o.dir)
 	}
 	if s.k("op").Op == "keyring.versions" {
 		return checkKeyring(s, database)
@@ -1996,6 +2000,17 @@ func checkIntrospectSQLite(t *testing.T, s step, database string) error {
 	}
 	if !slices.Equal(unsupported, want.Unsupported) {
 		return fmt.Errorf("unsupported objects = %+v, want %+v", unsupported, want.Unsupported)
+	}
+	return nil
+}
+
+// checkInterfaceSymbols runs one interface.symbols step: the interface check of the Go client from the repository root, three
+// levels above dir, the directory of the recipe (INT-17, INT-18, INT-19, INT-57, INT-61, INT-64). The check exits 0 when it holds.
+func checkInterfaceSymbols(dir string) error {
+	command := exec.Command("node", "tests/interfaces/check/main.mts", "-language", "go")
+	command.Dir = filepath.Join(dir, "..", "..", "..")
+	if output, err := command.CombinedOutput(); err != nil {
+		return fmt.Errorf("interface check: %w\n%s", err, output)
 	}
 	return nil
 }

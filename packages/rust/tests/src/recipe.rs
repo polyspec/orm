@@ -103,7 +103,10 @@ pub fn trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testc
             let case = case.clone();
             let (path, database, dir) = (path.to_owned(), database.to_owned(), dir.clone());
             let id = case["id"].as_str().unwrap_or_default().to_owned();
-            polyspec_orm_testcase::trial(format!("{entry}::{id}"), polyspec_orm_testcase::COMPUTE, move || {
+            // The interface check is another process, which may build its extractor; the other cases compute in memory.
+            let is_process = case["steps"].as_array().is_some_and(|steps| steps.iter().any(|step| step["op"] == "interface.symbols"));
+            let deadline = if is_process { polyspec_orm_testcase::PROCESS } else { polyspec_orm_testcase::COMPUTE };
+            polyspec_orm_testcase::trial(format!("{entry}::{id}"), deadline, move || {
                 let mut bound = HashMap::new();
                 let steps = case["steps"].as_array().cloned().unwrap_or_default();
                 for (index, step) in steps.iter().enumerate() {
@@ -707,6 +710,25 @@ fn dbspec_introspect_sqlite(step: &Value, database: &str) -> Result<(), String> 
     }
 }
 
+/// The interface.symbols op (FCV-4): the interface check of the Rust client from the repository root, three levels above `dir`, the
+/// directory of the recipe (INT-17, INT-18, INT-19, INT-57, INT-61, INT-64). The check exits 0 when it holds.
+fn interface_symbols(dir: &Path) -> Result<(), String> {
+    let output = std::process::Command::new("node")
+        .args(["tests/interfaces/check/main.mts", "-language", "rust"])
+        .current_dir(dir.join("../../.."))
+        .output()
+        .map_err(|error| format!("node tests/interfaces/check/main.mts: {error}"))?;
+    if output.status.success() {
+        return Ok(());
+    }
+    Err(format!(
+        "interface check failed with {}:\n{}{}",
+        output.status,
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    ))
+}
+
 /// The keyring.versions op (FCV-4): the public constructor of the keyring, then its current version and its versions (INT-74,
 /// INT-130), against the expect of `database`.
 fn keyring_versions(step: &Value, database: &str) -> Result<(), String> {
@@ -765,6 +787,7 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
         "dbspec.apply_fault" => return dbspec_apply_fault(step, bound, database),
         "markdown.connect" => return markdown_connect(step, database),
         "markdown.session" => return markdown_session(step, database),
+        "interface.symbols" => return interface_symbols(dir),
         "keyring.versions" => return keyring_versions(step, database),
         "markdown.builder" => return markdown_builder(step, database),
         "planner.compile" => return planner_compile(step, database, dir),

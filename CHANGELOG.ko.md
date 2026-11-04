@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 103ae9840aa597c6ecf4f1d605927250e917d12ca353c9c1f7fd0cfc6bde17e3 -->
+<!-- source-sha256: 00930a308627c043c579c7aca4725ff1cc0c20240efd6206e0ec647a9b0bb20f -->
 # 변경 이력
 
 ## Unreleased
 
+- 각 runtime의 interface check(INT-17, INT-18, INT-19, INT-57, INT-61, INT-64)는 새 op `interface.symbols`로 recipe `public-interface`의 case `interface_symbols`가 된다. native wrapper 여섯 개와 그 parity unit은 없어졌다.
 - transaction이 자기 쓰기를 읽고 그 모든 statement에 하나의 transaction 번호를 발행함은 모든 runtime에서 recipe case `transaction_reads_its_own_write`가 확인한다. 이를 혼자 확인하던 PHP extension test는 없어졌다.
 - 이어 붙인 문자열이 같은 composite key는 recipe `composite_keys`의 row로만 있고, case가 모든 runtime에서 그 relation의 statement와 bind를 읽는다. fixture `composite_key_collision.json`과 parity suite의 그 제외 항목은 없어졌다.
 - TypeScript 정수 parameter test의 이름은 `driver-integer-param.mjs`이고, internal test 항목의 reason은 각 test가 하는 일을 적는다.

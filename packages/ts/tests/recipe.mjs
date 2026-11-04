@@ -2,6 +2,7 @@
 // <recipe>-<database>.test.mjs, calls runRecipe with the recipe and the database, and each case of the recipe is one test
 // whose steps call the public API of @polyspec/orm that each op names. It has no command line and no output of its own.
 import assert from 'node:assert/strict';
+import { execFile } from 'node:child_process';
 import { chmodSync, appendFileSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -35,7 +36,7 @@ import { nativeQuery, nativeSession, within } from './coverage_case.mjs';
 import { readStep } from './recipe_reads.mjs';
 import { conformanceCases, normalize } from './markdown_cases.mjs';
 import { listenMarkdownTestServer } from './markdown_test_listener.mjs';
-import { caseTest, COMPUTE, DATABASE } from '../../../tests/testcase.mts';
+import { caseTest, COMPUTE, DATABASE, PROCESS } from '../../../tests/testcase.mts';
 
 // NONE is the database part of a recipe without a database (FCV-3).
 export const NONE = 'none';
@@ -70,7 +71,9 @@ export function runRecipe(path, database) {
   const schema = recipe.schema === undefined ? undefined : validationModel(resolve(root, dirname(path), recipe.schema));
   const dir = resolve(root, dirname(path));
   for (const [caseIndex, recipeCase] of recipe.cases.entries()) {
-    registerRecipeCase(recipeCase, database, COMPUTE, async () => {
+    // The interface check is another process, which may build its extractor; the other cases compute in memory.
+    const deadline = recipeCase.steps.some(step => step.op === 'interface.symbols') ? PROCESS : COMPUTE;
+    registerRecipeCase(recipeCase, database, deadline, async () => {
       const bound = new Map();
       for (const [index, rawStep] of recipeCase.steps.entries()) {
         const reads = readStep(rawStep, database);
@@ -86,6 +89,7 @@ export function runRecipe(path, database) {
           else if (step.op === 'dsn.connect') await checkDsnConnect(step, database);
           else if (step.op === 'markdown.connect') await checkMarkdownConnect(step, database);
           else if (step.op === 'markdown.session') await checkMarkdownSession(step, database);
+          else if (step.op === 'interface.symbols') await checkInterfaceSymbols();
           else if (step.op === 'keyring.versions') checkKeyring(step, database);
           else if (step.op === 'dbspec.introspect_shown') await checkIntrospectShown(step, dir, database);
           else if (step.op === 'dbspec.apply_fault') await checkApplyFault(step, bound, database);
@@ -2901,6 +2905,17 @@ async function checkIntrospectSqlite(step, database) {
   } finally {
     connection.close();
   }
+}
+
+// checkInterfaceSymbols runs an interface.symbols step: the interface check of the TypeScript client from the repository root (INT-17,
+// INT-18, INT-19, INT-57, INT-61, INT-64). A check that exits other than 0 rejects with its output.
+async function checkInterfaceSymbols() {
+  await new Promise((done, fail) => {
+    execFile('node', ['tests/interfaces/check/main.mts', '-language', 'typescript'], { cwd: root, maxBuffer: 16 * 1024 * 1024 }, (error, stdout, stderr) => {
+      if (error) fail(new Error(`interface check failed (${error.code ?? error.signal}): ${stdout}${stderr}`, { cause: error }));
+      else done();
+    });
+  });
 }
 
 // checkKeyring runs a keyring.versions step: the public constructor of the keyring, then its current version and its versions (INT-74,

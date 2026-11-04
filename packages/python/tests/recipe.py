@@ -11,6 +11,8 @@ import re
 import shutil
 import socket
 import sqlite3
+import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -110,6 +112,12 @@ class CallbackError(Exception):
 class RecipeCase(VectorCase):
     """A case of a recipe."""
 
+    @property
+    def deadline(self) -> float:
+        """The interface check is another process; the other cases compute in memory."""
+        steps = self.case["steps"]
+        return testcase.PROCESS if any(step["op"] == "interface.symbols" for step in steps) else testcase.COMPUTE
+
 
 class ChainRecipeCase(RecipeCase):
     """A case of a recipe with ir.answer steps: the class prepares the chain runner once for all its cases."""
@@ -204,6 +212,9 @@ def recipe_tests(path: str, database: str):
             return
         if step["op"] == "dbspec.introspect_sqlite":
             _dbspec_introspect_sqlite(step, database)
+            return
+        if step["op"] == "interface.symbols":
+            _interface_symbols()
             return
         if step["op"] == "keyring.versions":
             _keyring_versions(step, database)
@@ -1302,6 +1313,22 @@ def _dbspec_introspect_sqlite(step: dict, database: str) -> None:
     if got != step["expect"][database]["unsupported"]:
         raise AssertionError(
             f"unsupported objects {got}, want {step['expect'][database]['unsupported']}"
+        )
+
+
+def _interface_symbols() -> None:
+    """Runs the interface.symbols op (FCV-4): the interface check of the Python client from the repository root (INT-17, INT-18,
+    INT-19, INT-57, INT-61, INT-64)."""
+    result = subprocess.run(
+        ["node", "tests/interfaces/check/main.mts", "-language", "python"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        env={**os.environ, "ORM_PYTHON": sys.executable},
+    )
+    if result.returncode != 0:
+        raise AssertionError(
+            f"interface check failed ({result.returncode}): {result.stdout}{result.stderr}"
         )
 
 

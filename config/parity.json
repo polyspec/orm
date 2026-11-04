@@ -25804,50 +25804,6 @@
       ]
     },
     {
-      "id": "coverage-interface-contract-interface-symbols",
-      "kind": "feature",
-      "requirements": [
-        "INT-17",
-        "INT-18",
-        "INT-19",
-        "INT-57",
-        "INT-61",
-        "INT-64"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_interface_contract_test.go",
-          "id": "TestCoverageInterfaceSymbols"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageInterfaceContractTest.php",
-          "id": "CoverageInterfaceContractTest::testInterfaceSymbols"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageInterfaceContractNativeTest.php",
-          "id": "CoverageInterfaceContractNativeTest::testInterfaceSymbols"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_interface_contract.py",
-          "id": "test_interface_symbols"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/coverage_interface_contract.rs",
-          "id": "coverage_interface_symbols"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_interface_contract.mjs",
-          "id": "interface_symbols"
-        }
-      ]
-    },
-    {
       "id": "coverage-composite-keys-native",
       "kind": "feature",
       "requirements": [
@@ -40697,6 +40653,12 @@
       "id": "public-interface",
       "kind": "suite",
       "requirements": [
+        "INT-17",
+        "INT-18",
+        "INT-19",
+        "INT-57",
+        "INT-61",
+        "INT-64",
         "INT-74",
         "INT-88",
         "INT-89",

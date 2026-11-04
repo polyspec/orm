@@ -7202,7 +7202,6 @@
         }
       ],
       "parity": [
-        "coverage-interface-contract-interface-symbols",
         "public-interface",
         "public-interface-signed",
         "postgres-listen-notify",
@@ -7226,9 +7225,7 @@
       ],
       "fixtures": [
         "contracts/interfaces.json",
-        "packages/php/tests/coverage_cases.php",
-        "packages/ts/tests/coverage_case.mjs",
-        "packages/python/tests/coverage_case.py"
+        "contracts/fixtures/public_interface/public_interface.json"
       ],
       "tests": [
         "packages/go/engine/interface_test.go",
@@ -7237,12 +7234,9 @@
         "packages/php/testing/interfaces/php.php",
         "packages/rust/testing/interfaces/src/main.rs",
         "packages/ts/testing/interfaces/typescript.mts",
-        "packages/go/orm/coverage_interface_contract_test.go",
+        "packages/go/bindmessages/bind_messages_test.go",
         "packages/go/orm/recipe_public_interface_signed_test.go",
-        "packages/php/tests/CoverageInterfaceContractTest.php",
         "packages/php/tests/PublicInterfaceSignedRecipeTest.php",
-        "packages/rust/orm/tests/coverage_interface_contract.rs",
-        "packages/ts/tests/coverage_interface_contract.mjs",
         "packages/ts/tests/public_interface_signed-none.test.mjs",
         "tests/interfaces/contracts/generate.go",
         "tests/interfaces/contracts/validate.go",
@@ -7250,12 +7244,10 @@
         "packages/ts/tests/package-declarations.mjs",
         "packages/ts/src/index.ts",
         "packages/ts/src/listen.ts",
-        "packages/python/tests/coverage_interface_contract.py",
         "packages/python/tests/test_public_interface_signed_none.py",
         "packages/python/testing/interfaces/python.py",
         "packages/python/tests/test_python_extractor.py",
         "packages/python/tests/test_python_natives.py",
-        "packages/php-ext/tests/CoverageInterfaceContractNativeTest.php",
         "packages/php-ext/tests/PublicInterfaceSignedRecipeTestExtensionTest.php",
         "packages/go/orm/package_entry_test.go",
         "packages/php/tests/PackageEntryPointTest.php",
@@ -7471,14 +7463,11 @@
       ],
       "coverage": {
         "kind": "independent",
-        "cases": [
-          "interface_symbols"
-        ],
         "owners": {
           "go": {
-            "part": "packages/go/orm",
+            "part": "packages/go",
             "tests": [
-              "packages/go/orm/coverage_interface_contract_test.go"
+              "packages/go/bindmessages/bind_messages_test.go"
             ],
             "inputs": [
               "tests/interfaces/check/*.mts",
@@ -7490,13 +7479,9 @@
               "none": [
                 {
                   "runner": "go",
-                  "test": "packages/go/orm/coverage_interface_contract_test.go",
-                  "cases": [
-                    "interface_symbols"
-                  ],
-                  "symbols": {
-                    "interface_symbols": "TestCoverageInterfaceSymbols"
-                  }
+                  "test": "packages/go/bindmessages/bind_messages_test.go",
+                  "recipe": "contracts/fixtures/public_interface/public_interface.json",
+                  "symbol": "TestRecipePublicInterfaceNone"
                 }
               ]
             }
@@ -7504,7 +7489,7 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/CoverageInterfaceContractTest.php"
+              "packages/php/tests/PublicInterfaceRecipeTest.php"
             ],
             "inputs": [
               "tests/interfaces/check/*.mts",
@@ -7518,21 +7503,17 @@
               "none": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageInterfaceContractTest.php",
-                  "cases": [
-                    "interface_symbols"
-                  ],
-                  "symbols": {
-                    "interface_symbols": "testInterfaceSymbols"
-                  }
+                  "test": "packages/php/tests/PublicInterfaceRecipeTest.php",
+                  "recipe": "contracts/fixtures/public_interface/public_interface.json",
+                  "symbol": "testNone"
                 }
               ]
             }
           },
           "rust": {
-            "part": "packages/rust/orm",
+            "part": "packages/rust",
             "tests": [
-              "packages/rust/orm/tests/coverage_interface_contract.rs"
+              "packages/rust/tests/tests/public_interface_none.rs"
             ],
             "inputs": [
               "tests/interfaces/check/*.mts",
@@ -7545,13 +7526,8 @@
               "none": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/orm/tests/coverage_interface_contract.rs",
-                  "cases": [
-                    "interface_symbols"
-                  ],
-                  "symbols": {
-                    "interface_symbols": "coverage_interface_symbols"
-                  }
+                  "test": "packages/rust/tests/tests/public_interface_none.rs",
+                  "recipe": "contracts/fixtures/public_interface/public_interface.json"
                 }
               ]
             }
@@ -7559,7 +7535,7 @@
           "typescript": {
             "part": "packages/ts/tests",
             "tests": [
-              "packages/ts/tests/coverage_interface_contract.mjs"
+              "packages/ts/tests/public_interface-none.test.mjs"
             ],
             "inputs": [
               "tests/interfaces/check/*.mts",
@@ -7572,10 +7548,8 @@
               "none": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_interface_contract.mjs",
-                  "cases": [
-                    "interface_symbols"
-                  ]
+                  "test": "packages/ts/tests/public_interface-none.test.mjs",
+                  "recipe": "contracts/fixtures/public_interface/public_interface.json"
                 }
               ]
             }
@@ -7583,7 +7557,7 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_interface_contract.py"
+              "packages/python/tests/test_public_interface_none.py"
             ],
             "inputs": [
               "tests/interfaces/check/*.mts",
@@ -7603,10 +7577,8 @@
               "none": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_interface_contract.py",
-                  "cases": [
-                    "interface_symbols"
-                  ]
+                  "test": "packages/python/tests/test_public_interface_none.py",
+                  "recipe": "contracts/fixtures/public_interface/public_interface.json"
                 }
               ]
             }
@@ -7614,23 +7586,21 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php-ext/tests/CoverageInterfaceContractNativeTest.php"
+              "packages/php-ext/tests/PublicInterfaceRecipeTestExtensionTest.php"
             ],
             "inputs": [
+              "contracts/interfaces.json",
               "contracts/symbols/php-extension.json",
-              "packages/php-ext/tests/ModelNativeTest.php"
+              "packages/php-ext/tests/ModelNativeTest.php",
+              "tests/interfaces/check/*.mts"
             ],
             "commands": {
               "none": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageInterfaceContractNativeTest.php",
-                  "cases": [
-                    "interface_symbols"
-                  ],
-                  "symbols": {
-                    "interface_symbols": "testInterfaceSymbols"
-                  }
+                  "test": "packages/php-ext/tests/PublicInterfaceRecipeTestExtensionTest.php",
+                  "recipe": "contracts/fixtures/public_interface/public_interface.json",
+                  "symbol": "testNone"
                 }
               ]
             }
