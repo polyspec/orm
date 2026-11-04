@@ -427,7 +427,9 @@ fn shown_catalog_rows(catalog: &Value, name: &str, create: &str, query: &str) ->
 /// links, so that each link finds what it names and the order of the object does not matter. The symlink crate holds the platform's
 /// link calls, and a target that is a directory is linked as a directory, which Windows distinguishes.
 fn write_set_tree(root: &Path, tree: &Map<String, Value>) -> Result<(), String> {
-    let parent = |path: &Path| std::fs::create_dir_all(path.parent().ok_or("a tree path has a parent")?).map_err(|error| format!("{}: {error}", path.display()));
+    let parent = |path: &Path| -> Result<(), String> {
+        std::fs::create_dir_all(path.parent().ok_or("a tree path has a parent")?).map_err(|error| format!("{}: {error}", path.display()))
+    };
     let entries = |kind: &'static str| tree.iter().filter_map(move |(name, entry)| entry[kind].as_str().map(|value| (name, value)));
     for (name, value) in entries("file") {
         parent(&root.join(name))?;
@@ -446,7 +448,8 @@ fn write_set_tree(root: &Path, tree: &Map<String, Value>) -> Result<(), String> 
         let link = root.join(name);
         parent(&link)?;
         let resolved = link.parent().ok_or("a link has a parent")?.join(value);
-        let made = if std::fs::metadata(&resolved).is_ok_and(|m| m.is_dir()) { ::symlink::symlink_dir(value, &link) } else { ::symlink::symlink_file(value, &link) };
+        let made =
+            if std::fs::metadata(&resolved).is_ok_and(|m| m.is_dir()) { ::symlink::symlink_dir(value, &link) } else { ::symlink::symlink_file(value, &link) };
         made.map_err(|error| format!("{name}: {error}"))?;
     }
     Ok(())
@@ -462,7 +465,9 @@ fn dbspec_read_set(step: &Value, database: &str) -> Result<(), String> {
             polyspec_orm_test_support::temp_directory::remove_on_drop(&self.0);
         }
     }
-    let Some(want) = crate::recipe_reads::read(step, "expect")["expect"].get(database) else { return Err(format!("dbspec.read_set has no expect for {database}")) };
+    let Some(want) = crate::recipe_reads::read(step, "expect")["expect"].get(database) else {
+        return Err(format!("dbspec.read_set has no expect for {database}"));
+    };
     let tree = crate::recipe_reads::read(step, "tree")["tree"].as_object().ok_or("the tree is not an object")?;
     let set_file = crate::recipe_reads::read(step, "set_file")["set_file"].as_str().unwrap_or_default();
     let next = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -477,8 +482,10 @@ fn dbspec_read_set(step: &Value, database: &str) -> Result<(), String> {
             Err(errors) => errors,
         };
         let actual: Vec<(String, String)> = errors.iter().map(|e| (e.rule.clone(), e.path.display().to_string())).collect();
-        let wanted: Vec<(String, String)> =
-            expected.iter().map(|e| (e["rule"].as_str().unwrap_or_default().to_owned(), format!("{root}/{}", e["path"].as_str().unwrap_or_default()))).collect();
+        let wanted: Vec<(String, String)> = expected
+            .iter()
+            .map(|e| (e["rule"].as_str().unwrap_or_default().to_owned(), format!("{root}/{}", e["path"].as_str().unwrap_or_default())))
+            .collect();
         if actual != wanted {
             return Err(format!("errors {actual:?}, want {wanted:?}"));
         }
@@ -496,7 +503,10 @@ fn dbspec_read_set(step: &Value, database: &str) -> Result<(), String> {
     }
     let set = got.map_err(|errors| format!("unexpected errors {errors:?}"))?;
     for (list, files) in [("documents", &set.documents), ("external", &set.external)] {
-        let paths: Vec<String> = want[list].as_array().map(|p| p.iter().filter_map(|x| x.as_str().map(str::to_owned)).collect()).ok_or_else(|| format!("the expect has no {list}"))?;
+        let paths: Vec<String> = want[list]
+            .as_array()
+            .map(|p| p.iter().filter_map(|x| x.as_str().map(str::to_owned)).collect())
+            .ok_or_else(|| format!("the expect has no {list}"))?;
         let actual: Vec<String> = files.iter().map(|f| f.path.display().to_string()).collect();
         let wanted: Vec<String> = paths.iter().map(|p| format!("{root}/{p}")).collect();
         if actual != wanted {
