@@ -1221,6 +1221,15 @@ caseTest('a TypeScript reader holds the build output and has typescript-build as
   assert.deepEqual(typescriptReaderErrors(`${holds}alone:\n\t$(READ_TYPESCRIPT)\n\tnode packages/ts/tests/db.mjs\n`, read), [reader('alone')]);
 });
 
+// Runs share the Python model directories of .runtime/run, so a publish holds their lease: six runs of bind-python-models together failed in mv.
+caseTest('the shared Python model directories are published under a lease', COMPUTE, () => {
+  for (const target of ['bind-python-models', 'conformance-python-models']) {
+    const commands = makeTargets(text('Makefile')).filter(rule => rule.target === target).flatMap(rule => rule.commands);
+    assert.ok(commands.length === 1 && commands[0]?.includes('$(call py_models_publish,'), `${target}: ${commands.join(' ')}`);
+  }
+  assert.match(text('Makefile'), /^py_models_publish = \$\(LEASE\) run \$\(PY_MODELS_LEASES\) exclusive --wait -- \$\(GENERATE_ONCE\) /m);
+});
+
 // A target that only builds the output and runs node on it holds the shared lease, so runs of such targets go together.
 caseTest('a target that only reads the TypeScript build output does not hold it exclusively', COMPUTE, () => {
   assert.deepEqual(typescriptExclusiveReaderErrors(text('Makefile')), []);

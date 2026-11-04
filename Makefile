@@ -1714,20 +1714,19 @@ bind-message-check/typescript: typescript-current
 # BIND_PY_MODELS is the model directory of the slot fixture tests/bind/dbspec-set.json that the Python recipe helper imports (FCV-4,
 # markdown.send). The venv orm-gen writes it into a temporary directory and renames it into place, as conformance-python-models does.
 BIND_PY_MODELS = $(abspath .runtime/run)/bind-python-models
+# Runs read a model directory together, so one lease holds its publish, and a key of its inputs leaves a current directory in place while they read it.
+PY_MODELS_LEASES = $(abspath .runtime/python-models.leases)
+py_models_publish = $(LEASE) run $(PY_MODELS_LEASES) exclusive --wait -- $(GENERATE_ONCE) $(1).key "" packages/python/uv.lock packages/python/src $(dir $(2)) -- sh -c 'rm -rf $(1).tmp && $(PYTHON_VENV)/bin/orm-gen gen --set $(2) --out $(1).tmp && rm -rf $(1) && mv $(1).tmp $(1)'
 .PHONY: bind-python-models
-bind-python-models: python-venv-check
-	rm -rf $(BIND_PY_MODELS).tmp
-	$(PYTHON_VENV)/bin/orm-gen gen --set tests/bind/dbspec-set.json --out $(BIND_PY_MODELS).tmp
-	rm -rf $(BIND_PY_MODELS) && mv $(BIND_PY_MODELS).tmp $(BIND_PY_MODELS)
+bind-python-models: lease-tool python-venv-check
+	$(call py_models_publish,$(BIND_PY_MODELS),tests/bind/dbspec-set.json)
 
 # CONFORMANCE_PY_MODELS is the model directory that the Python conformance runner imports. The venv orm-gen writes it from
 # contracts/fixtures/bench/bench.dbs into a temporary directory and renames it into place (an atomic publish of build output).
 CONFORMANCE_PY_MODELS = $(abspath .runtime/run)/conformance-python-models
 .PHONY: conformance-python-models
-conformance-python-models: python-venv-check
-	rm -rf $(CONFORMANCE_PY_MODELS).tmp
-	$(PYTHON_VENV)/bin/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out $(CONFORMANCE_PY_MODELS).tmp
-	rm -rf $(CONFORMANCE_PY_MODELS) && mv $(CONFORMANCE_PY_MODELS).tmp $(CONFORMANCE_PY_MODELS)
+conformance-python-models: lease-tool python-venv-check
+	$(call py_models_publish,$(CONFORMANCE_PY_MODELS),contracts/fixtures/bench/dbspec-set.json)
 
 conformance-check: conformance-result-check conformance-generated-methods-check conformance-fixed-clock-check
 
