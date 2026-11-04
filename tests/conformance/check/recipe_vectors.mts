@@ -241,6 +241,20 @@ export function runnerCommand(language: string, dsn: string, names: string[], en
   return command();
 }
 
+/** The sources of the runner of each language; php-extension runs the PHP runner. */
+export const RUNNER_SOURCES: Record<string, string[]> = {
+  go: ['packages/go/internal/conformance/main.go', 'packages/go/internal/conformance/affected_ormtest.go', 'packages/go/internal/conformance/clock_ormtest.go'],
+  php: ['packages/php/testing/conformance/runner.php'],
+  typescript: ['packages/ts/testing/conformance/runner_typescript.mts'],
+  python: ['packages/python/testing/conformance/runner_python.py'],
+  rust: ['packages/rust/tests/src/conformance.rs'],
+};
+
+/** The names of the bodies that a runner source declares, in each language the call that takes the name first. */
+export function declaredBodies(source: string): string[] {
+  return [...source.matchAll(/\b(?:run!?|vector)\(\s*["']([a-z0-9_]+)["']/g)].map(match => match[1] as string);
+}
+
 function runner(language: string, dsn: string, names: string[]): Output & Record<string, unknown> {
   const [name, args] = runnerCommand(language, dsn, names);
   if (name === '') throw new Error(`the runner of ${language} is not named in the environment`);
