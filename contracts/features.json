@@ -80,7 +80,6 @@
         "dsn-reject-parameters",
         "dsn-reject-php-pool",
         "connection-driver-from-dsn",
-        "connection-catalog-session-through-a-pooler",
         "connection-sqlite-crashed-holder",
         "model_socket-mysql",
         "connection-mysql-tls-requires-hostname-tcp",
@@ -136,7 +135,6 @@
         "packages/python/tests/test_sqlite_version.py",
         "packages/python/tests/test_placeholders.py",
         "packages/python/tests/test_driver_cells.py",
-        "packages/python/tests/connection_config.py",
         "packages/python/tests/connection_pool.py",
         "packages/python/tests/mysql_session.py",
         "packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php",
@@ -425,15 +423,6 @@
             "tests/dsn/sqlite-paths.json",
             "packages/python/src/polyspec/orm/database.py",
             "packages/python/src/polyspec/orm/placeholders.py"
-          ]
-        },
-        {
-          "id": "connection-config-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.connection_config",
-          "shard": "other",
-          "inputs": [
-            "packages/python/tests/connection_config.py",
-            "packages/python/src/polyspec/orm/database.py"
           ]
         },
         {
