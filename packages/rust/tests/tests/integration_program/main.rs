@@ -119,6 +119,31 @@ struct Target {
     dsn: String,
     db: Db,
     database: CaseDatabase,
+    _wait: NamesItsWait,
+}
+
+/// What a connection of `driver` waits on: the acquire timeout of its pool, 30 s, the default of SQLx that
+/// packages/rust/orm/src/db.rs does not change, and through ProxySQL, when ORM_TEST_MYSQL_DSN is not the server, hostgroup 0, the
+/// default_hostgroup of the user orm in scripts/test-servers.mts, within mysql-connect_timeout_server_max, whose 10000 ms ProxySQL
+/// reports in its error 9001.
+fn waits_on(driver: &str) -> String {
+    let pool = "the pool acquire timeout of 30 s";
+    if driver == "mysql" && std::env::var_os("ORM_TEST_MYSQL_DSN") != std::env::var_os("ORM_TEST_MYSQL_SERVER_DSN") {
+        format!("ProxySQL hostgroup 0 within mysql-connect_timeout_server_max 10000 ms, and {pool}")
+    } else {
+        pool.to_owned()
+    }
+}
+
+/// Names what its case waited on when the case panics, since any statement of the case can end on a connection wait.
+struct NamesItsWait(&'static str);
+
+impl Drop for NamesItsWait {
+    fn drop(&mut self) {
+        if std::thread::panicking() {
+            eprintln!("{}: this case waits for a connection on {}", self.0, waits_on(self.0));
+        }
+    }
 }
 
 /// Waits for SQLx to finish returning checked-out connections before asserting pool statistics.
@@ -173,8 +198,8 @@ impl Target {
     async fn empty(driver: &str) -> Target {
         let database = CaseDatabase::create(driver).await;
         let dsn = if driver == "sqlite" { format!("{}?_pragma=busy_timeout(5000)", database.dsn()) } else { database.dsn().to_owned() };
-        let db = model::connect(&dsn, TARGET_POOL_SIZE, config()).await.or_panic(|e| format!("{driver}: {e}"));
-        Target { driver: database.driver(), dsn, db, database }
+        let db = model::connect(&dsn, TARGET_POOL_SIZE, config()).await.or_panic(|e| format!("{driver}: {e}; waited on {}", waits_on(driver)));
+        Target { driver: database.driver(), dsn, db, _wait: NamesItsWait(database.driver()), database }
     }
 
     /// Closes the connection and drops the case database.

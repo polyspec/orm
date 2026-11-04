@@ -1655,6 +1655,14 @@
     "exported": false,
     "signature": "function validateHostInput(field: Field | undefined, value: unknown): void"
   },
+  "packages/ts/src/database.ts::AesConfig": {
+    "exported": false,
+    "signature": "type AesConfig = {\n    version: number;\n    key: string;\n    keyring: AesKeyring | undefined;\n}"
+  },
+  "packages/ts/src/database.ts::AesConfig#wire": {
+    "exported": false,
+    "signature": "{\"version\":\"integer\",\"key\":\"text\",\"keyring\":\"AesKeyring|undefined\"}"
+  },
   "packages/ts/src/database.ts::AuditInsert": {
     "exported": false,
     "signature": "interface AuditInsert"
@@ -1781,7 +1789,7 @@
   },
   "packages/ts/src/database.ts::Db": {
     "exported": true,
-    "signature": "class Db { private constructor(private readonly connection: DriverPool | MarkdownPool, public readonly zone: string, options: ConnectOptions); }"
+    "signature": "class Db { private constructor(private readonly connection: DriverPool | MarkdownPool, public readonly zone: string, options: ConnectOptions, aes: AesConfig); }"
   },
   "packages/ts/src/database.ts::Db#field.aesKey": {
     "exported": true,
@@ -2222,6 +2230,10 @@
   "packages/ts/src/database.ts::activeFor": {
     "exported": true,
     "signature": "export function activeFor(db: Db): TxFrame | undefined"
+  },
+  "packages/ts/src/database.ts::aesConfig": {
+    "exported": false,
+    "signature": "function aesConfig(options: ConnectOptions): AesConfig"
   },
   "packages/ts/src/database.ts::armFixedClock": {
     "exported": true,
@@ -15043,15 +15055,7 @@
     "exported": true,
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e Promise\u003cthis | null\u003e"
   },
-  "packages/ts/src/models/models.ts::Account#field.getModule": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::Account#field.getReadTotal": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::Account#field.getRecord": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -15060,10 +15064,6 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::Account#field.getSharedNoteModel": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::Account#field.getStartMonth": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -15171,10 +15171,6 @@
     "exported": true,
     "signature": "EntityDef"
   },
-  "packages/ts/src/models/models.ts::AccountProject#field.getModule": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::AccountProject#field.getName": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -15183,23 +15179,11 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
-  "packages/ts/src/models/models.ts::AccountProject#field.getRecord": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::AccountProject#field.getSeq": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::AccountProject#field.getServiceMemberModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::AccountProject#field.getSharedNoteModel": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::AccountProject#field.getStartMonth": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -15319,10 +15303,6 @@
     "exported": true,
     "signature": "EntityDef"
   },
-  "packages/ts/src/models/models.ts::AuditRecord#field.getModule": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::AuditRecord#field.getName": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -15331,19 +15311,11 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
-  "packages/ts/src/models/models.ts::AuditRecord#field.getRecord": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::AuditRecord#field.getServiceMemberModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::AuditRecord#field.getSharedNoteModel": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::AuditRecord#field.getStartMonth": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -15447,10 +15419,6 @@
     "exported": true,
     "signature": "EntityDef"
   },
-  "packages/ts/src/models/models.ts::AuditedNote#field.getModule": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::AuditedNote#field.getName": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -15459,19 +15427,11 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
-  "packages/ts/src/models/models.ts::AuditedNote#field.getRecord": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::AuditedNote#field.getServiceMemberModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::AuditedNote#field.getSharedNoteModel": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::AuditedNote#field.getStartMonth": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -15631,10 +15591,6 @@
     "exported": true,
     "signature": "EntityDef"
   },
-  "packages/ts/src/models/models.ts::AuditedNoteHistory#field.getModule": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::AuditedNoteHistory#field.getName": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -15643,19 +15599,11 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
-  "packages/ts/src/models/models.ts::AuditedNoteHistory#field.getRecord": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::AuditedNoteHistory#field.getServiceMemberModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::AuditedNoteHistory#field.getSharedNoteModel": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::AuditedNoteHistory#field.getStartMonth": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -15935,14 +15883,6 @@
     "exported": true,
     "signature": "class Author"
   },
-  "packages/ts/src/models/models.ts::Author#field.addColumnStartDtAliasStartMonth": {
-    "exported": true,
-    "signature": "(fn: ColumnFunction) =\u003e this"
-  },
-  "packages/ts/src/models/models.ts::Author#field.addColumnStartDtAliasStartYear": {
-    "exported": true,
-    "signature": "(fn: ColumnFunction) =\u003e this"
-  },
   "packages/ts/src/models/models.ts::Author#field.aesHexEmail": {
     "exported": true,
     "signature": "(v0: string | readonly (string)[] | ValueFunction | Model | null) =\u003e this"
@@ -15955,10 +15895,6 @@
     "exported": true,
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
   },
-  "packages/ts/src/models/models.ts::Author#field.andAesHexEmail": {
-    "exported": true,
-    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model | null) =\u003e this"
-  },
   "packages/ts/src/models/models.ts::Author#field.andBetweenReadCount": {
     "exported": true,
     "signature": "(v0: readonly [number, number]) =\u003e this"
@@ -15966,10 +15902,6 @@
   "packages/ts/src/models/models.ts::Author#field.andEqStartDt": {
     "exported": true,
     "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
-  },
-  "packages/ts/src/models/models.ts::Author#field.andGeReadCount": {
-    "exported": true,
-    "signature": "(v0: number | ValueFunction) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.andGtReadCount": {
     "exported": true,
@@ -15983,18 +15915,6 @@
     "exported": true,
     "signature": "(v0: boolean | readonly (boolean)[] | ValueFunction | Model) =\u003e this"
   },
-  "packages/ts/src/models/models.ts::Author#field.andLbName": {
-    "exported": true,
-    "signature": "(v0: string) =\u003e this"
-  },
-  "packages/ts/src/models/models.ts::Author#field.andLeReadCount": {
-    "exported": true,
-    "signature": "(v0: number | ValueFunction) =\u003e this"
-  },
-  "packages/ts/src/models/models.ts::Author#field.andLeStartDt": {
-    "exported": true,
-    "signature": "(...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
-  },
   "packages/ts/src/models/models.ts::Author#field.andLkName": {
     "exported": true,
     "signature": "(v0: string) =\u003e this"
@@ -16007,35 +15927,15 @@
     "exported": true,
     "signature": "(v0: number | ValueFunction) =\u003e this"
   },
-  "packages/ts/src/models/models.ts::Author#field.andLtSeq": {
-    "exported": true,
-    "signature": "(v0: number | ValueFunction) =\u003e this"
-  },
-  "packages/ts/src/models/models.ts::Author#field.andLtStartDt": {
-    "exported": true,
-    "signature": "(...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
-  },
   "packages/ts/src/models/models.ts::Author#field.andName": {
     "exported": true,
     "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
-  },
-  "packages/ts/src/models/models.ts::Author#field.andNeIsClose": {
-    "exported": true,
-    "signature": "(v0: boolean | readonly (boolean)[] | ValueFunction | Model) =\u003e this"
-  },
-  "packages/ts/src/models/models.ts::Author#field.andNePhotoUrl": {
-    "exported": true,
-    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model | null) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.andNeReadCount": {
     "exported": true,
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.andSeq": {
-    "exported": true,
-    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
-  },
-  "packages/ts/src/models/models.ts::Author#field.andServiceSeq": {
     "exported": true,
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
   },
@@ -16066,10 +15966,6 @@
   "packages/ts/src/models/models.ts::Author#field.description": {
     "exported": true,
     "signature": "(v0: string | readonly (string)[] | ValueFunction | Model | null) =\u003e this"
-  },
-  "packages/ts/src/models/models.ts::Author#field.descriptionNeName": {
-    "exported": true,
-    "signature": "(v0: Author | User | Service | ServiceRegion | CompositeAccount | SoftRecord | Account | Project) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.displayEndDt": {
     "exported": true,
@@ -16119,15 +16015,7 @@
     "exported": true,
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e Promise\u003cnumber\u003e"
   },
-  "packages/ts/src/models/models.ts::Author#field.getModule": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::Author#field.getReadTotal": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::Author#field.getRecord": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -16136,10 +16024,6 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::Author#field.getSharedNoteModel": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::Author#field.getStartMonth": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -16183,19 +16067,7 @@
     "exported": true,
     "signature": "(v0: boolean | readonly (boolean)[] | ValueFunction | Model) =\u003e this"
   },
-  "packages/ts/src/models/models.ts::Author#field.joinNameWithSeq": {
-    "exported": true,
-    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | IpHexCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
-  },
-  "packages/ts/src/models/models.ts::Author#field.joinReadCountWithSeq": {
-    "exported": true,
-    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | IpHexCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
-  },
   "packages/ts/src/models/models.ts::Author#field.joinServiceMemberSeqWithSeq": {
-    "exported": true,
-    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | IpHexCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
-  },
-  "packages/ts/src/models/models.ts::Author#field.joinServiceSeqWithSeq": {
     "exported": true,
     "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | IpHexCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
   },
@@ -16211,17 +16083,9 @@
     "exported": true,
     "signature": "(v0: ValueFunction | null) =\u003e this"
   },
-  "packages/ts/src/models/models.ts::Author#field.leftJoinServiceRegionSeqWithSeq": {
-    "exported": true,
-    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | IpHexCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
-  },
   "packages/ts/src/models/models.ts::Author#field.likeCount": {
     "exported": true,
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
-  },
-  "packages/ts/src/models/models.ts::Author#field.ltReadCount": {
-    "exported": true,
-    "signature": "(v0: number | ValueFunction) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.matchSeqWithUserSeq": {
     "exported": true,
@@ -16231,25 +16095,9 @@
     "exported": true,
     "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
   },
-  "packages/ts/src/models/models.ts::Author#field.nameEqSeq": {
-    "exported": true,
-    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | IpHexCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
-  },
   "packages/ts/src/models/models.ts::Author#field.nePhotoUrl": {
     "exported": true,
     "signature": "(v0: string | readonly (string)[] | ValueFunction | Model | null) =\u003e this"
-  },
-  "packages/ts/src/models/models.ts::Author#field.newLabel": {
-    "exported": true,
-    "signature": "(value: unknown) =\u003e this"
-  },
-  "packages/ts/src/models/models.ts::Author#field.orGtReadCount": {
-    "exported": true,
-    "signature": "(v0: number | ValueFunction) =\u003e this"
-  },
-  "packages/ts/src/models/models.ts::Author#field.orIsClose": {
-    "exported": true,
-    "signature": "(v0: boolean | readonly (boolean)[] | ValueFunction | Model) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.orderByReadCountDescAndSeqAsc": {
     "exported": true,
@@ -16267,17 +16115,9 @@
     "exported": true,
     "signature": "(v0: string | readonly (string)[] | ValueFunction | Model | null) =\u003e this"
   },
-  "packages/ts/src/models/models.ts::Author#field.priceEqSeq": {
-    "exported": true,
-    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | IpHexCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
-  },
   "packages/ts/src/models/models.ts::Author#field.readCount": {
     "exported": true,
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
-  },
-  "packages/ts/src/models/models.ts::Author#field.readCountLtSeq": {
-    "exported": true,
-    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | IpHexCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.readerCount": {
     "exported": true,
@@ -17715,10 +17555,6 @@
     "exported": true,
     "signature": "EntityDef"
   },
-  "packages/ts/src/models/models.ts::BindCell#field.getModule": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::BindCell#field.getName": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -17727,19 +17563,11 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
-  "packages/ts/src/models/models.ts::BindCell#field.getRecord": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::BindCell#field.getServiceMemberModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::BindCell#field.getSharedNoteModel": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::BindCell#field.getStartMonth": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -17931,10 +17759,6 @@
     "exported": true,
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e Promise\u003cthis | null\u003e"
   },
-  "packages/ts/src/models/models.ts::ClockCell#field.getModule": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::ClockCell#field.getName": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -17943,19 +17767,11 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
-  "packages/ts/src/models/models.ts::ClockCell#field.getRecord": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::ClockCell#field.getServiceMemberModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::ClockCell#field.getSharedNoteModel": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::ClockCell#field.getStartMonth": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -18155,14 +17971,6 @@
     "exported": true,
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
   },
-  "packages/ts/src/models/models.ts::CompositeAccount#field.andLbName": {
-    "exported": true,
-    "signature": "(v0: string) =\u003e this"
-  },
-  "packages/ts/src/models/models.ts::CompositeAccount#field.andLkName": {
-    "exported": true,
-    "signature": "(v0: string) =\u003e this"
-  },
   "packages/ts/src/models/models.ts::CompositeAccount#field.entity": {
     "exported": true,
     "signature": "EntityDef"
@@ -18171,19 +17979,7 @@
     "exported": true,
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model, v1: number | readonly (number)[] | ValueFunction | Model) =\u003e Promise\u003cthis | null\u003e"
   },
-  "packages/ts/src/models/models.ts::CompositeAccount#field.getModule": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::CompositeAccount#field.getReadTotal": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::CompositeAccount#field.getRecord": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::CompositeAccount#field.getSeq": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -18192,10 +17988,6 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::CompositeAccount#field.getSharedNoteModel": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::CompositeAccount#field.getStartMonth": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -18355,10 +18147,6 @@
     "exported": true,
     "signature": "EntityDef"
   },
-  "packages/ts/src/models/models.ts::CompositeMembership#field.getModule": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::CompositeMembership#field.getName": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -18367,23 +18155,11 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
-  "packages/ts/src/models/models.ts::CompositeMembership#field.getRecord": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::CompositeMembership#field.getSeq": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::CompositeMembership#field.getServiceMemberModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::CompositeMembership#field.getSharedNoteModel": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::CompositeMembership#field.getStartMonth": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -18551,10 +18327,6 @@
     "exported": true,
     "signature": "EntityDef"
   },
-  "packages/ts/src/models/models.ts::DayCell#field.getModule": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::DayCell#field.getName": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -18563,19 +18335,11 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
-  "packages/ts/src/models/models.ts::DayCell#field.getRecord": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::DayCell#field.getServiceMemberModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::DayCell#field.getSharedNoteModel": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::DayCell#field.getStartMonth": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -18743,10 +18507,6 @@
     "exported": true,
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e Promise\u003cthis | null\u003e"
   },
-  "packages/ts/src/models/models.ts::HexCell#field.getModule": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::HexCell#field.getName": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -18755,19 +18515,11 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
-  "packages/ts/src/models/models.ts::HexCell#field.getRecord": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::HexCell#field.getServiceMemberModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::HexCell#field.getSharedNoteModel": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::HexCell#field.getStartMonth": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -18907,10 +18659,6 @@
     "exported": true,
     "signature": "EntityDef"
   },
-  "packages/ts/src/models/models.ts::IpHexCell#field.getModule": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::IpHexCell#field.getName": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -18919,19 +18667,11 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
-  "packages/ts/src/models/models.ts::IpHexCell#field.getRecord": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::IpHexCell#field.getServiceMemberModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::IpHexCell#field.getSharedNoteModel": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::IpHexCell#field.getStartMonth": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -19027,10 +18767,6 @@
     "exported": true,
     "signature": "EntityDef"
   },
-  "packages/ts/src/models/models.ts::NoteReader#field.getModule": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::NoteReader#field.getName": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -19039,19 +18775,11 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
-  "packages/ts/src/models/models.ts::NoteReader#field.getRecord": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::NoteReader#field.getServiceMemberModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::NoteReader#field.getSharedNoteModel": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::NoteReader#field.getStartMonth": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -19171,15 +18899,7 @@
     "exported": true,
     "signature": "EntityDef"
   },
-  "packages/ts/src/models/models.ts::Project#field.getModule": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::Project#field.getReadTotal": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::Project#field.getRecord": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -19188,10 +18908,6 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::Project#field.getSharedNoteModel": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::Project#field.getStartMonth": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -19295,15 +19011,7 @@
     "exported": true,
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e Promise\u003cthis | null\u003e"
   },
-  "packages/ts/src/models/models.ts::Service#field.getModule": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::Service#field.getReadTotal": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::Service#field.getRecord": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -19314,34 +19022,6 @@
   "packages/ts/src/models/models.ts::Service#field.getSharedNoteModel": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::Service#field.getStartMonth": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::Service#field.gtSeq": {
-    "exported": true,
-    "signature": "(v0: number | ValueFunction) =\u003e this"
-  },
-  "packages/ts/src/models/models.ts::Service#field.joinNameWithName": {
-    "exported": true,
-    "signature": "(child: Author | User | Service | ServiceRegion | CompositeAccount | SoftRecord | Account | Project) =\u003e this"
-  },
-  "packages/ts/src/models/models.ts::Service#field.leftJoinNameWithName": {
-    "exported": true,
-    "signature": "(child: Author | User | Service | ServiceRegion | CompositeAccount | SoftRecord | Account | Project) =\u003e this"
-  },
-  "packages/ts/src/models/models.ts::Service#field.matchLikeCountWithSeq": {
-    "exported": true,
-    "signature": "() =\u003e this"
-  },
-  "packages/ts/src/models/models.ts::Service#field.matchNameWithSeq": {
-    "exported": true,
-    "signature": "() =\u003e this"
-  },
-  "packages/ts/src/models/models.ts::Service#field.matchServiceSeqWithSeq": {
-    "exported": true,
-    "signature": "() =\u003e this"
   },
   "packages/ts/src/models/models.ts::Service#field.name": {
     "exported": true,
@@ -19443,10 +19123,6 @@
     "exported": true,
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e Promise\u003cnumber\u003e"
   },
-  "packages/ts/src/models/models.ts::ServiceMember#field.getModule": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::ServiceMember#field.getName": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -19455,19 +19131,11 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
-  "packages/ts/src/models/models.ts::ServiceMember#field.getRecord": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::ServiceMember#field.getServiceMemberModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::ServiceMember#field.getSharedNoteModel": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::ServiceMember#field.getStartMonth": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -19647,23 +19315,11 @@
     "exported": true,
     "signature": "class ServiceRegion"
   },
-  "packages/ts/src/models/models.ts::ServiceRegion#field.aliasModule": {
-    "exported": true,
-    "signature": "() =\u003e this"
-  },
   "packages/ts/src/models/models.ts::ServiceRegion#field.entity": {
     "exported": true,
     "signature": "EntityDef"
   },
-  "packages/ts/src/models/models.ts::ServiceRegion#field.getModule": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::ServiceRegion#field.getReadTotal": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::ServiceRegion#field.getRecord": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -19675,21 +19331,9 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
-  "packages/ts/src/models/models.ts::ServiceRegion#field.getStartMonth": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::ServiceRegion#field.matchServiceRegionSeqWithSeq": {
-    "exported": true,
-    "signature": "() =\u003e this"
-  },
   "packages/ts/src/models/models.ts::ServiceRegion#field.name": {
     "exported": true,
     "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
-  },
-  "packages/ts/src/models/models.ts::ServiceRegion#field.possibleIsClose": {
-    "exported": true,
-    "signature": "(value: unknown) =\u003e this"
   },
   "packages/ts/src/models/models.ts::ServiceRegion#field.seq": {
     "exported": true,
@@ -19839,10 +19483,6 @@
     "exported": true,
     "signature": "EntityDef"
   },
-  "packages/ts/src/models/models.ts::SharedNote#field.getModule": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::SharedNote#field.getName": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -19851,19 +19491,11 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
-  "packages/ts/src/models/models.ts::SharedNote#field.getRecord": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::SharedNote#field.getServiceMemberModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::SharedNote#field.getSharedNoteModel": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::SharedNote#field.getStartMonth": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -19975,10 +19607,6 @@
     "exported": true,
     "signature": "EntityDef"
   },
-  "packages/ts/src/models/models.ts::SoftLink#field.getModule": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::SoftLink#field.getName": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -19987,19 +19615,11 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
-  "packages/ts/src/models/models.ts::SoftLink#field.getRecord": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::SoftLink#field.getServiceMemberModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::SoftLink#field.getSharedNoteModel": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::SoftLink#field.getStartMonth": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -20163,10 +19783,6 @@
     "exported": true,
     "signature": "class SoftRecord"
   },
-  "packages/ts/src/models/models.ts::SoftRecord#field.aliasRecord": {
-    "exported": true,
-    "signature": "() =\u003e this"
-  },
   "packages/ts/src/models/models.ts::SoftRecord#field.deletedAt": {
     "exported": true,
     "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model | null] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
@@ -20175,19 +19791,7 @@
     "exported": true,
     "signature": "EntityDef"
   },
-  "packages/ts/src/models/models.ts::SoftRecord#field.getBySeq": {
-    "exported": true,
-    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e Promise\u003cthis | null\u003e"
-  },
-  "packages/ts/src/models/models.ts::SoftRecord#field.getModule": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::SoftRecord#field.getReadTotal": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::SoftRecord#field.getRecord": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -20196,10 +19800,6 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::SoftRecord#field.getSharedNoteModel": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::SoftRecord#field.getStartMonth": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -20331,10 +19931,6 @@
     "exported": true,
     "signature": "EntityDef"
   },
-  "packages/ts/src/models/models.ts::Task#field.getModule": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::Task#field.getName": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -20343,19 +19939,11 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
-  "packages/ts/src/models/models.ts::Task#field.getRecord": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::Task#field.getServiceMemberModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::Task#field.getSharedNoteModel": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::Task#field.getStartMonth": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -20499,10 +20087,6 @@
     "exported": true,
     "signature": "EntityDef"
   },
-  "packages/ts/src/models/models.ts::TimeCell#field.getModule": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::TimeCell#field.getName": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -20511,19 +20095,11 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
-  "packages/ts/src/models/models.ts::TimeCell#field.getRecord": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::TimeCell#field.getServiceMemberModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::TimeCell#field.getSharedNoteModel": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::TimeCell#field.getStartMonth": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -20659,10 +20235,6 @@
     "exported": true,
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e Promise\u003cthis | null\u003e"
   },
-  "packages/ts/src/models/models.ts::UpsertCell#field.getModule": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::UpsertCell#field.getName": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -20671,19 +20243,11 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
-  "packages/ts/src/models/models.ts::UpsertCell#field.getRecord": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::UpsertCell#field.getServiceMemberModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::UpsertCell#field.getSharedNoteModel": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::UpsertCell#field.getStartMonth": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -20819,23 +20383,11 @@
     "exported": true,
     "signature": "(fn: (model: this) =\u003e Model) =\u003e this"
   },
-  "packages/ts/src/models/models.ts::User#field.aliasWriter": {
-    "exported": true,
-    "signature": "() =\u003e this"
-  },
   "packages/ts/src/models/models.ts::User#field.entity": {
     "exported": true,
     "signature": "EntityDef"
   },
-  "packages/ts/src/models/models.ts::User#field.getModule": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::User#field.getReadTotal": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::User#field.getRecord": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -20844,10 +20396,6 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::User#field.getSharedNoteModel": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::User#field.getStartMonth": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -20951,10 +20499,6 @@
     "exported": true,
     "signature": "EntityDef"
   },
-  "packages/ts/src/models/models.ts::UuidCell#field.getModule": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::UuidCell#field.getName": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -20963,19 +20507,11 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
-  "packages/ts/src/models/models.ts::UuidCell#field.getRecord": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
   "packages/ts/src/models/models.ts::UuidCell#field.getServiceMemberModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::UuidCell#field.getSharedNoteModel": {
-    "exported": true,
-    "signature": "\u003cT = unknown\u003e() =\u003e T"
-  },
-  "packages/ts/src/models/models.ts::UuidCell#field.getStartMonth": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },

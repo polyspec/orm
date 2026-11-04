@@ -3,6 +3,11 @@
 
 ## Unreleased
 
+- A recipe `interface.symbols` that reaches its deadline kills the interface check in every runtime and fails its case, so no hung check is left running.
+- A Rust integration case that fails names what it waited on for a connection: the pool acquire timeout and, through ProxySQL, the hostgroup and its connect timeout.
+- The interface check of each runtime (INT-17, INT-18, INT-19, INT-57, INT-61, INT-64) is the case `interface_symbols` of the recipe `public-interface` through the new op `interface.symbols`; the six native wrappers and their parity unit are gone.
+- A transaction reads its own write and publishes one transaction number on each of its statements in the recipe case `transaction_reads_its_own_write` of every runtime; the PHP extension test that held it alone is gone.
+- The composite keys whose texts concatenate to one value are rows of the recipe `composite_keys` alone, and the case reads the statements and binds of their relation in every runtime; the fixture `composite_key_collision.json` and its exclusion from the parity suites are gone.
 - The feature `transactions` runs the recipe `utils` in its owners too, as its parity list already named: `make feature-coverage-of/transactions` holds the lock release of INT-72 in every runtime (#T334-3-12-3-8)
 - The per-database feature coverage cells are gone from the check and the CI matrix: `make parity-check` runs every recipe unit of them, and `make feature-coverage-of/<id>` still runs the coverage of one feature for a row (#T334-3-12)
 - The feature checker runs each test entry once and reads only the `CASE` lines of its results file (FCV-12): its second run, its database state digest, its bench DSNs and its readers of test2json, libtest and TeamCity output are gone. The native `interface_symbols` entries write that line too. The timing of `performance_gate` is `make feature-performance-check`, which runs the hot-path measurements of the parity units twice, one at a time; the coverage of the feature is its recipe, and `execution` is gone from the manifest. The Rust lane runs the recipe programs in its workspace run instead of skipping them.

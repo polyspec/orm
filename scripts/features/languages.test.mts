@@ -78,7 +78,6 @@ caseTest('shared feature tests come from parity test globs or exact bindings, wh
   assert.equal(isDeclaredSharedTest('rust', 'packages/rust/orm/tests/common/test_support.rs', globs), false);
   assert.equal(isDeclaredSharedTest('typescript', 'packages/ts/tests/coverage_transactions.mjs', globs), true);
   assert.equal(isDeclaredSharedTest('typescript', 'packages/ts/tests/coverage_case.mjs', globs), true);
-  assert.equal(isDeclaredSharedTest('python', 'packages/python/tests/coverage_interface_contract.py', globs), true);
   assert.equal(isDeclaredSharedTest('python', 'packages/python/tests/coverage_case.py', globs), true);
   assert.ok(boundTestPaths('go', parity).includes('packages/go/orm/transaction_api_test.go'));
   const internal = implementationInternalTestPaths(parity);

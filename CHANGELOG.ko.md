@@ -1,10 +1,15 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 433fd9a05b9a8fd56145a03fb6045d4890aaa923cba60a8f792a190ae543fa7d -->
+<!-- source-sha256: 15f98df25675b100a76d28e485e46e9030d781b1fc9a7b2ef5179883079da40b -->
 # 변경 이력
 
 ## Unreleased
 
 - collection key는 PRT-35와 INT-11대로 모든 database에서 구성 요소의 선언 타입을 유지한다. `bool` column이 MySQL과 SQLite에서 정수로 읽혀 `(true, 1)`과 `(1, true)`의 key text가 같았고, composite key의 `datetime` 구성 요소가 TypeScript와 PHP, SQLite의 Python에서 text로 읽혔다. encoding은 이제 recipe `model_queries_chain`의 case `composite_key_*`이고, 어떤 key column도 담을 수 없는 형태는 `tests/collection/keys.json`에 남는다.
+- deadline에 이른 recipe `interface.symbols`는 모든 runtime에서 interface check를 죽이고 case를 실패시키므로, 멈춘 check가 남지 않는다.
+- 실패한 Rust integration case는 연결을 기다린 대상을 적는다: pool acquire timeout과, ProxySQL을 거칠 때는 hostgroup과 그 connect timeout이다.
+- 각 runtime의 interface check(INT-17, INT-18, INT-19, INT-57, INT-61, INT-64)는 새 op `interface.symbols`로 recipe `public-interface`의 case `interface_symbols`가 된다. native wrapper 여섯 개와 그 parity unit은 없어졌다.
+- transaction이 자기 쓰기를 읽고 그 모든 statement에 하나의 transaction 번호를 발행함은 모든 runtime에서 recipe case `transaction_reads_its_own_write`가 확인한다. 이를 혼자 확인하던 PHP extension test는 없어졌다.
+- 이어 붙인 문자열이 같은 composite key는 recipe `composite_keys`의 row로만 있고, case가 모든 runtime에서 그 relation의 statement와 bind를 읽는다. fixture `composite_key_collision.json`과 parity suite의 그 제외 항목은 없어졌다.
 - Python은 실제 컬럼의 `new_<name>`을 다른 동적 runtime처럼 `CONFIG`로 거부하고(DSL-160), 그 거부는 여전히 `AttributeError`이므로 `hasattr`가 그대로 동작한다. 이 거부는 각 runtime의 native 테스트 대신 PHP, PHP extension, TypeScript, Python에서 recipe `dsl-dynamic`의 case `new_of_a_stored_column_is_refused_at_call_time`로 실행된다. 같은 이름의 두 번째 helper가 호출 대상을 가리고 있던 Python에서 recipe `dsl-dynamic`이 다시 실행된다. native로 남는 생성기와 schema 경계의 unit은 그 이유를 FCV-2에 적는다.
 - TypeScript와 Python 생성기는 child 없는 `join<L>With<R>`와 `leftJoin<L>With<R>` 호출을 scan에서 거부한다. 다른 생성기처럼 DSL-37의 인자 개수 규칙을 따른 것이다. PHP scan vector의 chain 이름은 PHP와 TypeScript scan을 비교하던 테스트 대신 모든 runtime에서 `generator` recipe의 `scanned-` case로 실행된다.
 - 기능 `transactions`의 owner는 그 parity 목록이 이미 적은 대로 recipe `utils`도 실행한다. INT-72의 lock 해제는 모든 runtime에서 `make feature-coverage-of/transactions`가 시험한다 (#T334-3-12-3-8)

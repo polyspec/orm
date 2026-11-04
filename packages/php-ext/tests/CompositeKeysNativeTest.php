@@ -44,19 +44,11 @@ final class CompositeKeysNativeTest extends TestCase
         require_once __DIR__ . '/NativeQueryProbePdo.php';
         NativeQueryProbePdo::assertNativeOrmClasses();
         Assert::assertTrue((new ReflectionClass(Collection::class))->isInternal());
-        $fixture = json_decode(
-            (string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/composite_key_collision.json'),
-            true,
-            512,
-            JSON_THROW_ON_ERROR
-        );
-        Assert::assertSame('composite_keys', $fixture['feature']);
-        Assert::assertSame('composite_key_rows', $fixture['cases'][0]['id']);
-        $collisionRows = $fixture['cases'][0]['expected'];
+        $collisionRows = self::collisionRows();
         Assert::assertSame(
             (string)$collisionRows[0]['tenant_id'] . $collisionRows[0]['account_id'],
             (string)$collisionRows[1]['tenant_id'] . $collisionRows[1]['account_id'],
-            'the shared fixture has equal concatenated composite keys'
+            'the recipe holds equal concatenated composite keys'
         );
         $nativeRows = array_map(
             static fn(array $row): array => [
@@ -114,6 +106,44 @@ final class CompositeKeysNativeTest extends TestCase
         }
     }
 
+
+    /**
+     * The rows of the recipe composite_keys whose two composite keys have one concatenation, the account of each with its
+     * membership, in the order of the recipe.
+     *
+     * @return list<array{tenant_id: int, account_id: int, name: string, role: string}>
+     */
+    private static function collisionRows(): array
+    {
+        $recipe = json_decode(
+            (string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/composite_keys/composite_keys.json'),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+        $created = [];
+        foreach ($recipe['cases'][0]['steps'] as $step) {
+            if ($step['op'] === 'model.creates') {
+                $created[$step['model']] = $step['rows'];
+            }
+        }
+        $roles = [];
+        foreach ($created['CompositeMembership'] as $row) {
+            $roles[$row['tenant_id']['int'] . '/' . $row['account_id']['int']] = $row['role']['text'];
+        }
+        $rows = [];
+        foreach ($created['CompositeAccount'] as $row) {
+            if (str_starts_with($row['name']['text'], 'collision-')) {
+                $rows[] = [
+                    'tenant_id' => (int) $row['tenant_id']['int'],
+                    'account_id' => (int) $row['account_id']['int'],
+                    'name' => $row['name']['text'],
+                    'role' => $roles[$row['tenant_id']['int'] . '/' . $row['account_id']['int']],
+                ];
+            }
+        }
+        return $rows;
+    }
 
     // DSL-35 and DSL-64: tuple predicates and pages retain every composite key component.
     // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
