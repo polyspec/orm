@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Tests: the decimal physical runs and the commands of `contracts/features.json` and `config/parity.json` no longer name the removed tags `decimalphysical`, `markdown` and `physical`, and the row T334-3-6 states that `ormtest` stays, as PRT-43 requires.
 - Python refuses `new_<name>` of a real column with `CONFIG`, as the other dynamic runtimes do (DSL-160), and the refusal is still an `AttributeError`, so `hasattr` holds. The refusal is the case `new_of_a_stored_column_is_refused_at_call_time` of the recipe `dsl-dynamic` in PHP, the PHP extension, TypeScript and Python, in place of a native test in each. The recipe `dsl-dynamic` runs again in Python, where a second helper of the same name had replaced the one it calls. The units of the generator and of the schema boundary that stay native have their reasons in FCV-2.
 - The TypeScript and Python generators refuse a scanned `join<L>With<R>` or `leftJoin<L>With<R>` without its child, the argument count of DSL-37, as the other generators do. The chain names of the PHP scan vectors are `scanned-` cases of the `generator` recipe in every runtime, in place of the comparison of the PHP and the TypeScript scans.
 - Tests: the case `catalog_session_after_a_schema_change_through_a_pooler` compares the `pg_backend_pid()` of its read with that of the held statement, so it fails when the read reaches another server connection. The PHP runner of `sql.hold_statement` bound no value to its `$1`, as PDO binds none to that placeholder, and now writes it as `?`.

@@ -38,7 +38,7 @@
       ],
       "args": [
         "-tags",
-        "physical,ormtest,markdown"
+        "ormtest"
       ],
       "symbols": {
         "extractor": "go",
@@ -29375,7 +29375,7 @@
             "go",
             "test",
             "-tags",
-            "decimalphysical",
+            "ormtest",
             "-json",
             "-count=1",
             "-run",
@@ -29391,7 +29391,7 @@
             "go",
             "test",
             "-tags",
-            "decimalphysical",
+            "ormtest",
             "-json",
             "-count=1",
             "-run",
@@ -29407,7 +29407,7 @@
             "go",
             "test",
             "-tags",
-            "decimalphysical",
+            "ormtest",
             "-json",
             "-count=1",
             "-run",
