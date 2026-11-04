@@ -1,7 +1,8 @@
 // The dbspec.introspect op (docs/spec/feature-coverage.md FCV-4, DIA-133, DIA-198) of the recipe runner.
 import { readFileSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
-import { dbspecManifest, emitDbspec, introspectDbspec, parseDbspec, readDbspecFile, renderDbspec } from '../dist/dbspec/index.js';
+import { dbspecManifest, emitDbspec, introspectDbspec, parseDbspec, parsePlan, planSteps, readDbspecFile, renderDbspec } from '../dist/dbspec/index.js';
+import { readPlanCases } from '../../../tests/dbspec/vectors.mts';
 import { nativeSession } from './coverage_case.mjs';
 
 const CONNECTION_RULES = {
@@ -136,4 +137,117 @@ export async function introspectStep(step, context) {
     if (got !== want) throw new Error(`the schema text differs:\n${got}\nwant\n${want}`);
   }
   return { queries: counter.count };
+}
+
+// The number of tables and columns whose name begins with dbspec$ in the database.
+const PLAN_HIDDEN_LEFT = {
+  mysql: "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME LIKE 'dbspec$%' OR COLUMN_NAME LIKE 'dbspec$%')",
+  postgres:
+    "SELECT COUNT(*) FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid WHERE c.relnamespace = current_schema()::regnamespace AND c.relkind = 'r' AND a.attnum > 0 AND (c.relname LIKE 'dbspec$%' OR a.attname LIKE 'dbspec$%')",
+  sqlite: "SELECT COUNT(*) FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type = 'table' AND (m.name LIKE 'dbspec$%' OR p.name LIKE 'dbspec$%')",
+};
+
+const documentText = lines => `${lines.join('\n')}\n`;
+
+// planPhysicalStep runs a dbspec.plan_physical step on one native connection of the case database (PLN-102): the connection
+// rules, the rendered source and the before steps; the plan steps before finalize, on SQLite with foreign keys off and no row
+// of foreign_key_check, and the public introspectDbspec reads the target with nothing unsupported; without an irreversible
+// step, the rollback statements return to the source and the steps run again; then the after steps and the finalize steps
+// run, the target is read again and no table or column named dbspec$ remains.
+export async function planPhysicalStep(step, context) {
+  const { database, dsn, dir } = context;
+  const id = step.case;
+  const vector = readPlanCases(resolve(dir, step.vectors)).find(candidate => candidate.id === id);
+  if (vector === undefined) throw new Error(`the vectors have no case ${id}`);
+  const parsed = parsePlan(documentText(vector.plan));
+  if (parsed.diagnostics.length > 0) throw new Error(`the plan: ${JSON.stringify(parsed.diagnostics)}`);
+  const target = dbspecManifest([parsed.plan.schema]).manifest.schemaText;
+  let source = null;
+  let setup = [];
+  let sourceText = '';
+  if (vector.source !== null) {
+    const document = parseDbspec(documentText(vector.source), {});
+    if (document.diagnostics.length > 0) throw new Error(`the source: ${JSON.stringify(document.diagnostics)}`);
+    source = document.document;
+    const rendered = renderDbspec([source], database);
+    if (rendered.diagnostics.length > 0) throw new Error(`the render of the source: ${JSON.stringify(rendered.diagnostics)}`);
+    setup = rendered.statements;
+    sourceText = dbspecManifest([source]).manifest.schemaText;
+  }
+  const planned = planSteps(source, parsed.plan, database);
+  if (planned.diagnostics.length > 0) throw new Error(`the plan steps: ${JSON.stringify(planned.diagnostics)}`);
+  const steps = planned.steps;
+  const reversible = steps.every(s => s.finalize || s.rollback !== '');
+  const sqlite = database === 'sqlite';
+  const session = await nativeSession(database, dsn);
+  try {
+    const value = async query => {
+      const rows = await session.query(query);
+      if (rows.length === 0) throw new Error(`${query}: no row`);
+      const first = Object.values(rows[0])[0];
+      if (first === null) throw new Error(`${query}: NULL value`);
+      return String(first);
+    };
+    const behavior = async entries => {
+      for (const entry of entries) {
+        if (entry.dialects !== undefined && !entry.dialects.includes(database)) continue;
+        if (entry.sql !== undefined) {
+          const refused = await session.query(entry.sql).then(() => null, error => error);
+          if (entry.fails && refused === null) throw new Error(`${entry.sql} must fail`);
+          if (!entry.fails && refused !== null) throw new Error(`${entry.sql}: ${refused.message}`, { cause: refused });
+          continue;
+        }
+        const got = await value(entry.query);
+        if (got !== entry.want) throw new Error(`${entry.query}: got ${got}, want ${entry.want}`);
+      }
+    };
+    const foreignKeys = async () => {
+      if (!sqlite) return;
+      const violations = await value('SELECT COUNT(*) FROM pragma_foreign_key_check');
+      if (violations !== '0') throw new Error(`foreign_key_check returns ${violations} rows`);
+    };
+    const schemaIs = async (what, want) => {
+      const { document, unsupported } = await introspectDbspec(session.connection, database, 'introspected');
+      if (unsupported.length > 0) throw new Error(`${what}: unsupported objects ${JSON.stringify(unsupported)}`);
+      const got = document.tables.length > 0 ? dbspecManifest([document]).manifest.schemaText : '';
+      if (got !== want) throw new Error(`${what}: the schema text differs\n--- want\n${want}--- got\n${got}`);
+    };
+    const forward = async restore => {
+      for (const s of steps) {
+        if (s.finalize) break;
+        await session.query(restore && s.restore !== '' ? s.restore : s.statement);
+      }
+      await foreignKeys();
+    };
+    for (const sql of [...CONNECTION_RULES[database], ...setup]) await session.query(sql);
+    await behavior(vector.before);
+    // SQLite turns foreign keys off while it recreates a table, and checks them afterwards.
+    if (sqlite) {
+      await session.query('PRAGMA foreign_keys = OFF');
+      await session.query('PRAGMA legacy_alter_table = OFF');
+    }
+    await forward(false);
+    await schemaIs('applied', target);
+    if (reversible) {
+      // A rollback that goes all the way back recreates the old table with the added column hidden.
+      for (const s of [...steps].reverse()) if (!s.finalize) await session.query(s.rollbackRestore !== '' ? s.rollbackRestore : s.rollback);
+      await foreignKeys();
+      await schemaIs('rolled back', sourceText);
+      await forward(true);
+      await schemaIs('applied again', target);
+    }
+    if (sqlite) await session.query('PRAGMA foreign_keys = ON');
+    await behavior(vector.after);
+    // Finalize also runs with SQLite foreign keys off, as apply does: hidden tables can reference each other.
+    if (sqlite) await session.query('PRAGMA foreign_keys = OFF');
+    for (const s of steps) if (s.finalize) await session.query(s.statement);
+    await foreignKeys();
+    if (sqlite) await session.query('PRAGMA foreign_keys = ON');
+    await schemaIs('finalized', target);
+    const hidden = await value(PLAN_HIDDEN_LEFT[database]);
+    if (hidden !== '0') throw new Error(`${hidden} tables or columns named dbspec$ remain after finalize`);
+  } finally {
+    await session.close();
+  }
+  return {};
 }

@@ -715,7 +715,6 @@
         "packages/ts/tests/database-case-fixture.mjs",
         "packages/ts/tests/database-case-tests.mjs",
         "packages/ts/tests/dbspec-plan-fixture.mjs",
-        "packages/ts/tests/dbspec-physical-database.mjs",
         "packages/ts/tests/internal-column-error.mjs",
         "packages/ts/tests/mysql-test-options.mjs",
         "packages/ts/tests/bench-set.mjs",
@@ -780,10 +779,6 @@
         {
           "glob": "packages/ts/tests/internal-column-error.test.mjs",
           "reason": "harness: tests a TypeScript test-only matcher for internal-column error messages, not ORM result or error behavior"
-        },
-        {
-          "glob": "packages/ts/tests/dbspec-physical-database.test.mjs",
-          "reason": "harness: tests TypeScript physical-test database creation and cleanup infrastructure; it does not exercise dbspec client behavior"
         },
         {
           "glob": "packages/ts/tests/database-case-tests.test.mjs",
@@ -1050,7 +1045,6 @@
         "packages/rust/build/tests/lock_probe/mod.rs",
         "packages/rust/build/tests/row_insert_identity/expression.rs",
         "packages/rust/orm/tests/common/audit_rows.rs",
-        "packages/rust/orm/tests/common/dbspec_probe.rs",
         "packages/rust/schema/tests/common/dbspec_cases.rs",
         "packages/rust/tests/build.rs",
         "packages/rust/tests/bench_model.rs",
@@ -1069,9 +1063,7 @@
         "packages/rust/orm/tests/common/external_schema.rs",
         "packages/rust/orm/tests/common/fixed_plan_time.rs",
         "packages/rust/orm/tests/common/json_trials.rs",
-        "packages/rust/orm/tests/common/json_strings.rs",
         "packages/rust/orm/tests/common/plan_cases.rs",
-        "packages/rust/orm/tests/common/plan_physical.rs",
         "packages/rust/orm/tests/common/plan_recipe.rs",
         "packages/rust/orm/tests/common/plan_sources.rs",
         "packages/rust/orm/tests/common/map_rows.rs",
@@ -1308,7 +1300,7 @@
     "tests/codec/*.json",
     "tests/collection/collection.json",
     "tests/conformance/*.json",
-    "tests/dbspec/!(introspect|ddl).json",
+    "tests/dbspec/!(introspect|ddl|plans-physical).json",
     "tests/dsn/sqlite-paths.json",
     "tests/ir/*.json",
     "tests/markdown/*.json",
@@ -3472,52 +3464,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/dbspec_apply_verification_errors_none.rs",
           "symbol": "dbspec_apply_verification_errors_none"
-        }
-      ]
-    },
-    {
-      "id": "dbspec-plan-physical",
-      "kind": "suite",
-      "requirements": [
-        "PLN-102"
-      ],
-      "file": "tests/dbspec/plans-physical.json",
-      "cases": "$.cases.~",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/internal/dialects/plans_physical_test.go",
-          "symbol": "TestPlanApply"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecPlanApplyTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecPlanApplyTest::testPlan"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecPlanApplyTestExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecPlanApplyTestExtensionTest::testPlan"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-plan-physical.mjs"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/dbspec_plan_physical.py",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "dbspec-plan-python-check"
-          ]
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_plan_apply.rs",
-          "symbol": "dbspec_plan_apply"
         }
       ]
     },
@@ -7967,47 +7913,6 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/styled_column_states.rs",
           "symbol": "styled_column_state_fixture"
-        }
-      ]
-    },
-    {
-      "id": "install-changed-database",
-      "kind": "suite",
-      "requirements": [
-        "DBS-108",
-        "SCH-7",
-        "SCH-13"
-      ],
-      "file": "contracts/fixtures/install/changed_database.json",
-      "cases": "$.cases[*].id",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/install_test.go",
-          "symbol": "TestInstallVerifiesTheDatabase"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/SchemaSetTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\SchemaSetTest::testInstallVerifiesTheDatabase"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageNativeChangedDatabaseExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CoverageNativeChangedDatabaseExtensionTest::testInstallChangedDatabaseVector"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/install_changed_database.mjs"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/install_changed_database.py"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/install.rs",
-          "symbol": "install_verifies_the_database"
         }
       ]
     },
@@ -41073,6 +40978,7 @@
       "id": "dbspec_introspect-mysql",
       "kind": "suite",
       "requirements": [
+        "PLN-102",
         "DBS-42",
         "DBS-84",
         "DBS-94",
@@ -41146,6 +41052,7 @@
       "id": "dbspec_introspect-postgres",
       "kind": "suite",
       "requirements": [
+        "PLN-102",
         "DBS-42",
         "DBS-84",
         "DBS-94",
@@ -41219,6 +41126,7 @@
       "id": "dbspec_introspect-sqlite",
       "kind": "suite",
       "requirements": [
+        "PLN-102",
         "DBS-42",
         "DBS-84",
         "DBS-94",
@@ -41287,6 +41195,60 @@
           "symbol": "dbspec_introspect_sqlite"
         }
       ]
+    },
+    {
+      "id": "php-dbspec-apply-drift-error-fields",
+      "kind": "feature",
+      "requirements": [
+        "PLN-96a"
+      ],
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecPlanApplyTest.php",
+          "id": "DbspecPlanApplyTest::testDriftApplyErrorNamesTheSchemaMismatchInItsDetail"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecPlanApplyTestExtensionTest.php",
+          "id": "DbspecPlanApplyTestExtensionTest::testDriftApplyErrorNamesTheSchemaMismatchInItsDetail"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "schema_definition",
+        "parts": [
+          "owner/php",
+          "owner/php-extension"
+        ]
+      }
+    },
+    {
+      "id": "php-dbspec-rollback-drift-error-fields",
+      "kind": "feature",
+      "requirements": [
+        "PLN-96a"
+      ],
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecPlanApplyTest.php",
+          "id": "DbspecPlanApplyTest::testRollbackDriftApplyErrorNamesTheSchemaMismatchInItsDetail"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecPlanApplyTestExtensionTest.php",
+          "id": "DbspecPlanApplyTestExtensionTest::testRollbackDriftApplyErrorNamesTheSchemaMismatchInItsDetail"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "schema_definition",
+        "parts": [
+          "owner/php",
+          "owner/php-extension"
+        ]
+      }
     },
     {
       "id": "dbspec-introspect-silent-failure",
@@ -41360,6 +41322,7 @@
         "PLN-44",
         "SCH-10",
         "SCH-11",
+        "SCH-13",
         "SCH-7",
         "SCH-8",
         "SCH-9"
@@ -41423,6 +41386,7 @@
         "PLN-44",
         "SCH-10",
         "SCH-11",
+        "SCH-13",
         "SCH-7",
         "SCH-8",
         "SCH-9"
@@ -41486,6 +41450,7 @@
         "PLN-44",
         "SCH-10",
         "SCH-11",
+        "SCH-13",
         "SCH-7",
         "SCH-8",
         "SCH-9"
