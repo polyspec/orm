@@ -5,6 +5,7 @@
  */
 #include "dbspec.h"
 #include "orm_exception_object.h"
+#include "Zend/zend_hrtime.h"
 #include <errno.h>
 #include <ctype.h>
 
@@ -169,18 +170,54 @@ static bool cat_mysql_connection_id(zval *pdo, zend_long *id)
     return true;
 }
 
+/* How long after a close of this catalog a connect that max_user_connections refuses is tried again, in seconds (CFG-35). */
+#define CAT_REOPEN_SECONDS 2.0
+
+/* The time, in hrtime seconds, from which a refused connect is no longer a connection of this catalog on the server. */
+static void cat_closed_connection(zval *owner)
+{
+    zend_update_property_double(Z_OBJCE_P(owner), Z_OBJ_P(owner), "reopenUntil", sizeof("reopenUntil") - 1,
+        (double)zend_hrtime() / 1e9 + CAT_REOPEN_SECONDS);
+}
+
+/* Whether the exception that a connect threw is the refusal of a connection over max_user_connections. */
+static bool cat_connections_full(void)
+{
+    if (EG(exception) == NULL) return false;
+    zval rv, *cause = zend_read_property_ex(zend_ce_exception, EG(exception), ZSTR_KNOWN(ZEND_STR_PREVIOUS), true, &rv);
+    if (Z_TYPE_P(cause) != IS_OBJECT) return false;
+    zval rv_code, *code = zend_read_property_ex(zend_ce_exception, Z_OBJ_P(cause), ZSTR_KNOWN(ZEND_STR_CODE), true, &rv_code);
+    return zval_get_long(code) == 1226;
+}
+
+/* Opens a connection. A connection that this catalog closed holds its place in max_user_connections until the server ends that
+ * thread. The server announces that to no one, so this is a timer: the connect is tried again within the 2 s of CFG-35 from the
+ * close (within 40 ms measured). A connect that follows no close of this catalog fails at once. */
+static bool cat_open_connection(zval *owner, zval *out)
+{
+    zval rv_dsn, *dsn = catalog_prop(owner, "dsn", &rv_dsn);
+    zval config, args[2];
+    if (!newobj("Polyspec\\Orm\\Config", &config, 0, NULL)) return false;
+    ZVAL_COPY_VALUE(&args[0], dsn);
+    ZVAL_COPY_VALUE(&args[1], &config);
+    bool connected = scall("Polyspec\\Orm\\Orm::connect", out, 2, args);
+    while (!connected && cat_connections_full()) {
+        zval rv_until, *until = catalog_prop(owner, "reopenUntil", &rv_until);
+        if ((double)zend_hrtime() / 1e9 >= zval_get_double(until)) break;
+        zend_clear_exception();
+        usleep(10000);
+        connected = scall("Polyspec\\Orm\\Orm::connect", out, 2, args);
+    }
+    zval_ptr_dtor(&config);
+    return connected;
+}
+
 /* Kills the running query of a connection id through a connection of its own, which ends with the kill: the killed query ends
  * with an error on its own connection, which keeps the connection that the stop rolls back. */
 static bool cat_kill_thread(zval *owner, zend_long id)
 {
-    zval rv_dsn, *dsn = catalog_prop(owner, "dsn", &rv_dsn);
-    zval config, args[2], killer, pdo, ret;
-    if (!newobj("Polyspec\\Orm\\Config", &config, 0, NULL)) return false;
-    ZVAL_COPY_VALUE(&args[0], dsn);
-    ZVAL_COPY_VALUE(&args[1], &config);
-    bool connected = scall("Polyspec\\Orm\\Orm::connect", &killer, 2, args);
-    zval_ptr_dtor(&config);
-    if (!connected) return false;
+    zval killer, pdo, ret;
+    if (!cat_open_connection(owner, &killer)) return false;
     bool ok = pdo_call(&killer, "pdo", &pdo, 0, NULL, NULL);
     if (ok) {
         char sql[64];
@@ -190,6 +227,7 @@ static bool cat_kill_thread(zval *owner, zend_long id)
     }
     if (pdo_call(&killer, "close", &ret, 0, NULL, NULL)) zval_ptr_dtor(&ret);
     zval_ptr_dtor(&killer);
+    cat_closed_connection(owner);
     return ok && EG(exception) == NULL;
 }
 
@@ -2908,14 +2946,9 @@ static bool cat_open(zval *self)
     } else {
         zend_clear_exception();
     }
-    zval rv_dsn, *dsn = catalog_prop(self, "dsn", &rv_dsn);
-    zval config, args[2], fresh;
-    if (!newobj("Polyspec\\Orm\\Config", &config, 0, NULL)) return false;
-    ZVAL_COPY_VALUE(&args[0], dsn);
-    ZVAL_COPY_VALUE(&args[1], &config);
-    bool connected = scall("Polyspec\\Orm\\Orm::connect", &fresh, 2, args);
-    zval_ptr_dtor(&config);
-    if (!connected) return false;
+    cat_closed_connection(self);
+    zval fresh;
+    if (!cat_open_connection(self, &fresh)) return false;
     init_prop(self, "db", &fresh);
     zval rv_state, *state = catalog_prop(&fresh, "state", &rv_state);
     zend_update_property(Z_OBJCE_P(state), Z_OBJ_P(state), "catalogOwner", sizeof("catalogOwner") - 1, self);
