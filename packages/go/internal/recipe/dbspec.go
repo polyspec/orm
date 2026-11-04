@@ -231,6 +231,7 @@ func checkDBSpec(s step, dir, database string) error {
 			Error        string   `json:"error"`
 			ManifestHash string   `json:"manifest_hash"`
 			Diagnostics  []string `json:"diagnostics"`
+			Message      string   `json:"message"`
 		}
 		if err := json.Unmarshal(raw, &want); err != nil {
 			return err
@@ -239,6 +240,9 @@ func checkDBSpec(s step, dir, database string) error {
 		if invalid != nil {
 			if invalid.Code() != want.Error {
 				return fmt.Errorf("%v, want %+v", invalid, want)
+			}
+			if want.Message != "" && invalid.Message() != want.Message {
+				return fmt.Errorf("message %q, want %q", invalid.Message(), want.Message)
 			}
 			// Each diagnostic is "<line>:<column> <rule>: <message>", in order (SCH-12).
 			if want.Diagnostics != nil {

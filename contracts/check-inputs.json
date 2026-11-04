@@ -1780,7 +1780,7 @@
         "packages/python/tests/test_markdown.py",
         "packages/rust/orm/src/lib.rs",
         "packages/rust/orm/src/row.rs",
-        "packages/ts/tests/driver-cell-bytes.mjs",
+        "packages/ts/tests/driver-integer-param.mjs",
         "packages/ts/tests/driver-error-lock-wait.mjs",
         "packages/ts/tests/markdown.mjs",
         "packages/ts/src/codec.ts",

@@ -1010,7 +1010,7 @@
         "packages/go/model/chain_types_test.go",
         "packages/php/tests/NativeCellReadTest.php",
         "packages/ts/tests/chain-types.mjs",
-        "packages/ts/tests/driver-cell-bytes.mjs",
+        "packages/ts/tests/driver-integer-param.mjs",
         "packages/ts/tests/styled-value-checks.mjs",
         "packages/php-ext/tests/PlanCacheBoundNativeTest.php",
         "packages/php/tests/PageCacheBoundCases.php",
