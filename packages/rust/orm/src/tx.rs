@@ -1413,6 +1413,25 @@ mod tests {
         db.close().await;
     }
 
+    /// Opens a MySQL transaction, sets a local value, then kills that connection from another connection.
+    /// The real server does not reject `SET @`orm.…` = NULL`, so the reset is made to fail with the killed connection.
+    /// Since this test kills a server session, db connects to the server at ORM_TEST_MYSQL_SERVER_DSN, not through a pooler,
+    /// because ProxySQL takes KILL as a command for its own client session.
+    async fn transaction_with_failing_reset(db: &Db) -> TxShared {
+        let Pool::MySql(pool) = db.pool() else { panic!("MySQL pool") };
+        let tx = begin(db, None, false, 0).await.expect("begin");
+        let id: u64 = {
+            let mut guard = tx.inner.lock().await;
+            let Some(TxInner::MySql(t)) = guard.as_mut() else { panic!("MySQL transaction") };
+            let conn = &mut **t.conn.as_mut().expect("active MySQL transaction connection");
+            sqlx::raw_sql("SET @`orm.ormtest.actor` = 'tester'").execute(&mut *conn).await.expect("set local");
+            sqlx::query_scalar("SELECT CONNECTION_ID()").fetch_one(&mut *conn).await.expect("connection id")
+        };
+        tx.locals.lock().unwrap().insert("ormtest.actor".into(), "tester".into());
+        sqlx::raw_sql(sqlx::AssertSqlSafe(format!("KILL {id}"))).execute(pool).await.expect("kill the transaction connection");
+        tx
+    }
+
     // Even if RELEASE_LOCK fails, the local value reset is still attempted, and both failures are reported.
     #[tokio::test]
     // Requirements: INT-72.
