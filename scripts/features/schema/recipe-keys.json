@@ -103,6 +103,7 @@
       "dsn",
       "op",
       "pool_idle_size",
+      "pool_lifetime_ms",
       "pool_size",
       "statement_timeout_ms"
     ],

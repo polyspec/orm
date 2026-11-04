@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The pool of Python closes an idle connection when its lifetime passes, as CFG-5 states; it closed one only when the next caller would take it. The pool bounds of MySQL and PostgreSQL, the lifetime and the refused pool values are cases of the recipes `connection_pool` and `dsn_reject_checked`, and the refusal of a pool option in PHP is the recipe `dsn_reject_php_pool`.
 - The feature checker no longer sets `ORM_FEATURE_DATABASE` or `ORM_FEATURE_DSN`, and no test reads them: an owner takes its database from its manifest entry or its recipe.
 - Tests: the exact bytes of a driver cell (PRT-69, INT-5) are the case `driver_bytes_cells_are_exact` of the `conformance_verification` recipe in every runtime, through the new `model.query` key `bytes_hex_of`; the natives that built the cell are gone, and Rust keeps its private row decoding test under INT-142.
 - Collection views and connect on every model now come from the recipes in every client; the native extension surface has its own unit under INT-62a.

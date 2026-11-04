@@ -209,7 +209,7 @@ export function modelOps({ native, databaseValue, stepArgument, auditSourceOf })
       const keys = s.aes_keyring === undefined
         ? BENCH_KEYS
         : { blindIndexKey: BENCH_KEYS.blindIndexKey, aesKeys: new Map(Object.entries(s.aes_keyring.versions).map(([version, key]) => [Number(version), key])), aesVersion: s.aes_keyring.current };
-      const db = await Db.connectSchema(connectDsn(s.dsn, context.database, context.dsn), context.schema, { poolSize: s.pool_size, ...(s.pool_idle_size === undefined ? {} : { poolIdleSize: s.pool_idle_size }), ...(s.statement_timeout_ms === undefined ? {} : { statementTimeoutMs: s.statement_timeout_ms }), ...keys, ...auditSourceOf(s, context) });
+      const db = await Db.connectSchema(connectDsn(s.dsn, context.database, context.dsn), context.schema, { poolSize: s.pool_size, ...(s.pool_idle_size === undefined ? {} : { poolIdleSize: s.pool_idle_size }), ...(s.pool_lifetime_ms === undefined ? {} : { poolLifetimeMs: s.pool_lifetime_ms }), ...(s.statement_timeout_ms === undefined ? {} : { statementTimeoutMs: s.statement_timeout_ms }), ...keys, ...auditSourceOf(s, context) });
       context.closers.push(() => db.close());
       return { bind: db };
     },

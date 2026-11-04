@@ -128,6 +128,7 @@ type databaseStep struct {
 	Model        string          `json:"model"`
 	PoolSize     int             `json:"pool_size"`
 	PoolIdle     int             `json:"pool_idle_size"`
+	PoolLifetime int             `json:"pool_lifetime_ms"`
 	Transactions int             `json:"transactions"`
 	Hold         int             `json:"hold"`
 	Key          json.RawMessage `json:"key"`

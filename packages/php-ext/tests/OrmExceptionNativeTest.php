@@ -185,28 +185,6 @@ final class OrmExceptionNativeTest extends TestCase
         }
     }
 
-    // This refusal establishes that PHP's native client owns no idle pool
-    // connection for the server to end. Requirements: CFG-4, CFG-5, CFG-6, INT-92.
-    public function testNativeConnectionRejectsUnsupportedPoolAndNegativeTimeoutOptions(): void
-    {
-        foreach (
-            [
-            [new Config(poolSize: 1), 'poolSize, poolIdleSize and poolLifetimeMs configure a connection pool'],
-            [new Config(poolIdleSize: 1), 'poolSize, poolIdleSize and poolLifetimeMs configure a connection pool'],
-            [new Config(poolLifetimeMs: 1000), 'poolSize, poolIdleSize and poolLifetimeMs configure a connection pool'],
-            [new Config(statementTimeoutMs: -1), 'statement timeout must not be negative'],
-            ] as [$config, $message]
-        ) {
-            try {
-                Orm::connect('sqlite:///tmp/native-config-check.sqlite', $config);
-                Assert::fail('unsupported connection options must fail before opening a database');
-            } catch (OrmException $error) {
-                Assert::assertSame(Code::CONFIG, $error->code_);
-                Assert::assertStringContainsString($message, $error->getMessage());
-            }
-        }
-    }
-
     public function testNativeMarkdownConnectionUsesTheLoopbackTransport(): void
     {
         try {

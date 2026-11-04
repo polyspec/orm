@@ -307,13 +307,457 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message_holds": "the pool size 3"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message_holds": "the pool size 3"
             },
             "sqlite": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message_holds": "the pool size 3"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_connection_within_its_lifetime_is_reused",
+      "requirements": [
+        "CFG-5"
+      ],
+      "only": [
+        "mysql",
+        "postgres"
+      ],
+      "not_through_pooler": "A pooler reuses its server sessions, so a mark of the session does not tell the connections of the client apart.",
+      "steps": [
+        {
+          "op": "model.connect",
+          "as": "conn",
+          "pool_size": 1,
+          "pool_lifetime_ms": 600000
+        },
+        {
+          "op": "utils.run",
+          "connection": "conn",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SET @pool_mark = 1",
+                "postgres": "SELECT set_config('orm.pool_mark', '1', false)",
+                "sqlite": "SELECT 1"
+              }
+            },
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SELECT IF(@pool_mark IS NULL, 0, 1)",
+                "postgres": "SELECT CASE WHEN current_setting('orm.pool_mark', true) = '1' THEN 1 ELSE 0 END",
+                "sqlite": "SELECT 1"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "conn",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SELECT IF(@pool_mark IS NULL, 0, 1)",
+                "postgres": "SELECT CASE WHEN current_setting('orm.pool_mark', true) = '1' THEN 1 ELSE 0 END",
+                "sqlite": "SELECT 1"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_connection_whose_lifetime_passes_in_use_is_not_used_again",
+      "requirements": [
+        "CFG-5"
+      ],
+      "only": [
+        "mysql",
+        "postgres"
+      ],
+      "not_through_pooler": "A pooler reuses its server sessions, so a mark of the session does not tell the connections of the client apart.",
+      "steps": [
+        {
+          "op": "model.connect",
+          "as": "conn",
+          "pool_size": 1,
+          "pool_lifetime_ms": 500
+        },
+        {
+          "op": "utils.run",
+          "connection": "conn",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SET @pool_mark = 1",
+                "postgres": "SELECT set_config('orm.pool_mark', '1', false)",
+                "sqlite": "SELECT 1"
+              }
+            },
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SELECT 1 FROM (SELECT SLEEP(1)) AS slept",
+                "postgres": "SELECT 1 FROM pg_sleep(1)",
+                "sqlite": "SELECT 1"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "conn",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SELECT IF(@pool_mark IS NULL, 0, 1)",
+                "postgres": "SELECT CASE WHEN current_setting('orm.pool_mark', true) = '1' THEN 1 ELSE 0 END",
+                "sqlite": "SELECT 1"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "an_idle_connection_past_its_lifetime_is_closed",
+      "requirements": [
+        "CFG-5"
+      ],
+      "only": [
+        "mysql",
+        "postgres"
+      ],
+      "not_through_pooler": "A pooler reuses its server sessions, so a mark of the session does not tell the connections of the client apart.",
+      "steps": [
+        {
+          "op": "model.connect",
+          "as": "conn",
+          "pool_size": 1,
+          "pool_lifetime_ms": 100
+        },
+        {
+          "op": "model.connect",
+          "as": "other",
+          "pool_size": 1
+        },
+        {
+          "op": "utils.run",
+          "connection": "conn",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SET @pool_mark = 1",
+                "postgres": "SELECT set_config('orm.pool_mark', '1', false)",
+                "sqlite": "SELECT 1"
+              }
+            },
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SELECT IF(@pool_mark IS NULL, 0, 1)",
+                "postgres": "SELECT CASE WHEN current_setting('orm.pool_mark', true) = '1' THEN 1 ELSE 0 END",
+                "sqlite": "SELECT 1"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "other",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SELECT 1 FROM (SELECT SLEEP(2)) AS slept",
+                "postgres": "SELECT 1 FROM pg_sleep(2)",
+                "sqlite": "SELECT 1"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.stats",
+          "connection": "conn",
+          "expect": {
+            "mysql": {
+              "json": {
+                "max_open_connections": 1,
+                "open_connections": 0,
+                "in_use": 0,
+                "idle": 0
+              }
+            },
+            "postgres": {
+              "json": {
+                "max_open_connections": 1,
+                "open_connections": 0,
+                "in_use": 0,
+                "idle": 0
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "conn",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SELECT IF(@pool_mark IS NULL, 0, 1)",
+                "postgres": "SELECT CASE WHEN current_setting('orm.pool_mark', true) = '1' THEN 1 ELSE 0 END",
+                "sqlite": "SELECT 1"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "an_idle_size_above_the_default_pool_size_is_refused",
+      "requirements": [
+        "CFG-5"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://orm@127.0.0.1:1/orm",
+          "config": {
+            "pool_idle_size": 11
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG",
+              "message_holds": "the pool size 10"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message_holds": "the pool size 10"
+            },
+            "sqlite": {
+              "error": "CONFIG",
+              "message_holds": "the pool size 10"
             }
           }
         }
