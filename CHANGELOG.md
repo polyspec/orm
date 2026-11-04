@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- A transaction reads its own write and publishes one transaction number on each of its statements in the recipe case `transaction_reads_its_own_write` of every runtime; the PHP extension test that held it alone is gone.
 - The composite keys whose texts concatenate to one value are rows of the recipe `composite_keys` alone, and the case reads the statements and binds of their relation in every runtime; the fixture `composite_key_collision.json` and its exclusion from the parity suites are gone.
 - The TypeScript integer parameter test is named `driver-integer-param.mjs`, and the reasons of its internal test entries state what each test does.
 - `make dbspec-apply-stress-bench` applies the stress plan again: it had no command since the native test became a recipe case, so `make bench` and the stress CI groups passed without applying anything.
