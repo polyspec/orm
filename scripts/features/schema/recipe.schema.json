@@ -2394,6 +2394,11 @@
             "type": "integer",
             "minimum": 1
           },
+          "pool_lifetime_ms": {
+            "description": "The lifetime of a pool connection in milliseconds (CFG-5).",
+            "type": "integer",
+            "minimum": 1
+          },
           "statement_timeout_ms": {
             "description": "The statement bound of the connection (CFG-6).",
             "type": "integer",

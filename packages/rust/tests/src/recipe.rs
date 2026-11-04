@@ -4144,10 +4144,12 @@ mod database {
                 context.models.connect_bounded(name, &dsn, pool_size, ms).await.map_err(Failure::Call)?;
                 return Ok(Output::fields(json!({})));
             }
-            if let Some(idle) = crate::recipe_reads::read(step, "pool_idle_size")["pool_idle_size"].as_u64() {
-                // A connection with an idle bound opens without the models of the case: a pool op only reads its counts.
-                let options =
-                    polyspec_orm::Config { pool_idle_size: u32::try_from(idle).map_err(|e| Failure::Step(e.to_string()))?, ..polyspec_orm::Config::default() };
+            let idle = crate::recipe_reads::read(step, "pool_idle_size")["pool_idle_size"].as_u64();
+            let lifetime = crate::recipe_reads::read(step, "pool_lifetime_ms")["pool_lifetime_ms"].as_u64();
+            if idle.is_some() || lifetime.is_some() {
+                // A connection with an idle bound or a lifetime opens without the models of the case: a pool op reads its counts, and utils.run takes no model.
+                let bound = |value: Option<u64>| u32::try_from(value.unwrap_or(0)).map_err(|e| Failure::Step(e.to_string()));
+                let options = polyspec_orm::Config { pool_idle_size: bound(idle)?, pool_lifetime_ms: bound(lifetime)?, ..polyspec_orm::Config::default() };
                 let db = Db::connect(&dsn, pool_size, options).await.map_err(|e| Failure::Step(e.to_string()))?;
                 context.models.adopt(name, db);
                 return Ok(Output::fields(json!({})));

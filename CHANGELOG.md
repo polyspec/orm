@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The pool of Python closes an idle connection when its lifetime passes, as CFG-5 states; it closed one only when the next caller would take it. The pool bounds of MySQL and PostgreSQL, the lifetime and the refused pool values are cases of the recipes `connection_pool` and `dsn_reject_checked`, and the refusal of a pool option in PHP is the recipe `dsn_reject_php_pool`.
 - The TypeScript integer parameter test is named `driver-integer-param.mjs`, and the reasons of its internal test entries state what each test does.
 - `make dbspec-apply-stress-bench` applies the stress plan again: it had no command since the native test became a recipe case, so `make bench` and the stress CI groups passed without applying anything.
 - The message of a manifest with several diagnostics is held word for word by one recipe case in every runtime (SCH-12).
