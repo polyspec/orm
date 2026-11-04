@@ -19164,6 +19164,414 @@
           }
         }
       ]
+    },
+    {
+      "id": "catalog_refuses_a_markdown_dsn",
+      "requirements": [
+        "SCH-6a"
+      ],
+      "steps": [
+        {
+          "op": "catalog.connect",
+          "dsn": {
+            "url": "markdown://corpus"
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_delete_that_a_trigger_ignores",
+      "requirements": [
+        "INT-110"
+      ],
+      "only": [
+        "postgres",
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "reason": "a table that dbspec does not declare, so only the native driver creates it",
+          "sql": "CREATE TABLE ignored_delete (id BIGINT NOT NULL PRIMARY KEY, note VARCHAR(20) NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the row of the delete",
+          "sql": "INSERT INTO ignored_delete (id, note) VALUES (3, 'kept')"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "postgres"
+          ],
+          "reason": "the function of the trigger that drops the delete",
+          "sql": "CREATE FUNCTION ignored_delete_drop() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RETURN NULL; END$$"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a trigger that makes the delete affect no row",
+          "sql": {
+            "mysql": "SELECT 1",
+            "postgres": "CREATE TRIGGER ignored_delete_before BEFORE DELETE ON ignored_delete FOR EACH ROW EXECUTE FUNCTION ignored_delete_drop()",
+            "sqlite": "CREATE TRIGGER ignored_delete_before BEFORE DELETE ON ignored_delete BEGIN SELECT RAISE(IGNORE); END"
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "ignored_delete",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "id",
+            "note"
+          ],
+          "expect": {
+            "postgres": {
+              "columns": [
+                "id",
+                "note"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "text": "kept"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "id",
+                "note"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "text": "kept"
+                  }
+                ]
+              ]
+            }
+          },
+          "as": "held"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "held"
+          },
+          "index": 0,
+          "as": "held_row"
+        },
+        {
+          "op": "catalog.delete_row",
+          "snapshot": {
+            "ref": "held_row"
+          },
+          "expect": {
+            "postgres": {
+              "error": "ROW_WRITE_MISMATCH",
+              "message": "ROW_WRITE_MISMATCH: expected exactly one deleted row, got 0"
+            },
+            "sqlite": {
+              "error": "ROW_WRITE_MISMATCH",
+              "message": "ROW_WRITE_MISMATCH: expected exactly one deleted row, got 0"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "ignored_delete",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "id",
+            "note"
+          ],
+          "expect": {
+            "postgres": {
+              "columns": [
+                "id",
+                "note"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "text": "kept"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "id",
+                "note"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "text": "kept"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_insert_that_a_trigger_rewrites",
+      "requirements": [
+        "INT-110"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "reason": "an automatic key, and a value that a trigger will change",
+          "sql": {
+            "mysql": "CREATE TABLE rewritten_insert (id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, payload VARCHAR(20) NOT NULL) ENGINE=InnoDB",
+            "postgres": "CREATE TABLE rewritten_insert (id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, payload VARCHAR(20) NOT NULL)",
+            "sqlite": "CREATE TABLE rewritten_insert (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)"
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "postgres"
+          ],
+          "reason": "the function of the trigger that changes the value",
+          "sql": "CREATE FUNCTION rewritten_insert_change() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN NEW.payload := 'rewritten'; RETURN NEW; END$$"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a trigger that changes the value the insert writes",
+          "sql": {
+            "mysql": "CREATE TRIGGER rewritten_insert_change BEFORE INSERT ON rewritten_insert FOR EACH ROW SET NEW.payload = 'rewritten'",
+            "postgres": "CREATE TRIGGER rewritten_insert_change BEFORE INSERT ON rewritten_insert FOR EACH ROW EXECUTE FUNCTION rewritten_insert_change()",
+            "sqlite": "CREATE TRIGGER rewritten_insert_change AFTER INSERT ON rewritten_insert BEGIN UPDATE rewritten_insert SET payload = 'rewritten' WHERE id = NEW.id; END"
+          }
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "rewritten_insert",
+          "as": "rewritten"
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "rewritten"
+          },
+          "values": [
+            [
+              "payload",
+              {
+                "text": "submitted"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_MUTATION_UNSUPPORTED"
+            },
+            "postgres": {
+              "error": "ROW_WRITE_MISMATCH",
+              "message": "ROW_WRITE_MISMATCH: stored inserted values of \"payload\" differ"
+            },
+            "sqlite": {
+              "error": "ROW_WRITE_MISMATCH",
+              "message": "ROW_WRITE_MISMATCH: stored inserted values of \"payload\" differ"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT COUNT(*) FROM rewritten_insert",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_byte_capacity_sqlite",
+      "requirements": [
+        "INT-111"
+      ],
+      "only": [
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "reason": "declared capacities that SQLite itself does not enforce",
+          "sql": "CREATE TABLE capacity_values (id INTEGER PRIMARY KEY, label VARCHAR(3) NOT NULL, payload VARBINARY(3) NOT NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the start",
+          "sql": "INSERT INTO capacity_values (id, label, payload) VALUES (1, 'old', X'6f6c64')"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "capacity_values",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "id"
+          ],
+          "as": "start"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "start"
+          },
+          "index": 0,
+          "as": "at_start"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "at_start"
+          },
+          "set": [
+            [
+              "label",
+              {
+                "text": "界界界界"
+              }
+            ]
+          ],
+          "expect": {
+            "sqlite": {
+              "error": "ROW_UPDATE_INVALID",
+              "message": "ROW_UPDATE_INVALID: value exceeds the declared capacity of column \"label\""
+            }
+          }
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "at_start"
+          },
+          "set": [
+            [
+              "payload",
+              {
+                "bytes_hex": "c3a97879"
+              }
+            ]
+          ],
+          "expect": {
+            "sqlite": {
+              "error": "ROW_UPDATE_INVALID",
+              "message": "ROW_UPDATE_INVALID: value exceeds the declared capacity of column \"payload\""
+            }
+          }
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "at_start"
+          },
+          "set": [
+            [
+              "label",
+              {
+                "text": "界界界"
+              }
+            ],
+            [
+              "payload",
+              {
+                "bytes_hex": "c3a978"
+              }
+            ]
+          ],
+          "expect": {
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "界界界"
+                  },
+                  {
+                    "bytes_hex": "c3a978"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
     }
   ]
 }

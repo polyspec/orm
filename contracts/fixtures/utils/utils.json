@@ -1138,6 +1138,123 @@
           }
         }
       ]
+    },
+    {
+      "id": "table_privilege_targets_are_refused_before_any_statement",
+      "requirements": [
+        "INT-59"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "conn"
+        },
+        {
+          "op": "events.subscribe",
+          "connection": "conn",
+          "as": "recorder"
+        },
+        {
+          "op": "utils.privilege",
+          "connection": "conn",
+          "call": "grant",
+          "table": "sample",
+          "role": "invalid-role",
+          "expect": {
+            "mysql": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message": "CONFIG: a qualified table name is required"
+            },
+            "sqlite": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "utils.privilege",
+          "connection": "conn",
+          "call": "revoke",
+          "table": "sample",
+          "role": "invalid-role",
+          "privilege": "SELECT",
+          "expect": {
+            "mysql": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message": "CONFIG: a qualified table name is required"
+            },
+            "sqlite": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "utils.privilege",
+          "connection": "conn",
+          "call": "grant",
+          "table": "public.sample",
+          "role": "invalid-role",
+          "expect": {
+            "mysql": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message": "CONFIG: role invalid-role is invalid"
+            },
+            "sqlite": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "utils.privilege",
+          "connection": "conn",
+          "call": "revoke",
+          "table": "public.sample",
+          "role": "invalid-role",
+          "privilege": "SELECT",
+          "expect": {
+            "mysql": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message": "CONFIG: role invalid-role is invalid"
+            },
+            "sqlite": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "events.captured",
+          "ref": "recorder",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": []
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": []
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": []
+              }
+            }
+          }
+        }
+      ]
     }
   ]
 }

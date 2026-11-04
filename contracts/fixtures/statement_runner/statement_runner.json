@@ -4788,13 +4788,16 @@
           "conflict": "retryable",
           "expect": {
             "mysql": {
-              "error": "DEADLOCK"
+              "error": "DEADLOCK",
+              "message": "DEADLOCK: retryable"
             },
             "postgres": {
-              "error": "DEADLOCK"
+              "error": "DEADLOCK",
+              "message": "DEADLOCK: retryable"
             },
             "sqlite": {
-              "error": "DEADLOCK"
+              "error": "DEADLOCK",
+              "message": "DEADLOCK: retryable"
             }
           }
         },

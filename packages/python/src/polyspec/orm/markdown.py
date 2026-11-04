@@ -61,15 +61,15 @@ def parse_markdown_dsn(url) -> MarkdownDsn:
             f"directory name",
         )
     parameters = parse_qsl(url.query, keep_blank_values=True)
+    for name, _ in parameters:
+        if name != "token":
+            raise OrmError(codes.CONFIG, f"{_FORM}; it does not accept {name}")
     tokens = [value for name, value in parameters if name == "token"]
     if len(tokens) != 1 or tokens[0] == "":
         raise OrmError(
             codes.CONFIG,
             f"{_FORM}; give one token, the token of .flowmark/server.json of the corpus",
         )
-    for name, _ in parameters:
-        if name != "token":
-            raise OrmError(codes.CONFIG, f"{_FORM}; it does not accept {name}")
     return MarkdownDsn(f"127.0.0.1:{port}", corpus, tokens[0])
 
 

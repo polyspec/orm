@@ -867,7 +867,10 @@ def _validate_inserted_locator_row(
     _revision(metadata, cells)
     for index, value in changes:
         if not _same_row([cells[index]], [value]):
-            raise _error(codes.ROW_WRITE_MISMATCH, mismatch_message)
+            raise _error(
+                codes.ROW_WRITE_MISMATCH,
+                mismatch_message.format(column=metadata.columns[index].name),
+            )
 
 
 def _check_write_precision(
@@ -915,7 +918,7 @@ def _changes(metadata: CatalogTableMetadata, values, code: str, dialect: str) ->
         _temporal_write_value(column, value, dialect, code)
         if _exceeds_declared_capacity(column, value):
             raise _error(
-                code, f"value exceeds the declared capacity of column {name!r}"
+                code, f'value exceeds the declared capacity of column "{name}"'
             )
         seen.add(name)
         changes.append((index, value))
@@ -2065,7 +2068,7 @@ class CatalogConnection:
                         descriptor,
                         returned,
                         changes,
-                        "stored inserted values differ",
+                        'stored inserted values of "{column}" differ',
                     )
                     keys = [returned[index] for index in key_indexes]
                 else:
@@ -2106,7 +2109,7 @@ class CatalogConnection:
                 if not _same_row([after[0][index]], [value]):
                     raise _error(
                         codes.ROW_WRITE_MISMATCH,
-                        f"stored inserted values of {descriptor.columns[index].name!r} differ",
+                        f'stored inserted values of "{descriptor.columns[index].name}" differ',
                     )
             return CatalogMutationResult(
                 columns=[c.name for c in descriptor.columns], rows=after

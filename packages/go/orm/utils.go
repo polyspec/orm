@@ -623,7 +623,7 @@ func (s *SchemaUtils) exists(query string, args ...any) (bool, error) {
 // Exists reports whether a schema exists.
 func (s *SchemaUtils) Exists(name string) (bool, error) {
 	if !validKey(name) {
-		return false, configErr("schema name %q is invalid", name)
+		return false, configErr("identifier %s is invalid", name)
 	}
 	switch s.u.db.driver {
 	case "postgres":
@@ -695,7 +695,7 @@ func (p *PrivilegeUtils) table(table string) (string, error) {
 
 func role(name string) (string, error) {
 	if !validKey(name) {
-		return "", configErr("role %q is invalid", name)
+		return "", configErr("role %s is invalid", name)
 	}
 	return quoteIdentifier("postgres", name), nil
 }

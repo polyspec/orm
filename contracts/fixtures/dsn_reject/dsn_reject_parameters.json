@@ -111,6 +111,24 @@
           }
         }
       ]
+    },
+    {
+      "id": "an_unknown_parameter_is_refused_before_its_value_is_decoded",
+      "requirements": [
+        "CFG-37"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://db.example/app?extra=%ZZ",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message_holds": "mysql DSN has the unknown parameter extra; it accepts timezone, socket, ssl-mode, ssl-ca"
+            }
+          }
+        }
+      ]
     }
   ]
 }

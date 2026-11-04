@@ -370,7 +370,7 @@ impl SchemaUtils<'_> {
     /// Whether a schema exists.
     pub async fn exists(&self, name: &str) -> Result<bool> {
         if !valid_key(name) {
-            return Err(Error::Config(format!("schema name {name:?} is invalid")));
+            return Err(Error::Config(format!("identifier {name} is invalid")));
         }
         let p = [Param::Str(name.into())];
         match self.u.db.driver() {
@@ -455,7 +455,7 @@ impl PrivilegeUtils<'_> {
 
     fn role(name: &str) -> Result<String> {
         if !valid_key(name) {
-            return Err(Error::Config(format!("role {name:?} is invalid")));
+            return Err(Error::Config(format!("role {name} is invalid")));
         }
         Ok(quote("postgres", name))
     }

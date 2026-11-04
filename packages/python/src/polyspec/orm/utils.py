@@ -305,7 +305,7 @@ class SchemaUtils:
         """Reports whether the schema exists: a PostgreSQL schema, a MySQL database, or on SQLite a table or
         view whose name starts with the schema name and __."""
         if not valid_key(name):
-            raise OrmError(codes.CONFIG, f"schema name {name!r} is invalid")
+            raise OrmError(codes.CONFIG, f"identifier {name} is invalid")
         driver = self.db.driver
         if driver == "postgres":
             return self._check(
@@ -404,7 +404,7 @@ class PrivilegeUtils:
     @staticmethod
     def _role(name: str) -> str:
         if not valid_key(name):
-            raise OrmError(codes.CONFIG, f"role {name!r} is invalid")
+            raise OrmError(codes.CONFIG, f"role {name} is invalid")
         return _quote("postgres", name)
 
     def grant_table(self, table: str, role: str) -> None:

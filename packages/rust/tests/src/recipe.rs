@@ -3573,7 +3573,8 @@ mod database {
                 return match error_code(&message) {
                     Some(code) if code == want.as_str() => match suffix {
                         Some(suffix) if !message.ends_with(suffix) => Err(format!("error message {message:?} does not end with {suffix:?}")),
-                        _ if exact.is_some() && text != exact => Err(format!("error message {text:?}, want {exact:?}")),
+                        // A catalog call fails with its whole text, with no detail part.
+                        _ if exact.is_some() && Some(text.unwrap_or(message.as_str())) != exact => Err(format!("error message {text:?} ({message:?}), want {exact:?}")),
                         _ if want_cause.is_some() && cause != want_cause => Err(format!("error cause {cause:?}, want {want_cause:?}")),
                         _ => match holds {
                             Some(holds) if !message.contains(holds) => Err(format!("error message {message:?} does not hold {holds:?}")),

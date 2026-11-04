@@ -1135,12 +1135,12 @@ connection-utc-php-extension-check: php-vendor-check php-models orm-install-php-
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension POLYSPEC_ORM_EXTENSION="$$run_dir/php-extension/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --filter 'testNativeStyledSqlNullIsPreservedOnDatabaseRead|testNativeI16ValuesAndDefaults' packages/php-ext/tests/ConnectionUtcNativeTest.php
 
 # dbspec-php-extension-check/executor runs the suites of the connection, the statement path and the transactions with the extension
-# loaded: StatementFaultTest (statement-fault) and DsnTest::testSqlitePath (sqlite-paths). It first checks that the extension registers Polyspec\Orm\Db: its class is
+# loaded: StatementFaultTest (statement-fault), DsnTest::testSqlitePath (sqlite-paths) and DsnTest::testParse, which holds the tuples and refusal texts of the C parser. It first checks that the extension registers Polyspec\Orm\Db: its class is
 # internal, so the connection the suites open is C. The database suites need make orm-test-servers first (WITH_TEST_ENV).
 dbspec-php-extension-check/executor: php-vendor-check dbspec-php-extension-check/prepare
 	php -d extension=$(PHP_EXTENSION_LIBRARY) -r 'require "vendor-php/autoload.php"; exit((new ReflectionClass("Polyspec\\Orm\\Db"))->isInternal() ? 0 : 1);'
 	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/StatementFaultTest.php
-	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/DsnTest.php --filter testSqlitePath
+	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/DsnTest.php --filter 'testSqlitePath|testParse'
 	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/ModelTest.php --filter 'testTransactions'
 
 # repo-check checks that the paths that the root npm script uses are tracked files or

@@ -43,12 +43,12 @@ export function parseMarkdownDsn(url: URL): MarkdownDsn {
     corpus = '';
   }
   if (corpus === '' || corpus.includes('/')) throw new OrmError(codes.CONFIG, `${dsnForm}; the path ${JSON.stringify(url.pathname)} is not one corpus name: give the corpus root's directory name`);
-  const tokens = url.searchParams.getAll('token');
-  const [token] = tokens;
-  if (tokens.length !== 1 || token === undefined || token === '') throw new OrmError(codes.CONFIG, `${dsnForm}; give one token, the token of .flowmark/server.json of the corpus`);
   for (const key of url.searchParams.keys()) {
     if (key !== 'token') throw new OrmError(codes.CONFIG, `${dsnForm}; it does not accept ${key}`);
   }
+  const tokens = url.searchParams.getAll('token');
+  const [token] = tokens;
+  if (tokens.length !== 1 || token === undefined || token === '') throw new OrmError(codes.CONFIG, `${dsnForm}; give one token, the token of .flowmark/server.json of the corpus`);
   return { address: `${url.hostname}:${port}`, corpus, token };
 }
 

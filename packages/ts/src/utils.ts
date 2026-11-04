@@ -330,7 +330,7 @@ export class SchemaUtils {
   }
 
   public async exists(name: string): Promise<boolean> {
-    if (!validKey(name)) throw config(`schema name ${name} is invalid`);
+    if (!validKey(name)) throw config(`identifier ${name} is invalid`);
     switch (this.u.db.driver) {
       case 'postgres': return this.check('SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = $1)', [name]);
       case 'mysql': return this.check('SELECT EXISTS(SELECT 1 FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?)', [name]);
