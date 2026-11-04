@@ -1324,6 +1324,7 @@ def _interface_symbols() -> None:
         cwd=ROOT,
         capture_output=True,
         text=True,
+        timeout=280,
         env={**os.environ, "ORM_PYTHON": sys.executable},
     )
     if result.returncode != 0:

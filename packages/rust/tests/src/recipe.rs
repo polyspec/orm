@@ -710,23 +710,56 @@ fn dbspec_introspect_sqlite(step: &Value, database: &str) -> Result<(), String> 
     }
 }
 
+/// The deadline of a hung interface check, wall-clock time, since another process does the work: it takes 15 s measured, and 1 to 2
+/// minutes when the build cache is empty. A check past it is killed.
+const INTERFACE_CHECK_DEADLINE: std::time::Duration = std::time::Duration::from_secs(300);
+
 /// The interface.symbols op (FCV-4): the interface check of the Rust client from the repository root, three levels above `dir`, the
 /// directory of the recipe (INT-17, INT-18, INT-19, INT-57, INT-61, INT-64). The check exits 0 when it holds.
 fn interface_symbols(dir: &Path) -> Result<(), String> {
-    let output = std::process::Command::new("node")
+    use std::io::Read as _;
+    use std::process::{Command, Stdio};
+    let started = std::time::Instant::now();
+    let mut child = Command::new("node")
         .args(["tests/interfaces/check/main.mts", "-language", "rust"])
         .current_dir(dir.join("../../.."))
-        .output()
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
         .map_err(|error| format!("node tests/interfaces/check/main.mts: {error}"))?;
-    if output.status.success() {
+    let stdout = child.stdout.take().ok_or("the check has no stdout pipe")?;
+    let stderr = child.stderr.take().ok_or("the check has no stderr pipe")?;
+    let (closed, events) = std::sync::mpsc::channel();
+    let pipes: [Box<dyn std::io::Read + Send>; 2] = [Box::new(stdout), Box::new(stderr)];
+    for mut pipe in pipes {
+        let closed = closed.clone();
+        std::thread::spawn(move || {
+            let mut text = String::new();
+            let read = pipe.read_to_string(&mut text).map(|_| text);
+            // The receiver is gone only after the deadline, and that failure is already reported.
+            if closed.send(read).is_err() {
+                eprintln!("interface check output arrived after the deadline");
+            }
+        });
+    }
+    drop(closed);
+    let mut output = String::new();
+    for _ in 0..2 {
+        match events.recv_timeout(INTERFACE_CHECK_DEADLINE.saturating_sub(started.elapsed())) {
+            Ok(read) => output.push_str(&read.map_err(|error| format!("interface check output: {error}"))?),
+            Err(_) => {
+                let killed = child.kill();
+                let waited = child.wait();
+                return Err(format!("interface check not finished within {INTERFACE_CHECK_DEADLINE:?} (kill: {killed:?}, wait: {waited:?})"));
+            }
+        }
+    }
+    let status = child.wait().map_err(|error| format!("interface check: {error}"))?;
+    if status.success() {
         return Ok(());
     }
-    Err(format!(
-        "interface check failed with {}:\n{}{}",
-        output.status,
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    ))
+    Err(format!("interface check failed with {status}:\n{output}"))
 }
 
 /// The keyring.versions op (FCV-4): the public constructor of the keyring, then its current version and its versions (INT-74,

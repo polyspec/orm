@@ -1878,6 +1878,9 @@ final class Recipe
         Assert::assertSame($step['expect'][$database]['unsupported'], $got);
     }
 
+    /** Ends a hung interface check within the 300 s of a Large test, which reports the failure itself. */
+    private const INTERFACE_CHECK_DEADLINE = 280.0;
+
     /**
      * Runs one interface.symbols step (FCV-4): the interface check of this client from the repository root, and in the
      * extension the reflection of every exported symbol (INT-17, INT-18, INT-19, INT-57, INT-61, INT-64).
@@ -1887,7 +1890,9 @@ final class Recipe
         $extension = getenv('ORM_PHP_MODE') === 'extension';
         [$status, $stdout, $stderr] = coverageProcess(
             ['node', 'tests/interfaces/check/main.mts', '-language', $extension ? 'php-extension' : 'php'],
-            dirname(__DIR__, 3)
+            dirname(__DIR__, 3),
+            null,
+            self::INTERFACE_CHECK_DEADLINE
         );
         Assert::assertSame(0, $status, "interface check exited $status: $stderr$stdout");
         if ($extension) {

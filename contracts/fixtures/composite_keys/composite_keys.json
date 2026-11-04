@@ -1829,7 +1829,7 @@
                       [
                         "sql",
                         {
-                          "text": "SELECT \"a\".\"tenant_id\" AS \"a__tenant_id\", \"a\".\"account_id\" AS \"a__account_id\", \"a\".\"name\" AS \"a__name\" FROM \"composite_account\" AS \"a\" WHERE (\"a\".\"tenant_id\", \"a\".\"account_id\") IN ((?, ?), (?, ?)) ORDER BY \"a\".\"tenant_id\" ASC, \"a\".\"account_id\" ASC"
+                          "text": "SELECT \"a\".\"tenant_id\" AS \"a__tenant_id\", \"a\".\"account_id\" AS \"a__account_id\", \"a\".\"name\" AS \"a__name\" FROM \"composite_account\" AS \"a\" WHERE (\"a\".\"tenant_id\", \"a\".\"account_id\") IN (VALUES (?, ?), (?, ?)) ORDER BY \"a\".\"tenant_id\" ASC, \"a\".\"account_id\" ASC"
                         }
                       ],
                       [

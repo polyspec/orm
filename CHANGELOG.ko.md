@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 77fa7a981b1c0b6850962f9e2c2b568a45dc65ea8a51c731df611cab7a261198 -->
+<!-- source-sha256: 2531e266435a5d81277b31f6fe7f8ac1bdeaf9bd254937122215a157b00ea73b -->
 # 변경 이력
 
 ## Unreleased
 
+- deadline에 이른 recipe `interface.symbols`는 모든 runtime에서 interface check를 죽이고 case를 실패시키므로, 멈춘 check가 남지 않는다.
 - 실패한 Rust integration case는 연결을 기다린 대상을 적는다: pool acquire timeout과, ProxySQL을 거칠 때는 hostgroup과 그 connect timeout이다.
 - 각 runtime의 interface check(INT-17, INT-18, INT-19, INT-57, INT-61, INT-64)는 새 op `interface.symbols`로 recipe `public-interface`의 case `interface_symbols`가 된다. native wrapper 여섯 개와 그 parity unit은 없어졌다.
 - transaction이 자기 쓰기를 읽고 그 모든 statement에 하나의 transaction 번호를 발행함은 모든 runtime에서 recipe case `transaction_reads_its_own_write`가 확인한다. 이를 혼자 확인하던 PHP extension test는 없어졌다.

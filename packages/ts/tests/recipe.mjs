@@ -2917,7 +2917,7 @@ async function checkIntrospectSqlite(step, database) {
 // INT-18, INT-19, INT-57, INT-61, INT-64). A check that exits other than 0 rejects with its output.
 async function checkInterfaceSymbols() {
   await new Promise((done, fail) => {
-    execFile('node', ['tests/interfaces/check/main.mts', '-language', 'typescript'], { cwd: root, maxBuffer: 16 * 1024 * 1024 }, (error, stdout, stderr) => {
+    execFile('node', ['tests/interfaces/check/main.mts', '-language', 'typescript'], { cwd: root, maxBuffer: 16 * 1024 * 1024, timeout: 280_000 }, (error, stdout, stderr) => {
       if (error) fail(new Error(`interface check failed (${error.code ?? error.signal}): ${stdout}${stderr}`, { cause: error }));
       else done();
     });
