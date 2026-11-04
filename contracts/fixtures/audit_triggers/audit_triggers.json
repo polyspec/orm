@@ -3509,6 +3509,41 @@
           }
         }
       ]
+    },
+    {
+      "id": "audit_values_need_an_audit_source",
+      "requirements": [
+        "CFG-8",
+        "INT-44"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "audit": {
+            "actor": {
+              "text": "job"
+            }
+          },
+          "steps": [],
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
     }
   ]
 }
