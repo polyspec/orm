@@ -1,15 +1,17 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 3541e28fd3fd5fb7c9e23f4b33ba7954dd96bee858ac59ed5e0b16f60a692161 -->
+<!-- source-sha256: 5eaa58907e2cfff475de483c7ab4ca6cfad8bef12a57085e9f0fdc1169bffc4c -->
 # 변경 이력
 
 ## Unreleased
 
+- 테스트: plan의 physical 실행(PLN-102)은 op `dbspec.plan_physical`과 recipe `dbspec_introspect`의 case 13개 `plan_physical_*`이며 모든 runtime의 모든 database에서 돈다. native 시험, 그 make target, 그것만 쓰던 helper는 없앴다. 모든 runtime이 공개 `planSteps`로 plan step을 읽고, Go만 담던 finalize 뒤의 foreign key 검사를 이제 모든 runtime이 담는다.
+- 테스트: ORM 밖에서 바뀐 database에 다시 하는 install(DBS-108, SCH-7, SCH-13)은 모든 runtime의 모든 database에서 recipe `schema_install`의 case `install_renamed_column`과 `install_unsupported_column_without_check`이며 message 전체를 비교한다. native 시험과 `contracts/fixtures/install/changed_database.json`은 없앴다.
+- 테스트: recipe schema는 `relation`의 `where`를 받고, `model_queries_chain`의 case `relation_condition_follows_the_padded_composite_parent_keys`는 그 schema에 유효합니다(T334-3-12).
+- 테스트: savepoint rollback이 rollback fault를 소비하지 않는다는 것(protocol 3.1)은 Python native 대신 모든 runtime에서 recipe `transactions`의 case이고, 잃어버린 rollback, 실패한 `BEGIN`, 실패한 시작 단계의 Python native test는 unit `transaction-failure-rollback`에 속합니다(T334-3-12-3-7, T334-3-12-3-8).
 - 인터페이스 검사기는 어떻게 끝나든 자기가 시작한 것을 함께 끝냅니다. 각 프로그램은 프로세스 그룹을 이끌고, 실행의 abort는 그 그룹을 죽이며, 검사기 파이프의 끝을 읽는 프로세스가 아직 도는 그룹을 죽이므로, 멈춘 extractor와 그 자식은 기한이 죽인 검사기보다 오래 살지 않습니다.
 - 테스트: relation의 parent key padding과 그 뒤 placeholder의 번호는 recipe `model_queries_chain`의 case이고, recipe가 담는 collection key의 native test는 사라졌으며, feature-coverage는 native로 남는 각 test를 이유와 함께 적는다.
 - `datetime` column의 key는 INT-11대로 모든 runtime에서 date and time이며, 유일한 key column일 때도 그렇다. PHP, TypeScript, Python은 column의 text를 돌려주었다. TypeScript key는 `toJSON()`이 microsecond를 담는 `Date`이므로 한 millisecond 안의 두 microsecond는 두 key로 남는다. recipe `model_queries_chain`의 case `single_key_of_a_datetime_keeps_its_type`과 `single_key_of_a_microsecond_datetime_keeps_its_instant`가 이를 지킨다.
 - 모든 runtime의 catalog가 읽는 동안 descriptor가 바뀐 표 페이지를 거부한다(INT-121). MySQL 읽기 범위가 이제 READ COMMITTED로 읽는다. REPEATABLE READ에서는 descriptor의 두 번째 읽기가 snapshot으로 답해 변경을 보지 못했다. 읽는 동안 사라진 열은 driver 오류가 아니라 `TABLE_PAGE_METADATA_CHANGED`다. partial revoke가 켜진 server의 행 변경은 무엇도 잠그기 전에 거부한다(INT-119). recipe `catalog_connection`이 이것들과 직접, role 전용 TRIGGER grant를 fake driver의 native 시험 대신 실제 server에서 잡는다. 시험 서버의 MySQL replica는 `partial_revokes`가 켜져 있다.
-- 테스트: plan의 physical 실행(PLN-102)은 op `dbspec.plan_physical`과 recipe `dbspec_introspect`의 case 13개 `plan_physical_*`이며 모든 runtime의 모든 database에서 돈다. native 시험, 그 make target, 그것만 쓰던 helper는 없앴다. 모든 runtime이 공개 `planSteps`로 plan step을 읽고, Go만 담던 finalize 뒤의 foreign key 검사를 이제 모든 runtime이 담는다.
-- 테스트: ORM 밖에서 바뀐 database에 다시 하는 install(DBS-108, SCH-7, SCH-13)은 모든 runtime의 모든 database에서 recipe `schema_install`의 case `install_renamed_column`과 `install_unsupported_column_without_check`이며 message 전체를 비교한다. native 시험과 `contracts/fixtures/install/changed_database.json`은 없앴다.
 - collection key는 PRT-35와 INT-11대로 모든 database에서 구성 요소의 선언 타입을 유지한다. `bool` column이 MySQL과 SQLite에서 정수로 읽혀 `(true, 1)`과 `(1, true)`의 key text가 같았고, composite key의 `datetime` 구성 요소가 TypeScript와 PHP, SQLite의 Python에서 text로 읽혔다. encoding은 이제 recipe `model_queries_chain`의 case `composite_key_*`이고, 어떤 key column도 담을 수 없는 형태는 `tests/collection/keys.json`에 남는다.
 - deadline에 이른 recipe `interface.symbols`는 모든 runtime에서 interface check를 죽이고 case를 실패시키므로, 멈춘 check가 남지 않는다.
 - 실패한 Rust integration case는 연결을 기다린 대상을 적는다: pool acquire timeout과, ProxySQL을 거칠 때는 hostgroup과 그 connect timeout이다.

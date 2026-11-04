@@ -25688,6 +25688,21 @@
           "id": "test_a_failed_rollback_reports_the_callback_error_and_the_rollback_error"
         },
         {
+          "implementation": "python",
+          "test": "packages/python/tests/test_rollback_fault.py",
+          "id": "test_lost_rollback_connection_is_closed_before_the_next_transaction"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_rollback_fault.py",
+          "id": "test_a_failed_begin_closes_its_connection"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_rollback_fault.py",
+          "id": "test_a_failed_start_step_after_begin_rolls_back_and_gives_the_connection_back"
+        },
+        {
           "implementation": "rust",
           "test": "packages/rust/orm/src/tx.rs",
           "id": "tx::tests::sqlite_transaction_end_failures_are_reported"

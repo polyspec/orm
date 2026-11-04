@@ -25,7 +25,7 @@ caseTest('the build step keeps packages and build flags and runs no test', COMPU
 caseTest('every go test run carries the test entry point tag', COMPUTE, () => {
   assert.deepEqual(GO_TEST_TAGS, ['ormtest']);
   assert.deepEqual(withTestTags(['-v', './packages/go/...']), ['-tags', 'ormtest', '-v', './packages/go/...']);
-  assert.deepEqual(withTestTags(['-tags', 'featurecoverage', './packages/go/orm']), ['-tags', 'featurecoverage,ormtest', './packages/go/orm']);
+  assert.deepEqual(withTestTags(['-tags', 'physical', './packages/go/orm']), ['-tags', 'physical,ormtest', './packages/go/orm']);
   assert.deepEqual(withTestTags(['-tags=physical,ormtest', './packages/go/internal/dialects']), ['-tags=physical,ormtest', './packages/go/internal/dialects']);
   assert.throws(() => withTestTags(['-tags', 'a', '-tags', 'b', './x']), /more than one -tags/);
 });
