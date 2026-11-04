@@ -1,10 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 8f56d58e48e4433fddfbb52c91a11c316dec3cd02d517f2ac0efea2f8777fcf5 -->
+<!-- source-sha256: 7688ba95a038c248ec73d0e65e71fdbdce2b921569f6cd5fe5553b8216ffbc6e -->
 # 변경 이력
 
 ## Unreleased
 
 - Python의 pool은 CFG-5대로 idle connection을 lifetime이 지날 때 닫는다. 이전에는 다음 호출자가 가져갈 때에만 닫았다. MySQL과 PostgreSQL의 pool 경계, lifetime, 거부되는 pool 값은 recipe `connection_pool`과 `dsn_reject_checked`의 case이고, PHP의 pool option 거부는 recipe `dsn_reject_php_pool`이다.
+- 테스트: schema 변경 뒤 transaction pooler를 거치는 catalog session(CFG-28, CFG-41)은 Python 테스트 `connection_config` 대신 모든 runtime에서 `catalog_connection` recipe의 case `catalog_session_after_a_schema_change_through_a_pooler`가 새 op `sql.hold_statement`와 `catalog.reconnect`의 `dsn`으로 맡는다.
 - TypeScript 정수 parameter test의 이름은 `driver-integer-param.mjs`이고, internal test 항목의 reason은 각 test가 하는 일을 적는다.
 - `make dbspec-apply-stress-bench`가 다시 stress plan을 적용한다: native test가 recipe case가 된 뒤로 명령이 없어서 `make bench`와 stress CI group이 아무것도 적용하지 않고 통과했다.
 - diagnostic이 여럿인 manifest의 message를 모든 runtime에서 한 recipe case가 글자 그대로 지킨다(SCH-12).
