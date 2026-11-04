@@ -1437,6 +1437,25 @@
               "type": "string"
             }
           }
+        },
+        "manifest": {
+          "description": "Takes the place of the manifest text and hash that the build gives (SCH-7): a set with a diagnostic cannot be built from a document, so its text and hash are written here.",
+          "type": "object",
+          "required": [
+            "text",
+            "hash"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "text": {
+              "type": "string",
+              "minLength": 1
+            },
+            "hash": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            }
+          }
         }
       }
     },
@@ -1737,9 +1756,9 @@
             "type": "boolean"
           },
           "timeout_ms": {
-            "description": "The timeout of the transaction (INT-42); a nested transaction that names it is refused with CONFIG.",
+            "description": "The timeout of the transaction (INT-42), where 0 is the same as omitting it; a nested transaction that names a positive one is refused with CONFIG.",
             "type": "integer",
-            "minimum": 1
+            "minimum": 0
           },
           "default_retry": {
             "description": "The transaction names no retry and takes the default of INT-43; without it and without retry the helper passes a retry of 0.",
@@ -7988,6 +8007,9 @@
           },
           "connection": {
             "$ref": "#/$defs/name"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
           },
           "name": {
             "type": "string",

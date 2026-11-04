@@ -904,6 +904,7 @@
     ],
     "utils.lock": [
       "connection",
+      "expect",
       "name",
       "op"
     ],

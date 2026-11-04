@@ -4586,6 +4586,9 @@ def _schema_argument(arg: dict, context: dict) -> Schema:
     replace = arg.get("manifest_replace")
     if replace is not None:
         text = text.replace(replace["from"], replace["to"])
+    whole = arg.get("manifest")
+    if whole is not None:
+        return Schema(whole["text"], whole["hash"], manifest.external_text)
     return Schema(text, manifest.manifest_hash, manifest.external_text)
 
 

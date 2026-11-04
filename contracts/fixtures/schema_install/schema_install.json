@@ -3291,6 +3291,37 @@
       ]
     },
     {
+      "id": "install_invalid_set",
+      "requirements": [
+        "SCH-7"
+      ],
+      "steps": [
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "user.dbs"
+            ],
+            "manifest": {
+              "text": "dbspec 1 broken\n\ntable t {\n}\n",
+              "hash": "sha256:6a0f8536567e28f2384fdeab0511e6211fa8132a0370d86e6599975384def58c"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "SCHEMA_INVALID"
+            },
+            "postgres": {
+              "error": "SCHEMA_INVALID"
+            },
+            "sqlite": {
+              "error": "SCHEMA_INVALID"
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "install_differs",
       "requirements": [
         "DBS-108"

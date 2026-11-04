@@ -960,7 +960,6 @@
         "packages/go/decimalmodel/schema_set_test.go",
         "contracts/fixtures/decimal_schema.dbs",
         "packages/php/tests/RuntimeDbTest.php",
-        "packages/php/tests/deadlock_child.php",
         "packages/rust/orm/tests/decimal_model.rs",
         "packages/ts/tests/typecheck.ts",
         "packages/ts/tests/decimal_model_type.ts",
@@ -1103,8 +1102,7 @@
           "shard": "other",
           "inputs": [
             "packages/php/tests/ModelTest.php",
-            "packages/php/tests/case_database.php",
-            "packages/php/tests/deadlock_child.php"
+            "packages/php/tests/case_database.php"
           ]
         },
         {
@@ -2409,7 +2407,6 @@
         "connection-cancelled-transaction-session-state"
       ],
       "fixtures": [
-        "packages/php/tests/deadlock_child.php",
         "packages/php/tests/transaction_deadlock_child.php",
         "contracts/fixtures/rollback.dbs",
         "packages/go/orm/failing_driver_test.go",

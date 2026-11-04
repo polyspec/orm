@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 3fcbc941fe5ceadec192a1f5db50c06513ce63d50f29b261960ccbe80168d3fe -->
+<!-- source-sha256: 493d4d133f92a22ae649a0f672a5fefcf497a136af8418c96f6cfdbf68bb2eda -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -163,7 +163,7 @@ recipe `conformance_verification`의 case `terminal_by`는 모든 runtime client
 
 - **INT-40** `isolation`: `default`, `read_uncommitted`, `read_committed`, `repeatable_read`, `serializable`
 - **INT-41** `readOnly`: 불리언
-- **INT-42** `timeoutMs`: 양의 정수. PostgreSQL은 `statement_timeout`을 적용하고 MySQL과 SQLite는 `CAPABILITY_UNSUPPORTED`를 반환
+- **INT-42** `timeoutMs`: 양의 정수이며 `0`은 생략과 같다. PostgreSQL은 `statement_timeout`을 적용하고 MySQL과 SQLite는 `CAPABILITY_UNSUPPORTED`를 반환
 - **INT-43** `retry`: 교착 재시도 횟수, 기본값 `3`. 재시도마다 콜백 전체를 다시 실행하며 `0`은 재시도를 끈다
 - **INT-44** `audit`: 작업 단위 audit 기록의 컬럼 이름에서 값으로 가는 map. 트랜잭션은 감사 대상 테이블에 처음 쓰기 직전에, 시도마다, 연결 audit source의 값에 이 값을 더해(값이 이긴다) audit 기록 테이블에 삽입하므로 감사 대상 row를 쓰지 않는 트랜잭션은 삽입하지 않고, 트랜잭션 안의 모든 감사 대상 쓰기는 그 기록의 key를 쓴다([사용법](../operations/usage.ko.md#audited-writes))
 - **INT-44a** Rust는 트랜잭션의 각 형태 `transaction`, `transaction_send`, `transaction_once`에서 `audit`을 받고, 중첩된 `transaction_once`의 `audit`은 `CONFIG`로 거부한다.
