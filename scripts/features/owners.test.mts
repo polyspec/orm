@@ -10,7 +10,7 @@ import * as ownerSelection from './owners.mts';
 import type { CheckInputs, Owner, TargetDeclaration } from './owners.mts';
 import { parseJson, refusedPaths } from '../json/schema.mts';
 import { readFeatures } from './manifest.mts';
-import { alternatives, checkCommand, featureCommands, makefileCommands, memoryTree, readMakefile, readTree, staleNames } from './test-names.mts';
+import { alternatives, checkCommand, expand, featureCommands, makefileCommands, memoryTree, readMakefile, readTree, staleNames } from './test-names.mts';
 
 const { CHECK_INPUTS_SCHEMA, checkInputErrors, makeArguments, manifestChanges, manifestInputErrors, pathScopeErrors, readCheckInputs, selectHelpers, selectOwners, selectTargets, untestedPaths } = ownerSelection;
 
@@ -442,6 +442,7 @@ caseTest('a filter is judged branch by branch', 5000, () => {
 caseTest('a Makefile recipe is read after make expands it', 5000, () => {
   const makefile = readMakefile("F ?=\nGO = node tests/go-test.mts\none:\n\t$(GO) ./packages/go/orm $(if $(F),-run '$(F)',-run '^TestKept$$')\n");
   assert.deepEqual(makefileCommands(makefile).map(({ command }) => command), ["node tests/go-test.mts ./packages/go/orm -run '^TestKept$'"]);
+  assert.equal(expand("'^Test($(subst a,A,$(subst b,B,$(LIST))))$$'", new Map([['LIST', 'a|b']])), "'^Test(A|B)$'");
   assert.deepEqual(featureCommands(makefile, 'place', 'make one F=TestGone').map(({ command }) => checkCommand(nameTree, command)),
     [[], ['go test: -run TestGone in packages/go/orm']]);
 });

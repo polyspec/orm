@@ -504,9 +504,9 @@ export const checkCommand = (tree: Tree, command: string, targets?: Set<string>)
 
 export type Makefile = { variables: Map<string, string>; recipes: Map<string, string[]>; targets: Set<string>; patterns: string[] };
 
-const REPLACED_WITH_ARGUMENTS = new Set(['strip', 'addprefix', 'addsuffix', 'patsubst', 'subst', 'foreach', 'sort', 'filter', 'filter-out', 'wildcard', 'notdir', 'dir', 'basename', 'firstword', 'lastword', 'word', 'words']);
+const REPLACED_WITH_ARGUMENTS = new Set(['strip', 'addprefix', 'addsuffix', 'patsubst', 'foreach', 'sort', 'filter', 'filter-out', 'wildcard', 'notdir', 'dir', 'basename', 'firstword', 'lastword', 'word', 'words']);
 
-// expand evaluates the make references of a recipe line: a variable, $(if), $(call) and the text of the other functions; what it cannot know,
+// expand evaluates the make references of a recipe line: a variable, $(if), $(call), $(subst) and the text of the other functions; what it cannot know,
 // such as $(shell), stays a reference, which the checks read as unknown.
 export const expand = (text: string, variables: Map<string, string>, overrides: Map<string, string> = new Map(), depth = 0): string => {
   if (depth > 12) return text;
@@ -567,6 +567,9 @@ export const expand = (text: string, variables: Map<string, string>, overrides: 
       let value = variables.get(fn.trim()) ?? '';
       args.forEach((arg, index) => { value = value.replaceAll(`$(${index + 1})`, arg); });
       out += expand(value, variables, overrides, depth + 1);
+    } else if (name === 'subst') {
+      const [from, to, ...rest] = splitArguments() as [string, string, ...string[]];
+      out += expand(rest.join(','), variables, overrides, depth + 1).replaceAll(from, to);
     } else if (name === 'abspath' || name === 'realpath') {
       out += expand(body, variables, overrides, depth + 1).trim().split(/\s+/).map(path => `/${path.replace(/^\/+/, '')}`).join(' ');
     } else if (name === 'shell') {
