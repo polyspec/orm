@@ -80,7 +80,7 @@ final class OrmGenTestSupportTest extends TestCase
         self::assertDirectoryDoesNotExist($dir);
     }
 
-    public function testScanVectorCasesAreKeyedByIdAndParityLeavesOutTheNodeExceptions(): void
+    public function testScanVectorCasesAreKeyedById(): void
     {
         $file = dirname(__DIR__, 3) . '/tests/generator/php-scan-vectors.json';
         $recorded = json_decode((string) file_get_contents($file), true, 512, JSON_THROW_ON_ERROR)['cases'];
@@ -89,13 +89,6 @@ final class OrmGenTestSupportTest extends TestCase
         foreach ($recorded as $case) {
             self::assertSame([$case], $all[$case['id']]);
         }
-        $parity = OrmGenTestSupport::phpScanParityVectorCases();
-        $shared = array_values(array_filter(
-            $recorded,
-            static fn(array $case): bool => ($case['parity'] ?? true) === true
-        ));
-        self::assertSame(array_column($shared, 'id'), array_keys($parity));
-        self::assertLessThan(count($all), count($parity), 'the vectors hold cases that the node scan does not share');
     }
 
     public function testRunProcessReturnsTheStatusAndBothStreams(): void

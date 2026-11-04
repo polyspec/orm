@@ -14,7 +14,7 @@ const clientScans = [
   'testing/conformance/runner_typescript.mts',
   'tests/coverage_performance_gate.mjs',
   'tests/coverage_transactions.mjs', 'tests/decimal_model_type.ts', 'tests/group_rows.types.ts',
-  'tests/model-new-output-name.mjs', 'tests/model.mjs',
+  'tests/model.mjs',
   'tests/paginate-order.mjs', 'tests/parent-slot-expansion.mjs', 'tests/recipe.mjs', 'tests/recipe_model.mjs',
   'tests/split-plan.test.mjs', 'tests/sqlite_writer_child.mjs', 'tests/styled-value-checks.mjs',
   'tests/transaction-flow.mjs', 'tests/typecheck.ts',

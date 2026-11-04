@@ -53,7 +53,7 @@ rules:
       - "!tests/dsn"
       - "!tests/editor"
       - "!tests/events"
-      # The scan vectors that the PHP generator and the node generator are both compared with (OrmGenScanParityTest).
+      # The native scan vectors of the PHP generator (OrmGenScanTest).
       - "!tests/generator"
       - "!tests/interfaces"
       - "!tests/ir"
