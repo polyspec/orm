@@ -41804,6 +41804,7 @@
       "id": "model_queries_chain-mysql",
       "kind": "suite",
       "requirements": [
+        "INT-11",
         "DSL-57",
         "DSL-58",
         "DSL-60",
@@ -41871,6 +41872,7 @@
       "id": "model_queries_chain-postgres",
       "kind": "suite",
       "requirements": [
+        "INT-11",
         "DSL-57",
         "DSL-58",
         "DSL-60",
@@ -41938,6 +41940,7 @@
       "id": "model_queries_chain-sqlite",
       "kind": "suite",
       "requirements": [
+        "INT-11",
         "DSL-57",
         "DSL-58",
         "DSL-60",

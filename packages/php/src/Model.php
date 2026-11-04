@@ -1291,12 +1291,13 @@ abstract class Model implements \JsonSerializable, ModelMetadata
             $shape['original'][] = $meta['updated'];
         }
         if (count($asm['key'] ?? []) === 1) {
-            // A bool key goes through keyCells: its cell can be an integer, and the key keeps the declared type (PRT-35).
-            $isBool = false;
+            // A bool or datetime key goes through keyCells: its cell is an integer or a text, and the key keeps the declared
+            // type (INT-11, PRT-35).
+            $typed = false;
             foreach ($asm['columns'] as $col) {
-                $isBool = $isBool || ($col['index'] === $asm['key'][0]['index'] && $col['type'] === 'bool');
+                $typed = $typed || ($col['index'] === $asm['key'][0]['index'] && in_array($col['type'], ['bool', 'datetime'], true));
             }
-            if (!$isBool) {
+            if (!$typed) {
                 $shape['key'] = $asm['key'][0]['index'];
             }
         }
@@ -1448,7 +1449,7 @@ abstract class Model implements \JsonSerializable, ModelMetadata
 
     /**
      * The row whose key cells hold the declared type of their column: a bool column reads as an integer on MySQL and
-     * SQLite, and a datetime column of a composite key as its text (INT-11, PRT-35).
+     * SQLite, and a datetime column as its text (INT-11, PRT-35).
      */
     private static function keyCells(array $asm, array $vals): array
     {
@@ -1464,7 +1465,7 @@ abstract class Model implements \JsonSerializable, ModelMetadata
                 }
                 if ($column['type'] === 'bool') {
                     $vals[$index] = (bool) $cell;
-                } elseif ($column['type'] === 'datetime' && is_string($cell) && count($asm['key']) > 1) {
+                } elseif ($column['type'] === 'datetime' && is_string($cell)) {
                     $vals[$index] = new \DateTimeImmutable($cell . ' UTC');
                 }
                 break;

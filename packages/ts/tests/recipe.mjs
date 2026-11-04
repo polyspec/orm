@@ -2068,7 +2068,7 @@ const TABLE_OPS = {
       const page = s.plan_page === undefined
         ? await m.getsPage(Math.floor(offset / count) + 1, count)
         : await m.getsPage(s.plan_page.page, s.plan_page.per_page);
-      const fields = { json: plainJson({ keys: page.items.keys(), total: page.totalCount, pages: page.totalPages, page: page.page, per_page: page.perPage, ...(s.items === true ? { items: page.items.values().map(row => rowJson(row, s.pick)) } : {}) }), total: page.totalCount };
+      const fields = { json: plainJson({ keys: page.items.keys().map(key => key instanceof Date ? key.toJSON().replace(/\.(\d*?)0*Z$/, (_, digits) => digits === '' ? 'Z' : `.${digits}Z`) : key), total: page.totalCount, pages: page.totalPages, page: page.page, per_page: page.perPage, ...(s.items === true ? { items: page.items.values().map(row => rowJson(row, s.pick)) } : {}) }), total: page.totalCount };
       if (wantsRows(s, context)) fields.rows = chainCells(page.items.values(), s);
       return fields;
     }

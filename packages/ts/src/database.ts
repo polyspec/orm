@@ -408,9 +408,28 @@ export function splitRowKey(row: readonly unknown[], refs: readonly KeyReference
 /** A collection key: an integer, a string, a boolean, bytes or a date; keys of different types never share an identity. */
 export type Key = number | bigint | string | boolean | Uint8Array | Date;
 
-/** @internal The stored text of a datetime key component. */
-export class DatetimeKeyText {
-  public constructor(public readonly text: string) {}
+/** The UTC RFC 3339 text of a stored date and time, with no trailing zero of its fraction. */
+function keyInstant(text: string): string {
+  return `${text.replace(' ', 'T').replace(/(\.\d*?)0*$/, '$1').replace(/\.$/, '')}Z`;
+}
+
+/** @internal A key of a datetime column: a Date, whose value stops at the millisecond, and whose toJSON holds the whole instant (INT-11). */
+export class DatetimeKey extends Date {
+  private readonly instant: string;
+
+  public constructor(text: string) {
+    super(keyInstant(text).replace(/\.(\d+)Z$/, (_, fraction: string) => `.${fraction.padEnd(3, '0').slice(0, 3)}Z`));
+    this.instant = keyInstant(text);
+  }
+
+  public override toJSON(): string { return this.instant; }
+}
+
+function dateKeyText(value: Date): string {
+  return value instanceof DatetimeKey ? value.toJSON() : value.toISOString().replace(/\.(\d{3})Z$/, (_, fraction: string) => {
+    const trimmed = fraction.replace(/0+$/, '');
+    return trimmed === '' ? 'Z' : `.${trimmed}Z`;
+  });
 }
 
 export function keyOfValues(values: readonly unknown[]): string {
@@ -433,16 +452,9 @@ function compositeKeyPart(value: unknown): string {
   } else if (value instanceof Uint8Array) {
     tag = 'b';
     payload = Buffer.from(value).toString('hex');
-  } else if (value instanceof DatetimeKeyText) {
-    // The stored text keeps the microseconds that a Date cannot hold.
-    tag = 'd';
-    payload = `${value.text.replace(' ', 'T').replace(/(\.\d*?)0*$/, '$1').replace(/\.$/, '')}Z`;
   } else if (value instanceof Date) {
     tag = 'd';
-    payload = value.toISOString().replace(/\.(\d{3})Z$/, (_, fraction: string) => {
-      const trimmed = fraction.replace(/0+$/, '');
-      return trimmed === '' ? 'Z' : `.${trimmed}Z`;
-    });
+    payload = dateKeyText(value);
   } else {
     // Keep the prior framing for values outside the five common typed component kinds.
     const legacy = scalarKey(value);
@@ -457,7 +469,7 @@ export function keyText(value: unknown): string {
   if (typeof value === 'number' || typeof value === 'bigint') return `n:${value}`;
   if (typeof value === 'boolean') return value ? 'b:1' : 'b:0';
   if (value instanceof Uint8Array) return `x:${Buffer.from(value).toString('hex')}`;
-  if (value instanceof Date) return `d:${value.toISOString()}`;
+  if (value instanceof Date) return `d:${dateKeyText(value)}`;
   return `s:${scalarKey(value)}`;
 }
 

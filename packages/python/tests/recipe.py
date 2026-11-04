@@ -18,7 +18,7 @@ import threading
 import time
 import types
 import unittest
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -3618,7 +3618,7 @@ def _table_model_query(step: dict, context: dict) -> dict:
         fields = {
             "json": _plain_json(
                 {
-                    "keys": list(page["items"].keys()),
+                    "keys": [_key_json(key) for key in page["items"].keys()],
                     "total": page["totalCount"],
                     "pages": page["totalPages"],
                     "page": page["page"],
@@ -3730,6 +3730,14 @@ def _table_model_delete(step: dict, context: dict) -> dict:
         return {}
     _chain_target(step, context).delete(recursive)
     return {}
+
+
+def _key_json(key):
+    """A key of a page: a date and time is UTC RFC 3339 with no trailing zero of its fraction (FCV-4)."""
+    if not isinstance(key, datetime):
+        return key
+    text = key.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S.%f")
+    return f"{text.rstrip('0').rstrip('.')}Z"
 
 
 def _plain_json(value) -> Any:

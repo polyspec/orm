@@ -106,3 +106,13 @@ table key_flag {
   flag bool
   primary key (flag)
 }
+
+table key_instant {
+  instant datetime(3)
+  primary key (instant)
+}
+
+table key_fine_instant {
+  instant datetime(6)
+  primary key (instant)
+}

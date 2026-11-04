@@ -244,15 +244,15 @@ ZEND_METHOD(Polyspec_Orm_Model, rowShape)
         } ZEND_HASH_FOREACH_END();
         if (zend_hash_num_elements(Z_ARRVAL_P(keys)) == 1) {
             zval *key = zend_hash_index_find(Z_ARRVAL_P(keys), 0), *index = key != NULL ? read_array(key, "index") : NULL;
-            /* A bool key goes through read_key_cells: its cell can be an integer, and the key keeps the declared type (PRT-35). */
-            bool is_bool = false;
+            /* A bool or datetime key goes through read_key_cells: its cell is an integer or a text, and the key keeps the declared type (INT-11, PRT-35). */
+            bool typed = false;
             if (index != NULL && Z_TYPE_P(index) == IS_LONG) {
                 ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(columns), zval *col) {
                     zval *at = read_array(col, "index"), *type = read_array(col, "type");
-                    if (at != NULL && Z_TYPE_P(at) == IS_LONG && Z_LVAL_P(at) == Z_LVAL_P(index) && type != NULL && read_string_is(type, "bool")) is_bool = true;
+                    if (at != NULL && Z_TYPE_P(at) == IS_LONG && Z_LVAL_P(at) == Z_LVAL_P(index) && type != NULL && (read_string_is(type, "bool") || read_string_is(type, "datetime"))) typed = true;
                 } ZEND_HASH_FOREACH_END();
             }
-            if (index != NULL && !is_bool) { zval copy; ZVAL_COPY(&copy, index); zend_hash_str_update(Z_ARRVAL_P(return_value), "key", 3, &copy); }
+            if (index != NULL && !typed) { zval copy; ZVAL_COPY(&copy, index); zend_hash_str_update(Z_ARRVAL_P(return_value), "key", 3, &copy); }
         }
     }
     zval *updated = read_array(&meta, "updated");
@@ -522,13 +522,12 @@ ZEND_METHOD(Polyspec_Orm_Model, assembleRow)
     zval_ptr_dtor(&shape);ZVAL_COPY_VALUE(return_value,&model);
 }
 
-/* The row whose key cells hold the declared type of their column: a bool column reads as an integer on MySQL and SQLite, and a datetime column of a composite key as its text (INT-11, PRT-35). */
+/* The row whose key cells hold the declared type of their column: a bool column reads as an integer on MySQL and SQLite, and a datetime column as its text (INT-11, PRT-35). */
 static bool read_key_cells(zval *assemble_decl, zval *key_index, zval *vals, zval *out)
 {
     ZVAL_DUP(out, vals);
     zval *columns = read_array(assemble_decl, "columns");
     if (columns == NULL || Z_TYPE_P(columns) != IS_ARRAY) return true;
-    bool composite = zend_hash_num_elements(Z_ARRVAL_P(key_index)) > 1;
     zval *ref, *column;
     ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(key_index), ref) {
         zval *index = read_array(ref, "index");
@@ -543,7 +542,7 @@ static bool read_key_cells(zval *assemble_decl, zval *key_index, zval *vals, zva
                 bool truth = zend_is_true(cell);
                 zval_ptr_dtor(cell);
                 ZVAL_BOOL(cell, truth);
-            } else if (type != NULL && read_string_is(type, "datetime") && composite && Z_TYPE_P(cell) == IS_STRING) {
+            } else if (type != NULL && read_string_is(type, "datetime") && Z_TYPE_P(cell) == IS_STRING) {
                 zval fn, text, date;
                 ZVAL_STRING(&fn, "date_create_immutable");
                 ZVAL_STR(&text, zend_strpprintf(0, "%s UTC", Z_STRVAL_P(cell)));

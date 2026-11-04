@@ -226,18 +226,27 @@ class _RowState:
             self.flat.append(name)
 
 
+def _key_instant(cell):
+    """The datetime of a key of a datetime column, in UTC: it is text on SQLite and has no zone on the others (INT-11)."""
+    if cell is None:
+        return None
+    instant = datetime.datetime.fromisoformat(cell) if isinstance(cell, str) else cell
+    return instant if instant.tzinfo is not None else instant.replace(tzinfo=datetime.UTC)
+
+
 def _collection_key(c: Core, m: Core, asm: dict, row):
     if c.fetch_key is not None:
         return key_value(c.fetch_key(m.self))
     if c.key_name != "":
         return key_value(m.values.get(c.key_name, m.row.extra.get(c.key_name)))
     if len(asm["key"]) == 1:
-        name = next(
-            col["name"]
-            for col in asm["columns"]
-            if col["index"] == asm["key"][0]["index"]
+        column = next(
+            col for col in asm["columns"] if col["index"] == asm["key"][0]["index"]
         )
-        return key_value(m.values.get(name, row[asm["key"][0]["index"]]))
+        cell = row[asm["key"][0]["index"]]
+        if column["type"] == "datetime":
+            return key_value(_key_instant(cell))
+        return key_value(m.values.get(column["name"], cell))
     # A bool column reads as an integer on MySQL and SQLite and a datetime column as its text on SQLite, and a key keeps the
     # declared type of its component (PRT-35).
     cells = list(row)
@@ -246,8 +255,8 @@ def _collection_key(c: Core, m: Core, asm: dict, row):
         cell = cells[ref["index"]]
         if column["type"] == "bool":
             cells[ref["index"]] = m.values.get(column["name"], cell)
-        elif column["type"] == "datetime" and isinstance(cell, str):
-            cells[ref["index"]] = datetime.datetime.fromisoformat(cell)
+        elif column["type"] == "datetime":
+            cells[ref["index"]] = _key_instant(cell)
     key = row_key(cells, asm["key"])
     if key is None:
         raise OrmError(codes.CODEC_DECODE, "collection row identity contains SQL NULL")
