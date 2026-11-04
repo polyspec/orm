@@ -347,11 +347,10 @@ go-test-check: lease-tool python-venv-check php-vendor-check orm-codes-typescrip
 	$(WITH_TEST_ENV) DBSPEC_APPLY_RUST=$(RUN_TARGET)/debug/examples/dbspec_apply POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python DBSPEC_STRESS_DOCUMENT=$(DBSPEC_INTROSPECT_DOCUMENT) DBSPEC_INTROSPECT_RUST=$(RUN_TARGET)/$(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect DBSPEC_INTROSPECT_PYTHON=$(PYTHON_VENV)/bin/python $(GO_TEST) $(GO_TEST_CHECK_PACKAGES)
 	rm -rf $(RUN_DIR)
 
-go-test-check/cross-runtime: lease-tool python-venv-check php-vendor-check orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
+go-test-check/cross-runtime: typescript-current python-venv-check php-vendor-check
+	$(READ_TYPESCRIPT)
 	mkdir -p $(dir $(DBSPEC_INTROSPECT_DOCUMENT))
 	$(PUBLISH) $(DBSPEC_INTROSPECT_DOCUMENT) node tests/dbspec/stress.mts $(DBSPEC_INTROSPECT_TABLES)
-	$(TSC_BUILD)
 	$(RUN_LONG) rust-build/dbspec_apply --cwd packages/rust -- $(CARGO_COPY) debug/examples/dbspec_apply -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm --example dbspec_apply
 	$(RUN_LONG) rust-build/dbspec_introspect --cwd packages/rust -- $(CARGO_COPY) $(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --profile $(DBSPEC_INTROSPECT_PROFILE) --locked --offline -p polyspec-orm --example dbspec_introspect
 	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
@@ -373,8 +372,8 @@ testcase-check/rust:
 # client-pooler-check runs the client database tests through the PgBouncer
 # pooler in transaction mode for PostgreSQL and the ProxySQL pooler for MySQL. Its php-extension lane builds the
 # extension, so it installs the PHP extension tools (T272), and its lanes run the recipe units with a database (T343-12).
-client-pooler-check: lease-tool python-venv-check php-vendor-check php-models orm-install-php-extension-tools orm-codes-typescript orm-codes flowmark-check
-	$(HOLD_TYPESCRIPT)
+client-pooler-check: typescript-current python-venv-check php-vendor-check php-models orm-install-php-extension-tools orm-codes flowmark-check
+	$(READ_TYPESCRIPT)
 	$(WITH_TEST_ENV) ORM_CLIENT_DB_POOLER=1 ORM_PYTHON=$(PYTHON_VENV)/bin/python FLOWMARK=$(FLOWMARK) ORM_TEST_POSTGRES_DSN="$$ORM_TEST_PGBOUNCER_DSN" ORM_TEST_MYSQL_DSN="$$ORM_TEST_PROXYSQL_DSN" node scripts/client-db-test.mts
 
 # runner-check checks the check runner (scripts/check/run.mts) and its run record (scripts/check/record.mts) with a temporary git checkout and stub steps.
@@ -414,9 +413,8 @@ dbspec-introspect-check:
 # dbspec-introspect-ts-check builds the TypeScript client and runs the recipe of dbspec-introspect-check on MySQL, PostgreSQL and
 # SQLite.
 .PHONY: dbspec-introspect-ts-check
-dbspec-introspect-ts-check: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+dbspec-introspect-ts-check: typescript-current
+	$(READ_TYPESCRIPT)
 	$(WITH_TEST_ENV) node --test --conditions=orm-test packages/ts/tests/dbspec_introspect-mysql.test.mjs packages/ts/tests/dbspec_introspect-postgres.test.mjs packages/ts/tests/dbspec_introspect-sqlite.test.mjs
 
 # dbspec-introspect-php-check runs the recipe and the failing query in PDO's silent error mode with the PHP client's
@@ -459,13 +457,13 @@ catalog-mutation-helper-python-check: python-venv-check
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_catalog_mutation_helper
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_catalog_described_temporal
 
-catalog-mutation-helper-ts-check: typescript-build
+catalog-mutation-helper-ts-check: typescript-read
 	$(RUN_TESTS) node -- --test packages/ts/tests/catalog-mutation-helper.test.mjs
 
 typescript-internal-column-error-helper-check:
 	$(RUN_TESTS) node -- --test packages/ts/tests/internal-column-error.test.mjs packages/ts/tests/markdown-read-db.test.mjs
 
-typescript-dbspec-plan-fixture-check: typescript-build
+typescript-dbspec-plan-fixture-check: typescript-read
 	$(RUN_TESTS) node -- --test packages/ts/tests/dbspec-plan-fixture.test.mjs
 
 physical-command-case-helper-check:
@@ -490,7 +488,7 @@ database-case-tests-helper-check:
 typescript-conditional-entry-helper-check:
 	$(RUN_TESTS) node -- --test packages/ts/tests/conditional-entry.test.mjs
 
-typescript-database-case-fixture-helper-check: typescript-build
+typescript-database-case-fixture-helper-check: typescript-read
 	$(RUN_TESTS) node -- --test packages/ts/tests/database-case-fixture.test.mjs
 
 # The six dbspec SQLite lock/session checks execute focused fake-driver cases; none starts or opens a database.
@@ -654,11 +652,10 @@ dbspec-python-check: python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_set_decimal_postgres
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_set_decimal_sqlite
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s packages/python/tests -t . -p 'test_dbspec_*.py'
-dbspec-compare-check/prepare: lease-tool python-venv-check php-vendor-check orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
+dbspec-compare-check/prepare: typescript-current python-venv-check php-vendor-check
+	$(READ_TYPESCRIPT)
 	mkdir -p $(dir $(DBSPEC_COMPARE_DOCUMENT))
 	$(PUBLISH) $(DBSPEC_COMPARE_DOCUMENT) node tests/dbspec/stress.mts $(DBSPEC_COMPARE_TABLES)
-	$(TSC_BUILD)
 	$(RUN_LONG) rust-build/dbspec_compare --cwd packages/rust -- $(CARGO_COPY) debug/examples/dbspec_compare debug/examples/dbspec_stress -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm-schema --example dbspec_compare --example dbspec_stress
 	$(RUN_LONG) rust-build/dbspec_apply --cwd packages/rust -- $(CARGO_COPY) debug/examples/dbspec_apply -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm --example dbspec_apply
 	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
@@ -961,7 +958,7 @@ group-row-count-rust-unit-check:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) group-row-count-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --manifest-path packages/rust/Cargo.toml --locked --offline --workspace --features "$(ORM_RUST_TEST_FEATURES)" -p polyspec-orm --lib collection::group_tests::driver_cell_forms -- --test-threads=1 --exact
 
 # Runs grouped-boolean, exact i64, and row-count contract cases through each native result path.
-group-count-boolean-unit-check: lease-tool php-vendor-check php-model-check python-venv-check typescript-build php-models
+group-count-boolean-unit-check: lease-tool php-vendor-check php-model-check python-venv-check typescript-read php-models
 	@set +e; status=0; last_result=0; \
 	run_case() { label=$$1; shift; printf '[group-result] %s\n' "$$label"; "$$@"; last_result=$$?; printf '[group-result] %s exit %s\n' "$$label" "$$last_result"; if [ "$$last_result" -ne 0 ]; then status=1; fi; return 0; }; \
 	run_case go $(GO_TEST) ./packages/go/orm -run '^(TestGroupRowDriverCellForms)$$' -count=1; \
@@ -1119,7 +1116,7 @@ mysql-session-php-extension-check: php-vendor-check orm-install-php-extension-to
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/MysqlSessionNativeTest.php
 
 # Runs the TypeScript CFG-4/CFG-5 live pool-bound cases on SQLite, MySQL and PostgreSQL.
-connection-pool-resource-bounds-typescript-check: typescript-build
+connection-pool-resource-bounds-typescript-check: typescript-read
 	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/pool_bounds.mjs
 
 # Runs CFG-2 through the PHP extension's native Orm::connect with generated model fixtures.
@@ -1277,7 +1274,7 @@ recipe-unknown-key-check/php-extension: recipe-keys-check php-vendor-check
 conformance-refusal-check: conformance-refusal-check/go conformance-refusal-check/typescript conformance-refusal-check/rust-fixtures
 conformance-refusal-check/go:
 	$(GO_TEST) ./packages/go/model -run '^TestRefusalIsATypedError$$' -count=1
-conformance-refusal-check/typescript: typescript-build
+conformance-refusal-check/typescript: typescript-read
 	$(RUN_TESTS) node -- packages/ts/tests/refusal-before-request.mjs
 conformance-refusal-check/rust-fixtures: lease-tool
 	cd packages/rust && $(CARGO_TEST) conformance-refusal-rust-fixtures -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm --test compiler_fixtures -- --test-threads=1 compiler_fixtures::refusal-
@@ -1295,17 +1292,17 @@ conformance-recipe-vectors-unit:
 	$(NODE) --test tests/conformance/check/recipe_vectors.test.mts
 define RECIPE_VECTORS_TARGETS
 .PHONY: conformance-$(1)-check/go conformance-$(1)-check/typescript conformance-$(1)-check/python conformance-$(1)-check/php conformance-$(1)-check/php-extension conformance-$(1)-check/rust
-conformance-$(1)-check/go: typescript-build
+conformance-$(1)-check/go: typescript-read
 	@$$(WITH_TEST_ENV) $$(call RECIPE_VECTORS_RUN,$(2),go)
-conformance-$(1)-check/typescript: typescript-build
+conformance-$(1)-check/typescript: typescript-read
 	@$$(WITH_TEST_ENV) $$(call RECIPE_VECTORS_RUN,$(2),typescript)
-conformance-$(1)-check/python: typescript-build conformance-python-models
+conformance-$(1)-check/python: typescript-read conformance-python-models
 	@$$(WITH_TEST_ENV) export ORM_PYTHON=$$(PYTHON_VENV)/bin/python ORM_PYTHON_MODELS=$$(CONFORMANCE_PY_MODELS); $$(call RECIPE_VECTORS_RUN,$(2),python)
-conformance-$(1)-check/php: typescript-build php-vendor-check php-models
+conformance-$(1)-check/php: typescript-read php-vendor-check php-models
 	@$$(WITH_TEST_ENV) $$(call RECIPE_VECTORS_RUN,$(2),php)
-conformance-$(1)-check/php-extension: typescript-build php-vendor-check php-models build-php-ext
+conformance-$(1)-check/php-extension: typescript-read php-vendor-check php-models build-php-ext
 	@$$(WITH_TEST_ENV) export POLYSPEC_ORM_EXTENSION="$$(abspath var/php-ext/polyspec_orm.so)"; $$(call RECIPE_VECTORS_RUN,$(2),php-extension)
-conformance-$(1)-check/rust: typescript-build lease-tool
+conformance-$(1)-check/rust: typescript-read lease-tool
 	@$$(WITH_TEST_ENV) $$(call RECIPE_VECTORS_RUN,$(2),rust)
 endef
 $(eval $(call RECIPE_VECTORS_TARGETS,generated-methods,generated))
@@ -1418,7 +1415,7 @@ client-unit-check/engine: php-vendor-check php-models
 
 # The six SQLite NOWAIT callers restore busy_timeout without hiding the lock error or either failure cause.
 .PHONY: nowait-restore-check
-nowait-restore-check: lease-tool typescript-build php-vendor-check php-models python-venv-check orm-install-php-extension-tools
+nowait-restore-check: lease-tool typescript-read php-vendor-check php-models python-venv-check orm-install-php-extension-tools
 	@set +e; status=0; \
 	$(GO_TEST) ./packages/go/orm -run '^TestAcquireSQLiteRowLock' -count=1 || status=1; \
 	$(RUN_TESTS) node --conditions=orm-test --test packages/ts/tests/sqlite-row-lock-restore.mjs || status=1; \
@@ -1445,9 +1442,8 @@ client-unit-check/orm-gen: php-vendor-check php-models
 php-go-text-check: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/GoSerializationTest.php
 
-php-gen-unit-check: php-vendor-check lease-tool orm-codes-typescript php-models
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+php-gen-unit-check: typescript-current php-vendor-check php-models
+	$(READ_TYPESCRIPT)
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenCliTest.php packages/php/tests/OrmGenScanTest.php packages/php/tests/OrmGenPackageTest.php packages/php/tests/OrmGenParsedModelTest.php packages/php/tests/OrmGenLazyModelTest.php
 
 # generator-consumer-check runs the consumer tests of each generator as a part of its own, so a failed part does not stop the others.
@@ -1630,9 +1626,8 @@ conformance-result-check: conformance-result-check/php conformance-result-check/
 .PHONY: conformance-result-check/php conformance-result-check/typescript conformance-result-check/go conformance-result-check/python
 conformance-result-check/php: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ConformanceResultTest.php
-conformance-result-check/typescript: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(RUN_LONG) typescript-build -- npm run typescript:build
+conformance-result-check/typescript: typescript-current
+	$(READ_TYPESCRIPT)
 	$(NODE) --test tests/conformance/check/result_typescript.test.mts
 conformance-result-check/go:
 	$(GO_TEST) ./packages/go/internal/conformance -count=1
@@ -1641,8 +1636,8 @@ conformance-result-check/python: python-venv-check
 
 # Runs the selected model getter/setter styled states in each native client. Each runtime reports independently.
 .PHONY: styled-column-states-unit-check
-styled-column-states-unit-check: lease-tool php-vendor-check php-model-check python-venv-check orm-codes-typescript php-models
-	$(HOLD_TYPESCRIPT)
+styled-column-states-unit-check: typescript-current php-vendor-check php-model-check python-venv-check php-models
+	$(READ_TYPESCRIPT)
 	@set +e; status=0; last_result=0; \
 	run_case() { label=$$1; shift; printf '[styled-column-states] %s\n' "$$label"; "$$@"; last_result=$$?; printf '[styled-column-states] %s exit %s\n' "$$label" "$$last_result"; if [ "$$last_result" -ne 0 ]; then status=1; fi; return 0; }; \
 	run_case go $(GO_TEST) ./packages/go/orm -run '^TestStyledColumnStateFixture$$' -count=1; \
@@ -1664,9 +1659,8 @@ unselected-column-physical-check: php-vendor-check
 # case-database-check runs the model case of four clients on two shared test databases, leaving one table in each,
 # and checks that the cases pass without changing the shared database or the PostgreSQL schema, and leave no
 # `orm_case_` database or `orm-case-` SQLite file of their own (T25).
-case-database-check: php-vendor-check lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(RUN_LONG) typescript-build -- npm run typescript:build
+case-database-check: typescript-current php-vendor-check
+	$(READ_TYPESCRIPT)
 	$(WITH_TEST_ENV) PATH="$(HOME)/.cargo/bin:$(PATH)" node scripts/case-database-check.mts
 
 # conformance-check runs the native conformance bodies that remain, each compared with data outside the vector files
@@ -1690,7 +1684,7 @@ python-model-check: python-venv-check
 # Go and PHP check their declared entries (go-model-check, php-model-check), the Python directory and the TypeScript build write
 # theirs, and the Rust tests crate generates its own in its build script. No database runs.
 .PHONY: bind-models-check
-bind-models-check: go-model-check php-model-check bind-python-models typescript-build
+bind-models-check: go-model-check php-model-check bind-python-models typescript-read
 
 # bind-message-check runs the markdown message and control recipe, tests/bind/messages.json, in each runtime (FCV-3, FCV-4): each part
 # runs the entry of its runtime that calls the recipe helper, without a database. Each markdown.send step runs one public call on a
@@ -2034,7 +2028,7 @@ paged-read-rust-check: lease-tool
 # Runs the database-independent page-cache and exact parameter-walk units in all six implementations.
 .PHONY: page-cache-unit-check
 .PHONY: page-cache-unit-check/go page-cache-unit-check/php page-cache-unit-check/typescript page-cache-unit-check/python page-cache-unit-check/rust
-page-cache-unit-check: lease-tool php-vendor-check php-models python-venv-check typescript-build model-types-php-extension-check page-cache-unit-check/go page-cache-unit-check/php page-cache-unit-check/typescript page-cache-unit-check/python page-cache-unit-check/rust
+page-cache-unit-check: lease-tool php-vendor-check php-models python-venv-check typescript-read model-types-php-extension-check page-cache-unit-check/go page-cache-unit-check/php page-cache-unit-check/typescript page-cache-unit-check/python page-cache-unit-check/rust
 page-cache-unit-check/go:
 	$(GO_TEST) ./packages/go/orm -run '^(TestPlanCachePagedReadBindsPageValues|TestCanonicalizeCompositeRequestParameterWalk)$$' -count=1
 page-cache-unit-check/php: php-vendor-check php-models
@@ -2073,7 +2067,7 @@ split-read-plan-check/rust:
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib model::split_plan_tests::split_root_in_count_plans_no_statement_over_the_bind_limit
 
 # The six native clients preserve typed composite collection components and the shared opaque encoding.
-collection-composite-key-check: typescript-build php-vendor-check python-venv-check orm-install-php-extension-tools php-models
+collection-composite-key-check: typescript-read php-vendor-check python-venv-check orm-install-php-extension-tools php-models
 	@set -eu; \
 	run_dir="$(abspath .runtime/run)/collection-composite-key-check-$$$$"; \
 	trap 'rm -rf "$$run_dir"' EXIT; \
@@ -2986,14 +2980,13 @@ example-check: php-vendor-check python-venv-check
 # and confirms that each test passes unchanged and prints its measurements. Performance is only measured and does not
 # fail the test (AGENTS.md). It uses the 2000-table stress document, so make bench runs it.
 TIMING_GO_DBSPEC_TEST = $(RUN_DIR)/dbspec.test
-timing-check: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
+timing-check: typescript-current
+	$(READ_TYPESCRIPT)
 	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT)) $(dir $(TIMING_GO_DBSPEC_TEST))
 	$(PUBLISH) $(DBSPEC_STRESS_DOCUMENT) node tests/dbspec/stress.mts
 	$(RUN_LONG) go-build/dbspec-test -- $(PUBLISH) $(TIMING_GO_DBSPEC_TEST) go test -c -o @OUT@ ./packages/go/engine/dbspec
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/dbspec_stress --cwd packages/rust -- $(CARGO_COPY) release/examples/dbspec_stress -- $(CARGO_SIBLINGS) build --release --locked --offline -p polyspec-orm-schema --example dbspec_stress
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/orm-schema-tests --cwd packages/rust -- $(CARGO_LEASED) cargo test --locked --offline -p polyspec-orm-schema --no-run
-	$(RUN_LONG) typescript-build -- npm run typescript:build
 	PATH="$(HOME)/.cargo/bin:$(PATH)" DBSPEC_STRESS_DOCUMENT=$(abspath $(DBSPEC_STRESS_DOCUMENT)) TIMING_GO_DBSPEC_TEST=$(abspath $(TIMING_GO_DBSPEC_TEST)) TIMING_RUST_STRESS=$(RUN_TARGET)/release/examples/dbspec_stress $(NODE) --test --test-concurrency=1 tests/timing/preempted.test.mts
 	rm -rf $(RUN_DIR)
 
@@ -3036,7 +3029,7 @@ GENERATED_PHP = packages/php/gen
 GENERATED_GO = ./model ./markdownmodel ./decimalmodel
 GENERATED_TS = packages/ts/src/models/models.ts
 .PHONY: generated-lint-check
-generated-lint-check: python-models php-models go-models typescript-build
+generated-lint-check: python-models php-models go-models typescript-read
 	$(RUFF) check --config $(KIT_PACKAGE)/ruff.toml --no-respect-gitignore $(GENERATED_PY_MODELS)
 	$(RUFF) format --check --config $(KIT_PACKAGE)/ruff.toml --no-respect-gitignore $(GENERATED_PY_MODELS)
 	$(PHPCS) -q -s --report=emacs --standard=$(KIT_PACKAGE)/phpcs.xml.dist $(GENERATED_PHP)/*.php
@@ -3149,7 +3142,7 @@ request-hook-php-extension-check: php-vendor-check php-model-check lease-tool
 # service scope, T203) on SQLite in every client: Go, TypeScript, Python, the PHP library, the PHP extension and Rust.
 .PHONY: request-hook-relation-scope-check
 request-hook-relation-scope-check: RUN_DIR = $(abspath .runtime/run)/request-hook-relation-scope-check-$$PPID
-request-hook-relation-scope-check: php-vendor-check php-models python-venv-check lease-tool typescript-build
+request-hook-relation-scope-check: php-vendor-check php-models python-venv-check lease-tool typescript-read
 	$(NODE) tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestRecipeRequestHookSqlite$$/^relation_scope$$' -count=1
 	$(NODE) --test --test-name-pattern='relation_scope' packages/ts/tests/request_hook-sqlite.test.mjs
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_request_hook_sqlite
@@ -3261,7 +3254,7 @@ transaction-failure-php-check: php-vendor-check php-models
 # python-check runs the Python client's unit tests, the interface tests of the Python extractor, the generated-model check and
 # the Python conformance result check. The tests import the client and ordered-json installed into the venv (orm-install-python).
 
-transaction-failure-typescript-check: typescript-build
+transaction-failure-typescript-check: typescript-read
 	$(NODE) --conditions=orm-test --test $(if $(TRANSACTION_FAILURE_TYPESCRIPT_TEST_FILTER),--test-name-pattern='$(TRANSACTION_FAILURE_TYPESCRIPT_TEST_FILTER)',) packages/ts/tests/transaction-failure.mjs
 
 # The assignment expansion regression is a pure planner unit, separate from the Go database suite.
@@ -3311,7 +3304,7 @@ php-extension-package-entry-check: php-vendor-check php-models
 rust-package-entry-check:
 	cd packages/rust && $(CARGO_TEST) rust-package-entry-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --test package_entry public_package_entry -- --exact --nocapture
 
-typescript-package-entry-check: typescript-build
+typescript-package-entry-check: typescript-read
 	$(NODE) --conditions=orm-test --test --test-name-pattern='package-entry/runtime-exports' packages/ts/tests/statement_fault_entry.mjs
 
 complex-query-typescript-unit-check: typescript-current

@@ -674,13 +674,39 @@ export function typescriptReaderErrors(makefile: string, read: Read): string[] {
 // and then run node on it. The lease is held for the whole make process, so such a target blocks every other run while its tests run; it reads the output, so
 // it starts with $(READ_TYPESCRIPT) and has typescript-current among its prerequisites.
 export function typescriptExclusiveReaderErrors(makefile: string): string[] {
-  const node = /^(?:\$\(RUN_LONG\) \S+ -- |\$\(WITH_TEST_ENV\) |[A-Z_]+=\S+ )*\$\(NODE\) /;
-  return makeTargets(makefile)
+  const build = new Set(['$(TSC_BUILD)', '$(RUN_LONG) typescript-build -- npm run typescript:build']);
+  // These targets write what the whole build writes, or read the editor packages that typescript-current does not answer for.
+  const writers = new Set(['build-ts', 'lint-ts', 'release-assets', 'release-candidate-assets', 'editor-build']);
+  const rules = makeTargets(makefile);
+  const prerequisites = new Map<string, string[]>();
+  const holders = new Set<string>();
+  const readers = new Set<string>();
+  for (const rule of rules) {
+    prerequisites.set(rule.target, [...(prerequisites.get(rule.target) ?? []), ...rule.prerequisites]);
+    const first = rule.commands[0]?.trim();
+    if (first === '$(HOLD_TYPESCRIPT)') holders.add(rule.target);
+    if (first === '$(READ_TYPESCRIPT)') readers.add(rule.target);
+  }
+  const reached = (target: string, seen = new Set<string>()): Set<string> => {
+    if (seen.has(target)) return seen;
+    seen.add(target);
+    for (const prerequisite of prerequisites.get(target) ?? []) reached(prerequisite, seen);
+    return seen;
+  };
+  const errors = rules
     .filter(rule => {
-      const [hold, build, ...rest] = rule.commands.map(command => command.trim());
-      return hold === '$(HOLD_TYPESCRIPT)' && build === '$(TSC_BUILD)' && rest.length > 0 && rest.every(command => node.test(command));
+      const commands = rule.commands.map(command => command.trim());
+      return commands[0] === '$(HOLD_TYPESCRIPT)' && commands.some(command => build.has(command)) && commands.length > 2 && !commands.some(command => command.includes('$(NPM)'));
     })
     .map(rule => `Makefile ${rule.target} holds the TypeScript build output exclusively only to read it; start the recipe with $(READ_TYPESCRIPT) and add typescript-current`);
+  for (const rule of rules) {
+    if (rule.target === '.PHONY') continue;
+    if (rule.prerequisites.includes('typescript-build') && !writers.has(rule.target)) errors.push(`Makefile ${rule.target} takes the exclusive lease of the TypeScript build output through typescript-build for the life of its make; name typescript-read`);
+    const all = reached(rule.target);
+    // One make holds both for its whole life, so the exclusive holding would wait for its own shared one.
+    if ([...all].some(target => readers.has(target)) && [...all].some(target => holders.has(target))) errors.push(`Makefile ${rule.target} reaches both the shared and the exclusive lease of the TypeScript build output in one make`);
+  }
+  return errors;
 }
 
 // phpunitModelErrors returns one error for each make target that runs PHPUnit with packages/php/phpunit.xml.dist, whose bootstrap requires
