@@ -7,9 +7,6 @@
 //!
 //! A case ends by calling [`CaseDatabase::drop`]. If a panic happens before that, `Drop`
 //! drops the database. Creating and dropping are printed as STEP lines of the running case.
-//!
-//! A case that cannot reach a new database (a pooler with a fixed database, such as PgBouncer `orm_test_single`)
-//! uses [`CaseTable`] to have its own table with a name in the same form in that database, and drops it at the end.
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -183,58 +180,6 @@ impl Drop for CaseDatabase {
         let label = format!("database {name}");
         report_drop(&label, run_blocking(async move { remove(admin.as_deref(), &name, path.as_deref()).await }));
     }
-}
-
-/// The name of the case's own table, used on a connection with a fixed database. The case creates the table with this name
-/// (installing the schema), and at the end calls [`CaseTable::drop`]. If a panic happens before that, `Drop`
-/// drops the table. It does not drop anything other than this name.
-pub struct CaseTable {
-    dsn: String,
-    name: String,
-    dropped: bool,
-}
-
-impl CaseTable {
-    /// Decides the table name for the database of `dsn`. The case creates the table.
-    pub fn reserve(dsn: &str) -> CaseTable {
-        let name = case_name();
-        polyspec_orm_testcase::step(format_args!("table {name} reserved"));
-        CaseTable { dsn: dsn.to_owned(), name, dropped: false }
-    }
-
-    /// The table name.
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    /// Drops the table (it may not exist if creation failed earlier). If that fails, the case fails
-    /// with the table name.
-    pub async fn drop(mut self) {
-        self.dropped = true;
-        if let Err(e) = drop_table(&self.dsn, &self.name).await {
-            panic!("case table {}: drop: {e}", self.name);
-        }
-        polyspec_orm_testcase::step(format_args!("table {} dropped", self.name));
-    }
-}
-
-impl Drop for CaseTable {
-    fn drop(&mut self) {
-        if self.dropped {
-            return;
-        }
-        self.dropped = true;
-        let (dsn, name) = (self.dsn.clone(), self.name.clone());
-        let label = format!("table {name}");
-        report_drop(&label, run_blocking(async move { drop_table(&dsn, &name).await }));
-    }
-}
-
-async fn drop_table(dsn: &str, name: &str) -> Result<(), String> {
-    let db = polyspec_orm::Db::connect(dsn, 1, polyspec_orm::Config::default()).await.map_err(|e| format!("connection: {e}"))?;
-    let result = execute(&db, &format!("DROP TABLE IF EXISTS {name}")).await;
-    db.close().await;
-    result
 }
 
 /// Drops the database. For MySQL, the time to wait for a metadata lock is 60 seconds, so a transaction that

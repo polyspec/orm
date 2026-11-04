@@ -4,6 +4,7 @@ import { run, state, step, TIMEOUT_MS } from './physical.mts';
 import { reportUnchangedState, runPhysicalCommandCase } from './physical-command-case.mts';
 import { parseGoTestEvent } from './json/formats.mts';
 import { implementationLanguages } from './features/languages.mts';
+import { withTestTags } from '../tests/go-test.mts';
 
 const databases = ['mysql', 'postgres', 'sqlite'];
 const languages = implementationLanguages();
@@ -13,7 +14,7 @@ export function command(language: string, database: string, environment: NodeJS.
   const id = `decimal_${database}`;
   if (language === 'go') {
     const suffix = database === 'postgres' ? 'Postgres' : database === 'mysql' ? 'MySQL' : 'SQLite';
-    return ['go', ['test', '-json', '-tags', 'decimalphysical', './packages/go/decimalmodel', '-run', `^TestDecimalPhysical${suffix}$`, '-count=1', '-timeout', '0']];
+    return ['go', ['test', ...withTestTags(['-json', './packages/go/decimalmodel', '-run', `^TestDecimalPhysical${suffix}$`, '-count=1', '-timeout', '0'])]];
   }
   if (language === 'php') {
     return ['php', ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', '--teamcity',

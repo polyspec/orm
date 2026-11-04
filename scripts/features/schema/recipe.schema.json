@@ -6952,13 +6952,14 @@
         }
       },
       "sql.hold_statement": {
-        "description": "A second client, the native driver of the runtime on dsn, runs sql with its one integer parameter bind as a protocol-level named statement. The connection stays open until sql.release_connection.",
+        "description": "A second client, the native driver of the runtime on dsn, runs sql with its one integer parameter bind as a protocol-level named statement. The first column of sql is pg_backend_pid(), and as binds its value of the first row, so that a later step compares the server connection it reached. The connection stays open until sql.release_connection.",
         "type": "object",
         "required": [
           "op",
           "dsn",
           "sql",
-          "bind"
+          "bind",
+          "as"
         ],
         "additionalProperties": false,
         "properties": {
@@ -6974,6 +6975,9 @@
           },
           "bind": {
             "type": "integer"
+          },
+          "as": {
+            "$ref": "#/$defs/name"
           }
         }
       },
@@ -9099,7 +9103,14 @@
                 "items": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/$defs/value"
+                    "oneOf": [
+                      {
+                        "$ref": "#/$defs/value"
+                      },
+                      {
+                        "$ref": "#/$defs/ref"
+                      }
+                    ]
                   }
                 }
               },

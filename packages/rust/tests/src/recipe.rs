@@ -4134,9 +4134,11 @@ mod database {
                 let sql = crate::recipe_reads::read(step, "sql")["sql"].as_str().unwrap_or_default().to_owned();
                 let bind = crate::recipe_reads::read(step, "bind")["bind"].as_i64().and_then(|n| i32::try_from(n).ok()).unwrap_or_default();
                 // sqlx names the statement of a query in the statement cache of the connection.
-                sqlx::query(sqlx::AssertSqlSafe(sql)).bind(bind).fetch_all(&mut held).await.map_err(|e| fault(e.to_string()))?;
+                let rows = sqlx::query(sqlx::AssertSqlSafe(sql)).bind(bind).fetch_all(&mut held).await.map_err(|e| fault(e.to_string()))?;
+                let first = rows.first().ok_or_else(|| fault("sql.hold_statement: the statement returned no row".to_owned()))?;
+                let backend: i32 = sqlx::Row::try_get(first, 0).map_err(|e| fault(e.to_string()))?;
                 context.held_statement = Some(held);
-                Output::fields(json!({}))
+                Output::fields(json!({ "value": { "int": backend.to_string() } }))
             }
             "sql.release_connection" => {
                 use sqlx::Connection as _;

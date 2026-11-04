@@ -185,7 +185,6 @@ export function environment(p: Paths, ports: Ports): Record<string, string> {
     ORM_TEST_POSTGRES_REPLICA_DSN: `postgres://orm@127.0.0.1:${ports.postgresReplica}/orm_test?sslmode=disable`,
     ORM_TEST_PROXYSQL_DSN: `mysql://orm:orm@127.0.0.1:${ports.proxysql}/orm_test`,
     ORM_TEST_PGBOUNCER_DSN: `postgres://orm@127.0.0.1:${ports.pgbouncer}/orm_test?sslmode=disable`,
-    ORM_TEST_PGBOUNCER_SINGLE_DSN: `postgres://orm@127.0.0.1:${ports.pgbouncer}/orm_test_single?sslmode=disable`,
     ORM_TOOLS_MYSQL_DSN: `${mysql}/orm_tools`,
     ORM_TOOLS_POSTGRES_DSN: `${postgres}/orm_tools?sslmode=disable`,
     ORM_RUN_MYSQL_DSN: `${mysql}/orm_run?timezone=%2B00:00`,
@@ -722,14 +721,12 @@ async function startProxysql(p: Paths, ports: Ports): Promise<void> {
 }
 
 // startPgbouncer pools the connections to the PostgreSQL primary in transaction mode over at most four server
-// connections per database. The database orm_test_single reaches orm_test through one server connection, so every client
-// of it shares the same server session. PgBouncer keeps the protocol-level prepared statements of each client and sets
+// connections per database. PgBouncer keeps the protocol-level prepared statements of each client and sets
 // the tracked parameters of the client, including statement_timeout sent as a startup parameter, on every server
 // connection it assigns to the client.
 async function startPgbouncer(p: Paths, ports: Ports): Promise<void> {
   writeFileSync(join(p.dir, 'pgbouncer-users.txt'), '"orm" ""\n');
   writeFileSync(join(p.dir, 'pgbouncer.ini'), `[databases]
-orm_test_single = host=127.0.0.1 port=${ports.postgres} dbname=orm_test pool_size=1
 * = host=127.0.0.1 port=${ports.postgres}
 
 [pgbouncer]

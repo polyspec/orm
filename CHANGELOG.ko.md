@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 15f98df25675b100a76d28e485e46e9030d781b1fc9a7b2ef5179883079da40b -->
+<!-- source-sha256: 1c946fc65a5bbe4d8f87ed51a2b3da977f0ed4a00e8b86d8c7540dfb8b7d3484 -->
 # 변경 이력
 
 ## Unreleased
@@ -14,6 +14,12 @@
 - TypeScript와 Python 생성기는 child 없는 `join<L>With<R>`와 `leftJoin<L>With<R>` 호출을 scan에서 거부한다. 다른 생성기처럼 DSL-37의 인자 개수 규칙을 따른 것이다. PHP scan vector의 chain 이름은 PHP와 TypeScript scan을 비교하던 테스트 대신 모든 runtime에서 `generator` recipe의 `scanned-` case로 실행된다.
 - 기능 `transactions`의 owner는 그 parity 목록이 이미 적은 대로 recipe `utils`도 실행한다. INT-72의 lock 해제는 모든 runtime에서 `make feature-coverage-of/transactions`가 시험한다 (#T334-3-12-3-8)
 - 데이터베이스별 기능 coverage 칸을 검사와 CI matrix에서 없앤다. 그 recipe unit은 모두 `make parity-check`가 실행하고, 항목 하나의 기능 coverage는 `make feature-coverage-of/<id>`가 그대로 실행한다 (#T334-3-12)
+- Tests: decimal physical 실행과 `contracts/features.json`, `config/parity.json`의 명령은 제거된 tag `decimalphysical`, `markdown`, `physical`을 더 쓰지 않으며, 행 T334-3-6은 PRT-43대로 `ormtest`가 남는다고 적는다.
+- Python은 실제 컬럼의 `new_<name>`을 다른 동적 runtime처럼 `CONFIG`로 거부하고(DSL-160), 그 거부는 여전히 `AttributeError`이므로 `hasattr`가 그대로 동작한다. 이 거부는 각 runtime의 native 테스트 대신 PHP, PHP extension, TypeScript, Python에서 recipe `dsl-dynamic`의 case `new_of_a_stored_column_is_refused_at_call_time`로 실행된다. 같은 이름의 두 번째 helper가 호출 대상을 가리고 있던 Python에서 recipe `dsl-dynamic`이 다시 실행된다. native로 남는 생성기와 schema 경계의 unit은 그 이유를 FCV-2에 적는다.
+- TypeScript와 Python 생성기는 child 없는 `join<L>With<R>`와 `leftJoin<L>With<R>` 호출을 scan에서 거부한다. 다른 생성기처럼 DSL-37의 인자 개수 규칙을 따른 것이다. PHP scan vector의 chain 이름은 PHP와 TypeScript scan을 비교하던 테스트 대신 모든 runtime에서 `generator` recipe의 `scanned-` case로 실행된다.
+- Tests: case `catalog_session_after_a_schema_change_through_a_pooler`는 read의 `pg_backend_pid()`를 잡아 둔 statement의 값과 비교하므로, read가 다른 server connection에 닿으면 실패한다. PHP의 `sql.hold_statement` runner는 PDO가 `$1` placeholder에 값을 묶지 않아 값 없이 실행했고, 이제 `?`로 쓴다.
+- Tests: test 서버는 PgBouncer 데이터베이스 `orm_test_single`을 더 제공하지 않고 `ORM_TEST_PGBOUNCER_SINGLE_DSN`을 더 쓰지 않으며, Rust case helper `CaseTable`도 없어진다. pooler를 거치는 catalog session이 case 데이터베이스에서 실행된 뒤로 이것들을 쓰는 test가 없다.
+- Python의 pool은 CFG-5대로 idle connection을 lifetime이 지날 때 닫는다. 이전에는 다음 호출자가 가져갈 때에만 닫았다. MySQL과 PostgreSQL의 pool 경계, lifetime, 거부되는 pool 값은 recipe `connection_pool`과 `dsn_reject_checked`의 case이고, PHP의 pool option 거부는 recipe `dsn_reject_php_pool`이다.
 - 테스트: schema 변경 뒤 transaction pooler를 거치는 catalog session(CFG-28, CFG-41)은 Python 테스트 `connection_config` 대신 모든 runtime에서 `catalog_connection` recipe의 case `catalog_session_after_a_schema_change_through_a_pooler`가 새 op `sql.hold_statement`와 `catalog.reconnect`의 `dsn`으로 맡는다.
 - Tests: conformance runner는 검사가 닿는 body, 곧 generated method와 fixed clock body만 남긴다. 나머지 vector 50개는 `conformance_verification` recipe의 case이고, 각 runner가 닿는 이름만 갖는지 시험이 확인한다.
 - Python의 pool은 CFG-5대로 idle connection을 lifetime이 지날 때 닫는다. 이전에는 다음 호출자가 가져갈 때에만 닫았다. MySQL과 PostgreSQL의 pool 경계, lifetime, 거부되는 pool 값은 recipe `connection_pool`과 `dsn_reject_checked`의 case이고, PHP의 pool option 거부는 recipe `dsn_reject_php_pool`이다.
