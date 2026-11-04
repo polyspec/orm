@@ -2718,7 +2718,7 @@ final class Recipe
     /**
      * The Schema argument of a schema op (FCV-4): the documents of the set and its external documents, read from the
      * recipe's directory and parsed through the public dbspec API; manifest_replace changes the manifest text after
-     * building and keeps its hash.
+     * building and keeps its hash; manifest takes the place of the text and the hash that the build gives.
      */
     private static function schemaArgument(array $arg, array $context): Schema
     {
@@ -2741,7 +2741,11 @@ final class Recipe
         if (isset($arg['manifest_replace'])) {
             $text = str_replace($arg['manifest_replace']['from'], $arg['manifest_replace']['to'], $text);
         }
-        return new Schema($text, $result->manifest->manifestHash, $result->manifest->externalText);
+        $hash = $result->manifest->manifestHash;
+        if (isset($arg['manifest'])) {
+            ['text' => $text, 'hash' => $hash] = $arg['manifest'];
+        }
+        return new Schema($text, $hash, $result->manifest->externalText);
     }
 
     /**

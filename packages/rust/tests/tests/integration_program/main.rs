@@ -8,8 +8,6 @@
 //! target, and a parity binding runs one section through make feature-rust-unit.
 use polyspec_orm_testcase::OrPanic;
 
-use std::cell::Cell;
-
 #[path = "../common/result_code.rs"]
 mod result_code;
 use result_code::code;
@@ -109,7 +107,7 @@ fn generated_nonnull_styled_setter_rejects_sql_null() {
 
 use model::{Account, Author, CompositeAccount, CompositeMembership, Service, ServiceMember, ServiceRegion, User};
 use polyspec_orm::db::Pool;
-use polyspec_orm::{Collection, Db, Isolation, Null};
+use polyspec_orm::{Collection, Db, Null};
 use polyspec_orm_case_database::CaseDatabase;
 
 const TARGET_POOL_SIZE: u32 = 4;
@@ -143,30 +141,6 @@ impl Drop for NamesItsWait {
         if std::thread::panicking() {
             eprintln!("{}: this case waits for a connection on {}", self.0, waits_on(self.0));
         }
-    }
-}
-
-/// Waits for SQLx to finish returning checked-out connections before asserting pool statistics.
-async fn complete_pool_returns(db: &Db, driver: &str) {
-    let stats = db.utils().stats();
-    if stats.in_use == 0 {
-        return;
-    }
-    match db.pool() {
-        Pool::MySql(pool) => complete_sqlx_pool_returns(pool, stats.max_open_connections, driver).await,
-        Pool::Postgres(pool) => complete_sqlx_pool_returns(pool, stats.max_open_connections, driver).await,
-        Pool::Sqlite(pool) => complete_sqlx_pool_returns(pool, stats.max_open_connections, driver).await,
-        Pool::Markdown(_) => unreachable!("the integration database selects SQLite, MySQL, or PostgreSQL"),
-    }
-}
-
-async fn complete_sqlx_pool_returns<DB: sqlx::Database>(pool: &sqlx::Pool<DB>, max: u32, driver: &str) {
-    let mut connections = Vec::with_capacity(max as usize);
-    for _ in 0..max {
-        connections.push(pool.acquire().await.or_panic(|error| format!("{driver}: acquire pool return barrier: {error}")));
-    }
-    for connection in &mut connections {
-        connection.return_to_pool().await;
     }
 }
 
@@ -423,103 +397,6 @@ async fn writes_case(t: &Target) {
     assert_eq!(json["name"], "service", "serialize");
 }
 
-// Requirements: INT-51, INT-61, INT-73, INT-134, INT-57, INT-79.
-async fn transactions_case(t: &Target) {
-    let db = &t.db;
-    let boom = || polyspec_orm::Error::Config("boom".into());
-    let is_boom = |r: &polyspec_orm::Result<()>| matches!(r, Err(polyspec_orm::Error::Config(m)) if m == "boom");
-    let r: polyspec_orm::Result<()> = db
-        .transaction(async || {
-            User::new().set_name("rolled back").create().await?;
-            Err(boom())
-        })
-        .await;
-    assert!(is_boom(&r), "rollback error: {r:?}");
-    assert_eq!(User::new().connect(db).get_count().await.unwrap(), 0, "rollback");
-    let r: polyspec_orm::Result<()> = db
-        .transaction(async || {
-            User::new().set_name("outer").create().await?;
-            let inner: polyspec_orm::Result<()> = db
-                .transaction(async || {
-                    User::new().set_name("inner").create().await?;
-                    Err(boom())
-                })
-                .await;
-            assert!(is_boom(&inner), "inner: {inner:?}");
-            assert_eq!(User::new().get_count().await?, 1, "savepoint rollback");
-            User::new().name("outer").for_update().gets().await?;
-            db.utils().lock("users").await?;
-            let spawned = tokio::spawn(async { User::new().get_count().await.map_err(|e| e.code().to_owned()) }).await.unwrap();
-            assert_eq!(spawned.err().as_deref(), Some("CONFIG"), "a spawned task inherited the transaction");
-            Ok(())
-        })
-        .isolation(Isolation::ReadCommitted)
-        .retry(0)
-        .await;
-    r.unwrap();
-    assert_eq!(User::new().connect(db).get_count().await.unwrap(), 1, "commit");
-    assert_eq!(code(User::new().connect(db).for_update().gets().await), "CONFIG", "lock outside a transaction");
-    assert_eq!(code(db.utils().lock("x").await), "CONFIG", "lock utility outside a transaction");
-    let attempts = Cell::new(0);
-    let r: polyspec_orm::Result<()> = db
-        .transaction(async || {
-            attempts.set(attempts.get() + 1);
-            if attempts.get() < 3 {
-                return Err(polyspec_orm::transaction_conflict("retry"));
-            }
-            Ok(())
-        })
-        .await;
-    assert!(r.is_ok() && attempts.get() == 3, "retry: {} {r:?}", attempts.get());
-    let r: polyspec_orm::Result<()> = db.transaction(async || Ok(())).read_only().timeout_ms(500).await;
-    let want = if t.driver == "postgres" { "ok" } else { "CAPABILITY_UNSUPPORTED" };
-    assert_eq!(code(r), want, "{}: transaction timeoutMs", t.driver);
-    let utils = db.utils();
-    let schema = utils.schema();
-    assert!(!schema.empty().await.unwrap(), "schema().empty() on an installed schema");
-    let (schema_name, expected) = match t.driver {
-        "mysql" => (t.database.name().to_string(), true),
-        "postgres" => ("public".to_string(), true),
-        _ => ("ormexample".to_string(), false),
-    };
-    assert_eq!(schema.exists(&schema_name).await.unwrap(), expected, "{}: schema exists", t.driver);
-    assert_eq!(schema.installed(&schema_name, "user").await.unwrap(), expected, "{}: schema table is installed", t.driver);
-    complete_pool_returns(db, t.driver).await;
-    let stats = db.utils().stats();
-    assert_eq!(stats.max_open_connections, TARGET_POOL_SIZE, "{}: pool limit", t.driver);
-    assert!((1..=TARGET_POOL_SIZE).contains(&stats.open_connections), "{}: open connections {} outside pool bounds", t.driver, stats.open_connections);
-    assert_eq!(stats.in_use, 0, "{}: connections in use", t.driver);
-    assert_eq!(stats.idle, stats.open_connections, "{}: all open connections are idle", t.driver);
-    let stats_in_transaction: polyspec_orm::Result<()> = db
-        .transaction(async || {
-            let stats = db.utils().stats();
-            assert_eq!(stats.max_open_connections, TARGET_POOL_SIZE, "{}: transaction pool limit", t.driver);
-            assert!(
-                (1..=TARGET_POOL_SIZE).contains(&stats.open_connections),
-                "{}: transaction open connections {} outside pool bounds",
-                t.driver,
-                stats.open_connections
-            );
-            assert_eq!(stats.in_use, 1, "{}: transaction connections in use", t.driver);
-            assert_eq!(stats.idle + stats.in_use, stats.open_connections, "{}: transaction idle and in-use counts", t.driver);
-            Ok(())
-        })
-        .retry(0)
-        .await;
-    stats_in_transaction.expect("stats available while a transaction holds its connection");
-    complete_pool_returns(db, t.driver).await;
-    let returned = db.utils().stats();
-    assert_eq!(returned.max_open_connections, TARGET_POOL_SIZE, "{}: returned transaction pool limit", t.driver);
-    assert!(
-        (1..=TARGET_POOL_SIZE).contains(&returned.open_connections),
-        "{}: returned transaction open connections {} outside pool bounds",
-        t.driver,
-        returned.open_connections
-    );
-    assert_eq!(returned.in_use, 0, "{}: transaction connection returned to pool", t.driver);
-    assert_eq!(returned.idle, returned.open_connections, "{}: all returned transaction connections are idle", t.driver);
-}
-
 /// Returns after the replica has applied every change the primary committed
 /// before the call. On PostgreSQL a transaction with
 /// synchronous_commit=remote_apply that writes WAL, here a transactional
@@ -773,16 +650,6 @@ async fn writes() {
     for driver in DRIVERS {
         let case = polyspec_orm_testcase::start(format!("writes/{driver}"), polyspec_orm_testcase::DATABASE);
         installed_section(driver, writes_case).await;
-        drop(case);
-    }
-}
-
-#[tokio::test(flavor = "multi_thread")]
-async fn transactions() {
-    check_bench_set();
-    for driver in DRIVERS {
-        let case = polyspec_orm_testcase::start(format!("transactions/{driver}"), polyspec_orm_testcase::DATABASE);
-        installed_section(driver, transactions_case).await;
         drop(case);
     }
 }

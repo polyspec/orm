@@ -1598,6 +1598,8 @@ async function schemaArgument(arg, context) {
   if (built.manifest === null) throw new Error(`schema: ${JSON.stringify(built.diagnostics)}`);
   let manifestText = built.manifest.manifestText;
   if (arg.manifest_replace !== undefined) manifestText = manifestText.replaceAll(arg.manifest_replace.from, arg.manifest_replace.to);
+  // manifest takes the place of the text and the hash that the build gives, so that a set with a diagnostic reaches the call (FCV-4).
+  if (arg.manifest !== undefined) return { manifestText: arg.manifest.text, manifestHash: arg.manifest.hash, externalText: built.manifest.externalText };
   return { manifestText, manifestHash: built.manifest.manifestHash, externalText: built.manifest.externalText };
 }
 

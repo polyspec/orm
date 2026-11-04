@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b59868d9d069346b68fdb9ff8ac6cc91ab4130d510dd2ae17beef59171d6d4ec -->
+<!-- source-sha256: c9ac7b6866d7611034f337d0b3f6478a7c5850d37bd28ea897b421536afa9ed4 -->
 # 변경 이력
 
 ## Unreleased
 
+- 시험: diagnostic이 있는 set의 install 거부(SCH-7), transaction 밖의 lock utility(INT-50), 0인 transaction timeout(INT-42)이 recipe `schema_install`, `utils`, `transactions`의 case로 여섯 runtime 모두에서 돌고, recipe가 가진 native test를 없앴다. TypeScript, Rust, PHP model test의 transaction과 utility 본문, PHP deadlock test와 그 child script, Rust transaction timeout test, Python의 pool 한도, schema 도구, tuple padding test이다. recipe의 `schema` 인자는 `manifest`를 받고, INT-42는 `0`이 timeout 생략과 같다고 적는다.
 - 인터페이스 검사기는 어떻게 끝나든 자기가 시작한 것을 함께 끝냅니다. 각 프로그램은 프로세스 그룹을 이끌고, 실행의 abort는 그 그룹을 죽이며, 검사기 파이프의 끝을 읽는 프로세스가 아직 도는 그룹을 죽이므로, 멈춘 extractor와 그 자식은 기한이 죽인 검사기보다 오래 살지 않습니다.
 - 테스트: relation의 parent key padding과 그 뒤 placeholder의 번호는 recipe `model_queries_chain`의 case이고, recipe가 담는 collection key의 native test는 사라졌으며, feature-coverage는 native로 남는 각 test를 이유와 함께 적는다.
 - `datetime` column의 key는 INT-11대로 모든 runtime에서 date and time이며, 유일한 key column일 때도 그렇다. PHP, TypeScript, Python은 column의 text를 돌려주었다. TypeScript key는 `toJSON()`이 microsecond를 담는 `Date`이므로 한 millisecond 안의 두 microsecond는 두 key로 남는다. recipe `model_queries_chain`의 case `single_key_of_a_datetime_keeps_its_type`과 `single_key_of_a_microsecond_datetime_keeps_its_instant`가 이를 지킨다.

@@ -3463,8 +3463,14 @@ mod database {
         if let Some(replace) = arg.get("manifest_replace") {
             text = text.replace(replace["from"].as_str().unwrap_or_default(), replace["to"].as_str().unwrap_or_default());
         }
+        let mut hash = manifest.manifest_hash;
+        // manifest takes the place of the text and the hash that the build gives, so that a set with a diagnostic reaches the call.
+        if let Some(whole) = arg.get("manifest") {
+            text = whole["text"].as_str().unwrap_or_default().to_owned();
+            hash = whole["hash"].as_str().unwrap_or_default().to_owned();
+        }
         let leak = |t: String| -> &'static str { Box::leak(t.into_boxed_str()) };
-        Ok(Schema::with_external(leak(text), leak(manifest.external_text), leak(manifest.manifest_hash)))
+        Ok(Schema::with_external(leak(text), leak(manifest.external_text), leak(hash)))
     }
 
     /// A mutation that is never cancelled, whose phases are not observed and whose commit is permitted.

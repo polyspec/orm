@@ -15,7 +15,6 @@ namespace Polyspec\Orm\Tests;
 use Closure;
 use DateTimeImmutable;
 use DateTimeZone;
-use PDO;
 use ReflectionClass;
 use ReflectionMethod;
 use RuntimeException;
@@ -28,7 +27,6 @@ use Polyspec\Orm\Tests\Model\Service;
 use Polyspec\Orm\Tests\Model\ServiceMember;
 use Polyspec\Orm\Tests\Model\ServiceRegion;
 use Polyspec\Orm\Tests\Model\User;
-use Polyspec\Orm\AesKeyring;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Collection;
 use Polyspec\Orm\Config;
@@ -366,7 +364,7 @@ class ModelTest extends TestCase
     }
 
     // ip, gz, and base64 codec columns store the value and read it back, and the ip column is found by equality.
-    private static function caseTransactions(Db $db, string $dsn): void
+    private static function caseTransactions(Db $db): void
     {
         // Requirements: PLN-19.
         // A transaction runs only through transaction(): Db has no public method that begins, commits or rolls one
@@ -375,14 +373,6 @@ class ModelTest extends TestCase
             static fn(ReflectionMethod $m): string => strtolower($m->getName()),
             (new ReflectionClass(Db::class))->getMethods(ReflectionMethod::IS_PUBLIC)
         );
-        $utils = $db->utils();
-        self::check(
-            $utils->schema() instanceof \Polyspec\Orm\SchemaUtils
-                && $utils->privileges() instanceof \Polyspec\Orm\PrivilegeUtils
-                && $utils->aes() instanceof \Polyspec\Orm\AesUtils
-                && $utils->stats() instanceof \Polyspec\Orm\Stats,
-            'Utils exposes the schema, privileges, AES and stats groups'
-        );
         self::check(in_array('transaction', $public, true), 'Db has transaction()');
         self::check(
             array_values(
@@ -390,233 +380,7 @@ class ModelTest extends TestCase
             ) === [],
             'no public begin, commit or rollback'
         );
-        $boom = new RuntimeException('boom');
-        try {
-            $db->transaction(function () use ($boom): void {
-                (new User())->setName('rolled back')->create();
-                throw $boom;
-            });
-            self::check(false, 'rollback did not throw');
-        } catch (RuntimeException $e) {
-            self::check($e === $boom, 'rollback error');
-        }
-        self::check((new User())($db)->getCount() === 0, 'rollback');
-        $idleStats = $db->stats();
-        self::check(
-            $idleStats->maxOpenConnections === 1 && $idleStats->openConnections === 1
-                && $idleStats->inUse === 0 && $idleStats->idle === 1,
-            'idle connection statistics'
-        );
-        $result = $db->transaction(function () use ($db, $boom): string {
-            $busyStats = $db->utils()->stats();
-            self::check(
-                $busyStats->maxOpenConnections === 1 && $busyStats->openConnections === 1
-                    && $busyStats->inUse === 1 && $busyStats->idle === 0,
-                'busy connection statistics'
-            );
-            (new User())->setName('outer')->create();
-            try {
-                $db->transaction(function () use ($boom): void {
-                    (new User())->setName('inner')->create();
-                    throw $boom;
-                });
-            } catch (RuntimeException $rolledBack) {
-                self::check($rolledBack instanceof RuntimeException, 'the failing savepoint rolled back');
-            }
-            self::check((new User())->getCount() === 1, 'savepoint rollback');
-            (new User())->name('outer')->forUpdate()->gets();
-            $db->utils()->lock('users');
-            return 'done';
-        }, isolation: 'read_committed', retry: 0);
-        self::check($result === 'done', 'transaction result');
-        self::check((new User())($db)->getCount() === 1, 'commit');
-        self::check(
-            self::code(fn() => (new User())($db)->forUpdate()->gets()) === Code::CONFIG,
-            'lock outside a transaction'
-        );
-        self::check(self::code(fn() => $db->utils()->lock('x')) === Code::CONFIG, 'lock utility outside a transaction');
-        $attempts = 0;
-        $db->transaction(function () use (&$attempts): void {
-            $attempts++;
-            if ($attempts < 3) {
-                throw Orm::transactionConflict('retry');
-            }
-        });
-        self::check($attempts === 3, 'retry');
-        self::check(
-            self::code(
-                fn() => $db->transaction(fn() => $db->transaction(fn() => null, readOnly: true))
-            ) === Code::CONFIG,
-            'nested options'
-        );
-        self::check($db->utils()->schema()->empty() === false, 'schema empty');
-        $releasedStats = $db->utils()->stats();
-        self::check(
-            $releasedStats->maxOpenConnections === 1 && $releasedStats->openConnections === 1
-                && $releasedStats->inUse === 0 && $releasedStats->idle === 1,
-            'released connection statistics'
-        );
         self::check($db->stats() == $db->utils()->stats(), 'Db stats are the utility stats');
-    }
-
-    private static function caseUtilities(Db $db, string $dsn): void
-    {
-        $schema = $db->utils()->schema();
-        $broken = "dbspec 1 broken\n\ntable t {\n}\n";
-        self::check(
-            self::code(
-                fn() => $schema->install(new \Polyspec\Orm\Schema($broken, 'sha256:' . hash('sha256', $broken)))
-            ) === Code::SCHEMA_INVALID,
-            'install an invalid document'
-        );
-        $user = (new User())($db)->setName('kept')->create();
-        $schema->install(\Polyspec\Orm\Tests\Model\schema());
-        self::check((new User())($db)->seq($user->getSeq())->get()?->getName() === 'kept', 'install again keeps rows');
-        $db->pdo()->exec(
-            $db->driver() === 'postgres' ? 'DROP TABLE "task" CASCADE' : (
-                $db->driver() === 'mysql' ? 'DROP TABLE `task`' : 'DROP TABLE "task"'
-            )
-        );
-        self::check(
-            self::code(fn() => $schema->install(\Polyspec\Orm\Tests\Model\schema())) === Code::CONFIG,
-            'install over some tables of the set'
-        );
-        self::check(self::code(fn() => $schema->exists('bad name')) === Code::CONFIG, 'invalid schema name');
-        switch ($db->driver()) {
-            case 'mysql':
-                $name = ltrim((string) parse_url($dsn, PHP_URL_PATH), '/');
-                self::check(
-                    $schema->exists($name) && $schema
-                        ->installed($name, 'user') && !$schema
-                        ->installed($name, 'missing'),
-                    'mysql schema inspection'
-                );
-                break;
-            case 'postgres':
-                self::check(
-                    $schema->exists('public') && $schema
-                        ->installed('public', 'user') && !$schema
-                        ->installed('public', 'missing'),
-                    'postgres schema inspection'
-                );
-                break;
-            default:
-                self::check(!$schema->installed('ormexample', 'user'), 'sqlite schema inspection');
-        }
-    }
-
-    private static function caseDeadlockRetry(Db $db, string $dsn): void
-    {
-        $f = self::seed($db);
-        [$a, $b] = [$f['authors'][0]->getSeq(), $f['authors'][1]->getSeq()];
-        $children = [];
-        foreach ([[$a, $b, 'one'], [$b, $a, 'two']] as [$first, $second, $tag]) {
-            $p = proc_open(
-                [PHP_BINARY, __DIR__ . '/deadlock_child.php', $dsn, (string) $first, (string) $second, $tag],
-                [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
-                $pipes
-            );
-            $children[] = [$p, $pipes];
-        }
-        foreach ($children as [, $pipes]) {
-            self::check(trim((string) fgets($pipes[1])) === 'locked', 'child did not lock its first row');
-        }
-        foreach ($children as [, $pipes]) {
-            fwrite($pipes[0], "go\n");
-            fclose($pipes[0]);
-        }
-        $runs = [];
-        foreach ($children as [$p, $pipes]) {
-            $out = trim((string) stream_get_contents($pipes[1]));
-            $err = stream_get_contents($pipes[2]);
-            $status = proc_close($p);
-            self::check($status === 0 && str_starts_with($out, 'done '), "child failed ($status): $out $err");
-            $runs[] = (int) substr($out, 5);
-        }
-        sort($runs);
-        self::check($runs === [1, 2], 'closure runs: ' . implode(',', $runs));
-    }
-
-    // SQLite has no row-lock deadlock. The holder keeps the write lock of an author row while another connection writes
-    // it: that write waits for busy_timeout and fails with CANCELED (SQLITE_BUSY). CANCELED is not retried, so the
-    // closure runs once, and the holder's commit stands.
-    private static function caseSqliteLockedWriterFails(Db $db, string $dsn): void
-    {
-        $f = self::seed($db);
-        $seq = $f['authors'][0]->getSeq();
-        $other = \Polyspec\Orm\Tests\Model\connect(
-            $dsn,
-            new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'),
-        );
-        $runs = 0;
-        $blocked = null;
-        $db->transaction(function () use ($db, $other, $seq, &$runs, &$blocked): void {
-            (new Author())($db)->getBySeq($seq)->setName('holder')->update();
-            try {
-                $other->transaction(function () use ($other, $seq, &$runs): void {
-                    $runs++;
-                    (new Author())($other)->getBySeq($seq)->setName('other')->update();
-                });
-            } catch (OrmException $error) {
-                $blocked = $error;
-            }
-        });
-        self::check(
-            $blocked !== null && $blocked->code_ === Code::CANCELED,
-            'the second writer waits for busy_timeout: ' . ($blocked?->getMessage() ?? 'no error'),
-        );
-        self::check(
-            $runs === 0,
-            'CANCELED is not retried: BEGIN waits for busy_timeout, the closure never starts, ran ' . $runs,
-        );
-        self::check((new Author())($db)->getBySeq($seq)->getName() === 'holder', 'the holder commits its row');
-    }
-
-    private static function caseAesRotation(Db $db, string $dsn): void
-    {
-        $f = self::seed($db);
-        $b = (new Author())($db)->getBySeq($f['authors'][0]->getSeq());
-        $b->setAesHexEmail('person@example.com')->setAesHexPhone('01012345678')->update();
-        self::check((new Author())($db)->aesHexEmail('person@example.com')->getCount() === 1, 'blind index condition');
-        $keyring = new AesKeyring([1 => 'test-aes-key', 2 => 'next-aes-key'], 2);
-        $status = $db->utils()->aes()->status(new Author(), $keyring);
-        self::check(
-            $status->current === 2 && $status->total === 4 && $status->pending === 4 && $status->versions === [1 => 4],
-            'status',
-        );
-        self::check($db->utils()->aes()->rotate(new Author(), $keyring) === 4, 'rotate');
-        $status = $db->utils()->aes()->status(new Author(), $keyring);
-        self::check(
-            $status->current === 2 && $status->total === 4 && $status->pending === 0 && $status->versions === [2 => 4],
-            'after rotation',
-        );
-        // A write with only aesKeys and aesVersion encrypts with aesKeys[aesVersion].
-        $versioned = \Polyspec\Orm\Tests\Model\connect(
-            $dsn,
-            new Config(
-                blindIndexKey: 'test-blind-key',
-                aesVersion: 2,
-                aesKeys: [1 => 'test-aes-key', 2 => 'next-aes-key']
-            )
-        );
-        (new Author())($versioned)->getBySeq($f['authors'][1]->getSeq())
-            ->setAesHexEmail('second@example.com')
-            ->update();
-        $current = \Polyspec\Orm\Tests\Model\connect(
-            $dsn,
-            new Config(blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: [2 => 'next-aes-key'])
-        );
-        $rotated = (new Author())($current)->getBySeq($f['authors'][0]->getSeq());
-        self::check($rotated->getAesHexEmail() === 'person@example.com', 'rotated email uses current key');
-        self::check($rotated->getAesHexPhone() === '01012345678', 'rotated phone uses current key');
-        self::check(
-            (new Author())($current)->getBySeq($f['authors'][1]->getSeq())->getAesHexEmail() === 'second@example.com',
-            'write with the key of aesVersion'
-        );
-        self::check(
-            self::code(fn() => new Config(aesKey: 'other-key', aesKeys: [1 => 'test-aes-key'])) === Code::CONFIG,
-            'aesKey differs from aesKeys[aesVersion]'
-        );
     }
 
     // Inserts and reads more values than SQLite binds in one statement: the inserts
@@ -942,31 +706,7 @@ class ModelTest extends TestCase
         // The test of DSL-118, DSL-119, DSL-123, DSL-125, DSL-126 (docs/spec).
         $dsn = self::caseDsn($driver);
         $db = self::database($driver, $dsn);
-        self::caseTransactions($db, $dsn);
-    }
-
-    // utilities
-    // Requirements: INT-55, INT-57, INT-59.
-    #[DataProvider('drivers')]
-    public function testUtilities(string $driver): void
-    {
-        $dsn = self::caseDsn($driver);
-        $db = self::database($driver, $dsn);
-        self::caseUtilities($db, $dsn);
-    }
-
-    // deadlock retry. SQLite has no row-lock deadlock, so it runs the sequential case of a locked writer instead.
-    // Requirements: PLN-24.
-    #[DataProvider('drivers')]
-    public function testDeadlockRetry(string $driver): void
-    {
-        $dsn = self::caseDsn($driver);
-        $db = self::database($driver, $dsn);
-        if ($driver === 'sqlite') {
-            self::caseSqliteLockedWriterFails($db, $dsn);
-            return;
-        }
-        self::caseDeadlockRetry($db, $dsn);
+        self::caseTransactions($db);
     }
 
     // bind limit splitting

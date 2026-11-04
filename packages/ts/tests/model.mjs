@@ -11,7 +11,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
-  Account, AesKeyring, Author, CORE, CompositeAccount, CompositeMembership, Db, Model, OrmError, SCHEMA, Service,
+  Account, Author, CORE, CompositeAccount, CompositeMembership, Model, OrmError, SCHEMA, Service,
   ServiceMember, ServiceRegion, StyledValue, User, connect as connectBench, dbspecManifest, parseDbspec,
   registerModel,
 } from '../dist/index.js';
@@ -19,7 +19,6 @@ import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } fr
 import { DATABASE, caseTest, withTemporaryDirectory } from '../../../tests/testcase.mts';
 import { installBench } from './bench-set.mjs';
 import { mysqlConnection, postgresClient, withCaseDatabase } from './case-database.mjs';
-import { schemaOf } from './schema_of.mjs';
 const root = new URL('../../..', import.meta.url).pathname;
 
 let failures = 0;
@@ -283,60 +282,6 @@ async function styledStates(db) {
   }
 }
 
-// Requirements: INT-51, INT-59, INT-61, INT-73, INT-134, INT-57, INT-79.
-async function transactions(db, dsn) {
-  const maxOpenConnections = db.driver === 'sqlite' ? 1 : 10;
-  const utils = db.utils();
-  check(utils.schema() !== null && utils.privileges() !== null && utils.aes() !== null && utils.stats() !== null, 'Utils exposes schema, privileges, AES and stats groups');
-  const schema = utils.schema();
-  let schemaName = 'ormexample';
-  let schemaExists = false;
-  if (db.driver === 'mysql') {
-    schemaName = new URL(dsn).pathname.replace(/^\//, '');
-    schemaExists = true;
-  } else if (db.driver === 'postgres') {
-    schemaName = 'public';
-    schemaExists = true;
-  }
-  check(await schema.exists(schemaName) === schemaExists, `${db.driver}: schema exists`);
-  check(await schema.installed(schemaName, 'user') === schemaExists, `${db.driver}: schema table is installed`);
-  const idleStats = db.utils().stats();
-  check(idleStats.maxOpenConnections === maxOpenConnections && idleStats.openConnections === 1 && idleStats.inUse === 0 && idleStats.idle === 1,
-    `idle connection statistics: ${JSON.stringify(idleStats)}`);
-  const boom = new Error('boom');
-  let err = null;
-  try { await db.transaction(async () => { await new User().setName('rolled back').create(); throw boom; }); } catch (error) { err = error; }
-  check(err === boom && await new User().connect(db).getCount() === 0, 'rollback');
-  await db.transaction(async () => {
-    const busyStats = db.utils().stats();
-    check(busyStats.maxOpenConnections === maxOpenConnections && busyStats.openConnections === 1 && busyStats.inUse === 1 && busyStats.idle === 0,
-      `busy connection statistics: ${JSON.stringify(busyStats)}`);
-    await new User().setName('outer').create();
-    let inner = null;
-    try { await db.transaction(async () => { await new User().setName('inner').create(); throw boom; }); } catch (error) { inner = error; }
-    check(inner === boom, 'savepoint error');
-    check(await new User().getCount() === 1, 'savepoint rollback');
-    await new User().name('outer').forUpdate().gets();
-    await db.utils().lock('users');
-    const concurrent = await Promise.allSettled([new User().getCount(), new User().getCount()]);
-    check(concurrent.some(r => r.status === 'rejected' && r.reason instanceof OrmError && r.reason.code === 'CONFIG'), 'concurrent use of one transaction');
-  }, { isolation: 'read_committed', retry: 0 });
-  check(await new User().connect(db).getCount() === 1, 'commit');
-  check(await code(new User().connect(db).forUpdate().gets()) === 'CONFIG', 'lock outside a transaction');
-  check(await code(db.utils().lock('x')) === 'CONFIG', 'lock utility outside a transaction');
-  let attempts = 0;
-  await db.transaction(async () => {
-    attempts++;
-    if (attempts < 3) throw new OrmError('DEADLOCK', 'retry');
-  });
-  check(attempts === 3, `retry: ${attempts}`);
-  check(await code(db.transaction(async () => { throw new OrmError('DEADLOCK', 'retry'); }, { retry: 0 })) === 'DEADLOCK', 'retry disabled');
-  check(!(await db.utils().schema().empty()), 'schema().empty() on an installed schema');
-  const releasedStats = db.utils().stats();
-  check(releasedStats.maxOpenConnections === maxOpenConnections && releasedStats.openConnections === 1 && releasedStats.inUse === 0 && releasedStats.idle === 1,
-    `released connection statistics: ${JSON.stringify(releasedStats)}`);
-}
-
 // Requirements: COD-8, PLN-44, INT-60, INT-75, INT-131.
 function connect(dsn) {
   return connectBench(dsn, { aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key' });
@@ -410,20 +355,7 @@ async function mysqlInstallInsideTransaction(db) {
   check(inside === 'CONFIG', `install inside a transaction: ${inside}`);
 }
 
-/** Registers the model of one dbspec document and returns a model class per entity. */
-function documentModels(text) {
-  const { manifest } = dbspecManifest([parseDbspec(text, {}).document]);
-  const model = registerModel(manifest.manifestText, manifest.manifestHash);
-  const models = {};
-  for (const entity of model.entities.values()) {
-    const cls = class extends Model {};
-    cls.entity = { model, entity, create: core => new cls(core) };
-    models[entity.name] = cls;
-  }
-  return models;
-}
-
-const cases = { conditions, columnsAndSubqueries, writes, styledStates, transactions, bindLimitSplitting, insertParts };
+const cases = { conditions, columnsAndSubqueries, writes, styledStates, bindLimitSplitting, insertParts };
 
 /**
  * Runs body(dsn, database) on a new case database for the dialect, and drops it when done. A SQLite DSN has a

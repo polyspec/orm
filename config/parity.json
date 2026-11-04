@@ -376,7 +376,6 @@
         "packages/php/tests/dbspec_limit_cases.php",
         "packages/php/tests/dbspec_plan_cases.php",
         "packages/php/tests/dbspec_verify_errors_case.php",
-        "packages/php/tests/deadlock_child.php",
         "packages/php/tests/extension_run_guard.php",
         "packages/php/tests/fixtures/CodecProbeDumper.php",
         "packages/php/tests/fixtures/CodecProbeYamlStream.php",
