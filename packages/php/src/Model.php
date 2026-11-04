@@ -67,7 +67,8 @@ abstract class Model implements \JsonSerializable, ModelMetadata
     private array $values = [];
     /**
      * @var array{loaded: bool, names: list<string>, hidden: array<string, bool>, original: array<string, mixed>,
-     *     extra: array<string, mixed>, related: array<string, mixed>, cascade: array<string, bool>,
+     *     extra: array<string, mixed>, extra_date?: array<string, bool>, related: array<string, mixed>,
+     *     cascade: array<string, bool>,
      *     flat: list<string>}|null
      */
     private ?array $row = null;
@@ -1368,6 +1369,9 @@ abstract class Model implements \JsonSerializable, ModelMetadata
                 'date', 'datetime' => self::timeValue($v, $zone),
                 default => $v,
             };
+            if ($kind === 'date') {
+                $st['extra_date'][$name] = true;
+            }
         }
         foreach ($shape['original'] as $name) {
             $st['original'][$name] = $values[$name] ?? null;
@@ -2369,7 +2373,9 @@ abstract class Model implements \JsonSerializable, ModelMetadata
             if (isset($meta['columns'][$name])) {
                 $add($name, self::columnArrayValue($meta['columns'][$name]['type'] ?? '', $this->value($name)));
             } else {
-                $add($name, self::arrayValue($st['extra'][$name] ?? null));
+                $add($name, isset($st['extra_date'][$name])
+                    ? self::columnArrayValue('date', $st['extra'][$name] ?? null)
+                    : self::arrayValue($st['extra'][$name] ?? null));
             }
         }
         foreach ($this->news as $name => $v) {

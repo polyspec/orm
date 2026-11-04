@@ -634,14 +634,33 @@ fn added_column_value(typ: &str, value: Val) -> Result<Val> {
     if matches!(value, Val::Null) {
         return Ok(value);
     }
+    if matches!(typ, "i64" | "i32" | "i16") {
+        exact_integer_text(&value)?;
+    }
     Ok(match typ {
         "i64" => Val::I64(value.as_i64()?),
         "i32" => Val::I64(i64::from(value.as_i32()?)),
         "i16" => Val::I64(i64::from(value.as_i16()?)),
         "f64" => Val::F64(value.as_f64()?),
         "bool" => Val::Bool(value.as_bool()?),
+        "date" => Val::Date(value.as_date()?),
+        "datetime" => Val::DateTime(value.as_datetime()?),
         _ => value,
     })
+}
+
+/// Refuses a text cell that is not exactly the digits of an integer (INT-160), which `str::parse` would read: a plus sign or a leading zero.
+fn exact_integer_text(value: &Val) -> Result<()> {
+    let text = match value {
+        Val::Str(text) => text.as_str(),
+        Val::Bytes(bytes) => std::str::from_utf8(bytes).map_err(|error| Error::Engine { code: codes::CODEC_DECODE.into(), msg: format!("invalid i64: {bytes:?}: {error}") })?,
+        _ => return Ok(()),
+    };
+    let digits = text.strip_prefix('-').unwrap_or(text);
+    if digits.is_empty() || !digits.bytes().all(|byte| byte.is_ascii_digit()) || (digits.len() > 1 && digits.starts_with('0')) {
+        return Err(Error::Engine { code: codes::CODEC_DECODE.into(), msg: format!("the text {text:?} is not exactly an integer") });
+    }
+    Ok(())
 }
 
 fn column_decode_error(entity: &str, column: &str, error: Error) -> Error {
