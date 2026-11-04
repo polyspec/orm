@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- `make dbspec-apply-stress-bench` applies the stress plan again: it had no command since the native test became a recipe case, so `make bench` and the stress CI groups passed without applying anything.
 - The message of a manifest with several diagnostics is held word for word by one recipe case in every runtime (SCH-12).
 - The feature checker no longer sets `ORM_FEATURE_DATABASE` or `ORM_FEATURE_DSN`, and no test reads them: an owner takes its database from its manifest entry or its recipe.
 - Tests: the exact bytes of a driver cell (PRT-69, INT-5) are the case `driver_bytes_cells_are_exact` of the `conformance_verification` recipe in every runtime, through the new `model.query` key `bytes_hex_of`; the natives that built the cell are gone, and Rust keeps its private row decoding test under INT-142.
