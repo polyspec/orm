@@ -1628,7 +1628,8 @@ fn dbspec_load_set(step: &Value, want: &Value) -> Result<(), String> {
             problems.len() == diagnostics.len()
                 && problems.iter().zip(diagnostics).all(|(problem, want)| want.as_str().is_some_and(|want| problem.starts_with(&format!("{want}: "))))
         });
-        return if want["error"].as_str() == Some(error.code()) && named { Ok(()) } else { Err(format!("error {error}, want {want}")) };
+        let worded = want["message"].as_str().is_none_or(|message| text == format!("{}: {message}", error.code()));
+        return if want["error"].as_str() == Some(error.code()) && named && worded { Ok(()) } else { Err(format!("error {error}, want {want}")) };
     };
     if let Some(hash) = want["manifest_hash"].as_str() {
         if built.manifest_hash != hash {

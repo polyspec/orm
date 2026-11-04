@@ -340,6 +340,39 @@
       ]
     },
     {
+      "id": "manifest-diagnostics-joined-exactly",
+      "requirements": [
+        "SCH-12"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.load_set",
+          "owned": [
+            "dbspec 1 first",
+            "",
+            "table item {",
+            "  seq nosuchtype",
+            "  primary key (seq)",
+            "}",
+            "dbspec 1 second",
+            "",
+            "table stock {",
+            "  seq i64",
+            "  label varchar(0)",
+            "  primary key (seq)",
+            "}"
+          ],
+          "external": [],
+          "expect": {
+            "none": {
+              "error": "SCHEMA_INVALID",
+              "message": "4:7 type: document first: type \"nosuchtype\" is not a dbspec type; 5:9 type: document second: varchar(n) needs 1 <= n <= 16383"
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "manifest-text-with-a-repeated-document",
       "requirements": [
         "SCH-12",
