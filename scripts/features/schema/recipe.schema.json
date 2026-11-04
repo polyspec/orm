@@ -6277,6 +6277,9 @@
                   },
                   "error": {
                     "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
                   }
                 }
               }

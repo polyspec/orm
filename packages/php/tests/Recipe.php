@@ -1223,6 +1223,9 @@ final class Recipe
                     $documents = RuntimeModel::loadSet($text($step['owned']), $text($step['external']));
                 } catch (OrmException $error) {
                     Assert::assertSame($expect['error'] ?? null, $error->code_, 'error');
+                    if ($expect->has('message')) {
+                        Assert::assertSame("{$expect['error']}: {$expect['message']}", $error->getMessage(), 'message');
+                    }
                     // Each diagnostic is "<line>:<column> <rule>: <message>", in order (SCH-12).
                     if ($expect->has('diagnostics')) {
                         $prefix = "{$expect['error']}: ";

@@ -783,6 +783,8 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
             documents = RuntimeModel.load_set(text(step["owned"]), text(step["external"]))
         except OrmError as error:
             _expect_equal(error.code, expect.get("error"), "error")
+            if "message" in expect:
+                _expect_equal(str(error), f"{expect['error']}: {expect['message']}", "message")
             # Each diagnostic is "<line>:<column> <rule>: <message>", in order (SCH-12).
             if "diagnostics" in expect:
                 prefix = f"{expect['error']}: "
