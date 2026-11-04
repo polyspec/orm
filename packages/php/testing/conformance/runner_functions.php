@@ -3,8 +3,6 @@
 // The functions of the PHP conformance runner (runner.php), which requires this file.
 declare(strict_types=1);
 
-use Polyspec\Orm\Tests\Model\CompositeAccount;
-use Polyspec\Orm\Db;
 use Polyspec\Orm\Collection;
 use Polyspec\Orm\Model;
 use Polyspec\Orm\OrmException;
@@ -12,14 +10,11 @@ use Polyspec\Orm\OrmException;
 /** Renders a bound value the way every runner does. */
 function norm(mixed $v): mixed
 {
-    global $maskSeqs, $maskTs;
+    global $maskSeqs;
     if (is_int($v)) {
         return isset($maskSeqs[$v]) ? '$SEQ' : $v;
     }
     if (is_string($v)) {
-        if (isset($maskTs[$v])) {
-            return '$TS';
-        }
         if (str_starts_with($v, "ORM-AES2\0")) {
             if (strlen($v) < 9 + 12 + 16) {
                 throw new RuntimeException('invalid AES ciphertext bind');
@@ -40,15 +35,12 @@ function norm(mixed $v): mixed
     return $v;
 }
 
-/** Masks the keys and update times of rows a vector created, including statements logged earlier. */
-function mask(array $seqs, array $times = []): void
+/** Masks the keys of rows a vector created, including statements logged earlier. */
+function mask(array $seqs): void
 {
-    global $log, $maskSeqs, $maskTs;
+    global $log, $maskSeqs;
     foreach ($seqs as $s) {
         $maskSeqs[$s] = true;
-    }
-    foreach ($times as $t) {
-        $maskTs[$t->format('Y-m-d H:i:s.u')] = true;
     }
     foreach ($log as &$st) {
         $st['binds'] = array_map('norm', $st['binds']);
@@ -89,22 +81,6 @@ function pick(?Model $m, string ...$names): ?array
     return $out;
 }
 
-// dateOnly writes a date cell as its YYYY-MM-DD text, the form every other runner returns for a date column.
-function dateOnly(array $rows): array
-{
-    foreach ($rows as $i => $row) {
-        if ($row === null) {
-            continue;
-        }
-        if ($row['day'] instanceof DateTimeInterface) {
-            $rows[$i]['day'] = $row['day']->format('Y-m-d');
-        } elseif (is_string($row['day']) && preg_match('/^\d{4}-\d{2}-\d{2} /', $row['day']) === 1) {
-            $rows[$i]['day'] = substr($row['day'], 0, 10);
-        }
-    }
-    return $rows;
-}
-
 function picks(Collection $c, string ...$names): array
 {
     return array_map(static fn(Model $m): ?array => pick($m, ...$names), $c->all());
@@ -122,38 +98,15 @@ function vector(string $name, callable $fn): void
 
 function run(string $name, callable $fn): void
 {
-    global $activeVector, $out, $log, $transactions, $maskSeqs, $maskTs, $db, $writeVectors;
+    global $activeVector, $out, $log, $transactions, $maskSeqs, $db, $writeVectors;
     $activeVector = $name;
     $log = [];
     $transactions = [];
     $maskSeqs = [];
-    $maskTs = [];
     $res = executeVector(
         $name,
         $fn,
         isset($writeVectors[$name]) ? static fn(callable $task): mixed => $db->transaction($task, retry: 0) : null
     );
     $out[$name] = ['statements' => $log, 'result' => $res];
-}
-
-/**
- * Creates the Apple, apple, Évian, évian, x_y rows in tenant 902, collects the account_id each pattern selects with
- * $cond, then deletes them.
- */
-function containsVector(Db $db, callable $cond, string ...$patterns): array
-{
-    $rows = [];
-    foreach (['Apple', 'apple', 'Évian', 'évian', 'x_y'] as $i => $name) {
-        $rows[] = (new CompositeAccount())->setTenantId(902)->setAccountId($i + 1)->setName($name);
-    }
-    (new CompositeAccount())($db)->creates($rows, count($rows));
-    $matches = [];
-    foreach ($patterns as $p) {
-        $matches[] = picks(
-            $cond((new CompositeAccount())($db)->tenantId(902), $p)->orderByAccountIdAsc()->gets(),
-            'account_id'
-        );
-    }
-    (new CompositeAccount())($db)->tenantId(902)->orderByAccountIdAsc()->gets()->delete();
-    return $matches;
 }
