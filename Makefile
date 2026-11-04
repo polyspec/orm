@@ -1337,11 +1337,12 @@ feature-performance-check: feature-check/build php-vendor-check php-models orm-i
 	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) node scripts/features/performance-reference.mts measure
 	rm -rf $(RUN_DIR)
 # feature-coverage-of/<id> runs the coverage of one feature on every runtime and database (FCV-6), the Verification of a row of that feature.
-# The Python owners run on the client's venv (ORM_PYTHON), and the php-extension owners on a PHP that loads the extension built into its run directory.
+# The Python owners run on the client's venv (ORM_PYTHON) with the slot models generated into the run directory (ORM_PYTHON_BIND_MODELS), and the php-extension owners on a PHP that loads the extension built into its run directory.
 feature-coverage-of/%: RUN_DIR = $(abspath .runtime/run)/feature-coverage-of-$$PPID
 feature-coverage-of/%: feature-check/build php-vendor-check php-models orm-install-php-extension-tools python-venv-check
 	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
-	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) node scripts/features/coverage.mts --feature $*
+	$(PYTHON_VENV)/bin/orm-gen gen --set tests/bind/dbspec-set.json --out $(RUN_DIR)/bind-python-models
+	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_PYTHON_BIND_MODELS=$(RUN_DIR)/bind-python-models POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) node scripts/features/coverage.mts --feature $*
 	rm -rf $(RUN_DIR)
 feature-verify-rust: feature-check/build
 	$(WITH_TEST_ENV) node scripts/features/check.mts --run --features --shard rust
