@@ -80203,6 +80203,73 @@
    ]
   },
   {
+   "id": "styled_integer_json_output",
+   "requirements": [
+    "COD-26"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": "all",
+     "as": "row"
+    },
+    {
+     "op": "model.update",
+     "connection": "db",
+     "row": "row",
+     "set": {
+      "serialize_data": {
+       "object": [
+        [
+         "n",
+         {
+          "int": "9007199254740993"
+         }
+        ]
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "connection": "db",
+     "model": "Author",
+     "columns": [
+      "serialize_data"
+     ],
+     "json_output": true,
+     "expect": {
+      "mysql": {
+       "json": "{\"seq\":1,\"user_seq\":2,\"service_seq\":2,\"service_region_seq\":2,\"service_member_seq\":2,\"serialize_data\":{\"kind\":\"value\",\"value\":{\"n\":9007199254740993}}}"
+      },
+      "postgres": {
+       "json": "{\"seq\":1,\"user_seq\":2,\"service_seq\":2,\"service_region_seq\":2,\"service_member_seq\":2,\"serialize_data\":{\"kind\":\"value\",\"value\":{\"n\":9007199254740993}}}"
+      },
+      "sqlite": {
+       "json": "{\"seq\":1,\"user_seq\":2,\"service_seq\":2,\"service_region_seq\":2,\"service_member_seq\":2,\"serialize_data\":{\"kind\":\"value\",\"value\":{\"n\":9007199254740993}}}"
+      }
+     }
+    }
+   ]
+  },
+  {
    "id": "query_now_and_random_order",
    "requirements": [
     "DSL-99",
