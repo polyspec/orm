@@ -3694,7 +3694,15 @@ mod database {
             }
             "schema.register" => {
                 let schema = schema_argument(step, context).map_err(fault)?;
-                context.db.utils().schema().register(&schema).map_err(orm)?;
+                match crate::recipe_reads::read(step, "connection")["connection"].as_str() {
+                    Some(name) => {
+                        let db = context.models.db(name).ok_or_else(|| fault(format!("no bound connection {name}")))?;
+                        db.utils().schema().register(&schema).map_err(orm)?;
+                    }
+                    None => {
+                        context.db.utils().schema().register(&schema).map_err(orm)?;
+                    }
+                }
                 Output::fields(ok_value())
             }
             "schema.empty" => Output::fields(json!({ "value": { "bool": context.db.utils().schema().empty().await.map_err(orm)? } })),

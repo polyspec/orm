@@ -1355,6 +1355,7 @@
       ],
       "inputs": [
         "contracts/fixtures/schema_install/**",
+        "contracts/fixtures/external/**",
         "contracts/fixtures/add_tables_and_columns/**",
         "packages/go/orm/recipe_schema_install_test.go",
         "packages/go/internal/recipe/recipe.go",
@@ -1370,6 +1371,7 @@
       ],
       "inputs": [
         "contracts/fixtures/schema_install/**",
+        "contracts/fixtures/external/**",
         "contracts/fixtures/add_tables_and_columns/**",
         "packages/ts/tests/schema_install-mysql.test.mjs",
         "packages/ts/tests/schema_install-postgres.test.mjs",
@@ -1386,6 +1388,7 @@
       ],
       "inputs": [
         "contracts/fixtures/schema_install/**",
+        "contracts/fixtures/external/**",
         "contracts/fixtures/add_tables_and_columns/**",
         "packages/python/tests/test_schema_install_mysql.py",
         "packages/python/tests/test_schema_install_postgres.py",
@@ -1403,6 +1406,7 @@
       ],
       "inputs": [
         "contracts/fixtures/schema_install/**",
+        "contracts/fixtures/external/**",
         "contracts/fixtures/add_tables_and_columns/**",
         "packages/php/tests/SchemaInstallRecipeTest.php",
         "packages/php/tests/Recipe.php",
@@ -1422,6 +1426,7 @@
       ],
       "inputs": [
         "contracts/fixtures/schema_install/**",
+        "contracts/fixtures/external/**",
         "contracts/fixtures/add_tables_and_columns/**",
         "packages/php-ext/tests/SchemaInstallRecipeTestExtensionTest.php",
         "packages/php-ext/tests/bootstrap.php",
@@ -1439,6 +1444,7 @@
       ],
       "inputs": [
         "contracts/fixtures/schema_install/**",
+        "contracts/fixtures/external/**",
         "contracts/fixtures/add_tables_and_columns/**",
         "packages/rust/tests/tests/schema_install_mysql.rs",
         "packages/rust/tests/tests/schema_install_postgres.rs",
@@ -4349,6 +4355,11 @@
       ],
       "inputs": [
         "contracts/fixtures/audit_triggers/**",
+        "contracts/fixtures/external_audit/**",
+        "contracts/fixtures/external/**",
+        "packages/rust/tests/tests/external_audit_mysql.rs",
+        "packages/rust/tests/tests/external_audit_postgres.rs",
+        "packages/rust/tests/tests/external_audit_sqlite.rs",
         "packages/rust/tests/tests/audit_triggers_mysql.rs",
         "packages/rust/tests/tests/audit_triggers_postgres.rs",
         "packages/rust/tests/tests/audit_triggers_sqlite.rs",
@@ -4420,6 +4431,11 @@
       ],
       "inputs": [
         "contracts/fixtures/audit_triggers/**",
+        "contracts/fixtures/external_audit/**",
+        "contracts/fixtures/external/**",
+        "packages/ts/tests/external_audit-mysql.test.mjs",
+        "packages/ts/tests/external_audit-postgres.test.mjs",
+        "packages/ts/tests/external_audit-sqlite.test.mjs",
         "packages/ts/tests/audit_triggers-mysql.test.mjs",
         "packages/ts/tests/audit_triggers-postgres.test.mjs",
         "packages/ts/tests/audit_triggers-sqlite.test.mjs",
@@ -4486,6 +4502,11 @@
       ],
       "inputs": [
         "contracts/fixtures/audit_triggers/**",
+        "contracts/fixtures/external_audit/**",
+        "contracts/fixtures/external/**",
+        "packages/python/tests/test_external_audit_mysql.py",
+        "packages/python/tests/test_external_audit_postgres.py",
+        "packages/python/tests/test_external_audit_sqlite.py",
         "packages/python/tests/test_audit_triggers_mysql.py",
         "packages/python/tests/test_audit_triggers_postgres.py",
         "packages/python/tests/test_audit_triggers_sqlite.py",
@@ -4555,6 +4576,9 @@
       ],
       "inputs": [
         "contracts/fixtures/audit_triggers/**",
+        "contracts/fixtures/external_audit/**",
+        "contracts/fixtures/external/**",
+        "packages/php/tests/ExternalAuditRecipeTest.php",
         "packages/php/tests/AuditTriggersRecipeTest.php",
         "packages/php/tests/Recipe.php",
         "packages/php/tests/RecipeCases.php",
@@ -4638,6 +4662,9 @@
       ],
       "inputs": [
         "contracts/fixtures/audit_triggers/**",
+        "contracts/fixtures/external_audit/**",
+        "contracts/fixtures/external/**",
+        "packages/php-ext/tests/ExternalAuditRecipeTestExtensionTest.php",
         "packages/php-ext/tests/AuditTriggersRecipeTestExtensionTest.php",
         "packages/php-ext/tests/bootstrap.php",
         "packages/php/tests/AuditTriggersRecipeTest.php",
@@ -4807,6 +4834,9 @@
       ],
       "inputs": [
         "contracts/fixtures/audit_triggers/**",
+        "contracts/fixtures/external_audit/**",
+        "contracts/fixtures/external/**",
+        "packages/go/orm/recipe_external_audit_test.go",
         "packages/go/orm/recipe_audit_triggers_test.go",
         "packages/go/internal/recipe/recipe.go",
         "packages/go/internal/recipe/database.go",

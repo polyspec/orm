@@ -514,6 +514,23 @@ name = "immutable_write_sqlite"
 path = "tests/immutable_write_sqlite.rs"
 harness = false
 
+# Each case of the external_audit recipe, contracts/fixtures/external_audit/external_audit.json, is the trial
+# external_audit_<database>::<case id> on a case database of its own (FCV-3, FCV-4).
+[[test]]
+name = "external_audit_mysql"
+path = "tests/external_audit_mysql.rs"
+harness = false
+
+[[test]]
+name = "external_audit_postgres"
+path = "tests/external_audit_postgres.rs"
+harness = false
+
+[[test]]
+name = "external_audit_sqlite"
+path = "tests/external_audit_sqlite.rs"
+harness = false
+
 # Each case of the audit_triggers recipe, contracts/fixtures/audit_triggers/audit_triggers.json, is the trial
 # audit_triggers_<database>::<case id> on a case database of its own (FCV-3, FCV-4).
 [[test]]

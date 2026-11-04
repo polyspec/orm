@@ -1147,7 +1147,13 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		if err != nil {
 			return outcome{}, err
 		}
-		if err := c.db.Utils().Schema().Register(schema); err != nil {
+		db := c.db
+		if s.k("connection").Connection != "" {
+			if db, err = connectionOf(s, c); err != nil {
+				return outcome{}, err
+			}
+		}
+		if err := db.Utils().Schema().Register(schema); err != nil {
 			return outcome{}, err
 		}
 		return okOutcome(), nil

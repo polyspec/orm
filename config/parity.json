@@ -1066,7 +1066,6 @@
         "packages/rust/orm/tests/common/case_database_run.rs",
         "packages/rust/orm/tests/common/clock_event.rs",
         "packages/rust/orm/tests/common/dbspec_apply_support.rs",
-        "packages/rust/orm/tests/common/external_schema.rs",
         "packages/rust/orm/tests/common/fixed_plan_time.rs",
         "packages/rust/orm/tests/common/json_trials.rs",
         "packages/rust/orm/tests/common/json_strings.rs",
@@ -7172,10 +7171,10 @@
       ]
     },
     {
-      "id": "schema-set-external-audit-record-sqlite",
+      "id": "php-audit-external-sets-registration-order",
       "kind": "feature",
       "requirements": [
-        "SCH-14"
+        "SCH-14a"
       ],
       "bindings": [
         {
@@ -7187,84 +7186,12 @@
           "implementation": "php",
           "test": "packages/php/tests/AuditExternalSetsTest.php",
           "id": "AuditExternalSetsTest::testMemberByValueFirst"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/external_documents.rs",
-          "id": "external_documents"
         }
       ],
       "owner": {
-        "kind": "coverage-parts",
+        "kind": "coverage-part",
         "feature": "schema_install",
-        "parts": [
-          "owner/php",
-          "owner/rust"
-        ]
-      }
-    },
-    {
-      "id": "schema-set-external-audit-record-mysql",
-      "kind": "feature",
-      "requirements": [
-        "SCH-14"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/AuditExternalSetsTest.php",
-          "id": "AuditExternalSetsTest::testGeneratedAfterValues"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/AuditExternalSetsTest.php",
-          "id": "AuditExternalSetsTest::testMemberByValueFirst"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/external_documents.rs",
-          "id": "external_documents"
-        }
-      ],
-      "owner": {
-        "kind": "coverage-parts",
-        "feature": "schema_install",
-        "parts": [
-          "owner/php",
-          "owner/rust"
-        ]
-      }
-    },
-    {
-      "id": "schema-set-external-audit-record-postgres",
-      "kind": "feature",
-      "requirements": [
-        "SCH-14"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/AuditExternalSetsTest.php",
-          "id": "AuditExternalSetsTest::testGeneratedAfterValues"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/AuditExternalSetsTest.php",
-          "id": "AuditExternalSetsTest::testMemberByValueFirst"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/external_documents.rs",
-          "id": "external_documents"
-        }
-      ],
-      "owner": {
-        "kind": "coverage-parts",
-        "feature": "schema_install",
-        "parts": [
-          "owner/php",
-          "owner/rust"
-        ]
+        "part": "owner/php"
       }
     },
     {
@@ -42226,6 +42153,126 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/immutable_write_sqlite.rs",
           "symbol": "immutable_write_sqlite"
+        }
+      ]
+    },
+    {
+      "id": "external_audit-mysql",
+      "kind": "suite",
+      "requirements": [
+        "SCH-14",
+        "DBS-110"
+      ],
+      "file": "contracts/fixtures/external_audit/external_audit.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_external_audit_test.go",
+          "symbol": "TestRecipeExternalAuditMysql"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ExternalAuditRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ExternalAuditRecipeTest::testMysql"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ExternalAuditRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ExternalAuditRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/external_audit-mysql.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_external_audit_mysql.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/external_audit_mysql.rs",
+          "symbol": "external_audit_mysql"
+        }
+      ]
+    },
+    {
+      "id": "external_audit-postgres",
+      "kind": "suite",
+      "requirements": [
+        "SCH-14",
+        "DBS-110"
+      ],
+      "file": "contracts/fixtures/external_audit/external_audit.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_external_audit_test.go",
+          "symbol": "TestRecipeExternalAuditPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ExternalAuditRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ExternalAuditRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ExternalAuditRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ExternalAuditRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/external_audit-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_external_audit_postgres.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/external_audit_postgres.rs",
+          "symbol": "external_audit_postgres"
+        }
+      ]
+    },
+    {
+      "id": "external_audit-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "SCH-14",
+        "DBS-110"
+      ],
+      "file": "contracts/fixtures/external_audit/external_audit.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_external_audit_test.go",
+          "symbol": "TestRecipeExternalAuditSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ExternalAuditRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ExternalAuditRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ExternalAuditRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ExternalAuditRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/external_audit-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_external_audit_sqlite.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/external_audit_sqlite.rs",
+          "symbol": "external_audit_sqlite"
         }
       ]
     },

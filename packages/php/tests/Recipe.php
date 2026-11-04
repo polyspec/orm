@@ -2863,7 +2863,8 @@ final class Recipe
                 $context['db']->utils()->schema()->install(self::schemaArgument($s['schema'], $context));
                 return ['value' => ['bool' => true]];
             case 'schema.register':
-                $context['db']->utils()->schema()->register(self::schemaArgument($s['schema'], $context));
+                $registering = isset($s['connection']) ? self::connectionOf($s, $context) : $context['db'];
+                $registering->utils()->schema()->register(self::schemaArgument($s['schema'], $context));
                 return ['value' => ['bool' => true]];
             case 'schema.empty':
                 return ['value' => ['bool' => $context['db']->utils()->schema()->empty()]];

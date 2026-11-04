@@ -1625,7 +1625,8 @@ Object.assign(OPS, {
     return okValue;
   },
   async 'schema.register'(s, context) {
-    context.db.utils().schema().register(await schemaArgument(s.schema, context));
+    const db = s.connection !== undefined ? connectionOf(s, context) : context.db;
+    db.utils().schema().register(await schemaArgument(s.schema, context));
     return okValue;
   },
   async 'schema.empty'(_s, context) {

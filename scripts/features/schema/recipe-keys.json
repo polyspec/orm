@@ -359,6 +359,7 @@
       "schema"
     ],
     "schema.register": [
+      "connection",
       "expect",
       "op",
       "schema"
@@ -674,16 +675,16 @@
       "expect",
       "op"
     ],
-    "dbspec.render_statements": [
-      "case",
-      "op",
-      "vectors"
-    ],
     "dbspec.render": [
       "dialect",
       "documents",
       "expect",
       "op"
+    ],
+    "dbspec.render_statements": [
+      "case",
+      "op",
+      "vectors"
     ],
     "dbspec.analyze": [
       "crlf",
@@ -736,16 +737,16 @@
       "external",
       "op"
     ],
+    "dbspec.read_file": [
+      "expect",
+      "op",
+      "path"
+    ],
     "dbspec.read_set": [
       "expect",
       "op",
       "set_file",
       "tree"
-    ],
-    "dbspec.read_file": [
-      "expect",
-      "op",
-      "path"
     ],
     "dbspec.read_bytes": [
       "expect",

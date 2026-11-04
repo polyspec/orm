@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 050d632c9ee4205e8cdfa000ee753a93e6c00230246753e5f23c458783af090e -->
+<!-- source-sha256: 39fc616f82e0844a26f923d3bcd7b3f5cb064b0ae555221d589805db1a49bd7d -->
 # 변경 이력
 
 ## Unreleased
 
+- 시험: external document를 쓰는 member set의 audit record를 PHP와 Rust만 시험했는데, 이제 여섯 runtime 모두 recipe `external_audit`으로 시험한다. 그런 set을 core 전후에 설치하는 동작은 `schema_install`의 두 사례다. op `schema.register`는 `connection`을 받는다. Rust `external_documents.rs`는 지웠고, PHP `AuditExternalSetsTest`는 등록 순서를 계속 검사한다(SCH-14a). (#T334-3-4)
 - 시험: PHP extension의 `CompositeKeysNativeTest`를 지웠다. extension으로 도는 recipe `composite_keys`가 복합 relation의 bind, 문장, 행을 검사하고(PRT-40a), `model_queries_chain`의 사례 `composite_key_page_past_the_first_holds_the_next_key`가 모든 runtime에서 복합 key의 첫 쪽 다음 쪽을 검사한다. (#T334-3-4-17)
 - 인터페이스 검사기는 어떻게 끝나든 자기가 시작한 것을 함께 끝냅니다. 각 프로그램은 프로세스 그룹을 이끌고, 실행의 abort는 그 그룹을 죽이며, 검사기 파이프의 끝을 읽는 프로세스가 아직 도는 그룹을 죽이므로, 멈춘 extractor와 그 자식은 기한이 죽인 검사기보다 오래 살지 않습니다.
 - 테스트: relation의 parent key padding과 그 뒤 placeholder의 번호는 recipe `model_queries_chain`의 case이고, recipe가 담는 collection key의 native test는 사라졌으며, feature-coverage는 native로 남는 각 test를 이유와 함께 적는다.

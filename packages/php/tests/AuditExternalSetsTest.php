@@ -15,7 +15,7 @@ namespace Polyspec\Orm\Tests;
 // (case_database.php); the test fails when ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist
 // packages/php/tests/AuditExternalSetsTest.php
-// Requirements: SCH-14, DBS-110.
+// Requirements: SCH-14a, DBS-110.
 
 use PDO;
 use RuntimeException;
@@ -114,14 +114,14 @@ final class AuditExternalSetsTest extends TestCase
         }
     }
 
-    // Requirements: DBS-110.
+    // Requirements: SCH-14a, DBS-110.
     #[DataProvider('drivers')]
     public function testGeneratedAfterValues(string $driver): void
     {
         self::runOrder('generated_after_values', $driver);
     }
 
-    // Requirements: DBS-110.
+    // Requirements: SCH-14a, DBS-110.
     #[DataProvider('drivers')]
     public function testMemberByValueFirst(string $driver): void
     {

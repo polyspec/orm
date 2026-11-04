@@ -1491,6 +1491,10 @@
           "op": {
             "const": "schema.register"
           },
+          "connection": {
+            "description": "The connection that model.connect bound, which registers the set in place of the case connection.",
+            "type": "string"
+          },
           "schema": {
             "$ref": "#/$defs/schemaArgument"
           },

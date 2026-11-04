@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Tests: the audit record of a member set that uses external documents is the recipe `external_audit` in all six runtimes, where only PHP and Rust tested it, and the install of such a set before and after its core is two cases of `schema_install`. The op `schema.register` takes a `connection`. Rust `external_documents.rs` is gone; PHP `AuditExternalSetsTest` keeps the order of registration (SCH-14a). (#T334-3-4)
 - Tests: the PHP extension's `CompositeKeysNativeTest` is gone: the recipe `composite_keys` run through the extension holds the binds, the statements and the rows of a composite relation (PRT-40a), and the case `composite_key_page_past_the_first_holds_the_next_key` of `model_queries_chain` holds a page past the first of a composite key in every runtime. (#T334-3-4-17)
 - Tests: the padding of the parent keys of a relation and the number of the placeholder after them are a case of the `model_queries_chain` recipe, the native tests of the collection keys that the recipes hold are gone, and feature-coverage names each one that stays native with its reason.
 - A key of a `datetime` column is a date and time in every runtime, as INT-11 states, also when it is the only key column: PHP, TypeScript and Python returned the text of the column. A TypeScript key is a `Date` whose `toJSON()` holds the microseconds, so two microseconds of one millisecond stay two keys. The cases `single_key_of_a_datetime_keeps_its_type` and `single_key_of_a_microsecond_datetime_keeps_its_instant` of the `model_queries_chain` recipe hold it.
