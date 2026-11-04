@@ -12,6 +12,7 @@
 - Tests: the exact bytes of a driver cell (PRT-69, INT-5) are the case `driver_bytes_cells_are_exact` of the `conformance_verification` recipe in every runtime, through the new `model.query` key `bytes_hex_of`; the natives that built the cell are gone, and Rust keeps its private row decoding test under INT-142.
 - Collection views and connect on every model now come from the recipes in every client; the native extension surface has its own unit under INT-62a.
 - The generated full-text method of the Python package has its own unit under DSL-33a.
+- The two PHP stress benchmarks no longer carry a `bench` group: nothing selected or excluded by it, and `make dbspec-stress-bench` names their files.
 - Schema inspection reads inside a transaction and its statement event now come from the recipe schema_install; the Python files that repeated it are gone.
 - Table privileges on PostgreSQL and their refusal on MySQL and SQLite now come from one recipe in every client; the native extension keeps its own unit under INT-59a.
 - Every message of the dbspec rule `type` has the words DBS-162 states, in all six runtimes: Go, PHP, the PHP extension and Rust no longer word a parameter error their own way, and the generator cases hold each whole message. Targets of CHECK_TARGETS with no make rule are gone, and `catalog-rust` no longer names test files that do not exist (#T334-3-12-6)

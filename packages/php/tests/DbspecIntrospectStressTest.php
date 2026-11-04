@@ -12,14 +12,12 @@ namespace Polyspec\Orm\Tests;
 use PDO;
 use RuntimeException;
 use PHPUnit\Framework\Assert;
-use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\Large;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Dbspec\Dbspec;
 
-// A benchmark of make dbspec-stress-bench (group bench): its measurements go to stderr.
+// A benchmark of make dbspec-stress-bench: its measurements go to stderr.
 #[Large]
-#[Group('bench')]
 final class DbspecIntrospectStressTest extends TestCase
 {
     public function testIntrospectStress(): void
