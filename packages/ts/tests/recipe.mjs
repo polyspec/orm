@@ -683,7 +683,7 @@ const OPS = {
     const directory = mkdtempSync(join(tmpdir(), 'orm-recipe-sqlite-name-'));
     try {
       try {
-        await connectDriver(`sqlite://${directory}/${s.name}?${s.query}`);
+        await connectDriver(`sqlite://${directory}/${s.name}?${s.query}`, s.config);
       } catch (refused) {
         const left = readdirSync(directory);
         if (left.length !== 0) throw new Error(`a refused DSN left the files ${left.join(',')}`);

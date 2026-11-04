@@ -279,7 +279,37 @@ func ConnectSchema(dsn string, s *Schema, cfg Config) (*DB, error) {
 	return d, nil
 }
 
+// resolveAESConfig fills the current version and key of cfg and refuses, before anything opens, a configuration that holds no
+// usable current key (COD-8). The zero value of AESVersion is the absent version and selects 1.
+func resolveAESConfig(cfg *Config) error {
+	if cfg.AESVersion == 0 {
+		cfg.AESVersion = 1
+	}
+	if cfg.AESVersion < 0 {
+		return configErr("aes current version %d is not declared", cfg.AESVersion)
+	}
+	if len(cfg.AESKeys) != 0 {
+		if _, err := NewAESKeyring(cfg.AESKeys, cfg.AESVersion); err != nil {
+			return err
+		}
+	}
+	// AESKey is the key of AESVersion: writes encrypt with it, and AESKeys
+	// holds it at AESVersion.
+	switch {
+	case len(cfg.AESKeys) == 0 && cfg.AESKey != "":
+		cfg.AESKeys = map[int32]string{cfg.AESVersion: cfg.AESKey}
+	case cfg.AESKey == "":
+		cfg.AESKey = cfg.AESKeys[cfg.AESVersion]
+	case cfg.AESKeys[cfg.AESVersion] != cfg.AESKey:
+		return configErr("AESKey differs from AESKeys[%d]", cfg.AESVersion)
+	}
+	return nil
+}
+
 func open(ctx context.Context, dsn parsedDSN, cfg Config) (*DB, error) {
+	if err := resolveAESConfig(&cfg); err != nil {
+		return nil, err
+	}
 	if cfg.PlanCacheSize == 0 {
 		cfg.PlanCacheSize = defaultCacheSize
 	}
@@ -330,19 +360,6 @@ func open(ctx context.Context, dsn parsedDSN, cfg Config) (*DB, error) {
 		if err := checkSQLite(); err != nil {
 			return nil, closeAfter(s, err)
 		}
-	}
-	if cfg.AESVersion == 0 {
-		cfg.AESVersion = 1
-	}
-	// AESKey is the key of AESVersion: writes encrypt with it, and AESKeys
-	// holds it at AESVersion.
-	switch {
-	case len(cfg.AESKeys) == 0 && cfg.AESKey != "":
-		cfg.AESKeys = map[int32]string{cfg.AESVersion: cfg.AESKey}
-	case cfg.AESKey == "":
-		cfg.AESKey = cfg.AESKeys[cfg.AESVersion]
-	case cfg.AESKeys[cfg.AESVersion] != cfg.AESKey:
-		return nil, closeAfter(s, configErr("AESKey differs from AESKeys[%d]", cfg.AESVersion))
 	}
 	return &DB{sql: s, ctx: ctx, m: &dbMutable{engines: map[string]*engine.Engine{}, schemas: map[string]*Schema{}, native: dsn.native}, cfg: cfg, driver: dsn.driver, location: dsn.location, plans: map[uint64]*cached{}, stmts: map[string]*sql.Stmt{}}, nil
 }
