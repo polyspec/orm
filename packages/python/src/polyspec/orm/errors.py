@@ -18,6 +18,13 @@ class OrmError(Exception):
             self.rollback = rollback
 
 
+class StoredColumnName(OrmError, AttributeError):
+    """A call of new_<name> on a real column (DSL-160): the code of the refusal, and an attribute that does not resolve."""
+
+    def __init__(self, message: str):
+        super().__init__("CONFIG", message)
+
+
 def transaction_conflict(message: str) -> OrmError:
     """The retryable DEADLOCK error (INT-48): a transaction whose callback fails with it runs again."""
     return OrmError(codes.DEADLOCK, message)

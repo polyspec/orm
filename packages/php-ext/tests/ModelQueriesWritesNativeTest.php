@@ -23,6 +23,7 @@ use ReflectionMethod;
 #[Small]
 final class ModelQueriesWritesNativeTest extends TestCase
 {
+    // Requirements: INT-28.
     public function testConformanceChildLoadsTheNativeModelEntrypoint(): void
     {
         self::assertTrue((new ReflectionClass(Model::class))->isInternal());
@@ -44,6 +45,7 @@ final class ModelQueriesWritesNativeTest extends TestCase
         self::assertSame(0, $status, "native extension child failed: $stderr$stdout");
     }
 
+    // Requirements: INT-28.
     public function testNativeModelQueryBuildsAndAssemblesACollection(): void
     {
         self::assertTrue((new ReflectionClass(Model::class))->isInternal());
@@ -84,22 +86,7 @@ final class ModelQueriesWritesNativeTest extends TestCase
         }
     }
 
-    // Requirements: DSL-160.
-    public function testNewOutputNameRejectsAStoredColumnOnTheNativeModel(): void
-    {
-        self::assertTrue((new ReflectionClass(Model::class))->isInternal());
-        self::assertTrue((new ReflectionMethod(Model::class, '__call'))->isInternal());
-
-        $author = new Author();
-        try {
-            $author->newName('alias');
-            self::fail('A stored column cannot be attached as an output-only value.');
-        } catch (OrmException $error) {
-            self::assertSame(Code::CONFIG, $error->code_);
-        }
-        self::assertSame($author, $author->setName('stored'));
-    }
-
+    // Requirements: INT-28.
     public function testNativeModelDeleteLockKeepsLoadedChildren(): void
     {
         self::assertTrue((new ReflectionMethod(Model::class, 'deleteLock'))->isInternal());

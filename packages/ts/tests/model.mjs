@@ -204,6 +204,8 @@ async function writes(db) {
   check(await code(b.setName('stale').update(true)) === 'CONFIG', 'optimistic update without a fresh version');
   await again.setName('again').update();
   await b.setName('x').update();
+  const setter = new Account();
+  check(setter.setName('stored') === setter, 'a setter returns its model');
   const item = await new Account().connect(db).setName('acc').newLabel('shown').create();
   check(item.getLabel() === 'shown' && item.toArray().label === 'shown', `new value: ${JSON.stringify(item.toArray())}`);
   const saved = await new Account().connect(db).setSeq(item.getSeq()).setName('saved').save();

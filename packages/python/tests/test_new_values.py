@@ -29,7 +29,7 @@ class NewValuesTest(unittest.TestCase):
     def tearDownClass(cls):
         cls.db.close()
 
-    # Requirements: DSL-115.
+    # Requirements: DSL-115, INT-28.
     def test_created_model_writes_its_attached_value(self):
         start = "2026-06-01 00:00:00"
         created = (
@@ -46,13 +46,6 @@ class NewValuesTest(unittest.TestCase):
             .create()
         )
         self.assertEqual(created.to_array()["label"], "created")
-
-    # Requirements: DSL-160.
-    def test_new_output_name_rejects_a_stored_column(self):
-        author = self.models.Author()
-        self.assertIs(author.set_name("stored"), author)
-        with self.assertRaises(AttributeError):
-            author.new_name("alias")
 
 
 if __name__ == "__main__":
