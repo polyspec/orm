@@ -12,8 +12,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
   Account, Author, CORE, CompositeAccount, CompositeMembership, Model, OrmError, SCHEMA, Service,
-  ServiceMember, ServiceRegion, StyledValue, User, connect as connectBench, dbspecManifest, parseDbspec,
-  registerModel,
+  ServiceMember, ServiceRegion, StyledValue, User, connect as connectBench,
 } from '../dist/index.js';
 import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { DATABASE, caseTest, withTemporaryDirectory } from '../../../tests/testcase.mts';
