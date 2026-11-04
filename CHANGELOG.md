@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The PHP extension refuses a number in an SQLite `DATE`, `TIME` or `DATETIME` column of a described table with `GRID_TEMPORAL_VALUE`, as the PHP library does (INT-103); it let a number in a `DATE` column through. The case `sqlite_temporal_checks` holds it in every runtime. (#T334-3-3)
 - The Rust `CatalogConnection::query` runs a statement again after a schema change on PostgreSQL alone (INT-125a): on MySQL an out-of-range value failed with the syntax error of `DEALLOCATE ALL` and left a transaction open, and in a transaction of the caller the error of the statement is what reaches the caller. The recipe case `model_write_parameter_after_schema_change` holds a model write after its column changed type, in every runtime (T343-14).
 - The Rust catalog closes the socket of every read that a budget stopped, a table page included, where only `read_only_query` and `read_only_grid_query` did (T343-11).
 - PHP and the PHP extension try a connect that `max_user_connections` refuses again for 2 s after a close by that catalog (CFG-35), as the other runtimes do: a budget stop on a user allowed two connections no longer finds the place of its previous kill still held and waits 66 s (T343-13-1).

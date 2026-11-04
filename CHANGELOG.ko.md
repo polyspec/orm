@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 25954e1131f0420ac0ec2f0465c4a82bb739f3f1aa1e97b6e6f6845d10e713dc -->
+<!-- source-sha256: 2c2de0ededdf8bdaa487b18ca0488ecbed355a3a2ba81fa9ce56bfc6db8d3724 -->
 # 변경 이력
 
 ## Unreleased
 
+- PHP extension은 described table의 SQLite `DATE`, `TIME`, `DATETIME` 열에 든 숫자를 PHP library처럼 `GRID_TEMPORAL_VALUE`로 거부한다(INT-103). 전에는 `DATE` 열의 숫자를 그대로 통과시켰다. 사례 `sqlite_temporal_checks`가 모든 runtime에서 이를 검사한다. (#T334-3-3)
 - 테스트: plan의 physical 실행(PLN-102)은 op `dbspec.plan_physical`과 recipe `dbspec_introspect`의 case 13개 `plan_physical_*`이며 모든 runtime의 모든 database에서 돈다. native 시험, 그 make target, 그것만 쓰던 helper는 없앴다. 모든 runtime이 공개 `planSteps`로 plan step을 읽고, Go만 담던 finalize 뒤의 foreign key 검사를 이제 모든 runtime이 담는다.
 - 테스트: ORM 밖에서 바뀐 database에 다시 하는 install(DBS-108, SCH-7, SCH-13)은 모든 runtime의 모든 database에서 recipe `schema_install`의 case `install_renamed_column`과 `install_unsupported_column_without_check`이며 message 전체를 비교한다. native 시험과 `contracts/fixtures/install/changed_database.json`은 없앴다.
 - 테스트: recipe schema는 `relation`의 `where`를 받고, `model_queries_chain`의 case `relation_condition_follows_the_padded_composite_parent_keys`는 그 schema에 유효합니다(T334-3-12).

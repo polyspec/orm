@@ -170,6 +170,81 @@
               "error": "GRID_TEMPORAL_VALUE"
             }
           }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a date column that holds an integer",
+          "sql": "CREATE TABLE kcat_temporal_number_date (id INTEGER PRIMARY KEY, d DATE)"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a number is not in the dbspec form",
+          "sql": "INSERT INTO kcat_temporal_number_date (id, d) VALUES (1, 20260102)"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "kcat_temporal_number_date",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "id",
+            "d"
+          ],
+          "expect": {
+            "sqlite": {
+              "error": "GRID_TEMPORAL_VALUE"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a time column that holds an integer",
+          "sql": "CREATE TABLE kcat_temporal_number_time (id INTEGER PRIMARY KEY, t TIME)"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a number is not in the dbspec form",
+          "sql": "INSERT INTO kcat_temporal_number_time (id, t) VALUES (1, 30405)"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "kcat_temporal_number_time",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "id",
+            "t"
+          ],
+          "expect": {
+            "sqlite": {
+              "error": "GRID_TEMPORAL_VALUE"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a datetime column that holds a real",
+          "sql": "CREATE TABLE kcat_temporal_real_datetime (id INTEGER PRIMARY KEY, x DATETIME)"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a number is not in the dbspec form",
+          "sql": "INSERT INTO kcat_temporal_real_datetime (id, x) VALUES (1, 2461042.5)"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "kcat_temporal_real_datetime",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "id",
+            "x"
+          ],
+          "expect": {
+            "sqlite": {
+              "error": "GRID_TEMPORAL_VALUE"
+            }
+          }
         }
       ]
     }
