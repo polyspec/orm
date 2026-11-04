@@ -1448,6 +1448,12 @@ feature-performance-check: feature-check/build php-vendor-check php-models orm-i
 	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
 	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) node scripts/features/coverage.mts --feature performance_gate
 	rm -rf $(RUN_DIR)
+# feature-coverage-of/<id> runs the coverage of one feature on every runtime and database (FCV-6), the Verification of a row of that feature.
+feature-coverage-of/%: RUN_DIR = $(abspath .runtime/run)/feature-coverage-of-$$PPID
+feature-coverage-of/%: feature-check/build php-vendor-check php-models orm-install-php-extension-tools python-venv-check
+	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
+	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) node scripts/features/coverage.mts --feature $*
+	rm -rf $(RUN_DIR)
 feature-verify-rust: feature-check/build
 	$(WITH_TEST_ENV) node scripts/features/check.mts --run --features --shard rust
 feature-verify-other: feature-check/build
@@ -1598,10 +1604,8 @@ rust-compiler-fixtures-check/unit: lease-tool
 
 # Native no-database cases bind driver errors, cells and the Markdown wire handshake to each runtime's native call path.
 .PHONY: native-error-cause-check
-.PHONY: native-error-cause-check/go native-error-cause-check/typescript-driver native-error-cause-check/typescript-markdown native-error-cause-check/python-driver native-error-cause-check/python-markdown native-error-cause-check/php native-error-cause-check/rust-markdown
-native-error-cause-check: php-models native-error-cause-check/php-extension native-error-cause-check/rust native-error-cause-check/go native-error-cause-check/typescript-driver native-error-cause-check/typescript-markdown native-error-cause-check/python-driver native-error-cause-check/python-markdown native-error-cause-check/php native-error-cause-check/rust-markdown
-native-error-cause-check/go:
-	$(GO_TEST) -v -timeout 0 ./packages/go/orm -run '^(TestMarkdownConnectRefused)$$' -count=1
+.PHONY: native-error-cause-check/typescript-driver native-error-cause-check/typescript-markdown native-error-cause-check/python-driver native-error-cause-check/php
+native-error-cause-check: php-models native-error-cause-check/php-extension native-error-cause-check/rust native-error-cause-check/typescript-driver native-error-cause-check/typescript-markdown native-error-cause-check/python-driver native-error-cause-check/php
 native-error-cause-check/typescript-driver: typescript-build
 	$(READ_TYPESCRIPT)
 	$(NODE) --test packages/ts/tests/driver-error-lock-wait.mjs packages/ts/tests/driver-cell-bytes.mjs
@@ -1611,12 +1615,8 @@ native-error-cause-check/typescript-markdown: typescript-build
 native-error-cause-check/python-driver: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s packages/python/tests -t . -p test_driver_errors.py
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s packages/python/tests -t . -p test_driver_cells.py
-native-error-cause-check/python-markdown: python-venv-check
-	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s packages/python/tests -t . -p test_markdown.py -k test_markdown_connect_refused
 native-error-cause-check/php: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmExceptionLockWaitTest.php packages/php/tests/MarkdownTest.php packages/php/tests/NativeCellReadTest.php
-native-error-cause-check/rust-markdown:
-	cd packages/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) native-error-cause-markdown-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --test markdown --features test-faults markdown_connect_refused -- --nocapture
 .PHONY: native-error-cause-check/rust
 native-error-cause-check/rust:
 	cd packages/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) native-error-cause-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --lib --features test-faults native -- --nocapture

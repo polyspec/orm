@@ -102,7 +102,7 @@ caseTest('rust: the stress test passes while preempted', TIMEOUT, async ({ step 
 });
 
 caseTest('rust: the polyspec-orm-schema vector tests pass while preempted', TIMEOUT, async ({ step }) => {
-  const tests = ['dbspec', 'dbspec_rules', 'dbspec_manifest', 'dbspec_render', 'dbspec_runtime', 'dbspec_plan'];
+  const tests = ['dbspec_model', 'dbspec_render', 'dbspec_runtime', 'dbspec_set'];
   await passesPreempted(step, 'cargo', ['test', '--locked', '--offline', '-p', 'polyspec-orm-schema', ...tests.flatMap((name) => ['--test', name])], `${root}packages/rust`);
 });
 
