@@ -9103,6 +9103,10 @@
     "exported": true,
     "signature": "receiver=*AuthorModel func[C hasSeq](child C) *AuthorModel"
   },
+  "packages/go/model/author.go::AuthorModel.JoinUserSeqWithSeq": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[C hasSeq](child C) *AuthorModel"
+  },
   "packages/go/model/author.go::AuthorModel.JsonSetting": {
     "exported": true,
     "signature": "receiver=*AuthorModel func[T0 argNoneEqNull](v0 T0) *AuthorModel"
