@@ -81,6 +81,11 @@
       "op",
       "vectors"
     ],
+    "dbspec.plan_physical": [
+      "case",
+      "op",
+      "vectors"
+    ],
     "dbspec.introspect": [
       "case",
       "catalog_of",

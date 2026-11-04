@@ -79,11 +79,6 @@ path = "tests/code_catalog.rs"
 harness = false
 
 [[test]]
-name = "dbspec_plan_apply"
-path = "tests/dbspec_plan_apply.rs"
-harness = false
-
-[[test]]
 name = "decimal_model"
 path = "tests/decimal_model.rs"
 harness = false

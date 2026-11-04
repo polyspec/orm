@@ -82,6 +82,7 @@
                             "model.connect",
                             "sql.exec",
                             "dbspec.ddl_behavior",
+                            "dbspec.plan_physical",
                             "dbspec.introspect"
                           ]
                         }
@@ -810,6 +811,7 @@
             "dbspec.introspect_sqlite",
             "dbspec.apply_fault",
             "dbspec.ddl_behavior",
+            "dbspec.plan_physical",
             "dbspec.introspect",
             "dbspec.introspect_shown",
             "markdown.builder",
@@ -973,6 +975,9 @@
         },
         {
           "$ref": "#/$defs/ops/dbspec.ddl_behavior"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.plan_physical"
         },
         {
           "$ref": "#/$defs/ops/dbspec.introspect"
@@ -2077,6 +2082,27 @@
         "properties": {
           "op": {
             "const": "dbspec.ddl_behavior"
+          },
+          "vectors": {
+            "type": "string"
+          },
+          "case": {
+            "type": "string"
+          }
+        }
+      },
+      "dbspec.plan_physical": {
+        "description": "On one native connection of the case database: the source, the before steps, the plan steps, the rollback, the after steps and the finalize steps of the case, with the introspected schema text checked at each stage (PLN-102).",
+        "type": "object",
+        "required": [
+          "op",
+          "vectors",
+          "case"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.plan_physical"
           },
           "vectors": {
             "type": "string"

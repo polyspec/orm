@@ -2291,17 +2291,6 @@
         "packages/ts/tests/database-case-tests.test.mjs"
       ]
     },
-    "dbspec-physical-database-helper-check": {
-      "scope": "owner",
-      "needs": [
-        "node-modules"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/ts/tests/dbspec-physical-database.mjs",
-        "packages/ts/tests/dbspec-physical-database.test.mjs"
-      ]
-    },
     "typescript-conditional-entry-helper-check": {
       "scope": "owner",
       "needs": [
@@ -2380,16 +2369,6 @@
         "packages/go/engine/dbspec/names_test.go"
       ]
     },
-    "dbspec-plan-check": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "databases"
-      ],
-      "inputs": [
-        "packages/go/internal/dialects/plans_physical_test.go"
-      ]
-    },
     "dbspec-lock-go-check": {
       "scope": "owner",
       "needs": [
@@ -2465,31 +2444,6 @@
         "Makefile",
         "packages/ts/src/dbspec/apply.ts",
         "packages/ts/tests/dbspec-begin-exclusive-lock.mjs"
-      ]
-    },
-    "dbspec-plan-ts-check": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "node-modules",
-        "databases"
-      ],
-      "inputs": [
-        "packages/ts/tests/dbspec-plan-physical.mjs"
-      ]
-    },
-    "dbspec-plan-rust-check": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "rust",
-        "databases"
-      ],
-      "inputs": [
-        "packages/rust/orm/tests/dbspec_plan_apply.rs",
-        "packages/rust/orm/tests/common/plan_cases.rs",
-        "tests/dbspec/plan-cases.json",
-        "tests/dbspec/plans-physical.json"
       ]
     },
     "ts-model-check": {

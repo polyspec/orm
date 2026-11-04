@@ -3845,7 +3845,8 @@
         "dbspec-introspect-silent-failure",
         "dbspec-introspect-extension-method",
         "php-dbspec-interface-compatibility",
-        "dbspec-plan-physical",
+        "php-dbspec-apply-drift-error-fields",
+        "php-dbspec-rollback-drift-error-fields",
         "dbspec-apply-cleanup-go",
         "dbspec-apply-cleanup-typescript",
         "dbspec-apply-cleanup-rust",
@@ -3915,7 +3916,6 @@
         "packages/go/internal/dialects/ddl_physical_test.go",
         "packages/go/internal/dialects/facts_physical_test.go",
         "packages/go/internal/dialects/introspect_compare_physical_test.go",
-        "packages/go/internal/dialects/plans_physical_test.go",
         "packages/go/internal/dialects/probe_test.go",
         "packages/go/internal/dialects/schema_documents_physical_test.go",
         "packages/go/internal/dialects/sqlite_filename_physical_test.go",
@@ -3931,16 +3931,13 @@
         "packages/rust/schema/tests/dbspec_model.rs",
         "packages/rust/tests/tests/dbspec_render_statements_none.rs",
         "packages/rust/schema/tests/dbspec_runtime.rs",
-        "packages/rust/orm/tests/common/dbspec_probe.rs",
         "packages/rust/tests/tests/dbspec_introspect_mysql.rs",
         "packages/rust/tests/tests/dbspec_introspect_postgres.rs",
         "packages/rust/tests/tests/dbspec_introspect_sqlite.rs",
-        "packages/rust/orm/tests/dbspec_plan_apply.rs",
         "packages/rust/tests/tests/dbspec_plan_cases_none.rs",
         "packages/ts/tests/dbspec_introspect-mysql.test.mjs",
         "packages/ts/tests/dbspec_introspect-postgres.test.mjs",
         "packages/ts/tests/dbspec_introspect-sqlite.test.mjs",
-        "packages/ts/tests/dbspec-plan-physical.mjs",
         "packages/ts/tests/dbspec-plan-cases.mjs",
         "packages/ts/tests/dbspec-plan-invalid.mjs",
         "packages/ts/tests/dbspec-plan-chains.mjs",
@@ -4024,7 +4021,6 @@
         "packages/php/tests/DbspecPlanReaderTest.php",
         "packages/go/orm/recipe_dbspec_introspect_test.go",
         "packages/php/tests/DbspecIntrospectRecipeTest.php",
-        "packages/python/tests/dbspec_plan_physical.py",
         "packages/php-ext/tests/DbspecIntrospectNativeTest.php",
         "packages/ts/tests/dbspec-mermaid-errors.mjs",
         "packages/python/tests/mermaid_error_boundary.py",
@@ -9949,16 +9945,6 @@
         "packages/ts/tests/database-case-tests.test.mjs"
       ],
       "command": "make --no-print-directory database-case-tests-helper-check"
-    },
-    {
-      "id": "typescript-dbspec-physical-database",
-      "paths": [
-        "packages/ts/tests/dbspec-physical-database.mjs"
-      ],
-      "tests": [
-        "packages/ts/tests/dbspec-physical-database.test.mjs"
-      ],
-      "command": "make --no-print-directory dbspec-physical-database-helper-check"
     },
     {
       "id": "typescript-conditional-entry",

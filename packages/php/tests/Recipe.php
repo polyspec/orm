@@ -3417,6 +3417,8 @@ final class Recipe
                 return [];
             case 'dbspec.introspect':
                 return RecipeIntrospect::step($s, $context);
+            case 'dbspec.plan_physical':
+                return RecipeIntrospect::planPhysical($s, $context);
             case 'dbspec.ddl_behavior':
                 // On one native connection of the case database, the connection rules, the statements of the case for the
                 // database, then its behavior steps. A step with dialects runs only on those; a step with fails must fail;
