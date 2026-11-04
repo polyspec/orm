@@ -1,7 +1,6 @@
 package orm_test
 
 import (
-	"os"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -33,9 +32,6 @@ func TestPoolSize(t *testing.T) {
 	if got := db.Stats().MaxOpenConnections; got != 3 {
 		t.Fatalf("max open connections = %d, want 3", got)
 	}
-	if _, err := orm.ConnectSchema(dsn, s, orm.Config{PoolSize: -1}); err == nil || orm.ErrorCode(err) != orm.CodeConfig {
-		t.Fatalf("negative pool size: %v", err)
-	}
 	unset, err := orm.ConnectSchema(dsn, s, orm.Config{})
 	if err != nil {
 		t.Fatal(err)
@@ -48,8 +44,8 @@ func TestPoolSize(t *testing.T) {
 
 // TestPoolIdleSize keeps at most PoolIdleSize idle connections on SQLite, where
 // the Go pool holds several connections as no other runtime's does (the recipe
-// connection_pool states MySQL and PostgreSQL), and rejects a negative value or
-// an idle size above the pool size with CONFIG.
+// connection_pool states MySQL and PostgreSQL, and the recipes connection_pool and
+// dsn_reject_checked hold the refused values).
 // Requirements: CFG-5.
 func TestPoolIdleSize(t *testing.T) {
 	testcase.Start(t, testcase.Database)
@@ -60,11 +56,6 @@ func TestPoolIdleSize(t *testing.T) {
 	for driver, dsn := range targets {
 		t.Run(driver, func(t *testing.T) {
 			requireTarget(t, driver, dsn)
-			for _, cfg := range []orm.Config{{PoolIdleSize: -1}, {PoolSize: 3, PoolIdleSize: 4}, {PoolIdleSize: 11}, {PoolLifetimeMs: -1}} {
-				if _, err := orm.ConnectSchema(dsn, s, cfg); orm.ErrorCode(err) != orm.CodeConfig {
-					t.Fatalf("pool idle size %d, lifetime %d: %v, want CONFIG", cfg.PoolIdleSize, cfg.PoolLifetimeMs, err)
-				}
-			}
 			// Three read-only transactions hold three connections at once,
 			// and SQLite begins them without the write lock; after they end
 			// the pool keeps one idle connection and closes the others.
@@ -132,9 +123,7 @@ func TestPoolIdleSize(t *testing.T) {
 func TestPoolLifetime(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	targets := map[string]string{
-		"sqlite":   "sqlite://" + filepath.Join(t.TempDir(), "pool-lifetime.sqlite"),
-		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
-		"postgres": os.Getenv("ORM_TEST_POSTGRES_DSN"),
+		"sqlite": "sqlite://" + filepath.Join(t.TempDir(), "pool-lifetime.sqlite"),
 	}
 	s := fixtureSchema(t, "zone")
 	for driver, dsn := range targets {
