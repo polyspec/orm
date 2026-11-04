@@ -4678,7 +4678,6 @@
         "packages/php/tests/ModelTest.php",
         "packages/ts/tests/model.mjs",
         "packages/rust/orm/tests/zone.rs",
-        "packages/go/orm/install_test.go",
         "packages/php/tests/SchemaSetTest.php",
         "packages/ts/tests/schema-set.mjs",
         "packages/ts/tests/dbspec_set_decimal-mysql.test.mjs",
@@ -4772,7 +4771,6 @@
           "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestRegisterReusesEnginePerHash$' -count=1",
           "shard": "other",
           "inputs": [
-            "packages/go/orm/install_test.go",
             "packages/go/orm/register_test.go",
             "contracts/fixtures/external/*.dbs"
           ]

@@ -215,6 +215,8 @@
       "id": "install_transaction",
       "requirements": [
         "DBS-108",
+        "INT-55",
+        "INT-58",
         "PLN-44"
       ],
       "steps": [
@@ -259,6 +261,57 @@
             "sqlite": {
               "value": {
                 "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "user.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.installed",
+          "schema": {
+            "mysql": "$database",
+            "postgres": "public",
+            "sqlite": "app"
+          },
+          "table": "user",
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": false
               }
             }
           }
