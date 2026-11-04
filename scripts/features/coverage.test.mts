@@ -274,12 +274,17 @@ caseTest('PHP extension catalog coverage selects the exact recipe entry methods'
   const entries: Record<string, string | undefined> = { mysql: 'testMysql', postgres: 'testPostgres', sqlite: 'testSqlite' };
   for (const [database, nativeCommands] of Object.entries(commands)) {
     assert.ok(nativeCommands);
-    assert.equal(nativeCommands.length, 1);
+    // SQLite also runs the recipe of its only case in a class of its own.
+    assert.equal(nativeCommands.length, database === 'sqlite' ? 2 : 1);
     const entry = entries[database];
     assert.ok(entry, `no recipe entry method for ${database}`);
     assert.equal(nativeCommands[0]?.symbol, entry);
     assert.equal(nativeCommands[0]?.recipe, 'contracts/fixtures/catalog_connection/catalog_connection.json');
     assert.match(methods, new RegExp(`function ${entry}\\(`), `CatalogConnectionRecipeTest lacks ${entry}`);
+    if (database === 'sqlite') {
+      assert.equal(nativeCommands[1]?.symbol, entry);
+      assert.equal(nativeCommands[1]?.recipe, 'contracts/fixtures/catalog_connection/catalog_connection-sqlite-only.json');
+    }
   }
 });
 
