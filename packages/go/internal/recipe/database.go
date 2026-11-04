@@ -155,7 +155,7 @@ type databaseStep struct {
 	ReadOnly  bool   `json:"read_only"`
 	// The other options of a transaction: an absent retry passes 0 unless default_retry leaves it out, and the first
 	// conflicts attempts end with the public transaction conflict (INT-42, INT-43, INT-48).
-	TimeoutMs    int  `json:"timeout_ms"`
+	TimeoutMs    *int `json:"timeout_ms"`
 	Retry        *int `json:"retry"`
 	DefaultRetry bool `json:"default_retry"`
 	Conflicts    int  `json:"conflicts"`
@@ -1242,8 +1242,8 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		if s.k("read_only").ReadOnly {
 			options = append(options, orm.ReadOnly())
 		}
-		if s.k("timeout_ms").TimeoutMs > 0 {
-			options = append(options, orm.TimeoutMs(s.k("timeout_ms").TimeoutMs))
+		if timeout := s.k("timeout_ms").TimeoutMs; timeout != nil {
+			options = append(options, orm.TimeoutMs(*timeout))
 		}
 		if s.k("audit").Audit != nil {
 			values, err := auditValues(s.k("audit").Audit, c)
@@ -1322,6 +1322,11 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		return serverTransactions(s, c)
 	case "dbspec.ddl_behavior":
 		if err := ddlBehavior(s, c); err != nil {
+			return outcome{}, err
+		}
+		return okOutcome(), nil
+	case "dbspec.plan_physical":
+		if err := planPhysical(s, c); err != nil {
 			return outcome{}, err
 		}
 		return okOutcome(), nil
@@ -1726,7 +1731,8 @@ func runNested(raw []json.RawMessage, c *databaseContext) error {
 
 // schemaArgument builds the generated schema value of a schema argument: the documents of the set and the external
 // documents it uses, read from the recipe's directory and built through the public engine, with manifest_replace
-// applied to the manifest text after building, so that the text no longer hashes to its declared hash (FCV-4).
+// applied to the manifest text after building, so that the text no longer hashes to its declared hash, and manifest
+// taking the place of the text and the hash that the build gives, so that a set with a diagnostic reaches the call (FCV-4).
 func schemaArgument(raw json.RawMessage, c *databaseContext) (*orm.Schema, error) {
 	var arg struct {
 		Documents       []string `json:"documents"`
@@ -1735,6 +1741,10 @@ func schemaArgument(raw json.RawMessage, c *databaseContext) (*orm.Schema, error
 			From string `json:"from"`
 			To   string `json:"to"`
 		} `json:"manifest_replace"`
+		Manifest *struct {
+			Text string `json:"text"`
+			Hash string `json:"hash"`
+		} `json:"manifest"`
 	}
 	if err := json.Unmarshal(raw, &arg); err != nil {
 		return nil, fmt.Errorf("schema argument: %w", err)
@@ -1766,7 +1776,11 @@ func schemaArgument(raw json.RawMessage, c *databaseContext) (*orm.Schema, error
 	if arg.ManifestReplace != nil {
 		text = strings.ReplaceAll(text, arg.ManifestReplace.From, arg.ManifestReplace.To)
 	}
-	return &orm.Schema{Hash: m.ManifestHash, Text: text, External: m.ExternalText}, nil
+	hash := m.ManifestHash
+	if arg.Manifest != nil {
+		text, hash = arg.Manifest.Text, arg.Manifest.Hash
+	}
+	return &orm.Schema{Hash: hash, Text: text, External: m.ExternalText}, nil
 }
 
 func indexOf(names []string, name string) int {

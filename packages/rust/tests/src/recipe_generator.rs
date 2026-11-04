@@ -249,7 +249,7 @@ fn generated_methods(text: &str) -> BTreeSet<String> {
         let model = section.split(|c: char| !c.is_alphanumeric()).next().unwrap_or_default();
         let table = snake(model);
         names.insert(table.clone());
-        for piece in section.split("pub fn ").skip(1) {
+        for piece in section.replace("pub async fn ", "pub fn ").split("pub fn ").skip(1) {
             let method = piece.split(|c: char| !c.is_alphanumeric() && c != '_').next().unwrap_or_default();
             names.insert(format!("{table}.{}", without_prefix(method)));
         }

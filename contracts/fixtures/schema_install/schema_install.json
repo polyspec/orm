@@ -14,6 +14,7 @@
     "SCH-7",
     "SCH-10",
     "SCH-11",
+    "SCH-13",
     "INT-56",
     "SCH-8",
     "SCH-9",
@@ -214,6 +215,8 @@
       "id": "install_transaction",
       "requirements": [
         "DBS-108",
+        "INT-55",
+        "INT-58",
         "PLN-44"
       ],
       "steps": [
@@ -258,6 +261,57 @@
             "sqlite": {
               "value": {
                 "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "user.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.installed",
+          "schema": {
+            "mysql": "$database",
+            "postgres": "public",
+            "sqlite": "app"
+          },
+          "table": "user",
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": false
               }
             }
           }
@@ -3237,6 +3291,37 @@
       ]
     },
     {
+      "id": "install_invalid_set",
+      "requirements": [
+        "SCH-7"
+      ],
+      "steps": [
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "user.dbs"
+            ],
+            "manifest": {
+              "text": "dbspec 1 broken\n\ntable t {\n}\n",
+              "hash": "sha256:6a0f8536567e28f2384fdeab0511e6211fa8132a0370d86e6599975384def58c"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "SCHEMA_INVALID"
+            },
+            "postgres": {
+              "error": "SCHEMA_INVALID"
+            },
+            "sqlite": {
+              "error": "SCHEMA_INVALID"
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "install_differs",
       "requirements": [
         "DBS-108"
@@ -3295,6 +3380,196 @@
             "sqlite": {
               "error": "CONFIG",
               "message_suffix": "the database differs from the document set: unsupported_column user.junk: declared type INTEGER with CHECK \"\" has no dbspec type"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "install_renamed_column",
+      "requirements": [
+        "DBS-108",
+        "SCH-7",
+        "SCH-13"
+      ],
+      "steps": [
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "note.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "ALTER TABLE install_note RENAME COLUMN score TO points",
+          "reason": "a column renamed from outside the ORM, so that the database differs from the set; the refused install leaves the name as it is"
+        },
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "note.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG",
+              "message": "CONFIG: the database differs from the document set: drop_column install_note.points; add_column install_note.score"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message": "CONFIG: the database differs from the document set: drop_column install_note.points; add_column install_note.score"
+            },
+            "sqlite": {
+              "error": "CONFIG",
+              "message": "CONFIG: the database differs from the document set: unsupported_check install_note.install_note$score: the check typeof(\"points\") IN ('integer', 'null') is not the renderer CHECK; unsupported_column install_note.points: declared type bigint with CHECK \"\" has no dbspec type"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT COUNT(points) FROM install_note",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "install_unsupported_column_without_check",
+      "requirements": [
+        "DBS-108",
+        "SCH-7",
+        "SCH-13"
+      ],
+      "steps": [
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "note.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "ALTER TABLE install_note ADD COLUMN junk INTEGER NULL",
+          "reason": "a column added from outside the ORM, with a type that has no dbspec type on SQLite; the refused install leaves it as it is"
+        },
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "note.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG",
+              "message": "CONFIG: the database differs from the document set: drop_column install_note.junk"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message": "CONFIG: the database differs from the document set: drop_column install_note.junk"
+            },
+            "sqlite": {
+              "error": "CONFIG",
+              "message": "CONFIG: the database differs from the document set: unsupported_column install_note.junk: declared type INTEGER with CHECK \"\" has no dbspec type"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT COUNT(junk) FROM install_note",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
             }
           }
         }

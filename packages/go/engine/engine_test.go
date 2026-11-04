@@ -512,8 +512,6 @@ func TestCompositeRelationKeys(t *testing.T) {
 	}
 }
 
-// TestAllColumnsSelectAESVersionOnce checks that explicit and default projections read the AES key
-// version column once, marking it visible when selected and hidden otherwise.
 // TestLoad checks that Load builds the dialect's engine from manifest text, the same engine as New of the model
 // that text describes, and that malformed manifest text is SCHEMA_INVALID.
 func TestLoad(t *testing.T) {

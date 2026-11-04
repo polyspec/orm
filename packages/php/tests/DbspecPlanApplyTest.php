@@ -4,66 +4,17 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-// Applies every case of tests/dbspec/plan-cases.json to MySQL, PostgreSQL and
-// SQLite through Polyspec\Orm\Dbspec\Dbspec (docs/spec/plans.md "Verification"): a fresh
-// database, schema or file per run renders and applies the source, runs the
-// `before` steps, runs the plan steps before finalize (on SQLite with
-// foreign keys off and no foreign_key_check row afterwards) and requires the
-// introspected schema text to equal the plan's target with no unsupported
-// object; without an irreversible step it runs the rollback statements back
-// to the source schema text and the steps again; then it runs the `after`
-// steps and the finalize steps and requires the target again and no table
-// or column named dbspec$. ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name the
-// servers; the test fails when either is unset.
+// The refusals of Dbspec::apply and Dbspec::rollback on a database that differs from the chain (docs/spec/plans.md). The
+// physical run of the plan cases is the recipe case plan_physical_* of
+// contracts/fixtures/dbspec_introspect/dbspec_introspect.json (PLN-102).
 
 use PDO;
-use PDOException;
 use RuntimeException;
 use Polyspec\Orm\Dbspec\ApplyError;
 use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Dbspec\Diagnostic;
-use Polyspec\Orm\Dbspec\Unsupported;
-use Polyspec\Orm\Orm;
-use PHPUnit\Framework\Assert;
-use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
-
-/** The DSNs of the servers; the test fails when either is unset. */
-function plan_dsns(): array
-{
-    return dbspec_dsns(['mysql' => 'ORM_TEST_MYSQL_DSN', 'postgres' => 'ORM_TEST_POSTGRES_DSN']);
-}
-
-/**
- * Each run creates a new database, schema, or file, and returns the connection that points at it
- * and the function that removes it.
- *
- * @return array{0: PDO, 1: Closure(): void}
- */
-function open_plan_database(string $dialect): array
-{
-    static $runIndex = 0;
-    $dsns = plan_dsns();
-    $runIndex++;
-    $name = sprintf('plan_php_%d_%03d', getmypid(), $runIndex);
-    $options = [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION];
-    if ($dialect === 'sqlite') {
-        $path = sys_get_temp_dir() . "/$name.sqlite";
-        Assert::assertFalse(file_exists($path), "SQLite file $path already exists");
-        $pdo = new PDO("sqlite:$path", null, null, $options);
-        return [$pdo, static function () use (&$pdo, $path): void {
-            $pdo = null;
-            dbspec_remove_sqlite_files($path);
-        }];
-    }
-    [$session, $dropServer] = dbspec_open_server_database($dialect, $name, $dsns[$dialect]);
-    $pdo = $session();
-    return [$pdo, static function () use (&$pdo, $dropServer): void {
-        $pdo = null;
-        $dropServer();
-    }];
-}
 
 /** @param list<Diagnostic> $diagnostics */
 function plan_failure(string $id, array $diagnostics): never
@@ -71,136 +22,11 @@ function plan_failure(string $id, array $diagnostics): never
     throw new RuntimeException("$id: " . plan_diagnostics($diagnostics));
 }
 
-/** The text of the first column of the first row; SQL NULL is NULL. Only strings and integers are read as text. */
-function plan_value(PDO $pdo, string $query): string
-{
-    return dbspec_value($pdo, $query, true);
-}
-
-/** Runs the step for the dialect. */
-function plan_steps(PDO $pdo, string $dialect, array $steps): void
-{
-    foreach ($steps as $step) {
-        if (isset($step['dialects']) && !in_array($dialect, $step['dialects'], true)) {
-            continue;
-        }
-        if (isset($step['query'])) {
-            $got = plan_value($pdo, $step['query']);
-            Assert::assertSame(
-                $step['want'],
-                $got,
-                "{$step['query']}: got " . json_encode($got) . '; want ' . json_encode($step['want'])
-            );
-        } elseif ($step['fails'] ?? false) {
-            try {
-                $pdo->exec($step['sql']);
-            } catch (PDOException) {
-                continue;
-            }
-            Assert::fail("{$step['sql']}: succeeded; want an error");
-        } else {
-            $pdo->exec($step['sql']);
-        }
-    }
-}
-
-// Each run creates a database, schema or file, applies, rolls back, applies again and finalizes a plan, introspecting
-// it each time, and drops it.
 #[Medium]
 class DbspecPlanApplyTest extends TestCase
 {
-    // Native (FCV-2): it tests dbspec_open_server_database of tests/dbspec_cases.php, a helper only the PHP tests have, with a
-    // recording PDO; the helper is no public API, so no recipe op reaches it.
-    public function testSharedServerDatabaseLifecycleUsesTheSelectedDialect(): void
-    {
-        foreach (['mysql', 'postgres'] as $dialect) {
-            $events = (object) ['items' => []];
-            $opened = 0;
-            $factory = static function (
-                string $dsn,
-                ?string $user,
-                ?string $password,
-                array $options
-            ) use (
-                $events,
-                &$opened
-            ): PDO {
-                $opened++;
-                $role = $opened === 1 ? 'admin' : 'session';
-                return new class ($events, $role) extends PDO {
-                    public function __construct(private object $events, private string $role)
-                    {
-                    }
-
-                    public function exec(string $statement): int|false
-                    {
-                        $this->events->items[] = [$this->role, 'exec', $statement];
-                        return 0;
-                    }
-
-                    public function prepare(string $query, array $options = []): \PDOStatement|false
-                    {
-                        $events = $this->events;
-                        $role = $this->role;
-                        $events->items[] = [$role, 'prepare', $query];
-                        return new class ($events, $role) extends \PDOStatement {
-                            public function __construct(private object $events, private string $role)
-                            {
-                            }
-
-                            public function execute(?array $params = null): bool
-                            {
-                                $this->events->items[] = [$this->role, 'execute', $params];
-                                return true;
-                            }
-
-                            public function fetchColumn(int $column = 0): mixed
-                            {
-                                return 0;
-                            }
-                        };
-                    }
-                };
-            };
-            $beforeDrop = static function (PDO $admin, string $name) use ($events): void {
-                $events->items[] = ['before-drop', $name];
-            };
-            $afterDrop = static function (PDO $admin, string $name) use ($events): void {
-                $events->items[] = ['after-drop', $name];
-            };
-            [$session, $drop] = dbspec_open_server_database(
-                $dialect,
-                'dbspec_fixture',
-                "$dialect://orm@localhost/dbspec_fixture",
-                $beforeDrop,
-                $afterDrop,
-                $factory
-            );
-            $session();
-            $session();
-            $drop();
-
-            $quoted = $dialect === 'mysql' ? '`dbspec_fixture`' : '"dbspec_fixture"';
-            $create = ($dialect === 'mysql' ? 'CREATE DATABASE ' : 'CREATE SCHEMA ') . $quoted;
-            $select = $dialect === 'mysql' ? "USE $quoted" : "SET search_path TO $quoted";
-            $dropSql = ($dialect === 'mysql' ? 'DROP DATABASE ' : 'DROP SCHEMA ') . $quoted
-                . ($dialect === 'mysql' ? '' : ' CASCADE');
-            $checkSql = $dialect === 'mysql'
-                ? 'SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?'
-                : 'SELECT COUNT(*) FROM pg_namespace WHERE nspname = ?';
-            $this->assertSame([
-                ['admin', 'exec', $create],
-                ['session', 'exec', $select],
-                ['session', 'exec', $select],
-                ['before-drop', 'dbspec_fixture'],
-                ['admin', 'exec', $dropSql],
-                ['admin', 'prepare', $checkSql],
-                ['admin', 'execute', ['dbspec_fixture']],
-                ['after-drop', 'dbspec_fixture'],
-            ], $events->items, "$dialect server database lifecycle");
-        }
-    }
-
+    // Native (FCV-2): the fields of the ApplyError of PHP; the recipe cases hold its code.
+    // Requirements: PLN-96a.
     public function testDriftApplyErrorNamesTheSchemaMismatchInItsDetail(): void
     {
         $pdo = new PDO('sqlite::memory:', options: [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
@@ -219,6 +45,7 @@ class DbspecPlanApplyTest extends TestCase
         }
     }
 
+    // Requirements: PLN-96a.
     public function testRollbackDriftApplyErrorNamesTheSchemaMismatchInItsDetail(): void
     {
         $case = null;
@@ -246,154 +73,6 @@ class DbspecPlanApplyTest extends TestCase
             self::assertNull($error->getPrevious());
             self::assertNotSame('', $error->detail);
             self::assertSame('drift ' . $plan->name . ': ' . $error->detail, $error->getMessage());
-        }
-    }
-
-    public static function planCases(): iterable
-    {
-        foreach (plan_vectors()['cases'] as $case) {
-            yield $case['id'] => [$case];
-        }
-    }
-
-    // Requirements: PLN-102.
-    #[DataProvider('planCases')]
-    public function testPlan(array $case): void
-    {
-        foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
-            $this->applyPlan($case, $dialect);
-        }
-    }
-
-    // applyPlan applies one case to one dialect: the source, the steps, the rollback and the finalize, checked at each
-    // step.
-    private function applyPlan(array $case, string $dialect): void
-    {
-        $parsed = Dbspec::parsePlan(dbspec_plan_text($case['plan']));
-        $plan = $parsed->plan ?? plan_failure($case['id'], $parsed->diagnostics);
-        $target = Dbspec::manifest([$plan->schema]);
-        $want = $target->manifest?->schemaText ?? plan_failure($case['id'], $target->diagnostics);
-        $source = null;
-        if (isset($case['source'])) {
-            $sourceParse = Dbspec::parse(dbspec_plan_text($case['source']), []);
-            $source = $sourceParse->document ?? plan_failure($case['id'], $sourceParse->diagnostics);
-        }
-        $id = "plan/$dialect/{$case['id']}";
-        $setup = [];
-        if ($source !== null) {
-            $rendered = Dbspec::render([$source], $dialect);
-            $setup = $rendered->statements ?? plan_failure($id, $rendered->diagnostics);
-        }
-        $result = Dbspec::planSteps($source, $plan, $dialect);
-        $steps = $result->steps ?? plan_failure($id, $result->diagnostics);
-        $reversible = true;
-        foreach ($steps as $step) {
-            if (!$step->finalize && $step->rollback === '') {
-                $reversible = false;
-            }
-        }
-        $sourceText = '';
-        if ($source !== null) {
-            $sourceManifest = Dbspec::manifest([$source]);
-            $sourceText = $sourceManifest->manifest?->schemaText ?? plan_failure($id, $sourceManifest->diagnostics);
-        }
-        [$pdo, $drop] = open_plan_database($dialect);
-        $schemaIs = static function (string $what, string $wantText) use (&$pdo, $dialect, $id): void {
-            $introspected = Dbspec::introspect($pdo, $dialect, 'introspected');
-            Assert::assertSame(
-                [],
-                $introspected->unsupported,
-                "$id $what: unsupported " . json_encode(
-                    array_map(
-                        static fn(Unsupported $u): array => [$u->kind, $u->table, $u->name, $u->reason],
-                        $introspected->unsupported
-                    )
-                )
-            );
-            $gotText = '';
-            if ($introspected->document->tables !== []) {
-                $got = Dbspec::manifest([$introspected->document]);
-                $gotText = $got->manifest?->schemaText ?? plan_failure($id, $got->diagnostics);
-            }
-            Assert::assertSame(
-                $wantText,
-                $gotText,
-                "$id $what: schema text differs\n--- want\n$wantText--- got\n$gotText"
-            );
-        };
-        // forward runs the steps before finalize. If it is a restore, the step that has a restore statement
-        // runs it (the added column that rollback hid is there).
-        $forward = static function (bool $restore) use (&$pdo, $steps, $dialect, $id): void {
-            foreach ($steps as $step) {
-                if ($step->finalize) {
-                    break;
-                }
-                $pdo->exec($restore && $step->restore !== '' ? $step->restore : $step->statement);
-            }
-            if ($dialect === 'sqlite') {
-                $violations = plan_value($pdo, 'SELECT COUNT(*) FROM pragma_foreign_key_check');
-                Assert::assertSame('0', $violations, "$id: $violations foreign key violations");
-            }
-        };
-        try {
-            foreach ([...dbspec_connection_rules()[$dialect], ...$setup] as $statement) {
-                $pdo->exec($statement);
-            }
-            plan_steps($pdo, $dialect, $case['before'] ?? []);
-            // SQLite turns foreign keys off while it recreates the table, and checks them afterwards.
-            if ($dialect === 'sqlite') {
-                $pdo->exec('PRAGMA foreign_keys = OFF');
-                $pdo->exec('PRAGMA legacy_alter_table = OFF');
-            }
-            $forward(false);
-            $schemaIs('applied', $want);
-            if ($reversible) {
-                // A rollback that goes all the way back recreates the old table with the added column hidden.
-                for ($i = count($steps) - 1; $i >= 0; $i--) {
-                    if (!$steps[$i]->finalize) {
-                        $pdo->exec(
-                            $steps[$i]->rollbackRestore !== '' ? $steps[$i]->rollbackRestore : $steps[$i]->rollback
-                        );
-                    }
-                }
-                if ($dialect === 'sqlite') {
-                    $violations = plan_value($pdo, 'SELECT COUNT(*) FROM pragma_foreign_key_check');
-                    Assert::assertSame('0', $violations, "$id: $violations foreign key violations after rollback");
-                }
-                $schemaIs('rolled back', $sourceText);
-                $forward(true);
-                $schemaIs('applied again', $want);
-            }
-            if ($dialect === 'sqlite') {
-                $pdo->exec('PRAGMA foreign_keys = ON');
-            }
-            plan_steps($pdo, $dialect, $case['after'] ?? []);
-            // finalize also runs with SQLite foreign keys turned off, as apply does.
-            if ($dialect === 'sqlite') {
-                $pdo->exec('PRAGMA foreign_keys = OFF');
-            }
-            foreach ($steps as $step) {
-                if ($step->finalize) {
-                    $pdo->exec($step->statement);
-                }
-            }
-            if ($dialect === 'sqlite') {
-                $pdo->exec('PRAGMA foreign_keys = ON');
-            }
-            $schemaIs('finalized', $want);
-            $hidden = plan_value($pdo, [
-                'mysql' => "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND "
-                    . "(TABLE_NAME LIKE 'dbspec\$%' OR COLUMN_NAME LIKE 'dbspec\$%')",
-                'postgres' => "SELECT COUNT(*) FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid WHERE "
-                    . "c.relnamespace = current_schema()::regnamespace AND c.relkind = 'r' AND a.attnum > 0 AND "
-                    . "(c.relname LIKE 'dbspec\$%' OR a.attname LIKE 'dbspec\$%')",
-                'sqlite' => "SELECT COUNT(*) FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type = "
-                    . "'table' AND (m.name LIKE 'dbspec\$%' OR p.name LIKE 'dbspec\$%')",
-            ][$dialect]);
-            Assert::assertSame('0', $hidden, "$id: $hidden hidden columns remain after finalize");
-        } finally {
-            $pdo = null;
-            $drop();
         }
     }
 }

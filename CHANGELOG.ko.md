@@ -1,9 +1,14 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 38b0b22163643aa613fb77d835bbc98a8d32d776f8a83d10532f7c3988f2b418 -->
+<!-- source-sha256: 437d50a455160df0ac962e8d4bd83447d174297caf9eca39aee3bd0290f55076 -->
 # 변경 이력
 
 ## Unreleased
 
+- 테스트: plan의 physical 실행(PLN-102)은 op `dbspec.plan_physical`과 recipe `dbspec_introspect`의 case 13개 `plan_physical_*`이며 모든 runtime의 모든 database에서 돈다. native 시험, 그 make target, 그것만 쓰던 helper는 없앴다. 모든 runtime이 공개 `planSteps`로 plan step을 읽고, Go만 담던 finalize 뒤의 foreign key 검사를 이제 모든 runtime이 담는다.
+- 테스트: ORM 밖에서 바뀐 database에 다시 하는 install(DBS-108, SCH-7, SCH-13)은 모든 runtime의 모든 database에서 recipe `schema_install`의 case `install_renamed_column`과 `install_unsupported_column_without_check`이며 message 전체를 비교한다. native 시험과 `contracts/fixtures/install/changed_database.json`은 없앴다.
+- 테스트: recipe schema는 `relation`의 `where`를 받고, `model_queries_chain`의 case `relation_condition_follows_the_padded_composite_parent_keys`는 그 schema에 유효합니다(T334-3-12).
+- 테스트: savepoint rollback이 rollback fault를 소비하지 않는다는 것(protocol 3.1)은 Python native 대신 모든 runtime에서 recipe `transactions`의 case이고, 잃어버린 rollback, 실패한 `BEGIN`, 실패한 시작 단계의 Python native test는 unit `transaction-failure-rollback`에 속합니다(T334-3-12-3-7, T334-3-12-3-8).
+- 시험: diagnostic이 있는 set의 install 거부(SCH-7), transaction 밖의 lock utility(INT-50), 0인 transaction timeout(INT-42)이 recipe `schema_install`, `utils`, `transactions`의 case로 여섯 runtime 모두에서 돌고, recipe가 가진 native test를 없앴다. TypeScript, Rust, PHP model test의 transaction과 utility 본문, PHP deadlock test와 그 child script, Rust transaction timeout test, Python의 pool 한도, schema 도구, tuple padding test이다. recipe의 `schema` 인자는 `manifest`를 받고, INT-42는 `0`이 timeout 생략과 같다고 적는다.
 - 테스트: recipe conformance_verification의 case `styled_integer_json_output`이 model JSON 출력의 styled 값 안에 있는 safe 범위 밖 정수를 담는다 (#T334-3-5-13)
 - COD-45는 TypeScript 추가 열 읽기의 규칙이며 한계는 safe integer다. vector body가 사라진 뒤 어떤 runner도 호출하지 않던 conformance helper derivedInteger는 그 시험과 함께 사라졌고, 제품 코드의 native case `added_column/driver_cell_forms`가 이 규칙을 담는다 (#T334-3-5-16)
 - 추가 열은 첫 구현이 열어 둔 형식까지 여섯 runtime 모두에서 plan 타입으로 읽힌다. Go와 Rust는 더하기 부호나 앞의 0이 있는 문자열을 거부하고, Go는 시간이 아닌 문자열을 거부하며, Rust는 추가 date와 datetime을 디코딩하고, 추가 date는 Go, PHP, PHP extension의 JSON에서 date 문자열이다. case added_column_types, added_text_not_exact, added_text_not_a_time가 이를 담는다 (#T334-3-5-15)

@@ -6,7 +6,7 @@ namespace Polyspec\Orm\Extension\Tests;
 
 use Polyspec\Orm\Tests\DbspecPlanApplyTest;
 
-// Requirements: PLN-102.
+// Requirements: PLN-96a.
 #[\PHPUnit\Framework\Attributes\Medium]
 final class DbspecPlanApplyTestExtensionTest extends DbspecPlanApplyTest
 {
