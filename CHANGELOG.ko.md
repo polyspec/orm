@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 442ecc5d18c62cdef712871fb5ee78d6282fd8cd1d0318eb23ae34a779473703 -->
+<!-- source-sha256: c336d82afc5ebe9f8ecf8648e64990dca41e0c6f7bc60a5fced8c4a067f4dbfb -->
 # 변경 이력
 
 ## Unreleased
 
+- 모든 runtime의 catalog가 읽는 동안 descriptor가 바뀐 표 페이지를 거부한다(INT-121). MySQL 읽기 범위가 이제 READ COMMITTED로 읽는다. REPEATABLE READ에서는 descriptor의 두 번째 읽기가 snapshot으로 답해 변경을 보지 못했다. 읽는 동안 사라진 열은 driver 오류가 아니라 `TABLE_PAGE_METADATA_CHANGED`다. partial revoke가 켜진 server의 행 변경은 무엇도 잠그기 전에 거부한다(INT-119). recipe `catalog_connection`이 이것들과 직접, role 전용 TRIGGER grant를 fake driver의 native 시험 대신 실제 server에서 잡는다. 시험 서버의 MySQL replica는 `partial_revokes`가 켜져 있다.
 - collection key는 PRT-35와 INT-11대로 모든 database에서 구성 요소의 선언 타입을 유지한다. `bool` column이 MySQL과 SQLite에서 정수로 읽혀 `(true, 1)`과 `(1, true)`의 key text가 같았고, composite key의 `datetime` 구성 요소가 TypeScript와 PHP, SQLite의 Python에서 text로 읽혔다. encoding은 이제 recipe `model_queries_chain`의 case `composite_key_*`이고, 어떤 key column도 담을 수 없는 형태는 `tests/collection/keys.json`에 남는다.
 - deadline에 이른 recipe `interface.symbols`는 모든 runtime에서 interface check를 죽이고 case를 실패시키므로, 멈춘 check가 남지 않는다.
 - 실패한 Rust integration case는 연결을 기다린 대상을 적는다: pool acquire timeout과, ProxySQL을 거칠 때는 hostgroup과 그 connect timeout이다.

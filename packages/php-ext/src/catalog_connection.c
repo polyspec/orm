@@ -773,6 +773,11 @@ static bool cat_begin_read(zval *db, const char *dialect, zval *pdo)
         cat_driver_error(db);
         return false;
     }
+    /* At REPEATABLE READ the information schema answers from the snapshot of the transaction, so a descriptor read after the rows could not differ from the one read before them (INT-121). */
+    if (strcmp(dialect, "mysql") == 0 && !cat_try_exec(pdo, "SET TRANSACTION ISOLATION LEVEL READ COMMITTED")) {
+        cat_driver_error(db);
+        return false;
+    }
     const char *begin = strcmp(dialect, "mysql") == 0 ? "START TRANSACTION READ ONLY"
         : strcmp(dialect, "postgres") == 0 ? "BEGIN READ ONLY" : "BEGIN";
     if (!cat_try_exec(pdo, begin)) {
@@ -1659,6 +1664,7 @@ static void cat_column_names(zval *metadata, zval *out)
 /* The page of a table in primary-key order, read in an open read session (Catalog::tablePage). */
 static bool cat_named_result(zval *names, zval *rows, zval *out);
 static bool cat_described_rows(zval *rows, zval *metadata, const char *dialect);
+static bool cat_code_is(zend_object *error, const char *name);
 
 static bool cat_table_page(zval *db, const char *dialect, zval *pdo, zend_string *ns, zend_string *name, zend_long limit, zend_long offset, zval *out)
 {
@@ -1708,7 +1714,25 @@ static bool cat_table_page(zval *db, const char *dialect, zval *pdo, zend_string
     zval_ptr_dtor(&args);
     smart_str_free(&sql);
     if (!ok) {
+        /* A column that went away during the read fails the statement: the descriptor tells that from any other failure. */
+        bool changed = false;
+        if (EG(exception) != NULL && !cat_code_is(EG(exception), "CATALOG_LIMIT")) {
+            zval cause, after;
+            ZVAL_OBJ(&cause, EG(exception));
+            EG(exception) = NULL;
+            if (cat_describe(db, dialect, pdo, ns, name, &after)) {
+                changed = zend_compare(&after, &metadata) != 0;
+                zval_ptr_dtor(&after);
+            } else if (EG(exception) != NULL) {
+                zend_clear_exception();
+            }
+            EG(exception) = Z_OBJ(cause);
+        }
         zval_ptr_dtor(&metadata);
+        if (changed) {
+            zend_clear_exception();
+            db_throw_orm("TABLE_PAGE_METADATA_CHANGED", "descriptor changed during read");
+        }
         return false;
     }
     zval_ptr_dtor(&types);
@@ -3086,13 +3110,16 @@ static bool cat_commit(zval *db, zval *pdo)
 
 typedef bool (*cat_write_operation)(zval *db, const char *dialect, zval *pdo, void *context, zval *result);
 
+static bool cat_mysql_partial_revokes_off(zval *db, zval *pdo);
+
 /* Runs every Catalog mutation body in the same commit/rollback boundary. */
 static bool cat_write_transaction(zval *db, const char *dialect, cat_write_operation operation, void *context, zval *result)
 {
     zval pdo;
     ZVAL_UNDEF(&pdo);
     if (!cat_begin_write(db, dialect, &pdo)) return false;
-    bool ok = operation(db, dialect, &pdo, context, result);
+    bool ok = (strcmp(dialect, "mysql") != 0 || cat_mysql_partial_revokes_off(db, &pdo))
+        && operation(db, dialect, &pdo, context, result);
     if (ok) {
         if (!cat_commit(db, &pdo)) {
             zval_ptr_dtor(result);
@@ -3117,15 +3144,11 @@ static bool cat_query_params(zval *db, zval *pdo, const char *sql, zval *args, z
     return true;
 }
 
-/* The MySQL row-change safety rule (Catalog::mysqlSafety): partial revokes off, the account holds TRIGGER on the table, the table
- * is InnoDB and has no triggers. A rule that cannot be verified is ROW_MUTATION_UNSUPPORTED. */
-static bool cat_mysql_safety(zval *db, zval *pdo, zval *metadata)
+/* Refuses a MySQL row change on a server with partial revokes, before the change locks anything: such a server may hide a trigger
+ * from the account (INT-119). */
+static bool cat_mysql_partial_revokes_off(zval *db, zval *pdo)
 {
-    zval rv_t, *table = catalog_prop(metadata, "table", &rv_t);
-    zval *ns = zend_hash_str_find(Z_ARRVAL_P(table), "namespace", 9);
-    zval *tname = zend_hash_str_find(Z_ARRVAL_P(table), "name", 4);
-    zval rows, args;
-
+    zval rows;
     zval none;
     array_init(&none);
     bool queried = cat_query_params(db, pdo, "SELECT CAST(@@GLOBAL.partial_revokes AS SIGNED)", &none, 1, &rows);
@@ -3143,6 +3166,17 @@ static bool cat_mysql_safety(zval *db, zval *pdo, zval *metadata)
         db_throw_orm("ROW_MUTATION_UNSUPPORTED", "MySQL partial-revoke visibility requires verification");
         return false;
     }
+    return true;
+}
+
+/* The MySQL row-change safety rule (Catalog::mysqlSafety): the account holds TRIGGER on the table, the table
+ * is InnoDB and has no triggers. A rule that cannot be verified is ROW_MUTATION_UNSUPPORTED. */
+static bool cat_mysql_safety(zval *db, zval *pdo, zval *metadata)
+{
+    zval rv_t, *table = catalog_prop(metadata, "table", &rv_t);
+    zval *ns = zend_hash_str_find(Z_ARRVAL_P(table), "namespace", 9);
+    zval *tname = zend_hash_str_find(Z_ARRVAL_P(table), "name", 4);
+    zval rows, args;
 
     zval user_none;
     array_init(&user_none);

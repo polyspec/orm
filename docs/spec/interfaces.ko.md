@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 2fe9bacf24dccc02b807a35ef4a616cf2565c341bec1cbad408537a191c4b27b -->
+<!-- source-sha256: 68b3cf0bda71e36b892e4096fb281703602dbc515afdd9cbb5d249a05451aef6 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -569,9 +569,9 @@ prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메
 - **INT-117** 타입 있는 카탈로그 쓰기는 값이 열의 선언된 소수 자릿수를 가질 때 쓴 셀을 다시 읽는다. 기록 후 검증이나 충돌이 거부한 쓰기는 롤백한다.
 - **INT-118** 명시적인 PostgreSQL 제약 또는 트랜잭션 거부는 확인 응답 누락과 구분되며, `ROW_COMMIT_REJECTED`를 보고하기 전에 롤백 확인이 필요하다. 확인되지 않은 커밋 오류는 불확실하며 자동으로 재시도하지 않는다. MySQL에는 지연 외래 키가 없으므로(DIA-76) 외래 키 위반은 그 문장에서 `FOREIGN_KEY`로 실패한다. 연결을 잃은 commit이 catalog를 끝내지는 않는다. 다음 호출은 새 연결로 읽는다.
 - **INT-118a** `polyspec-orm-build`의 commit 분류기는 `COMMIT` 중의 끊긴 전송이나 protocol 오류를 응답 없음으로 보며, 명시적 거부로 보지 않는다. 이는 Rust driver 오류에만 해당한다.
-- **INT-119** 트리거가 없다는 판단은 검증된 직접 계정 권한이 있을 때만 유효하다. 역할로만 받은 권한과 활성화된 부분 수집는 보이는 것으로 가정하지 않고 거부한다.
+- **INT-119** trigger가 없다는 판단은 표, 그 database 또는 모든 database에 대해 검증된 계정 직접 grant가 있을 때만 유효하다. role 전용 grant와 켜진 partial revoke는 보이는 것으로 가정하지 않고 `ROW_MUTATION_UNSUPPORTED`로 거부한다. 켜진 partial revoke는 변경이 무엇도 잠그기 전에 `partial-revoke`를 담은 메시지로, grant 없음은 `trigger visibility`를 담은 메시지로 거부한다.
 - **INT-120** `polyspec-orm-build` 네이티브 도구는 65535개를 넘는 파라미터 또는 총 값 바이트가 16 MiB를 넘는 바인드 목록을 준비나 실행 전에 `TOOL_BIND_LIMIT`로 거부한다.
-- **INT-121** 테이블 페이지는 준비된 열 이름이 descriptor와 맞지 않거나, 읽기 범위 안에서 메타데이터가 바뀌면 거부된다.
+- **INT-121** 준비된 열 이름이 descriptor와 맞지 않거나 읽기 범위 안에서 metadata가 바뀌면, 열이 사라져 문장이 실패한 경우를 포함해, 표 페이지를 `TABLE_PAGE_METADATA_CHANGED`로 거부한다. MySQL 읽기 범위는 READ COMMITTED로 읽는다. REPEATABLE READ에서는 information schema가 transaction의 snapshot으로 답하므로 descriptor를 다시 읽어도 변경이 보이지 않는다.
 - **INT-122** `polyspec-orm-build` Rust 도구는 실행 전에 잘못된 decimal, 비유한 MySQL float, SQLite NaN, NUL이 있는 PostgreSQL 텍스트를 `TOOL_BIND_INVALID`로 거부한다.
 - **INT-123** `insert_row`는 생략된 기본키 구성요소마다 `automatic_key` 또는 `default_expression`을 요구하고, 없으면 `ROW_INSERT_IDENTITY_REQUIRED`를 반환한다. 데이터베이스에서 생략된 키를 돌려주며 dialect가 키 형태를 만들 수 없으면 `ROW_INSERT_UNSUPPORTED`를 반환한다. 기존 키와 알 수 없거나 중복되거나 생성 열 대상인 할당을 거부하며, 정확히 한 행의 영향, 선언된 키로 재조회 및 제공된 값의 정확한 비교를 요구한다. 할당이 없는 insert는 기본값만으로 행을 쓰고 생성된 키를 돌려주며, 모든 dialect에서 같다. 거부된 insert는 아무것도 남기지 않으며, 다음 insert는 자기 값으로 판정된다. 자동 키는 insert 자신의 응답에서 얻는다. PostgreSQL과 SQLite는 `RETURNING`, MySQL은 응답의 insert id와 그 키로 읽는 조회다. `MAX` 같은 뒤따르는 표 읽기나 `LAST_INSERT_ID()` 같은 session 함수에서 얻지 않으므로, 다른 writer가 더한 행이 대신 반환되지 않는다.
 - **INT-123a** `polyspec-orm-build`의 `insert_row`는 성공하면 `Committed`를 마지막에 알리고, `Applied`에서 취소되면 `RolledBack`을 알리며 행은 그대로 남는다. MySQL과 PostgreSQL의 `Locked` 단계에서는 다른 연결이 테이블 잠금을 본다. 한 연결에서 join된 두 insert는 각자의 행과 서로 다른 키를 돌려주며, 변동하는 expression default에서도 같다. 이는 Rust의 형식에만 해당한다. 다른 runtime에는 phase 알림, 취소 flag, 한 연결에서 join된 insert가 없다.

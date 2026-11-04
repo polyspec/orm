@@ -25,7 +25,7 @@ final class CatalogPageMutationPdo extends UninitializedRecordingPdo
         }
         if (str_starts_with($query, 'SELECT name,type,NOT "notnull"')) {
             $this->columnReads++;
-            $nativeType = $this->scenario === 'descriptor' && $this->columnReads > 1 ? 'BLOB' : 'TEXT';
+            $nativeType = 'TEXT';
             return [
                 'columns' => array_map(
                     static fn (string $name): array => ['name' => $name, 'native_type' => 'TEXT'],

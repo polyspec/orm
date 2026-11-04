@@ -47,8 +47,18 @@ pub(super) async fn read(connection: &mut Conn, dialect: &str, table: &TableRef,
         limit + 1
     );
     read_only::validate(&sql, dialect).map_err(|error| error.to_string())?;
-    let (result, has_more) =
-        temporal::read_page(connection, &metadata, dialect, &sql, QueryLimits { max_rows: limit + 1, max_bytes: 8 * 1024 * 1024 }, limit).await?;
+    let read = temporal::read_page(connection, &metadata, dialect, &sql, QueryLimits { max_rows: limit + 1, max_bytes: 8 * 1024 * 1024 }, limit).await;
+    let (result, has_more) = match read {
+        Ok(page) => page,
+        // A column that went away during the read fails the statement: the descriptor tells that from any other failure.
+        Err(error) if error.starts_with("CATALOG_LIMIT") => return Err(error),
+        Err(error) => {
+            return match metadata::describe(connection, dialect, table).await {
+                Ok(after) if after != metadata => Err("TABLE_PAGE_METADATA_CHANGED: descriptor changed during read".into()),
+                _ => Err(error),
+            };
+        }
+    };
     let after = metadata::describe(connection, dialect, table).await?;
     assemble(metadata, result, has_more, after, limit, offset)
 }

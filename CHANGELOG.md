@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The catalog of every runtime refuses a table page whose descriptor changes during the read (INT-121): a MySQL read scope now reads committed data, since at REPEATABLE READ the second read of the descriptor answered from the snapshot and saw no change, and a column that goes away during the read is `TABLE_PAGE_METADATA_CHANGED` instead of a driver error. A row change on a server with partial revokes is refused before it locks anything (INT-119). The recipe `catalog_connection` holds these and the direct and role-only TRIGGER grants on a real server, in place of the native tests with a fake driver; the MySQL replica of the test servers has `partial_revokes` on.
 - Tests: the decimal physical runs and the commands of `contracts/features.json` and `config/parity.json` no longer name the removed tags `decimalphysical`, `markdown` and `physical`, and the row T334-3-6 states that `ormtest` stays, as PRT-43 requires.
 - Tests: the case `catalog_session_after_a_schema_change_through_a_pooler` compares the `pg_backend_pid()` of its read with that of the held statement, so it fails when the read reaches another server connection. The PHP runner of `sql.hold_statement` bound no value to its `$1`, as PDO binds none to that placeholder, and now writes it as `?`.
 - Tests: the test servers no longer serve the PgBouncer database `orm_test_single` and no longer write `ORM_TEST_PGBOUNCER_SINGLE_DSN`, and the Rust case helper `CaseTable` goes: no test used them since the catalog session through a pooler runs on a case database.
