@@ -5431,7 +5431,6 @@
       "fixtures": [
         "tests/conformance/vectors.json",
         "contracts/fixtures/bench/bench.dbs",
-        "contracts/fixtures/composite_key_collision.json",
         "contracts/fixtures/composite_keys/composite_keys.json"
       ],
       "tests": [

@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 644e5892e12aad6fa275fdb27dd0d89b346f018f58fc688ddfc024900f6bf5dd -->
+<!-- source-sha256: cd0834b52a22851fb9fa0d66820414261b2caeabcaccc68717a5efe9eef406c6 -->
 # 변경 이력
 
 ## Unreleased
 
+- 이어 붙인 문자열이 같은 composite key는 recipe `composite_keys`의 row로만 있고, case가 모든 runtime에서 그 relation의 statement와 bind를 읽는다. fixture `composite_key_collision.json`과 parity suite의 그 제외 항목은 없어졌다.
 - TypeScript 정수 parameter test의 이름은 `driver-integer-param.mjs`이고, internal test 항목의 reason은 각 test가 하는 일을 적는다.
 - `make dbspec-apply-stress-bench`가 다시 stress plan을 적용한다: native test가 recipe case가 된 뒤로 명령이 없어서 `make bench`와 stress CI group이 아무것도 적용하지 않고 통과했다.
 - diagnostic이 여럿인 manifest의 message를 모든 runtime에서 한 recipe case가 글자 그대로 지킨다(SCH-12).

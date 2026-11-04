@@ -1313,7 +1313,7 @@
     }
   ],
   "suites": [
-    "contracts/fixtures/**/!(dbspec-set|composite_key_collision).json",
+    "contracts/fixtures/**/!(dbspec-set).json",
     "tests/codec/*.json",
     "tests/collection/collection.json",
     "tests/conformance/*.json",

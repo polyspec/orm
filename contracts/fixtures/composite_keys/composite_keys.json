@@ -1398,6 +1398,11 @@
           "ref": "relations"
         },
         {
+          "op": "events.subscribe",
+          "as": "collision_relations",
+          "connection": "conn"
+        },
+        {
           "op": "model.query",
           "connection": "conn",
           "model": "CompositeAccount",
@@ -1570,6 +1575,377 @@
               ]
             }
           }
+        },
+        {
+          "op": "events.captured",
+          "ref": "collision_relations",
+          "compare": "all",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT `a`.`tenant_id` AS `a__tenant_id`, `a`.`account_id` AS `a__account_id`, `a`.`name` AS `a__name` FROM `composite_account` AS `a` WHERE (`a`.`tenant_id`, `a`.`account_id`) IN ((?, ?), (?, ?)) ORDER BY `a`.`tenant_id` ASC, `a`.`account_id` ASC"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": [
+                            {
+                              "int": "9900041"
+                            },
+                            {
+                              "int": "23"
+                            },
+                            {
+                              "int": "99000412"
+                            },
+                            {
+                              "int": "3"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "composite_account"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "null": "int"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT `a`.`tenant_id` AS `a__tenant_id`, `a`.`account_id` AS `a__account_id`, `a`.`role` AS `a__role` FROM `composite_membership` AS `a` WHERE (`a`.`tenant_id`, `a`.`account_id`) IN ((?, ?), (?, ?))"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": [
+                            {
+                              "int": "9900041"
+                            },
+                            {
+                              "int": "23"
+                            },
+                            {
+                              "int": "99000412"
+                            },
+                            {
+                              "int": "3"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "composite_membership"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "null": "int"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT \"a\".\"tenant_id\" AS \"a__tenant_id\", \"a\".\"account_id\" AS \"a__account_id\", \"a\".\"name\" AS \"a__name\" FROM \"composite_account\" AS \"a\" WHERE (\"a\".\"tenant_id\", \"a\".\"account_id\") IN (($1, $2), ($3, $4)) ORDER BY \"a\".\"tenant_id\" ASC, \"a\".\"account_id\" ASC"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": [
+                            {
+                              "int": "9900041"
+                            },
+                            {
+                              "int": "23"
+                            },
+                            {
+                              "int": "99000412"
+                            },
+                            {
+                              "int": "3"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "composite_account"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "null": "int"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT \"a\".\"tenant_id\" AS \"a__tenant_id\", \"a\".\"account_id\" AS \"a__account_id\", \"a\".\"role\" AS \"a__role\" FROM \"composite_membership\" AS \"a\" WHERE (\"a\".\"tenant_id\", \"a\".\"account_id\") IN (($1, $2), ($3, $4))"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": [
+                            {
+                              "int": "9900041"
+                            },
+                            {
+                              "int": "23"
+                            },
+                            {
+                              "int": "99000412"
+                            },
+                            {
+                              "int": "3"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "composite_membership"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "null": "int"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT \"a\".\"tenant_id\" AS \"a__tenant_id\", \"a\".\"account_id\" AS \"a__account_id\", \"a\".\"name\" AS \"a__name\" FROM \"composite_account\" AS \"a\" WHERE (\"a\".\"tenant_id\", \"a\".\"account_id\") IN ((?, ?), (?, ?)) ORDER BY \"a\".\"tenant_id\" ASC, \"a\".\"account_id\" ASC"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": [
+                            {
+                              "int": "9900041"
+                            },
+                            {
+                              "int": "23"
+                            },
+                            {
+                              "int": "99000412"
+                            },
+                            {
+                              "int": "3"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "composite_account"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "null": "int"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT \"a\".\"tenant_id\" AS \"a__tenant_id\", \"a\".\"account_id\" AS \"a__account_id\", \"a\".\"role\" AS \"a__role\" FROM \"composite_membership\" AS \"a\" WHERE (\"a\".\"tenant_id\", \"a\".\"account_id\") IN ((?, ?), (?, ?))"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": [
+                            {
+                              "int": "9900041"
+                            },
+                            {
+                              "int": "23"
+                            },
+                            {
+                              "int": "99000412"
+                            },
+                            {
+                              "int": "3"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "composite_membership"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "null": "int"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "events.unsubscribe",
+          "ref": "collision_relations"
         },
         {
           "op": "model.query",
