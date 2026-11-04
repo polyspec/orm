@@ -118,7 +118,7 @@ table service_config {
 - **COD-50** A stored version of zero is `CODEC_DECODE` on the read path; zero is not a key version.
 - **COD-51** A stored version above the i32 range is `CODEC_DECODE` on the read path; the accepted stored versions are the positive i32 integers.
 - **COD-52** A stored version that is an undeclared integer is `CONFIG`, a missing secret of the connection.
-- **COD-53** A stored version written as text that is a positive integer decodes to that version.
+- **COD-53** A stored version written as text that is a positive integer, with or without leading zeros, decodes to that version.
 - **COD-54** On the rotation path a stored version of zero is `CODEC_DECODE`, as on the read path.
 - **COD-55** A rotation row that lacks an AES column the client selected is `INTERNAL`, a broken invariant of the client.
 - **COD-56** A read plan whose AES column has no version column fails with `INTERNAL`; no version is assumed.

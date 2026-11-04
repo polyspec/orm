@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 from polyspec.orm import codes
 from polyspec.orm.aes import AesKeyring, _stored_version
+from polyspec.orm.codec import CodecError
 from polyspec.orm.errors import OrmError, transaction_conflict
 from polyspec.orm.markdown import unsupported_on_markdown
 from polyspec.orm.model import Model
@@ -550,9 +551,15 @@ class AesUtils:
                     before[version] = row_version
                     for i, c in enumerate(columns):
                         before[c.name] = values[len(keys) + 1 + i]
-                    after = keyring.rotate_row(
-                        before, version, columns, keyring.current_version
-                    )
+                    try:
+                        after = keyring.rotate_row(
+                            before, version, columns, keyring.current_version
+                        )
+                    except CodecError as error:
+                        # A rotation fails as every library failure does; the codec's own call keeps CodecError.
+                        raise OrmError(
+                            error.code, str(error).partition(": ")[2], error
+                        ) from error
                     params = (
                         [after[c.name] for c in columns]
                         + [keyring.current_version]

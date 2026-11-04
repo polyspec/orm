@@ -1318,6 +1318,10 @@ abstract class Model implements \JsonSerializable, ModelMetadata
         $meta = static::meta();
         foreach ($shape['int'] as [$index, $name]) {
             $v = $vals[$index];
+            // COD-53: a stored version written as text is its digits, leading zeros included.
+            if ($name === $meta['aes_version'] && is_string($v)) {
+                $v = preg_replace('/^0+(?=[0-9])/', '', $v);
+            }
             $values[$name] = $v === null ? null
                 : self::groupInteger($v, $meta['columns'][$name]['type'], $name);
         }
