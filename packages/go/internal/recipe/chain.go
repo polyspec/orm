@@ -132,7 +132,6 @@ type chainStep struct {
 	BytesHexOf      string                     `json:"bytes_hex_of"`
 	JSONOutput      bool                       `json:"json_output"`
 	GroupValue      string                     `json:"group_value"`
-	DerivedIntegers []string                   `json:"derived_integers"`
 	Page            bool                       `json:"page"`
 	Compile         bool                       `json:"compile"`
 	Plan            bool                       `json:"plan"`

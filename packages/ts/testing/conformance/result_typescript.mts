@@ -1,19 +1,6 @@
 import { StyledValue } from '../../dist/index.js';
 import { Value as JsonValue, parse } from '@polyspec/ordered-json';
 
-export function derivedInteger(value: unknown): number {
-  if (typeof value === 'number') {
-    if (Number.isFinite(value) && Number.isInteger(value) && value >= -(2 ** 63) && value < 2 ** 63) return value;
-  } else if (typeof value === 'bigint' || (typeof value === 'string' && /^-?(?:0|[1-9][0-9]*)$/.test(value))) {
-    const integer = BigInt(value);
-    if (integer >= -(1n << 63n) && integer < 1n << 63n) {
-      const number = Number(integer);
-      if (BigInt(number) === integer) return number;
-    }
-  }
-  throw new Error('invalid derived integer');
-}
-
 /** Keep an unexpected vector failure visible to the caller. */
 /** A transaction runner: it runs the task inside a transaction and gives its result. */
 export type Transaction = (task: () => Promise<unknown>) => Promise<unknown>;

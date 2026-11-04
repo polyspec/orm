@@ -1,5 +1,5 @@
 <!-- doc-id: codec -->
-<!-- source-sha256: 26ced4b538879c956bb5e174e862386ae5e01a9e6e74584511dcc1d97924dbe0 -->
+<!-- source-sha256: 9a39fbb181052a117b2e90051c55871ba78346e58460ab126983e5ffe0f3cbd5 -->
 # 코덱 — 컬럼 스타일의 읽기/쓰기 (S2)
 
 - **COD-1** Go 데이터베이스 값 변환은 잘못된 형식, null, 범위 초과, 유한하지 않은 값, 지원하지 않는 값에 `CODEC_DECODE`를 반환한다. 모든 클라이언트에서 host 인코딩과 blind index는 host 단계 목록이 비었거나 값이 텍스트·바이트가 아니면 `CODEC_ENCODE`를 반환한다: host 단계는 텍스트의 UTF-8이나 받은 바이트를 받고 값을 그 종류대로 bind하므로, 정수·실수·bool은 평문이 아니다(`tests/codec/codec.json`의 case `host_values_by_kind`). SQL NULL은 host 단계를 SQL NULL로 지난다. `aes`, `hex`, `ip`가 아닌 style은 `serialize` 같은 codec style을 포함해 값을 읽기 전에 `CODEC_UNSUPPORTED`를 반환하고, hex가 아닌 `hex` cell과 header, nonce, tag보다 짧은 `aes` cell은 `CODEC_DECODE`를 반환한다(case `host_stage_errors`). 생성 모델 대입은 컬럼 이름을 붙여 변환 오류를 보고한다. 행 조립은 오류를 호출자에게 반환하고 insert는 쓰기 전에 대입 필드를 검증한다. 빈 바이트 배열은 SQL NULL과 구분한다. scalar 집계 변환은 유효한 십진수를 가장 가까운 유한 binary64 값으로 받는다.
@@ -114,7 +114,7 @@ table service_config {
 - **COD-42** 쓰기: `set<Col>(v)`는 선언된 스타일을 사용해 런타임 `setStyled`를 호출하고 인코딩된 바이트를 바인드한다.
 - **COD-43** 스타일 컬럼의 술어는 비교하는 대상이 값의 결정적 함수여서 매개변수가 저장된 것과 같을 때에만 동등 비교(`eq`, `not_eq`, `in`, `not_in`)를 한다. 술어 값은 그 컬럼의 host stage(`aes`, `hex`, `ip`, COD-3)만 거치고, 쓰는 값만 인코딩하는 executor codec은 거치지 않는다. 따라서 모든 단계가 host stage인 컬럼은 동등 비교를 한다: `hex`와 `ip`는 저장된 셀을 비교하고, `aes` 단계를 가진 컬럼은 chain에서 `aes`의 위치와 관계없이 값 자체의 HMAC인 blind index([COD-4](#blind-index))를 비교하며 무작위 nonce의 암호문은 비교하지 않는다. 그런 컬럼에 blind index가 선언되지 않았으면 동등 비교는 `IR_INVALID`로 실패한다. `ordered_json aes`처럼 executor codec을 하나라도 가진 컬럼은 `isNull`과 `isNotNull`만 받는다. 그 저장 형태와 blind index는 인코딩된 텍스트에서 나오는데 술어 값은 그 텍스트가 아니기 때문이다. 모든 validator가 이 한 규칙을 적용한다(`ir.OpAllowed`와 그 대응; planner case `planner_ip_hex_eq`, `planner_hex_eq`, `planner_aes_hex_eq`, `planner_hex_aes_eq`, `planner_ordered_json_aes_eq`).
 - **COD-44** Go, PHP, PHP extension, TypeScript, Python, Rust 여섯 declared implementation의 read 경로는 key version과 stored version에 대해 하나의 오류 contract를 따른다. 선언되지 않았거나, 비었거나, 잘못된 key version은 `CONFIG`이고, 양의 i32 정수가 아닌 stored version은 `CODEC_DECODE`이며, 0이나 NaN으로 강제 변환하지 않는다. 이 규칙은 PHP extension native codec coverage가 완료됐다고 주장하지 않는다.
-- **COD-45** derived integer는 크기가 2^53 이하인 정수일 때에만 JavaScript number이며, 그래야 정확하다; 문자열과 bigint는 같은 한계로 변환된다. 소수, 유한하지 않은 number, boolean, null, 빈 문자열이나 숫자가 아닌 문자열, 그리고 더 큰 값은 잘못된 derived integer로 거부된다.
+- **COD-45** TypeScript는 추가 열(INT-160)의 정수를 safe integer, 즉 크기가 2^53 - 1 이하일 때에만 JavaScript number로 읽으며, 그래야 정확하다; bigint와 정확히 그 숫자로만 된 문자열은 같은 한계로 변환된다. 소수, 유한하지 않은 number, boolean, 빈 문자열이나 숫자가 아닌 문자열, 그리고 더 큰 값은 `CODEC_DECODE`로 실패한다; SQL NULL은 null로 남는다.
 - **COD-46** 실패한 conformance vector는 원래 error를 cause로 담아 그 error를 보고하며, write vector는 runner가 주는 transaction 안에서 그 본문을 실행한다.
 - **COD-47** 구현된 rotation 경로는 COD-44의 key-version 및 stored-version 오류 코드를 사용한다. 이 규칙은 현재 모든 implementation이 rotation을 제공한다고 주장하지 않는다.
 - **COD-48** version cell이 없는 read row는 `INTERNAL`이다. 저장된 바이트가 아니라 client 불변식이 깨진 것이다.

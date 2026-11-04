@@ -21,6 +21,8 @@ final class Catalog
     private const DEFAULT_BYTES = 67108864;
     /** Added to net_write_timeout: a server at 60 s ended an unread stream at 65.1 s, measured. */
     private const STREAM_END_MARGIN_SECONDS = 6;
+    /** How long after a close of this catalog a connect that max_user_connections refuses is tried again (CFG-35). */
+    private const REOPEN_SECONDS = 2.0;
     private const MYSQL_TYPES_TABLE = 'orm_grid_column_types';
 
     /** Selects the native kind of a relation by its namespace and name. */
@@ -78,6 +80,9 @@ final class Catalog
 
     /** Whether a stop left a stream unread, so that the server has ended this connection (INT-157). */
     private bool $streamLeft = false;
+
+    /** Until when, in hrtime seconds, a refused connect is a connection of this catalog still on the server (CFG-35). */
+    private float $reopenUntil = 0.0;
 
     private function __construct(
         private Db $db,
@@ -142,11 +147,32 @@ final class Catalog
      */
     private function killQuery(int $connectionId): void
     {
-        $killer = Orm::connect($this->dsn, new Config());
+        $killer = $this->openConnection();
         try {
             $killer->pdo()->exec('KILL QUERY ' . $connectionId);
         } finally {
             $killer->close();
+            $this->reopenUntil = hrtime(true) / 1e9 + self::REOPEN_SECONDS;
+        }
+    }
+
+    /**
+     * Opens a connection. A connection that this catalog closed holds its place in max_user_connections until the server ends
+     * that thread. The server announces that to no one, so this is a timer: the connect is tried again within the 2 s of CFG-35
+     * from the close (within 40 ms measured). A connect that follows no close of this catalog fails at once.
+     */
+    private function openConnection(): Db
+    {
+        for (;;) {
+            try {
+                return Orm::connect($this->dsn, new Config());
+            } catch (OrmException $refused) {
+                $cause = $refused->getPrevious();
+                if (!$cause instanceof \PDOException || (int) $cause->getCode() !== 1226 || hrtime(true) / 1e9 >= $this->reopenUntil) {
+                    throw $refused;
+                }
+                usleep(10000);
+            }
         }
     }
 
@@ -1202,7 +1228,8 @@ final class Catalog
         $this->assertOpen();
         if ($this->streamLeft) {
             $this->closeConnection();
-            $this->db = Orm::connect($this->dsn, new Config());
+            $this->reopenUntil = hrtime(true) / 1e9 + self::REOPEN_SECONDS;
+            $this->db = $this->openConnection();
             $this->streamLeft = false;
         }
         $pdo = $this->db->pdo();
