@@ -186,6 +186,12 @@ name = "statement_runner_sqlite"
 path = "tests/statement_runner_sqlite.rs"
 harness = false
 
+# Each case of the recipe tests/dbspec/render-statements.json without a database, as dbspec_render_statements_none::<case id> (FCV-3, FCV-4).
+[[test]]
+name = "dbspec_render_statements_none"
+path = "tests/dbspec_render_statements_none.rs"
+harness = false
+
 # Each case of the recipe tests/dbspec/render-physical.json on mysql, as dbspec_render_physical_mysql::<case id> (FCV-3, FCV-4).
 [[test]]
 name = "dbspec_render_physical_mysql"

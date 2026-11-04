@@ -88,6 +88,7 @@ export function runRecipe(path, database) {
           else if (step.op === 'markdown.session') await checkMarkdownSession(step, database);
           else if (step.op === 'keyring.versions') checkKeyring(step, database);
           else if (step.op === 'dbspec.introspect_shown') await checkIntrospectShown(step, dir, database);
+          else if (step.op === 'dbspec.render_statements') checkRenderStatements(step, dir);
           else if (step.op === 'dbspec.apply_fault') await checkApplyFault(step, bound, database);
           else if (step.op === 'dbspec.introspect_sqlite') await checkIntrospectSqlite(step, database);
           else if (step.op === 'markdown.builder') await checkBuilder(step, database);
@@ -2872,6 +2873,28 @@ async function checkApplyFault(step, bound, database) {
     for (const kind of expect.absent_events ?? []) assert.equal(kinds.includes(kind), false, `the events hold ${kind}`);
   } finally {
     db.close();
+  }
+}
+
+// checkRenderStatements runs a dbspec.render_statements step: it parses each document of the case of the vectors against the
+// others and renders the set for each dialect, in the given order and reversed, to exactly the statements of the case (FCV-4, DIA-113).
+function checkRenderStatements(step, dir) {
+  const vectors = JSON.parse(readFileSync(resolve(dir, step.vectors), 'utf8'));
+  const vector = vectors.cases.find(c => c.id === step.case);
+  if (vector === undefined) throw new Error(`${step.vectors} has no case ${step.case}`);
+  const lines = text => text.join('\n') + '\n';
+  const documents = Object.keys(vector.documents).map(name => {
+    const set = {};
+    for (const [other, text] of Object.entries(vector.documents)) if (other !== name) set[other] = lines(text);
+    const parsed = parseDbspec(lines(vector.documents[name]), set);
+    assert.deepEqual(parsed.diagnostics, [], `diagnostics of document ${name}`);
+    return parsed.document;
+  });
+  for (const dialect of ['mysql', 'postgres', 'sqlite']) {
+    assert.ok(vector.statements[dialect]?.length > 0, `${dialect} has statements`);
+    for (const given of [documents, [...documents].reverse()]) {
+      assert.deepEqual(renderDbspec(given, dialect), { statements: vector.statements[dialect], diagnostics: [] }, dialect);
+    }
   }
 }
 

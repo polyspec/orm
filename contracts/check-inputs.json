@@ -2569,7 +2569,7 @@
         "databases"
       ],
       "inputs": [
-        "packages/php/tests/DbspecRenderTest.php",
+        "packages/php/tests/DbspecRenderStatementsRecipeTest.php",
         "packages/php/tests/DbspecTimedCases.php",
         "tests/dbspec/ddl.json"
       ]

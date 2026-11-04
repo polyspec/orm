@@ -1092,7 +1092,6 @@
         "packages/rust/orm/tests/common/sqlite_case.rs",
         "packages/rust/orm/tests/common/test_support.rs",
         "packages/rust/orm/tests/common/typed_model.rs",
-        "packages/rust/schema/tests/common/dbspec_values.rs",
         "packages/rust/schema/tests/common/or_panic.rs",
         "packages/rust/schema/tests/common/vector_file.rs",
         "packages/rust/tests/tests/common/result_code.rs",
@@ -1316,7 +1315,7 @@
     "tests/codec/*.json",
     "tests/collection/collection.json",
     "tests/conformance/*.json",
-    "tests/dbspec/!(introspect).json",
+    "tests/dbspec/!(introspect|ddl).json",
     "tests/dsn/sqlite-paths.json",
     "tests/ir/*.json",
     "tests/markdown/*.json",
@@ -12025,36 +12024,36 @@
         "DIA-131",
         "DIA-132"
       ],
-      "file": "tests/dbspec/ddl.json",
+      "file": "tests/dbspec/render-statements.json",
       "cases": "$.cases[*].id",
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/render_test.go",
-          "symbol": "TestRenderVectors"
+          "test": "packages/go/orm/recipe_dbspec_render_statements_test.go",
+          "symbol": "TestRecipeDbspecRenderStatementsNone"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecRenderTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecRenderTest::testDdl"
+          "test": "packages/php/tests/DbspecRenderStatementsRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecRenderStatementsRecipeTest::testNone"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecRenderTestExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecRenderTestExtensionTest::testDdl"
+          "test": "packages/php-ext/tests/DbspecRenderStatementsRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecRenderStatementsRecipeTestExtensionTest::testNone"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-render.mjs"
+          "test": "packages/ts/tests/dbspec_render_statements-none.test.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/dbspec_ddl.py"
+          "test": "packages/python/tests/test_dbspec_render_statements_none.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_render.rs",
-          "symbol": "render_vectors"
+          "test": "packages/rust/tests/tests/dbspec_render_statements_none.rs",
+          "symbol": "dbspec_render_statements_none"
         }
       ]
     },

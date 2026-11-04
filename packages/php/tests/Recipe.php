@@ -258,6 +258,10 @@ final class Recipe
             self::dsnConnectStep($step, $database);
             return;
         }
+        if ($step['op'] === 'dbspec.render_statements') {
+            self::dbspecRenderStatementsStep($step, dirname(__DIR__, 3) . '/' . dirname($path));
+            return;
+        }
         if ($step['op'] === 'dbspec.introspect_shown') {
             self::dbspecIntrospectShownStep($step, dirname(__DIR__, 3) . '/' . dirname($path), $database);
             return;
@@ -1805,6 +1809,52 @@ final class Recipe
         }
         foreach ($expect['absent_events'] ?? [] as $kind) {
             Assert::assertNotContains($kind, $kinds);
+        }
+    }
+
+    /**
+     * Runs one dbspec.render_statements step (FCV-4): it parses each document of the case of the vectors against the
+     * others and renders the set for each dialect, in the given order and reversed, to exactly the statements of the case (DIA-113).
+     */
+    private static function dbspecRenderStatementsStep(RecipeStep $step, string $dir): void
+    {
+        $vectors = json_decode((string) file_get_contents("$dir/{$step['vectors']}"), true, 512, JSON_THROW_ON_ERROR);
+        $vector = null;
+        foreach ($vectors['cases'] as $candidate) {
+            if ($candidate['id'] === $step['case']) {
+                $vector = $candidate;
+            }
+        }
+        if ($vector === null) {
+            Assert::fail("{$step['vectors']} has no case {$step['case']}");
+        }
+        $text = static fn(array $lines): string => implode("\n", $lines) . "\n";
+        $documents = [];
+        foreach ($vector['documents'] as $name => $lines) {
+            $set = [];
+            foreach ($vector['documents'] as $other => $otherLines) {
+                if ($other !== $name) {
+                    $set[$other] = $text($otherLines);
+                }
+            }
+            $parsed = Dbspec::parse($text($lines), $set);
+            if ($parsed->document === null) {
+                Assert::fail("$name: " . self::diagnostics($parsed->diagnostics));
+            }
+            $documents[] = $parsed->document;
+        }
+        foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
+            $want = $vector['statements'][$dialect] ?? [];
+            if ($want === []) {
+                Assert::fail("$dialect has no statements");
+            }
+            foreach ([$documents, array_reverse($documents)] as $given) {
+                $rendered = Dbspec::render($given, $dialect);
+                if ($rendered->diagnostics !== []) {
+                    Assert::fail("$dialect: " . self::diagnostics($rendered->diagnostics));
+                }
+                Assert::assertSame($want, $rendered->statements, "$dialect statements");
+            }
         }
     }
 

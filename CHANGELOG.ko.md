@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7688ba95a038c248ec73d0e65e71fdbdce2b921569f6cd5fe5553b8216ffbc6e -->
+<!-- source-sha256: 9f17ce9bb6a48616128d6153bc92d46ccce3876b1a64cd1fc51f82d48f742403 -->
 # 변경 이력
 
 ## Unreleased
 
+- 테스트: `tests/dbspec/ddl.json`의 render statement는 모든 runtime에서 `dbspec.render_statements` op를 통해 recipe `tests/dbspec/render-statements.json`의 case이며, document를 주어진 순서와 역순으로 모두 확인한다. 여섯 runtime의 native 테스트는 제거했다(FCV-2, DIA-113).
 - Python의 pool은 CFG-5대로 idle connection을 lifetime이 지날 때 닫는다. 이전에는 다음 호출자가 가져갈 때에만 닫았다. MySQL과 PostgreSQL의 pool 경계, lifetime, 거부되는 pool 값은 recipe `connection_pool`과 `dsn_reject_checked`의 case이고, PHP의 pool option 거부는 recipe `dsn_reject_php_pool`이다.
 - 테스트: schema 변경 뒤 transaction pooler를 거치는 catalog session(CFG-28, CFG-41)은 Python 테스트 `connection_config` 대신 모든 runtime에서 `catalog_connection` recipe의 case `catalog_session_after_a_schema_change_through_a_pooler`가 새 op `sql.hold_statement`와 `catalog.reconnect`의 `dsn`으로 맡는다.
 - TypeScript 정수 parameter test의 이름은 `driver-integer-param.mjs`이고, internal test 항목의 reason은 각 test가 하는 일을 적는다.

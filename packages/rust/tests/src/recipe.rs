@@ -423,6 +423,44 @@ fn shown_catalog_rows(catalog: &Value, name: &str, create: &str, query: &str) ->
     })
 }
 
+/// The dbspec.render_statements op (FCV-4): it parses each document of the case of the vectors against the others and renders
+/// the set for each dialect, in the given order and reversed, to exactly the statements of the case (DIA-113).
+fn dbspec_render_statements(step: &Value, dir: &Path) -> Result<(), String> {
+    let vectors_name = crate::recipe_reads::read(step, "vectors")["vectors"].as_str().unwrap_or_default();
+    let case_name = crate::recipe_reads::read(step, "case")["case"].as_str().unwrap_or_default();
+    let raw = std::fs::read_to_string(dir.join(vectors_name)).map_err(|error| format!("{vectors_name}: {error}"))?;
+    let vectors: Value = serde_json::from_str(&raw).map_err(|error| format!("{vectors_name}: {error}"))?;
+    let vector = vectors["cases"]
+        .as_array()
+        .and_then(|cases| cases.iter().find(|candidate| candidate["id"] == case_name))
+        .ok_or_else(|| format!("{vectors_name} has no case {case_name}"))?;
+    let text = |lines: &Value| -> String {
+        lines.as_array().map_or_else(String::new, |lines| lines.iter().filter_map(Value::as_str).map(|line| format!("{line}\n")).collect())
+    };
+    let sources = vector["documents"].as_object().ok_or("the case has no documents")?;
+    let mut documents = Vec::with_capacity(sources.len());
+    for (name, lines) in sources {
+        let set: BTreeMap<String, String> = sources.iter().filter(|(other, _)| *other != name).map(|(other, l)| (other.clone(), text(l))).collect();
+        documents.push(dbspec::parse(&text(lines), &set).map_err(|errors| format!("{name}: {errors:?}"))?.document);
+    }
+    let mut references: Vec<&Document> = documents.iter().collect();
+    for (name, dialect) in [("mysql", Dialect::MySql), ("postgres", Dialect::Postgres), ("sqlite", Dialect::Sqlite)] {
+        let want: Vec<String> =
+            vector["statements"][name].as_array().map(|s| s.iter().filter_map(|x| x.as_str().map(str::to_owned)).collect()).unwrap_or_default();
+        if want.is_empty() {
+            return Err(format!("{name} has no statements"));
+        }
+        for _ in 0..2 {
+            let got = dbspec::render(&references, dialect).map_err(|errors| format!("{name}: {errors:?}"))?;
+            if got != want {
+                return Err(format!("{name} statements:\n got {got:?}\nwant {want:?}"));
+            }
+            references.reverse();
+        }
+    }
+    Ok(())
+}
+
 /// The dbspec.introspect_shown op (FCV-4): the public catalog queries and read_catalog on the canned catalog of a case of the
 /// vectors file, whose check lines and unsupported objects, or error, it compares with the expect of `database` (DIA-84). A
 /// reason compares by its rule, the text before the first ": ", since its text differs between the clients.
@@ -760,6 +798,7 @@ fn markdown_builder(step: &Value, database: &str) -> Result<(), String> {
 fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: &Path) -> Result<(), String> {
     match crate::recipe_reads::read(step, "op")["op"].as_str().unwrap_or_default() {
         "dsn.connect" => return dsn_connect(step, database),
+        "dbspec.render_statements" => return dbspec_render_statements(step, dir),
         "dbspec.introspect_shown" => return dbspec_introspect_shown(step, database, dir),
         "dbspec.introspect_sqlite" => return dbspec_introspect_sqlite(step, database),
         "dbspec.apply_fault" => return dbspec_apply_fault(step, bound, database),

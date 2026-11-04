@@ -671,6 +671,11 @@
       "expect",
       "op"
     ],
+    "dbspec.render_statements": [
+      "case",
+      "op",
+      "vectors"
+    ],
     "dbspec.render": [
       "dialect",
       "documents",

@@ -892,6 +892,7 @@
             "dbspec.parse_emit",
             "dbspec.manifest",
             "dbspec.render",
+            "dbspec.render_statements",
             "dbspec.analyze",
             "dbspec.parse_positions",
             "dbspec.format",
@@ -1219,6 +1220,9 @@
         },
         {
           "$ref": "#/$defs/ops/dbspec.render"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.render_statements"
         },
         {
           "$ref": "#/$defs/ops/dbspec.analyze"
@@ -5928,6 +5932,27 @@
                 }
               }
             }
+          }
+        }
+      },
+      "dbspec.render_statements": {
+        "description": "Parses each document of the case of the vectors against the others and renders the set for each dialect, in the given order and reversed, to exactly the statements of the case (DIA-113).",
+        "type": "object",
+        "required": [
+          "op",
+          "vectors",
+          "case"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.render_statements"
+          },
+          "vectors": {
+            "type": "string"
+          },
+          "case": {
+            "type": "string"
           }
         }
       },

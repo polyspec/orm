@@ -14,9 +14,10 @@ type Vectors struct {
 	Cases   []Case `json:"cases"`
 }
 
-// Case is one vector: its id, its rendered statements per dialect and its behavior steps.
+// Case is one vector: its id, its document set, its rendered statements per dialect and its behavior steps.
 type Case struct {
 	ID         string              `json:"id"`
+	Documents  map[string][]string `json:"documents"`
 	Statements map[string][]string `json:"statements"`
 	Behavior   []Step              `json:"behavior"`
 }

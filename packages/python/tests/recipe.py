@@ -196,6 +196,9 @@ def recipe_tests(path: str, database: str):
         if step["op"] == "dsn.connect":
             _dsn_connect(step, database)
             return
+        if step["op"] == "dbspec.render_statements":
+            _dbspec_render_statements(step, ROOT / Path(path).parent)
+            return
         if step["op"] == "dbspec.introspect_shown":
             _dbspec_introspect_shown(step, ROOT / Path(path).parent, database)
             return
@@ -1239,6 +1242,36 @@ def _dbspec_apply_fault(step: dict, bound: dict, database: str) -> None:
                 raise AssertionError(f"the events {kinds} hold {kind}")
     finally:
         fault.connection.close()
+
+
+def _dbspec_render_statements(step: dict, recipe_dir: Path) -> None:
+    """Runs the dbspec.render_statements op (FCV-4): it parses each document of the case of the vectors against the
+    others and renders the set for each dialect, in the given order and reversed, to exactly the statements of the case (DIA-113)."""
+    vectors = json.loads((recipe_dir / step["vectors"]).read_text(encoding="utf-8"))
+    vector = next((c for c in vectors["cases"] if c["id"] == step["case"]), None)
+    if vector is None:
+        raise AssertionError(f"{step['vectors']} has no case {step['case']}")
+
+    def text(lines: list) -> str:
+        return "\n".join(lines) + "\n"
+
+    documents = []
+    for name, lines in vector["documents"].items():
+        document, _positions, diagnostics = parse_dbspec(
+            text(lines), {other: text(ls) for other, ls in vector["documents"].items() if other != name}
+        )
+        if list(diagnostics):
+            raise AssertionError(f"{name}: {list(diagnostics)!r}")
+        documents.append(document)
+    for dialect in ("mysql", "postgres", "sqlite"):
+        want = vector["statements"].get(dialect)
+        if not want:
+            raise AssertionError(f"{dialect} has no statements")
+        for given in (documents, list(reversed(documents))):
+            rendered = render_dbspec(given, dialect)
+            if list(rendered["diagnostics"]):
+                raise AssertionError(f"{dialect}: {list(rendered['diagnostics'])!r}")
+            _expect_equal(rendered["statements"], want, f"{dialect} statements")
 
 
 def _dbspec_introspect_shown(step: dict, recipe_dir: Path, database: str) -> None:

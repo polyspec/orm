@@ -74,7 +74,7 @@ caseTest('a changed file selects the transaction end tests that it holds or that
 
 caseTest('a whole-suite command is split by package', 5000, async () => {
   assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/go/engine/ir/operators_test.go'])), ['planner/planner-go-ir']);
-  assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/php/tests/DbspecRenderTest.php'])), ['schema_definition/schema-php']);
+  assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/php/tests/DbspecRenderStatementsRecipeTest.php'])), ['schema_definition/schema-php']);
 });
 
 // Requirements: FCV-7.

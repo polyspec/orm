@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Tests: the rendered statements of `tests/dbspec/ddl.json` are the cases of the recipe `tests/dbspec/render-statements.json`, through the op `dbspec.render_statements`, in every runtime, for the documents in the order given and reversed; the native tests of the six runtimes are removed (FCV-2, DIA-113).
 - Tests: a catalog session through a transaction pooler after a schema change (CFG-28, CFG-41) is the case `catalog_session_after_a_schema_change_through_a_pooler` of the `catalog_connection` recipe in every runtime, in place of the Python test `connection_config`, through the new op `sql.hold_statement` and a `dsn` on `catalog.reconnect`.
 - Tests: the conformance runners keep only the bodies that a check reaches, the generated-method and the fixed-clock bodies; the other 50 vectors are cases of the `conformance_verification` recipe, and a test holds each runner to the reached names.
 - The pool of Python closes an idle connection when its lifetime passes, as CFG-5 states; it closed one only when the next caller would take it. The pool bounds of MySQL and PostgreSQL, the lifetime and the refused pool values are cases of the recipes `connection_pool` and `dsn_reject_checked`, and the refusal of a pool option in PHP is the recipe `dsn_reject_php_pool`.
