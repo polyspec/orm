@@ -23,5 +23,10 @@ final class CoverageInterfaceContractTest extends TestCase
             dirname(__DIR__, 3)
         );
         Assert::assertTrue($status === 0, "interface check exited $status: $stderr$stdout");
+        // The line the feature checker reads (FCV-12); a run outside the checker names no file.
+        $path = getenv('ORM_RECIPE_RESULTS');
+        if ($path !== false && $path !== '') {
+            file_put_contents($path, "CASE interface_symbols PASS\n");
+        }
     }
 }

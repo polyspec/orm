@@ -6,7 +6,7 @@ import subprocess
 import sys
 import unittest
 
-from .coverage_case import REPOSITORY_ROOT, coverage_main
+from .coverage_case import REPOSITORY_ROOT
 
 
 def interface_symbols():
@@ -28,8 +28,12 @@ class CoverageTest(unittest.TestCase):
     # Requirements: INT-17, INT-18, INT-19, INT-57, INT-61, INT-64.
     def test_interface_symbols(self):
         interface_symbols()
-        print("CASE interface_symbols PASS", flush=True)
+        # The line the feature checker reads (FCV-12); a run outside the checker names no file.
+        path = os.environ.get("ORM_RECIPE_RESULTS")
+        if path:
+            with open(path, "w", encoding="utf-8") as results:
+                results.write("CASE interface_symbols PASS\n")
 
 
 if __name__ == "__main__":
-    coverage_main(CoverageTest)
+    unittest.main()

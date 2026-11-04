@@ -1,6 +1,7 @@
 package orm_test
 
 import (
+	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
@@ -17,5 +18,11 @@ func TestCoverageInterfaceSymbols(t *testing.T) {
 	cmd.Dir = filepath.Join("..", "..", "..")
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("interface check: %v\n%s", err, output)
+	}
+	// The line the feature checker reads (FCV-12); a run outside the checker names no file.
+	if path := os.Getenv("ORM_RECIPE_RESULTS"); path != "" {
+		if err := os.WriteFile(path, []byte("CASE interface_symbols PASS\n"), 0o600); err != nil {
+			t.Fatalf("results: %v", err)
+		}
 	}
 }

@@ -37,8 +37,8 @@ import type { Step } from '../../tests/testcase.mts';
 
 /** A verification command of a feature with the inputs whose change selects it. */
 type Verification = { id: string; command: string; inputs?: string[] };
-/** A coverage part of a feature: its tests, inputs and the native commands of each database with the DSN variable they read. */
-type PartDeclaration = { tests?: string[]; inputs?: string[]; commands?: Record<string, { dsn_env?: string }[]> };
+/** A coverage part of a feature: its tests, inputs and the test entries of each database. */
+type PartDeclaration = { tests?: string[]; inputs?: string[]; commands?: Record<string, unknown[]> };
 /** A feature of contracts/features.json as owner-check reads it. */
 export type OwnersFeature = { id: string; verification?: Verification[]; coverage?: { owners?: Record<string, PartDeclaration>; dependents?: (PartDeclaration & { id: string; language?: string })[] } };
 /** A helper of contracts/features.json. */

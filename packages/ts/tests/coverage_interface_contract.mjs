@@ -1,6 +1,7 @@
 // interface_contract coverage: from the repository root, runs `node tests/interfaces/check/main.mts -language typescript`
 // to check that the TypeScript client has every symbol of the shared interface contract.
 import { execFile } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
 import { promisify } from 'node:util';
 import { repositoryRoot, runCases } from './coverage_case.mjs';
 
@@ -14,5 +15,7 @@ await runCases('coverage_interface_contract.mjs', {
     } catch (error) {
       throw new Error(`interface check failed (${error.code ?? error.signal}): ${error.stdout ?? ''}${error.stderr ?? error.message}`, { cause: error });
     }
+    // The line the feature checker reads (FCV-12); a run outside the checker names no file.
+    if (process.env.ORM_RECIPE_RESULTS) writeFileSync(process.env.ORM_RECIPE_RESULTS, 'CASE interface_symbols PASS\n');
   },
 }, 300_000);

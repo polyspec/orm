@@ -246,7 +246,7 @@ CHECK_TARGETS = connection-sqlite-several-processes-python-check styled-column-s
 #   dbspec_<language>: one runtime's native dbspec targets; dbspec_apply holds the cross-client apply pairs
 #   feature_<runtime>_<database>: one runtime's SQL coverage cell; MySQL also runs that runtime's independent coverage once
 #   markdown_<runtime>: one runtime's native markdown cases against flowmark
-#   feature_performance: the exclusive six-runtime, three-database performance gate
+#   feature_performance: the six-runtime, three-database performance measurement, one measurement at a time
 #   feature_verify_rust, feature_verify_other: verification commands of shard rust and shard other
 #   feature_helpers: the helper checks without the stress helpers and FEATURE_SUITE_HELPERS (feature-helper-check)
 #   stress_mysql: MySQL application of the stress plan (feature-stress-mysql-check)
@@ -1447,7 +1447,7 @@ feature-coverage/rust/sqlite: lease-tool orm-codes
 feature-performance-check: RUN_DIR = $(abspath .runtime/run)/feature-performance-$$PPID
 feature-performance-check: feature-check/build php-vendor-check php-models orm-install-php-extension-tools python-venv-check
 	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
-	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) node scripts/features/coverage.mts --feature performance_gate
+	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) node scripts/features/performance-reference.mts measure
 	rm -rf $(RUN_DIR)
 # feature-coverage-of/<id> runs the coverage of one feature on every runtime and database (FCV-6), the Verification of a row of that feature.
 feature-coverage-of/%: RUN_DIR = $(abspath .runtime/run)/feature-coverage-of-$$PPID
