@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: 4417ff4c5d0377e4e44d49bba01074f84405e2f11c0d795416538d613505bcaf -->
+<!-- source-sha256: e8c37528ab5c810259fdc598cb62673b37e683c5476cdcc4538c0046843cbfa7 -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1745,4 +1745,4 @@
 | ORMC | orm-c 레인이 찾은 것을 닫는다: 진단 둘의 manifest 메시지, 정수 매개변수 시험의 이름, 명령이 사라진 뒤 아무것도 적용하지 않던 stress plan bench. | The sub-items ORMC-1, ORMC-2 and ORMC-3 | `make repo-check` | [ ] |
 | ORMC-1 | diagnostic이 둘인 manifest의 message는 모든 runtime에서 정확히 SCH-12의 형식이다: 첫 diagnostic 앞에 구분자가 없고 각각 `; `로 이어진다. 원인: load_set recipe는 각 diagnostic을 위치와 rule로만 비교해서, `document <name>: `과 diagnostic의 message를 지키는 공유 case가 없었다. | tests/dbspec/load-set.json, the recipe helper of each runtime, scripts/features/schema/recipe.schema.json, docs/spec/feature-coverage.md, docs/spec/feature-coverage.ko.md, CHANGELOG.md, CHANGELOG.ko.md | `make run-databases TARGETS=parity-check UNITS=schema-set-load-external-documents` | [v] |
 | ORMC-2 | TypeScript 정수 parameter test의 이름을 그 내용대로 짓는다: 셀의 정확한 byte가 recipe로 옮겨 간 뒤 packages/ts/tests/driver-cell-bytes.mjs에는 그 test만 남았다. 이웃한 internal 항목의 reason은 각 test가 하는 일을 적는다. | packages/ts/tests/driver-integer-param.mjs, Makefile, config/parity.json, contracts/check-inputs.json, contracts/features.json, CHANGELOG.md, CHANGELOG.ko.md | `make native-error-cause-check/typescript-driver`, `make parity-declarations-check` | [v] |
-| ORMC-3 | dbspec-apply-stress-bench는 stress plan을 적용한다. 원인: CR15-10(54838413c)이 native test를 recipe case stress_plan_commits_each_step으로 옮기면서 명령을 지우고 변수 검사만 남겨서, `make bench`와 CI group stress_mysql, stress_pg_sqlite가 아무것도 적용하지 않고 통과했다. | Makefile, scripts/repo/check.test.mts, docs/spec/plans.md, docs/spec/plans.ko.md, CHANGELOG.md, CHANGELOG.ko.md | `make dbspec-apply-stress-bench`, `make repo-check` | [~] |
+| ORMC-3 | dbspec-apply-stress-bench는 stress plan을 적용한다. 원인: CR15-10(54838413c)이 native test를 recipe case stress_plan_commits_each_step으로 옮기면서 명령을 지우고 변수 검사만 남겨서, `make bench`와 CI group stress_mysql, stress_pg_sqlite가 아무것도 적용하지 않고 통과했다. | Makefile, scripts/repo/check.test.mts, docs/spec/plans.md, docs/spec/plans.ko.md, CHANGELOG.md, CHANGELOG.ko.md | `make dbspec-apply-stress-bench`, `make repo-check` | [v] |
