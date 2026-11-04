@@ -590,7 +590,7 @@ function isStringArray(value: unknown): value is string[] {
 // The CHECK_TARGETS case checks the repository's workflow and Makefile, and the minimal workflow.
 caseTest('the CI workflow runs every target of CHECK_TARGETS once', COMPUTE, () => {
   const targets = checkTargets(text('Makefile'));
-  for (const target of ['ts-min-check', 'php-min-check', 'feature-coverage/go/mysql', 'feature-performance-check', 'feature-verify-rust', 'feature-verify-other', 'go-test-check', 'catalog-described-temporal-go-check'])
+  for (const target of ['ts-min-check', 'php-min-check', 'feature-performance-check', 'feature-verify-rust', 'feature-verify-other', 'go-test-check', 'catalog-described-temporal-go-check'])
     assert.ok(targets.includes(target), `${target} is not in CHECK_TARGETS`);
   assert.deepEqual(ciCheckTargetErrors(workflow, text('Makefile')), []);
   assert.deepEqual(checkTargets('CHECK_TARGETS = first\nCHECK_TARGETS += second third\n'), ['first', 'second', 'third']);
@@ -641,15 +641,10 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   }
   for (const runtime of ['go', 'php', 'php-extension', 'typescript', 'python', 'rust']) {
     const groupRuntime = runtime.replaceAll('-', '_');
-    for (const database of ['mysql', 'postgres', 'sqlite']) {
-      const target = `feature-coverage/${runtime}/${database}`;
-      assert.ok(checkTargets(makefile).includes(target), `${target} remains in CHECK_TARGETS`);
-      assert.deepEqual(targets[`feature_${groupRuntime}_${database}`], [target], `${target} is the only target in its runtime/database cell`);
-    }
     const markdown = `markdown-conformance-check/${runtime}`;
     assert.deepEqual(targets[`markdown_${groupRuntime}`], [markdown], `${markdown} is the only target in its native runtime cell`);
   }
-  assert.deepEqual(targets.feature_performance, ['feature-performance-check'], 'the performance gate has its own CI job');
+  assert.deepEqual(targets.feature_performance, ['feature-performance-check'], 'the performance measurement has its own CI job');
   assert.equal(targets.parity, undefined, 'the parity gate runs in the gates workflow of kit, not in a CI group (KSTD-5-115)');
   assert.ok(checkTargets(makefile).includes('parity-check') && kitGates(makefile).includes('parity-check'));
   for (const phase of ['parity-api-check', 'parity-bindings-go-check', 'parity-bindings-php-check', 'parity-bindings-php-extension-check', 'parity-bindings-typescript-check', 'parity-bindings-python-check', 'parity-bindings-rust-check'])
@@ -680,9 +675,9 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   // the invoked target, never by the command text before it (T245).
   assert.match(installTools('static', 'false', 'false'), /\s--no-print-directory install-tools$/m);
   assert.doesNotMatch(installTools('static', 'false', 'false'), /install-tools TOOLS=/);
-  const selectedTools = /install-tools TOOLS="([^"]+)"/.exec(installTools('feature_php_mysql', 'true', 'false'))?.[1]?.split(/\s+/) ?? [];
+  const selectedTools = /install-tools TOOLS="([^"]+)"/.exec(installTools('client_db_php', 'true', 'false'))?.[1]?.split(/\s+/) ?? [];
   assert.deepEqual(selectedTools, ['go', 'php', 'composer']);
-  const pythonTools = /install-tools TOOLS="([^"]+)"/.exec(installTools('feature_python_mysql', 'false', 'true'))?.[1]?.split(/\s+/) ?? [];
+  const pythonTools = /install-tools TOOLS="([^"]+)"/.exec(installTools('client_db_python', 'false', 'true'))?.[1]?.split(/\s+/) ?? [];
   assert.deepEqual(pythonTools, ['go', 'python', 'uv']);
   const mise = parseToml(text('mise.toml')) as { tools?: Record<string, unknown> };
   const toolchainValue: unknown = JSON.parse(text('config/toolchain.json'));

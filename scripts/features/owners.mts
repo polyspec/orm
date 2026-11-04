@@ -323,7 +323,7 @@ export function isPhpExtensionPart(feature: OwnersFeature, part: string): boolea
   return dependent?.language === 'php-extension';
 }
 
-// buildPhpExtension builds the PHP extension with the make recipe of feature-coverage/php-extension/<database> (its prerequisites, then
+// buildPhpExtension builds the PHP extension with the make recipe of feature-coverage-of/<id> (its prerequisites, then
 // php-ext-build in release mode) into a directory of this run. The coverage step reads the module from POLYSPEC_ORM_EXTENSION, which only
 // that step receives: the other steps keep their environment.
 async function buildPhpExtension(root: string, directory: string, context: { step: Step }): Promise<string> {
