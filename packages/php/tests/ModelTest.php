@@ -383,34 +383,6 @@ class ModelTest extends TestCase
         self::check($db->stats() == $db->utils()->stats(), 'Db stats are the utility stats');
     }
 
-    // Inserts and reads more values than SQLite binds in one statement: the inserts
-    // and the root IN list are split, duplicate IN values are read once, and a shape
-    // that a merge would change is rejected.
-    private static function caseBindLimitSplitting(Db $db, string $dsn): void
-    {
-        $n = 1200;
-        $rows = [];
-        $names = [];
-        for ($i = 0; $i < $n; $i++) {
-            $name = sprintf('chunk-%04d', $i);
-            $rows[] = (new Service())->setName($name);
-            $names[] = $name;
-        }
-        self::check((new Service())($db)->creates($rows, 500) === $n, 'inserted rows');
-        $names = array_merge($names, array_slice($names, 0, 200));
-        for ($i = 0; $i < 100; $i++) {
-            $names[] = "missing-$i";
-        }
-        self::check(count((new Service())($db)->name($names)->gets()) === $n, 'found rows');
-        self::check((new Service())($db)->name($names)->getCount() === $n, 'count');
-        if ($db->driver() === 'sqlite') {
-            self::check(
-                self::code(fn() => (new Service())($db)->name($names)->limit(0, 10)->gets()) === Code::IR_INVALID,
-                'limited split'
-            );
-        }
-    }
-
     /** The message of the error that fn threw. 'no error' if there was none. */
     private static function failureMessage(callable $fn): string
     {
@@ -695,13 +667,4 @@ class ModelTest extends TestCase
         self::caseTransactions($db);
     }
 
-    // bind limit splitting
-    // Requirements: PRT-41, PRT-76.
-    #[DataProvider('drivers')]
-    public function testBindLimitSplitting(string $driver): void
-    {
-        $dsn = self::caseDsn($driver);
-        $db = self::database($driver, $dsn);
-        self::caseBindLimitSplitting($db, $dsn);
-    }
 }

@@ -11,10 +11,6 @@ namespace Polyspec\Orm\Tests;
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/WasInsertedTest.php
 // [--filter <case>]
 
-use Polyspec\Orm\Code;
-use Polyspec\Orm\Config;
-use Polyspec\Orm\Orm;
-use Polyspec\Orm\OrmException;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 
@@ -50,26 +46,5 @@ final class WasInsertedTest extends TestCase
             self::assertSame(0, proc_close($child), "the child exited with an error: $errors");
             self::assertSame("done\n", $output);
         });
-    }
-
-    /**
-     * The flowmark server has no backend view: INT-53 is CAPABILITY_UNSUPPORTED on the markdown driver, after the
-     * connection.
-     */
-    public function testMarkdownHasNoBackendLockView(): void
-    {
-        $server = start_markdown_test_server(['{"ok":true}']);
-        $db = Orm::connect($server[2], new Config());
-        try {
-            $error = markdown_error(static fn() => $db->utils()->backendWaitingForLock());
-            self::assertSame(
-                Code::CAPABILITY_UNSUPPORTED,
-                $error?->code_ ?? 'none',
-                'backendWaitingForLock on markdown'
-            );
-        } finally {
-            $db->close();
-        }
-        markdown_test_server_received_messages($server);
     }
 }

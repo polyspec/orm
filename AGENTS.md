@@ -122,6 +122,11 @@ vendors; this file states only the rules of orm.
   unit is a finding too. No list of units waiting for conversion exists: such a list would let the check pass on
   unfinished work.
   Enforced by: `make repo-check`
+- Own: Every test of a file that a binding of `config/parity.json` names has a binding of its own or a line of FCV-2,
+  ``- In `<file>`, `<test>` stays as a native test: <reason>``, because the parity tool checks a file and not a test. A
+  suite bound with no symbol is a whole file, whose cases the tool compares with the recipe. A name that is not a literal
+  is not read; a line that names a test or a file that is not there is a finding.
+  Enforced by: `make repo-check`
 - Own: Performance is measured and reported; it never fails a test. A test prints its measurements (CPU and wall-clock
   time, the reference, the ratio and the machine), and a measurement above its documented reference value prints a
   `WARNING` line with the measurement, the reference and the machine, which the check runner keeps in the run record

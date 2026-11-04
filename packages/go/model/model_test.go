@@ -210,6 +210,7 @@ func TestGoConstructorForms(t *testing.T) {
 	})
 }
 
+// Requirements: PLN-8, PLN-9, PLN-14.
 func TestColumnsAndSubqueries(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {
