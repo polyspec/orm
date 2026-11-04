@@ -14,7 +14,6 @@ const TESTS: Command[] = [
   node('packages/ts/tests/model.mjs'),
   node('--test', 'packages/ts/tests/dbspec_runtime_db.mjs'),
   node('packages/ts/tests/schema-set.mjs'),
-  node('packages/ts/tests/install_changed_database.mjs'),
   node('packages/ts/tests/statement-runner.mjs'),
   node('packages/ts/tests/clock.mjs'),
   node('packages/ts/tests/driver-error.mjs'),

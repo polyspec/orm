@@ -2,12 +2,9 @@ package model_test
 
 import (
 	"database/sql"
-	"errors"
-	"net/url"
 	"path/filepath"
 	"slices"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -39,7 +36,6 @@ func databases(t *testing.T) map[string]*orm.DB {
 			t.Fatalf("%s: %v", driver, err)
 		}
 		t.Cleanup(func() { testcase.Close(t, db) })
-		dsns.Store(db, dsn)
 		if err := benchset.Install(db); err != nil {
 			t.Fatalf("%s install: %v", driver, err)
 		}
@@ -235,21 +231,6 @@ func TestGetMissingReturnsNil(t *testing.T) {
 	}
 }
 
-var dsns sync.Map
-
-func dsnOf(t *testing.T, db *orm.DB) string {
-	t.Helper()
-	v, ok := dsns.Load(db)
-	if !ok {
-		t.Fatal("connection DSN is not recorded")
-	}
-	s, isString := v.(string)
-	if !isString {
-		t.Fatalf("connection DSN recorded as %T, want string", v)
-	}
-	return s
-}
-
 // Requirements: PLN-8, PLN-9, PLN-14.
 // TestInsertWithoutIdentityOnEveryDatabase inserts a row of a table with a composite key and no identity column on every
 // database: the insert succeeds where the driver reports no insert id (pgx on PostgreSQL), since only a driver that
@@ -425,56 +406,13 @@ func TestWrites(t *testing.T) {
 	})
 }
 
-// TestTransactions runs a transaction with its savepoint, lock, local and retry calls. A goroutine started inside the
-// callback has no active transaction, so an unconnected model there returns CONFIG.
-// Requirements: PLN-13, PLN-16, PLN-17, PLN-18, PLN-20, PLN-21, DSL-122, INT-51, INT-59, INT-61, INT-73, INT-134, INT-57, INT-79.
+// TestTransactions holds that a goroutine started inside the callback has no active transaction, so an unconnected model
+// there returns CONFIG. A recipe step runs in one flow, so this form of Go stays native (FCV-2).
+// Requirements: PLN-18, DSL-122.
 func TestTransactions(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {
-		idle := db.Stats()
-		if idle.MaxOpenConnections != 10 || idle.OpenConnections != 1 || idle.InUse != 0 || idle.Idle != 1 {
-			t.Fatalf("idle connection statistics: %+v", idle)
-		}
-		boom := errors.New("boom")
 		err := db.Transaction(func() error {
-			stats := db.Stats()
-			if stats.MaxOpenConnections != 10 || stats.OpenConnections != 1 || stats.InUse != 1 || stats.Idle != 0 {
-				return errors.New("connection statistics do not report the transaction's checked-out connection")
-			}
-			if _, err := model.User().SetName("rolled back").Create(); err != nil {
-				return err
-			}
-			return boom
-		})
-		if !errors.Is(err, boom) || must(model.User().Connect(db).GetCount()) != 0 {
-			t.Fatalf("rollback: %v", err)
-		}
-		released := db.Stats()
-		if released.MaxOpenConnections != 10 || released.OpenConnections != 1 || released.InUse != 0 || released.Idle != 1 {
-			t.Fatalf("released connection statistics: %+v", released)
-		}
-		err = db.Transaction(func() error {
-			if _, err := model.User().SetName("outer").Create(); err != nil {
-				return err
-			}
-			inner := db.Transaction(func() error {
-				if _, err := model.User().SetName("inner").Create(); err != nil {
-					return err
-				}
-				return boom
-			})
-			if !errors.Is(inner, boom) {
-				return inner
-			}
-			if n, err := model.User().GetCount(); err != nil || n != 1 {
-				t.Errorf("savepoint rollback: %d %v", n, err)
-			}
-			if _, err := model.User().Name("outer").ForUpdate().Gets(); err != nil {
-				return err
-			}
-			if err := db.Utils().Lock("users"); err != nil {
-				return err
-			}
 			done := make(chan error, 1)
 			go func() {
 				_, err := model.User().GetCount()
@@ -484,66 +422,10 @@ func TestTransactions(t *testing.T) {
 				t.Errorf("goroutine inherited the transaction: %v", err)
 			}
 			return nil
-		}, orm.Isolation(orm.ReadCommitted), orm.Retry(0))
+		})
 		if err != nil {
 			t.Fatal(err)
-		}
-		if n := must(model.User().Connect(db).GetCount()); n != 1 {
-			t.Fatalf("commit: %d", n)
-		}
-		if _, err := model.User().Connect(db).ForUpdate().Gets(); orm.ErrorCode(err) != orm.CodeConfig {
-			t.Fatalf("lock outside a transaction: %v", err)
-		}
-		if err := db.Utils().Lock("x"); orm.ErrorCode(err) != orm.CodeConfig {
-			t.Fatalf("lock utility outside a transaction: %v", err)
-		}
-		attempts := 0
-		err = db.Transaction(func() error {
-			attempts++
-			if attempts < 3 {
-				return orm.TransactionConflict("retry")
-			}
-			return nil
-		})
-		if err != nil || attempts != 3 {
-			t.Fatalf("retry: %d %v", attempts, err)
-		}
-		schema := db.Utils().Schema()
-		empty := must(schema.Empty())
-		if empty {
-			t.Fatal("schema().empty() on an installed schema")
-		}
-		name := "ormexample"
-		wantExists := false
-		wantInstalled := false
-		switch db.Driver() {
-		case "mysql":
-			dsn, err := url.Parse(dsnOf(t, db))
-			if err != nil {
-				t.Fatal(err)
-			}
-			name = strings.TrimPrefix(dsn.Path, "/")
-			wantExists = true
-			wantInstalled = true
-		case "postgres":
-			name = "public"
-			wantExists = true
-			wantInstalled = true
-		}
-		if got := must(schema.Exists(name)); got != wantExists {
-			t.Fatalf("schema().exists(%q) = %v, want %v for %s", name, got, wantExists, db.Driver())
-		}
-		if got := must(schema.Installed(name, "user")); got != wantInstalled {
-			t.Fatalf("schema().installed(%q, user) = %v, want %v for %s", name, got, wantInstalled, db.Driver())
-		}
-		stats := db.Utils().Stats()
-		if stats.MaxOpenConnections != 10 || stats.OpenConnections != 1 || stats.InUse != 0 || stats.Idle != 1 {
-			t.Fatalf("idle pool statistics = %+v, want max=10 open=1 inUse=0 idle=1", stats)
 		}
 	})
 }
 
-// Requirements: COD-8, PLN-44, INT-60, INT-75, INT-131.
-// TestDuplicateRelationNamesTheAliasCall: two unaliased relations of one child entity have one result name, and the CONFIG message names that
-// result and the alias call (CPX-5).
-// Requirements: CPX-5, DSL-128.

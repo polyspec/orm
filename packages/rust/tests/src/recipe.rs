@@ -3463,8 +3463,14 @@ mod database {
         if let Some(replace) = arg.get("manifest_replace") {
             text = text.replace(replace["from"].as_str().unwrap_or_default(), replace["to"].as_str().unwrap_or_default());
         }
+        let mut hash = manifest.manifest_hash;
+        // manifest takes the place of the text and the hash that the build gives, so that a set with a diagnostic reaches the call.
+        if let Some(whole) = arg.get("manifest") {
+            text = whole["text"].as_str().unwrap_or_default().to_owned();
+            hash = whole["hash"].as_str().unwrap_or_default().to_owned();
+        }
         let leak = |t: String| -> &'static str { Box::leak(t.into_boxed_str()) };
-        Ok(Schema::with_external(leak(text), leak(manifest.external_text), leak(manifest.manifest_hash)))
+        Ok(Schema::with_external(leak(text), leak(manifest.external_text), leak(hash)))
     }
 
     /// A mutation that is never cancelled, whose phases are not observed and whose commit is permitted.
@@ -4177,6 +4183,11 @@ mod database {
                 ddl_behavior(step, context.database, &context.dsn, context.dir).await.map_err(fault)?;
                 Output::fields(json!({}))
             }
+            // dbspec.plan_physical (FCV-4, PLN-102): a plan applied, rolled back and finalized on the case database.
+            "dbspec.plan_physical" => {
+                plan_physical(step, context.database, &context.dsn, context.dir).await.map_err(fault)?;
+                Output::fields(json!({}))
+            }
             // sql.exec (FCV-4): a string runs on every database; an object runs only where its key is present.
             "transaction.writers" => {
                 let writers = crate::recipe_reads::read(step, "writers")["writers"].as_u64().unwrap_or_default();
@@ -4793,6 +4804,218 @@ mod database {
         async fn rows(&mut self, query: &str) -> Result<Vec<Vec<dbspec::CatalogValue>>, sqlx::Error> {
             self.count += 1;
             self.inner.rows(query).await
+        }
+    }
+
+    /// Runs one statement of dbspec.plan_physical on the connection.
+    macro_rules! plan_exec {
+        ($connection:ident, $sql:expr) => {{
+            let sql: &str = $sql;
+            sqlx::raw_sql(sqlx::AssertSqlSafe(sql.to_owned())).execute(&mut $connection).await.map_err(|e| format!("{sql}: {e}"))?;
+        }};
+    }
+
+    /// The first value of the first row of a query of dbspec.plan_physical, as text; a NULL or absent value fails.
+    macro_rules! plan_value {
+        ($connection:ident, $query:expr) => {{
+            let query: &str = $query;
+            let row = sqlx::raw_sql(sqlx::AssertSqlSafe(query.to_owned()))
+                .fetch_optional(&mut $connection)
+                .await
+                .map_err(|e| format!("{query}: {e}"))?
+                .ok_or_else(|| format!("{query}: no row"))?;
+            row.try_get_unchecked::<Option<String>, usize>(0).map_err(|e| format!("{query}: {e}"))?.ok_or_else(|| format!("{query}: NULL value"))?
+        }};
+    }
+
+    /// Checks on SQLite that no row violates a foreign key.
+    macro_rules! plan_foreign_keys {
+        ($connection:ident, $sqlite:expr) => {{
+            if $sqlite {
+                let violations = plan_value!($connection, "SELECT COUNT(*) FROM pragma_foreign_key_check");
+                if violations != "0" {
+                    return Err(format!("foreign_key_check returns {violations} rows"));
+                }
+            }
+        }};
+    }
+
+    /// Checks that the public introspect reads the schema text `want`, with nothing unsupported; an empty database has the empty text.
+    macro_rules! plan_schema_is {
+        ($connection:ident, $dialect:expr, $what:expr, $want:expr) => {{
+            let what: &str = $what;
+            let want: &str = $want;
+            let introspection = dbspec::introspect(&mut $connection, $dialect, "introspected").await.map_err(|e| format!("{what}: introspect: {e}"))?;
+            if !introspection.unsupported.is_empty() {
+                return Err(format!("{what}: unsupported objects {:?}", introspection.unsupported));
+            }
+            let got = if introspection.document.tables.is_empty() {
+                String::new()
+            } else {
+                dbspec::manifest(&[&introspection.document]).map_err(|e| format!("{what}: the manifest: {e:?}"))?.schema_text
+            };
+            if got != want {
+                return Err(format!("{what}: the schema text differs\n--- want\n{want}--- got\n{got}"));
+            }
+        }};
+    }
+
+    /// Runs the steps for the database: a step with dialects runs only on those, a statement with fails must fail, a query
+    /// compares its first value, as text, with want.
+    macro_rules! plan_behavior {
+        ($connection:ident, $database:expr, $entries:expr) => {{
+            let entries: &[Value] = $entries;
+            for entry in entries {
+                if entry["dialects"].as_array().is_some_and(|dialects| !dialects.iter().any(|dialect| dialect == $database)) {
+                    continue;
+                }
+                if let Some(sql) = entry["sql"].as_str() {
+                    let done = sqlx::raw_sql(sqlx::AssertSqlSafe(sql.to_owned())).execute(&mut $connection).await;
+                    match (done, entry["fails"].as_bool() == Some(true)) {
+                        (Ok(_), true) => return Err(format!("{sql} must fail")),
+                        (Err(error), false) => return Err(format!("{sql}: {error}")),
+                        _ => {}
+                    }
+                    continue;
+                }
+                let query = entry["query"].as_str().unwrap_or_default();
+                let got = plan_value!($connection, query);
+                let want = entry["want"].as_str().unwrap_or_default();
+                if got != want {
+                    return Err(format!("{query}: got {got}, want {want}"));
+                }
+            }
+        }};
+    }
+
+    /// The dbspec.plan_physical op (FCV-4, PLN-102): on one native connection of the case database, the connection rules, the
+    /// rendered source and the before steps; the plan steps before finalize, on SQLite with foreign keys off and no row of
+    /// foreign_key_check, and the public introspect reads the target with nothing unsupported; without an irreversible step,
+    /// the rollback statements return to the source and the steps run again; then the after steps and the finalize steps run,
+    /// the target is read again and no table or column named dbspec$ remains.
+    async fn plan_physical(step: &Value, database: &str, dsn: &str, dir: &Path) -> Result<(), String> {
+        use dbspec::Dialect;
+        use sqlx::{ConnectOptions as _, Connection as _, Row as _};
+        let json_file = |path: &Path| -> Result<Value, String> {
+            serde_json::from_str(&std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?)
+                .map_err(|e| format!("{}: {e}", path.display()))
+        };
+        let path = dir.join(crate::recipe_reads::read(step, "vectors")["vectors"].as_str().unwrap_or_default());
+        let vectors = json_file(&path)?;
+        let physical = json_file(&path.with_file_name("plans-physical.json"))?;
+        let id = crate::recipe_reads::read(step, "case")["case"].as_str().unwrap_or_default();
+        let vector =
+            vectors["cases"].as_array().and_then(|cases| cases.iter().find(|case| case["id"] == id)).ok_or_else(|| format!("the vectors have no case {id}"))?;
+        let steps_of_vector = vector["steps"].as_array().ok_or_else(|| format!("the case {id} has no steps"))?;
+        let plan_lines = steps_of_vector.iter().find(|s| s["op"] == "dbspec.parse_plan").ok_or_else(|| format!("the case {id} has no plan"))?;
+        let plan = dbspec::parse_plan(&super::plan_text(&plan_lines["lines"])).map_err(|e| format!("the plan: {e:?}"))?;
+        let source = match steps_of_vector.iter().find(|s| s["op"] == "dbspec.parse" && s["as"] == "source") {
+            None => None,
+            Some(parse) => Some(
+                dbspec::parse(&super::plan_text(&parse["lines"]), &std::collections::BTreeMap::new())
+                    .map(|parsed| parsed.document)
+                    .map_err(|e| format!("the source: {e:?}"))?,
+            ),
+        };
+        let record = &physical["cases"][id];
+        let before = record["before"].as_array().ok_or_else(|| format!("{id}: no physical record in plans-physical.json"))?;
+        let after = record["after"].as_array().ok_or_else(|| format!("{id}: no physical record in plans-physical.json"))?;
+        let (dialect, rules, hidden): (Dialect, &[&str], &str) = match database {
+            "mysql" => (
+                Dialect::MySql,
+                &["SET time_zone = '+00:00'"],
+                "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME LIKE 'dbspec$%' OR COLUMN_NAME LIKE 'dbspec$%')",
+            ),
+            "postgres" => (
+                Dialect::Postgres,
+                &["SET client_min_messages = warning", "SET TimeZone = 'UTC'"],
+                "SELECT COUNT(*) FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid WHERE c.relnamespace = current_schema()::regnamespace AND c.relkind = 'r' AND a.attnum > 0 AND (c.relname LIKE 'dbspec$%' OR a.attname LIKE 'dbspec$%')",
+            ),
+            _ => (
+                Dialect::Sqlite,
+                &["PRAGMA foreign_keys = ON"],
+                "SELECT COUNT(*) FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type = 'table' AND (m.name LIKE 'dbspec$%' OR p.name LIKE 'dbspec$%')",
+            ),
+        };
+        let setup = match &source {
+            None => Vec::new(),
+            Some(source) => dbspec::render(&[source], dialect).map_err(|e| format!("the render of the source: {e:?}"))?,
+        };
+        let source_text = match &source {
+            None => String::new(),
+            Some(source) => dbspec::manifest(&[source]).map_err(|e| format!("the manifest of the source: {e:?}"))?.schema_text,
+        };
+        let target = plan.schema_text().to_owned();
+        let steps = dbspec::plan_steps(source.as_ref(), &plan, dialect).map_err(|e| format!("the plan steps: {e:?}"))?;
+        let reversible = steps.iter().all(|s| s.finalize || !s.rollback.is_empty());
+        let sqlite = database == "sqlite";
+        // The driver of each database has its own connection type, so the steps are written once as a macro.
+        macro_rules! run {
+            ($options:expr) => {{
+                let mut connection = $options.connect().await.map_err(|e| e.to_string())?;
+                let result = async {
+                    for rule in rules {
+                        plan_exec!(connection, rule);
+                    }
+                    for statement in &setup {
+                        plan_exec!(connection, statement);
+                    }
+                    plan_behavior!(connection, database, before);
+                    // SQLite turns foreign keys off while it recreates a table, and checks them afterwards.
+                    if sqlite {
+                        plan_exec!(connection, "PRAGMA foreign_keys = OFF");
+                        plan_exec!(connection, "PRAGMA legacy_alter_table = OFF");
+                    }
+                    for s in steps.iter().take_while(|s| !s.finalize) {
+                        plan_exec!(connection, &s.statement);
+                    }
+                    plan_foreign_keys!(connection, sqlite);
+                    plan_schema_is!(connection, dialect, "applied", &target);
+                    if reversible {
+                        // A rollback that goes all the way back recreates the old table with the added column hidden.
+                        for s in steps.iter().rev().filter(|s| !s.finalize) {
+                            plan_exec!(connection, if s.rollback_restore.is_empty() { &s.rollback } else { &s.rollback_restore });
+                        }
+                        plan_foreign_keys!(connection, sqlite);
+                        plan_schema_is!(connection, dialect, "rolled back", &source_text);
+                        for s in steps.iter().take_while(|s| !s.finalize) {
+                            plan_exec!(connection, if s.restore.is_empty() { &s.statement } else { &s.restore });
+                        }
+                        plan_foreign_keys!(connection, sqlite);
+                        plan_schema_is!(connection, dialect, "applied again", &target);
+                    }
+                    if sqlite {
+                        plan_exec!(connection, "PRAGMA foreign_keys = ON");
+                    }
+                    plan_behavior!(connection, database, after);
+                    // Finalize also runs with SQLite foreign keys off, as apply does: hidden tables can reference each other.
+                    if sqlite {
+                        plan_exec!(connection, "PRAGMA foreign_keys = OFF");
+                    }
+                    for s in steps.iter().filter(|s| s.finalize) {
+                        plan_exec!(connection, &s.statement);
+                    }
+                    plan_foreign_keys!(connection, sqlite);
+                    if sqlite {
+                        plan_exec!(connection, "PRAGMA foreign_keys = ON");
+                    }
+                    plan_schema_is!(connection, dialect, "finalized", &target);
+                    let left = plan_value!(connection, hidden);
+                    if left != "0" {
+                        return Err(format!("{left} tables or columns named dbspec$ remain after finalize"));
+                    }
+                    Ok::<(), String>(())
+                }
+                .await;
+                connection.close().await.map_err(|e| e.to_string())?;
+                result
+            }};
+        }
+        match parse_dsn(dsn).map_err(|e| e.to_string())?.options {
+            ConnectOptions::MySql(options) => run!(options),
+            ConnectOptions::Postgres(options) => run!(options),
+            ConnectOptions::Sqlite(options) => run!(options),
+            ConnectOptions::Markdown(_) => Err("a markdown corpus has no native SQL driver".into()),
         }
     }
 

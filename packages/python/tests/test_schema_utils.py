@@ -1,4 +1,4 @@
-# The schema tools of a connection: db.utils().schema() returns the SchemaUtils of that connection
+# The registration of a schema on a connection through db.utils().schema()
 # (docs/spec/schema.md "Schema registration"; packages/ts/src/utils.ts).
 import tempfile
 import unittest
@@ -8,35 +8,6 @@ from .test_sqlite import generate, generate_document
 from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
-
-
-class SchemaAccessorTest(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        tmp = tempfile.TemporaryDirectory(prefix="orm-schema-utils-")
-        cls.addClassCleanup(tmp.cleanup)
-        cls.models = generate(
-            tmp.name, ROOT / "contracts" / "fixtures" / "bench" / "dbspec-set.json"
-        )
-        cls.db = cls.models.connect(
-            f"sqlite://{tmp.name}/schema.sqlite3",
-            aesKey="bench-salt",
-            blindIndexKey="bench-blind-index",
-        )
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.db.close()
-
-    # Requirements: INT-61, INT-73, INT-134.
-    def test_schema_returns_the_schema_tools_of_the_connection(self):
-        from polyspec.orm.utils import SchemaUtils
-
-        utils = self.db.utils()
-        tools = utils.schema()
-        self.assertIsInstance(tools, SchemaUtils)
-        self.assertIs(tools.db, self.db)
-        self.assertIsNotNone(utils.stats())
 
 
 if __name__ == "__main__":

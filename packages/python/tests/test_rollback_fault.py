@@ -1,7 +1,7 @@
-# The rollback of a transaction fails deterministically through the test entry point
-# polyspec.orm.testing.fail_next_rollback, and a failed rollback reports both the callback error and
-# the rollback error (docs/spec/protocol.md "Errors" and "Test faults", packages/ts/tests/transaction-failure.mjs,
-# packages/php/tests/RollbackTest.php).
+# A rollback that fails on the driver reports both the callback error and the rollback error, and the test entry point
+# polyspec.orm.testing stays out of the package (docs/spec/protocol.md "Errors" and "Test faults",
+# packages/ts/tests/transaction-failure.mjs, packages/php/tests/RollbackTest.php). The rollback fault itself is the
+# recipe `transactions`.
 import os
 import sqlite3
 from types import SimpleNamespace
@@ -105,11 +105,6 @@ class _CloseDuringTransactionDb(Db):
         return connection
 
 
-def fail_next_rollback(db) -> None:
-    """Reads the test entry point from its module and calls it. It raises ModuleNotFoundError if the module is missing."""
-    testing.fail_next_rollback(db)
-
-
 def check_rollback(case: unittest.TestCase, error, subject: str):
     """A ROLLBACK error has two errors, and its message records both."""
     case.assertIsInstance(error, OrmError, f"{subject} raises {error!r}")
@@ -156,33 +151,6 @@ class RollbackFaultTest(unittest.TestCase):
 
     def check_rollback(self, error, subject: str):
         check_rollback(self, error, subject)
-
-    # Requirements: INT-72.
-    def test_a_savepoint_rollback_does_not_consume_the_fault(self):
-        fail_next_rollback(self.db)
-        inner = RuntimeError("savepoint callback failed")
-
-        def nested():
-            self.probe("outer").create()
-
-            def failing():
-                self.probe("inner").create()
-                raise inner
-
-            self.assertIs(self.raised(lambda: self.db.transaction(failing)), inner)
-
-        self.assertIsNone(
-            self.raised(lambda: self.db.transaction(nested, {"retry": 0}))
-        )
-        self.assertEqual(self.count(), 1)
-        callback = RuntimeError("callback failed")
-
-        def failing_outer():
-            raise callback
-
-        error = self.raised(lambda: self.db.transaction(failing_outer, {"retry": 0}))
-        self.check_rollback(error, "transaction")
-        self.assertEqual(error.rollback.code, "FAULT")
 
     def failed_rollback(self, label: str):
         """Runs a transaction that creates the row label and then fails, and returns its ROLLBACK error, after checking
@@ -291,6 +259,7 @@ class RollbackFaultTest(unittest.TestCase):
         raw.set_authorizer(None)
 
     def test_lost_rollback_connection_is_closed_before_the_next_transaction(self):
+        # Requirements: INT-72.
         db = _LostRollbackDb()
         first = db.connections[0]
         callback = RuntimeError("transaction callback failed")

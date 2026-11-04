@@ -960,7 +960,6 @@
         "packages/go/decimalmodel/schema_set_test.go",
         "contracts/fixtures/decimal_schema.dbs",
         "packages/php/tests/RuntimeDbTest.php",
-        "packages/php/tests/deadlock_child.php",
         "packages/rust/orm/tests/decimal_model.rs",
         "packages/ts/tests/typecheck.ts",
         "packages/ts/tests/decimal_model_type.ts",
@@ -1103,8 +1102,7 @@
           "shard": "other",
           "inputs": [
             "packages/php/tests/ModelTest.php",
-            "packages/php/tests/case_database.php",
-            "packages/php/tests/deadlock_child.php"
+            "packages/php/tests/case_database.php"
           ]
         },
         {
@@ -2409,7 +2407,6 @@
         "connection-cancelled-transaction-session-state"
       ],
       "fixtures": [
-        "packages/php/tests/deadlock_child.php",
         "packages/php/tests/transaction_deadlock_child.php",
         "contracts/fixtures/rollback.dbs",
         "packages/go/orm/failing_driver_test.go",
@@ -3845,7 +3842,8 @@
         "dbspec-introspect-silent-failure",
         "dbspec-introspect-extension-method",
         "php-dbspec-interface-compatibility",
-        "dbspec-plan-physical",
+        "php-dbspec-apply-drift-error-fields",
+        "php-dbspec-rollback-drift-error-fields",
         "dbspec-apply-cleanup-go",
         "dbspec-apply-cleanup-typescript",
         "dbspec-apply-cleanup-rust",
@@ -3915,7 +3913,6 @@
         "packages/go/internal/dialects/ddl_physical_test.go",
         "packages/go/internal/dialects/facts_physical_test.go",
         "packages/go/internal/dialects/introspect_compare_physical_test.go",
-        "packages/go/internal/dialects/plans_physical_test.go",
         "packages/go/internal/dialects/probe_test.go",
         "packages/go/internal/dialects/schema_documents_physical_test.go",
         "packages/go/internal/dialects/sqlite_filename_physical_test.go",
@@ -3931,16 +3928,13 @@
         "packages/rust/schema/tests/dbspec_model.rs",
         "packages/rust/tests/tests/dbspec_render_statements_none.rs",
         "packages/rust/schema/tests/dbspec_runtime.rs",
-        "packages/rust/orm/tests/common/dbspec_probe.rs",
         "packages/rust/tests/tests/dbspec_introspect_mysql.rs",
         "packages/rust/tests/tests/dbspec_introspect_postgres.rs",
         "packages/rust/tests/tests/dbspec_introspect_sqlite.rs",
-        "packages/rust/orm/tests/dbspec_plan_apply.rs",
         "packages/rust/tests/tests/dbspec_plan_cases_none.rs",
         "packages/ts/tests/dbspec_introspect-mysql.test.mjs",
         "packages/ts/tests/dbspec_introspect-postgres.test.mjs",
         "packages/ts/tests/dbspec_introspect-sqlite.test.mjs",
-        "packages/ts/tests/dbspec-plan-physical.mjs",
         "packages/ts/tests/dbspec-plan-cases.mjs",
         "packages/ts/tests/dbspec-plan-invalid.mjs",
         "packages/ts/tests/dbspec-plan-chains.mjs",
@@ -4024,7 +4018,6 @@
         "packages/php/tests/DbspecPlanReaderTest.php",
         "packages/go/orm/recipe_dbspec_introspect_test.go",
         "packages/php/tests/DbspecIntrospectRecipeTest.php",
-        "packages/python/tests/dbspec_plan_physical.py",
         "packages/php-ext/tests/DbspecIntrospectNativeTest.php",
         "packages/ts/tests/dbspec-mermaid-errors.mjs",
         "packages/python/tests/mermaid_error_boundary.py",
@@ -4668,8 +4661,6 @@
         "contracts/fixtures/external/core_extra.dbs",
         "contracts/fixtures/external/member.dbs",
         "contracts/fixtures/external/member_v2.dbs",
-        "contracts/fixtures/install/note.dbs",
-        "contracts/fixtures/install/changed_database.json",
         "packages/python/tests/coverage_case.py",
         "packages/php/tests/DbspecSqliteLockCases.php",
         "packages/php/tests/dbspec_limit_cases.php"
@@ -4680,10 +4671,8 @@
         "packages/php/tests/ModelTest.php",
         "packages/ts/tests/model.mjs",
         "packages/rust/orm/tests/zone.rs",
-        "packages/go/orm/install_test.go",
         "packages/php/tests/SchemaSetTest.php",
         "packages/ts/tests/schema-set.mjs",
-        "packages/ts/tests/install_changed_database.mjs",
         "packages/ts/tests/dbspec_set_decimal-mysql.test.mjs",
         "packages/ts/tests/dbspec_set_decimal-postgres.test.mjs",
         "packages/ts/tests/dbspec_set_decimal-sqlite.test.mjs",
@@ -4702,15 +4691,12 @@
         "packages/rust/tests/tests/decimal_physical.rs",
         "packages/rust/orm/tests/external_documents.rs",
         "packages/go/orm/register_test.go",
-        "packages/rust/orm/tests/install.rs",
         "packages/ts/tests/dbspec_runtime_db.mjs",
         "packages/python/tests/test_installed_differences.py",
-        "packages/python/tests/install_changed_database.py",
         "packages/python/tests/test_schema_utils.py",
         "packages/python/tests/test_dbspec_load_set_none.py",
         "packages/python/tests/case_database.py",
         "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
-        "packages/php-ext/tests/CoverageNativeChangedDatabaseExtensionTest.php",
         "packages/ts/tests/dbspec_apply_verification_errors-none.test.mjs",
         "packages/ts/tests/dbspec-begin-exclusive-lock.mjs",
         "packages/python/tests/test_dbspec_sqlite_lock.py",
@@ -4775,24 +4761,20 @@
         },
         {
           "id": "install-register-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestRegisterReusesEnginePerHash|TestInstallVerifiesTheDatabase)$' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestRegisterReusesEnginePerHash$' -count=1",
           "shard": "other",
           "inputs": [
-            "packages/go/orm/install_test.go",
             "packages/go/orm/register_test.go",
-            "contracts/fixtures/install/note.dbs",
-            "contracts/fixtures/install/changed_database.json",
             "contracts/fixtures/external/*.dbs"
           ]
         },
         {
           "id": "install-register-php",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'test(InstallVerifiesTheDatabase|EditedManifest)' packages/php/tests/SchemaSetTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'testEditedManifest' packages/php/tests/SchemaSetTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/SchemaSetTest.php",
             "packages/php/tests/case_database.php",
-            "contracts/fixtures/install/changed_database.json",
             "contracts/fixtures/decimal_schema.dbs",
             "packages/php/tests/three_drivers.php",
             "contracts/fixtures/external/*.dbs"
@@ -4804,9 +4786,7 @@
           "shard": "other",
           "inputs": [
             "packages/ts/tests/schema-set.mjs",
-            "packages/ts/tests/install_changed_database.mjs",
-            "packages/ts/tests/case-database.mjs",
-            "contracts/fixtures/install/changed_database.json"
+            "packages/ts/tests/case-database.mjs"
           ]
         },
         {
@@ -4822,24 +4802,11 @@
           ]
         },
         {
-          "id": "install-changed-database-typescript",
-          "command": "node packages/ts/tests/install_changed_database.mjs",
-          "shard": "other",
-          "inputs": [
-            "packages/ts/tests/schema-set.mjs",
-            "packages/ts/tests/install_changed_database.mjs",
-            "packages/ts/tests/case-database.mjs",
-            "contracts/fixtures/install/changed_database.json"
-          ]
-        },
-        {
           "id": "install-register-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts install-register-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test install --test external_documents",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts install-register-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test external_documents",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/install.rs",
             "packages/rust/orm/tests/external_documents.rs",
-            "contracts/fixtures/install/changed_database.json",
             "contracts/fixtures/external/*.dbs"
           ]
         },
@@ -4871,26 +4838,14 @@
           ]
         },
         {
-          "id": "install-changed-database-python",
-          "command": "make python-install-changed-database-check",
-          "shard": "other",
-          "inputs": [
-            "packages/python/tests/install_changed_database.py",
-            "contracts/fixtures/install/changed_database.json"
-          ]
-        },
-        {
           "id": "t182-6-php-extension-changed-database",
           "command": "make t182-php-extension-schema-check",
           "shard": "other",
           "inputs": [
             "Makefile",
-            "packages/php-ext/tests/CoverageNativeChangedDatabaseExtensionTest.php",
             "packages/php/tests/SchemaSetTest.php",
             "packages/php/tests/case_database.php",
             "packages/php-ext/src/schema_utils.c",
-            "contracts/fixtures/install/changed_database.json",
-            "contracts/fixtures/install/note.dbs",
             "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
             "contracts/fixtures/external/*.dbs"
           ]
@@ -9987,16 +9942,6 @@
         "packages/ts/tests/database-case-tests.test.mjs"
       ],
       "command": "make --no-print-directory database-case-tests-helper-check"
-    },
-    {
-      "id": "typescript-dbspec-physical-database",
-      "paths": [
-        "packages/ts/tests/dbspec-physical-database.mjs"
-      ],
-      "tests": [
-        "packages/ts/tests/dbspec-physical-database.test.mjs"
-      ],
-      "command": "make --no-print-directory dbspec-physical-database-helper-check"
     },
     {
       "id": "typescript-conditional-entry",

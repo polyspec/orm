@@ -331,61 +331,6 @@ final class SchemaSetTest extends TestCase
         self::check($runs === $connectRuns, "connectSchema ran $runs statements, connect $connectRuns");
     }
 
-    /** @return list<array<string, mixed>> the cases of contracts/fixtures/install/changed_database.json */
-    private static function changedDatabaseFixture(): array
-    {
-        $fixture = json_decode(
-            (string) file_get_contents(dirname(__DIR__, 3) . "/contracts/fixtures/install/changed_database.json"),
-            true,
-            flags: JSON_THROW_ON_ERROR
-        );
-        self::check($fixture['cases'] !== [], 'contracts/fixtures/install/changed_database.json has no cases');
-        return $fixture['cases'];
-    }
-
-    /**
-     * install compares the whole database with the set, not only the table names (docs/spec/schema.md "Schema
-     * installation"). For each case of contracts/fixtures/install/changed_database.json, a database changed by a
-     * statement outside the ORM is installed again with the same set: it is CONFIG, the dialect's message, and the
-     * database stays as it is.
-     */
-    private static function installVerifiesTheDatabase(string $dsn, array $case): void
-    {
-        [$driver] = Orm::parseDsn($dsn);
-        self::check(
-            $case['operation'] === 'install',
-            "{$case['id']}: the operation {$case['operation']}, want install"
-        );
-        $document = (string) file_get_contents(\coverageRepositoryRoot() . "/contracts/fixtures/{$case['document']}");
-        $documents = RuntimeModel::parse([basename($case['document']) => $document]);
-        $model = RuntimeModel::build($documents);
-        $schema = new Schema($model->manifestText, $model->manifestHash);
-        $db = Orm::connect($dsn, new Config());
-        try {
-            $db->utils()->schema()->install($schema);
-            $db->pdo()->exec($case['statement']);
-            $want = "{$case['expected']['code']}: {$case['expected']['message'][$driver]}";
-            try {
-                $db->utils()->schema()->install($schema);
-                self::check(false, "{$case['id']}: install over the changed database: no error, want $want");
-            } catch (OrmException $e) {
-                self::check(
-                    $e->code_ === $case['expected']['code'] && $e->getMessage() === $want,
-                    "{$case['id']}: install over the changed database: {$e->code_} {$e->getMessage()}, want $want"
-                );
-            }
-            $db->pdo()->query($case['remaining'])->fetchAll();
-            // The next case uses the same case database, so this case's table is removed.
-            foreach ($documents as $parsed) {
-                foreach ($parsed->tables as $table) {
-                    $db->pdo()->exec("DROP TABLE {$table->name}");
-                }
-            }
-        } finally {
-            $db->close();
-        }
-    }
-
     public static function setUpBeforeClass(): void
     {
         self::fixture();
@@ -395,24 +340,5 @@ final class SchemaSetTest extends TestCase
     public function testEditedManifest(): void
     {
         self::editedManifest();
-    }
-
-    /** @return iterable<string, array{array<string, mixed>}> the cases of changed_database.json by their ids */
-    public static function changedDatabaseCases(): iterable
-    {
-        foreach (self::changedDatabaseFixture() as $case) {
-            yield $case['id'] => [$case];
-        }
-    }
-
-    // Each case of changed_database.json runs on every driver, in a case database of its own per driver, removed when
-    // it ends, also when it fails.
-    #[DataProvider('changedDatabaseCases')]
-    public function testInstallVerifiesTheDatabase(array $case): void
-    {
-        foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
-            with_case_database($driver, static function (string $step): void {
-            }, static fn(string $dsn) => self::installVerifiesTheDatabase($dsn, $case));
-        }
     }
 }

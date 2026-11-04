@@ -162,7 +162,7 @@ A terminal without a connection outside a transaction returns `CONFIG`. A connec
 
 - **INT-40** `isolation`: `default`, `read_uncommitted`, `read_committed`, `repeatable_read`, `serializable`
 - **INT-41** `readOnly`: boolean
-- **INT-42** `timeoutMs`: positive integer; PostgreSQL applies `statement_timeout`, MySQL and SQLite return `CAPABILITY_UNSUPPORTED`
+- **INT-42** `timeoutMs`: positive integer, and `0` is the same as omitting it; PostgreSQL applies `statement_timeout`, MySQL and SQLite return `CAPABILITY_UNSUPPORTED`
 - **INT-43** `retry`: deadlock retry count, default `3`; each retry runs the complete callback again, and `0` disables retry
 - **INT-44** `audit`: column name to value of the unit of work's audit record; the transaction inserts the values of the connection's audit source with these values (a value wins) into the audit record table right before its first write of an audited table, in every attempt, so a transaction that writes no audited row inserts none, and every audited write in the transaction writes the record's key ([usage](../operations/usage.md#audited-writes))
 - **INT-44a** The `polyspec-orm` crate takes `audit` on each of its transaction forms, `transaction`, `transaction_send` and `transaction_once`, and refuses it with `CONFIG` on a nested `transaction_once`.
