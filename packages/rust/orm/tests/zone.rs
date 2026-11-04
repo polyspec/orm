@@ -116,10 +116,6 @@ async fn pool_idle_size_and_lifetime() {
     let tmp = std::env::temp_dir().join(format!("orm-rust-pool-idle-{}", std::process::id()));
     std::fs::create_dir_all(&tmp).unwrap();
     let dsn = format!("sqlite://{}", tmp.join("pool.sqlite").display());
-    for (size, idle) in [(3, 4), (0, 11)] {
-        let r = Db::connect(&dsn, size, polyspec_orm::Config { pool_idle_size: idle, ..polyspec_orm::Config::default() }).await;
-        assert_eq!(r.err().map(|e| e.code().to_owned()), Some(polyspec_orm::codes::CONFIG.to_owned()), "pool size {size}, idle size {idle}");
-    }
     let Pool::Sqlite(unset) = Db::connect(&dsn, 3, polyspec_orm::Config::default()).await.unwrap().pool().clone() else { unreachable!() };
     assert_eq!(unset.options().get_max_lifetime(), Some(std::time::Duration::from_secs(30 * 60)), "default lifetime");
     unset.close().await;

@@ -841,7 +841,7 @@ final class Recipe
      * The names in a new directory, other than the journals, after a connection to a file of it (dsn.sqlite_file, FCV-4,
      * CFG-26).
      */
-    private static function sqliteFileNames(string $name, string $query): string
+    private static function sqliteFileNames(string $name, string $query, array $config = []): string
     {
         $directory = sys_get_temp_dir() . '/orm-recipe-sqlite-name-' . bin2hex(random_bytes(8));
         if (!mkdir($directory, 0o700)) {
@@ -849,7 +849,7 @@ final class Recipe
         }
         try {
             try {
-                self::connectDriver("sqlite://$directory/$name?$query");
+                self::connectDriver("sqlite://$directory/$name?$query", $config);
             } catch (OrmException $refused) {
                 Assert::assertSame(['.', '..'], scandir($directory), 'a refused DSN creates no file');
                 throw $refused;
@@ -1223,6 +1223,9 @@ final class Recipe
                     $documents = RuntimeModel::loadSet($text($step['owned']), $text($step['external']));
                 } catch (OrmException $error) {
                     Assert::assertSame($expect['error'] ?? null, $error->code_, 'error');
+                    if ($expect->has('message')) {
+                        Assert::assertSame("{$expect['error']}: {$expect['message']}", $error->getMessage(), 'message');
+                    }
                     // Each diagnostic is "<line>:<column> <rule>: <message>", in order (SCH-12).
                     if ($expect->has('diagnostics')) {
                         $prefix = "{$expect['error']}: ";
@@ -2016,7 +2019,7 @@ final class Recipe
     private static function sendQuery(RecipeStep $step, mixed $db): void
     {
         $column = $step['column'];
-        $operatorPrefix = ['eq_method' => 'eq', 'ne_method' => 'ne', 'gt_method' => 'gt'][$step['operator']] ?? null;
+        $operatorPrefix = ['eq_method' => 'eq', 'ne_method' => 'ne', 'gt_method' => 'gt', 'new_method' => 'new'][$step['operator']] ?? null;
         if ($operatorPrefix !== null) {
             // A chain method of an operator (DSL-50), which __call dispatches.
             $method = $operatorPrefix . ucfirst(self::BIND_FILTERS[$column]
@@ -2769,12 +2772,12 @@ final class Recipe
                 $catalog->close();
                 return [];
             case 'catalog.reconnect':
-                $reconnectDsn = isset($s['user_from_database'])
-                    ? self::userFromDatabaseDsn($context['dsn'], $s['user_from_database'])
+                $reconnectBase = isset($s['dsn'])
+                    ? self::connectDsn($s['dsn'], $context['database'], $context['dsn'])
                     : $context['dsn'];
-                if (isset($s['dsn'])) {
-                    $reconnectDsn = self::connectDsn($s['dsn'], $context['database'], $reconnectDsn);
-                }
+                $reconnectDsn = isset($s['user_from_database'])
+                    ? self::userFromDatabaseDsn($reconnectBase, $s['user_from_database'])
+                    : $reconnectBase;
                 if (isset($s['refused_message'])) {
                     try {
                         Catalog::connect($reconnectDsn);
@@ -3265,7 +3268,16 @@ final class Recipe
             case 'sql.hold_connection':
                 $context['held'] = case_admin(self::userFromDatabaseDsn($context['dsn'], $s['user_from_database']));
                 return [];
+            case 'sql.hold_statement':
+                // PDO on PostgreSQL parses a statement under a name of its own, unless it emulates.
+                $context['held'] = case_admin(self::connectDsn($s['dsn'], $context['database'], $context['dsn']));
+                $context['held']->setAttribute(\PDO::ATTR_EMULATE_PREPARES, false);
+                $held = $context['held']->prepare($s['sql']);
+                $held->execute([$s['bind']]);
+                $context['held_statement'] = $held;
+                return [];
             case 'sql.release_connection':
+                unset($context['held_statement']);
                 unset($context['held']);
                 return [];
             case 'sql.exec':
@@ -3314,7 +3326,7 @@ final class Recipe
                 }
                 return ['value' => ['text' => self::connectDriver($dsn, $s['config'] ?? [])]];
             case 'dsn.sqlite_file':
-                return ['value' => ['text' => self::sqliteFileNames($s['name'], $s['query'])]];
+                return ['value' => ['text' => self::sqliteFileNames($s['name'], $s['query'], $s['config'] ?? [])]];
         }
         if (in_array($s['op'], self::MODEL_OPS, true)) {
             return self::modelOp($s, $context);

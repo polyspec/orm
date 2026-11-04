@@ -868,6 +868,519 @@
       ]
     },
     {
+      "id": "scanned-operator-chain",
+      "requirements": [
+        "DSL-37",
+        "DSL-38",
+        "PLN-1"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "../generator_scan/bench.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nimport (\n\t\"example.com/ormexample/model\"\n)\n\nfunc Use() {\n\tm := model.Author()\n\tm.LtSeq(1)\n\tm.GeReadCount(1)\n\tm.LkName(\"x\")\n\tm.NeIsClose(true)\n}\n"
+              },
+              "typescript": {
+                "example/example.ts": "import { Author } from '../model/models.js';\n\nconst m = new Author();\nm.ltSeq(1);\nm.geReadCount(1);\nm.lkName('x');\nm.neIsClose(true);\n"
+              },
+              "python": {
+                "example/example.py": "from model.models import Author\n\nm = Author()\nm.lt_seq(1)\nm.ge_read_count(1)\nm.lk_name('x')\nm.ne_is_close(True)\n"
+              },
+              "php": {
+                "example/example.php": "<?php\n\nuse Example\\Model\\Author;\n\n$m = new Author();\n$m->ltSeq(1);\n$m->geReadCount(1);\n$m->lkName('x');\n$m->neIsClose(true);\n"
+              },
+              "rust": {
+                "example/example.rs": "mod own { include!(\"../model/orm_model.rs\"); }\nuse own::Author;\n\nfn run() {\n    let m = Author::new();\n    let _ = m.lt_seq(1);\n    let _ = m.ge_read_count(1);\n    let _ = m.lk_name(\"x\");\n    let _ = m.ne_is_close(true);\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [
+                  "author.lt_seq",
+                  "author.ge_read_count",
+                  "author.lk_name",
+                  "author.ne_is_close"
+                ],
+                "excludes": [
+                  "author.gt_seq",
+                  "author.and_lt_seq"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "scanned-connector-chain",
+      "requirements": [
+        "DSL-37",
+        "DSL-38",
+        "PLN-1"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "../generator_scan/bench.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nimport (\n\t\"example.com/ormexample/model\"\n)\n\nfunc Use() {\n\tm := model.Author()\n\tm.AndLtSeq(1)\n\tm.OrIsClose(true)\n\tm.AndReadCount(1)\n}\n"
+              },
+              "typescript": {
+                "example/example.ts": "import { Author } from '../model/models.js';\n\nconst m = new Author();\nm.andLtSeq(1);\nm.orIsClose(true);\nm.andReadCount(1);\n"
+              },
+              "python": {
+                "example/example.py": "from model.models import Author\n\nm = Author()\nm.and_lt_seq(1)\nm.or_is_close(True)\nm.and_read_count(1)\n"
+              },
+              "php": {
+                "example/example.php": "<?php\n\nuse Example\\Model\\Author;\n\n$m = new Author();\n$m->andLtSeq(1);\n$m->orIsClose(true);\n$m->andReadCount(1);\n"
+              },
+              "rust": {
+                "example/example.rs": "mod own { include!(\"../model/orm_model.rs\"); }\nuse own::Author;\n\nfn run() {\n    let m = Author::new();\n    let _ = m.and_lt_seq(1);\n    let _ = m.or_is_close(true);\n    let _ = m.and_read_count(1);\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [
+                  "author.and_lt_seq",
+                  "author.or_is_close",
+                  "author.and_read_count"
+                ],
+                "excludes": [
+                  "author.or_lt_seq",
+                  "author.and_is_close"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "scanned-multi-column-chain",
+      "requirements": [
+        "DSL-37",
+        "DSL-38",
+        "PLN-1"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "../generator_scan/bench.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nimport (\n\t\"example.com/ormexample/model\"\n)\n\nfunc Use() {\n\tm := model.Author()\n\tm.SeqAndName(1, \"x\")\n\tm.IsCloseOrReadCount(true, 1)\n}\n"
+              },
+              "typescript": {
+                "example/example.ts": "import { Author } from '../model/models.js';\n\nconst m = new Author();\nm.seqAndName(1, 'x');\nm.isCloseOrReadCount(true, 1);\n"
+              },
+              "python": {
+                "example/example.py": "from model.models import Author\n\nm = Author()\nm.seq_and_name(1, 'x')\nm.is_close_or_read_count(True, 1)\n"
+              },
+              "php": {
+                "example/example.php": "<?php\n\nuse Example\\Model\\Author;\n\n$m = new Author();\n$m->seqAndName(1, 'x');\n$m->isCloseOrReadCount(true, 1);\n"
+              },
+              "rust": {
+                "example/example.rs": "mod own { include!(\"../model/orm_model.rs\"); }\nuse own::Author;\n\nfn run() {\n    let m = Author::new();\n    let _ = m.seq_and_name(1, \"x\");\n    let _ = m.is_close_or_read_count(true, 1);\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [
+                  "author.seq_and_name",
+                  "author.is_close_or_read_count"
+                ],
+                "excludes": [
+                  "author.seq_or_name"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "scanned-between-and-column-function",
+      "requirements": [
+        "DSL-37",
+        "DSL-38",
+        "PLN-1"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "../generator_scan/bench.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nimport (\n\t\"example.com/ormexample/model\"\n\t\"github.com/polyspec/orm/packages/go/orm\"\n)\n\nfunc Use() {\n\tm := model.Author()\n\tm.BetweenReadCount([2]int32{1, 2})\n\tm.GtStartDt(orm.Year(), 1)\n\tm.StartDtLtEndDt(model.Author())\n}\n"
+              },
+              "typescript": {
+                "example/example.ts": "import { year } from '@polyspec/orm';\nimport { Author } from '../model/models.js';\n\nconst m = new Author();\nm.betweenReadCount([1, 2]);\nm.gtStartDt(year(), 1);\nm.startDtLtEndDt(new Author());\n"
+              },
+              "python": {
+                "example/example.py": "from polyspec.orm import year\n\nfrom model.models import Author\n\nm = Author()\nm.between_read_count([1, 2])\nm.gt_start_dt(year(), 1)\nm.start_dt_lt_end_dt(Author())\n"
+              },
+              "php": {
+                "example/example.php": "<?php\n\nuse Example\\Model\\Author;\nuse Polyspec\\Orm\\Orm;\n\n$m = new Author();\n$m->betweenReadCount([1, 2]);\n$m->gtStartDt(Orm::year(), 1);\n$m->startDtLtEndDt(new Author());\n"
+              },
+              "rust": {
+                "example/example.rs": "mod own { include!(\"../model/orm_model.rs\"); }\nuse own::Author;\n\nfn run() {\n    let m = Author::new();\n    let _ = m.between_read_count([1, 2]);\n    let _ = m.gt_start_dt(polyspec_orm::year(), 1);\n    let _ = m.start_dt_lt_end_dt(Author::new());\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [
+                  "author.between_read_count",
+                  "author.gt_start_dt",
+                  "author.start_dt_lt_end_dt"
+                ],
+                "excludes": [
+                  "author.between_like_count",
+                  "author.start_dt_gt_end_dt"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "scanned-finders",
+      "requirements": [
+        "DSL-37",
+        "DSL-38",
+        "PLN-1"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "../generator_scan/bench.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nimport (\n\t\"example.com/ormexample/model\"\n)\n\nfunc Use() {\n\tm := model.Author()\n\tm.GetsBySeqAndIsClose(1, true)\n\tm.GetBySeq(1)\n\tm.GetCountByServiceSeq(1)\n}\n"
+              },
+              "typescript": {
+                "example/example.ts": "import { Author } from '../model/models.js';\n\nconst m = new Author();\nm.getsBySeqAndIsClose(1, true);\nm.getBySeq(1);\nm.getCountByServiceSeq(1);\n"
+              },
+              "python": {
+                "example/example.py": "from model.models import Author\n\nm = Author()\nm.gets_by_seq_and_is_close(1, True)\nm.get_by_seq(1)\nm.get_count_by_service_seq(1)\n"
+              },
+              "php": {
+                "example/example.php": "<?php\n\nuse Example\\Model\\Author;\n\n$m = new Author();\n$m->getsBySeqAndIsClose(1, true);\n$m->getBySeq(1);\n$m->getCountByServiceSeq(1);\n"
+              },
+              "rust": {
+                "example/example.rs": "mod own { include!(\"../model/orm_model.rs\"); }\nuse own::Author;\n\nfn run() {\n    let m = Author::new();\n    let _ = m.gets_by_seq_and_is_close(1, true);\n    let _ = m.get_by_seq(1);\n    let _ = m.get_count_by_service_seq(1);\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [
+                  "author.gets_by_seq_and_is_close",
+                  "author.by_seq",
+                  "author.count_by_service_seq"
+                ],
+                "excludes": [
+                  "author.gets_by_seq",
+                  "author.count_by_seq"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "scanned-order-join-match",
+      "requirements": [
+        "DSL-37",
+        "DSL-38",
+        "PLN-1"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "../generator_scan/bench.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nimport (\n\t\"example.com/ormexample/model\"\n)\n\nfunc Use() {\n\tm := model.Author()\n\tm.OrderBySeqDescAndNameAsc()\n\tm.JoinUserSeqWithSeq(model.User())\n\tm.LeftJoinServiceSeqWithSeq(model.Service())\n\tm.MatchUserSeqWithSeq()\n}\n"
+              },
+              "typescript": {
+                "example/example.ts": "import { Author, Service, User } from '../model/models.js';\n\nconst m = new Author();\nm.orderBySeqDescAndNameAsc();\nm.joinUserSeqWithSeq(new User());\nm.leftJoinServiceSeqWithSeq(new Service());\nm.matchUserSeqWithSeq();\n"
+              },
+              "python": {
+                "example/example.py": "from model.models import Author, Service, User\n\nm = Author()\nm.order_by_seq_desc_and_name_asc()\nm.join_user_seq_with_seq(User())\nm.left_join_service_seq_with_seq(Service())\nm.match_user_seq_with_seq()\n"
+              },
+              "php": {
+                "example/example.php": "<?php\n\nuse Example\\Model\\Author;\nuse Example\\Model\\Service;\nuse Example\\Model\\User;\n\n$m = new Author();\n$m->orderBySeqDescAndNameAsc();\n$m->joinUserSeqWithSeq(new User());\n$m->leftJoinServiceSeqWithSeq(new Service());\n$m->matchUserSeqWithSeq();\n"
+              },
+              "rust": {
+                "example/example.rs": "mod own { include!(\"../model/orm_model.rs\"); }\nuse own::{Author, Service, User};\n\nfn run() {\n    let m = Author::new();\n    let _ = m.order_by_seq_desc_and_name_asc();\n    let _ = m.join_user_seq_with_seq(User::new());\n    let _ = m.left_join_service_seq_with_seq(Service::new());\n    let _ = m.match_user_seq_with_seq();\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [
+                  "author.order_by_seq_desc_and_name_asc",
+                  "author.join_user_seq_with_seq",
+                  "author.left_join_service_seq_with_seq",
+                  "author.match_user_seq_with_seq"
+                ],
+                "excludes": [
+                  "author.order_by_seq_asc_and_name_desc",
+                  "author.left_join_user_seq_with_seq",
+                  "author.join_service_seq_with_seq"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "scanned-added-names",
+      "requirements": [
+        "DSL-37",
+        "DSL-38",
+        "PLN-1"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "../generator_scan/bench.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nimport (\n\t\"example.com/ormexample/model\"\n\t\"github.com/polyspec/orm/packages/go/orm\"\n)\n\nfunc Use() {\n\tm := model.Author()\n\tm.AliasMine()\n\tm.NewExtra(1)\n\tm.GetExtra()\n\tm.PossibleSeq(1)\n\tm.AddColumnTotal(func(_ *model.AuthorModel) orm.Model { return model.User() })\n}\n"
+              },
+              "typescript": {
+                "example/example.ts": "import { Author, User } from '../model/models.js';\n\nconst m = new Author();\nm.aliasMine();\nm.newExtra(1);\nm.getExtra();\nm.possibleSeq(1);\nm.addColumnTotal(() => new User());\n"
+              },
+              "python": {
+                "example/example.py": "from model.models import Author, User\n\nm = Author()\nm.alias_mine()\nm.new_extra(1)\nm.get_extra()\nm.possible_seq(1)\nm.add_column_total(lambda _: User())\n"
+              },
+              "php": {
+                "example/example.php": "<?php\n\nuse Example\\Model\\Author;\nuse Example\\Model\\User;\n\n$m = new Author();\n$m->aliasMine();\n$m->newExtra(1);\n$m->getExtra();\n$m->possibleSeq(1);\n$m->addColumnTotal(fn(Author $_): User => new User());\n"
+              },
+              "rust": {
+                "example/example.rs": "mod own { include!(\"../model/orm_model.rs\"); }\nuse own::{Author, User};\n\nfn run() {\n    let m = Author::new();\n    let _ = m.alias_mine();\n    let _ = m.new_extra(1);\n    let _ = m.get_extra();\n    let _ = m.possible_seq(1);\n    let _ = m.add_column_total(|_| User::new());\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [
+                  "author.mine",
+                  "author.extra",
+                  "author.possible_seq",
+                  "author.add_column_total"
+                ],
+                "excludes": [
+                  "author.other",
+                  "author.possible_name"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "scanned-tuple",
+      "requirements": [
+        "DSL-37",
+        "DSL-38",
+        "PLN-1"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "../generator_scan/bench.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nimport (\n\t\"example.com/ormexample/model\"\n)\n\nfunc Use() {\n\tm := model.Author()\n\tm.TupleUserSeqWithServiceSeq([]model.AuthorUserSeqWithServiceSeq{{1, 2}})\n}\n"
+              },
+              "typescript": {
+                "example/example.ts": "import { Author } from '../model/models.js';\n\nconst m = new Author();\nm.tupleUserSeqWithServiceSeq([[1, 2]]);\n"
+              },
+              "python": {
+                "example/example.py": "from model.models import Author\n\nm = Author()\nm.tuple_user_seq_with_service_seq([[1, 2]])\n"
+              },
+              "php": {
+                "example/example.php": "<?php\n\nuse Example\\Model\\Author;\n\n$m = new Author();\n$m->tupleUserSeqWithServiceSeq([[1, 2]]);\n"
+              },
+              "rust": {
+                "example/example.rs": "mod own { include!(\"../model/orm_model.rs\"); }\nuse own::Author;\n\nfn run() {\n    let m = Author::new();\n    let _ = m.tuple_user_seq_with_service_seq(vec![(1, 2)]);\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [
+                  "author.tuple_user_seq_with_service_seq"
+                ],
+                "excludes": [
+                  "author.tuple_service_seq_with_user_seq"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "scanned-new-receiver",
+      "requirements": [
+        "DSL-37",
+        "DSL-38",
+        "PLN-1"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "../generator_scan/bench.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nimport (\n\t\"example.com/ormexample/model\"\n)\n\nfunc Use() {\n\tmodel.Author().LtSeq(1)\n\tmodel.Author().LkName(\"x\")\n}\n"
+              },
+              "typescript": {
+                "example/example.ts": "import { Author } from '../model/models.js';\n\nnew Author().ltSeq(1);\nnew Author().lkName('x');\n"
+              },
+              "python": {
+                "example/example.py": "from model.models import Author\n\nAuthor().lt_seq(1)\nAuthor().lk_name('x')\n"
+              },
+              "php": {
+                "example/example.php": "<?php\n\nuse Example\\Model\\Author;\n\n(new Author())->ltSeq(1);\n(new Author())->lkName('x');\n"
+              },
+              "rust": {
+                "example/example.rs": "mod own { include!(\"../model/orm_model.rs\"); }\nuse own::Author;\n\nfn run() {\n    let _ = Author::new().lt_seq(1);\n    let _ = Author::new().lk_name(\"x\");\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [
+                  "author.lt_seq",
+                  "author.lk_name"
+                ],
+                "excludes": [
+                  "author.and_lt_seq"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "scanned-new-receiver-chain",
+      "requirements": [
+        "DSL-37",
+        "DSL-38",
+        "PLN-1"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "../generator_scan/bench.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nimport (\n\t\"example.com/ormexample/model\"\n)\n\nfunc Use() {\n\tmodel.Author().LtSeq(1).AndGeReadCount(1).OrNeIsClose(true)\n}\n"
+              },
+              "typescript": {
+                "example/example.ts": "import { Author } from '../model/models.js';\n\nnew Author().ltSeq(1).andGeReadCount(1).orNeIsClose(true);\n"
+              },
+              "python": {
+                "example/example.py": "from model.models import Author\n\nAuthor().lt_seq(1).and_ge_read_count(1).or_ne_is_close(True)\n"
+              },
+              "php": {
+                "example/example.php": "<?php\n\nuse Example\\Model\\Author;\n\n(new Author())->ltSeq(1)->andGeReadCount(1)->orNeIsClose(true);\n"
+              },
+              "rust": {
+                "example/example.rs": "mod own { include!(\"../model/orm_model.rs\"); }\nuse own::Author;\n\nfn run() {\n    let _ = Author::new().lt_seq(1).and_ge_read_count(1).or_ne_is_close(true);\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [
+                  "author.lt_seq",
+                  "author.and_ge_read_count",
+                  "author.or_ne_is_close"
+                ],
+                "excludes": [
+                  "author.ge_read_count",
+                  "author.ne_is_close"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "join-needs-the-child",
+      "requirements": [
+        "DSL-37"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "../generator_scan/bench.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nimport (\n\t\"example.com/ormexample/model\"\n)\n\nfunc Use() {\n\tm := model.Author()\n\tm.JoinUserSeqWithSeq()\n}\n"
+              },
+              "typescript": {
+                "example/example.ts": "import { Author } from '../model/models.js';\n\nconst m = new Author();\nm.joinUserSeqWithSeq();\n"
+              },
+              "python": {
+                "example/example.py": "from model.models import Author\n\nm = Author()\nm.join_user_seq_with_seq()\n"
+              },
+              "php": {
+                "example/example.php": "<?php\n\nuse Example\\Model\\Author;\n\n$m = new Author();\n$m->joinUserSeqWithSeq();\n"
+              },
+              "rust": {
+                "example/example.rs": "mod own { include!(\"../model/orm_model.rs\"); }\nuse own::Author;\n\nfn run() {\n    let m = Author::new();\n    let _ = m.join_user_seq_with_seq();\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "check_reports_differences_without_writing",
       "requirements": [
         "DBS-175"

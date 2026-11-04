@@ -19,11 +19,6 @@ type collectionKeysFixture struct {
 		Encoded string           `json:"encoded"`
 		SameAs  string           `json:"same_as"`
 	} `json:"composites"`
-	DateTimeMicroseconds []struct {
-		Name    string `json:"name"`
-		Value   string `json:"value"`
-		Encoded string `json:"encoded"`
-	} `json:"datetime_microseconds"`
 	NullableComposite []map[string]any `json:"nullable_composite"`
 }
 
@@ -108,19 +103,6 @@ func TestCompositeCollectionKeyTypedComponentsFromFixture(t *testing.T) {
 			}
 		}
 		seen[entry.Name] = key
-	}
-}
-
-func TestCompositeCollectionKeyMicrosecondPrecisionFromFixture(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	fixture := loadCollectionKeys(t)
-	for _, entry := range fixture.DateTimeMicroseconds {
-		instant, err := time.Parse(time.RFC3339Nano, entry.Value)
-		if err != nil {
-			t.Fatalf("parse fixture %s: %v", entry.Name, err)
-		}
-		values := []any{instant, ""}
-		compositeKeyFromFixture(t, entry.Name, entry.Encoded, values)
 	}
 }
 

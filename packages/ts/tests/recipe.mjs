@@ -683,7 +683,7 @@ const OPS = {
     const directory = mkdtempSync(join(tmpdir(), 'orm-recipe-sqlite-name-'));
     try {
       try {
-        await connectDriver(`sqlite://${directory}/${s.name}?${s.query}`);
+        await connectDriver(`sqlite://${directory}/${s.name}?${s.query}`, s.config);
       } catch (refused) {
         const left = readdirSync(directory);
         if (left.length !== 0) throw new Error(`a refused DSN left the files ${left.join(',')}`);
@@ -721,8 +721,8 @@ const OPS = {
     return {};
   },
   async 'catalog.reconnect'(s, context) {
-    const named = s.user_from_database === undefined ? context.dsn : userFromDatabaseDsn(context.dsn, s.user_from_database);
-    const dsn = s.dsn === undefined ? named : connectDsn(s.dsn, context.database, named);
+    const base = s.dsn === undefined ? context.dsn : connectDsn(s.dsn, context.database, context.dsn);
+    const dsn = s.user_from_database === undefined ? base : userFromDatabaseDsn(base, s.user_from_database);
     if (s.refused_message !== undefined) {
       const refused = await connectCatalog(dsn).then(catalog => catalog.close().then(() => null), error => error);
       if (refused === null) throw new Error('the server accepted the connection that the step expects it to refuse');
@@ -738,6 +738,11 @@ const OPS = {
   },
   async 'sql.hold_connection'(s, context) {
     context.held = await nativeSession(context.database, userFromDatabaseDsn(context.dsn, s.user_from_database));
+    return {};
+  },
+  async 'sql.hold_statement'(s, context) {
+    context.held = await nativeSession(context.database, connectDsn(s.dsn, context.database, context.dsn));
+    await context.held.connection.query({ name: 'held_statement', text: s.sql, values: [s.bind] });
     return {};
   },
   async 'sql.release_connection'(_, context) {
@@ -2650,6 +2655,7 @@ async function checkDbspecFiles(step, dir, database) {
         documents = loadSet(text(step.owned), text(step.external));
       } catch (error) {
         if (error.code !== expect.error) throw error;
+        if (expect.message !== undefined) assert.equal(error.message, `${expect.error}: ${expect.message}`);
         // Each diagnostic is "<line>:<column> <rule>: <message>", in order (SCH-12).
         if (expect.diagnostics !== undefined) {
           assert.ok(error.message.startsWith(`${expect.error}: `), error.message);
@@ -3019,6 +3025,8 @@ async function queryColumn(step, db) {
     eq_method: { 'slots.i64_value': v => slots.andEqI64Value(v) },
     ne_method: { 'slots.i64_value': v => slots.andNeI64Value(v) },
     gt_method: { 'slots.i64_value': v => slots.andGtI64Value(v), 'slots.varchar_null_value': v => slots.andGtVarcharNullValue(v) },
+    // The name goes through a value, since the scan refuses the call of new<Name> on a stored column (DSL-116).
+    new_method: { 'slots.i64_value': v => { const method = 'newI64Value'; return slots[method](v); } },
   }[step.operator];
   if (operator !== undefined) return operator[step.column](hostValue(step.params[0])).gets();
   if (step.operator === 'like_contains') {

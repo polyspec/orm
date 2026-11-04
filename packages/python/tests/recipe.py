@@ -783,6 +783,8 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
             documents = RuntimeModel.load_set(text(step["owned"]), text(step["external"]))
         except OrmError as error:
             _expect_equal(error.code, expect.get("error"), "error")
+            if "message" in expect:
+                _expect_equal(str(error), f"{expect['error']}: {expect['message']}", "message")
             # Each diagnostic is "<line>:<column> <rule>: <message>", in order (SCH-12).
             if "diagnostics" in expect:
                 prefix = f"{expect['error']}: "
@@ -1367,11 +1369,11 @@ def _markdown_builder(step: dict, database: str) -> None:
         raise AssertionError(f"the terminal returned {caught!r}, want {expect}")
 
 
-# The chain method prefix of each operator of markdown.send (DSL-50).
-OPERATOR_METHODS = {"eq_method": "eq_", "ne_method": "ne_", "gt_method": "gt_"}
+# The chain method prefix of each operator of markdown.send (DSL-50, DSL-160).
+OPERATOR_METHODS = {"eq_method": "eq_", "ne_method": "ne_", "gt_method": "gt_", "new_method": "new_"}
 
 
-def _chain_value(wrapper: dict):
+def _send_chain_value(wrapper: dict):
     """The Python value of a wrapper for a chain method: an int, a nil, or a list of ints."""
     ((kind, value),) = wrapper.items()
     if kind == "int":
@@ -1379,7 +1381,7 @@ def _chain_value(wrapper: dict):
     if kind == "nil":
         return None
     if kind == "array":
-        return [_chain_value(item) for item in value]
+        return [_send_chain_value(item) for item in value]
     raise AssertionError(f"the parameter {json.dumps(wrapper)} has no chain value")
 
 
@@ -1398,9 +1400,8 @@ def _query_slot(models, db, step: dict) -> None:
         # A chain method of an operator (DSL-50), or a list: the value goes to the dynamic attribute of the generated model, so
         # the chain refuses what its operator does not take.
         prefix = OPERATOR_METHODS.get(step["operator"], "")
-        getattr(models.Slots().connect(db), f"{prefix}{name}")(
-            _chain_value(step["params"][0])
-        ).gets()
+        value = _send_chain_value(step["params"][0])
+        getattr(models.Slots().connect(db), f"{prefix}{name}")(value).gets()
         return
     if step["operator"] == "like_contains":
         # The contains condition of the text column is the lk operator of the generated model, a dynamic attribute (DSL-29).
@@ -1851,13 +1852,15 @@ def _connect_driver(dsn: str, config: dict | None = None) -> str:
         "statement_timeout_ms": "statementTimeoutMs",
     }
     options = {names[key]: value for key, value in (config or {}).items() if key in names}
+    if "aes_version" in (config or {}):
+        options["aesVersion"] = config["aes_version"]
+    if "aes_key" in (config or {}):
+        options["aesKey"] = config["aes_key"]
     if "aes_keys" in (config or {}):
         options["aesKeyring"] = AesKeyring(
             {int(version): key for version, key in config["aes_keys"].items()},
-            config["aes_version"],
+            config.get("aes_version", 1),
         )
-        options["aesVersion"] = config["aes_version"]
-        options["aesKey"] = config["aes_key"]
     db = Db.connect(dsn, options)
     try:
         rows = db.utils().run(lambda frame: frame.run("SELECT 1", [], "utility"))["rows"]
@@ -2530,10 +2533,10 @@ def _user_from_database_dsn(dsn: str, prefix: str) -> str:
 
 def _op_reconnect(step: dict, context: dict) -> dict:
     dsn = context["dsn"]
-    if "user_from_database" in step:
-        dsn = _user_from_database_dsn(dsn, step["user_from_database"])
     if "dsn" in step:
         dsn = connect_dsn(step["dsn"], context["database"], dsn)
+    if "user_from_database" in step:
+        dsn = _user_from_database_dsn(dsn, step["user_from_database"])
     if "refused_message" in step:
         try:
             connect_catalog(dsn).current_namespace()
@@ -2554,6 +2557,16 @@ def _op_reconnect(step: dict, context: dict) -> dict:
 def _op_hold_connection(step: dict, context: dict) -> dict:
     session = native_session(context["database"], _user_from_database_dsn(context["dsn"], step["user_from_database"]))
     session.__enter__()
+    context["held"] = session
+    return {}
+
+
+def _op_hold_statement(step: dict, context: dict) -> dict:
+    import psycopg
+
+    # prepare_threshold 0 names the statement of its first run; psycopg writes the placeholder $1 as %s.
+    session = psycopg.connect(connect_dsn(step["dsn"], context["database"], context["dsn"]), prepare_threshold=0, autocommit=True)
+    session.execute(step["sql"].replace("$1", "%s"), (step["bind"],))
     context["held"] = session
     return {}
 
@@ -2924,7 +2937,7 @@ def _op_dsn_sqlite_file(step: dict, _context: dict) -> dict:
     name = step["name"]
     with tempfile.TemporaryDirectory(prefix="orm-recipe-sqlite-name-") as directory:
         try:
-            _connect_driver(f"sqlite://{directory}/{name}?{step['query']}")
+            _connect_driver(f"sqlite://{directory}/{name}?{step['query']}", step.get("config"))
         except OrmError:
             left = os.listdir(directory)
             if left:
@@ -4153,6 +4166,7 @@ _DATABASE_OPS = {
     "dbspec.introspect": _op_dbspec_introspect,
     "sql.exec": _op_sql_exec,
     "sql.hold_connection": _op_hold_connection,
+    "sql.hold_statement": _op_hold_statement,
     "sql.release_connection": _op_release_connection,
     "events.subscribe": _op_events_subscribe,
     "events.fail_subscriber": _op_events_fail_subscriber,

@@ -244,7 +244,15 @@ ZEND_METHOD(Polyspec_Orm_Model, rowShape)
         } ZEND_HASH_FOREACH_END();
         if (zend_hash_num_elements(Z_ARRVAL_P(keys)) == 1) {
             zval *key = zend_hash_index_find(Z_ARRVAL_P(keys), 0), *index = key != NULL ? read_array(key, "index") : NULL;
-            if (index != NULL) { zval copy; ZVAL_COPY(&copy, index); zend_hash_str_update(Z_ARRVAL_P(return_value), "key", 3, &copy); }
+            /* A bool key goes through read_key_cells: its cell can be an integer, and the key keeps the declared type (PRT-35). */
+            bool is_bool = false;
+            if (index != NULL && Z_TYPE_P(index) == IS_LONG) {
+                ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(columns), zval *col) {
+                    zval *at = read_array(col, "index"), *type = read_array(col, "type");
+                    if (at != NULL && Z_TYPE_P(at) == IS_LONG && Z_LVAL_P(at) == Z_LVAL_P(index) && type != NULL && read_string_is(type, "bool")) is_bool = true;
+                } ZEND_HASH_FOREACH_END();
+            }
+            if (index != NULL && !is_bool) { zval copy; ZVAL_COPY(&copy, index); zend_hash_str_update(Z_ARRVAL_P(return_value), "key", 3, &copy); }
         }
     }
     zval *updated = read_array(&meta, "updated");
@@ -514,6 +522,50 @@ ZEND_METHOD(Polyspec_Orm_Model, assembleRow)
     zval_ptr_dtor(&shape);ZVAL_COPY_VALUE(return_value,&model);
 }
 
+/* The row whose key cells hold the declared type of their column: a bool column reads as an integer on MySQL and SQLite, and a datetime column of a composite key as its text (INT-11, PRT-35). */
+static bool read_key_cells(zval *assemble_decl, zval *key_index, zval *vals, zval *out)
+{
+    ZVAL_DUP(out, vals);
+    zval *columns = read_array(assemble_decl, "columns");
+    if (columns == NULL || Z_TYPE_P(columns) != IS_ARRAY) return true;
+    bool composite = zend_hash_num_elements(Z_ARRVAL_P(key_index)) > 1;
+    zval *ref, *column;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(key_index), ref) {
+        zval *index = read_array(ref, "index");
+        if (index == NULL || Z_TYPE_P(index) != IS_LONG) continue;
+        zval *cell = zend_hash_index_find(Z_ARRVAL_P(out), Z_LVAL_P(index));
+        if (cell == NULL || Z_TYPE_P(cell) == IS_NULL) continue;
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(columns), column) {
+            zval *at = read_array(column, "index");
+            if (at == NULL || Z_TYPE_P(at) != IS_LONG || Z_LVAL_P(at) != Z_LVAL_P(index)) continue;
+            zval *type = read_array(column, "type");
+            if (type != NULL && read_string_is(type, "bool")) {
+                bool truth = zend_is_true(cell);
+                zval_ptr_dtor(cell);
+                ZVAL_BOOL(cell, truth);
+            } else if (type != NULL && read_string_is(type, "datetime") && composite && Z_TYPE_P(cell) == IS_STRING) {
+                zval fn, text, date;
+                ZVAL_STRING(&fn, "date_create_immutable");
+                ZVAL_STR(&text, zend_strpprintf(0, "%s UTC", Z_STRVAL_P(cell)));
+                ZVAL_UNDEF(&date);
+                zend_result status = call_user_function(EG(function_table), NULL, &fn, &date, 1, &text);
+                zval_ptr_dtor(&fn);
+                zval_ptr_dtor(&text);
+                if (status != SUCCESS || EG(exception) != NULL || Z_TYPE(date) != IS_OBJECT) {
+                    zval_ptr_dtor(&date);
+                    zval_ptr_dtor(out);
+                    if (EG(exception) == NULL) read_throw("CODEC_DECODE", "collection key holds an invalid date and time");
+                    return false;
+                }
+                zval_ptr_dtor(cell);
+                ZVAL_COPY_VALUE(cell, &date);
+            }
+            break;
+        } ZEND_HASH_FOREACH_END();
+    } ZEND_HASH_FOREACH_END();
+    return true;
+}
+
 ZEND_METHOD(Polyspec_Orm_Model, collectionKey)
 {
     zval *model, *assemble_decl, *vals;
@@ -523,7 +575,7 @@ ZEND_METHOD(Polyspec_Orm_Model, collectionKey)
     zval *key_name=model_state_property(model_state_of(Z_OBJ_P(ZEND_THIS)),"key_name");
     if(key_name!=NULL&&Z_TYPE_P(key_name)==IS_STRING&&Z_STRLEN_P(key_name)!=0){ zval *values=model_state_property(model_state_of(Z_OBJ_P(model)),"values"),*row=model_state_property(model_state_of(Z_OBJ_P(model)),"row");zval *value=values!=NULL&&Z_TYPE_P(values)==IS_ARRAY?zend_hash_find(Z_ARRVAL_P(values),Z_STR_P(key_name)):NULL;if(value==NULL&&row!=NULL&&Z_TYPE_P(row)==IS_ARRAY){zval *extra=read_array(row,"extra");value=extra!=NULL&&Z_TYPE_P(extra)==IS_ARRAY?zend_hash_find(Z_ARRVAL_P(extra),Z_STR_P(key_name)):NULL;}if(value==NULL){read_throw("CODEC_DECODE","collection key is SQL NULL");RETURN_THROWS();}zval arg,key;ZVAL_COPY(&arg,value);zend_class_entry *collection=read_lookup_class("Polyspec\\Orm\\Collection");bool ok=collection!=NULL&&read_static_call(collection,"keyOf",&key,1,&arg);zval_ptr_dtor(&arg);if(!ok)RETURN_THROWS();ZVAL_COPY_VALUE(return_value,&key);return; }
     zval *key_index=read_array(assemble_decl,"key");if(key_index==NULL||Z_TYPE_P(key_index)!=IS_ARRAY){read_throw("INTERNAL","collection row has no key declaration");RETURN_THROWS();}
-    zval args[2],key;ZVAL_COPY(&args[0],vals);ZVAL_COPY(&args[1],key_index);zend_class_entry *db=read_lookup_class("Polyspec\\Orm\\Db");bool ok=db!=NULL&&read_static_call(db,"rowKey",&key,2,args);zval_ptr_dtor(&args[0]);zval_ptr_dtor(&args[1]);if(!ok)RETURN_THROWS();if(Z_TYPE(key)==IS_NULL){zval_ptr_dtor(&key);read_throw("CODEC_DECODE","collection row identity contains SQL NULL");RETURN_THROWS();}ZVAL_COPY_VALUE(return_value,&key);
+    zval args[2],key;if(!read_key_cells(assemble_decl,key_index,vals,&args[0]))RETURN_THROWS();ZVAL_COPY(&args[1],key_index);zend_class_entry *db=read_lookup_class("Polyspec\\Orm\\Db");bool ok=db!=NULL&&read_static_call(db,"rowKey",&key,2,args);zval_ptr_dtor(&args[0]);zval_ptr_dtor(&args[1]);if(!ok)RETURN_THROWS();if(Z_TYPE(key)==IS_NULL){zval_ptr_dtor(&key);read_throw("CODEC_DECODE","collection row identity contains SQL NULL");RETURN_THROWS();}ZVAL_COPY_VALUE(return_value,&key);
 }
 
 ZEND_METHOD(Polyspec_Orm_Model, columnOrExtra)

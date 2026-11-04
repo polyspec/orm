@@ -408,6 +408,11 @@ export function splitRowKey(row: readonly unknown[], refs: readonly KeyReference
 /** A collection key: an integer, a string, a boolean, bytes or a date; keys of different types never share an identity. */
 export type Key = number | bigint | string | boolean | Uint8Array | Date;
 
+/** @internal The stored text of a datetime key component. */
+export class DatetimeKeyText {
+  public constructor(public readonly text: string) {}
+}
+
 export function keyOfValues(values: readonly unknown[]): string {
   if (values.length === 1) return keyText(values[0]);
   return values.map(compositeKeyPart).join('');
@@ -428,6 +433,10 @@ function compositeKeyPart(value: unknown): string {
   } else if (value instanceof Uint8Array) {
     tag = 'b';
     payload = Buffer.from(value).toString('hex');
+  } else if (value instanceof DatetimeKeyText) {
+    // The stored text keeps the microseconds that a Date cannot hold.
+    tag = 'd';
+    payload = `${value.text.replace(' ', 'T').replace(/(\.\d*?)0*$/, '$1').replace(/\.$/, '')}Z`;
   } else if (value instanceof Date) {
     tag = 'd';
     payload = value.toISOString().replace(/\.(\d{3})Z$/, (_, fraction: string) => {
@@ -491,6 +500,22 @@ export function readLastAffected(db: Db): number | null {
 const CONTROL_KINDS: ReadonlySet<StatementKind> = new Set<StatementKind>(['begin', 'commit', 'rollback', 'savepoint', 'release', 'rollback_to']);
 
 /** A database connection with its plan cache and statement cache. */
+/** The AES configuration of a connection: its current version, the key of that version and its keyring. */
+type AesConfig = { version: number; key: string; keyring: AesKeyring | undefined };
+
+/** aesConfig reads the AES options and refuses, before anything opens, a configuration that holds no usable current key (COD-8). */
+function aesConfig(options: ConnectOptions): AesConfig {
+  const version = options.aesVersion ?? 1;
+  if (!Number.isSafeInteger(version) || version < 1) throw new OrmError(codes.CONFIG, 'aes version must be a positive integer');
+  // aesKey is the key of aesVersion: writes encrypt with it, and aesKeys holds it at aesVersion.
+  const given = options.aesKey ?? '';
+  const listed = options.aesKeys?.get(version) ?? '';
+  if (given !== '' && options.aesKeys !== undefined && listed !== given) throw new OrmError(codes.CONFIG, `aesKey differs from aesKeys[${version}]`);
+  const key = given !== '' ? given : listed;
+  const keys = options.aesKeys ?? (key === '' ? undefined : new Map([[version, key]]));
+  return { version, key, keyring: keys === undefined ? undefined : new AesKeyring(keys, version) };
+}
+
 export class Db {
   // State shared by all handles of one connection. rollbackFault is the test fault that the test entry
   // point's failNextRollback sets.
@@ -515,17 +540,11 @@ export class Db {
   /**
    * connection is the pool of the connection: the driver pool of a SQL database or the flowmark session pool of a markdown:// connection.
    */
-  private constructor(private readonly connection: DriverPool | MarkdownPool, public readonly zone: string, options: ConnectOptions) {
+  private constructor(private readonly connection: DriverPool | MarkdownPool, public readonly zone: string, options: ConnectOptions, aes: AesConfig) {
     this.blindIndexKey = options.blindIndexKey ?? '';
-    this.aesVersion = options.aesVersion ?? 1;
-    if (!Number.isSafeInteger(this.aesVersion) || this.aesVersion < 1) throw new OrmError(codes.CONFIG, 'aes version must be a positive integer');
-    // aesKey is the key of aesVersion: writes encrypt with it, and aesKeys holds it at aesVersion.
-    const given = options.aesKey ?? '';
-    const listed = options.aesKeys?.get(this.aesVersion) ?? '';
-    if (given !== '' && options.aesKeys !== undefined && listed !== given) throw new OrmError(codes.CONFIG, `aesKey differs from aesKeys[${this.aesVersion}]`);
-    this.aesKey = given !== '' ? given : listed;
-    const keys = options.aesKeys ?? (this.aesKey === '' ? undefined : new Map([[this.aesVersion, this.aesKey]]));
-    this.aesKeyring = keys === undefined ? undefined : new AesKeyring(keys, this.aesVersion);
+    this.aesVersion = aes.version;
+    this.aesKey = aes.key;
+    this.aesKeyring = aes.keyring;
     if (options.auditSource !== undefined && typeof options.auditSource !== 'function') throw new OrmError(codes.CONFIG, 'auditSource is a function that returns the audit values');
     this.auditSource = options.auditSource;
     this.planCacheSize = options.planCacheSize ?? 256;
@@ -553,15 +572,16 @@ export class Db {
     if (idleSize < 0 || idleSize > size) throw new OrmError(codes.CONFIG, `pool idle size must be between 0 and the pool size ${size}`);
     if ((options.poolLifetimeMs ?? 0) < 0) throw new OrmError(codes.CONFIG, 'pool lifetime must not be negative');
     const bounds = { size, idleSize: idleSize || size, lifetimeMs: options.poolLifetimeMs ?? 0 };
+    const aes = aesConfig(options);
     if (parsed.driver === 'markdown') {
       // Opens one session to check that the server accepts the corpus and token, and keeps it in the pool.
       const md = new MarkdownPool(parsed.markdown, bounds);
-      const db = new Db(md, parsed.zone, options);
+      const db = new Db(md, parsed.zone, options, aes);
       md.release(await md.acquire(undefined));
       return db;
     }
     const pool = openDriver(dsn, parsed, bounds, statementCacheSize, options.statementTimeoutMs ?? 0);
-    const db = new Db(pool, parsed.zone, options);
+    const db = new Db(pool, parsed.zone, options, aes);
     // Opens one connection and returns it to the pool. It does not send a statement to check the connection.
     try { (await pool.reserve()).release(false); } catch (error) { await pool.close(); throw error; }
     return db;

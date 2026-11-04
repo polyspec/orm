@@ -3,13 +3,11 @@
 # 32-bit integer is CODEC_DECODE on the read path and on the rotation path, and an AES column or version column that the
 # client selected but did not get is INTERNAL.
 import unittest
-from pathlib import Path
-from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 
 from polyspec.orm.aes import AesKeyring
 from polyspec.orm.codec import host_encode
-from polyspec.orm.database import Db, _decode_assembly
+from polyspec.orm.database import _decode_assembly
 from polyspec.orm.errors import OrmError
 
 from . import testcase
@@ -38,22 +36,6 @@ def code_of(run) -> str:
 
 
 class AesVersionCodesTest(unittest.TestCase):
-    # Requirements: COD-8.
-    def test_connection_rejects_aes_key_that_differs_from_current_keyring_key(self):
-        with TemporaryDirectory(prefix="orm-aes-key-conflict-") as directory:
-            database = Path(directory) / "must-not-open.sqlite"
-            with self.assertRaises(OrmError) as caught:
-                Db.connect(
-                    f"sqlite://{database}",
-                    {
-                        "aesKey": "different-key",
-                        "aesVersion": 1,
-                        "aesKeyring": AesKeyring({1: "current-key"}, 1),
-                    },
-                )
-            self.assertEqual(caught.exception.code, "CONFIG")
-            self.assertFalse(database.exists(), "config validation opened SQLite")
-
     # Requirements: COD-56. A read plan cannot infer a missing version column.
     def test_read_plan_without_version_column_is_internal(self):
         no_version = {

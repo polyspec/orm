@@ -4,6 +4,7 @@
 # SCH-6a.
 # Requirements: DBS-113, INT-34, INT-102, INT-106, INT-108, INT-110, INT-112, SCH-5.
 # Requirements: SCH-3.
+# Requirements: CFG-28, CFG-41.
 from .recipe import recipe_tests
 from . import testcase
 

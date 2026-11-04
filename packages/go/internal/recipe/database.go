@@ -64,6 +64,8 @@ type databaseStep struct {
 	// reads records the keys that the run reads (FCV-4).
 	reads            *stepReads
 	UserFromDatabase string `json:"user_from_database"`
+	// Bind is the one integer parameter of sql.hold_statement.
+	Bind int `json:"bind"`
 	// Vectors is the file of dbspec.ddl_behavior, relative to the recipe, and Case the id of its case.
 	Vectors string `json:"vectors"`
 	Case    string `json:"case"`
@@ -128,6 +130,7 @@ type databaseStep struct {
 	Model        string          `json:"model"`
 	PoolSize     int             `json:"pool_size"`
 	PoolIdle     int             `json:"pool_idle_size"`
+	PoolLifetime int             `json:"pool_lifetime_ms"`
 	Transactions int             `json:"transactions"`
 	Hold         int             `json:"hold"`
 	Key          json.RawMessage `json:"key"`
@@ -996,6 +999,30 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		c.held = raw
 		c.t.Cleanup(func() { _ = held.Close(); _ = raw.Close() })
 		return outcome{}, nil
+	case "sql.hold_statement":
+		var named string
+		if err := json.Unmarshal(s.k("dsn").DSN, &named); err != nil {
+			return outcome{}, err
+		}
+		dsn, err := connectDSN(named, c.database, c.dsn)
+		if err != nil {
+			return outcome{}, err
+		}
+		query, err := databaseText(s.k("sql").SQL, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		// pgx names the statement of a query on a connection, and the pool keeps that connection until the release.
+		raw := testdb.Open(c.t, c.database, dsn)
+		rows, err := raw.QueryContext(c.ctx, query, s.k("bind").Bind)
+		if err != nil {
+			return outcome{}, closeFirst(err, raw.Close())
+		}
+		if err := rows.Close(); err != nil {
+			return outcome{}, closeFirst(err, raw.Close())
+		}
+		c.held = raw
+		return outcome{}, nil
 	case "sql.release_connection":
 		// The pool closes the connection that the step holds, returned or not.
 		held := c.held
@@ -1006,19 +1033,19 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		return outcome{}, c.catalog.Close()
 	case "catalog.reconnect":
 		dsn := c.dsn
-		if s.k("user_from_database").UserFromDatabase != "" {
-			dsn = userFromDatabaseDSN(dsn, s.k("user_from_database").UserFromDatabase)
-		}
-		var target string
-		if len(s.k("dsn").DSN) > 0 {
-			if err := json.Unmarshal(s.k("dsn").DSN, &target); err != nil {
+		if s.k("dsn").DSN != nil {
+			var named string
+			if err := json.Unmarshal(s.k("dsn").DSN, &named); err != nil {
 				return outcome{}, err
 			}
-			replica, err := connectDSN(target, c.database, dsn)
+			through, err := connectDSN(named, c.database, c.dsn)
 			if err != nil {
 				return outcome{}, err
 			}
-			dsn = replica
+			dsn = through
+		}
+		if s.k("user_from_database").UserFromDatabase != "" {
+			dsn = userFromDatabaseDSN(dsn, s.k("user_from_database").UserFromDatabase)
 		}
 		catalog, err := orm.ConnectCatalog(dsn)
 		if err != nil && s.k("refused_message").RefusedMessage == "" {
@@ -1339,7 +1366,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		return outcome{fields: map[string]any{"value": map[string]any{"text": driver}}}, nil
 	case "dsn.sqlite_file":
-		names, err := sqliteFileName(s.k("name").Name, s.k("query").Query)
+		names, err := sqliteFileName(s.k("name").Name, s.k("query").Query, s.k("config").Config)
 		if err != nil {
 			return outcome{}, err
 		}

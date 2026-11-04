@@ -29,6 +29,8 @@
     "CFG-35",
     "INT-118",
     "INT-107",
+    "CFG-28",
+    "CFG-41",
     "INT-119",
     "INT-121"
   ],
@@ -17861,6 +17863,72 @@
               "message_holds": "result has more than 12 bytes of values"
             }
           }
+        }
+      ]
+    },
+    {
+      "id": "catalog_session_after_a_schema_change_through_a_pooler",
+      "requirements": [
+        "CFG-28",
+        "CFG-41"
+      ],
+      "only": [
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "reason": "the table whose column type the case changes, which no dbspec fixture table may change",
+          "sql": "CREATE TABLE pooler_probe (id int PRIMARY KEY, v int)"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the row that the read returns",
+          "sql": "INSERT INTO pooler_probe VALUES (1, 5)"
+        },
+        {
+          "op": "catalog.reconnect",
+          "dsn": "case-pooler"
+        },
+        {
+          "op": "sql.hold_statement",
+          "dsn": "case-pooler",
+          "sql": "SELECT id, v FROM pooler_probe WHERE id = $1",
+          "bind": 1
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the schema change that the plan of the held statement predates",
+          "sql": "ALTER TABLE pooler_probe ALTER COLUMN v TYPE varchar(16) USING v::text"
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT id, v FROM pooler_probe WHERE id = $1",
+          "binds": [
+            {
+              "int": "1"
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "5"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.release_connection"
+        },
+        {
+          "op": "catalog.close"
         }
       ]
     },
