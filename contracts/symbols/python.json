@@ -2755,6 +2755,10 @@
     "exported": true,
     "signature": "class OrmError(Exception)"
   },
+  "packages/python/src/polyspec/orm/errors.py::StoredColumnName": {
+    "exported": true,
+    "signature": "class StoredColumnName(OrmError, AttributeError)"
+  },
   "packages/python/src/polyspec/orm/errors.py::joined_errors": {
     "exported": true,
     "signature": "def joined_errors(errors: list) -\u003e object"

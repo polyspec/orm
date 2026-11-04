@@ -499,6 +499,10 @@
     "exported": false,
     "signature": "public async lookup(metadata: CatalogTableMetadata, keys: readonly CatalogValue[], lock: boolean): Promise\u003cCatalogValue[][]\u003e"
   },
+  "packages/ts/src/catalog.ts::Session.mysqlPartialRevokesOff": {
+    "exported": false,
+    "signature": "public async mysqlPartialRevokesOff(): Promise\u003cvoid\u003e"
+  },
   "packages/ts/src/catalog.ts::Session.mysqlSafety": {
     "exported": false,
     "signature": "public async mysqlSafety(metadata: CatalogTableMetadata): Promise\u003cvoid\u003e"
@@ -1787,6 +1791,18 @@
     "exported": true,
     "signature": "{\"aesKey\":\"text\",\"blindIndexKey\":\"text\",\"aesVersion\":\"integer\",\"aesKeys\":\"ReadonlyMap\u003cnumber,string\u003e\",\"planCacheSize\":\"integer\",\"statementCacheSize\":\"integer\",\"poolSize\":\"integer\",\"poolIdleSize\":\"integer\",\"poolLifetimeMs\":\"integer\",\"statementTimeoutMs\":\"integer\",\"auditSource\":\"()=\u003eRecord\u003cstring,unknown\u003e\"}"
   },
+  "packages/ts/src/database.ts::DatetimeKey": {
+    "exported": true,
+    "signature": "class DatetimeKey { public constructor(text: string); }"
+  },
+  "packages/ts/src/database.ts::DatetimeKey#field.instant": {
+    "exported": false,
+    "signature": "string"
+  },
+  "packages/ts/src/database.ts::DatetimeKey.toJSON": {
+    "exported": true,
+    "signature": "public override toJSON(): string"
+  },
   "packages/ts/src/database.ts::Db": {
     "exported": true,
     "signature": "class Db { private constructor(private readonly connection: DriverPool | MarkdownPool, public readonly zone: string, options: ConnectOptions, aes: AesConfig); }"
@@ -2279,6 +2295,10 @@
     "exported": false,
     "signature": "function compositeKeyPart(value: unknown): string"
   },
+  "packages/ts/src/database.ts::dateKeyText": {
+    "exported": false,
+    "signature": "function dateKeyText(value: Date): string"
+  },
   "packages/ts/src/database.ts::decodeAssembly": {
     "exported": true,
     "signature": "export function decodeAssembly(row: unknown[], assemble: Assemble, db: Db): void"
@@ -2314,6 +2334,10 @@
   "packages/ts/src/database.ts::itemConn": {
     "exported": false,
     "signature": "function itemConn(item: Group['items'][number]): string | undefined"
+  },
+  "packages/ts/src/database.ts::keyInstant": {
+    "exported": false,
+    "signature": "function keyInstant(text: string): string"
   },
   "packages/ts/src/database.ts::keyOfValues": {
     "exported": true,
@@ -10488,8 +10512,8 @@
     "signature": "{\"ir\":\"Request\",\"params\":\"list\u003cunknown\u003e\"}"
   },
   "packages/ts/src/model.ts::addedColumnValue": {
-    "exported": false,
-    "signature": "function addedColumnValue(type: string, raw: unknown, zone: string): unknown"
+    "exported": true,
+    "signature": "export function addedColumnValue(type: string, raw: unknown, zone: string): unknown"
   },
   "packages/ts/src/model.ts::aggregate": {
     "exported": false,

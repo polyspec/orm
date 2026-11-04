@@ -331,6 +331,10 @@
     "exported": false,
     "signature": "pub (super) async fn lookup (connection : \u0026 mut Conn , metadata : \u0026 TableMetadata , dialect : \u0026 str , keys : \u0026 [P] , lock : bool) -\u003e Result \u003c GridQueryResult , String \u003e"
   },
+  "packages/rust/build/src/catalog/mutation.rs::mysql_partial_revokes_off": {
+    "exported": false,
+    "signature": "pub (super) async fn mysql_partial_revokes_off (connection : \u0026 mut Conn) -\u003e Result \u003c () , String \u003e"
+  },
   "packages/rust/build/src/catalog/mutation.rs::mysql_safety": {
     "exported": false,
     "signature": "pub (super) async fn mysql_safety (connection : \u0026 mut Conn , metadata : \u0026 TableMetadata) -\u003e Result \u003c () , String \u003e"
@@ -2383,10 +2387,6 @@
     "exported": false,
     "signature": "pub (crate) fn canonicalize (request : \u0026 mut ir :: Request , params : \u0026 mut Vec \u003c Param \u003e) -\u003e Result \u003c () \u003e"
   },
-  "packages/rust/orm/src/codec.rs::BinaryStage": {
-    "exported": false,
-    "signature": " enum BinaryStage  { Continue , Complete (Param) }"
-  },
   "packages/rust/orm/src/codec.rs::Parser": {
     "exported": false,
     "signature": " struct Parser \u003c 'a \u003e { b : \u0026 'a [u8] , i : usize , }"
@@ -2521,15 +2521,15 @@
   },
   "packages/rust/orm/src/codec.rs::encode_binary_stage": {
     "exported": false,
-    "signature": " fn encode_binary_stage (style : \u0026 str , cur : \u0026 mut Vec \u003c u8 \u003e) -\u003e Result \u003c BinaryStage \u003e"
+    "signature": " fn encode_binary_stage (style : \u0026 str , cur : \u0026 mut Vec \u003c u8 \u003e) -\u003e Result \u003c () \u003e"
   },
   "packages/rust/orm/src/codec.rs::encode_ordered": {
     "exported": true,
     "signature": "pub fn encode_ordered (styles : \u0026 [\u0026 str] , v : StyledValue \u003c \u0026 strict_json :: Value \u003e) -\u003e Result \u003c Param \u003e"
   },
-  "packages/rust/orm/src/codec.rs::encoded_text": {
+  "packages/rust/orm/src/codec.rs::encoded_cell": {
     "exported": false,
-    "signature": " fn encoded_text (bytes : Vec \u003c u8 \u003e) -\u003e Result \u003c Param \u003e"
+    "signature": " fn encoded_cell (styles : \u0026 [\u0026 str] , bytes : Vec \u003c u8 \u003e) -\u003e Result \u003c Param \u003e"
   },
   "packages/rust/orm/src/codec.rs::err": {
     "exported": false,
@@ -2854,10 +2854,6 @@
   "packages/rust/orm/src/collection.rs::Key::of": {
     "exported": true,
     "signature": "pub fn of (v : \u0026 Val) -\u003e Result \u003c Key \u003e"
-  },
-  "packages/rust/orm/src/collection.rs::Key::of_collection_row": {
-    "exported": true,
-    "signature": "pub fn of_collection_row (row : \u0026 [Val] , refs : \u0026 [crate :: plan :: KeyRef]) -\u003e Result \u003c Key \u003e"
   },
   "packages/rust/orm/src/collection.rs::Key::of_row": {
     "exported": true,
@@ -7362,6 +7358,10 @@
   "packages/rust/orm/src/model.rs::encode_ordered": {
     "exported": false,
     "signature": " fn encode_ordered (ent : \u0026 dbspec :: Entity , column : \u0026 str , v : \u0026 ordered_json :: Value) -\u003e Result \u003c Param \u003e"
+  },
+  "packages/rust/orm/src/model.rs::exact_integer_text": {
+    "exported": false,
+    "signature": " fn exact_integer_text (value : \u0026 Val) -\u003e Result \u003c () \u003e"
   },
   "packages/rust/orm/src/model.rs::finish_write": {
     "exported": false,

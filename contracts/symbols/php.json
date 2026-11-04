@@ -5323,6 +5323,10 @@
     "exported": false,
     "signature": "private int"
   },
+  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::$reopenUntil": {
+    "exported": false,
+    "signature": "private float"
+  },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::$streamLeft": {
     "exported": false,
     "signature": "private bool"
@@ -5595,6 +5599,10 @@
     "exported": false,
     "signature": "private function mysqlGridColumns(PDO $pdo, string $sql, array $args): array"
   },
+  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::mysqlPartialRevokesOff": {
+    "exported": false,
+    "signature": "private function mysqlPartialRevokesOff(PDO $pdo): void"
+  },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::mysqlResultTypes": {
     "exported": false,
     "signature": "private function mysqlResultTypes(PDO $pdo, string $sql, array $args, int $count): array"
@@ -5606,6 +5614,10 @@
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::nativeTypes": {
     "exported": false,
     "signature": "private static function nativeTypes(Polyspec\\Orm\\CatalogTableMetadata $metadata): array"
+  },
+  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::openConnection": {
+    "exported": false,
+    "signature": "private function openConnection(): Polyspec\\Orm\\Db"
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::param": {
     "exported": false,
@@ -5741,7 +5753,7 @@
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::verifyInsertedRow": {
     "exported": false,
-    "signature": "private static function verifyInsertedRow(array $rows, array $changes, string $countCode, string $countMessage, string $valueMessage): array"
+    "signature": "private static function verifyInsertedRow(array $rows, array $changes, string $countCode, string $countMessage, Polyspec\\Orm\\CatalogTableMetadata $descriptor): array"
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::words": {
     "exported": false,
@@ -12106,6 +12118,10 @@
   "packages/php/src/Model.php::Polyspec\\Orm\\Model::jsonText": {
     "exported": true,
     "signature": "public static function jsonText(mixed $v): string"
+  },
+  "packages/php/src/Model.php::Polyspec\\Orm\\Model::keyCells": {
+    "exported": false,
+    "signature": "private static function keyCells(array $asm, array $vals): array"
   },
   "packages/php/src/Model.php::Polyspec\\Orm\\Model::keyValues": {
     "exported": false,

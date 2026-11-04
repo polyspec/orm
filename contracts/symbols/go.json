@@ -8455,6 +8455,14 @@
     "exported": true,
     "signature": "receiver=*AuthorModel func() *AuthorModel"
   },
+  "packages/go/model/author.go::AuthorModel.AddColumnStartDtAliasStartMonth": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func(fn orm.Func) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.AddColumnStartDtAliasStartYear": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func(fn orm.Func) *AuthorModel"
+  },
   "packages/go/model/author.go::AuthorModel.AddColumnSuccessCount": {
     "exported": true,
     "signature": "receiver=*AuthorModel func() *AuthorModel"
@@ -8491,9 +8499,45 @@
     "exported": true,
     "signature": "receiver=*AuthorModel func(args ...any) *AuthorModel"
   },
+  "packages/go/model/author.go::AuthorModel.AndAesHexEmail": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argStringEqNull](v0 T0) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.AndBetweenReadCount": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argIntBetween](v0 T0) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.AndEqStartDt": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argTimeEq](v0 T0, compared ...any) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.AndGeReadCount": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argIntCmp](v0 T0) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.AndGtReadCount": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argIntCmp](v0 T0) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.AndGtStartDt": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argTimeCmp](v0 T0, compared ...any) *AuthorModel"
+  },
   "packages/go/model/author.go::AuthorModel.AndIsClose": {
     "exported": true,
     "signature": "receiver=*AuthorModel func[T0 argBoolEq](v0 T0) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.AndLbName": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argStringLike](v0 T0) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.AndLeReadCount": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argIntCmp](v0 T0) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.AndLeStartDt": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argTimeCmp](v0 T0, compared ...any) *AuthorModel"
   },
   "packages/go/model/author.go::AuthorModel.AndLkName": {
     "exported": true,
@@ -8507,6 +8551,26 @@
     "exported": true,
     "signature": "receiver=*AuthorModel func[T0 argIntCmp](v0 T0) *AuthorModel"
   },
+  "packages/go/model/author.go::AuthorModel.AndLtSeq": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argIntCmp](v0 T0) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.AndLtStartDt": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argTimeCmp](v0 T0, compared ...any) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.AndNeIsClose": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argBoolEq](v0 T0) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.AndNePhotoUrl": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argStringEqNull](v0 T0) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.AndNeReadCount": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argIntEq](v0 T0) *AuthorModel"
+  },
   "packages/go/model/author.go::AuthorModel.AndNot": {
     "exported": true,
     "signature": "receiver=*AuthorModel func(fn func(*AuthorModel)) *AuthorModel"
@@ -8514,6 +8578,22 @@
   "packages/go/model/author.go::AuthorModel.AndSeq": {
     "exported": true,
     "signature": "receiver=*AuthorModel func[T0 argIntEq](v0 T0) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.AndServiceSeq": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argIntEq](v0 T0) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.AndStartDt": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argTimeEq](v0 T0, compared ...any) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.AndSuccessCountLtSeq": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 hasSeq](v0 T0) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.AndUuid": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argStringEqNull](v0 T0) *AuthorModel"
   },
   "packages/go/model/author.go::AuthorModel.AvgAesKeyVersion": {
     "exported": true,
@@ -8598,6 +8678,10 @@
   "packages/go/model/author.go::AuthorModel.Description": {
     "exported": true,
     "signature": "receiver=*AuthorModel func[T0 argStringEqNull](v0 T0) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.DescriptionNeName": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 hasName](v0 T0) *AuthorModel"
   },
   "packages/go/model/author.go::AuthorModel.DisplayEndDt": {
     "exported": true,
@@ -8783,6 +8867,10 @@
     "exported": true,
     "signature": "receiver=*AuthorModel func() (orm.StyledValue, error)"
   },
+  "packages/go/model/author.go::AuthorModel.GetLabel": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func() any"
+  },
   "packages/go/model/author.go::AuthorModel.GetLikeCount": {
     "exported": true,
     "signature": "receiver=*AuthorModel func() (int32, error)"
@@ -8790,6 +8878,10 @@
   "packages/go/model/author.go::AuthorModel.GetMembers": {
     "exported": true,
     "signature": "receiver=*AuthorModel func() (*orm.Collection[*ServiceMemberModel], error)"
+  },
+  "packages/go/model/author.go::AuthorModel.GetModule": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func() (*ServiceRegionModel, error)"
   },
   "packages/go/model/author.go::AuthorModel.GetName": {
     "exported": true,
@@ -8835,6 +8927,10 @@
     "exported": true,
     "signature": "receiver=*AuthorModel func() (orm.StyledValue, error)"
   },
+  "packages/go/model/author.go::AuthorModel.GetServiceMemberModel": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func() (*ServiceMemberModel, error)"
+  },
   "packages/go/model/author.go::AuthorModel.GetServiceMemberModels": {
     "exported": true,
     "signature": "receiver=*AuthorModel func() (*orm.Collection[*ServiceMemberModel], error)"
@@ -8847,6 +8943,10 @@
     "exported": true,
     "signature": "receiver=*AuthorModel func() (*ServiceModel, error)"
   },
+  "packages/go/model/author.go::AuthorModel.GetServiceRegionModel": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func() (*ServiceRegionModel, error)"
+  },
   "packages/go/model/author.go::AuthorModel.GetServiceRegionSeq": {
     "exported": true,
     "signature": "receiver=*AuthorModel func() (int64, error)"
@@ -8858,6 +8958,14 @@
   "packages/go/model/author.go::AuthorModel.GetStartDt": {
     "exported": true,
     "signature": "receiver=*AuthorModel func() (time.Time, error)"
+  },
+  "packages/go/model/author.go::AuthorModel.GetStartMonth": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func() any"
+  },
+  "packages/go/model/author.go::AuthorModel.GetStartYear": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func() any"
   },
   "packages/go/model/author.go::AuthorModel.GetSuccessCount": {
     "exported": true,
@@ -9091,7 +9199,23 @@
     "exported": true,
     "signature": "receiver=*AuthorModel func[T0 argBoolEq](v0 T0) *AuthorModel"
   },
+  "packages/go/model/author.go::AuthorModel.JoinNameWithSeq": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[C hasSeq](child C) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.JoinReadCountWithSeq": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[C hasSeq](child C) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.JoinServiceMemberSeqWithSeq": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[C hasSeq](child C) *AuthorModel"
+  },
   "packages/go/model/author.go::AuthorModel.JoinServiceSeqWithSeq": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[C hasSeq](child C) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.JoinUserSeqWithSeq": {
     "exported": true,
     "signature": "receiver=*AuthorModel func[C hasSeq](child C) *AuthorModel"
   },
@@ -9247,6 +9371,10 @@
     "exported": true,
     "signature": "receiver=*AuthorModel func() *AuthorModel"
   },
+  "packages/go/model/author.go::AuthorModel.LeftJoinServiceRegionSeqWithSeq": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[C hasSeq](child C) *AuthorModel"
+  },
   "packages/go/model/author.go::AuthorModel.LikeCount": {
     "exported": true,
     "signature": "receiver=*AuthorModel func[T0 argIntEq](v0 T0) *AuthorModel"
@@ -9254,6 +9382,10 @@
   "packages/go/model/author.go::AuthorModel.Limit": {
     "exported": true,
     "signature": "receiver=*AuthorModel func(offset, count int) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.LtReadCount": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argIntCmp](v0 T0) *AuthorModel"
   },
   "packages/go/model/author.go::AuthorModel.MarshalJSON": {
     "exported": true,
@@ -9315,9 +9447,17 @@
     "exported": true,
     "signature": "receiver=*AuthorModel func[T0 argStringEq](v0 T0) *AuthorModel"
   },
+  "packages/go/model/author.go::AuthorModel.NameEqSeq": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 hasSeq](v0 T0) *AuthorModel"
+  },
   "packages/go/model/author.go::AuthorModel.NePhotoUrl": {
     "exported": true,
     "signature": "receiver=*AuthorModel func[T0 argStringEqNull](v0 T0) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.NewLabel": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func(v any) *AuthorModel"
   },
   "packages/go/model/author.go::AuthorModel.Not": {
     "exported": true,
@@ -9330,6 +9470,14 @@
   "packages/go/model/author.go::AuthorModel.Or": {
     "exported": true,
     "signature": "receiver=*AuthorModel func(args ...any) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.OrGtReadCount": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argIntCmp](v0 T0) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.OrIsClose": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argBoolEq](v0 T0) *AuthorModel"
   },
   "packages/go/model/author.go::AuthorModel.OrNot": {
     "exported": true,
@@ -9699,9 +9847,17 @@
     "exported": true,
     "signature": "receiver=*AuthorModel func[T0 argDecimalEqNull](v0 T0) *AuthorModel"
   },
+  "packages/go/model/author.go::AuthorModel.PriceEqSeq": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 hasSeq](v0 T0) *AuthorModel"
+  },
   "packages/go/model/author.go::AuthorModel.ReadCount": {
     "exported": true,
     "signature": "receiver=*AuthorModel func[T0 argIntEq](v0 T0) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.ReadCountLtSeq": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 hasSeq](v0 T0) *AuthorModel"
   },
   "packages/go/model/author.go::AuthorModel.ReaderCount": {
     "exported": true,
@@ -11002,6 +11158,14 @@
   "packages/go/model/composite_account.go::CompositeAccountModel.And": {
     "exported": true,
     "signature": "receiver=*CompositeAccountModel func(args ...any) *CompositeAccountModel"
+  },
+  "packages/go/model/composite_account.go::CompositeAccountModel.AndLbName": {
+    "exported": true,
+    "signature": "receiver=*CompositeAccountModel func[T0 argStringLike](v0 T0) *CompositeAccountModel"
+  },
+  "packages/go/model/composite_account.go::CompositeAccountModel.AndLkName": {
+    "exported": true,
+    "signature": "receiver=*CompositeAccountModel func[T0 argStringLike](v0 T0) *CompositeAccountModel"
   },
   "packages/go/model/composite_account.go::CompositeAccountModel.AndNot": {
     "exported": true,
@@ -13143,6 +13307,10 @@
     "exported": false,
     "signature": "type argTimeEqNull interface { time.Time | ~string | []time.Time | ~[]string | orm.Func | ormModel | orm.NullType }"
   },
+  "packages/go/model/orm.go::hasName": {
+    "exported": false,
+    "signature": "type hasName interface { *AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *CompositeAccountModel | *SoftRecordModel | *AccountModel | *ProjectModel Orm_() *orm.Core }"
+  },
   "packages/go/model/orm.go::hasSeq": {
     "exported": false,
     "signature": "type hasSeq interface { *AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *SoftRecordModel | *SoftLinkModel | *AccountModel | *ProjectModel | *TaskModel | *HexCellModel | *TimeCellModel | *ClockCellModel | *DayCellModel | *UpsertCellModel | *UuidCellModel | *IpHexCellModel | *BindCellModel | *AuditRecordModel | *AuditedNoteModel | *AuditedNoteHistoryModel | *NoteReaderModel | *SharedNoteModel Orm_() *orm.Core }"
@@ -13579,6 +13747,10 @@
     "exported": true,
     "signature": "receiver=*ServiceModel func() (*orm.Statement, error)"
   },
+  "packages/go/model/service.go::ServiceModel.GetRecord": {
+    "exported": true,
+    "signature": "receiver=*ServiceModel func() (*SoftRecordModel, error)"
+  },
   "packages/go/model/service.go::ServiceModel.GetSeq": {
     "exported": true,
     "signature": "receiver=*ServiceModel func() (int64, error)"
@@ -13619,6 +13791,10 @@
     "exported": true,
     "signature": "receiver=*ServiceModel func[T0 argIntCmp](v0 T0) *ServiceModel"
   },
+  "packages/go/model/service.go::ServiceModel.JoinNameWithName": {
+    "exported": true,
+    "signature": "receiver=*ServiceModel func[C hasName](child C) *ServiceModel"
+  },
   "packages/go/model/service.go::ServiceModel.KeyNameName": {
     "exported": true,
     "signature": "receiver=*ServiceModel func() *ServiceModel"
@@ -13627,6 +13803,10 @@
     "exported": true,
     "signature": "receiver=*ServiceModel func() *ServiceModel"
   },
+  "packages/go/model/service.go::ServiceModel.LeftJoinNameWithName": {
+    "exported": true,
+    "signature": "receiver=*ServiceModel func[C hasName](child C) *ServiceModel"
+  },
   "packages/go/model/service.go::ServiceModel.Limit": {
     "exported": true,
     "signature": "receiver=*ServiceModel func(offset, count int) *ServiceModel"
@@ -13634,6 +13814,14 @@
   "packages/go/model/service.go::ServiceModel.MarshalJSON": {
     "exported": true,
     "signature": "receiver=*ServiceModel func() ([]byte, error)"
+  },
+  "packages/go/model/service.go::ServiceModel.MatchLikeCountWithSeq": {
+    "exported": true,
+    "signature": "receiver=*ServiceModel func() *ServiceModel"
+  },
+  "packages/go/model/service.go::ServiceModel.MatchNameWithSeq": {
+    "exported": true,
+    "signature": "receiver=*ServiceModel func() *ServiceModel"
   },
   "packages/go/model/service.go::ServiceModel.MatchServiceSeqWithSeq": {
     "exported": true,
@@ -14211,6 +14399,10 @@
     "exported": true,
     "signature": "receiver=*ServiceRegionModel func() *ServiceRegionModel"
   },
+  "packages/go/model/service_region.go::ServiceRegionModel.AliasModule": {
+    "exported": true,
+    "signature": "receiver=*ServiceRegionModel func() *ServiceRegionModel"
+  },
   "packages/go/model/service_region.go::ServiceRegionModel.And": {
     "exported": true,
     "signature": "receiver=*ServiceRegionModel func(args ...any) *ServiceRegionModel"
@@ -14311,6 +14503,10 @@
     "exported": true,
     "signature": "receiver=*ServiceRegionModel func() (int64, error)"
   },
+  "packages/go/model/service_region.go::ServiceRegionModel.GetServiceModel": {
+    "exported": true,
+    "signature": "receiver=*ServiceRegionModel func() (*ServiceModel, error)"
+  },
   "packages/go/model/service_region.go::ServiceRegionModel.GetServiceSeq": {
     "exported": true,
     "signature": "receiver=*ServiceRegionModel func() (int64, error)"
@@ -14366,6 +14562,10 @@
   "packages/go/model/service_region.go::ServiceRegionModel.MarshalJSON": {
     "exported": true,
     "signature": "receiver=*ServiceRegionModel func() ([]byte, error)"
+  },
+  "packages/go/model/service_region.go::ServiceRegionModel.MatchServiceRegionSeqWithSeq": {
+    "exported": true,
+    "signature": "receiver=*ServiceRegionModel func() *ServiceRegionModel"
   },
   "packages/go/model/service_region.go::ServiceRegionModel.MinusSeq": {
     "exported": true,
@@ -14438,6 +14638,10 @@
   "packages/go/model/service_region.go::ServiceRegionModel.PlusServiceSeq": {
     "exported": true,
     "signature": "receiver=*ServiceRegionModel func(n int64) *ServiceRegionModel"
+  },
+  "packages/go/model/service_region.go::ServiceRegionModel.PossibleIsClose": {
+    "exported": true,
+    "signature": "receiver=*ServiceRegionModel func(v any) *ServiceRegionModel"
   },
   "packages/go/model/service_region.go::ServiceRegionModel.Relation": {
     "exported": true,
@@ -15255,6 +15459,10 @@
     "exported": true,
     "signature": "receiver=*SoftRecordModel func() *SoftRecordModel"
   },
+  "packages/go/model/soft_record.go::SoftRecordModel.AliasRecord": {
+    "exported": true,
+    "signature": "receiver=*SoftRecordModel func() *SoftRecordModel"
+  },
   "packages/go/model/soft_record.go::SoftRecordModel.And": {
     "exported": true,
     "signature": "receiver=*SoftRecordModel func(args ...any) *SoftRecordModel"
@@ -15330,6 +15538,10 @@
   "packages/go/model/soft_record.go::SoftRecordModel.GetAvg": {
     "exported": true,
     "signature": "receiver=*SoftRecordModel func() (*float64, error)"
+  },
+  "packages/go/model/soft_record.go::SoftRecordModel.GetBySeq": {
+    "exported": true,
+    "signature": "receiver=*SoftRecordModel func[T0 argIntEq](v0 T0) (*SoftRecordModel, error)"
   },
   "packages/go/model/soft_record.go::SoftRecordModel.GetCount": {
     "exported": true,
@@ -17809,7 +18021,7 @@
   },
   "packages/go/orm/catalog_insert_defaults.go::catalogVerifyInsertedValues": {
     "exported": false,
-    "signature": "func(row []any, changes []catalogChange) error"
+    "signature": "func(metadata CatalogTableMetadata, row []any, changes []catalogChange) error"
   },
   "packages/go/orm/catalog_insert_defaults.go::newCatalogInsertLocator": {
     "exported": false,
@@ -18022,6 +18234,10 @@
   "packages/go/orm/catalog_mutation.go::catalogSession.lookup": {
     "exported": false,
     "signature": "receiver=*catalogSession func(metadata CatalogTableMetadata, keys []any, lock bool) ([][]any, error)"
+  },
+  "packages/go/orm/catalog_mutation.go::catalogSession.mysqlPartialRevokesOff": {
+    "exported": false,
+    "signature": "receiver=*catalogSession func() error"
   },
   "packages/go/orm/catalog_mutation.go::catalogSession.mysqlSafety": {
     "exported": false,
@@ -18558,6 +18774,10 @@
   "packages/go/orm/collection.go::integerKey": {
     "exported": false,
     "signature": "func(value int64) Key"
+  },
+  "packages/go/orm/collection.go::keyCells": {
+    "exported": false,
+    "signature": "func(row []any, asm *plan.Assemble) ([]any, error)"
   },
   "packages/go/orm/collection.go::keyFromRow": {
     "exported": false,
@@ -20183,6 +20403,10 @@
     "exported": false,
     "signature": "func(value any) error"
   },
+  "packages/go/orm/group_rows.go::exactIntegerText": {
+    "exported": false,
+    "signature": "func(raw any) error"
+  },
   "packages/go/orm/group_rows.go::groupColumnValue": {
     "exported": false,
     "signature": "func(c *Core, db *DB, column plan.OutCol, declared *runtimemodel.Field, raw any) (any, error)"
@@ -21077,7 +21301,7 @@
   },
   "packages/go/orm/model.go::rowState": {
     "exported": false,
-    "signature": "type rowState struct { loaded bool names []string hidden map[string]bool original originals extra map[string]any related map[string]any relNames []string cascade map[string]bool flat []string }"
+    "signature": "type rowState struct { loaded bool names []string hidden map[string]bool original originals extra map[string]any extraDate map[string]bool related map[string]any relNames []string cascade map[string]bool flat []string }"
   },
   "packages/go/orm/model.go::rowState#field.cascade": {
     "exported": false,
@@ -21086,6 +21310,10 @@
   "packages/go/orm/model.go::rowState#field.extra": {
     "exported": false,
     "signature": "map[string]any"
+  },
+  "packages/go/orm/model.go::rowState#field.extraDate": {
+    "exported": false,
+    "signature": "map[string]bool"
   },
   "packages/go/orm/model.go::rowState#field.flat": {
     "exported": false,

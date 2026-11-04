@@ -239,6 +239,10 @@
     "exported": false,
     "signature": "private int"
   },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Catalog::$reopenUntil": {
+    "exported": false,
+    "signature": "private float"
+  },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Catalog::$streamLeft": {
     "exported": false,
     "signature": "private bool"
