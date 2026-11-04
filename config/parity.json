@@ -18167,7 +18167,7 @@
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/models-scan.mjs",
-          "id": "the committed models equal the generator output"
+          "id": "every generated model set equals the generator output"
         },
         {
           "implementation": "go",
@@ -24146,11 +24146,6 @@
           "implementation": "php",
           "test": "packages/php/tests/OrmGenScanTest.php",
           "id": "OrmGenScanTest::testTheReceiverIsResolvedFromTheSource"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_scan_reports_unknown_model_methods"
         }
       ]
     },

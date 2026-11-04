@@ -10,6 +10,7 @@ import * as ownerSelection from './owners.mts';
 import type { CheckInputs, Owner, TargetDeclaration } from './owners.mts';
 import { parseJson, refusedPaths } from '../json/schema.mts';
 import { readFeatures } from './manifest.mts';
+import { alternatives, checkCommand, featureCommands, makefileCommands, memoryTree, readMakefile, readTree, staleNames } from './test-names.mts';
 
 const { CHECK_INPUTS_SCHEMA, checkInputErrors, makeArguments, manifestChanges, manifestInputErrors, pathScopeErrors, readCheckInputs, selectHelpers, selectOwners, selectTargets, untestedPaths } = ownerSelection;
 
@@ -385,4 +386,74 @@ caseTest('every Rust verification names a test program of the workspace', 60_000
   const missing = features.features.flatMap(feature => feature.verification ?? []).flatMap(verification =>
     [...verification.command.matchAll(/--test ([A-Za-z0-9_]+)(?=\s|$)/g)].map(match => match[1]).filter(name => !programs.includes(name)).map(name => `${verification.id}: ${name}`));
   assert.deepEqual(missing, []);
+});
+
+// Each runner fails, or silently selects less, on a name that no test holds: a command, a filter branch or a binding that a move left behind.
+const nameTree = memoryTree({
+  'tests/go-test.mts': '',
+  'packages/python/tests/testcase.py': '',
+  'packages/go/orm/a_test.go': 'func TestKept(t *testing.T) {}\nfunc TestRecipeThing(t *testing.T) { recipe("contracts/fixtures/thing/thing.json") }\n',
+  'contracts/fixtures/thing/thing.json': '{"cases":[{"id":"held_case"}]}',
+  'packages/php/tests/KeptTest.php': "<?php\nnamespace Polyspec\\Orm\\Tests;\nclass KeptTest extends TestCase\n{\n    use KeptCases;\n    public function testKept(): void {}\n}\n",
+  'packages/php/tests/kept_cases.php': "<?php\ntrait KeptCases\n{\n    public function testShared(): void {}\n}\n",
+  'packages/python/tests/test_kept.py': 'class KeptTest(unittest.TestCase):\n    def test_kept(self):\n        pass\n',
+  'packages/ts/tests/kept.mjs': "caseTest('kept/one', 1, () => {});\ncaseTest(`made/${name}`, 1, () => {});\n",
+  'packages/rust/orm/Cargo.toml': 'name = "polyspec-orm"\n',
+  'packages/rust/orm/tests/kept.rs': 'mod more;\n#[test]\nfn kept_case() {}\n',
+  'packages/rust/orm/tests/more.rs': '#[test]\nfn more_case() {}\n',
+});
+for (const [command, expected] of [
+  ["node tests/go-test.mts ./packages/go/orm -run '^(TestKept|TestRecipeThing)$'", []],
+  ["node tests/go-test.mts ./packages/go/orm -run '^TestRecipeThing$/^held_case$'", []],
+  ["node tests/go-test.mts ./packages/go/orm -run '^(TestKept|TestGone)$'", ['go test: -run ^TestGone$ in packages/go/orm']],
+  ["node tests/go-test.mts ./packages/go/orm -run '^TestRecipeThing$/^gone_case$'", ['go test: -run ^TestRecipeThing$/^gone_case$ in packages/go/orm']],
+  ['node tests/go-test.mts ./packages/go/gone -count=1', ['go package: packages/go/gone holds no test']],
+  ["phpunit -- --filter 'test(Kept|Shared)' packages/php/tests/KeptTest.php", []],
+  ["phpunit -- --filter 'test(Kept|Gone)' packages/php/tests/KeptTest.php", ['php test: --filter testGone in packages/php/tests/KeptTest.php']],
+  ['phpunit -- packages/php/tests/GoneTest.php', ['test file: packages/php/tests/GoneTest.php']],
+  ['python -m unittest packages.python.tests.test_kept.KeptTest.test_kept', []],
+  ['python -m packages.python.tests.test_kept KeptTest.test_kept', []],
+  ['python -m unittest packages.python.tests.test_kept.KeptTest.test_gone', ['python test: packages.python.tests.test_kept.KeptTest.test_gone']],
+  ['python -m unittest packages.python.tests.test_kept.GoneTest', ['python test: packages.python.tests.test_kept.GoneTest']],
+  ['python -m packages.python.tests.test_gone', ['python module: packages.python.tests.test_gone']],
+  ['python -m packages.python.tests.testcase discover -s packages/python/tests -t . -p test_kept.py -k test_kept', []],
+  ['python -m packages.python.tests.testcase discover -s packages/python/tests -t . -p test_gone.py', ['python test file: packages/python/tests/test_gone.py']],
+  ["node --test --test-name-pattern='^kept/one$' packages/ts/tests/kept.mjs", []],
+  ["node --test --test-name-pattern='^made/any$' packages/ts/tests/kept.mjs", []],
+  ["node --test --test-name-pattern='^gone/one$' packages/ts/tests/kept.mjs", ['typescript test: --test-name-pattern ^gone/one$ in packages/ts/tests/kept.mjs']],
+  ['node --test packages/ts/tests/gone.mjs', ['test file: packages/ts/tests/gone.mjs']],
+  ['cargo test --manifest-path packages/rust/Cargo.toml --test kept more_case', []],
+  ['cargo test --manifest-path packages/rust/Cargo.toml --test gone', ['rust test program: --test gone']],
+  ['cargo test --manifest-path packages/rust/Cargo.toml --test kept gone_case', ['rust test: gone_case in --test kept']],
+] as [string, string[]][]) {
+  caseTest(`test-names reads ${command}`, 5000, () => {
+    assert.deepEqual(checkCommand(nameTree, command), expected);
+  });
+}
+
+// One alternative is judged by itself, because the other branches of the filter would still select a test.
+caseTest('a filter is judged branch by branch', 5000, () => {
+  assert.deepEqual(alternatives('^(TestA|TestB(C|D)?)$'), ['^TestA$', '^TestBC$', '^TestBD$', '^TestB$']);
+  assert.deepEqual(alternatives('^a$|^b$'), ['^a$', '^b$']);
+  assert.deepEqual(alternatives('^x(?!y)'), ['^x(?!y)']);
+});
+
+// A make recipe reads its variables, $(if) and $(call), and a command that fills a filter is read with that value.
+caseTest('a Makefile recipe is read after make expands it', 5000, () => {
+  const makefile = readMakefile("F ?=\nGO = node tests/go-test.mts\none:\n\t$(GO) ./packages/go/orm $(if $(F),-run '$(F)',-run '^TestKept$$')\n");
+  assert.deepEqual(makefileCommands(makefile).map(({ command }) => command), ["node tests/go-test.mts ./packages/go/orm -run '^TestKept$'"]);
+  assert.deepEqual(featureCommands(makefile, 'place', 'make one F=TestGone').map(({ command }) => checkCommand(nameTree, command)),
+    [[], ['go test: -run TestGone in packages/go/orm']]);
+});
+
+// A verification, a Makefile recipe, a parity binding and a check input name only what the tree holds (FCV-7).
+caseTest('every declared command, binding and input names a test of the tree', 120_000, async () => {
+  const read = async (path: string) => readFile(join(root, path), 'utf8');
+  const stale = staleNames(readTree(root), {
+    makefile: await read('Makefile'),
+    features: JSON.parse(await read('contracts/features.json')),
+    parity: JSON.parse(await read('config/parity.json')),
+    checkInputs: JSON.parse(await read('contracts/check-inputs.json')),
+  });
+  assert.deepEqual([...stale].map(([name, places]) => `${name} <- ${places.join(', ')}`).sort(), []);
 });

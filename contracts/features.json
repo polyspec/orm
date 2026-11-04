@@ -246,16 +246,6 @@
           ]
         },
         {
-          "id": "bind-message-typescript",
-          "command": "node --test --test-name-pattern='^markdown/bind-message/' packages/ts/tests/markdown.mjs",
-          "shard": "other",
-          "inputs": [
-            "packages/ts/tests/markdown.mjs",
-            "packages/ts/src/markdown.ts",
-            "tests/bind/vectors.json"
-          ]
-        },
-        {
           "id": "bind-vectors-go",
           "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestBindVectors$' -count=1",
           "shard": "other",
@@ -296,7 +286,7 @@
         },
         {
           "id": "dsn-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run 'ParseDSN|ConnectionsUseUTC' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run 'ParseDSN' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/dsn_test.go",
@@ -1381,7 +1371,7 @@
         },
         {
           "id": "queries-orm-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestCollectionLookupRejectsUnsupportedKey|TestCompositeTypedKeyPreservesBoundaries|TestDecimalModelFixture|TestExpandInKeepsBareDollar|TestGroupColumnDeclarationRejectsMissingAndDuplicateCount|TestGroupColumnValueChecksDeclaredType|TestGroupCountRejectsInvalidStoredBoolean|TestGroupRowsRejectInvalidCountsAndPreserveSelectedValues|TestInsertPartsFixture|TestJoinedByteColumnsAndInvalidValues|TestKeyValuesPreserveTheirTypes|TestModelCollectionKeyRejectsInvalidCallbackAndMissingColumn|TestRelatedAsReportsMismatch|TestRelationKeyCollectionPropagatesInvalidValue|TestRuntimeValueTypes|TestScalarComparisonPreservesTypesAndRejectsInvalidValues|TestSelectedByteKeyPreservesByteType|TestShapeCoversEveryField|TestShapeIgnoresParamValues|TestSplitQueryPropagatesInvalidKey|TestSplitQueryRetainsDistinctTypedValues|TestStyledColumnStateFixture|TestStyledFixturePhysicalCells|TestUnknownStyleRejectsSQLNull|TestUnsupportedKeyIsAnError)$' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestCollectionLookupRejectsUnsupportedKey|TestCompositeTypedKeyPreservesBoundaries|TestDecimalModelFixture|TestExpandInKeepsBareDollar|TestGroupColumnDeclarationRejectsMissingAndDuplicateCount|TestInsertPartsFixture|TestJoinedByteColumnsAndInvalidValues|TestKeyValuesPreserveTheirTypes|TestModelCollectionKeyRejectsInvalidCallback|TestModelCollectionKeyRejectsMissingColumn|TestRelatedAsReportsMismatch|TestRelationKeyCollectionPropagatesInvalidValue|TestScalarComparisonPreservesTypesAndRejectsInvalidValues|TestSelectedByteKeyPreservesByteType|TestShapeCoversEveryField|TestShapeIgnoresParamValues|TestSplitQueryPropagatesInvalidKey|TestSplitQueryRetainsDistinctTypedValues|TestStyledColumnStateFixture|TestStyledFixturePhysicalCells|TestUnknownStyleRejectsSQLNull|TestUnsupportedKeyIsAnError)$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/collection_key_test.go",
@@ -1408,7 +1398,7 @@
         },
         {
           "id": "decimal-schema-set-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/decimalmodel -run '^(TestSchemaSetEditedManifestMySQL|TestSchemaSetEditedManifestPostgres|TestSchemaSetEditedManifestSQLite|TestSchemaSetMySQL|TestSchemaSetPostgres|TestSchemaSetSQLite|TestSchemaSetUnregisteredMySQL|TestSchemaSetUnregisteredPostgres|TestSchemaSetUnregisteredSQLite)$' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/decimalmodel -run '^(TestSchemaSetEditedManifestMySQL|TestSchemaSetEditedManifestPostgres|TestSchemaSetEditedManifestSQLite)$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/decimalmodel/schema_set_test.go",
@@ -2049,7 +2039,7 @@
         },
         {
           "id": "writes-orm-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestAssemblerReturnsAssignmentError|TestIdentityAssignmentValidationBeforeWrite|TestRestoreSoftDeletedRow)$' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestAssemblerReturnsAssignmentError|TestIdentityAssignmentValidationBeforeWrite)$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/assignment_propagation_test.go",
@@ -4672,7 +4662,7 @@
       "verification": [
         {
           "id": "orm-install-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run 'SQLKeywordNames|ConnectionsUseUTC' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run 'SQLKeywordNames' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/keyword_test.go",
@@ -4702,7 +4692,7 @@
         },
         {
           "id": "install-register-php",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'test(RegisterSendsNoStatement|InstallVerifiesTheDatabase|ExternalDocuments|EditedManifest)' packages/php/tests/SchemaSetTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'test(InstallVerifiesTheDatabase|EditedManifest)' packages/php/tests/SchemaSetTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/SchemaSetTest.php",
@@ -4822,7 +4812,7 @@
         },
         {
           "id": "install-schema-set-php",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'test(SeveralSchemas|UnregisteredSchema|EditedManifest|ExternalDocuments)' packages/php/tests/SchemaSetTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'testEditedManifest' packages/php/tests/SchemaSetTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/SchemaSetTest.php",
@@ -5796,7 +5786,7 @@
       "verification": [
         {
           "id": "encryption-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run 'Codec|AES|Rotation|BlindIndex|TestRecipeCodecNone' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run 'Codec|AES|Rotation|TestRecipeCodecNone' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/aes_rotation_test.go",
@@ -6472,7 +6462,7 @@
       "verification": [
         {
           "id": "constraints-engine-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/engine/... -run 'External|Immutable|Overlapping|SoftDelete|Check' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/engine/... -run 'SoftDelete|Check' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/engine/planner/soft_delete_test.go"
