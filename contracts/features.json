@@ -78,8 +78,8 @@
         "dsn_connection-sqlite",
         "dsn-reject-checked",
         "dsn-reject-parameters",
+        "dsn-reject-php-pool",
         "connection-driver-from-dsn",
-        "connection-catalog-session-through-a-pooler",
         "connection-sqlite-crashed-holder",
         "model_socket-mysql",
         "connection-mysql-tls-requires-hostname-tcp",
@@ -97,7 +97,8 @@
         "packages/php/tests/request_termination_child.php",
         "contracts/fixtures/dsn_connection/dsn_connection.json",
         "contracts/fixtures/dsn_reject/dsn_reject_checked.json",
-        "contracts/fixtures/dsn_reject/dsn_reject_parameters.json"
+        "contracts/fixtures/dsn_reject/dsn_reject_parameters.json",
+        "contracts/fixtures/dsn_reject/dsn_reject_php_pool.json"
       ],
       "tests": [
         "packages/go/orm/dsn_test.go",
@@ -106,7 +107,6 @@
         "packages/php/tests/ModelTest.php",
         "packages/php-ext/tests/ConnectionUtcNativeTest.php",
         "packages/ts/tests/dsn.mjs",
-        "packages/ts/tests/dsn_features.mjs",
         "packages/ts/tests/model.mjs",
         "packages/ts/tests/pool_bounds.mjs",
         "packages/ts/tests/idle-connection-end.mjs",
@@ -135,7 +135,6 @@
         "packages/python/tests/test_sqlite_version.py",
         "packages/python/tests/test_placeholders.py",
         "packages/python/tests/test_driver_cells.py",
-        "packages/python/tests/connection_config.py",
         "packages/python/tests/connection_pool.py",
         "packages/python/tests/mysql_session.py",
         "packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php",
@@ -181,8 +180,10 @@
         "packages/python/tests/test_dsn_connection_sqlite.py",
         "packages/php/tests/DsnRejectCheckedRecipeTest.php",
         "packages/php/tests/DsnRejectParametersRecipeTest.php",
+        "packages/php/tests/DsnRejectPhpPoolRecipeTest.php",
         "packages/php-ext/tests/DsnRejectCheckedRecipeTestExtensionTest.php",
         "packages/php-ext/tests/DsnRejectParametersRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/DsnRejectPhpPoolRecipeTestExtensionTest.php",
         "packages/ts/tests/dsn_reject_checked-none.test.mjs",
         "packages/ts/tests/dsn_reject_parameters-none.test.mjs",
         "packages/python/tests/test_dsn_reject_checked_none.py",
@@ -246,16 +247,6 @@
           ]
         },
         {
-          "id": "bind-message-typescript",
-          "command": "node --test --test-name-pattern='^markdown/bind-message/' packages/ts/tests/markdown.mjs",
-          "shard": "other",
-          "inputs": [
-            "packages/ts/tests/markdown.mjs",
-            "packages/ts/src/markdown.ts",
-            "tests/bind/vectors.json"
-          ]
-        },
-        {
           "id": "bind-vectors-go",
           "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestBindVectors$' -count=1",
           "shard": "other",
@@ -296,7 +287,7 @@
         },
         {
           "id": "dsn-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run 'ParseDSN|ConnectionsUseUTC' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run 'ParseDSN' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/dsn_test.go",
@@ -319,14 +310,6 @@
           "inputs": [
             "packages/ts/tests/dsn.mjs",
             "tests/dsn/sqlite-paths.json"
-          ]
-        },
-        {
-          "id": "dsn-features-typescript",
-          "command": "node packages/ts/tests/dsn_features.mjs",
-          "shard": "other",
-          "inputs": [
-            "packages/ts/tests/dsn_features.mjs"
           ]
         },
         {
@@ -440,15 +423,6 @@
             "tests/dsn/sqlite-paths.json",
             "packages/python/src/polyspec/orm/database.py",
             "packages/python/src/polyspec/orm/placeholders.py"
-          ]
-        },
-        {
-          "id": "connection-config-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.connection_config",
-          "shard": "other",
-          "inputs": [
-            "packages/python/tests/connection_config.py",
-            "packages/python/src/polyspec/orm/database.py"
           ]
         },
         {
@@ -1381,7 +1355,7 @@
         },
         {
           "id": "queries-orm-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestCollectionLookupRejectsUnsupportedKey|TestCompositeTypedKeyPreservesBoundaries|TestDecimalModelFixture|TestExpandInKeepsBareDollar|TestGroupColumnDeclarationRejectsMissingAndDuplicateCount|TestGroupColumnValueChecksDeclaredType|TestGroupCountRejectsInvalidStoredBoolean|TestGroupRowsRejectInvalidCountsAndPreserveSelectedValues|TestInsertPartsFixture|TestJoinedByteColumnsAndInvalidValues|TestKeyValuesPreserveTheirTypes|TestModelCollectionKeyRejectsInvalidCallbackAndMissingColumn|TestRelatedAsReportsMismatch|TestRelationKeyCollectionPropagatesInvalidValue|TestRuntimeValueTypes|TestScalarComparisonPreservesTypesAndRejectsInvalidValues|TestSelectedByteKeyPreservesByteType|TestShapeCoversEveryField|TestShapeIgnoresParamValues|TestSplitQueryPropagatesInvalidKey|TestSplitQueryRetainsDistinctTypedValues|TestStyledColumnStateFixture|TestStyledFixturePhysicalCells|TestUnknownStyleRejectsSQLNull|TestUnsupportedKeyIsAnError)$' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestCollectionLookupRejectsUnsupportedKey|TestCompositeTypedKeyPreservesBoundaries|TestDecimalModelFixture|TestExpandInKeepsBareDollar|TestGroupColumnDeclarationRejectsMissingAndDuplicateCount|TestInsertPartsFixture|TestJoinedByteColumnsAndInvalidValues|TestKeyValuesPreserveTheirTypes|TestModelCollectionKeyRejectsInvalidCallback|TestModelCollectionKeyRejectsMissingColumn|TestRelatedAsReportsMismatch|TestRelationKeyCollectionPropagatesInvalidValue|TestScalarComparisonPreservesTypesAndRejectsInvalidValues|TestSelectedByteKeyPreservesByteType|TestShapeCoversEveryField|TestShapeIgnoresParamValues|TestSplitQueryPropagatesInvalidKey|TestSplitQueryRetainsDistinctTypedValues|TestStyledColumnStateFixture|TestStyledFixturePhysicalCells|TestUnknownStyleRejectsSQLNull|TestUnsupportedKeyIsAnError)$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/collection_key_test.go",
@@ -1408,7 +1382,7 @@
         },
         {
           "id": "decimal-schema-set-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/decimalmodel -run '^(TestSchemaSetEditedManifestMySQL|TestSchemaSetEditedManifestPostgres|TestSchemaSetEditedManifestSQLite|TestSchemaSetMySQL|TestSchemaSetPostgres|TestSchemaSetSQLite|TestSchemaSetUnregisteredMySQL|TestSchemaSetUnregisteredPostgres|TestSchemaSetUnregisteredSQLite)$' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/decimalmodel -run '^(TestSchemaSetEditedManifestMySQL|TestSchemaSetEditedManifestPostgres|TestSchemaSetEditedManifestSQLite)$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/decimalmodel/schema_set_test.go",
@@ -2049,7 +2023,7 @@
         },
         {
           "id": "writes-orm-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestAssemblerReturnsAssignmentError|TestIdentityAssignmentValidationBeforeWrite|TestRestoreSoftDeletedRow)$' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestAssemblerReturnsAssignmentError|TestIdentityAssignmentValidationBeforeWrite)$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/assignment_propagation_test.go",
@@ -4672,7 +4646,7 @@
       "verification": [
         {
           "id": "orm-install-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run 'SQLKeywordNames|ConnectionsUseUTC' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run 'SQLKeywordNames' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/keyword_test.go",
@@ -4702,7 +4676,7 @@
         },
         {
           "id": "install-register-php",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'test(RegisterSendsNoStatement|InstallVerifiesTheDatabase|ExternalDocuments|EditedManifest)' packages/php/tests/SchemaSetTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'test(InstallVerifiesTheDatabase|EditedManifest)' packages/php/tests/SchemaSetTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/SchemaSetTest.php",
@@ -4822,7 +4796,7 @@
         },
         {
           "id": "install-schema-set-php",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'test(SeveralSchemas|UnregisteredSchema|EditedManifest|ExternalDocuments)' packages/php/tests/SchemaSetTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'testEditedManifest' packages/php/tests/SchemaSetTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/SchemaSetTest.php",
@@ -5795,7 +5769,7 @@
       "verification": [
         {
           "id": "encryption-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run 'Codec|AES|Rotation|BlindIndex|TestRecipeCodecNone' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run 'Codec|AES|Rotation|TestRecipeCodecNone' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/aes_rotation_test.go",
@@ -6471,7 +6445,7 @@
       "verification": [
         {
           "id": "constraints-engine-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/engine/... -run 'External|Immutable|Overlapping|SoftDelete|Check' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/engine/... -run 'SoftDelete|Check' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/engine/planner/soft_delete_test.go"

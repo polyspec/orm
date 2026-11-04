@@ -2801,6 +2801,8 @@ mod database {
     struct Context<'a> {
         /// The connection that sql.hold_connection holds.
         held: Option<sqlx::MySqlConnection>,
+        /// The connection that sql.hold_statement holds.
+        held_statement: Option<sqlx::PgConnection>,
         namespace: String,
         database: &'a str,
         dsn: String,
@@ -3064,6 +3066,7 @@ mod database {
         let dsn = case_database.dsn().to_owned();
         let mut context = Context {
             held: None,
+            held_statement: None,
             namespace,
             database,
             dsn,
@@ -3813,9 +3816,13 @@ mod database {
                 Output::fields(json!({}))
             }
             "catalog.reconnect" => {
-                let dsn = match crate::recipe_reads::read(step, "user_from_database").get("user_from_database").and_then(Value::as_str) {
-                    Some(prefix) => user_from_database_dsn(&context.dsn, prefix),
+                let base = match crate::recipe_reads::read(step, "dsn").get("dsn").and_then(Value::as_str) {
+                    Some(named) => super::connect_dsn(Some(named), context.database, &context.dsn, None).map_err(fault)?,
                     None => context.dsn.clone(),
+                };
+                let dsn = match crate::recipe_reads::read(step, "user_from_database").get("user_from_database").and_then(Value::as_str) {
+                    Some(prefix) => user_from_database_dsn(&base, prefix),
+                    None => base,
                 };
                 if let Some(text) = crate::recipe_reads::read(step, "refused_message").get("refused_message").and_then(Value::as_str) {
                     return match CatalogConnection::connect(&dsn).await {
@@ -4084,9 +4091,26 @@ mod database {
                 context.held = Some(options.connect().await.map_err(|e| fault(e.to_string()))?);
                 Output::fields(json!({}))
             }
+            "sql.hold_statement" => {
+                let dsn = super::connect_dsn(crate::recipe_reads::read(step, "dsn")["dsn"].as_str(), context.database, &context.dsn, None).map_err(fault)?;
+                let ConnectOptions::Postgres(options) = parse_dsn(&dsn).map_err(|e| fault(e.to_string()))?.options else {
+                    return Err(fault(format!("{dsn} is not a postgres DSN")));
+                };
+                use sqlx::ConnectOptions as _;
+                let mut held = options.connect().await.map_err(|e| fault(e.to_string()))?;
+                let sql = crate::recipe_reads::read(step, "sql")["sql"].as_str().unwrap_or_default().to_owned();
+                let bind = crate::recipe_reads::read(step, "bind")["bind"].as_i64().and_then(|n| i32::try_from(n).ok()).unwrap_or_default();
+                // sqlx names the statement of a query in the statement cache of the connection.
+                sqlx::query(sqlx::AssertSqlSafe(sql)).bind(bind).fetch_all(&mut held).await.map_err(|e| fault(e.to_string()))?;
+                context.held_statement = Some(held);
+                Output::fields(json!({}))
+            }
             "sql.release_connection" => {
                 use sqlx::Connection as _;
                 if let Some(held) = context.held.take() {
+                    held.close().await.map_err(|e| fault(e.to_string()))?;
+                }
+                if let Some(held) = context.held_statement.take() {
                     held.close().await.map_err(|e| fault(e.to_string()))?;
                 }
                 Output::fields(json!({}))
@@ -4167,10 +4191,12 @@ mod database {
                 context.models.connect_bounded(name, &dsn, pool_size, ms).await.map_err(Failure::Call)?;
                 return Ok(Output::fields(json!({})));
             }
-            if let Some(idle) = crate::recipe_reads::read(step, "pool_idle_size")["pool_idle_size"].as_u64() {
-                // A connection with an idle bound opens without the models of the case: a pool op only reads its counts.
-                let options =
-                    polyspec_orm::Config { pool_idle_size: u32::try_from(idle).map_err(|e| Failure::Step(e.to_string()))?, ..polyspec_orm::Config::default() };
+            let idle = crate::recipe_reads::read(step, "pool_idle_size")["pool_idle_size"].as_u64();
+            let lifetime = crate::recipe_reads::read(step, "pool_lifetime_ms")["pool_lifetime_ms"].as_u64();
+            if idle.is_some() || lifetime.is_some() {
+                // A connection with an idle bound or a lifetime opens without the models of the case: a pool op reads its counts, and utils.run takes no model.
+                let bound = |value: Option<u64>| u32::try_from(value.unwrap_or(0)).map_err(|e| Failure::Step(e.to_string()));
+                let options = polyspec_orm::Config { pool_idle_size: bound(idle)?, pool_lifetime_ms: bound(lifetime)?, ..polyspec_orm::Config::default() };
                 let db = Db::connect(&dsn, pool_size, options).await.map_err(|e| Failure::Step(e.to_string()))?;
                 context.models.adopt(name, db);
                 return Ok(Output::fields(json!({})));

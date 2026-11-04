@@ -725,7 +725,8 @@ const OPS = {
     return {};
   },
   async 'catalog.reconnect'(s, context) {
-    const dsn = s.user_from_database === undefined ? context.dsn : userFromDatabaseDsn(context.dsn, s.user_from_database);
+    const base = s.dsn === undefined ? context.dsn : connectDsn(s.dsn, context.database, context.dsn);
+    const dsn = s.user_from_database === undefined ? base : userFromDatabaseDsn(base, s.user_from_database);
     if (s.refused_message !== undefined) {
       const refused = await connectCatalog(dsn).then(catalog => catalog.close().then(() => null), error => error);
       if (refused === null) throw new Error('the server accepted the connection that the step expects it to refuse');
@@ -741,6 +742,11 @@ const OPS = {
   },
   async 'sql.hold_connection'(s, context) {
     context.held = await nativeSession(context.database, userFromDatabaseDsn(context.dsn, s.user_from_database));
+    return {};
+  },
+  async 'sql.hold_statement'(s, context) {
+    context.held = await nativeSession(context.database, connectDsn(s.dsn, context.database, context.dsn));
+    await context.held.connection.query({ name: 'held_statement', text: s.sql, values: [s.bind] });
     return {};
   },
   async 'sql.release_connection'(_, context) {

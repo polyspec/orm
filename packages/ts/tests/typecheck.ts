@@ -24,6 +24,9 @@ export function driverConnections(
 
 export async function valid(db: Db): Promise<void> {
   new Author().fulltextBooleanNameWithDescription('alpha beta').fulltextNameWithDescription('alpha');
+  // tests/refusal-before-request.mjs hands these two chains to tsc in text, which the scan of the models does not read.
+  void new Author().joinUserSeqWithSeq(new User());
+  void new User().matchUserSeqWithSeq();
   const rows = await new Author().connect(db)
     .serviceSeq(7).andIsClose(false).or().readCount(6)
     .and(q => q.isDisplay(false).or(q => q.isClose(true).andGtReadCount(500)))

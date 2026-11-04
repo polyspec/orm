@@ -2848,9 +2848,12 @@ final class Recipe
                 $catalog->close();
                 return [];
             case 'catalog.reconnect':
-                $reconnectDsn = isset($s['user_from_database'])
-                    ? self::userFromDatabaseDsn($context['dsn'], $s['user_from_database'])
+                $reconnectBase = isset($s['dsn'])
+                    ? self::connectDsn($s['dsn'], $context['database'], $context['dsn'])
                     : $context['dsn'];
+                $reconnectDsn = isset($s['user_from_database'])
+                    ? self::userFromDatabaseDsn($reconnectBase, $s['user_from_database'])
+                    : $reconnectBase;
                 if (isset($s['refused_message'])) {
                     try {
                         Catalog::connect($reconnectDsn);
@@ -3341,7 +3344,16 @@ final class Recipe
             case 'sql.hold_connection':
                 $context['held'] = case_admin(self::userFromDatabaseDsn($context['dsn'], $s['user_from_database']));
                 return [];
+            case 'sql.hold_statement':
+                // PDO on PostgreSQL parses a statement under a name of its own, unless it emulates.
+                $context['held'] = case_admin(self::connectDsn($s['dsn'], $context['database'], $context['dsn']));
+                $context['held']->setAttribute(\PDO::ATTR_EMULATE_PREPARES, false);
+                $held = $context['held']->prepare($s['sql']);
+                $held->execute([$s['bind']]);
+                $context['held_statement'] = $held;
+                return [];
             case 'sql.release_connection':
+                unset($context['held_statement']);
                 unset($context['held']);
                 return [];
             case 'sql.exec':

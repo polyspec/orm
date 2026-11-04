@@ -217,20 +217,6 @@ class ConnectionPoolTest(unittest.TestCase):
                 self.assertEqual(db.stats().max_open_connections, 3, "poolSize")
             finally:
                 db.close()
-            for options in (
-                {"poolSize": -1},
-                {"poolIdleSize": -1},
-                {"poolLifetimeMs": -1},
-                {"poolSize": 2, "poolIdleSize": 3},
-            ):
-                self.assertEqual(
-                    code_of(
-                        lambda options=options: models.connect(dsn, **options).close()
-                    ),
-                    "CONFIG",
-                    f"{options}",
-                )
-
         self.each(body, ("sqlite",))
 
     def test_concurrent_transactions_and_the_limit(self):
@@ -310,32 +296,29 @@ class ConnectionPoolTest(unittest.TestCase):
         self.each(body)
 
     def test_idle_size_and_lifetime(self):
-        def body(dialect, dsn):
-            if dialect == "sqlite":
-                db = models.connect(dsn, poolSize=3, poolIdleSize=1)
-                try:
-                    barrier = threading.Barrier(3)
+        def body(_dialect, dsn):
+            db = models.connect(dsn, poolSize=3, poolIdleSize=1)
+            try:
+                barrier = threading.Barrier(3)
 
-                    def hold():
-                        read_only(db, lambda: barrier.wait(10))
+                def hold():
+                    read_only(db, lambda: barrier.wait(10))
 
-                    threads = [threading.Thread(target=hold) for _ in range(3)]
-                    for thread in threads:
-                        thread.start()
-                    for thread in threads:
-                        thread.join(10)
-                    stats = db.stats()
-                    self.assertEqual(
-                        (stats.open_connections, stats.idle),
-                        (1, 1),
-                        "the idle connections kept",
-                    )
-                finally:
-                    db.close()
+                threads = [threading.Thread(target=hold) for _ in range(3)]
+                for thread in threads:
+                    thread.start()
+                for thread in threads:
+                    thread.join(10)
+                stats = db.stats()
+                self.assertEqual(
+                    (stats.open_connections, stats.idle),
+                    (1, 1),
+                    "the idle connections kept",
+                )
+            finally:
+                db.close()
             db = models.connect(dsn, poolSize=1, poolLifetimeMs=200)
             try:
-                # The driver connection of a transaction; a pooler in front of the server reuses its server sessions,
-                # so the session id of the server does not tell the client connections apart.
                 def taken():
                     return db.transaction(
                         lambda: db.active_frame().connection, {"retry": 0}
@@ -352,7 +335,8 @@ class ConnectionPoolTest(unittest.TestCase):
             finally:
                 db.close()
 
-        self.each(body)
+        # The pool of SQLite differs by runtime; the recipe connection_pool states MySQL and PostgreSQL.
+        self.each(body, ("sqlite",))
 
     # Requirements: CFG-42. A recipe case runs on the connections of one test process in Python, so this test starts the processes.
     def test_sqlite_several_process_writers_commit_every_row(self):

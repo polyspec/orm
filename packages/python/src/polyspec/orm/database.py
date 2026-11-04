@@ -1456,8 +1456,8 @@ def _connection_config(options: dict) -> _PoolConfig:
 class _Pool:
     """The connections of a Db (docs/spec/config.md "Runtime connection"). It never opens more than its size; a caller
     that needs a connection while all of them are in use waits for one. A released connection is closed when the pool
-    already keeps its idle size, when its lifetime has passed or when it was lost; an idle connection past its
-    lifetime is closed when it would be taken."""
+    already keeps its idle size, when its lifetime has passed or when it was lost; an idle connection is closed when
+    its lifetime passes, by a timer of that connection, since nothing else runs while a connection is idle."""
 
     def __init__(self, open_connection, config: _PoolConfig):
         self._open = open_connection
@@ -1467,6 +1467,7 @@ class _Pool:
         self._idle: list = []
         # The open time of each open connection by its id; a slot whose connection is opening holds None.
         self._opened: dict = {}
+        self._lifetime_timers: dict = {}
         self._in_use = 0
         self._closed = False
         self._condition = threading.Condition()
@@ -1479,7 +1480,27 @@ class _Pool:
 
     def _drop(self, connection) -> None:
         self._opened.pop(id(connection), None)
+        timer = self._lifetime_timers.pop(id(connection), None)
+        if timer is not None:
+            timer.cancel()
         connection.close()
+
+    def _start_lifetime(self, connection) -> None:
+        if self._lifetime is None:
+            return
+        timer = threading.Timer(self._lifetime, self._lifetime_passed, (connection,))
+        timer.daemon = True
+        self._lifetime_timers[id(connection)] = timer
+        timer.start()
+
+    def _lifetime_passed(self, connection) -> None:
+        """Closes the connection if it is idle; one in use closes when it is released, one already closed is not in
+        the list."""
+        with self._condition:
+            if connection in self._idle:
+                self._idle.remove(connection)
+                self._drop(connection)
+                self._condition.notify()
 
     def acquire(self):
         while True:
@@ -1526,6 +1547,7 @@ class _Pool:
         with self._condition:
             del self._opened[id(slot)]
             self._opened[id(connection)] = time.monotonic()
+            self._start_lifetime(connection)
         return connection
 
     def release(self, connection, broken: bool = False) -> None:

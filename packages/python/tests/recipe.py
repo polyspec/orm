@@ -2561,6 +2561,8 @@ def _user_from_database_dsn(dsn: str, prefix: str) -> str:
 
 def _op_reconnect(step: dict, context: dict) -> dict:
     dsn = context["dsn"]
+    if "dsn" in step:
+        dsn = connect_dsn(step["dsn"], context["database"], dsn)
     if "user_from_database" in step:
         dsn = _user_from_database_dsn(dsn, step["user_from_database"])
     if "refused_message" in step:
@@ -2583,6 +2585,16 @@ def _op_reconnect(step: dict, context: dict) -> dict:
 def _op_hold_connection(step: dict, context: dict) -> dict:
     session = native_session(context["database"], _user_from_database_dsn(context["dsn"], step["user_from_database"]))
     session.__enter__()
+    context["held"] = session
+    return {}
+
+
+def _op_hold_statement(step: dict, context: dict) -> dict:
+    import psycopg
+
+    # prepare_threshold 0 names the statement of its first run; psycopg writes the placeholder $1 as %s.
+    session = psycopg.connect(connect_dsn(step["dsn"], context["database"], context["dsn"]), prepare_threshold=0, autocommit=True)
+    session.execute(step["sql"].replace("$1", "%s"), (step["bind"],))
     context["held"] = session
     return {}
 
@@ -4182,6 +4194,7 @@ _DATABASE_OPS = {
     "dbspec.introspect": _op_dbspec_introspect,
     "sql.exec": _op_sql_exec,
     "sql.hold_connection": _op_hold_connection,
+    "sql.hold_statement": _op_hold_statement,
     "sql.release_connection": _op_release_connection,
     "events.subscribe": _op_events_subscribe,
     "events.fail_subscriber": _op_events_fail_subscriber,

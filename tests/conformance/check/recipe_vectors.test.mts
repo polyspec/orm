@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { NO_RECIPE_CASE, compareOutput, expectations, plain, runnerCommand, sequenceDifferences, sequenceStatement } from './recipe_vectors.mts';
+import { NO_RECIPE_CASE, RUNNER_SOURCES, compareOutput, declaredBodies, expectations, plain, runnerCommand, sequenceDifferences, sequenceStatement } from './recipe_vectors.mts';
 import { COMPUTE, caseTest } from '../../testcase.mts';
 
 caseTest('a wrapper of a recipe value reads as plain JSON', COMPUTE, () => {
@@ -54,6 +54,23 @@ caseTest('every vector name is a recipe case or a fixed-clock body', COMPUTE, ()
   const cases = new Set(recipeCases().map(item => item.id));
   const { vectors } = JSON.parse(readFileSync(join(import.meta.dirname, '../vectors.json'), 'utf8')) as { vectors: { name: string }[] };
   for (const { name } of vectors) assert.ok(cases.has(name) || name in NO_RECIPE_CASE, `the vector ${name} has no recipe case`);
+});
+
+// A vector that a recipe case holds has no body: the checks reach only the generated-method and the fixed-clock bodies, and a
+// body that no check reaches is code that nothing runs.
+caseTest('each runner declares exactly the bodies that the checks reach', COMPUTE, () => {
+  const reached = ['generated', 'fixed-clock'].flatMap(mode => [...expectations(mode, 'sqlite').keys()]).sort();
+  assert.equal(reached.length, 11);
+  for (const [language, sources] of Object.entries(RUNNER_SOURCES)) {
+    const declared = sources.flatMap(source => declaredBodies(readFileSync(join(import.meta.dirname, '../../..', source), 'utf8')));
+    assert.deepEqual(declared.sort(), reached, language);
+  }
+});
+
+caseTest('a body declared in any runner form is read by its name', COMPUTE, () => {
+  assert.deepEqual(declaredBodies('run("go_body", func() {\nrun!("rust_body", async {\nrun!(\n    "rust_long",\n'), ['go_body', 'rust_body', 'rust_long']);
+  assert.deepEqual(declaredBodies("vector('php_body', fn() => 1);\nvector(\n    'php_long',\nawait run('ts_body', async () => {"), ['php_body', 'php_long', 'ts_body']);
+  assert.deepEqual(declaredBodies('func run() {\nfunction vector(string $name, callable $fn)\nrun($name, $fn);\nexecuteVector("write", fn)'), []);
 });
 
 // Requirements: PAR-1.

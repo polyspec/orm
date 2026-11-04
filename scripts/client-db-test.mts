@@ -82,7 +82,7 @@ const PHP_EXTENSION: Command[] = PHP_TESTS.map(test => ({
   env: { ORM_PHP_MODE: 'extension' },
 }));
 // The Python database tests run as modules of packages.python.tests with the Python of the venv (ORM_PYTHON).
-const PYTHON_TESTS = ['mysql_session', 'statement_fault', 'identity_load', 'install_changed_database', 'connection_config', 'connection_pool'];
+const PYTHON_TESTS = ['mysql_session', 'statement_fault', 'identity_load', 'install_changed_database', 'connection_pool'];
 const PYTHON: Command[] = PYTHON_TESTS.map(test => ({ program: variable('ORM_PYTHON'), args: ['-m', `packages.python.tests.${test}`], cwd: root }));
 // The recipe units with a database run through the poolers in every lane, since a statement a client sends through a pooler is user
 // behaviour in every client (T343-12). Go and Rust run them in their whole runs; the other lanes list them here, one command per unit

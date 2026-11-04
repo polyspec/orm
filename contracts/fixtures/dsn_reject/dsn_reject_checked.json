@@ -187,6 +187,7 @@
     {
       "id": "negative_pool_size",
       "requirements": [
+        "CFG-4",
         "CFG-36"
       ],
       "steps": [
@@ -207,6 +208,7 @@
     {
       "id": "negative_pool_idle_size",
       "requirements": [
+        "CFG-5",
         "CFG-36"
       ],
       "steps": [
@@ -227,6 +229,7 @@
     {
       "id": "negative_pool_lifetime",
       "requirements": [
+        "CFG-5",
         "CFG-36"
       ],
       "steps": [

@@ -107,6 +107,7 @@
       "dsn",
       "op",
       "pool_idle_size",
+      "pool_lifetime_ms",
       "pool_size",
       "statement_timeout_ms"
     ],
@@ -749,6 +750,7 @@
       "op"
     ],
     "catalog.reconnect": [
+      "dsn",
       "op",
       "refused_code",
       "refused_message",
@@ -757,6 +759,12 @@
     "sql.hold_connection": [
       "op",
       "user_from_database"
+    ],
+    "sql.hold_statement": [
+      "bind",
+      "dsn",
+      "op",
+      "sql"
     ],
     "sql.release_connection": [
       "op"

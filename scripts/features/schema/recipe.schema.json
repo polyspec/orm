@@ -906,6 +906,7 @@
             "catalog.close",
             "catalog.reconnect",
             "sql.hold_connection",
+            "sql.hold_statement",
             "sql.release_connection",
             "catalog.revision",
             "catalog.revision_compare",
@@ -1261,6 +1262,9 @@
         },
         {
           "$ref": "#/$defs/ops/sql.hold_connection"
+        },
+        {
+          "$ref": "#/$defs/ops/sql.hold_statement"
         },
         {
           "$ref": "#/$defs/ops/sql.release_connection"
@@ -2407,6 +2411,11 @@
             "minimum": 0
           },
           "pool_idle_size": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "pool_lifetime_ms": {
+            "description": "The lifetime of a pool connection in milliseconds (CFG-5).",
             "type": "integer",
             "minimum": 1
           },
@@ -6902,6 +6911,10 @@
           "op": {
             "const": "catalog.reconnect"
           },
+          "dsn": {
+            "description": "The connection of the catalog: case-pooler is the case database through the transaction pooler (FCV-4 model.connect). Absent is the DSN of the case.",
+            "const": "case-pooler"
+          },
           "user_from_database": {
             "description": "The prefix of the user of the new connection: the prefix and the last 28 characters of the name of the case database, on the DSN of the case without a password.",
             "type": "string",
@@ -6934,6 +6947,32 @@
             "description": "The user whose place the native connection holds, named as catalog.reconnect names it. The connection stays open until sql.release_connection.",
             "type": "string",
             "minLength": 1
+          }
+        }
+      },
+      "sql.hold_statement": {
+        "description": "A second client, the native driver of the runtime on dsn, runs sql with its one integer parameter bind as a protocol-level named statement. The connection stays open until sql.release_connection.",
+        "type": "object",
+        "required": [
+          "op",
+          "dsn",
+          "sql",
+          "bind"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "sql.hold_statement"
+          },
+          "dsn": {
+            "const": "case-pooler"
+          },
+          "sql": {
+            "type": "string",
+            "minLength": 1
+          },
+          "bind": {
+            "type": "integer"
           }
         }
       },

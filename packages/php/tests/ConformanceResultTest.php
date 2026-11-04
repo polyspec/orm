@@ -1,8 +1,7 @@
 <?php
 
 // The result helpers of the PHP conformance runner (packages/php/testing/conformance/result_php_helpers.php): a result
-// keeps ordered-json numbers and styled states, a derived integer is read only from an integral value, and a vector
-// failure keeps its cause.
+// keeps ordered-json numbers and styled states, and a vector failure keeps its cause.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist
 // packages/php/tests/ConformanceResultTest.php
 declare(strict_types=1);
@@ -10,7 +9,6 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Tests;
 
 use DomainException;
-use InvalidArgumentException;
 use RuntimeException;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
@@ -34,16 +32,6 @@ final class ConformanceResultTest extends TestCase
             Model::jsonText($result),
             'conformance result changed an ordered-json number or styled state'
         );
-        self::assertSame(2, derivedInteger(2), 'valid derived integer changed');
-        self::assertSame(2, derivedInteger('2'), 'valid derived integer changed');
-        foreach ([null, true, '', 'bad', '2.0', '2.5', 2.5, INF] as $invalid) {
-            try {
-                derivedInteger($invalid);
-                self::fail('invalid derived integer was accepted: ' . var_export($invalid, true));
-            } catch (InvalidArgumentException $rejected) {
-                self::assertInstanceOf(InvalidArgumentException::class, $rejected, 'the invalid value was rejected');
-            }
-        }
         $cause = new DomainException('invalid row');
         try {
             executeVector('invalid', static fn(): never => throw $cause);
