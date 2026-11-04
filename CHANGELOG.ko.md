@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 49035eba368803755c30d05280ef1263bd01a6efc097f914303d82ff9723d782 -->
+<!-- source-sha256: 6b09b767d84a5d78e86d35fe027c83869acf7c23776db3c304095aae7fea9b9e -->
 # 변경 이력
 
 ## Unreleased
 
+- 테스트: `creates`의 batch는 `model_writes_chain`의 case `creates_*`이고 MySQL의 transaction 안 install은 `schema_install`의 case `install_transaction`이므로, Go `TestCreatesParts`, `TestGetMissingReturnsNil`, `TestInsertWithoutIdentityOnEveryDatabase`, Python `InsertPartsTest`, PHP `testInstallInsideATransaction`, Rust `mysql_install_inside_transaction`은 없앴다(T334-3-12).
 - 테스트: Python의 native SQLite 시험이 지키던 것은 모든 runtime이 도는 recipe에 있다. `constraints_and_relations`의 case `sqlite_driver_error_ends_with_its_result_code`(없는 부모, 제한된 삭제, check, trigger, 읽기 전용 쓰기를 각각 code, INT-154의 확장 result code, driver cause와 함께)와 `audit_triggers`의 `audit_values_need_an_audit_source`(CFG-8)다. 그 native 시험, `model_queries_chain`, `model_writes`, `transactions`, `utils`, `statement_events`, `conformance_verification`, `audit_triggers`, `constraints_and_relations`가 이미 지키던 `test_sqlite.py`의 열 개, `immutable_write`가 지키는 PHP `testStatementFailureKeepsItsDriverCause`는 없앴다(T334-3-12).
 - Python에서 실패한 `COMMIT`은 자기 code로 보고하고 protocol 3.1의 rollback fault를 설정된 채로 둔다. INT-72가 이제 이를 말한다. 지금까지는 같은 실패를 두 번 적은 `ROLLBACK` 오류로 보고했고, 실패한 `COMMIT`이 열어 둔 SQLite 트랜잭션을 되돌리지 않았다. recipe `transactions`의 case `a_failed_commit_does_not_consume_the_rollback_fault`(deferred key가 `COMMIT`을 실패시키는 PostgreSQL과 SQLite)와 `a_failed_begin_does_not_consume_the_rollback_fault`(잡힌 쓰기 lock이 `BEGIN IMMEDIATE`를 실패시키는 SQLite)가 모든 runtime에서 이 조항을 지킨다(T334-3-12).
 - 테스트: plan의 physical 실행(PLN-102)은 op `dbspec.plan_physical`과 recipe `dbspec_introspect`의 case 13개 `plan_physical_*`이며 모든 runtime의 모든 database에서 돈다. native 시험, 그 make target, 그것만 쓰던 helper는 없앴다. 모든 runtime이 공개 `planSteps`로 plan step을 읽고, Go만 담던 finalize 뒤의 foreign key 검사를 이제 모든 runtime이 담는다.

@@ -2,7 +2,6 @@ package orm_test
 
 import (
 	"cmp"
-	"fmt"
 	"github.com/polyspec/orm/packages/go/testcase"
 	"path/filepath"
 	"slices"
@@ -163,103 +162,6 @@ func TestRequestHook(t *testing.T) {
 	}
 }
 
-// TestCreatesParts checks the multi-row insert rules of docs/spec/protocol.md through the model path. creates splits the rows
-// into batches of the given size and runs them in the given order in one transaction: each batch is one INSERT,
-// rows, keys, and statement events keep the given order, a batch that is not positive is CONFIG and a batch over the
-// bind limit is BATCH_TOO_LARGE before any statement, and if any batch fails, no rows remain.
-func TestCreatesParts(t *testing.T) {
-	testcase.Start(t, testcase.Database)
-	inserts := func(t *testing.T, db *orm.DB) *[]orm.StatementEvent {
-		t.Helper()
-		var seen []orm.StatementEvent
-		unsubscribe, err := db.Subscribe(func(e orm.StatementEvent) error {
-			seen = append(seen, e)
-			return nil
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Cleanup(unsubscribe)
-		return &seen
-	}
-	batch := func(e *orm.Entity, labels []string) []*keywordRow {
-		rows := []*keywordRow{}
-		for _, label := range labels {
-			rows = append(rows, as[*keywordRow](t, hookItem(e, nil, map[string]any{"part": "p", "label": label}).Self()))
-		}
-		return rows
-	}
-	labels := func(n int) []string {
-		out := make([]string, n)
-		for i := range out {
-			out[i] = fmt.Sprintf("r%02d", i)
-		}
-		return out
-	}
-	t.Run("refused", func(t *testing.T) {
-		db, e, _ := hookFixture(t, "sqlite://"+filepath.Join(t.TempDir(), "parts.sqlite"))
-		seen := inserts(t, db)
-		for _, size := range []int{0, -1} {
-			if _, err := orm.Creates(hookItem(e, db, nil), batch(e, labels(3)), size); orm.ErrorCode(err) != orm.CodeConfig {
-				t.Errorf("creates with batch %d = %v, want CONFIG", size, err)
-			}
-		}
-		if _, err := orm.Creates(hookItem(e, db, nil), batch(e, labels(500)), 500); orm.ErrorCode(err) != orm.CodeBatchTooLarge {
-			t.Errorf("creates of 500 rows of two columns in one batch on sqlite = %v, want BATCH_TOO_LARGE", err)
-		}
-		if len(*seen) != 0 {
-			t.Errorf("refused creates ran %d statements, want none", len(*seen))
-		}
-	})
-	t.Run("order", func(t *testing.T) {
-		db, e, _ := hookFixture(t, "sqlite://"+filepath.Join(t.TempDir(), "parts.sqlite"))
-		seen := inserts(t, db)
-		given := labels(13)
-		slices.Reverse(given)
-		if n, err := orm.Creates(hookItem(e, db, nil), batch(e, given), 6); err != nil || n != 13 {
-			t.Fatalf("creates = %d, %v; want 13 rows", n, err)
-		}
-		var sizes []int
-		var bound []any
-		for _, ev := range *seen {
-			if !strings.HasPrefix(ev.SQL, "INSERT") {
-				continue
-			}
-			sizes = append(sizes, len(ev.Binds)/2)
-			bound = append(bound, ev.Binds...)
-		}
-		if !slices.Equal(sizes, []int{6, 6, 1}) {
-			t.Errorf("INSERT batches %v, want [6 6 1]", sizes)
-		}
-		for i, label := range given {
-			if bound[2*i+1] != label {
-				t.Errorf("event bind %d = %v, want %s", 2*i+1, bound[2*i+1], label)
-			}
-		}
-		rows := hookRows(t, e, db)
-		slices.SortFunc(rows, func(a, b map[string]any) int { return cmpInt(a["id"], b["id"]) })
-		for i, row := range rows {
-			if row["label"] != given[i] {
-				t.Errorf("row %d (id %v) has label %v, want %s", i, row["id"], row["label"], given[i])
-			}
-		}
-	})
-	t.Run("rollback", func(t *testing.T) {
-		db, e, _ := hookFixture(t, "sqlite://"+filepath.Join(t.TempDir(), "parts.sqlite"))
-		rows := batch(e, labels(8))
-		last := hookItem(e, nil, map[string]any{"part": "p"})
-		last.SetNull("label")
-		rows = append(rows, as[*keywordRow](t, last.Self()))
-		if _, err := orm.Creates(hookItem(e, db, nil), rows, 4); err == nil {
-			t.Fatal("creates with a null label in its third batch succeeded")
-		}
-		if n := hookCount(t, e, db); n != 0 {
-			t.Errorf("a failed creates left %d rows, want 0", n)
-		}
-	})
-}
-
-// cmpInt orders two integer key values.
 func cmpInt(a, b any) int {
 	return cmp.Compare(mustAs[int64](a), mustAs[int64](b))
 }

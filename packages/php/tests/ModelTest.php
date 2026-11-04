@@ -473,20 +473,6 @@ class ModelTest extends TestCase
     }
 
     // Requirements: INT-55.
-    public function testInstallInsideATransaction(): void
-    {
-        $db = self::database('mysql', self::caseDsn('mysql'));
-        $inside = null;
-        $db->transaction(function () use ($db, &$inside): void {
-            try {
-                \Polyspec\Orm\Tests\installBench($db);
-            } catch (OrmException $e) {
-                $inside = $e;
-            }
-        });
-        self::check($inside !== null && $inside->code_ === Code::CONFIG, 'install inside a transaction returns CONFIG');
-    }
-
     // If the MySQL local value reset at the end of the transaction fails, commit and rollback report that error.
     // A MySQL user variable remains after COMMIT and ROLLBACK.
     // (mysql.context.user_variable_session_scope).

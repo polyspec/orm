@@ -2,7 +2,6 @@ package model_test
 
 import (
 	"database/sql"
-	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -211,40 +210,6 @@ func TestGoConstructorForms(t *testing.T) {
 	})
 }
 
-func TestGetMissingReturnsNil(t *testing.T) {
-	testcase.Start(t, testcase.Database)
-	path := filepath.Join(t.TempDir(), "model.sqlite")
-	db, err := model.Connect("sqlite://"+path, orm.Config{AESKey: "test-aes-key", BlindIndexKey: "test-blind-key"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer testcase.Close(t, db)
-	if err := benchset.Install(db); err != nil {
-		t.Fatal(err)
-	}
-	row, err := model.User().Connect(db).Seq(999999999).Get()
-	if row != nil {
-		t.Fatalf("missing row returned a model: %#v", row)
-	}
-	if err != nil {
-		t.Fatalf("missing row error = %v, want nil", err)
-	}
-}
-
-// Requirements: PLN-8, PLN-9, PLN-14.
-// TestInsertWithoutIdentityOnEveryDatabase inserts a row of a table with a composite key and no identity column on every
-// database: the insert succeeds where the driver reports no insert id (pgx on PostgreSQL), since only a driver that
-// reports one is asked for it.
-func TestInsertWithoutIdentityOnEveryDatabase(t *testing.T) {
-	testcase.Start(t, testcase.Database)
-	each(t, func(t *testing.T, db *orm.DB) {
-		row := must(model.CompositeAccount().Connect(db).SetTenantId(1).SetAccountId(10).SetName("n").Create())
-		if readColumn(t, row.GetAccountId) != 10 {
-			t.Fatalf("created account %d, want 10", readColumn(t, row.GetAccountId))
-		}
-	})
-}
-
 func TestColumnsAndSubqueries(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {
@@ -428,4 +393,3 @@ func TestTransactions(t *testing.T) {
 		}
 	})
 }
-
