@@ -68,3 +68,79 @@ export const nativeBoundUnitErrors = (units: ParityUnit[], spec: string, readSui
       .map(id => `docs/spec/feature-coverage.md FCV-2 states that ${id} stays native, and config/parity.json has no such unit; remove the line or name the unit`),
   ];
 };
+
+// The tests that a test file declares, as each runner names them. A name that is not a literal, such as a node test named from a loop, is
+// not read, so the rule never finds a test that is not there; the suite of such a file is judged by the parity tool.
+const declared = (implementation: string, text: string): string[] => {
+  const read = (pattern: RegExp) => [...text.matchAll(pattern)].map(match => (match[1] ?? match[2] ?? '').replace(/\\(.)/g, '$1'));
+  if (implementation === 'go') return read(/^func ((?:Test|Fuzz)\w*)\(/gm).filter(name => name !== 'TestMain');
+  if (implementation === 'php' || implementation === 'php-extension') return read(/public (?:static )?function (test\w*)\(/g);
+  if (implementation === 'python') return read(/^(?: {4})?(?:async )?def (test_\w+)\(/gm);
+  if (implementation === 'typescript') return read(/(?<![.\w])(?:caseTest|test|it)\(\s*(?:'((?:[^'\\\n]|\\.)*)'|"((?:[^"\\\n]|\\.)*)")/g);
+  return read(/#\[(?:tokio::)?test[^\]]*\](?:\s*#\[[^\n]*\])*\s*(?:pub )?(?:async )?fn (\w+)\(/g);
+};
+
+// The name of a test in a binding, whatever the form of the runner: PHP `Namespace\Class::testA with data set "x"`, Go `TestA/case`, Rust `a::b::name`.
+const bindingLeaf = (id: string): string => {
+  const entry = namedEntry(id).split('::').at(-1) ?? id;
+  return /^Test\w*\//.test(entry) ? entry.split('/')[0] ?? entry : entry;
+};
+
+// A PHP class holds the tests of the traits it uses, which live in support files; a test that a class inherits is judged in the file of its parent.
+const fileTests = (implementation: string, file: string, files: string[], read: (path: string) => string, traits: Map<string, string>): string[] => {
+  const text = read(file);
+  const own = declared(implementation, text);
+  if (implementation !== 'php' && implementation !== 'php-extension') return own;
+  return [...own, ...[...text.matchAll(/^ {4}use ([\w\\, ]+);/gm)]
+    .flatMap(([, names = '']) => names.split(','))
+    .flatMap(name => {
+      const trait = traits.get(name.trim().split('\\').at(-1) ?? '');
+      return trait === undefined ? [] : fileTests(implementation, trait, files, read, traits);
+    })];
+};
+
+/** nativeTestLines reads the lines of FCV-2 that keep native tests of one file by name, each with the reason after its colon. */
+export const nativeTestLines = (spec: string): { file: string; names: string[]; reason: string }[] =>
+  [...fcv2(spec).matchAll(/^\s*- In `([^`]+)`, ((?:`[^`]+`(?:, | and )?)+) stays? as (?:a )?native tests?: *(\S[^\n]*)$/gm)].map(([, file = '', names = '', reason = '']) => ({
+    file,
+    names: [...names.matchAll(/`([^`]+)`/g)].map(([, name = '']) => name),
+    reason,
+  }));
+
+/**
+ * unboundNativeTestErrors names each test of a file that a binding of config/parity.json names, when no binding names that test and no line of
+ * FCV-2 keeps it, and each name of such a line that the file does not hold. The parity tool checks a file as a whole, so a test can lose its binding
+ * there or never have had one and still run. A suite bound with no symbol is a whole file whose cases the parity tool compares with its recipe.
+ */
+export const unboundNativeTestErrors = (units: ParityUnit[], spec: string, files: string[], read: (path: string) => string): string[] => {
+  const traits = new Map(files.filter(file => /^packages\/php(-ext)?\/tests\/.*\.php$/.test(file)).flatMap(file =>
+    [...read(file).matchAll(/^\s*trait (\w+)/gm)].map(([, name = '']): [string, string] => [name, file])));
+  const bound = new Map<string, { implementation: string; names: Set<string>; whole: boolean }>();
+  for (const unit of units) {
+    for (const binding of unit.bindings ?? []) {
+      if (binding.test === undefined) continue;
+      const entry = bound.get(binding.test) ?? { implementation: binding.implementation, names: new Set<string>(), whole: false };
+      const name = binding.id ?? binding.symbol;
+      if (name === undefined) entry.whole = true;
+      else entry.names.add(bindingLeaf(name));
+      bound.set(binding.test, entry);
+    }
+  }
+  const lines = nativeTestLines(spec);
+  const errors: string[] = [];
+  for (const [file, { implementation, names, whole }] of bound) {
+    if (whole) continue;
+    const kept = new Set(lines.filter(line => line.file === file).flatMap(line => line.names));
+    const tests = new Set(fileTests(implementation, file, files, read, traits));
+    for (const test of tests) {
+      if (!names.has(test) && !kept.has(test)) errors.push(`${file}: the native test ${test} has no binding in config/parity.json and no line of FCV-2; make it the cases of a recipe (FCV-2 to FCV-4), bind it to the unit that states it, or state why it stays native in FCV-2 of docs/spec/feature-coverage.md`);
+    }
+    for (const test of kept) {
+      if (!tests.has(test)) errors.push(`docs/spec/feature-coverage.md FCV-2 keeps the native test ${test} of ${file}, and that file holds no such test; remove the name from the line`);
+    }
+  }
+  for (const { file } of lines) {
+    if (!bound.has(file)) errors.push(`docs/spec/feature-coverage.md FCV-2 keeps native tests of ${file}, and no binding of config/parity.json names that file; remove the line or bind the file`);
+  }
+  return errors;
+};

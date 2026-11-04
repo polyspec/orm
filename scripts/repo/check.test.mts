@@ -26,7 +26,7 @@ import { parse as parseYaml, stringify } from 'yaml';
 import { parse as parseToml } from 'smol-toml';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mts';
 import { detachedGroupErrors, timeFailureErrors } from './sources.mts';
-import { nativeBoundUnitErrors, nativeExceptions } from './parity-units.mts';
+import { nativeBoundUnitErrors, nativeExceptions, nativeTestLines, unboundNativeTestErrors } from './parity-units.mts';
 import { callerEnvironmentErrors, generateRuns, scriptCommands, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, generatedCodesErrors, phpExtensionBuildErrors, typescriptHolderErrors, typescriptReaderErrors, phpunitModelErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, makeTargets, rustTestCaseErrors, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
 
 // yamlSteps writes steps (the values of a workflow's steps) as the list under a job's steps:, six spaces deep.
@@ -2447,4 +2447,45 @@ caseTest('an up-to-date Go model generator runs nothing again', PROCESS, () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+// The unbound-test case (T334-3-12) holds the rule over fixtures of each runner: a test of a bound file has a binding or a line of FCV-2.
+const unboundCase = (implementation: string, file: string, source: string, bound: string, lines: string[] = [], other: Record<string, string> = {}) => {
+  const tree: Record<string, string> = { [file]: source, ...other };
+  return unboundNativeTestErrors(
+    [{ id: 'unit', kind: 'feature', bindings: [{ implementation, test: file, id: bound }] }],
+    nativeSpec(...lines), Object.keys(tree), path => tree[path] ?? '');
+};
+const unbound = (file: string, test: string) => `${file}: the native test ${test} has no binding in config/parity.json and no line of FCV-2; make it the cases of a recipe (FCV-2 to FCV-4), bind it to the unit that states it, or state why it stays native in FCV-2 of docs/spec/feature-coverage.md`;
+for (const [implementation, file, source, boundId, other] of [
+  ['go', 'a_test.go', 'func TestBound(t *testing.T) {}\nfunc TestMain(m *testing.M) {}\nfunc TestOther(t *testing.T) {}\nfunc helper() {}\n', 'TestBound/case', 'TestOther'],
+  ['php', 'packages/php/tests/ATest.php', 'class ATest { public function testBound(): void {} public function testOther(): void {} private function helper(): void {} }', 'Polyspec\\Orm\\Tests\\ATest::testBound with data set "x"', 'testOther'],
+  ['php-extension', 'packages/php-ext/tests/ATest.php', 'class ATest { public function testBound(): void {} public function testOther(): void {} }', 'ATest::testBound', 'testOther'],
+  ['python', 't.py', 'class A:\n    def test_bound(self):\n        pass\n\n    def test_other(self):\n        def test_nested():\n            pass\n', 'test_bound', 'test_other'],
+  ['typescript', 't.mjs', "caseTest('bound', COMPUTE, () => {});\ntest('other', () => { /x/.test('not a test'); });\nfor (const n of names) caseTest(n, COMPUTE, () => {});\n", 'bound', 'other'],
+  ['rust', 't.rs', '#[test]\nfn bound() {}\n#[tokio::test]\n#[ignore]\nasync fn other() {}\nfn helper() {}\n', 'tests::bound', 'other'],
+] as const) {
+  caseTest(`a test of a bound ${implementation} file with no binding is a finding, and a line of FCV-2 keeps it`, COMPUTE, () => {
+    assert.deepEqual(unboundCase(implementation, file, source, boundId), [unbound(file, other)]);
+    assert.deepEqual(unboundCase(implementation, file, source, boundId, [`  - In \`${file}\`, \`${other}\` stays as a native test: it reads a private step.`]), []);
+    assert.deepEqual(unboundCase(implementation, file, source, other), [unbound(file, source.includes('TestBound') ? 'TestBound' : source.includes('testBound') ? 'testBound' : source.includes('test_bound') ? 'test_bound' : 'bound')]);
+  });
+}
+caseTest('a test of a PHP trait is a test of the class that uses it', COMPUTE, () => {
+  const file = 'packages/php/tests/ATest.php';
+  const trait = 'packages/php/tests/Cases.php';
+  const source = 'use Other\\Thing;\nclass ATest {\n    use Cases;\n    public function testBound(): void {}\n}\n';
+  assert.deepEqual(unboundCase('php', file, source, 'testBound', [], { [trait]: 'trait Cases { public function testShared(): void {} }' }), [unbound(file, 'testShared')]);
+});
+caseTest('a suite bound with no symbol is a whole file, which the parity tool compares with its recipe', COMPUTE, () => {
+  assert.deepEqual(unboundNativeTestErrors([{ id: 'suite', kind: 'suite', bindings: [{ implementation: 'python', test: 't.py' }] }], nativeSpec(), ['t.py'], () => 'def test_case():\n    pass\n'), []);
+});
+caseTest('a line of FCV-2 that names a test or a file that is not there is a finding', COMPUTE, () => {
+  const file = 'a_test.go';
+  assert.deepEqual(unboundCase('go', file, 'func TestBound(t *testing.T) {}\n', 'TestBound', [`  - In \`${file}\`, \`TestGone\` stays as a native test: it reads a private step.`]),
+    [`docs/spec/feature-coverage.md FCV-2 keeps the native test TestGone of ${file}, and that file holds no such test; remove the name from the line`]);
+  assert.deepEqual(unboundCase('go', file, 'func TestBound(t *testing.T) {}\n', 'TestBound', ['  - In `gone_test.go`, `TestGone` stays as a native test: it reads a private step.']),
+    ['docs/spec/feature-coverage.md FCV-2 keeps native tests of gone_test.go, and no binding of config/parity.json names that file; remove the line or bind the file']);
+  assert.deepEqual(nativeTestLines(nativeSpec('  - In `f.go`, `TestA`, `TestB` and `TestC` stay as native tests: a reason.')), [{ file: 'f.go', names: ['TestA', 'TestB', 'TestC'], reason: 'a reason.' }]);
+  assert.deepEqual(nativeExceptions(nativeSpec('  - In `f.go`, `testa-b` stays as a native test: a reason.')), []);
 });

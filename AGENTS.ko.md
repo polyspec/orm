@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: 9e0cda8c1935847a2e1c586cb6bcd63dcc02512531ee26e2da83cb153caa01b8 -->
+<!-- source-sha256: 393aa104aefa76c4f7520f50f8c178c8bdab6ae51ae2b71bab14f696b54cc5b6 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -102,6 +102,11 @@ orm 자신의 규칙만 적는다.
   예외는 FCV-2가 native로 남는다고 쓰고 콜론 뒤에 이유를 밝힌 unit뿐이다. 이유가 없는 줄은 아무것도 면제하지 않으며,
   어떤 unit도 가리키지 않는 예외도 finding이다. 변환을 기다리는 unit의 목록은 두지 않는다. 그런 목록은 끝나지 않은 작업에서도
   검사를 통과시키기 때문이다.
+  Enforced by: `make repo-check`
+- Own: `config/parity.json`의 binding이 지목한 파일의 모든 시험은 자기 binding을 가지거나 FCV-2의 줄
+  ``- In `<file>`, `<test>` stays as a native test: <reason>``을 가진다. parity 도구는 시험이 아니라 파일을 검사하기 때문이다.
+  symbol 없이 묶인 suite는 파일 전체이며 도구가 그 case를 recipe와 비교한다. literal이 아닌 이름은 읽지 않고, 없는 시험이나
+  파일을 지목한 줄은 finding이다.
   Enforced by: `make repo-check`
 - Own: 성능은 측정하고 보고할 뿐 test를 실패시키지 않는다. test는 측정(CPU 시간과 wall-clock 시간, 기준, 비율, 기계)을
   출력하고, 측정이 문서의 기준값을 넘으면 측정값, 기준값, 기계를 담은 `WARNING` 줄을 출력한다. check runner는 그 줄을

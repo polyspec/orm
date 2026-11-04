@@ -2592,18 +2592,34 @@ class Db:
             # Statements that delete values are sent in key order.
             for key in sorted(frame.locals):
                 attempt(f"SET @`orm.{key}` = NULL")
+        discard = False
         try:
             if commit and not errors:
-                frame.run("COMMIT", [], "commit", faultable=False)
-                return
+                try:
+                    frame.run("COMMIT", [], "commit", faultable=False)
+                    return
+                except OrmError as error:
+                    # A COMMIT whose subscriber failed has been committed.
+                    if error.code == codes.SUBSCRIBER:
+                        raise
+                    # A failed COMMIT may have ended the transaction, so only one that is still open is rolled back, and
+                    # the pool closes a session whose state is unknown. The error is the COMMIT's alone.
+                    errors.append(error)
+                    discard = self.driver != "sqlite"
+                    if not frame.connection.in_transaction():
+                        raise
             if not self._sqlite_rolled_back(frame):
                 frame.run(codes.ROLLBACK, [], "rollback", faultable=False)
-        except BaseException as error:
+        except OrmError as error:
+            if errors and error is errors[0]:
+                raise
+            if error.code == codes.SUBSCRIBER and not errors:
+                raise
             if commit:
                 raise rollback_failed(errors[0] if errors else error, error) from None
             raise
         finally:
-            self._give_back(frame)
+            self._give_back(frame, discard)
         # The rollback ran; a cleanup error (a lock that was not held or a refused release) is the
         # transaction's error alone.
         if errors:

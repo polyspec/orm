@@ -1,9 +1,13 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e62e08b51c3c2dee05e13ba8577bbf5bca3be5ee3b60c2d99de0bc92bc94d63e -->
+<!-- source-sha256: 08909e7295109e8299a260e1a9f2880e5d10e34ce7c0350c9067efebce554ca6 -->
 # 변경 이력
 
 ## Unreleased
 
+- 검사: `config/parity.json`의 binding이 지목한 파일의 시험은 binding이나 이유를 밝힌 FCV-2 줄을 가진다(`make repo-check`의 `unboundNativeTestErrors`). parity 도구는 시험이 아니라 파일을 읽기 때문이다. FCV-2는 이제 native 시험 451개를 파일별로 지목한다. recipe가 이미 지키던 native는 없앴다: PHP와 Python의 markdown `backendWaitingForLock` 검사, `root_in_chunking`이 지키는 PHP `testBindLimitSplitting`, `tests/dbspec/positions.json`이 지키는 Python parse position이다(T334-3-12).
+- 테스트: `creates`의 batch는 `model_writes_chain`의 case `creates_*`이고 MySQL의 transaction 안 install은 `schema_install`의 case `install_transaction`이므로, Go `TestCreatesParts`, `TestGetMissingReturnsNil`, `TestInsertWithoutIdentityOnEveryDatabase`, Python `InsertPartsTest`, PHP `testInstallInsideATransaction`, Rust `mysql_install_inside_transaction`은 없앴다(T334-3-12).
+- 테스트: Python의 native SQLite 시험이 지키던 것은 모든 runtime이 도는 recipe에 있다. `constraints_and_relations`의 case `sqlite_driver_error_ends_with_its_result_code`(없는 부모, 제한된 삭제, check, trigger, 읽기 전용 쓰기를 각각 code, INT-154의 확장 result code, driver cause와 함께)와 `audit_triggers`의 `audit_values_need_an_audit_source`(CFG-8)다. 그 native 시험, `model_queries_chain`, `model_writes`, `transactions`, `utils`, `statement_events`, `conformance_verification`, `audit_triggers`, `constraints_and_relations`가 이미 지키던 `test_sqlite.py`의 열 개, `immutable_write`가 지키는 PHP `testStatementFailureKeepsItsDriverCause`는 없앴다(T334-3-12).
+- Python에서 실패한 `COMMIT`은 자기 code로 보고하고 protocol 3.1의 rollback fault를 설정된 채로 둔다. INT-72가 이제 이를 말한다. 지금까지는 같은 실패를 두 번 적은 `ROLLBACK` 오류로 보고했고, 실패한 `COMMIT`이 열어 둔 SQLite 트랜잭션을 되돌리지 않았다. recipe `transactions`의 case `a_failed_commit_does_not_consume_the_rollback_fault`(deferred key가 `COMMIT`을 실패시키는 PostgreSQL과 SQLite)와 `a_failed_begin_does_not_consume_the_rollback_fault`(잡힌 쓰기 lock이 `BEGIN IMMEDIATE`를 실패시키는 SQLite)가 모든 runtime에서 이 조항을 지킨다(T334-3-12).
 - 테스트: plan의 physical 실행(PLN-102)은 op `dbspec.plan_physical`과 recipe `dbspec_introspect`의 case 13개 `plan_physical_*`이며 모든 runtime의 모든 database에서 돈다. native 시험, 그 make target, 그것만 쓰던 helper는 없앴다. 모든 runtime이 공개 `planSteps`로 plan step을 읽고, Go만 담던 finalize 뒤의 foreign key 검사를 이제 모든 runtime이 담는다.
 - 테스트: ORM 밖에서 바뀐 database에 다시 하는 install(DBS-108, SCH-7, SCH-13)은 모든 runtime의 모든 database에서 recipe `schema_install`의 case `install_renamed_column`과 `install_unsupported_column_without_check`이며 message 전체를 비교한다. native 시험과 `contracts/fixtures/install/changed_database.json`은 없앴다.
 - 테스트: recipe schema는 `relation`의 `where`를 받고, `model_queries_chain`의 case `relation_condition_follows_the_padded_composite_parent_keys`는 그 schema에 유효합니다(T334-3-12).
