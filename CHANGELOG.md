@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- A Rust integration case that fails names what it waited on for a connection: the pool acquire timeout and, through ProxySQL, the hostgroup and its connect timeout.
 - The interface check of each runtime (INT-17, INT-18, INT-19, INT-57, INT-61, INT-64) is the case `interface_symbols` of the recipe `public-interface` through the new op `interface.symbols`; the six native wrappers and their parity unit are gone.
 - A transaction reads its own write and publishes one transaction number on each of its statements in the recipe case `transaction_reads_its_own_write` of every runtime; the PHP extension test that held it alone is gone.
 - The composite keys whose texts concatenate to one value are rows of the recipe `composite_keys` alone, and the case reads the statements and binds of their relation in every runtime; the fixture `composite_key_collision.json` and its exclusion from the parity suites are gone.
