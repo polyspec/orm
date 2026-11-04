@@ -234,6 +234,10 @@ impl CatalogConnection {
         if self.dialect == "sqlite" {
             connection.exec("PRAGMA query_only=ON", &[]).await.map_err(|error| error.to_string())?;
         }
+        if self.dialect == "mysql" {
+            // At REPEATABLE READ the information schema answers from the snapshot of the transaction, so a descriptor read after the rows could not differ from the one read before them (INT-121).
+            connection.exec("SET TRANSACTION ISOLATION LEVEL READ COMMITTED", &[]).await.map_err(|error| error.to_string())?;
+        }
         let begin = match self.dialect.as_str() {
             "mysql" => "START TRANSACTION READ ONLY",
             "postgres" => "BEGIN READ ONLY",

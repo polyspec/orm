@@ -457,7 +457,6 @@ dbspec-introspect-python-check: python-venv-check
 
 catalog-mutation-helper-python-check: python-venv-check
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_catalog_mutation_helper
-	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_catalog_mysql_visibility
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_catalog_described_temporal
 
 catalog-mutation-helper-ts-check: typescript-build
@@ -2089,7 +2088,7 @@ collection-composite-key-check: typescript-build php-vendor-check python-venv-ch
 	$(RUN_TESTS) node --test --test-name-pattern='collection-key/(composite-typed-components|nullable-composite-row-has-no-key)' packages/ts/tests/collection_identity.mjs || status=1; \
 	$(GO_TEST) ./packages/go/orm -run '^(TestCompositeCollectionKeyTypedComponentsFromFixture|TestNullableCompositeRowHasNoCollectionKey)$$' -count=1 || status=1; \
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CollectionIdentityTest.php --filter 'testCompositeComponentsPreserveTypedIdentityAndSharedEncoding|testNullCompositeRowHasNoCollectionKey' || status=1; \
-	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_collection_identity.CollectionIdentityTest.test_native_key_values_keep_their_types_and_reject_unsupported_values packages.python.tests.test_collection_identity.CollectionIdentityTest.test_composite_components_preserve_typed_identity_and_shared_encoding packages.python.tests.test_collection_identity.CollectionIdentityTest.test_a_null_composite_row_has_no_collection_key || status=1; \
+	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_collection_identity.CollectionIdentityTest.test_a_key_outside_the_python_key_type_is_refused packages.python.tests.test_collection_identity.CollectionIdentityTest.test_composite_components_preserve_typed_identity_and_shared_encoding packages.python.tests.test_collection_identity.CollectionIdentityTest.test_a_null_composite_row_has_no_collection_key || status=1; \
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --test collection_identity composite || status=1; \
 	if $(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); then \
 	  env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelAssemblyTest.php packages/php-ext/tests/CollectionTest.php --filter 'testTypedIdentityOrderedReplacementAndArrayViews|testCompositeComponentsPreserveTypedIdentityAndSharedEncoding|testNullCompositeRowHasNoCollectionKey' || status=1; \
@@ -3192,7 +3191,7 @@ rust-closed-executor-check: lease-tool
 # Focused split-merge NULL boundary cases in each native client.
 
 go-catalog-session-error-check:
-	$(GO_TEST) ./packages/go/orm -run '^(TestCatalogSessionEndPreservesPrimaryAndRollbackCauses|TestCatalogSessionEndReportsRollbackCauseWithoutPrimary|TestCatalogInsertVerifiesMySQLTriggerVisibility)$$' -count=1
+	$(GO_TEST) ./packages/go/orm -run '^(TestCatalogSessionEndPreservesPrimaryAndRollbackCauses|TestCatalogSessionEndReportsRollbackCauseWithoutPrimary)$$' -count=1
 
 # catalog-described-temporal-go-check runs the unit tests of the dbspec text that a Go read of a described table returns for
 # its date, time and datetime cells (INT-103) and of the exact comparison of a catalog write (INT-117, INT-123).

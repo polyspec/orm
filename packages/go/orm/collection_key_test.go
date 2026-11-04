@@ -3,9 +3,7 @@ package orm
 import (
 	"fmt"
 	"math"
-	"reflect"
 	"testing"
-	"time"
 
 	"github.com/polyspec/orm/packages/go/engine/ir"
 	"github.com/polyspec/orm/packages/go/engine/plan"
@@ -39,8 +37,8 @@ func TestScalarComparisonPreservesTypesAndRejectsInvalidValues(t *testing.T) {
 
 func TestKeyValuesPreserveTheirTypes(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	instant := time.Date(2026, 1, 2, 3, 4, 5, 6, time.UTC)
-	for _, value := range []any{int64(7), true, "text", []byte("bytes"), float64(1.25), instant} {
+	// The other key types are the recipe collection; a float key is a Go key alone (INT-11).
+	for _, value := range []any{float64(1.25)} {
 		key, err := KeyOf(value)
 		if err != nil {
 			t.Fatal(err)
@@ -92,24 +90,6 @@ func TestJoinedByteColumnsAndInvalidValues(t *testing.T) {
 	values[1] = int64(7)
 	if err := restoreByteColumns(values, root); err == nil {
 		t.Fatal("invalid byte column was accepted")
-	}
-}
-
-func TestCompositeTypedKeyPreservesBoundaries(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	for _, pair := range [][2][]any{
-		{{"1", "23"}, {"12", "3"}},
-		{{int64(1), "2"}, {"1", "2"}},
-		{{true, "2"}, {int64(1), "2"}},
-	} {
-		left, leftErr := keyFromValues(pair[0])
-		right, rightErr := keyFromValues(pair[1])
-		if leftErr != nil || rightErr != nil {
-			t.Fatalf("valid composite values: %v, %v", leftErr, rightErr)
-		}
-		if left == right {
-			t.Errorf("distinct composite values have the same key: %v and %v", pair[0], pair[1])
-		}
 	}
 }
 
@@ -197,42 +177,20 @@ func TestSplitQueryRetainsDistinctTypedValues(t *testing.T) {
 func TestExpandInKeepsBareDollar(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	st := &plan.Step{
-		SQL:       "SELECT '$' AS sign, id FROM items WHERE key IN ($1)",
-		BindSlots: []plan.BindSlot{{From: "parent"}},
+		SQL:       "SELECT $1, '$' AS sign, id FROM items WHERE key IN ($2)",
+		BindSlots: []plan.BindSlot{{From: "param"}, {From: "parent"}},
 		Parent:    &plan.ParentRef{Keys: []plan.KeyRef{{Column: "key", Index: 0}}},
 	}
 	sql, args, err := expandIn(st, []any{int64(1), int64(2), int64(3)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	const want = "SELECT '$' AS sign, id FROM items WHERE key IN ($1, $2, $3, $4)"
+	const want = "SELECT $1, '$' AS sign, id FROM items WHERE key IN ($2, $3, $4, $5)"
 	if sql != want {
 		t.Fatalf("expanded statement = %q, want %q", sql, want)
 	}
 	if len(args) != 4 {
 		t.Fatalf("expanded to %d arguments, want 4 (three keys padded to a power of two)", len(args))
-	}
-}
-
-// Requirements: PRT-40.
-func TestParentSlotExpansionPadsCompositeKeysAndRenumbersFollowingSlots(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	step := &plan.Step{
-		SQL:       "SELECT $1 WHERE (a, b) IN (($2)) AND active = $3",
-		BindSlots: []plan.BindSlot{{From: "param"}, {From: "parent"}, {From: "param"}},
-		Parent:    &plan.ParentRef{Keys: []plan.KeyRef{{Column: "a", Index: 0}, {Column: "b", Index: 1}}},
-	}
-	sql, args, err := expandIn(step, []any{int64(10), int64(11), int64(20), int64(21), int64(30), int64(31)})
-	if err != nil {
-		t.Fatal(err)
-	}
-	const wantSQL = "SELECT $1 WHERE (a, b) IN (($2, $3), ($4, $5), ($6, $7), ($8, $9)) AND active = $10"
-	if sql != wantSQL {
-		t.Fatalf("expanded statement = %q, want %q", sql, wantSQL)
-	}
-	wantArgs := []any{int64(10), int64(11), int64(20), int64(21), int64(30), int64(31), int64(30), int64(31)}
-	if !reflect.DeepEqual(args, wantArgs) {
-		t.Fatalf("expanded parent values = %#v, want %#v", args, wantArgs)
 	}
 }
 

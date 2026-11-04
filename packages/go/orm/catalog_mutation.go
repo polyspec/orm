@@ -474,10 +474,9 @@ func columnNames(metadata CatalogTableMetadata) []string {
 	return names
 }
 
-// mysqlSafety refuses a MySQL row change unless the server, the account and the table are verified: partial revokes are
-// off, the account holds TRIGGER on the table, the table is InnoDB and it has no triggers (mutation.rs, mysql_safety).
-func (s *catalogSession) mysqlSafety(metadata CatalogTableMetadata) error {
-	unsupported := func(reason string) error { return catalogErr(catalogCodeRowUnsupport, "%s", reason) }
+// mysqlPartialRevokesOff refuses a MySQL row change on a server with partial revokes, before the change locks anything: such a
+// server may hide a trigger from the account (INT-119).
+func (s *catalogSession) mysqlPartialRevokesOff() error {
 	partial, err := s.queryRaw("SELECT CAST(@@GLOBAL.partial_revokes AS SIGNED)", nil, 1, 4096)
 	if err != nil {
 		return err
@@ -487,9 +486,15 @@ func (s *catalogSession) mysqlSafety(metadata CatalogTableMetadata) error {
 		return err
 	}
 	if len(partialRows) != 1 || partialRows[0][0] != int64(0) {
-		return unsupported("MySQL partial-revoke visibility requires verification")
+		return catalogErr(catalogCodeRowUnsupport, "%s", "MySQL partial-revoke visibility requires verification")
 	}
+	return nil
+}
 
+// mysqlSafety refuses a MySQL row change unless the account and the table are verified: the account holds TRIGGER on the table,
+// the table is InnoDB and it has no triggers (mutation.rs, mysql_safety).
+func (s *catalogSession) mysqlSafety(metadata CatalogTableMetadata) error {
+	unsupported := func(reason string) error { return catalogErr(catalogCodeRowUnsupport, "%s", reason) }
 	account, err := s.queryRaw("SELECT CURRENT_USER()", nil, 1, 4096)
 	if err != nil {
 		return err

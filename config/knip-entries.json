@@ -9,6 +9,7 @@
     "tests/dbspec/compare/check.mts": "the dbspec comparison check, which make runs with node",
     "tests/dbspec/stress.mts": "the writer of the stress documents, which make runs with node",
     "tests/go-run.mts": "the Go test runner, which the repository checks and the CI spawn",
+    "tests/interfaces/check/reaper.mts": "the process that tests/interfaces/check/extract.mts starts by its path to end the groups of the checker when the checker ends",
     "tests/interfaces/check/fixtures/typescript-constructor.ts": "constructor declarations passed by the native interface-extractor test to its spawned TypeScript compiler"
   },
   "workspaces": {

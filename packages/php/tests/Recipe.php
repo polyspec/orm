@@ -4776,7 +4776,12 @@ final class Recipe
                 'pages' => $page->totalPages,
                 'page' => $page->page,
                 'per_page' => $page->perPage,
-                'keys' => $page->items->keys(),
+                'keys' => array_map(
+                    static fn (mixed $key): mixed => $key instanceof \DateTimeInterface
+                        ? preg_replace('/\.?0*Z$/', 'Z', $key->format('Y-m-d\TH:i:s.u\Z'))
+                        : $key,
+                    $page->items->keys(),
+                ),
             ], 'total' => $page->totalCount];
             if (($s['items'] ?? false) === true) {
                 $fields['json']['items'] = [];

@@ -6334,7 +6334,19 @@ mod tables {
                 (number("page")?, number("per_page")?)
             };
             let page = gets_page(root, number, size).await.map_err(orm)?;
-            let keys: Vec<Value> = page.items.keys().iter().map(polyspec_orm::Key::to_json).collect();
+            let keys: Vec<Value> = page
+                .items
+                .keys()
+                .iter()
+                .map(|key| match key {
+                    // A date and time in keys is UTC RFC 3339 with no trailing zero of its fraction (FCV-4).
+                    polyspec_orm::Key::T(instant) => {
+                        let text = instant.format("%Y-%m-%dT%H:%M:%S%.6f").to_string();
+                        json!(format!("{}Z", text.trim_end_matches('0').trim_end_matches('.')))
+                    }
+                    other => other.to_json(),
+                })
+                .collect();
             let mut fields = json!({
                 "json": { "keys": keys, "total": page.total_count, "pages": page.total_pages, "page": page.page, "per_page": page.per_page },
                 "total": page.total_count,

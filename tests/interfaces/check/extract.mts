@@ -4,6 +4,7 @@
 // temporary directory. Prohibited multi_statement calls are found in the source text.
 import { spawn } from 'node:child_process';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
+import type { Socket } from 'node:net';
 import { extname, join, resolve } from 'node:path';
 import { parseJson } from '../../../scripts/json/schema.mts';
 import { stepLines, type Step } from '../../testcase.mts';
@@ -24,15 +25,56 @@ function exitText(output: Output): string {
   return output.signal !== null ? `signal: ${output.signal}` : `exit status ${output.code ?? 1}`;
 }
 
-// run executes the program and collects its output. If onOutput is given, it also sends both outputs there. If the signal aborts, it ends the process.
-function run(program: string, args: string[], options: { cwd?: string; signal?: AbortSignal; onOutput?: (chunk: string) => void } = {}): Promise<Output> {
+// reaper is the input of the process that ends the groups of this checker when the checker ends (reaper.mts). It starts with the first
+// program, in a session of its own so that no signal of this process's group reaches it first, and it holds neither the output of this
+// process nor its exit.
+let reaperInput: Socket | undefined;
+function reaper(): Socket {
+  if (reaperInput !== undefined) return reaperInput;
+  const child = spawn(process.execPath, [join(import.meta.dirname, 'reaper.mts')], { detached: true, stdio: ['pipe', 'ignore', 'ignore'] });
+  child.unref();
+  const input = child.stdin as Socket;
+  input.unref();
+  input.on('error', error => { console.error(`interface check: the reaper input failed: ${error.message}`); });
+  reaperInput = input;
+  return input;
+}
+
+// run executes the program and collects its output. If onOutput is given, it also sends both outputs there. The program leads a process
+// group of its own, so that an abort of the signal, and the end of this checker through reaper.mts, end it with what it started.
+export function run(program: string, args: string[], options: { cwd?: string; signal?: AbortSignal; onOutput?: (chunk: string) => void } = {}): Promise<Output> {
   return new Promise((resolvePromise, reject) => {
-    const child = spawn(program, args, { cwd: options.cwd, stdio: ['ignore', 'pipe', 'pipe'], ...(options.signal ? { signal: options.signal } : {}) });
+    const { signal } = options;
+    if (signal?.aborted) {
+      reject(signal.reason as Error);
+      return;
+    }
+    const child = spawn(program, args, { cwd: options.cwd, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
+    const group = child.pid;
+    if (group !== undefined) reaper().write(`+${group}\n`);
+    const end = () => {
+      if (group === undefined) return;
+      try {
+        process.kill(-group, 'SIGKILL');
+      } catch (error) {
+        // The group ended before the abort.
+        if ((error as NodeJS.ErrnoException).code !== 'ESRCH') reject(error as Error);
+      }
+    };
+    signal?.addEventListener('abort', end, { once: true });
     const stdout: Buffer[] = [], stderr: Buffer[] = [];
     child.stdout.on('data', (chunk: Buffer) => { stdout.push(chunk); options.onOutput?.(String(chunk)); });
     child.stderr.on('data', (chunk: Buffer) => { stderr.push(chunk); options.onOutput?.(String(chunk)); });
-    child.on('error', reject);
-    child.on('close', (code, signal) => resolvePromise({ code, signal, stdout: Buffer.concat(stdout).toString('utf8'), stderr: Buffer.concat(stderr).toString('utf8') }));
+    child.on('error', error => {
+      signal?.removeEventListener('abort', end);
+      reject(error);
+    });
+    child.on('close', (code, exitSignal) => {
+      signal?.removeEventListener('abort', end);
+      if (group !== undefined) reaper().write(`-${group}\n`);
+      if (signal?.aborted) reject(signal.reason as Error);
+      else resolvePromise({ code, signal: exitSignal, stdout: Buffer.concat(stdout).toString('utf8'), stderr: Buffer.concat(stderr).toString('utf8') });
+    });
   });
 }
 

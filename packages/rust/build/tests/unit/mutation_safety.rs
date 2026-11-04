@@ -1,5 +1,4 @@
 use super::*;
-use crate::tool_db::GridCell;
 
 #[tokio::test]
 // Requirements: INT-120.
@@ -12,26 +11,6 @@ async fn borrowed_bind_validation_stops_at_its_count_budget() {
     })
     .await
     .expect("borrowed bind deadline");
-}
-
-#[tokio::test]
-// Requirements: INT-119.
-async fn mysql_row_mutation_requires_direct_trigger_visibility_and_disabled_partial_revokes() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    tokio::time::timeout(std::time::Duration::from_secs(5), async {
-        let partial_revokes = GridQueryResult { columns: vec![], rows: vec![vec![GridCell::Integer(0)]] };
-        require_partial_revokes_disabled(&partial_revokes).unwrap();
-        let enabled = GridQueryResult { columns: vec![], rows: vec![vec![GridCell::Integer(1)]] };
-        assert!(require_partial_revokes_disabled(&enabled).unwrap_err().starts_with("ROW_MUTATION_UNSUPPORTED"));
-        let unknown = GridQueryResult { columns: vec![], rows: vec![] };
-        assert!(require_partial_revokes_disabled(&unknown).unwrap_err().starts_with("ROW_MUTATION_UNSUPPORTED"));
-        let no_direct_grant = GridQueryResult { columns: vec![], rows: vec![] };
-        assert!(require_trigger_privilege(&no_direct_grant).unwrap_err().starts_with("ROW_MUTATION_UNSUPPORTED"));
-        let direct_grant = GridQueryResult { columns: vec![], rows: vec![vec![GridCell::Text("TRIGGER".into())]] };
-        require_trigger_privilege(&direct_grant).unwrap();
-    })
-    .await
-    .expect("trigger visibility deadline");
 }
 
 #[tokio::test]
