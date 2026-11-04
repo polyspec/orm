@@ -1599,8 +1599,16 @@ fn dbspec_step(step: &Value, dir: &Path, database: &str) -> Result<(), String> {
             Ok(())
         }
         "dbspec.parse_positions" => {
-            let want_positions = want["positions"].as_array().cloned().ok_or("dbspec.parse_positions has no positions expect")?;
             let (text, set) = step_source(step, dir)?;
+            if want["positions"].is_null() {
+                // A failed parse is an Err, which by its type holds no document and no positions.
+                return match dbspec::parse(&text, &set) {
+                    Err(errors) if !errors.is_empty() => Ok(()),
+                    Err(_) => Err("a failed parse has no diagnostics".to_owned()),
+                    Ok(_) => Err("the text parses".to_owned()),
+                };
+            }
+            let want_positions = want["positions"].as_array().cloned().ok_or("dbspec.parse_positions has no positions expect")?;
             let parsed = dbspec::parse(&text, &set).map_err(|errors| format!("{errors:?}"))?;
             let got = positions_json(&parsed.positions);
             if got != want_positions {

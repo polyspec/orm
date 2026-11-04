@@ -767,6 +767,10 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
         else:
             text, header_set = _inline_document(step)
         _document, positions, diagnostics = parse_dbspec(text, header_set)
+        if expect["positions"] is None:
+            if _document is not None or positions is not None or not list(diagnostics):
+                raise AssertionError(f"a failed parse returned {_document!r}, {positions!r}, {list(diagnostics)!r}")
+            return
         if list(diagnostics):
             raise AssertionError(f"the document does not parse: {list(diagnostics)!r}")
         if not expect.get("positions"):

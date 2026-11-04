@@ -6243,7 +6243,7 @@
                 "additionalProperties": false,
                 "properties": {
                   "positions": {
-                    "type": "array",
+                    "type": ["array", "null"],
                     "items": {
                       "type": "object",
                       "required": [

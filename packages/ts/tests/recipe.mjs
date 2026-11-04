@@ -2639,6 +2639,10 @@ async function checkDbspecFiles(step, dir, database) {
     case 'dbspec.parse_positions': {
       const { text, set } = step.document === undefined ? inlineDocument(step) : { text: await readFile(resolve(dir, step.document), 'utf8'), set: {} };
       const parsed = parseDbspec(text, set);
+      if (expect.positions === null) {
+        assert.ok(parsed.document === null && parsed.positions === null && parsed.diagnostics.length > 0, 'a failed parse returns diagnostics alone');
+        break;
+      }
       assert.deepEqual(parsed.diagnostics, [], 'the document parses');
       assert.ok(expect.positions?.length > 0, 'the expect names positions');
       assert.deepEqual(parsed.positions.map(p => ({ kind: p.kind, path: [...p.path], line: p.line, column: p.column })), expect.positions, 'positions');

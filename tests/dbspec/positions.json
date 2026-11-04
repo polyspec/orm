@@ -1073,6 +1073,43 @@
           }
         }
       ]
+    },
+    {
+      "id": "positions-of-a-failed-parse-are-none",
+      "requirements": [
+        "DBS-142"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse_positions",
+          "text": [
+            "dbspec 1 bad",
+            "",
+            "table orders {"
+          ],
+          "expect": {
+            "none": {
+              "positions": null
+            }
+          }
+        },
+        {
+          "op": "dbspec.parse_positions",
+          "text": [
+            "dbspec 1 bad",
+            "",
+            "table orders {",
+            "  id i64",
+            "}",
+            "  x"
+          ],
+          "expect": {
+            "none": {
+              "positions": null
+            }
+          }
+        }
+      ]
     }
   ]
 }
