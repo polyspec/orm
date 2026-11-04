@@ -766,12 +766,12 @@
       },
       "internal": [
         {
-          "glob": "packages/ts/tests/driver-cell-bytes.mjs",
-          "reason": "test: the private mysqlParams turns a number parameter into an integer, for a pooler that a recipe database does not stand in for"
+          "glob": "packages/ts/tests/driver-integer-param.mjs",
+          "reason": "test: the private mysqlParams turns an integral number parameter into a bigint and keeps every other value, for a pooler that a recipe database does not stand in for"
         },
         {
           "glob": "packages/ts/tests/codec-aes-errors.test.mjs",
-          "reason": "test: injects a failure into each phase of the native decipher of Node, checks that the error keeps its identity and that no plaintext returns; a recipe cannot inject it, and the codes of the shared failures are recipe cases of tests/codec/codec.json"
+          "reason": "test: injects a failure into each phase of the native decipher of Node, checks that the error keeps its identity, that only the exact native authentication error of final becomes CODEC_DECODE and that no plaintext returns; a recipe cannot inject it, and the codes of the shared failures are recipe cases of tests/codec/codec.json"
         },
         {
           "glob": "packages/ts/tests/paginate-order.mjs",
@@ -6920,6 +6920,25 @@
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/SchemaUtilsNativeTest.php",
           "id": "SchemaUtilsNativeTest::testNativeSchemaInspectionAndRegistration"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm-php-ext"
+      }
+    },
+    {
+      "id": "php-extension-aes-utils-native",
+      "kind": "feature",
+      "requirements": [
+        "INT-156b"
+      ],
+      "bindings": [
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AesUtilsNativeTest.php",
+          "id": "AesUtilsNativeTest::testStatusAndRotateCheckKeyringTypeBeforeModelMetadata"
         }
       ],
       "owner": {
@@ -28054,16 +28073,6 @@
           "id": "aes_rotation_sqlite::write_uses_the_key_of_the_current_version"
         },
         {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/aes_keys.rs",
-          "id": "invalid_aes_configuration_fails_before_connection"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_aes_version_codes.py",
-          "id": "test_connection_rejects_aes_key_that_differs_from_current_keyring_key"
-        },
-        {
           "implementation": "go",
           "test": "packages/go/orm/recipe_aes_rotation_test.go",
           "id": "TestRecipeAesRotationSqlite/an_aes_key_that_differs_from_the_current_version_is_refused"
@@ -28082,6 +28091,66 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/aes_rotation_sqlite.rs",
           "id": "aes_rotation_sqlite::an_aes_key_that_differs_from_the_current_version_is_refused"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationMysql/an_aes_configuration_without_a_usable_current_key_is_refused"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_mysql.rs",
+          "id": "aes_rotation_mysql::an_aes_configuration_without_a_usable_current_key_is_refused"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationPostgres/an_aes_configuration_without_a_usable_current_key_is_refused"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_postgres.rs",
+          "id": "aes_rotation_postgres::an_aes_configuration_without_a_usable_current_key_is_refused"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationSqlite/an_aes_configuration_without_a_usable_current_key_is_refused"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+          "id": "aes_rotation_sqlite::an_aes_configuration_without_a_usable_current_key_is_refused"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/aes_rotation-sqlite.test.mjs",
+          "id": "an_aes_configuration_without_a_usable_current_key_is_refused"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_aes_rotation_sqlite.py",
+          "id": "an_aes_configuration_without_a_usable_current_key_is_refused"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationSqlite/a_refused_aes_configuration_opens_no_database_file"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+          "id": "aes_rotation_sqlite::a_refused_aes_configuration_opens_no_database_file"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/aes_rotation-sqlite.test.mjs",
+          "id": "a_refused_aes_configuration_opens_no_database_file"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_aes_rotation_sqlite.py",
+          "id": "a_refused_aes_configuration_opens_no_database_file"
         }
       ]
     },
@@ -28167,9 +28236,44 @@
           "id": "aes_rotation_sqlite::rotation_takes_rows_not_at_the_current_version"
         },
         {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/AesUtilsNativeTest.php",
-          "id": "AesUtilsNativeTest::testNativeStatusRotationAndTransactionRollback"
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationMysql/a_rotation_that_fails_on_a_row_keeps_every_row_at_its_version"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_mysql.rs",
+          "id": "aes_rotation_mysql::a_rotation_that_fails_on_a_row_keeps_every_row_at_its_version"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationPostgres/a_rotation_that_fails_on_a_row_keeps_every_row_at_its_version"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_postgres.rs",
+          "id": "aes_rotation_postgres::a_rotation_that_fails_on_a_row_keeps_every_row_at_its_version"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationSqlite/a_rotation_that_fails_on_a_row_keeps_every_row_at_its_version"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+          "id": "aes_rotation_sqlite::a_rotation_that_fails_on_a_row_keeps_every_row_at_its_version"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/aes_rotation-sqlite.test.mjs",
+          "id": "a_rotation_that_fails_on_a_row_keeps_every_row_at_its_version"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_aes_rotation_sqlite.py",
+          "id": "a_rotation_that_fails_on_a_row_keeps_every_row_at_its_version"
         }
       ]
     },

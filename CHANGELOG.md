@@ -3,7 +3,10 @@
 
 ## Unreleased
 
-- `make dbspec-apply-stress-bench` and the stress groups of CI that call it run the case `stress_plan_commits_each_step` again; the target had kept no command since the native apply tests moved to the recipe, so it passed without running anything.
+- The TypeScript integer parameter test is named `driver-integer-param.mjs`, and the reasons of its internal test entries state what each test does.
+- `make dbspec-apply-stress-bench` applies the stress plan again: it had no command since the native test became a recipe case, so `make bench` and the stress CI groups passed without applying anything.
+- The message of a manifest with several diagnostics is held word for word by one recipe case in every runtime (SCH-12).
+- An AES configuration with no usable current key fails the connection with `CONFIG` in every runtime and opens no database: Go took it at its first use and opened first, TypeScript opened the file before it refused, PHP and the PHP extension took a key list without the current version, and Python took a current version below 1. The recipe `aes_rotation` holds these forms and the rollback of a failed rotation.
 - Tests: a catalog session through a transaction pooler after a schema change (CFG-28, CFG-41) is the case `catalog_session_after_a_schema_change_through_a_pooler` of the `catalog_connection` recipe in every runtime, in place of the Python test `connection_config`, through the new op `sql.hold_statement` and a `dsn` on `catalog.reconnect`.
 - The feature checker no longer sets `ORM_FEATURE_DATABASE` or `ORM_FEATURE_DSN`, and no test reads them: an owner takes its database from its manifest entry or its recipe.
 - Tests: the exact bytes of a driver cell (PRT-69, INT-5) are the case `driver_bytes_cells_are_exact` of the `conformance_verification` recipe in every runtime, through the new `model.query` key `bytes_hex_of`; the natives that built the cell are gone, and Rust keeps its private row decoding test under INT-142.

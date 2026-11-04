@@ -1856,6 +1856,17 @@
             "type": "string",
             "description": "The query of the SQLite DSN."
           },
+          "config": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": false,
+            "description": "The AES configuration of the connection, as in the config of dsn.connect (COD-8).",
+            "properties": {
+              "aes_key": { "type": "string" },
+              "aes_version": { "type": "integer" },
+              "aes_keys": { "type": "object", "additionalProperties": { "type": "string" } }
+            }
+          },
           "expect": {
             "$ref": "#/$defs/expect"
           }
@@ -6269,6 +6280,9 @@
                     "type": "string"
                   },
                   "error": {
+                    "type": "string"
+                  },
+                  "message": {
                     "type": "string"
                   }
                 }

@@ -29,6 +29,7 @@
       "query"
     ],
     "dsn.sqlite_file": [
+      "config",
       "expect",
       "name",
       "op",

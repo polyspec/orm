@@ -234,7 +234,7 @@ CHECK_TARGETS = connection-sqlite-several-processes-python-check styled-column-s
 # once each, without the gates of kit, CI_KIT_GATES (make repo-check verifies it). The gates of kit are the prerequisites of
 # kit-gates, which the gates workflow of kit runs in its own parallel jobs (the parity API phase and one job per implementation
 # for the parity bindings), so ci does not run them again (KSTD-5-115); a local make orm-check runs them with the rest.
-# One MySQL application of the 2000-table plan takes longer than that, so only stress-mysql is excluded. A local make orm-check runs
+# One MySQL application of the stress plan takes longer than that, so only stress-mysql is excluded. A local make orm-check runs
 # every target without GROUP.
 #   static: targets that need no database
 #   clients_db: cross-client database checks whose runners are shared
@@ -249,7 +249,7 @@ CHECK_TARGETS = connection-sqlite-several-processes-python-check styled-column-s
 #   feature_performance: the exclusive six-runtime, three-database performance gate
 #   feature_verify_rust, feature_verify_other: verification commands of shard rust and shard other
 #   feature_helpers: the helper checks without the stress helpers and FEATURE_SUITE_HELPERS (feature-helper-check)
-#   stress_mysql: MySQL application of the 2000-table plan (feature-stress-mysql-check)
+#   stress_mysql: MySQL application of the stress plan (feature-stress-mysql-check)
 #   stress_pg_sqlite: bench of the stress document and PostgreSQL and SQLite application (feature-stress-pg-sqlite-check)
 CI_KIT_GATES = kit-check kit-inject-check layout-check docs-check rules-check owner-validate rebuild-check language-check test-markers-check duplication-check parity-declarations-check parity-check bypass-check suppression-check divergence-check lint-ts lint-php lint-python lint-go lint-rust lint-php-ext test-php-ext
 CI_GROUPS = static clients_db performance client_db_go client_db_php client_db_php_extension client_db_typescript client_db_python client_db_rust clients_pooler conformance dbspec dbspec_apply dbspec_go dbspec_php dbspec_php_extension dbspec_typescript dbspec_python dbspec_rust feature_go_mysql feature_go_postgres feature_go_sqlite feature_php_mysql feature_php_postgres feature_php_sqlite feature_php_extension_mysql feature_php_extension_postgres feature_php_extension_sqlite feature_typescript_mysql feature_typescript_postgres feature_typescript_sqlite feature_python_mysql feature_python_postgres feature_python_sqlite feature_rust_mysql feature_rust_postgres feature_rust_sqlite markdown_go markdown_php markdown_php_extension markdown_typescript markdown_python markdown_rust feature_performance feature_verify_rust feature_verify_other feature_helpers stress_mysql stress_pg_sqlite python
@@ -340,7 +340,7 @@ ci-group-needs:
 	$(if $(filter $(GROUP),$(CI_GROUPS)),,$(error GROUP $(GROUP) names no CI group; give one of CI_GROUPS: $(CI_GROUPS)))
 	@$(NODE) scripts/check/ci-setup.mts outputs $(CI_TARGETS_$(GROUP))
 
-# bench measures performance (parse, application, introspection, and comparison of the 2000-table stress document, and CPU time) per target with the same
+# bench measures performance (parse, introspection, and comparison of the 2000-table stress document, application of the stress plan, and CPU time) per target with the same
 # runner as check. It prints the measurements and only warns, not fails, when they exceed the reference values (AGENTS.md).
 BENCH_TARGETS = dbspec-stress-bench dbspec-apply-stress-bench dbspec-introspect-compare-bench dbspec-compare-bench timing-check
 .PHONY: bench
@@ -549,15 +549,15 @@ dbspec-lock-ts-check: lease-tool orm-codes-typescript
 	$(TSC_BUILD)
 	$(NODE) --test packages/ts/tests/dbspec-begin-exclusive-lock.mjs
 
-# dbspec-apply-stress-bench runs the case stress_plan_commits_each_step of the dbspec_apply recipe through Go: it applies the 2000-table document as the first plan to the databases in APPLY_STRESS_DIALECTS
-# (make bench runs all three). MySQL commits its statements and its 22000 history steps separately.
-# APPLY_STRESS_DIALECTS is the list of databases separated by `|` (mysql, postgres, sqlite). So
+# dbspec-apply-stress-bench runs the case stress_plan_commits_each_step of the dbspec_apply recipe in Go: it applies the 100-table
+# stress plan as the first plan to the databases in APPLY_STRESS_DIALECTS (make bench runs all three). MySQL commits its statements and its 1100 history steps separately.
+# APPLY_STRESS_DIALECTS is the list of databases separated by `|` (mysql, postgres, sqlite) and selects the database tests of that recipe. So
 # CI runs the longest MySQL application in a different group from PostgreSQL and SQLite (feature-stress-mysql-check,
 # feature-stress-pg-sqlite-check). A name that is not a database, or an empty value, passes while selecting no subtest, so make stops before the
 # command.
 APPLY_STRESS_DIALECTS = mysql|postgres|sqlite
 .PHONY: dbspec-apply-stress-bench
-dbspec-apply-stress-bench:
+dbspec-apply-stress-bench: go-models
 	$(if $(APPLY_STRESS_DIALECTS),,$(error APPLY_STRESS_DIALECTS is empty; give mysql, postgres or sqlite separated by |))$(foreach dialect,$(subst |, ,$(APPLY_STRESS_DIALECTS)),$(if $(filter $(dialect),mysql postgres sqlite),,$(error APPLY_STRESS_DIALECTS names $(dialect), which is no database; give mysql, postgres or sqlite separated by |)))
 	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeDbspecApply($(subst mysql,Mysql,$(subst postgres,Postgres,$(subst sqlite,Sqlite,$(APPLY_STRESS_DIALECTS)))))$$/^stress_plan_commits_each_step$$' -count=1
 
@@ -1460,7 +1460,7 @@ feature-verify-rust: feature-check/build
 feature-verify-other: feature-check/build
 	$(WITH_TEST_ENV) node scripts/features/check.mts --run --features --shard other
 # feature-helper-check, feature-stress-mysql-check, and feature-stress-pg-sqlite-check run the helper checks of contracts/features.json.
-# FEATURE_STRESS_HELPERS is the helper of the stress bench that takes the longest time: the MySQL application of the 2000-table plan
+# FEATURE_STRESS_HELPERS is the helper of the stress bench that takes the longest time: the MySQL application of the stress plan
 # (FEATURE_STRESS_MYSQL_HELPERS) is run by feature-stress-mysql-check, and the bench of the stress document and PostgreSQL and SQLite application
 # (FEATURE_STRESS_PG_SQLITE_HELPERS) by feature-stress-pg-sqlite-check, and the other helpers by feature-helper-check. So
 # the CI groups run the feature verification commands, helpers, and stress benches at the same time.
@@ -1609,7 +1609,7 @@ rust-compiler-fixtures-check/unit: lease-tool
 native-error-cause-check: php-models native-error-cause-check/php-extension native-error-cause-check/rust native-error-cause-check/typescript-driver native-error-cause-check/typescript-markdown native-error-cause-check/python-driver native-error-cause-check/php
 native-error-cause-check/typescript-driver: typescript-build
 	$(READ_TYPESCRIPT)
-	$(NODE) --test packages/ts/tests/driver-error-lock-wait.mjs packages/ts/tests/driver-cell-bytes.mjs
+	$(NODE) --test packages/ts/tests/driver-error-lock-wait.mjs packages/ts/tests/driver-integer-param.mjs
 native-error-cause-check/typescript-markdown: typescript-build
 	$(READ_TYPESCRIPT)
 	$(NODE) packages/ts/tests/markdown.mjs

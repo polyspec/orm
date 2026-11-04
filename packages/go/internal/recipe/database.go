@@ -1365,7 +1365,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		return outcome{fields: map[string]any{"value": map[string]any{"text": driver}}}, nil
 	case "dsn.sqlite_file":
-		names, err := sqliteFileName(s.k("name").Name, s.k("query").Query)
+		names, err := sqliteFileName(s.k("name").Name, s.k("query").Query, s.k("config").Config)
 		if err != nil {
 			return outcome{}, err
 		}

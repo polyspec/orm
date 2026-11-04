@@ -42,13 +42,6 @@ const text = (path: string) => readFileSync(new URL(path, repository), 'utf8');
 const trackedFiles = (pattern: string) => execFileSync('git', ['ls-files', '-z', pattern], { cwd: repository }).toString().split('\0').filter(Boolean).filter(notVendored);
 const scriptTexts = await scriptCommands(repository.pathname, trackedFiles('*'));
 const trackedAll = new Set(trackedFiles('*'));
-// Deadline: one make -n, which reads the Makefile and runs nothing.
-caseTest('dbspec-apply-stress-bench runs the stress case of the databases it names', PROCESS, () => {
-  const planned = spawnSync('make', ['-n', 'APPLY_STRESS_DIALECTS=mysql|sqlite', 'dbspec-apply-stress-bench'], { cwd: repository.pathname, encoding: 'utf8', env: isolatedEnvironment() });
-  assert.equal(planned.status, 0, planned.stderr);
-  assert.match(planned.stdout, /go-test\.mts .*TestRecipeDbspecApply\(Mysql\|Sqlite\).*stress_plan_commits_each_step/);
-});
-
 caseTest('the stress case of the dbspec_apply recipe runs under the 120 second deadline of a database case on every runtime', COMPUTE, () => {
   const recipe = JSON.parse(text('contracts/fixtures/dbspec_apply/dbspec_apply.json')) as { cases: { id: string }[] };
   assert.ok(recipe.cases.some(recipeCase => recipeCase.id === 'stress_plan_commits_each_step'), 'the recipe holds the stress case');
@@ -72,6 +65,19 @@ caseTest('the stress case of the dbspec_apply recipe runs under the 120 second d
 const readScript = (path: string) => scriptTexts.get(path) ?? (trackedAll.has(path) && !path.endsWith('.mts') ? text(path) : undefined);
 const trackedTexts = (paths: string[]) => Object.fromEntries(paths.map((path: string) => [path, text(path)]));
 
+caseTest('dbspec-apply-stress-bench runs the stress case on the databases it names', COMPUTE, () => {
+  const dryRun = (...variables: string[]) => spawnSync('make', ['-n', ...variables, 'dbspec-apply-stress-bench'], { cwd: repository.pathname, encoding: 'utf8', env: isolatedEnvironment() });
+  const tests = text('packages/go/orm/recipe_dbspec_apply_test.go');
+  for (const [dialects, names] of [['mysql', 'Mysql'], ['postgres|sqlite', 'Postgres|Sqlite'], ['mysql|postgres|sqlite', 'Mysql|Postgres|Sqlite']] as const) {
+    const result = dryRun(`APPLY_STRESS_DIALECTS=${dialects}`);
+    assert.equal(result.status, 0, result.stderr);
+    assert.ok(result.stdout.includes(`./packages/go/orm -run '^TestRecipeDbspecApply(${names})$/^stress_plan_commits_each_step$' -count=1`), result.stdout);
+    for (const name of names.split('|')) assert.ok(tests.includes(`func TestRecipeDbspecApply${name}(`), name);
+  }
+  for (const dialects of ['', 'oracle']) {
+    assert.notEqual(dryRun(`APPLY_STRESS_DIALECTS=${dialects}`).status, 0, dialects);
+  }
+});
 caseTest('the Go model build regenerates models', COMPUTE, () => {
   const root = new URL('../..', import.meta.url).pathname;
   const result = spawnSync('make', ['-n', 'build-go'], { cwd: root, encoding: 'utf8', env: isolatedEnvironment() });

@@ -243,11 +243,11 @@ async fn connect_driver(dsn: &str, config: &Value) -> Result<String, (String, St
 }
 
 /// The names in a new directory, other than the journals, after a connection to a file of it (dsn.sqlite_file, FCV-4, CFG-26).
-async fn sqlite_file_names(name: &str, query: &str) -> Result<String, String> {
+async fn sqlite_file_names(name: &str, query: &str, config: &Value) -> Result<String, String> {
     let directory = std::env::temp_dir().join(format!("orm-recipe-sqlite-name-{}-{name}", std::process::id()));
     std::fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
     let dsn = format!("sqlite://{}/{name}?{query}", directory.display());
-    let connected = connect_driver(&dsn, &Value::Null).await.map_err(|(_, message)| message);
+    let connected = connect_driver(&dsn, config).await.map_err(|(_, message)| message);
     let listed = std::fs::read_dir(&directory).map_err(|error| error.to_string()).and_then(|entries| {
         let mut names = Vec::new();
         for entry in entries {
@@ -1628,7 +1628,8 @@ fn dbspec_load_set(step: &Value, want: &Value) -> Result<(), String> {
             problems.len() == diagnostics.len()
                 && problems.iter().zip(diagnostics).all(|(problem, want)| want.as_str().is_some_and(|want| problem.starts_with(&format!("{want}: "))))
         });
-        return if want["error"].as_str() == Some(error.code()) && named { Ok(()) } else { Err(format!("error {error}, want {want}")) };
+        let worded = want["message"].as_str().is_none_or(|message| text == format!("{}: {message}", error.code()));
+        return if want["error"].as_str() == Some(error.code()) && named && worded { Ok(()) } else { Err(format!("error {error}, want {want}")) };
     };
     if let Some(hash) = want["manifest_hash"].as_str() {
         if built.manifest_hash != hash {
@@ -4134,7 +4135,7 @@ mod database {
             "dsn.sqlite_file" => {
                 let name = crate::recipe_reads::read(step, "name")["name"].as_str().unwrap_or_default();
                 let query = crate::recipe_reads::read(step, "query")["query"].as_str().unwrap_or_default();
-                let names = crate::recipe::sqlite_file_names(name, query).await.map_err(Failure::Call)?;
+                let names = crate::recipe::sqlite_file_names(name, query, &crate::recipe_reads::read(step, "config")["config"]).await.map_err(Failure::Call)?;
                 Output::fields(json!({ "value": { "text": names } }))
             }
             other => return Err(fault(format!("OP_UNKNOWN {other}"))),
