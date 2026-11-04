@@ -1142,6 +1142,9 @@ caseTest('the files of one run live in its run directory and a TypeScript build 
   // whose name holds a slash is checked like any other (T137-1-4-2-2).
   const parts = 'ts/hold: tool\n\t$(HOLD_TYPESCRIPT)\nts/types: ts/hold\n\tnpm run typescript:check\nts/later: ts/types\n\tnpm run typescript:test\nts/bare: tool\n\tnpm run typescript:test\n';
   assert.deepEqual(typescriptHolderErrors(parts), ['Makefile ts/bare builds the TypeScript client without holding its build output; start the recipe with $(HOLD_TYPESCRIPT)']);
+  // A command inside the exclusive lease holds the build for its own length; the shared lease does not hold a build.
+  assert.deepEqual(typescriptHolderErrors('ts/own: tool\n\t$(NODE) build.mts --current || $(LEASE) run $(TYPESCRIPT_LEASES) exclusive --wait -- npm run typescript:build\n'), []);
+  assert.deepEqual(typescriptHolderErrors('ts/read: tool\n\t$(LEASE) run $(TYPESCRIPT_LEASES) shared --wait -- npm run typescript:build\n'), ['Makefile ts/read builds the TypeScript client without holding its build output; start the recipe with $(HOLD_TYPESCRIPT)']);
 });
 
 // The Makefile reading case checks whether, as make reads it, each target gives back its prerequisite targets and recipe (T137-1-4-2-2).

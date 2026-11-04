@@ -503,8 +503,10 @@ export function unpublishedOutputErrors(makefile: string): string[] {
 // typescriptHolderErrors returns one error for each make target that builds the TypeScript client (TSC_BUILD, npm's typescript:build, typescript:test,
 // typescript:check, and scripts/client-db-test.mts that does it) that does not get the holding ($(HOLD_TYPESCRIPT)) of that build output.
 // A target gets the holding on the first line of its recipe, or gets it
-// through a prerequisite target that gets it (ts-check/hold of ts-check/types): make runs prerequisite targets first.
+// through a prerequisite target that gets it (ts-check/hold of ts-check/types): make runs prerequisite targets first. A command that
+// runs inside the exclusive lease holds the build for its own length (feature-coverage/build), so readers can share the output after it.
 export function typescriptHolderErrors(makefile: string): string[] {
+  const HOLDS_FOR_ITS_COMMAND = '$(LEASE) run $(TYPESCRIPT_LEASES) exclusive --wait -- ';
   const builds = /\$\(TSC_BUILD\)|typescript:(?:build|test|check)\b|client-db-test\.sh|tests\/conformance\/check run\b/;
   const targets = makeTargets(makefile);
   const rules = new Map(targets.map(rule => [rule.target, rule]));
@@ -515,7 +517,7 @@ export function typescriptHolderErrors(makefile: string): string[] {
     return (rule.commands[0] ?? '').trim() === '$(HOLD_TYPESCRIPT)' || rule.prerequisites.some(prerequisite => holds(prerequisite, seen));
   };
   return targets
-    .filter(rule => rule.commands.some(command => builds.test(command)) && !holds(rule.target))
+    .filter(rule => rule.commands.some(command => builds.test(command) && !command.includes(HOLDS_FOR_ITS_COMMAND)) && !holds(rule.target))
     .map(rule => `Makefile ${rule.target} builds the TypeScript client without holding its build output; start the recipe with $(HOLD_TYPESCRIPT)`);
 }
 

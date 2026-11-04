@@ -48,3 +48,19 @@ caseTest('a second build of the same sources runs no compiler', PROCESS, () => {
     rmSync(scratch, { recursive: true, force: true });
   }
 });
+
+caseTest('--current answers from the record of the build and builds nothing', PROCESS, () => {
+  const record = path.join(root, 'var/typescript/dist.key');
+  const run = () => spawnSync(process.execPath, [build, '--current'], { cwd: root, env: isolatedEnvironment({}), encoding: 'utf8' });
+  const built = spawnSync(process.execPath, [build], { cwd: root, env: isolatedEnvironment({}), encoding: 'utf8' });
+  assert.equal(built.status, 0, `scripts/typescript/build.mts exited with ${built.status ?? built.signal}:\n${built.stdout}${built.stderr}`);
+  const key = readFileSync(record, 'utf8');
+  assert.equal(run().status, 0, 'dist of the recorded key is current');
+  try {
+    writeFileSync(record, 'another build');
+    assert.equal(run().status, 1, 'a dist of another key is not current');
+    assert.equal(readFileSync(record, 'utf8'), 'another build', '--current wrote the record');
+  } finally {
+    writeFileSync(record, key);
+  }
+});

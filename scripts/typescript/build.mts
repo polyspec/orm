@@ -15,7 +15,7 @@
 // (through TSC_BUILD or npm's typescript:build) shares one build of the same sources. Its key is computed in buildKey; a build holds the
 // lock var/typescript/dist.lock while it checks, builds and publishes, so another caller waits and then reads the same key.
 //
-// Usage: node scripts/typescript/build.mts
+// Usage: node scripts/typescript/build.mts [--current]
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
@@ -85,8 +85,10 @@ function isCurrent(key: string): boolean {
   return existsSync(dist) && existsSync(record) && readFileSync(record, 'utf8') === key && generatedModels.every(model => existsSync(join(client, model.out, 'models.ts')));
 }
 
-mkdirSync(dirname(lockFile), { recursive: true });
 const key = buildKey();
+// --current answers whether dist is the build of these sources, with no lock and no write, for a reader that takes the build lease only when it must build.
+if (process.argv.includes('--current')) process.exit(isCurrent(key) ? 0 : 1);
+mkdirSync(dirname(lockFile), { recursive: true });
 const hold = waitForHolderLock(lockFile, { timeoutMs: Infinity, checkout: root, command: 'typescript build' });
 if (isCurrent(key)) {
   hold.release();
