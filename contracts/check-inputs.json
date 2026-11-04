@@ -2705,8 +2705,6 @@
       ],
       "inputs": [
         "packages/php-ext/tests/ParameterChunkingNativeTest.php",
-        "packages/php-ext/tests/CompositeKeysNativeTest.php",
-        "contracts/fixtures/composite_keys/composite_keys.json",
         "packages/php-ext/tests/NativeQueryProbePdo.php",
         "packages/php-ext/tests/NativeQueryProbeStatement.php",
         "Makefile"

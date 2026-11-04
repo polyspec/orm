@@ -25949,7 +25949,7 @@
       ]
     },
     {
-      "id": "coverage-composite-keys-native",
+      "id": "php-extension-composite-relation-parent-slot",
       "kind": "feature",
       "requirements": [
         "PRT-40a"
@@ -25957,8 +25957,8 @@
       "bindings": [
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CompositeKeysNativeTest.php",
-          "id": "CompositeKeysNativeTest::test_composite_relation_binds_and_assembles_both_key_components"
+          "test": "packages/php-ext/tests/CompositeKeysRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\CompositeKeysRecipeTestExtensionTest::testSqlite"
         }
       ],
       "owner": {

@@ -5511,7 +5511,7 @@
         "composite_keys-mysql",
         "composite_keys-postgres",
         "composite_keys-sqlite",
-        "coverage-composite-keys-native"
+        "php-extension-composite-relation-parent-slot"
       ],
       "fixtures": [
         "tests/conformance/vectors.json",
@@ -5524,7 +5524,7 @@
         "packages/rust/tests/tests/integration_program/main.rs",
         "packages/ts/tests/model.mjs",
         "packages/python/tests/test_key_prefix.py",
-        "packages/php-ext/tests/CompositeKeysNativeTest.php",
+        "packages/php-ext/tests/CompositeKeysRecipeTestExtensionTest.php",
         "packages/php-ext/tests/ModelTestExtensionTest.php"
       ],
       "docs": [
@@ -10420,8 +10420,7 @@
         "packages/php-ext/tests/NativeQueryProbeStatement.php"
       ],
       "tests": [
-        "packages/php-ext/tests/ParameterChunkingNativeTest.php",
-        "packages/php-ext/tests/CompositeKeysNativeTest.php"
+        "packages/php-ext/tests/ParameterChunkingNativeTest.php"
       ],
       "command": "make model-chunk-composite-native-php-extension-check"
     },

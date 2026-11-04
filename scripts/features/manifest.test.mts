@@ -139,8 +139,6 @@ caseTest('the composite-key recipe holds distinct bounded tuples with equal conc
     ['go', 'php', 'php-extension', 'python', 'rust', 'typescript'],
     'composite_keys declares all six client owners',
   );
-  // CompositeKeysNativeTest of the PHP extension (PRT-40a) reads these rows too, so its check target declares the recipe
-  // in contracts/check-inputs.json.
   const recipe = JSON.parse(readFileSync(new URL(`../../${recipePath}`, import.meta.url), 'utf8')) as {
     cases: { id: string; steps: { op: string; model?: string; rows?: Record<string, { int?: string; text?: string }>[] }[] }[];
   };
