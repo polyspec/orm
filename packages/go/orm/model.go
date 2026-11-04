@@ -22,10 +22,12 @@ type rowState struct {
 	hidden   map[string]bool
 	original originals
 	extra    map[string]any
-	related  map[string]any
-	relNames []string
-	cascade  map[string]bool
-	flat     []string
+	// extraDate names the added columns of plan type date, whose array form is the text of a date (INT-160).
+	extraDate map[string]bool
+	related   map[string]any
+	relNames  []string
+	cascade   map[string]bool
+	flat      []string
 }
 
 // originals holds the loaded key and update time values of a row, which
@@ -236,6 +238,12 @@ func (a *assembler) model(b *Core, asm *plan.Assemble, row []any) (*Core, error)
 			return nil, codecErr(CodeCodecDecode, "added column %s: %v", col.Name, err)
 		}
 		st.extra[col.Name] = added
+		if col.Type == "date" {
+			if st.extraDate == nil {
+				st.extraDate = map[string]bool{}
+			}
+			st.extraDate[col.Name] = true
+		}
 	}
 	st.original = make(originals, 0, sh.original)
 	for _, name := range sh.keys {
@@ -1682,6 +1690,8 @@ func (c *Core) pairs() []pair {
 		}
 		if v, ok := c.ent.Value(c.self, name); ok {
 			add(name, c.columnArrayValue(name, v))
+		} else if t, ok := st.extra[name].(time.Time); ok && st.extraDate[name] {
+			add(name, temporalText(t, "date"))
 		} else {
 			add(name, c.columnArrayValue(name, st.extra[name]))
 		}

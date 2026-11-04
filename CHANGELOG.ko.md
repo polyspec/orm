@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e35c39584c7e932103db07365c8ce68b81e92be9e5590b235c4693c69e9e15ae -->
+<!-- source-sha256: 437d50a455160df0ac962e8d4bd83447d174297caf9eca39aee3bd0290f55076 -->
 # 변경 이력
 
 ## Unreleased
@@ -9,6 +9,9 @@
 - 테스트: recipe schema는 `relation`의 `where`를 받고, `model_queries_chain`의 case `relation_condition_follows_the_padded_composite_parent_keys`는 그 schema에 유효합니다(T334-3-12).
 - 테스트: savepoint rollback이 rollback fault를 소비하지 않는다는 것(protocol 3.1)은 Python native 대신 모든 runtime에서 recipe `transactions`의 case이고, 잃어버린 rollback, 실패한 `BEGIN`, 실패한 시작 단계의 Python native test는 unit `transaction-failure-rollback`에 속합니다(T334-3-12-3-7, T334-3-12-3-8).
 - 시험: diagnostic이 있는 set의 install 거부(SCH-7), transaction 밖의 lock utility(INT-50), 0인 transaction timeout(INT-42)이 recipe `schema_install`, `utils`, `transactions`의 case로 여섯 runtime 모두에서 돌고, recipe가 가진 native test를 없앴다. TypeScript, Rust, PHP model test의 transaction과 utility 본문, PHP deadlock test와 그 child script, Rust transaction timeout test, Python의 pool 한도, schema 도구, tuple padding test이다. recipe의 `schema` 인자는 `manifest`를 받고, INT-42는 `0`이 timeout 생략과 같다고 적는다.
+- 테스트: recipe conformance_verification의 case `styled_integer_json_output`이 model JSON 출력의 styled 값 안에 있는 safe 범위 밖 정수를 담는다 (#T334-3-5-13)
+- COD-45는 TypeScript 추가 열 읽기의 규칙이며 한계는 safe integer다. vector body가 사라진 뒤 어떤 runner도 호출하지 않던 conformance helper derivedInteger는 그 시험과 함께 사라졌고, 제품 코드의 native case `added_column/driver_cell_forms`가 이 규칙을 담는다 (#T334-3-5-16)
+- 추가 열은 첫 구현이 열어 둔 형식까지 여섯 runtime 모두에서 plan 타입으로 읽힌다. Go와 Rust는 더하기 부호나 앞의 0이 있는 문자열을 거부하고, Go는 시간이 아닌 문자열을 거부하며, Rust는 추가 date와 datetime을 디코딩하고, 추가 date는 Go, PHP, PHP extension의 JSON에서 date 문자열이다. case added_column_types, added_text_not_exact, added_text_not_a_time가 이를 담는다 (#T334-3-5-15)
 - 인터페이스 검사기는 어떻게 끝나든 자기가 시작한 것을 함께 끝냅니다. 각 프로그램은 프로세스 그룹을 이끌고, 실행의 abort는 그 그룹을 죽이며, 검사기 파이프의 끝을 읽는 프로세스가 아직 도는 그룹을 죽이므로, 멈춘 extractor와 그 자식은 기한이 죽인 검사기보다 오래 살지 않습니다.
 - 테스트: relation의 parent key padding과 그 뒤 placeholder의 번호는 recipe `model_queries_chain`의 case이고, recipe가 담는 collection key의 native test는 사라졌으며, feature-coverage는 native로 남는 각 test를 이유와 함께 적는다.
 - `datetime` column의 key는 INT-11대로 모든 runtime에서 date and time이며, 유일한 key column일 때도 그렇다. PHP, TypeScript, Python은 column의 text를 돌려주었다. TypeScript key는 `toJSON()`이 microsecond를 담는 `Date`이므로 한 millisecond 안의 두 microsecond는 두 key로 남는다. recipe `model_queries_chain`의 case `single_key_of_a_datetime_keeps_its_type`과 `single_key_of_a_microsecond_datetime_keeps_its_instant`가 이를 지킨다.

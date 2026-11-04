@@ -54768,6 +54768,927 @@
    ]
   },
   {
+   "id": "added_column_types",
+   "requirements": [
+    "INT-160"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TypedValue",
+     "values": {
+      "small": {
+       "int": "-1234"
+      },
+      "wide": {
+       "int": "7"
+      },
+      "active": {
+       "bool": true
+      },
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      },
+      "clock": {
+       "text": "10:20:30.500"
+      },
+      "day": {
+       "text": "2026-02-03"
+      },
+      "note": {
+       "text": "plain text"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TimeCell",
+     "values": {
+      "at": {
+       "text": "2026-01-02 03:04:05"
+      },
+      "clock": {
+       "text": "10:11:12"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "User",
+     "where": {
+      "seq": {
+       "int": "907"
+      }
+     },
+     "add_columns": [
+      {
+       "expr": {
+        "sub": {
+         "model": "TypedValue",
+         "columns": [
+          "small"
+         ],
+         "where": {
+          "seq": {
+           "int": "1"
+          }
+         },
+         "order": [
+          {
+           "column": "seq",
+           "dir": "asc"
+          }
+         ],
+         "limit": {
+          "offset": 0,
+          "count": 1
+         }
+        }
+       },
+       "as": "small"
+      },
+      {
+       "expr": {
+        "sub": {
+         "model": "TypedValue",
+         "columns": [
+          "wide"
+         ],
+         "where": {
+          "seq": {
+           "int": "1"
+          }
+         },
+         "order": [
+          {
+           "column": "seq",
+           "dir": "asc"
+          }
+         ],
+         "limit": {
+          "offset": 0,
+          "count": 1
+         }
+        }
+       },
+       "as": "wide"
+      },
+      {
+       "expr": {
+        "sub": {
+         "model": "TypedValue",
+         "columns": [
+          "ratio"
+         ],
+         "where": {
+          "seq": {
+           "int": "1"
+          }
+         },
+         "order": [
+          {
+           "column": "seq",
+           "dir": "asc"
+          }
+         ],
+         "limit": {
+          "offset": 0,
+          "count": 1
+         }
+        }
+       },
+       "as": "ratio"
+      },
+      {
+       "expr": {
+        "sub": {
+         "model": "TypedValue",
+         "columns": [
+          "active"
+         ],
+         "where": {
+          "seq": {
+           "int": "1"
+          }
+         },
+         "order": [
+          {
+           "column": "seq",
+           "dir": "asc"
+          }
+         ],
+         "limit": {
+          "offset": 0,
+          "count": 1
+         }
+        }
+       },
+       "as": "active"
+      },
+      {
+       "expr": {
+        "sub": {
+         "model": "TypedValue",
+         "columns": [
+          "day"
+         ],
+         "where": {
+          "seq": {
+           "int": "1"
+          }
+         },
+         "order": [
+          {
+           "column": "seq",
+           "dir": "asc"
+          }
+         ],
+         "limit": {
+          "offset": 0,
+          "count": 1
+         }
+        }
+       },
+       "as": "day"
+      },
+      {
+       "expr": {
+        "sub": {
+         "model": "TimeCell",
+         "columns": [
+          "at"
+         ],
+         "where": {
+          "seq": {
+           "int": "1"
+          }
+         },
+         "order": [
+          {
+           "column": "seq",
+           "dir": "asc"
+          }
+         ],
+         "limit": {
+          "offset": 0,
+          "count": 1
+         }
+        }
+       },
+       "as": "at"
+      }
+     ],
+     "pick": [
+      "seq",
+      "small",
+      "wide",
+      "ratio",
+      "active",
+      "day",
+      "at"
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "seq": 907,
+         "small": -1234,
+         "wide": 7,
+         "ratio": 1.25,
+         "active": true,
+         "day": "2026-02-03",
+         "at": "2026-01-02 03:04:05.000000"
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "seq": 907,
+         "small": -1234,
+         "wide": 7,
+         "ratio": 1.25,
+         "active": true,
+         "day": "2026-02-03",
+         "at": "2026-01-02 03:04:05.000000"
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "seq": 907,
+         "small": -1234,
+         "wide": 7,
+         "ratio": 1.25,
+         "active": true,
+         "day": "2026-02-03",
+         "at": "2026-01-02 03:04:05.000000"
+        }
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "added_text_not_exact",
+   "requirements": [
+    "INT-160"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "the key that holds account_id at its declared type goes first, so that the column can change",
+     "only": [
+      "mysql"
+     ],
+     "sql": "ALTER TABLE composite_membership DROP FOREIGN KEY fk_composite_membership_account"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a stored column that holds text under the i64 of the plan type, as a column altered behind the schema does",
+     "only": [
+      "mysql"
+     ],
+     "sql": "ALTER TABLE composite_account MODIFY account_id VARCHAR(20) NOT NULL"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "the key that holds account_id at its declared type goes first, so that the column can change",
+     "only": [
+      "postgres"
+     ],
+     "sql": "ALTER TABLE composite_membership DROP CONSTRAINT fk_composite_membership_account"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a stored column that holds text under the i64 of the plan type, as a column altered behind the schema does",
+     "only": [
+      "postgres"
+     ],
+     "sql": "ALTER TABLE composite_account ALTER COLUMN account_id TYPE varchar(20)"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "the table that refers to composite_account goes first; SQLite cannot change a column",
+     "only": [
+      "sqlite"
+     ],
+     "sql": "DROP TABLE composite_membership"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "SQLite cannot change a column, so the table is made again",
+     "only": [
+      "sqlite"
+     ],
+     "sql": "DROP TABLE composite_account"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a stored column that holds text under the i64 of the plan type, as a column altered behind the schema does",
+     "only": [
+      "sqlite"
+     ],
+     "sql": "CREATE TABLE composite_account (tenant_id INTEGER NOT NULL, account_id TEXT NOT NULL, name TEXT NOT NULL, PRIMARY KEY (tenant_id, account_id))"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "exactly the digits of the integer, which reads as that integer",
+     "sql": "INSERT INTO composite_account (tenant_id, account_id, name) VALUES (900, '7', 'a')"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "User",
+     "where": {
+      "seq": {
+       "int": "907"
+      }
+     },
+     "add_columns": [
+      {
+       "expr": {
+        "sub": {
+         "model": "CompositeAccount",
+         "columns": [
+          "account_id"
+         ],
+         "where": {
+          "tenant_id": {
+           "int": "900"
+          }
+         },
+         "order": [
+          {
+           "column": "tenant_id",
+           "dir": "asc"
+          },
+          {
+           "column": "account_id",
+           "dir": "asc"
+          }
+         ],
+         "limit": {
+          "offset": 0,
+          "count": 1
+         }
+        }
+       },
+       "as": "total"
+      }
+     ],
+     "pick": [
+      "seq",
+      "total"
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "seq": 907,
+         "total": 7
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "seq": 907,
+         "total": 7
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "seq": 907,
+         "total": 7
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a leading zero is not exactly the digits of an integer",
+     "sql": "UPDATE composite_account SET account_id = '007' WHERE tenant_id = 900"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "User",
+     "where": {
+      "seq": {
+       "int": "907"
+      }
+     },
+     "add_columns": [
+      {
+       "expr": {
+        "sub": {
+         "model": "CompositeAccount",
+         "columns": [
+          "account_id"
+         ],
+         "where": {
+          "tenant_id": {
+           "int": "900"
+          }
+         },
+         "order": [
+          {
+           "column": "tenant_id",
+           "dir": "asc"
+          },
+          {
+           "column": "account_id",
+           "dir": "asc"
+          }
+         ],
+         "limit": {
+          "offset": 0,
+          "count": 1
+         }
+        }
+       },
+       "as": "total"
+      }
+     ],
+     "pick": [
+      "seq",
+      "total"
+     ],
+     "expect": {
+      "mysql": {
+       "error": "CODEC_DECODE"
+      },
+      "postgres": {
+       "error": "CODEC_DECODE"
+      },
+      "sqlite": {
+       "error": "CODEC_DECODE"
+      }
+     }
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a sign that is not minus is not exactly the digits of an integer",
+     "sql": "UPDATE composite_account SET account_id = '+7' WHERE tenant_id = 900"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "User",
+     "where": {
+      "seq": {
+       "int": "907"
+      }
+     },
+     "add_columns": [
+      {
+       "expr": {
+        "sub": {
+         "model": "CompositeAccount",
+         "columns": [
+          "account_id"
+         ],
+         "where": {
+          "tenant_id": {
+           "int": "900"
+          }
+         },
+         "order": [
+          {
+           "column": "tenant_id",
+           "dir": "asc"
+          },
+          {
+           "column": "account_id",
+           "dir": "asc"
+          }
+         ],
+         "limit": {
+          "offset": 0,
+          "count": 1
+         }
+        }
+       },
+       "as": "total"
+      }
+     ],
+     "pick": [
+      "seq",
+      "total"
+     ],
+     "expect": {
+      "mysql": {
+       "error": "CODEC_DECODE"
+      },
+      "postgres": {
+       "error": "CODEC_DECODE"
+      },
+      "sqlite": {
+       "error": "CODEC_DECODE"
+      }
+     }
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a trailing space is not exactly the digits of an integer",
+     "sql": "UPDATE composite_account SET account_id = '7 ' WHERE tenant_id = 900"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "User",
+     "where": {
+      "seq": {
+       "int": "907"
+      }
+     },
+     "add_columns": [
+      {
+       "expr": {
+        "sub": {
+         "model": "CompositeAccount",
+         "columns": [
+          "account_id"
+         ],
+         "where": {
+          "tenant_id": {
+           "int": "900"
+          }
+         },
+         "order": [
+          {
+           "column": "tenant_id",
+           "dir": "asc"
+          },
+          {
+           "column": "account_id",
+           "dir": "asc"
+          }
+         ],
+         "limit": {
+          "offset": 0,
+          "count": 1
+         }
+        }
+       },
+       "as": "total"
+      }
+     ],
+     "pick": [
+      "seq",
+      "total"
+     ],
+     "expect": {
+      "mysql": {
+       "error": "CODEC_DECODE"
+      },
+      "postgres": {
+       "error": "CODEC_DECODE"
+      },
+      "sqlite": {
+       "error": "CODEC_DECODE"
+      }
+     }
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a fraction is not exactly the digits of an integer",
+     "sql": "UPDATE composite_account SET account_id = '7.0' WHERE tenant_id = 900"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "User",
+     "where": {
+      "seq": {
+       "int": "907"
+      }
+     },
+     "add_columns": [
+      {
+       "expr": {
+        "sub": {
+         "model": "CompositeAccount",
+         "columns": [
+          "account_id"
+         ],
+         "where": {
+          "tenant_id": {
+           "int": "900"
+          }
+         },
+         "order": [
+          {
+           "column": "tenant_id",
+           "dir": "asc"
+          },
+          {
+           "column": "account_id",
+           "dir": "asc"
+          }
+         ],
+         "limit": {
+          "offset": 0,
+          "count": 1
+         }
+        }
+       },
+       "as": "total"
+      }
+     ],
+     "pick": [
+      "seq",
+      "total"
+     ],
+     "expect": {
+      "mysql": {
+       "error": "CODEC_DECODE"
+      },
+      "postgres": {
+       "error": "CODEC_DECODE"
+      },
+      "sqlite": {
+       "error": "CODEC_DECODE"
+      }
+     }
+    },
+    {
+     "op": "sql.exec",
+     "reason": "not a number is not exactly the digits of an integer",
+     "sql": "UPDATE composite_account SET account_id = 'x7' WHERE tenant_id = 900"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "User",
+     "where": {
+      "seq": {
+       "int": "907"
+      }
+     },
+     "add_columns": [
+      {
+       "expr": {
+        "sub": {
+         "model": "CompositeAccount",
+         "columns": [
+          "account_id"
+         ],
+         "where": {
+          "tenant_id": {
+           "int": "900"
+          }
+         },
+         "order": [
+          {
+           "column": "tenant_id",
+           "dir": "asc"
+          },
+          {
+           "column": "account_id",
+           "dir": "asc"
+          }
+         ],
+         "limit": {
+          "offset": 0,
+          "count": 1
+         }
+        }
+       },
+       "as": "total"
+      }
+     ],
+     "pick": [
+      "seq",
+      "total"
+     ],
+     "expect": {
+      "mysql": {
+       "error": "CODEC_DECODE"
+      },
+      "postgres": {
+       "error": "CODEC_DECODE"
+      },
+      "sqlite": {
+       "error": "CODEC_DECODE"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "added_text_not_a_time",
+   "requirements": [
+    "INT-160"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a stored column that holds text under the datetime of the plan type, as a column altered behind the schema does",
+     "only": [
+      "mysql"
+     ],
+     "sql": "ALTER TABLE time_cell MODIFY `at` VARCHAR(32) NOT NULL"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a stored column that holds text under the date of the plan type",
+     "only": [
+      "mysql"
+     ],
+     "sql": "ALTER TABLE day_cell MODIFY `day` VARCHAR(32) NULL"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a stored column that holds text under the datetime of the plan type, as a column altered behind the schema does",
+     "only": [
+      "postgres"
+     ],
+     "sql": "ALTER TABLE time_cell ALTER COLUMN at TYPE varchar(32)"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a stored column that holds text under the date of the plan type",
+     "only": [
+      "postgres"
+     ],
+     "sql": "ALTER TABLE day_cell ALTER COLUMN day TYPE varchar(32)"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "SQLite cannot change a column, so the table is made again",
+     "only": [
+      "sqlite"
+     ],
+     "sql": "DROP TABLE time_cell"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a stored column that holds text under the datetime of the plan type, as a column altered behind the schema does",
+     "only": [
+      "sqlite"
+     ],
+     "sql": "CREATE TABLE time_cell (seq INTEGER PRIMARY KEY, at TEXT NOT NULL, clock TEXT NOT NULL)"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "SQLite cannot change a column, so the table is made again",
+     "only": [
+      "sqlite"
+     ],
+     "sql": "DROP TABLE day_cell"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a stored column that holds text under the date of the plan type",
+     "only": [
+      "sqlite"
+     ],
+     "sql": "CREATE TABLE day_cell (seq INTEGER PRIMARY KEY, label TEXT NOT NULL, day TEXT, at_time TEXT)"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a text that is no time",
+     "sql": "INSERT INTO time_cell (at, clock) VALUES ('bad1', '10:11:12')"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a text that is no date",
+     "sql": "INSERT INTO day_cell (label, day) VALUES ('a', 'bad2')"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "User",
+     "where": {
+      "seq": {
+       "int": "907"
+      }
+     },
+     "add_columns": [
+      {
+       "expr": {
+        "sub": {
+         "model": "TimeCell",
+         "columns": [
+          "at"
+         ],
+         "where": {
+          "seq": {
+           "int": "1"
+          }
+         },
+         "order": [
+          {
+           "column": "seq",
+           "dir": "asc"
+          }
+         ],
+         "limit": {
+          "offset": 0,
+          "count": 1
+         }
+        }
+       },
+       "as": "at"
+      }
+     ],
+     "pick": [
+      "seq",
+      "at"
+     ],
+     "expect": {
+      "mysql": {
+       "error": "CODEC_DECODE"
+      },
+      "postgres": {
+       "error": "CODEC_DECODE"
+      },
+      "sqlite": {
+       "error": "CODEC_DECODE"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "User",
+     "where": {
+      "seq": {
+       "int": "907"
+      }
+     },
+     "add_columns": [
+      {
+       "expr": {
+        "sub": {
+         "model": "DayCell",
+         "columns": [
+          "day"
+         ],
+         "where": {
+          "seq": {
+           "int": "1"
+          }
+         },
+         "order": [
+          {
+           "column": "seq",
+           "dir": "asc"
+          }
+         ],
+         "limit": {
+          "offset": 0,
+          "count": 1
+         }
+        }
+       },
+       "as": "day"
+      }
+     ],
+     "pick": [
+      "seq",
+      "day"
+     ],
+     "expect": {
+      "mysql": {
+       "error": "CODEC_DECODE"
+      },
+      "postgres": {
+       "error": "CODEC_DECODE"
+      },
+      "sqlite": {
+       "error": "CODEC_DECODE"
+      }
+     }
+    }
+   ]
+  },
+  {
    "id": "errors",
    "requirements": [
     "DSL-10",
@@ -79276,6 +80197,73 @@
       },
       "sqlite": {
        "error": "CODEC_DECODE"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "styled_integer_json_output",
+   "requirements": [
+    "COD-26"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": "all",
+     "as": "row"
+    },
+    {
+     "op": "model.update",
+     "connection": "db",
+     "row": "row",
+     "set": {
+      "serialize_data": {
+       "object": [
+        [
+         "n",
+         {
+          "int": "9007199254740993"
+         }
+        ]
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "connection": "db",
+     "model": "Author",
+     "columns": [
+      "serialize_data"
+     ],
+     "json_output": true,
+     "expect": {
+      "mysql": {
+       "json": "{\"seq\":1,\"user_seq\":2,\"service_seq\":2,\"service_region_seq\":2,\"service_member_seq\":2,\"serialize_data\":{\"kind\":\"value\",\"value\":{\"n\":9007199254740993}}}"
+      },
+      "postgres": {
+       "json": "{\"seq\":1,\"user_seq\":2,\"service_seq\":2,\"service_region_seq\":2,\"service_member_seq\":2,\"serialize_data\":{\"kind\":\"value\",\"value\":{\"n\":9007199254740993}}}"
+      },
+      "sqlite": {
+       "json": "{\"seq\":1,\"user_seq\":2,\"service_seq\":2,\"service_region_seq\":2,\"service_member_seq\":2,\"serialize_data\":{\"kind\":\"value\",\"value\":{\"n\":9007199254740993}}}"
       }
      }
     }

@@ -272,6 +272,7 @@ ZEND_METHOD(Polyspec_Orm_Model, rowShape)
     ZVAL_COPY(&copy, hidden); add_assoc_zval(&row, "hidden", &copy);
     zval empty; array_init(&empty); add_assoc_zval(&row, "original", &empty);
     array_init(&empty); add_assoc_zval(&row, "extra", &empty);
+    array_init(&empty); add_assoc_zval(&row, "extra_date", &empty);
     array_init(&empty); add_assoc_zval(&row, "related", &empty);
     array_init(&empty); add_assoc_zval(&row, "cascade", &empty);
     array_init(&empty); add_assoc_zval(&row, "flat", &empty);
@@ -482,6 +483,10 @@ ZEND_METHOD(Polyspec_Orm_Model, assembleRow)
                     if (!model_time_value_in_zone(&converted, zone, &time)) { zval_ptr_dtor(&converted); zval_ptr_dtor(&st); zval_ptr_dtor(&model); zval_ptr_dtor(&shape); RETURN_THROWS(); }
                     zval_ptr_dtor(&converted); ZVAL_COPY_VALUE(&converted, &time);
                 }
+            }
+            if (kind != NULL && read_string_is(kind, "date")) {
+                zval *dates = read_array(&st, "extra_date");
+                if (dates != NULL && Z_TYPE_P(dates) == IS_ARRAY) { zval marked; ZVAL_TRUE(&marked); zend_hash_update(Z_ARRVAL_P(dates), Z_STR_P(name), &marked); }
             }
             zval *extra_map=read_array(&st,"extra"); if(extra_map!=NULL&&Z_TYPE_P(extra_map)==IS_ARRAY) zend_hash_update(Z_ARRVAL_P(extra_map),Z_STR_P(name),&converted); else zval_ptr_dtor(&converted);
         } ZEND_HASH_FOREACH_END();

@@ -1,5 +1,28 @@
 import { GroupRow, GroupRows, OrmError } from '../dist/index.js';
+import { addedColumnValue } from '../dist/model.js';
 import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
+
+// The forms of an added integer that only a driver cell holds, at the bound that only a TypeScript number has: every other runtime
+// holds an i64 whole, so no recipe case can state this bound (FCV-2). The recipe cases added_sum_above_i32, added_sum_above_i64,
+// added_sum_fractional and added_text_not_exact hold what all six share. Requirements: COD-45, INT-160.
+caseTest('added_column/driver_cell_forms', COMPUTE, () => {
+  const held = [[2, 2], ['2', 2], [2n, 2], ['-2', -2], ['0', 0], [9007199254740991, Number.MAX_SAFE_INTEGER], ['9007199254740991', Number.MAX_SAFE_INTEGER], [9007199254740991n, Number.MAX_SAFE_INTEGER], ['-9007199254740991', Number.MIN_SAFE_INTEGER], [null, null]];
+  for (const [input, want] of held) {
+    const got = addedColumnValue('i64', input, 'UTC');
+    if (got !== want) throw new Error(`added i64 ${String(input)} read as ${String(got)}, want ${String(want)}`);
+  }
+  const refused = [true, false, '', 'bad', '2.0', '2.5', '+2', '02', ' 2', 2.5, Number.NaN, Number.POSITIVE_INFINITY, 2 ** 53, '9007199254740992', 9007199254740992n, '9007199254740993', 9007199254740993n, 1n << 63n, {}];
+  for (const input of refused) {
+    let code;
+    try {
+      addedColumnValue('i64', input, 'UTC');
+    } catch (error) {
+      if (!(error instanceof OrmError)) throw error;
+      code = error.code;
+    }
+    if (code !== 'CODEC_DECODE') throw new Error(`added i64 ${String(input)} gave ${String(code)}, want CODEC_DECODE`);
+  }
+});
 
 // The forms of a count that only a driver cell holds: a text, a bigint, a negative zero, a repeated column and an entry of another
 // length. The answer of a listener holds none of them, since its count is a JSON number and its row a JSON object (PRT-69), so the
