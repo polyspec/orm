@@ -7945,8 +7945,8 @@
       "title": "Conformance verification",
       "title_ko": "적합성 검증",
       "status": "implemented",
-      "description": "All six clients (Go, PHP, PHP extension, Rust, TypeScript, and Python) run the same declared conformance vectors on MySQL, PostgreSQL, and SQLite. Each selected database owner case runs twice; the checker compares its output and verifies matching before/after database state.",
-      "description_ko": "여섯 클라이언트(Go, PHP, PHP extension, Rust, TypeScript, Python)가 MySQL, PostgreSQL, SQLite에서 같은 conformance vector를 실행한다. 선택한 각 데이터베이스 owner case를 두 번 실행하고 checker가 결과를 비교하며 실행 전후 데이터베이스 상태가 같은지 확인한다.",
+      "description": "All six clients (Go, PHP, PHP extension, Rust, TypeScript, and Python) run the same declared conformance vectors on MySQL, PostgreSQL, and SQLite. Each case runs once on a database of its own, and the checker reads its result line.",
+      "description_ko": "여섯 클라이언트(Go, PHP, PHP extension, Rust, TypeScript, Python)가 MySQL, PostgreSQL, SQLite에서 같은 conformance vector를 실행한다. 각 사례는 자기 database에서 한 번 실행하고 checker가 그 결과 줄을 읽는다.",
       "inputs": {
         "type": "ConformanceVector",
         "fields": [
