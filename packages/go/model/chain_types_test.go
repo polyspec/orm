@@ -10,6 +10,7 @@ import (
 
 	"golang.org/x/tools/go/packages"
 
+	"github.com/polyspec/orm/packages/go/model"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
@@ -18,6 +19,13 @@ import (
 // null for a non-null column at compile time), DSL-50 (lists and null only without an operator, with Eq and with Ne)
 // and DSL-52 (an integer column accepts int, int32, int64 and slices of those types) (docs/spec/dsl.md).
 // Requirements: DSL-49, DSL-50, DSL-52, PLN-4.
+// The generator writes the chain methods that a scanned call names, and the snippets of TestChainArgumentTypes are text, which no scan reads, so
+// these calls name the two that the snippets need.
+var _ = func() {
+	model.Author().AndGtReadCount(1)
+	model.Author().AndBetweenReadCount([2]int{1, 2})
+}
+
 func TestChainArgumentTypes(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	const modelPath = "github.com/polyspec/orm/packages/go/model"
