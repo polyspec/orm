@@ -783,6 +783,8 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
             documents = RuntimeModel.load_set(text(step["owned"]), text(step["external"]))
         except OrmError as error:
             _expect_equal(error.code, expect.get("error"), "error")
+            if "message" in expect:
+                _expect_equal(str(error), f"{expect['error']}: {expect['message']}", "message")
             # Each diagnostic is "<line>:<column> <rule>: <message>", in order (SCH-12).
             if "diagnostics" in expect:
                 prefix = f"{expect['error']}: "
@@ -1851,13 +1853,15 @@ def _connect_driver(dsn: str, config: dict | None = None) -> str:
         "statement_timeout_ms": "statementTimeoutMs",
     }
     options = {names[key]: value for key, value in (config or {}).items() if key in names}
+    if "aes_version" in (config or {}):
+        options["aesVersion"] = config["aes_version"]
+    if "aes_key" in (config or {}):
+        options["aesKey"] = config["aes_key"]
     if "aes_keys" in (config or {}):
         options["aesKeyring"] = AesKeyring(
             {int(version): key for version, key in config["aes_keys"].items()},
-            config["aes_version"],
+            config.get("aes_version", 1),
         )
-        options["aesVersion"] = config["aes_version"]
-        options["aesKey"] = config["aes_key"]
     db = Db.connect(dsn, options)
     try:
         rows = db.utils().run(lambda frame: frame.run("SELECT 1", [], "utility"))["rows"]
@@ -2922,7 +2926,7 @@ def _op_dsn_sqlite_file(step: dict, _context: dict) -> dict:
     name = step["name"]
     with tempfile.TemporaryDirectory(prefix="orm-recipe-sqlite-name-") as directory:
         try:
-            _connect_driver(f"sqlite://{directory}/{name}?{step['query']}")
+            _connect_driver(f"sqlite://{directory}/{name}?{step['query']}", step.get("config"))
         except OrmError:
             left = os.listdir(directory)
             if left:

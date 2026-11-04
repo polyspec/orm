@@ -683,7 +683,7 @@ const OPS = {
     const directory = mkdtempSync(join(tmpdir(), 'orm-recipe-sqlite-name-'));
     try {
       try {
-        await connectDriver(`sqlite://${directory}/${s.name}?${s.query}`);
+        await connectDriver(`sqlite://${directory}/${s.name}?${s.query}`, s.config);
       } catch (refused) {
         const left = readdirSync(directory);
         if (left.length !== 0) throw new Error(`a refused DSN left the files ${left.join(',')}`);
@@ -2649,6 +2649,7 @@ async function checkDbspecFiles(step, dir, database) {
         documents = loadSet(text(step.owned), text(step.external));
       } catch (error) {
         if (error.code !== expect.error) throw error;
+        if (expect.message !== undefined) assert.equal(error.message, `${expect.error}: ${expect.message}`);
         // Each diagnostic is "<line>:<column> <rule>: <message>", in order (SCH-12).
         if (expect.diagnostics !== undefined) {
           assert.ok(error.message.startsWith(`${expect.error}: `), error.message);

@@ -711,7 +711,6 @@
         "packages/ts/tests/coverage_*.mjs",
         "packages/ts/tests/model.mjs",
         "packages/ts/tests/decimal_model_db.mjs",
-        "packages/ts/tests/dsn_features.mjs",
         "packages/ts/tests/engine_features.mjs"
       ],
       "support": [
@@ -766,12 +765,12 @@
       },
       "internal": [
         {
-          "glob": "packages/ts/tests/driver-cell-bytes.mjs",
-          "reason": "test: the private mysqlParams turns a number parameter into an integer, for a pooler that a recipe database does not stand in for"
+          "glob": "packages/ts/tests/driver-integer-param.mjs",
+          "reason": "test: the private mysqlParams turns an integral number parameter into a bigint and keeps every other value, for a pooler that a recipe database does not stand in for"
         },
         {
           "glob": "packages/ts/tests/codec-aes-errors.test.mjs",
-          "reason": "test: injects a failure into each phase of the native decipher of Node, checks that the error keeps its identity and that no plaintext returns; a recipe cannot inject it, and the codes of the shared failures are recipe cases of tests/codec/codec.json"
+          "reason": "test: injects a failure into each phase of the native decipher of Node, checks that the error keeps its identity, that only the exact native authentication error of final becomes CODEC_DECODE and that no plaintext returns; a recipe cannot inject it, and the codes of the shared failures are recipe cases of tests/codec/codec.json"
         },
         {
           "glob": "packages/ts/tests/paginate-order.mjs",
@@ -6494,13 +6493,13 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testPoolOptions"
+          "test": "packages/php/tests/DsnRejectPhpPoolRecipeTest.php",
+          "id": "DsnRejectPhpPoolRecipeTest::testNone with data set \"a_pool_idle_size_is_refused\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
-          "id": "OrmExceptionNativeTest::testNativeConnectionRejectsUnsupportedPoolAndNegativeTimeoutOptions"
+          "test": "packages/php-ext/tests/DsnRejectPhpPoolRecipeTestExtensionTest.php",
+          "id": "DsnRejectPhpPoolRecipeTestExtensionTest::testNone with data set \"a_pool_idle_size_is_refused\""
         }
       ]
     },
@@ -6920,6 +6919,25 @@
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/SchemaUtilsNativeTest.php",
           "id": "SchemaUtilsNativeTest::testNativeSchemaInspectionAndRegistration"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm-php-ext"
+      }
+    },
+    {
+      "id": "php-extension-aes-utils-native",
+      "kind": "feature",
+      "requirements": [
+        "INT-156b"
+      ],
+      "bindings": [
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AesUtilsNativeTest.php",
+          "id": "AesUtilsNativeTest::testStatusAndRotateCheckKeyringTypeBeforeModelMetadata"
         }
       ],
       "owner": {
@@ -13812,21 +13830,6 @@
       ],
       "bindings": [
         {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testPoolOptions"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
-          "id": "OrmExceptionNativeTest::testNativeConnectionRejectsUnsupportedPoolAndNegativeTimeoutOptions"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/pool_bounds.mjs",
-          "id": "connection/pool-invalid-options-refused"
-        },
-        {
           "implementation": "go",
           "test": "packages/go/orm/recipe_connection_pool_test.go",
           "id": "TestRecipeConnectionPoolMysql/the_pool_size_is_the_open_maximum"
@@ -13865,6 +13868,41 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/connection_pool_mysql.rs",
           "id": "connection_pool_mysql::an_unset_or_zero_pool_size_opens_at_most_ten"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectPhpPoolRecipeTest.php",
+          "id": "DsnRejectPhpPoolRecipeTest::testNone with data set \"a_pool_size_is_refused\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectPhpPoolRecipeTestExtensionTest.php",
+          "id": "DsnRejectPhpPoolRecipeTestExtensionTest::testNone with data set \"a_pool_size_is_refused\""
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectCheckedNone/negative_pool_size"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectCheckedRecipeTest.php",
+          "id": "DsnRejectCheckedRecipeTest::testNone with data set \"negative_pool_size\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectCheckedRecipeTestExtensionTest.php",
+          "id": "DsnRejectCheckedRecipeTestExtensionTest::testNone with data set \"negative_pool_size\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_checked-none.test.mjs",
+          "id": "negative_pool_size"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_checked_none.py",
+          "id": "negative_pool_size"
         }
       ]
     },
@@ -13875,41 +13913,6 @@
         "CFG-5"
       ],
       "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/timezone_test.go",
-          "id": "TestPoolLifetime"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testPoolOptions"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
-          "id": "OrmExceptionNativeTest::testNativeConnectionRejectsUnsupportedPoolAndNegativeTimeoutOptions"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dsn_features.mjs",
-          "id": "dsn/pool-bounds"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/pool_bounds.mjs",
-          "id": "connection/pool-invalid-options-refused"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/connection_pool.py",
-          "id": "test_idle_size_and_lifetime"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/zone.rs",
-          "id": "pool_idle_size_and_lifetime"
-        },
         {
           "implementation": "go",
           "test": "packages/go/orm/recipe_connection_pool_test.go",
@@ -13929,6 +13932,96 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/connection_pool_mysql.rs",
           "id": "connection_pool_mysql::an_idle_size_above_the_pool_size_is_refused"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_connection_pool_test.go",
+          "id": "TestRecipeConnectionPoolMysql/an_idle_size_above_the_default_pool_size_is_refused"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/connection_pool-mysql.test.mjs",
+          "id": "an_idle_size_above_the_default_pool_size_is_refused"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_connection_pool_mysql.py",
+          "id": "an_idle_size_above_the_default_pool_size_is_refused"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/connection_pool_mysql.rs",
+          "id": "connection_pool_mysql::an_idle_size_above_the_default_pool_size_is_refused"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectPhpPoolRecipeTest.php",
+          "id": "DsnRejectPhpPoolRecipeTest::testNone with data set \"a_pool_idle_size_is_refused\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectPhpPoolRecipeTestExtensionTest.php",
+          "id": "DsnRejectPhpPoolRecipeTestExtensionTest::testNone with data set \"a_pool_idle_size_is_refused\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectPhpPoolRecipeTest.php",
+          "id": "DsnRejectPhpPoolRecipeTest::testNone with data set \"a_pool_lifetime_is_refused\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectPhpPoolRecipeTestExtensionTest.php",
+          "id": "DsnRejectPhpPoolRecipeTestExtensionTest::testNone with data set \"a_pool_lifetime_is_refused\""
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectCheckedNone/negative_pool_idle_size"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectCheckedRecipeTest.php",
+          "id": "DsnRejectCheckedRecipeTest::testNone with data set \"negative_pool_idle_size\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectCheckedRecipeTestExtensionTest.php",
+          "id": "DsnRejectCheckedRecipeTestExtensionTest::testNone with data set \"negative_pool_idle_size\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_checked-none.test.mjs",
+          "id": "negative_pool_idle_size"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_checked_none.py",
+          "id": "negative_pool_idle_size"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectCheckedNone/negative_pool_lifetime"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectCheckedRecipeTest.php",
+          "id": "DsnRejectCheckedRecipeTest::testNone with data set \"negative_pool_lifetime\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectCheckedRecipeTestExtensionTest.php",
+          "id": "DsnRejectCheckedRecipeTestExtensionTest::testNone with data set \"negative_pool_lifetime\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_checked-none.test.mjs",
+          "id": "negative_pool_lifetime"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_checked_none.py",
+          "id": "negative_pool_lifetime"
         }
       ]
     },
@@ -13939,21 +14032,6 @@
         "CFG-4"
       ],
       "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testPoolOptions"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
-          "id": "OrmExceptionNativeTest::testNativeConnectionRejectsUnsupportedPoolAndNegativeTimeoutOptions"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/pool_bounds.mjs",
-          "id": "connection/pool-open-limit/sqlite"
-        },
         {
           "implementation": "go",
           "test": "packages/go/orm/recipe_connection_pool_test.go",
@@ -13973,6 +14051,26 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/connection_pool_mysql.rs",
           "id": "connection_pool_mysql::transactions_wait_at_the_open_maximum"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectPhpPoolRecipeTest.php",
+          "id": "DsnRejectPhpPoolRecipeTest::testNone with data set \"a_pool_size_is_refused\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectPhpPoolRecipeTestExtensionTest.php",
+          "id": "DsnRejectPhpPoolRecipeTestExtensionTest::testNone with data set \"a_pool_size_is_refused\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/UtilsRecipeTest.php",
+          "id": "UtilsRecipeTest::testMysql with data set \"stats_report_the_pool_of_the_connection\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/UtilsRecipeTestExtensionTest.php",
+          "id": "UtilsRecipeTestExtensionTest::testMysql with data set \"stats_report_the_pool_of_the_connection\""
         }
       ]
     },
@@ -13983,41 +14081,6 @@
         "CFG-5"
       ],
       "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testPoolOptions"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
-          "id": "OrmExceptionNativeTest::testNativeConnectionRejectsUnsupportedPoolAndNegativeTimeoutOptions"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/timezone_test.go",
-          "id": "TestPoolLifetime"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/pool_bounds.mjs",
-          "id": "connection/pool-lifetime/mysql"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/pool_bounds.mjs",
-          "id": "connection/pool-lifetime/postgres"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/connection_pool.py",
-          "id": "test_idle_size_and_lifetime"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/zone.rs",
-          "id": "pool_idle_size_and_lifetime"
-        },
         {
           "implementation": "go",
           "test": "packages/go/orm/recipe_connection_pool_test.go",
@@ -14057,6 +14120,141 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/connection_pool_mysql.rs",
           "id": "connection_pool_mysql::an_unset_idle_size_keeps_the_pool_size"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_connection_pool_test.go",
+          "id": "TestRecipeConnectionPoolMysql/a_connection_within_its_lifetime_is_reused"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/connection_pool-mysql.test.mjs",
+          "id": "a_connection_within_its_lifetime_is_reused"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_connection_pool_mysql.py",
+          "id": "a_connection_within_its_lifetime_is_reused"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/connection_pool_mysql.rs",
+          "id": "connection_pool_mysql::a_connection_within_its_lifetime_is_reused"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_connection_pool_test.go",
+          "id": "TestRecipeConnectionPoolMysql/a_connection_whose_lifetime_passes_in_use_is_not_used_again"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/connection_pool-mysql.test.mjs",
+          "id": "a_connection_whose_lifetime_passes_in_use_is_not_used_again"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_connection_pool_mysql.py",
+          "id": "a_connection_whose_lifetime_passes_in_use_is_not_used_again"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/connection_pool_mysql.rs",
+          "id": "connection_pool_mysql::a_connection_whose_lifetime_passes_in_use_is_not_used_again"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_connection_pool_test.go",
+          "id": "TestRecipeConnectionPoolMysql/an_idle_connection_past_its_lifetime_is_closed"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/connection_pool-mysql.test.mjs",
+          "id": "an_idle_connection_past_its_lifetime_is_closed"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_connection_pool_mysql.py",
+          "id": "an_idle_connection_past_its_lifetime_is_closed"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/connection_pool_mysql.rs",
+          "id": "connection_pool_mysql::an_idle_connection_past_its_lifetime_is_closed"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectPhpPoolRecipeTest.php",
+          "id": "DsnRejectPhpPoolRecipeTest::testNone with data set \"a_pool_idle_size_is_refused\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectPhpPoolRecipeTestExtensionTest.php",
+          "id": "DsnRejectPhpPoolRecipeTestExtensionTest::testNone with data set \"a_pool_idle_size_is_refused\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectPhpPoolRecipeTest.php",
+          "id": "DsnRejectPhpPoolRecipeTest::testNone with data set \"a_pool_lifetime_is_refused\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectPhpPoolRecipeTestExtensionTest.php",
+          "id": "DsnRejectPhpPoolRecipeTestExtensionTest::testNone with data set \"a_pool_lifetime_is_refused\""
+        }
+      ]
+    },
+    {
+      "id": "connection-pool-sqlite-host-form",
+      "kind": "feature",
+      "requirements": [
+        "CFG-4",
+        "CFG-5"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/timezone_test.go",
+          "id": "TestPoolSize"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/timezone_test.go",
+          "id": "TestPoolIdleSize"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/timezone_test.go",
+          "id": "TestPoolLifetime"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/pool_bounds.mjs",
+          "id": "connection/pool-open-limit/sqlite"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/connection_pool.py",
+          "id": "test_options"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/connection_pool.py",
+          "id": "test_idle_size_and_lifetime"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/zone.rs",
+          "id": "pool_idle_size_and_lifetime"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectPhpPoolRecipeTest.php",
+          "id": "DsnRejectPhpPoolRecipeTest::testNone with data set \"a_pool_size_is_refused\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectPhpPoolRecipeTestExtensionTest.php",
+          "id": "DsnRejectPhpPoolRecipeTestExtensionTest::testNone with data set \"a_pool_size_is_refused\""
         }
       ]
     },
@@ -28066,16 +28264,6 @@
           "id": "aes_rotation_sqlite::write_uses_the_key_of_the_current_version"
         },
         {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/aes_keys.rs",
-          "id": "invalid_aes_configuration_fails_before_connection"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_aes_version_codes.py",
-          "id": "test_connection_rejects_aes_key_that_differs_from_current_keyring_key"
-        },
-        {
           "implementation": "go",
           "test": "packages/go/orm/recipe_aes_rotation_test.go",
           "id": "TestRecipeAesRotationSqlite/an_aes_key_that_differs_from_the_current_version_is_refused"
@@ -28094,6 +28282,66 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/aes_rotation_sqlite.rs",
           "id": "aes_rotation_sqlite::an_aes_key_that_differs_from_the_current_version_is_refused"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationMysql/an_aes_configuration_without_a_usable_current_key_is_refused"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_mysql.rs",
+          "id": "aes_rotation_mysql::an_aes_configuration_without_a_usable_current_key_is_refused"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationPostgres/an_aes_configuration_without_a_usable_current_key_is_refused"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_postgres.rs",
+          "id": "aes_rotation_postgres::an_aes_configuration_without_a_usable_current_key_is_refused"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationSqlite/an_aes_configuration_without_a_usable_current_key_is_refused"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+          "id": "aes_rotation_sqlite::an_aes_configuration_without_a_usable_current_key_is_refused"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/aes_rotation-sqlite.test.mjs",
+          "id": "an_aes_configuration_without_a_usable_current_key_is_refused"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_aes_rotation_sqlite.py",
+          "id": "an_aes_configuration_without_a_usable_current_key_is_refused"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationSqlite/a_refused_aes_configuration_opens_no_database_file"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+          "id": "aes_rotation_sqlite::a_refused_aes_configuration_opens_no_database_file"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/aes_rotation-sqlite.test.mjs",
+          "id": "a_refused_aes_configuration_opens_no_database_file"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_aes_rotation_sqlite.py",
+          "id": "a_refused_aes_configuration_opens_no_database_file"
         }
       ]
     },
@@ -28179,9 +28427,44 @@
           "id": "aes_rotation_sqlite::rotation_takes_rows_not_at_the_current_version"
         },
         {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/AesUtilsNativeTest.php",
-          "id": "AesUtilsNativeTest::testNativeStatusRotationAndTransactionRollback"
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationMysql/a_rotation_that_fails_on_a_row_keeps_every_row_at_its_version"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_mysql.rs",
+          "id": "aes_rotation_mysql::a_rotation_that_fails_on_a_row_keeps_every_row_at_its_version"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationPostgres/a_rotation_that_fails_on_a_row_keeps_every_row_at_its_version"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_postgres.rs",
+          "id": "aes_rotation_postgres::a_rotation_that_fails_on_a_row_keeps_every_row_at_its_version"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationSqlite/a_rotation_that_fails_on_a_row_keeps_every_row_at_its_version"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+          "id": "aes_rotation_sqlite::a_rotation_that_fails_on_a_row_keeps_every_row_at_its_version"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/aes_rotation-sqlite.test.mjs",
+          "id": "a_rotation_that_fails_on_a_row_keeps_every_row_at_its_version"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_aes_rotation_sqlite.py",
+          "id": "a_rotation_that_fails_on_a_row_keeps_every_row_at_its_version"
         }
       ]
     },
@@ -40801,6 +41084,35 @@
           "owner/php-extension",
           "owner/typescript",
           "owner/python"
+        ]
+      }
+    },
+    {
+      "id": "dsn-reject-php-pool",
+      "kind": "suite",
+      "requirements": [
+        "CFG-5b"
+      ],
+      "file": "contracts/fixtures/dsn_reject/dsn_reject_php_pool.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectPhpPoolRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DsnRejectPhpPoolRecipeTest::testNone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectPhpPoolRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DsnRejectPhpPoolRecipeTestExtensionTest::testNone"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "dsn_connection",
+        "parts": [
+          "owner/php",
+          "owner/php-extension"
         ]
       }
     },

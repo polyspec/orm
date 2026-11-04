@@ -65,6 +65,19 @@ caseTest('the stress case of the dbspec_apply recipe runs under the 120 second d
 const readScript = (path: string) => scriptTexts.get(path) ?? (trackedAll.has(path) && !path.endsWith('.mts') ? text(path) : undefined);
 const trackedTexts = (paths: string[]) => Object.fromEntries(paths.map((path: string) => [path, text(path)]));
 
+caseTest('dbspec-apply-stress-bench runs the stress case on the databases it names', COMPUTE, () => {
+  const dryRun = (...variables: string[]) => spawnSync('make', ['-n', ...variables, 'dbspec-apply-stress-bench'], { cwd: repository.pathname, encoding: 'utf8', env: isolatedEnvironment() });
+  const tests = text('packages/go/orm/recipe_dbspec_apply_test.go');
+  for (const [dialects, names] of [['mysql', 'Mysql'], ['postgres|sqlite', 'Postgres|Sqlite'], ['mysql|postgres|sqlite', 'Mysql|Postgres|Sqlite']] as const) {
+    const result = dryRun(`APPLY_STRESS_DIALECTS=${dialects}`);
+    assert.equal(result.status, 0, result.stderr);
+    assert.ok(result.stdout.includes(`./packages/go/orm -run '^TestRecipeDbspecApply(${names})$/^stress_plan_commits_each_step$' -count=1`), result.stdout);
+    for (const name of names.split('|')) assert.ok(tests.includes(`func TestRecipeDbspecApply${name}(`), name);
+  }
+  for (const dialects of ['', 'oracle']) {
+    assert.notEqual(dryRun(`APPLY_STRESS_DIALECTS=${dialects}`).status, 0, dialects);
+  }
+});
 caseTest('the Go model build regenerates models', COMPUTE, () => {
   const root = new URL('../..', import.meta.url).pathname;
   const result = spawnSync('make', ['-n', 'build-go'], { cwd: root, encoding: 'utf8', env: isolatedEnvironment() });

@@ -708,39 +708,6 @@ class ModelTest extends TestCase
         self::check(($json['writer']['name'] ?? null) === 'kim', 'json');
     }
 
-    #[DataProvider('drivers')]
-    // Requirements: CFG-4, CFG-5.
-    // This no-pool assertion covers INT-92's applicability: the PHP client has
-    // no idle pool connection for the server to end. Requirements: CFG-4, INT-92.
-    public function testPoolOptions(string $driver): void
-    {
-        $dsn = self::$targets[$driver];
-        // A Db holds one connection. The PHP client has no pool and refuses the pool options.
-        $db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config());
-        self::check($db->utils()->stats()->maxOpenConnections === 1, 'one connection per Db');
-        foreach (
-            [
-            'poolSize: 3' => new Config(poolSize: 3),
-            'poolSize: -1' => new Config(poolSize: -1),
-            'poolIdleSize: 1' => new Config(poolIdleSize: 1),
-            'poolLifetimeMs: 1000' => new Config(poolLifetimeMs: 1000)
-            ] as $option => $config
-        ) {
-            $error = null;
-            try {
-                \Polyspec\Orm\Tests\Model\connect($dsn, $config);
-            } catch (OrmException $e) {
-                $error = $e;
-            }
-            self::check(
-                $error?->code_ === Code::CONFIG && str_contains($error->getMessage(), 'PgBouncer or ProxySQL'),
-                "$option is refused with CONFIG naming the poolers: " . (
-                    $error === null ? 'connected' : $error->getMessage()
-                )
-            );
-        }
-    }
-
     // Requirements: INT-55.
     public function testInstallInsideATransaction(): void
     {

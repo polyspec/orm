@@ -128,6 +128,7 @@ type databaseStep struct {
 	Model        string          `json:"model"`
 	PoolSize     int             `json:"pool_size"`
 	PoolIdle     int             `json:"pool_idle_size"`
+	PoolLifetime int             `json:"pool_lifetime_ms"`
 	Transactions int             `json:"transactions"`
 	Hold         int             `json:"hold"`
 	Key          json.RawMessage `json:"key"`
@@ -1328,7 +1329,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		return outcome{fields: map[string]any{"value": map[string]any{"text": driver}}}, nil
 	case "dsn.sqlite_file":
-		names, err := sqliteFileName(s.k("name").Name, s.k("query").Query)
+		names, err := sqliteFileName(s.k("name").Name, s.k("query").Query, s.k("config").Config)
 		if err != nil {
 			return outcome{}, err
 		}

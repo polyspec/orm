@@ -1,9 +1,14 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 5916e2c7469765536a6f800271ca644dd93f1e8b384dc59e0164f669c52eb3c4 -->
+<!-- source-sha256: 3db7a90fc8e7d3b623944e5ace626341762c992334b79c6510eb871127b04843 -->
 # 변경 이력
 
 ## Unreleased
 
+- Python의 pool은 CFG-5대로 idle connection을 lifetime이 지날 때 닫는다. 이전에는 다음 호출자가 가져갈 때에만 닫았다. MySQL과 PostgreSQL의 pool 경계, lifetime, 거부되는 pool 값은 recipe `connection_pool`과 `dsn_reject_checked`의 case이고, PHP의 pool option 거부는 recipe `dsn_reject_php_pool`이다.
+- TypeScript 정수 parameter test의 이름은 `driver-integer-param.mjs`이고, internal test 항목의 reason은 각 test가 하는 일을 적는다.
+- `make dbspec-apply-stress-bench`가 다시 stress plan을 적용한다: native test가 recipe case가 된 뒤로 명령이 없어서 `make bench`와 stress CI group이 아무것도 적용하지 않고 통과했다.
+- diagnostic이 여럿인 manifest의 message를 모든 runtime에서 한 recipe case가 글자 그대로 지킨다(SCH-12).
+- 쓸 수 있는 현재 키가 없는 AES 설정은 모든 runtime에서 연결을 `CONFIG`로 실패시키고 database를 열지 않는다. Go는 먼저 열고 처음 쓸 때 거부했고, TypeScript는 파일을 연 뒤 거부했으며, PHP와 PHP extension은 현재 version이 없는 키 목록을 받았고, Python은 1보다 작은 현재 version을 받았다. recipe `aes_rotation`이 이 형식들과 실패한 rotation의 rollback을 담는다.
 - 기능 검사기가 `ORM_FEATURE_DATABASE`와 `ORM_FEATURE_DSN`을 더 설정하지 않고, 어떤 시험도 이들을 읽지 않는다. 소유자는 자기 manifest 항목이나 recipe에서 database를 받는다.
 - Tests: driver cell의 정확한 bytes(PRT-69, INT-5)는 모든 runtime에서 `conformance_verification` recipe의 case `driver_bytes_cells_are_exact`가 `model.query`의 새 key `bytes_hex_of`로 확인하며, cell을 만들어 쓰던 native는 사라졌고, Rust는 비공개 row decoding 시험을 INT-142로 유지한다.
 - Tests: 선언된 타입을 벗어난 저장 cell(INT-98)은 모든 runtime에서 `conformance_verification` recipe의 세 case가 확인하며, 같은 cell을 쓰던 native는 사라졌다.

@@ -1,0 +1,71 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "CFG-5b"
+  ],
+  "cases": [
+    {
+      "id": "a_pool_size_is_refused",
+      "requirements": [
+        "CFG-5b"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://orm@127.0.0.1:1/orm",
+          "config": {
+            "pool_size": 3
+          },
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message_holds": "pool PHP connections with PgBouncer or ProxySQL"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_pool_idle_size_is_refused",
+      "requirements": [
+        "CFG-5b"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://orm@127.0.0.1:1/orm",
+          "config": {
+            "pool_idle_size": 1
+          },
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message_holds": "pool PHP connections with PgBouncer or ProxySQL"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_pool_lifetime_is_refused",
+      "requirements": [
+        "CFG-5b"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://orm@127.0.0.1:1/orm",
+          "config": {
+            "pool_lifetime_ms": 1000
+          },
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message_holds": "pool PHP connections with PgBouncer or ProxySQL"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

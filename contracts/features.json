@@ -78,6 +78,7 @@
         "dsn_connection-sqlite",
         "dsn-reject-checked",
         "dsn-reject-parameters",
+        "dsn-reject-php-pool",
         "connection-driver-from-dsn",
         "connection-catalog-session-through-a-pooler",
         "connection-sqlite-crashed-holder",
@@ -97,7 +98,8 @@
         "packages/php/tests/request_termination_child.php",
         "contracts/fixtures/dsn_connection/dsn_connection.json",
         "contracts/fixtures/dsn_reject/dsn_reject_checked.json",
-        "contracts/fixtures/dsn_reject/dsn_reject_parameters.json"
+        "contracts/fixtures/dsn_reject/dsn_reject_parameters.json",
+        "contracts/fixtures/dsn_reject/dsn_reject_php_pool.json"
       ],
       "tests": [
         "packages/go/orm/dsn_test.go",
@@ -106,7 +108,6 @@
         "packages/php/tests/ModelTest.php",
         "packages/php-ext/tests/ConnectionUtcNativeTest.php",
         "packages/ts/tests/dsn.mjs",
-        "packages/ts/tests/dsn_features.mjs",
         "packages/ts/tests/model.mjs",
         "packages/ts/tests/pool_bounds.mjs",
         "packages/ts/tests/idle-connection-end.mjs",
@@ -181,8 +182,10 @@
         "packages/python/tests/test_dsn_connection_sqlite.py",
         "packages/php/tests/DsnRejectCheckedRecipeTest.php",
         "packages/php/tests/DsnRejectParametersRecipeTest.php",
+        "packages/php/tests/DsnRejectPhpPoolRecipeTest.php",
         "packages/php-ext/tests/DsnRejectCheckedRecipeTestExtensionTest.php",
         "packages/php-ext/tests/DsnRejectParametersRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/DsnRejectPhpPoolRecipeTestExtensionTest.php",
         "packages/ts/tests/dsn_reject_checked-none.test.mjs",
         "packages/ts/tests/dsn_reject_parameters-none.test.mjs",
         "packages/python/tests/test_dsn_reject_checked_none.py",
@@ -309,14 +312,6 @@
           "inputs": [
             "packages/ts/tests/dsn.mjs",
             "tests/dsn/sqlite-paths.json"
-          ]
-        },
-        {
-          "id": "dsn-features-typescript",
-          "command": "node packages/ts/tests/dsn_features.mjs",
-          "shard": "other",
-          "inputs": [
-            "packages/ts/tests/dsn_features.mjs"
           ]
         },
         {
@@ -1005,7 +1000,7 @@
         "packages/go/model/chain_types_test.go",
         "packages/php/tests/NativeCellReadTest.php",
         "packages/ts/tests/chain-types.mjs",
-        "packages/ts/tests/driver-cell-bytes.mjs",
+        "packages/ts/tests/driver-integer-param.mjs",
         "packages/ts/tests/styled-value-checks.mjs",
         "packages/php-ext/tests/PlanCacheBoundNativeTest.php",
         "packages/php/tests/PageCacheBoundCases.php",
