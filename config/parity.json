@@ -766,12 +766,12 @@
       },
       "internal": [
         {
-          "glob": "packages/ts/tests/driver-cell-bytes.mjs",
-          "reason": "test: the private mysqlParams turns a number parameter into an integer, for a pooler that a recipe database does not stand in for"
+          "glob": "packages/ts/tests/driver-integer-param.mjs",
+          "reason": "test: the private mysqlParams turns an integral number parameter into a bigint and keeps every other value, for a pooler that a recipe database does not stand in for"
         },
         {
           "glob": "packages/ts/tests/codec-aes-errors.test.mjs",
-          "reason": "test: injects a failure into each phase of the native decipher of Node, checks that the error keeps its identity and that no plaintext returns; a recipe cannot inject it, and the codes of the shared failures are recipe cases of tests/codec/codec.json"
+          "reason": "test: injects a failure into each phase of the native decipher of Node, checks that the error keeps its identity, that only the exact native authentication error of final becomes CODEC_DECODE and that no plaintext returns; a recipe cannot inject it, and the codes of the shared failures are recipe cases of tests/codec/codec.json"
         },
         {
           "glob": "packages/ts/tests/paginate-order.mjs",

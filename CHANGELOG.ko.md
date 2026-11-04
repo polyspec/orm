@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 82a3495381eb4dcb3b6f3ac3168df3643de872b0822fca06141e8983a0383075 -->
+<!-- source-sha256: 8667c86c09432b3e773ad80e877609323c551ca955cf24cc760cf2cacbf5e784 -->
 # 변경 이력
 
 ## Unreleased
 
+- TypeScript 정수 parameter test의 이름은 `driver-integer-param.mjs`이고, internal test 항목의 reason은 각 test가 하는 일을 적는다.
 - `make dbspec-apply-stress-bench`가 다시 stress plan을 적용한다: native test가 recipe case가 된 뒤로 명령이 없어서 `make bench`와 stress CI group이 아무것도 적용하지 않고 통과했다.
 - diagnostic이 여럿인 manifest의 message를 모든 runtime에서 한 recipe case가 글자 그대로 지킨다(SCH-12).
 - 기능 검사기가 `ORM_FEATURE_DATABASE`와 `ORM_FEATURE_DSN`을 더 설정하지 않고, 어떤 시험도 이들을 읽지 않는다. 소유자는 자기 manifest 항목이나 recipe에서 database를 받는다.

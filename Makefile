@@ -1609,7 +1609,7 @@ rust-compiler-fixtures-check/unit: lease-tool
 native-error-cause-check: php-models native-error-cause-check/php-extension native-error-cause-check/rust native-error-cause-check/typescript-driver native-error-cause-check/typescript-markdown native-error-cause-check/python-driver native-error-cause-check/php
 native-error-cause-check/typescript-driver: typescript-build
 	$(READ_TYPESCRIPT)
-	$(NODE) --test packages/ts/tests/driver-error-lock-wait.mjs packages/ts/tests/driver-cell-bytes.mjs
+	$(NODE) --test packages/ts/tests/driver-error-lock-wait.mjs packages/ts/tests/driver-integer-param.mjs
 native-error-cause-check/typescript-markdown: typescript-build
 	$(READ_TYPESCRIPT)
 	$(NODE) packages/ts/tests/markdown.mjs

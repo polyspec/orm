@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The TypeScript integer parameter test is named `driver-integer-param.mjs`, and the reasons of its internal test entries state what each test does.
 - `make dbspec-apply-stress-bench` applies the stress plan again: it had no command since the native test became a recipe case, so `make bench` and the stress CI groups passed without applying anything.
 - The message of a manifest with several diagnostics is held word for word by one recipe case in every runtime (SCH-12).
 - The feature checker no longer sets `ORM_FEATURE_DATABASE` or `ORM_FEATURE_DSN`, and no test reads them: an owner takes its database from its manifest entry or its recipe.
