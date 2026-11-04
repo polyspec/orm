@@ -3811,7 +3811,7 @@
      "op": "model.query",
      "connection": "db",
      "model": "CompositeAccount",
-     "where": {},
+     "where": { "tenant_id": { "int": "7" } },
      "order": [
       "account_id"
      ],
@@ -4024,13 +4024,13 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`tenant_id` AS `a__tenant_id`, `a`.`account_id` AS `a__account_id` FROM `composite_account` AS `a` ORDER BY `a`.`account_id` ASC"
+             "text": "SELECT `a`.`tenant_id` AS `a__tenant_id`, `a`.`account_id` AS `a__account_id` FROM `composite_account` AS `a` WHERE `a`.`tenant_id` = ? ORDER BY `a`.`account_id` ASC"
             }
            ],
            [
             "binds",
             {
-             "array": []
+             "array": [{ "int": "7" }]
             }
            ],
            [
@@ -4146,13 +4146,13 @@
            [
             "sql",
             {
-             "text": "SELECT \"a\".\"tenant_id\" AS \"a__tenant_id\", \"a\".\"account_id\" AS \"a__account_id\" FROM \"composite_account\" AS \"a\" ORDER BY \"a\".\"account_id\" ASC"
+             "text": "SELECT \"a\".\"tenant_id\" AS \"a__tenant_id\", \"a\".\"account_id\" AS \"a__account_id\" FROM \"composite_account\" AS \"a\" WHERE \"a\".\"tenant_id\" = $1 ORDER BY \"a\".\"account_id\" ASC"
             }
            ],
            [
             "binds",
             {
-             "array": []
+             "array": [{ "int": "7" }]
             }
            ],
            [
@@ -4268,13 +4268,13 @@
            [
             "sql",
             {
-             "text": "SELECT \"a\".\"tenant_id\" AS \"a__tenant_id\", \"a\".\"account_id\" AS \"a__account_id\" FROM \"composite_account\" AS \"a\" ORDER BY \"a\".\"account_id\" ASC"
+             "text": "SELECT \"a\".\"tenant_id\" AS \"a__tenant_id\", \"a\".\"account_id\" AS \"a__account_id\" FROM \"composite_account\" AS \"a\" WHERE \"a\".\"tenant_id\" = ? ORDER BY \"a\".\"account_id\" ASC"
             }
            ],
            [
             "binds",
             {
-             "array": []
+             "array": [{ "int": "7" }]
             }
            ],
            [

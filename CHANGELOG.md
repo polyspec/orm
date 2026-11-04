@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- Tests: the physical run of a plan (PLN-102) is the op `dbspec.plan_physical` and the 13 cases `plan_physical_*` of the recipe `dbspec_introspect`, on every database in every runtime; the native tests, their make targets and the helpers that only they used are gone. Go and the others read the plan steps from the public `planSteps`, and every runtime now holds the foreign key check after finalize that only Go held.
+- Tests: a database changed outside the ORM and installed again (DBS-108, SCH-7, SCH-13) is the cases `install_renamed_column` and `install_unsupported_column_without_check` of the recipe `schema_install` on every database in every runtime, with the whole message; the native tests and `contracts/fixtures/install/changed_database.json` are gone.
 - Tests: the recipe schema takes the `where` of a `relation`, and the case `relation_condition_follows_the_padded_composite_parent_keys` of `model_queries_chain` is valid against it (T334-3-12).
 - Tests: that a savepoint rollback does not consume the rollback fault (protocol 3.1) is a case of the recipe `transactions` in every runtime, in place of the Python native, and the native Python tests of a lost rollback, a failed `BEGIN` and a failed start step belong to the unit `transaction-failure-rollback` (T334-3-12-3-7, T334-3-12-3-8).
 - Tests: the padding of the parent keys of a relation and the number of the placeholder after them are a case of the `model_queries_chain` recipe, the native tests of the collection keys that the recipes hold are gone, and feature-coverage names each one that stays native with its reason.

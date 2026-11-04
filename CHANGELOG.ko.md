@@ -1,9 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 3d594465f395ae2432148cc393e8d68de991a0e061c6122070cdd7970dc00783 -->
+<!-- source-sha256: 5eaa58907e2cfff475de483c7ab4ca6cfad8bef12a57085e9f0fdc1169bffc4c -->
 # 변경 이력
 
 ## Unreleased
 
+- 테스트: plan의 physical 실행(PLN-102)은 op `dbspec.plan_physical`과 recipe `dbspec_introspect`의 case 13개 `plan_physical_*`이며 모든 runtime의 모든 database에서 돈다. native 시험, 그 make target, 그것만 쓰던 helper는 없앴다. 모든 runtime이 공개 `planSteps`로 plan step을 읽고, Go만 담던 finalize 뒤의 foreign key 검사를 이제 모든 runtime이 담는다.
+- 테스트: ORM 밖에서 바뀐 database에 다시 하는 install(DBS-108, SCH-7, SCH-13)은 모든 runtime의 모든 database에서 recipe `schema_install`의 case `install_renamed_column`과 `install_unsupported_column_without_check`이며 message 전체를 비교한다. native 시험과 `contracts/fixtures/install/changed_database.json`은 없앴다.
 - 테스트: recipe schema는 `relation`의 `where`를 받고, `model_queries_chain`의 case `relation_condition_follows_the_padded_composite_parent_keys`는 그 schema에 유효합니다(T334-3-12).
 - 테스트: savepoint rollback이 rollback fault를 소비하지 않는다는 것(protocol 3.1)은 Python native 대신 모든 runtime에서 recipe `transactions`의 case이고, 잃어버린 rollback, 실패한 `BEGIN`, 실패한 시작 단계의 Python native test는 unit `transaction-failure-rollback`에 속합니다(T334-3-12-3-7, T334-3-12-3-8).
 - 인터페이스 검사기는 어떻게 끝나든 자기가 시작한 것을 함께 끝냅니다. 각 프로그램은 프로세스 그룹을 이끌고, 실행의 abort는 그 그룹을 죽이며, 검사기 파이프의 끝을 읽는 프로세스가 아직 도는 그룹을 죽이므로, 멈춘 extractor와 그 자식은 기한이 죽인 검사기보다 오래 살지 않습니다.

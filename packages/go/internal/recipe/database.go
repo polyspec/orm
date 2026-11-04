@@ -1325,6 +1325,11 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			return outcome{}, err
 		}
 		return okOutcome(), nil
+	case "dbspec.plan_physical":
+		if err := planPhysical(s, c); err != nil {
+			return outcome{}, err
+		}
+		return okOutcome(), nil
 	case "sql.exec":
 		statement, present, err := sqlExecText(s.k("sql").SQL, c)
 		if err != nil {

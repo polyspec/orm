@@ -2,6 +2,7 @@
   "$schema": "../../../scripts/features/schema/recipe.schema.json",
   "requirements": [
     "FCV-2",
+    "PLN-102",
     "DIA-133",
     "DIA-198",
     "DBS-42",
@@ -1275,6 +1276,175 @@
               "failed": true
             }
           }
+        }
+      ]
+    },
+    {
+      "id": "plan_physical_create_from_empty",
+      "requirements": [
+        "PLN-102"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.plan_physical",
+          "vectors": "../../../tests/dbspec/plan-cases.json",
+          "case": "create-from-empty"
+        }
+      ]
+    },
+    {
+      "id": "plan_physical_rename_table_and_column",
+      "requirements": [
+        "PLN-102"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.plan_physical",
+          "vectors": "../../../tests/dbspec/plan-cases.json",
+          "case": "rename-table-and-column"
+        }
+      ]
+    },
+    {
+      "id": "plan_physical_add_and_drop",
+      "requirements": [
+        "PLN-102"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.plan_physical",
+          "vectors": "../../../tests/dbspec/plan-cases.json",
+          "case": "add-and-drop"
+        }
+      ]
+    },
+    {
+      "id": "plan_physical_widen_columns",
+      "requirements": [
+        "PLN-102"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.plan_physical",
+          "vectors": "../../../tests/dbspec/plan-cases.json",
+          "case": "widen-columns"
+        }
+      ]
+    },
+    {
+      "id": "plan_physical_change_objects",
+      "requirements": [
+        "PLN-102"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.plan_physical",
+          "vectors": "../../../tests/dbspec/plan-cases.json",
+          "case": "change-objects"
+        }
+      ]
+    },
+    {
+      "id": "plan_physical_triggers_follow_columns",
+      "requirements": [
+        "PLN-102"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.plan_physical",
+          "vectors": "../../../tests/dbspec/plan-cases.json",
+          "case": "triggers-follow-columns"
+        }
+      ]
+    },
+    {
+      "id": "plan_physical_rename_column_check_non_ascii_literal",
+      "requirements": [
+        "PLN-102"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.plan_physical",
+          "vectors": "../../../tests/dbspec/plan-cases.json",
+          "case": "rename-column-check-non-ascii-literal"
+        }
+      ]
+    },
+    {
+      "id": "plan_physical_rename_with_renderer_checks",
+      "requirements": [
+        "PLN-102"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.plan_physical",
+          "vectors": "../../../tests/dbspec/plan-cases.json",
+          "case": "rename-with-renderer-checks"
+        }
+      ]
+    },
+    {
+      "id": "plan_physical_replace_index_under_foreign_key",
+      "requirements": [
+        "PLN-102"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.plan_physical",
+          "vectors": "../../../tests/dbspec/plan-cases.json",
+          "case": "replace-index-under-foreign-key"
+        }
+      ]
+    },
+    {
+      "id": "plan_physical_drop_tables_with_triggers_and_keys",
+      "requirements": [
+        "PLN-102"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.plan_physical",
+          "vectors": "../../../tests/dbspec/plan-cases.json",
+          "case": "drop-tables-with-triggers-and-keys"
+        }
+      ]
+    },
+    {
+      "id": "plan_physical_rebuild_keeps_key_counter",
+      "requirements": [
+        "PLN-102"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.plan_physical",
+          "vectors": "../../../tests/dbspec/plan-cases.json",
+          "case": "rebuild-keeps-key-counter"
+        }
+      ]
+    },
+    {
+      "id": "plan_physical_representative",
+      "requirements": [
+        "PLN-102"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.plan_physical",
+          "vectors": "../../../tests/dbspec/plan-cases.json",
+          "case": "representative"
+        }
+      ]
+    },
+    {
+      "id": "plan_physical_drop_required_column",
+      "requirements": [
+        "PLN-102"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.plan_physical",
+          "vectors": "../../../tests/dbspec/plan-cases.json",
+          "case": "drop-required-column"
         }
       ]
     }
