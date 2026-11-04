@@ -1,6 +1,7 @@
 package recipe
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -112,6 +113,23 @@ func TestConnectDSN(t *testing.T) {
 			t.Fatal("connectDSN case-socket with no socket: no error")
 		}
 	})
+}
+
+// TestStepWithExpectFailsAnUnreadKey checks that a step whose expect compares equal still fails on a key the run did not
+// read, so an ignored field such as page or where cannot pass.
+// Requirements: FCV-4.
+func TestStepWithExpectFailsAnUnreadKey(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	raw := []byte(`{"op":"model.query","page":true}`)
+	s := databaseStep{Op: "model.query", Expect: map[string]json.RawMessage{"sqlite": json.RawMessage(`{"rows":[]}`)}, reads: newStepReads(raw)}
+	c := &databaseContext{database: "sqlite", bound: map[string]bound{}}
+	op := func(databaseStep, *databaseContext) (outcome, error) {
+		return outcome{fields: map[string]any{"rows": []any{}}}, nil
+	}
+	err := runStepWith(s, c, op)
+	if err == nil || err.Error() != "the helper did not read page of model.query" {
+		t.Fatalf("runStepWith: %v", err)
+	}
 }
 
 // TestStepReadsFailsAnUnreadKeyByName checks that a key of a step that the run does not read fails the step by name, an

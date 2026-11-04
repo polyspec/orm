@@ -10425,42 +10425,6 @@
         }
       }
     },
-    "pageOutcome": {
-      "type": "object",
-      "required": [
-        "page"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "page": {
-          "type": "object",
-          "required": [
-            "total",
-            "pages"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "rows": {
-              "type": "array",
-              "items": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/$defs/value"
-                }
-              }
-            },
-            "total": {
-              "type": "integer",
-              "minimum": 0
-            },
-            "pages": {
-              "type": "integer",
-              "minimum": 0
-            }
-          }
-        }
-      }
-    },
     "dsn": {
       "description": "A DSN: sqlite_file absent names a SQLite file that the case does not create; url is a DSN text that no dialect serves.",
       "oneOf": [

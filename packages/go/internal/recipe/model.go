@@ -450,9 +450,10 @@ func compositeAccountOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome
 			return outcome{}, err
 		}
 		out := [][]any{}
+		columns := s.k("columns").Columns
 		for _, row := range rows.Slice() {
 			var cells []any
-			for _, column := range s.k("columns").Columns {
+			for _, column := range columns {
 				var v any
 				var err error
 				switch column {
@@ -1047,6 +1048,12 @@ func noteReaderOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome, erro
 	}
 	if len(s.k("columns").Columns) != 1 || s.k("columns").Columns[0] != "seq" || len(relation.Columns) != 1 || relation.Columns[0] != "title" {
 		return outcome{}, fmt.Errorf("NoteReader columns %v with relation %v have no recipe entry", s.k("columns").Columns, relation.Columns)
+	}
+	if len(s.k("where").Where) > 0 && string(s.k("where").Where) != "{}" {
+		return outcome{}, fmt.Errorf("NoteReader where %s has no recipe entry", s.k("where").Where)
+	}
+	if !slices.Equal(s.k("order").Order, []string{"seq"}) {
+		return outcome{}, fmt.Errorf("NoteReader order %v has no recipe entry", s.k("order").Order)
 	}
 	m := model.NoteReader().Connect(db).Relation(model.SharedNote().MatchSharedNoteSeqWithSeq()).OrderBySeqAsc()
 	collection, err := m.Gets()

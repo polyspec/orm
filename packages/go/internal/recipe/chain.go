@@ -1025,6 +1025,9 @@ func chainBuilt(s chainStep, db *orm.DB, c *databaseContext) (*orm.Core, error) 
 		if !ok {
 			return nil, fmt.Errorf("from %s names no bound chain", s.k("from").From)
 		}
+		if name := snakeOf(s.k("model").Model); core.Entity().Name != name {
+			return nil, fmt.Errorf("from %s is a chain of %s, and the step names %s", s.k("from").From, core.Entity().Name, name)
+		}
 		return chainByKey(core, s, c)
 	}
 	core := chainCore(s.k("model").Model, c)
