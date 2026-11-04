@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/polyspec/orm/packages/go/orm"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
@@ -113,6 +114,19 @@ func TestConnectDSN(t *testing.T) {
 			t.Fatal("connectDSN case-socket with no socket: no error")
 		}
 	})
+}
+
+// TestChainFromRefusesAnotherModel checks that a step with from reads a bound chain only of the model it names, so a
+// wrong model cannot pass as read.
+// Requirements: FCV-4.
+func TestChainFromRefusesAnotherModel(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	c := &databaseContext{bound: map[string]bound{"chain": {api: orm.NewCore(&orm.Entity{Name: "held"})}}}
+	s := chainStep{From: "chain", chainQuery: chainQuery{Model: "Other", reads: newStepReads([]byte(`{"op":"model.query","from":"chain","model":"Other"}`))}}
+	_, err := chainBuilt(s, nil, c)
+	if err == nil || err.Error() != "from chain is a chain of held, and the step names other" {
+		t.Fatalf("chainBuilt: %v", err)
+	}
 }
 
 // TestStepWithExpectFailsAnUnreadKey checks that a step whose expect compares equal still fails on a key the run did not

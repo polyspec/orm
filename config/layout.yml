@@ -52,12 +52,13 @@ rules:
       - "!tests/dbspec"
       - "!tests/dsn"
       - "!tests/editor"
-      - "!tests/events"
       # The native scan vectors of the PHP generator (OrmGenScanTest).
       - "!tests/generator"
       - "!tests/interfaces"
       - "!tests/ir"
       - "!tests/markdown"
+      # The planner compile recipe and its plan fixtures, which every client runs (tests/planner/compile.json).
+      - "!tests/planner"
       # The CPU-time measurements of every client under a preempted process group (make timing-check).
       - "!tests/timing"
       # The time zone that WITH_TEST_ENV gives the PHP of every database client.
