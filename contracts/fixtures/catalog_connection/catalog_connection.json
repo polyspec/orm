@@ -18830,17 +18830,17 @@
       "steps": [
         {
           "op": "sql.exec",
-          "reason": "holds the shared metadata lock of the table in a transaction until a read of the table waits behind the change, which then runs: a page has read its descriptor and has not read its rows",
-          "sql": "CREATE PROCEDURE hold_table_until_a_page_waits(IN held VARCHAR(64)) BEGIN DECLARE rounds INT DEFAULT 0; START TRANSACTION; SET @statement = CONCAT('SELECT COUNT(*) INTO @held FROM `', held, '`'); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; WHILE rounds < 3000 AND NOT EXISTS (SELECT 1 FROM performance_schema.threads WHERE PROCESSLIST_DB = DATABASE() AND PROCESSLIST_STATE = 'Waiting for table metadata lock' AND PROCESSLIST_INFO LIKE 'SELECT%') DO DO SLEEP(0.01); SET rounds = rounds + 1; END WHILE; COMMIT; END"
+          "reason": "holds the shared metadata lock of the table in a transaction until a read of the table waits behind the change, which then runs: a page has read its descriptor and has not read its rows. It declares the hold in an advisory place once its read has returned, since the preparation of that read also takes the lock and gives it back, so a granted lock alone does not prove a hold",
+          "sql": "CREATE PROCEDURE hold_table_until_a_page_waits(IN held VARCHAR(64)) BEGIN DECLARE rounds INT DEFAULT 0; DECLARE place VARCHAR(64) DEFAULT CONCAT('held$', LEFT(SHA2(CONCAT(DATABASE(), '.', held), 256), 59)); START TRANSACTION; SET @statement = CONCAT('SELECT COUNT(*) INTO @held FROM `', held, '`'); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; DO GET_LOCK(place, 0); WHILE rounds < 3000 AND NOT EXISTS (SELECT 1 FROM performance_schema.threads WHERE PROCESSLIST_DB = DATABASE() AND PROCESSLIST_STATE = 'Waiting for table metadata lock' AND PROCESSLIST_INFO LIKE 'SELECT%') DO DO SLEEP(0.01); SET rounds = rounds + 1; END WHILE; COMMIT; DO RELEASE_LOCK(place); END"
         },
         {
           "op": "sql.exec",
-          "reason": "returns when the holder holds the table",
-          "sql": "CREATE PROCEDURE until_held(IN held VARCHAR(64)) BEGIN DECLARE rounds INT DEFAULT 0; WHILE rounds < 3000 AND NOT EXISTS (SELECT 1 FROM performance_schema.metadata_locks WHERE OBJECT_TYPE = 'TABLE' AND OBJECT_SCHEMA = DATABASE() AND OBJECT_NAME = held AND LOCK_STATUS = 'GRANTED') DO DO SLEEP(0.01); SET rounds = rounds + 1; END WHILE; IF NOT EXISTS (SELECT 1 FROM performance_schema.metadata_locks WHERE OBJECT_TYPE = 'TABLE' AND OBJECT_SCHEMA = DATABASE() AND OBJECT_NAME = held AND LOCK_STATUS = 'GRANTED') THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'the holder did not hold the table'; END IF; END"
+          "reason": "returns when the holder has declared its hold of the table, so that the change is scheduled only after it; the server notifies no session that another took a lock, so this reads the advisory place with a bound",
+          "sql": "CREATE PROCEDURE until_held(IN held VARCHAR(64)) BEGIN DECLARE rounds INT DEFAULT 0; DECLARE place VARCHAR(64) DEFAULT CONCAT('held$', LEFT(SHA2(CONCAT(DATABASE(), '.', held), 256), 59)); WHILE rounds < 3000 AND IS_USED_LOCK(place) IS NULL DO DO SLEEP(0.01); SET rounds = rounds + 1; END WHILE; IF IS_USED_LOCK(place) IS NULL THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'the holder did not hold the table'; END IF; END"
         },
         {
           "op": "sql.exec",
-          "reason": "returns when the change of the table waits for the holder, so a later read of the table waits behind it",
+          "reason": "returns when the change of the table waits for the holder, so a later read of the table waits behind it; the server notifies nothing of a session that waits for a metadata lock, so this reads performance_schema with a bound",
           "sql": "CREATE PROCEDURE until_change_waits() BEGIN DECLARE rounds INT DEFAULT 0; WHILE rounds < 3000 AND NOT EXISTS (SELECT 1 FROM performance_schema.threads WHERE PROCESSLIST_DB = DATABASE() AND PROCESSLIST_STATE = 'Waiting for table metadata lock' AND PROCESSLIST_INFO LIKE 'ALTER%') DO DO SLEEP(0.01); SET rounds = rounds + 1; END WHILE; IF NOT EXISTS (SELECT 1 FROM performance_schema.threads WHERE PROCESSLIST_DB = DATABASE() AND PROCESSLIST_STATE = 'Waiting for table metadata lock' AND PROCESSLIST_INFO LIKE 'ALTER%') THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'the change did not wait'; END IF; END"
         },
         {
@@ -18855,8 +18855,13 @@
         },
         {
           "op": "sql.exec",
-          "reason": "the server runs the change of a renamed column while the holder holds the table",
-          "sql": "CREATE EVENT change_renamed_column ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 SECOND DO BEGIN CALL until_held('renamed_column'); ALTER TABLE renamed_column RENAME COLUMN label TO title, ALGORITHM=INPLACE, LOCK=EXCLUSIVE; END"
+          "reason": "waits for it to hold the table",
+          "sql": "CALL until_held('renamed_column')"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the server runs the change of a renamed column, now that the holder holds the table",
+          "sql": "CREATE EVENT change_renamed_column ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 SECOND DO ALTER TABLE renamed_column RENAME COLUMN label TO title, ALGORITHM=INPLACE, LOCK=EXCLUSIVE"
         },
         {
           "op": "sql.exec",
@@ -18890,8 +18895,13 @@
         },
         {
           "op": "sql.exec",
-          "reason": "the server runs the change of the native type of a column while the holder holds the table",
-          "sql": "CREATE EVENT change_changed_type ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 SECOND DO BEGIN CALL until_held('changed_type'); ALTER TABLE changed_type MODIFY label VARCHAR(20) NOT NULL, ALGORITHM=INPLACE, LOCK=EXCLUSIVE; END"
+          "reason": "waits for it to hold the table",
+          "sql": "CALL until_held('changed_type')"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the server runs the change of the native type of a column, now that the holder holds the table",
+          "sql": "CREATE EVENT change_changed_type ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 SECOND DO ALTER TABLE changed_type MODIFY label VARCHAR(20) NOT NULL, ALGORITHM=INPLACE, LOCK=EXCLUSIVE"
         },
         {
           "op": "sql.exec",
@@ -18925,8 +18935,13 @@
         },
         {
           "op": "sql.exec",
-          "reason": "the server runs the change of the nullability of a column while the holder holds the table",
-          "sql": "CREATE EVENT change_changed_null ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 SECOND DO BEGIN CALL until_held('changed_null'); ALTER TABLE changed_null MODIFY label VARCHAR(10) NULL DEFAULT 'a', ALGORITHM=INPLACE, LOCK=EXCLUSIVE; END"
+          "reason": "waits for it to hold the table",
+          "sql": "CALL until_held('changed_null')"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the server runs the change of the nullability of a column, now that the holder holds the table",
+          "sql": "CREATE EVENT change_changed_null ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 SECOND DO ALTER TABLE changed_null MODIFY label VARCHAR(10) NULL DEFAULT 'a', ALGORITHM=INPLACE, LOCK=EXCLUSIVE"
         },
         {
           "op": "sql.exec",
@@ -18960,8 +18975,13 @@
         },
         {
           "op": "sql.exec",
-          "reason": "the server runs the change of an added column while the holder holds the table",
-          "sql": "CREATE EVENT change_added_column ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 SECOND DO BEGIN CALL until_held('added_column'); ALTER TABLE added_column ADD COLUMN extra INT NULL, ALGORITHM=INPLACE, LOCK=EXCLUSIVE; END"
+          "reason": "waits for it to hold the table",
+          "sql": "CALL until_held('added_column')"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the server runs the change of an added column, now that the holder holds the table",
+          "sql": "CREATE EVENT change_added_column ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 SECOND DO ALTER TABLE added_column ADD COLUMN extra INT NULL, ALGORITHM=INPLACE, LOCK=EXCLUSIVE"
         },
         {
           "op": "sql.exec",
@@ -18995,8 +19015,13 @@
         },
         {
           "op": "sql.exec",
-          "reason": "the server runs the change of its primary key while the holder holds the table",
-          "sql": "CREATE EVENT change_changed_key ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 SECOND DO BEGIN CALL until_held('changed_key'); ALTER TABLE changed_key ADD PRIMARY KEY (id), ALGORITHM=INPLACE, LOCK=EXCLUSIVE; END"
+          "reason": "waits for it to hold the table",
+          "sql": "CALL until_held('changed_key')"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the server runs the change of its primary key, now that the holder holds the table",
+          "sql": "CREATE EVENT change_changed_key ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 SECOND DO ALTER TABLE changed_key ADD PRIMARY KEY (id), ALGORITHM=INPLACE, LOCK=EXCLUSIVE"
         },
         {
           "op": "sql.exec",
@@ -19030,8 +19055,13 @@
         },
         {
           "op": "sql.exec",
-          "reason": "the server runs the change of an automatic key while the holder holds the table",
-          "sql": "CREATE EVENT change_changed_auto ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 SECOND DO BEGIN CALL until_held('changed_auto'); ALTER TABLE changed_auto MODIFY id BIGINT NOT NULL AUTO_INCREMENT, ALGORITHM=COPY, LOCK=EXCLUSIVE; END"
+          "reason": "waits for it to hold the table",
+          "sql": "CALL until_held('changed_auto')"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the server runs the change of an automatic key, now that the holder holds the table",
+          "sql": "CREATE EVENT change_changed_auto ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 SECOND DO ALTER TABLE changed_auto MODIFY id BIGINT NOT NULL AUTO_INCREMENT, ALGORITHM=COPY, LOCK=EXCLUSIVE"
         },
         {
           "op": "sql.exec",
@@ -19065,8 +19095,13 @@
         },
         {
           "op": "sql.exec",
-          "reason": "the server runs the change of a column default while the holder holds the table",
-          "sql": "CREATE EVENT change_changed_default ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 SECOND DO BEGIN CALL until_held('changed_default'); ALTER TABLE changed_default ALTER COLUMN label SET DEFAULT 'b', ALGORITHM=INPLACE, LOCK=EXCLUSIVE; END"
+          "reason": "waits for it to hold the table",
+          "sql": "CALL until_held('changed_default')"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the server runs the change of a column default, now that the holder holds the table",
+          "sql": "CREATE EVENT change_changed_default ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 SECOND DO ALTER TABLE changed_default ALTER COLUMN label SET DEFAULT 'b', ALGORITHM=INPLACE, LOCK=EXCLUSIVE"
         },
         {
           "op": "sql.exec",
