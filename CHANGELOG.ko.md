@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 442ecc5d18c62cdef712871fb5ee78d6282fd8cd1d0318eb23ae34a779473703 -->
+<!-- source-sha256: 878e780b27c7555c840a0f7a443fffbbabb6a9b6afe60fce14dbb058663b0db5 -->
 # 변경 이력
 
 ## Unreleased
 
+- 인터페이스 검사기는 어떻게 끝나든 자기가 시작한 것을 함께 끝냅니다. 각 프로그램은 프로세스 그룹을 이끌고, 실행의 abort는 그 그룹을 죽이며, 검사기 파이프의 끝을 읽는 프로세스가 아직 도는 그룹을 죽이므로, 멈춘 extractor와 그 자식은 기한이 죽인 검사기보다 오래 살지 않습니다.
 - collection key는 PRT-35와 INT-11대로 모든 database에서 구성 요소의 선언 타입을 유지한다. `bool` column이 MySQL과 SQLite에서 정수로 읽혀 `(true, 1)`과 `(1, true)`의 key text가 같았고, composite key의 `datetime` 구성 요소가 TypeScript와 PHP, SQLite의 Python에서 text로 읽혔다. encoding은 이제 recipe `model_queries_chain`의 case `composite_key_*`이고, 어떤 key column도 담을 수 없는 형태는 `tests/collection/keys.json`에 남는다.
 - deadline에 이른 recipe `interface.symbols`는 모든 runtime에서 interface check를 죽이고 case를 실패시키므로, 멈춘 check가 남지 않는다.
 - 실패한 Rust integration case는 연결을 기다린 대상을 적는다: pool acquire timeout과, ProxySQL을 거칠 때는 hostgroup과 그 connect timeout이다.

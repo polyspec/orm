@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The interface checker ends what it started when it ends, whichever way it ends: each program leads a process group, the abort of a run kills the group, and a process that reads the end of the checker's pipe kills the groups still running, so a hung extractor and its children do not outlive a checker that a deadline killed.
 - Tests: the decimal physical runs and the commands of `contracts/features.json` and `config/parity.json` no longer name the removed tags `decimalphysical`, `markdown` and `physical`, and the row T334-3-6 states that `ormtest` stays, as PRT-43 requires.
 - Tests: the case `catalog_session_after_a_schema_change_through_a_pooler` compares the `pg_backend_pid()` of its read with that of the held statement, so it fails when the read reaches another server connection. The PHP runner of `sql.hold_statement` bound no value to its `$1`, as PDO binds none to that placeholder, and now writes it as `?`.
 - Tests: the test servers no longer serve the PgBouncer database `orm_test_single` and no longer write `ORM_TEST_PGBOUNCER_SINGLE_DSN`, and the Rust case helper `CaseTable` goes: no test used them since the catalog session through a pooler runs on a case database.
