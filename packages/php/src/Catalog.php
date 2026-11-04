@@ -2028,8 +2028,8 @@ final class Catalog
                 }
                 continue;
             }
-            if ($dialect === 'sqlite' && in_array(strtoupper($column->nativeType), ['TIME', 'DATETIME'], true)) {
-                $kind = strtoupper($column->nativeType) === 'TIME' ? 'time' : 'datetime';
+            if ($dialect === 'sqlite' && in_array(strtoupper($column->nativeType), ['DATE', 'TIME', 'DATETIME'], true)) {
+                $kind = strtolower($column->nativeType);
                 foreach ($rows as $r => $row) {
                     if ($row[$i] === null) {
                         continue;

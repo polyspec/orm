@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- The PHP client and the PHP extension refuse an SQLite `DATE` cell of a described table that is not a dbspec date with `GRID_TEMPORAL_VALUE` (INT-103), as they refuse a `TIME` and a `DATETIME` cell, where they returned the stored text. (#T334-3-3)
+- Tests: the case `sqlite_temporal_checks` of the SQLite-only catalog recipe runs in `catalog-connection-check` and in the coverage of `catalog_connection`, which named only the three recipes of the databases, and FCV-2 states why the catalog tests of a private step stay native. (#T334-3-3)
 - Tests: the audit record of a member set that uses external documents is the recipe `external_audit` in all six runtimes, where only PHP and Rust tested it, and the install of such a set before and after its core is two cases of `schema_install`. The op `schema.register` takes a `connection`. Rust `external_documents.rs` is gone; PHP `AuditExternalSetsTest` keeps the order of registration (SCH-14a). (#T334-3-4)
 - Tests: the PHP extension's `CompositeKeysNativeTest` is gone: the recipe `composite_keys` run through the extension holds the binds, the statements and the rows of a composite relation (PRT-40a), and the case `composite_key_page_past_the_first_holds_the_next_key` of `model_queries_chain` holds a page past the first of a composite key in every runtime. (#T334-3-4-17)
 - Tests: the padding of the parent keys of a relation and the number of the placeholder after them are a case of the `model_queries_chain` recipe, the native tests of the collection keys that the recipes hold are gone, and feature-coverage names each one that stays native with its reason.

@@ -2377,9 +2377,9 @@ ir-validate-check/php-extension: php-vendor-check build-php-ext
 .PHONY: catalog-connection-check catalog-connection-check/go catalog-connection-check/rust catalog-connection-check/typescript catalog-connection-check/python catalog-connection-check/php catalog-connection-check/php-extension
 catalog-connection-check: catalog-connection-check/go catalog-connection-check/rust catalog-connection-check/typescript catalog-connection-check/python catalog-connection-check/php catalog-connection-check/php-extension
 catalog-connection-check/go: lease-tool
-	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeCatalogConnection(Mysql|Postgres|Sqlite)$$' -count=1
+	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeCatalogConnection(Mysql|Postgres|Sqlite|SqliteOnly)$$' -count=1
 catalog-connection-check/rust: lease-tool
-	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) catalog-connection-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test catalog_connection_mysql --test catalog_connection_postgres --test catalog_connection_sqlite
+	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) catalog-connection-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test catalog_connection_mysql --test catalog_connection_postgres --test catalog_connection_sqlite --test catalog_connection_sqlite_only
 # statement-events-check runs the recipe contracts/fixtures/statement_events/statement_events.json on the three databases
 # in the six clients (docs/spec/feature-coverage.md FCV-3), as catalog-connection-check does. Each part runs its client's
 # three entries on the servers of TEST_ENV, so one that fails names its client while the others still run (make -k).
@@ -2404,15 +2404,18 @@ statement-events-check/php-extension: lease-tool php-vendor-check build-php-ext
 catalog-connection-check/typescript: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/catalog_connection-mysql.test.mjs packages/ts/tests/catalog_connection-postgres.test.mjs packages/ts/tests/catalog_connection-sqlite.test.mjs
+	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/catalog_connection-mysql.test.mjs packages/ts/tests/catalog_connection-postgres.test.mjs packages/ts/tests/catalog_connection-sqlite.test.mjs packages/ts/tests/catalog_connection-sqlite-only.test.mjs
 catalog-connection-check/python: lease-tool python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_catalog_connection_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_catalog_connection_postgres
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_catalog_connection_sqlite
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_catalog_connection_sqlite_only
 catalog-connection-check/php: lease-tool php-vendor-check php-models
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CatalogConnectionRecipeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CatalogConnectionSqliteOnlyRecipeTest.php
 catalog-connection-check/php-extension: lease-tool php-vendor-check build-php-ext
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CatalogConnectionSqliteOnlyRecipeTestExtensionTest.php
 
 # schema-install-check runs the recipe contracts/fixtures/schema_install/schema_install.json on the three databases in the six
 # clients (docs/spec/feature-coverage.md FCV-3): each part runs its client's three entries on the servers of TEST_ENV.

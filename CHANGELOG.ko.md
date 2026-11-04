@@ -1,9 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 39fc616f82e0844a26f923d3bcd7b3f5cb064b0ae555221d589805db1a49bd7d -->
+<!-- source-sha256: e82481247b92be91d113a4b69c4fa7fc9f1b247e5a7e6517c18d59b0c5419fdf -->
 # 변경 이력
 
 ## Unreleased
 
+- PHP client와 PHP extension은 described table의 SQLite `DATE` cell이 dbspec date가 아니면 저장된 text를 돌려주는 대신 `TIME`, `DATETIME` cell처럼 `GRID_TEMPORAL_VALUE`로 거부한다(INT-103). (#T334-3-3)
+- 시험: SQLite 전용 catalog recipe의 사례 `sqlite_temporal_checks`를 `catalog-connection-check`와 `catalog_connection` coverage에서 실행한다. 지금까지 둘은 database별 recipe 셋만 지정했다. FCV-2는 private 단계를 시험하는 catalog 시험이 native로 남는 이유를 적는다. (#T334-3-3)
 - 시험: external document를 쓰는 member set의 audit record를 PHP와 Rust만 시험했는데, 이제 여섯 runtime 모두 recipe `external_audit`으로 시험한다. 그런 set을 core 전후에 설치하는 동작은 `schema_install`의 두 사례다. op `schema.register`는 `connection`을 받는다. Rust `external_documents.rs`는 지웠고, PHP `AuditExternalSetsTest`는 등록 순서를 계속 검사한다(SCH-14a). (#T334-3-4)
 - 시험: PHP extension의 `CompositeKeysNativeTest`를 지웠다. extension으로 도는 recipe `composite_keys`가 복합 relation의 bind, 문장, 행을 검사하고(PRT-40a), `model_queries_chain`의 사례 `composite_key_page_past_the_first_holds_the_next_key`가 모든 runtime에서 복합 key의 첫 쪽 다음 쪽을 검사한다. (#T334-3-4-17)
 - 인터페이스 검사기는 어떻게 끝나든 자기가 시작한 것을 함께 끝냅니다. 각 프로그램은 프로세스 그룹을 이끌고, 실행의 abort는 그 그룹을 죽이며, 검사기 파이프의 끝을 읽는 프로세스가 아직 도는 그룹을 죽이므로, 멈춘 extractor와 그 자식은 기한이 죽인 검사기보다 오래 살지 않습니다.

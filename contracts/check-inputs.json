@@ -1475,6 +1475,7 @@
       ],
       "inputs": [
         "contracts/fixtures/catalog_connection/**",
+        "packages/rust/tests/tests/catalog_connection_sqlite_only.rs",
         "packages/rust/tests/tests/catalog_connection_mysql.rs",
         "packages/rust/tests/tests/catalog_connection_postgres.rs",
         "packages/rust/tests/tests/catalog_connection_sqlite.rs",
@@ -1585,6 +1586,7 @@
       ],
       "inputs": [
         "contracts/fixtures/catalog_connection/**",
+        "packages/ts/tests/catalog_connection-sqlite-only.test.mjs",
         "packages/ts/tests/catalog_connection-mysql.test.mjs",
         "packages/ts/tests/catalog_connection-postgres.test.mjs",
         "packages/ts/tests/catalog_connection-sqlite.test.mjs",
@@ -1600,6 +1602,7 @@
       ],
       "inputs": [
         "contracts/fixtures/catalog_connection/**",
+        "packages/python/tests/test_catalog_connection_sqlite_only.py",
         "packages/python/tests/test_catalog_connection_mysql.py",
         "packages/python/tests/test_catalog_connection_postgres.py",
         "packages/python/tests/test_catalog_connection_sqlite.py",
@@ -1616,6 +1619,7 @@
       ],
       "inputs": [
         "contracts/fixtures/catalog_connection/**",
+        "packages/php/tests/CatalogConnectionSqliteOnlyRecipeTest.php",
         "packages/php/tests/CatalogConnectionRecipeTest.php",
         "packages/php/tests/Recipe.php",
         "packages/php/tests/RecipeCases.php",
@@ -1633,6 +1637,7 @@
       ],
       "inputs": [
         "contracts/fixtures/catalog_connection/**",
+        "packages/php-ext/tests/CatalogConnectionSqliteOnlyRecipeTestExtensionTest.php",
         "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
         "packages/php-ext/tests/bootstrap.php",
         "packages/php/tests/CatalogConnectionRecipeTest.php",

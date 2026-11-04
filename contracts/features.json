@@ -8616,6 +8616,7 @@
         "catalog_connection-mysql",
         "catalog_connection-postgres",
         "catalog_connection-sqlite",
+        "catalog_connection-sqlite-only",
         "catalog-temporal-native-default-precision",
         "catalog-row-baseline-compares-exact-values",
         "catalog-table-page-prepared-columns-differ-from-the-descriptor",
@@ -8774,7 +8775,8 @@
             "tests": [
               "packages/rust/tests/tests/catalog_connection_mysql.rs",
               "packages/rust/tests/tests/catalog_connection_postgres.rs",
-              "packages/rust/tests/tests/catalog_connection_sqlite.rs"
+              "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+              "packages/rust/tests/tests/catalog_connection_sqlite_only.rs"
             ],
             "commands": {
               "mysql": [
@@ -8796,6 +8798,11 @@
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
                   "recipe": "contracts/fixtures/catalog_connection/catalog_connection.json"
+                },
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/catalog_connection_sqlite_only.rs",
+                  "recipe": "contracts/fixtures/catalog_connection/catalog_connection-sqlite-only.json"
                 }
               ]
             }
@@ -8806,7 +8813,8 @@
               "packages/go/orm/recipe_catalog_connection_test.go"
             ],
             "inputs": [
-              "contracts/fixtures/bench/bench.dbs"
+              "contracts/fixtures/bench/bench.dbs",
+              "contracts/fixtures/catalog_connection/catalog_connection-sqlite-only.json"
             ],
             "commands": {
               "mysql": [
@@ -8831,6 +8839,12 @@
                   "test": "packages/go/orm/recipe_catalog_connection_test.go",
                   "recipe": "contracts/fixtures/catalog_connection/catalog_connection.json",
                   "symbol": "TestRecipeCatalogConnectionSqlite"
+                },
+                {
+                  "runner": "go",
+                  "test": "packages/go/orm/recipe_catalog_connection_test.go",
+                  "recipe": "contracts/fixtures/catalog_connection/catalog_connection-sqlite-only.json",
+                  "symbol": "TestRecipeCatalogConnectionSqliteOnly"
                 }
               ]
             }
@@ -8840,10 +8854,12 @@
             "tests": [
               "packages/ts/tests/catalog_connection-mysql.test.mjs",
               "packages/ts/tests/catalog_connection-postgres.test.mjs",
-              "packages/ts/tests/catalog_connection-sqlite.test.mjs"
+              "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+              "packages/ts/tests/catalog_connection-sqlite-only.test.mjs"
             ],
             "inputs": [
-              "contracts/fixtures/bench/bench.dbs"
+              "contracts/fixtures/bench/bench.dbs",
+              "contracts/fixtures/catalog_connection/catalog_connection-sqlite-only.json"
             ],
             "commands": {
               "mysql": [
@@ -8865,6 +8881,11 @@
                   "runner": "node",
                   "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
                   "recipe": "contracts/fixtures/catalog_connection/catalog_connection.json"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/catalog_connection-sqlite-only.test.mjs",
+                  "recipe": "contracts/fixtures/catalog_connection/catalog_connection-sqlite-only.json"
                 }
               ]
             }
@@ -8874,10 +8895,12 @@
             "tests": [
               "packages/python/tests/test_catalog_connection_mysql.py",
               "packages/python/tests/test_catalog_connection_postgres.py",
-              "packages/python/tests/test_catalog_connection_sqlite.py"
+              "packages/python/tests/test_catalog_connection_sqlite.py",
+              "packages/python/tests/test_catalog_connection_sqlite_only.py"
             ],
             "inputs": [
-              "contracts/fixtures/bench/bench.dbs"
+              "contracts/fixtures/bench/bench.dbs",
+              "contracts/fixtures/catalog_connection/catalog_connection-sqlite-only.json"
             ],
             "commands": {
               "mysql": [
@@ -8899,6 +8922,11 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_catalog_connection_sqlite.py",
                   "recipe": "contracts/fixtures/catalog_connection/catalog_connection.json"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/test_catalog_connection_sqlite_only.py",
+                  "recipe": "contracts/fixtures/catalog_connection/catalog_connection-sqlite-only.json"
                 }
               ]
             }
@@ -8906,10 +8934,12 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/CatalogConnectionRecipeTest.php"
+              "packages/php/tests/CatalogConnectionRecipeTest.php",
+              "packages/php/tests/CatalogConnectionSqliteOnlyRecipeTest.php"
             ],
             "inputs": [
-              "contracts/fixtures/bench/bench.dbs"
+              "contracts/fixtures/bench/bench.dbs",
+              "contracts/fixtures/catalog_connection/catalog_connection-sqlite-only.json"
             ],
             "commands": {
               "mysql": [
@@ -8934,6 +8964,12 @@
                   "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
                   "recipe": "contracts/fixtures/catalog_connection/catalog_connection.json",
                   "symbol": "testSqlite"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/CatalogConnectionSqliteOnlyRecipeTest.php",
+                  "recipe": "contracts/fixtures/catalog_connection/catalog_connection-sqlite-only.json",
+                  "symbol": "testSqlite"
                 }
               ]
             }
@@ -8941,10 +8977,12 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php"
+              "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+              "packages/php-ext/tests/CatalogConnectionSqliteOnlyRecipeTestExtensionTest.php"
             ],
             "inputs": [
-              "contracts/fixtures/bench/bench.dbs"
+              "contracts/fixtures/bench/bench.dbs",
+              "contracts/fixtures/catalog_connection/catalog_connection-sqlite-only.json"
             ],
             "commands": {
               "mysql": [
@@ -8968,6 +9006,12 @@
                   "runner": "php",
                   "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
                   "recipe": "contracts/fixtures/catalog_connection/catalog_connection.json",
+                  "symbol": "testSqlite"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CatalogConnectionSqliteOnlyRecipeTestExtensionTest.php",
+                  "recipe": "contracts/fixtures/catalog_connection/catalog_connection-sqlite-only.json",
                   "symbol": "testSqlite"
                 }
               ]

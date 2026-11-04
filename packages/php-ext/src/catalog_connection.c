@@ -2061,8 +2061,9 @@ static bool cat_described_rows(zval *rows, zval *metadata, const char *dialect)
                 ? cat_temporal_kind(dialect, Z_STRVAL_P(native)) : 0;
             zend_long precision = kind != 0 ? cat_declared_precision(dialect, Z_STRVAL_P(native)) : 0;
             if (kind == 0 && native != NULL && Z_TYPE_P(native) == IS_STRING && Z_TYPE_P(cell) == IS_STRING && strcmp(dialect, "sqlite") == 0
-                && (zend_string_equals_literal_ci(Z_STR_P(native), "TIME") || zend_string_equals_literal_ci(Z_STR_P(native), "DATETIME"))) {
-                kind = zend_string_equals_literal_ci(Z_STR_P(native), "TIME") ? 't' : 'x';
+                && (zend_string_equals_literal_ci(Z_STR_P(native), "DATE") || zend_string_equals_literal_ci(Z_STR_P(native), "TIME") || zend_string_equals_literal_ci(Z_STR_P(native), "DATETIME"))) {
+                kind = zend_string_equals_literal_ci(Z_STR_P(native), "DATE") ? 'd'
+                    : zend_string_equals_literal_ci(Z_STR_P(native), "TIME") ? 't' : 'x';
                 zval prv, *cp = catalog_prop(column, "checkPrecision", &prv);
                 precision = Z_TYPE_P(cp) == IS_LONG ? Z_LVAL_P(cp) : 0;
             }
