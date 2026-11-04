@@ -23,6 +23,7 @@ use ReflectionMethod;
 #[Small]
 final class ModelQueriesWritesNativeTest extends TestCase
 {
+    // Requirements: INT-28.
     public function testConformanceChildLoadsTheNativeModelEntrypoint(): void
     {
         self::assertTrue((new ReflectionClass(Model::class))->isInternal());
@@ -44,6 +45,7 @@ final class ModelQueriesWritesNativeTest extends TestCase
         self::assertSame(0, $status, "native extension child failed: $stderr$stdout");
     }
 
+    // Requirements: INT-28.
     public function testNativeModelQueryBuildsAndAssemblesACollection(): void
     {
         self::assertTrue((new ReflectionClass(Model::class))->isInternal());
@@ -84,6 +86,7 @@ final class ModelQueriesWritesNativeTest extends TestCase
         }
     }
 
+    // Requirements: INT-28.
     public function testNativeModelDeleteLockKeepsLoadedChildren(): void
     {
         self::assertTrue((new ReflectionMethod(Model::class, 'deleteLock'))->isInternal());

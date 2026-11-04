@@ -29,7 +29,7 @@ class NewValuesTest(unittest.TestCase):
     def tearDownClass(cls):
         cls.db.close()
 
-    # Requirements: DSL-115.
+    # Requirements: DSL-115, INT-28.
     def test_created_model_writes_its_attached_value(self):
         start = "2026-06-01 00:00:00"
         created = (
