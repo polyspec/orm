@@ -3272,10 +3272,15 @@ final class Recipe
                 // PDO on PostgreSQL parses a statement under a name of its own, unless it emulates.
                 $context['held'] = case_admin(self::connectDsn($s['dsn'], $context['database'], $context['dsn']));
                 $context['held']->setAttribute(\PDO::ATTR_EMULATE_PREPARES, false);
-                $held = $context['held']->prepare($s['sql']);
+                // PDO binds no value to a $1 of the text, so the placeholder is its ?, which PDO sends as $1: the same text.
+                $held = $context['held']->prepare(str_replace('$1', '?', $s['sql']));
                 $held->execute([$s['bind']]);
                 $context['held_statement'] = $held;
-                return [];
+                $row = $held->fetch(\PDO::FETCH_NUM);
+                if ($row === false) {
+                    Assert::fail('sql.hold_statement: the statement returned no row');
+                }
+                return ['value' => ['int' => (string) $row[0]]];
             case 'sql.release_connection':
                 unset($context['held_statement']);
                 unset($context['held']);

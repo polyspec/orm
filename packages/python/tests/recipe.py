@@ -2567,9 +2567,9 @@ def _op_hold_statement(step: dict, context: dict) -> dict:
 
     # prepare_threshold 0 names the statement of its first run; psycopg writes the placeholder $1 as %s.
     session = psycopg.connect(connect_dsn(step["dsn"], context["database"], context["dsn"]), prepare_threshold=0, autocommit=True)
-    session.execute(step["sql"].replace("$1", "%s"), (step["bind"],))
+    backend = session.execute(step["sql"].replace("$1", "%s"), (step["bind"],)).fetchone()[0]
     context["held"] = session
-    return {}
+    return {"value": {"int": str(backend)}}
 
 
 def _op_release_connection(_step: dict, context: dict) -> dict:

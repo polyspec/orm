@@ -350,6 +350,27 @@ func userFromDatabaseDSN(dsn, prefix string) string {
 // mysqlCaseDSN splits a MySQL DSN into its user and its database: mysql://user@host:port/database.
 var mysqlCaseDSN = regexp.MustCompile(`^mysql://([^@/]+)@[^/]+/([^?]+)`)
 
+// firstInteger closes rows and returns the first column of its first row, an integer.
+func firstInteger(rows *sql.Rows) (int64, error) {
+	columns, err := rows.Columns()
+	if err != nil {
+		return 0, closeFirst(err, rows.Close())
+	}
+	if !rows.Next() {
+		return 0, closeFirst(errors.Join(errors.New("the statement returned no row"), rows.Err()), rows.Close())
+	}
+	var first int64
+	cells := make([]any, len(columns))
+	cells[0] = &first
+	for i := 1; i < len(cells); i++ {
+		cells[i] = new(any)
+	}
+	if err := rows.Scan(cells...); err != nil {
+		return 0, closeFirst(err, rows.Close())
+	}
+	return first, rows.Close()
+}
+
 // casePoolerDSN is the DSN of the case database through the transaction pooler of the environment (CFG-27).
 func casePoolerDSN(caseDSN string) (string, error) {
 	pooler, err := url.Parse(os.Getenv("ORM_TEST_PGBOUNCER_DSN"))
@@ -1018,11 +1039,12 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		if err != nil {
 			return outcome{}, closeFirst(err, raw.Close())
 		}
-		if err := rows.Close(); err != nil {
+		backend, err := firstInteger(rows)
+		if err != nil {
 			return outcome{}, closeFirst(err, raw.Close())
 		}
 		c.held = raw
-		return outcome{}, nil
+		return outcome{fields: map[string]any{"value": map[string]any{"int": strconv.FormatInt(backend, 10)}}}, nil
 	case "sql.release_connection":
 		// The pool closes the connection that the step holds, returned or not.
 		held := c.held

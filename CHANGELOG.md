@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Tests: the case `catalog_session_after_a_schema_change_through_a_pooler` compares the `pg_backend_pid()` of its read with that of the held statement, so it fails when the read reaches another server connection. The PHP runner of `sql.hold_statement` bound no value to its `$1`, as PDO binds none to that placeholder, and now writes it as `?`.
 - Tests: the test servers no longer serve the PgBouncer database `orm_test_single` and no longer write `ORM_TEST_PGBOUNCER_SINGLE_DSN`, and the Rust case helper `CaseTable` goes: no test used them since the catalog session through a pooler runs on a case database.
 - Tests: a catalog session through a transaction pooler after a schema change (CFG-28, CFG-41) is the case `catalog_session_after_a_schema_change_through_a_pooler` of the `catalog_connection` recipe in every runtime, in place of the Python test `connection_config`, through the new op `sql.hold_statement` and a `dsn` on `catalog.reconnect`.
 - Tests: the conformance runners keep only the bodies that a check reaches, the generated-method and the fixed-clock bodies; the other 50 vectors are cases of the `conformance_verification` recipe, and a test holds each runner to the reached names.

@@ -742,8 +742,8 @@ const OPS = {
   },
   async 'sql.hold_statement'(s, context) {
     context.held = await nativeSession(context.database, connectDsn(s.dsn, context.database, context.dsn));
-    await context.held.connection.query({ name: 'held_statement', text: s.sql, values: [s.bind] });
-    return {};
+    const { rows } = await context.held.connection.query({ name: 'held_statement', text: s.sql, values: [s.bind], rowMode: 'array' });
+    return { value: { int: String(rows[0][0]) } };
   },
   async 'sql.release_connection'(_, context) {
     await context.held.close();
