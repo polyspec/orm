@@ -14,7 +14,6 @@ use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Catalog;
 use Polyspec\Orm\CatalogColumn;
-use Polyspec\Orm\CatalogGridCell;
 use Polyspec\Orm\CatalogResult;
 use Polyspec\Orm\CatalogTableMetadata;
 use Polyspec\Orm\CatalogTablePage;
@@ -37,29 +36,6 @@ final class CatalogConnectionSurfaceTest extends TestCase
                 return self::catalogWith(new Db($pdo, 'postgres', new Config(), new DateTimeZone('UTC')), 'postgres');
             },
         );
-    }
-
-    public function testNativeGridCellsPreserveDeclaredValues(): void
-    {
-        $values = [
-            ['null', null],
-            ['integer', -7],
-            ['unsigned', '18446744073709551615'],
-            ['float32', '80000000'],
-            ['float64', '7ff8000000000000'],
-            ['decimal', '123.4500'],
-            ['text', 'text'],
-            ['boolean', true],
-            ['binary', "\x00\xff"],
-            ['date', '2026-10-24'],
-            ['time', '12:34:56.123456'],
-            ['datetime', '2026-10-24 12:34:56.123456'],
-        ];
-        foreach ($values as [$kind, $value]) {
-            $cell = new CatalogGridCell($kind, $value);
-            self::assertSame($kind, $cell->kind);
-            self::assertSame($value, $cell->value);
-        }
     }
 
     public function testNativeTablePageIndexesColumnsAndReportsUnknownName(): void
@@ -128,17 +104,6 @@ final class CatalogConnectionSurfaceTest extends TestCase
             self::assertSame(Code::ROW_SNAPSHOT_INVALID, $error->code_);
             self::assertInstanceOf(OrmException::class, $error->getPrevious());
             self::assertSame(Code::TABLE_REFERENCE_INVALID, $error->getPrevious()->code_);
-        }
-    }
-
-    public function testNativeConnectRejectsNonDatabaseDsn(): void
-    {
-        self::assertTrue((new \ReflectionClass(Catalog::class))->isInternal());
-        try {
-            Catalog::connect('markdown://corpus');
-            self::fail('a non-database DSN created a catalog connection');
-        } catch (OrmException $error) {
-            self::assertSame(Code::CONFIG, $error->code_);
         }
     }
 
@@ -243,21 +208,13 @@ final class CatalogConnectionSurfaceTest extends TestCase
         return [$catalog, $catalog->describeTable(['namespace' => 'main', 'name' => $table])];
     }
 
-    public function testNativeCatalogReadsAndMutatesAnOwnedSqliteDatabase(): void
+    // The recipes hold the rows of these inserts and the key `defaults` of a description; the text of a default and
+    // the flag of an expression default have no recipe key (generated_identity_sqlite, generated_key_lifecycle).
+    public function testNativeDescribedDefaultsKeepTheirExpressionText(): void
     {
         $path = tempnam(sys_get_temp_dir(), 'orm-catalog-native-');
         self::assertNotFalse($path);
         $setup = new PDO('sqlite:' . $path, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-        $setup->exec('CREATE TABLE sample (id INTEGER PRIMARY KEY, payload BLOB NOT NULL, note TEXT NULL)');
-        $setup->exec("INSERT INTO sample (id, payload, note) VALUES (1, X'00ff', NULL), (2, X'6162', 'two')");
-        $setup->exec('CREATE TABLE catalog_control (ignore_sample_delete INTEGER NOT NULL)');
-        $setup->exec('INSERT INTO catalog_control (ignore_sample_delete) VALUES (0)');
-        $setup->exec(
-            'CREATE TRIGGER ignore_sample_delete BEFORE DELETE ON sample '
-            . 'WHEN (SELECT ignore_sample_delete FROM catalog_control) = 1 '
-            . 'BEGIN SELECT RAISE(IGNORE); END'
-        );
-        $setup->exec('CREATE TABLE required_identity (id BIGINT NOT NULL PRIMARY KEY, payload TEXT NOT NULL)');
         $setup->exec('CREATE TABLE generated (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)');
         $setup->exec(
             "CREATE TABLE generated_default (tenant BIGINT NOT NULL, seq VARCHAR(30) NOT NULL DEFAULT 'generated', "
@@ -272,159 +229,18 @@ final class CatalogConnectionSurfaceTest extends TestCase
         $catalog = null;
         try {
             $catalog = Catalog::connect('sqlite://' . $path);
-            $requiredMetadata = $catalog->describeTable(['namespace' => 'main', 'name' => 'required_identity']);
-            try {
-                $catalog->insertRow($requiredMetadata, ['payload' => 'missing-key']);
-                self::fail('an omitted primary key without a generator was accepted');
-            } catch (OrmException $error) {
-                self::assertSame(Code::ROW_INSERT_IDENTITY_REQUIRED, $error->code_);
-            }
-            $table = ['namespace' => 'main', 'name' => 'sample'];
-            $metadata = $catalog->describeTable($table);
-            $generatedTable = ['namespace' => 'main', 'name' => 'generated'];
-            $generatedMetadata = $catalog->describeTable($generatedTable);
-            self::assertSame(['id'], $generatedMetadata->primaryKey);
-            self::assertSame('INTEGER', $generatedMetadata->columns[0]->nativeType);
-            self::assertFalse($generatedMetadata->columns[0]->nullable);
-            self::assertFalse($generatedMetadata->columns[0]->generated);
-            self::assertTrue($generatedMetadata->columns[0]->automaticKey);
-            self::assertNull($generatedMetadata->columns[0]->defaultExpression);
-            self::assertFalse($generatedMetadata->columns[0]->expressionDefault);
-            $generated = $catalog->insertRow($generatedMetadata, ['payload' => 'generated']);
-            self::assertSame(['id', 'payload'], $generated->columns);
-            self::assertSame([[1, 'generated']], $generated->rows);
-            $generatedDefaultMetadata = $catalog->describeTable(['namespace' => 'main', 'name' => 'generated_default']);
-            self::assertSame(['tenant', 'seq'], $generatedDefaultMetadata->primaryKey);
-            self::assertSame("'generated'", $generatedDefaultMetadata->columns[1]->defaultExpression);
-            self::assertFalse($generatedDefaultMetadata->columns[1]->automaticKey);
-            $generatedDefault = $catalog->insertRow(
-                $generatedDefaultMetadata,
-                ['tenant' => 2, 'n' => 50]
-            );
-            self::assertSame(['tenant', 'seq', 'n'], $generatedDefault->columns);
-            self::assertSame([[2, 'generated', 50]], $generatedDefault->rows);
-            $generatedExpressionMetadata = $catalog->describeTable(
-                ['namespace' => 'main', 'name' => 'generated_expression']
-            );
-            self::assertSame(['seq'], $generatedExpressionMetadata->primaryKey);
-            self::assertTrue($generatedExpressionMetadata->columns[0]->expressionDefault);
-            $generatedExpression = $catalog->insertRow(
-                $generatedExpressionMetadata,
-                ['n' => 1, 'label' => null]
-            );
-            $storedExpression = $catalog->tablePage(
-                ['namespace' => 'main', 'name' => 'generated_expression'],
-                2,
-                0
-            );
-            self::assertCount(1, $generatedExpression->rows);
-            self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/D', $generatedExpression->rows[0][0]);
-            self::assertSame([1, null], array_slice($generatedExpression->rows[0], 1));
-            self::assertSame($storedExpression->result->rows, $generatedExpression->rows);
-
-            $page = $catalog->tablePage($table, 1, 0);
-            self::assertSame(['id'], $page->orderBy);
-            self::assertTrue($page->hasMore);
-            self::assertSame([1, "\x00\xff", null], $page->result->rows[0]);
-
-            try {
-                $catalog->readOnlyGridQuery('SELECT 1 AS value UNION ALL SELECT 2', [], 1);
-                self::fail('a grid result over the row limit was accepted');
-            } catch (OrmException $error) {
-                self::assertSame('CATALOG_LIMIT: result has more than 1 rows', $error->getMessage());
-            }
-            try {
-                $catalog->readOnlyGridQuery("SELECT 'too large' AS value", [], 10, 1);
-                self::fail('a grid result over the byte limit was accepted');
-            } catch (OrmException $error) {
-                self::assertSame('CATALOG_LIMIT: result has more than 1 bytes of values', $error->getMessage());
-            }
-
-            $catalog->insertRow($metadata, ['payload' => 'three', 'note' => null]);
-            $afterInsert = $catalog->tablePage($table, 10, 0);
-            $idColumn = $afterInsert->columnIndex('id');
-            $rowIndex = null;
-            foreach ($afterInsert->result->rows as $index => $row) {
-                if ($row[$idColumn] === 3) {
-                    $rowIndex = $index;
-                    break;
-                }
-            }
-            self::assertNotNull($rowIndex);
-            $snapshot = $catalog->rowSnapshotFromPage($afterInsert, $rowIndex);
-            $catalog->updateRow($snapshot, ['note' => 'updated']);
-            $afterUpdate = $catalog->tablePage($table, 10, 0);
-            $updatedIndex = null;
-            foreach ($afterUpdate->result->rows as $index => $row) {
-                if ($row[$afterUpdate->columnIndex('id')] === 3) {
-                    $updatedIndex = $index;
-                    break;
-                }
-            }
-            self::assertNotNull($updatedIndex);
-            $control = new PDO('sqlite:' . $path, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-            $control->exec('UPDATE catalog_control SET ignore_sample_delete = 1');
-            try {
-                $catalog->deleteRow($catalog->rowSnapshotFromPage($afterUpdate, $updatedIndex));
-                self::fail('a delete that affected no rows was accepted');
-            } catch (\Polyspec\Orm\OrmException $error) {
-                self::assertSame(Code::ROW_WRITE_MISMATCH, $error->code_);
-                self::assertSame('ROW_WRITE_MISMATCH: expected exactly one deleted row, got 0', $error->getMessage());
-            }
-            self::assertSame(1, (int) $control->query('SELECT COUNT(*) FROM sample WHERE id = 3')->fetchColumn());
-            $control->exec('UPDATE catalog_control SET ignore_sample_delete = 0');
-            $control = null;
-            $catalog->deleteRow($catalog->rowSnapshotFromPage($afterUpdate, $updatedIndex));
-
-            $catalog->close();
+            $generated = $catalog->describeTable(['namespace' => 'main', 'name' => 'generated']);
+            self::assertTrue($generated->columns[0]->automaticKey);
+            self::assertNull($generated->columns[0]->defaultExpression);
+            self::assertFalse($generated->columns[0]->expressionDefault);
+            $default = $catalog->describeTable(['namespace' => 'main', 'name' => 'generated_default']);
+            self::assertSame("'generated'", $default->columns[1]->defaultExpression);
+            self::assertFalse($default->columns[1]->automaticKey);
+            $expression = $catalog->describeTable(['namespace' => 'main', 'name' => 'generated_expression']);
+            self::assertTrue($expression->columns[0]->expressionDefault);
         } finally {
             $catalog?->close();
             unlink($path);
-        }
-    }
-
-    // Requirements: INT-111.
-    public function testNativeRowUpdateChecksDeclaredCharacterAndBinaryCapacityBeforeWriting(): void
-    {
-        $pdo = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-        $pdo->exec(
-            'CREATE TABLE capacity_values (id INTEGER PRIMARY KEY, label VARCHAR(3) NOT NULL, '
-            . 'payload VARBINARY(3) NOT NULL)'
-        );
-        $catalog = null;
-
-        try {
-            self::assertTrue((new ReflectionClass(Catalog::class))->isInternal());
-            [$catalog, $metadata] = self::sqliteCatalog($pdo, 'capacity_values');
-            $table = ['namespace' => 'main', 'name' => 'capacity_values'];
-            $catalog->insertRow($metadata, ['id' => 1, 'label' => 'old', 'payload' => 'old']);
-            $snapshot = $catalog->rowSnapshotFromPage($catalog->tablePage($table, 1, 0), 0);
-
-            foreach (
-                [
-                    ['label' => '界界界界'],
-                    ['payload' => 'éxy'],
-                ] as $invalid
-            ) {
-                try {
-                    $catalog->updateRow($snapshot, $invalid);
-                    self::fail('an update over its declared capacity was accepted');
-                } catch (OrmException $error) {
-                    self::assertSame(
-                        'ROW_UPDATE_INVALID: value exceeds the declared capacity of column '
-                        . '"' . array_key_first($invalid) . '"',
-                        $error->getMessage(),
-                    );
-                }
-            }
-
-            $updated = $catalog->updateRow(
-                $snapshot,
-                ['label' => '界界界', 'payload' => 'éx'],
-            );
-            self::assertSame([1, '界界界', 'éx'], $updated->rows[0]);
-        } finally {
-            $catalog?->close();
         }
     }
 
@@ -460,41 +276,4 @@ final class CatalogConnectionSurfaceTest extends TestCase
             self::assertSame(Code::CATALOG_CLOSED, $error->code_);
         }
     }
-
-    public function testGeneratedInsertRejectsChangedStoredValueAndRollsBack(): void
-    {
-        $path = tempnam(sys_get_temp_dir(), 'orm-catalog-generated-');
-        self::assertNotFalse($path);
-        $setup = new PDO('sqlite:' . $path, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-        $setup->exec('CREATE TABLE generated (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)');
-        $setup->exec(
-            "CREATE TRIGGER rewrite_payload AFTER INSERT ON generated BEGIN "
-            . "UPDATE generated SET payload = 'rewritten' WHERE id = NEW.id; END"
-        );
-        $setup = null;
-
-        $catalog = null;
-        try {
-            $catalog = Catalog::connect('sqlite://' . $path);
-            $metadata = $catalog->describeTable(['namespace' => 'main', 'name' => 'generated']);
-            try {
-                $catalog->insertRow($metadata, ['payload' => 'submitted']);
-                self::fail('an insert whose stored value changed was accepted');
-            } catch (OrmException $error) {
-                self::assertSame(Code::ROW_WRITE_MISMATCH, $error->code_);
-                self::assertSame(
-                    'ROW_WRITE_MISMATCH: stored inserted values of "payload" differ',
-                    $error->getMessage()
-                );
-            }
-            $check = new PDO('sqlite:' . $path, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-            self::assertSame(0, (int) $check->query('SELECT COUNT(*) FROM generated')->fetchColumn());
-        } finally {
-            $catalog?->close();
-            if (is_file($path)) {
-                self::assertTrue(unlink($path), 'the temporary catalog database could not be removed');
-            }
-        }
-    }
-
 }

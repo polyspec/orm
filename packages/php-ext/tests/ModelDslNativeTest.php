@@ -81,15 +81,4 @@ final class ModelDslNativeTest extends TestCase
             self::assertSame('CONFIG: column function on age requires one compared value', $error->getMessage());
         }
     }
-
-    public function testEmptyListUsesTheDeclaredEmptyInError(): void
-    {
-        try {
-            (new DslFixture())->name([])->getCount();
-            self::fail('An empty IN list should fail.');
-        } catch (OrmException $error) {
-            self::assertSame('EMPTY_IN', $error->code_);
-            self::assertSame('EMPTY_IN: name received an empty list', $error->getMessage());
-        }
-    }
 }

@@ -331,37 +331,6 @@ final class SchemaUtilsNativeTest extends TestCase
         }
     }
 
-    public function testSchemaIdentifierRejectsInvalidCharactersBeforeQuery(): void
-    {
-        $path = tempnam(sys_get_temp_dir(), 'orm-schema-identifier-');
-        self::assertIsString($path);
-        $db = null;
-        $unsubscribe = null;
-        try {
-            $db = Orm::connect('sqlite:///' . $path, new Config());
-            $events = [];
-            $unsubscribe = self::collectEvents($db, $events);
-            try {
-                $db->utils()->schema()->exists('bad-name');
-                self::fail('an invalid schema identifier was accepted');
-            } catch (OrmException $error) {
-                self::assertSame(Code::CONFIG, $error->code_);
-                self::assertSame('CONFIG: identifier bad-name is invalid', $error->getMessage());
-            }
-            self::assertSame([], $events);
-        } finally {
-            if ($unsubscribe !== null) {
-                $unsubscribe();
-            }
-            if ($db !== null) {
-                $db->close();
-            }
-            if (is_file($path)) {
-                unlink($path);
-            }
-        }
-    }
-
     /**
      * @param array<string, string> $externalFiles
      */

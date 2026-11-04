@@ -42,16 +42,6 @@ final class CoverageNativeFixtureExtensionTest extends TestCase
         return \Polyspec\Orm\Tests\NativeFixtureVectors::ids($cases, 'native');
     }
 
-    public function testAggregateNumeric(): void
-    {
-        Assert::assertTrue((new ReflectionClass(Model::class))->isInternal());
-        Assert::assertTrue((new ReflectionMethod(Model::class, 'aggregateNumber'))->isInternal());
-        $owner = new \Polyspec\Orm\Tests\AggregateNumericTest('testAggregateNumeric');
-        foreach (\Polyspec\Orm\Tests\AggregateNumericTest::cases() as [$case]) {
-            $this->assertAggregateNumericCase($owner, $case);
-        }
-    }
-
     #[DataProvider('aggregateNumericVectors')]
     public function testAggregateNumericVector(string $id): void
     {
@@ -69,18 +59,6 @@ final class CoverageNativeFixtureExtensionTest extends TestCase
     private function assertAggregateNumericCase(\Polyspec\Orm\Tests\AggregateNumericTest $owner, array $case): void
     {
         $owner->testAggregateNumeric($case);
-    }
-
-    public function testDecimalModel(): void
-    {
-        Assert::assertTrue((new ReflectionClass(Model::class))->isInternal());
-        Assert::assertTrue((new ReflectionMethod(Model::class, 'writeColumn'))->isInternal());
-        Assert::assertTrue((new ReflectionMethod(Model::class, 'readColumn'))->isInternal());
-        $owner = new \Polyspec\Orm\Tests\DecimalModelTest('testDecimalModel');
-        foreach (\Polyspec\Orm\Tests\DecimalModelTest::cases() as [$case, $column]) {
-            $this->assertDecimalModelCase($owner, $case, $column);
-        }
-        $owner->testGeneratedDecimalType();
     }
 
     #[DataProvider('decimalModelVectors')]
@@ -122,15 +100,6 @@ final class CoverageNativeFixtureExtensionTest extends TestCase
     }
 
     // Requirements: INT-76.
-    public function testIdentityLoad(): void
-    {
-        $this->assertNativeIdentityLoadEntryPoints();
-        $owner = new \Polyspec\Orm\Tests\IdentityLoadTest('testIdentityLoad');
-        foreach (\Polyspec\Orm\Tests\IdentityLoadTest::cases() as [$case]) {
-            $this->assertIdentityLoadCase($owner, $case);
-        }
-    }
-
     #[DataProvider('identityLoadVectors')]
     public function testIdentityLoadVector(string $id): void
     {
@@ -151,16 +120,6 @@ final class CoverageNativeFixtureExtensionTest extends TestCase
             return;
         }
         $owner->testIdentityLoad($case);
-    }
-
-    public function testIdentityLoadCompileCases(): void
-    {
-        $this->assertNativeIdentityLoadEntryPoints();
-        foreach (\Polyspec\Orm\Tests\IdentityLoadTest::cases() as [$case]) {
-            if ($case['operation'] === 'compile') {
-                $this->assertIdentityLoadCompileCase($case);
-            }
-        }
     }
 
     /** @param array<string, mixed> $case */

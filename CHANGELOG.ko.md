@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- Tests: `packages/php-ext/tests`의 native 시험을 FCV-2로 하나씩 판정한다: recipe나 `DsnTest`가 지키는 시험 28개를 없애고 `dsn_reject`, `dsn_reject_parameters`, `aes_rotation`, `catalog_connection`에 case를, `schema_install`, `utils`에 step을 더했다. 남는 시험은 하나의 이유를 함께 쓰지 않고 그 시험에 참인 이유를 적는다.
 - PHP extension은 described table의 SQLite `DATE`, `TIME`, `DATETIME` 열에 든 숫자를 PHP library처럼 `GRID_TEMPORAL_VALUE`로 거부한다(INT-103). 전에는 `DATE` 열의 숫자를 그대로 통과시켰다. 사례 `sqlite_temporal_checks`가 모든 runtime에서 이를 검사한다. (#T334-3-3)
 - 시험: Go recipe helper는 step에 `expect`가 있어도 읽지 않은 step key를 실패시킨다. TypeScript와 Rust helper가 이미 그렇게 한다. 전에는 무시한 `page`, `limit`, `where`가 조용히 통과했다. (#T334-3-4)
 - Spec: 어떤 helper, schema 참조, 사례도 쓰지 않은 `model.query`의 recipe 형식 `{"page": ...}`를 지웠다. FCV-4가 `page: true`의 형식과 그 table path를 적는다. (#T334-3-4)
