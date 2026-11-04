@@ -4385,6 +4385,111 @@
      }
     }
    ]
+  },
+  {
+   "id": "one_relation_on_a_key_of_many_rows_attaches_the_first_child",
+   "requirements": [
+    "DSL-80",
+    "PRT-42"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 2,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "Author",
+     "values": {
+      "name": {
+       "text": "author-2"
+      },
+      "user_seq": {
+       "int": "1"
+      },
+      "service_member_seq": {
+       "int": "1"
+      },
+      "service_seq": {
+       "int": "7"
+      },
+      "read_count": {
+       "int": "7"
+      },
+      "start_dt": {
+       "datetime": "2026-06-01 00:00:00.000000"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "relations": [
+      {
+       "model": "Author",
+       "alias": "Writer",
+       "match": [
+        [
+         "user_seq",
+         "user_seq"
+        ]
+       ],
+       "columns": [
+        "read_count"
+       ],
+       "order": [
+        {
+         "column": "seq",
+         "dir": "desc"
+        }
+       ]
+      }
+     ],
+     "pick": [
+      "writer"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "writer": {
+         "seq": 5,
+         "user_seq": 1,
+         "service_member_seq": 1,
+         "read_count": 7
+        }
+       }
+      },
+      "postgres": {
+       "json": {
+        "writer": {
+         "seq": 5,
+         "user_seq": 1,
+         "service_member_seq": 1,
+         "read_count": 7
+        }
+       }
+      },
+      "sqlite": {
+       "json": {
+        "writer": {
+         "seq": 5,
+         "user_seq": 1,
+         "service_member_seq": 1,
+         "read_count": 7
+        }
+       }
+      }
+     }
+    }
+   ]
   }
  ]
 }

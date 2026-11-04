@@ -176,10 +176,6 @@
           "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/go/model/chunk_test.go",
-          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
-        },
-        {
           "glob": "packages/go/orm/assignment_propagation_test.go",
           "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },

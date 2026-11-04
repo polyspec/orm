@@ -189,3 +189,26 @@ func TestRequestBuilderErrorBeforeLockIsKept(t *testing.T) {
 		})
 	}
 }
+
+// TestCreatesRefusesANegativeBatch: a batch that is not a positive integer is CONFIG before any statement (PRT-41). A
+// recipe cannot write a negative batch, since the batch of the Rust client is a usize.
+func TestCreatesRefusesANegativeBatch(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	db, e, _ := hookFixture(t, "sqlite://"+filepath.Join(t.TempDir(), "parts.sqlite"))
+	statements := 0
+	unsubscribe, err := db.Subscribe(func(orm.StatementEvent) error {
+		statements++
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer unsubscribe()
+	row := as[*keywordRow](t, hookItem(e, nil, map[string]any{"part": "p", "label": "r"}).Self())
+	if _, err := orm.Creates(hookItem(e, db, nil), []*keywordRow{row}, -1); orm.ErrorCode(err) != orm.CodeConfig {
+		t.Errorf("creates with batch -1 = %v, want CONFIG", err)
+	}
+	if statements != 0 {
+		t.Errorf("a refused creates ran %d statements, want none", statements)
+	}
+}

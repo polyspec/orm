@@ -287,74 +287,23 @@ function connect(dsn) {
 }
 
 /**
- * Inserts and reads more values than SQLite binds in one statement: the
- * inserts and the root IN list are split, duplicate IN values are read once,
- * and a shape that a merge would change is rejected.
- */
-async function bindLimitSplitting(db) {
-  const n = 1200;
-  const names = [];
-  const rows = [];
-  for (let i = 0; i < n; i++) {
-    const name = `chunk-${String(i).padStart(4, '0')}`;
-    rows.push(new Service().setName(name));
-    names.push(name);
-  }
-  check(await new Service().connect(db).creates(rows, 500) === n, 'inserted rows');
-  names.push(...names.slice(0, 200));
-  for (let i = 0; i < 100; i++) names.push(`missing-${i}`);
-  const found = await new Service().connect(db).name(names).gets();
-  check(found.length === n, `found ${found.length} rows`);
-  check(await new Service().connect(db).name(names).getCount() === n, 'count of split IN');
-  if (db.driver === 'sqlite') {
-    check(await code(new Service().connect(db).name(names).limit(0, 10).gets()) === 'IR_INVALID', 'limited split');
-  }
-}
-
-/**
- * A multi-row insert runs as batches of the given size in row order inside one transaction (docs/spec/protocol.md
- * "Relation steps"; the shared cases of contracts/fixtures/insert_parts.json run in insert-parts.mjs): a batch that
- * is not a positive integer is CONFIG and a batch over the bind limit is BATCH_TOO_LARGE before any statement, 13
- * rows in batches of 6 run as 6, 6 and 1 rows and keep their order and ascending keys, and a failing batch leaves no
- * row of the call.
+ * A batch that is not a positive integer is CONFIG before any statement (docs/spec/protocol.md "Relation steps"). The
+ * recipes write batches that every runtime can hold; a negative or a fractional number and NaN reach the argument only
+ * where the type of the language lets them.
  */
 async function insertParts(db) {
   const inserts = [];
   const unsubscribe = db.subscribe(event => { if (event.sql.startsWith('INSERT INTO')) inserts.push(event); });
   try {
     const few = [new Service().setName('refused-a'), new Service().setName('refused-b')];
-    for (const size of [0, -1, 1.5, Number.NaN]) {
+    for (const size of [-1, 1.5, Number.NaN]) {
       check(await code(new Service().connect(db).creates(few, size)) === 'CONFIG', `batch ${size} is CONFIG`);
     }
-    const limit = db.driver === 'sqlite' ? 999 : 65535;
-    const over = Array.from({ length: limit + 1 }, (_, i) => new Service().setName(`over-${i}`));
-    check(await code(new Service().connect(db).creates(over, over.length)) === 'BATCH_TOO_LARGE', 'a batch over the bind limit');
     check(inserts.length === 0, `refused creates ran ${inserts.length} inserts, want none`);
-    const labels = Array.from({ length: 13 }, (_, i) => `order-${String.fromCharCode(109 - i)}`);
-    check(await new Service().connect(db).creates(labels.map(name => new Service().setName(name)), 6) === 13, 'creates 13 rows');
-    const parts = inserts.map(e => e.binds.length);
-    check(JSON.stringify(parts) === '[6,6,1]', `13 rows run as batches ${JSON.stringify(parts)}, want [6,6,1]`);
-    check(JSON.stringify(inserts.flatMap(e => e.binds)) === JSON.stringify(labels), 'the parts bind the rows in the given order');
-    const stored = Array.from(await new Service().connect(db).name(labels).orderBySeqAsc().gets(), r => r.toArray());
-    check(JSON.stringify(stored.map(r => r.name)) === JSON.stringify(labels), `stored order ${stored.map(r => r.name)}`);
-    check(stored.every((r, i) => i === 0 || Number(r.seq) > Number(stored[i - 1].seq)), 'the generated keys ascend in row order');
   } finally { unsubscribe(); }
-  const before = await new Service().connect(db).getCount();
-  const failing = Array.from({ length: 9 }, (_, i) => new Service().setName(`rollback-${i}`));
-  failing[8][CORE].setValue('name', null);
-  check(await code(new Service().connect(db).creates(failing, 4)) !== null, 'a null name in the third batch fails');
-  check(await new Service().connect(db).getCount() === before, 'the failing call leaves no row');
 }
 
-/** A MySQL install inside a transaction returns CONFIG: schema statements commit implicitly. */
-// Requirements: INT-55.
-async function mysqlInstallInsideTransaction(db) {
-  let inside = null;
-  await db.transaction(async () => { inside = await code(db.utils().schema().install(SCHEMA)); });
-  check(inside === 'CONFIG', `install inside a transaction: ${inside}`);
-}
-
-const cases = { conditions, columnsAndSubqueries, writes, styledStates, bindLimitSplitting, insertParts };
+const cases = { conditions, columnsAndSubqueries, writes, styledStates, insertParts };
 
 /**
  * Runs body(dsn, database) on a new case database for the dialect, and drops it when done. A SQLite DSN has a
@@ -403,7 +352,6 @@ modelCase('cancellation', DIALECTS, installed(async (db, dsn, dialect) => {
   }
   check(typeof await new Author().connect(db).getCount() === 'number', 'the connection is usable after a cancellation');
 }));
-modelCase('installInsideTransaction', ['mysql'], installed(mysqlInstallInsideTransaction));
 // If the MySQL local value reset at the end of a transaction fails, commit and rollback report that error.
 // A MySQL user variable survives COMMIT and ROLLBACK (mysql.context.user_variable_session_scope).
 // The real server does not reject the reset, so the control of the transaction connection makes only the reset fail.

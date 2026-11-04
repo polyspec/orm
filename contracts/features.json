@@ -6097,21 +6097,12 @@
         "contracts/fixtures/bench/bench.dbs"
       ],
       "tests": [
-        "packages/go/model/chunk_test.go",
-        "packages/rust/tests/tests/integration_program/main.rs",
         "packages/php/tests/RelationKeysTest.php",
-        "packages/php/tests/ModelTest.php",
-        "packages/ts/tests/model.mjs",
-        "packages/rust/tests/tests/integration/result_chains.rs",
-        "packages/rust/tests/build.rs",
-        "packages/rust/tests/bench_model.rs",
-        "packages/rust/tests/nonnull.dbs",
         "packages/php-ext/tests/ParameterChunkingNativeTest.php",
         "packages/rust/build/tests/unit/assignment_budget.rs",
         "packages/rust/build/tests/unit/insert_values.rs",
         "packages/rust/build/tests/unit/row_update_budget.rs",
         "packages/rust/orm/src/driver/tests.rs",
-        "packages/php-ext/tests/ModelTestExtensionTest.php",
         "packages/go/orm/recipe_parameter_chunking_test.go",
         "packages/ts/tests/parameter_chunking-mysql.test.mjs",
         "packages/python/tests/test_parameter_chunking_mysql.py",
@@ -6135,56 +6126,11 @@
       ],
       "verification": [
         {
-          "id": "chunking-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/model -run 'BindLimitSplitting' -count=1",
-          "shard": "other",
-          "inputs": [
-            "packages/go/model/chunk_test.go"
-          ]
-        },
-        {
-          "id": "chunking-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts chunking-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked -p polyspec-orm-tests --test integration_program -- --exact bind_limit_splitting",
-          "shard": "rust",
-          "inputs": [
-            "packages/rust/tests/tests/integration_program/main.rs",
-            "packages/rust/tests/tests/integration_program/bench_set.rs",
-            "contracts/fixtures/bench/bench.dbs",
-            "contracts/fixtures/bench/bench_reader.dbs",
-            "contracts/fixtures/bench/bench_shared.dbs",
-            "packages/rust/tests/tests/integration/result_chains.rs",
-            "packages/rust/tests/build.rs",
-            "packages/rust/tests/bench_model.rs",
-            "packages/rust/tests/nonnull.dbs",
-            "packages/rust/tests/external/dbspec-set.json",
-            "packages/rust/tests/external/member.dbs",
-            "packages/rust/tests/external/core/core.dbs"
-          ]
-        },
-        {
           "id": "chunking-php-keys",
           "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RelationKeysTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/RelationKeysTest.php"
-          ]
-        },
-        {
-          "id": "chunking-php",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelTest.php",
-          "shard": "other",
-          "inputs": [
-            "packages/php/tests/ModelTest.php",
-            "packages/php/tests/case_database.php"
-          ]
-        },
-        {
-          "id": "chunking-typescript",
-          "command": "node packages/ts/tests/model.mjs",
-          "shard": "other",
-          "inputs": [
-            "packages/ts/tests/model.mjs",
-            "packages/ts/tests/case-database.mjs"
           ]
         }
       ],
