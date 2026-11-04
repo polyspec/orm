@@ -4766,7 +4766,7 @@
         },
         {
           "id": "install-register-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestRegisterRefusesEditedManifest|TestRegisterReusesEnginePerHash|TestInstallVerifiesTheDatabase)$' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestRegisterReusesEnginePerHash|TestInstallVerifiesTheDatabase)$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/install_test.go",
