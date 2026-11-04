@@ -106,3 +106,20 @@ table key_flag {
   flag bool
   primary key (flag)
 }
+
+table key_instant {
+  instant datetime(3)
+  primary key (instant)
+}
+
+table key_fine_instant {
+  instant datetime(6)
+  primary key (instant)
+}
+
+table composite_member {
+  tenant_id i64
+  account_id i64
+  role varchar(32)
+  primary key (tenant_id, account_id, role)
+}

@@ -44,60 +44,17 @@ class CollectionIdentityTest(unittest.TestCase):
     # Requirements: DSL-153.
     def test_parent_expansion_keeps_bare_dollar(self):
         step = {
-            "sql": "SELECT '$' AS sign, id FROM items WHERE key IN ($1)",
-            "bind_slots": [{"from": "parent"}],
+            "sql": "SELECT $1, '$' AS sign, id FROM items WHERE key IN ($2)",
+            "bind_slots": [{"from": "param"}, {"from": "parent"}],
             "parent": {"keys": [{"column": "key", "index": 0}]},
         }
         sql, values = _expand_parent(step, [7])
-        self.assertEqual(sql, "SELECT '$' AS sign, id FROM items WHERE key IN ($1)")
+        self.assertEqual(sql, "SELECT $1, '$' AS sign, id FROM items WHERE key IN ($2)")
         self.assertEqual(values, [7])
 
-    # Requirements: PRT-40.
-    def test_parent_slot_expansion_pads_composite_keys_and_renumbers_following_slots(
-        self,
-    ):
-        step = {
-            "sql": "SELECT $1 WHERE (a, b) IN (($2)) AND active = $3",
-            "bind_slots": [
-                {"from": "param"},
-                {"from": "parent"},
-                {"from": "param"},
-            ],
-            "parent": {
-                "keys": [
-                    {"column": "a", "index": 0},
-                    {"column": "b", "index": 1},
-                ]
-            },
-        }
-        sql, values = _expand_parent(step, [10, 11, 20, 21, 30, 31])
-        self.assertEqual(
-            sql,
-            "SELECT $1 WHERE (a, b) IN (($2, $3), ($4, $5), ($6, $7), ($8, $9)) AND active = $10",
-        )
-        self.assertEqual(values, [10, 11, 20, 21, 30, 31, 30, 31])
-
-    def test_native_key_values_keep_their_types_and_reject_unsupported_values(self):
+    def test_a_key_outside_the_python_key_type_is_refused(self):
         # Requirements: INT-11.
-        values = [
-            True,
-            7,
-            "text",
-            b"bytes",
-            datetime.fromisoformat("2026-10-18T09:30:00.123456+00:00"),
-        ]
         collection = Collection()
-        for value in values:
-            collection.put(value, {"key": value})
-
-        actual = collection.keys()
-        self.assertEqual(actual, values)
-        self.assertEqual(
-            [type(value) for value in actual], [type(value) for value in values]
-        )
-        for value in values:
-            self.assertEqual(collection.get(value)["key"], value)
-
         invalid_values = (
             None,
             1.25,

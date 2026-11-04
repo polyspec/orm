@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 68b3cf0bda71e36b892e4096fb281703602dbc515afdd9cbb5d249a05451aef6 -->
+<!-- source-sha256: 3fcbc941fe5ceadec192a1f5db50c06513ce63d50f29b261960ccbe80168d3fe -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -49,7 +49,7 @@ flowchart LR
 - **INT-8** `Optional<T>` — Go: `*T`; PHP: `?T`; Rust: `Option<T>`; TypeScript: `T | null`; Python: `T | None`
 - **INT-9** `List<T>` — Go: slice; PHP: array; Rust: `Vec<T>`; TypeScript: `T[]`; Python: `list`
 - **INT-10** `Result<T>` — Go: `(T, error)`; PHP: 반환 또는 예외; Rust: `Result<T>`; TypeScript: `Promise<T>`; Python: 반환 또는 예외
-- **INT-11** `Key` — Go: `orm.Key`; PHP: `int|string|bool|Bytes|DateTimeInterface`; Rust: `polyspec_orm::Key`; TypeScript: `Key`; Python: `Key` (`int | str | bool | bytes | datetime.datetime`). Python `Collection.keys()`는 지원하는 각 키의 타입을 보존하고 이 키 타입에 속하지 않는 값은 거부한다.
+- **INT-11** `Key` — Go: `orm.Key`; PHP: `int|string|bool|Bytes|DateTimeInterface`; Rust: `polyspec_orm::Key`; TypeScript: `Key`; Python: `Key` (`int | str | bool | bytes | datetime.datetime`). Python `Collection.keys()`는 지원하는 각 키의 타입을 보존하고 이 키 타입에 속하지 않는 값은 거부한다. `datetime` column의 key는 구성 요소가 하나든 여럿이든 모든 구현에서 그 순간의 date and time이며 column의 text가 아니다. TypeScript `Date`는 millisecond까지만 담으므로 그 key는 값이 millisecond로 자른 순간이고 `toJSON()`이 소수부의 끝 0이 없는 UTC RFC 3339로 순간 전체를 돌려주는 `Date`다. 한 millisecond 안의 두 microsecond는 다른 key이며, 그런 key는 `keys()`가 돌려준 key로 찾는다. 호출자가 만든 `Date`는 자기 millisecond의 key다.
 
 null, 빈 목록, 누락 필드, 기본값은 서로 다른 상태다. 직렬화는 코덱 명세가 요구하는 논리 타입과 필드 순서를 유지한다.
 
