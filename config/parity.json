@@ -8292,6 +8292,8 @@
       "id": "catalog_connection-postgres",
       "kind": "suite",
       "requirements": [
+        "CFG-28",
+        "CFG-41",
         "INT-8",
         "INT-4",
         "COD-31",
@@ -13742,25 +13744,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
           "id": "dsn_connection_postgres::statement_timeout_through_a_pooler"
-        }
-      ]
-    },
-    {
-      "id": "connection-catalog-session-through-a-pooler",
-      "kind": "feature",
-      "requirements": [
-        "CFG-41"
-      ],
-      "owner": {
-        "kind": "coverage-part",
-        "feature": "dsn_connection",
-        "part": "owner/python"
-      },
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/connection_config.py",
-          "id": "test_catalog_session_after_a_schema_change_through_a_pooler"
         }
       ]
     },
