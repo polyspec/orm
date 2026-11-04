@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a52329d076a28087109763c45dc53cdc4f3c6e6e8e20c0211eca832319be8dff -->
+<!-- source-sha256: 842633bbf88db0833db80d3b4b3907dfd7a44767fa1907c735c33101776f930d -->
 # 변경 이력
 
 ## Unreleased
 
+- catalog insert는 모든 경로와 runtime에서 저장 값이 다른 열의 이름을 적고, Rust insert의 선언 용량 거부도 열 이름을 적는다. 행을 바꾸는 PostgreSQL AFTER trigger는 recipe case `row_insert_that_an_after_trigger_rewrites`가 확인한다.
 - Fixes: 거부된 권한 대상, 잘못된 schema 이름, 선언 용량, 달라진 저장 값의 문구가 Go, TypeScript, Python, Rust와 두 PHP mode에서 하나가 됐다. markdown DSN은 모든 runtime에서 token을 읽기 전에 다른 parameter를 거부하고, TypeScript catalog는 삽입한 행을 다시 읽어 삽입 뒤 trigger가 고친 값을 `ROW_WRITE_MISMATCH`로 보고한다.
 - 시험: Go `TestUnknownStyleRejectsSQLNull`과 TypeScript의 빈 ordered_json text, 거부되는 YAML 형식은 codec recipe의 case `stage_order_and_empty_cells`와 `decode_errors`이므로 그 native를 없앴고, TypeScript 시험의 나머지는 값의 JavaScript class를 확인한다.
 - Tests: `packages/php-ext/tests`의 native 시험을 FCV-2로 하나씩 판정한다: recipe나 `DsnTest`가 지키는 시험 28개를 없애고 `dsn_reject`, `dsn_reject_parameters`, `aes_rotation`, `catalog_connection`에 case를, `schema_install`, `utils`에 step을 더했다. 남는 시험은 하나의 이유를 함께 쓰지 않고 그 시험에 참인 이유를 적는다.

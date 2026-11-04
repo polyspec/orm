@@ -542,7 +542,7 @@ final class Catalog
                                 $changes,
                                 Code::ROW_IDENTITY_AMBIGUOUS,
                                 'expected exactly one inserted locator row',
-                                'locator values differ from requested values'
+                                $descriptor
                             );
                             $keys = array_map(static fn (int $index): mixed => $returnedRow[$index], $keyIndexes);
                         } else {
@@ -603,7 +603,7 @@ final class Catalog
                                 $changes,
                                 Code::ROW_WRITE_MISMATCH,
                                 'expected one generated-key row',
-                                'inserted values differ'
+                                $descriptor
                             );
                             $keys = array_map(static fn (int $index): mixed => $returnedRow[$index], $keyIndexes);
                         }
@@ -1494,14 +1494,17 @@ final class Catalog
         array $changes,
         string $countCode,
         string $countMessage,
-        string $valueMessage
+        CatalogTableMetadata $descriptor
     ): array {
         if (count($rows) !== 1) {
             throw new OrmException($countCode, $countMessage);
         }
         foreach ($changes as [$index, $value]) {
             if (self::cellKey($rows[0][$index]) !== self::cellKey($value)) {
-                throw new OrmException(Code::ROW_WRITE_MISMATCH, $valueMessage);
+                throw new OrmException(
+                    Code::ROW_WRITE_MISMATCH,
+                    'stored inserted values of "' . $descriptor->columns[$index]->name . '" differ'
+                );
             }
         }
         return $rows[0];

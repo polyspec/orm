@@ -3441,7 +3441,7 @@ static bool cat_same_cell(zval *a, zval *b)
 }
 
 /* Verifies the submitted cells against a row returned for a Catalog insert. */
-static bool cat_check_inserted_values(zval *metadata, zval *row, zval *changes, bool name_mismatch)
+static bool cat_check_inserted_values(zval *metadata, zval *row, zval *changes)
 {
     zval rv_cols, *columns = catalog_prop(metadata, "columns", &rv_cols);
     zval *pair;
@@ -3450,12 +3450,8 @@ static bool cat_check_inserted_values(zval *metadata, zval *row, zval *changes, 
         zval *value = zend_hash_index_find(Z_ARRVAL_P(pair), 1);
         zval *stored = zend_hash_index_find(Z_ARRVAL_P(row), (zend_ulong)index);
         if (!cat_same_cell(stored, value)) {
-            if (name_mismatch) {
-                zval nrv, *name = catalog_prop(zend_hash_index_find(Z_ARRVAL_P(columns), (zend_ulong)index), "name", &nrv);
-                db_throw_orm("ROW_WRITE_MISMATCH", "stored inserted values of \"%s\" differ", Z_STRVAL_P(name));
-            } else {
-                db_throw_orm("ROW_WRITE_MISMATCH", "inserted values differ");
-            }
+            zval nrv, *name = catalog_prop(zend_hash_index_find(Z_ARRVAL_P(columns), (zend_ulong)index), "name", &nrv);
+            db_throw_orm("ROW_WRITE_MISMATCH", "stored inserted values of \"%s\" differ", Z_STRVAL_P(name));
             return false;
         }
     } ZEND_HASH_FOREACH_END();
@@ -3863,7 +3859,7 @@ static bool cat_mysql_inserted_keys(zval *db, zval *pdo, zval *metadata, zval *c
         }
     }
     zval *row = zend_hash_index_find(Z_ARRVAL(rows), 0);
-    if (!cat_check_inserted_values(metadata, row, changes, false)) {
+    if (!cat_check_inserted_values(metadata, row, changes)) {
         zval_ptr_dtor(&rows);
         return false;
     }
@@ -4092,7 +4088,7 @@ static bool cat_insert_body(zval *db, const char *dialect, zval *pdo, zval *decl
         return false;
     }
     zval *first_row = zend_hash_index_find(Z_ARRVAL(after), 0);
-    if (!cat_check_inserted_values(&descriptor, first_row, changes, true)) {
+    if (!cat_check_inserted_values(&descriptor, first_row, changes)) {
         zval_ptr_dtor(&after);
         zval_ptr_dtor(&descriptor);
         return false;

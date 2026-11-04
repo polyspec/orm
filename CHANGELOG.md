@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- A catalog insert names the column whose stored value differs, and the declared capacity refusal of a Rust insert names its column, in every path and runtime; a PostgreSQL AFTER trigger that rewrites the row is the recipe case `row_insert_that_an_after_trigger_rewrites`.
 - Fixes: a refused privilege target, an invalid schema name, a declared capacity and a stored value that differs now have one text in Go, TypeScript, Python, Rust and the two PHP modes; a markdown DSN refuses another parameter before it reads the token in every runtime, and the TypeScript catalog reads an inserted row again, so a trigger that rewrites it after the insert is reported as `ROW_WRITE_MISMATCH`.
 - Tests: the Go `TestUnknownStyleRejectsSQLNull` and the TypeScript empty ordered_json text and refused YAML forms are the codec recipe's cases `stage_order_and_empty_cells` and `decode_errors`, so those natives go; the rest of the TypeScript test holds the JavaScript class of the value.
 - Tests: the native tests of `packages/php-ext/tests` are judged one by one under FCV-2: 28 tests are gone, since a recipe or `DsnTest` holds them, with new cases in `dsn_reject`, `dsn_reject_parameters`, `aes_rotation` and `catalog_connection`, and steps in `schema_install` and `utils`; each test that stays names a reason true of that test, in place of one reason for every test.

@@ -17,7 +17,7 @@ pub(super) fn validate(metadata: &TableMetadata, values: &[(String, P)], dialect
             return Err("ROW_INSERT_INVALID: invalid column assignment".into());
         }
         if exceeds_declared_capacity(&column.native_type, &cell(value)).map_err(|_| "ROW_INSERT_INVALID: invalid declared capacity".to_owned())? {
-            return Err("ROW_INSERT_INVALID: value exceeds the declared capacity".into());
+            return Err(format!("ROW_INSERT_INVALID: value exceeds the declared capacity of column \"{name}\""));
         }
         let size = match value {
             P::S(v) | P::Decimal(v) | P::Date(v) | P::Time(v) | P::DateTime(v) => v.len(),

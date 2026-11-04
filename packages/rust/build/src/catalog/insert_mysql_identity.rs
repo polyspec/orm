@@ -55,7 +55,7 @@ pub(super) async fn execute(connection: &mut Conn, metadata: &TableMetadata, sql
     for (name, value) in values {
         let index = metadata.columns.iter().position(|column| column.name == *name).unwrap();
         if result.rows[0][index] != cell(value) {
-            return Err("ROW_WRITE_MISMATCH: inserted values differ".into());
+            return Err(format!("ROW_WRITE_MISMATCH: stored inserted values of \"{name}\" differ"));
         }
     }
     row_snapshot::key_params(metadata, &result.rows[0])

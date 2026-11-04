@@ -19359,6 +19359,72 @@
       ]
     },
     {
+      "id": "row_insert_that_an_after_trigger_rewrites",
+      "requirements": [
+        "INT-110"
+      ],
+      "only": [
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "reason": "an automatic key, and a value that a trigger will change",
+          "sql": "CREATE TABLE rewritten_after (id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, payload VARCHAR(20) NOT NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the function of the trigger, which changes the stored row after the insert has formed the row that RETURNING reports",
+          "sql": "CREATE FUNCTION rewritten_after_change() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN UPDATE rewritten_after SET payload = 'rewritten' WHERE id = NEW.id; RETURN NULL; END$$"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a trigger that changes the value after the insert",
+          "sql": "CREATE TRIGGER rewritten_after_change AFTER INSERT ON rewritten_after FOR EACH ROW EXECUTE FUNCTION rewritten_after_change()"
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "rewritten_after",
+          "as": "rewritten"
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "rewritten"
+          },
+          "values": [
+            [
+              "payload",
+              {
+                "text": "submitted"
+              }
+            ]
+          ],
+          "expect": {
+            "postgres": {
+              "error": "ROW_WRITE_MISMATCH",
+              "message": "ROW_WRITE_MISMATCH: stored inserted values of \"payload\" differ"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT COUNT(*) FROM rewritten_after",
+          "expect": {
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "row_insert_that_a_trigger_rewrites",
       "requirements": [
         "INT-110"
