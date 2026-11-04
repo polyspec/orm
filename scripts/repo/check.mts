@@ -14,12 +14,13 @@ import { scriptPathErrors, toolingLanguageErrors } from './scripts.mts';
 import { kitCopies, kitOwnedPaths } from './kit-copies.mts';
 import { segments } from './shell.mts';
 import { detachedGroupErrors, timeFailureErrors } from './sources.mts';
+import { nativeBoundUnitErrors } from './parity-units.mts';
 import { callerEnvironmentErrors, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, scriptCommands, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, generatedCodesErrors, phpExtensionBuildErrors, typescriptHolderErrors, typescriptReaderErrors, phpunitModelErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, rustTestCaseErrors, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
 import { checkInputErrors } from '../features/owners.mts';
 import { COMPUTE, sections } from '../../tests/testcase.mts';
 import { declaredNeeds, readCheckInputs } from '../check/inputs.mts';
 import { readFeatures } from '../features/manifest.mts';
-import { readComposer, readPackage } from '../json/formats.mts';
+import { readComposer, readPackage, readParityConfig } from '../json/formats.mts';
 
 // The repository check covers one case: whether the CI workflow gives the database check's servers and variables through make orm-test-servers,
 // and whether the check and the workflow run on the one Node version declared in mise.toml.
@@ -204,9 +205,13 @@ failures.push(...goModulePathErrors(Object.fromEntries(tracked.filter(path => /(
 const composerRelease = /Composer version (\S+)/.exec(reported('composer', ['--version', '--no-ansi']))?.[1] ?? '';
 failures.push(...composerVersionErrors(text('mise.toml'), workflows, composerRelease));
 
+const parseSuite = (content: string): unknown => JSON.parse(content);
+// A shared behaviour is the cases of a recipe; a native test stays only for what FCV-2 states with its reason.
+failures.push(...nativeBoundUnitErrors(readParityConfig(join(root, 'config/parity.json')).units, text('docs/spec/feature-coverage.md'), file => parseSuite(text(file))));
+
 if (failures.length > 0) {
   console.error(failures.join('\n'));
-  console.error(`repository check: ${failures.length} CI server or toolchain version problems remain`);
+  console.error(`repository check: ${failures.length} problems remain`);
   process.exit(1);
 }
 console.log(`repository check: ${tracked.length} tracked paths, the CI server environment, Node ${process.versions.node} and rustc ${rustc} inspected`);
