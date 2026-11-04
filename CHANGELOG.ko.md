@@ -1,9 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 8ec65f7c5f16b8db47b2700c5680b760c880d923146fa269b07facd139122ef9 -->
+<!-- source-sha256: cbb4e5674aaa08d49036675d5d6c20c82ff8245030fc190ce7b23ca812e66b94 -->
 # 변경 이력
 
 ## Unreleased
 
+- Python은 실제 컬럼의 `new_<name>`을 다른 동적 runtime처럼 `CONFIG`로 거부하고(DSL-160), 그 거부는 여전히 `AttributeError`이므로 `hasattr`가 그대로 동작한다. 이 거부는 각 runtime의 native 테스트 대신 PHP, PHP extension, TypeScript, Python에서 recipe `dsl-dynamic`의 case `new_of_a_stored_column_is_refused_at_call_time`로 실행된다. 같은 이름의 두 번째 helper가 호출 대상을 가리고 있던 Python에서 recipe `dsl-dynamic`이 다시 실행된다. native로 남는 생성기와 schema 경계의 unit은 그 이유를 FCV-2에 적는다.
+- TypeScript와 Python 생성기는 child 없는 `join<L>With<R>`와 `leftJoin<L>With<R>` 호출을 scan에서 거부한다. 다른 생성기처럼 DSL-37의 인자 개수 규칙을 따른 것이다. PHP scan vector의 chain 이름은 PHP와 TypeScript scan을 비교하던 테스트 대신 모든 runtime에서 `generator` recipe의 `scanned-` case로 실행된다.
 - 기능 `transactions`의 owner는 그 parity 목록이 이미 적은 대로 recipe `utils`도 실행한다. INT-72의 lock 해제는 모든 runtime에서 `make feature-coverage-of/transactions`가 시험한다 (#T334-3-12-3-8)
 - 데이터베이스별 기능 coverage 칸을 검사와 CI matrix에서 없앤다. 그 recipe unit은 모두 `make parity-check`가 실행하고, 항목 하나의 기능 coverage는 `make feature-coverage-of/<id>`가 그대로 실행한다 (#T334-3-12)
 - 테스트: schema 변경 뒤 transaction pooler를 거치는 catalog session(CFG-28, CFG-41)은 Python 테스트 `connection_config` 대신 모든 runtime에서 `catalog_connection` recipe의 case `catalog_session_after_a_schema_change_through_a_pooler`가 새 op `sql.hold_statement`와 `catalog.reconnect`의 `dsn`으로 맡는다.

@@ -3,6 +3,7 @@
   "requirements": [
     "DSL-49",
     "DSL-50",
+    "DSL-160",
     "PLN-4"
   ],
   "cases": [
@@ -67,6 +68,19 @@
           "column": "slots.i64_value",
           "operator": "ne_method",
           "params": [{"nil": true}],
+          "expect": {"error": "CONFIG"}
+        }
+      ]
+    },
+    {
+      "id": "new_of_a_stored_column_is_refused_at_call_time",
+      "requirements": ["DSL-160"],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.i64_value",
+          "operator": "new_method",
+          "params": [{"int": "1"}],
           "expect": {"error": "CONFIG"}
         }
       ]

@@ -44,11 +44,9 @@ final class RuntimeModelTest extends TestCase
         return 'no error';
     }
 
-    // Requirements: DSL-160.
-    public function testNewOutputNameRejectsAStoredColumn(): void
+    public function testASetterReturnsItsModel(): void
     {
         $author = new Author();
-        self::assertSame('CONFIG', self::errorCode(fn () => $author->newName('alias')));
         self::assertSame($author, $author->setName('stored'));
     }
 
