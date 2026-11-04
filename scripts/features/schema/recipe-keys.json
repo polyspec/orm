@@ -3,6 +3,7 @@
   "file": [
     "$schema",
     "cases",
+    "cases_on",
     "fixture",
     "note",
     "requirements",

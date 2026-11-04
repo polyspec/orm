@@ -30,7 +30,7 @@ class ConformanceVerificationPostgresRecipeTest extends TestCase
         return 'contracts/fixtures/conformance_verification/conformance_verification.json';
     }
 
-    #[DataProvider('cases')]
+    #[DataProvider('casesOnPostgres')]
     public function testPostgres(string $id): void
     {
         $this->runCase($id, 'postgres');

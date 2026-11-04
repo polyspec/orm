@@ -106,6 +106,9 @@ final class Recipe
     /** @var array<string, array<string, array{string}>> the data sets of the recipes that have been read, by path */
     private static array $caseIds = [];
 
+    /** @var array<string, array<string, array<string, array{string}>>> the data sets of each database, by path */
+    private static array $databaseCaseIds = [];
+
     private static ?string $documentPath = null;
 
     /** @var array<string, mixed> the recipe at $documentPath: one recipe is held at a time */
@@ -122,11 +125,29 @@ final class Recipe
         if (!isset(self::$caseIds[$path])) {
             $recipe = RecipeKeys::decoded($path, (string) file_get_contents(dirname(__DIR__, 3) . '/' . $path));
             self::$caseIds[$path] = [];
+            self::$databaseCaseIds[$path] = ['mysql' => [], 'postgres' => [], 'sqlite' => []];
             foreach ($recipe['cases'] as $case) {
                 self::$caseIds[$path][$case['id']] = [$case['id']];
+                foreach (array_keys(self::$databaseCaseIds[$path]) as $database) {
+                    if (self::caseRuns($case, $database)) {
+                        self::$databaseCaseIds[$path][$database][$case['id']] = [$case['id']];
+                    }
+                }
             }
         }
         return self::$caseIds[$path];
+    }
+
+    /**
+     * The data sets of the cases of the recipe at path that run on database: a case that does not run there is no test of it,
+     * as in every other runtime (FCV-12).
+     *
+     * @return array<string, array{string}>
+     */
+    public static function casesOn(string $path, string $database): array
+    {
+        self::cases($path);
+        return self::$databaseCaseIds[$path][$database];
     }
 
     /** The recipe at path, relative to the repository root, decoded when a test of another recipe ran last. */

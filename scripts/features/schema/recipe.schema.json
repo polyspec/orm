@@ -33,6 +33,17 @@
     "seed": {
       "$ref": "#/$defs/seed"
     },
+    "cases_on": {
+      "description": "The case ids that each database runs, for the parity tool (FCV-12); scripts/features/recipe-cases.mts writes it from the cases.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mysql", "postgres", "sqlite"],
+      "properties": {
+        "mysql": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "postgres": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "sqlite": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+      }
+    },
     "cases": {
       "type": "array",
       "minItems": 1,

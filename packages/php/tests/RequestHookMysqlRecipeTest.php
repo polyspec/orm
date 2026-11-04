@@ -26,7 +26,7 @@ class RequestHookMysqlRecipeTest extends TestCase
         return 'contracts/fixtures/request_hook/request_hook.json';
     }
 
-    #[DataProvider('cases')]
+    #[DataProvider('casesOnMysql')]
     public function testMysql(string $id): void
     {
         $this->runCase($id, 'mysql');

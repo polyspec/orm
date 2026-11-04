@@ -7260,5 +7260,58 @@
         }
       ]
     }
-  ]
+  ],
+  "cases_on": {
+    "mysql": [
+      "model_statements",
+      "transaction_reads_its_own_write",
+      "transaction_savepoint",
+      "transaction_rollback",
+      "savepoint_rollback",
+      "failed_statement",
+      "subscriber_error",
+      "subscriber_orm_error",
+      "unsubscribe",
+      "install",
+      "schema_set_several_fixture_first",
+      "schema_set_several_other_first",
+      "schema_set_unregistered",
+      "schema_set_edited_manifest",
+      "server_transactions_mysql"
+    ],
+    "postgres": [
+      "model_statements",
+      "transaction_reads_its_own_write",
+      "transaction_savepoint",
+      "transaction_rollback",
+      "savepoint_rollback",
+      "failed_statement",
+      "subscriber_error",
+      "subscriber_orm_error",
+      "unsubscribe",
+      "install",
+      "schema_set_several_fixture_first",
+      "schema_set_several_other_first",
+      "schema_set_unregistered",
+      "schema_set_edited_manifest",
+      "notify",
+      "server_transactions_postgres"
+    ],
+    "sqlite": [
+      "model_statements",
+      "transaction_reads_its_own_write",
+      "transaction_savepoint",
+      "transaction_rollback",
+      "savepoint_rollback",
+      "failed_statement",
+      "subscriber_error",
+      "subscriber_orm_error",
+      "unsubscribe",
+      "install",
+      "schema_set_several_fixture_first",
+      "schema_set_several_other_first",
+      "schema_set_unregistered",
+      "schema_set_edited_manifest"
+    ]
+  }
 }

@@ -3180,5 +3180,47 @@
     }
    ]
   }
- ]
+ ],
+  "cases_on": {
+    "mysql": [
+      "ordered_json_keeps_its_member_order_and_number_text",
+      "ordered_json_keeps_a_repeated_member_name",
+      "ordered_json_keeps_nested_member_order",
+      "codec_columns_round_trip",
+      "ip_with_embedded_whitespace_is_refused",
+      "stale_row_fails_the_optimistic_update_and_rollback_restores",
+      "creates_refuses_a_bad_batch_before_any_statement",
+      "creates_keeps_the_rows_in_order_across_batches",
+      "creates_rolls_back_every_batch_when_a_later_one_fails",
+      "ordered_json_keeps_its_text_in_the_model_json_output",
+      "creates_gives_generated_keys_in_row_order"
+    ],
+    "postgres": [
+      "ordered_json_keeps_its_member_order_and_number_text",
+      "ordered_json_keeps_a_repeated_member_name",
+      "ordered_json_keeps_nested_member_order",
+      "codec_columns_round_trip",
+      "ip_with_embedded_whitespace_is_refused",
+      "stale_row_fails_the_optimistic_update_and_rollback_restores",
+      "creates_refuses_a_bad_batch_before_any_statement",
+      "creates_keeps_the_rows_in_order_across_batches",
+      "creates_rolls_back_every_batch_when_a_later_one_fails",
+      "ordered_json_keeps_its_text_in_the_model_json_output",
+      "creates_gives_generated_keys_in_row_order"
+    ],
+    "sqlite": [
+      "ordered_json_keeps_its_member_order_and_number_text",
+      "ordered_json_keeps_a_repeated_member_name",
+      "ordered_json_keeps_nested_member_order",
+      "codec_columns_round_trip",
+      "ip_with_embedded_whitespace_is_refused",
+      "stale_row_fails_the_optimistic_update_and_rollback_restores",
+      "creates_refuses_a_bad_batch_before_any_statement",
+      "creates_over_the_sqlite_bind_limit_is_refused",
+      "creates_keeps_the_rows_in_order_across_batches",
+      "creates_rolls_back_every_batch_when_a_later_one_fails",
+      "ordered_json_keeps_its_text_in_the_model_json_output",
+      "creates_gives_generated_keys_in_row_order"
+    ]
+  }
 }

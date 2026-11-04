@@ -21,7 +21,7 @@ class AesRotationMysqlTest extends TestCase
         return 'contracts/fixtures/aes_rotation/aes_rotation.json';
     }
 
-    #[DataProvider('cases')]
+    #[DataProvider('casesOnMysql')]
     public function testMysql(string $id): void
     {
         $this->runCase($id, 'mysql');

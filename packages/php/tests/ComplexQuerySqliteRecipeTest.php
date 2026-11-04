@@ -20,7 +20,7 @@ class ComplexQuerySqliteRecipeTest extends TestCase
         return 'contracts/fixtures/complex_query/complex_query.json';
     }
 
-    #[DataProvider('cases')]
+    #[DataProvider('casesOnSqlite')]
     public function testSqlite(string $id): void
     {
         $this->runCase($id, 'sqlite');

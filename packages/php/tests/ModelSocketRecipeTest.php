@@ -21,7 +21,7 @@ class ModelSocketRecipeTest extends TestCase
         return 'contracts/fixtures/model_socket/model_socket.json';
     }
 
-    #[DataProvider('cases')]
+    #[DataProvider('casesOnMysql')]
     public function testMysql(string $id): void
     {
         $this->runCase($id, 'mysql');

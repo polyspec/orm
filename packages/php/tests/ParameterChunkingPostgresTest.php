@@ -20,7 +20,7 @@ class ParameterChunkingPostgresTest extends TestCase
         return 'contracts/fixtures/parameter_chunking/parameter_chunking.json';
     }
 
-    #[DataProvider('cases')]
+    #[DataProvider('casesOnPostgres')]
     public function testPostgres(string $id): void
     {
         $this->runCase($id, 'postgres');

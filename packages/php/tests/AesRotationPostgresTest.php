@@ -21,7 +21,7 @@ class AesRotationPostgresTest extends TestCase
         return 'contracts/fixtures/aes_rotation/aes_rotation.json';
     }
 
-    #[DataProvider('cases')]
+    #[DataProvider('casesOnPostgres')]
     public function testPostgres(string $id): void
     {
         $this->runCase($id, 'postgres');

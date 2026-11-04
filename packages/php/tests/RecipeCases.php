@@ -21,6 +21,24 @@ trait RecipeCases
         return Recipe::cases(static::recipe());
     }
 
+    /** @return array<string, array{string}> */
+    public static function casesOnMysql(): array
+    {
+        return Recipe::casesOn(static::recipe(), 'mysql');
+    }
+
+    /** @return array<string, array{string}> */
+    public static function casesOnPostgres(): array
+    {
+        return Recipe::casesOn(static::recipe(), 'postgres');
+    }
+
+    /** @return array<string, array{string}> */
+    public static function casesOnSqlite(): array
+    {
+        return Recipe::casesOn(static::recipe(), 'sqlite');
+    }
+
     private function runCase(string $id, string $database): void
     {
         $this->addToAssertionCount(1);

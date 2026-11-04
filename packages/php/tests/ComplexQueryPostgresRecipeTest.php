@@ -20,7 +20,7 @@ class ComplexQueryPostgresRecipeTest extends TestCase
         return 'contracts/fixtures/complex_query/complex_query.json';
     }
 
-    #[DataProvider('cases')]
+    #[DataProvider('casesOnPostgres')]
     public function testPostgres(string $id): void
     {
         $this->runCase($id, 'postgres');

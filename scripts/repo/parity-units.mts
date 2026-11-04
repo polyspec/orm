@@ -29,6 +29,8 @@ const caseNames = (content: unknown, expression: string | undefined): unknown[] 
   if (expression === '$.cases[*].id') return list(field(content, 'cases')).map(item => field(item, 'id'));
   if (expression === '$.vectors[*].name') return list(field(content, 'vectors')).map(item => field(item, 'name'));
   if (expression === '$.cases[*]') return list(field(content, 'cases'));
+  const database = /^\$\.cases_on\.(mysql|postgres|sqlite)\[\*\]$/.exec(expression ?? '')?.[1];
+  if (database !== undefined) return list(field(field(content, 'cases_on'), database));
   const cases = field(content, 'cases');
   return expression === '$.cases.~' && isRecord(cases) ? Object.keys(cases) : [];
 };

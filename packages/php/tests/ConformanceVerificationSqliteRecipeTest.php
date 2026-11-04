@@ -30,7 +30,7 @@ class ConformanceVerificationSqliteRecipeTest extends TestCase
         return 'contracts/fixtures/conformance_verification/conformance_verification.json';
     }
 
-    #[DataProvider('cases')]
+    #[DataProvider('casesOnSqlite')]
     public function testSqlite(string $id): void
     {
         $this->runCase($id, 'sqlite');

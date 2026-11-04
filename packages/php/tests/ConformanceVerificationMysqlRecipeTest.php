@@ -30,7 +30,7 @@ class ConformanceVerificationMysqlRecipeTest extends TestCase
         return 'contracts/fixtures/conformance_verification/conformance_verification.json';
     }
 
-    #[DataProvider('cases')]
+    #[DataProvider('casesOnMysql')]
     public function testMysql(string $id): void
     {
         $this->runCase($id, 'mysql');

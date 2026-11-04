@@ -22,7 +22,7 @@ class CatalogConnectionSqliteOnlyRecipeTest extends TestCase
         return 'contracts/fixtures/catalog_connection/catalog_connection-sqlite-only.json';
     }
 
-    #[DataProvider('cases')]
+    #[DataProvider('casesOnSqlite')]
     public function testSqlite(string $id): void
     {
         $this->runCase($id, 'sqlite');

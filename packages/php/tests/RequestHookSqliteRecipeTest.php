@@ -26,7 +26,7 @@ class RequestHookSqliteRecipeTest extends TestCase
         return 'contracts/fixtures/request_hook/request_hook.json';
     }
 
-    #[DataProvider('cases')]
+    #[DataProvider('casesOnSqlite')]
     public function testSqlite(string $id): void
     {
         $this->runCase($id, 'sqlite');

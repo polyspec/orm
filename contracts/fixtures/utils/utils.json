@@ -1256,5 +1256,44 @@
         }
       ]
     }
-  ]
+  ],
+  "cases_on": {
+    "mysql": [
+      "local_value_is_readable_in_its_transaction",
+      "was_inserted_follows_the_savepoints",
+      "was_inserted_needs_a_transaction_and_valid_arguments",
+      "no_backend_waits_without_a_waiter",
+      "utils_hold_their_groups",
+      "session_state_ends_with_the_transaction",
+      "a_lock_released_early_is_reported_at_the_end_of_its_transaction",
+      "a_lock_needs_a_transaction",
+      "stats_report_the_pool_of_the_connection",
+      "table_privileges_on_postgres_only",
+      "table_privilege_targets_are_refused_before_any_statement"
+    ],
+    "postgres": [
+      "local_value_is_readable_in_its_transaction",
+      "was_inserted_follows_the_savepoints",
+      "was_inserted_needs_a_transaction_and_valid_arguments",
+      "no_backend_waits_without_a_waiter",
+      "utils_hold_their_groups",
+      "session_state_ends_with_the_transaction",
+      "a_lock_needs_a_transaction",
+      "stats_report_the_pool_of_the_connection",
+      "table_privileges_on_postgres_only",
+      "table_privilege_targets_are_refused_before_any_statement"
+    ],
+    "sqlite": [
+      "local_value_is_readable_in_its_transaction",
+      "was_inserted_follows_the_savepoints",
+      "was_inserted_needs_a_transaction_and_valid_arguments",
+      "no_backend_waits_without_a_waiter",
+      "utils_hold_their_groups",
+      "session_state_ends_with_the_transaction",
+      "a_lock_needs_a_transaction",
+      "stats_report_the_pool_of_the_connection",
+      "table_privileges_on_postgres_only",
+      "table_privilege_targets_are_refused_before_any_statement"
+    ]
+  }
 }

@@ -26,7 +26,7 @@ class RequestHookPostgresRecipeTest extends TestCase
         return 'contracts/fixtures/request_hook/request_hook.json';
     }
 
-    #[DataProvider('cases')]
+    #[DataProvider('casesOnPostgres')]
     public function testPostgres(string $id): void
     {
         $this->runCase($id, 'postgres');

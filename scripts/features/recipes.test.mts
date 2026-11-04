@@ -10,6 +10,7 @@ import { readParityConfig } from '../json/formats.mts';
 import { checkJson, readJsonFile, refusedPaths } from '../json/schema.mts';
 import { executeCoverage, languages, recipeCaseIds, selectFeatures, type Manifest } from './coverage.mts';
 import { readFeatures } from './manifest.mts';
+import { casesOn, withCasesOn } from './recipe-cases.mts';
 import { testDirectoryOf } from './packages.mts';
 
 const root = new URL('../..', import.meta.url).pathname;
@@ -308,4 +309,26 @@ caseTest('the recipe dbspec_introspect names every case of tests/dbspec/introspe
   const named = recipe.cases.flatMap((entry: { steps: { vectors?: string; case?: string }[] }) =>
     entry.steps.filter(step => step.vectors === '../../../tests/dbspec/introspect.json').map(step => step.case));
   assert.deepEqual([...named].sort(), [...vectors].sort());
+});
+
+// A runner registers a case with only on the databases it names, so a suite unit of a database selects exactly those cases: the parity tool
+// counts any other case as not executed (FCV-12). A recipe with such a case holds them in its key cases_on, as its cases state them.
+caseTest('a suite unit of a database selects the cases that database runs', COMPUTE, () => {
+  const problems: string[] = [];
+  const units = readParityConfig(resolve(root, 'config/parity.json')).units as { id: string; kind?: string; file?: string; cases?: string }[];
+  for (const unit of units) {
+    const database = DATABASES.find(name => unit.id.endsWith(`-${name}`));
+    if (unit.kind !== 'suite' || database === undefined || !unit.file?.startsWith('contracts/fixtures/')) continue;
+    const text = readFileSync(resolve(root, unit.file), 'utf8');
+    const { cases } = JSON.parse(text) as { cases: { id: string; only?: string[] }[] };
+    if (unit.cases === `$.cases_on.${database}[*]`) {
+      if (text !== withCasesOn(text)) problems.push(`${unit.file}: cases_on differs from its cases; run node scripts/features/recipe-cases.mts`);
+      continue;
+    }
+    for (const item of cases) if (item.only !== undefined && !item.only.includes(database)) problems.push(`${unit.id} selects ${item.id}, which runs only on ${item.only.join(', ')}`);
+  }
+  assert.deepEqual(problems.slice(0, 5), []);
+  const sample = '{\n  "cases": [\n    {"id": "a", "only": ["mysql"]},\n    {"id": "b"}\n  ]\n}\n';
+  assert.deepEqual(casesOn(JSON.parse(sample).cases), { mysql: ['a', 'b'], postgres: ['b'], sqlite: ['b'] });
+  assert.equal(withCasesOn(withCasesOn(sample)), withCasesOn(sample));
 });

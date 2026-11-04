@@ -20,7 +20,7 @@ class ParameterChunkingSqliteTest extends TestCase
         return 'contracts/fixtures/parameter_chunking/parameter_chunking.json';
     }
 
-    #[DataProvider('cases')]
+    #[DataProvider('casesOnSqlite')]
     public function testSqlite(string $id): void
     {
         $this->runCase($id, 'sqlite');

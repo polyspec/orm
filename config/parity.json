@@ -3076,7 +3076,7 @@
         "INT-75"
       ],
       "file": "contracts/fixtures/aes_rotation/aes_rotation.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.mysql[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -3128,7 +3128,7 @@
         "INT-75"
       ],
       "file": "contracts/fixtures/aes_rotation/aes_rotation.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.postgres[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -3180,7 +3180,7 @@
         "INT-75"
       ],
       "file": "contracts/fixtures/aes_rotation/aes_rotation.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.sqlite[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -7914,7 +7914,7 @@
         "FCV-14"
       ],
       "file": "contracts/fixtures/dsn_connection/dsn_connection.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.mysql[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -7964,7 +7964,7 @@
         "FCV-14"
       ],
       "file": "contracts/fixtures/dsn_connection/dsn_connection.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.postgres[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -8014,7 +8014,7 @@
         "FCV-14"
       ],
       "file": "contracts/fixtures/dsn_connection/dsn_connection.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.sqlite[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -8083,7 +8083,7 @@
         "INT-121"
       ],
       "file": "contracts/fixtures/catalog_connection/catalog_connection.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.mysql[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -8152,7 +8152,7 @@
         "CFG-35"
       ],
       "file": "contracts/fixtures/catalog_connection/catalog_connection.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.postgres[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -8219,7 +8219,7 @@
         "CFG-35"
       ],
       "file": "contracts/fixtures/catalog_connection/catalog_connection.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.sqlite[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -8429,7 +8429,7 @@
         "INT-149"
       ],
       "file": "contracts/fixtures/statement_events/statement_events.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.mysql[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -8484,7 +8484,7 @@
         "INT-149"
       ],
       "file": "contracts/fixtures/statement_events/statement_events.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.postgres[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -8538,7 +8538,7 @@
         "SCH-7"
       ],
       "file": "contracts/fixtures/statement_events/statement_events.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.sqlite[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -8586,7 +8586,7 @@
         "PLN-105"
       ],
       "file": "contracts/fixtures/dbspec_apply/dbspec_apply.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.mysql[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -8634,7 +8634,7 @@
         "PLN-105"
       ],
       "file": "contracts/fixtures/dbspec_apply/dbspec_apply.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.postgres[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -8682,7 +8682,7 @@
         "PLN-105"
       ],
       "file": "contracts/fixtures/dbspec_apply/dbspec_apply.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.sqlite[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -8728,7 +8728,7 @@
         "INT-59"
       ],
       "file": "contracts/fixtures/utils/utils.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.mysql[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -8774,7 +8774,7 @@
         "INT-59"
       ],
       "file": "contracts/fixtures/utils/utils.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.postgres[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -8820,7 +8820,7 @@
         "INT-59"
       ],
       "file": "contracts/fixtures/utils/utils.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.sqlite[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -9261,7 +9261,7 @@
         "CFG-5a"
       ],
       "file": "contracts/fixtures/connection_pool/connection_pool.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.mysql[*]",
       "owner": {
         "kind": "coverage-parts",
         "feature": "dsn_connection",
@@ -9300,7 +9300,7 @@
         "CFG-5a"
       ],
       "file": "contracts/fixtures/connection_pool/connection_pool.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.postgres[*]",
       "owner": {
         "kind": "coverage-parts",
         "feature": "dsn_connection",
@@ -9339,7 +9339,7 @@
         "CFG-5a"
       ],
       "file": "contracts/fixtures/connection_pool/connection_pool.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.sqlite[*]",
       "owner": {
         "kind": "coverage-parts",
         "feature": "dsn_connection",
@@ -9517,7 +9517,7 @@
         "INT-37"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.mysql[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -9695,7 +9695,7 @@
         "INT-37"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.postgres[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -9873,7 +9873,7 @@
         "INT-37"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.sqlite[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -10229,7 +10229,7 @@
         "FCV-14"
       ],
       "file": "contracts/fixtures/model_writes_chain/model_writes_chain.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.mysql[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -10285,7 +10285,7 @@
         "FCV-14"
       ],
       "file": "contracts/fixtures/model_writes_chain/model_writes_chain.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.postgres[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -10341,7 +10341,7 @@
         "FCV-14"
       ],
       "file": "contracts/fixtures/model_writes_chain/model_writes_chain.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.sqlite[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -40960,7 +40960,7 @@
         "FCV-2"
       ],
       "file": "contracts/fixtures/dbspec_introspect/dbspec_introspect.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.mysql[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -41034,7 +41034,7 @@
         "FCV-2"
       ],
       "file": "contracts/fixtures/dbspec_introspect/dbspec_introspect.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.postgres[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -41108,7 +41108,7 @@
         "FCV-2"
       ],
       "file": "contracts/fixtures/dbspec_introspect/dbspec_introspect.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.sqlite[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -41892,7 +41892,7 @@
         "FCV-14"
       ],
       "file": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.mysql[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -41979,7 +41979,7 @@
         "FCV-14"
       ],
       "file": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.postgres[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -42066,7 +42066,7 @@
         "FCV-14"
       ],
       "file": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.sqlite[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -42326,7 +42326,7 @@
         "PLN-44"
       ],
       "file": "contracts/fixtures/transactions/transactions.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.mysql[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -42387,7 +42387,7 @@
         "PLN-44"
       ],
       "file": "contracts/fixtures/transactions/transactions.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.postgres[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -42448,7 +42448,7 @@
         "PLN-44"
       ],
       "file": "contracts/fixtures/transactions/transactions.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.sqlite[*]",
       "bindings": [
         {
           "implementation": "go",

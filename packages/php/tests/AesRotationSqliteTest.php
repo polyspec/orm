@@ -23,7 +23,7 @@ class AesRotationSqliteTest extends TestCase
         return 'contracts/fixtures/aes_rotation/aes_rotation.json';
     }
 
-    #[DataProvider('cases')]
+    #[DataProvider('casesOnSqlite')]
     public function testSqlite(string $id): void
     {
         $this->runCase($id, 'sqlite');

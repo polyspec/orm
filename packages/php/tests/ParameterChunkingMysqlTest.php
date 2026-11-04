@@ -20,7 +20,7 @@ class ParameterChunkingMysqlTest extends TestCase
         return 'contracts/fixtures/parameter_chunking/parameter_chunking.json';
     }
 
-    #[DataProvider('cases')]
+    #[DataProvider('casesOnMysql')]
     public function testMysql(string $id): void
     {
         $this->runCase($id, 'mysql');

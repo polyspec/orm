@@ -20,7 +20,7 @@ class ComplexQueryMysqlRecipeTest extends TestCase
         return 'contracts/fixtures/complex_query/complex_query.json';
     }
 
-    #[DataProvider('cases')]
+    #[DataProvider('casesOnMysql')]
     public function testMysql(string $id): void
     {
         $this->runCase($id, 'mysql');
