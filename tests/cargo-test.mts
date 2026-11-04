@@ -18,9 +18,10 @@
 //            (Runs under the lease: builds, copies the test binary and dep-info to <run dir>, and records them in binaries.json.
 //             Also used by scripts/features/coverage.mts.)
 import { spawn, spawnSync } from 'node:child_process';
-import { constants, copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { runLong, stepLines, type Step } from './testcase.mts';
+import { cloneFile } from '../scripts/clone-file.mts';
 import { parseCargoMessage } from '../scripts/json/formats.mts';
 import { readJsonFile } from '../scripts/json/schema.mts';
 
@@ -131,12 +132,10 @@ async function main() {
     if (code !== 0) process.exit(code);
     const copies = executables(stdout).map((binary, index) => {
       const copy = join(runDir, `${index}-${basename(binary.executable)}`);
-      // The copy first tries a copy-on-write clone (APFS clonefile, Linux reflink) so it uses almost no disk. Where that does not work,
-      // on the file system it is usually a plain copy.
-      copyFileSync(binary.executable, copy, constants.COPYFILE_FICLONE);
+      cloneFile(binary.executable, copy);
       // Also copy the dep-info (<binary>.d) that rustc writes beside the binary. Feature coverage uses it to read the source files
       // that the binary was compiled from.
-      if (existsSync(`${binary.executable}.d`)) copyFileSync(`${binary.executable}.d`, `${copy}.d`, constants.COPYFILE_FICLONE);
+      if (existsSync(`${binary.executable}.d`)) cloneFile(`${binary.executable}.d`, `${copy}.d`);
       console.error(`cargo-test: ${binary.executable} copied to ${copy}`);
       return { ...binary, copy };
     });
@@ -145,7 +144,7 @@ async function main() {
     for (const [name, executable] of Object.entries(programs(stdout))) {
       mkdirSync(join(runDir, 'programs'), { recursive: true });
       const copy = join(runDir, 'programs', name);
-      copyFileSync(executable, copy, constants.COPYFILE_FICLONE);
+      cloneFile(executable, copy);
       console.error(`cargo-test: ${executable} copied to ${copy}`);
       programCopies[name] = copy;
     }

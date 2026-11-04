@@ -3,10 +3,11 @@
 import assert from 'node:assert/strict';
 import { executables, programEnvironment, programs, split } from '../../tests/cargo-test.mts';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statfsSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { cloneFile } from '../clone-file.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 
@@ -24,6 +25,24 @@ function stubCargo(base: string, names: readonly string[], script: (name: string
   // The fake lease runs the command after `--` as it is.
   writeFileSync(join(base, 'lease'), '#!/bin/sh\nwhile [ "$1" != -- ]; do shift; done\nshift\nexec "$@"\n', { mode: 0o755 });
 }
+
+// A run copies each of its test binaries, about 26 GB in all, so a copy that writes the bytes fills the disk. APFS has clones; node's COPYFILE_FICLONE does not make one there.
+caseTest('a copied file keeps its bytes and mode and writes almost nothing on APFS', COMPUTE, () => {
+  const base = mkdtempSync(join(tmpdir(), 'orm-clone-'));
+  try {
+    const size = 256 * 1024 * 1024;
+    const from = join(base, 'from');
+    writeFileSync(from, Buffer.alloc(size, 7), { mode: 0o755 });
+    const free = () => { const fs = statfsSync(base); return fs.bavail * fs.bsize; };
+    const before = free();
+    cloneFile(from, join(base, 'to'));
+    const used = before - free();
+    assert.equal(execFileSync('/usr/bin/cmp', [from, join(base, 'to')]).length, 0);
+    if (process.platform === 'darwin') assert.ok(used < size / 2, `the copy of ${size} bytes used ${used} bytes`);
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+});
 
 caseTest('cargo-test splits options, name filters and test binary arguments', COMPUTE, () => {
   assert.deepEqual(split(['cargo', '+1.98.1', 'test', '--locked', '--features', 'a,b', '--test', 'x', 'codec', '--', '--nocapture']),

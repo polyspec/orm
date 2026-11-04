@@ -6,8 +6,9 @@
 // directory's exclusive lease (tests/lease, CARGO_LEASED), so no other build comes in between the build and the copy.
 // <artifact> is a path relative to CARGO_TARGET_DIR (e.g. debug/examples/dbspec_apply).
 import { spawnSync } from 'node:child_process';
-import { constants, copyFileSync, mkdirSync, renameSync, statSync, chmodSync } from 'node:fs';
+import { mkdirSync, renameSync, statSync, chmodSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { cloneFile } from './clone-file.mts';
 
 const args = process.argv.slice(2);
 const separator = args.indexOf('--');
@@ -32,10 +33,9 @@ for (const artifact of artifacts) {
   const from = join(target, artifact);
   const to = join(run, artifact);
   mkdirSync(dirname(to), { recursive: true });
-  // The copy tries a copy-on-write clone first (APFS clonefile, Linux reflink), which writes almost nothing, and copies
-  // where the file system has none; it is written beside the copy and renamed, so a reader never sees half of it.
+  // The clone is written beside the copy and renamed, so a reader never sees half of it.
   const next = `${to}.next-${process.pid}`;
-  copyFileSync(from, next, constants.COPYFILE_FICLONE);
+  cloneFile(from, next);
   chmodSync(next, statSync(from).mode);
   renameSync(next, to);
   console.log(`cargo-build-copy: ${from} copied to ${to}`);

@@ -5099,6 +5099,10 @@
       "scope": "suite",
       "reason": "the CI setup step server-programs runs it to install the programs of the database servers on the Linux runner, so it changes the servers of every database target in CI"
     },
+    "scripts/clone-file.mts": {
+      "scope": "suite",
+      "reason": "tests/cargo-test.mts and scripts/cargo-build-copy.mts copy every Rust test binary and program through it"
+    },
     "scripts/free-ports.mts": {
       "scope": "suite",
       "reason": "make orm-test-servers chooses the ports of the database servers of this checkout through it, so it changes the servers of every database target"
