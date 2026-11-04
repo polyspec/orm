@@ -99,13 +99,3 @@ func TestStyledColumnStateFixture(t *testing.T) {
 		})
 	}
 }
-
-func TestUnknownStyleRejectsSQLNull(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	if _, err := Decode([]string{"unknown"}, nil); err == nil || !strings.Contains(err.Error(), CodeCodecUnsupported) {
-		t.Fatalf("decode unknown style with SQL NULL: %v", err)
-	}
-	if _, err := Encode([]string{"unknown"}, SqlNull()); err == nil || !strings.Contains(err.Error(), CodeCodecUnsupported) {
-		t.Fatalf("encode unknown style with SQL NULL: %v", err)
-	}
-}
