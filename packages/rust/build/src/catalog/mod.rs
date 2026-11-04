@@ -128,13 +128,23 @@ impl CatalogConnection {
         };
         let first = connection.query_result_bounded(sql, params, limits).await;
         match first {
-            Err(error) if stale_plan(&error) => {
+            // MySQL reports 22003, 22007 and 22008 for the values of a statement, and it names no statement of this kind (CFG-28).
+            Err(error) if matches!(connection, Conn::Postgres(_)) && stale_plan(&error) => {
                 // The statement may be one that cannot run in a transaction, so only a statement that failed this way, which has
-                // changed nothing, runs in one (CFG-28).
-                connection.exec("BEGIN", &[]).await.map_err(|error| error.to_string())?;
-                connection.forget_statements().await.map_err(|error| error.to_string())?;
-                connection.exec("DEALLOCATE ALL", &[]).await.map_err(|error| error.to_string())?;
-                match connection.query_result_bounded(sql, params, limits).await {
+                // changed nothing, runs in one. BEGIN fails only in a transaction of the caller, which the failure has aborted, and
+                // there the error of the statement reaches the caller (CFG-28).
+                if connection.exec("BEGIN", &[]).await.is_err() {
+                    return Err(error.to_string());
+                }
+                let forgotten = match connection.forget_statements().await {
+                    Ok(()) => connection.exec("DEALLOCATE ALL", &[]).await.map(|_| ()),
+                    Err(error) => Err(error),
+                };
+                let again = match forgotten {
+                    Ok(()) => connection.query_result_bounded(sql, params, limits).await,
+                    Err(error) => Err(error),
+                };
+                match again {
                     Ok(result) => {
                         connection.exec("COMMIT", &[]).await.map_err(|error| error.to_string())?;
                         Ok(result)

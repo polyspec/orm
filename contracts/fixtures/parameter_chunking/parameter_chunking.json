@@ -541,6 +541,103 @@
           }
         }
       ]
+    },
+    {
+      "id": "model_write_parameter_after_schema_change",
+      "requirements": [
+        "CFG-28"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "values": {
+            "seq": {
+              "int": "7"
+            },
+            "name": {
+              "text": "7"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "postgres"
+          ],
+          "reason": "changes the type of the column the write the model prepared assigns its parameter to",
+          "sql": "ALTER TABLE chunk_author ALTER COLUMN name TYPE INTEGER USING name::integer"
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "values": {
+            "seq": {
+              "int": "8"
+            },
+            "name": {
+              "text": "8"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the row that the write stored, read with no model",
+          "sql": "UPDATE chunk_author SET batch_no = 1 WHERE seq = 8 AND name = 8"
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "columns": [
+            "seq"
+          ],
+          "order": [
+            "seq"
+          ],
+          "where": {
+            "batch_no": {
+              "int": "1"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "8"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "8"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "8"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
     }
   ]
 }

@@ -1,10 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 01f5baf46e7329cf78a6ed4297e66c0798385d0272ef9902bd3b5c3f4a3c93f6 -->
+<!-- source-sha256: bd20fa5d9c51e66bd97b3e02d31a9e1e9ff370ced0f8de79af461d945a5452a0 -->
 # 변경 이력
 
 ## Unreleased
 
-- Rust catalog는 budget이 멈춘 모든 읽기의 socket을 닫습니다. table page와 describe도 포함되며, 전에는 `read_only_query`와 `read_only_grid_query`만 그랬습니다(T343-11).
+- Rust `CatalogConnection::query`는 schema 변경 뒤의 문을 PostgreSQL에서만 다시 실행합니다(INT-125a). MySQL에서 범위를 벗어난 값이 `DEALLOCATE ALL`의 구문 오류로 실패하고 transaction을 열어 두었으며, 호출자의 transaction 안에서는 이제 문의 오류가 호출자에게 전달됩니다. recipe case `model_write_parameter_after_schema_change`는 column 타입이 바뀐 뒤의 model 쓰기를 모든 runtime에서 확인합니다(T343-14).
+- Rust catalog는 budget이 멈춘 모든 읽기의 socket을 닫습니다. table page도 포함되며, 전에는 `read_only_query`와 `read_only_grid_query`만 그랬습니다(T343-11).
 - PHP와 PHP extension은 `max_user_connections`가 거부한 연결을 그 catalog의 닫기 뒤 2초 동안 다시 시도합니다(CFG-35). 다른 runtime과 같습니다. 연결 두 개가 허용된 사용자의 budget 중단이 앞선 kill의 자리가 아직 잡혀 있어 66초를 기다리는 일이 더는 없습니다(T343-13-1).
 - 인터페이스 검사기는 어떻게 끝나든 자기가 시작한 것을 함께 끝냅니다. 각 프로그램은 프로세스 그룹을 이끌고, 실행의 abort는 그 그룹을 죽이며, 검사기 파이프의 끝을 읽는 프로세스가 아직 도는 그룹을 죽이므로, 멈춘 extractor와 그 자식은 기한이 죽인 검사기보다 오래 살지 않습니다.
 - 테스트: relation의 parent key padding과 그 뒤 placeholder의 번호는 recipe `model_queries_chain`의 case이고, recipe가 담는 collection key의 native test는 사라졌으며, feature-coverage는 native로 남는 각 test를 이유와 함께 적는다.

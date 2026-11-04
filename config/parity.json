@@ -16258,6 +16258,25 @@
       }
     },
     {
+      "id": "rust-catalog-query-runs-a-stale-statement-again",
+      "kind": "feature",
+      "requirements": [
+        "INT-125a"
+      ],
+      "bindings": [
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/tool_columns.rs",
+          "id": "physical_catalog_query_runs_a_stale_statement_again_on_postgres_alone"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
+    },
+    {
       "id": "rust-bounded-query-rejects-ambiguous-multiple-result-sets",
       "kind": "feature",
       "requirements": [

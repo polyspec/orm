@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 3fcbc941fe5ceadec192a1f5db50c06513ce63d50f29b261960ccbe80168d3fe -->
+<!-- source-sha256: 396fb69575258cca2161ed2d9e83ef0e5bc387d86fdb8247acb4b0a4dafcf29a -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -579,6 +579,7 @@ prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메
 - **INT-123c** `polyspec-orm` Python package는 MySQL insert의 자동 키를 한 번의 `INSERT` 응답에서 얻고 그 키로 행을 읽으며, `MAX`와 `LAST_INSERT_ID()` 문장을 쓰지 않는다. 가짜 driver가 이를 관찰한다. FCV-2: MySQL에서 catalog의 문장을 보는 recipe step이 없기 때문이다.
 - **INT-124** `polyspec-orm-build` crate의 Rust `tool_db` 질의 결과는 열 메타데이터가 2048개를 넘거나, 열 이름과 네이티브 타입을 합한 크기가 64 KiB에 문장 길이(서버가 문장의 글을 열 이름에 담아 돌려줄 수 있다)를 더한 값을 넘으면 `TOOL_QUERY_COLUMNS`로 실패한다.
 - **INT-125** `polyspec-orm-build` crate의 Rust `tool_db` 범위가 있는 질의는 텍스트가 정확히 한 개의 statement로 나뉘지 않으면 `TOOL_QUERY_STATEMENT`로 실패한다.
+- **INT-125a** `polyspec-orm-build` crate의 `CatalogConnection::query`는 CFG-28의 코드로 실패한 문을 PostgreSQL에서 `DEALLOCATE ALL`로 여는 한 transaction 안에서 한 번 더 실행한다. 호출자의 transaction 안에서는 실패가 그 transaction을 중단시켰으므로 문의 오류가 호출자에게 전달된다. MySQL은 `22003`, `22007`, `22008`을 문의 값에 대해 보고하므로, MySQL에서는 그 오류가 호출자에게 전달되고 transaction이 열리지 않는다.
 - **INT-135** `polyspec-orm-build` crate의 Rust `tool_db` 질의 결과는 statement 열을 순서대로 네이티브 타입과 함께 나열하며 중복 이름을 포함하고, 행이 없어도 그 열을 유지한다.
 - **INT-136** 읽기 전용 grid 질의는 읽기만 하는 statement 하나를 받아들인다: `SELECT`, 또는 그 부분이 읽기만 하는 `WITH` 질의. 주석이나 문자열 리터럴 안의 `;`는 statement를 끝내지 않는다. 쓰기, commit, 프로시저 호출, `INTO` 선택, `FOR UPDATE` 잠금, 또는 뒤따르는 두 번째 statement가 있는 문장은 거부한다. statement의 길이, 중첩, 피연산자와 항의 개수는 거부 사유가 아니다.
 - **INT-137** `polyspec-orm-build` crate의 Rust 카탈로그 연결은 취소된 task가 열어 둔 읽기 전용 scope를 pool에 돌려보내지 않는다: connection을 폐기하고 다음 checkout은 쓸 수 있다.

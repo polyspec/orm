@@ -31,3 +31,52 @@ async fn check() {
     }
     std::fs::remove_file(path).unwrap();
 }
+
+#[tokio::test]
+// Requirements: INT-125a.
+async fn physical_catalog_query_runs_a_stale_statement_again_on_postgres_alone() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    tokio::time::timeout(std::time::Duration::from_secs(30), stale_statement()).await.expect("stale statement test deadline");
+}
+async fn stale_statement() {
+    let limits = QueryLimits::default;
+    let path = physical_fixture::sqlite_path("tool-stale-statement");
+
+    // A statement from before a schema change runs once more, and the connection is outside a transaction after it.
+    let (database, connection, _) = tool_db::open(&physical_fixture::dsn_for("postgres", &path)).await.unwrap();
+    let mut catalog = polyspec_orm_build::catalog::CatalogConnection::connect(&physical_fixture::dsn_for("postgres", &path)).await.unwrap();
+    catalog.query("DROP TABLE IF EXISTS catalog_stale_statement", &[], limits()).await.unwrap();
+    catalog.query("CREATE TABLE catalog_stale_statement (value INTEGER)", &[], limits()).await.unwrap();
+    catalog.query("INSERT INTO catalog_stale_statement (value) VALUES (7)", &[], limits()).await.unwrap();
+    let read = "SELECT value FROM catalog_stale_statement ORDER BY value";
+    assert_eq!(catalog.query(read, &[], limits()).await.unwrap().rows, vec![vec![Val::Int(7)]]);
+    catalog.query("ALTER TABLE catalog_stale_statement ALTER COLUMN value TYPE BIGINT", &[], limits()).await.unwrap();
+    assert_eq!(catalog.query(read, &[], limits()).await.unwrap().rows, vec![vec![Val::Int(7)]]);
+    catalog.query("INSERT INTO catalog_stale_statement (value) VALUES (8)", &[], limits()).await.unwrap();
+    catalog.query("ROLLBACK", &[], limits()).await.unwrap();
+    let kept = catalog.query(read, &[], limits()).await.unwrap().rows;
+    assert_eq!(kept, vec![vec![Val::Int(7)], vec![Val::Int(8)]], "the statement that ran again left its transaction open");
+
+    // Inside a transaction of the caller the failure has aborted it, so the error of the statement reaches the caller.
+    catalog.query("BEGIN", &[], limits()).await.unwrap();
+    catalog.query("ALTER TABLE catalog_stale_statement ALTER COLUMN value TYPE TEXT", &[], limits()).await.unwrap();
+    let error = catalog.query(read, &[], limits()).await.unwrap_err();
+    assert!(error.contains("cached plan must not change result type"), "{error}");
+    catalog.query("ROLLBACK", &[], limits()).await.unwrap();
+    catalog.query("DROP TABLE catalog_stale_statement", &[], limits()).await.unwrap();
+    catalog.close().await;
+    physical_fixture::finish_physical_dialect(database, connection, "postgres", "passed").await;
+
+    // MySQL reports the same codes for the values of a statement: that error reaches the caller, and no transaction opens.
+    let (database, connection, _) = tool_db::open(&physical_fixture::dsn_for("mysql", &path)).await.unwrap();
+    let mut catalog = polyspec_orm_build::catalog::CatalogConnection::connect(&physical_fixture::dsn_for("mysql", &path)).await.unwrap();
+    catalog.query("DROP TABLE IF EXISTS catalog_stale_statement", &[], limits()).await.unwrap();
+    catalog.query("CREATE TABLE catalog_stale_statement (value TINYINT)", &[], limits()).await.unwrap();
+    let error = catalog.query("INSERT INTO catalog_stale_statement (value) VALUES (1000)", &[], limits()).await.unwrap_err();
+    assert!(error.contains("Out of range"), "{error}");
+    let open = catalog.query("SELECT @@in_transaction", &[], limits()).await.unwrap();
+    assert_eq!(open.rows, vec![vec![Val::Int(0)]], "a value error of MySQL opened a transaction");
+    catalog.query("DROP TABLE catalog_stale_statement", &[], limits()).await.unwrap();
+    catalog.close().await;
+    physical_fixture::finish_physical_dialect(database, connection, "mysql", "passed").await;
+}
