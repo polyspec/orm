@@ -38,7 +38,7 @@
       ],
       "args": [
         "-tags",
-        "physical,ormtest,markdown"
+        "ormtest"
       ],
       "symbols": {
         "extractor": "go",
@@ -768,11 +768,11 @@
         },
         {
           "glob": "packages/ts/tests/paginate-order.mjs",
-          "reason": "test: invokes the private paginate helper with a fake database to verify internal plan ordering and dispatch; public pagination behavior is covered by shared client cases"
+          "reason": "test: invokes the private paginate helper with a fake database to verify internal plan ordering and dispatch; public pagination is held by the page steps of the recipes conformance_verification and complex_query"
         },
         {
           "glob": "packages/ts/tests/dbspec-mermaid-errors.mjs",
-          "reason": "test: injects an unexpected error into the private Mermaid catalog builder and verifies the same error object escapes; the public invalid-name diagnostic is covered by dbspec-mermaid"
+          "reason": "test: injects an unexpected error into the private Mermaid catalog builder and verifies the same error object escapes; the public invalid-name diagnostic is the case catalog_build_failure_is_diagnostic of the unit dbspec-mermaid"
         },
         {
           "glob": "packages/ts/tests/mysql-test-options.test.mjs",
@@ -1306,7 +1306,7 @@
     }
   ],
   "suites": [
-    "contracts/fixtures/**/!(dbspec-set|composite_key_collision).json",
+    "contracts/fixtures/**/!(dbspec-set).json",
     "tests/codec/*.json",
     "tests/collection/collection.json",
     "tests/conformance/*.json",
@@ -2209,7 +2209,7 @@
           "bindings": [
             {
               "test": "scripts/features/coverage.test.mts",
-              "id": "only the go, cargo and php runners declare a symbols map"
+              "id": "only the go and php entries name a symbol"
             },
             {
               "test": "scripts/features/coverage.test.mts",
@@ -2218,14 +2218,14 @@
           ]
         },
         {
-          "id": "fcv-4-run-result-and-state-repeat-evidence",
+          "id": "fcv-4-run-result-evidence",
           "requirements": [
             "FCV-4"
           ],
           "bindings": [
             {
               "test": "scripts/features/coverage.test.mts",
-              "id": "checker reads physical database state around each native test run"
+              "id": "a run is the exit status of its entry and the lines it wrote"
             }
           ]
         },
@@ -2237,11 +2237,11 @@
           "bindings": [
             {
               "test": "scripts/features/coverage.test.mts",
-              "id": "missing owner, dependent, database, case, and repeat are RED"
+              "id": "missing owner, dependent, database, case, and a second run are RED"
             },
             {
               "test": "scripts/features/coverage.test.mts",
-              "id": "identity, result, state, and unknown report mutations are RED"
+              "id": "identity, result and unknown report mutations are RED"
             }
           ]
         },
@@ -25912,50 +25912,6 @@
       ]
     },
     {
-      "id": "coverage-interface-contract-interface-symbols",
-      "kind": "feature",
-      "requirements": [
-        "INT-17",
-        "INT-18",
-        "INT-19",
-        "INT-57",
-        "INT-61",
-        "INT-64"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_interface_contract_test.go",
-          "id": "TestCoverageInterfaceSymbols"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageInterfaceContractTest.php",
-          "id": "CoverageInterfaceContractTest::testInterfaceSymbols"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageInterfaceContractNativeTest.php",
-          "id": "CoverageInterfaceContractNativeTest::testInterfaceSymbols"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_interface_contract.py",
-          "id": "test_interface_symbols"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/coverage_interface_contract.rs",
-          "id": "coverage_interface_symbols"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_interface_contract.mjs",
-          "id": "interface_symbols"
-        }
-      ]
-    },
-    {
       "id": "coverage-composite-keys-native",
       "kind": "feature",
       "requirements": [
@@ -29336,7 +29292,7 @@
             "go",
             "test",
             "-tags",
-            "decimalphysical",
+            "ormtest",
             "-json",
             "-count=1",
             "-run",
@@ -29352,7 +29308,7 @@
             "go",
             "test",
             "-tags",
-            "decimalphysical",
+            "ormtest",
             "-json",
             "-count=1",
             "-run",
@@ -29368,7 +29324,7 @@
             "go",
             "test",
             "-tags",
-            "decimalphysical",
+            "ormtest",
             "-json",
             "-count=1",
             "-run",
@@ -40825,6 +40781,12 @@
       "id": "public-interface",
       "kind": "suite",
       "requirements": [
+        "INT-17",
+        "INT-18",
+        "INT-19",
+        "INT-57",
+        "INT-61",
+        "INT-64",
         "INT-74",
         "INT-88",
         "INT-89",

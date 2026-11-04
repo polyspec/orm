@@ -10,7 +10,7 @@ const kitRunTests = fileURLToPath(import.meta.resolve('@polyspec/kit/run-tests')
 caseTest('dispatches each decimal owner to its native command and rejects unknown runtimes', COMPUTE, () => {
   const extension = '/build/polyspec_orm.so';
   const cases = [
-    ['go', 'go', ['test', '-json']],
+    ['go', 'go', ['test', '-tags', 'ormtest', '-json']],
     ['php', 'php', ['vendor-php/bin/phpunit']],
     ['php-extension', process.execPath, [kitRunTests, 'phpunit']],
     ['rust', 'cargo', ['test', '--offline']],

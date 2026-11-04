@@ -278,6 +278,10 @@ final class Recipe
             self::markdownConnectStep($step, $database);
             return;
         }
+        if ($step['op'] === 'interface.symbols') {
+            self::interfaceSymbolsStep();
+            return;
+        }
         if ($step['op'] === 'keyring.versions') {
             self::keyringVersionsStep($step, $database);
             return;
@@ -1874,6 +1878,83 @@ final class Recipe
         Assert::assertSame($step['expect'][$database]['unsupported'], $got);
     }
 
+    /** Ends a hung interface check within the 300 s of a Large test, which reports the failure itself. */
+    private const INTERFACE_CHECK_DEADLINE = 280.0;
+
+    /**
+     * Runs one interface.symbols step (FCV-4): the interface check of this client from the repository root, and in the
+     * extension the reflection of every exported symbol (INT-17, INT-18, INT-19, INT-57, INT-61, INT-64).
+     */
+    private static function interfaceSymbolsStep(): void
+    {
+        $extension = getenv('ORM_PHP_MODE') === 'extension';
+        [$status, $stdout, $stderr] = coverageProcess(
+            ['node', 'tests/interfaces/check/main.mts', '-language', $extension ? 'php-extension' : 'php'],
+            dirname(__DIR__, 3),
+            null,
+            self::INTERFACE_CHECK_DEADLINE
+        );
+        Assert::assertSame(0, $status, "interface check exited $status: $stderr$stdout");
+        if ($extension) {
+            self::extensionSymbolsAreInternal();
+        }
+    }
+
+    /** Every symbol that contracts/symbols/php-extension.json exports is registered and internal to polyspec_orm. */
+    private static function extensionSymbolsAreInternal(): void
+    {
+        $symbols = json_decode(
+            (string) file_get_contents(dirname(__DIR__, 3) . '/contracts/symbols/php-extension.json'),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+        foreach ($symbols as $key => $symbol) {
+            if (!$symbol['exported']) {
+                continue;
+            }
+            $name = substr($key, strpos($key, '::') + 2);
+            $memberAt = strrpos($name, '::');
+            if ($memberAt === false) {
+                $registered = class_exists($name, false)
+                    || interface_exists($name, false)
+                    || trait_exists($name, false);
+                Assert::assertTrue($registered, "$name was not registered by polyspec_orm");
+                $class = new \ReflectionClass($name);
+                Assert::assertTrue($class->isInternal(), "$name is not internal");
+                Assert::assertSame('polyspec_orm', $class->getExtensionName(), "$name is not owned by polyspec_orm");
+                continue;
+            }
+
+            $className = substr($name, 0, $memberAt);
+            $member = substr($name, $memberAt + 2);
+            $registered = class_exists($className, false)
+                || interface_exists($className, false)
+                || trait_exists($className, false);
+            Assert::assertTrue($registered, "$className was not registered by polyspec_orm");
+            $class = new \ReflectionClass($className);
+            if (str_starts_with($member, '$')) {
+                $property = $class->getProperty(substr($member, 1));
+                Assert::assertTrue($property->getDeclaringClass()->isInternal(), "$className::$member is not internal");
+                continue;
+            }
+            if (str_starts_with($symbol['signature'], 'public const')) {
+                $constant = $class->getReflectionConstant($member);
+                Assert::assertNotFalse($constant, "$className::$member is missing");
+                Assert::assertTrue($constant->getDeclaringClass()->isInternal(), "$className::$member is not internal");
+                continue;
+            }
+
+            $method = $class->getMethod($member);
+            Assert::assertTrue($method->isInternal(), "$className::$member is not internal");
+            Assert::assertSame(
+                'polyspec_orm',
+                $method->getExtensionName(),
+                "$className::$member is not owned by polyspec_orm"
+            );
+        }
+    }
+
     /**
      * Runs one keyring.versions step (FCV-4): the public constructor of the keyring, then its current version and its
      * versions (INT-74, INT-130), against the expect of database.
@@ -3272,10 +3353,15 @@ final class Recipe
                 // PDO on PostgreSQL parses a statement under a name of its own, unless it emulates.
                 $context['held'] = case_admin(self::connectDsn($s['dsn'], $context['database'], $context['dsn']));
                 $context['held']->setAttribute(\PDO::ATTR_EMULATE_PREPARES, false);
-                $held = $context['held']->prepare($s['sql']);
+                // PDO binds no value to a $1 of the text, so the placeholder is its ?, which PDO sends as $1: the same text.
+                $held = $context['held']->prepare(str_replace('$1', '?', $s['sql']));
                 $held->execute([$s['bind']]);
                 $context['held_statement'] = $held;
-                return [];
+                $row = $held->fetch(\PDO::FETCH_NUM);
+                if ($row === false) {
+                    Assert::fail('sql.hold_statement: the statement returned no row');
+                }
+                return ['value' => ['int' => (string) $row[0]]];
             case 'sql.release_connection':
                 unset($context['held_statement']);
                 unset($context['held']);

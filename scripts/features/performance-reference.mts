@@ -2,12 +2,14 @@ import { createHash } from 'node:crypto';
 import { lstat, mkdir, readFile, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { git, readRecord, recordPath, type CheckRecord } from '../check/record.mts';
+import { readParityConfig, type ParityConfig } from '../json/formats.mts';
+import { run } from './coverage.mts';
+import { runLong } from '../../tests/testcase.mts';
 
-/** Measurement records captured from the successful native children of performance_gate coverage. */
+/** Measurement records captured from the successful native children of make feature-performance-check. */
 export const PERFORMANCE_RUNTIMES = ['go', 'php', 'php-extension', 'typescript', 'python', 'rust'] as const;
 export const PERFORMANCE_DATABASES = ['mysql', 'postgres', 'sqlite'] as const;
 export const PERFORMANCE_WORKLOADS = ['pk', 'list100'] as const;
-const rustPerformanceTest = '/packages/rust/tests/tests/coverage_performance_gate.rs';
 
 export type PerformanceRuntime = typeof PERFORMANCE_RUNTIMES[number];
 export type PerformanceDatabase = typeof PERFORMANCE_DATABASES[number];
@@ -204,9 +206,97 @@ export async function recordPerformanceReferencesFromCheckRun(
   return declaration;
 }
 
+/** One native measurement of PERF-1: the process that runs a binding of hot-path-performance-measurement-<database>. */
+export type PerformanceCommand = { runtime: PerformanceRuntime; database: PerformanceDatabase; symbol: string; program: string; args: string[]; env?: Record<string, string> };
+
+/** The name a binding gives its test within its file: a PHP binding is `<class>::<method>`. */
+const bindingMethod = (id: string): string => id.slice(id.lastIndexOf(':') + 1);
+
+/**
+ * The native measurement of every binding of the units hot-path-performance-measurement-<database> (FCV-2: a time is no value
+ * that a recipe case can expect). Each command runs from the checkout root, and a test that runs none of its tests fails.
+ */
+export function performanceCommands(parity: Pick<ParityConfig, 'units'>, env: NodeJS.ProcessEnv): PerformanceCommand[] {
+  const commands: PerformanceCommand[] = [];
+  for (const database of PERFORMANCE_DATABASES) {
+    const unit = parity.units.find(entry => entry.id === `hot-path-performance-measurement-${database}`);
+    if (unit === undefined) throw new Error(`config/parity.json has no unit hot-path-performance-measurement-${database}`);
+    for (const runtime of PERFORMANCE_RUNTIMES) {
+      const binding = unit.bindings?.find(entry => entry.implementation === runtime);
+      if (binding?.test === undefined || binding.id === undefined) throw new Error(`${unit.id} has no ${runtime} test`);
+      const { test, id: symbol } = binding;
+      const entry = { runtime, database, symbol };
+      switch (runtime) {
+        case 'go':
+          commands.push({ ...entry, program: 'node', args: ['tests/go-test.mts', '-v', '-timeout', '0', './packages/go/bench', '-run', `^${symbol}$`, '-count=1'] });
+          break;
+        case 'php':
+          commands.push({ ...entry, program: 'php', args: ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', '--filter', `/::${bindingMethod(symbol)}$/`, test] });
+          break;
+        case 'php-extension': {
+          const extension = env.POLYSPEC_ORM_EXTENSION;
+          if (!extension) throw new Error('POLYSPEC_ORM_EXTENSION is unset; run this through make, which builds the extension and exports it');
+          commands.push({ ...entry, program: 'php', args: ['-d', `extension=${extension}`, 'vendor-php/bin/phpunit', '--configuration', 'packages/php-ext/phpunit.xml.dist', '--filter', `/::${bindingMethod(symbol)}$/`, test], env: { ORM_PHP_MODE: 'extension' } });
+          break;
+        }
+        case 'typescript':
+          commands.push({ ...entry, program: 'node', args: [test, symbol] });
+          break;
+        case 'python': {
+          const python = env.ORM_PYTHON;
+          if (!python) throw new Error('ORM_PYTHON is unset; run this through make, which exports it');
+          commands.push({ ...entry, program: python, args: ['-m', test.replace(/\.py$/, '').replaceAll('/', '.'), 'hot_path_gate'] });
+          break;
+        }
+        case 'rust':
+          // libtest holds what a passing test writes unless --nocapture lets it through.
+          commands.push({ ...entry, program: env.MAKE ?? 'make', args: ['-s', 'feature-rust-unit', 'FEATURE_CRATE=packages/rust/tests', 'FEATURE_CARGO_TARGET=--test coverage_performance_gate', `FEATURE_TEST=${symbol} --nocapture`] });
+          break;
+      }
+    }
+  }
+  return commands;
+}
+
+/**
+ * Measures every command of performanceCommands twice, one process at a time, so that no measurement overlaps another, and
+ * writes the raw record and the comparison with the fixed references. A command that fails is reported and the rest still run;
+ * the build inside a go or cargo run has no deadline, and each test keeps its own.
+ */
+async function measurePerformance(root: string): Promise<void> {
+  const commands = performanceCommands(readParityConfig(resolve(root, 'config/parity.json')), process.env);
+  const measurements: PerformanceMeasurement[] = [];
+  const failed: string[] = [];
+  for (const attempt of [1, 2] as const) {
+    for (const command of commands) {
+      const name = `performance_gate/${command.runtime}/${command.database} attempt ${attempt}`;
+      const passed = await runLong(name, async ({ step }) => {
+        const result = await run(command.program, command.args, root, null, { ...process.env, ...command.env }, step, 100_000_000);
+        if (result.error) throw new Error(result.error);
+        const found = performanceMeasurementsFromOutput(command.runtime, command.database, attempt, result.value ?? '', command.runtime === 'rust' ? command.symbol : undefined);
+        if (found.length === 0) throw new Error(`${command.symbol} reported no measurement`);
+        measurements.push(...found);
+        for (const measurement of found) step(`performance measurement ${JSON.stringify(measurement)}`);
+      });
+      if (!passed) failed.push(name);
+    }
+  }
+  if (failed.length) throw new Error(`performance measurements failed: ${failed.join(', ')}`);
+  const path = await writePerformanceMeasurementRecord(root, measurements);
+  process.stdout.write(`performance_gate raw observations: ${path}\n`);
+  const report = performanceReferenceReport(measurements, await readPerformanceReferenceDeclaration(root));
+  if (report.status === 'pending')
+    process.stdout.write(`performance_gate fixed references pending: ${report.missing.length} runtime/database/workload references\n`);
+  else {
+    for (const measurement of report.measurements) process.stdout.write(`${measurement}\n`);
+    for (const warning of report.warnings) process.stdout.write(`${warning}\n`);
+  }
+}
+
 async function recordPerformanceReferencesCli(arguments_: string[]): Promise<void> {
+  if (arguments_.length === 1 && arguments_[0] === 'measure') return measurePerformance(process.cwd());
   if (arguments_.length !== 2 || arguments_[0] !== 'record')
-    throw new Error('usage: from the ORM checkout root, run node scripts/features/performance-reference.mts record <check run id>');
+    throw new Error('usage: from the ORM checkout root, run node scripts/features/performance-reference.mts measure | record <check run id>');
   const declaration = await recordPerformanceReferencesFromCheckRun(process.cwd(), arguments_[1] ?? '');
   if (declaration.status !== 'recorded') throw new Error('performance reference recording did not produce a recorded declaration');
   process.stdout.write(`recorded 36 performance references from check run ${declaration.evidence.checkRunId}, commit ${declaration.evidence.sourceCommit}\n`);
@@ -309,10 +399,6 @@ export function performanceReferenceReport(
 const linePattern = /^PERF hot_path_gate (go|php|php-extension|typescript|python|rust) (mysql|postgres|sqlite) (pk|list100): native p50=(\d+\.\d)µs client p50=(\d+\.\d)µs ratio=(\d+\.\d{2}) samples=(\d+) cpu=(\d+\.\d)ms wall=(\d+\.\d)ms machine=(.+) reference=not-recorded$/;
 
 /** Rust's test harness captures successful eprintln diagnostics unless this exact owner requests --nocapture. */
-export function performanceDiagnosticArguments(testPath: string): string[] {
-  return testPath.endsWith(rustPerformanceTest) ? ['--nocapture'] : [];
-}
-
 function parseMeasurement(line: string, attempt: 1 | 2): PerformanceMeasurement | null {
   const match = linePattern.exec(line);
   if (!match) return null;

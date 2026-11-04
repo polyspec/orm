@@ -286,7 +286,7 @@ caseTest('a recipe under tests/ or contracts/fixtures/ is accepted and a recipe 
     }
     assert.deepEqual((await outcome(sampleOwner(entry, 'tests/sample/sample.json', ['first']), directory)).errors, []);
     assert.deepEqual((await outcome(sampleOwner(entry, 'contracts/fixtures/sample/sample.json', ['first']), directory)).errors, []);
-    assert.match((await outcome(sampleOwner(entry, 'docs/sample/sample.json', ['first']), directory)).text, /invalid recipe test command/);
+    assert.match((await outcome(sampleOwner(entry, 'docs/sample/sample.json', ['first']), directory)).text, /invalid test command/);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

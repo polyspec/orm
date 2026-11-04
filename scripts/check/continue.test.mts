@@ -10,25 +10,12 @@ import { fileURLToPath } from 'node:url';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
 import { environmentFile } from './databases.mts';
-import { readFeatures } from '../features/manifest.mts';
-import { COMMANDS as CLIENT_DB_COMMANDS, rustDatabaseCoverageSkipArguments } from '../client-db-test.mts';
+import { COMMANDS as CLIENT_DB_COMMANDS } from '../client-db-test.mts';
 
 const repo = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const kitRunTests = fileURLToPath(import.meta.resolve('@polyspec/kit/run-tests'));
 
-caseTest('Rust workspace dispatch skips only the database cases owned by the feature matrix', COMPUTE, () => {
-  const args = rustDatabaseCoverageSkipArguments(readFeatures(repo), repo);
-  assert.equal(args.length % 2, 0);
-  const skipped = new Set(args.filter((_, index) => index % 2 === 1));
-  // The catalog_connection, schema_install and statement_events recipes replaced their native coverage tests (T334-3-3-2, T334-3-4): the feature
-  // matrix owns their recipe binaries, one per database.
-  for (const database of ['mysql', 'postgres', 'sqlite']) {
-    assert.ok(skipped.has(`catalog_connection_${database}`));
-    assert.ok(skipped.has(`schema_install_${database}`));
-    assert.ok(skipped.has(`statement_events_${database}`));
-  }
-  assert.ok(!skipped.has('coverage_'));
-  assert.ok(!skipped.has('coverage_request_hook_'));
+caseTest('Rust workspace dispatch matches a skip by its full symbol', COMPUTE, () => {
   const rustCommand = CLIENT_DB_COMMANDS.find(command => command.includes('tests/cargo-test.mts workspace-tests'));
   assert.ok(rustCommand?.endsWith('--exact'), 'libtest skips must match the full declared symbol');
 });

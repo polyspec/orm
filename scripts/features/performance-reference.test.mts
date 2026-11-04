@@ -6,12 +6,13 @@ import { join } from 'node:path';
 import { caseTest, COMPUTE } from '../../tests/testcase.mts';
 import {
   PERFORMANCE_DATABASES, PERFORMANCE_RUNTIMES, PERFORMANCE_WORKLOADS,
-  performanceDiagnosticArguments, performanceMeasurementRecord, performanceMeasurementsFromOutput, performanceReferenceReport,
+  performanceCommands, performanceMeasurementRecord, performanceMeasurementsFromOutput, performanceReferenceReport,
   performanceReferenceDeclarationFromCheckRun, readPerformanceReferenceDeclaration, recordPerformanceReferencesFromCheckRun, validatePerformanceMeasurements,
   validatePerformanceReferenceDeclaration, writePerformanceMeasurementRecord,
   type PerformanceMeasurement,
 } from './performance-reference.mts';
 import type { CheckRecord } from '../check/record.mts';
+import { readParityConfig } from '../json/formats.mts';
 
 function line(runtime: string, database: string, workload: string, ratio = '1.23', machine = 'Linux arm64 CPU model'): string {
   return `PERF hot_path_gate ${runtime} ${database} ${workload}: native p50=10.0µs client p50=12.3µs ratio=${ratio} samples=1000 cpu=14.0ms wall=25.0ms machine=${machine} reference=not-recorded`;
@@ -71,9 +72,21 @@ caseTest('Rust libtest diagnostic prefixes retain the exact saved PK observation
     `test coverage_hot_path_gate_mysql ... ${saved}\n`, 'coverage_hot_path_gate_mysql'), /identity rust\/mysql differs from child rust\/postgres/);
 });
 
-caseTest('only the Rust performance owner disables libtest output capture', COMPUTE, () => {
-  assert.deepEqual(performanceDiagnosticArguments('/checkout/packages/rust/tests/tests/coverage_performance_gate.rs'), ['--nocapture']);
-  assert.deepEqual(performanceDiagnosticArguments('/checkout/packages/rust/tests/tests/coverage_model_writes.rs'), []);
+caseTest('a measurement runs every binding of the three hot-path units, naming its exact test', COMPUTE, () => {
+  const env = { POLYSPEC_ORM_EXTENSION: '/run/polyspec_orm.so', ORM_PYTHON: '/venv/python', MAKE: 'make' };
+  const parity = readParityConfig(new URL('../../config/parity.json', import.meta.url).pathname);
+  const commands = performanceCommands(parity, env);
+  assert.equal(commands.length, 18);
+  assert.equal(new Set(commands.map(command => `${command.runtime}/${command.database}`)).size, 18);
+  const on = (runtime: string, database: string) => commands.find(command => command.runtime === runtime && command.database === database);
+  assert.deepEqual(on('go', 'sqlite')?.args, ['tests/go-test.mts', '-v', '-timeout', '0', './packages/go/bench', '-run', '^TestPerformanceMeasurementSQLite$', '-count=1']);
+  assert.deepEqual(on('rust', 'mysql')?.args.at(-1), 'FEATURE_TEST=coverage_hot_path_gate_mysql --nocapture');
+  assert.deepEqual(on('typescript', 'postgres')?.args, ['packages/ts/tests/coverage_performance_gate_postgres.mjs', 'hot_path_gate']);
+  assert.deepEqual(on('python', 'mysql')?.args, ['-m', 'packages.python.tests.coverage_performance_gate_mysql', 'hot_path_gate']);
+  assert.ok(on('php', 'postgres')?.args.includes('/::testHotPathGate$/'));
+  assert.deepEqual(on('php-extension', 'mysql')?.env, { ORM_PHP_MODE: 'extension' });
+  assert.throws(() => performanceCommands(parity, { ORM_PYTHON: '/venv/python' }), /POLYSPEC_ORM_EXTENSION is unset/);
+  assert.throws(() => performanceCommands(parity, { POLYSPEC_ORM_EXTENSION: '/run/polyspec_orm.so' }), /ORM_PYTHON is unset/);
 });
 
 caseTest('reference recording requires the exact 72 observations and never promotes a threshold', COMPUTE, () => {

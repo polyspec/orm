@@ -51,6 +51,9 @@
       "replies",
       "token"
     ],
+    "interface.symbols": [
+      "op"
+    ],
     "keyring.versions": [
       "expect",
       "keyring",
@@ -758,6 +761,7 @@
       "user_from_database"
     ],
     "sql.hold_statement": [
+      "as",
       "bind",
       "dsn",
       "op",

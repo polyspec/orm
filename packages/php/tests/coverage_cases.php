@@ -40,9 +40,10 @@ function coverageJson(string $path, bool $associative = true): mixed
  *
  * @param list<string> $command
  * @param array<string, string>|null $env
+ * @param float|null $deadline seconds after which the child is killed and the call throws; null waits for the child
  * @return array{int, string, string}
  */
-function coverageProcess(array $command, string $cwd, ?array $env = null): array
+function coverageProcess(array $command, string $cwd, ?array $env = null, ?float $deadline = null): array
 {
     $process = proc_open($command, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, $cwd, $env);
     if (!is_resource($process)) {
@@ -63,13 +64,22 @@ function coverageProcess(array $command, string $cwd, ?array $env = null): array
         $open = [];
         proc_close($process);
     };
+    $ends = $deadline === null ? null : microtime(true) + $deadline;
     while ($open !== []) {
         $read = array_values($open);
         $write = null;
         $except = null;
-        if (stream_select($read, $write, $except, null) === false) {
+        $left = $ends === null ? null : max(0.0, $ends - microtime(true));
+        $seconds = $left === null ? null : (int) $left;
+        $micros = $left === null ? null : (int) (($left - (int) $left) * 1_000_000);
+        $ready = stream_select($read, $write, $except, $seconds, $micros);
+        if ($ready === false) {
             $abort();
             throw new RuntimeException('cannot read the output of ' . $command[0]);
+        }
+        if ($ready === 0) {
+            $abort();
+            throw new RuntimeException($command[0] . " did not end within $deadline s and was killed");
         }
         foreach ($open as $index => $pipe) {
             if (!in_array($pipe, $read, true)) {

@@ -1299,6 +1299,608 @@
       ]
     },
     {
+      "id": "transaction_reads_its_own_write",
+      "requirements": [
+        "INT-55",
+        "INT-77",
+        "INT-91"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "conn"
+        },
+        {
+          "op": "schema.install",
+          "connection": "conn"
+        },
+        {
+          "op": "events.subscribe",
+          "connection": "conn",
+          "as": "recorder"
+        },
+        {
+          "op": "transaction",
+          "connection": "conn",
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "conn",
+              "model": "EventProbe",
+              "values": {
+                "label": {
+                  "text": "a"
+                }
+              }
+            },
+            {
+              "op": "model.count",
+              "connection": "conn",
+              "model": "EventProbe",
+              "expect": {
+                "mysql": {
+                  "value": {
+                    "int": "1"
+                  }
+                },
+                "postgres": {
+                  "value": {
+                    "int": "1"
+                  }
+                },
+                "sqlite": {
+                  "value": {
+                    "int": "1"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "op": "events.captured",
+          "ref": "recorder",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "START TRANSACTION"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "begin"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "INSERT INTO `event_probe` (`label`) VALUES (?)"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": [
+                            {
+                              "text": "a"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "insert"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "event_probe"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT COUNT(*) FROM `event_probe` AS `a`"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "event_probe"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "COMMIT"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "commit"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "BEGIN"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "begin"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "INSERT INTO \"event_probe\" (\"label\") VALUES ($1) RETURNING \"seq\""
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": [
+                            {
+                              "text": "a"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "insert"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "event_probe"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT COUNT(*) FROM \"event_probe\" AS \"a\""
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "event_probe"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "COMMIT"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "commit"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "BEGIN IMMEDIATE"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "begin"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "INSERT INTO \"event_probe\" (\"label\") VALUES (?) RETURNING \"seq\""
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": [
+                            {
+                              "text": "a"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "insert"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "event_probe"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT COUNT(*) FROM \"event_probe\" AS \"a\""
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "event_probe"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "COMMIT"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "commit"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "transaction_savepoint",
       "requirements": [
         "INT-55",
