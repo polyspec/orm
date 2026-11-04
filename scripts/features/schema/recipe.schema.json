@@ -5292,6 +5292,15 @@
                       "$ref": "#/$defs/name"
                     }
                   },
+                  "where": {
+                    "type": "object",
+                    "propertyNames": {
+                      "$ref": "#/$defs/name"
+                    },
+                    "additionalProperties": {
+                      "$ref": "#/$defs/argument"
+                    }
+                  },
                   "connect": {
                     "description": "The related model is connected to the connection of the query; without it the related model takes the connection of its parent (INT-87).",
                     "type": "boolean"
