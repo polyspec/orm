@@ -36,11 +36,11 @@ func registerTexts(t *testing.T, names ...string) []string {
 }
 
 // onEachRegisterDatabase runs check on a connection to a new database of each kind, with the register fixture schema and the
-// schema of the install/note set.
+// schema of the schema_install/note set.
 func onEachRegisterDatabase(t *testing.T, check func(t *testing.T, db *DB, schema, other *Schema)) {
 	t.Helper()
 	schema := registerFixture(t)
-	note, diagnostics := runtimemodel.LoadDocumentSet(registerTexts(t, "install/note"), nil)
+	note, diagnostics := runtimemodel.LoadDocumentSet(registerTexts(t, "schema_install/note"), nil)
 	if len(diagnostics) > 0 {
 		t.Fatal(runtimemodel.DiagnosticsError(diagnostics))
 	}
