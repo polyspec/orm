@@ -148,6 +148,13 @@ func (c *CatalogConnection) begin(ctx context.Context, readOnly bool) (*catalogS
 			return nil, s.discard(mapDriverErrContext(err, ctx))
 		}
 	}
+	if readOnly && c.dialect == "mysql" {
+		// At REPEATABLE READ the information schema answers from the snapshot of the transaction, so a descriptor read after
+		// the rows could not differ from the one read before them (INT-121).
+		if _, err := conn.ExecContext(ctx, "SET TRANSACTION ISOLATION LEVEL READ COMMITTED"); err != nil {
+			return nil, s.discard(mapDriverErrContext(err, ctx))
+		}
+	}
 	if _, err := conn.ExecContext(ctx, catalogBegin(c.dialect, readOnly)); err != nil {
 		return nil, s.discard(mapDriverErrContext(err, ctx))
 	}
@@ -261,6 +268,11 @@ func catalogWrite[T any](ctx context.Context, c *CatalogConnection, fn func(s *c
 	s, err := c.begin(ctx, false)
 	if err != nil {
 		return zero, err
+	}
+	if c.dialect == "mysql" {
+		if err := s.mysqlPartialRevokesOff(); err != nil {
+			return zero, s.end(err)
+		}
 	}
 	value, err := fn(s)
 	if err != nil {

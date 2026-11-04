@@ -29,16 +29,6 @@ use RuntimeException;
 #[Small]
 final class CatalogConnectionSurfaceTest extends TestCase
 {
-    // Requirements: INT-119.
-    public function testNativePublicInsertVerifiesMysqlTriggerVisibility(): void
-    {
-        CatalogMysqlVisibilityCases::assertPublicInsert(
-            static function (CatalogMysqlVisibilityPdo $pdo): Catalog {
-                return self::catalogWith(new Db($pdo, 'mysql', new Config(), new DateTimeZone('UTC')), 'mysql');
-            },
-        );
-    }
-
     // Requirements: INT-103, INT-117.
     public function testNativeDescribedPostgresTemporalCellsHaveTheirDeclaredPrecision(): void
     {
@@ -97,26 +87,19 @@ final class CatalogConnectionSurfaceTest extends TestCase
     }
 
     // Requirements: INT-121.
-    public function testNativeTablePageRejectsPreparedColumnAndChangedDescriptor(): void
+    public function testNativeTablePagePreparedColumnsDifferFromTheDescriptor(): void
     {
-        foreach (
-            [
-                'prepared' => 'prepared columns differ from descriptor',
-                'descriptor' => 'descriptor changed during read',
-            ] as $scenario => $message
-        ) {
-            $pdo = new CatalogPageMutationPdo($scenario);
-            $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
-            $catalog = self::catalogWith($db, 'sqlite');
-            try {
-                $catalog->tablePage(['namespace' => 'main', 'name' => 'page_probe'], 1, 0);
-                self::fail("native table page accepted {$scenario} changes");
-            } catch (OrmException $error) {
-                self::assertSame(Code::TABLE_PAGE_METADATA_CHANGED, $error->code_);
-                self::assertSame('TABLE_PAGE_METADATA_CHANGED: ' . $message, $error->getMessage());
-            }
-            self::assertContains('ROLLBACK', $pdo->statements);
+        $pdo = new CatalogPageMutationPdo('prepared');
+        $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
+        $catalog = self::catalogWith($db, 'sqlite');
+        try {
+            $catalog->tablePage(['namespace' => 'main', 'name' => 'page_probe'], 1, 0);
+            self::fail('native table page accepted prepared columns that differ from the descriptor');
+        } catch (OrmException $error) {
+            self::assertSame(Code::TABLE_PAGE_METADATA_CHANGED, $error->code_);
+            self::assertSame('TABLE_PAGE_METADATA_CHANGED: prepared columns differ from descriptor', $error->getMessage());
         }
+        self::assertContains('ROLLBACK', $pdo->statements);
     }
 
     // Requirements: INT-109. The recipe case descriptor_column_name holds the code and the message in every runtime; the

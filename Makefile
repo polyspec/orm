@@ -457,7 +457,6 @@ dbspec-introspect-python-check: python-venv-check
 
 catalog-mutation-helper-python-check: python-venv-check
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_catalog_mutation_helper
-	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_catalog_mysql_visibility
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_catalog_described_temporal
 
 catalog-mutation-helper-ts-check: typescript-build
@@ -3227,7 +3226,7 @@ rust-closed-executor-check: lease-tool
 # Focused split-merge NULL boundary cases in each native client.
 
 go-catalog-session-error-check:
-	$(GO_TEST) ./packages/go/orm -run '^(TestCatalogSessionEndPreservesPrimaryAndRollbackCauses|TestCatalogSessionEndReportsRollbackCauseWithoutPrimary|TestCatalogInsertVerifiesMySQLTriggerVisibility)$$' -count=1
+	$(GO_TEST) ./packages/go/orm -run '^(TestCatalogSessionEndPreservesPrimaryAndRollbackCauses|TestCatalogSessionEndReportsRollbackCauseWithoutPrimary)$$' -count=1
 
 # catalog-described-temporal-go-check runs the unit tests of the dbspec text that a Go read of a described table returns for
 # its date, time and datetime cells (INT-103) and of the exact comparison of a catalog write (INT-117, INT-123).

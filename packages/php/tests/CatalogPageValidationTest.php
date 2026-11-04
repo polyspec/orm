@@ -43,14 +43,6 @@ final class CatalogPageValidationTest extends TestCase
         }
     }
 
-    // Requirements: INT-119.
-    public function testPublicInsertVerifiesMysqlTriggerVisibility(): void
-    {
-        CatalogMysqlVisibilityCases::assertPublicInsert(
-            static fn (CatalogMysqlVisibilityPdo $pdo): Catalog => self::catalogWithVisibilityPdo($pdo),
-        );
-    }
-
     // Requirements: INT-103, INT-117.
     public function testDescribedPostgresTemporalCellsHaveTheirDeclaredPrecision(): void
     {
@@ -65,42 +57,24 @@ final class CatalogPageValidationTest extends TestCase
         );
     }
 
-    // Requirements: INT-121.
-    public function testRejectsPreparedColumnAndDescriptorChanges(): void
+    // Requirements: INT-121. What no server can answer: a statement names its columns in the select list, and a server
+    // answers with those names.
+    public function testPreparedColumnsDifferFromTheDescriptor(): void
     {
-        $before = new CatalogTableMetadata(
+        $metadata = new CatalogTableMetadata(
             ['namespace' => 'main', 'name' => 'page_probe'],
             'table',
             [new CatalogColumn('id', 'INTEGER', false, false, false, null, false)],
             ['id'],
             true,
         );
-        $changed = new CatalogTableMetadata(
-            $before->table,
-            'table',
-            [new CatalogColumn('id', 'INTEGER', true, false, false, null, false)],
-            ['id'],
-            true,
-        );
-
-        $matches = new \ReflectionMethod(Catalog::class, 'samePageDescriptor');
-        self::assertFalse($matches->invoke(null, $changed, $before));
 
         $sameNames = new \ReflectionMethod(Catalog::class, 'sameNames');
         try {
-            $sameNames->invoke(null, ['renamed'], $before, Code::TABLE_PAGE_METADATA_CHANGED);
+            $sameNames->invoke(null, ['renamed'], $metadata, Code::TABLE_PAGE_METADATA_CHANGED);
             self::fail('prepared columns that differ from the descriptor were accepted');
         } catch (OrmException $error) {
             self::assertSame(Code::TABLE_PAGE_METADATA_CHANGED, $error->code_);
         }
-    }
-
-    private static function catalogWithVisibilityPdo(CatalogMysqlVisibilityPdo $pdo): Catalog
-    {
-        $db = new Db($pdo, 'mysql', new Config(), new \DateTimeZone('UTC'));
-        $catalog = (new \ReflectionClass(Catalog::class))->newInstanceWithoutConstructor();
-        (new \ReflectionProperty(Catalog::class, 'db'))->setValue($catalog, $db);
-        (new \ReflectionProperty(Catalog::class, 'dialect'))->setValue($catalog, 'mysql');
-        return $catalog;
     }
 }

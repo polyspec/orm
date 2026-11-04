@@ -1,10 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 878e780b27c7555c840a0f7a443fffbbabb6a9b6afe60fce14dbb058663b0db5 -->
+<!-- source-sha256: 25a459d2379f04aa63f39a516376d892c59f4b32e11d6eccbb12667c398b9c64 -->
 # 변경 이력
 
 ## Unreleased
 
 - 인터페이스 검사기는 어떻게 끝나든 자기가 시작한 것을 함께 끝냅니다. 각 프로그램은 프로세스 그룹을 이끌고, 실행의 abort는 그 그룹을 죽이며, 검사기 파이프의 끝을 읽는 프로세스가 아직 도는 그룹을 죽이므로, 멈춘 extractor와 그 자식은 기한이 죽인 검사기보다 오래 살지 않습니다.
+- 모든 runtime의 catalog가 읽는 동안 descriptor가 바뀐 표 페이지를 거부한다(INT-121). MySQL 읽기 범위가 이제 READ COMMITTED로 읽는다. REPEATABLE READ에서는 descriptor의 두 번째 읽기가 snapshot으로 답해 변경을 보지 못했다. 읽는 동안 사라진 열은 driver 오류가 아니라 `TABLE_PAGE_METADATA_CHANGED`다. partial revoke가 켜진 server의 행 변경은 무엇도 잠그기 전에 거부한다(INT-119). recipe `catalog_connection`이 이것들과 직접, role 전용 TRIGGER grant를 fake driver의 native 시험 대신 실제 server에서 잡는다. 시험 서버의 MySQL replica는 `partial_revokes`가 켜져 있다.
 - collection key는 PRT-35와 INT-11대로 모든 database에서 구성 요소의 선언 타입을 유지한다. `bool` column이 MySQL과 SQLite에서 정수로 읽혀 `(true, 1)`과 `(1, true)`의 key text가 같았고, composite key의 `datetime` 구성 요소가 TypeScript와 PHP, SQLite의 Python에서 text로 읽혔다. encoding은 이제 recipe `model_queries_chain`의 case `composite_key_*`이고, 어떤 key column도 담을 수 없는 형태는 `tests/collection/keys.json`에 남는다.
 - deadline에 이른 recipe `interface.symbols`는 모든 runtime에서 interface check를 죽이고 case를 실패시키므로, 멈춘 check가 남지 않는다.
 - 실패한 Rust integration case는 연결을 기다린 대상을 적는다: pool acquire timeout과, ProxySQL을 거칠 때는 hostgroup과 그 connect timeout이다.
@@ -317,6 +318,7 @@
 - text인 group row count는 정규 십진수여야 한다. Go와 Rust는 `00`과 `+1`을 받았고, PHP와 PHP extension은 INT-90대로 정수값 float count를 받는다.
 - audit foreign key를 양방향으로 검증한다. 레시피 `audit_triggers`는 부모가 없는 raw insert와 참조된 부모의 삭제를 모두 거부하는지 확인한다. 케이스 `soft_delete_statements`는 soft delete의 guard가 있는 update와 각 read의 filter를 확인한다. `sql.exec` step은 `refused`를, `events.captured`는 비교 mode `statements`를 받는다. (#T334-3-4-12)
 - PostgreSQL의 catalog session은 Go, Rust, TypeScript, Python에서 `BEGIN` 직후 `DEALLOCATE ALL`을 실행하므로, PgBouncer를 거쳐도 schema 변경이 문의 타입을 바꾼 뒤에 표를 읽고 쓴다(CFG-28).
+- 네이티브로 묶인 공유 parity unit은 `make repo-check`의 finding이다. FCV-2는 이를 recipe의 case로 만들며, FCV-2가 이유와 함께 네이티브로 남는다고 쓴 unit만 예외다
 - `make lint-ts`가 통과한다: Rust lane의 skip 목록은 JSON을 검증하는 reader로 읽고, `config/parity.json`은 binding의 `command`를 schema에 선언한다.
 - MySQL 시험 서버는 `'orm'@'127.0.0.1'` 옆에 `'orm'@'localhost'` 계정을 새 시작에서도 이미 실행 중인 서버에서도 가지므로, case DSN이 ProxySQL의 사용자 `orm`을 담을 때 `case-socket` DSN이 연결된다.
 - dbspec의 한계와 stress unit은 recipe `tests/dbspec/limits.json`의 case이며, 그 문서는 `dbspec.format`의 줄 형태 `repeat`와 `fill`로 쓴다. native 한계 시험과 round trip만 하던 stress 시험은 사라졌고 `make dbspec-stress-bench`의 parse 시간 측정은 남는다.

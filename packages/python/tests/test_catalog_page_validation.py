@@ -11,8 +11,9 @@ from . import testcase
 
 
 class CatalogPageValidationTest(unittest.TestCase):
-    # Requirements: INT-121.
-    def test_rejects_prepared_column_and_in_scope_descriptor_changes(self):
+    # Requirements: INT-121. What no server can answer: a statement names its columns in the select list, and a server
+    # answers with those names.
+    def test_refuses_prepared_columns_that_differ_from_the_descriptor(self):
         before = CatalogTableMetadata(
             table={"namespace": "main", "name": "page_probe"},
             kind="table",
@@ -20,31 +21,20 @@ class CatalogPageValidationTest(unittest.TestCase):
             primary_key=["id"],
             reliable_row_identity=True,
         )
-        changed = CatalogTableMetadata(
-            table=before.table,
-            kind="table",
-            columns=[CatalogColumn("id", "INTEGER", True, False)],
-            primary_key=["id"],
-            reliable_row_identity=True,
-        )
-        for after, names in ((before, ["renamed"]), (changed, ["id"])):
-            calls = 0
 
-            class FakeSession:
-                def describe(self, _table):
-                    nonlocal calls
-                    calls += 1
-                    return before if calls == 1 else after
+        class FakeSession:
+            def describe(self, _table):
+                return before
 
-                def run(self, _query, _params, _max_rows, _max_bytes, described=None):
-                    return type("Raw", (), {"names": names, "rows": []})()
+            def run(self, _query, _params, _max_rows, _max_bytes, described=None, keep=None):
+                return type("Raw", (), {"names": ["renamed"], "rows": []})()
 
-            catalog = object.__new__(CatalogConnection)
-            catalog._dialect = "sqlite"
-            catalog._read = lambda work: work(FakeSession())
-            with self.assertRaises(OrmError) as raised:
-                catalog.table_page(before.table, 1, 0)
-            self.assertEqual(raised.exception.code, codes.TABLE_PAGE_METADATA_CHANGED)
+        catalog = object.__new__(CatalogConnection)
+        catalog._dialect = "sqlite"
+        catalog._read = lambda work: work(FakeSession())
+        with self.assertRaises(OrmError) as raised:
+            catalog.table_page(before.table, 1, 0)
+        self.assertEqual(raised.exception.code, codes.TABLE_PAGE_METADATA_CHANGED)
 
     # Requirements: INT-111.
     def test_row_update_checks_declared_text_and_binary_capacity_before_writing(self):
