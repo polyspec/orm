@@ -8542,6 +8542,7 @@
         "packages/rust/build/tests/unit/tool_column_budgets.rs",
         "packages/rust/build/tests/unit/typed_bind_validation.rs",
         "packages/go/orm/recipe_catalog_connection_test.go",
+        "packages/go/orm/recipe_catalog_connection_sqlite_only_test.go",
         "packages/php/tests/CatalogConnectionRecipeTest.php",
         "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
         "packages/ts/tests/catalog_connection-mysql.test.mjs",
@@ -8704,7 +8705,8 @@
           "go": {
             "part": "packages/go/orm",
             "tests": [
-              "packages/go/orm/recipe_catalog_connection_test.go"
+              "packages/go/orm/recipe_catalog_connection_test.go",
+              "packages/go/orm/recipe_catalog_connection_sqlite_only_test.go"
             ],
             "inputs": [
               "contracts/fixtures/bench/bench.dbs",
@@ -8736,7 +8738,7 @@
                 },
                 {
                   "runner": "go",
-                  "test": "packages/go/orm/recipe_catalog_connection_test.go",
+                  "test": "packages/go/orm/recipe_catalog_connection_sqlite_only_test.go",
                   "recipe": "contracts/fixtures/catalog_connection/catalog_connection-sqlite-only.json",
                   "symbol": "TestRecipeCatalogConnectionSqliteOnly"
                 }

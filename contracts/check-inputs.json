@@ -1462,6 +1462,7 @@
       "inputs": [
         "contracts/fixtures/catalog_connection/**",
         "packages/go/orm/recipe_catalog_connection_test.go",
+        "packages/go/orm/recipe_catalog_connection_sqlite_only_test.go",
         "packages/go/internal/recipe/recipe.go",
         "packages/go/internal/recipe/database.go",
         "packages/go/orm/catalog*.go"

@@ -42269,7 +42269,7 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/recipe_catalog_connection_test.go",
+          "test": "packages/go/orm/recipe_catalog_connection_sqlite_only_test.go",
           "symbol": "TestRecipeCatalogConnectionSqliteOnly"
         },
         {
