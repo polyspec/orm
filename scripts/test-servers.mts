@@ -623,7 +623,7 @@ function tls(p: Paths, ports: Pick<Ports, 'mysql' | 'mysqlReplica'>): void {
     for (const [name, san] of [['mysql', MYSQL_TLS_SERVER_NAMES.mysql], ['mysql-replica', MYSQL_TLS_SERVER_NAMES.mysqlReplica]] as const) {
       openssl(['req', '-newkey', 'rsa:2048', '-nodes', '-subj', `/CN=orm test ${name}`, '-keyout', join(tmp, `${name}-key.pem`), '-out', join(tmp, `${name}.csr`)]);
       writeFileSync(join(tmp, `${name}.ext`), `subjectAltName=${san}\n`);
-      openssl(['x509', '-req', '-in', join(tmp, `${name}.csr`), '-CA', join(tmp, 'ca.pem'), '-CAkey', join(tmp, 'ca-key.pem'), '-CAcreateserial', '-days', '3650',
+      openssl(['x509', '-req', '-in', join(tmp, `${name}.csr`), '-CA', join(tmp, 'ca.pem'), '-CAkey', join(tmp, 'ca-key.pem'), '-CAcreateserial', '-CAserial', join(tmp, 'ca.srl'), '-days', '3650',
         '-extfile', join(tmp, `${name}.ext`), '-out', join(tmp, `${name}-cert.pem`)]);
     }
     closeSync(log);
@@ -648,7 +648,7 @@ function tls(p: Paths, ports: Pick<Ports, 'mysql' | 'mysqlReplica'>): void {
         for (const [name, san] of stale) {
           openssl(['req', '-newkey', 'rsa:2048', '-nodes', '-subj', `/CN=orm test ${name}`, '-keyout', join(tmp, `${name}-key.pem`), '-out', join(tmp, `${name}.csr`)]);
           writeFileSync(join(tmp, `${name}.ext`), `subjectAltName=${san}\n`);
-          openssl(['x509', '-req', '-in', join(tmp, `${name}.csr`), '-CA', join(dir, 'ca.pem'), '-CAkey', join(dir, 'ca-key.pem'), '-CAcreateserial', '-days', '3650',
+          openssl(['x509', '-req', '-in', join(tmp, `${name}.csr`), '-CA', join(dir, 'ca.pem'), '-CAkey', join(dir, 'ca-key.pem'), '-CAcreateserial', '-CAserial', join(tmp, 'ca.srl'), '-days', '3650',
             '-extfile', join(tmp, `${name}.ext`), '-out', join(tmp, `${name}-cert.pem`)]);
         }
         for (const [name] of stale) {
