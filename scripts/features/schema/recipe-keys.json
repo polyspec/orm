@@ -364,6 +364,7 @@
       "schema"
     ],
     "schema.register": [
+      "connection",
       "expect",
       "op",
       "schema"

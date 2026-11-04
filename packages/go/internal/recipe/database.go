@@ -722,7 +722,7 @@ func runStepWith(s databaseStep, c *databaseContext, op func(databaseStep, *data
 	if got, want := normalized(got), normalized(want); !reflect.DeepEqual(got, want) {
 		return fmt.Errorf("got %s, want %s", jsonString(got), jsonString(want))
 	}
-	return nil
+	return s.reads.check()
 }
 
 // closeFirst returns the first error of a step. A close failure is the step's error only when the step has none of its own;
@@ -1147,7 +1147,13 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		if err != nil {
 			return outcome{}, err
 		}
-		if err := c.db.Utils().Schema().Register(schema); err != nil {
+		db := c.db
+		if s.k("connection").Connection != "" {
+			if db, err = connectionOf(s, c); err != nil {
+				return outcome{}, err
+			}
+		}
+		if err := db.Utils().Schema().Register(schema); err != nil {
 			return outcome{}, err
 		}
 		return okOutcome(), nil

@@ -1515,6 +1515,10 @@
           "op": {
             "const": "schema.register"
           },
+          "connection": {
+            "description": "The connection that model.connect bound, which registers the set in place of the case connection.",
+            "type": "string"
+          },
           "schema": {
             "$ref": "#/$defs/schemaArgument"
           },
@@ -10416,42 +10420,6 @@
             },
             "amount": {
               "$ref": "#/$defs/value"
-            }
-          }
-        }
-      }
-    },
-    "pageOutcome": {
-      "type": "object",
-      "required": [
-        "page"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "page": {
-          "type": "object",
-          "required": [
-            "total",
-            "pages"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "rows": {
-              "type": "array",
-              "items": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/$defs/value"
-                }
-              }
-            },
-            "total": {
-              "type": "integer",
-              "minimum": 0
-            },
-            "pages": {
-              "type": "integer",
-              "minimum": 0
             }
           }
         }

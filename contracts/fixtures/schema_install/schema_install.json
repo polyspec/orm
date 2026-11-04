@@ -641,6 +641,519 @@
       ]
     },
     {
+      "id": "external_member_before_its_core",
+      "requirements": [
+        "DBS-107",
+        "DBS-108",
+        "SCH-11"
+      ],
+      "steps": [
+        {
+          "op": "schema.connect",
+          "schema": {
+            "documents": [
+              "../external/member.dbs"
+            ],
+            "external": [
+              "../external/core.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "../external/member.dbs"
+            ],
+            "external": [
+              "../external/core.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG",
+              "message_suffix": "the tables that the set uses from external documents differ from the database: table ext_account does not exist; table ext_audit does not exist"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message_suffix": "the tables that the set uses from external documents differ from the database: table ext_account does not exist; table ext_audit does not exist"
+            },
+            "sqlite": {
+              "error": "CONFIG",
+              "message_suffix": "the tables that the set uses from external documents differ from the database: table ext_account does not exist; table ext_audit does not exist"
+            }
+          }
+        },
+        {
+          "op": "schema.add_tables_and_columns",
+          "schema": {
+            "documents": [
+              "../external/member.dbs"
+            ],
+            "external": [
+              "../external/core.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG",
+              "message_suffix": "the tables that the set uses from external documents differ from the database: table ext_account does not exist; table ext_audit does not exist"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message_suffix": "the tables that the set uses from external documents differ from the database: table ext_account does not exist; table ext_audit does not exist"
+            },
+            "sqlite": {
+              "error": "CONFIG",
+              "message_suffix": "the tables that the set uses from external documents differ from the database: table ext_account does not exist; table ext_audit does not exist"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": {
+            "mysql": "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'ext_post'",
+            "postgres": "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'ext_post'",
+            "sqlite": "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'ext_post'"
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "external_member_after_its_core",
+      "requirements": [
+        "DBS-107",
+        "DBS-108",
+        "SCH-7",
+        "SCH-8",
+        "SCH-10"
+      ],
+      "steps": [
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "../external/core.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO ext_account (name) VALUES ('kim')",
+          "reason": "the rows of the tables that the set installs; the recipe has no fixture that generates models for them"
+        },
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "../external/member.dbs"
+            ],
+            "external": [
+              "../external/core.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "../external/member.dbs"
+            ],
+            "external": [
+              "../external/core.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": {
+            "mysql": "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'ext_post'",
+            "postgres": "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'ext_post'",
+            "sqlite": "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'ext_post'"
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": {
+            "mysql": "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'ext_post_history'",
+            "postgres": "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'ext_post_history'",
+            "sqlite": "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'ext_post_history'"
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "schema.connect",
+          "schema": {
+            "documents": [
+              "../external/member.dbs"
+            ],
+            "external": [
+              "../external/core.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.add_tables_and_columns",
+          "schema": {
+            "documents": [
+              "../external/member.dbs"
+            ],
+            "external": [
+              "../external/core.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": []
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": []
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": []
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.add_tables_and_columns",
+          "schema": {
+            "documents": [
+              "../external/member_v2.dbs"
+            ],
+            "external": [
+              "../external/core.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "text": "ext_post.summary"
+                  },
+                  {
+                    "text": "ext_post_history.summary"
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "text": "ext_post.summary"
+                  },
+                  {
+                    "text": "ext_post_history.summary"
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "text": "ext_post.summary"
+                  },
+                  {
+                    "text": "ext_post_history.summary"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT COUNT(*) FROM ext_account",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "schema.connect",
+          "schema": {
+            "documents": [
+              "../external/member.dbs"
+            ],
+            "external": [
+              "../external/core_extra.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "../external/member.dbs"
+            ],
+            "external": [
+              "../external/core_extra.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG",
+              "message_suffix": "the tables that the set uses from external documents differ from the database: column ext_account.nick does not exist"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message_suffix": "the tables that the set uses from external documents differ from the database: column ext_account.nick does not exist"
+            },
+            "sqlite": {
+              "error": "CONFIG",
+              "message_suffix": "the tables that the set uses from external documents differ from the database: column ext_account.nick does not exist"
+            }
+          }
+        },
+        {
+          "op": "schema.add_tables_and_columns",
+          "schema": {
+            "documents": [
+              "../external/member.dbs"
+            ],
+            "external": [
+              "../external/core_extra.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG",
+              "message_suffix": "the tables that the set uses from external documents differ from the database: column ext_account.nick does not exist"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message_suffix": "the tables that the set uses from external documents differ from the database: column ext_account.nick does not exist"
+            },
+            "sqlite": {
+              "error": "CONFIG",
+              "message_suffix": "the tables that the set uses from external documents differ from the database: column ext_account.nick does not exist"
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "add_tables_and_columns",
       "requirements": [
         "SCH-10",

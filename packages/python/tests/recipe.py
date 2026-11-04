@@ -4610,7 +4610,8 @@ def _op_schema_install(step: dict, context: dict) -> dict:
 
 
 def _op_schema_register(step: dict, context: dict) -> dict:
-    context["db"].utils().schema().register(_schema_argument(step["schema"], context))
+    db = _connection_of(step, context) if "connection" in step else context["db"]
+    db.utils().schema().register(_schema_argument(step["schema"], context))
     return {"value": {"bool": True}}
 
 

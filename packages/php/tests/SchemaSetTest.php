@@ -23,8 +23,6 @@ namespace Polyspec\Orm\Tests;
 // [--filter <case>]
 
 use DateTimeZone;
-use PDO;
-use PDOException;
 use Polyspec\Orm\Tests\Model\User;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
@@ -182,105 +180,6 @@ final class SchemaSetTest extends TestCase
             $built[$key] = ("$namespace\\schema")();
         }
         return $sets = $built;
-    }
-
-    /**
-     * Checks, on the database at dsn, the set that uses external documents (contracts/fixtures/external)
-     * (same as externalCase in packages/go/orm/external_documents_test.go).
-     *   - If an external table is missing, install and addTablesAndColumns are CONFIG before any statement and
-     *     do not create member's table. Registration does not read the database, so connectSchema connects even if
-     *     the external table is missing or different.
-     * - After core is installed, the member install creates only the tables it owns, and running it again changes
-     * nothing.
-     *     addTablesAndColumns adds columns only to the tables it owns.
-     *   - member's audit transaction inserts the record into ext_audit, which core owns.
-     *   - If the write table of an external document differs from the database (a missing column), it is CONFIG.
-     */
-    private static function externalDocuments(string $dsn): void
-    {
-        ['core' => $core, 'member' => $member, 'memberV2' => $memberV2, 'drifted' => $drifted] = self::externalSets();
-        $config = new Config(auditSource: static fn(): array => ['actor' => 'writer']);
-        $expectConfig = static function (string $step, callable $f, string $message): void {
-            try {
-                $f();
-                self::check(false, "$step: no error, want CONFIG with $message");
-            } catch (OrmException $e) {
-                self::check(
-                    $e->code_ === Code::CONFIG && str_contains($e->getMessage(), $message),
-                    "$step: {$e->code_} {$e->getMessage()}, want CONFIG with $message"
-                );
-            }
-        };
-        $missing = 'the tables that the set uses from external documents differ from the database: table ext_account '
-            . 'does not exist; table ext_audit does not exist';
-        Orm::connectSchema($dsn, $member, $config)->close();
-
-        $db = Orm::connect($dsn, $config);
-        try {
-            $schema = $db->utils()->schema();
-            $exists = static function (string $table) use ($db): bool {
-                try {
-                    $db->pdo()->query("SELECT COUNT(*) FROM $table")->fetchColumn();
-                    return true;
-                } catch (PDOException) {
-                    return false;
-                }
-            };
-            $expectConfig('install before core', static fn() => $schema->install($member), $missing);
-            $expectConfig(
-                'addTablesAndColumns before core',
-                static fn() => $schema->addTablesAndColumns($member),
-                $missing
-            );
-            self::check(!$exists('ext_post'), 'ext_post exists after the refused install');
-
-            $schema->install($core);
-            $db->pdo()->exec("INSERT INTO ext_account (name) VALUES ('kim')");
-            $schema->install($member);
-            $schema->install($member);
-            foreach (['ext_post', 'ext_post_history'] as $table) {
-                self::check($exists($table), "$table does not exist after the member install");
-            }
-            Orm::connectSchema($dsn, $member, $config)->close();
-
-            $db->transaction(
-                fn() => (new \Polyspec\Orm\Tests\ExtMember\ExtPost())($db)->setAccountSeq(1)
-                    ->setTitle('hello')
-                    ->create(),
-                audit: []
-            );
-            [$audit, $actor] = $db->pdo()->query('SELECT seq, actor FROM ext_audit')->fetch(PDO::FETCH_NUM);
-            $recorded = $db->pdo()->query('SELECT audit_seq FROM ext_post_history')->fetchColumn();
-            self::check(
-                $actor === 'writer' && (int) $recorded === (int) $audit,
-                "audit record ($audit, $actor) and history audit $recorded, want the record of writer in the history"
-            );
-
-            $added = $schema->addTablesAndColumns($member);
-            self::check(
-                $added === [],
-                'addTablesAndColumns of the installed member: ' . json_encode($added) . ', want nothing'
-            );
-            $added = $schema->addTablesAndColumns($memberV2);
-            self::check(
-                $added === ['ext_post.summary', 'ext_post_history.summary'],
-                'addTablesAndColumns of member_v2: ' . json_encode($added)
-            );
-            $accounts = (int) $db->pdo()->query('SELECT COUNT(*) FROM ext_account')->fetchColumn();
-            self::check($accounts === 1, "ext_account has $accounts rows after the member changes, want 1");
-
-            $differs = 'the tables that the set uses from external documents differ from the database: column '
-                . 'ext_account.nick does not exist';
-            Orm::connectSchema($dsn, $drifted, $config)->close();
-            $expectConfig('install with a drifted external table', static fn() => $schema->install($drifted), $differs);
-            $expectConfig(
-                'addTablesAndColumns with a drifted external table',
-                static fn() => $schema->addTablesAndColumns($drifted),
-                $differs
-            );
-        } finally {
-            $db->close();
-        }
     }
 
     /**

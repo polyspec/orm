@@ -1,0 +1,202 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "SCH-14",
+    "DBS-110"
+  ],
+  "fixture": "contracts/fixtures/external_audit/dbspec-set.json",
+  "cases": [
+    {
+      "id": "member_audit_record_goes_to_the_core_table",
+      "requirements": [
+        "SCH-14",
+        "DBS-110"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db",
+          "audit_source": {
+            "values": {
+              "actor": {
+                "text": "writer"
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.register",
+          "connection": "db",
+          "schema": {
+            "documents": [
+              "core.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "../external/board.dbs"
+            ],
+            "external": [
+              "../external/core.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO ext_account (name) VALUES ('kim')",
+          "reason": "ext_account belongs to the core set, whose models are read-only to the member set"
+        },
+        {
+          "op": "transaction",
+          "steps": [
+            {
+              "op": "model.create",
+              "model": "ExtPost",
+              "values": {
+                "account_seq": {
+                  "int": "1"
+                },
+                "title": {
+                  "text": "hello"
+                }
+              },
+              "connection": "db"
+            }
+          ],
+          "audit": {},
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          },
+          "connection": "db"
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT seq, actor FROM ext_audit ORDER BY seq",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "writer"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "writer"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "writer"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT audit_seq FROM ext_post_history",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

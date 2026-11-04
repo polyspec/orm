@@ -4637,12 +4637,10 @@
         "schema_install-postgres",
         "schema_install-sqlite",
         "php-extension-privileges-native",
-        "schema-set-external-audit-record-mysql",
-        "schema-set-external-audit-record-postgres",
-        "schema-set-external-audit-record-sqlite",
         "schema-manifest-text-hash-mismatch-is-reported",
         "coverage-schema-install-bench",
-        "schema-register-reuses-engine-per-hash"
+        "schema-register-reuses-engine-per-hash",
+        "php-audit-external-sets-registration-order"
       ],
       "fixtures": [
         "packages/php/tests/coverage_cases.php",
@@ -4690,7 +4688,6 @@
         "packages/ts/tests/case-database.mjs",
         "packages/go/decimalmodel/schema_set_test.go",
         "packages/rust/tests/tests/decimal_physical.rs",
-        "packages/rust/orm/tests/external_documents.rs",
         "packages/go/orm/register_test.go",
         "packages/ts/tests/dbspec_runtime_db.mjs",
         "packages/python/tests/test_installed_differences.py",
@@ -4803,15 +4800,6 @@
           ]
         },
         {
-          "id": "install-register-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts install-register-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test external_documents",
-          "shard": "rust",
-          "inputs": [
-            "packages/rust/orm/tests/external_documents.rs",
-            "contracts/fixtures/external/*.dbs"
-          ]
-        },
-        {
           "id": "runtime-db-typescript",
           "command": "node --test packages/ts/tests/dbspec_runtime_db.mjs",
           "shard": "other",
@@ -4879,7 +4867,6 @@
           "shard": "rust",
           "inputs": [
             "packages/rust/tests/tests/decimal_physical.rs",
-            "packages/rust/orm/tests/external_documents.rs",
             "contracts/fixtures/decimal_schema.dbs",
             "contracts/fixtures/bench/bench.dbs",
             "contracts/fixtures/external/*.dbs"
@@ -5467,7 +5454,7 @@
         "composite_keys-mysql",
         "composite_keys-postgres",
         "composite_keys-sqlite",
-        "coverage-composite-keys-native"
+        "php-extension-composite-relation-parent-slot"
       ],
       "fixtures": [
         "tests/conformance/vectors.json",
@@ -5480,7 +5467,7 @@
         "packages/rust/tests/tests/integration_program/main.rs",
         "packages/ts/tests/model.mjs",
         "packages/python/tests/test_key_prefix.py",
-        "packages/php-ext/tests/CompositeKeysNativeTest.php",
+        "packages/php-ext/tests/CompositeKeysRecipeTestExtensionTest.php",
         "packages/php-ext/tests/ModelTestExtensionTest.php"
       ],
       "docs": [
@@ -6952,7 +6939,10 @@
       "parity": [
         "audit_triggers-mysql",
         "audit_triggers-postgres",
-        "audit_triggers-sqlite"
+        "audit_triggers-sqlite",
+        "external_audit-mysql",
+        "external_audit-postgres",
+        "external_audit-sqlite"
       ],
       "fixtures": [
         "contracts/fixtures/audit_triggers/audit_triggers.json",
@@ -6960,7 +6950,11 @@
         "contracts/fixtures/audit_triggers/dbspec-set.json",
         "packages/go/orm/audit_transaction_test.go",
         "packages/rust/orm/tests/audit.rs",
-        "packages/rust/orm/tests/common/audit_rows.rs"
+        "packages/rust/orm/tests/common/audit_rows.rs",
+        "contracts/fixtures/external_audit/external_audit.json",
+        "contracts/fixtures/external_audit/member.dbs",
+        "contracts/fixtures/external_audit/core.dbs",
+        "contracts/fixtures/external_audit/dbspec-set.json"
       ],
       "tests": [
         "packages/php/tests/ModelTest.php",
@@ -6976,7 +6970,19 @@
         "contracts/fixtures/external/member.dbs",
         "contracts/fixtures/external/member_v2.dbs",
         "packages/php-ext/tests/AuditLazyFakePdoTest.php",
-        "packages/php-ext/tests/ModelTestExtensionTest.php"
+        "packages/php-ext/tests/ModelTestExtensionTest.php",
+        "packages/go/orm/recipe_external_audit_test.go",
+        "packages/php/tests/ExternalAuditRecipeTest.php",
+        "packages/php-ext/tests/ExternalAuditRecipeTestExtensionTest.php",
+        "packages/rust/tests/tests/external_audit_mysql.rs",
+        "packages/rust/tests/tests/external_audit_postgres.rs",
+        "packages/rust/tests/tests/external_audit_sqlite.rs",
+        "packages/ts/tests/external_audit-mysql.test.mjs",
+        "packages/ts/tests/external_audit-postgres.test.mjs",
+        "packages/ts/tests/external_audit-sqlite.test.mjs",
+        "packages/python/tests/test_external_audit_mysql.py",
+        "packages/python/tests/test_external_audit_postgres.py",
+        "packages/python/tests/test_external_audit_sqlite.py"
       ],
       "docs": [
         "docs/spec/dbspec.md",
@@ -7021,7 +7027,8 @@
           "go": {
             "part": "packages/go/orm",
             "tests": [
-              "packages/go/orm/recipe_audit_triggers_test.go"
+              "packages/go/orm/recipe_audit_triggers_test.go",
+              "packages/go/orm/recipe_external_audit_test.go"
             ],
             "commands": {
               "mysql": [
@@ -7030,6 +7037,12 @@
                   "test": "packages/go/orm/recipe_audit_triggers_test.go",
                   "recipe": "contracts/fixtures/audit_triggers/audit_triggers.json",
                   "symbol": "TestRecipeAuditTriggersMysql"
+                },
+                {
+                  "runner": "go",
+                  "test": "packages/go/orm/recipe_external_audit_test.go",
+                  "recipe": "contracts/fixtures/external_audit/external_audit.json",
+                  "symbol": "TestRecipeExternalAuditMysql"
                 }
               ],
               "postgres": [
@@ -7038,6 +7051,12 @@
                   "test": "packages/go/orm/recipe_audit_triggers_test.go",
                   "recipe": "contracts/fixtures/audit_triggers/audit_triggers.json",
                   "symbol": "TestRecipeAuditTriggersPostgres"
+                },
+                {
+                  "runner": "go",
+                  "test": "packages/go/orm/recipe_external_audit_test.go",
+                  "recipe": "contracts/fixtures/external_audit/external_audit.json",
+                  "symbol": "TestRecipeExternalAuditPostgres"
                 }
               ],
               "sqlite": [
@@ -7046,6 +7065,12 @@
                   "test": "packages/go/orm/recipe_audit_triggers_test.go",
                   "recipe": "contracts/fixtures/audit_triggers/audit_triggers.json",
                   "symbol": "TestRecipeAuditTriggersSqlite"
+                },
+                {
+                  "runner": "go",
+                  "test": "packages/go/orm/recipe_external_audit_test.go",
+                  "recipe": "contracts/fixtures/external_audit/external_audit.json",
+                  "symbol": "TestRecipeExternalAuditSqlite"
                 }
               ]
             }
@@ -7053,7 +7078,8 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/AuditTriggersRecipeTest.php"
+              "packages/php/tests/AuditTriggersRecipeTest.php",
+              "packages/php/tests/ExternalAuditRecipeTest.php"
             ],
             "commands": {
               "mysql": [
@@ -7061,6 +7087,12 @@
                   "runner": "php",
                   "test": "packages/php/tests/AuditTriggersRecipeTest.php",
                   "recipe": "contracts/fixtures/audit_triggers/audit_triggers.json",
+                  "symbol": "testMysql"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/ExternalAuditRecipeTest.php",
+                  "recipe": "contracts/fixtures/external_audit/external_audit.json",
                   "symbol": "testMysql"
                 }
               ],
@@ -7070,6 +7102,12 @@
                   "test": "packages/php/tests/AuditTriggersRecipeTest.php",
                   "recipe": "contracts/fixtures/audit_triggers/audit_triggers.json",
                   "symbol": "testPostgres"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/ExternalAuditRecipeTest.php",
+                  "recipe": "contracts/fixtures/external_audit/external_audit.json",
+                  "symbol": "testPostgres"
                 }
               ],
               "sqlite": [
@@ -7077,6 +7115,12 @@
                   "runner": "php",
                   "test": "packages/php/tests/AuditTriggersRecipeTest.php",
                   "recipe": "contracts/fixtures/audit_triggers/audit_triggers.json",
+                  "symbol": "testSqlite"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/ExternalAuditRecipeTest.php",
+                  "recipe": "contracts/fixtures/external_audit/external_audit.json",
                   "symbol": "testSqlite"
                 }
               ]
@@ -7087,7 +7131,10 @@
             "tests": [
               "packages/rust/tests/tests/audit_triggers_mysql.rs",
               "packages/rust/tests/tests/audit_triggers_postgres.rs",
-              "packages/rust/tests/tests/audit_triggers_sqlite.rs"
+              "packages/rust/tests/tests/audit_triggers_sqlite.rs",
+              "packages/rust/tests/tests/external_audit_mysql.rs",
+              "packages/rust/tests/tests/external_audit_postgres.rs",
+              "packages/rust/tests/tests/external_audit_sqlite.rs"
             ],
             "commands": {
               "mysql": [
@@ -7095,6 +7142,11 @@
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/audit_triggers_mysql.rs",
                   "recipe": "contracts/fixtures/audit_triggers/audit_triggers.json"
+                },
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/external_audit_mysql.rs",
+                  "recipe": "contracts/fixtures/external_audit/external_audit.json"
                 }
               ],
               "postgres": [
@@ -7102,6 +7154,11 @@
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/audit_triggers_postgres.rs",
                   "recipe": "contracts/fixtures/audit_triggers/audit_triggers.json"
+                },
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/external_audit_postgres.rs",
+                  "recipe": "contracts/fixtures/external_audit/external_audit.json"
                 }
               ],
               "sqlite": [
@@ -7109,6 +7166,11 @@
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/audit_triggers_sqlite.rs",
                   "recipe": "contracts/fixtures/audit_triggers/audit_triggers.json"
+                },
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/external_audit_sqlite.rs",
+                  "recipe": "contracts/fixtures/external_audit/external_audit.json"
                 }
               ]
             }
@@ -7118,7 +7180,10 @@
             "tests": [
               "packages/ts/tests/audit_triggers-mysql.test.mjs",
               "packages/ts/tests/audit_triggers-postgres.test.mjs",
-              "packages/ts/tests/audit_triggers-sqlite.test.mjs"
+              "packages/ts/tests/audit_triggers-sqlite.test.mjs",
+              "packages/ts/tests/external_audit-mysql.test.mjs",
+              "packages/ts/tests/external_audit-postgres.test.mjs",
+              "packages/ts/tests/external_audit-sqlite.test.mjs"
             ],
             "commands": {
               "mysql": [
@@ -7126,6 +7191,11 @@
                   "runner": "node",
                   "test": "packages/ts/tests/audit_triggers-mysql.test.mjs",
                   "recipe": "contracts/fixtures/audit_triggers/audit_triggers.json"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/external_audit-mysql.test.mjs",
+                  "recipe": "contracts/fixtures/external_audit/external_audit.json"
                 }
               ],
               "postgres": [
@@ -7133,6 +7203,11 @@
                   "runner": "node",
                   "test": "packages/ts/tests/audit_triggers-postgres.test.mjs",
                   "recipe": "contracts/fixtures/audit_triggers/audit_triggers.json"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/external_audit-postgres.test.mjs",
+                  "recipe": "contracts/fixtures/external_audit/external_audit.json"
                 }
               ],
               "sqlite": [
@@ -7140,6 +7215,11 @@
                   "runner": "node",
                   "test": "packages/ts/tests/audit_triggers-sqlite.test.mjs",
                   "recipe": "contracts/fixtures/audit_triggers/audit_triggers.json"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/external_audit-sqlite.test.mjs",
+                  "recipe": "contracts/fixtures/external_audit/external_audit.json"
                 }
               ]
             }
@@ -7149,7 +7229,10 @@
             "tests": [
               "packages/python/tests/test_audit_triggers_mysql.py",
               "packages/python/tests/test_audit_triggers_postgres.py",
-              "packages/python/tests/test_audit_triggers_sqlite.py"
+              "packages/python/tests/test_audit_triggers_sqlite.py",
+              "packages/python/tests/test_external_audit_mysql.py",
+              "packages/python/tests/test_external_audit_postgres.py",
+              "packages/python/tests/test_external_audit_sqlite.py"
             ],
             "commands": {
               "mysql": [
@@ -7157,6 +7240,11 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_audit_triggers_mysql.py",
                   "recipe": "contracts/fixtures/audit_triggers/audit_triggers.json"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/test_external_audit_mysql.py",
+                  "recipe": "contracts/fixtures/external_audit/external_audit.json"
                 }
               ],
               "postgres": [
@@ -7164,6 +7252,11 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_audit_triggers_postgres.py",
                   "recipe": "contracts/fixtures/audit_triggers/audit_triggers.json"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/test_external_audit_postgres.py",
+                  "recipe": "contracts/fixtures/external_audit/external_audit.json"
                 }
               ],
               "sqlite": [
@@ -7171,6 +7264,11 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_audit_triggers_sqlite.py",
                   "recipe": "contracts/fixtures/audit_triggers/audit_triggers.json"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/test_external_audit_sqlite.py",
+                  "recipe": "contracts/fixtures/external_audit/external_audit.json"
                 }
               ]
             }
@@ -7178,7 +7276,8 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php-ext/tests/AuditTriggersRecipeTestExtensionTest.php"
+              "packages/php-ext/tests/AuditTriggersRecipeTestExtensionTest.php",
+              "packages/php-ext/tests/ExternalAuditRecipeTestExtensionTest.php"
             ],
             "commands": {
               "mysql": [
@@ -7186,6 +7285,12 @@
                   "runner": "php",
                   "test": "packages/php-ext/tests/AuditTriggersRecipeTestExtensionTest.php",
                   "recipe": "contracts/fixtures/audit_triggers/audit_triggers.json",
+                  "symbol": "testMysql"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/ExternalAuditRecipeTestExtensionTest.php",
+                  "recipe": "contracts/fixtures/external_audit/external_audit.json",
                   "symbol": "testMysql"
                 }
               ],
@@ -7195,6 +7300,12 @@
                   "test": "packages/php-ext/tests/AuditTriggersRecipeTestExtensionTest.php",
                   "recipe": "contracts/fixtures/audit_triggers/audit_triggers.json",
                   "symbol": "testPostgres"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/ExternalAuditRecipeTestExtensionTest.php",
+                  "recipe": "contracts/fixtures/external_audit/external_audit.json",
+                  "symbol": "testPostgres"
                 }
               ],
               "sqlite": [
@@ -7202,6 +7313,12 @@
                   "runner": "php",
                   "test": "packages/php-ext/tests/AuditTriggersRecipeTestExtensionTest.php",
                   "recipe": "contracts/fixtures/audit_triggers/audit_triggers.json",
+                  "symbol": "testSqlite"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/ExternalAuditRecipeTestExtensionTest.php",
+                  "recipe": "contracts/fixtures/external_audit/external_audit.json",
                   "symbol": "testSqlite"
                 }
               ]
@@ -8447,6 +8564,7 @@
         "catalog_connection-mysql",
         "catalog_connection-postgres",
         "catalog_connection-sqlite",
+        "catalog_connection-sqlite-only",
         "catalog-temporal-native-default-precision",
         "catalog-row-baseline-compares-exact-values",
         "catalog-table-page-prepared-columns-differ-from-the-descriptor",
@@ -8605,7 +8723,8 @@
             "tests": [
               "packages/rust/tests/tests/catalog_connection_mysql.rs",
               "packages/rust/tests/tests/catalog_connection_postgres.rs",
-              "packages/rust/tests/tests/catalog_connection_sqlite.rs"
+              "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+              "packages/rust/tests/tests/catalog_connection_sqlite_only.rs"
             ],
             "commands": {
               "mysql": [
@@ -8627,6 +8746,11 @@
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
                   "recipe": "contracts/fixtures/catalog_connection/catalog_connection.json"
+                },
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/catalog_connection_sqlite_only.rs",
+                  "recipe": "contracts/fixtures/catalog_connection/catalog_connection-sqlite-only.json"
                 }
               ]
             }
@@ -8637,7 +8761,8 @@
               "packages/go/orm/recipe_catalog_connection_test.go"
             ],
             "inputs": [
-              "contracts/fixtures/bench/bench.dbs"
+              "contracts/fixtures/bench/bench.dbs",
+              "contracts/fixtures/catalog_connection/catalog_connection-sqlite-only.json"
             ],
             "commands": {
               "mysql": [
@@ -8662,6 +8787,12 @@
                   "test": "packages/go/orm/recipe_catalog_connection_test.go",
                   "recipe": "contracts/fixtures/catalog_connection/catalog_connection.json",
                   "symbol": "TestRecipeCatalogConnectionSqlite"
+                },
+                {
+                  "runner": "go",
+                  "test": "packages/go/orm/recipe_catalog_connection_test.go",
+                  "recipe": "contracts/fixtures/catalog_connection/catalog_connection-sqlite-only.json",
+                  "symbol": "TestRecipeCatalogConnectionSqliteOnly"
                 }
               ]
             }
@@ -8671,10 +8802,12 @@
             "tests": [
               "packages/ts/tests/catalog_connection-mysql.test.mjs",
               "packages/ts/tests/catalog_connection-postgres.test.mjs",
-              "packages/ts/tests/catalog_connection-sqlite.test.mjs"
+              "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+              "packages/ts/tests/catalog_connection-sqlite-only.test.mjs"
             ],
             "inputs": [
-              "contracts/fixtures/bench/bench.dbs"
+              "contracts/fixtures/bench/bench.dbs",
+              "contracts/fixtures/catalog_connection/catalog_connection-sqlite-only.json"
             ],
             "commands": {
               "mysql": [
@@ -8696,6 +8829,11 @@
                   "runner": "node",
                   "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
                   "recipe": "contracts/fixtures/catalog_connection/catalog_connection.json"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/catalog_connection-sqlite-only.test.mjs",
+                  "recipe": "contracts/fixtures/catalog_connection/catalog_connection-sqlite-only.json"
                 }
               ]
             }
@@ -8705,10 +8843,12 @@
             "tests": [
               "packages/python/tests/test_catalog_connection_mysql.py",
               "packages/python/tests/test_catalog_connection_postgres.py",
-              "packages/python/tests/test_catalog_connection_sqlite.py"
+              "packages/python/tests/test_catalog_connection_sqlite.py",
+              "packages/python/tests/test_catalog_connection_sqlite_only.py"
             ],
             "inputs": [
-              "contracts/fixtures/bench/bench.dbs"
+              "contracts/fixtures/bench/bench.dbs",
+              "contracts/fixtures/catalog_connection/catalog_connection-sqlite-only.json"
             ],
             "commands": {
               "mysql": [
@@ -8730,6 +8870,11 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_catalog_connection_sqlite.py",
                   "recipe": "contracts/fixtures/catalog_connection/catalog_connection.json"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/test_catalog_connection_sqlite_only.py",
+                  "recipe": "contracts/fixtures/catalog_connection/catalog_connection-sqlite-only.json"
                 }
               ]
             }
@@ -8737,10 +8882,12 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/CatalogConnectionRecipeTest.php"
+              "packages/php/tests/CatalogConnectionRecipeTest.php",
+              "packages/php/tests/CatalogConnectionSqliteOnlyRecipeTest.php"
             ],
             "inputs": [
-              "contracts/fixtures/bench/bench.dbs"
+              "contracts/fixtures/bench/bench.dbs",
+              "contracts/fixtures/catalog_connection/catalog_connection-sqlite-only.json"
             ],
             "commands": {
               "mysql": [
@@ -8765,6 +8912,12 @@
                   "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
                   "recipe": "contracts/fixtures/catalog_connection/catalog_connection.json",
                   "symbol": "testSqlite"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/CatalogConnectionSqliteOnlyRecipeTest.php",
+                  "recipe": "contracts/fixtures/catalog_connection/catalog_connection-sqlite-only.json",
+                  "symbol": "testSqlite"
                 }
               ]
             }
@@ -8772,10 +8925,12 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php"
+              "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+              "packages/php-ext/tests/CatalogConnectionSqliteOnlyRecipeTestExtensionTest.php"
             ],
             "inputs": [
-              "contracts/fixtures/bench/bench.dbs"
+              "contracts/fixtures/bench/bench.dbs",
+              "contracts/fixtures/catalog_connection/catalog_connection-sqlite-only.json"
             ],
             "commands": {
               "mysql": [
@@ -8799,6 +8954,12 @@
                   "runner": "php",
                   "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
                   "recipe": "contracts/fixtures/catalog_connection/catalog_connection.json",
+                  "symbol": "testSqlite"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CatalogConnectionSqliteOnlyRecipeTestExtensionTest.php",
+                  "recipe": "contracts/fixtures/catalog_connection/catalog_connection-sqlite-only.json",
                   "symbol": "testSqlite"
                 }
               ]
@@ -10366,8 +10527,7 @@
         "packages/php-ext/tests/NativeQueryProbeStatement.php"
       ],
       "tests": [
-        "packages/php-ext/tests/ParameterChunkingNativeTest.php",
-        "packages/php-ext/tests/CompositeKeysNativeTest.php"
+        "packages/php-ext/tests/ParameterChunkingNativeTest.php"
       ],
       "command": "make model-chunk-composite-native-php-extension-check"
     },

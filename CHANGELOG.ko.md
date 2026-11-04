@@ -1,9 +1,16 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c6a2bdf8084829fb6f12d6cc49cbf4824256786bc5cf87672f8ca4f5747914bd -->
+<!-- source-sha256: 867fd4d315370f4044398980a7b84edc525d2053dc0bf161ea3f31ead6e38cdd -->
 # 변경 이력
 
 ## Unreleased
 
+- PHP extension은 described table의 SQLite `DATE`, `TIME`, `DATETIME` 열에 든 숫자를 PHP library처럼 `GRID_TEMPORAL_VALUE`로 거부한다(INT-103). 전에는 `DATE` 열의 숫자를 그대로 통과시켰다. 사례 `sqlite_temporal_checks`가 모든 runtime에서 이를 검사한다. (#T334-3-3)
+- 시험: Go recipe helper는 step에 `expect`가 있어도 읽지 않은 step key를 실패시킨다. TypeScript와 Rust helper가 이미 그렇게 한다. 전에는 무시한 `page`, `limit`, `where`가 조용히 통과했다. (#T334-3-4)
+- Spec: 어떤 helper, schema 참조, 사례도 쓰지 않은 `model.query`의 recipe 형식 `{"page": ...}`를 지웠다. FCV-4가 `page: true`의 형식과 그 table path를 적는다. (#T334-3-4)
+- PHP client와 PHP extension은 described table의 SQLite `DATE` cell이 dbspec date가 아니면 저장된 text를 돌려주는 대신 `TIME`, `DATETIME` cell처럼 `GRID_TEMPORAL_VALUE`로 거부한다(INT-103). (#T334-3-3)
+- 시험: SQLite 전용 catalog recipe의 사례 `sqlite_temporal_checks`를 `catalog-connection-check`와 `catalog_connection` coverage에서 실행한다. 지금까지 둘은 database별 recipe 셋만 지정했다. FCV-2는 private 단계를 시험하는 catalog 시험이 native로 남는 이유를 적는다. (#T334-3-3)
+- 시험: external document를 쓰는 member set의 audit record를 PHP와 Rust만 시험했는데, 이제 여섯 runtime 모두 recipe `external_audit`으로 시험한다. 그런 set을 core 전후에 설치하는 동작은 `schema_install`의 두 사례다. op `schema.register`는 `connection`을 받는다. Rust `external_documents.rs`는 지웠고, PHP `AuditExternalSetsTest`는 등록 순서를 계속 검사한다(SCH-14a). (#T334-3-4)
+- 시험: PHP extension의 `CompositeKeysNativeTest`를 지웠다. extension으로 도는 recipe `composite_keys`가 복합 relation의 bind, 문장, 행을 검사하고(PRT-40a), `model_queries_chain`의 사례 `composite_key_page_past_the_first_holds_the_next_key`가 모든 runtime에서 복합 key의 첫 쪽 다음 쪽을 검사한다. (#T334-3-4-17)
 - 테스트: recipe `catalog_connection`의 case `table_page_descriptor_changes_within_its_read`는 부여된 metadata lock을 더는 hold로 보지 않는다. holder가 읽기를 준비할 때도 그 lock을 잡았다 돌려주므로, 변경이 자기 검사에서 죽거나 hold보다 먼저 지나갈 수 있었다(CR15-H). holder는 읽은 뒤 advisory 자리에 hold를 알리고, 변경은 그 hold 뒤에야 예약된다.
 - 검사: `config/parity.json`의 binding이 지목한 파일의 시험은 binding이나 이유를 밝힌 FCV-2 줄을 가진다(`make repo-check`의 `unboundNativeTestErrors`). parity 도구는 시험이 아니라 파일을 읽기 때문이다. FCV-2는 이제 native 시험 451개를 파일별로 지목한다. recipe가 이미 지키던 native는 없앴다: PHP와 Python의 markdown `backendWaitingForLock` 검사, `root_in_chunking`이 지키는 PHP `testBindLimitSplitting`, `tests/dbspec/positions.json`이 지키는 Python parse position이다(T334-3-12).
 - 테스트: `creates`의 batch는 `model_writes_chain`의 case `creates_*`이고 MySQL의 transaction 안 install은 `schema_install`의 case `install_transaction`이므로, Go `TestCreatesParts`, `TestGetMissingReturnsNil`, `TestInsertWithoutIdentityOnEveryDatabase`, Python `InsertPartsTest`, PHP `testInstallInsideATransaction`, Rust `mysql_install_inside_transaction`은 없앴다(T334-3-12).
