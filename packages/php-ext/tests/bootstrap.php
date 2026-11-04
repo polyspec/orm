@@ -50,6 +50,7 @@ require_once dirname(__DIR__, 2) . '/php/tests/DbspecAddTablesStepsTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DsnRejectRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DsnRejectParametersRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DsnRejectCheckedRecipeTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/DsnRejectPhpPoolRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/PublicInterfaceRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/PublicInterfaceSignedRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/SchemaDefinitionRecipeTest.php';
@@ -84,6 +85,7 @@ require_once dirname(__DIR__, 2) . '/php/tests/ConstraintsAndRelationsRecipeTest
 require_once dirname(__DIR__, 2) . '/php/tests/CatalogConnectionSqliteOnlyRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/TransactionsRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/AuditTriggersRecipeTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/ExternalAuditRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ImmutableWriteRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CompositeKeysRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/GeneratorScanTest.php';
