@@ -44,6 +44,9 @@ final class Config
         if ($aesKey !== '' && $aesKeys !== [] && ($aesKeys[$aesVersion] ?? '') !== $aesKey) {
             throw new OrmException(Code::CONFIG, "aesKey differs from aesKeys[$aesVersion]");
         }
+        if ($aesKeys !== []) {
+            new AesKeyring($aesKeys, $aesVersion);
+        }
         $this->aesKey = $aesKey !== '' ? $aesKey : ($aesKeys[$aesVersion] ?? '');
     }
 

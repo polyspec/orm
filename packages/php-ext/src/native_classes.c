@@ -503,6 +503,24 @@ ZEND_METHOD(Polyspec_Orm_Config, __construct)
         if (owns_empty_keys) zend_hash_destroy(&empty_keys);
         RETURN_THROWS();
     }
+    if (zend_hash_num_elements(aes_keys) != 0) {
+        zend_ulong listed_version;
+        zend_string *listed_name;
+        zval *listed_key;
+        ZEND_HASH_FOREACH_KEY_VAL_IND(aes_keys, listed_version, listed_name, listed_key) {
+            ZVAL_DEREF(listed_key);
+            if (listed_name != NULL || (zend_long)listed_version < 1 || Z_TYPE_P(listed_key) != IS_STRING || Z_STRLEN_P(listed_key) == 0) {
+                native_config_error("AES key list holds an invalid version or an empty key");
+                RETURN_THROWS();
+            }
+        } ZEND_HASH_FOREACH_END();
+        if (selected == NULL) {
+            zend_string *message = strpprintf(0, "AES version " ZEND_LONG_FMT " is not declared", aes_version);
+            native_config_error(ZSTR_VAL(message));
+            zend_string_release(message);
+            RETURN_THROWS();
+        }
+    }
     bool release_resolved_key = false;
     zend_string *resolved_key = ZSTR_LEN(aes_key) != 0 ? aes_key
         : (selected != NULL && Z_TYPE_P(selected) == IS_STRING ? Z_STR_P(selected) : (release_resolved_key = true, ZSTR_EMPTY_ALLOC()));
