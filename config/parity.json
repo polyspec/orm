@@ -8310,6 +8310,8 @@
       "id": "catalog_connection-postgres",
       "kind": "suite",
       "requirements": [
+        "CFG-28",
+        "CFG-41",
         "INT-8",
         "INT-4",
         "COD-31",
@@ -13764,25 +13766,6 @@
       ]
     },
     {
-      "id": "connection-catalog-session-through-a-pooler",
-      "kind": "feature",
-      "requirements": [
-        "CFG-41"
-      ],
-      "owner": {
-        "kind": "coverage-part",
-        "feature": "dsn_connection",
-        "part": "owner/python"
-      },
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/connection_config.py",
-          "id": "test_catalog_session_after_a_schema_change_through_a_pooler"
-        }
-      ]
-    },
-    {
       "id": "connection-statement-timeout-negative-refused",
       "kind": "feature",
       "requirements": [
@@ -18365,7 +18348,7 @@
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/models-scan.mjs",
-          "id": "the committed models equal the generator output"
+          "id": "every generated model set equals the generator output"
         },
         {
           "implementation": "go",
@@ -24344,11 +24327,6 @@
           "implementation": "php",
           "test": "packages/php/tests/OrmGenScanTest.php",
           "id": "OrmGenScanTest::testTheReceiverIsResolvedFromTheSource"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_scan_reports_unknown_model_methods"
         }
       ]
     },

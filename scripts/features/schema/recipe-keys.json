@@ -747,6 +747,7 @@
       "op"
     ],
     "catalog.reconnect": [
+      "dsn",
       "op",
       "refused_code",
       "refused_message",
@@ -755,6 +756,12 @@
     "sql.hold_connection": [
       "op",
       "user_from_database"
+    ],
+    "sql.hold_statement": [
+      "bind",
+      "dsn",
+      "op",
+      "sql"
     ],
     "sql.release_connection": [
       "op"
