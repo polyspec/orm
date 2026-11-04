@@ -16,7 +16,7 @@ impl CatalogConnection {
             let sql = format!("DELETE FROM {} WHERE {}", qualified(&descriptor, &self.dialect)?, predicate(&descriptor, &self.dialect, 1)?);
             let affected = connection.exec(&sql, &keys).await.map_err(super::catalog_write_error)?;
             if affected != 1 {
-                return Err("ROW_WRITE_MISMATCH: expected exactly one deleted row".into());
+                return Err(format!("ROW_WRITE_MISMATCH: expected exactly one deleted row, got {affected}"));
             }
             publish(MutationPhase::Applied);
             cancelled(&cancellation)?;

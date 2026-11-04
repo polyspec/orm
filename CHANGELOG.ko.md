@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7d459febfbce1a6eaa7406ee955a8ce953bd7fc12e6e28a520064ce7397f63e4 -->
+<!-- source-sha256: a52329d076a28087109763c45dc53cdc4f3c6e6e8e20c0211eca832319be8dff -->
 # 변경 이력
 
 ## Unreleased
 
+- Fixes: 거부된 권한 대상, 잘못된 schema 이름, 선언 용량, 달라진 저장 값의 문구가 Go, TypeScript, Python, Rust와 두 PHP mode에서 하나가 됐다. markdown DSN은 모든 runtime에서 token을 읽기 전에 다른 parameter를 거부하고, TypeScript catalog는 삽입한 행을 다시 읽어 삽입 뒤 trigger가 고친 값을 `ROW_WRITE_MISMATCH`로 보고한다.
 - 시험: Go `TestUnknownStyleRejectsSQLNull`과 TypeScript의 빈 ordered_json text, 거부되는 YAML 형식은 codec recipe의 case `stage_order_and_empty_cells`와 `decode_errors`이므로 그 native를 없앴고, TypeScript 시험의 나머지는 값의 JavaScript class를 확인한다.
 - Tests: `packages/php-ext/tests`의 native 시험을 FCV-2로 하나씩 판정한다: recipe나 `DsnTest`가 지키는 시험 28개를 없애고 `dsn_reject`, `dsn_reject_parameters`, `aes_rotation`, `catalog_connection`에 case를, `schema_install`, `utils`에 step을 더했다. 남는 시험은 하나의 이유를 함께 쓰지 않고 그 시험에 참인 이유를 적는다.
 - PHP extension은 described table의 SQLite `DATE`, `TIME`, `DATETIME` 열에 든 숫자를 PHP library처럼 `GRID_TEMPORAL_VALUE`로 거부한다(INT-103). 전에는 `DATE` 열의 숫자를 그대로 통과시켰다. 사례 `sqlite_temporal_checks`가 모든 runtime에서 이를 검사한다. (#T334-3-3)

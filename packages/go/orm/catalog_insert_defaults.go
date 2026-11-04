@@ -32,7 +32,7 @@ func catalogValidateInsertedRow(
 	if _, err := catalogRevision(metadata, row); err != nil {
 		return nil, err
 	}
-	if err := catalogVerifyInsertedValues(row, changes); err != nil {
+	if err := catalogVerifyInsertedValues(metadata, row, changes); err != nil {
 		return nil, err
 	}
 	return catalogInsertedKeys(row, keyIndexes)
@@ -190,7 +190,7 @@ func catalogMySQLInsertKeys(
 	return catalogValidateInsertedRow(metadata, rows[0], changes, keyIndexes)
 }
 
-func catalogVerifyInsertedValues(row []any, changes []catalogChange) error {
+func catalogVerifyInsertedValues(metadata CatalogTableMetadata, row []any, changes []catalogChange) error {
 	for _, change := range changes {
 		if change.index >= len(row) {
 			return catalogErr(catalogCodeRowWrite, "inserted row lacks assigned column")
@@ -200,7 +200,7 @@ func catalogVerifyInsertedValues(row []any, changes []catalogChange) error {
 			return err
 		}
 		if !same {
-			return catalogErr(catalogCodeRowWrite, "inserted value of column index %d differs", change.index)
+			return catalogErr(catalogCodeRowWrite, "stored inserted values of %q differ", metadata.Columns[change.index].Name)
 		}
 	}
 	return nil

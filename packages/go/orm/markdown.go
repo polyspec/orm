@@ -48,13 +48,20 @@ func parseMarkdownDSN(u *url.URL, q url.Values) (markdownDSN, error) {
 	if corpus == "" || strings.Contains(corpus, "/") {
 		return markdownDSN{}, configErr("%s; the path %q is not one corpus name: give the corpus root's directory name", form, u.Path)
 	}
+	// A parameter other than token is refused by its name, before any value is read: url.Values drops a pair
+	// whose value does not decode, so the names come from the raw query.
+	for _, pair := range strings.Split(u.RawQuery, "&") {
+		key, _, _ := strings.Cut(pair, "=")
+		if decoded, err := url.QueryUnescape(key); err == nil {
+			key = decoded
+		}
+		if key != "" && key != "token" {
+			return markdownDSN{}, configErr("%s; it does not accept %s", form, key)
+		}
+	}
 	tokens := q["token"]
 	if len(tokens) != 1 || tokens[0] == "" {
 		return markdownDSN{}, configErr("%s; give one token, the token of .flowmark/server.json of the corpus", form)
-	}
-	q.Del("token")
-	for key := range q {
-		return markdownDSN{}, configErr("%s; it does not accept %s", form, key)
 	}
 	return markdownDSN{address: u.Host, corpus: corpus, token: tokens[0]}, nil
 }

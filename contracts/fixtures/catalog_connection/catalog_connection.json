@@ -19296,11 +19296,11 @@
           "expect": {
             "postgres": {
               "error": "ROW_WRITE_MISMATCH",
-              "message_holds": "expected exactly one deleted row, got 0"
+              "message": "ROW_WRITE_MISMATCH: expected exactly one deleted row, got 0"
             },
             "sqlite": {
               "error": "ROW_WRITE_MISMATCH",
-              "message_holds": "expected exactly one deleted row, got 0"
+              "message": "ROW_WRITE_MISMATCH: expected exactly one deleted row, got 0"
             }
           }
         },
@@ -19414,11 +19414,11 @@
             },
             "postgres": {
               "error": "ROW_WRITE_MISMATCH",
-              "message_holds": "stored inserted values"
+              "message": "ROW_WRITE_MISMATCH: stored inserted values of \"payload\" differ"
             },
             "sqlite": {
               "error": "ROW_WRITE_MISMATCH",
-              "message_holds": "stored inserted values"
+              "message": "ROW_WRITE_MISMATCH: stored inserted values of \"payload\" differ"
             }
           }
         },
@@ -19510,7 +19510,7 @@
           "expect": {
             "sqlite": {
               "error": "ROW_UPDATE_INVALID",
-              "message_holds": "value exceeds the declared capacity of column"
+              "message": "ROW_UPDATE_INVALID: value exceeds the declared capacity of column \"label\""
             }
           }
         },
@@ -19530,7 +19530,7 @@
           "expect": {
             "sqlite": {
               "error": "ROW_UPDATE_INVALID",
-              "message_holds": "value exceeds the declared capacity of column"
+              "message": "ROW_UPDATE_INVALID: value exceeds the declared capacity of column \"payload\""
             }
           }
         },

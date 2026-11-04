@@ -145,7 +145,7 @@ impl CatalogConnection {
             for (name, value) in values {
                 let index = descriptor.columns.iter().position(|column| column.name == *name).ok_or_else(|| "ROW_INSERT_INVALID: unknown column".to_owned())?;
                 if after.rows[0][index] != cell(value) {
-                    return Err("ROW_WRITE_MISMATCH: stored inserted values differ".into());
+                    return Err(format!("ROW_WRITE_MISMATCH: stored inserted values of \"{name}\" differ"));
                 }
             }
             cancelled(&cancellation)?;

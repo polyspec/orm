@@ -124,7 +124,7 @@
           "expect": {
             "none": {
               "error": "CONFIG",
-              "message_holds": "has the unknown parameter extra"
+              "message_holds": "mysql DSN has the unknown parameter extra; it accepts timezone, socket, ssl-mode, ssl-ca"
             }
           }
         }

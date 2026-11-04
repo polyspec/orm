@@ -3488,20 +3488,36 @@
           }
         },
         {
-          "op": "schema.exists",
-          "schema": "bad-name",
+          "op": "statements.count",
+          "steps": [
+            {
+              "op": "schema.exists",
+              "schema": "bad-name",
+              "expect": {
+                "mysql": {
+                  "error": "CONFIG",
+                  "message": "CONFIG: identifier bad-name is invalid"
+                },
+                "postgres": {
+                  "error": "CONFIG",
+                  "message": "CONFIG: identifier bad-name is invalid"
+                },
+                "sqlite": {
+                  "error": "CONFIG",
+                  "message": "CONFIG: identifier bad-name is invalid"
+                }
+              }
+            }
+          ],
           "expect": {
             "mysql": {
-              "error": "CONFIG",
-              "message_holds": "is invalid"
+              "count": 0
             },
             "postgres": {
-              "error": "CONFIG",
-              "message_holds": "is invalid"
+              "count": 0
             },
             "sqlite": {
-              "error": "CONFIG",
-              "message_holds": "is invalid"
+              "count": 0
             }
           }
         }

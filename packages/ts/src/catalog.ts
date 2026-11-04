@@ -1590,8 +1590,10 @@ export class CatalogConnection {
         );
         checkProjection(result.columns, 'returned insert projection differs from descriptor');
         if (result.rows.length !== 1) throw err(CODE_WRITE, `expected exactly one inserted row, got ${result.rows.length}`);
-        checkCells(descriptor, result.rows[0] ?? []);
-        after = result.rows;
+        const returned = result.rows[0] ?? [];
+        checkCells(descriptor, returned);
+        // RETURNING reports the row before an AFTER trigger runs, so the stored row is read again by its keys.
+        after = await session.lookup(descriptor, keyIndexes.map(index => returned[index] ?? null), false);
       } else if (expressionLocator) {
         const affected = await session.exec(insert, changes.map(change => change.value));
         if (affected !== 1) throw err(CODE_WRITE, `expected exactly one inserted row, got ${affected}`);

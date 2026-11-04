@@ -68,7 +68,7 @@ impl RowSnapshot {
                 return Err(invalid());
             }
             if exceeds_declared_capacity(&column.native_type, cell).map_err(invalid_with)? {
-                return Err(invalid_with(format!("value exceeds the declared capacity of column \"{name}\"")));
+                return Err(format!("ROW_UPDATE_INVALID: value exceeds the declared capacity of column \"{name}\""));
             }
             let size = match cell {
                 GridCell::Text(value) | GridCell::Decimal(value) | GridCell::Date(value) | GridCell::Time(value) | GridCell::DateTime(value) => value.len(),

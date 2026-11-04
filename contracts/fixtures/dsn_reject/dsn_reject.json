@@ -785,7 +785,7 @@
           "expect": {
             "none": {
               "error": "CONFIG",
-              "message_holds": "it does not accept extra"
+              "message_holds": "markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>; it does not accept extra"
             }
           }
         }

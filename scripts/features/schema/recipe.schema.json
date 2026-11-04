@@ -8953,6 +8953,11 @@
             ],
             "additionalProperties": false,
             "properties": {
+              "message": {
+                "description": "The whole text of the error, its code included.",
+                "type": "string",
+                "minLength": 1
+              },
               "message_holds": {
                 "description": "The text that the message of the error holds.",
                 "type": "string",
@@ -9209,6 +9214,11 @@
             ],
             "additionalProperties": false,
             "properties": {
+              "message": {
+                "description": "The whole text of the error, its code included.",
+                "type": "string",
+                "minLength": 1
+              },
               "message_holds": {
                 "description": "The text that the message of the error holds.",
                 "type": "string",
