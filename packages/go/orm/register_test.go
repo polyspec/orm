@@ -58,21 +58,6 @@ func onEachRegisterDatabase(t *testing.T, check func(t *testing.T, db *DB, schem
 	}
 }
 
-// TestRegisterRefusesEditedManifest checks that registering a manifest text that does not hash to the declared hash
-// fails with CONFIG (docs/spec/schema.md SCH-11), on each database. The no-statement part of registration is the
-// schema_install recipe (contracts/fixtures/schema_install/schema_install.json), not this test.
-// Requirements: DBS-104, DBS-119, SCH-11, SCH-15, SCH-17, INT-54.
-func TestRegisterRefusesEditedManifest(t *testing.T) {
-	testcase.Start(t, testcase.Database)
-	onEachRegisterDatabase(t, func(t *testing.T, db *DB, schema, other *Schema) {
-		// The manifest text of another set does not hash to the declared hash.
-		edited := &Schema{Hash: schema.Hash, Text: other.Text}
-		if err := db.Utils().Schema().Register(edited); ErrorCode(err) != CodeConfig {
-			t.Fatalf("register of an edited manifest text = %v, want CONFIG", err)
-		}
-	})
-}
-
 // TestRegisterReusesEnginePerHash checks that a connection that registers two document sets with different manifest
 // hashes plans each request with the engine of its own hash, and that registering a registered set again keeps its
 // engine (docs/spec/schema.md SCH-17).

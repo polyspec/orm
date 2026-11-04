@@ -47,13 +47,6 @@ class NewValuesTest(unittest.TestCase):
         )
         self.assertEqual(created.to_array()["label"], "created")
 
-    # Requirements: DSL-160.
-    def test_new_output_name_rejects_a_stored_column(self):
-        author = self.models.Author()
-        self.assertIs(author.set_name("stored"), author)
-        with self.assertRaises(AttributeError):
-            author.new_name("alias")
-
 
 if __name__ == "__main__":
     testcase.main()

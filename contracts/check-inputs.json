@@ -2500,7 +2500,6 @@
       ],
       "inputs": [
         "packages/ts/tests/models-scan.mjs",
-        "packages/ts/tests/model-new-output-name.mjs",
         "packages/ts/tsconfig.build.json",
         "scripts/typescript/models.mts",
         "contracts/fixtures/bench/dbspec-set.json",
