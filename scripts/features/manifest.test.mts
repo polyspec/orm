@@ -19,23 +19,6 @@ assert.ok(first, 'contracts/features.json declares a feature');
 function refused(value: unknown): string[] {
   return refusedPaths(() => parseFeatures(JSON.stringify(value), 'contracts/features.json'));
 }
-function isJsonObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-function isJsonArray(value: unknown): value is unknown[] {
-  return Array.isArray(value);
-}
-function isSafeInteger(value: unknown): value is number {
-  return typeof value === 'number' && Number.isSafeInteger(value);
-}
-type CompositeCollisionRow = { tenant_id: number; account_id: number; name: string; role: string };
-function isCompositeCollisionRow(value: unknown): value is CompositeCollisionRow {
-  return isJsonObject(value)
-    && isSafeInteger(value.tenant_id)
-    && isSafeInteger(value.account_id)
-    && typeof value.name === 'string'
-    && typeof value.role === 'string';
-}
 const withFeature = (change: (feature: ManifestFeature) => object): object => ({ ...manifest, features: [change(first)] });
 const adapterChecklist = (state: string): string => [
   '| ID | Task | Deliverables | Verification | State |',
@@ -66,23 +49,6 @@ caseTest('the schema refuses a list of cases on a recipe owner and requires one 
   assert.deepEqual(refused(owner({ recipe: 'r' })).filter(path => path.includes('/commands/')), []);
   assert.ok(refused(owner({ recipe: 'r', cases: ['a'] })).some(path => path.endsWith('/commands/none/0/cases')));
   assert.ok(refused(owner({})).some(path => path.endsWith('/commands/none/0')));
-});
-
-caseTest('coverage execution modes are explicit and reject unknown values', COMPUTE, () => {
-  const performanceIndex = manifest.features.findIndex(feature => feature.id === 'performance_gate');
-  const performance = manifest.features[performanceIndex];
-  assert.equal(performance?.coverage?.execution, 'exclusive');
-  assert.ok(performance?.coverage);
-  const parallel = structuredClone(manifest);
-  const parallelCoverage = parallel.features[performanceIndex]?.coverage;
-  assert.ok(parallelCoverage);
-  parallelCoverage.execution = 'parallel';
-  assert.deepEqual(refused(parallel), []);
-  const invalid = structuredClone(manifest);
-  const coverage = invalid.features[performanceIndex]?.coverage;
-  assert.ok(coverage);
-  (coverage as { execution?: unknown }).execution = 'overlapping';
-  assert.ok(refused(invalid).includes(`/features/${performanceIndex}/coverage/execution`));
 });
 
 caseTest('the schema of contracts/features.json refuses a manifest outside its shape', COMPUTE, () => {
@@ -156,66 +122,52 @@ caseTest('the schema of a shared fixture refuses a fixture without its feature o
       return error.lines;
     }
   };
-  assert.deepEqual(read(JSON.parse(readFileSync(new URL('../../contracts/fixtures/composite_key_collision.json', import.meta.url), 'utf8'))), []);
+  assert.deepEqual(read({ feature: 'f', cases: [{ id: 'a', operation: 'o', expected: 1 }] }), []);
   assert.notDeepEqual(read({ cases: [{ id: 'a', operation: 'o', expected: 1 }] }), []);
   assert.notDeepEqual(read({ feature: 'f', cases: [] }), []);
   assert.notDeepEqual(read({ feature: 'f', cases: [{ id: 'a', operation: 'o' }] }), []);
 });
 
-caseTest('the composite-key rows fixture has distinct bounded tuples with equal concatenations', COMPUTE, () => {
-  const fixturePath = 'contracts/fixtures/composite_key_collision.json';
+caseTest('the composite-key recipe holds distinct bounded tuples with equal concatenations', COMPUTE, () => {
+  const recipePath = 'contracts/fixtures/composite_keys/composite_keys.json';
   const feature = manifest.features.find(item => item.id === 'composite_keys');
   assert.ok(feature, 'contracts/features.json declares composite_keys');
-  assert.ok(feature.fixtures.includes(fixturePath), 'composite_keys declares the shared input fixture');
+  assert.ok(feature.fixtures.includes(recipePath), 'composite_keys declares the recipe');
   const coverageOwners = feature.coverage?.owners ?? {};
   assert.deepEqual(
     Object.keys(coverageOwners).sort(),
     ['go', 'php', 'php-extension', 'python', 'rust', 'typescript'],
     'composite_keys declares all six client owners',
   );
-  // No owner declares the fixture as an input: the owners run the recipe composite_keys; the reader of the fixture is
-  // CompositeKeysNativeTest of the PHP extension (PRT-40a), whose check target declares it in contracts/check-inputs.json.
-  const fixtureSchema = new URL('./schema/fixture.schema.json', import.meta.url).pathname;
-  const fixtureValue = parseJson<unknown>(
-    readFileSync(new URL('../../contracts/fixtures/composite_key_collision.json', import.meta.url), 'utf8'),
-    fixtureSchema,
-    'composite_key_collision.json',
-  );
-  assert.ok(isJsonObject(fixtureValue), 'the shared fixture schema accepts an object');
-  const fixture = fixtureValue;
-  assert.equal(fixture.feature, 'composite_keys');
-  assert.equal(fixture.tenant_namespace, '990004');
-  assert.ok(isJsonArray(fixture.cases));
-  assert.equal(fixture.cases.length, 1);
-  const compositeCaseValue = fixture.cases[0];
-  assert.ok(isJsonObject(compositeCaseValue));
-  const compositeCase = compositeCaseValue;
-  assert.equal(compositeCase.id, 'composite_key_rows');
-  assert.equal(compositeCase.operation, 'relation_assembly');
-  assert.ok(isJsonArray(compositeCase.expected));
-  assert.equal(compositeCase.expected.length, 2);
-  const [firstValue, secondValue] = compositeCase.expected;
-  assert.ok(isCompositeCollisionRow(firstValue));
-  assert.ok(isCompositeCollisionRow(secondValue));
-  const first = firstValue;
-  const second = secondValue;
-  const tenantNamespace = fixture.tenant_namespace;
-  assert.ok(typeof tenantNamespace === 'string');
-  for (const row of [first, second]) {
-    const tenantId = row.tenant_id;
-    const accountId = row.account_id;
-    assert.ok(isSafeInteger(tenantId) && tenantId > 0 && BigInt(tenantId) <= 9223372036854775807n);
-    assert.ok(isSafeInteger(accountId) && accountId > 0 && BigInt(accountId) <= 9223372036854775807n);
-    assert.ok(tenantId.toString().startsWith(tenantNamespace), 'collision tenants stay in the fixture namespace');
-    assert.equal(typeof row.name, 'string');
-    assert.equal(typeof row.role, 'string');
-  }
-  assert.notDeepEqual([first.tenant_id, first.account_id], [second.tenant_id, second.account_id]);
+  // CompositeKeysNativeTest of the PHP extension (PRT-40a) reads these rows too, so its check target declares the recipe
+  // in contracts/check-inputs.json.
+  const recipe = JSON.parse(readFileSync(new URL(`../../${recipePath}`, import.meta.url), 'utf8')) as {
+    cases: { id: string; steps: { op: string; model?: string; rows?: Record<string, { int?: string; text?: string }>[] }[] }[];
+  };
+  const compositeCase = recipe.cases.find(item => item.id === 'composite_key_rows');
+  assert.ok(compositeCase, 'the recipe holds composite_key_rows');
+  const created = (model: string) => compositeCase.steps.find(step => step.op === 'model.creates' && step.model === model)?.rows ?? [];
+  const tenantNamespace = '990004';
+  const collisionName = (row: Record<string, { int?: string; text?: string }>) => row.name?.text?.startsWith('collision-') === true;
+  const accounts = created('CompositeAccount').filter(collisionName);
+  assert.equal(accounts.length, 2);
+  const [first, second] = accounts.map(row => {
+    const [tenantId, accountId] = [BigInt(row.tenant_id?.int ?? '0'), BigInt(row.account_id?.int ?? '0')];
+    const role = created('CompositeMembership').find(item => item.tenant_id?.int === row.tenant_id?.int && item.account_id?.int === row.account_id?.int)?.role?.text;
+    assert.ok(tenantId > 0n && tenantId <= 9223372036854775807n);
+    assert.ok(accountId > 0n && accountId <= 9223372036854775807n);
+    assert.ok(tenantId.toString().startsWith(tenantNamespace), 'collision tenants stay in the namespace of the recipe');
+    assert.equal(typeof row.name?.text, 'string');
+    assert.equal(typeof role, 'string');
+    return { tenantId, accountId, name: row.name?.text, role };
+  });
+  assert.ok(first !== undefined && second !== undefined);
+  assert.notDeepEqual([first.tenantId, first.accountId], [second.tenantId, second.accountId]);
   assert.notEqual(first.name, second.name);
   assert.notEqual(first.role, second.role);
-  assert.equal(`${first.tenant_id}${first.account_id}`, `${second.tenant_id}${second.account_id}`);
-  assert.notEqual(first.tenant_id, 990004);
-  assert.notEqual(second.tenant_id, 990006);
+  assert.equal(`${first.tenantId}${first.accountId}`, `${second.tenantId}${second.accountId}`);
+  assert.notEqual(first.tenantId, 990004n);
+  assert.notEqual(second.tenantId, 990006n);
 });
 
 

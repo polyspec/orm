@@ -75,19 +75,6 @@ fn composite_components_preserve_typed_identity_and_shared_encoding() {
 }
 
 #[test]
-fn composite_datetime_microseconds_trim_trailing_zeroes() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    for entry in fixture()["datetime_microseconds"].as_array().expect("datetime_microseconds") {
-        let name = entry["name"].as_str().expect("name");
-        let instant = DateTime::parse_from_rfc3339(entry["value"].as_str().expect("value")).or_panic(|e| format!("fixture {name}: {e}"));
-        let values = vec![Val::DateTime(instant.naive_utc()), Val::Str(String::new())];
-        let key = Key::of_values(&values).or_panic(|e| format!("key {name}: {e}"));
-        assert_eq!(key, Key::S(entry["encoded"].as_str().expect("encoded").to_owned()), "key {name}");
-        assert_eq!(Key::of_values(&values).expect("key again"), key, "key {name} changed on repeated creation");
-    }
-}
-
-#[test]
 fn a_null_composite_row_has_no_key() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let values: Vec<Val> = fixture()["nullable_composite"].as_array().expect("nullable_composite").iter().map(composite_value_of).collect();

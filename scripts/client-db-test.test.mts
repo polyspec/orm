@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { caseTest, COMPUTE } from '../tests/testcase.mts';
 import { dirname, relative, resolve } from 'node:path';
-import { GO_LANE_PACKAGES, GO_LANE_SKIP, poolerRecipeCommands, poolerRecipeUnits, rustDatabaseCoverageSkipArguments, rustOwnedElsewhereSkipArguments, rustPoolerThreadArguments, rustTargetPoolSize } from './client-db-test.mts';
+import { GO_LANE_PACKAGES, GO_LANE_SKIP, poolerRecipeCommands, poolerRecipeUnits, rustOwnedElsewhereSkipArguments, rustPoolerThreadArguments, rustTargetPoolSize } from './client-db-test.mts';
 import { readParityConfig } from './json/formats.mts';
 import { COMMANDS as PERF_COMMANDS } from './perf-test.mts';
 import { readFeatures, type CoverageOwner, type Language, type NativeCommand } from './features/manifest.mts';
@@ -103,7 +103,11 @@ caseTest('the Go lane leaves the markdown conformance test to the target that pa
   assert.ok(!skip.test('TestMarkdownConformanceHelper'), 'a skip names the whole test');
 });
 
-caseTest('the feature matrix owns the program of a Rust recipe owner, one per database (FCV-12)', COMPUTE, () => {
-  const skipped = rustDatabaseCoverageSkipArguments(readFeatures(root), root);
-  for (const database of ['mysql', 'postgres', 'sqlite']) assert.ok(skipped.includes(`model_writes_chain_${database}`), database);
+caseTest('the Rust lane runs the recipe programs in its workspace run and leaves out only what another target owns', COMPUTE, () => {
+  const skipped = rustOwnedElsewhereSkipArguments(root).filter((_, index) => index % 2 === 1);
+  for (const database of ['mysql', 'postgres', 'sqlite']) {
+    assert.ok(skipped.includes(`coverage_hot_path_gate_${database}`), `the measurement of ${database}`);
+    assert.ok(!skipped.includes(`model_writes_chain_${database}`), `the recipe program of ${database}`);
+  }
+  assert.ok(skipped.every(symbol => symbol.startsWith('markdown_conformance::') || symbol.startsWith('coverage_hot_path_gate_')), skipped.join(' '));
 });

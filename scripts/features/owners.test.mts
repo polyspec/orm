@@ -227,10 +227,7 @@ caseTest('a change across the four clients selects no full-suite target', 5000, 
     'statement-events-check/php-extension', 'php-package-entry-check', 'catalog-php-extension-surface-check', 'recipe-runners-check']);
   for (const target of selectedTargets) assert.notEqual(inputs[target]?.scope, 'suite', `${target} is a full-suite target`);
   const runtimes = ['go', 'php', 'php-extension', 'typescript', 'python', 'rust'];
-  const nativeTargets = runtimes.flatMap(runtime => [
-    `client-db-${runtime}-check`,
-    ...['mysql', 'postgres', 'sqlite'].map(database => `feature-coverage/${runtime}/${database}`),
-  ]);
+  const nativeTargets = runtimes.map(runtime => `client-db-${runtime}-check`);
   for (const target of [...nativeTargets, 'client-pooler-check', 'case-database-check', 'conformance-check', 'feature-verify-rust', 'feature-verify-other', 'go-test-check'])
     assert.equal(inputs[target]?.scope, 'suite', `${target} is not a full-suite target`);
   // The sources recorded by contracts/interfaces.json and contracts/symbols/*.json are inputs to the interface check.

@@ -9,7 +9,7 @@ export type Language = 'go' | 'php' | 'php-extension' | 'rust' | 'typescript' | 
 /** A verification command of a feature. */
 export type Verification = { id: string; command: string; shard: string; inputs?: string[]; cwd?: string; environment?: 'linux-runner' };
 /** A native test command of a coverage part, per database (or none). */
-export type NativeCommand = { runner: 'go' | 'php' | 'cargo' | 'node' | 'python'; test: string; cases: string[]; symbols?: Record<string, string>; dsn_env?: string; recipe?: string; symbol?: string; database?: string };
+export type NativeCommand = { runner: 'go' | 'php' | 'cargo' | 'node' | 'python'; test: string; cases: string[]; recipe?: string; symbol?: string; database?: string };
 /** The native commands of a coverage part, keyed by database or none. */
 export type Commands = Partial<Record<'mysql' | 'postgres' | 'sqlite' | 'none', NativeCommand[]>>;
 /** The owner part of a language. */
@@ -17,7 +17,7 @@ export type CoverageOwner = { part: string; tests: string[]; inputs?: string[]; 
 /** A dependent part of a language. */
 export type CoverageDependent = { id: string; language: Language; part: string; tests: string[]; cases: string[]; commands: Commands };
 /** The coverage of a feature. */
-export type Coverage = { kind: 'database' | 'independent'; execution?: 'parallel' | 'exclusive'; cases: string[]; owners: Partial<Record<Language, CoverageOwner>>; dependents: CoverageDependent[] };
+export type Coverage = { kind: 'database' | 'independent'; cases: string[]; owners: Partial<Record<Language, CoverageOwner>>; dependents: CoverageDependent[] };
 /** The vector contract of a feature. */
 export type VectorContract = { source: string; required_databases: string[]; minimum_vectors: number };
 /** A feature of the manifest. */

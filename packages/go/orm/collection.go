@@ -115,6 +115,31 @@ func keyFromRow(row []any, refs []plan.KeyRef) (Key, bool, error) {
 	return key, err == nil, err
 }
 
+// keyCells is the row whose key cells hold the boolean of a bool column: MySQL and SQLite return it as an integer, and a
+// key keeps the declared type of its component (INT-11, PRT-35).
+func keyCells(row []any, asm *plan.Assemble) ([]any, error) {
+	cells := row
+	copied := false
+	for _, ref := range asm.Key {
+		for i := range asm.Columns {
+			col := &asm.Columns[i]
+			if col.Index != ref.Index || col.Type != "bool" || ref.Index < 0 || ref.Index >= len(row) || row[ref.Index] == nil {
+				continue
+			}
+			value, err := AsBool(row[ref.Index])
+			if err != nil {
+				return nil, err
+			}
+			if !copied {
+				cells = append([]any(nil), row...)
+				copied = true
+			}
+			cells[ref.Index] = value
+		}
+	}
+	return cells, nil
+}
+
 func keyFromValues(values []any) (Key, error) {
 	if len(values) == 0 {
 		return Key{}, codecErr(CodeInternal, "composite key has no components")

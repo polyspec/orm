@@ -7,8 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { errorCode, featureItems, runCases, withCleanup } from './coverage_case.mjs';
-import { coverageItems } from '../../../scripts/features/coverage.mts';
+import { errorCode, runCases, withCleanup } from './coverage_case.mjs';
 import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 
 // runCases reads the case IDs from the command line, so during each call it changes process.argv and collects the output.
@@ -59,16 +58,6 @@ caseTest('coverage_case/stops-a-case-at-its-deadline', COMPUTE, async () => {
       await runCases('x.mjs', { slow: () => new Promise(resolve => { timer = setTimeout(resolve, 5000); }) }, 20);
     } finally { clearTimeout(timer); }
   }), /case slow exceeded 20 ms/);
-});
-caseTest('coverage_case/resolves-each-listed-database', COMPUTE, () => {
-  const file = 'packages/ts/tests/a.mjs';
-  const command = (dsn_env) => [{ runner: 'node', test: file, cases: ['c'], dsn_env }];
-  const manifest = { features: [{ id: 'x', coverage: { kind: 'database', cases: ['c'], owners: { typescript: { part: 'packages/ts', tests: [file],
-    commands: { sqlite: command('DSN_S'), mysql: command('DSN_M') } } } } }] };
-  assert.throws(() => coverageItems(manifest, file, { DSN_S: 'sqlite:///x' }), /DSN_M/);
-  assert.deepEqual(coverageItems(manifest, file, { DSN_S: 's', DSN_M: 'm' }).map(item => [item.database, item.dsn]),
-    [['sqlite', 's'], ['mysql', 'm']]);
-  assert.deepEqual(coverageItems(manifest, 'packages/ts/tests/none.mjs', {}), []);
 });
 caseTest('coverage_case/reports-error-codes-and-cleanup-failures', COMPUTE, async () => {
   assert.equal(await errorCode(Promise.reject(Object.assign(new Error('bad'), { code: 'CONFIG' }))), 'CONFIG');

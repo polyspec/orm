@@ -1291,7 +1291,14 @@ abstract class Model implements \JsonSerializable, ModelMetadata
             $shape['original'][] = $meta['updated'];
         }
         if (count($asm['key'] ?? []) === 1) {
-            $shape['key'] = $asm['key'][0]['index'];
+            // A bool key goes through keyCells: its cell can be an integer, and the key keeps the declared type (PRT-35).
+            $isBool = false;
+            foreach ($asm['columns'] as $col) {
+                $isBool = $isBool || ($col['index'] === $asm['key'][0]['index'] && $col['type'] === 'bool');
+            }
+            if (!$isBool) {
+                $shape['key'] = $asm['key'][0]['index'];
+            }
         }
         $shape['row'] = ['loaded' => true, 'names' => $shape['names'], 'hidden' => $shape['hidden'],
             'original' => [], 'extra' => [], 'related' => [], 'cascade' => [], 'flat' => []];
@@ -1432,11 +1439,38 @@ abstract class Model implements \JsonSerializable, ModelMetadata
             return Collection::keyOf(array_key_exists($this->keyName, $m->values) ? $m->value($this->keyName)
                 : $m->row['extra'][$this->keyName] ?? null);
         }
-        $key = Db::rowKey($vals, $asm['key']);
+        $key = Db::rowKey(self::keyCells($asm, $vals), $asm['key']);
         if ($key === null) {
             throw new OrmException(Code::CODEC_DECODE, 'collection row identity contains SQL NULL');
         }
         return $key;
+    }
+
+    /**
+     * The row whose key cells hold the declared type of their column: a bool column reads as an integer on MySQL and
+     * SQLite, and a datetime column of a composite key as its text (INT-11, PRT-35).
+     */
+    private static function keyCells(array $asm, array $vals): array
+    {
+        foreach ($asm['key'] as $ref) {
+            $index = $ref['index'];
+            $cell = $vals[$index] ?? null;
+            if ($cell === null) {
+                continue;
+            }
+            foreach ($asm['columns'] as $column) {
+                if ($column['index'] !== $index) {
+                    continue;
+                }
+                if ($column['type'] === 'bool') {
+                    $vals[$index] = (bool) $cell;
+                } elseif ($column['type'] === 'datetime' && is_string($cell) && count($asm['key']) > 1) {
+                    $vals[$index] = new \DateTimeImmutable($cell . ' UTC');
+                }
+                break;
+            }
+        }
+        return $vals;
     }
 
     /** @return Collection<static> */

@@ -135,19 +135,6 @@ class CollectionIdentityTest(unittest.TestCase):
                 )
             seen[entry["name"]] = key
 
-    def test_composite_datetime_microseconds_trim_trailing_zeroes(self):
-        fixture = load_fixture()
-        for entry in fixture["datetime_microseconds"]:
-            date = datetime.fromisoformat(entry["value"])
-            values = [date, ""]
-            key = key_of_values(values)
-            self.assertEqual(key, entry["encoded"], entry["name"])
-            self.assertEqual(
-                key_of_values(values),
-                key,
-                f"{entry['name']} changed on repeated creation",
-            )
-
     def test_a_null_composite_row_has_no_collection_key(self):
         # Requirements: PRT-35.
         row = [

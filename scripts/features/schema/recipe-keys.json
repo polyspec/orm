@@ -51,6 +51,9 @@
       "replies",
       "token"
     ],
+    "interface.symbols": [
+      "op"
+    ],
     "keyring.versions": [
       "expect",
       "keyring",

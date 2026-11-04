@@ -5,8 +5,6 @@
 // a top-level node:test test under that ID.
 import { createRequire } from 'node:module';
 import { caseTest } from '../../../tests/testcase.mts';
-import { coverageItems } from '../../../scripts/features/coverage.mts';
-import { readFeatures } from '../../../scripts/features/manifest.mts';
 
 const require = createRequire(new URL('../package.json', import.meta.url));
 
@@ -14,14 +12,12 @@ const require = createRequire(new URL('../package.json', import.meta.url));
 export const repositoryRoot = new URL('../../..', import.meta.url).pathname;
 
 /**
- * Runs the cases of the file once per coverage item of the file (every database the manifest lists for it, and the
- * item of a file without a database). The command line gives the case IDs in their order; each requested case runs on
- * every item, and it prints `CASE <id> [<database>] PASS` (or `CASE <id> PASS` without a database). An unknown or repeated
- * ID is an error. Each run is stopped after timeoutMs of wall-clock time. Without an ID, each case of suite runs on each
- * item as a node:test subtest named `<id> [<database>]`.
+ * Runs the cases of a file without a database. The command line gives the case IDs in their order, and each prints
+ * `CASE <id> PASS`. An unknown or repeated ID is an error. Each run is stopped after timeoutMs of wall-clock time. Without an ID,
+ * each case of suite runs as a node:test test named by its ID.
  */
 export async function runCases(file, cases, timeoutMs, suite = cases) {
-  return runItems(featureItems(file), file, cases, timeoutMs, suite);
+  return runItems([{ database: 'none', driver: 'none', dsn: null }], file, cases, timeoutMs, suite);
 }
 
 /** Runs the cases of a test file on the one database that the file names, with no selection of the manifest. */
@@ -51,19 +47,6 @@ async function runItems(items, file, cases, timeoutMs, suite) {
       console.log(item.database === 'none' ? `CASE ${id} PASS` : `CASE ${id} [${item.database}] PASS`);
     }
   }
-}
-
-/**
- * The coverage items of this test file from the feature manifest: every listed database.
- */
-export function featureItems(file) {
-  const items = coverageItems(
-    readFeatures(repositoryRoot),
-    `packages/ts/tests/${file}`,
-    process.env,
-  );
-  // A case takes { driver, dsn, database }: driver is the database name the manifest lists.
-  return (items.length ? items : [{ database: 'none', dsn: null }]).map(item => ({ ...item, driver: item.database, dsn: item.dsn }));
 }
 
 /**

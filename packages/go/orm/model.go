@@ -374,7 +374,11 @@ func (c *Core) collectionKey(m *Core, asm *plan.Assemble, row []any) (Key, error
 		}
 		return KeyOf(v)
 	}
-	key, present, err := keyFromRow(row, asm.Key)
+	cells, err := keyCells(row, asm)
+	if err != nil {
+		return Key{}, err
+	}
+	key, present, err := keyFromRow(cells, asm.Key)
 	if err != nil {
 		return Key{}, err
 	}

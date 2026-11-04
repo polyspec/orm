@@ -1,5 +1,5 @@
 <!-- doc-id: perf -->
-<!-- source-sha256: e66bebefa14367ad0838dac94d7d58904e181088367a17572a97f41b3e0e628b -->
+<!-- source-sha256: e87c1779f7a36ba08dc1d04bca8945a7f1ae34f4062c32f0740539797ff0215c -->
 # 성능
 
 모든 클라이언트는 호출한 프로세스 안에서 문장을 계획하고 네이티브 드라이버로 실행한다. 현재 클라이언트 오버헤드 기준은 아래 Go·PHP 실행 경로를 `make perf-check`로 측정하며 필수 데이터베이스 환경이 없으면 명령이 실패한다.
@@ -38,11 +38,11 @@
 | Go | 1.35 | 1.25 | `packages/go/bench` `TestHotPathGate` |
 | PHP | 1.35 | 1.25 | `packages/php/tests/PerfGateTest.php` |
 
-**PERF-1 —** feature coverage는 같은 두 workload(PK와 내림차순 100행 목록)를 여섯 native client—Go, PHP library, PHP extension, TypeScript, Python, Rust—에서 MySQL, PostgreSQL, SQLite 각각으로 측정한다. 각 database의 timing은 run의 `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN`, `BENCH_SQLITE_DSN`에서 시드된 bench database를 읽고, 독립 state reader도 같은 database 범위를 읽는다. PHP extension entrypoint는 workload 전에 `Model::gets`가 internal인지 확인한다. 각 case는 native/client p50, 비율, 프로세스 CPU, wall time, 샘플 수, machine을 기록한다. 기준값을 넘는 측정은 진단 정보이며 correctness를 실패시키지 않는다. 이 feature workload의 고정 기준값은 모든 client, database, workload에 대해 `contracts/performance-references.json`(8절)에 기록되어 있다. commit 97b4566f4의 check run `orm_check_33189_3c995a77`에서 기록했다. 위의 Go와 PHP MySQL 한도는 별도 `make perf-check` workload에만 적용하며 그대로 유지한다.
+**PERF-1 —** `make feature-performance-check`는 같은 두 workload(PK와 내림차순 100행 목록)를 여섯 native client—Go, PHP library, PHP extension, TypeScript, Python, Rust—에서 MySQL, PostgreSQL, SQLite 각각으로 측정한다. 각 database의 timing은 run의 `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN`, `BENCH_SQLITE_DSN`에서 시드된 bench database를 읽으며, 한 번에 측정 하나씩 두 번 실행한다. PHP extension entrypoint는 workload 전에 `Model::gets`가 internal인지 확인한다. 각 case는 native/client p50, 비율, 프로세스 CPU, wall time, 샘플 수, machine을 기록한다. 기준값을 넘는 측정은 진단 정보이며 correctness를 실패시키지 않는다. 이 feature workload의 고정 기준값은 모든 client, database, workload에 대해 `contracts/performance-references.json`(8절)에 기록되어 있다. commit 97b4566f4의 check run `orm_check_33189_3c995a77`에서 기록했다. 위의 Go와 PHP MySQL 한도는 별도 `make perf-check` workload에만 적용하며 그대로 유지한다.
 
 SQL projection과 bind, 기대한 PK 결과와 정렬된 결과는 세 데이터베이스에서 `conformance_verification`의 case `core_projected_reads`다. 이 case는 시간을 재지 않으며 측정 case를 대신하지 않는다.
 
-`make perf-check`의 별도 Go/PHP 검사는 `ORM_BENCH_MYSQL_DSN`에서 시드한 MySQL 벤치 데이터베이스를 읽고, `make perf-check`가 함께 실행하는 Go 측정과 feature coverage의 timing은 `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN`, `BENCH_SQLITE_DSN`을 읽는다. 필요한 DSN이 없으면 검사에 실패하며, 요청하지 않은 로컬/다른 database로 대체하지 않는다.
+`make perf-check`의 별도 Go/PHP 검사는 `ORM_BENCH_MYSQL_DSN`에서 시드한 MySQL 벤치 데이터베이스를 읽고, `make perf-check`가 함께 실행하는 Go 측정과 `make feature-performance-check`는 `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN`, `BENCH_SQLITE_DSN`을 읽는다. 필요한 DSN이 없으면 검사에 실패하며, 요청하지 않은 로컬/다른 database로 대체하지 않는다.
 
 변환을 포함한 기준 코드에서 PHP 8.4.25 로컬 소켓은 PK 비율 1.20–1.31, 100행 비율 1.06–1.12를 보였다. PK 비율은 쿼리당 약 10.5µs인 요청 조립과 계획 고정 비용이 지배한다.
 
@@ -80,7 +80,7 @@ bench database는 `scripts/bench-db.mts`가 만든다. `BENCH_MYSQL_DSN`, `BENCH
 
 ## 8. 공통 클라이언트 기준값
 
-`contracts/performance-references.json`은 `performance_gate`의 여섯 클라이언트, 세 database, 두 workload 조합마다 하나의 고정 비율을 선언한다. 기존 coverage runner가 native 측정값을 이 선언과 비교한다. 기준값을 넘으면 측정값, 기준값과 machine을 담은 경고를 출력하며 correctness 실패로 처리하지 않는다. 원시 관측값은 자동으로 기준값이 되지 않는다.
+`contracts/performance-references.json`은 `performance_gate`의 여섯 클라이언트, 세 database, 두 workload 조합마다 하나의 고정 비율을 선언한다. `make feature-performance-check`가 native 측정값을 이 선언과 비교한다. 기준값을 넘으면 측정값, 기준값과 machine을 담은 경고를 출력하며 correctness 실패로 처리하지 않는다. 원시 관측값은 자동으로 기준값이 되지 않는다.
 
 통과한 check run 하나에서 각 runtime/database/workload 조합의 첫 번째 실행에서 관측한 비율을 기록한다. 두 번째 실행은 그 기준값과 비교해 진단 정보로 보고하며, 여유값을 더하거나 두 번째 실행값으로 기준값을 높이지 않는다. 두 실행의 원시 측정값과 원시 기록의 경로, SHA-256, 측정 시각, machine identity를 보존한다. 3절의 Go 및 PHP `make perf-check` MySQL 한도는 별도로 유지하며 변경하지 않는다.
 

@@ -4,7 +4,13 @@
     "INT-74",
     "INT-88",
     "INT-89",
-    "INT-130"
+    "INT-130",
+    "INT-17",
+    "INT-18",
+    "INT-19",
+    "INT-57",
+    "INT-61",
+    "INT-64"
   ],
   "cases": [
     {
@@ -122,6 +128,22 @@
               "message": "EMPTY_IN: i64_value received an empty list"
             }
           }
+        }
+      ]
+    },
+    {
+      "id": "interface_symbols",
+      "requirements": [
+        "INT-17",
+        "INT-18",
+        "INT-19",
+        "INT-57",
+        "INT-61",
+        "INT-64"
+      ],
+      "steps": [
+        {
+          "op": "interface.symbols"
         }
       ]
     }

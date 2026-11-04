@@ -1,7 +1,7 @@
 import { CORE, Core, RowState, configError, integerRanges, isModel, styledField, type EntityDef, type ModelLike, type SetSpec } from './core.js';
 import { encodeStyled } from './codec.js';
 import { Value as OrderedJsonValue, stringify as orderedJsonStringify } from '@polyspec/ordered-json';
-import { Db, keyOfValues, keyText, keyValue, pagePlanSteps, paginate, query, readTime, resolve, rowKey, scalar, scalarKey, statement, write, type Executor, type Key, type QueryPlanStep, type Result } from './database.js';
+import { Db, DatetimeKeyText, keyOfValues, keyText, keyValue, pagePlanSteps, paginate, query, readTime, resolve, rowKey, scalar, scalarKey, statement, write, type Executor, type Key, type QueryPlanStep, type Result } from './database.js';
 import { restoreKey } from './engine/validate.js';
 import { fieldOf, type Entity, type Field, type RuntimeModel } from './engine/model.js';
 import type { Assemble, Request } from './ir.js';
@@ -412,7 +412,16 @@ function collectionKey(c: Core, m: Core, asm: Assemble, row: readonly unknown[])
     const column = present(asm.columns.find(col => col.index === only.index), `the key column at ${only.index}`);
     return keyValue(m.values.get(column.name) ?? row[only.index]);
   }
-  const key = rowKey(row, asm.key);
+  // A bool column reads as an integer on MySQL and SQLite and a datetime column as its text, and a key keeps the declared
+  // type of its component (PRT-35).
+  const cells = [...row];
+  for (const ref of asm.key) {
+    const column = present(asm.columns.find(col => col.index === ref.index), `the key column at ${ref.index}`);
+    const cell = cells[ref.index];
+    if (column.type === 'bool') cells[ref.index] = m.values.get(column.name) ?? cell;
+    else if (column.type === 'datetime' && typeof cell === 'string') cells[ref.index] = new DatetimeKeyText(cell);
+  }
+  const key = rowKey(cells, asm.key);
   if (key === undefined) throw new OrmError('CODEC_DECODE', 'collection row identity contains SQL NULL');
   return key;
 }

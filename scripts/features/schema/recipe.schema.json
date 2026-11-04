@@ -805,6 +805,7 @@
             "dsn.sqlite_file",
             "markdown.connect",
             "markdown.session",
+            "interface.symbols",
             "keyring.versions",
             "dbspec.introspect_sqlite",
             "dbspec.apply_fault",
@@ -957,6 +958,9 @@
         },
         {
           "$ref": "#/$defs/ops/markdown.connect"
+        },
+        {
+          "$ref": "#/$defs/ops/interface.symbols"
         },
         {
           "$ref": "#/$defs/ops/keyring.versions"
@@ -2272,6 +2276,18 @@
                 }
               }
             }
+          }
+        }
+      },
+      "interface.symbols": {
+        "type": "object",
+        "required": [
+          "op"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "interface.symbols"
           }
         }
       },

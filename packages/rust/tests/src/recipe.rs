@@ -103,7 +103,10 @@ pub fn trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testc
             let case = case.clone();
             let (path, database, dir) = (path.to_owned(), database.to_owned(), dir.clone());
             let id = case["id"].as_str().unwrap_or_default().to_owned();
-            polyspec_orm_testcase::trial(format!("{entry}::{id}"), polyspec_orm_testcase::COMPUTE, move || {
+            // The interface check is another process, which may build its extractor; the other cases compute in memory.
+            let is_process = case["steps"].as_array().is_some_and(|steps| steps.iter().any(|step| step["op"] == "interface.symbols"));
+            let deadline = if is_process { polyspec_orm_testcase::PROCESS } else { polyspec_orm_testcase::COMPUTE };
+            polyspec_orm_testcase::trial(format!("{entry}::{id}"), deadline, move || {
                 let mut bound = HashMap::new();
                 let steps = case["steps"].as_array().cloned().unwrap_or_default();
                 for (index, step) in steps.iter().enumerate() {
@@ -844,6 +847,58 @@ fn dbspec_introspect_sqlite(step: &Value, database: &str) -> Result<(), String> 
     }
 }
 
+/// The deadline of a hung interface check, wall-clock time, since another process does the work: it takes 15 s measured, and 1 to 2
+/// minutes when the build cache is empty. A check past it is killed.
+const INTERFACE_CHECK_DEADLINE: std::time::Duration = std::time::Duration::from_secs(300);
+
+/// The interface.symbols op (FCV-4): the interface check of the Rust client from the repository root, three levels above `dir`, the
+/// directory of the recipe (INT-17, INT-18, INT-19, INT-57, INT-61, INT-64). The check exits 0 when it holds.
+fn interface_symbols(dir: &Path) -> Result<(), String> {
+    use std::io::Read as _;
+    use std::process::{Command, Stdio};
+    let started = std::time::Instant::now();
+    let mut child = Command::new("node")
+        .args(["tests/interfaces/check/main.mts", "-language", "rust"])
+        .current_dir(dir.join("../../.."))
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|error| format!("node tests/interfaces/check/main.mts: {error}"))?;
+    let stdout = child.stdout.take().ok_or("the check has no stdout pipe")?;
+    let stderr = child.stderr.take().ok_or("the check has no stderr pipe")?;
+    let (closed, events) = std::sync::mpsc::channel();
+    let pipes: [Box<dyn std::io::Read + Send>; 2] = [Box::new(stdout), Box::new(stderr)];
+    for mut pipe in pipes {
+        let closed = closed.clone();
+        std::thread::spawn(move || {
+            let mut text = String::new();
+            let read = pipe.read_to_string(&mut text).map(|_| text);
+            // The receiver is gone only after the deadline, and that failure is already reported.
+            if closed.send(read).is_err() {
+                eprintln!("interface check output arrived after the deadline");
+            }
+        });
+    }
+    drop(closed);
+    let mut output = String::new();
+    for _ in 0..2 {
+        match events.recv_timeout(INTERFACE_CHECK_DEADLINE.saturating_sub(started.elapsed())) {
+            Ok(read) => output.push_str(&read.map_err(|error| format!("interface check output: {error}"))?),
+            Err(_) => {
+                let killed = child.kill();
+                let waited = child.wait();
+                return Err(format!("interface check not finished within {INTERFACE_CHECK_DEADLINE:?} (kill: {killed:?}, wait: {waited:?})"));
+            }
+        }
+    }
+    let status = child.wait().map_err(|error| format!("interface check: {error}"))?;
+    if status.success() {
+        return Ok(());
+    }
+    Err(format!("interface check failed with {status}:\n{output}"))
+}
+
 /// The keyring.versions op (FCV-4): the public constructor of the keyring, then its current version and its versions (INT-74,
 /// INT-130), against the expect of `database`.
 fn keyring_versions(step: &Value, database: &str) -> Result<(), String> {
@@ -904,6 +959,7 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
         "dbspec.apply_fault" => return dbspec_apply_fault(step, bound, database),
         "markdown.connect" => return markdown_connect(step, database),
         "markdown.session" => return markdown_session(step, database),
+        "interface.symbols" => return interface_symbols(dir),
         "keyring.versions" => return keyring_versions(step, database),
         "markdown.builder" => return markdown_builder(step, database),
         "planner.compile" => return planner_compile(step, database, dir),
