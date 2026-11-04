@@ -54,4 +54,8 @@ fn coverage_interface_symbols() {
     }
     let status = child.wait().or_panic(|e| format!("interface check: {e}"));
     assert!(status.success(), "interface check failed with {status}:\n{output}");
+    // The line the feature checker reads (FCV-12); a run outside the checker names no file.
+    if let Some(path) = std::env::var_os("ORM_RECIPE_RESULTS") {
+        std::fs::write(path, "CASE interface_symbols PASS\n").or_panic(|e| format!("results: {e}"));
+    }
 }

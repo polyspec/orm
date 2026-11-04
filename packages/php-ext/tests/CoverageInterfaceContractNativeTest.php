@@ -68,5 +68,10 @@ final class CoverageInterfaceContractNativeTest extends TestCase
                 "$className::$member is not owned by polyspec_orm"
             );
         }
+        // The line the feature checker reads (FCV-12); a run outside the checker names no file.
+        $path = getenv('ORM_RECIPE_RESULTS');
+        if ($path !== false && $path !== '') {
+            file_put_contents($path, "CASE interface_symbols PASS\n");
+        }
     }
 }

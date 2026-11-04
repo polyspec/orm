@@ -15,12 +15,11 @@
 // rollback fault cases and the live-db cases of orm-build are in that run.
 import { readFileSync, rmSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { basename, delimiter, dirname, join, resolve } from 'node:path';
+import { delimiter, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { keepAll, render, run, runLanes, variable, type Command } from './check/commands.mts';
 import { COMMANDS as TYPESCRIPT_COMMANDS, sqliteTest } from './typescript/sqlite-test.mts';
 import { implementationLanguages } from './features/languages.mts';
-import { readFeatures, type FeatureManifest, type NativeCommand } from './features/manifest.mts';
 import { readParityConfig } from './json/formats.mts';
 import { readJsonFile } from './json/schema.mts';
 import { PROXYSQL_BACKEND_CONNECTIONS } from './test-servers.mts';
@@ -59,7 +58,7 @@ export const GO_LANE_PACKAGES = [
   './packages/go/testcase',
 ];
 // TestMarkdownConformance needs the flowmark server that markdown-conformance-check/go passes. The measurements of PERF-1 belong to
-// perf-check and feature-check, which read the bench DSNs and report the timing; they assert no client result.
+// perf-check and feature-performance-check, which read the bench DSNs and report the timing; they assert no client result.
 export const GO_LANE_SKIP = '^(TestMarkdownConformance|TestPerformanceMeasurement(Mysql|Postgres|SQLite))$';
 const GO: Command[] = [go('-skip', GO_LANE_SKIP, ...GO_LANE_PACKAGES)];
 const PHP_TESTS = ['ModelTest', 'RuntimeDbTest', 'AuditExternalSetsTest', 'SchemaSetTest', 
@@ -131,68 +130,15 @@ export function rustPoolerThreadArguments(backends: number, poolSize: number): s
   return [`--test-threads=${Math.max(1, Math.floor(backends / poolSize))}`];
 }
 
-/** Returns the exact Rust symbols that the database feature matrix owns, for the generic client test run to skip. */
-export function rustDatabaseCoverageSkipArguments(manifest: FeatureManifest, repository: string): string[] {
-  const testSymbols = new Set<string>();
-  const rustCommands: { feature: string; command: NativeCommand }[] = [];
-  for (const feature of manifest.features) {
-    const coverage = feature.coverage;
-    if (coverage?.kind !== 'database') continue;
-    const parts = [coverage.owners.rust, ...coverage.dependents.filter(part => part.language === 'rust')].filter(part => part !== undefined);
-    for (const part of parts) {
-      for (const commands of Object.values(part.commands)) {
-        for (const command of commands ?? []) if (command.runner === 'cargo') rustCommands.push({ feature: feature.id, command });
-      }
-    }
-  }
-  for (const { feature, command } of rustCommands) {
-    // A recipe owner names no case symbol (FCV-12): its program, one per database, is the unit the feature matrix owns.
-    if (command.recipe !== undefined) {
-      testSymbols.add(basename(command.test, '.rs'));
-      continue;
-    }
-    for (const id of command.cases) {
-      const symbol = command.symbols?.[id];
-      if (typeof symbol !== 'string' || symbol === '') throw new Error(`${feature}: Rust case ${id} has no declared native test symbol`);
-      testSymbols.add(symbol);
-    }
-  }
-
-  // The integration harness also includes the top-level catalog test file under a module name. Discover that alias
-  // from its Rust module declaration so the workspace run excludes both compiled copies of the same declared test.
-  const integrationRoot = resolve(repository, 'packages/rust/tests/tests/integration/main.rs');
-  const integrationDirectory = dirname(integrationRoot);
-  const integrationSource = readFileSync(integrationRoot, 'utf8');
-  const declaration = /(?:#\[path\s*=\s*"([^"]+)"\]\s*)?mod\s+([A-Za-z_][A-Za-z0-9_]*)\s*;/g;
-  for (const match of integrationSource.matchAll(declaration)) {
-    const [, explicitPath, name] = match;
-    if (name === undefined) continue;
-    const moduleFile = explicitPath === undefined ? resolve(integrationDirectory, `${name}.rs`) : resolve(integrationDirectory, explicitPath);
-    const declared = rustCommands.filter(({ command }) => command.recipe === undefined && resolve(repository, command.test) === moduleFile);
-    for (const { command } of declared) {
-      const standaloneTarget = !command.test.replaceAll('\\', '/').includes('/integration/');
-      for (const id of command.cases) {
-        const symbol = command.symbols?.[id];
-        if (typeof symbol !== 'string' || symbol === '') throw new Error(`Rust case ${id} in ${command.test} has no declared native test symbol`);
-        if (symbol.startsWith(`${name}::`)) {
-          testSymbols.add(symbol);
-          if (standaloneTarget) testSymbols.add(symbol.slice(name.length + 2));
-        } else {
-          testSymbols.add(`${name}::${symbol}`);
-        }
-      }
-    }
-  }
-  return [...testSymbols].sort().flatMap(symbol => ['--skip', symbol]);
-}
-
 /**
- * Returns the exact Rust symbols that a target other than the feature matrix owns, for the generic client test run to skip: the
- * markdown conformance cases, which markdown-conformance-check/rust runs against the flowmark server.
+ * Returns the exact Rust symbols that another target owns, for the generic client test run to skip, as GO_LANE_SKIP does for Go: the
+ * markdown conformance cases, which markdown-conformance-check/rust runs against the flowmark server, and the measurements of
+ * PERF-1, which feature-performance-check runs on the bench DSNs (T334-3-11).
  */
 export function rustOwnedElsewhereSkipArguments(repository: string): string[] {
   const markdown = readJsonFile<{ cases: { id: string }[] }>(resolve(repository, 'tests/markdown/cases.json'), MARKDOWN_CASES_SCHEMA);
-  return markdown.cases.map(testCase => `markdown_conformance::${testCase.id}`).sort().flatMap(symbol => ['--skip', symbol]);
+  const measurements = ['mysql', 'postgres', 'sqlite'].map(database => `coverage_hot_path_gate_${database}`);
+  return [...markdown.cases.map(testCase => `markdown_conformance::${testCase.id}`).sort(), ...measurements].flatMap(symbol => ['--skip', symbol]);
 }
 
 // tests/cargo-test.mts builds the test binaries under the lease of the shared target directory as a long operation with no
@@ -201,7 +147,7 @@ const RUST_TESTS: Command = {
   program: 'node',
   args: [
     '../../tests/cargo-test.mts', 'workspace-tests', '--', 'cargo', 'test', '--locked', '--workspace', '--features', variable('ORM_RUST_TEST_FEATURES'), '--',
-    ...rustDatabaseCoverageSkipArguments(readFeatures(root), root), ...rustOwnedElsewhereSkipArguments(root), '--exact',
+    ...rustOwnedElsewhereSkipArguments(root), '--exact',
     // The pooler lane keeps PROXYSQL_BACKEND_CONNECTIONS server connections, so its Rust tests run no more pools at once than that (T343-1).
     ...(process.env['ORM_CLIENT_DB_POOLER'] === '1' ? rustPoolerThreadArguments(PROXYSQL_BACKEND_CONNECTIONS, rustTargetPoolSize(root)) : []),
   ],

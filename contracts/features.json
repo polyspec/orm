@@ -2779,10 +2779,12 @@
           "go": {
             "part": "packages/go/orm",
             "tests": [
-              "packages/go/orm/recipe_transactions_test.go"
+              "packages/go/orm/recipe_transactions_test.go",
+              "packages/go/orm/recipe_utils_test.go"
             ],
             "inputs": [
-              "contracts/fixtures/bench/dbspec-set.json"
+              "contracts/fixtures/bench/dbspec-set.json",
+              "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
               "mysql": [
@@ -2791,6 +2793,12 @@
                   "test": "packages/go/orm/recipe_transactions_test.go",
                   "recipe": "contracts/fixtures/transactions/transactions.json",
                   "symbol": "TestRecipeTransactionsMysql"
+                },
+                {
+                  "runner": "go",
+                  "test": "packages/go/orm/recipe_utils_test.go",
+                  "recipe": "contracts/fixtures/utils/utils.json",
+                  "symbol": "TestRecipeUtilsMysql"
                 }
               ],
               "postgres": [
@@ -2799,6 +2807,12 @@
                   "test": "packages/go/orm/recipe_transactions_test.go",
                   "recipe": "contracts/fixtures/transactions/transactions.json",
                   "symbol": "TestRecipeTransactionsPostgres"
+                },
+                {
+                  "runner": "go",
+                  "test": "packages/go/orm/recipe_utils_test.go",
+                  "recipe": "contracts/fixtures/utils/utils.json",
+                  "symbol": "TestRecipeUtilsPostgres"
                 }
               ],
               "sqlite": [
@@ -2807,6 +2821,12 @@
                   "test": "packages/go/orm/recipe_transactions_test.go",
                   "recipe": "contracts/fixtures/transactions/transactions.json",
                   "symbol": "TestRecipeTransactionsSqlite"
+                },
+                {
+                  "runner": "go",
+                  "test": "packages/go/orm/recipe_utils_test.go",
+                  "recipe": "contracts/fixtures/utils/utils.json",
+                  "symbol": "TestRecipeUtilsSqlite"
                 }
               ]
             }
@@ -2814,10 +2834,12 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/TransactionsRecipeTest.php"
+              "packages/php/tests/TransactionsRecipeTest.php",
+              "packages/php/tests/UtilsRecipeTest.php"
             ],
             "inputs": [
-              "contracts/fixtures/bench/dbspec-set.json"
+              "contracts/fixtures/bench/dbspec-set.json",
+              "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
               "mysql": [
@@ -2825,6 +2847,12 @@
                   "runner": "php",
                   "test": "packages/php/tests/TransactionsRecipeTest.php",
                   "recipe": "contracts/fixtures/transactions/transactions.json",
+                  "symbol": "testMysql"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/UtilsRecipeTest.php",
+                  "recipe": "contracts/fixtures/utils/utils.json",
                   "symbol": "testMysql"
                 }
               ],
@@ -2834,6 +2862,12 @@
                   "test": "packages/php/tests/TransactionsRecipeTest.php",
                   "recipe": "contracts/fixtures/transactions/transactions.json",
                   "symbol": "testPostgres"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/UtilsRecipeTest.php",
+                  "recipe": "contracts/fixtures/utils/utils.json",
+                  "symbol": "testPostgres"
                 }
               ],
               "sqlite": [
@@ -2841,6 +2875,12 @@
                   "runner": "php",
                   "test": "packages/php/tests/TransactionsRecipeTest.php",
                   "recipe": "contracts/fixtures/transactions/transactions.json",
+                  "symbol": "testSqlite"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/UtilsRecipeTest.php",
+                  "recipe": "contracts/fixtures/utils/utils.json",
                   "symbol": "testSqlite"
                 }
               ]
@@ -2851,10 +2891,14 @@
             "tests": [
               "packages/rust/tests/tests/transactions_mysql.rs",
               "packages/rust/tests/tests/transactions_postgres.rs",
-              "packages/rust/tests/tests/transactions_sqlite.rs"
+              "packages/rust/tests/tests/transactions_sqlite.rs",
+              "packages/rust/tests/tests/utils_recipe_mysql.rs",
+              "packages/rust/tests/tests/utils_recipe_postgres.rs",
+              "packages/rust/tests/tests/utils_recipe_sqlite.rs"
             ],
             "inputs": [
-              "contracts/fixtures/bench/dbspec-set.json"
+              "contracts/fixtures/bench/dbspec-set.json",
+              "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
               "mysql": [
@@ -2862,6 +2906,11 @@
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/transactions_mysql.rs",
                   "recipe": "contracts/fixtures/transactions/transactions.json"
+                },
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/utils_recipe_mysql.rs",
+                  "recipe": "contracts/fixtures/utils/utils.json"
                 }
               ],
               "postgres": [
@@ -2869,6 +2918,11 @@
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/transactions_postgres.rs",
                   "recipe": "contracts/fixtures/transactions/transactions.json"
+                },
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/utils_recipe_postgres.rs",
+                  "recipe": "contracts/fixtures/utils/utils.json"
                 }
               ],
               "sqlite": [
@@ -2876,6 +2930,11 @@
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/transactions_sqlite.rs",
                   "recipe": "contracts/fixtures/transactions/transactions.json"
+                },
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/utils_recipe_sqlite.rs",
+                  "recipe": "contracts/fixtures/utils/utils.json"
                 }
               ]
             }
@@ -2885,10 +2944,14 @@
             "tests": [
               "packages/ts/tests/transactions-mysql.test.mjs",
               "packages/ts/tests/transactions-postgres.test.mjs",
-              "packages/ts/tests/transactions-sqlite.test.mjs"
+              "packages/ts/tests/transactions-sqlite.test.mjs",
+              "packages/ts/tests/utils_recipe-mysql.test.mjs",
+              "packages/ts/tests/utils_recipe-postgres.test.mjs",
+              "packages/ts/tests/utils_recipe-sqlite.test.mjs"
             ],
             "inputs": [
-              "contracts/fixtures/bench/dbspec-set.json"
+              "contracts/fixtures/bench/dbspec-set.json",
+              "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
               "mysql": [
@@ -2896,6 +2959,11 @@
                   "runner": "node",
                   "test": "packages/ts/tests/transactions-mysql.test.mjs",
                   "recipe": "contracts/fixtures/transactions/transactions.json"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/utils_recipe-mysql.test.mjs",
+                  "recipe": "contracts/fixtures/utils/utils.json"
                 }
               ],
               "postgres": [
@@ -2903,6 +2971,11 @@
                   "runner": "node",
                   "test": "packages/ts/tests/transactions-postgres.test.mjs",
                   "recipe": "contracts/fixtures/transactions/transactions.json"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/utils_recipe-postgres.test.mjs",
+                  "recipe": "contracts/fixtures/utils/utils.json"
                 }
               ],
               "sqlite": [
@@ -2910,6 +2983,11 @@
                   "runner": "node",
                   "test": "packages/ts/tests/transactions-sqlite.test.mjs",
                   "recipe": "contracts/fixtures/transactions/transactions.json"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/utils_recipe-sqlite.test.mjs",
+                  "recipe": "contracts/fixtures/utils/utils.json"
                 }
               ]
             }
@@ -2919,10 +2997,14 @@
             "tests": [
               "packages/python/tests/test_transactions_mysql.py",
               "packages/python/tests/test_transactions_postgres.py",
-              "packages/python/tests/test_transactions_sqlite.py"
+              "packages/python/tests/test_transactions_sqlite.py",
+              "packages/python/tests/test_utils_recipe_mysql.py",
+              "packages/python/tests/test_utils_recipe_postgres.py",
+              "packages/python/tests/test_utils_recipe_sqlite.py"
             ],
             "inputs": [
-              "contracts/fixtures/bench/dbspec-set.json"
+              "contracts/fixtures/bench/dbspec-set.json",
+              "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
               "mysql": [
@@ -2930,6 +3012,11 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_transactions_mysql.py",
                   "recipe": "contracts/fixtures/transactions/transactions.json"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/test_utils_recipe_mysql.py",
+                  "recipe": "contracts/fixtures/utils/utils.json"
                 }
               ],
               "postgres": [
@@ -2937,6 +3024,11 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_transactions_postgres.py",
                   "recipe": "contracts/fixtures/transactions/transactions.json"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/test_utils_recipe_postgres.py",
+                  "recipe": "contracts/fixtures/utils/utils.json"
                 }
               ],
               "sqlite": [
@@ -2944,6 +3036,11 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_transactions_sqlite.py",
                   "recipe": "contracts/fixtures/transactions/transactions.json"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/test_utils_recipe_sqlite.py",
+                  "recipe": "contracts/fixtures/utils/utils.json"
                 }
               ]
             }
@@ -2951,10 +3048,12 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php"
+              "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
+              "packages/php-ext/tests/UtilsRecipeTestExtensionTest.php"
             ],
             "inputs": [
-              "contracts/fixtures/bench/dbspec-set.json"
+              "contracts/fixtures/bench/dbspec-set.json",
+              "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
               "mysql": [
@@ -2962,6 +3061,12 @@
                   "runner": "php",
                   "test": "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
                   "recipe": "contracts/fixtures/transactions/transactions.json",
+                  "symbol": "testMysql"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/UtilsRecipeTestExtensionTest.php",
+                  "recipe": "contracts/fixtures/utils/utils.json",
                   "symbol": "testMysql"
                 }
               ],
@@ -2971,6 +3076,12 @@
                   "test": "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
                   "recipe": "contracts/fixtures/transactions/transactions.json",
                   "symbol": "testPostgres"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/UtilsRecipeTestExtensionTest.php",
+                  "recipe": "contracts/fixtures/utils/utils.json",
+                  "symbol": "testPostgres"
                 }
               ],
               "sqlite": [
@@ -2978,6 +3089,12 @@
                   "runner": "php",
                   "test": "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
                   "recipe": "contracts/fixtures/transactions/transactions.json",
+                  "symbol": "testSqlite"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/UtilsRecipeTestExtensionTest.php",
+                  "recipe": "contracts/fixtures/utils/utils.json",
                   "symbol": "testSqlite"
                 }
               ]
@@ -7454,9 +7571,7 @@
                   "cases": [
                     "interface_symbols"
                   ],
-                  "symbols": {
-                    "interface_symbols": "TestCoverageInterfaceSymbols"
-                  }
+                  "symbol": "TestCoverageInterfaceSymbols"
                 }
               ]
             }
@@ -7482,9 +7597,7 @@
                   "cases": [
                     "interface_symbols"
                   ],
-                  "symbols": {
-                    "interface_symbols": "testInterfaceSymbols"
-                  }
+                  "symbol": "testInterfaceSymbols"
                 }
               ]
             }
@@ -7508,10 +7621,7 @@
                   "test": "packages/rust/orm/tests/coverage_interface_contract.rs",
                   "cases": [
                     "interface_symbols"
-                  ],
-                  "symbols": {
-                    "interface_symbols": "coverage_interface_symbols"
-                  }
+                  ]
                 }
               ]
             }
@@ -7588,9 +7698,7 @@
                   "cases": [
                     "interface_symbols"
                   ],
-                  "symbols": {
-                    "interface_symbols": "testInterfaceSymbols"
-                  }
+                  "symbol": "testInterfaceSymbols"
                 }
               ]
             }
@@ -7604,8 +7712,8 @@
       "title": "Hot-path performance standard",
       "title_ko": "hot-path 성능 기준",
       "status": "implemented",
-      "description": "Coverage declares the same PK and descending 100-row native comparison for all six clients on MySQL, PostgreSQL, and SQLite. Each case runs twice on the `BENCH_<DATABASE>_DSN` of its database, with matching before/after database-state digests, and compares its ratio with the fixed reference of contracts/performance-references.json, recorded from one passed check run of a clean checkout. A measurement above its reference is diagnostic and never fails correctness. The separate make perf-check retains its recorded Go and PHP MySQL bounds.",
-      "description_ko": "Coverage는 여섯 클라이언트 모두에 대해 MySQL, PostgreSQL, SQLite에서 같은 PK 및 내림차순 100행 native 비교를 선언한다. 각 사례는 자기 database의 `BENCH_<DATABASE>_DSN`에서 두 번 실행되고 데이터베이스 전후 상태 digest가 일치하며, 그 비율을 contracts/performance-references.json의 고정 기준값과 비교한다. 기준값은 깨끗한 checkout의 통과한 check run 하나에서 기록했다. 기준값을 넘는 측정은 진단용이며 correctness를 실패시키지 않는다. 별도 make perf-check의 Go 및 PHP MySQL 기준값은 유지한다.",
+      "description": "The recipe performance_gate holds the rows, binds and projection of the same PK and descending 100-row reads for all six clients on MySQL, PostgreSQL, and SQLite. `make feature-performance-check` measures the two reads natively, twice, one measurement at a time, on the `BENCH_<DATABASE>_DSN` of each database, and compares each ratio with the fixed reference of contracts/performance-references.json, recorded from one passed check run of a clean checkout. A measurement above its reference is diagnostic and never fails correctness. The separate make perf-check retains its recorded Go and PHP MySQL bounds.",
+      "description_ko": "recipe performance_gate는 여섯 클라이언트 모두에 대해 MySQL, PostgreSQL, SQLite에서 같은 PK 및 내림차순 100행 조회의 행, bind, projection을 고정한다. `make feature-performance-check`는 두 조회를 각 database의 `BENCH_<DATABASE>_DSN`에서 한 번에 측정 하나씩, 두 번 native로 측정하고, 각 비율을 contracts/performance-references.json의 고정 기준값과 비교한다. 기준값은 깨끗한 checkout의 통과한 check run 하나에서 기록했다. 기준값을 넘는 측정은 진단용이며 correctness를 실패시키지 않는다. 별도 make perf-check의 Go 및 PHP MySQL 기준값은 유지한다.",
       "inputs": {
         "type": "BenchmarkDatabase",
         "fields": [
@@ -7740,59 +7848,35 @@
       ],
       "coverage": {
         "kind": "database",
-        "execution": "exclusive",
-        "cases": [
-          "hot_path_gate"
-        ],
         "owners": {
           "go": {
-            "part": "packages/go/bench",
+            "part": "packages/go/orm",
             "tests": [
-              "packages/go/bench/performance_measurement_test.go"
-            ],
-            "inputs": [
-              "packages/go/bench/performance_measurement_test.go",
-              "packages/go/bench/process_cpu_unix_test.go",
-              "packages/go/bench/process_cpu_windows_test.go"
+              "packages/go/orm/recipe_performance_gate_test.go"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "go",
-                  "test": "packages/go/bench/performance_measurement_test.go",
-                  "cases": [
-                    "hot_path_gate"
-                  ],
-                  "dsn_env": "BENCH_MYSQL_DSN",
-                  "symbols": {
-                    "hot_path_gate": "TestPerformanceMeasurementMysql"
-                  }
+                  "test": "packages/go/orm/recipe_performance_gate_test.go",
+                  "recipe": "contracts/fixtures/performance_gate/performance_gate.json",
+                  "symbol": "TestRecipePerformanceGateMysql"
                 }
               ],
               "postgres": [
                 {
                   "runner": "go",
-                  "test": "packages/go/bench/performance_measurement_test.go",
-                  "cases": [
-                    "hot_path_gate"
-                  ],
-                  "dsn_env": "BENCH_POSTGRES_DSN",
-                  "symbols": {
-                    "hot_path_gate": "TestPerformanceMeasurementPostgres"
-                  }
+                  "test": "packages/go/orm/recipe_performance_gate_test.go",
+                  "recipe": "contracts/fixtures/performance_gate/performance_gate.json",
+                  "symbol": "TestRecipePerformanceGatePostgres"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "go",
-                  "test": "packages/go/bench/performance_measurement_test.go",
-                  "cases": [
-                    "hot_path_gate"
-                  ],
-                  "dsn_env": "BENCH_SQLITE_DSN",
-                  "symbols": {
-                    "hot_path_gate": "TestPerformanceMeasurementSQLite"
-                  }
+                  "test": "packages/go/orm/recipe_performance_gate_test.go",
+                  "recipe": "contracts/fixtures/performance_gate/performance_gate.json",
+                  "symbol": "TestRecipePerformanceGateSqlite"
                 }
               ]
             }
@@ -7800,52 +7884,31 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/CoveragePerformanceGateTest.php",
-              "packages/php/tests/CoveragePerformanceGatePostgresTest.php",
-              "packages/php/tests/CoveragePerformanceGateSqliteTest.php"
-            ],
-            "inputs": [
-              "packages/php/tests/PerformanceGateCoverageCase.php",
-              "packages/php/tests/PerfGateTest.php"
+              "packages/php/tests/PerformanceGateRecipeTest.php"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoveragePerformanceGateTest.php",
-                  "cases": [
-                    "hot_path_gate"
-                  ],
-                  "dsn_env": "BENCH_MYSQL_DSN",
-                  "symbols": {
-                    "hot_path_gate": "testHotPathGate"
-                  }
+                  "test": "packages/php/tests/PerformanceGateRecipeTest.php",
+                  "recipe": "contracts/fixtures/performance_gate/performance_gate.json",
+                  "symbol": "testMysql"
                 }
               ],
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoveragePerformanceGatePostgresTest.php",
-                  "cases": [
-                    "hot_path_gate"
-                  ],
-                  "dsn_env": "BENCH_POSTGRES_DSN",
-                  "symbols": {
-                    "hot_path_gate": "testHotPathGate"
-                  }
+                  "test": "packages/php/tests/PerformanceGateRecipeTest.php",
+                  "recipe": "contracts/fixtures/performance_gate/performance_gate.json",
+                  "symbol": "testPostgres"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoveragePerformanceGateSqliteTest.php",
-                  "cases": [
-                    "hot_path_gate"
-                  ],
-                  "dsn_env": "BENCH_SQLITE_DSN",
-                  "symbols": {
-                    "hot_path_gate": "testHotPathGate"
-                  }
+                  "test": "packages/php/tests/PerformanceGateRecipeTest.php",
+                  "recipe": "contracts/fixtures/performance_gate/performance_gate.json",
+                  "symbol": "testSqlite"
                 }
               ]
             }
@@ -7853,52 +7916,31 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php-ext/tests/CoveragePerformanceGateExtensionTest.php",
-              "packages/php-ext/tests/CoveragePerformanceGateExtensionPostgresTest.php",
-              "packages/php-ext/tests/CoveragePerformanceGateExtensionSqliteTest.php"
-            ],
-            "inputs": [
-              "packages/php/tests/PerformanceGateCoverageCase.php",
-              "packages/php/tests/PerfGateTest.php"
+              "packages/php-ext/tests/PerformanceGateRecipeTestExtensionTest.php"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoveragePerformanceGateExtensionTest.php",
-                  "cases": [
-                    "hot_path_gate"
-                  ],
-                  "dsn_env": "BENCH_MYSQL_DSN",
-                  "symbols": {
-                    "hot_path_gate": "testHotPathGate"
-                  }
+                  "test": "packages/php-ext/tests/PerformanceGateRecipeTestExtensionTest.php",
+                  "recipe": "contracts/fixtures/performance_gate/performance_gate.json",
+                  "symbol": "testMysql"
                 }
               ],
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoveragePerformanceGateExtensionPostgresTest.php",
-                  "cases": [
-                    "hot_path_gate"
-                  ],
-                  "dsn_env": "BENCH_POSTGRES_DSN",
-                  "symbols": {
-                    "hot_path_gate": "testHotPathGate"
-                  }
+                  "test": "packages/php-ext/tests/PerformanceGateRecipeTestExtensionTest.php",
+                  "recipe": "contracts/fixtures/performance_gate/performance_gate.json",
+                  "symbol": "testPostgres"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoveragePerformanceGateExtensionSqliteTest.php",
-                  "cases": [
-                    "hot_path_gate"
-                  ],
-                  "dsn_env": "BENCH_SQLITE_DSN",
-                  "symbols": {
-                    "hot_path_gate": "testHotPathGate"
-                  }
+                  "test": "packages/php-ext/tests/PerformanceGateRecipeTestExtensionTest.php",
+                  "recipe": "contracts/fixtures/performance_gate/performance_gate.json",
+                  "symbol": "testSqlite"
                 }
               ]
             }
@@ -7906,42 +7948,30 @@
           "typescript": {
             "part": "packages/ts/tests",
             "tests": [
-              "packages/ts/tests/coverage_performance_gate_mysql.mjs",
-              "packages/ts/tests/coverage_performance_gate_postgres.mjs",
-              "packages/ts/tests/coverage_performance_gate_sqlite.mjs"
-            ],
-            "inputs": [
-              "packages/ts/tests/coverage_performance_gate.mjs"
+              "packages/ts/tests/performance_gate-mysql.test.mjs",
+              "packages/ts/tests/performance_gate-postgres.test.mjs",
+              "packages/ts/tests/performance_gate-sqlite.test.mjs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_performance_gate_mysql.mjs",
-                  "cases": [
-                    "hot_path_gate"
-                  ],
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "test": "packages/ts/tests/performance_gate-mysql.test.mjs",
+                  "recipe": "contracts/fixtures/performance_gate/performance_gate.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_performance_gate_postgres.mjs",
-                  "cases": [
-                    "hot_path_gate"
-                  ],
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "test": "packages/ts/tests/performance_gate-postgres.test.mjs",
+                  "recipe": "contracts/fixtures/performance_gate/performance_gate.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_performance_gate_sqlite.mjs",
-                  "cases": [
-                    "hot_path_gate"
-                  ],
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "test": "packages/ts/tests/performance_gate-sqlite.test.mjs",
+                  "recipe": "contracts/fixtures/performance_gate/performance_gate.json"
                 }
               ]
             }
@@ -7949,42 +7979,30 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_performance_gate_mysql.py",
-              "packages/python/tests/coverage_performance_gate_postgres.py",
-              "packages/python/tests/coverage_performance_gate_sqlite.py"
-            ],
-            "inputs": [
-              "packages/python/tests/coverage_performance_gate.py"
+              "packages/python/tests/test_performance_gate_mysql.py",
+              "packages/python/tests/test_performance_gate_postgres.py",
+              "packages/python/tests/test_performance_gate_sqlite.py"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_performance_gate_mysql.py",
-                  "cases": [
-                    "hot_path_gate"
-                  ],
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "test": "packages/python/tests/test_performance_gate_mysql.py",
+                  "recipe": "contracts/fixtures/performance_gate/performance_gate.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_performance_gate_postgres.py",
-                  "cases": [
-                    "hot_path_gate"
-                  ],
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "test": "packages/python/tests/test_performance_gate_postgres.py",
+                  "recipe": "contracts/fixtures/performance_gate/performance_gate.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_performance_gate_sqlite.py",
-                  "cases": [
-                    "hot_path_gate"
-                  ],
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "test": "packages/python/tests/test_performance_gate_sqlite.py",
+                  "recipe": "contracts/fixtures/performance_gate/performance_gate.json"
                 }
               ]
             }
@@ -7992,47 +8010,30 @@
           "rust": {
             "part": "packages/rust/tests",
             "tests": [
-              "packages/rust/tests/tests/coverage_performance_gate.rs"
+              "packages/rust/tests/tests/performance_gate_mysql.rs",
+              "packages/rust/tests/tests/performance_gate_postgres.rs",
+              "packages/rust/tests/tests/performance_gate_sqlite.rs"
             ],
-            "inputs": [],
             "commands": {
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/coverage_performance_gate.rs",
-                  "cases": [
-                    "hot_path_gate"
-                  ],
-                  "dsn_env": "BENCH_MYSQL_DSN",
-                  "symbols": {
-                    "hot_path_gate": "coverage_hot_path_gate_mysql"
-                  }
+                  "test": "packages/rust/tests/tests/performance_gate_mysql.rs",
+                  "recipe": "contracts/fixtures/performance_gate/performance_gate.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/coverage_performance_gate.rs",
-                  "cases": [
-                    "hot_path_gate"
-                  ],
-                  "dsn_env": "BENCH_POSTGRES_DSN",
-                  "symbols": {
-                    "hot_path_gate": "coverage_hot_path_gate_postgres"
-                  }
+                  "test": "packages/rust/tests/tests/performance_gate_postgres.rs",
+                  "recipe": "contracts/fixtures/performance_gate/performance_gate.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/coverage_performance_gate.rs",
-                  "cases": [
-                    "hot_path_gate"
-                  ],
-                  "dsn_env": "BENCH_SQLITE_DSN",
-                  "symbols": {
-                    "hot_path_gate": "coverage_hot_path_gate_sqlite"
-                  }
+                  "test": "packages/rust/tests/tests/performance_gate_sqlite.rs",
+                  "recipe": "contracts/fixtures/performance_gate/performance_gate.json"
                 }
               ]
             }
@@ -8046,8 +8047,8 @@
       "title": "Conformance verification",
       "title_ko": "적합성 검증",
       "status": "implemented",
-      "description": "All six clients (Go, PHP, PHP extension, Rust, TypeScript, and Python) run the same declared conformance vectors on MySQL, PostgreSQL, and SQLite. Each selected database owner case runs twice; the checker compares its output and verifies matching before/after database state.",
-      "description_ko": "여섯 클라이언트(Go, PHP, PHP extension, Rust, TypeScript, Python)가 MySQL, PostgreSQL, SQLite에서 같은 conformance vector를 실행한다. 선택한 각 데이터베이스 owner case를 두 번 실행하고 checker가 결과를 비교하며 실행 전후 데이터베이스 상태가 같은지 확인한다.",
+      "description": "All six clients (Go, PHP, PHP extension, Rust, TypeScript, and Python) run the same declared conformance vectors on MySQL, PostgreSQL, and SQLite. Each case runs once on a database of its own, and the checker reads its result line.",
+      "description_ko": "여섯 클라이언트(Go, PHP, PHP extension, Rust, TypeScript, Python)가 MySQL, PostgreSQL, SQLite에서 같은 conformance vector를 실행한다. 각 사례는 자기 database에서 한 번 실행하고 checker가 그 결과 줄을 읽는다.",
       "inputs": {
         "type": "ConformanceVector",
         "fields": [

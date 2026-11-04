@@ -43,7 +43,7 @@ export type ParityConfig = {
     errors?: { file?: string; pattern?: string };
     internal?: { glob: string; reason: string }[];
   }[];
-  units: { id: string; kind?: string; file?: string; requirements?: string[]; owner?: { kind?: string; artifact?: string; package?: string; parts?: string[] }; bindings?: { implementation: string; test?: string; symbol?: string; command?: string[] }[]; symbols?: { implementation?: string; symbol?: string }[] }[];
+  units: { id: string; kind?: string; file?: string; requirements?: string[]; owner?: { kind?: string; artifact?: string; package?: string; parts?: string[] }; bindings?: { implementation: string; test?: string; id?: string; symbol?: string; command?: string[] }[]; symbols?: { implementation?: string; symbol?: string }[] }[];
 };
 /** readParityConfig reads config/parity.json, the one source of the parity units. */
 export const readParityConfig = (file: string): ParityConfig => readJsonFile<ParityConfig>(file, schema('parity'));

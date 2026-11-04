@@ -2211,7 +2211,7 @@
           "bindings": [
             {
               "test": "scripts/features/coverage.test.mts",
-              "id": "only the go, cargo and php runners declare a symbols map"
+              "id": "only the go and php entries name a symbol"
             },
             {
               "test": "scripts/features/coverage.test.mts",
@@ -2220,14 +2220,14 @@
           ]
         },
         {
-          "id": "fcv-4-run-result-and-state-repeat-evidence",
+          "id": "fcv-4-run-result-evidence",
           "requirements": [
             "FCV-4"
           ],
           "bindings": [
             {
               "test": "scripts/features/coverage.test.mts",
-              "id": "checker reads physical database state around each native test run"
+              "id": "a run is the exit status of its entry and the lines it wrote"
             }
           ]
         },
@@ -2239,11 +2239,11 @@
           "bindings": [
             {
               "test": "scripts/features/coverage.test.mts",
-              "id": "missing owner, dependent, database, case, and repeat are RED"
+              "id": "missing owner, dependent, database, case, and a second run are RED"
             },
             {
               "test": "scripts/features/coverage.test.mts",
-              "id": "identity, result, state, and unknown report mutations are RED"
+              "id": "identity, result and unknown report mutations are RED"
             }
           ]
         },

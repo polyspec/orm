@@ -10,7 +10,6 @@ namespace Polyspec\Orm\Tests;
 
 use RuntimeException;
 use PHPUnit\Framework\Assert;
-use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\Large;
 use PHPUnit\Framework\TestCase;
 
@@ -25,9 +24,8 @@ function dbspec_stress_reference_scan(string $text): int
     return $h;
 }
 
-// A benchmark of make dbspec-stress-bench (group bench): its measurements go to stderr.
+// A benchmark of make dbspec-stress-bench: its measurements go to stderr.
 #[Large]
-#[Group('bench')]
 final class DbspecStressTest extends TestCase
 {
     public function testStress(): void
