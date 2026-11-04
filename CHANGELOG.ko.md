@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c9fa42396544de4a43b04831f3d9f6211a79b8bde0b792a4481c1dbbc9c15bc7 -->
+<!-- source-sha256: 7ecceac486a98213e93eb11e56592cf3e36ad05fceb938b5ffc5b19161ac3125 -->
 # 변경 이력
 
 ## Unreleased
 
+- 시험: Go `TestUnknownStyleRejectsSQLNull`과 TypeScript의 빈 ordered_json text, 거부되는 YAML 형식은 codec recipe의 case `stage_order_and_empty_cells`와 `decode_errors`이므로 그 native를 없앴고, TypeScript 시험의 나머지는 값의 JavaScript class를 확인한다.
 - PHP extension은 described table의 SQLite `DATE`, `TIME`, `DATETIME` 열에 든 숫자를 PHP library처럼 `GRID_TEMPORAL_VALUE`로 거부한다(INT-103). 전에는 `DATE` 열의 숫자를 그대로 통과시켰다. 사례 `sqlite_temporal_checks`가 모든 runtime에서 이를 검사한다. (#T334-3-3)
 - 시험: Go recipe helper는 step에 `expect`가 있어도 읽지 않은 step key를 실패시킨다. TypeScript와 Rust helper가 이미 그렇게 한다. 전에는 무시한 `page`, `limit`, `where`가 조용히 통과했다. (#T334-3-4)
 - Spec: 어떤 helper, schema 참조, 사례도 쓰지 않은 `model.query`의 recipe 형식 `{"page": ...}`를 지웠다. FCV-4가 `page: true`의 형식과 그 table path를 적는다. (#T334-3-4)

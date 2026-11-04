@@ -34,13 +34,6 @@ caseTest('codec/malformed-json-and-yaml', COMPUTE, () => {
   }
 });
 
-// The empty text of an ordered_json column is a decode error, not an empty value; the catalog recipe reads the stored empty text (COD-31).
-caseTest('empty text with ordered_json returns CODEC_DECODE', COMPUTE, () => {
-  const error = thrown(() => decode(['ordered_json'], ''));
-  assert(error instanceof CodecError);
-  assert.equal(error.code, 'CODEC_DECODE');
-});
-
 caseTest('invalid UTF-8 in JSON and YAML returns CODEC_DECODE', COMPUTE, () => {
   for (const style of ['ordered_json', 'yaml']) {
     const error = thrown(() => decode([style], new Uint8Array([0xff])));
@@ -64,16 +57,8 @@ caseTest('JSON and YAML rethrow an existing CodecError by identity', COMPUTE, ()
   }
 });
 
-caseTest('YAML policy errors remain CODEC_DECODE and valid values still decode', COMPUTE, () => {
-  for (const source of [
-    'a: 1\na: 2\n',
-    'a: &anchor [1]\n',
-    'value: .inf\n',
-  ]) {
-    const error = thrown(() => decode(['yaml'], source));
-    assert(error instanceof CodecError);
-    assert.equal(error.code, 'CODEC_DECODE');
-  }
+// The refused YAML forms are the recipe cases decode_errors; this holds the JavaScript class of the value.
+caseTest('a decoded ordered_json value holds a JsonValue', COMPUTE, () => {
   const json = decode(['ordered_json'], '{"value": 2}');
   assert(json.payload() instanceof JsonValue);
   assert.equal(stringifyJson(json.payload()), '{"value":2}');
