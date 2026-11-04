@@ -3811,6 +3811,7 @@
      "op": "model.query",
      "connection": "db",
      "model": "CompositeAccount",
+     "where": {},
      "order": [
       "account_id"
      ],
@@ -4051,13 +4052,13 @@
            [
             "transaction",
             {
-             "null": true
+             "null": "int"
             }
            ],
            [
             "error",
             {
-             "null": true
+             "null": "text"
             }
            ]
           ]
@@ -4123,13 +4124,13 @@
            [
             "transaction",
             {
-             "null": true
+             "null": "int"
             }
            ],
            [
             "error",
             {
-             "null": true
+             "null": "text"
             }
            ]
           ]
@@ -4173,13 +4174,13 @@
            [
             "transaction",
             {
-             "null": true
+             "null": "int"
             }
            ],
            [
             "error",
             {
-             "null": true
+             "null": "text"
             }
            ]
           ]
@@ -4245,13 +4246,13 @@
            [
             "transaction",
             {
-             "null": true
+             "null": "int"
             }
            ],
            [
             "error",
             {
-             "null": true
+             "null": "text"
             }
            ]
           ]
@@ -4295,13 +4296,13 @@
            [
             "transaction",
             {
-             "null": true
+             "null": "int"
             }
            ],
            [
             "error",
             {
-             "null": true
+             "null": "text"
             }
            ]
           ]
@@ -4367,13 +4368,13 @@
            [
             "transaction",
             {
-             "null": true
+             "null": "int"
             }
            ],
            [
             "error",
             {
-             "null": true
+             "null": "text"
             }
            ]
           ]

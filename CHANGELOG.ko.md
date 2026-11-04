@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 91650bd7139747a7336d58e54ab10cb59b6b44bd5781d2ee4039852f4d349400 -->
+<!-- source-sha256: 3d594465f395ae2432148cc393e8d68de991a0e061c6122070cdd7970dc00783 -->
 # 변경 이력
 
 ## Unreleased
 
+- 테스트: recipe schema는 `relation`의 `where`를 받고, `model_queries_chain`의 case `relation_condition_follows_the_padded_composite_parent_keys`는 그 schema에 유효합니다(T334-3-12).
 - 테스트: savepoint rollback이 rollback fault를 소비하지 않는다는 것(protocol 3.1)은 Python native 대신 모든 runtime에서 recipe `transactions`의 case이고, 잃어버린 rollback, 실패한 `BEGIN`, 실패한 시작 단계의 Python native test는 unit `transaction-failure-rollback`에 속합니다(T334-3-12-3-7, T334-3-12-3-8).
 - 인터페이스 검사기는 어떻게 끝나든 자기가 시작한 것을 함께 끝냅니다. 각 프로그램은 프로세스 그룹을 이끌고, 실행의 abort는 그 그룹을 죽이며, 검사기 파이프의 끝을 읽는 프로세스가 아직 도는 그룹을 죽이므로, 멈춘 extractor와 그 자식은 기한이 죽인 검사기보다 오래 살지 않습니다.
 - 테스트: relation의 parent key padding과 그 뒤 placeholder의 번호는 recipe `model_queries_chain`의 case이고, recipe가 담는 collection key의 native test는 사라졌으며, feature-coverage는 native로 남는 각 test를 이유와 함께 적는다.
