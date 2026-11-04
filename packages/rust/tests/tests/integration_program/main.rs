@@ -491,31 +491,6 @@ async fn read_only_sqlite(t: &Target) {
 /// Checks schema().empty() on a new case database, with an empty PostgreSQL
 /// schema other than public, and with the installed tables.
 // Requirements: DBS-108, INT-58, SCH-7.
-/// Inserts and reads more values than SQLite binds in one statement: the
-/// inserts and the root IN list are split, duplicate IN values are read once,
-/// and a shape that a merge would change is rejected.
-async fn bind_limit_splitting_case(t: &Target) {
-    let db = &t.db;
-    const N: usize = 1200;
-    let mut rows = Vec::with_capacity(N);
-    let mut names: Vec<String> = Vec::with_capacity(N + 300);
-    for i in 0..N {
-        let name = format!("chunk-{i:04}");
-        rows.push(Service::new().set_name(name.clone()));
-        names.push(name);
-    }
-    assert_eq!(Service::new().connect(db).creates(rows, 500).await.unwrap(), N as u64, "inserted");
-    names.extend(names[..200].to_vec());
-    names.extend((0..100).map(|i| format!("missing-{i}")));
-    let found = Service::new().connect(db).name(names.clone()).gets().await.unwrap();
-    assert_eq!(found.len(), N, "found");
-    assert_eq!(Service::new().connect(db).name(names.clone()).get_count().await.unwrap(), N as i64, "count");
-    if t.driver == "sqlite" {
-        let limited = Service::new().connect(db).name(names).limit(0, 10).gets().await;
-        assert_eq!(code(limited), polyspec_orm::codes::IR_INVALID, "limited split");
-    }
-}
-
 // Requirements: COD-8, PLN-44, INT-60, INT-75, INT-131.
 /// A jsontext column reads back the ordered-json value of a write with its
 /// member order, number text, and `{}` apart from `[]`; SQL NULL is distinct
@@ -660,16 +635,6 @@ async fn json_values() {
     for driver in DRIVERS {
         let case = polyspec_orm_testcase::start(format!("json_values/{driver}"), polyspec_orm_testcase::DATABASE);
         installed_section(driver, json_values_case).await;
-        drop(case);
-    }
-}
-
-#[tokio::test(flavor = "multi_thread")]
-async fn bind_limit_splitting() {
-    check_bench_set();
-    for driver in DRIVERS {
-        let case = polyspec_orm_testcase::start(format!("bind_limit_splitting/{driver}"), polyspec_orm_testcase::DATABASE);
-        installed_section(driver, bind_limit_splitting_case).await;
         drop(case);
     }
 }

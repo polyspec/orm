@@ -439,7 +439,20 @@ ZEND_METHOD(Polyspec_Orm_Model, assembleRow)
                 zval *meta_cols = read_array(&meta, "columns");
                 zval *column = meta_cols != NULL && Z_TYPE_P(meta_cols) == IS_ARRAY
                     ? zend_hash_find(Z_ARRVAL_P(meta_cols), Z_STR_P(column_name)) : NULL;
-                if (column == NULL || !read_column_convert(ZEND_THIS, db, zone, column, column_name, raw, &converted)) {
+                /* COD-53: a stored version written as text is its digits, leading zeros included. */
+                zval *aes_version = read_array(&meta, "aes_version");
+                zval digits;
+                ZVAL_UNDEF(&digits);
+                if (g == 0 && Z_TYPE_P(raw) == IS_STRING && aes_version != NULL && Z_TYPE_P(aes_version) == IS_STRING
+                    && zend_string_equals(Z_STR_P(aes_version), Z_STR_P(column_name))) {
+                    const char *text = Z_STRVAL_P(raw);
+                    size_t length = Z_STRLEN_P(raw);
+                    while (length > 1 && text[0] == '0' && text[1] >= '0' && text[1] <= '9') { text++; length--; }
+                    ZVAL_STRINGL(&digits, text, length);
+                }
+                bool converted_ok = column != NULL && read_column_convert(ZEND_THIS, db, zone, column, column_name, Z_ISUNDEF(digits) ? raw : &digits, &converted);
+                zval_ptr_dtor(&digits);
+                if (!converted_ok) {
                     zval_ptr_dtor(&meta); zval_ptr_dtor(&values); zval_ptr_dtor(&model); zval_ptr_dtor(&shape); RETURN_THROWS();
                 }
                 zval_ptr_dtor(&meta);

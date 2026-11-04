@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 867fd4d315370f4044398980a7b84edc525d2053dc0bf161ea3f31ead6e38cdd -->
+<!-- source-sha256: c9fa42396544de4a43b04831f3d9f6211a79b8bde0b792a4481c1dbbc9c15bc7 -->
 # 변경 이력
 
 ## Unreleased
@@ -12,6 +12,7 @@
 - 시험: external document를 쓰는 member set의 audit record를 PHP와 Rust만 시험했는데, 이제 여섯 runtime 모두 recipe `external_audit`으로 시험한다. 그런 set을 core 전후에 설치하는 동작은 `schema_install`의 두 사례다. op `schema.register`는 `connection`을 받는다. Rust `external_documents.rs`는 지웠고, PHP `AuditExternalSetsTest`는 등록 순서를 계속 검사한다(SCH-14a). (#T334-3-4)
 - 시험: PHP extension의 `CompositeKeysNativeTest`를 지웠다. extension으로 도는 recipe `composite_keys`가 복합 relation의 bind, 문장, 행을 검사하고(PRT-40a), `model_queries_chain`의 사례 `composite_key_page_past_the_first_holds_the_next_key`가 모든 runtime에서 복합 key의 첫 쪽 다음 쪽을 검사한다. (#T334-3-4-17)
 - 테스트: recipe `catalog_connection`의 case `table_page_descriptor_changes_within_its_read`는 부여된 metadata lock을 더는 hold로 보지 않는다. holder가 읽기를 준비할 때도 그 lock을 잡았다 돌려주므로, 변경이 자기 검사에서 죽거나 hold보다 먼저 지나갈 수 있었다(CR15-H). holder는 읽은 뒤 advisory 자리에 hold를 알리고, 변경은 그 hold 뒤에야 예약된다.
+- `gz` stage는 COD-14와 기존 PHP 동작대로 Go, Python, TypeScript, Rust에서 다음 stage로 이어진다: Go는 뒤 stage를 버렸고 Python과 TypeScript는 그 목록을 거부했다. PHP와 PHP extension은 앞자리 0이 있는 stored version text를 읽고(COD-53), Python rotation은 라이브러리 오류로 실패한다. 시험: Python native가 갖던 stage, hex, ip, serialize, AES case를 codec recipe가 확인한다.
 - 검사: `config/parity.json`의 binding이 지목한 파일의 시험은 binding이나 이유를 밝힌 FCV-2 줄을 가진다(`make repo-check`의 `unboundNativeTestErrors`). parity 도구는 시험이 아니라 파일을 읽기 때문이다. FCV-2는 이제 native 시험 451개를 파일별로 지목한다. recipe가 이미 지키던 native는 없앴다: PHP와 Python의 markdown `backendWaitingForLock` 검사, `root_in_chunking`이 지키는 PHP `testBindLimitSplitting`, `tests/dbspec/positions.json`이 지키는 Python parse position이다(T334-3-12).
 - 테스트: `creates`의 batch는 `model_writes_chain`의 case `creates_*`이고 MySQL의 transaction 안 install은 `schema_install`의 case `install_transaction`이므로, Go `TestCreatesParts`, `TestGetMissingReturnsNil`, `TestInsertWithoutIdentityOnEveryDatabase`, Python `InsertPartsTest`, PHP `testInstallInsideATransaction`, Rust `mysql_install_inside_transaction`은 없앴다(T334-3-12).
 - 테스트: Python의 native SQLite 시험이 지키던 것은 모든 runtime이 도는 recipe에 있다. `constraints_and_relations`의 case `sqlite_driver_error_ends_with_its_result_code`(없는 부모, 제한된 삭제, check, trigger, 읽기 전용 쓰기를 각각 code, INT-154의 확장 result code, driver cause와 함께)와 `audit_triggers`의 `audit_values_need_an_audit_source`(CFG-8)다. 그 native 시험, `model_queries_chain`, `model_writes`, `transactions`, `utils`, `statement_events`, `conformance_verification`, `audit_triggers`, `constraints_and_relations`가 이미 지키던 `test_sqlite.py`의 열 개, `immutable_write`가 지키는 PHP `testStatementFailureKeepsItsDriverCause`는 없앴다(T334-3-12).

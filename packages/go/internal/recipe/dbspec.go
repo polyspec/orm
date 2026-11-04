@@ -172,7 +172,13 @@ func checkDBSpec(s step, dir, database string) error {
 			}
 			text = string(raw)
 		}
-		_, positions, diagnostics := dbspec.Parse(text, set)
+		parsed, positions, diagnostics := dbspec.Parse(text, set)
+		if want.Positions == nil {
+			if parsed != nil || positions != nil || len(diagnostics) == 0 {
+				return fmt.Errorf("a failed parse returned %v, %v, %v", parsed, positions, diagnostics)
+			}
+			return nil
+		}
 		if len(diagnostics) > 0 {
 			return errors.New(runtimemodel.DiagnosticsError(diagnostics))
 		}

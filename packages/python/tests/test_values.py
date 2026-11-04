@@ -223,78 +223,6 @@ class RuntimeValueTypesDatabaseTest(unittest.TestCase):
 
                 self.run_case(driver, check)
 
-    def test_ip_round_trip(self):
-        for address in ["127.0.0.1", "255.255.255.255", "2001:db8::1", "::1", "fe80::"]:
-            packed = host_encode(address, ["ip"], "")
-            self.assertIsInstance(packed, bytes)
-            self.assertEqual(host_decode(packed, ["ip"], ""), address)
-
-    def test_mapped_ipv6_writes_sixteen_bytes(self):
-        # A v4 mapped address is stored in its 16 bytes, as INET6_ATON packs it, and reads back in its RFC 5952 form (COD-38).
-        packed = host_encode("::ffff:192.168.0.1", ["ip"], "")
-        self.assertEqual(packed, bytes(10) + bytes([0xFF, 0xFF, 192, 168, 0, 1]))
-        self.assertEqual(host_decode(packed, ["ip"], ""), "::ffff:192.168.0.1")
-
-    def test_ip_rejects_a_non_address(self):
-        for address in ("not-an-address", "10. 0.0.1"):
-            with self.subTest(address=address):
-                with self.assertRaises(CodecError) as caught:
-                    host_encode(address, ["ip"], "")
-                self.assertEqual(caught.exception.code, "CODEC_ENCODE")
-                self.assertEqual(
-                    error_code(lambda: host_encode(address, ["ip"], "")), "CODEC_ENCODE"
-                )
-        self.assertEqual(host_encode("10.0.0.1", ["ip"], ""), bytes([10, 0, 0, 1]))
-        self.assertIsNone(host_encode(None, ["ip"], ""))
-
-    def test_hex_stage(self):
-        encoded = host_encode("value", ["hex"], "")
-        self.assertEqual(encoded, "76616C7565")
-        self.assertEqual(host_decode(encoded, ["hex"], ""), "value")
-
-    def test_hex_rejects_odd_and_non_hex(self):
-        for raw in ["1", "zz"]:
-            with self.assertRaises(CodecError) as caught:
-                host_decode(raw, ["hex"], "")
-            self.assertEqual(caught.exception.code, "CODEC_DECODE")
-
-    def test_aes_requires_a_key(self):
-        with self.assertRaises(CodecError):
-            host_encode("value", ["aes"], "")
-        with self.assertRaises(CodecError):
-            host_decode(b"x", ["aes"], "")
-
-
-class SerializeTest(unittest.TestCase):
-    def test_scalars_and_containers(self):
-        self.assertEqual(php_serialize(None), "N;")
-        self.assertEqual(php_serialize(True), "b:1;")
-        self.assertEqual(php_serialize(False), "b:0;")
-        self.assertEqual(php_serialize(42), "i:42;")
-        self.assertEqual(php_serialize(-7), "i:-7;")
-        self.assertEqual(php_serialize(1.5), "d:1.5;")
-        self.assertEqual(php_serialize("ab"), 's:2:"ab";')
-        self.assertEqual(php_serialize([1, "b"]), 'a:2:{i:0;i:1;i:1;s:1:"b";}')
-        self.assertEqual(
-            php_serialize({"b": 1, "a": 2}), 'a:2:{s:1:"a";i:2;s:1:"b";i:1;}'
-        )
-        self.assertEqual(php_serialize({"2": "x"}), 'a:1:{i:2;s:1:"x";}')
-
-    def test_utf8_length_is_bytes(self):
-        self.assertEqual(php_serialize("말"), 's:3:"말";')
-        decoded = decode(["serialize"], 's:3:"맛";'.encode("utf-8"))
-        self.assertEqual(decoded.payload(), "맛")
-
-    def test_i64_bounds(self):
-        # COD-16: an integer is an i64 value, so the bounds encode and a value outside them is CODEC_ENCODE.
-        self.assertEqual(php_serialize(2**53), "i:9007199254740992;")
-        self.assertEqual(php_serialize(2**63 - 1), "i:9223372036854775807;")
-        self.assertEqual(php_serialize(-(2**63)), "i:-9223372036854775808;")
-        with self.assertRaises(CodecError):
-            php_serialize(2**63)
-        with self.assertRaises(CodecError):
-            php_serialize(-(2**63) - 1)
-
 
 class StyledValueTest(unittest.TestCase):
     def test_sql_null_has_no_payload(self):
@@ -327,53 +255,6 @@ class StyledValueTest(unittest.TestCase):
             current = current["n"]
         with self.assertRaises(OrmError):
             StyledValue.value(value).payload()
-
-
-class CodecStageTest(unittest.TestCase):
-    def test_empty_cell_fails(self):
-        with self.assertRaises(CodecError):
-            decode(["serialize"], b"")
-
-    def test_stage_after_a_value_fails(self):
-        with self.assertRaises(CodecError) as caught:
-            decode(["serialize", "base64"], b"a:0:{}")
-        self.assertEqual(caught.exception.code, "CODEC_DECODE")
-
-    def test_gz_must_be_last_on_encode(self):
-        with self.assertRaises(CodecError) as caught:
-            encode(["gz", "base64"], StyledValue.value("text"))
-        self.assertEqual(caught.exception.code, "CODEC_UNSUPPORTED")
-
-    def test_first_gz_takes_a_string(self):
-        import zlib
-        import base64
-
-        raw = encode(["gz"], StyledValue.value("payload"))
-        self.assertIsInstance(raw, bytes)
-        self.assertEqual(zlib.decompress(raw, 47), b"payload")
-        with self.assertRaises(CodecError):
-            encode(["gz"], StyledValue.value({"a": 1}))
-        encoded = encode(["base64", "gz"], StyledValue.value("payload"))
-        self.assertIsInstance(encoded, bytes)
-        self.assertEqual(base64.b64decode(zlib.decompress(encoded, 47)), b"payload")
-
-    # Requirements: COD-16.
-    def test_ordered_json_decode_keeps_member_order(self):
-        from polyspec.ordered_json import Value, stringify
-
-        text = '{"b":1,"a":[],"c":{},"n":1.50}'
-        decoded = decode(["ordered_json"], text.encode())
-        payload = decoded.payload()
-        self.assertIsInstance(payload, Value)
-        self.assertEqual(list(payload.members()), ["b", "a", "c", "n"])
-        self.assertEqual(stringify(payload), text)
-        self.assertEqual(encode(["ordered_json"], StyledValue.value(payload)), text)
-
-    def test_base64_decode_rejects_bad_input(self):
-        with self.assertRaises(CodecError):
-            decode(["serialize", "base64"], b"%%%")
-        with self.assertRaises(CodecError):
-            decode(["serialize", "base64"], b"abc")
 
 
 if __name__ == "__main__":

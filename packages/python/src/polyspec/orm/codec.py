@@ -749,9 +749,7 @@ def encode(styles, state: StyledValue):
         elif style == "base64":
             current = base64.b64encode(current)
         elif style == "gz":
-            if index != len(styles) - 1:
-                raise CodecError(codes.CODEC_UNSUPPORTED, "gz must be the last style")
-            return zlib.compress(current, 9)
+            current = zlib.compress(current, 9)
         else:
             raise CodecError(codes.CODEC_UNSUPPORTED, f"style {style}")
-    return current.decode("utf-8")
+    return bytes(current) if styles and styles[-1] == "gz" else current.decode("utf-8")

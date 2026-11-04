@@ -298,17 +298,17 @@ export function encodeStyled(styles: readonly string[], state: StyledValue<unkno
         current = utf8.encode(Buffer.from(current).toString('base64'));
         break;
       case 'gz':
-        if (index !== styles.length - 1) throw new CodecError(codes.CODEC_UNSUPPORTED, 'gz must be the last style');
         try {
-          return new Uint8Array(deflateSync(current, { level: 9 }));
+          current = new Uint8Array(deflateSync(current, { level: 9 }));
         } catch (error) {
           throw new CodecError(codes.CODEC_ENCODE, `gz: ${String(error)}`);
         }
+        break;
       default:
         throw new CodecError(codes.CODEC_UNSUPPORTED, `style ${style}`);
     }
   }
-  return string(current, 'encode');
+  return styles.at(-1) === 'gz' ? current : string(current, 'encode');
 }
 
 /**

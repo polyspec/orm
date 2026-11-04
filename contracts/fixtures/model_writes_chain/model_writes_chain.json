@@ -3021,6 +3021,164 @@
      }
     }
    ]
+  },
+  {
+   "id": "creates_gives_generated_keys_in_row_order",
+   "requirements": [
+    "DSL-104",
+    "PRT-41"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.creates",
+     "connection": "db",
+     "model": "User",
+     "rows": [
+      {
+       "name": {
+        "text": "order-e"
+       }
+      },
+      {
+       "name": {
+        "text": "order-d"
+       }
+      },
+      {
+       "name": {
+        "text": "order-c"
+       }
+      },
+      {
+       "name": {
+        "text": "order-b"
+       }
+      },
+      {
+       "name": {
+        "text": "order-a"
+       }
+      }
+     ],
+     "batch": 2,
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "5"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "5"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "5"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "User",
+     "where": {
+      "name": {
+       "array": [
+        {
+         "text": "order-a"
+        },
+        {
+         "text": "order-b"
+        },
+        {
+         "text": "order-c"
+        },
+        {
+         "text": "order-d"
+        },
+        {
+         "text": "order-e"
+        }
+       ]
+      }
+     },
+     "order": [
+      {
+       "column": "seq",
+       "dir": "asc"
+      }
+     ],
+     "pick": [
+      "name"
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "name": "order-e"
+        },
+        {
+         "name": "order-d"
+        },
+        {
+         "name": "order-c"
+        },
+        {
+         "name": "order-b"
+        },
+        {
+         "name": "order-a"
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "name": "order-e"
+        },
+        {
+         "name": "order-d"
+        },
+        {
+         "name": "order-c"
+        },
+        {
+         "name": "order-b"
+        },
+        {
+         "name": "order-a"
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "name": "order-e"
+        },
+        {
+         "name": "order-d"
+        },
+        {
+         "name": "order-c"
+        },
+        {
+         "name": "order-b"
+        },
+        {
+         "name": "order-a"
+        }
+       ]
+      }
+     }
+    }
+   ]
   }
  ]
 }

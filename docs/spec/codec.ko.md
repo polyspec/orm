@@ -1,5 +1,5 @@
 <!-- doc-id: codec -->
-<!-- source-sha256: 9a39fbb181052a117b2e90051c55871ba78346e58460ab126983e5ffe0f3cbd5 -->
+<!-- source-sha256: f725540f152b2f5e8b38f3e88663cd55b88f32024e8434897887ff58a4a04db9 -->
 # 코덱 — 컬럼 스타일의 읽기/쓰기 (S2)
 
 - **COD-1** Go 데이터베이스 값 변환은 잘못된 형식, null, 범위 초과, 유한하지 않은 값, 지원하지 않는 값에 `CODEC_DECODE`를 반환한다. 모든 클라이언트에서 host 인코딩과 blind index는 host 단계 목록이 비었거나 값이 텍스트·바이트가 아니면 `CODEC_ENCODE`를 반환한다: host 단계는 텍스트의 UTF-8이나 받은 바이트를 받고 값을 그 종류대로 bind하므로, 정수·실수·bool은 평문이 아니다(`tests/codec/codec.json`의 case `host_values_by_kind`). SQL NULL은 host 단계를 SQL NULL로 지난다. `aes`, `hex`, `ip`가 아닌 style은 `serialize` 같은 codec style을 포함해 값을 읽기 전에 `CODEC_UNSUPPORTED`를 반환하고, hex가 아닌 `hex` cell과 header, nonce, tag보다 짧은 `aes` cell은 `CODEC_DECODE`를 반환한다(case `host_stage_errors`). 생성 모델 대입은 컬럼 이름을 붙여 변환 오류를 보고한다. 행 조립은 오류를 호출자에게 반환하고 insert는 쓰기 전에 대입 필드를 검증한다. 빈 바이트 배열은 SQL NULL과 구분한다. scalar 집계 변환은 유효한 십진수를 가장 가까운 유한 binary64 값으로 받는다.
@@ -122,7 +122,7 @@ table service_config {
 - **COD-50** 0인 stored version은 read 경로에서 `CODEC_DECODE`다. 0은 key version이 아니다.
 - **COD-51** i32 범위를 넘는 stored version은 read 경로에서 `CODEC_DECODE`다. 받아들이는 stored version은 양의 i32 정수다.
 - **COD-52** 선언되지 않은 정수인 stored version은 `CONFIG`이며, 연결의 비밀이 없는 경우다.
-- **COD-53** 양의 정수인 text로 쓰인 stored version은 그 version으로 decode된다.
+- **COD-53** 앞자리 0의 유무와 관계없이 양의 정수인 text로 쓰인 stored version은 그 version으로 decode된다.
 - **COD-54** rotation 경로에서 0인 stored version은 `CODEC_DECODE`다. read 경로와 같다.
 - **COD-55** client가 선택한 AES column이 없는 rotation row는 `INTERNAL`이다. client 불변식이 깨진 것이다.
 - **COD-56** AES column에 version column이 없는 read plan은 `INTERNAL`로 실패하며, version을 가정하지 않는다.

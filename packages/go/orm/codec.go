@@ -209,7 +209,10 @@ func Encode(styles []string, v StyledValue) (any, error) {
 			if err := w.Close(); err != nil {
 				return nil, codecErr(CodeCodecEncode, "gz: %v", err)
 			}
-			return buf.Bytes(), nil
+			if i == len(styles)-1 {
+				return buf.Bytes(), nil
+			}
+			cur = buf.Bytes()
 		default:
 			return nil, codecErr(CodeCodecUnsupported, "style %s", st)
 		}

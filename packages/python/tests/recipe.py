@@ -109,6 +109,10 @@ class CallbackError(Exception):
     {"error": "CALLBACK"}, which is not an orm error code."""
 
 
+# The one callback error of the helper, so a step can state that a transaction raises the very error of its callback.
+CALLBACK_FAILURE = CallbackError("the transaction callback failed")
+
+
 class RecipeCase(VectorCase):
     """A case of a recipe."""
 
@@ -763,6 +767,10 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
         else:
             text, header_set = _inline_document(step)
         _document, positions, diagnostics = parse_dbspec(text, header_set)
+        if expect["positions"] is None:
+            if _document is not None or positions is not None or not list(diagnostics):
+                raise AssertionError(f"a failed parse returned {_document!r}, {positions!r}, {list(diagnostics)!r}")
+            return
         if list(diagnostics):
             raise AssertionError(f"the document does not parse: {list(diagnostics)!r}")
         if not expect.get("positions"):
@@ -4352,7 +4360,7 @@ def _run_database_step(raw_step: dict, context: dict) -> None:
                 raise AssertionError(
                     f"error {str(error)!r} keeps the rollback error {rollback!r}, want code {expected['rollback']}"
                 ) from error
-        if expected.get("keeps_callback") is True and not isinstance(error.cause, CallbackError):
+        if expected.get("keeps_callback") is True and error.cause is not CALLBACK_FAILURE:
             raise AssertionError(
                 f"error {str(error)!r} does not keep the error of the callback"
             ) from error
@@ -4362,10 +4370,12 @@ def _run_database_step(raw_step: dict, context: dict) -> None:
             ) from error
         step.check_outcome()
         return
-    except CallbackError:
+    except CallbackError as error:
         # The step ends with its failed callback, so an enclosing transaction goes on, as the Go helper does (FCV-4).
         if expected is None or expected.get("error") != "CALLBACK":
             raise
+        if error is not CALLBACK_FAILURE:
+            raise AssertionError(f"the transaction raised {error!r}, not the error of its callback") from error
         return
     if "as" in step:
         context["bound"][step["as"]] = actual.get("bind", actual.get("value"))
@@ -4661,7 +4671,7 @@ def _op_transaction(step: dict, context: dict) -> dict:
         for nested in step["steps"]:
             _run_database_step(nested, context)
         if step.get("fail"):
-            raise CallbackError("the transaction callback failed")
+            raise CALLBACK_FAILURE
         if attempts[0] <= step.get("conflicts", 0):
             raise transaction_conflict("the recipe conflict")
 
@@ -4821,7 +4831,7 @@ def _audit_source_of(step: dict, context: dict) -> dict:
     if spec.get("fail"):
 
         def failing() -> dict:
-            raise CallbackError("the audit source failed")
+            raise CALLBACK_FAILURE
 
         return {"auditSource": failing}
     values = dict(_assignments(spec["values"], context))

@@ -17300,6 +17300,725 @@
           }
         }
       ]
+    },
+    {
+      "id": "ip_addresses_read_back",
+      "requirements": [
+        "COD-3",
+        "COD-38"
+      ],
+      "steps": [
+        {
+          "op": "codec.host_encode",
+          "styles": [
+            "ip"
+          ],
+          "value": {
+            "text": "127.0.0.1"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "7f000001"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.host_decode",
+          "styles": [
+            "ip"
+          ],
+          "raw": {
+            "bytes_hex": "7f000001"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "value": {
+                "text": "127.0.0.1"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.host_encode",
+          "styles": [
+            "ip"
+          ],
+          "value": {
+            "text": "255.255.255.255"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "ffffffff"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.host_decode",
+          "styles": [
+            "ip"
+          ],
+          "raw": {
+            "bytes_hex": "ffffffff"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "value": {
+                "text": "255.255.255.255"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.host_encode",
+          "styles": [
+            "ip"
+          ],
+          "value": {
+            "text": "::1"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "00000000000000000000000000000001"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.host_decode",
+          "styles": [
+            "ip"
+          ],
+          "raw": {
+            "bytes_hex": "00000000000000000000000000000001"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "value": {
+                "text": "::1"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.host_encode",
+          "styles": [
+            "ip"
+          ],
+          "value": {
+            "text": "fe80::"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "fe800000000000000000000000000000"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.host_decode",
+          "styles": [
+            "ip"
+          ],
+          "raw": {
+            "bytes_hex": "fe800000000000000000000000000000"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "value": {
+                "text": "fe80::"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.host_encode",
+          "styles": [
+            "ip"
+          ],
+          "value": {
+            "text": "::ffff:192.168.0.1"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "00000000000000000000ffffc0a80001"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.host_decode",
+          "styles": [
+            "ip"
+          ],
+          "raw": {
+            "bytes_hex": "00000000000000000000ffffc0a80001"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "value": {
+                "text": "::ffff:192.168.0.1"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.host_encode",
+          "styles": [
+            "ip"
+          ],
+          "value": {
+            "text": "not-an-address"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE"
+            }
+          }
+        },
+        {
+          "op": "codec.host_encode",
+          "styles": [
+            "ip"
+          ],
+          "value": {
+            "text": "10. 0.0.1"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE"
+            }
+          }
+        },
+        {
+          "op": "codec.host_encode",
+          "styles": [
+            "ip"
+          ],
+          "value": {
+            "null": "text"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "value": {
+                "null": "text"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "hex_stage_of_a_text",
+      "requirements": [
+        "COD-3"
+      ],
+      "steps": [
+        {
+          "op": "codec.host_encode",
+          "styles": [
+            "hex"
+          ],
+          "value": {
+            "text": "value"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "value": {
+                "text": "76616C7565"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.host_decode",
+          "styles": [
+            "hex"
+          ],
+          "raw": {
+            "text": "76616C7565"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "value": {
+                "text": "value"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.host_decode",
+          "styles": [
+            "hex"
+          ],
+          "raw": {
+            "text": "1"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "aes_without_a_key_on_any_cell",
+      "requirements": [
+        "COD-5",
+        "COD-37"
+      ],
+      "steps": [
+        {
+          "op": "codec.host_encode",
+          "styles": [
+            "aes"
+          ],
+          "value": {
+            "text": "value"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "codec.host_decode",
+          "styles": [
+            "aes"
+          ],
+          "raw": {
+            "bytes_hex": "78"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "serialize_scalars_and_containers",
+      "requirements": [
+        "COD-10",
+        "COD-16",
+        "COD-28"
+      ],
+      "steps": [
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "nil": true
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "4e3b"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "bool": true
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "623a313b"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "bool": false
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "623a303b"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "int": "42"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "693a34323b"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "int": "-7"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "693a2d373b"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "int": "9007199254740992"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "693a393030373139393235343734303939323b"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "float": "1.5"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "643a312e353b"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "text": "ab"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "733a323a226162223b"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "array": [
+              {
+                "int": "1"
+              },
+              {
+                "text": "b"
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "613a323a7b693a303b693a313b693a313b733a313a2262223b7d"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "object": [
+              [
+                "2",
+                {
+                  "text": "x"
+                }
+              ]
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "613a313a7b693a323b733a313a2278223b7d"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "text": "말"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "733a333a22eba790223b"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "s:3:\"맛\";"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "text": "맛"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "stage_order_and_empty_cells",
+      "requirements": [
+        "COD-11",
+        "COD-12",
+        "COD-14",
+        "COD-35",
+        "COD-37"
+      ],
+      "steps": [
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": ""
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize",
+            "base64"
+          ],
+          "raw": {
+            "text": "a:0:{}"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize",
+            "base64"
+          ],
+          "raw": {
+            "text": "%%%"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize",
+            "base64"
+          ],
+          "raw": {
+            "text": "abc"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "gz",
+            "base64"
+          ],
+          "value": {
+            "text": "text"
+          },
+          "as": "gz_then_base64"
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "gz",
+            "base64"
+          ],
+          "raw": {
+            "ref": "gz_then_base64"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "text": "text"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "unknown"
+          ],
+          "value": {
+            "null": "text"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "unknown"
+          ],
+          "raw": {
+            "null": "text"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "gz"
+          ],
+          "value": {
+            "text": "payload"
+          },
+          "as": "zipped"
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "gz"
+          ],
+          "raw": {
+            "ref": "zipped"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "text": "payload"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "base64",
+            "gz"
+          ],
+          "value": {
+            "text": "payload"
+          },
+          "as": "both"
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "base64",
+            "gz"
+          ],
+          "raw": {
+            "ref": "both"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "text": "payload"
+              }
+            }
+          }
+        }
+      ]
     }
   ]
 }

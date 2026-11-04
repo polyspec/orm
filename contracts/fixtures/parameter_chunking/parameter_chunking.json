@@ -638,6 +638,88 @@
           }
         }
       ]
+    },
+    {
+      "id": "root_in_split_reads_each_row_once",
+      "requirements": [
+        "PRT-76"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO chunk_author (seq, name) VALUES (1, 'first'), (70000, 'last')",
+          "reason": "one row in the first chunk and one in the last, whatever the bind limit of the database"
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "columns": [
+            "seq"
+          ],
+          "where": {
+            "seq": {
+              "array": [
+                {
+                  "sequence": {
+                    "from": 1,
+                    "count": 70000
+                  }
+                },
+                {
+                  "sequence": {
+                    "from": 1,
+                    "count": 200
+                  }
+                },
+                {
+                  "sequence": {
+                    "from": 200001,
+                    "count": 100
+                  }
+                }
+              ]
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": [
+                {
+                  "seq": 1
+                },
+                {
+                  "seq": 70000
+                }
+              ]
+            },
+            "postgres": {
+              "json": [
+                {
+                  "seq": 1
+                },
+                {
+                  "seq": 70000
+                }
+              ]
+            },
+            "sqlite": {
+              "json": [
+                {
+                  "seq": 1
+                },
+                {
+                  "seq": 70000
+                }
+              ]
+            }
+          }
+        }
+      ]
     }
   ]
 }

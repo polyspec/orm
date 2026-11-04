@@ -134,36 +134,33 @@ pub fn encode_ordered(styles: &[&str], v: StyledValue<&strict_json::Value>) -> R
 fn finish(styles: &[&str], mut cur: Vec<u8>) -> Result<Param> {
     for st in styles {
         match *st {
-            "base64" | "gz" => match encode_binary_stage(st, &mut cur)? {
-                BinaryStage::Continue => {}
-                BinaryStage::Complete(value) => return Ok(value),
-            },
+            "base64" | "gz" => encode_binary_stage(st, &mut cur)?,
             "ordered_json" | "serialize" | "yaml" => return Err(err(CODEC_UNSUPPORTED, format!("{st} must be the first style"))),
             other => return Err(err(CODEC_UNSUPPORTED, format!("style {other}"))),
         }
     }
-    encoded_text(cur)
+    encoded_cell(styles, cur)
 }
 
-fn encoded_text(bytes: Vec<u8>) -> Result<Param> {
+/// The bind parameter of the encoded bytes: `Bytes` when the last stage is gz, otherwise text.
+fn encoded_cell(styles: &[&str], bytes: Vec<u8>) -> Result<Param> {
+    if styles.last() == Some(&"gz") {
+        return Ok(Param::Bytes(bytes));
+    }
     Ok(Param::Str(String::from_utf8(bytes).map_err(|e| err(CODEC_ENCODE, e.to_string()))?))
 }
 
-enum BinaryStage {
-    Continue,
-    Complete(Param),
-}
-
-fn encode_binary_stage(style: &str, cur: &mut Vec<u8>) -> Result<BinaryStage> {
+fn encode_binary_stage(style: &str, cur: &mut Vec<u8>) -> Result<()> {
     match style {
         "base64" => {
             *cur = base64::engine::general_purpose::STANDARD.encode(&*cur).into_bytes();
-            Ok(BinaryStage::Continue)
+            Ok(())
         }
         "gz" => {
             let mut enc = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::best());
             enc.write_all(cur).map_err(|e| err(CODEC_ENCODE, format!("gz: {e}")))?;
-            Ok(BinaryStage::Complete(Param::Bytes(enc.finish().map_err(|e| err(CODEC_ENCODE, format!("gz: {e}")))?)))
+            *cur = enc.finish().map_err(|e| err(CODEC_ENCODE, format!("gz: {e}")))?;
+            Ok(())
         }
         other => Err(err(CODEC_UNSUPPORTED, format!("style {other}"))),
     }
@@ -198,14 +195,11 @@ pub fn encode(styles: &[&str], v: StyledValue<&Value>) -> Result<Param> {
                 let parsed = strict_json::parse_bytes(&raw).map_err(|e| err(CODEC_ENCODE, format!("json: {e}")))?;
                 cur = strict_json::stringify(&parsed).into_bytes();
             }
-            "base64" | "gz" => match encode_binary_stage(st, &mut cur)? {
-                BinaryStage::Continue => {}
-                BinaryStage::Complete(value) => return Ok(value),
-            },
+            "base64" | "gz" => encode_binary_stage(st, &mut cur)?,
             other => return Err(err(CODEC_UNSUPPORTED, format!("style {other}"))),
         }
     }
-    encoded_text(cur)
+    encoded_cell(styles, cur)
 }
 
 // ---- yaml: YAML 1.2 with the core schema: read through saphyr-parser, written by serde-saphyr ----

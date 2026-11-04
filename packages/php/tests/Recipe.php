@@ -1189,6 +1189,12 @@ final class Recipe
                     [$text, $set] = self::inlineDocument($step);
                     $parsed = Dbspec::parse($text, $set);
                 }
+                if ($expect['positions'] === null) {
+                    Assert::assertNull($parsed->document, 'a failed parse has no document');
+                    Assert::assertNull($parsed->positions, 'a failed parse has no positions');
+                    Assert::assertNotSame([], $parsed->diagnostics, 'a failed parse has diagnostics');
+                    return;
+                }
                 if ($parsed->document === null) {
                     Assert::fail(self::diagnostics($parsed->diagnostics));
                 }
@@ -2789,7 +2795,7 @@ final class Recipe
                 Assert::assertStringContainsString($error->rollback->getMessage(), $error->getMessage(), 'the error message');
             }
             if (($expected['driver_cause'] ?? false) === true) {
-                Assert::assertNotNull($error->getPrevious(), 'the driver cause of the error');
+                Assert::assertInstanceOf(\PDOException::class, $error->getPrevious(), 'the driver cause of the error');
             }
             $step->checkOutcome($expected, 'error', 'file_created', 'message_suffix', 'message', 'cause', 'message_holds', 'keeps_callback', 'rollback', 'driver_cause');
             return;

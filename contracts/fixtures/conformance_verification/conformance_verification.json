@@ -82876,6 +82876,153 @@
      }
     }
    ]
+  },
+  {
+   "id": "styled_sql_null_in_relation_and_join_rows",
+   "requirements": [
+    "COD-20"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Service",
+     "key": {
+      "seq": {
+       "int": "7"
+      }
+     },
+     "relations": [
+      {
+       "model": "Author",
+       "many": true,
+       "match": [
+        [
+         "seq",
+         "service_seq"
+        ]
+       ],
+       "columns": [
+        "json_setting"
+       ],
+       "order": [
+        {
+         "column": "seq",
+         "dir": "asc"
+        }
+       ],
+       "group_limit": 1
+      }
+     ],
+     "pick": [
+      "author_models"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {"author_models":[{"seq":6,"user_seq":7,"service_seq":7,"service_region_seq":7,"service_member_seq":7,"json_setting":{"kind":"sql-null"}}]}
+      },
+      "postgres": {
+       "json": {"author_models":[{"seq":6,"user_seq":7,"service_seq":7,"service_region_seq":7,"service_member_seq":7,"json_setting":{"kind":"sql-null"}}]}
+      },
+      "sqlite": {
+       "json": {"author_models":[{"seq":6,"user_seq":7,"service_seq":7,"service_region_seq":7,"service_member_seq":7,"json_setting":{"kind":"sql-null"}}]}
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Service",
+     "where": {
+      "seq": {
+       "int": "7"
+      }
+     },
+     "joins": [
+      {
+       "model": "Author",
+       "match": [
+        "seq",
+        "service_seq"
+       ],
+       "columns": [
+        "json_setting"
+       ],
+       "on": {
+        "seq": {
+         "int": "6"
+        }
+       },
+       "as": "a"
+      }
+     ],
+     "order": [
+      {
+       "column": "seq",
+       "dir": "asc"
+      }
+     ],
+     "limit": {
+      "offset": 0,
+      "count": 1
+     },
+     "expect": {
+      "mysql": {
+       "json": [{"seq":7,"name":"service-7","author_model":{"seq":6,"user_seq":7,"service_seq":7,"service_region_seq":7,"service_member_seq":7,"json_setting":{"kind":"sql-null"}}}]
+      },
+      "postgres": {
+       "json": [{"seq":7,"name":"service-7","author_model":{"seq":6,"user_seq":7,"service_seq":7,"service_region_seq":7,"service_member_seq":7,"json_setting":{"kind":"sql-null"}}}]
+      },
+      "sqlite": {
+       "json": [{"seq":7,"name":"service-7","author_model":{"seq":6,"user_seq":7,"service_seq":7,"service_region_seq":7,"service_member_seq":7,"json_setting":{"kind":"sql-null"}}}]
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "6"
+      }
+     },
+     "columns": [
+      "json_setting"
+     ],
+     "pick": [
+      "json_setting"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "json_setting": {
+         "kind": "sql-null"
+        }
+       }
+      },
+      "postgres": {
+       "json": {
+        "json_setting": {
+         "kind": "sql-null"
+        }
+       }
+      },
+      "sqlite": {
+       "json": {
+        "json_setting": {
+         "kind": "sql-null"
+        }
+       }
+      }
+     }
+    }
+   ]
   }
  ]
 }
