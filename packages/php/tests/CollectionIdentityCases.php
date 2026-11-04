@@ -74,20 +74,6 @@ trait CollectionIdentityCases
         }
     }
 
-    public function testCompositeDateTimeMicrosecondsTrimTrailingZeroes(): void
-    {
-        foreach (self::sharedCollectionFixture()['datetime_microseconds'] as $entry) {
-            $date = new \DateTime($entry['value']);
-            $before = $date->format('c.u');
-            $row = [$date, ''];
-            $refs = [['column' => 'date', 'index' => 0], ['column' => 'text', 'index' => 1]];
-            $key = Db::rowKey($row, $refs);
-            self::assertSame($entry['encoded'], $key, $entry['name']);
-            self::assertSame($key, Db::rowKey($row, $refs), "{$entry['name']} changed on repeated creation");
-            self::assertSame($before, $date->format('c.u'), "{$entry['name']} mutated its datetime input");
-        }
-    }
-
     public function testNullCompositeRowHasNoCollectionKey(): void
     {
         $row = array_map(self::sharedCompositeValue(...), self::sharedCollectionFixture()['nullable_composite']);

@@ -53,3 +53,56 @@ table composite_account {
   name varchar(191)
   primary key (tenant_id, account_id)
 }
+
+table key_flag_label {
+  flag bool
+  label varchar(32)
+  primary key (flag, label)
+}
+
+table key_number_label {
+  number i64
+  label varchar(32)
+  primary key (number, label)
+}
+
+table key_label_label {
+  first_label varchar(32)
+  second_label varchar(32)
+  primary key (first_label, second_label)
+}
+
+table key_flag_number {
+  flag bool
+  number i64
+  primary key (flag, number)
+}
+
+table key_number_flag {
+  number i64
+  flag bool
+  primary key (number, flag)
+}
+
+table key_label_flag {
+  label varchar(32)
+  flag bool
+  primary key (label, flag)
+}
+
+table key_instant_label {
+  instant datetime(3)
+  label varchar(32)
+  primary key (instant, label)
+}
+
+table key_fine_instant_label {
+  instant datetime(6)
+  label varchar(32)
+  primary key (instant, label)
+}
+
+table key_flag {
+  flag bool
+  primary key (flag)
+}

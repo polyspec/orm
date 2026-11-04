@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 92f5cf82a2e7eab1bd74ad558516d9d1b98debda74de3235ae7a75fecece135b -->
+<!-- source-sha256: 0b4cfea698c03406fb0ac1c216ae0d1bc29230356fc848236c8db0eb0f014633 -->
 # 변경 이력
 
 ## Unreleased
 
+- collection key는 PRT-35와 INT-11대로 모든 database에서 구성 요소의 선언 타입을 유지한다. `bool` column이 MySQL과 SQLite에서 정수로 읽혀 `(true, 1)`과 `(1, true)`의 key text가 같았고, composite key의 `datetime` 구성 요소가 TypeScript와 PHP, SQLite의 Python에서 text로 읽혔다. encoding은 이제 recipe `model_queries_chain`의 case `composite_key_*`이고, 어떤 key column도 담을 수 없는 형태는 `tests/collection/keys.json`에 남는다.
 - Tests: decimal physical 실행과 `contracts/features.json`, `config/parity.json`의 명령은 제거된 tag `decimalphysical`, `markdown`, `physical`을 더 쓰지 않으며, 행 T334-3-6은 PRT-43대로 `ormtest`가 남는다고 적는다.
 - Python은 실제 컬럼의 `new_<name>`을 다른 동적 runtime처럼 `CONFIG`로 거부하고(DSL-160), 그 거부는 여전히 `AttributeError`이므로 `hasattr`가 그대로 동작한다. 이 거부는 각 runtime의 native 테스트 대신 PHP, PHP extension, TypeScript, Python에서 recipe `dsl-dynamic`의 case `new_of_a_stored_column_is_refused_at_call_time`로 실행된다. 같은 이름의 두 번째 helper가 호출 대상을 가리고 있던 Python에서 recipe `dsl-dynamic`이 다시 실행된다. native로 남는 생성기와 schema 경계의 unit은 그 이유를 FCV-2에 적는다.
 - TypeScript와 Python 생성기는 child 없는 `join<L>With<R>`와 `leftJoin<L>With<R>` 호출을 scan에서 거부한다. 다른 생성기처럼 DSL-37의 인자 개수 규칙을 따른 것이다. PHP scan vector의 chain 이름은 PHP와 TypeScript scan을 비교하던 테스트 대신 모든 runtime에서 `generator` recipe의 `scanned-` case로 실행된다.
