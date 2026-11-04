@@ -1,0 +1,158 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "DBS-35",
+    "DBS-37",
+    "DBS-41",
+    "DBS-84",
+    "DBS-88",
+    "DBS-90",
+    "DBS-91",
+    "DBS-92",
+    "DBS-93",
+    "DBS-95",
+    "DBS-96",
+    "DIA-25",
+    "DIA-28",
+    "DIA-30",
+    "DIA-113",
+    "DIA-114",
+    "DIA-115",
+    "DIA-116",
+    "DIA-117",
+    "DIA-118",
+    "DIA-119",
+    "DIA-120",
+    "DIA-121",
+    "DIA-122",
+    "DIA-123",
+    "DIA-124",
+    "DIA-125",
+    "DIA-126",
+    "DIA-127",
+    "DIA-128",
+    "DIA-129",
+    "DIA-130",
+    "DIA-131",
+    "DIA-132"
+  ],
+  "cases": [
+    {
+      "id": "types-and-defaults",
+      "requirements": [
+        "DIA-113"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.render_statements",
+          "vectors": "ddl.json",
+          "case": "types-and-defaults"
+        }
+      ]
+    },
+    {
+      "id": "keys-indexes-foreign-keys",
+      "requirements": [
+        "DIA-113"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.render_statements",
+          "vectors": "ddl.json",
+          "case": "keys-indexes-foreign-keys"
+        }
+      ]
+    },
+    {
+      "id": "checks-in-dialect-form",
+      "requirements": [
+        "DIA-113"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.render_statements",
+          "vectors": "ddl.json",
+          "case": "checks-in-dialect-form"
+        }
+      ]
+    },
+    {
+      "id": "immutable-and-audit",
+      "requirements": [
+        "DIA-113"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.render_statements",
+          "vectors": "ddl.json",
+          "case": "immutable-and-audit"
+        }
+      ]
+    },
+    {
+      "id": "use-across-documents",
+      "requirements": [
+        "DIA-113"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.render_statements",
+          "vectors": "ddl.json",
+          "case": "use-across-documents"
+        }
+      ]
+    },
+    {
+      "id": "audit-columns",
+      "requirements": [
+        "DIA-113"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.render_statements",
+          "vectors": "ddl.json",
+          "case": "audit-columns"
+        }
+      ]
+    },
+    {
+      "id": "history-name-hashed-by-rule",
+      "requirements": [
+        "DIA-113"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.render_statements",
+          "vectors": "ddl.json",
+          "case": "history-name-hashed-by-rule"
+        }
+      ]
+    },
+    {
+      "id": "audit-tables",
+      "requirements": [
+        "DIA-113"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.render_statements",
+          "vectors": "ddl.json",
+          "case": "audit-tables"
+        }
+      ]
+    },
+    {
+      "id": "audit-encrypted-column",
+      "requirements": [
+        "DIA-113"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.render_statements",
+          "vectors": "ddl.json",
+          "case": "audit-encrypted-column"
+        }
+      ]
+    }
+  ]
+}

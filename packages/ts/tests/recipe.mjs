@@ -16,6 +16,7 @@ import { failNextRollback, lastAffected } from '../dist/testing.js';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { AesKeyring, BindCell, CORE, Collection, transactionConflict, Db, OrmError, loadSet, StyledValue, blindIndex, chainPlans, codes, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, orm, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
 import { analyzeDbspec, formatDbspec, parseDbspecSet as parseDbspecSetBrowser, readDbspecBytes } from '../dist/dbspec/entry.js';
+import { buildSetTree } from '../../../tests/dbspec/set-tree.mjs';
 import { DbspecApplyError, addTablesAndColumnsSteps, applyPlans, exportMermaid, importMermaid, introspectDbspec, rollbackPlans } from '../dist/dbspec/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
 import { Slots, connect as connectSlots } from '../dist/models/bind_fixture/models.js';
@@ -92,6 +93,8 @@ export function runRecipe(path, database) {
           else if (step.op === 'interface.symbols') await checkInterfaceSymbols();
           else if (step.op === 'keyring.versions') checkKeyring(step, database);
           else if (step.op === 'dbspec.introspect_shown') await checkIntrospectShown(step, dir, database);
+          else if (step.op === 'dbspec.render_statements') checkRenderStatements(step, dir);
+          else if (step.op === 'dbspec.read_set') checkReadSet(step, database);
           else if (step.op === 'dbspec.apply_fault') await checkApplyFault(step, bound, database);
           else if (step.op === 'dbspec.introspect_sqlite') await checkIntrospectSqlite(step, database);
           else if (step.op === 'markdown.builder') await checkBuilder(step, database);
@@ -2876,6 +2879,59 @@ async function checkApplyFault(step, bound, database) {
     for (const kind of expect.absent_events ?? []) assert.equal(kinds.includes(kind), false, `the events hold ${kind}`);
   } finally {
     db.close();
+  }
+}
+
+// checkReadSet runs a dbspec.read_set step: it writes the tree under an empty temporary directory, reads the set with the public
+// readDbspecSet, and compares the paths and the bytes of the files or the rule and path of each error (FCV-4, DBS-11).
+function checkReadSet(step, database) {
+  const expect = step.expect[database];
+  const tree = step.tree;
+  const root = buildSetTree(tree, 'orm-ts-set-');
+  try {
+    const result = readDbspecSet(`${root}/${step.set_file}`);
+    if (expect.errors !== undefined) {
+      assert.equal(result.documents, null);
+      assert.equal(result.external, null);
+      assert.deepEqual(result.errors.map(e => ({ rule: e.rule, path: e.path })), expect.errors.map(e => ({ rule: e.rule, path: `${root}/${e.path}` })));
+      result.errors.forEach((e, i) => {
+        assert.ok(typeof e.message === 'string' && e.message.includes(e.path), `the message names the path: ${e.message}`);
+        assert.ok(e.message.includes(expect.errors[i].message_holds ?? ''), `the message holds the text: ${e.message}`);
+      });
+      return;
+    }
+    assert.deepEqual(result.errors, []);
+    for (const list of ['documents', 'external']) {
+      assert.deepEqual(result[list].map(f => f.path), expect[list].map(p => `${root}/${p}`), `${list} paths`);
+      result[list].forEach((f, i) => {
+        assert.ok(f.bytes instanceof Uint8Array, `${list}[${i}] bytes are a Uint8Array`);
+        assert.deepEqual(Buffer.from(f.bytes), readFileSync(`${root}/${expect[list][i]}`), `${list}[${i}] bytes`);
+      });
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+// checkRenderStatements runs a dbspec.render_statements step: it parses each document of the case of the vectors against the
+// others and renders the set for each dialect, in the given order and reversed, to exactly the statements of the case (FCV-4, DIA-113).
+function checkRenderStatements(step, dir) {
+  const vectors = JSON.parse(readFileSync(resolve(dir, step.vectors), 'utf8'));
+  const vector = vectors.cases.find(c => c.id === step.case);
+  if (vector === undefined) throw new Error(`${step.vectors} has no case ${step.case}`);
+  const lines = text => text.join('\n') + '\n';
+  const documents = Object.keys(vector.documents).map(name => {
+    const set = {};
+    for (const [other, text] of Object.entries(vector.documents)) if (other !== name) set[other] = lines(text);
+    const parsed = parseDbspec(lines(vector.documents[name]), set);
+    assert.deepEqual(parsed.diagnostics, [], `diagnostics of document ${name}`);
+    return parsed.document;
+  });
+  for (const dialect of ['mysql', 'postgres', 'sqlite']) {
+    assert.ok(vector.statements[dialect]?.length > 0, `${dialect} has statements`);
+    for (const given of [documents, [...documents].reverse()]) {
+      assert.deepEqual(renderDbspec(given, dialect), { statements: vector.statements[dialect], diagnostics: [] }, dialect);
+    }
   }
 }
 

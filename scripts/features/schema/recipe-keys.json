@@ -674,6 +674,11 @@
       "expect",
       "op"
     ],
+    "dbspec.render_statements": [
+      "case",
+      "op",
+      "vectors"
+    ],
     "dbspec.render": [
       "dialect",
       "documents",
@@ -730,6 +735,12 @@
       "expect",
       "external",
       "op"
+    ],
+    "dbspec.read_set": [
+      "expect",
+      "op",
+      "set_file",
+      "tree"
     ],
     "dbspec.read_file": [
       "expect",
