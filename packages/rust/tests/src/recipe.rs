@@ -3432,7 +3432,7 @@ mod database {
 
     /// An ORM error of a schema or statement op: its message starts with its code, which an expect may name.
     fn orm(error: polyspec_orm::Error) -> Failure {
-        Failure::Call(error.to_string())
+        Failure::Call(crate::recipe::failure_text(&error))
     }
 
     /// The Schema argument of a schema op (FCV-4): the documents of the set and its external documents, read from the recipe's
