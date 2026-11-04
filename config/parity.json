@@ -38,7 +38,7 @@
       ],
       "args": [
         "-tags",
-        "physical,ormtest,markdown"
+        "ormtest"
       ],
       "symbols": {
         "extractor": "go",
@@ -769,11 +769,11 @@
         },
         {
           "glob": "packages/ts/tests/paginate-order.mjs",
-          "reason": "test: invokes the private paginate helper with a fake database to verify internal plan ordering and dispatch; public pagination behavior is covered by shared client cases"
+          "reason": "test: invokes the private paginate helper with a fake database to verify internal plan ordering and dispatch; public pagination is held by the page steps of the recipes conformance_verification and complex_query"
         },
         {
           "glob": "packages/ts/tests/dbspec-mermaid-errors.mjs",
-          "reason": "test: injects an unexpected error into the private Mermaid catalog builder and verifies the same error object escapes; the public invalid-name diagnostic is covered by dbspec-mermaid"
+          "reason": "test: injects an unexpected error into the private Mermaid catalog builder and verifies the same error object escapes; the public invalid-name diagnostic is the case catalog_build_failure_is_diagnostic of the unit dbspec-mermaid"
         },
         {
           "glob": "packages/ts/tests/mysql-test-options.test.mjs",
@@ -29368,7 +29368,7 @@
             "go",
             "test",
             "-tags",
-            "decimalphysical",
+            "ormtest",
             "-json",
             "-count=1",
             "-run",
@@ -29384,7 +29384,7 @@
             "go",
             "test",
             "-tags",
-            "decimalphysical",
+            "ormtest",
             "-json",
             "-count=1",
             "-run",
@@ -29400,7 +29400,7 @@
             "go",
             "test",
             "-tags",
-            "decimalphysical",
+            "ormtest",
             "-json",
             "-count=1",
             "-run",

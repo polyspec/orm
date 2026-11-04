@@ -772,6 +772,7 @@
       "user_from_database"
     ],
     "sql.hold_statement": [
+      "as",
       "bind",
       "dsn",
       "op",

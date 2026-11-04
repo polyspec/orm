@@ -3,6 +3,9 @@
 
 ## Unreleased
 
+- Tests: the decimal physical runs and the commands of `contracts/features.json` and `config/parity.json` no longer name the removed tags `decimalphysical`, `markdown` and `physical`, and the row T334-3-6 states that `ormtest` stays, as PRT-43 requires.
+- Tests: the case `catalog_session_after_a_schema_change_through_a_pooler` compares the `pg_backend_pid()` of its read with that of the held statement, so it fails when the read reaches another server connection. The PHP runner of `sql.hold_statement` bound no value to its `$1`, as PDO binds none to that placeholder, and now writes it as `?`.
+- Tests: the test servers no longer serve the PgBouncer database `orm_test_single` and no longer write `ORM_TEST_PGBOUNCER_SINGLE_DSN`, and the Rust case helper `CaseTable` goes: no test used them since the catalog session through a pooler runs on a case database.
 - A recipe `interface.symbols` that reaches its deadline kills the interface check in every runtime and fails its case, so no hung check is left running.
 - A Rust integration case that fails names what it waited on for a connection: the pool acquire timeout and, through ProxySQL, the hostgroup and its connect timeout.
 - The interface check of each runtime (INT-17, INT-18, INT-19, INT-57, INT-61, INT-64) is the case `interface_symbols` of the recipe `public-interface` through the new op `interface.symbols`; the six native wrappers and their parity unit are gone.

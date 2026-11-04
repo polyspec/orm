@@ -151,7 +151,7 @@ const workflow = readFileSync(new URL('../../.github/workflows/ci.yml', import.m
 caseTest('the CI workflow provides every variable of make orm-test-servers', COMPUTE, () => {
   const variables = SERVER_VARIABLES;
   for (const variable of ['ORM_TEST_MYSQL_REPLICA_DSN', 'ORM_TEST_POSTGRES_REPLICA_DSN', 'ORM_TEST_PROXYSQL_DSN',
-    'ORM_TEST_PGBOUNCER_DSN', 'ORM_TEST_PGBOUNCER_SINGLE_DSN', 'ORM_TEST_MYSQL_TLS_DSN', 'ORM_RUN_MYSQL_DSN', 'ORM_RUN_POSTGRES_DSN',
+    'ORM_TEST_PGBOUNCER_DSN', 'ORM_TEST_MYSQL_TLS_DSN', 'ORM_RUN_MYSQL_DSN', 'ORM_RUN_POSTGRES_DSN',
     'ORM_RUN_SQLITE_QUERY', 'ORM_TEST_SERVERS_LEASES'])
     assert.ok(variables.includes(variable), `${variable} is not written by scripts/test-servers.mts`);
   assert.deepEqual(ciServerErrors(workflow, SERVER_VARIABLES), []);

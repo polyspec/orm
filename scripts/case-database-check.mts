@@ -4,9 +4,8 @@
 // stay the same, and no `orm_case_` database or `orm-case-` SQLite file made by the cases may remain.
 //
 // A leftover case database or file counts as left over only if it was not there before the run and its named process has ended.
-// Those of a running process belong to another run's case (T27). The shared test database is the one PgBouncer's
-// orm_test_single points to, so this check cannot create its own; its digest and PostgreSQL
-// schema list can be compared when no other session on the same server runs tests.
+// Those of a running process belong to another run's case (T27). The digest and the PostgreSQL schema list of the
+// shared test database can be compared when no other session on the same server runs tests.
 //
 // Usage: node scripts/case-database-check.mts (in a shell that has read TEST_ENV,
 // after the TypeScript build)
