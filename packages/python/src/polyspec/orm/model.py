@@ -16,7 +16,7 @@ from polyspec.ordered_json import (
 from polyspec.orm import codes
 from polyspec.orm.core import Core
 from polyspec.orm.engine.model import RuntimeModel, model_of_manifest
-from polyspec.orm.errors import OrmError
+from polyspec.orm.errors import OrmError, StoredColumnName
 from polyspec.orm.keys import Key, key_text
 from polyspec.orm.names import parse_chain, parse_order, snake, split_pair
 from polyspec.orm.styled_value import StyledValue
@@ -372,7 +372,9 @@ class Model:
             from polyspec.orm.names import column_name
 
             if column_name(model, entity, pascal_name[3:]) != "":
-                raise AttributeError(name)
+                raise StoredColumnName(
+                    f"{name}: {pascal_name[3:]} is a column; use set_{snake(pascal_name[3:])}"
+                )
 
             def new(value):
                 core.set_new(snake(pascal_name[3:]), value)

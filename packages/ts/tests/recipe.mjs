@@ -3040,6 +3040,8 @@ async function queryColumn(step, db) {
     eq_method: { 'slots.i64_value': v => slots.andEqI64Value(v) },
     ne_method: { 'slots.i64_value': v => slots.andNeI64Value(v) },
     gt_method: { 'slots.i64_value': v => slots.andGtI64Value(v), 'slots.varchar_null_value': v => slots.andGtVarcharNullValue(v) },
+    // The name goes through a value, since the scan refuses the call of new<Name> on a stored column (DSL-116).
+    new_method: { 'slots.i64_value': v => { const method = 'newI64Value'; return slots[method](v); } },
   }[step.operator];
   if (operator !== undefined) return operator[step.column](hostValue(step.params[0])).gets();
   if (step.operator === 'like_contains') {

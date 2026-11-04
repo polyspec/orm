@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2531e266435a5d81277b31f6fe7f8ac1bdeaf9bd254937122215a157b00ea73b -->
+<!-- source-sha256: 94b7381b45301829f654c0894a61a1d9b3b40c2cf7ac556bc54e193b23ef0f01 -->
 # 변경 이력
 
 ## Unreleased
@@ -9,6 +9,8 @@
 - 각 runtime의 interface check(INT-17, INT-18, INT-19, INT-57, INT-61, INT-64)는 새 op `interface.symbols`로 recipe `public-interface`의 case `interface_symbols`가 된다. native wrapper 여섯 개와 그 parity unit은 없어졌다.
 - transaction이 자기 쓰기를 읽고 그 모든 statement에 하나의 transaction 번호를 발행함은 모든 runtime에서 recipe case `transaction_reads_its_own_write`가 확인한다. 이를 혼자 확인하던 PHP extension test는 없어졌다.
 - 이어 붙인 문자열이 같은 composite key는 recipe `composite_keys`의 row로만 있고, case가 모든 runtime에서 그 relation의 statement와 bind를 읽는다. fixture `composite_key_collision.json`과 parity suite의 그 제외 항목은 없어졌다.
+- Python은 실제 컬럼의 `new_<name>`을 다른 동적 runtime처럼 `CONFIG`로 거부하고(DSL-160), 그 거부는 여전히 `AttributeError`이므로 `hasattr`가 그대로 동작한다. 이 거부는 각 runtime의 native 테스트 대신 PHP, PHP extension, TypeScript, Python에서 recipe `dsl-dynamic`의 case `new_of_a_stored_column_is_refused_at_call_time`로 실행된다. 같은 이름의 두 번째 helper가 호출 대상을 가리고 있던 Python에서 recipe `dsl-dynamic`이 다시 실행된다. native로 남는 생성기와 schema 경계의 unit은 그 이유를 FCV-2에 적는다.
+- TypeScript와 Python 생성기는 child 없는 `join<L>With<R>`와 `leftJoin<L>With<R>` 호출을 scan에서 거부한다. 다른 생성기처럼 DSL-37의 인자 개수 규칙을 따른 것이다. PHP scan vector의 chain 이름은 PHP와 TypeScript scan을 비교하던 테스트 대신 모든 runtime에서 `generator` recipe의 `scanned-` case로 실행된다.
 - Python의 pool은 CFG-5대로 idle connection을 lifetime이 지날 때 닫는다. 이전에는 다음 호출자가 가져갈 때에만 닫았다. MySQL과 PostgreSQL의 pool 경계, lifetime, 거부되는 pool 값은 recipe `connection_pool`과 `dsn_reject_checked`의 case이고, PHP의 pool option 거부는 recipe `dsn_reject_php_pool`이다.
 - 테스트: schema 변경 뒤 transaction pooler를 거치는 catalog session(CFG-28, CFG-41)은 Python 테스트 `connection_config` 대신 모든 runtime에서 `catalog_connection` recipe의 case `catalog_session_after_a_schema_change_through_a_pooler`가 새 op `sql.hold_statement`와 `catalog.reconnect`의 `dsn`으로 맡는다.
 - TypeScript 정수 parameter test의 이름은 `driver-integer-param.mjs`이고, internal test 항목의 reason은 각 test가 하는 일을 적는다.
