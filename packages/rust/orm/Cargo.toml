@@ -94,11 +94,6 @@ path = "tests/identity_load.rs"
 harness = false
 
 [[test]]
-name = "install"
-path = "tests/install.rs"
-harness = false
-
-[[test]]
 name = "sqlite_file_name"
 path = "tests/sqlite_file_name.rs"
 harness = false

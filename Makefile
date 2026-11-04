@@ -951,7 +951,6 @@ t182-php-extension-schema-check: php-vendor-check php-model-check
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CoverageNativeChangedDatabaseExtensionTest.php; \
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --filter 'testSchemaSetEditedManifest' packages/php-ext/tests/CoverageSchemaInstallNativeTest.php
 
 # Runs the complete native Model surface and its native helper classes against a fresh extension; generated PHP models use their normal bootstrap.
@@ -1626,11 +1625,6 @@ php-ext-memory-check: php-vendor-check orm-install-php-extension-tools
 	$(WITH_TEST_ENV) $(MAKE) --no-print-directory test-php-ext CASES='$(PHP_EXT_MEMORY_GATE_POSTGRES)'
 	$(WITH_TEST_ENV) $(MAKE) --no-print-directory test-php-ext CASES='$(PHP_EXT_MEMORY_GATE_SQLITE)'
 
-# python-install-changed-database-check runs every case of contracts/fixtures/install/changed_database.json with the
-# Python client on SQLite, MySQL and PostgreSQL (packages/python/tests/install_changed_database.py).
-.PHONY: python-install-changed-database-check
-python-install-changed-database-check: python-venv-check
-	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.install_changed_database
 # python-mysql-session-check checks the session startup parameters of a Python PostgreSQL connection
 # (packages/python/tests/mysql_session.py); it needs the database variables of make orm-test-servers (WITH_TEST_ENV).
 .PHONY: python-mysql-session-check

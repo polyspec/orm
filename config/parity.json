@@ -7973,47 +7973,6 @@
       ]
     },
     {
-      "id": "install-changed-database",
-      "kind": "suite",
-      "requirements": [
-        "DBS-108",
-        "SCH-7",
-        "SCH-13"
-      ],
-      "file": "contracts/fixtures/install/changed_database.json",
-      "cases": "$.cases[*].id",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/install_test.go",
-          "symbol": "TestInstallVerifiesTheDatabase"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/SchemaSetTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\SchemaSetTest::testInstallVerifiesTheDatabase"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageNativeChangedDatabaseExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CoverageNativeChangedDatabaseExtensionTest::testInstallChangedDatabaseVector"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/install_changed_database.mjs"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/install_changed_database.py"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/install.rs",
-          "symbol": "install_verifies_the_database"
-        }
-      ]
-    },
-    {
       "id": "codec",
       "kind": "suite",
       "requirements": [
@@ -41399,6 +41358,7 @@
         "PLN-44",
         "SCH-10",
         "SCH-11",
+        "SCH-13",
         "SCH-7",
         "SCH-8",
         "SCH-9"
@@ -41462,6 +41422,7 @@
         "PLN-44",
         "SCH-10",
         "SCH-11",
+        "SCH-13",
         "SCH-7",
         "SCH-8",
         "SCH-9"
@@ -41525,6 +41486,7 @@
         "PLN-44",
         "SCH-10",
         "SCH-11",
+        "SCH-13",
         "SCH-7",
         "SCH-8",
         "SCH-9"
