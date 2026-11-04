@@ -154,11 +154,6 @@ impl CatalogConnection {
     ) -> Result<crate::tool_db::QueryResult, String> {
         let mut connection = self.read_only_connection(sql).await?;
         let result = connection.query_result_values_bounded(sql, params, limits).await.map_err(catalog_query_error);
-        if stopped_by_budget(&result) && self.dialect != "sqlite" {
-            connection.close_now();
-            self.closed_connection();
-            return result;
-        }
         self.end_read(connection, result).await
     }
     /// A read_only_query whose limits are the counts that a caller gives: an absent count is the default, and a negative count
@@ -182,11 +177,6 @@ impl CatalogConnection {
     ) -> Result<crate::tool_db::GridQueryResult, String> {
         let mut connection = self.read_only_connection(sql).await?;
         let result = connection.grid_query_values_bounded(sql, params, limits).await.map_err(catalog_query_error);
-        if stopped_by_budget(&result) && self.dialect != "sqlite" {
-            connection.close_now();
-            self.closed_connection();
-            return result;
-        }
         self.end_read(connection, result).await
     }
     /// A read_only_grid_query whose limits are the counts that a caller gives, refused as read_only_query_counted refuses them.
@@ -200,8 +190,14 @@ impl CatalogConnection {
         let limits = read_limits(max_rows, max_bytes)?;
         self.read_only_grid_query(sql, params, limits).await
     }
-    /// Ends a read and drops its connection, which closes with the drop.
+    /// Ends a read and drops its connection, which closes with the drop. A read that a budget stopped closes its socket without a
+    /// rollback, whichever operation read it.
     async fn end_read<T>(&mut self, mut connection: Conn, result: Result<T, String>) -> Result<T, String> {
+        if stopped_by_budget(&result) && self.dialect != "sqlite" {
+            connection.close_now();
+            self.closed_connection();
+            return result;
+        }
         let result = finish_read_only(&mut connection, result).await;
         drop(connection);
         self.closed_connection();

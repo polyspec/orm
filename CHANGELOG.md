@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The Rust catalog closes the socket of every read that a budget stopped, a table page and a describe included, where only `read_only_query` and `read_only_grid_query` did (T343-11).
 - PHP and the PHP extension try a connect that `max_user_connections` refuses again for 2 s after a close by that catalog (CFG-35), as the other runtimes do: a budget stop on a user allowed two connections no longer finds the place of its previous kill still held and waits 66 s (T343-13-1).
 - Tests: the padding of the parent keys of a relation and the number of the placeholder after them are a case of the `model_queries_chain` recipe, the native tests of the collection keys that the recipes hold are gone, and feature-coverage names each one that stays native with its reason.
 - A key of a `datetime` column is a date and time in every runtime, as INT-11 states, also when it is the only key column: PHP, TypeScript and Python returned the text of the column. A TypeScript key is a `Date` whose `toJSON()` holds the microseconds, so two microseconds of one millisecond stay two keys. The cases `single_key_of_a_datetime_keeps_its_type` and `single_key_of_a_microsecond_datetime_keeps_its_instant` of the `model_queries_chain` recipe hold it.
