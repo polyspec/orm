@@ -37,11 +37,6 @@ impl Key {
     }
 
     /// The collection identity of a row: every key column, and SQL NULL in one of them is CODEC_DECODE.
-    pub fn of_collection_row(row: &[Val], refs: &[crate::plan::KeyRef]) -> Result<Key> {
-        let values: Vec<Val> = refs.iter().map(|r| row[r.index].clone()).collect();
-        Key::of_values(&values)
-    }
-
     pub fn of_row(row: &[Val], refs: &[crate::plan::KeyRef]) -> Result<Option<Key>> {
         let mut values = Vec::with_capacity(refs.len());
         for r in refs {
