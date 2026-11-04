@@ -1,7 +1,7 @@
 //! Typed insertion with database-owned generated identities.
 use super::{
     metadata,
-    mutation::{assigned_slot, cancelled, cell, lookup, mysql_safety, qualified, write_transaction_statement, CommitPermit, Publisher},
+    mutation::{assigned_slot, cancelled, cell, lookup, mysql_partial_revokes_off, mysql_safety, qualified, write_transaction_statement, CommitPermit, Publisher},
     mutation_finish,
     page::quote,
     row_snapshot, CatalogConnection, MutationPhase, TableMetadata,
@@ -40,6 +40,9 @@ impl CatalogConnection {
         super::begin_session(&mut connection, write_transaction_statement(&self.dialect)).await?;
         let result = async {
             cancelled(&cancellation)?;
+            if self.dialect == "mysql" {
+                mysql_partial_revokes_off(&mut connection).await?;
+            }
             if self.dialect == "mysql" && keys.is_none() {
                 // Information-schema reads alone do not retain the target's
                 // metadata lock. Acquire it before checking engine or schema.

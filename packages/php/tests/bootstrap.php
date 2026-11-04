@@ -95,8 +95,6 @@ require_once __DIR__ . '/StatementRunnerCases.php';
 require_once __DIR__ . '/NativeFixtureVectors.php';
 require_once __DIR__ . '/CatalogAnswerPdo.php';
 require_once __DIR__ . '/CatalogAnswerStatement.php';
-require_once __DIR__ . '/CatalogMysqlVisibilityPdo.php';
-require_once __DIR__ . '/CatalogMysqlVisibilityCases.php';
 require_once __DIR__ . '/CatalogPostgresTemporalPdo.php';
 require_once __DIR__ . '/CatalogPostgresTemporalCases.php';
 require_once __DIR__ . '/dbspec_limit_cases.php';

@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The catalog of every runtime refuses a table page whose descriptor changes during the read (INT-121): a MySQL read scope now reads committed data, since at REPEATABLE READ the second read of the descriptor answered from the snapshot and saw no change, and a column that goes away during the read is `TABLE_PAGE_METADATA_CHANGED` instead of a driver error. A row change on a server with partial revokes is refused before it locks anything (INT-119). The recipe `catalog_connection` holds these and the direct and role-only TRIGGER grants on a real server, in place of the native tests with a fake driver; the MySQL replica of the test servers has `partial_revokes` on.
 - Tests: the padding of the parent keys of a relation and the number of the placeholder after them are a case of the `model_queries_chain` recipe, the native tests of the collection keys that the recipes hold are gone, and feature-coverage names each one that stays native with its reason.
 - A key of a `datetime` column is a date and time in every runtime, as INT-11 states, also when it is the only key column: PHP, TypeScript and Python returned the text of the column. A TypeScript key is a `Date` whose `toJSON()` holds the microseconds, so two microseconds of one millisecond stay two keys. The cases `single_key_of_a_datetime_keeps_its_type` and `single_key_of_a_microsecond_datetime_keeps_its_instant` of the `model_queries_chain` recipe hold it.
 - Tests: the decimal physical runs and the commands of `contracts/features.json` and `config/parity.json` no longer name the removed tags `decimalphysical`, `markdown` and `physical`, and the row T334-3-6 states that `ormtest` stays, as PRT-43 requires.
@@ -105,6 +106,7 @@
 
 Docs: FCV-2 states each public-surface unit of `interface_contract` with its own native reason, in the form the native-binding rule reads.
 
+- A shared parity unit bound natively is a finding of `make repo-check`: FCV-2 makes it the cases of a recipe, and only a unit that FCV-2 states to stay native, with its reason, is excepted
 - The native tests of `orm-gen gen --check` in Go, PHP and TypeScript are gone: the case `check_reports_differences_without_writing` of the recipe `generator` holds them, and `go-model-check` and `php-model-check` hold the generated models; the TypeScript build writes its own.
 - The native refusal tests of vector 17 give way to the case `errors` of the recipe conformance_verification; Go, TypeScript and Rust keep only their compile fixtures for a use that drops a refusal, and the private SQLite fixture helper of Rust goes with its one test (#T334-3-12-2)
 - The native tests of `orm-gen gen --check` in Go, PHP and TypeScript are gone: the case `check_reports_differences_without_writing` of the recipe `generator` holds them, and `go-model-check`, `php-model-check` and `ts-model-check` hold the generated models; `ts-model-check` holds each of the five TypeScript model sets, and its scan list names the sources that call models.

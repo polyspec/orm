@@ -30,7 +30,9 @@
     "INT-118",
     "INT-107",
     "CFG-28",
-    "CFG-41"
+    "CFG-41",
+    "INT-119",
+    "INT-121"
   ],
   "fixture": "contracts/fixtures/catalog_connection/dbspec-set.json",
   "seed": {
@@ -17931,6 +17933,1200 @@
         },
         {
           "op": "catalog.close"
+        }
+      ]
+    },
+    {
+      "id": "row_change_on_a_direct_trigger_grant",
+      "not_through_pooler": "its own user and role are accounts of the server; a pooler knows no such account and shares its server connections",
+      "requirements": [
+        "INT-119"
+      ],
+      "only": [
+        "mysql"
+      ],
+      "steps": [
+        {
+          "op": "catalog.describe_table",
+          "table": "composite_account",
+          "as": "account",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "tenant_id",
+                "account_id",
+                "name"
+              ],
+              "primary_key": [
+                "tenant_id",
+                "account_id"
+              ],
+              "reliable_row_identity": true
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the user and the role of this case; their names are in the database of the case, as runners on one server share accounts",
+          "sql": "CREATE PROCEDURE trigger_user(IN verb VARCHAR(16)) BEGIN DECLARE account VARCHAR(40) DEFAULT CONCAT('tg_', RIGHT(DATABASE(), 28)); DECLARE grouped VARCHAR(40) DEFAULT CONCAT('tr_', RIGHT(DATABASE(), 28)); DECLARE quoted VARCHAR(64) DEFAULT CONCAT('`', DATABASE(), '`'); CASE verb WHEN 'drop' THEN SET @statement = CONCAT('DROP USER IF EXISTS ''', account, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('DROP USER IF EXISTS ''', grouped, '''@''%'''); WHEN 'create' THEN SET @statement = CONCAT('CREATE USER ''', account, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT SELECT, INSERT, UPDATE, DELETE ON ', quoted, '.* TO ''', account, '''@''%'''); WHEN 'global' THEN SET @statement = CONCAT('GRANT TRIGGER ON *.* TO ''', account, '''@''%'''); WHEN 'no global' THEN SET @statement = CONCAT('REVOKE TRIGGER ON *.* FROM ''', account, '''@''%'''); WHEN 'schema' THEN SET @statement = CONCAT('GRANT TRIGGER ON ', quoted, '.* TO ''', account, '''@''%'''); WHEN 'no schema' THEN SET @statement = CONCAT('REVOKE TRIGGER ON ', quoted, '.* FROM ''', account, '''@''%'''); WHEN 'table' THEN SET @statement = CONCAT('GRANT TRIGGER ON ', quoted, '.composite_account TO ''', account, '''@''%'''); WHEN 'no table' THEN SET @statement = CONCAT('REVOKE TRIGGER ON ', quoted, '.composite_account FROM ''', account, '''@''%'''); WHEN 'role' THEN SET @statement = CONCAT('CREATE USER ''', grouped, '''@''%'' ACCOUNT LOCK'); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT TRIGGER ON *.* TO ''', grouped, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT TRIGGER ON ', quoted, '.* TO ''', grouped, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT ''', grouped, '''@''%'' TO ''', account, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('ALTER USER ''', account, '''@''%'' DEFAULT ROLE ALL'); END CASE; PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; END"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a rerun finds the accounts of a run that failed",
+          "sql": "CALL trigger_user('drop')"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the user of this case, which may read and change the rows of the database and holds no TRIGGER",
+          "sql": "CALL trigger_user('create')"
+        },
+        {
+          "op": "catalog.reconnect",
+          "user_from_database": "tg_"
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "account"
+          },
+          "values": [
+            [
+              "tenant_id",
+              {
+                "int": "1"
+              }
+            ],
+            [
+              "account_id",
+              {
+                "int": "1"
+              }
+            ],
+            [
+              "name",
+              {
+                "text": "no grant"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_MUTATION_UNSUPPORTED",
+              "message_holds": "trigger visibility"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "composite_account",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "tenant_id",
+            "account_id",
+            "name"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "tenant_id",
+                "account_id",
+                "name"
+              ],
+              "order_by": [
+                "tenant_id",
+                "account_id"
+              ],
+              "has_more": false,
+              "rows": []
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "TRIGGER on the database of the case, granted to the user itself",
+          "sql": "CALL trigger_user('schema')"
+        },
+        {
+          "op": "catalog.reconnect",
+          "user_from_database": "tg_"
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "account"
+          },
+          "values": [
+            [
+              "tenant_id",
+              {
+                "int": "1"
+              }
+            ],
+            [
+              "account_id",
+              {
+                "int": "1"
+              }
+            ],
+            [
+              "name",
+              {
+                "text": "schema"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "schema"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "composite_account",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "tenant_id",
+            "account_id",
+            "name"
+          ],
+          "as": "first",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "tenant_id",
+                "account_id",
+                "name"
+              ],
+              "order_by": [
+                "tenant_id",
+                "account_id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "schema"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "first"
+          },
+          "index": 0,
+          "as": "first_row"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "first_row"
+          },
+          "set": [
+            [
+              "name",
+              {
+                "text": "schema changed"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "schema changed"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "takes that grant back",
+          "sql": "CALL trigger_user('no schema')"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "TRIGGER on the one table, granted to the user itself",
+          "sql": "CALL trigger_user('table')"
+        },
+        {
+          "op": "catalog.reconnect",
+          "user_from_database": "tg_"
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "account"
+          },
+          "values": [
+            [
+              "tenant_id",
+              {
+                "int": "1"
+              }
+            ],
+            [
+              "account_id",
+              {
+                "int": "2"
+              }
+            ],
+            [
+              "name",
+              {
+                "text": "table"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "table"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "takes that grant back",
+          "sql": "CALL trigger_user('no table')"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "TRIGGER on every database, granted to the user itself",
+          "sql": "CALL trigger_user('global')"
+        },
+        {
+          "op": "catalog.reconnect",
+          "user_from_database": "tg_"
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "account"
+          },
+          "values": [
+            [
+              "tenant_id",
+              {
+                "int": "1"
+              }
+            ],
+            [
+              "account_id",
+              {
+                "int": "3"
+              }
+            ],
+            [
+              "name",
+              {
+                "text": "global"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "text": "global"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "composite_account",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "tenant_id",
+            "account_id",
+            "name"
+          ],
+          "as": "last",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "tenant_id",
+                "account_id",
+                "name"
+              ],
+              "order_by": [
+                "tenant_id",
+                "account_id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "schema changed"
+                  }
+                ],
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "table"
+                  }
+                ],
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "text": "global"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "last"
+          },
+          "index": 0,
+          "as": "last_row"
+        },
+        {
+          "op": "catalog.delete_row",
+          "snapshot": {
+            "ref": "last_row"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "1"
+              }
+            }
+          }
+        },
+        {
+          "op": "catalog.close"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "drops that user",
+          "sql": "CALL trigger_user('drop')"
+        }
+      ]
+    },
+    {
+      "id": "row_change_on_a_role_only_trigger_grant",
+      "not_through_pooler": "its own user and role are accounts of the server; a pooler knows no such account and shares its server connections",
+      "requirements": [
+        "INT-119"
+      ],
+      "only": [
+        "mysql"
+      ],
+      "steps": [
+        {
+          "op": "catalog.describe_table",
+          "table": "composite_account",
+          "as": "account",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "tenant_id",
+                "account_id",
+                "name"
+              ],
+              "primary_key": [
+                "tenant_id",
+                "account_id"
+              ],
+              "reliable_row_identity": true
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the row that the refused update and delete name, written by the account of the server",
+          "sql": "INSERT INTO composite_account (tenant_id, account_id, name) VALUES (1, 1, 'kept')"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the user and the role of this case; their names are in the database of the case, as runners on one server share accounts",
+          "sql": "CREATE PROCEDURE trigger_user(IN verb VARCHAR(16)) BEGIN DECLARE account VARCHAR(40) DEFAULT CONCAT('tg_', RIGHT(DATABASE(), 28)); DECLARE grouped VARCHAR(40) DEFAULT CONCAT('tr_', RIGHT(DATABASE(), 28)); DECLARE quoted VARCHAR(64) DEFAULT CONCAT('`', DATABASE(), '`'); CASE verb WHEN 'drop' THEN SET @statement = CONCAT('DROP USER IF EXISTS ''', account, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('DROP USER IF EXISTS ''', grouped, '''@''%'''); WHEN 'create' THEN SET @statement = CONCAT('CREATE USER ''', account, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT SELECT, INSERT, UPDATE, DELETE ON ', quoted, '.* TO ''', account, '''@''%'''); WHEN 'global' THEN SET @statement = CONCAT('GRANT TRIGGER ON *.* TO ''', account, '''@''%'''); WHEN 'no global' THEN SET @statement = CONCAT('REVOKE TRIGGER ON *.* FROM ''', account, '''@''%'''); WHEN 'schema' THEN SET @statement = CONCAT('GRANT TRIGGER ON ', quoted, '.* TO ''', account, '''@''%'''); WHEN 'no schema' THEN SET @statement = CONCAT('REVOKE TRIGGER ON ', quoted, '.* FROM ''', account, '''@''%'''); WHEN 'table' THEN SET @statement = CONCAT('GRANT TRIGGER ON ', quoted, '.composite_account TO ''', account, '''@''%'''); WHEN 'no table' THEN SET @statement = CONCAT('REVOKE TRIGGER ON ', quoted, '.composite_account FROM ''', account, '''@''%'''); WHEN 'role' THEN SET @statement = CONCAT('CREATE USER ''', grouped, '''@''%'' ACCOUNT LOCK'); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT TRIGGER ON *.* TO ''', grouped, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT TRIGGER ON ', quoted, '.* TO ''', grouped, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT ''', grouped, '''@''%'' TO ''', account, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('ALTER USER ''', account, '''@''%'' DEFAULT ROLE ALL'); END CASE; PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; END"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a rerun finds the accounts of a run that failed",
+          "sql": "CALL trigger_user('drop')"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the user of this case, which may read and change the rows of the database and holds no TRIGGER",
+          "sql": "CALL trigger_user('create')"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "TRIGGER only through a role, on every database and on the database of the case, which is the default role of the user",
+          "sql": "CALL trigger_user('role')"
+        },
+        {
+          "op": "catalog.reconnect",
+          "user_from_database": "tg_"
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT CURRENT_ROLE() <> 'NONE' AS active",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "composite_account",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "tenant_id",
+            "account_id",
+            "name"
+          ],
+          "as": "held_page",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "tenant_id",
+                "account_id",
+                "name"
+              ],
+              "order_by": [
+                "tenant_id",
+                "account_id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "kept"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "held_page"
+          },
+          "index": 0,
+          "as": "held"
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "account"
+          },
+          "values": [
+            [
+              "tenant_id",
+              {
+                "int": "1"
+              }
+            ],
+            [
+              "account_id",
+              {
+                "int": "2"
+              }
+            ],
+            [
+              "name",
+              {
+                "text": "refused"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_MUTATION_UNSUPPORTED",
+              "message_holds": "trigger visibility"
+            }
+          }
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "held"
+          },
+          "set": [
+            [
+              "name",
+              {
+                "text": "refused"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_MUTATION_UNSUPPORTED",
+              "message_holds": "trigger visibility"
+            }
+          }
+        },
+        {
+          "op": "catalog.delete_row",
+          "snapshot": {
+            "ref": "held"
+          },
+          "expect": {
+            "mysql": {
+              "error": "ROW_MUTATION_UNSUPPORTED",
+              "message_holds": "trigger visibility"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "composite_account",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "tenant_id",
+            "account_id",
+            "name"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "tenant_id",
+                "account_id",
+                "name"
+              ],
+              "order_by": [
+                "tenant_id",
+                "account_id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "kept"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.close"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "drops that user and that role",
+          "sql": "CALL trigger_user('drop')"
+        }
+      ]
+    },
+    {
+      "id": "row_change_with_partial_revokes_enabled",
+      "requirements": [
+        "INT-119"
+      ],
+      "only": [
+        "mysql"
+      ],
+      "steps": [
+        {
+          "op": "catalog.describe_table",
+          "table": "composite_account",
+          "as": "account",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "tenant_id",
+                "account_id",
+                "name"
+              ],
+              "primary_key": [
+                "tenant_id",
+                "account_id"
+              ],
+              "reliable_row_identity": true
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the row that the refused update and delete name, written by the account of the server",
+          "sql": "INSERT INTO composite_account (tenant_id, account_id, name) VALUES (1, 1, 'kept')"
+        },
+        {
+          "op": "replica.await"
+        },
+        {
+          "op": "catalog.reconnect",
+          "dsn": "case-replica"
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT CAST(@@GLOBAL.partial_revokes AS SIGNED) AS enabled",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "composite_account",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "tenant_id",
+            "account_id",
+            "name"
+          ],
+          "as": "held_page",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "tenant_id",
+                "account_id",
+                "name"
+              ],
+              "order_by": [
+                "tenant_id",
+                "account_id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "kept"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "held_page"
+          },
+          "index": 0,
+          "as": "held"
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "account"
+          },
+          "values": [
+            [
+              "tenant_id",
+              {
+                "int": "1"
+              }
+            ],
+            [
+              "account_id",
+              {
+                "int": "2"
+              }
+            ],
+            [
+              "name",
+              {
+                "text": "refused"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_MUTATION_UNSUPPORTED",
+              "message_holds": "partial-revoke"
+            }
+          }
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "held"
+          },
+          "set": [
+            [
+              "name",
+              {
+                "text": "refused"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_MUTATION_UNSUPPORTED",
+              "message_holds": "partial-revoke"
+            }
+          }
+        },
+        {
+          "op": "catalog.delete_row",
+          "snapshot": {
+            "ref": "held"
+          },
+          "expect": {
+            "mysql": {
+              "error": "ROW_MUTATION_UNSUPPORTED",
+              "message_holds": "partial-revoke"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "composite_account",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "tenant_id",
+            "account_id",
+            "name"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "tenant_id",
+                "account_id",
+                "name"
+              ],
+              "order_by": [
+                "tenant_id",
+                "account_id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "kept"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.close"
+        }
+      ]
+    },
+    {
+      "id": "table_page_descriptor_changes_within_its_read",
+      "requirements": [
+        "INT-121"
+      ],
+      "only": [
+        "mysql"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "reason": "holds the shared metadata lock of the table in a transaction until a read of the table waits behind the change, which then runs: a page has read its descriptor and has not read its rows",
+          "sql": "CREATE PROCEDURE hold_table_until_a_page_waits(IN held VARCHAR(64)) BEGIN DECLARE rounds INT DEFAULT 0; START TRANSACTION; SET @statement = CONCAT('SELECT COUNT(*) INTO @held FROM `', held, '`'); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; WHILE rounds < 3000 AND NOT EXISTS (SELECT 1 FROM performance_schema.threads WHERE PROCESSLIST_DB = DATABASE() AND PROCESSLIST_STATE = 'Waiting for table metadata lock' AND PROCESSLIST_INFO LIKE 'SELECT%') DO DO SLEEP(0.01); SET rounds = rounds + 1; END WHILE; COMMIT; END"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "returns when the holder holds the table",
+          "sql": "CREATE PROCEDURE until_held(IN held VARCHAR(64)) BEGIN DECLARE rounds INT DEFAULT 0; WHILE rounds < 3000 AND NOT EXISTS (SELECT 1 FROM performance_schema.metadata_locks WHERE OBJECT_TYPE = 'TABLE' AND OBJECT_SCHEMA = DATABASE() AND OBJECT_NAME = held AND LOCK_STATUS = 'GRANTED') DO DO SLEEP(0.01); SET rounds = rounds + 1; END WHILE; IF NOT EXISTS (SELECT 1 FROM performance_schema.metadata_locks WHERE OBJECT_TYPE = 'TABLE' AND OBJECT_SCHEMA = DATABASE() AND OBJECT_NAME = held AND LOCK_STATUS = 'GRANTED') THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'the holder did not hold the table'; END IF; END"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "returns when the change of the table waits for the holder, so a later read of the table waits behind it",
+          "sql": "CREATE PROCEDURE until_change_waits() BEGIN DECLARE rounds INT DEFAULT 0; WHILE rounds < 3000 AND NOT EXISTS (SELECT 1 FROM performance_schema.threads WHERE PROCESSLIST_DB = DATABASE() AND PROCESSLIST_STATE = 'Waiting for table metadata lock' AND PROCESSLIST_INFO LIKE 'ALTER%') DO DO SLEEP(0.01); SET rounds = rounds + 1; END WHILE; IF NOT EXISTS (SELECT 1 FROM performance_schema.threads WHERE PROCESSLIST_DB = DATABASE() AND PROCESSLIST_STATE = 'Waiting for table metadata lock' AND PROCESSLIST_INFO LIKE 'ALTER%') THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'the change did not wait'; END IF; END"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a table of this change: a renamed column",
+          "sql": "CREATE TABLE renamed_column (id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(10) NOT NULL DEFAULT 'a')"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the server runs the holder, since the steps of a case run one after another; a schedule of the current second may never fire, so it is the next second",
+          "sql": "CREATE EVENT hold_renamed_column ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 SECOND DO CALL hold_table_until_a_page_waits('renamed_column')"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the server runs the change of a renamed column while the holder holds the table",
+          "sql": "CREATE EVENT change_renamed_column ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 SECOND DO BEGIN CALL until_held('renamed_column'); ALTER TABLE renamed_column RENAME COLUMN label TO title, ALGORITHM=INPLACE, LOCK=EXCLUSIVE; END"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "waits for it",
+          "sql": "CALL until_change_waits()"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "renamed_column",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "id"
+          ],
+          "expect": {
+            "mysql": {
+              "error": "TABLE_PAGE_METADATA_CHANGED",
+              "message_holds": "descriptor changed during read"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a table of this change: the native type of a column",
+          "sql": "CREATE TABLE changed_type (id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(10) NOT NULL DEFAULT 'a')"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the server runs the holder, since the steps of a case run one after another; a schedule of the current second may never fire, so it is the next second",
+          "sql": "CREATE EVENT hold_changed_type ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 SECOND DO CALL hold_table_until_a_page_waits('changed_type')"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the server runs the change of the native type of a column while the holder holds the table",
+          "sql": "CREATE EVENT change_changed_type ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 SECOND DO BEGIN CALL until_held('changed_type'); ALTER TABLE changed_type MODIFY label VARCHAR(20) NOT NULL, ALGORITHM=INPLACE, LOCK=EXCLUSIVE; END"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "waits for it",
+          "sql": "CALL until_change_waits()"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "changed_type",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "id"
+          ],
+          "expect": {
+            "mysql": {
+              "error": "TABLE_PAGE_METADATA_CHANGED",
+              "message_holds": "descriptor changed during read"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a table of this change: the nullability of a column",
+          "sql": "CREATE TABLE changed_null (id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(10) NOT NULL DEFAULT 'a')"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the server runs the holder, since the steps of a case run one after another; a schedule of the current second may never fire, so it is the next second",
+          "sql": "CREATE EVENT hold_changed_null ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 SECOND DO CALL hold_table_until_a_page_waits('changed_null')"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the server runs the change of the nullability of a column while the holder holds the table",
+          "sql": "CREATE EVENT change_changed_null ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 SECOND DO BEGIN CALL until_held('changed_null'); ALTER TABLE changed_null MODIFY label VARCHAR(10) NULL DEFAULT 'a', ALGORITHM=INPLACE, LOCK=EXCLUSIVE; END"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "waits for it",
+          "sql": "CALL until_change_waits()"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "changed_null",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "id"
+          ],
+          "expect": {
+            "mysql": {
+              "error": "TABLE_PAGE_METADATA_CHANGED",
+              "message_holds": "descriptor changed during read"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a table of this change: an added column",
+          "sql": "CREATE TABLE added_column (id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(10) NOT NULL DEFAULT 'a')"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the server runs the holder, since the steps of a case run one after another; a schedule of the current second may never fire, so it is the next second",
+          "sql": "CREATE EVENT hold_added_column ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 SECOND DO CALL hold_table_until_a_page_waits('added_column')"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the server runs the change of an added column while the holder holds the table",
+          "sql": "CREATE EVENT change_added_column ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 SECOND DO BEGIN CALL until_held('added_column'); ALTER TABLE added_column ADD COLUMN extra INT NULL, ALGORITHM=INPLACE, LOCK=EXCLUSIVE; END"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "waits for it",
+          "sql": "CALL until_change_waits()"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "added_column",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "id"
+          ],
+          "expect": {
+            "mysql": {
+              "error": "TABLE_PAGE_METADATA_CHANGED",
+              "message_holds": "descriptor changed during read"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a table of this change: its primary key",
+          "sql": "CREATE TABLE changed_key (id BIGINT NOT NULL, label VARCHAR(10) NOT NULL DEFAULT 'a')"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the server runs the holder, since the steps of a case run one after another; a schedule of the current second may never fire, so it is the next second",
+          "sql": "CREATE EVENT hold_changed_key ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 SECOND DO CALL hold_table_until_a_page_waits('changed_key')"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the server runs the change of its primary key while the holder holds the table",
+          "sql": "CREATE EVENT change_changed_key ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 SECOND DO BEGIN CALL until_held('changed_key'); ALTER TABLE changed_key ADD PRIMARY KEY (id), ALGORITHM=INPLACE, LOCK=EXCLUSIVE; END"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "waits for it",
+          "sql": "CALL until_change_waits()"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "changed_key",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "id"
+          ],
+          "expect": {
+            "mysql": {
+              "error": "TABLE_PAGE_METADATA_CHANGED",
+              "message_holds": "descriptor changed during read"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a table of this change: an automatic key",
+          "sql": "CREATE TABLE changed_auto (id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(10) NOT NULL DEFAULT 'a')"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the server runs the holder, since the steps of a case run one after another; a schedule of the current second may never fire, so it is the next second",
+          "sql": "CREATE EVENT hold_changed_auto ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 SECOND DO CALL hold_table_until_a_page_waits('changed_auto')"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the server runs the change of an automatic key while the holder holds the table",
+          "sql": "CREATE EVENT change_changed_auto ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 SECOND DO BEGIN CALL until_held('changed_auto'); ALTER TABLE changed_auto MODIFY id BIGINT NOT NULL AUTO_INCREMENT, ALGORITHM=COPY, LOCK=EXCLUSIVE; END"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "waits for it",
+          "sql": "CALL until_change_waits()"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "changed_auto",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "id"
+          ],
+          "expect": {
+            "mysql": {
+              "error": "TABLE_PAGE_METADATA_CHANGED",
+              "message_holds": "descriptor changed during read"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a table of this change: a column default",
+          "sql": "CREATE TABLE changed_default (id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(10) NOT NULL DEFAULT 'a')"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the server runs the holder, since the steps of a case run one after another; a schedule of the current second may never fire, so it is the next second",
+          "sql": "CREATE EVENT hold_changed_default ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 SECOND DO CALL hold_table_until_a_page_waits('changed_default')"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the server runs the change of a column default while the holder holds the table",
+          "sql": "CREATE EVENT change_changed_default ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 SECOND DO BEGIN CALL until_held('changed_default'); ALTER TABLE changed_default ALTER COLUMN label SET DEFAULT 'b', ALGORITHM=INPLACE, LOCK=EXCLUSIVE; END"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "waits for it",
+          "sql": "CALL until_change_waits()"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "changed_default",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "id"
+          ],
+          "expect": {
+            "mysql": {
+              "error": "TABLE_PAGE_METADATA_CHANGED",
+              "message_holds": "descriptor changed during read"
+            }
+          }
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "added_column",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "label",
+                "extra"
+              ],
+              "primary_key": [
+                "id"
+              ],
+              "reliable_row_identity": true
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "added_column",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "id"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "label",
+                "extra"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": []
+            }
+          }
         }
       ]
     }

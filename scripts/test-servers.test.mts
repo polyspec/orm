@@ -682,6 +682,11 @@ caseTest('the MySQL accounts of the user orm name both hosts and are idempotent'
   }
 });
 
+// INT-119: the catalog refuses a row change on a server with partial revokes, and only the replica can hold that server-wide setting.
+caseTest('the MySQL replica of the test servers enables partial revokes', COMPUTE, () => {
+  assert.equal(servers.REPLICA_PARTIAL_REVOKES_SQL, 'SET GLOBAL partial_revokes = ON');
+});
+
 // A client that stops reading must not take the pooler down, and a client that disconnects must not leave its statement running (CFG-34, CFG-35, T343-13).
 caseTest('the ProxySQL of the test servers declares the settings that CFG-34 and CFG-35 state', COMPUTE, () => {
   const config = proxysqlConfig(paths('/checkout'), { mysql: 1, postgres: 2, mysqlReplica: 3, postgresReplica: 4, proxysql: 5, pgbouncer: 6 });
