@@ -137,6 +137,7 @@ export function checkRefusedGeneration(step, dir) {
       assert.notEqual(at, -1, `the output lacks ${part} in order: ${done.stderr}`);
       from = at + part.length;
     }
+    if (!step.free_tail) assert.equal(done.stderr.slice(from).trim(), '', `the output holds more after its last part: ${done.stderr}`);
     assert.ok(!existsSync(out), 'the generation wrote the output');
   } finally {
     rmSync(work, { recursive: true, force: true });

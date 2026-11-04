@@ -900,6 +900,7 @@
       "steps": [
         {
           "op": "generator.refused",
+          "free_tail": true,
           "files": {
             "a.dbs": "dbspec 1 a\n",
             "dbspec-set.json": "{\"schema\": 1, \"documents\": [\"gone.dbs\", \"a.dbs\", \"a.dbs\", \"/abs.dbs\"]}"
@@ -926,6 +927,7 @@
       "steps": [
         {
           "op": "generator.refused",
+          "free_tail": true,
           "files": {
             "dbschema.dbs": {
               "path": "../../../tests/dbspec/files/dbschema.dbs"

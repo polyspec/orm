@@ -227,5 +227,9 @@ def check_refused_generation(step: dict, recipe_dir: Path) -> None:
                     f"generator.refused: the output lacks {part!r} in order: {done.stderr}"
                 )
             rest = rest[at + len(part) :]
+        if not step.get("free_tail") and rest.strip():
+            raise AssertionError(
+                f"generator.refused: the output holds more after its last part: {done.stderr}"
+            )
         if out.exists():
             raise AssertionError(f"generator.refused: the generation wrote {out}")

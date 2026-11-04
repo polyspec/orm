@@ -98,6 +98,9 @@ final class RecipeGenerator
                 Assert::assertNotFalse($at, "the output lacks $part in order: $stderr");
                 $from = $at + strlen($part);
             }
+            if (!isset($step['free_tail'])) {
+                Assert::assertSame('', trim(substr($stderr, $from)), "the output holds more after its last part: $stderr");
+            }
             Assert::assertFileDoesNotExist($out, 'the generation wrote the output');
         } finally {
             array_map('unlink', glob("$work/*") ?: []);

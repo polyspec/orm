@@ -504,6 +504,10 @@ func checkRefusedGeneration(dir string, s step) error {
 		}
 		rest = rest[at+len(part):]
 	}
+	// go run ends the output of a program that failed with its own line.
+	if !s.k("free_tail").FreeTail && strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(rest), "exit status 1")) != "" {
+		return fmt.Errorf("generator.refused: the output holds %q after its last part:\n%s", rest, exit.Stderr)
+	}
 	if _, err := os.Lstat(out); !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("generator.refused: the generation wrote %s", out)
 	}

@@ -123,6 +123,9 @@ fn check_refused_in(step: &Value, dir: &Path, root: &Path) -> Result<(), String>
         let at = rest.find(part).ok_or_else(|| format!("generator.refused: the output lacks {part} in order: {output}"))?;
         rest = &rest[at + part.len()..];
     }
+    if crate::recipe_reads::read(step, "free_tail")["free_tail"].as_bool() != Some(true) && !rest.trim().is_empty() {
+        return Err(format!("generator.refused: the output holds more after its last part: {output}"));
+    }
     if out.exists() {
         return Err(format!("generator.refused: the generation wrote {}", out.display()));
     }

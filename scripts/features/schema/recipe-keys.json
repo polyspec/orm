@@ -795,6 +795,7 @@
     "generator.refused": [
       "check",
       "files",
+      "free_tail",
       "op",
       "parts"
     ],

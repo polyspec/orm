@@ -49,29 +49,30 @@ type recipeCase struct {
 
 type step struct {
 	// reads records the keys that the run reads (FCV-4).
-	reads   *stepReads
-	Op      string                     `json:"op"`
-	GenSet  string                     `json:"document_set"`
-	Same    []string                   `json:"unchanged"`
-	Diff    []string                   `json:"changed"`
-	Gone    []string                   `json:"removed"`
-	Tree    map[string]json.RawMessage `json:"files"`
-	Parts   []string                   `json:"parts"`
-	Compare bool                       `json:"check"`
-	Keys    []collectionKey            `json:"keys"`
-	Styles  []string                   `json:"styles"`
-	Raw     json.RawMessage            `json:"raw"`
-	Value   json.RawMessage            `json:"value"`
-	Key     *string                    `json:"key"`
-	As      string                     `json:"as"`
-	Request json.RawMessage            `json:"request"`
-	Chain   string                     `json:"chain"`
-	Answer  json.RawMessage            `json:"answer"`
-	Answers map[string]json.RawMessage `json:"answers"`
-	DSN     string                     `json:"dsn"`
-	Config  dsnConfig                  `json:"config"`
-	Schema  string                     `json:"schema"`
-	Input   json.RawMessage            `json:"input"`
+	reads    *stepReads
+	Op       string                     `json:"op"`
+	GenSet   string                     `json:"document_set"`
+	Same     []string                   `json:"unchanged"`
+	Diff     []string                   `json:"changed"`
+	Gone     []string                   `json:"removed"`
+	Tree     map[string]json.RawMessage `json:"files"`
+	Parts    []string                   `json:"parts"`
+	FreeTail bool                       `json:"free_tail"`
+	Compare  bool                       `json:"check"`
+	Keys     []collectionKey            `json:"keys"`
+	Styles   []string                   `json:"styles"`
+	Raw      json.RawMessage            `json:"raw"`
+	Value    json.RawMessage            `json:"value"`
+	Key      *string                    `json:"key"`
+	As       string                     `json:"as"`
+	Request  json.RawMessage            `json:"request"`
+	Chain    string                     `json:"chain"`
+	Answer   json.RawMessage            `json:"answer"`
+	Answers  map[string]json.RawMessage `json:"answers"`
+	DSN      string                     `json:"dsn"`
+	Config   dsnConfig                  `json:"config"`
+	Schema   string                     `json:"schema"`
+	Input    json.RawMessage            `json:"input"`
 	// AssembleTypes adds the output types of a compiled plan step to what a planner.compile step compares.
 	AssembleTypes bool `json:"assemble_types"`
 	// Names are the output names of a planner.columns step.

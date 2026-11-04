@@ -7045,6 +7045,10 @@
           "op": {
             "const": "generator.refused"
           },
+          "free_tail": {
+            "description": "True for a set error or a file diagnostic, whose message after its parts each runtime words itself.",
+            "const": true
+          },
           "files": {
             "description": "The tree of the generation, with dbspec-set.json at its root: a name to its text, or to the path of a file to copy, relative to the recipe file.",
             "type": "object",
@@ -7081,7 +7085,7 @@
             "type": "boolean"
           },
           "parts": {
-            "description": "The texts that the output of the refusal holds, each after the one before it.",
+            "description": "The texts that the output of the refusal holds, each after the one before it, and nothing after the last unless free_tail.",
             "type": "array",
             "minItems": 1,
             "items": {
