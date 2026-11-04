@@ -1194,15 +1194,18 @@ class Session {
     return raw.rows;
   }
 
-  /** Refuses a MySQL row change unless the server, the account and the table are verified (mutation.rs, mysql_safety). */
-  public async mysqlSafety(metadata: CatalogTableMetadata): Promise<void> {
-    const unsupported = (reason: string): OrmError => err(CODE_UNSUPPORTED, reason);
+  /** Refuses a MySQL row change on a server with partial revokes, before the change locks anything: such a server may hide a trigger from the account (INT-119). */
+  public async mysqlPartialRevokesOff(): Promise<void> {
     const partial = (await this.rawRows('SELECT CAST(@@GLOBAL.partial_revokes AS SIGNED)', [], 1, 4096)).rows;
     const [partialRow] = partial;
     if (partial.length !== 1 || partialRow === undefined || partialRow.length !== 1 || Number(partialRow[0]) !== 0) {
-      throw unsupported('MySQL partial-revoke visibility requires verification');
+      throw err(CODE_UNSUPPORTED, 'MySQL partial-revoke visibility requires verification');
     }
+  }
 
+  /** Refuses a MySQL row change unless the account and the table are verified (mutation.rs, mysql_safety). */
+  public async mysqlSafety(metadata: CatalogTableMetadata): Promise<void> {
+    const unsupported = (reason: string): OrmError => err(CODE_UNSUPPORTED, reason);
     const account = (await this.rawRows('SELECT CURRENT_USER()', [], 1, 4096)).rows;
     const [accountRow] = account;
     if (account.length !== 1 || accountRow === undefined || accountRow.length !== 1) throw unsupported('unverifiable MySQL account');
@@ -1316,6 +1319,8 @@ export class CatalogConnection {
     try {
       // SQLite has one connection that every session shares, so each session sets query_only itself and does not inherit it.
       if (this.dialect === 'sqlite') await session.control(`PRAGMA query_only=${readOnly ? 'ON' : 'OFF'}`);
+      // At REPEATABLE READ the information schema answers from the snapshot of the transaction, so a descriptor read after the rows could not differ from the one read before them (INT-121).
+      if (readOnly && this.dialect === 'mysql') await session.control('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
       await session.control(readOnly ? BEGIN_SQL[this.dialect].read : BEGIN_SQL[this.dialect].write);
       // A catalog session runs after schema changes by design, and through PgBouncer a Parse of a text that the server connection already
       // holds never reaches the server, so a plan from before the change would fail or keep its old parameter types. The transaction holds
@@ -1347,6 +1352,7 @@ export class CatalogConnection {
     const session = await this.begin(false);
     let value: T;
     try {
+      if (this.dialect === 'mysql') await session.mysqlPartialRevokesOff();
       value = await work(session);
     } catch (error) {
       throw await this.endSession(session, error);
@@ -1431,7 +1437,14 @@ export class CatalogConnection {
       // One extra row is the sentinel that reports hasMore; the stream stops at that row.
       sql += ` LIMIT ${limit + 1} OFFSET ${offset}`;
       // The sentinel row is not converted: the page keeps limit rows and reports the row after them.
-      const raw = await session.collect<CatalogValue>(sql, [], limit + 1, PAGE_BYTES, (value, column, index) => describedCell(value, column, metadata.columns[index], this.dialect), limit);
+      // A column that went away during the read fails the statement: the descriptor tells that from any other failure.
+      const raw = await session.collect<CatalogValue>(sql, [], limit + 1, PAGE_BYTES, (value, column, index) => describedCell(value, column, metadata.columns[index], this.dialect), limit).catch(async (failure: unknown) => {
+        if (!(failure instanceof OrmError && failure.code === CODE_LIMIT)) {
+          const changed = await session.describe(table).then(after => !sameDescriptor(after, metadata), () => false);
+          if (changed) throw err(CODE_PAGE_CHANGED, 'descriptor changed during read');
+        }
+        throw failure;
+      });
       if (raw.columns.length !== metadata.columns.length || raw.columns.some((column, index) => column.name !== metadata.columns[index]?.name)) {
         throw err(CODE_PAGE_CHANGED, 'prepared columns differ from descriptor');
       }

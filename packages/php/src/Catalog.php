@@ -215,7 +215,22 @@ final class Catalog
             }
             // One extra row is the sentinel that reports hasMore.
             $sql .= ' LIMIT ' . ($limit + 1) . ' OFFSET ' . $offset;
-            $raw = $this->query($pdo, $sql, [], $limit + 1, self::PAGE_BYTES);
+            try {
+                $raw = $this->query($pdo, $sql, [], $limit + 1, self::PAGE_BYTES);
+            } catch (OrmException $failure) {
+                // A column that went away during the read fails the statement: the descriptor tells that from any other failure.
+                if ($failure->code_ !== Code::CATALOG_LIMIT && !$this->streamLeft) {
+                    try {
+                        $changed = !self::samePageDescriptor($this->describe($pdo, $ref), $metadata);
+                    } catch (OrmException) {
+                        $changed = false;
+                    }
+                    if ($changed) {
+                        throw new OrmException(Code::TABLE_PAGE_METADATA_CHANGED, 'descriptor changed during read', $failure);
+                    }
+                }
+                throw $failure;
+            }
             self::sameNames($raw['names'], $metadata, Code::TABLE_PAGE_METADATA_CHANGED);
             if (!self::samePageDescriptor($this->describe($pdo, $ref), $metadata)) {
                 throw new OrmException(Code::TABLE_PAGE_METADATA_CHANGED, 'descriptor changed during read');
@@ -1195,11 +1210,18 @@ final class Catalog
             if ($this->dialect === 'sqlite') {
                 $pdo->exec('PRAGMA query_only = ' . ($readOnly ? 'ON' : 'OFF'));
             }
+            if ($readOnly && $this->dialect === 'mysql') {
+                // At REPEATABLE READ the information schema answers from the snapshot of the transaction, so a descriptor read after the rows could not differ from the one read before them (INT-121).
+                $pdo->exec('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
+            }
             $pdo->exec(self::beginSql($this->dialect, $readOnly));
         } catch (\PDOException $e) {
             throw $this->db->driverError($e);
         }
         try {
+            if (!$readOnly && $this->dialect === 'mysql') {
+                $this->mysqlPartialRevokesOff($pdo);
+            }
             $value = $fn($pdo);
         } catch (\Throwable $cause) {
             if ($this->streamLeft) {
@@ -2561,10 +2583,10 @@ final class Catalog
     }
 
     /**
-     * Refuses a MySQL row change unless the server, the account and the table are verified: partial revokes are off,
-     * the account holds TRIGGER on the table, the table is InnoDB and it has no triggers (mutation.rs, mysql_safety).
+     * Refuses a MySQL row change on a server with partial revokes, before the change locks anything: such a server may
+     * hide a trigger from the account (INT-119).
      */
-    private function mysqlSafety(\PDO $pdo, CatalogTableMetadata $metadata): void
+    private function mysqlPartialRevokesOff(\PDO $pdo): void
     {
         $partial = $this->query($pdo, 'SELECT CAST(@@GLOBAL.partial_revokes AS SIGNED)', [], 1, 4096);
         if (count($partial['rows']) !== 1 || (string) $partial['rows'][0][0] !== '0') {
@@ -2573,7 +2595,14 @@ final class Catalog
                 'MySQL partial-revoke visibility requires verification'
             );
         }
+    }
 
+    /**
+     * Refuses a MySQL row change unless the account and the table are verified: the account holds TRIGGER on the table,
+     * the table is InnoDB and it has no triggers (mutation.rs, mysql_safety).
+     */
+    private function mysqlSafety(\PDO $pdo, CatalogTableMetadata $metadata): void
+    {
         $account = $this->query($pdo, 'SELECT CURRENT_USER()', [], 1, 4096);
         $text = $account['rows'][0][0] ?? null;
         $at = is_string($text) ? strrpos($text, '@') : false;

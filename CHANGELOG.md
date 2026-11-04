@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The catalog of every runtime refuses a table page whose descriptor changes during the read (INT-121): a MySQL read scope now reads committed data, since at REPEATABLE READ the second read of the descriptor answered from the snapshot and saw no change, and a column that goes away during the read is `TABLE_PAGE_METADATA_CHANGED` instead of a driver error. A row change on a server with partial revokes is refused before it locks anything (INT-119). The recipe `catalog_connection` holds these and the direct and role-only TRIGGER grants on a real server, in place of the native tests with a fake driver; the MySQL replica of the test servers has `partial_revokes` on.
 - The feature checker no longer sets `ORM_FEATURE_DATABASE` or `ORM_FEATURE_DSN`, and no test reads them: an owner takes its database from its manifest entry or its recipe.
 - Tests: the exact bytes of a driver cell (PRT-69, INT-5) are the case `driver_bytes_cells_are_exact` of the `conformance_verification` recipe in every runtime, through the new `model.query` key `bytes_hex_of`; the natives that built the cell are gone, and Rust keeps its private row decoding test under INT-142.
 - Collection views and connect on every model now come from the recipes in every client; the native extension surface has its own unit under INT-62a.

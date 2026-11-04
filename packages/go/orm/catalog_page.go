@@ -66,6 +66,12 @@ func (c *CatalogConnection) TablePage(ctx context.Context, table CatalogTableRef
 		query += " LIMIT " + strconv.Itoa(limit+1) + " OFFSET " + strconv.FormatInt(offset, 10)
 		raw, err := s.queryRaw(query, nil, limit+1, catalogPageBytes)
 		if err != nil {
+			// A column that went away during the read fails the statement: the descriptor tells that from any other failure.
+			if ErrorCode(err) != CodeCatalogLimit {
+				if after, afterErr := s.describe(table); afterErr == nil && !sameDescriptor(after, metadata) {
+					return CatalogTablePage{}, catalogErr(catalogCodePageChanged, "descriptor changed during read")
+				}
+			}
 			return CatalogTablePage{}, err
 		}
 		if err := catalogSameNames(raw.names, metadata.Columns); err != nil {

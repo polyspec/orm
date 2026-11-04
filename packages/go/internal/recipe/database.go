@@ -1009,6 +1009,17 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		if s.k("user_from_database").UserFromDatabase != "" {
 			dsn = userFromDatabaseDSN(dsn, s.k("user_from_database").UserFromDatabase)
 		}
+		var target string
+		if len(s.k("dsn").DSN) > 0 {
+			if err := json.Unmarshal(s.k("dsn").DSN, &target); err != nil {
+				return outcome{}, err
+			}
+			replica, err := connectDSN(target, c.database, dsn)
+			if err != nil {
+				return outcome{}, err
+			}
+			dsn = replica
+		}
 		catalog, err := orm.ConnectCatalog(dsn)
 		if err != nil && s.k("refused_message").RefusedMessage == "" {
 			return outcome{}, err

@@ -1501,18 +1501,24 @@ class _Session:
         _same_names(raw.names, metadata.columns)
         return raw.rows
 
-    def mysql_safety(self, metadata: CatalogTableMetadata) -> None:
-        """Refuses a MySQL row change unless the server, the account and the table are verified: partial revokes are off, the
-        account holds TRIGGER on the table, the table is InnoDB and it has no triggers (mutation.rs, mysql_safety)."""
-
-        def unsupported(reason: str):
-            return _error(codes.ROW_MUTATION_UNSUPPORTED, reason)
-
+    def mysql_partial_revokes_off(self) -> None:
+        """Refuses a MySQL row change on a server with partial revokes, before the change locks anything: such a server may
+        hide a trigger from the account (INT-119)."""
         partial = self.run(
             "SELECT CAST(@@GLOBAL.partial_revokes AS SIGNED)", [], 1, 4096
         ).rows
         if len(partial) != 1 or partial[0][0] != 0:
-            raise unsupported("MySQL partial-revoke visibility requires verification")
+            raise _error(
+                codes.ROW_MUTATION_UNSUPPORTED,
+                "MySQL partial-revoke visibility requires verification",
+            )
+
+    def mysql_safety(self, metadata: CatalogTableMetadata) -> None:
+        """Refuses a MySQL row change unless the account and the table are verified: the account holds TRIGGER on the table,
+        the table is InnoDB and it has no triggers (mutation.rs, mysql_safety)."""
+
+        def unsupported(reason: str):
+            return _error(codes.ROW_MUTATION_UNSUPPORTED, reason)
 
         account = self.run("SELECT CURRENT_USER()", [], 1, 4096).rows
         if len(account) != 1:
@@ -1613,6 +1619,9 @@ class CatalogConnection:
         try:
             if read_only and self._dialect == "sqlite":
                 session.run("PRAGMA query_only=ON")
+            if read_only and self._dialect == "mysql":
+                # At REPEATABLE READ the information schema answers from the snapshot of the transaction, so a descriptor read after the rows could not differ from the one read before them (INT-121).
+                session.run("SET TRANSACTION ISOLATION LEVEL READ COMMITTED")
             session.run(self._begin_sql(read_only))
             if self._dialect == "postgres":
                 # A catalog session runs after schema changes by design, and through PgBouncer a Parse of a text that the
@@ -1668,6 +1677,8 @@ class CatalogConnection:
     def _write(self, work: Callable[[_Session], T]) -> T:
         session = self._begin(read_only=False)
         try:
+            if self._dialect == "mysql":
+                session.mysql_partial_revokes_off()
             value = work(session)
         except Exception as error:
             self._end(session, error)
@@ -1755,9 +1766,23 @@ class CatalogConnection:
             # One extra row is the sentinel that reports has_more.
             query += f" LIMIT {limit + 1} OFFSET {offset}"
             # The sentinel row is not converted: the page keeps limit rows and reports the row after them.
-            raw = session.run(
-                query, [], limit + 1, PAGE_BYTES, described=metadata, keep=limit
-            )
+            try:
+                raw = session.run(
+                    query, [], limit + 1, PAGE_BYTES, described=metadata, keep=limit
+                )
+            except OrmError as failure:
+                # A column that went away during the read fails the statement: the descriptor tells that from any other failure.
+                if failure.code != codes.CATALOG_LIMIT:
+                    try:
+                        changed = session.describe(ref) != metadata
+                    except OrmError:
+                        changed = False
+                    if changed:
+                        raise _error(
+                            codes.TABLE_PAGE_METADATA_CHANGED,
+                            "descriptor changed during read",
+                        ) from failure
+                raise
             _same_names(raw.names, metadata.columns)
             if session.describe(ref) != metadata:
                 raise _error(

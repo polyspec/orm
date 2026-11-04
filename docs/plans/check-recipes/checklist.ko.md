@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-check-recipes -->
-<!-- source-sha256: d97638efd4b946474a2bd84e8c951a12b2a1fa5d74af463b461aa4b0e5c77aa9 -->
+<!-- source-sha256: 82960bf5abfa7948b53956d45ab29eae46bcee007ba845c8fd03ec9fa58766c2 -->
 # 병렬 check runner와 모든 공통 동작의 recipe 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -90,3 +90,4 @@
 | CR15-F | unit dbspec-apply-*, dbspec-render-physical, dbspec-introspect-messages, dbspec-show-create-check-body, dbspec-set-decimal, dbspec-sqlite-lock-result-and-session-restoration은 여섯 runtime 모두에서 recipe의 case다 | tests/dbspec and contracts/fixtures recipes, the op of each in every runner, config/parity.json | `make -s parity-declarations-check` | [~] |
 | CR15-A | CR15 묶음 A: config/parity.json의 connection unit 25개를 recipe case로 옮기고, case가 통과한 뒤 native 시험을 없앤다. | contracts/fixtures/dsn_reject, contracts/fixtures/dsn_connection, the recipe entries of the six runtimes, config/parity.json | `go test -run TestRecipeDsn ./packages/go/orm`, `node --test packages/ts/tests/dsn_reject_checked-none.test.mjs`, `make parity-declarations-check` | [~] |
 | CR15-G | CR15: config/parity.json의 unit mysql-session, mysql-lock-wait-canceled, native-row-cell-bytes, native-driver-error-cause, runtime-invalid-database-cells-return-decode-errors를 recipe case로 옮기고, case 통과 뒤 native를 지운다. | contracts/fixtures/dsn_connection, contracts/fixtures/transactions, contracts/fixtures/conformance_verification, contracts/fixtures/immutable_write, the recipe runners of the six runtimes, config/parity.json | `go test -run TestRecipeDsnConnectionMysql/mysql_session_settings ./packages/go/orm`, `make parity-declarations-check` | [~] |
+| CR15-H | CR15: config/parity.json의 unit catalog-mysql-row-mutation-requires-visible-direct-trigger-grant-and-no-partial-revokes와 catalog-table-pages-preserve-descriptors-and-reject-changes를 실제 server에서 도는 recipe catalog_connection의 case로 만든다. 어떤 server도 답할 수 없는 준비된 열 이름은 새 unit catalog-table-page-prepared-columns-differ-from-the-descriptor로 FCV-2 줄과 함께 native로 남는다. | contracts/fixtures/catalog_connection/catalog_connection.json; the catalog of the six runtimes; the recipe helpers; scripts/test-servers.mts; config/parity.json; the native tests of these units | `make -s parity-declarations-check`; `make -s docs-rules-check`; `node scripts/features/check.mts` | [~] |

@@ -2772,6 +2772,9 @@ final class Recipe
                 $reconnectDsn = isset($s['user_from_database'])
                     ? self::userFromDatabaseDsn($context['dsn'], $s['user_from_database'])
                     : $context['dsn'];
+                if (isset($s['dsn'])) {
+                    $reconnectDsn = self::connectDsn($s['dsn'], $context['database'], $reconnectDsn);
+                }
                 if (isset($s['refused_message'])) {
                     try {
                         Catalog::connect($reconnectDsn);

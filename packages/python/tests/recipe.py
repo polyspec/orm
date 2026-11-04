@@ -2532,6 +2532,8 @@ def _op_reconnect(step: dict, context: dict) -> dict:
     dsn = context["dsn"]
     if "user_from_database" in step:
         dsn = _user_from_database_dsn(dsn, step["user_from_database"])
+    if "dsn" in step:
+        dsn = connect_dsn(step["dsn"], context["database"], dsn)
     if "refused_message" in step:
         try:
             connect_catalog(dsn).current_namespace()

@@ -43,6 +43,9 @@ pub(super) async fn begin_mutation(catalog: &CatalogConnection, cancellation: &A
     connection.discard_on_drop();
     cancelled(cancellation)?;
     super::begin_session(&mut connection, write_transaction_statement(&catalog.dialect)).await?;
+    if catalog.dialect == "mysql" {
+        mysql_partial_revokes_off(&mut connection).await?;
+    }
     Ok(connection)
 }
 
@@ -147,12 +150,16 @@ pub(super) async fn lookup(connection: &mut Conn, metadata: &TableMetadata, dial
     let sql = format!("SELECT {columns} FROM {} WHERE {} LIMIT 2{suffix}", qualified(metadata, dialect)?, predicate(metadata, dialect, 1)?);
     super::temporal::read(connection, metadata, dialect, &sql, keys, QueryLimits { max_rows: 2, max_bytes: 8 * 1024 * 1024 }).await
 }
-pub(super) async fn mysql_safety(connection: &mut Conn, metadata: &TableMetadata) -> Result<(), String> {
+/// Refuses a MySQL row change on a server with partial revokes, before the change locks anything: such a server may hide a
+/// trigger from the account (INT-119).
+pub(super) async fn mysql_partial_revokes_off(connection: &mut Conn) -> Result<(), String> {
     let revokes = connection
         .grid_query_bounded("SELECT @@GLOBAL.partial_revokes", &[], QueryLimits { max_rows: 1, max_bytes: 65536 })
         .await
         .map_err(|e| e.to_string())?;
-    require_partial_revokes_disabled(&revokes)?;
+    require_partial_revokes_disabled(&revokes)
+}
+pub(super) async fn mysql_safety(connection: &mut Conn, metadata: &TableMetadata) -> Result<(), String> {
     let account =
         connection.grid_query_bounded("SELECT CURRENT_USER()", &[], QueryLimits { max_rows: 1, max_bytes: 65536 }).await.map_err(|e| e.to_string())?;
     let grantee = match account.rows.as_slice() {

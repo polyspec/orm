@@ -327,8 +327,6 @@
         "packages/php/tests/CannedCatalogPdo.php",
         "packages/php/tests/CatalogAnswerPdo.php",
         "packages/php/tests/CatalogAnswerStatement.php",
-        "packages/php/tests/CatalogMysqlVisibilityPdo.php",
-        "packages/php/tests/CatalogMysqlVisibilityCases.php",
         "packages/php/tests/CodecYamlProbe.php",
         "packages/php/tests/CollectionIdentityCases.php",
         "packages/php/tests/CollectionWeakTypedKeyCases.php",
@@ -8253,7 +8251,9 @@
         "INT-155",
         "SCH-6a",
         "CFG-34",
-        "CFG-35"
+        "CFG-35",
+        "INT-119",
+        "INT-121"
       ],
       "file": "contracts/fixtures/catalog_connection/catalog_connection.json",
       "cases": "$.cases[*].id",
@@ -16213,45 +16213,6 @@
       }
     },
     {
-      "id": "catalog-mysql-row-mutation-requires-visible-direct-trigger-grant-and-no-partial-revokes",
-      "kind": "feature",
-      "requirements": [
-        "INT-119"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/catalog_session_error_test.go",
-          "id": "TestCatalogInsertVerifiesMySQLTriggerVisibility"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CatalogPageValidationTest.php",
-          "id": "CatalogPageValidationTest::testPublicInsertVerifiesMysqlTriggerVisibility"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CatalogConnectionSurfaceTest.php",
-          "id": "CatalogConnectionSurfaceTest::testNativePublicInsertVerifiesMysqlTriggerVisibility"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/catalog-mutation-helper.test.mjs",
-          "id": "catalog/mysql-trigger-privilege-visibility"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_catalog_mysql_visibility.py",
-          "id": "test_public_insert_verifies_mysql_trigger_visibility"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/unit/mutation_safety.rs",
-          "id": "catalog::mutation::safety_tests::mysql_row_mutation_requires_direct_trigger_visibility_and_disabled_partial_revokes"
-        }
-      ]
-    },
-    {
       "id": "rust-catalog-mutation-safety-tests-borrowed-bind-validation-stops-at-its-count-budget",
       "kind": "feature",
       "requirements": [
@@ -16344,7 +16305,7 @@
       ]
     },
     {
-      "id": "catalog-table-pages-preserve-descriptors-and-reject-changes",
+      "id": "catalog-table-page-prepared-columns-differ-from-the-descriptor",
       "kind": "feature",
       "requirements": [
         "INT-121"
@@ -16353,32 +16314,32 @@
         {
           "implementation": "go",
           "test": "packages/go/orm/catalog_page_validation_test.go",
-          "id": "TestCatalogPageRejectsChangedDescriptors"
+          "id": "TestCatalogPagePreparedColumnsDifferFromTheDescriptor"
         },
         {
           "implementation": "php",
           "test": "packages/php/tests/CatalogPageValidationTest.php",
-          "id": "CatalogPageValidationTest::testRejectsPreparedColumnAndDescriptorChanges"
+          "id": "CatalogPageValidationTest::testPreparedColumnsDifferFromTheDescriptor"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CatalogConnectionSurfaceTest.php",
-          "id": "CatalogConnectionSurfaceTest::testNativeTablePageRejectsPreparedColumnAndChangedDescriptor"
+          "id": "CatalogConnectionSurfaceTest::testNativeTablePagePreparedColumnsDifferFromTheDescriptor"
         },
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/catalog-page-validation.test.mjs",
-          "id": "tablePage rejects prepared-column and in-scope descriptor changes"
+          "id": "tablePage refuses prepared columns that differ from the descriptor"
         },
         {
           "implementation": "python",
           "test": "packages/python/tests/test_catalog_page_validation.py",
-          "id": "test_rejects_prepared_column_and_in_scope_descriptor_changes"
+          "id": "test_refuses_prepared_columns_that_differ_from_the_descriptor"
         },
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/unit/table_page_validation.rs",
-          "id": "catalog::page::tests::page_assembly_rejects_column_or_descriptor_changes"
+          "id": "catalog::page::tests::page_assembly_refuses_prepared_columns_that_differ_from_the_descriptor"
         }
       ]
     },

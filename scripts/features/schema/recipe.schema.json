@@ -6872,6 +6872,10 @@
           "op": {
             "const": "catalog.reconnect"
           },
+          "dsn": {
+            "description": "The case database on the replica that ORM_TEST_<DATABASE>_REPLICA_DSN names, in place of the DSN of the case.",
+            "const": "case-replica"
+          },
           "user_from_database": {
             "description": "The prefix of the user of the new connection: the prefix and the last 28 characters of the name of the case database, on the DSN of the case without a password.",
             "type": "string",
@@ -8698,6 +8702,11 @@
             ],
             "additionalProperties": false,
             "properties": {
+              "message_holds": {
+                "description": "The text that the message of the error holds.",
+                "type": "string",
+                "minLength": 1
+              },
               "error": {
                 "type": "string",
                 "pattern": "^[A-Z][A-Z0-9_]*$"
@@ -8949,6 +8958,11 @@
             ],
             "additionalProperties": false,
             "properties": {
+              "message_holds": {
+                "description": "The text that the message of the error holds.",
+                "type": "string",
+                "minLength": 1
+              },
               "error": {
                 "type": "string",
                 "pattern": "^[A-Z][A-Z0-9_]*$"

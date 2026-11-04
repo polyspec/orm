@@ -721,7 +721,8 @@ const OPS = {
     return {};
   },
   async 'catalog.reconnect'(s, context) {
-    const dsn = s.user_from_database === undefined ? context.dsn : userFromDatabaseDsn(context.dsn, s.user_from_database);
+    const named = s.user_from_database === undefined ? context.dsn : userFromDatabaseDsn(context.dsn, s.user_from_database);
+    const dsn = s.dsn === undefined ? named : connectDsn(s.dsn, context.database, named);
     if (s.refused_message !== undefined) {
       const refused = await connectCatalog(dsn).then(catalog => catalog.close().then(() => null), error => error);
       if (refused === null) throw new Error('the server accepted the connection that the step expects it to refuse');

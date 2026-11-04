@@ -3793,6 +3793,10 @@ mod database {
                     Some(prefix) => user_from_database_dsn(&context.dsn, prefix),
                     None => context.dsn.clone(),
                 };
+                let dsn = match crate::recipe_reads::read(step, "dsn").get("dsn").and_then(Value::as_str) {
+                    Some(target) => connect_dsn(Some(target), context.database, &dsn, None).map_err(fault)?,
+                    None => dsn,
+                };
                 if let Some(text) = crate::recipe_reads::read(step, "refused_message").get("refused_message").and_then(Value::as_str) {
                     return match CatalogConnection::connect(&dsn).await {
                         Ok(_) => Err(fault("the server accepted the connection that the step expects it to refuse".to_owned())),
