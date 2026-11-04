@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 710539771fd82f0e96b19d894ec71d55d059bd2de3cd0627a6904790552d8e30 -->
+<!-- source-sha256: c8be1545419813dd1519c433c73d0d843bdfadb1fe1c9565f3509b55f9ad6841 -->
 # 변경 이력
 
 ## Unreleased
 
+- COD-45는 TypeScript 추가 열 읽기의 규칙이며 한계는 safe integer다. vector body가 사라진 뒤 어떤 runner도 호출하지 않던 conformance helper derivedInteger는 그 시험과 함께 사라졌고, 제품 코드의 native case `added_column/driver_cell_forms`가 이 규칙을 담는다 (#T334-3-5-16)
 - 추가 열은 첫 구현이 열어 둔 형식까지 여섯 runtime 모두에서 plan 타입으로 읽힌다. Go와 Rust는 더하기 부호나 앞의 0이 있는 문자열을 거부하고, Go는 시간이 아닌 문자열을 거부하며, Rust는 추가 date와 datetime을 디코딩하고, 추가 date는 Go, PHP, PHP extension의 JSON에서 date 문자열이다. case added_column_types, added_text_not_exact, added_text_not_a_time가 이를 담는다 (#T334-3-5-15)
 - 인터페이스 검사기는 어떻게 끝나든 자기가 시작한 것을 함께 끝냅니다. 각 프로그램은 프로세스 그룹을 이끌고, 실행의 abort는 그 그룹을 죽이며, 검사기 파이프의 끝을 읽는 프로세스가 아직 도는 그룹을 죽이므로, 멈춘 extractor와 그 자식은 기한이 죽인 검사기보다 오래 살지 않습니다.
 - 테스트: relation의 parent key padding과 그 뒤 placeholder의 번호는 recipe `model_queries_chain`의 case이고, recipe가 담는 collection key의 native test는 사라졌으며, feature-coverage는 native로 남는 각 test를 이유와 함께 적는다.

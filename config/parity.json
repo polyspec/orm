@@ -875,7 +875,7 @@
         },
         {
           "glob": "packages/ts/tests/complex-query-request-types.mjs",
-          "reason": "ecosystem: runs the host TypeScript compiler against temporary positive and negative request type fixtures; the shared complex-query runtime behavior is covered by complex-query-public-semijoin-plan"
+          "reason": "ecosystem: runs the host TypeScript compiler against temporary positive and negative request type fixtures; the shared complex-query runtime behavior is covered by the recipe complex_query"
         },
         {
           "glob": "packages/ts/tests/fulltext-chain-types.mjs",
@@ -2308,18 +2308,6 @@
             {
               "test": "tests/conformance/check/recipe_vectors.test.mts",
               "id": "TestPHPExtensionCommandLine"
-            }
-          ]
-        },
-        {
-          "id": "conformance-typescript-derived-integer",
-          "requirements": [
-            "COD-45"
-          ],
-          "bindings": [
-            {
-              "test": "tests/conformance/check/result_typescript.test.mts",
-              "id": "derived integer conversion preserves the exact numeric value"
             }
           ]
         },
@@ -43516,6 +43504,25 @@
           "id": "fulltext_search_recipe_mysql::chain_fulltext"
         }
       ]
+    },
+    {
+      "id": "added-column-safe-integer-typescript",
+      "kind": "feature",
+      "requirements": [
+        "COD-45"
+      ],
+      "bindings": [
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/group_rows.mjs",
+          "id": "added_column/driver_cell_forms"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "model_queries",
+        "part": "owner/typescript"
+      }
     },
     {
       "id": "python-fulltext-generated-method",

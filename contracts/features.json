@@ -876,6 +876,7 @@
         "dsl-dynamic",
         "collection-recipe",
         "group-row-driver-cell-forms",
+        "added-column-safe-integer-typescript",
         "model_queries_chain-mysql",
         "model_queries_chain-postgres",
         "model_queries_chain-sqlite",

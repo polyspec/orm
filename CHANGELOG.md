@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- COD-45 is the rule of the added-column read of TypeScript at the safe integers: the conformance helper derivedInteger, which no runner calls since the vector bodies went, is gone with its test, and the native case `added_column/driver_cell_forms` of the product code holds the rule (#T334-3-5-16)
 - An added column reads by its plan type in all six runtimes for the forms the first cut left open: Go and Rust refuse a text with a plus sign or a leading zero, Go refuses a text that is no time, Rust decodes an added date and datetime, and an added date writes the text of a date in the JSON of Go, PHP and the PHP extension; the cases added_column_types, added_text_not_exact and added_text_not_a_time hold them (#T334-3-5-15)
 - Tests: the padding of the parent keys of a relation and the number of the placeholder after them are a case of the `model_queries_chain` recipe, the native tests of the collection keys that the recipes hold are gone, and feature-coverage names each one that stays native with its reason.
 - A key of a `datetime` column is a date and time in every runtime, as INT-11 states, also when it is the only key column: PHP, TypeScript and Python returned the text of the column. A TypeScript key is a `Date` whose `toJSON()` holds the microseconds, so two microseconds of one millisecond stay two keys. The cases `single_key_of_a_datetime_keeps_its_type` and `single_key_of_a_microsecond_datetime_keeps_its_instant` of the `model_queries_chain` recipe hold it.
