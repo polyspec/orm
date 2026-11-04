@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The feature `transactions` runs the recipe `utils` in its owners too, as its parity list already named: `make feature-coverage-of/transactions` holds the lock release of INT-72 in every runtime (#T334-3-12-3-8)
 - The per-database feature coverage cells are gone from the check and the CI matrix: `make parity-check` runs every recipe unit of them, and `make feature-coverage-of/<id>` still runs the coverage of one feature for a row (#T334-3-12)
 - Tests: a catalog session through a transaction pooler after a schema change (CFG-28, CFG-41) is the case `catalog_session_after_a_schema_change_through_a_pooler` of the `catalog_connection` recipe in every runtime, in place of the Python test `connection_config`, through the new op `sql.hold_statement` and a `dsn` on `catalog.reconnect`.
 - Tests: the conformance runners keep only the bodies that a check reaches, the generated-method and the fixed-clock bodies; the other 50 vectors are cases of the `conformance_verification` recipe, and a test holds each runner to the reached names.

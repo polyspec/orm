@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a1dac0419c7bf424efd2ac3e878d3fedad6c17add12103ea5144947feb31168f -->
+<!-- source-sha256: 8ec65f7c5f16b8db47b2700c5680b760c880d923146fa269b07facd139122ef9 -->
 # 변경 이력
 
 ## Unreleased
 
+- 기능 `transactions`의 owner는 그 parity 목록이 이미 적은 대로 recipe `utils`도 실행한다. INT-72의 lock 해제는 모든 runtime에서 `make feature-coverage-of/transactions`가 시험한다 (#T334-3-12-3-8)
 - 데이터베이스별 기능 coverage 칸을 검사와 CI matrix에서 없앤다. 그 recipe unit은 모두 `make parity-check`가 실행하고, 항목 하나의 기능 coverage는 `make feature-coverage-of/<id>`가 그대로 실행한다 (#T334-3-12)
 - 테스트: schema 변경 뒤 transaction pooler를 거치는 catalog session(CFG-28, CFG-41)은 Python 테스트 `connection_config` 대신 모든 runtime에서 `catalog_connection` recipe의 case `catalog_session_after_a_schema_change_through_a_pooler`가 새 op `sql.hold_statement`와 `catalog.reconnect`의 `dsn`으로 맡는다.
 - Tests: conformance runner는 검사가 닿는 body, 곧 generated method와 fixed clock body만 남긴다. 나머지 vector 50개는 `conformance_verification` recipe의 case이고, 각 runner가 닿는 이름만 갖는지 시험이 확인한다.

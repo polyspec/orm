@@ -2780,10 +2780,12 @@
           "go": {
             "part": "packages/go/orm",
             "tests": [
-              "packages/go/orm/recipe_transactions_test.go"
+              "packages/go/orm/recipe_transactions_test.go",
+              "packages/go/orm/recipe_utils_test.go"
             ],
             "inputs": [
-              "contracts/fixtures/bench/dbspec-set.json"
+              "contracts/fixtures/bench/dbspec-set.json",
+              "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
               "mysql": [
@@ -2792,6 +2794,12 @@
                   "test": "packages/go/orm/recipe_transactions_test.go",
                   "recipe": "contracts/fixtures/transactions/transactions.json",
                   "symbol": "TestRecipeTransactionsMysql"
+                },
+                {
+                  "runner": "go",
+                  "test": "packages/go/orm/recipe_utils_test.go",
+                  "recipe": "contracts/fixtures/utils/utils.json",
+                  "symbol": "TestRecipeUtilsMysql"
                 }
               ],
               "postgres": [
@@ -2800,6 +2808,12 @@
                   "test": "packages/go/orm/recipe_transactions_test.go",
                   "recipe": "contracts/fixtures/transactions/transactions.json",
                   "symbol": "TestRecipeTransactionsPostgres"
+                },
+                {
+                  "runner": "go",
+                  "test": "packages/go/orm/recipe_utils_test.go",
+                  "recipe": "contracts/fixtures/utils/utils.json",
+                  "symbol": "TestRecipeUtilsPostgres"
                 }
               ],
               "sqlite": [
@@ -2808,6 +2822,12 @@
                   "test": "packages/go/orm/recipe_transactions_test.go",
                   "recipe": "contracts/fixtures/transactions/transactions.json",
                   "symbol": "TestRecipeTransactionsSqlite"
+                },
+                {
+                  "runner": "go",
+                  "test": "packages/go/orm/recipe_utils_test.go",
+                  "recipe": "contracts/fixtures/utils/utils.json",
+                  "symbol": "TestRecipeUtilsSqlite"
                 }
               ]
             }
@@ -2815,10 +2835,12 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/TransactionsRecipeTest.php"
+              "packages/php/tests/TransactionsRecipeTest.php",
+              "packages/php/tests/UtilsRecipeTest.php"
             ],
             "inputs": [
-              "contracts/fixtures/bench/dbspec-set.json"
+              "contracts/fixtures/bench/dbspec-set.json",
+              "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
               "mysql": [
@@ -2826,6 +2848,12 @@
                   "runner": "php",
                   "test": "packages/php/tests/TransactionsRecipeTest.php",
                   "recipe": "contracts/fixtures/transactions/transactions.json",
+                  "symbol": "testMysql"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/UtilsRecipeTest.php",
+                  "recipe": "contracts/fixtures/utils/utils.json",
                   "symbol": "testMysql"
                 }
               ],
@@ -2835,6 +2863,12 @@
                   "test": "packages/php/tests/TransactionsRecipeTest.php",
                   "recipe": "contracts/fixtures/transactions/transactions.json",
                   "symbol": "testPostgres"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/UtilsRecipeTest.php",
+                  "recipe": "contracts/fixtures/utils/utils.json",
+                  "symbol": "testPostgres"
                 }
               ],
               "sqlite": [
@@ -2842,6 +2876,12 @@
                   "runner": "php",
                   "test": "packages/php/tests/TransactionsRecipeTest.php",
                   "recipe": "contracts/fixtures/transactions/transactions.json",
+                  "symbol": "testSqlite"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/UtilsRecipeTest.php",
+                  "recipe": "contracts/fixtures/utils/utils.json",
                   "symbol": "testSqlite"
                 }
               ]
@@ -2852,10 +2892,14 @@
             "tests": [
               "packages/rust/tests/tests/transactions_mysql.rs",
               "packages/rust/tests/tests/transactions_postgres.rs",
-              "packages/rust/tests/tests/transactions_sqlite.rs"
+              "packages/rust/tests/tests/transactions_sqlite.rs",
+              "packages/rust/tests/tests/utils_recipe_mysql.rs",
+              "packages/rust/tests/tests/utils_recipe_postgres.rs",
+              "packages/rust/tests/tests/utils_recipe_sqlite.rs"
             ],
             "inputs": [
-              "contracts/fixtures/bench/dbspec-set.json"
+              "contracts/fixtures/bench/dbspec-set.json",
+              "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
               "mysql": [
@@ -2863,6 +2907,11 @@
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/transactions_mysql.rs",
                   "recipe": "contracts/fixtures/transactions/transactions.json"
+                },
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/utils_recipe_mysql.rs",
+                  "recipe": "contracts/fixtures/utils/utils.json"
                 }
               ],
               "postgres": [
@@ -2870,6 +2919,11 @@
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/transactions_postgres.rs",
                   "recipe": "contracts/fixtures/transactions/transactions.json"
+                },
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/utils_recipe_postgres.rs",
+                  "recipe": "contracts/fixtures/utils/utils.json"
                 }
               ],
               "sqlite": [
@@ -2877,6 +2931,11 @@
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/transactions_sqlite.rs",
                   "recipe": "contracts/fixtures/transactions/transactions.json"
+                },
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/utils_recipe_sqlite.rs",
+                  "recipe": "contracts/fixtures/utils/utils.json"
                 }
               ]
             }
@@ -2886,10 +2945,14 @@
             "tests": [
               "packages/ts/tests/transactions-mysql.test.mjs",
               "packages/ts/tests/transactions-postgres.test.mjs",
-              "packages/ts/tests/transactions-sqlite.test.mjs"
+              "packages/ts/tests/transactions-sqlite.test.mjs",
+              "packages/ts/tests/utils_recipe-mysql.test.mjs",
+              "packages/ts/tests/utils_recipe-postgres.test.mjs",
+              "packages/ts/tests/utils_recipe-sqlite.test.mjs"
             ],
             "inputs": [
-              "contracts/fixtures/bench/dbspec-set.json"
+              "contracts/fixtures/bench/dbspec-set.json",
+              "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
               "mysql": [
@@ -2897,6 +2960,11 @@
                   "runner": "node",
                   "test": "packages/ts/tests/transactions-mysql.test.mjs",
                   "recipe": "contracts/fixtures/transactions/transactions.json"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/utils_recipe-mysql.test.mjs",
+                  "recipe": "contracts/fixtures/utils/utils.json"
                 }
               ],
               "postgres": [
@@ -2904,6 +2972,11 @@
                   "runner": "node",
                   "test": "packages/ts/tests/transactions-postgres.test.mjs",
                   "recipe": "contracts/fixtures/transactions/transactions.json"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/utils_recipe-postgres.test.mjs",
+                  "recipe": "contracts/fixtures/utils/utils.json"
                 }
               ],
               "sqlite": [
@@ -2911,6 +2984,11 @@
                   "runner": "node",
                   "test": "packages/ts/tests/transactions-sqlite.test.mjs",
                   "recipe": "contracts/fixtures/transactions/transactions.json"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/utils_recipe-sqlite.test.mjs",
+                  "recipe": "contracts/fixtures/utils/utils.json"
                 }
               ]
             }
@@ -2920,10 +2998,14 @@
             "tests": [
               "packages/python/tests/test_transactions_mysql.py",
               "packages/python/tests/test_transactions_postgres.py",
-              "packages/python/tests/test_transactions_sqlite.py"
+              "packages/python/tests/test_transactions_sqlite.py",
+              "packages/python/tests/test_utils_recipe_mysql.py",
+              "packages/python/tests/test_utils_recipe_postgres.py",
+              "packages/python/tests/test_utils_recipe_sqlite.py"
             ],
             "inputs": [
-              "contracts/fixtures/bench/dbspec-set.json"
+              "contracts/fixtures/bench/dbspec-set.json",
+              "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
               "mysql": [
@@ -2931,6 +3013,11 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_transactions_mysql.py",
                   "recipe": "contracts/fixtures/transactions/transactions.json"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/test_utils_recipe_mysql.py",
+                  "recipe": "contracts/fixtures/utils/utils.json"
                 }
               ],
               "postgres": [
@@ -2938,6 +3025,11 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_transactions_postgres.py",
                   "recipe": "contracts/fixtures/transactions/transactions.json"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/test_utils_recipe_postgres.py",
+                  "recipe": "contracts/fixtures/utils/utils.json"
                 }
               ],
               "sqlite": [
@@ -2945,6 +3037,11 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_transactions_sqlite.py",
                   "recipe": "contracts/fixtures/transactions/transactions.json"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/test_utils_recipe_sqlite.py",
+                  "recipe": "contracts/fixtures/utils/utils.json"
                 }
               ]
             }
@@ -2952,10 +3049,12 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php"
+              "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
+              "packages/php-ext/tests/UtilsRecipeTestExtensionTest.php"
             ],
             "inputs": [
-              "contracts/fixtures/bench/dbspec-set.json"
+              "contracts/fixtures/bench/dbspec-set.json",
+              "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
               "mysql": [
@@ -2963,6 +3062,12 @@
                   "runner": "php",
                   "test": "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
                   "recipe": "contracts/fixtures/transactions/transactions.json",
+                  "symbol": "testMysql"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/UtilsRecipeTestExtensionTest.php",
+                  "recipe": "contracts/fixtures/utils/utils.json",
                   "symbol": "testMysql"
                 }
               ],
@@ -2972,6 +3077,12 @@
                   "test": "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
                   "recipe": "contracts/fixtures/transactions/transactions.json",
                   "symbol": "testPostgres"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/UtilsRecipeTestExtensionTest.php",
+                  "recipe": "contracts/fixtures/utils/utils.json",
+                  "symbol": "testPostgres"
                 }
               ],
               "sqlite": [
@@ -2979,6 +3090,12 @@
                   "runner": "php",
                   "test": "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
                   "recipe": "contracts/fixtures/transactions/transactions.json",
+                  "symbol": "testSqlite"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/UtilsRecipeTestExtensionTest.php",
+                  "recipe": "contracts/fixtures/utils/utils.json",
                   "symbol": "testSqlite"
                 }
               ]
