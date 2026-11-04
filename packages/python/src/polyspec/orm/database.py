@@ -1703,6 +1703,12 @@ class Db:
         self.aes_key = options.get("aesKey", "")
         self.blind_index_key = options.get("blindIndexKey", "")
         self.aes_version = options.get("aesVersion", 1)
+        if (
+            not isinstance(self.aes_version, int)
+            or isinstance(self.aes_version, bool)
+            or self.aes_version < 1
+        ):
+            raise OrmError(codes.CONFIG, "aes version must be a positive integer")
         self.aes_keyring = options.get("aesKeyring")
         if self.aes_keyring is not None:
             current_key = self.aes_keyring.key(self.aes_version)

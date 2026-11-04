@@ -1,33 +1,11 @@
-//! AES key configuration: a write with only `aes_keys` and `aes_version`
-//! encrypts with `aes_keys[aes_version]`, and an `aes_key` that differs from
-//! that key is rejected.
+//! The read plans and rows of AES that no recipe value can hold (COD-48, COD-56; FCV-2).
 
 use std::collections::BTreeMap;
 
-use polyspec_orm::{Db, Val};
+use polyspec_orm::Val;
 
 fn keys(pairs: &[(i32, &str)]) -> BTreeMap<i32, String> {
     pairs.iter().map(|(v, k)| (*v, (*k).to_owned())).collect()
-}
-
-#[tokio::test]
-// The test of COD-8 (docs/spec).
-async fn invalid_aes_configuration_fails_before_connection() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    let cases = [
-        ("zero current version", polyspec_orm::Config { aes_version: 0, ..Default::default() }),
-        ("negative current version", polyspec_orm::Config { aes_version: -1, ..Default::default() }),
-        ("missing current key", polyspec_orm::Config { aes_version: 2, aes_keys: keys(&[(1, "old-key")]), ..Default::default() }),
-        ("empty current key", polyspec_orm::Config { aes_keys: keys(&[(1, "")]), ..Default::default() }),
-        ("invalid historical version", polyspec_orm::Config { aes_keys: keys(&[(0, "old-key"), (1, "current-key")]), ..Default::default() }),
-        ("empty historical key", polyspec_orm::Config { aes_keys: keys(&[(1, "current-key"), (2, "")]), ..Default::default() }),
-    ];
-    for (name, cfg) in cases {
-        match Db::connect("sqlite:///a-path-that-must-not-be-opened/a.sqlite", 1, cfg).await {
-            Err(e) => assert_eq!(e.code(), "CONFIG", "{name}: {e}"),
-            Ok(_) => panic!("{name} was accepted"),
-        }
-    }
 }
 
 /// A row of one AES cell without its version decodes with the INTERNAL code under the assemble `asm`.

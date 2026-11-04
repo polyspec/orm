@@ -4363,6 +4363,754 @@
           }
         }
       ]
+    },
+    {
+      "id": "an_aes_configuration_without_a_usable_current_key_is_refused",
+      "requirements": [
+        "COD-8"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "case",
+          "config": {
+            "aes_version": -1
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "dsn.connect",
+          "dsn": "case",
+          "config": {
+            "aes_version": 0,
+            "aes_keys": {
+              "2": "aes-rotation-key-two"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "dsn.connect",
+          "dsn": "case",
+          "config": {
+            "aes_version": 2,
+            "aes_keys": {
+              "1": "aes-rotation-key-one"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "dsn.connect",
+          "dsn": "case",
+          "config": {
+            "aes_version": 1,
+            "aes_keys": {
+              "1": ""
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "dsn.connect",
+          "dsn": "case",
+          "config": {
+            "aes_version": 1,
+            "aes_keys": {
+              "0": "aes-rotation-key-zero",
+              "1": "aes-rotation-key-one"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "dsn.connect",
+          "dsn": "case",
+          "config": {
+            "aes_version": 1,
+            "aes_keys": {
+              "1": "aes-rotation-key-one",
+              "2": ""
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_refused_aes_configuration_opens_no_database_file",
+      "requirements": [
+        "COD-8"
+      ],
+      "only": [
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "dsn.sqlite_file",
+          "name": "refused.sqlite",
+          "query": "timezone=%2B00:00",
+          "config": {
+            "aes_key": "different-key",
+            "aes_version": 1,
+            "aes_keys": {
+              "1": "current-key"
+            }
+          },
+          "expect": {
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "dsn.sqlite_file",
+          "name": "refused.sqlite",
+          "query": "timezone=%2B00:00",
+          "config": {
+            "aes_version": -1
+          },
+          "expect": {
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "dsn.sqlite_file",
+          "name": "refused.sqlite",
+          "query": "timezone=%2B00:00",
+          "config": {
+            "aes_version": 0,
+            "aes_keys": {
+              "2": "aes-rotation-key-two"
+            }
+          },
+          "expect": {
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "dsn.sqlite_file",
+          "name": "refused.sqlite",
+          "query": "timezone=%2B00:00",
+          "config": {
+            "aes_version": 2,
+            "aes_keys": {
+              "1": "aes-rotation-key-one"
+            }
+          },
+          "expect": {
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "dsn.sqlite_file",
+          "name": "refused.sqlite",
+          "query": "timezone=%2B00:00",
+          "config": {
+            "aes_version": 1,
+            "aes_keys": {
+              "1": ""
+            }
+          },
+          "expect": {
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "dsn.sqlite_file",
+          "name": "refused.sqlite",
+          "query": "timezone=%2B00:00",
+          "config": {
+            "aes_version": 1,
+            "aes_keys": {
+              "0": "aes-rotation-key-zero",
+              "1": "aes-rotation-key-one"
+            }
+          },
+          "expect": {
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "dsn.sqlite_file",
+          "name": "refused.sqlite",
+          "query": "timezone=%2B00:00",
+          "config": {
+            "aes_version": 1,
+            "aes_keys": {
+              "1": "aes-rotation-key-one",
+              "2": ""
+            }
+          },
+          "expect": {
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_rotation_that_fails_on_a_row_keeps_every_row_at_its_version",
+      "requirements": [
+        "INT-60",
+        "PLN-44"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "first",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "first",
+          "model": "RotRow",
+          "values": {
+            "token": {
+              "text": "first"
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "first",
+          "model": "RotRow",
+          "values": {
+            "token": {
+              "text": "second"
+            }
+          }
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "second",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 2
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "postgres"
+          ],
+          "reason": "the function of the trigger that drops the update of the second row",
+          "sql": "CREATE FUNCTION rot_row_second() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF OLD.seq = 2 THEN RETURN NULL; END IF; RETURN NEW; END $$"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the second row takes no update: PostgreSQL and SQLite drop it, so it changes no row, and MySQL, where a trigger cannot drop an update, refuses it",
+          "sql": {
+            "mysql": "CREATE TRIGGER rot_row_second BEFORE UPDATE ON rot_row FOR EACH ROW IF OLD.seq = 2 THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'rot_row_second'; END IF",
+            "postgres": "CREATE TRIGGER rot_row_second BEFORE UPDATE ON rot_row FOR EACH ROW EXECUTE FUNCTION rot_row_second()",
+            "sqlite": "CREATE TRIGGER rot_row_second BEFORE UPDATE ON rot_row WHEN OLD.seq = 2 BEGIN SELECT RAISE(IGNORE); END"
+          }
+        },
+        {
+          "op": "utils.aes_rotate",
+          "connection": "second",
+          "model": "RotRow",
+          "keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 2
+          },
+          "expect": {
+            "mysql": {
+              "error": "DRIVER"
+            },
+            "postgres": {
+              "error": "DEADLOCK"
+            },
+            "sqlite": {
+              "error": "DEADLOCK"
+            }
+          }
+        },
+        {
+          "op": "utils.aes_status",
+          "connection": "second",
+          "model": "RotRow",
+          "keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 2
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "current",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "total",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "pending",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "versions",
+                    {
+                      "object": [
+                        [
+                          "1",
+                          {
+                            "int": "2"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "object": [
+                  [
+                    "current",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "total",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "pending",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "versions",
+                    {
+                      "object": [
+                        [
+                          "1",
+                          {
+                            "int": "2"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "current",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "total",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "pending",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "versions",
+                    {
+                      "object": [
+                        [
+                          "1",
+                          {
+                            "int": "2"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "second",
+          "model": "RotRow",
+          "where": {},
+          "columns": [
+            "token"
+          ],
+          "order": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "first"
+                  }
+                ],
+                [
+                  {
+                    "text": "second"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "first"
+                  }
+                ],
+                [
+                  {
+                    "text": "second"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "first"
+                  }
+                ],
+                [
+                  {
+                    "text": "second"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "removes the trigger, so the same rotation has nothing in its way",
+          "sql": {
+            "mysql": "DROP TRIGGER rot_row_second",
+            "postgres": "DROP TRIGGER rot_row_second ON rot_row",
+            "sqlite": "DROP TRIGGER rot_row_second"
+          }
+        },
+        {
+          "op": "utils.aes_rotate",
+          "connection": "second",
+          "model": "RotRow",
+          "keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 2
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "2"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "2"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "2"
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.aes_status",
+          "connection": "second",
+          "model": "RotRow",
+          "keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 2
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "current",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "total",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "pending",
+                    {
+                      "int": "0"
+                    }
+                  ],
+                  [
+                    "versions",
+                    {
+                      "object": [
+                        [
+                          "2",
+                          {
+                            "int": "2"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "object": [
+                  [
+                    "current",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "total",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "pending",
+                    {
+                      "int": "0"
+                    }
+                  ],
+                  [
+                    "versions",
+                    {
+                      "object": [
+                        [
+                          "2",
+                          {
+                            "int": "2"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "current",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "total",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "pending",
+                    {
+                      "int": "0"
+                    }
+                  ],
+                  [
+                    "versions",
+                    {
+                      "object": [
+                        [
+                          "2",
+                          {
+                            "int": "2"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "second",
+          "model": "RotRow",
+          "where": {},
+          "columns": [
+            "token"
+          ],
+          "order": [
+            "seq"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "first"
+                  }
+                ],
+                [
+                  {
+                    "text": "second"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "first"
+                  }
+                ],
+                [
+                  {
+                    "text": "second"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "first"
+                  }
+                ],
+                [
+                  {
+                    "text": "second"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
     }
   ]
 }

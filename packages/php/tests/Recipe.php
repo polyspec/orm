@@ -841,7 +841,7 @@ final class Recipe
      * The names in a new directory, other than the journals, after a connection to a file of it (dsn.sqlite_file, FCV-4,
      * CFG-26).
      */
-    private static function sqliteFileNames(string $name, string $query): string
+    private static function sqliteFileNames(string $name, string $query, array $config = []): string
     {
         $directory = sys_get_temp_dir() . '/orm-recipe-sqlite-name-' . bin2hex(random_bytes(8));
         if (!mkdir($directory, 0o700)) {
@@ -849,7 +849,7 @@ final class Recipe
         }
         try {
             try {
-                self::connectDriver("sqlite://$directory/$name?$query");
+                self::connectDriver("sqlite://$directory/$name?$query", $config);
             } catch (OrmException $refused) {
                 Assert::assertSame(['.', '..'], scandir($directory), 'a refused DSN creates no file');
                 throw $refused;
@@ -3314,7 +3314,7 @@ final class Recipe
                 }
                 return ['value' => ['text' => self::connectDriver($dsn, $s['config'] ?? [])]];
             case 'dsn.sqlite_file':
-                return ['value' => ['text' => self::sqliteFileNames($s['name'], $s['query'])]];
+                return ['value' => ['text' => self::sqliteFileNames($s['name'], $s['query'], $s['config'] ?? [])]];
         }
         if (in_array($s['op'], self::MODEL_OPS, true)) {
             return self::modelOp($s, $context);

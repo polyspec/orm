@@ -419,14 +419,14 @@ type dsnConfig struct {
 }
 
 // sqliteFileName opens a SQLite DSN with the query on a new file called name, and returns the names in its directory
-// other than the journals of that file (dsn.sqlite_file, CFG-26).
-func sqliteFileName(name, query string) (string, error) {
+// other than the journals of that file (dsn.sqlite_file, CFG-26, COD-8).
+func sqliteFileName(name, query string, config dsnConfig) (string, error) {
 	directory, err := os.MkdirTemp("", "orm-recipe-sqlite-name-")
 	if err != nil {
 		return "", err
 	}
 	defer func() { _ = os.RemoveAll(directory) }()
-	_, refused := connectDriver("sqlite://"+filepath.Join(directory, name)+"?"+query, dsnConfig{})
+	_, refused := connectDriver("sqlite://"+filepath.Join(directory, name)+"?"+query, config)
 	entries, err := os.ReadDir(directory)
 	if err != nil {
 		return "", err
