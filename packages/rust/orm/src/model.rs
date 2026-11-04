@@ -663,7 +663,20 @@ fn collection_key(c: &Core, m: &dyn AnyModel, asm: &Assemble, row: &[Val]) -> Re
             return Key::of(v);
         }
     }
-    Key::of_collection_row(row, &asm.key)
+    // A key keeps the declared type of its component: a bool column can read as an integer on MySQL and SQLite and a datetime
+    // column of a composite key as its text (INT-11, PRT-35).
+    let mut values = Vec::with_capacity(asm.key.len());
+    for reference in &asm.key {
+        let declared = asm.columns.iter().find(|column| column.index == reference.index).map(|column| column.typ.as_str());
+        values.push(match (declared, row[reference.index].clone()) {
+            (Some("bool"), Val::I64(number)) => Val::Bool(number != 0),
+            (Some("datetime"), Val::Str(text)) if asm.key.len() > 1 => {
+                Val::DateTime(crate::driver::parse_datetime(&text).map_err(|error| Error::Engine { code: codes::CODEC_DECODE.into(), msg: error })?)
+            }
+            (_, cell) => cell,
+        });
+    }
+    Key::of_values(&values)
 }
 
 struct Loaded {
