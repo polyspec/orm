@@ -49,7 +49,6 @@
         "scripts/check/**",
         "contracts/check-inputs.json",
         "scripts/features/owners.mts",
-        "scripts/features/test-names.mts",
         "scripts/json/**",
         "scripts/client-db-test.mts",
         "scripts/typescript/sqlite-test.mts",
