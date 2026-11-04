@@ -3309,6 +3309,383 @@
       ]
     },
     {
+      "id": "a_failed_commit_does_not_consume_the_rollback_fault",
+      "requirements": [
+        "INT-72"
+      ],
+      "only": [
+        "postgres",
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "sql": "CREATE TABLE deferred_parent (id BIGINT PRIMARY KEY)",
+          "reason": "The parent of the deferred key below, which a .dbs cannot declare."
+        },
+        {
+          "op": "sql.exec",
+          "sql": "CREATE TABLE deferred_child (id BIGINT PRIMARY KEY, parent_id BIGINT NOT NULL, FOREIGN KEY (parent_id) REFERENCES deferred_parent (id) DEFERRABLE INITIALLY DEFERRED)",
+          "reason": "A .dbs declares no deferrable key (DBS-53), and this one fails the COMMIT on PostgreSQL and SQLite (DIA-76); MySQL has no deferred key, so no public call fails its COMMIT on a session that stays open."
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "connection"
+        },
+        {
+          "op": "fault.next_rollback",
+          "connection": "connection"
+        },
+        {
+          "op": "transaction",
+          "connection": "connection",
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "connection",
+              "model": "CompositeAccount",
+              "values": {
+                "tenant_id": {
+                  "int": "990022"
+                },
+                "account_id": {
+                  "int": "1"
+                },
+                "name": {
+                  "text": "rolled back"
+                }
+              }
+            },
+            {
+              "op": "utils.run",
+              "connection": "connection",
+              "statements": [
+                {
+                  "kind": "insert",
+                  "tables": [
+                    "deferred_child"
+                  ],
+                  "sql": "INSERT INTO deferred_child (id, parent_id) VALUES (1, 2)"
+                }
+              ],
+              "expect": {
+                "postgres": {
+                  "value": {
+                    "array": []
+                  }
+                },
+                "sqlite": {
+                  "value": {
+                    "array": []
+                  }
+                }
+              }
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "error": "FOREIGN_KEY"
+            },
+            "sqlite": {
+              "error": "FOREIGN_KEY"
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "connection",
+          "model": "CompositeAccount",
+          "where": {
+            "tenant_id": {
+              "int": "990022"
+            }
+          },
+          "expect": {
+            "postgres": {
+              "value": {
+                "int": "0"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "0"
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "connection",
+          "fail": true,
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "connection",
+              "model": "CompositeAccount",
+              "values": {
+                "tenant_id": {
+                  "int": "990022"
+                },
+                "account_id": {
+                  "int": "2"
+                },
+                "name": {
+                  "text": "rolled back"
+                }
+              }
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "error": "ROLLBACK",
+              "message_holds": "test fault: the rollback of the transaction ran and is reported as failed",
+              "rollback": "FAULT",
+              "keeps_callback": true
+            },
+            "sqlite": {
+              "error": "ROLLBACK",
+              "message_holds": "test fault: the rollback of the transaction ran and is reported as failed",
+              "rollback": "FAULT",
+              "keeps_callback": true
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "connection",
+          "fail": true,
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "connection",
+              "model": "CompositeAccount",
+              "values": {
+                "tenant_id": {
+                  "int": "990022"
+                },
+                "account_id": {
+                  "int": "3"
+                },
+                "name": {
+                  "text": "rolled back"
+                }
+              }
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "error": "CALLBACK"
+            },
+            "sqlite": {
+              "error": "CALLBACK"
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "connection",
+          "model": "CompositeAccount",
+          "where": {
+            "tenant_id": {
+              "int": "990022"
+            }
+          },
+          "expect": {
+            "postgres": {
+              "value": {
+                "int": "0"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "0"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_failed_begin_does_not_consume_the_rollback_fault",
+      "requirements": [
+        "INT-72",
+        "PLN-24"
+      ],
+      "only": [
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "connection"
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "holder"
+        },
+        {
+          "op": "fault.next_rollback",
+          "connection": "connection"
+        },
+        {
+          "op": "transaction",
+          "connection": "holder",
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "holder",
+              "model": "CompositeAccount",
+              "values": {
+                "tenant_id": {
+                  "int": "990023"
+                },
+                "account_id": {
+                  "int": "1"
+                },
+                "name": {
+                  "text": "holder"
+                }
+              }
+            },
+            {
+              "op": "transaction",
+              "connection": "connection",
+              "steps": [
+                {
+                  "op": "model.count",
+                  "connection": "connection",
+                  "model": "CompositeAccount",
+                  "where": {
+                    "tenant_id": {
+                      "int": "990023"
+                    }
+                  },
+                  "expect": {
+                    "sqlite": {
+                      "value": {
+                        "int": "0"
+                      }
+                    }
+                  }
+                }
+              ],
+              "expect": {
+                "sqlite": {
+                  "error": "CANCELED"
+                }
+              }
+            },
+            {
+              "op": "utils.run",
+              "connection": "holder",
+              "statements": [
+                {
+                  "kind": "delete",
+                  "tables": [
+                    "composite_account"
+                  ],
+                  "sql": "DELETE FROM composite_account WHERE tenant_id = 990023"
+                }
+              ],
+              "expect": {
+                "sqlite": {
+                  "value": {
+                    "array": []
+                  }
+                }
+              }
+            }
+          ],
+          "expect": {
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "connection",
+          "fail": true,
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "connection",
+              "model": "CompositeAccount",
+              "values": {
+                "tenant_id": {
+                  "int": "990023"
+                },
+                "account_id": {
+                  "int": "2"
+                },
+                "name": {
+                  "text": "rolled back"
+                }
+              }
+            }
+          ],
+          "expect": {
+            "sqlite": {
+              "error": "ROLLBACK",
+              "message_holds": "test fault: the rollback of the transaction ran and is reported as failed",
+              "rollback": "FAULT",
+              "keeps_callback": true
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "connection",
+          "fail": true,
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "connection",
+              "model": "CompositeAccount",
+              "values": {
+                "tenant_id": {
+                  "int": "990023"
+                },
+                "account_id": {
+                  "int": "3"
+                },
+                "name": {
+                  "text": "rolled back"
+                }
+              }
+            }
+          ],
+          "expect": {
+            "sqlite": {
+              "error": "CALLBACK"
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "connection",
+          "model": "CompositeAccount",
+          "where": {
+            "tenant_id": {
+              "int": "990023"
+            }
+          },
+          "expect": {
+            "sqlite": {
+              "value": {
+                "int": "0"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "sqlite_writers_commit_every_row",
       "requirements": [
         "CFG-12"

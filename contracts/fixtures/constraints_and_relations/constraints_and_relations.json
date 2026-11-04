@@ -670,6 +670,151 @@
           }
         }
       ]
+    },
+    {
+      "id": "sqlite_driver_error_ends_with_its_result_code",
+      "requirements": [
+        "CFG-33",
+        "INT-154",
+        "PRT-79"
+      ],
+      "only": [
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "sql": "CREATE TRIGGER user_refuse BEFORE UPDATE ON user WHEN NEW.name = 'refused' BEGIN SELECT RAISE(ABORT, 'user refused'); END",
+          "reason": "A .dbs declares no trigger, and this one refuses a write on the server side of SQLite."
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "utils.run",
+          "connection": "db",
+          "statements": [
+            {
+              "kind": "update",
+              "tables": [
+                "author",
+                "user"
+              ],
+              "sql": "UPDATE author SET user_seq = 999999 WHERE seq = 1"
+            }
+          ],
+          "expect": {
+            "sqlite": {
+              "error": "FOREIGN_KEY",
+              "message_holds": "FOREIGN KEY constraint failed",
+              "message_suffix": " (SQLITE_CONSTRAINT_FOREIGNKEY)",
+              "driver_cause": true
+            }
+          }
+        },
+        {
+          "op": "model.delete",
+          "connection": "db",
+          "model": "User",
+          "where": {
+            "seq": {
+              "int": "1"
+            }
+          },
+          "expect": {
+            "sqlite": {
+              "error": "FOREIGN_KEY",
+              "message_holds": "FOREIGN KEY constraint failed",
+              "message_suffix": " (SQLITE_CONSTRAINT_TRIGGER)",
+              "driver_cause": true
+            }
+          }
+        },
+        {
+          "op": "model.update",
+          "connection": "db",
+          "model": "Author",
+          "key": {
+            "seq": {
+              "int": "1"
+            }
+          },
+          "set": {
+            "like_count": {
+              "int": "-1"
+            }
+          },
+          "expect": {
+            "sqlite": {
+              "error": "CONSTRAINT",
+              "message_holds": "CHECK constraint failed: ck_author_counts",
+              "message_suffix": " (SQLITE_CONSTRAINT_CHECK)",
+              "driver_cause": true
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "db",
+          "statements": [
+            {
+              "kind": "update",
+              "tables": [
+                "author",
+                "user"
+              ],
+              "sql": "UPDATE user SET name = 'refused' WHERE seq = 1"
+            }
+          ],
+          "expect": {
+            "sqlite": {
+              "error": "DRIVER",
+              "message_holds": "user refused",
+              "message_suffix": " (SQLITE_CONSTRAINT_TRIGGER)",
+              "driver_cause": true
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "read_only": true,
+          "retry": 0,
+          "steps": [
+            {
+              "op": "utils.run",
+              "connection": "db",
+              "statements": [
+                {
+                  "kind": "update",
+                  "tables": [
+                    "author",
+                    "user"
+                  ],
+                  "sql": "UPDATE user SET name = 'read only' WHERE seq = 1"
+                }
+              ],
+              "expect": {
+                "sqlite": {
+                  "error": "READ_ONLY",
+                  "message_holds": "attempt to write a readonly database",
+                  "message_suffix": " (SQLITE_READONLY)",
+                  "driver_cause": true
+                }
+              }
+            }
+          ],
+          "expect": {
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        }
+      ]
     }
   ]
 }
