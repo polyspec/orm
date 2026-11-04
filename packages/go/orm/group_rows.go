@@ -3,6 +3,7 @@ package orm
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/polyspec/orm/packages/go/engine/plan"
@@ -207,16 +208,47 @@ func addedColumnValue(typ string, raw any) (any, error) {
 	}
 	switch typ {
 	case "i64":
+		if err := exactIntegerText(raw); err != nil {
+			return nil, err
+		}
 		return AsInt64(raw)
 	case "i32":
+		if err := exactIntegerText(raw); err != nil {
+			return nil, err
+		}
 		return AsInt32(raw)
 	case "i16":
+		if err := exactIntegerText(raw); err != nil {
+			return nil, err
+		}
 		return AsInt16(raw)
 	case "bool":
 		return AsBool(raw)
 	case "f64":
 		return AsFloat64(raw)
+	case "date", "datetime":
+		return AsTime(raw)
 	default:
 		return raw, nil
 	}
+}
+
+// exactIntegerPattern is the text of an integer: its digits, no sign but a minus and no leading zero.
+var exactIntegerPattern = regexp.MustCompile(`^-?(?:0|[1-9][0-9]*)$`)
+
+// exactIntegerText refuses a text cell that is not exactly the digits of an integer (INT-160), which ParseInt would read.
+func exactIntegerText(raw any) error {
+	var text string
+	switch x := raw.(type) {
+	case string:
+		text = x
+	case []byte:
+		text = string(x)
+	default:
+		return nil
+	}
+	if !exactIntegerPattern.MatchString(text) {
+		return codecErr(CodeCodecDecode, "the text %q is not exactly an integer", text)
+	}
+	return nil
 }

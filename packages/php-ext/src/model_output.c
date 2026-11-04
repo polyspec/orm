@@ -197,7 +197,7 @@ static void output_model_column(zend_object *object, zval *out, HashTable *seen,
 }
 
 static void output_model_fields(zend_object *object, zval *out, HashTable *seen,
-    zval *columns, zval *names, zval *sets, zval *hidden, zval *extra, bool pairs)
+    zval *columns, zval *names, zval *sets, zval *hidden, zval *extra, zval *extra_date, bool pairs)
 {
     if (names == NULL && sets != NULL && Z_TYPE_P(sets) == IS_ARRAY) {
         zend_string *name; zend_ulong index;
@@ -226,6 +226,14 @@ static void output_model_fields(zend_object *object, zval *out, HashTable *seen,
         } else {
             zval *value = extra != NULL && Z_TYPE_P(extra) == IS_ARRAY
                 ? zend_hash_find(Z_ARRVAL_P(extra), key) : NULL;
+            /* INT-160: an added column of plan type date has the text of a date as its array form. */
+            zval date_text; ZVAL_UNDEF(&date_text);
+            if (value != NULL && extra_date != NULL && Z_TYPE_P(extra_date) == IS_ARRAY && zend_hash_exists(Z_ARRVAL_P(extra_date), key) &&
+                output_instance(value, "DateTimeInterface")) {
+                output_format_datetime(value, "Y-m-d", &date_text);
+                if (EG(exception) != NULL) break;
+                value = &date_text;
+            }
             if (!pairs) {
                 if (value == NULL) {
                     zval null_value; ZVAL_NULL(&null_value);
@@ -237,6 +245,7 @@ static void output_model_fields(zend_object *object, zval *out, HashTable *seen,
                 if (EG(exception) == NULL) output_pair_append(out, seen, key, &converted);
                 else if (Z_TYPE(converted) != IS_UNDEF) zval_ptr_dtor(&converted);
             }
+            if (Z_TYPE(date_text) != IS_UNDEF) zval_ptr_dtor(&date_text);
         }
         if (EG(exception) != NULL) break;
     } ZEND_HASH_FOREACH_END();
@@ -304,7 +313,8 @@ static void model_output_values(zend_object *object, zval *out, bool pairs)
     zval *columns = output_assoc(&meta, "columns");
     zval *hidden = row != NULL && Z_TYPE_P(row) == IS_ARRAY ? output_assoc(row, "hidden") : NULL;
     zval *extra = row != NULL && Z_TYPE_P(row) == IS_ARRAY ? output_assoc(row, "extra") : NULL;
-    output_model_fields(object, out, &seen, columns, names, sets, hidden, extra, pairs);
+    zval *extra_date = row != NULL && Z_TYPE_P(row) == IS_ARRAY ? output_assoc(row, "extra_date") : NULL;
+    output_model_fields(object, out, &seen, columns, names, sets, hidden, extra, extra_date, pairs);
     output_state_extras(out, &seen, state, row, pairs);
 done:
     if (Z_TYPE(meta) != IS_UNDEF) zval_ptr_dtor(&meta);

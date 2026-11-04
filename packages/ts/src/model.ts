@@ -1053,8 +1053,8 @@ function exactIntegers(value: unknown): unknown {
   return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, exactIntegers(item)]));
 }
 
-/** An added column by the type its plan column states (INT-160); other types keep the driver value. A text is an integer only exactly. */
-function addedColumnValue(type: string, raw: unknown, zone: string): unknown {
+/** An added column by the type its plan column states (INT-160); other types keep the driver value. A text is an integer only exactly, and an integer is a safe integer (COD-45). */
+export function addedColumnValue(type: string, raw: unknown, zone: string): unknown {
   switch (type) {
     case 'i16': case 'i32': case 'i64': {
       if (typeof raw !== 'string') return convert(type, raw, zone);

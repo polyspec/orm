@@ -175,8 +175,8 @@ ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ORM_TEST_MYSQL_REPLICA_DSN=… 
 ```
 
 Each section of the `integration_program` test runs its case on SQLite, MySQL and PostgreSQL, and so does the `zone` test; each section runs in case databases of its own, so `cargo test --workspace` runs the sections in parallel, and `primary_and_replica` also reads the replicas of `ORM_TEST_MYSQL_REPLICA_DSN` and `ORM_TEST_POSTGRES_REPLICA_DSN`; `ORM_TEST_MYSQL_DSN` and `ORM_TEST_POSTGRES_DSN` must name test databases, and a test fails when either is unset. A case that installs a schema or checks an empty database creates a database of its own through them and drops it when it ends. The rollback tests end the server session of a transaction through `ORM_TEST_MYSQL_SERVER_DSN` and `ORM_TEST_POSTGRES_SERVER_DSN`, which name the servers without a pooler, and the dbspec tests (`dbspec_*`) create and change their databases through them; `dbspec_apply` also requires `ORM_TEST_PGBOUNCER_DSN` for its transaction pooler case; the make targets set both from `.runtime/servers/env`. `conformance`, `complex`, and `demo` read the seeded bench database.
-The Rust conformance output fails when a bind cannot be represented without loss, a requested
-selected field or relation is absent, or a derived integer is invalid or out of range. It never
+The Rust conformance output fails when a bind cannot be represented without loss, or a requested
+selected field or relation is absent. It never
 substitutes null, zero, or replacement text for those errors.
 
 The Rust source scanner recognizes `expect` and `unwrap` immediately after a styled setter
