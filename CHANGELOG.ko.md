@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7688ba95a038c248ec73d0e65e71fdbdce2b921569f6cd5fe5553b8216ffbc6e -->
+<!-- source-sha256: 9e8999148c30752441cc78d42ff2d2f4f20109d07680573d0b9f0da636367d8b -->
 # 변경 이력
 
 ## Unreleased
 
+- TypeScript와 Python 생성기는 child 없는 `join<L>With<R>`와 `leftJoin<L>With<R>` 호출을 scan에서 거부한다. 다른 생성기처럼 DSL-37의 인자 개수 규칙을 따른 것이다. PHP scan vector의 chain 이름은 PHP와 TypeScript scan을 비교하던 테스트 대신 모든 runtime에서 `generator` recipe의 `scanned-` case로 실행된다.
 - Python의 pool은 CFG-5대로 idle connection을 lifetime이 지날 때 닫는다. 이전에는 다음 호출자가 가져갈 때에만 닫았다. MySQL과 PostgreSQL의 pool 경계, lifetime, 거부되는 pool 값은 recipe `connection_pool`과 `dsn_reject_checked`의 case이고, PHP의 pool option 거부는 recipe `dsn_reject_php_pool`이다.
 - 테스트: schema 변경 뒤 transaction pooler를 거치는 catalog session(CFG-28, CFG-41)은 Python 테스트 `connection_config` 대신 모든 runtime에서 `catalog_connection` recipe의 case `catalog_session_after_a_schema_change_through_a_pooler`가 새 op `sql.hold_statement`와 `catalog.reconnect`의 `dsn`으로 맡는다.
 - TypeScript 정수 parameter test의 이름은 `driver-integer-param.mjs`이고, internal test 항목의 reason은 각 test가 하는 일을 적는다.

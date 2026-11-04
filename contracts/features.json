@@ -3396,7 +3396,6 @@
         "packages/php/tests/OrmGenTest.php",
         "packages/php/tests/ModelMethodsTest.php",
         "packages/php/tests/OrmGenScanTest.php",
-        "packages/php/tests/OrmGenScanParityTest.php",
         "packages/ts/tests/generate-scan.mjs",
         "packages/ts/tests/models-scan.mjs",
         "packages/php-ext/tests/CoverageModelGenerationNativeTest.php",
@@ -3524,16 +3523,6 @@
             "contracts/fixtures/bench/bench.dbs",
             "contracts/fixtures/bench/bench_reader.dbs",
             "contracts/fixtures/bench/bench_shared.dbs"
-          ]
-        },
-        {
-          "id": "generation-scan-parity-php",
-          "command": "node tests/run-long.mts typescript-build -- npm run typescript:build && php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenScanParityTest.php",
-          "shard": "other",
-          "inputs": [
-            "packages/php/tests/OrmGenScanParityTest.php",
-            "tests/generator/php-scan-vectors.json",
-            "packages/ts/src/bin/orm-gen.ts"
           ]
         },
         {

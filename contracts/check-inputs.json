@@ -543,7 +543,6 @@
         "packages/php/tests/OrmGenLazyModelTest.php",
         "packages/php/tests/OrmGenProcessCase.php",
         "packages/php/tests/OrmGenScanTest.php",
-        "packages/php/tests/OrmGenScanParityTest.php",
         "packages/php/tests/OrmGenPackageTest.php",
         "packages/php/composer.json",
         "packages/php/tests/OrmGenTestSupport.php",

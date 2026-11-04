@@ -466,10 +466,6 @@
           "reason": "test: checks PHP-internal Request canonicalization, PendingTime lazy wrapping, and PHP weak scalar caller rules"
         },
         {
-          "glob": "packages/php/tests/OrmGenScanParityTest.php",
-          "reason": "generated: an internal test of the PHP generator component that checks parity with the TypeScript generator, not a client behaviour (K313)"
-        },
-        {
           "glob": "packages/php/tests/OrmGenPackageTest.php",
           "reason": "ecosystem: an internal test of the PHP package that checks that its Composer autoload and bin carry the generator, an install rule of the language ecosystem, not a behaviour of the contract (K313)"
         },
