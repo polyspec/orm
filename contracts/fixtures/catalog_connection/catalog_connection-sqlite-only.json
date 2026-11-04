@@ -145,6 +145,31 @@
               "error": "GRID_TEMPORAL_VALUE"
             }
           }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a date column with no CHECK",
+          "sql": "CREATE TABLE kcat_temporal_bare_date (id INTEGER PRIMARY KEY, d DATE)"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a text that is no dbspec date",
+          "sql": "INSERT INTO kcat_temporal_bare_date (id, d) VALUES (1, 'not a date')"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "kcat_temporal_bare_date",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "id",
+            "d"
+          ],
+          "expect": {
+            "sqlite": {
+              "error": "GRID_TEMPORAL_VALUE"
+            }
+          }
         }
       ]
     }
