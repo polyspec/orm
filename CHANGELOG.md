@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Tests: the test servers no longer serve the PgBouncer database `orm_test_single` and no longer write `ORM_TEST_PGBOUNCER_SINGLE_DSN`, and the Rust case helper `CaseTable` goes: no test used them since the catalog session through a pooler runs on a case database.
 - Tests: a catalog session through a transaction pooler after a schema change (CFG-28, CFG-41) is the case `catalog_session_after_a_schema_change_through_a_pooler` of the `catalog_connection` recipe in every runtime, in place of the Python test `connection_config`, through the new op `sql.hold_statement` and a `dsn` on `catalog.reconnect`.
 - Tests: the conformance runners keep only the bodies that a check reaches, the generated-method and the fixed-clock bodies; the other 50 vectors are cases of the `conformance_verification` recipe, and a test holds each runner to the reached names.
 - The pool of Python closes an idle connection when its lifetime passes, as CFG-5 states; it closed one only when the next caller would take it. The pool bounds of MySQL and PostgreSQL, the lifetime and the refused pool values are cases of the recipes `connection_pool` and `dsn_reject_checked`, and the refusal of a pool option in PHP is the recipe `dsn_reject_php_pool`.

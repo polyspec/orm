@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7688ba95a038c248ec73d0e65e71fdbdce2b921569f6cd5fe5553b8216ffbc6e -->
+<!-- source-sha256: effcfd116e89c001f6cbecfe97a6b15820f6a67ddeb83ab8425f5f271c0ffbd0 -->
 # 변경 이력
 
 ## Unreleased
 
+- Tests: test 서버는 PgBouncer 데이터베이스 `orm_test_single`을 더 제공하지 않고 `ORM_TEST_PGBOUNCER_SINGLE_DSN`을 더 쓰지 않으며, Rust case helper `CaseTable`도 없어진다. pooler를 거치는 catalog session이 case 데이터베이스에서 실행된 뒤로 이것들을 쓰는 test가 없다.
 - Python의 pool은 CFG-5대로 idle connection을 lifetime이 지날 때 닫는다. 이전에는 다음 호출자가 가져갈 때에만 닫았다. MySQL과 PostgreSQL의 pool 경계, lifetime, 거부되는 pool 값은 recipe `connection_pool`과 `dsn_reject_checked`의 case이고, PHP의 pool option 거부는 recipe `dsn_reject_php_pool`이다.
 - 테스트: schema 변경 뒤 transaction pooler를 거치는 catalog session(CFG-28, CFG-41)은 Python 테스트 `connection_config` 대신 모든 runtime에서 `catalog_connection` recipe의 case `catalog_session_after_a_schema_change_through_a_pooler`가 새 op `sql.hold_statement`와 `catalog.reconnect`의 `dsn`으로 맡는다.
 - TypeScript 정수 parameter test의 이름은 `driver-integer-param.mjs`이고, internal test 항목의 reason은 각 test가 하는 일을 적는다.
