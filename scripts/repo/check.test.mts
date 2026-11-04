@@ -42,6 +42,13 @@ const text = (path: string) => readFileSync(new URL(path, repository), 'utf8');
 const trackedFiles = (pattern: string) => execFileSync('git', ['ls-files', '-z', pattern], { cwd: repository }).toString().split('\0').filter(Boolean).filter(notVendored);
 const scriptTexts = await scriptCommands(repository.pathname, trackedFiles('*'));
 const trackedAll = new Set(trackedFiles('*'));
+// Deadline: one make -n, which reads the Makefile and runs nothing.
+caseTest('dbspec-apply-stress-bench runs the stress case of the databases it names', PROCESS, () => {
+  const planned = spawnSync('make', ['-n', 'APPLY_STRESS_DIALECTS=mysql|sqlite', 'dbspec-apply-stress-bench'], { cwd: repository.pathname, encoding: 'utf8', env: isolatedEnvironment() });
+  assert.equal(planned.status, 0, planned.stderr);
+  assert.match(planned.stdout, /go-test\.mts .*TestRecipeDbspecApply\(Mysql\|Sqlite\).*stress_plan_commits_each_step/);
+});
+
 caseTest('the stress case of the dbspec_apply recipe runs under the 120 second deadline of a database case on every runtime', COMPUTE, () => {
   const recipe = JSON.parse(text('contracts/fixtures/dbspec_apply/dbspec_apply.json')) as { cases: { id: string }[] };
   assert.ok(recipe.cases.some(recipeCase => recipeCase.id === 'stress_plan_commits_each_step'), 'the recipe holds the stress case');

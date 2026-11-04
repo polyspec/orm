@@ -549,7 +549,7 @@ dbspec-lock-ts-check: lease-tool orm-codes-typescript
 	$(TSC_BUILD)
 	$(NODE) --test packages/ts/tests/dbspec-begin-exclusive-lock.mjs
 
-# dbspec-apply-stress-bench applies the 2000-table document as the first plan to the databases in APPLY_STRESS_DIALECTS
+# dbspec-apply-stress-bench runs the case stress_plan_commits_each_step of the dbspec_apply recipe through Go: it applies the 2000-table document as the first plan to the databases in APPLY_STRESS_DIALECTS
 # (make bench runs all three). MySQL commits its statements and its 22000 history steps separately.
 # APPLY_STRESS_DIALECTS is the list of databases separated by `|` (mysql, postgres, sqlite). So
 # CI runs the longest MySQL application in a different group from PostgreSQL and SQLite (feature-stress-mysql-check,
@@ -559,6 +559,7 @@ APPLY_STRESS_DIALECTS = mysql|postgres|sqlite
 .PHONY: dbspec-apply-stress-bench
 dbspec-apply-stress-bench:
 	$(if $(APPLY_STRESS_DIALECTS),,$(error APPLY_STRESS_DIALECTS is empty; give mysql, postgres or sqlite separated by |))$(foreach dialect,$(subst |, ,$(APPLY_STRESS_DIALECTS)),$(if $(filter $(dialect),mysql postgres sqlite),,$(error APPLY_STRESS_DIALECTS names $(dialect), which is no database; give mysql, postgres or sqlite separated by |)))
+	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeDbspecApply($(subst mysql,Mysql,$(subst postgres,Postgres,$(subst sqlite,Sqlite,$(APPLY_STRESS_DIALECTS)))))$$/^stress_plan_commits_each_step$$' -count=1
 
 # dbspec-apply-pairs-check builds the TypeScript client and the Rust apply runner,
 # the Go, PHP, TypeScript, and Rust runners in tests/dbspec/apply, the PHP extension polyspec_orm runner (built in this run's directory), and the Python runner

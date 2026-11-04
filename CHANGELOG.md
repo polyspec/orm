@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- `make dbspec-apply-stress-bench` and the stress groups of CI that call it run the case `stress_plan_commits_each_step` again; the target had kept no command since the native apply tests moved to the recipe, so it passed without running anything.
 - Tests: a catalog session through a transaction pooler after a schema change (CFG-28, CFG-41) is the case `catalog_session_after_a_schema_change_through_a_pooler` of the `catalog_connection` recipe in every runtime, in place of the Python test `connection_config`, through the new op `sql.hold_statement` and a `dsn` on `catalog.reconnect`.
 - The feature checker no longer sets `ORM_FEATURE_DATABASE` or `ORM_FEATURE_DSN`, and no test reads them: an owner takes its database from its manifest entry or its recipe.
 - Tests: the exact bytes of a driver cell (PRT-69, INT-5) are the case `driver_bytes_cells_are_exact` of the `conformance_verification` recipe in every runtime, through the new `model.query` key `bytes_hex_of`; the natives that built the cell are gone, and Rust keeps its private row decoding test under INT-142.
