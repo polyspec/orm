@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Tests: the padding of the parent keys of a relation and the number of the placeholder after them are a case of the `model_queries_chain` recipe, the native tests of the collection keys that the recipes hold are gone, and feature-coverage names each one that stays native with its reason.
 - A key of a `datetime` column is a date and time in every runtime, as INT-11 states, also when it is the only key column: PHP, TypeScript and Python returned the text of the column. A TypeScript key is a `Date` whose `toJSON()` holds the microseconds, so two microseconds of one millisecond stay two keys. The cases `single_key_of_a_datetime_keeps_its_type` and `single_key_of_a_microsecond_datetime_keeps_its_instant` of the `model_queries_chain` recipe hold it.
 - Tests: the decimal physical runs and the commands of `contracts/features.json` and `config/parity.json` no longer name the removed tags `decimalphysical`, `markdown` and `physical`, and the row T334-3-6 states that `ormtest` stays, as PRT-43 requires.
 - Tests: the case `catalog_session_after_a_schema_change_through_a_pooler` compares the `pg_backend_pid()` of its read with that of the held statement, so it fails when the read reaches another server connection. The PHP runner of `sql.hold_statement` bound no value to its `$1`, as PDO binds none to that placeholder, and now writes it as `?`.

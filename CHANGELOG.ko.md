@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b70d5d17190ef3e081ec21d39955d3bef9bc08678c797cda11dde54a2d204a38 -->
+<!-- source-sha256: 3dcbc0d805975db476298103a9517a193fcd5c8930974fbf551b5c173591afc3 -->
 # 변경 이력
 
 ## Unreleased
 
+- 테스트: relation의 parent key padding과 그 뒤 placeholder의 번호는 recipe `model_queries_chain`의 case이고, recipe가 담는 collection key의 native test는 사라졌으며, feature-coverage는 native로 남는 각 test를 이유와 함께 적는다.
 - `datetime` column의 key는 INT-11대로 모든 runtime에서 date and time이며, 유일한 key column일 때도 그렇다. PHP, TypeScript, Python은 column의 text를 돌려주었다. TypeScript key는 `toJSON()`이 microsecond를 담는 `Date`이므로 한 millisecond 안의 두 microsecond는 두 key로 남는다. recipe `model_queries_chain`의 case `single_key_of_a_datetime_keeps_its_type`과 `single_key_of_a_microsecond_datetime_keeps_its_instant`가 이를 지킨다.
 - collection key는 PRT-35와 INT-11대로 모든 database에서 구성 요소의 선언 타입을 유지한다. `bool` column이 MySQL과 SQLite에서 정수로 읽혀 `(true, 1)`과 `(1, true)`의 key text가 같았고, composite key의 `datetime` 구성 요소가 TypeScript와 PHP, SQLite의 Python에서 text로 읽혔다. encoding은 이제 recipe `model_queries_chain`의 case `composite_key_*`이고, 어떤 key column도 담을 수 없는 형태는 `tests/collection/keys.json`에 남는다.
 - deadline에 이른 recipe `interface.symbols`는 모든 runtime에서 interface check를 죽이고 case를 실패시키므로, 멈춘 check가 남지 않는다.

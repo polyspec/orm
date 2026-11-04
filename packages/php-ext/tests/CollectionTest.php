@@ -173,17 +173,6 @@ final class CollectionTest extends TestCase
         self::assertSame('shared', $restored->fetchedValue($binaryKey));
     }
 
-    public function testNullIdentityUsesTheCodecDecodeOrmError(): void
-    {
-        try {
-            Collection::keyOf(null);
-            self::fail('SQL NULL cannot identify a collection row');
-        } catch (OrmException $exception) {
-            self::assertSame(Code::CODEC_DECODE, $exception->code_);
-            self::assertSame('CODEC_DECODE: collection row identity contains SQL NULL', $exception->getMessage());
-        }
-    }
-
     public function testTypedKeyAndModelArgumentsRejectValuesOutsideTheirDeclaredTypes(): void
     {
         $collection = new Collection();

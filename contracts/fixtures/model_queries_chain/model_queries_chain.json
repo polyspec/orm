@@ -13,7 +13,8 @@
   "INT-36",
   "INT-87",
   "PRT-35",
-  "INT-11"
+  "INT-11",
+  "PRT-40"
  ],
  "fixture": "contracts/fixtures/model_chain/dbspec-set.json",
  "seed": {
@@ -2079,6 +2080,14 @@
        "label": {
         "text": ""
        }
+      },
+      {
+       "flag": {
+        "bool": true
+       },
+       "label": {
+        "text": "2"
+       }
       }
      ]
     }
@@ -2106,9 +2115,10 @@
       "mysql": {
        "json": {
         "keys": [
-         "t1:0s0:"
+         "t1:0s0:",
+         "t1:1s1:2"
         ],
-        "total": 1,
+        "total": 2,
         "pages": 1,
         "page": 1,
         "per_page": 10
@@ -2117,9 +2127,10 @@
       "postgres": {
        "json": {
         "keys": [
-         "t1:0s0:"
+         "t1:0s0:",
+         "t1:1s1:2"
         ],
-        "total": 1,
+        "total": 2,
         "pages": 1,
         "page": 1,
         "per_page": 10
@@ -2128,9 +2139,10 @@
       "sqlite": {
        "json": {
         "keys": [
-         "t1:0s0:"
+         "t1:0s0:",
+         "t1:1s1:2"
         ],
-        "total": 1,
+        "total": 2,
         "pages": 1,
         "page": 1,
         "per_page": 10
@@ -2155,9 +2167,10 @@
       "mysql": {
        "json": {
         "keys": [
-         "t1:0s0:"
+         "t1:0s0:",
+         "t1:1s1:2"
         ],
-        "total": 1,
+        "total": 2,
         "pages": 1,
         "page": 1,
         "per_page": 10
@@ -2166,9 +2179,10 @@
       "postgres": {
        "json": {
         "keys": [
-         "t1:0s0:"
+         "t1:0s0:",
+         "t1:1s1:2"
         ],
-        "total": 1,
+        "total": 2,
         "pages": 1,
         "page": 1,
         "per_page": 10
@@ -2177,9 +2191,10 @@
       "sqlite": {
        "json": {
         "keys": [
-         "t1:0s0:"
+         "t1:0s0:",
+         "t1:1s1:2"
         ],
-        "total": 1,
+        "total": 2,
         "pages": 1,
         "page": 1,
         "per_page": 10
@@ -2204,6 +2219,14 @@
        "label": {
         "text": ""
        }
+      },
+      {
+       "number": {
+        "int": "1"
+       },
+       "label": {
+        "text": "2"
+       }
       }
      ]
     }
@@ -2231,9 +2254,10 @@
       "mysql": {
        "json": {
         "keys": [
-         "i1:0s0:"
+         "i1:0s0:",
+         "i1:1s1:2"
         ],
-        "total": 1,
+        "total": 2,
         "pages": 1,
         "page": 1,
         "per_page": 10
@@ -2242,9 +2266,10 @@
       "postgres": {
        "json": {
         "keys": [
-         "i1:0s0:"
+         "i1:0s0:",
+         "i1:1s1:2"
         ],
-        "total": 1,
+        "total": 2,
         "pages": 1,
         "page": 1,
         "per_page": 10
@@ -2253,9 +2278,10 @@
       "sqlite": {
        "json": {
         "keys": [
-         "i1:0s0:"
+         "i1:0s0:",
+         "i1:1s1:2"
         ],
-        "total": 1,
+        "total": 2,
         "pages": 1,
         "page": 1,
         "per_page": 10
@@ -2280,9 +2306,10 @@
       "mysql": {
        "json": {
         "keys": [
-         "i1:0s0:"
+         "i1:0s0:",
+         "i1:1s1:2"
         ],
-        "total": 1,
+        "total": 2,
         "pages": 1,
         "page": 1,
         "per_page": 10
@@ -2291,9 +2318,10 @@
       "postgres": {
        "json": {
         "keys": [
-         "i1:0s0:"
+         "i1:0s0:",
+         "i1:1s1:2"
         ],
-        "total": 1,
+        "total": 2,
         "pages": 1,
         "page": 1,
         "per_page": 10
@@ -2302,9 +2330,10 @@
       "sqlite": {
        "json": {
         "keys": [
-         "i1:0s0:"
+         "i1:0s0:",
+         "i1:1s1:2"
         ],
-        "total": 1,
+        "total": 2,
         "pages": 1,
         "page": 1,
         "per_page": 10
@@ -2328,6 +2357,14 @@
        },
        "second_label": {
         "text": "23"
+       }
+      },
+      {
+       "first_label": {
+        "text": "1"
+       },
+       "second_label": {
+        "text": "2"
        }
       },
       {
@@ -2364,10 +2401,11 @@
       "mysql": {
        "json": {
         "keys": [
+         "s1:1s1:2",
          "s1:1s2:23",
          "s2:12s1:3"
         ],
-        "total": 2,
+        "total": 3,
         "pages": 1,
         "page": 1,
         "per_page": 10
@@ -2376,10 +2414,11 @@
       "postgres": {
        "json": {
         "keys": [
+         "s1:1s1:2",
          "s1:1s2:23",
          "s2:12s1:3"
         ],
-        "total": 2,
+        "total": 3,
         "pages": 1,
         "page": 1,
         "per_page": 10
@@ -2388,10 +2427,11 @@
       "sqlite": {
        "json": {
         "keys": [
+         "s1:1s1:2",
          "s1:1s2:23",
          "s2:12s1:3"
         ],
-        "total": 2,
+        "total": 3,
         "pages": 1,
         "page": 1,
         "per_page": 10
@@ -2416,10 +2456,11 @@
       "mysql": {
        "json": {
         "keys": [
+         "s1:1s1:2",
          "s1:1s2:23",
          "s2:12s1:3"
         ],
-        "total": 2,
+        "total": 3,
         "pages": 1,
         "page": 1,
         "per_page": 10
@@ -2428,10 +2469,11 @@
       "postgres": {
        "json": {
         "keys": [
+         "s1:1s1:2",
          "s1:1s2:23",
          "s2:12s1:3"
         ],
-        "total": 2,
+        "total": 3,
         "pages": 1,
         "page": 1,
         "per_page": 10
@@ -2440,10 +2482,11 @@
       "sqlite": {
        "json": {
         "keys": [
+         "s1:1s1:2",
          "s1:1s2:23",
          "s2:12s1:3"
         ],
-        "total": 2,
+        "total": 3,
         "pages": 1,
         "page": 1,
         "per_page": 10
@@ -3634,6 +3677,708 @@
         "pages": 1,
         "page": 1,
         "per_page": 10
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "relation_condition_follows_the_padded_composite_parent_keys",
+   "requirements": [
+    "PRT-40",
+    "DSL-82"
+   ],
+   "seed": {
+    "rows": {
+     "composite_account": [
+      {
+       "tenant_id": {
+        "int": "7"
+       },
+       "account_id": {
+        "int": "1"
+       },
+       "name": {
+        "text": "n"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "7"
+       },
+       "account_id": {
+        "int": "2"
+       },
+       "name": {
+        "text": "n"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "7"
+       },
+       "account_id": {
+        "int": "3"
+       },
+       "name": {
+        "text": "n"
+       }
+      }
+     ],
+     "composite_member": [
+      {
+       "tenant_id": {
+        "int": "7"
+       },
+       "account_id": {
+        "int": "1"
+       },
+       "role": {
+        "text": "owner"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "7"
+       },
+       "account_id": {
+        "int": "1"
+       },
+       "role": {
+        "text": "guest"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "7"
+       },
+       "account_id": {
+        "int": "2"
+       },
+       "role": {
+        "text": "owner"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "7"
+       },
+       "account_id": {
+        "int": "2"
+       },
+       "role": {
+        "text": "guest"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "7"
+       },
+       "account_id": {
+        "int": "3"
+       },
+       "role": {
+        "text": "owner"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "7"
+       },
+       "account_id": {
+        "int": "3"
+       },
+       "role": {
+        "text": "guest"
+       }
+      }
+     ]
+    }
+   },
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "events.subscribe",
+     "connection": "db",
+     "as": "events"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "order": [
+      "account_id"
+     ],
+     "columns": [
+      "tenant_id",
+      "account_id"
+     ],
+     "relation": {
+      "model": "CompositeMember",
+      "match": [
+       [
+        "tenant_id",
+        "tenant_id"
+       ],
+       [
+        "account_id",
+        "account_id"
+       ]
+      ],
+      "many": true,
+      "where": {
+       "role": {
+        "text": "owner"
+       }
+      },
+      "columns": [
+       "tenant_id",
+       "account_id",
+       "role"
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "rows": [
+        [
+         {
+          "int": "7"
+         },
+         {
+          "int": "1"
+         },
+         {
+          "int": "7"
+         },
+         {
+          "int": "1"
+         },
+         {
+          "text": "owner"
+         }
+        ],
+        [
+         {
+          "int": "7"
+         },
+         {
+          "int": "2"
+         },
+         {
+          "int": "7"
+         },
+         {
+          "int": "2"
+         },
+         {
+          "text": "owner"
+         }
+        ],
+        [
+         {
+          "int": "7"
+         },
+         {
+          "int": "3"
+         },
+         {
+          "int": "7"
+         },
+         {
+          "int": "3"
+         },
+         {
+          "text": "owner"
+         }
+        ]
+       ]
+      },
+      "postgres": {
+       "rows": [
+        [
+         {
+          "int": "7"
+         },
+         {
+          "int": "1"
+         },
+         {
+          "int": "7"
+         },
+         {
+          "int": "1"
+         },
+         {
+          "text": "owner"
+         }
+        ],
+        [
+         {
+          "int": "7"
+         },
+         {
+          "int": "2"
+         },
+         {
+          "int": "7"
+         },
+         {
+          "int": "2"
+         },
+         {
+          "text": "owner"
+         }
+        ],
+        [
+         {
+          "int": "7"
+         },
+         {
+          "int": "3"
+         },
+         {
+          "int": "7"
+         },
+         {
+          "int": "3"
+         },
+         {
+          "text": "owner"
+         }
+        ]
+       ]
+      },
+      "sqlite": {
+       "rows": [
+        [
+         {
+          "int": "7"
+         },
+         {
+          "int": "1"
+         },
+         {
+          "int": "7"
+         },
+         {
+          "int": "1"
+         },
+         {
+          "text": "owner"
+         }
+        ],
+        [
+         {
+          "int": "7"
+         },
+         {
+          "int": "2"
+         },
+         {
+          "int": "7"
+         },
+         {
+          "int": "2"
+         },
+         {
+          "text": "owner"
+         }
+        ],
+        [
+         {
+          "int": "7"
+         },
+         {
+          "int": "3"
+         },
+         {
+          "int": "7"
+         },
+         {
+          "int": "3"
+         },
+         {
+          "text": "owner"
+         }
+        ]
+       ]
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "events",
+     "compare": "all",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT `a`.`tenant_id` AS `a__tenant_id`, `a`.`account_id` AS `a__account_id` FROM `composite_account` AS `a` ORDER BY `a`.`account_id` ASC"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_account"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": true
+            }
+           ],
+           [
+            "error",
+            {
+             "null": true
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT `a`.`tenant_id` AS `a__tenant_id`, `a`.`account_id` AS `a__account_id`, `a`.`role` AS `a__role` FROM `composite_member` AS `a` WHERE (`a`.`tenant_id`, `a`.`account_id`) IN ((?, ?), (?, ?), (?, ?), (?, ?)) AND (`a`.`role` = ?)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "7"
+              },
+              {
+               "int": "1"
+              },
+              {
+               "int": "7"
+              },
+              {
+               "int": "2"
+              },
+              {
+               "int": "7"
+              },
+              {
+               "int": "3"
+              },
+              {
+               "int": "7"
+              },
+              {
+               "int": "3"
+              },
+              {
+               "text": "owner"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_member"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": true
+            }
+           ],
+           [
+            "error",
+            {
+             "null": true
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"tenant_id\" AS \"a__tenant_id\", \"a\".\"account_id\" AS \"a__account_id\" FROM \"composite_account\" AS \"a\" ORDER BY \"a\".\"account_id\" ASC"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_account"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": true
+            }
+           ],
+           [
+            "error",
+            {
+             "null": true
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"tenant_id\" AS \"a__tenant_id\", \"a\".\"account_id\" AS \"a__account_id\", \"a\".\"role\" AS \"a__role\" FROM \"composite_member\" AS \"a\" WHERE (\"a\".\"tenant_id\", \"a\".\"account_id\") IN (($1, $2), ($3, $4), ($5, $6), ($7, $8)) AND (\"a\".\"role\" = $9)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "7"
+              },
+              {
+               "int": "1"
+              },
+              {
+               "int": "7"
+              },
+              {
+               "int": "2"
+              },
+              {
+               "int": "7"
+              },
+              {
+               "int": "3"
+              },
+              {
+               "int": "7"
+              },
+              {
+               "int": "3"
+              },
+              {
+               "text": "owner"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_member"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": true
+            }
+           ],
+           [
+            "error",
+            {
+             "null": true
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"tenant_id\" AS \"a__tenant_id\", \"a\".\"account_id\" AS \"a__account_id\" FROM \"composite_account\" AS \"a\" ORDER BY \"a\".\"account_id\" ASC"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_account"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": true
+            }
+           ],
+           [
+            "error",
+            {
+             "null": true
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"tenant_id\" AS \"a__tenant_id\", \"a\".\"account_id\" AS \"a__account_id\", \"a\".\"role\" AS \"a__role\" FROM \"composite_member\" AS \"a\" WHERE (\"a\".\"tenant_id\", \"a\".\"account_id\") IN ((?, ?), (?, ?), (?, ?), (?, ?)) AND (\"a\".\"role\" = ?)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "7"
+              },
+              {
+               "int": "1"
+              },
+              {
+               "int": "7"
+              },
+              {
+               "int": "2"
+              },
+              {
+               "int": "7"
+              },
+              {
+               "int": "3"
+              },
+              {
+               "int": "7"
+              },
+              {
+               "int": "3"
+              },
+              {
+               "text": "owner"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_member"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": true
+            }
+           ],
+           [
+            "error",
+            {
+             "null": true
+            }
+           ]
+          ]
+         }
+        ]
        }
       }
      }

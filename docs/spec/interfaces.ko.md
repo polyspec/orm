@@ -49,7 +49,7 @@ flowchart LR
 - **INT-8** `Optional<T>` — Go: `*T`; PHP: `?T`; Rust: `Option<T>`; TypeScript: `T | null`; Python: `T | None`
 - **INT-9** `List<T>` — Go: slice; PHP: array; Rust: `Vec<T>`; TypeScript: `T[]`; Python: `list`
 - **INT-10** `Result<T>` — Go: `(T, error)`; PHP: 반환 또는 예외; Rust: `Result<T>`; TypeScript: `Promise<T>`; Python: 반환 또는 예외
-- **INT-11** `Key` — Go: `orm.Key`; PHP: `int|string|bool|Bytes|DateTimeInterface`; Rust: `polyspec_orm::Key`; TypeScript: `Key`; Python: `Key` (`int | str | bool | bytes | datetime.datetime`). Python `Collection.keys()`는 지원하는 각 키의 타입을 보존하고 이 키 타입에 속하지 않는 값은 거부한다.
+- **INT-11** `Key` — Go: `orm.Key`; PHP: `int|string|bool|Bytes|DateTimeInterface`; Rust: `polyspec_orm::Key`; TypeScript: `Key`; Python: `Key` (`int | str | bool | bytes | datetime.datetime`). Python `Collection.keys()`는 지원하는 각 키의 타입을 보존하고 이 키 타입에 속하지 않는 값은 거부한다. `datetime` column의 key는 구성 요소가 하나든 여럿이든 모든 구현에서 그 순간의 date and time이며 column의 text가 아니다. TypeScript `Date`는 millisecond까지만 담으므로 그 key는 값이 millisecond로 자른 순간이고 `toJSON()`이 소수부의 끝 0이 없는 UTC RFC 3339로 순간 전체를 돌려주는 `Date`다. 한 millisecond 안의 두 microsecond는 다른 key이며, 그런 key는 `keys()`가 돌려준 key로 찾는다. 호출자가 만든 `Date`는 자기 millisecond의 key다.
 
 null, 빈 목록, 누락 필드, 기본값은 서로 다른 상태다. 직렬화는 코덱 명세가 요구하는 논리 타입과 필드 순서를 유지한다.
 
