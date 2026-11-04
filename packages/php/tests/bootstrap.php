@@ -106,7 +106,6 @@ require_once __DIR__ . '/dbspec_cases.php';
 require_once __DIR__ . '/dbspec_analysis_cases.php';
 require_once __DIR__ . '/dbspec_plan_cases.php';
 require_once __DIR__ . '/dbspec_behaviour.php';
-require_once __DIR__ . '/dbspec_set_cases.php';
 require_once __DIR__ . '/MarkdownTest.php';
 require_once __DIR__ . '/MarkdownConformanceTest.php';
 require_once dirname(__DIR__) . '/markdownmodel/bootstrap.php';

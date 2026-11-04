@@ -258,6 +258,14 @@ final class Recipe
             self::dsnConnectStep($step, $database);
             return;
         }
+        if ($step['op'] === 'dbspec.read_set') {
+            self::dbspecReadSetStep($step, $database);
+            return;
+        }
+        if ($step['op'] === 'dbspec.render_statements') {
+            self::dbspecRenderStatementsStep($step, dirname(__DIR__, 3) . '/' . dirname($path));
+            return;
+        }
         if ($step['op'] === 'dbspec.introspect_shown') {
             self::dbspecIntrospectShownStep($step, dirname(__DIR__, 3) . '/' . dirname($path), $database);
             return;
@@ -1809,6 +1817,106 @@ final class Recipe
         }
         foreach ($expect['absent_events'] ?? [] as $kind) {
             Assert::assertNotContains($kind, $kinds);
+        }
+    }
+
+    /**
+     * Runs one dbspec.read_set step (FCV-4): it writes the tree under an empty temporary directory, with real links in the
+     * order written, reads the set with the public Dbspec::readSet, and compares the paths and the bytes of the files or
+     * the rule and path of each error (DBS-11).
+     */
+    private static function dbspecReadSetStep(RecipeStep $step, string $database): void
+    {
+        $expect = $step['expect'][$database]->all();
+        $root = sys_get_temp_dir() . '/orm-php-dbspec-set-' . bin2hex(random_bytes(8));
+        mkdir($root, 0o700);
+        try {
+            foreach ($step['tree'] as $path => $entry) {
+                $target = "$root/$path";
+                if (!is_dir(dirname($target))) {
+                    mkdir(dirname($target), 0o700, true);
+                }
+                $kind = array_key_first($entry);
+                $value = $entry[$kind];
+                $ok = match ($kind) {
+                    'file' => file_put_contents($target, $value) === strlen($value),
+                    'hex' => file_put_contents($target, (string) hex2bin($value)) === strlen($value) / 2,
+                    'symlink' => symlink($value, $target),
+                    'hardlink' => link("$root/$value", $target),
+                };
+                Assert::assertTrue($ok, "cannot create the $kind $target");
+            }
+            $result = Dbspec::readSet("$root/{$step['set_file']}");
+            if (isset($expect['errors'])) {
+                Assert::assertNull($result->documents, 'a failed read returned documents');
+                Assert::assertNull($result->external, 'a failed read returned external files');
+                Assert::assertSame(
+                    array_map(static fn(array $e): array => [$e['rule'], "$root/{$e['path']}"], $expect['errors']),
+                    array_map(static fn(object $e): array => [$e->rule, $e->path], $result->errors),
+                    'errors',
+                );
+                foreach ($result->errors as $i => $error) {
+                    Assert::assertStringContainsString($error->path, $error->message, 'the message names the path');
+                    Assert::assertStringContainsString($expect['errors'][$i]['message_holds'] ?? '', $error->message);
+                }
+                return;
+            }
+            Assert::assertSame([], $result->errors, 'errors');
+            foreach (['documents', 'external'] as $list) {
+                Assert::assertSame(
+                    array_map(static fn(string $p): array => ["$root/$p", (string) file_get_contents("$root/$p")], $expect[$list]),
+                    array_map(static fn(object $f): array => [$f->path, $f->bytes], $result->$list),
+                    "$list files",
+                );
+            }
+        } finally {
+            exec('rm -rf ' . escapeshellarg($root));
+        }
+    }
+
+    /**
+     * Runs one dbspec.render_statements step (FCV-4): it parses each document of the case of the vectors against the
+     * others and renders the set for each dialect, in the given order and reversed, to exactly the statements of the case (DIA-113).
+     */
+    private static function dbspecRenderStatementsStep(RecipeStep $step, string $dir): void
+    {
+        $vectors = json_decode((string) file_get_contents("$dir/{$step['vectors']}"), true, 512, JSON_THROW_ON_ERROR);
+        $vector = null;
+        foreach ($vectors['cases'] as $candidate) {
+            if ($candidate['id'] === $step['case']) {
+                $vector = $candidate;
+            }
+        }
+        if ($vector === null) {
+            Assert::fail("{$step['vectors']} has no case {$step['case']}");
+        }
+        $text = static fn(array $lines): string => implode("\n", $lines) . "\n";
+        $documents = [];
+        foreach ($vector['documents'] as $name => $lines) {
+            $set = [];
+            foreach ($vector['documents'] as $other => $otherLines) {
+                if ($other !== $name) {
+                    $set[$other] = $text($otherLines);
+                }
+            }
+            $parsed = Dbspec::parse($text($lines), $set);
+            if ($parsed->document === null) {
+                Assert::fail("$name: " . self::diagnostics($parsed->diagnostics));
+            }
+            $documents[] = $parsed->document;
+        }
+        foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
+            $want = $vector['statements'][$dialect] ?? [];
+            if ($want === []) {
+                Assert::fail("$dialect has no statements");
+            }
+            foreach ([$documents, array_reverse($documents)] as $given) {
+                $rendered = Dbspec::render($given, $dialect);
+                if ($rendered->diagnostics !== []) {
+                    Assert::fail("$dialect: " . self::diagnostics($rendered->diagnostics));
+                }
+                Assert::assertSame($want, $rendered->statements, "$dialect statements");
+            }
         }
     }
 

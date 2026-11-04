@@ -8,11 +8,6 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// vectorCaseOf is the index-th case object, found by the section key of the object.
-func vectorCaseOf(object map[string]any, key string, index int) map[string]any {
-	return asFixture[map[string]any](asFixture[[]any](object[key])[index])
-}
-
 // TestVectorLoadersRejectMalformedVectors checks that the engine test, when reading tests/dbspec vectors,
 // rejects sections and fields that are missing or of the wrong type with a "<file>: <location> <problem>" error;
 // the test checks that it does.
@@ -20,14 +15,12 @@ func TestVectorLoadersRejectMalformedVectors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	decoders := map[string]func(vectorReader, map[string]any) error{
 		"plan-cases.json": decodePlanVectors,
-		"ddl.json":        func(r vectorReader, o map[string]any) error { _, err := decodeDDLVectors(r, o); return err },
 	}
 	mutations := []struct {
 		file, location, problem string
 		change                  func(o map[string]any)
 	}{
 		{"plan-cases.json", "version", "is missing", func(o map[string]any) { delete(o, "version") }},
-		{"ddl.json", "cases[0].statements", "is missing", func(o map[string]any) { delete(vectorCaseOf(o, "cases", 0), "statements") }},
 	}
 	for _, m := range mutations {
 		t.Run(m.file+":"+m.location, func(t *testing.T) {

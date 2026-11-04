@@ -675,7 +675,7 @@ python-coverage-case-check: python-venv-check
 # set-files.json), the hashes and sets recipes, and the unit tests of syntax analysis, formatting and the set reader.
 .PHONY: dbspec-python-check
 dbspec-python-check: python-venv-check
-	$(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_ddl
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_dbspec_render_statements_none
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_apply
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_render_physical_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_render_physical_postgres
@@ -735,14 +735,14 @@ dbspec-stress-bench/rust: dbspec-stress-bench/prepare
 .PHONY: dbspec-rust-check/documents dbspec-rust-check/set dbspec-rust-check/apply-cleanup dbspec-rust-check/unicode dbspec-rust-check/show-create dbspec-rust-check/render-physical
 dbspec-rust-check: dbspec-rust-check/documents dbspec-rust-check/set dbspec-rust-check/apply-cleanup dbspec-rust-check/unicode dbspec-rust-check/show-create dbspec-rust-check/render-physical
 dbspec-rust-check/documents:
-	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_render --test dbspec_runtime --test dbspec_model --test dbspec_mermaid_none -- --nocapture
-	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_render --test dbspec_runtime --test dbspec_model --test dbspec_mermaid_none -- --nocapture
-# dbspec-rust-check/set runs every file tree case of tests/dbspec/set-files.json through the set reader
+	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_render_statements_none --test dbspec_runtime --test dbspec_model --test dbspec_mermaid_none -- --nocapture
+	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_render_statements_none --test dbspec_runtime --test dbspec_model --test dbspec_mermaid_none -- --nocapture
+# dbspec-rust-check/set runs every file tree case of the recipe tests/dbspec/set-files.json through the set reader
 # dbspec::read_set, every case of tests/dbspec/set-parse.json through dbspec::parse_set, and its unit cases of the normal form, the nested JSON and the schema value.
 dbspec-rust-check/set: dbspec-rust-check/set/vectors dbspec-rust-check/set/unit
 .PHONY: dbspec-rust-check/set/vectors dbspec-rust-check/set/unit
 dbspec-rust-check/set/vectors:
-	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-schema --test dbspec_set -- --nocapture
+	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test dbspec_read_set_none -p polyspec-orm-schema --test dbspec_set_working_directory -- --nocapture
 dbspec-rust-check/set/unit:
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm-schema --lib dbspec::set
 # dbspec-rust-check/unicode checks that the Unicode word rune table written by Go (unicode_word.rs) matches the ranges at every code point.
@@ -815,7 +815,7 @@ dbspec-php-check/manifest: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/HashesRecipeTest.php
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/SetsRecipeTest.php
 dbspec-php-check/render: php-vendor-check php-models
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRenderTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRenderStatementsRecipeTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRenderPhysicalRecipeTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecSetDecimalRecipeTest.php
 dbspec-php-check/plan: php-vendor-check php-models
@@ -837,9 +837,10 @@ dbspec-php-check/analyze: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecAnalyzeTest.php
 dbspec-php-check/show-create: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecShowCreateTest.php
-# dbspec-php-check/set runs Dbspec::readSet on every case of tests/dbspec/set-files.json and the focused cases, each
+# dbspec-php-check/set runs Dbspec::readSet on every case of the recipe tests/dbspec/set-files.json, each
 # a temporary file tree with real symbolic and hard links (docs/spec/dbspec.md "Document sets").
 dbspec-php-check/set: php-vendor-check php-models
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecReadSetRecipeTest.php
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecSetTest.php
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/SetReaderDiagnosticsTest.php
 # dbspec-php-check/set-parse runs DbspecSetParseRecipeTest: every case of tests/dbspec/set-parse.json through Dbspec::parseSet
@@ -1024,9 +1025,9 @@ dbspec-php-extension-check/vectors: php-vendor-check dbspec-php-extension-check/
 dbspec-php-extension-check/sets: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/HashesRecipeTestExtensionTest.php
 	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/SetsRecipeTestExtensionTest.php
-# dbspec-php-extension-check/render runs DbspecRenderTest with the extension: the statements of tests/dbspec/ddl.json.
+# dbspec-php-extension-check/render runs the rendered statements recipe with the extension: the statements of tests/dbspec/ddl.json.
 dbspec-php-extension-check/render: php-vendor-check dbspec-php-extension-check/prepare
-	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/DbspecRenderTest.php
+	$(WITH_TEST_ENV) $(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecRenderStatementsRecipeTestExtensionTest.php
 	$(WITH_TEST_ENV) $(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecRenderPhysicalRecipeTestExtensionTest.php
 	$(WITH_TEST_ENV) $(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecSetDecimalRecipeTestExtensionTest.php
 # dbspec-php-extension-check/graph runs DbspecGraphTest with the extension: the TypeError of a document or plan whose array holds another type.
@@ -1097,8 +1098,9 @@ dbspec-php-extension-check/plan-apply: php-vendor-check dbspec-php-extension-che
 # dbspec-php-extension-check/show-create runs DbspecShowCreateIntrospectTest with the extension: introspection of the canned MySQL catalog of tests/dbspec/show-create.json.
 dbspec-php-extension-check/show-create: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecShowCreateIntrospectTest.php
-# dbspec-php-extension-check/set runs DbspecSetTest with the extension: Dbspec::readSet on every case of tests/dbspec/set-files.json and the focused cases.
+# dbspec-php-extension-check/set runs the recipe tests/dbspec/set-files.json and DbspecSetTest with the extension: Dbspec::readSet on every case.
 dbspec-php-extension-check/set: php-vendor-check dbspec-php-extension-check/prepare
+	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecReadSetRecipeTestExtensionTest.php
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecSetTest.php
 # dbspec-php-extension-check/codec runs the codec recipe tests/codec/codec.json through the extension's codec (docs/spec/codec.md COD-40).
 dbspec-php-extension-check/codec: php-vendor-check dbspec-php-extension-check/prepare
@@ -1471,7 +1473,7 @@ php-go-text-check: php-vendor-check php-models
 php-gen-unit-check: php-vendor-check lease-tool orm-codes-typescript php-models
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenCliTest.php packages/php/tests/OrmGenScanTest.php packages/php/tests/OrmGenScanParityTest.php packages/php/tests/OrmGenPackageTest.php packages/php/tests/OrmGenParsedModelTest.php packages/php/tests/OrmGenLazyModelTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenCliTest.php packages/php/tests/OrmGenScanTest.php packages/php/tests/OrmGenPackageTest.php packages/php/tests/OrmGenParsedModelTest.php packages/php/tests/OrmGenLazyModelTest.php
 
 # generator-consumer-check runs the consumer tests of each generator as a part of its own, so a failed part does not stop the others.
 .PHONY: generator-consumer-check/go generator-consumer-check/php generator-consumer-check/php-extension generator-consumer-check/typescript generator-consumer-check/python generator-consumer-check/rust-field-types generator-consumer-check/rust-field-types/generated-field-types generator-consumer-check/rust-field-types/fixed-method-list generator-consumer-check/rust-emission generator-consumer-check/rust-chain-scan generator-consumer-check/rust-chain-scan/generates-called-methods generator-consumer-check/rust-integration
@@ -2119,12 +2121,12 @@ collection-composite-key-check: typescript-build php-vendor-check python-venv-ch
 	mkdir -p "$$run_dir/php-extension"; \
 	status=0; \
 	$(RUN_TESTS) node --test --test-name-pattern='collection-key/(composite-typed-components|nullable-composite-row-has-no-key)' packages/ts/tests/collection_identity.mjs || status=1; \
-	$(GO_TEST) ./packages/go/orm -run '^(TestCompositeCollectionKeyTypedComponentsFromFixture|TestCompositeCollectionKeyMicrosecondPrecisionFromFixture|TestNullableCompositeRowHasNoCollectionKey)$$' -count=1 || status=1; \
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CollectionIdentityTest.php --filter 'testCompositeComponentsPreserveTypedIdentityAndSharedEncoding|testCompositeDateTimeMicrosecondsTrimTrailingZeroes|testNullCompositeRowHasNoCollectionKey' || status=1; \
-	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_collection_identity.CollectionIdentityTest.test_native_key_values_keep_their_types_and_reject_unsupported_values packages.python.tests.test_collection_identity.CollectionIdentityTest.test_composite_components_preserve_typed_identity_and_shared_encoding packages.python.tests.test_collection_identity.CollectionIdentityTest.test_composite_datetime_microseconds_trim_trailing_zeroes packages.python.tests.test_collection_identity.CollectionIdentityTest.test_a_null_composite_row_has_no_collection_key || status=1; \
+	$(GO_TEST) ./packages/go/orm -run '^(TestCompositeCollectionKeyTypedComponentsFromFixture|TestNullableCompositeRowHasNoCollectionKey)$$' -count=1 || status=1; \
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CollectionIdentityTest.php --filter 'testCompositeComponentsPreserveTypedIdentityAndSharedEncoding|testNullCompositeRowHasNoCollectionKey' || status=1; \
+	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_collection_identity.CollectionIdentityTest.test_native_key_values_keep_their_types_and_reject_unsupported_values packages.python.tests.test_collection_identity.CollectionIdentityTest.test_composite_components_preserve_typed_identity_and_shared_encoding packages.python.tests.test_collection_identity.CollectionIdentityTest.test_a_null_composite_row_has_no_collection_key || status=1; \
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --test collection_identity composite || status=1; \
 	if $(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); then \
-	  env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelAssemblyTest.php packages/php-ext/tests/CollectionTest.php --filter 'testTypedIdentityOrderedReplacementAndArrayViews|testCompositeComponentsPreserveTypedIdentityAndSharedEncoding|testCompositeDateTimeMicrosecondsTrimTrailingZeroes|testNullCompositeRowHasNoCollectionKey' || status=1; \
+	  env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelAssemblyTest.php packages/php-ext/tests/CollectionTest.php --filter 'testTypedIdentityOrderedReplacementAndArrayViews|testCompositeComponentsPreserveTypedIdentityAndSharedEncoding|testNullCompositeRowHasNoCollectionKey' || status=1; \
 	else status=1; fi; \
 	test $$status -eq 0
 
@@ -2148,7 +2150,7 @@ ts-min-check: lease-tool orm-codes-typescript
 dbspec-ts-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	$(NODE) --test packages/ts/tests/browser-entry.mjs packages/ts/tests/recipe_canonical.mjs packages/ts/tests/recipe_normalize.mjs packages/ts/tests/recipe_positions.mjs packages/ts/tests/recipe_invalid.mjs packages/ts/tests/recipe_files.mjs packages/ts/tests/dbspec-set.mjs packages/ts/tests/dbspec-set-edges.mjs packages/ts/tests/recipe_set_parse.mjs packages/ts/tests/recipe_hashes.mjs packages/ts/tests/recipe_sets.mjs packages/ts/tests/dbspec_show_create_introspect-none.test.mjs packages/ts/tests/dbspec-rules.mjs packages/ts/tests/dbspec-render.mjs packages/ts/tests/dbspec_dialect_refusal-none.test.mjs packages/ts/tests/dbspec-plan-cases.mjs packages/ts/tests/dbspec-plan-invalid.mjs packages/ts/tests/dbspec-plan-chains.mjs packages/ts/tests/dbspec-plan-parse.mjs packages/ts/tests/dbspec-plan-comparisons.mjs packages/ts/tests/dbspec-add-tables-steps.mjs packages/ts/tests/dbspec-mermaid-none.test.mjs packages/ts/tests/dbspec-unicode.mjs packages/ts/tests/dbspec-show-create.mjs
+	$(NODE) --test packages/ts/tests/browser-entry.mjs packages/ts/tests/recipe_canonical.mjs packages/ts/tests/recipe_normalize.mjs packages/ts/tests/recipe_positions.mjs packages/ts/tests/recipe_invalid.mjs packages/ts/tests/recipe_files.mjs packages/ts/tests/dbspec_read_set-none.test.mjs packages/ts/tests/dbspec-set-edges.mjs packages/ts/tests/recipe_set_parse.mjs packages/ts/tests/recipe_hashes.mjs packages/ts/tests/recipe_sets.mjs packages/ts/tests/dbspec_show_create_introspect-none.test.mjs packages/ts/tests/dbspec-rules.mjs packages/ts/tests/dbspec_render_statements-none.test.mjs packages/ts/tests/dbspec_dialect_refusal-none.test.mjs packages/ts/tests/dbspec-plan-cases.mjs packages/ts/tests/dbspec-plan-invalid.mjs packages/ts/tests/dbspec-plan-chains.mjs packages/ts/tests/dbspec-plan-parse.mjs packages/ts/tests/dbspec-plan-comparisons.mjs packages/ts/tests/dbspec-add-tables-steps.mjs packages/ts/tests/dbspec-mermaid-none.test.mjs packages/ts/tests/dbspec-unicode.mjs packages/ts/tests/dbspec-show-create.mjs
 	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/dbspec_render_physical-mysql.test.mjs packages/ts/tests/dbspec_render_physical-postgres.test.mjs packages/ts/tests/dbspec_render_physical-sqlite.test.mjs packages/ts/tests/dbspec_set_decimal-mysql.test.mjs packages/ts/tests/dbspec_set_decimal-postgres.test.mjs packages/ts/tests/dbspec_set_decimal-sqlite.test.mjs
 
 # dbspec-language-check builds the TypeScript client and @polyspec/dbspec-language, and checks that the language service's module graph does not reach

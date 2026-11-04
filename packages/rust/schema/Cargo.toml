@@ -30,20 +30,6 @@ polyspec-orm-test-support = { path = "../test-support" }
 # The shared dbspec vectors are read against their JSON Schemas (tests/dbspec/schema); the schemas name no remote or file
 # reference, so the resolvers and TLS of the default features are left out.
 jsonschema = { version = "=0.58.6", default-features = false }
-# Creates the symbolic links of the set-document tests; the crate holds the platform calls (Rust std has none that is cross-platform).
-symlink = "=0.1.0"
-
-# These test targets run a shared vector file with one libtest-mimic trial per case id
-# (polyspec_orm_testcase::trial), so their harness is libtest-mimic.
-[[test]]
-name = "dbspec_render"
-path = "tests/dbspec_render.rs"
-harness = false
-
-[[test]]
-name = "dbspec_set"
-path = "tests/dbspec_set.rs"
-harness = false
 
 [lints]
 workspace = true

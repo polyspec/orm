@@ -140,6 +140,9 @@ type step struct {
 	// Vectors is the file of dbspec.introspect_shown, relative to the recipe, and Case the id of its case.
 	Vectors string `json:"vectors"`
 	Case    string `json:"case"`
+	// SetTree is the file tree of dbspec.read_set and SetFile the path of its set file in that tree.
+	SetTree map[string]setTreeEntry `json:"tree"`
+	SetFile string                  `json:"set_file"`
 	// Keyring is the keyring of keyring.versions, Calls the builder calls of markdown.builder (FCV-4).
 	Keyring *aesKeyringSpec `json:"keyring"`
 	Calls   []string        `json:"calls"`
@@ -301,6 +304,10 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 	case "dbspec.parse_emit", "dbspec.manifest", "dbspec.render", "dbspec.analyze", "dbspec.parse_positions", "dbspec.format",
 		"dbspec.parse_set", "dbspec.set", "dbspec.load_set", "dbspec.runtime_model", "dbspec.read_file", "dbspec.read_bytes":
 		return checkDBSpec(s, o.dir, database)
+	case "dbspec.read_set":
+		return checkReadSet(s, database)
+	case "dbspec.render_statements":
+		return renderStatements(s, o.dir)
 	case "dbspec.export_mermaid", "dbspec.import_mermaid":
 		got, err := mermaidStep(s, bound, o.dir)
 		if err != nil {
