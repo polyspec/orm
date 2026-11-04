@@ -3486,6 +3486,24 @@
               "error": "CONFIG"
             }
           }
+        },
+        {
+          "op": "schema.exists",
+          "schema": "bad-name",
+          "expect": {
+            "mysql": {
+              "error": "CONFIG",
+              "message_holds": "is invalid"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message_holds": "is invalid"
+            },
+            "sqlite": {
+              "error": "CONFIG",
+              "message_holds": "is invalid"
+            }
+          }
         }
       ]
     },

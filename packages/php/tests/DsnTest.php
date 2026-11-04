@@ -48,6 +48,84 @@ class DsnTest extends TestCase
         );
         self::assertSame(['sqlite', 'sqlite:/tmp/orm_example.sqlite'], [$driver, $pdo], 'sqlite');
         self::assertSame([['busy_timeout', '250'], ['journal_mode', 'WAL']], $pragmas, 'sqlite pragmas');
+        self::assertSame(
+            ['mysql', 'mysql:host=db.example;port=3307;dbname=app;charset=utf8mb4', 'user', 'p@ss', [], null],
+            Orm::parseDsn('mysql://user:p%40ss@db.example:3307/app?timezone=UTC'),
+            'the whole mysql tuple'
+        );
+        self::assertSame(
+            ['postgres', 'pgsql:host=pool.example;port=5432;dbname=app;sslmode=require', 'user', 'secret', [], null],
+            Orm::parseDsn('postgres://user:secret@db.example/app?host=pool.example&sslmode=require'),
+            'the host parameter over the host of the URL'
+        );
+        self::assertSame(
+            ['sqlite', 'sqlite:/tmp/app db.sqlite', null, null, [['journal_mode', 'WAL']], null],
+            Orm::parseDsn('sqlite:///tmp/app%20db.sqlite?_pragma=journal_mode(WAL)'),
+            'a decoded sqlite path'
+        );
+        self::assertSame(
+            ['sqlite', 'sqlite:/tmp/app.sqlite', null, null, [['busy_timeout', '200'], ['journal_mode', 'WAL']], null],
+            Orm::parseDsn('sqlite:///tmp/app.sqlite?&_pragma=busy_timeout(200)&&_pragma=journal_mode(WAL)&'),
+            'empty query parts'
+        );
+        self::assertSame(
+            ['127.0.0.1:49152', 'corpus', 'a token'],
+            Orm::parseMarkdownDsn('markdown://127.0.0.1:49152/corpus?token=a+token'),
+            'a decoded markdown token'
+        );
+        // The text of a refusal in the two PHP modes; the recipes dsn_reject and dsn_reject_parameters hold the parts
+        // that every runtime that refuses it shares.
+        $accepts = 'CONFIG: mysql DSN has the unknown parameter extra; it accepts timezone, socket, ssl-mode, ssl-ca';
+        foreach (
+            [
+                ['mysql://db.example/app?extra=value', $accepts],
+                ['mysql://db.example/app?extra=%ZZ', $accepts],
+                [
+                    'mysql://db.example/app?ssl-mode=disabled&ssl-ca=%2Ftmp%2Fca.pem',
+                    'CONFIG: mysql DSN ssl-mode "disabled" is not supported; '
+                    . 'the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca',
+                ],
+            ] as [$dsn, $message]
+        ) {
+            try {
+                Orm::parseDsn($dsn);
+                self::fail("$dsn was accepted");
+            } catch (OrmException $error) {
+                self::assertSame($message, $error->getMessage());
+            }
+        }
+        try {
+            Orm::parseMarkdownDsn('markdown://127.0.0.1:49152/corpus?extra=%ZZ');
+            self::fail('an unknown markdown parameter was accepted');
+        } catch (OrmException $error) {
+            self::assertSame(
+                'CONFIG: markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>; it does not accept extra',
+                $error->getMessage()
+            );
+        }
+        // The fields of a function value in the two PHP modes; the plans of these functions are in the planner vectors.
+        foreach (
+            [
+                ['now', [], Orm::now(), false],
+                ['today', [], Orm::today(), false],
+                ['seconds_ago', [3], Orm::secondsAgo(3), false],
+                ['minutes_ago', [3], Orm::minutesAgo(3), false],
+                ['hours_ago', [3], Orm::hoursAgo(3), false],
+                ['days_ago', [3], Orm::daysAgo(3), false],
+                ['months_ago', [3], Orm::monthsAgo(3), false],
+                ['seconds_later', [3], Orm::secondsLater(3), false],
+                ['minutes_later', [3], Orm::minutesLater(3), false],
+                ['hours_later', [3], Orm::hoursLater(3), false],
+                ['days_later', [3], Orm::daysLater(3), false],
+                ['months_later', [3], Orm::monthsLater(3), false],
+                ['day_of_week', [], Orm::dayOfWeek(), true],
+                ['year', [], Orm::year(), true],
+                ['month', [], Orm::month(), true],
+                ['date', [], Orm::date(), true],
+            ] as [$name, $args, $function, $column]
+        ) {
+            self::assertSame([$name, $args, $column], [$function->name, $function->args, $function->column]);
+        }
     }
 
     public function testSharedDsnUrlPartsPreserveEmptyAuthorityRules(): void

@@ -10,7 +10,8 @@
     "CFG-19",
     "CFG-26",
     "PRT-64",
-    "PRT-63"
+    "PRT-63",
+    "CFG-6"
   ],
   "cases": [
     {
@@ -767,6 +768,63 @@
           "expect": {
             "none": {
               "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_other_parameter_before_its_value_is_decoded",
+      "requirements": [
+        "PRT-63"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "markdown://127.0.0.1:49152/corpus?extra=%ZZ",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message_holds": "it does not accept extra"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_statement_timeout_is_refused_before_the_socket",
+      "requirements": [
+        "CFG-6",
+        "PRT-63"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "markdown://127.0.0.1:1/corpus?token=secret",
+          "config": {
+            "statement_timeout_ms": 1
+          },
+          "expect": {
+            "none": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_server_that_refuses_the_socket_is_driver",
+      "requirements": [
+        "PRT-64"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "markdown://127.0.0.1:1/corpus?token=secret",
+          "expect": {
+            "none": {
+              "error": "DRIVER",
+              "message_holds": "connecting to the flowmark server 127.0.0.1:1"
             }
           }
         }

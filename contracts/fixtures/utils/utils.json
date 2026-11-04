@@ -929,7 +929,8 @@
               "error": "CAPABILITY_UNSUPPORTED"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message_holds": "a qualified table name is required"
             },
             "sqlite": {
               "error": "CAPABILITY_UNSUPPORTED"
@@ -947,7 +948,8 @@
               "error": "CAPABILITY_UNSUPPORTED"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message_holds": "is invalid"
             },
             "sqlite": {
               "error": "CAPABILITY_UNSUPPORTED"
@@ -1049,7 +1051,8 @@
               "error": "CAPABILITY_UNSUPPORTED"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message_holds": "a qualified table name is required"
             },
             "sqlite": {
               "error": "CAPABILITY_UNSUPPORTED"
@@ -1068,7 +1071,8 @@
               "error": "CAPABILITY_UNSUPPORTED"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message_holds": "is invalid"
             },
             "sqlite": {
               "error": "CAPABILITY_UNSUPPORTED"
