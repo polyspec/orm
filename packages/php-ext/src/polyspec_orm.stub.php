@@ -1842,6 +1842,7 @@ final class Catalog
     private bool $closed = false;
     private int $netWriteTimeout = 0;
     private bool $streamLeft = false;
+    private float $reopenUntil = 0.0;
 
     public static function connect(string $dsn): Catalog {}
     public function dialect(): string {}
