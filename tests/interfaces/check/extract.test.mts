@@ -7,6 +7,7 @@ import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer, type Server, type Socket } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { isolatedEnvironment } from '../../environment.mts';
 import { caseTest, PROCESS } from '../../testcase.mts';
 import { run } from './extract.mts';
 
@@ -87,7 +88,7 @@ for (const signalName of ['SIGKILL', 'SIGTERM'] as const) {
       const checker = spawn(process.execPath, ['tests/interfaces/check/main.mts', '-language', 'python'], {
         cwd: root,
         stdio: 'ignore',
-        env: { ...process.env, ORM_PYTHON: hungExtractor(directory), ORM_HANG_PORT: String(holders.port) },
+        env: isolatedEnvironment({ ORM_PYTHON: hungExtractor(directory), ORM_HANG_PORT: String(holders.port) }),
       });
       try {
         const sockets = await holders.both;
