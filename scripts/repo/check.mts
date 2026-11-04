@@ -14,7 +14,8 @@ import { scriptPathErrors, toolingLanguageErrors } from './scripts.mts';
 import { kitCopies, kitOwnedPaths } from './kit-copies.mts';
 import { segments } from './shell.mts';
 import { detachedGroupErrors, timeFailureErrors } from './sources.mts';
-import { nativeBoundUnitErrors } from './parity-units.mts';
+import { nativeBoundUnitErrors, unboundNativeTestErrors } from './parity-units.mts';
+import { readTree } from '../features/test-names.mts';
 import { callerEnvironmentErrors, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, scriptCommands, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, generatedCodesErrors, phpExtensionBuildErrors, typescriptHolderErrors, typescriptReaderErrors, phpunitModelErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, rustTestCaseErrors, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
 import { checkInputErrors } from '../features/owners.mts';
 import { COMPUTE, sections } from '../../tests/testcase.mts';
@@ -208,6 +209,8 @@ failures.push(...composerVersionErrors(text('mise.toml'), workflows, composerRel
 const parseSuite = (content: string): unknown => JSON.parse(content);
 // A shared behaviour is the cases of a recipe; a native test stays only for what FCV-2 states with its reason.
 failures.push(...nativeBoundUnitErrors(readParityConfig(join(root, 'config/parity.json')).units, text('docs/spec/feature-coverage.md'), file => parseSuite(text(file))));
+// A test that a parity file holds has a binding or a stated reason, because the parity tool reads the file and not the test.
+failures.push(...unboundNativeTestErrors(readParityConfig(join(root, 'config/parity.json')).units, text('docs/spec/feature-coverage.md'), readTree(root).files, text));
 
 if (failures.length > 0) {
   console.error(failures.join('\n'));

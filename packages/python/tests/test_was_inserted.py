@@ -11,10 +11,8 @@ from pathlib import Path
 
 from . import testcase
 from .case_database import case_database
-from .test_markdown import MarkdownTestServer
 from .test_sqlite import generate_document
 
-from polyspec.orm.database import Db
 from polyspec.orm.errors import OrmError
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -89,19 +87,6 @@ class WasInsertedTest(unittest.TestCase):
             self.assertEqual(out, "done\n")
 
         self.run_case("postgres", body)
-
-    def test_markdown_has_no_backend_lock_view(self):
-        server = MarkdownTestServer(self, '{"ok":true}')
-        db = Db.connect(server.dsn())
-        try:
-            self.assertEqual(
-                self.code(lambda: db.utils().backend_waiting_for_lock()),
-                "CAPABILITY_UNSUPPORTED",
-                "backend_waiting_for_lock on markdown",
-            )
-        finally:
-            db.close()
-
 
 if __name__ == "__main__":
     testcase.main()

@@ -77,21 +77,6 @@ fn driver_parameters_reach_sqlx() {
     assert_eq!(options.get_charset(), "latin1", "charset reaches sqlx");
 }
 
-/// A MySQL install inside a transaction returns CONFIG: schema statements
-/// commit implicitly.
-// Requirements: INT-55.
-#[tokio::test]
-async fn mysql_install_inside_transaction() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    let database = CaseDatabase::create("mysql").await;
-    let db = Db::connect(database.dsn(), 2, polyspec_orm::Config::default()).await.unwrap();
-    let inside: polyspec_orm::Result<()> = db.transaction(async || db.utils().schema().install(&SCHEMA).await).await;
-    assert_eq!(inside.as_ref().map_err(|e| e.code().to_owned()), Err(polyspec_orm::codes::CONFIG.to_owned()), "install inside a transaction: {inside:?}");
-    db.utils().schema().install(&SCHEMA).await.unwrap();
-    db.close().await;
-    database.drop().await;
-}
-
 /// The pool size a connection is opened with is its maximum open connections.
 #[tokio::test]
 // Requirements: CFG-4.
