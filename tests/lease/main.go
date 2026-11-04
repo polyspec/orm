@@ -257,11 +257,47 @@ func random() string {
 	return hex.EncodeToString(b)
 }
 
+// exclusiveBlocking returns the exclusive holdings among all that block pid. An exclusive already held by the same process belongs to that
+// process (errHeld). Within an exclusive held by an ancestor process (e.g. the make that ran the child make), its child processes divide
+// holdings in the inner directory (inside).
+func exclusiveBlocking(all []holder, pid int) ([]holder, error) {
+	var blocking []holder
+	for _, h := range all {
+		if h.Kind != "exclusive" {
+			continue
+		}
+		if h.PID == pid {
+			return nil, errHeld
+		}
+		if ancestorOrSelf(h.PID, pid) {
+			return nil, inside{holder: h}
+		}
+		blocking = append(blocking, h)
+	}
+	return blocking, nil
+}
+
 // acquire tries once to take a holding of kind under the name pid. If it succeeds it returns the holding file's path; if blocked, it returns a refusal
 // instead.
 func acquire(dir, kind string, pid int, command string) (string, error) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
+	}
+	// A blocked attempt writes nothing: every waiter watches dir, so a write here would wake the others, whose attempts would wake this one.
+	// The holdings are read again after the write, since one may appear in between.
+	all, err := holders(dir)
+	if err != nil {
+		return "", err
+	}
+	blocking, err := exclusiveBlocking(all, pid)
+	if err != nil {
+		return "", err
+	}
+	if kind == "exclusive" && len(blocking) == 0 {
+		blocking = all
+	}
+	if len(blocking) > 0 {
+		return "", refusal{blocking: blocking}
 	}
 	checkout, err := os.Getwd()
 	if err != nil {
@@ -291,20 +327,15 @@ func acquire(dir, kind string, pid int, command string) (string, error) {
 		if err != nil {
 			return "", errors.Join(err, remove(file))
 		}
-		for _, h := range all {
-			if h.Kind == "exclusive" {
-				if err := remove(file); err != nil {
-					return "", err
-				}
-				// If this process holds an exclusive, it is already inside that holding; if an ancestor process holds it, it acquires within that holding.
-				if h.PID == pid {
-					return "", errHeld
-				}
-				if ancestorOrSelf(h.PID, pid) {
-					return "", inside{holder: h}
-				}
-				return "", refusal{blocking: []holder{h}}
+		blocking, err := exclusiveBlocking(all, pid)
+		if err == nil && len(blocking) > 0 {
+			err = refusal{blocking: blocking}
+		}
+		if err != nil {
+			if removeErr := remove(file); removeErr != nil {
+				return "", removeErr
 			}
+			return "", err
 		}
 		return file, nil
 	}
@@ -315,29 +346,19 @@ func acquire(dir, kind string, pid int, command string) (string, error) {
 			if readErr != nil {
 				return "", readErr
 			}
-			var blocking []holder
-			for _, h := range all {
-				if h.Kind == "exclusive" {
-					// An exclusive already held by the same process belongs to that process. Within an exclusive held by an ancestor process (e.g. the make
-					// that ran the child make), its child processes divide holdings in the inner directory.
-					if h.PID == pid {
-						return "", errHeld
-					}
-					if ancestorOrSelf(h.PID, pid) {
-						return "", inside{holder: h}
-					}
-					blocking = append(blocking, h)
-				}
+			blocking, blockErr := exclusiveBlocking(all, pid)
+			if blockErr != nil {
+				return "", blockErr
 			}
 			return "", refusal{blocking: blocking}
 		}
 		return "", err
 	}
-	all, err := holders(dir)
+	all, err = holders(dir)
 	if err != nil {
 		return "", errors.Join(err, remove(file))
 	}
-	var blocking []holder
+	blocking = nil
 	for _, h := range all {
 		if h.file != file {
 			blocking = append(blocking, h)

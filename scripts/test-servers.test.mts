@@ -313,6 +313,29 @@ function writeHolder(dir: string, name: string, fields: { kind: string; pid: num
   writeFileSync(join(dir, name), JSON.stringify({ checkout: '/x', started: '2026-10-06T00:00:00Z', command: 'make x', ...fields }));
 }
 
+// A refused attempt writes nothing in the lease directory: every waiter watches that directory, so a write of one waiter's attempt
+// wakes the others, whose attempts wake it again, and they spin for as long as the holder runs. The directory's time shows a write
+// that was removed again.
+caseTest('a refused attempt leaves the lease directory untouched, so waiters do not wake each other', COMPUTE, () => {
+  const { LEASE: lease } = process.env;
+  assert.ok(lease, 'LEASE is unset; run make orm-test-servers-check, which builds it');
+  const root = mkdtempSync(join(tmpdir(), 'orm-lease-quiet-'));
+  const holder = spawn('sleep', ['30'], { stdio: 'ignore' });
+  try {
+    for (const [held, file, request] of [['exclusive', 'exclusive.json', 'exclusive'], ['exclusive', 'exclusive.json', 'shared'], ['shared', 'shared-1-a.json', 'exclusive']] as const) {
+      const leases = join(root, `${held}-${request}`);
+      writeHolder(leases, file, { kind: held, pid: holder.pid! });
+      const before = statSync(leases, { bigint: true }).mtimeNs;
+      const refused = spawnSync(lease, ['run', leases, request, '--', 'true'], { encoding: 'utf8' });
+      assert.equal(refused.status, 3, refused.stderr);
+      assert.equal(statSync(leases, { bigint: true }).mtimeNs, before, `a refused ${request} request wrote in the directory of a held ${held} lease`);
+    }
+  } finally {
+    holder.kill('SIGKILL');
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 caseTest('an ended holder whose releaser still runs is waited for, and taken over when the releaser ends without removing it', COMPUTE, async () => {
   const { LEASE: lease } = process.env;
   assert.ok(lease, 'LEASE is unset; run make orm-test-servers-check, which builds it');
