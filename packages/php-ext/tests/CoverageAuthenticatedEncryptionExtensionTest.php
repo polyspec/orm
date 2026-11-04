@@ -67,21 +67,4 @@ final class CoverageAuthenticatedEncryptionExtensionTest extends TestCase
             Assert::assertSame('CODEC_UNSUPPORTED', $error->code_);
         }
     }
-
-    // Requirements: COD-33, COD-35 (docs/spec).
-    public function testCodecMalformedInputUsesDecodeCode(): void
-    {
-        $cases = [
-            [['ordered_json'], '{'],
-            [['yaml'], "a: 1\na: 2\n"],
-        ];
-        foreach ($cases as [$styles, $raw]) {
-            try {
-                Codec::decode($styles, $raw);
-                self::fail('malformed codec input must be rejected');
-            } catch (OrmException $error) {
-                Assert::assertSame('CODEC_DECODE', $error->code_);
-            }
-        }
-    }
 }

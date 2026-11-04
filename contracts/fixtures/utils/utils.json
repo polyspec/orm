@@ -713,6 +713,35 @@
       ]
     },
     {
+      "id": "a_lock_needs_a_transaction",
+      "requirements": [
+        "INT-50"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "conn"
+        },
+        {
+          "op": "utils.lock",
+          "connection": "conn",
+          "name": "orm_test.outside",
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "stats_report_the_pool_of_the_connection",
       "requirements": [
         "INT-79"

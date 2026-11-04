@@ -89,7 +89,7 @@ from .case_database import case_database
 from .recipe_apply import apply_ops
 from .coverage_case import native_query, native_session
 from .recipe_generator import check_generated_files, check_refused_generation, check_generator
-from .recipe_introspect import _introspect_refusal, _op_dbspec_introspect
+from .recipe_introspect import _introspect_refusal, _op_dbspec_introspect, _op_dbspec_plan_physical
 from .server_database import with_database
 from .recipe_keys import check_keys
 from .recipe_model import connect_dsn, model_ops
@@ -4283,6 +4283,7 @@ _DATABASE_OPS = {
     "wait.at_least": _op_wait_at_least,
     "dbspec.ddl_behavior": _op_ddl_behavior,
     "dbspec.introspect": _op_dbspec_introspect,
+    "dbspec.plan_physical": _op_dbspec_plan_physical,
     "sql.exec": _op_sql_exec,
     "sql.hold_connection": _op_hold_connection,
     "sql.hold_statement": _op_hold_statement,
@@ -4585,6 +4586,9 @@ def _schema_argument(arg: dict, context: dict) -> Schema:
     replace = arg.get("manifest_replace")
     if replace is not None:
         text = text.replace(replace["from"], replace["to"])
+    whole = arg.get("manifest")
+    if whole is not None:
+        return Schema(whole["text"], whole["hash"], manifest.external_text)
     return Schema(text, manifest.manifest_hash, manifest.external_text)
 
 

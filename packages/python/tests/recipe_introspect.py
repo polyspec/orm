@@ -12,8 +12,11 @@ from polyspec.orm.dbspec import (
     render_dbspec,
 )
 from polyspec.orm.dbspec.introspect import introspect_dbspec
+from polyspec.orm.dbspec.plan import parse_plan
+from polyspec.orm.dbspec.plan_steps import plan_steps
 
 from .dbspec_introspect_runner import connect
+from .dbspec_plans import plan_cases
 from .runner_connect import Adapter
 
 CONNECTION_RULES = {
@@ -165,3 +168,143 @@ def _introspect_refusal(dialect):
     finally:
         connection.close()
     raise AssertionError(f"the call accepted the dialect {dialect}")
+
+
+_PLAN_HIDDEN_LEFT = {
+    "mysql": "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME LIKE 'dbspec$%' OR COLUMN_NAME LIKE 'dbspec$%')",
+    "postgres": "SELECT COUNT(*) FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid WHERE c.relnamespace = current_schema()::regnamespace AND c.relkind = 'r' AND a.attnum > 0 AND (c.relname LIKE 'dbspec$%' OR a.attname LIKE 'dbspec$%')",
+    "sqlite": "SELECT COUNT(*) FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type = 'table' AND (m.name LIKE 'dbspec$%' OR p.name LIKE 'dbspec$%')",
+}
+
+
+def _plan_text(lines: list) -> str:
+    return "\n".join(lines) + "\n"
+
+
+def _op_dbspec_plan_physical(step: dict, context: dict) -> dict:
+    """dbspec.plan_physical (FCV-4, PLN-102): on one native connection of the case database, the connection rules, the
+    rendered source and the before steps; the plan steps before finalize, on SQLite with foreign keys off and no row of
+    foreign_key_check, and the public introspect_dbspec reads the target with nothing unsupported; without an
+    irreversible step, the rollback statements return to the source and the steps run again; then the after steps and
+    the finalize steps run, the target is read again and no table or column named dbspec$ remains."""
+    database, dsn = context["database"], context["dsn"]
+    case_id = step["case"]
+    vector = next(
+        (c for c in plan_cases(context["dir"] / step["vectors"]) if c["id"] == case_id),
+        None,
+    )
+    if vector is None:
+        raise AssertionError(f"the vectors have no case {case_id}")
+    parsed = parse_plan(_plan_text(vector["plan"]))
+    if parsed["diagnostics"]:
+        raise AssertionError(f"the plan: {parsed['diagnostics']}")
+    target = _schema_text([parsed["plan"]["schema"]])
+    source = None
+    setup = []
+    source_text = ""
+    if vector.get("source") is not None:
+        source, _positions, diagnostics = parse_dbspec(_plan_text(vector["source"]), {})
+        if diagnostics:
+            raise AssertionError(f"the source: {diagnostics}")
+        rendered = render_dbspec([source], database)
+        if rendered.get("diagnostics"):
+            raise AssertionError(f"the render of the source: {rendered['diagnostics']}")
+        setup = rendered["statements"]
+        source_text = _schema_text([source])
+    planned = plan_steps(source, parsed["plan"], database)
+    if planned["diagnostics"]:
+        raise AssertionError(f"the plan steps: {planned['diagnostics']}")
+    steps = planned["steps"]
+    reversible = all(s["finalize"] or s["rollback"] != "" for s in steps)
+    sqlite = database == "sqlite"
+    connection = connect(database, dsn)
+    try:
+        if sqlite:
+            connection.isolation_level = None
+        session = Adapter(connection)
+
+        def value(query: str) -> str:
+            rows = session.execute(query)["rows"]
+            if not rows:
+                raise AssertionError(f"{query}: no row")
+            if rows[0][0] is None:
+                raise AssertionError(f"{query}: NULL value")
+            return str(rows[0][0])
+
+        def behavior(entries: list) -> None:
+            for entry in entries:
+                if entry.get("dialects") and database not in entry["dialects"]:
+                    continue
+                if "query" in entry:
+                    got = value(entry["query"])
+                    if got != entry["want"]:
+                        raise AssertionError(f"{entry['query']}: got {got}, want {entry['want']}")
+                    continue
+                try:
+                    session.execute(entry["sql"])
+                except Exception as error:  # noqa: BLE001 - any driver error of the refused statement
+                    if not entry.get("fails"):
+                        raise AssertionError(f"{entry['sql']}: {error}") from error
+                    continue
+                if entry.get("fails"):
+                    raise AssertionError(f"{entry['sql']} must fail")
+
+        def foreign_keys() -> None:
+            if sqlite:
+                violations = value("SELECT COUNT(*) FROM pragma_foreign_key_check")
+                if violations != "0":
+                    raise AssertionError(f"foreign_key_check returns {violations} rows")
+
+        def schema_is(what: str, want: str) -> None:
+            result = introspect_dbspec(session, database, "introspected")
+            if result["unsupported"]:
+                raise AssertionError(f"{what}: unsupported objects {result['unsupported']}")
+            document = result["document"]
+            got = _schema_text([document]) if document.tables else ""
+            if got != want:
+                raise AssertionError(f"{what}: the schema text differs\n--- want\n{want}--- got\n{got}")
+
+        def forward(restore: bool) -> None:
+            for s in steps:
+                if s["finalize"]:
+                    break
+                session.execute(s["restore"] if restore and s["restore"] != "" else s["statement"])
+            foreign_keys()
+
+        for sql in [*CONNECTION_RULES[database], *setup]:
+            session.execute(sql)
+        behavior(vector.get("before") or [])
+        # SQLite turns foreign keys off while it recreates a table, and checks them afterwards.
+        if sqlite:
+            session.execute("PRAGMA foreign_keys = OFF")
+            session.execute("PRAGMA legacy_alter_table = OFF")
+        forward(False)
+        schema_is("applied", target)
+        if reversible:
+            # A rollback that goes all the way back recreates the old table with the added column hidden.
+            for s in reversed(steps):
+                if not s["finalize"]:
+                    session.execute(s["rollback_restore"] if s["rollback_restore"] != "" else s["rollback"])
+            foreign_keys()
+            schema_is("rolled back", source_text)
+            forward(True)
+            schema_is("applied again", target)
+        if sqlite:
+            session.execute("PRAGMA foreign_keys = ON")
+        behavior(vector.get("after") or [])
+        # Finalize also runs with SQLite foreign keys off, as apply does: hidden tables can reference each other.
+        if sqlite:
+            session.execute("PRAGMA foreign_keys = OFF")
+        for s in steps:
+            if s["finalize"]:
+                session.execute(s["statement"])
+        foreign_keys()
+        if sqlite:
+            session.execute("PRAGMA foreign_keys = ON")
+        schema_is("finalized", target)
+        hidden = value(_PLAN_HIDDEN_LEFT[database])
+        if hidden != "0":
+            raise AssertionError(f"{hidden} tables or columns named dbspec$ remain after finalize")
+    finally:
+        connection.close()
+    return {}

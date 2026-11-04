@@ -31,7 +31,7 @@ import { checkKeys } from './recipe_keys.mjs';
 import { checkGeneratedFiles, checkRefusedGeneration, checkGenerator } from './recipe_generator.mjs';
 import { connectDsn, modelOps } from './recipe_model.mjs';
 import { applyOps } from './recipe_apply.mjs';
-import { introspectStep } from './recipe_introspect.mjs';
+import { introspectStep, planPhysicalStep } from './recipe_introspect.mjs';
 import { classesFromModel } from './registered_models.mjs';
 import { nativeQuery, nativeSession, within } from './coverage_case.mjs';
 import { readStep } from './recipe_reads.mjs';
@@ -982,6 +982,9 @@ const OPS = {
   async 'dbspec.introspect'(s, context) {
     return introspectStep(s, context);
   },
+  async 'dbspec.plan_physical'(s, context) {
+    return planPhysicalStep(s, context);
+  },
   async 'sql.exec'(s, context) {
     // An object form runs only on the databases whose key it holds (FCV-4): an absent key runs nothing.
     const statement = typeof s.sql === 'string' ? s.sql : s.sql[context.database];
@@ -1598,6 +1601,8 @@ async function schemaArgument(arg, context) {
   if (built.manifest === null) throw new Error(`schema: ${JSON.stringify(built.diagnostics)}`);
   let manifestText = built.manifest.manifestText;
   if (arg.manifest_replace !== undefined) manifestText = manifestText.replaceAll(arg.manifest_replace.from, arg.manifest_replace.to);
+  // manifest takes the place of the text and the hash that the build gives, so that a set with a diagnostic reaches the call (FCV-4).
+  if (arg.manifest !== undefined) return { manifestText: arg.manifest.text, manifestHash: arg.manifest.hash, externalText: built.manifest.externalText };
   return { manifestText, manifestHash: built.manifest.manifestHash, externalText: built.manifest.externalText };
 }
 

@@ -1,5 +1,4 @@
-# The empty database, schema or file of a dbspec case and the connection rules, which dbspec_apply.py and
-# dbspec_plan_physical.py run on. It checks that what remains after the drop is nothing.
+# The empty database, schema or file of a dbspec case and the connection rules, which dbspec_apply.py runs on. It checks that what remains after the drop is nothing.
 import contextlib
 import os
 import sqlite3

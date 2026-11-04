@@ -82,6 +82,7 @@
                             "model.connect",
                             "sql.exec",
                             "dbspec.ddl_behavior",
+                            "dbspec.plan_physical",
                             "dbspec.introspect"
                           ]
                         }
@@ -810,6 +811,7 @@
             "dbspec.introspect_sqlite",
             "dbspec.apply_fault",
             "dbspec.ddl_behavior",
+            "dbspec.plan_physical",
             "dbspec.introspect",
             "dbspec.introspect_shown",
             "markdown.builder",
@@ -973,6 +975,9 @@
         },
         {
           "$ref": "#/$defs/ops/dbspec.ddl_behavior"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.plan_physical"
         },
         {
           "$ref": "#/$defs/ops/dbspec.introspect"
@@ -1432,6 +1437,25 @@
               "type": "string"
             }
           }
+        },
+        "manifest": {
+          "description": "Takes the place of the manifest text and hash that the build gives (SCH-7): a set with a diagnostic cannot be built from a document, so its text and hash are written here.",
+          "type": "object",
+          "required": [
+            "text",
+            "hash"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "text": {
+              "type": "string",
+              "minLength": 1
+            },
+            "hash": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            }
+          }
         }
       }
     },
@@ -1736,9 +1760,9 @@
             "type": "boolean"
           },
           "timeout_ms": {
-            "description": "The timeout of the transaction (INT-42); a nested transaction that names it is refused with CONFIG.",
+            "description": "The timeout of the transaction (INT-42), where 0 is the same as omitting it; a nested transaction that names a positive one is refused with CONFIG.",
             "type": "integer",
-            "minimum": 1
+            "minimum": 0
           },
           "default_retry": {
             "description": "The transaction names no retry and takes the default of INT-43; without it and without retry the helper passes a retry of 0.",
@@ -2081,6 +2105,27 @@
         "properties": {
           "op": {
             "const": "dbspec.ddl_behavior"
+          },
+          "vectors": {
+            "type": "string"
+          },
+          "case": {
+            "type": "string"
+          }
+        }
+      },
+      "dbspec.plan_physical": {
+        "description": "On one native connection of the case database: the source, the before steps, the plan steps, the rollback, the after steps and the finalize steps of the case, with the introspected schema text checked at each stage (PLN-102).",
+        "type": "object",
+        "required": [
+          "op",
+          "vectors",
+          "case"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.plan_physical"
           },
           "vectors": {
             "type": "string"
@@ -5270,6 +5315,15 @@
                       "$ref": "#/$defs/name"
                     }
                   },
+                  "where": {
+                    "type": "object",
+                    "propertyNames": {
+                      "$ref": "#/$defs/name"
+                    },
+                    "additionalProperties": {
+                      "$ref": "#/$defs/argument"
+                    }
+                  },
                   "connect": {
                     "description": "The related model is connected to the connection of the query; without it the related model takes the connection of its parent (INT-87).",
                     "type": "boolean"
@@ -7957,6 +8011,9 @@
           },
           "connection": {
             "$ref": "#/$defs/name"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
           },
           "name": {
             "type": "string",

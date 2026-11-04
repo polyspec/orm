@@ -91,6 +91,169 @@ final class RecipeIntrospect
     }
 
     /**
+     * On one native connection of the case database (PLN-102): the connection rules, the rendered source and the before
+     * steps; the plan steps before finalize, on SQLite with foreign keys off and no row of foreign_key_check, and the
+     * public Dbspec::introspect reads the target with nothing unsupported; without an irreversible step, the rollback
+     * statements return to the source and the steps run again; then the after steps and the finalize steps run, the
+     * target is read again and no table or column named dbspec$ remains.
+     *
+     * @param array<string, mixed> $context
+     * @return array{}
+     */
+    public static function planPhysical(RecipeStep $step, array $context): array
+    {
+        $database = $context['database'];
+        $id = $step['case'];
+        $matching = array_values(array_filter(
+            plan_vectors_at($context['dir'] . '/' . $step['vectors'])['cases'],
+            static fn(array $c): bool => $c['id'] === $id
+        ));
+        if ($matching === []) {
+            throw new RuntimeException("the vectors have no case $id");
+        }
+        $vector = $matching[0];
+        $parsed = Dbspec::parsePlan(dbspec_plan_text($vector['plan']));
+        $plan = $parsed->plan ?? throw new RuntimeException('the plan: ' . plan_diagnostics($parsed->diagnostics));
+        $target = self::planSchemaText($plan->schema);
+        $source = null;
+        $setup = [];
+        $sourceText = '';
+        if (isset($vector['source'])) {
+            $sourceParse = Dbspec::parse(dbspec_plan_text($vector['source']), []);
+            $source = $sourceParse->document
+                ?? throw new RuntimeException('the source: ' . plan_diagnostics($sourceParse->diagnostics));
+            $rendered = Dbspec::render([$source], $database);
+            $setup = $rendered->statements
+                ?? throw new RuntimeException('the render of the source: ' . plan_diagnostics($rendered->diagnostics));
+            $sourceText = self::planSchemaText($source);
+        }
+        $planned = Dbspec::planSteps($source, $plan, $database);
+        $steps = $planned->steps ?? throw new RuntimeException('the plan steps: ' . plan_diagnostics($planned->diagnostics));
+        $reversible = true;
+        foreach ($steps as $planStep) {
+            if (!$planStep->finalize && $planStep->rollback === '') {
+                $reversible = false;
+            }
+        }
+        $sqlite = $database === 'sqlite';
+        $pdo = case_admin($context['dsn']);
+        $behavior = static function (array $entries) use ($pdo, $database): void {
+            foreach ($entries as $entry) {
+                if (isset($entry['dialects']) && !in_array($database, $entry['dialects'], true)) {
+                    continue;
+                }
+                if (isset($entry['query'])) {
+                    $got = dbspec_value($pdo, $entry['query']);
+                    if ($got !== $entry['want']) {
+                        throw new RuntimeException("{$entry['query']}: got $got, want {$entry['want']}");
+                    }
+                    continue;
+                }
+                try {
+                    $pdo->exec($entry['sql']);
+                } catch (\PDOException $error) {
+                    if (!($entry['fails'] ?? false)) {
+                        throw new RuntimeException("{$entry['sql']}: {$error->getMessage()}", 0, $error);
+                    }
+                    continue;
+                }
+                if ($entry['fails'] ?? false) {
+                    throw new RuntimeException("{$entry['sql']} must fail");
+                }
+            }
+        };
+        $foreignKeys = static function () use ($pdo, $sqlite): void {
+            if ($sqlite) {
+                $violations = dbspec_value($pdo, 'SELECT COUNT(*) FROM pragma_foreign_key_check');
+                if ($violations !== '0') {
+                    throw new RuntimeException("foreign_key_check returns $violations rows");
+                }
+            }
+        };
+        $schemaIs = static function (string $what, string $want) use ($pdo, $database): void {
+            $result = Dbspec::introspect($pdo, $database, 'introspected');
+            if ($result->unsupported !== []) {
+                throw new RuntimeException("$what: unsupported objects " . json_encode($result->unsupported));
+            }
+            $got = $result->document->tables !== [] ? self::planSchemaText($result->document) : '';
+            if ($got !== $want) {
+                throw new RuntimeException("$what: the schema text differs\n--- want\n$want--- got\n$got");
+            }
+        };
+        $forward = static function (bool $restore) use ($pdo, $steps, $foreignKeys): void {
+            foreach ($steps as $planStep) {
+                if ($planStep->finalize) {
+                    break;
+                }
+                $pdo->exec($restore && $planStep->restore !== '' ? $planStep->restore : $planStep->statement);
+            }
+            $foreignKeys();
+        };
+        foreach ([...self::CONNECTION_RULES[$database], ...$setup] as $statement) {
+            $pdo->exec($statement);
+        }
+        $behavior($vector['before'] ?? []);
+        // SQLite turns foreign keys off while it recreates a table, and checks them afterwards.
+        if ($sqlite) {
+            $pdo->exec('PRAGMA foreign_keys = OFF');
+            $pdo->exec('PRAGMA legacy_alter_table = OFF');
+        }
+        $forward(false);
+        $schemaIs('applied', $target);
+        if ($reversible) {
+            // A rollback that goes all the way back recreates the old table with the added column hidden.
+            foreach (array_reverse($steps) as $planStep) {
+                if (!$planStep->finalize) {
+                    $pdo->exec($planStep->rollbackRestore !== '' ? $planStep->rollbackRestore : $planStep->rollback);
+                }
+            }
+            $foreignKeys();
+            $schemaIs('rolled back', $sourceText);
+            $forward(true);
+            $schemaIs('applied again', $target);
+        }
+        if ($sqlite) {
+            $pdo->exec('PRAGMA foreign_keys = ON');
+        }
+        $behavior($vector['after'] ?? []);
+        // Finalize also runs with SQLite foreign keys off, as apply does: hidden tables can reference each other.
+        if ($sqlite) {
+            $pdo->exec('PRAGMA foreign_keys = OFF');
+        }
+        foreach ($steps as $planStep) {
+            if ($planStep->finalize) {
+                $pdo->exec($planStep->statement);
+            }
+        }
+        $foreignKeys();
+        if ($sqlite) {
+            $pdo->exec('PRAGMA foreign_keys = ON');
+        }
+        $schemaIs('finalized', $target);
+        $hidden = dbspec_value($pdo, match ($database) {
+            'mysql' => "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND "
+                . "(TABLE_NAME LIKE 'dbspec\$%' OR COLUMN_NAME LIKE 'dbspec\$%')",
+            'postgres' => "SELECT COUNT(*) FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid WHERE "
+                . "c.relnamespace = current_schema()::regnamespace AND c.relkind = 'r' AND a.attnum > 0 AND "
+                . "(c.relname LIKE 'dbspec\$%' OR a.attname LIKE 'dbspec\$%')",
+            default => "SELECT COUNT(*) FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type = "
+                . "'table' AND (m.name LIKE 'dbspec\$%' OR p.name LIKE 'dbspec\$%')",
+        });
+        if ($hidden !== '0') {
+            throw new RuntimeException("$hidden tables or columns named dbspec\$ remain after finalize");
+        }
+        return [];
+    }
+
+    /** The schema text of one document. */
+    private static function planSchemaText(Document $document): string
+    {
+        $manifest = Dbspec::manifest([$document]);
+        return $manifest->manifest?->schemaText
+            ?? throw new RuntimeException('the manifest is refused: ' . plan_diagnostics($manifest->diagnostics));
+    }
+
+    /**
      * The empty case database with the catalog queries of another dialect: their failure is the error of the call (DIA-133).
      *
      * @return array{failed: true}

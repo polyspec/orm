@@ -1,9 +1,14 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e82481247b92be91d113a4b69c4fa7fc9f1b247e5a7e6517c18d59b0c5419fdf -->
+<!-- source-sha256: 27386491a85acf7bb625e8c9c8c5a8842dbda319c8694e2a5c73346915b52796 -->
 # 변경 이력
 
 ## Unreleased
 
+- 시험: diagnostic이 있는 set의 install 거부(SCH-7), transaction 밖의 lock utility(INT-50), 0인 transaction timeout(INT-42)이 recipe `schema_install`, `utils`, `transactions`의 case로 여섯 runtime 모두에서 돌고, recipe가 가진 native test를 없앴다. TypeScript, Rust, PHP model test의 transaction과 utility 본문, PHP deadlock test와 그 child script, Rust transaction timeout test, Python의 pool 한도, schema 도구, tuple padding test이다. recipe의 `schema` 인자는 `manifest`를 받고, INT-42는 `0`이 timeout 생략과 같다고 적는다.
+- 테스트: plan의 physical 실행(PLN-102)은 op `dbspec.plan_physical`과 recipe `dbspec_introspect`의 case 13개 `plan_physical_*`이며 모든 runtime의 모든 database에서 돈다. native 시험, 그 make target, 그것만 쓰던 helper는 없앴다. 모든 runtime이 공개 `planSteps`로 plan step을 읽고, Go만 담던 finalize 뒤의 foreign key 검사를 이제 모든 runtime이 담는다.
+- 테스트: ORM 밖에서 바뀐 database에 다시 하는 install(DBS-108, SCH-7, SCH-13)은 모든 runtime의 모든 database에서 recipe `schema_install`의 case `install_renamed_column`과 `install_unsupported_column_without_check`이며 message 전체를 비교한다. native 시험과 `contracts/fixtures/install/changed_database.json`은 없앴다.
+- 테스트: recipe schema는 `relation`의 `where`를 받고, `model_queries_chain`의 case `relation_condition_follows_the_padded_composite_parent_keys`는 그 schema에 유효합니다(T334-3-12).
+- 테스트: savepoint rollback이 rollback fault를 소비하지 않는다는 것(protocol 3.1)은 Python native 대신 모든 runtime에서 recipe `transactions`의 case이고, 잃어버린 rollback, 실패한 `BEGIN`, 실패한 시작 단계의 Python native test는 unit `transaction-failure-rollback`에 속합니다(T334-3-12-3-7, T334-3-12-3-8).
 - PHP client와 PHP extension은 described table의 SQLite `DATE` cell이 dbspec date가 아니면 저장된 text를 돌려주는 대신 `TIME`, `DATETIME` cell처럼 `GRID_TEMPORAL_VALUE`로 거부한다(INT-103). (#T334-3-3)
 - 시험: SQLite 전용 catalog recipe의 사례 `sqlite_temporal_checks`를 `catalog-connection-check`와 `catalog_connection` coverage에서 실행한다. 지금까지 둘은 database별 recipe 셋만 지정했다. FCV-2는 private 단계를 시험하는 catalog 시험이 native로 남는 이유를 적는다. (#T334-3-3)
 - 시험: external document를 쓰는 member set의 audit record를 PHP와 Rust만 시험했는데, 이제 여섯 runtime 모두 recipe `external_audit`으로 시험한다. 그런 set을 core 전후에 설치하는 동작은 `schema_install`의 두 사례다. op `schema.register`는 `connection`을 받는다. Rust `external_documents.rs`는 지웠고, PHP `AuditExternalSetsTest`는 등록 순서를 계속 검사한다(SCH-14a). (#T334-3-4)
