@@ -2127,7 +2127,7 @@ final class Recipe
     private static function sendQuery(RecipeStep $step, mixed $db): void
     {
         $column = $step['column'];
-        $operatorPrefix = ['eq_method' => 'eq', 'ne_method' => 'ne', 'gt_method' => 'gt'][$step['operator']] ?? null;
+        $operatorPrefix = ['eq_method' => 'eq', 'ne_method' => 'ne', 'gt_method' => 'gt', 'new_method' => 'new'][$step['operator']] ?? null;
         if ($operatorPrefix !== null) {
             // A chain method of an operator (DSL-50), which __call dispatches.
             $method = $operatorPrefix . ucfirst(self::BIND_FILTERS[$column]

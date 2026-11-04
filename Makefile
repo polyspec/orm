@@ -2023,7 +2023,6 @@ ts-model-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(NODE) --test packages/ts/tests/models-scan.mjs
-	$(NODE) --test packages/ts/tests/model-new-output-name.mjs
 
 perf-check:
 	$(WITH_TEST_ENV) $(NODE) scripts/perf-test.mts

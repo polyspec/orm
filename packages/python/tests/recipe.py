@@ -1452,11 +1452,11 @@ def _markdown_builder(step: dict, database: str) -> None:
         raise AssertionError(f"the terminal returned {caught!r}, want {expect}")
 
 
-# The chain method prefix of each operator of markdown.send (DSL-50).
-OPERATOR_METHODS = {"eq_method": "eq_", "ne_method": "ne_", "gt_method": "gt_"}
+# The chain method prefix of each operator of markdown.send (DSL-50, DSL-160).
+OPERATOR_METHODS = {"eq_method": "eq_", "ne_method": "ne_", "gt_method": "gt_", "new_method": "new_"}
 
 
-def _chain_value(wrapper: dict):
+def _send_chain_value(wrapper: dict):
     """The Python value of a wrapper for a chain method: an int, a nil, or a list of ints."""
     ((kind, value),) = wrapper.items()
     if kind == "int":
@@ -1464,7 +1464,7 @@ def _chain_value(wrapper: dict):
     if kind == "nil":
         return None
     if kind == "array":
-        return [_chain_value(item) for item in value]
+        return [_send_chain_value(item) for item in value]
     raise AssertionError(f"the parameter {json.dumps(wrapper)} has no chain value")
 
 
@@ -1483,9 +1483,8 @@ def _query_slot(models, db, step: dict) -> None:
         # A chain method of an operator (DSL-50), or a list: the value goes to the dynamic attribute of the generated model, so
         # the chain refuses what its operator does not take.
         prefix = OPERATOR_METHODS.get(step["operator"], "")
-        getattr(models.Slots().connect(db), f"{prefix}{name}")(
-            _chain_value(step["params"][0])
-        ).gets()
+        value = _send_chain_value(step["params"][0])
+        getattr(models.Slots().connect(db), f"{prefix}{name}")(value).gets()
         return
     if step["operator"] == "like_contains":
         # The contains condition of the text column is the lk operator of the generated model, a dynamic attribute (DSL-29).

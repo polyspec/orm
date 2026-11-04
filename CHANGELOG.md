@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- Python refuses `new_<name>` of a real column with `CONFIG`, as the other dynamic runtimes do (DSL-160), and the refusal is still an `AttributeError`, so `hasattr` holds. The refusal is the case `new_of_a_stored_column_is_refused_at_call_time` of the recipe `dsl-dynamic` in PHP, the PHP extension, TypeScript and Python, in place of a native test in each. The recipe `dsl-dynamic` runs again in Python, where a second helper of the same name had replaced the one it calls. The units of the generator and of the schema boundary that stay native have their reasons in FCV-2.
+- The TypeScript and Python generators refuse a scanned `join<L>With<R>` or `leftJoin<L>With<R>` without its child, the argument count of DSL-37, as the other generators do. The chain names of the PHP scan vectors are `scanned-` cases of the `generator` recipe in every runtime, in place of the comparison of the PHP and the TypeScript scans.
 - Tests: the set reader cases of `tests/dbspec/set-files.json` are the recipe `dbspec-set-files`, through the op `dbspec.read_set`, in every runtime, with the edge cases that TypeScript, Go and PHP each held alone; the native tests are removed (FCV-2, DBS-11).
 - Python `read_dbspec_set` reports a set path with a NUL byte as `set.file`, as DBS-19 states; it raised `ValueError`.
 - Tests: the rendered statements of `tests/dbspec/ddl.json` are the cases of the recipe `tests/dbspec/render-statements.json`, through the op `dbspec.render_statements`, in every runtime, for the documents in the order given and reversed; the native tests of the six runtimes are removed (FCV-2, DIA-113).

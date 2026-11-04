@@ -280,6 +280,8 @@ def _takes(model: RuntimeModel, e: Entity, name: str) -> tuple[int, int] | None:
             chain = pascal_name[3:]
         elif name.startswith("or_"):
             chain = pascal_name[2:]
+    elif kind == "join":
+        return (1, 1)
     else:
         return None
     keys = parse_chain(model, e, chain)
