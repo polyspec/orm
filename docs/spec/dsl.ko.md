@@ -1,5 +1,5 @@
 <!-- doc-id: dsl -->
-<!-- source-sha256: fcacb23c5f9aa00a3d28cd764cd2141f4ee410ad8938f4c4f66e46fbc20d7428 -->
+<!-- source-sha256: 0b8b11c36f66a0070a433433fd8f9284962c36094d334426fc3e4012b4faa640 -->
 # DSL
 
 이 문서는 [설계 계획](plan.md)이 정한 쿼리 문법을 정의한다. 클라이언트 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록하며, 이 문서와 일치하지 않는 클라이언트는 미완료 상태다.
@@ -271,7 +271,7 @@ rows, err := model.Product().Connect(slave1).
 - **DSL-114** `expectRevision(column, revision)`은 모델의 다음 `update()`나 `delete()`를 기대 revision을 가진 쓰기로 만든다. revision column은 dbspec setting이 아니라 chain이 이름한다: revision column은 chain이 이미 이름하는(`plus<Col>`처럼) 평범한 정수 column이고, 기대 revision은 chain만 나를 수 있는 한 쓰기의 값이며, setting은 그것을 선언하는 모든 document set의 manifest와 그래서 manifest hash를 바꾸기 때문이다. column은 entity의 `i16`, `i32`, `i64` column이며 primary key column이 아니다. 다른 column, 같은 쓰기에서 set한 그 column의 값, 기대와 함께 쓴 `update(true)`는 어떤 statement보다 먼저 `CONFIG`로 실패한다. 쓰기는 두 번째 장치 없이 모델이 이미 보내는 request 위에 만들어진다: `update()`와 `delete()`의 key 조건에 `column = revision`이 더해지고, `update()`는 바뀐 column과 함께, 다른 column이 바뀌지 않았을 때도, bind된 증가 `column = column + 1`(`plus<Col>(1)`처럼)을 할당한다. 하나의 조건부 statement가 연결의 트랜잭션이 열려 있으면 맞는 행을 그 트랜잭션에서 lock하고, 그 사이에 틈 없이 비교하고 쓴다. `FOR UPDATE`가 없는 SQLite는 statement 동안 write lock을 쥔다. 행이 다른 revision을 갖거나 더는 없어 어떤 행과도 맞지 않는 statement는 `REVISION_CHANGED`로 실패하고 아무것도 쓰지 않는다. `delete(true)`는 그 트랜잭션에서 실행되므로 root의 `REVISION_CHANGED`가 이미 지운 관련 행을 rollback한다. soft delete도 같은 방식으로 비교한다. 모델을 다시 읽지 않는다: `update()`가 성공한 뒤 행의 revision은 `revision + 1`이다. 기대는 `update()`가 성공한 뒤 다른 변경과 함께 지워지며 그 모델에만 적용되고 collection의 행에는 적용되지 않는다. `update(true)`의 `optimistic` request slot은 executor가 쓰는 `updated_ts`를 비교한다. revision은 form을 그릴 때의 revision처럼 호출자가 쥔 값이며 `delete()`도 지킨다.
 - **DSL-115** `new<Name>`은 계산한 금액이나 화면용 표시 값처럼 행이 출력까지 전달하는 데이터를 추가한다. 이 값은 `INSERT`, `UPDATE`, `SELECT` 문장에 사용하지 않는다. 조회와 쓰기 뒤에도 `get<Name>()`, `toArray()`, JSON 출력에 포함되며 `create()`가 반환한 모델도 추가한 값을 유지한다.
 - **DSL-116** `new<Name>`에 실제 컬럼 명칭을 사용하면 거부한다. 저장 컬럼 값은 `set<Col>`을 사용한다.
-- **DSL-160** PHP client `polyspec/orm`은 `new<Name>` 호출을 실행 시점에 풀며 실제 컬럼이면 그때 거부한다. PHP-extension client `polyspec/orm-php-ext`, TypeScript client `@polyspec/orm`, Python package `polyspec-orm`도 같다.
+- **DSL-160** PHP client `polyspec/orm`은 `new<Name>` 호출을 실행 시점에 풀며 실제 컬럼이면 그때 `CONFIG`로 거부한다. PHP-extension client `polyspec/orm-php-ext`, TypeScript client `@polyspec/orm`, Python package `polyspec-orm`도 같다.
 - **DSL-117** `github.com/polyspec/orm/packages/go` 생성기는 읽은 소스가 호출하는 명칭의 `New<Name>`과 `Get<Name>`을 생성한다. 값 타입은 `any`다.
 - **DSL-156** `polyspec-orm-build` crate는 읽은 소스가 호출하는 명칭의 `new_<name>`과 `get_<name>`을 생성한다. 값 타입은 공통 값 타입이다.
 

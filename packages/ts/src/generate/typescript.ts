@@ -178,7 +178,8 @@ class Generator {
     const finder = ['GetsBy', 'GetBy', 'GetCountBy'].find(prefix => P.startsWith(prefix));
     let chain = finder === undefined ? P : P.slice(finder.length);
     if (finder === undefined) {
-      if (['OrderBy', 'LeftJoin', 'Join', 'Match', 'Alias', 'Possible', 'New', 'AddColumn', 'Get'].some(prefix => P.startsWith(prefix))) return undefined;
+      if (P.startsWith('LeftJoin') || P.startsWith('Join')) return this.declare(e, name) === undefined ? undefined : [1, 1];
+      if (['OrderBy', 'Match', 'Alias', 'Possible', 'New', 'AddColumn', 'Get'].some(prefix => P.startsWith(prefix))) return undefined;
       if (P.startsWith('And') && P.length > 3 && isUpperAt(P, 3)) chain = P.slice(3);
       else if (P.startsWith('Or') && P.length > 2 && isUpperAt(P, 2)) chain = P.slice(2);
     }
