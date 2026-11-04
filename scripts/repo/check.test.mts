@@ -1229,6 +1229,9 @@ caseTest('a target that only reads the TypeScript build output does not hold it 
   assert.deepEqual(typescriptExclusiveReaderErrors('b: tool\n\t$(HOLD_TYPESCRIPT)\n\t$(TSC_BUILD)\n\t$(RUN_LONG) label -- $(NODE) x.mjs\n'), [error('b')]);
   assert.deepEqual(typescriptExclusiveReaderErrors('writes: tool\n\t$(HOLD_TYPESCRIPT)\n\t$(TSC_BUILD)\n\t$(NPM) run --workspace x build\n\t$(NODE) --test x.mjs\n'), []);
   assert.deepEqual(typescriptExclusiveReaderErrors('reads: typescript-current\n\t$(READ_TYPESCRIPT)\n\t$(NODE) --test x.mjs\n'), []);
+  // A recipe that kit owns reads the client through a prerequisite that holds the shared lease.
+  const parity = makeTargets(text('Makefile')).filter(rule => rule.target === 'parity-declarations-check').flatMap(rule => rule.prerequisites);
+  assert.ok(parity.includes('typescript-read') && !parity.includes('typescript-build'), parity.join(' '));
 });
 
 // T341-1: a target that runs PHPUnit with the packages/php configuration reaches php-models, which writes the bootstrap it requires, directly or through a prerequisite.

@@ -1335,7 +1335,9 @@ feature-performance-check: feature-check/build php-vendor-check php-models orm-i
 	rm -rf $(RUN_DIR)
 # typescript-current publishes the TypeScript client only when its sources changed, and holds the exclusive lease for that build alone, so the targets
 # that read the client ($(READ_TYPESCRIPT)) run together. A target that reads the editor packages too has typescript-build, whose build includes them.
-.PHONY: typescript-current
+.PHONY: typescript-current typescript-read
+typescript-read: typescript-current
+	$(READ_TYPESCRIPT)
 typescript-current: lease-tool orm-codes-typescript
 	$(NODE) scripts/typescript/build.mts --current || $(LEASE) run $(TYPESCRIPT_LEASES) exclusive --wait -- $(RUN_LONG) typescript-build -- npm run typescript:build
 # feature-coverage-of/<id> runs the coverage of one feature on every runtime and database (FCV-6), the Verification of a row of that feature.
@@ -1571,9 +1573,8 @@ client-db-php-check: php-vendor-check php-models orm-codes
 client-db-php-extension-check: lease-tool php-vendor-check php-models orm-install-php-extension-tools orm-codes
 	$(WITH_TEST_ENV) ORM_CLIENT_DB_LANGS=php-extension node scripts/client-db-test.mts
 
-client-db-typescript-check: lease-tool orm-codes-typescript orm-codes
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
+client-db-typescript-check: typescript-current orm-codes
+	$(READ_TYPESCRIPT)
 	$(WITH_TEST_ENV) ORM_CLIENT_DB_LANGS=typescript node scripts/client-db-test.mts
 
 client-db-python-check: python-venv-check orm-codes
@@ -2842,9 +2843,9 @@ orm-install-interfaces-typescript:
 # lint-ts reads packages/ts/testing/interfaces/typescript.mts, which imports the TypeScript that this target installs: the recipe of
 # lint-ts is the kit.mk of @polyspec/kit, so the prerequisite is added here.
 lint-ts: typescript-build
-# parity-declarations-check reads the symbols of the TypeScript client from packages/ts/dist/index.d.ts, which typescript-build
-# writes; a fresh checkout of the shared gates job has no dist (KSTD-5-114).
-parity-declarations-check: typescript-build
+# parity-declarations-check reads the symbols of the TypeScript client from packages/ts/dist/index.d.ts, which typescript-current
+# writes; a fresh checkout of the shared gates job has no dist (KSTD-5-114). Its recipe is the kit.mk of @polyspec/kit, so the shared lease is a prerequisite.
+parity-declarations-check: typescript-read
 # The parity gates of kit read the error file of every implementation of config/parity.json (errors.file): codes.ts, Code.php and
 # codes.py among them. lint-php analyses packages/php/src, and test-php-ext compares the extension with that library and runs its tests.
 parity-declarations-check parity-check parity-api-check $(KIT_PARITY_BINDING_TARGETS): orm-codes
