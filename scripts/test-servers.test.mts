@@ -1,7 +1,7 @@
 // The stop tests of scripts/test-servers.mts. make orm-test-servers-check builds tests/stop-process and tests/lease and passes
 // their paths as STOP_PROCESS and LEASE.
 import assert from 'node:assert/strict';
-import { execFileSync, spawn, spawnSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync, type SpawnSyncReturns } from 'node:child_process';
 import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, watch, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -326,7 +326,7 @@ caseTest('a refused attempt leaves the lease directory untouched, so waiters do 
       const leases = join(root, `${held}-${request}`);
       writeHolder(leases, file, { kind: held, pid: holder.pid! });
       const before = statSync(leases, { bigint: true }).mtimeNs;
-      const refused = spawnSync(lease, ['run', leases, request, '--', 'true'], { encoding: 'utf8' });
+      const refused: SpawnSyncReturns<string> = spawnSync(lease, ['run', leases, request, '--', 'true'], { encoding: 'utf8' });
       assert.equal(refused.status, 3, refused.stderr);
       assert.equal(statSync(leases, { bigint: true }).mtimeNs, before, `a refused ${request} request wrote in the directory of a held ${held} lease`);
     }
