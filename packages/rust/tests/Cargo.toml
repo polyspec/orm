@@ -186,6 +186,12 @@ name = "statement_runner_sqlite"
 path = "tests/statement_runner_sqlite.rs"
 harness = false
 
+# Each case of the recipe tests/dbspec/set-files.json without a database, as dbspec_read_set_none::<case id> (FCV-3, FCV-4).
+[[test]]
+name = "dbspec_read_set_none"
+path = "tests/dbspec_read_set_none.rs"
+harness = false
+
 # Each case of the recipe tests/dbspec/render-statements.json without a database, as dbspec_render_statements_none::<case id> (FCV-3, FCV-4).
 [[test]]
 name = "dbspec_render_statements_none"
@@ -393,6 +399,8 @@ polyspec-orm-build = { path = "../build", features = ["live-db"] }
 polyspec-orm-test-support = { path = "../test-support" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
 sqlx = { version = "0.9", features = ["runtime-tokio", "mysql", "postgres", "sqlite"] }
+# The dbspec.read_set op creates the symbolic links of its tree; the crate holds the platform calls (Rust std has none that is cross-platform).
+symlink = "=0.1.0"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 cpu-time = "=1.0.0"
 serde = { version = "1", features = ["derive"] }

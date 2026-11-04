@@ -1,13 +1,16 @@
-// The set reader beside its shared vectors (tests/dbspec/set-files.json, which dbspec-set.mjs runs): parseSet takes a
-// Uint8Array and a string, and the edges of the token scan and the normal form that the vectors do not spell.
+// What only TypeScript has of the set reader (DBS-176), beside the recipe tests/dbspec/set-files.json that every runtime runs: parseSet takes
+// a Uint8Array and a string and decides each case of the recipe without a file tree. A set path in the working directory (DBS-12) is the unit
+// dbspec-set-path-in-the-working-directory of every runtime.
+// Requirements: DBS-12, DBS-176.
 //
 // Usage: node --test packages/ts/tests/dbspec-set-edges.mjs (after the build)
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, posix } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { caseTest } from '../../../tests/testcase.mts';
-import { readDbspecSet } from '../dist/dbspec/index.js';
+import { parseSet, readDbspecSet } from '../dist/dbspec/index.js';
 import { parseSet as browserParseSet } from '../dist/dbspec/entry.js';
 
 const TIMEOUT = 15000;
@@ -19,50 +22,64 @@ caseTest('set-files parseSet takes a Uint8Array and a string', TIMEOUT, () => {
   assert.throws(() => readDbspecSet(1), TypeError);
 });
 
-// Edges of the token scan and the normal form that the shared vectors do not spell: each text is a set file at
-// `app/dbspec-set.json` and gives no error (null) or the one rule.
-const edges = [
-  ['a paired surrogate escape', '{"schema": 1, "documents": ["\\ud83d\\ude00.dbs"]}', null],
-  ['a lone low surrogate escape', '{"schema": 1, "documents": ["\\ude00.dbs"]}', 'set.json'],
-  ['a high surrogate escape before a character', '{"schema": 1, "documents": ["\\ud83dx.dbs"]}', 'set.json'],
-  ['an escaped backslash before u', '{"schema": 1, "documents": ["a\\\\ud800.dbs"]}', 'set.path'],
-  ['a key repeated through an escape', '{"schema": 1, "\\u0073chema": 1, "documents": ["shop.dbs"]}', 'set.key'],
-  ['a key repeated in a nested object', '{"schema": {"a": 1, "a": 2}, "documents": ["shop.dbs"]}', 'set.key'],
-  ['the same key in two nested objects', '{"schema": 1, "documents": ["shop.dbs"], "x": [{"a": 1}, {"a": 1}]}', 'set.key'],
-  ['a string value equal to a key', '{"schema": 1, "documents": ["schema"]}', 'set.path'],
-  ['schema -1', '{"schema": -1, "documents": ["shop.dbs"]}', 'set.schema'],
-  ['schema 10e-1', '{"schema": 10e-1, "documents": ["shop.dbs"]}', null],
-  ['schema 1.0000000000000000001, a double of 1', '{"schema": 1.0000000000000000001, "documents": ["shop.dbs"]}', null],
-  ['schema NaN', '{"schema": NaN, "documents": ["shop.dbs"]}', 'set.json'],
-  ['schema Infinity', '{"schema": Infinity, "documents": ["shop.dbs"]}', 'set.json'],
-  ['a lone surrogate before a repeated key', '{"schema": 1, "schema": 1, "documents": ["\\ud800.dbs"]}', 'set.json'],
-  ['schema null', '{"schema": null, "documents": ["shop.dbs"]}', 'set.schema'],
-  ['documents null', '{"schema": 1, "documents": null}', 'set.key'],
-  ['external of a number', '{"schema": 1, "documents": ["shop.dbs"], "external": [1]}', 'set.key'],
-  ['external leading dot-dots', '{"schema": 1, "documents": ["shop.dbs"], "external": ["../../a/b.dbs"]}', null],
-  ['external of only dot-dots', '{"schema": 1, "documents": ["shop.dbs"], "external": [".."]}', 'set.path'],
-  ['a last segment .dbs', '{"schema": 1, "documents": [".dbs"]}', null],
-  ['a device with an upper superscript', '{"schema": 1, "documents": ["lpt\\u00b3.dbs"]}', 'set.path'],
-  ['COM10 is no device', '{"schema": 1, "documents": ["COM10.dbs"]}', null],
-  ['a device as a directory', '{"schema": 1, "documents": ["aux/x.dbs"]}', 'set.path'],
-  ['a colon', '{"schema": 1, "documents": ["a:b.dbs"]}', 'set.path'],
-  ['U+001F', '{"schema": 1, "documents": ["a\\u001fb.dbs"]}', 'set.path'],
-  ['NUL', '{"schema": 1, "documents": ["a\\u0000b.dbs"]}', 'set.path'],
-  ['an empty path', '{"schema": 1, "documents": [""]}', 'set.path'],
-  ['an empty set file', '', 'set.json'],
-];
-for (const [name, text, rule] of edges) {
-  caseTest(`set-files edge ${name}`, TIMEOUT, () => {
-    const result = browserParseSet(new TextEncoder().encode(text), 'app/dbspec-set.json');
-    assert.deepEqual(result.errors.map(e => e.rule), rule === null ? [] : [rule]);
-  });
+// The cases of the recipe tests/dbspec/set-files.json through parseSet, a call that only TypeScript has (DBS-176): a case that needs
+// no file tree is rejected by parseSet of both entries, and an accepting case gives no error and the joined paths of the reader.
+const SET_NAME = 'dbspec-set.json';
+// The rules that parseSet decides from the bytes and the path alone, without a file tree.
+const PARSE_RULES = new Set(['set.json', 'set.schema', 'set.key', 'set.empty', 'set.path']);
+const recipe = JSON.parse(readFileSync(fileURLToPath(new URL('../../../tests/dbspec/set-files.json', import.meta.url)), 'utf8'));
+const cases = recipe.cases.map(({ id, steps: [step] }) => ({ id, tree: step.tree, set: step.set_file, want: step.expect.none }));
+
+/** The bytes that the tree entry at `path` holds, following hard links, and the file that a path below a symbolic link to a directory reaches. */
+function treeBytes(tree, path) {
+  const entry = tree[path];
+  if (entry === undefined) {
+    const segments = path.split('/');
+    for (let i = 1; i < segments.length; i++) {
+      const link = segments.slice(0, i).join('/');
+      if (tree[link] !== undefined && 'symlink' in tree[link]) {
+        return treeBytes(tree, posix.normalize(posix.join(posix.dirname(link), tree[link].symlink)) + path.slice(link.length));
+      }
+    }
+  }
+  assert.ok(entry !== undefined, `tree path ${path} exists`);
+  if ('file' in entry) return Buffer.from(entry.file, 'utf8');
+  if ('hex' in entry) return Buffer.from(entry.hex, 'hex');
+  if ('hardlink' in entry) return treeBytes(tree, entry.hardlink);
+  throw new Error(`tree path ${path} is a symbolic link, which has no bytes`);
 }
 
-caseTest('set-files edge unknown keys in code-point order', TIMEOUT, () => {
-  const result = browserParseSet(new TextEncoder().encode('{"\\uffff": 1, "\\ud83d\\ude00": 1, "b": 1, "schema": 1, "documents": ["a.dbs"]}'), 'dbspec-set.json');
-  assert.equal(result.errors.length, 1);
-  assert.match(result.errors[0].message, /"b", "￿", "\u{1f600}"/u);
-});
+/** Whether parseSet decides the case without a file tree: every error is a rule that it decides, or its set path has another name. */
+function needsNoTree(c) {
+  if (!('errors' in c.want)) return false;
+  if (posix.basename(c.set) !== SET_NAME) return c.want.errors.every(e => e.rule === 'set.file' && e.path === c.set);
+  return c.want.errors.every(e => PARSE_RULES.has(e.rule));
+}
+
+assert.ok(cases.some(needsNoTree), 'some cases need no file tree');
+for (const c of cases) {
+  if (needsNoTree(c)) {
+    caseTest(`set-files parseSet ${c.id}`, TIMEOUT, () => {
+      for (const [entry, parse] of [['node', parseSet], ['browser', browserParseSet]]) {
+        const result = parse(new Uint8Array(treeBytes(c.tree, c.set)), c.set);
+        assert.deepEqual(result.errors.map(e => ({ rule: e.rule, path: e.path })), c.want.errors.map(e => ({ rule: e.rule, path: e.path })), entry);
+        for (const e of result.errors) {
+          assert.deepEqual(Object.keys(e).sort(), ['message', 'path', 'rule']);
+          assert.ok(typeof e.message === 'string' && e.message.includes(e.path), `the message names the path: ${e.message}`);
+        }
+      }
+    });
+  } else if (!('errors' in c.want)) {
+    caseTest(`set-files parseSet ${c.id}`, TIMEOUT, () => {
+      const result = browserParseSet(new Uint8Array(treeBytes(c.tree, c.set)), c.set);
+      assert.deepEqual(result.errors, []);
+      for (const list of ['documents', 'external']) {
+        assert.deepEqual(result[list].map(p => p.path), c.want[list], `${list} paths`);
+        for (const p of result[list]) assert.equal(p.error, null);
+      }
+    });
+  }
+}
 
 caseTest('set-files edge the joined path keeps the written path and an empty prefix', TIMEOUT, () => {
   const result = browserParseSet(new TextEncoder().encode('{"schema": 1, "documents": ["a.dbs"], "external": ["../b/c.dbs"]}'), 'dbspec-set.json');

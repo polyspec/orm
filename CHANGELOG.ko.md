@@ -1,9 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 9f17ce9bb6a48616128d6153bc92d46ccce3876b1a64cd1fc51f82d48f742403 -->
+<!-- source-sha256: 4ca851def7e9d78c214d60d88b2701aa9e5fdf77ca955aa7ea4082aead399bbb -->
 # 변경 이력
 
 ## Unreleased
 
+- 테스트: `tests/dbspec/set-files.json`의 set reader case는 모든 runtime에서 `dbspec.read_set` op를 통해 recipe `dbspec-set-files`이며, TypeScript, Go, PHP가 각자 가지고 있던 edge case를 포함한다. native 테스트는 제거했다(FCV-2, DBS-11).
+- Python `read_dbspec_set`은 NUL byte가 있는 set path를 DBS-19대로 `set.file`로 보고한다. 이전에는 `ValueError`를 냈다.
 - 테스트: `tests/dbspec/ddl.json`의 render statement는 모든 runtime에서 `dbspec.render_statements` op를 통해 recipe `tests/dbspec/render-statements.json`의 case이며, document를 주어진 순서와 역순으로 모두 확인한다. 여섯 runtime의 native 테스트는 제거했다(FCV-2, DIA-113).
 - Python의 pool은 CFG-5대로 idle connection을 lifetime이 지날 때 닫는다. 이전에는 다음 호출자가 가져갈 때에만 닫았다. MySQL과 PostgreSQL의 pool 경계, lifetime, 거부되는 pool 값은 recipe `connection_pool`과 `dsn_reject_checked`의 case이고, PHP의 pool option 거부는 recipe `dsn_reject_php_pool`이다.
 - 테스트: schema 변경 뒤 transaction pooler를 거치는 catalog session(CFG-28, CFG-41)은 Python 테스트 `connection_config` 대신 모든 runtime에서 `catalog_connection` recipe의 case `catalog_session_after_a_schema_change_through_a_pooler`가 새 op `sql.hold_statement`와 `catalog.reconnect`의 `dsn`으로 맡는다.

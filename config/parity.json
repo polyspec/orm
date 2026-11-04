@@ -377,7 +377,6 @@
         "packages/php/tests/dbspec_behaviour.php",
         "packages/php/tests/dbspec_limit_cases.php",
         "packages/php/tests/dbspec_plan_cases.php",
-        "packages/php/tests/dbspec_set_cases.php",
         "packages/php/tests/dbspec_verify_errors_case.php",
         "packages/php/tests/deadlock_child.php",
         "packages/php/tests/extension_run_guard.php",
@@ -11918,6 +11917,45 @@
       ]
     },
     {
+      "id": "dbspec-set-path-in-the-working-directory",
+      "kind": "feature",
+      "requirements": [
+        "DBS-12"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/engine/dbspec/set_test.go",
+          "id": "TestSetRoot"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecSetTest.php",
+          "id": "DbspecSetTest::testASetPathWithoutADirectoryReadsFromTheWorkingDirectory"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecSetTestExtensionTest.php",
+          "id": "DbspecSetTestExtensionTest::testASetPathWithoutADirectoryReadsFromTheWorkingDirectory"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-set-edges.mjs",
+          "id": "set-files edge a set path relative to the working directory"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_set_working_directory.py",
+          "id": "test_a_set_path_without_a_directory_reads_from_the_working_directory"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/schema/tests/dbspec_set_working_directory.rs",
+          "id": "a_set_path_without_a_directory_reads_from_the_working_directory"
+        }
+      ]
+    },
+    {
       "id": "dbspec-set-files",
       "kind": "suite",
       "requirements": [
@@ -11957,31 +11995,31 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/set_test.go",
-          "symbol": "TestReadSetVectors"
+          "test": "packages/go/orm/recipe_dbspec_read_set_test.go",
+          "symbol": "TestRecipeDbspecReadSetNone"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecSetTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecSetTest::testSet"
+          "test": "packages/php/tests/DbspecReadSetRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecReadSetRecipeTest::testNone"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecSetTestExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecSetTestExtensionTest::testSet"
+          "test": "packages/php-ext/tests/DbspecReadSetRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecReadSetRecipeTestExtensionTest::testNone"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-set.mjs"
+          "test": "packages/ts/tests/dbspec_read_set-none.test.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_set_files.py"
+          "test": "packages/python/tests/test_dbspec_read_set_none.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_set.rs",
-          "symbol": "shared_set_file_vectors"
+          "test": "packages/rust/tests/tests/dbspec_read_set_none.rs",
+          "symbol": "dbspec_read_set_none"
         }
       ]
     },

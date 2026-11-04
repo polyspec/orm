@@ -2558,6 +2558,7 @@
       "inputs": [
         "packages/php/src/Dbspec/SetReader.php",
         "packages/php/tests/DbspecSetTest.php",
+        "packages/php/tests/DbspecReadSetRecipeTest.php",
         "packages/php/tests/SetReaderDiagnosticsTest.php"
       ]
     },

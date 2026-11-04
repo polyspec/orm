@@ -733,6 +733,12 @@
       "external",
       "op"
     ],
+    "dbspec.read_set": [
+      "expect",
+      "op",
+      "set_file",
+      "tree"
+    ],
     "dbspec.read_file": [
       "expect",
       "op",

@@ -15,6 +15,7 @@ import { failNextRollback, lastAffected } from '../dist/testing.js';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { AesKeyring, BindCell, CORE, Collection, transactionConflict, Db, OrmError, loadSet, StyledValue, blindIndex, chainPlans, codes, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, orm, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
 import { analyzeDbspec, formatDbspec, parseDbspecSet as parseDbspecSetBrowser, readDbspecBytes } from '../dist/dbspec/entry.js';
+import { buildSetTree } from '../../../tests/dbspec/set-tree.mjs';
 import { DbspecApplyError, addTablesAndColumnsSteps, applyPlans, exportMermaid, importMermaid, introspectDbspec, rollbackPlans } from '../dist/dbspec/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
 import { Slots, connect as connectSlots } from '../dist/models/bind_fixture/models.js';
@@ -89,6 +90,7 @@ export function runRecipe(path, database) {
           else if (step.op === 'keyring.versions') checkKeyring(step, database);
           else if (step.op === 'dbspec.introspect_shown') await checkIntrospectShown(step, dir, database);
           else if (step.op === 'dbspec.render_statements') checkRenderStatements(step, dir);
+          else if (step.op === 'dbspec.read_set') checkReadSet(step, database);
           else if (step.op === 'dbspec.apply_fault') await checkApplyFault(step, bound, database);
           else if (step.op === 'dbspec.introspect_sqlite') await checkIntrospectSqlite(step, database);
           else if (step.op === 'markdown.builder') await checkBuilder(step, database);
@@ -2873,6 +2875,37 @@ async function checkApplyFault(step, bound, database) {
     for (const kind of expect.absent_events ?? []) assert.equal(kinds.includes(kind), false, `the events hold ${kind}`);
   } finally {
     db.close();
+  }
+}
+
+// checkReadSet runs a dbspec.read_set step: it writes the tree under an empty temporary directory, reads the set with the public
+// readDbspecSet, and compares the paths and the bytes of the files or the rule and path of each error (FCV-4, DBS-11).
+function checkReadSet(step, database) {
+  const expect = step.expect[database];
+  const tree = step.tree;
+  const root = buildSetTree(tree, 'orm-ts-set-');
+  try {
+    const result = readDbspecSet(`${root}/${step.set_file}`);
+    if (expect.errors !== undefined) {
+      assert.equal(result.documents, null);
+      assert.equal(result.external, null);
+      assert.deepEqual(result.errors.map(e => ({ rule: e.rule, path: e.path })), expect.errors.map(e => ({ rule: e.rule, path: `${root}/${e.path}` })));
+      result.errors.forEach((e, i) => {
+        assert.ok(typeof e.message === 'string' && e.message.includes(e.path), `the message names the path: ${e.message}`);
+        assert.ok(e.message.includes(expect.errors[i].message_holds ?? ''), `the message holds the text: ${e.message}`);
+      });
+      return;
+    }
+    assert.deepEqual(result.errors, []);
+    for (const list of ['documents', 'external']) {
+      assert.deepEqual(result[list].map(f => f.path), expect[list].map(p => `${root}/${p}`), `${list} paths`);
+      result[list].forEach((f, i) => {
+        assert.ok(f.bytes instanceof Uint8Array, `${list}[${i}] bytes are a Uint8Array`);
+        assert.deepEqual(Buffer.from(f.bytes), readFileSync(`${root}/${expect[list][i]}`), `${list}[${i}] bytes`);
+      });
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
   }
 }
 

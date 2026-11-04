@@ -901,6 +901,7 @@
             "dbspec.load_set",
             "dbspec.runtime_model",
             "dbspec.read_file",
+            "dbspec.read_set",
             "dbspec.read_bytes",
             "catalog.connect",
             "catalog.close",
@@ -1247,6 +1248,9 @@
         },
         {
           "$ref": "#/$defs/ops/dbspec.read_file"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.read_set"
         },
         {
           "$ref": "#/$defs/ops/dbspec.read_bytes"
@@ -6602,6 +6606,94 @@
                     "description": "The values to compare, by entity name: the keys it names of table, primary_key, identity, updated, soft_delete, aes_version, audit_column, audit_record, key_names and fields, and of a field type, nullable, default, default_now, select_explicit, codec, blind_index, primary_key and foreign_key."
                   }
                 }
+              }
+            }
+          }
+        }
+      },
+      "dbspec.read_set": {
+        "description": "Writes the file tree under an empty temporary directory, with real symbolic and hard links, and reads the set at set_file with the public set reader (DBS-11).",
+        "type": "object",
+        "required": [
+          "op",
+          "tree",
+          "set_file",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.read_set"
+          },
+          "tree": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+              "type": "object",
+              "minProperties": 1,
+              "maxProperties": 1,
+              "additionalProperties": false,
+              "properties": {
+                "file": { "type": "string" },
+                "hex": { "type": "string", "pattern": "^([0-9a-f]{2})*$" },
+                "symlink": { "type": "string" },
+                "hardlink": { "type": "string" }
+              }
+            }
+          },
+          "set_file": {
+            "type": "string"
+          },
+          "expect": {
+            "type": "object",
+            "required": [
+              "none"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "documents",
+                      "external"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "documents": { "type": "array", "items": { "type": "string" } },
+                      "external": { "type": "array", "items": { "type": "string" } }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "errors"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "errors": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                          "type": "object",
+                          "required": [
+                            "rule",
+                            "path"
+                          ],
+                          "additionalProperties": false,
+                          "properties": {
+                            "rule": {
+                              "enum": ["set.file", "set.symlink", "set.json", "set.schema", "set.key", "set.empty", "set.path", "set.duplicate"]
+                            },
+                            "path": { "type": "string" },
+                            "message_holds": { "type": "string" }
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
               }
             }
           }

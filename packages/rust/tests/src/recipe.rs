@@ -423,6 +423,95 @@ fn shown_catalog_rows(catalog: &Value, name: &str, create: &str, query: &str) ->
     })
 }
 
+/// Writes the tree of a dbspec.read_set step under root with real links: the files first, then the hard links and the symbolic
+/// links, so that each link finds what it names and the order of the object does not matter. The symlink crate holds the platform's
+/// link calls, and a target that is a directory is linked as a directory, which Windows distinguishes.
+fn write_set_tree(root: &Path, tree: &Map<String, Value>) -> Result<(), String> {
+    let parent = |path: &Path| std::fs::create_dir_all(path.parent().ok_or("a tree path has a parent")?).map_err(|error| format!("{}: {error}", path.display()));
+    let entries = |kind: &'static str| tree.iter().filter_map(move |(name, entry)| entry[kind].as_str().map(|value| (name, value)));
+    for (name, value) in entries("file") {
+        parent(&root.join(name))?;
+        std::fs::write(root.join(name), value).map_err(|error| format!("{name}: {error}"))?;
+    }
+    for (name, value) in entries("hex") {
+        parent(&root.join(name))?;
+        let bytes: Vec<u8> = (0..value.len()).step_by(2).filter_map(|i| u8::from_str_radix(&value[i..i + 2], 16).ok()).collect();
+        std::fs::write(root.join(name), bytes).map_err(|error| format!("{name}: {error}"))?;
+    }
+    for (name, value) in entries("hardlink") {
+        parent(&root.join(name))?;
+        std::fs::hard_link(root.join(value), root.join(name)).map_err(|error| format!("{name}: {error}"))?;
+    }
+    for (name, value) in entries("symlink") {
+        let link = root.join(name);
+        parent(&link)?;
+        let resolved = link.parent().ok_or("a link has a parent")?.join(value);
+        let made = if std::fs::metadata(&resolved).is_ok_and(|m| m.is_dir()) { ::symlink::symlink_dir(value, &link) } else { ::symlink::symlink_file(value, &link) };
+        made.map_err(|error| format!("{name}: {error}"))?;
+    }
+    Ok(())
+}
+
+/// The dbspec.read_set op (FCV-4): it writes the tree under an empty temporary directory, reads the set with the public
+/// dbspec::read_set, and compares the paths and the bytes of the files or the rule and path of each error (DBS-11).
+fn dbspec_read_set(step: &Value, database: &str) -> Result<(), String> {
+    static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    struct Tree(PathBuf);
+    impl Drop for Tree {
+        fn drop(&mut self) {
+            polyspec_orm_test_support::temp_directory::remove_on_drop(&self.0);
+        }
+    }
+    let Some(want) = crate::recipe_reads::read(step, "expect")["expect"].get(database) else { return Err(format!("dbspec.read_set has no expect for {database}")) };
+    let tree = crate::recipe_reads::read(step, "tree")["tree"].as_object().ok_or("the tree is not an object")?;
+    let set_file = crate::recipe_reads::read(step, "set_file")["set_file"].as_str().unwrap_or_default();
+    let next = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let dir = Tree(std::env::temp_dir().join(format!("orm-set-{}-{next}", std::process::id())));
+    std::fs::create_dir(&dir.0).map_err(|error| format!("{}: {error}", dir.0.display()))?;
+    write_set_tree(&dir.0, tree)?;
+    let root = dir.0.display().to_string();
+    let got = dbspec::read_set(&dir.0.join(set_file));
+    if let Some(expected) = want.get("errors").and_then(Value::as_array) {
+        let errors = match got {
+            Ok(set) => return Err(format!("read a set where errors are expected: {:?}", set.documents.iter().map(|f| &f.path).collect::<Vec<_>>())),
+            Err(errors) => errors,
+        };
+        let actual: Vec<(String, String)> = errors.iter().map(|e| (e.rule.clone(), e.path.display().to_string())).collect();
+        let wanted: Vec<(String, String)> =
+            expected.iter().map(|e| (e["rule"].as_str().unwrap_or_default().to_owned(), format!("{root}/{}", e["path"].as_str().unwrap_or_default()))).collect();
+        if actual != wanted {
+            return Err(format!("errors {actual:?}, want {wanted:?}"));
+        }
+        for (error, wanted) in errors.iter().zip(expected) {
+            let path = error.path.display().to_string();
+            if !error.message.contains(&path) {
+                return Err(format!("the message {:?} does not name {path}", error.message));
+            }
+            let holds = wanted["message_holds"].as_str().unwrap_or_default();
+            if !error.message.contains(holds) {
+                return Err(format!("the message {:?} does not hold {holds:?}", error.message));
+            }
+        }
+        return Ok(());
+    }
+    let set = got.map_err(|errors| format!("unexpected errors {errors:?}"))?;
+    for (list, files) in [("documents", &set.documents), ("external", &set.external)] {
+        let paths: Vec<String> = want[list].as_array().map(|p| p.iter().filter_map(|x| x.as_str().map(str::to_owned)).collect()).ok_or_else(|| format!("the expect has no {list}"))?;
+        let actual: Vec<String> = files.iter().map(|f| f.path.display().to_string()).collect();
+        let wanted: Vec<String> = paths.iter().map(|p| format!("{root}/{p}")).collect();
+        if actual != wanted {
+            return Err(format!("{list}: {actual:?}, want {wanted:?}"));
+        }
+        for file in files {
+            let bytes = std::fs::read(&file.path).map_err(|error| format!("{}: {error}", file.path.display()))?;
+            if file.bytes != bytes {
+                return Err(format!("the bytes of {}", file.path.display()));
+            }
+        }
+    }
+    Ok(())
+}
+
 /// The dbspec.render_statements op (FCV-4): it parses each document of the case of the vectors against the others and renders
 /// the set for each dialect, in the given order and reversed, to exactly the statements of the case (DIA-113).
 fn dbspec_render_statements(step: &Value, dir: &Path) -> Result<(), String> {
@@ -798,6 +887,7 @@ fn markdown_builder(step: &Value, database: &str) -> Result<(), String> {
 fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: &Path) -> Result<(), String> {
     match crate::recipe_reads::read(step, "op")["op"].as_str().unwrap_or_default() {
         "dsn.connect" => return dsn_connect(step, database),
+        "dbspec.read_set" => return dbspec_read_set(step, database),
         "dbspec.render_statements" => return dbspec_render_statements(step, dir),
         "dbspec.introspect_shown" => return dbspec_introspect_shown(step, database, dir),
         "dbspec.introspect_sqlite" => return dbspec_introspect_sqlite(step, database),

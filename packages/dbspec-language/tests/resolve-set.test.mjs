@@ -19,7 +19,13 @@ const TIMEOUT = 15000;
 const vector = (name, body) => caseTest(name, TIMEOUT, body);
 const SET_NAME = 'dbspec-set.json';
 
-const vectors = JSON.parse(readFileSync(new URL('tests/dbspec/set-files.json', repo), 'utf8'));
+// The set-files recipe holds each tree, set file and result in the one step of its case. The edge, scan and focused cases and the
+// NUL set path are the cases of the set reader of the runtimes, which this test of resolveSet does not declare.
+const vectors = {
+  cases: JSON.parse(readFileSync(new URL('tests/dbspec/set-files.json', repo), 'utf8')).cases
+    .filter(({ id }) => !/^(?:edge|scan|focused)-|^set-path-with-a-nul-byte$/.test(id))
+    .map(({ id, steps: [step] }) => ({ id, tree: step.tree, set: step.set_file, want: step.expect.none })),
+};
 
 /** Runs body with a tree written under a temporary directory, and removes the directory. */
 function withTree(tree, body) {

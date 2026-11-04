@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- Tests: the set reader cases of `tests/dbspec/set-files.json` are the recipe `dbspec-set-files`, through the op `dbspec.read_set`, in every runtime, with the edge cases that TypeScript, Go and PHP each held alone; the native tests are removed (FCV-2, DBS-11).
+- Python `read_dbspec_set` reports a set path with a NUL byte as `set.file`, as DBS-19 states; it raised `ValueError`.
 - Tests: the rendered statements of `tests/dbspec/ddl.json` are the cases of the recipe `tests/dbspec/render-statements.json`, through the op `dbspec.render_statements`, in every runtime, for the documents in the order given and reversed; the native tests of the six runtimes are removed (FCV-2, DIA-113).
 - Tests: a catalog session through a transaction pooler after a schema change (CFG-28, CFG-41) is the case `catalog_session_after_a_schema_change_through_a_pooler` of the `catalog_connection` recipe in every runtime, in place of the Python test `connection_config`, through the new op `sql.hold_statement` and a `dsn` on `catalog.reconnect`.
 - Tests: the conformance runners keep only the bodies that a check reaches, the generated-method and the fixed-clock bodies; the other 50 vectors are cases of the `conformance_verification` recipe, and a test holds each runner to the reached names.

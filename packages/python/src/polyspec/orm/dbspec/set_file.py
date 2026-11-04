@@ -88,6 +88,8 @@ def read_dbspec_set(path: str) -> tuple[DbspecSet | None, tuple[DbspecSetError, 
         raise TypeError("dbspec set path must be a string")
     prefix, name = _split(path)
     try:
+        if "\0" in path:
+            raise _Failure("set.file", path, f"{path}: the path contains a NUL byte")
         data = _read_set_file(path, prefix, name)
         documents, external = _parse(path, data)
     except _Failure as failure:

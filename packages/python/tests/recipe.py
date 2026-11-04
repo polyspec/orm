@@ -196,6 +196,9 @@ def recipe_tests(path: str, database: str):
         if step["op"] == "dsn.connect":
             _dsn_connect(step, database)
             return
+        if step["op"] == "dbspec.read_set":
+            _dbspec_read_set(step, database)
+            return
         if step["op"] == "dbspec.render_statements":
             _dbspec_render_statements(step, ROOT / Path(path).parent)
             return
@@ -1242,6 +1245,53 @@ def _dbspec_apply_fault(step: dict, bound: dict, database: str) -> None:
                 raise AssertionError(f"the events {kinds} hold {kind}")
     finally:
         fault.connection.close()
+
+
+def _dbspec_read_set(step: dict, database: str) -> None:
+    """Runs the dbspec.read_set op (FCV-4): it writes the tree under an empty temporary directory, with real links in the
+    order written, reads the set with the public read_dbspec_set, and compares the paths and the bytes of the files or the
+    rule and path of each error (DBS-11)."""
+    expect = step["expect"][database]
+    root = tempfile.mkdtemp(prefix="orm-set-")
+    try:
+        for path, entry in step["tree"].items():
+            target = os.path.join(root, *path.split("/"))
+            os.makedirs(os.path.dirname(target), exist_ok=True)
+            ((kind, value),) = entry.items()
+            if kind == "symlink":
+                resolved = os.path.join(os.path.dirname(target), *value.split("/"))
+                os.symlink(value.replace("/", os.sep), target, target_is_directory=os.path.isdir(resolved))
+            elif kind == "hardlink":
+                os.link(os.path.join(root, *value.split("/")), target)
+            else:
+                with open(target, "xb") as handle:
+                    handle.write(value.encode("utf-8") if kind == "file" else bytes.fromhex(value))
+        result, errors = read_dbspec_set(root + "/" + step["set_file"])
+        if "errors" in expect:
+            if result is not None:
+                raise AssertionError(f"a failed read returned files {result!r}")
+            _expect_equal(
+                [(error.rule, error.path) for error in errors],
+                [(error["rule"], root + "/" + error["path"]) for error in expect["errors"]],
+                "errors",
+            )
+            for error, wanted in zip(errors, expect["errors"]):
+                if error.path not in error.message:
+                    raise AssertionError(f"the message {error.message!r} does not name {error.path!r}")
+                if wanted.get("message_holds", "") not in error.message:
+                    raise AssertionError(f"the message {error.message!r} does not hold {wanted['message_holds']!r}")
+            return
+        _expect_equal([(error.rule, error.path) for error in errors], [], "errors")
+        for files, paths, name in (
+            (result.documents, expect["documents"], "documents"),
+            (result.external, expect["external"], "external"),
+        ):
+            _expect_equal([file.path for file in files], [root + "/" + path for path in paths], f"{name} paths")
+            for file, path in zip(files, paths):
+                with open(root + "/" + path, "rb") as handle:
+                    _expect_equal(file.data, handle.read(), f"the bytes of {path}")
+    finally:
+        shutil.rmtree(root)
 
 
 def _dbspec_render_statements(step: dict, recipe_dir: Path) -> None:
