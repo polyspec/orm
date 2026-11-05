@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-check-recipes -->
-<!-- source-sha256: 316e67e8577a295564f4ad51dfa26bf6efa6d6cb1f0dd2625374a5b500c3c3cc -->
+<!-- source-sha256: 22d01487421628a611eb23cddec239e55856f26c1069a2f6105665dcd8c24ca4 -->
 # 병렬 check runner와 모든 공통 동작의 recipe 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -94,3 +94,4 @@
 | CR60 | test server의 MySQL 복제본은 recipe case 3개(catalog_connection의 row_change_with_partial_revokes_enabled와 dsn_connection의 2개)만 읽는데도 모든 case database의 DDL을 한 문장씩 적용한다. 05:53에 행 5개를 돌리며 잰 값: primary에서 초당 CREATE TABLE 43회, binary log 0.07 MB/s, 복제본은 202초 뒤처지고 applier는 CREATE INDEX와 ALTER TABLE을 실행 중이다. 임시 서버는 기본 설정에서 초당 CREATE TABLE 208회, fsync 없이 245회이므로 내구성 설정으로는 고쳐지지 않는다. 지연이 60초를 넘으면 replica.await와 databases/drop의 purge가 실패하므로, 함께 돌 수 있는 행 수가 복제본에 묶인다. 복제본을 읽지 않는 case database는 server의 replication filter로 stream에서 빼고, 읽는 case는 자기 이름을 갖는다. | scripts/test-servers.mts (the replication filter of the replica); the case database factories of the six runtimes; the key of a recipe case that reads the replica in scripts/features/schema/recipe.schema.json and scripts/features/schema/recipe-keys.json | `make run-databases TARGETS=parity-check UNITS="catalog_connection-mysql dsn_connection-mysql"` | [!] 원인: 새 개발이라 사용자 규칙에 따라 release까지 보류; 재시도: release 뒤; 그때까지 행은 복제본이 감당하는 수로 돌린다 |
 | CR61 | php-extension cat_update_body: updateRow의 ROW_WRITE_MISMATCH가 이름을 소유한 descriptor를 해제한 뒤 열 이름을 읽어 예외 문구가 해제된 메모리를 읽는다. 이제 해제 전에 예외가 이름을 받는다. | packages/php-ext/src/catalog_connection.c | `make catalog-connection-check/php-extension` | [v] |
 | CR62 | php-extension Registry::model: parsed entities로 만든 model(polyspec_runtime_model_from_parsed, cd258fd93부터)이 construct_model이 참조 하나를 가져가는데도 자기 참조 없이 객체에 저장해, model 해제나 entities 교체가 heap을 손상시켰다(zend_mm_heap corrupted). 이제 자기 참조를 갖는다. | packages/php-ext/src/runtime_model.c, packages/php-ext/tests/RegistrySchemaNativeTest.php | `make test-php-ext CASES=testModelOfParsedEntitiesKeepsThemAfterTheRegistryReplacesThem` | [v] |
+| CR63 | php-ext-memory-check: 확장의 catalog case가 이 검사에서 gate의 memory limit으로 자기 process 하나에서 돈다. 그래서 PHP_EXT_MEMORY_CASES 묶음이 쌓는 양은 그대로다. CR32에서 이 검사가 catalog 시험을 하나도 지정하지 않은 것을 찾았다. | Makefile | `make run-databases TARGETS=php-ext-memory-check` | [~] |

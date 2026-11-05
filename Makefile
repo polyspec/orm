@@ -1585,15 +1585,18 @@ client-db-rust-check: lease-tool orm-codes
 PHP_EXT_MEMORY_CASES = ^(Polyspec\\Orm\\Extension\\Tests\\CoverageNativeFixtureExtensionTest::|Polyspec\\Orm\\Tests\\CoveragePerformanceGateExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\RequestHookTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\CoverageSchemaDefinitionExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\CoverageSchemaInstallNativeTest::|Polyspec\\Orm\\Extension\\Tests\\StatementEventsRecipeTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\StatementRunnerRecipeTestExtensionTest::|Polyspec\\Orm\\Tests\\CoverageTransactionsExtensionTest::|Polyspec\\Orm\\Tests\\Cpx5DuplicateRelationNativeTest::|Polyspec\\Orm\\Extension\\Tests\\DbspecAnalyzeTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\DbspecApplyCleanupTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\ParameterChunkingMysqlRecipeExtensionTest::testMysql with data set "root_in_chunking")
 PHP_EXT_MEMORY_GATE_POSTGRES = ^(Polyspec\\Orm\\Tests\\CoveragePerformanceGateExtensionPostgresTest::)
 PHP_EXT_MEMORY_GATE_SQLITE = ^(Polyspec\\Orm\\Tests\\CoveragePerformanceGateExtensionSqliteTest::)
+PHP_EXT_MEMORY_CATALOG = ^(Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionSqliteOnlyRecipeTestExtensionTest::)
 
 # The memory check of T334-3-4-7 runs the group of PHP_EXT_MEMORY_CASES in one php-ext process, so its memory accumulates as the 128M
 # memory_limit of the gate. Each gate class names its database and reads its BENCH_<DATABASE>_DSN from the TEST_ENV of this run: the
-# mysql gate runs with the group, and the Postgres and SQLite gates run in one process each.
+# mysql gate runs with the group, and the Postgres and SQLite gates run in one process each. The catalog cases run in their own
+# process, so they do not change what the group accumulates.
 .PHONY: php-ext-memory-check
 php-ext-memory-check: php-vendor-check orm-install-php-extension-tools
 	$(WITH_TEST_ENV) $(MAKE) --no-print-directory test-php-ext CASES='$(PHP_EXT_MEMORY_CASES)'
 	$(WITH_TEST_ENV) $(MAKE) --no-print-directory test-php-ext CASES='$(PHP_EXT_MEMORY_GATE_POSTGRES)'
 	$(WITH_TEST_ENV) $(MAKE) --no-print-directory test-php-ext CASES='$(PHP_EXT_MEMORY_GATE_SQLITE)'
+	$(WITH_TEST_ENV) $(MAKE) --no-print-directory test-php-ext CASES='$(PHP_EXT_MEMORY_CATALOG)'
 
 # python-mysql-session-check checks the session startup parameters of a Python PostgreSQL connection
 # (packages/python/tests/mysql_session.py); it needs the database variables of make orm-test-servers (WITH_TEST_ENV).
