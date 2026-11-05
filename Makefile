@@ -623,7 +623,9 @@ python-native-host-api-check: python-venv-check
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_clock_source.WallMicrosTest.test_estimate_inside_wall_millisecond_is_used packages.python.tests.test_clock_source.WallMicrosTest.test_estimate_below_wall_clamps_and_reanchors packages.python.tests.test_clock_source.WallMicrosTest.test_estimate_above_wall_millisecond_clamps_and_reanchors packages.python.tests.test_clock_source.NativeDialectHookTest.test_python_dialect_hooks_keep_their_native_forms packages.python.tests.test_rollback_fault.NativeFaultEntryUnitTest.test_test_fault_facade_sets_only_the_requested_connection_state
 
 python-check: python-unit-check python-interface-unit-check python-model-check conformance-result-check/python
-python-unit-check: python-venv-check
+# tests/bind/messages.json imports the slot models that ORM_PYTHON_BIND_MODELS names, as its other runs do.
+python-unit-check: export ORM_PYTHON_BIND_MODELS = $(BIND_PY_MODELS)
+python-unit-check: python-venv-check bind-python-models
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- discover -s packages/python/tests -t . -p 'test_*.py'
 
 # The DB-free complex query cases cover Python's fluent full-text chains and paginate statement order.
