@@ -139,12 +139,11 @@ static bool cat_mysql_buffered(zval *pdo, bool on)
     return true;
 }
 
-/* The connection id of the PDO MySQL connection: a budget stop kills the running query by it. */
-static bool cat_mysql_connection_id(zval *pdo, zend_long *id)
+/* Runs a statement and fetches its first row into row by position; the caller releases row. */
+static bool cat_mysql_first_row(zval *pdo, const char *sql, zval *row)
 {
-    zval q, st, r, mode, row;
-    *id = 0;
-    ZVAL_STRING(&q, "SELECT CONNECTION_ID()");
+    zval q, st, r, mode;
+    ZVAL_STRING(&q, sql);
     bool ok = pdo_call(pdo, "prepare", &st, 1, &q, NULL);
     zval_ptr_dtor(&q);
     if (!ok) return false;
@@ -155,9 +154,17 @@ static bool cat_mysql_connection_id(zval *pdo, zend_long *id)
     }
     zval_ptr_dtor(&r);
     ZVAL_LONG(&mode, CAT_PDO_FETCH_NUM);
-    ok = pdo_call(&st, "fetch", &row, 1, &mode, NULL);
+    ok = pdo_call(&st, "fetch", row, 1, &mode, NULL);
     zval_ptr_dtor(&st);
-    if (!ok) return false;
+    return ok;
+}
+
+/* The connection id of the PDO MySQL connection: a budget stop kills the running query by it. */
+static bool cat_mysql_connection_id(zval *pdo, zend_long *id)
+{
+    zval row;
+    *id = 0;
+    if (!cat_mysql_first_row(pdo, "SELECT CONNECTION_ID()", &row)) return false;
     if (Z_TYPE(row) == IS_ARRAY) {
         zval *v = zend_hash_index_find(Z_ARRVAL(row), 0);
         if (v != NULL && Z_TYPE_P(v) == IS_LONG) {
@@ -234,22 +241,9 @@ static bool cat_kill_thread(zval *owner, zend_long id)
 /* Reads the one value of a statement as text. */
 static bool cat_mysql_text(zval *pdo, const char *sql, char *out, size_t size)
 {
-    zval q, st, r, mode, row;
+    zval row;
     out[0] = '\0';
-    ZVAL_STRING(&q, sql);
-    bool ok = pdo_call(pdo, "prepare", &st, 1, &q, NULL);
-    zval_ptr_dtor(&q);
-    if (!ok) return false;
-    ok = pdo_call(&st, "execute", &r, 0, NULL, NULL);
-    if (!ok) {
-        zval_ptr_dtor(&st);
-        return false;
-    }
-    zval_ptr_dtor(&r);
-    ZVAL_LONG(&mode, CAT_PDO_FETCH_NUM);
-    ok = pdo_call(&st, "fetch", &row, 1, &mode, NULL);
-    zval_ptr_dtor(&st);
-    if (!ok) return false;
+    if (!cat_mysql_first_row(pdo, sql, &row)) return false;
     if (Z_TYPE(row) == IS_ARRAY) {
         zval *v = zend_hash_index_find(Z_ARRVAL(row), 0);
         if (v != NULL) {

@@ -129,7 +129,7 @@ impl CatalogConnection {
         let first = connection.query_result_bounded(sql, params, limits).await;
         match first {
             // MySQL reports 22003, 22007 and 22008 for the values of a statement, and it names no statement of this kind (CFG-28).
-            Err(error) if matches!(connection, Conn::Postgres(_)) && stale_plan(&error) => {
+            Err(error) if matches!(connection, Conn::Postgres(_)) && polyspec_orm::db::stale_plan(&error) => {
                 // The statement may be one that cannot run in a transaction, so only a statement that failed this way, which has
                 // changed nothing, runs in one. BEGIN fails only in a transaction of the caller, which the failure has aborted, and
                 // there the error of the statement reaches the caller (CFG-28).
@@ -216,7 +216,7 @@ impl CatalogConnection {
     /// Starts the time in which a refused connect of MySQL is the closed connection still on the server.
     pub(super) fn closed_connection(&self) {
         if self.dialect == "mysql" {
-            *self.reopen_until.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = std::time::Instant::now() + REOPEN_AFTER_CLOSE;
+            *self.reopen_until.lock().unwrap() = std::time::Instant::now() + REOPEN_AFTER_CLOSE;
         }
     }
     /// Opens a connection. A socket that this catalog closed holds its place in max_user_connections until the server ends
@@ -224,8 +224,7 @@ impl CatalogConnection {
     /// from the close (within 40 ms measured). A connect that follows no close of this catalog fails at once.
     pub(super) async fn open_connection(&self) -> Result<Conn, String> {
         let mut acquired = Conn::acquire(&self.pool).await;
-        while acquired.as_ref().err().is_some_and(|error| error.to_string().contains("1226"))
-            && std::time::Instant::now() < *self.reopen_until.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+        while acquired.as_ref().err().is_some_and(|error| error.to_string().contains("1226")) && std::time::Instant::now() < *self.reopen_until.lock().unwrap()
         {
             tokio::time::sleep(std::time::Duration::from_millis(10)).await;
             acquired = Conn::acquire(&self.pool).await;
@@ -274,18 +273,6 @@ pub(super) async fn begin_session(connection: &mut Conn, begin: &str) -> Result<
         connection.exec("DEALLOCATE ALL", &[]).await.map_err(|error| error.to_string())?;
     }
     Ok(())
-}
-
-/// An error that a statement named before a schema change can raise on PostgreSQL (CFG-28).
-fn stale_plan(error: &sqlx::Error) -> bool {
-    let Some(database) = error.as_database_error() else {
-        return false;
-    };
-    match database.code().as_deref() {
-        Some("0A000") => database.message().contains("cached plan must not change result type"),
-        Some("42883" | "42804" | "22P02" | "22003" | "22007" | "22008") => true,
-        _ => false,
-    }
 }
 
 /// Whether a budget stopped the read. The rest of the result is unread, and a ROLLBACK would first read all of it, so on MySQL and

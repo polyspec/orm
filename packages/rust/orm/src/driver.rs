@@ -450,7 +450,7 @@ pub(crate) async fn fetch_pg<'e, E: Executor<'e, Database = Postgres>>(sql: &str
 /// type against the new column (42883, 42804), or a value is read as that old type (22P02, 22003, 22007, 22008). A statement outside a
 /// transaction that fails has changed nothing, so it can run again, and one that fails for another reason fails the same way the
 /// second time (CFG-28).
-fn stale_plan(error: &sqlx::Error) -> bool {
+pub fn stale_plan(error: &sqlx::Error) -> bool {
     let Some(database) = error.as_database_error() else {
         return false;
     };

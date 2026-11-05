@@ -98,6 +98,10 @@ name = "sets_none"
 path = "tests/sets_none.rs"
 harness = false
 
+[[test]]
+name = "recipe_keys"
+path = "tests/recipe_keys.rs"
+
 # Each case of the catalog_connection recipe, contracts/fixtures/catalog_connection/catalog_connection.json, is the
 # trial catalog_connection_<database>::<case id> on a case database of its own (FCV-3).
 [[test]]

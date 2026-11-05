@@ -1145,14 +1145,20 @@ static bool page_request(zval *self, zend_long page, zend_long per_page, zval *d
     return true;
 }
 
-ZEND_METHOD(Polyspec_Orm_Model, getPagePlanSteps)
+/* The request of a page method from its two integer arguments, and a null is refused as the signature of the method does. */
+static bool page_method_request(zend_execute_data *execute_data, zend_long *page, zend_long *per_page, zval *db, zval *frame, zval *clone, zval *request)
 {
     static const char *const scalar_types[] = {"int", "int"};
-    if (!model_reject_null_scalar_args(execute_data, scalar_types, 2)) RETURN_THROWS();
+    if (!model_reject_null_scalar_args(execute_data, scalar_types, 2)) return false;
+    ZEND_PARSE_PARAMETERS_START(2,2) Z_PARAM_LONG(*page) Z_PARAM_LONG(*per_page) ZEND_PARSE_PARAMETERS_END_EX(return false);
+    return page_request(ZEND_THIS, *page, *per_page, db, frame, clone, request);
+}
+
+ZEND_METHOD(Polyspec_Orm_Model, getPagePlanSteps)
+{
     zend_long page, per_page;
-    ZEND_PARSE_PARAMETERS_START(2,2) Z_PARAM_LONG(page) Z_PARAM_LONG(per_page) ZEND_PARSE_PARAMETERS_END();
     zval db, frame, clone, request;
-    if (!page_request(ZEND_THIS, page, per_page, &db, &frame, &clone, &request)) RETURN_THROWS();
+    if (!page_method_request(execute_data, &page, &per_page, &db, &frame, &clone, &request)) RETURN_THROWS();
     zval args[2];
     ZVAL_COPY(&args[0], &frame);
     ZVAL_COPY(&args[1], &request);
@@ -1168,12 +1174,9 @@ ZEND_METHOD(Polyspec_Orm_Model, getPagePlanSteps)
 
 ZEND_METHOD(Polyspec_Orm_Model, getsPage)
 {
-    static const char *const scalar_types[] = {"int", "int"};
-    if (!model_reject_null_scalar_args(execute_data, scalar_types, 2)) RETURN_THROWS();
     zend_long page, per_page;
-    ZEND_PARSE_PARAMETERS_START(2,2) Z_PARAM_LONG(page) Z_PARAM_LONG(per_page) ZEND_PARSE_PARAMETERS_END();
     zval db,frame,clone,request;
-    if(!page_request(ZEND_THIS,page,per_page,&db,&frame,&clone,&request))RETURN_THROWS();
+    if(!page_method_request(execute_data,&page,&per_page,&db,&frame,&clone,&request))RETURN_THROWS();
     zval paginate_args[2],result;ZVAL_COPY(&paginate_args[0],&frame);ZVAL_COPY(&paginate_args[1],&request);bool ok=read_call(&db,"paginate",&result,2,paginate_args);zval_ptr_dtor(&paginate_args[0]);zval_ptr_dtor(&paginate_args[1]);zval_ptr_dtor(&clone);zval_ptr_dtor(&frame);
     if(!ok){zval_ptr_dtor(&request);zval_ptr_dtor(&db);RETURN_THROWS();}
     zval *plan=zend_hash_index_find(Z_ARRVAL(result),0),*rows=zend_hash_index_find(Z_ARRVAL(result),1),*total_value=zend_hash_index_find(Z_ARRVAL(result),2);

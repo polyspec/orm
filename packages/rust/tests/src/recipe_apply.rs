@@ -158,7 +158,7 @@ impl ApplyOps {
         let state = &mut self.state;
         // The case runs on a runtime of its own, and a runtime starts no other inside it, so the op has a thread.
         std::thread::scope(|scope| {
-            scope.spawn(|| runtime.block_on(run_op(state, step, database, dsn))).join().unwrap_or_else(|_| Err("an apply op panicked".to_owned()))
+            scope.spawn(|| runtime.block_on(run_op(state, step, database, dsn))).join().map_err(|panic| crate::recipe::panicked("an apply op", &*panic))?
         })
     }
 
@@ -181,7 +181,7 @@ impl ApplyOps {
                     })
                 })
                 .join()
-                .unwrap_or_else(|_| Err("closing an apply connection panicked".to_owned()))
+                .map_err(|panic| crate::recipe::panicked("closing an apply connection", &*panic))?
         });
         runtime.shutdown_background();
         closed
@@ -401,9 +401,8 @@ async fn command(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
             if on["event"].as_str() != Some(event.kind.as_str()) || (ran && on["every"].as_bool() != Some(true)) {
                 return Ok(());
             }
-            if on.get("plan").is_some_and(|plan| plan.as_str() != Some(event.plan.as_str()))
-                || on.get("step").is_some_and(|at| at.as_u64() != u64::try_from(event.step).ok())
-            {
+            let step = u64::try_from(event.step)?;
+            if on.get("plan").is_some_and(|plan| plan.as_str() != Some(event.plan.as_str())) || on.get("step").is_some_and(|at| at.as_u64() != Some(step)) {
                 return Ok(());
             }
             ran = true;

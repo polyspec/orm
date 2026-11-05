@@ -123,6 +123,27 @@ pub fn trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testc
 /// The time of the last wait.start (FCV-4).
 static WAIT_START: std::sync::Mutex<Option<std::time::Instant>> = std::sync::Mutex::new(None);
 
+/// What a joined thread that panicked says: who it was and the text of its panic.
+pub fn panicked(who: &str, panic: &(dyn std::any::Any + Send)) -> String {
+    let text = panic.downcast_ref::<&str>().copied().or_else(|| panic.downcast_ref::<String>().map(String::as_str));
+    format!("{who} panicked: {}", text.unwrap_or("a panic without text"))
+}
+
+/// An environment variable as a value to compare: unset is None, and any other failure to read it is an error.
+fn env_text(name: &str) -> Result<Option<String>, String> {
+    match std::env::var(name) {
+        Ok(text) => Ok(Some(text)),
+        Err(std::env::VarError::NotPresent) => Ok(None),
+        Err(error) => Err(format!("{name}: {error}")),
+    }
+}
+
+/// A text repeated the times of its step; a step that names no times has it once.
+fn repeated(text: &str, times: Option<u64>) -> Result<String, String> {
+    let times = times.map(usize::try_from).transpose().map_err(|error| format!("repeat of {text}: {error}"))?;
+    Ok(text.repeat(times.unwrap_or(1)))
+}
+
 /// The DSN that a model.connect opens (FCV-4): the case database, unless its dsn is "case-socket" or the DSN text of the step.
 pub fn connect_dsn(dsn: Option<&str>, database: &str, case_dsn: &str, socket: Option<&str>) -> Result<String, String> {
     match dsn {
@@ -132,8 +153,8 @@ pub fn connect_dsn(dsn: Option<&str>, database: &str, case_dsn: &str, socket: Op
             Ok(format!("{case_dsn}{separator}{}", &dsn["case?".len()..]))
         }
         Some("case-pooler") => {
-            let pooler = std::env::var("ORM_TEST_PGBOUNCER_DSN").map_err(|_| {
-                "dsn case-pooler: ORM_TEST_PGBOUNCER_DSN is required; run make orm-test-servers, which starts the databases and writes it".to_owned()
+            let pooler = std::env::var("ORM_TEST_PGBOUNCER_DSN").map_err(|error| {
+                format!("dsn case-pooler: ORM_TEST_PGBOUNCER_DSN is required ({error}); run make orm-test-servers, which starts the databases and writes it")
             })?;
             let name = case_dsn.split('?').next().unwrap_or_default().rsplit('/').next().unwrap_or_default();
             let (head, query) = pooler.split_once('?').unwrap_or((&pooler, ""));
@@ -142,8 +163,9 @@ pub fn connect_dsn(dsn: Option<&str>, database: &str, case_dsn: &str, socket: Op
         }
         Some("case-server") => {
             let variable = format!("ORM_TEST_{}_SERVER_DSN", database.to_uppercase());
-            let server = std::env::var(&variable)
-                .map_err(|_| format!("dsn case-server: {variable} is required; run make orm-test-servers, which starts the databases and writes it"))?;
+            let server = std::env::var(&variable).map_err(|error| {
+                format!("dsn case-server: {variable} is required ({error}); run make orm-test-servers, which starts the databases and writes it")
+            })?;
             let name = case_dsn.split('?').next().unwrap_or_default().rsplit('/').next().unwrap_or_default();
             let (head, query) = server.split_once('?').unwrap_or((&server, ""));
             let (base, _) = head.rsplit_once('/').ok_or_else(|| format!("dsn case-server: {server} names no database"))?;
@@ -151,8 +173,9 @@ pub fn connect_dsn(dsn: Option<&str>, database: &str, case_dsn: &str, socket: Op
         }
         Some("case-replica") => {
             let variable = format!("ORM_TEST_{}_REPLICA_DSN", database.to_uppercase());
-            let replica = std::env::var(&variable)
-                .map_err(|_| format!("dsn case-replica: {variable} is required; run make orm-test-servers, which starts the databases and writes it"))?;
+            let replica = std::env::var(&variable).map_err(|error| {
+                format!("dsn case-replica: {variable} is required ({error}); run make orm-test-servers, which starts the databases and writes it")
+            })?;
             let name = case_dsn.split('?').next().unwrap_or_default().rsplit('/').next().unwrap_or_default();
             let (head, query) = replica.split_once('?').unwrap_or((&replica, ""));
             let (server, _) = head.rsplit_once('/').ok_or_else(|| format!("dsn case-replica: {replica} names no database"))?;
@@ -178,16 +201,22 @@ pub fn connect_dsn(dsn: Option<&str>, database: &str, case_dsn: &str, socket: Op
 /// the one implementation of dsn.connect (FCV-4). A refused DSN or a failed statement returns its error code and message.
 async fn connect_driver(dsn: &str, config: &Value) -> Result<String, (String, String)> {
     let field = |name: &str| config[name].as_u64().unwrap_or(0) as u32;
+    let aes_keys = config["aes_keys"]
+        .as_object()
+        .into_iter()
+        .flatten()
+        .map(|(version, key)| {
+            let number = version.parse::<i32>().map_err(|error| ("STEP".to_owned(), format!("aes_keys version {version}: {error}")))?;
+            Ok((number, key.as_str().unwrap_or_default().to_owned()))
+        })
+        .collect::<Result<_, (String, String)>>()?;
     let options = polyspec_orm::Config {
         pool_idle_size: field("pool_idle_size"),
         pool_lifetime_ms: field("pool_lifetime_ms"),
         statement_timeout_ms: field("statement_timeout_ms"),
         aes_key: config["aes_key"].as_str().unwrap_or_default().to_owned(),
         aes_version: config["aes_version"].as_i64().map_or(polyspec_orm::Config::default().aes_version, |version| version as i32),
-        aes_keys: config["aes_keys"]
-            .as_object()
-            .map(|keys| keys.iter().map(|(version, key)| (version.parse().unwrap_or(0), key.as_str().unwrap_or_default().to_owned())).collect())
-            .unwrap_or_default(),
+        aes_keys,
         ..polyspec_orm::Config::default()
     };
     match polyspec_orm::Db::connect(dsn, field("pool_size"), options).await {
@@ -291,7 +320,7 @@ fn markdown_connect(step: &Value, database: &str) -> Result<(), String> {
     let dsn = format!("markdown://127.0.0.1:{port}/{}?token={}", text("corpus"), text("token"));
     let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|error| error.to_string())?;
     let outcome = runtime.block_on(connect_driver(&dsn, &Value::Null));
-    let received = server.join().map_err(|_| "the listener panicked".to_owned())??;
+    let received = server.join().map_err(|panic| panicked("the listener", &*panic))??;
     if received != text("received") {
         return Err(format!("the listener received {received:?}, want {:?}", text("received")));
     }
@@ -342,7 +371,7 @@ fn markdown_session(step: &Value, database: &str) -> Result<(), String> {
         db.close().await;
         last
     });
-    let received = server.join().map_err(|_| "the listener panicked".to_owned())??;
+    let received = server.join().map_err(|panic| panicked("the listener", &*panic))??;
     if received != messages {
         return Err(format!("the listener received {received:?}, want {messages:?}"));
     }
@@ -440,7 +469,10 @@ fn write_set_tree(root: &Path, tree: &Map<String, Value>) -> Result<(), String> 
     }
     for (name, value) in entries("hex") {
         parent(&root.join(name))?;
-        let bytes: Vec<u8> = (0..value.len()).step_by(2).filter_map(|i| u8::from_str_radix(&value[i..i + 2], 16).ok()).collect();
+        let bytes = (0..value.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&value[i..i + 2], 16).map_err(|error| format!("{name}: {error}")))
+            .collect::<Result<Vec<u8>, String>>()?;
         std::fs::write(root.join(name), bytes).map_err(|error| format!("{name}: {error}"))?;
     }
     for (name, value) in entries("hardlink") {
@@ -1056,7 +1088,7 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
     }
     if let Some(prefix) = expect["bytes_prefix_hex"].as_str() {
         // An envelope has a random nonce, so its form is its prefix and its length (COD-5).
-        let length = expect["bytes_length"].as_u64().and_then(|n| usize::try_from(n).ok());
+        let length = expect["bytes_length"].as_u64().map(usize::try_from).transpose().map_err(|error| format!("bytes_length: {error}"))?;
         return match outcome {
             Ok(Produced::Written(Param::Bytes(bytes))) if Some(bytes.len()) == length && hex_text(&bytes).starts_with(prefix) => Ok(()),
             Ok(Produced::Written(Param::Bytes(bytes))) => Err(format!("cell {}, want {length:?} bytes with the prefix {prefix}", hex_text(&bytes))),
@@ -1818,21 +1850,26 @@ fn dbspec_load_set(step: &Value, want: &Value) -> Result<(), String> {
         }
     };
     let (owned, external) = (text(&crate::recipe_reads::read(step, "owned")["owned"]), text(&crate::recipe_reads::read(step, "external")["external"]));
-    let loaded = dbspec::parse_manifest_set(&owned, &external).ok().and_then(|documents| {
+    let loaded = dbspec::parse_manifest_set(&owned, &external).map_err(|diagnostics| format!("{diagnostics:?}")).and_then(|documents| {
         let refs: Vec<&Document> = documents.iter().collect();
-        dbspec::manifest(&refs).ok()
+        dbspec::manifest(&refs).map_err(|error| format!("{error:?}"))
     });
-    let Some(built) = loaded else {
-        let error = polyspec_orm::Manifest::load_set(&owned, &external, "").err().ok_or("the set loaded")?;
-        // Each diagnostic is "<line>:<column> <rule>: <message>", in order (SCH-12).
-        let text = error.to_string();
-        let named = want["diagnostics"].as_array().is_none_or(|diagnostics| {
-            let problems: Vec<&str> = text.strip_prefix(&format!("{}: ", error.code())).unwrap_or_default().split("; ").collect();
-            problems.len() == diagnostics.len()
-                && problems.iter().zip(diagnostics).all(|(problem, want)| want.as_str().is_some_and(|want| problem.starts_with(&format!("{want}: "))))
-        });
-        let worded = want["message"].as_str().is_none_or(|message| text == format!("{}: {message}", error.code()));
-        return if want["error"].as_str() == Some(error.code()) && named && worded { Ok(()) } else { Err(format!("error {error}, want {want}")) };
+    let built = match loaded {
+        Ok(built) => built,
+        Err(refused) => {
+            let error = polyspec_orm::Manifest::load_set(&owned, &external, "")
+                .err()
+                .ok_or_else(|| format!("the set loaded, where its documents are refused: {refused}"))?;
+            // Each diagnostic is "<line>:<column> <rule>: <message>", in order (SCH-12).
+            let text = error.to_string();
+            let named = want["diagnostics"].as_array().is_none_or(|diagnostics| {
+                let problems: Vec<&str> = text.strip_prefix(&format!("{}: ", error.code())).unwrap_or_default().split("; ").collect();
+                problems.len() == diagnostics.len()
+                    && problems.iter().zip(diagnostics).all(|(problem, want)| want.as_str().is_some_and(|want| problem.starts_with(&format!("{want}: "))))
+            });
+            let worded = want["message"].as_str().is_none_or(|message| text == format!("{}: {message}", error.code()));
+            return if want["error"].as_str() == Some(error.code()) && named && worded { Ok(()) } else { Err(format!("error {error}, want {want}")) };
+        }
     };
     if let Some(hash) = want["manifest_hash"].as_str() {
         if built.manifest_hash != hash {
@@ -2859,7 +2896,7 @@ mod database {
                 })
             })
             .collect();
-        tokio::task::spawn_blocking(move || threads.into_iter().try_for_each(|writer| writer.join().map_err(|_| "a writer panicked".to_owned())?))
+        tokio::task::spawn_blocking(move || threads.into_iter().try_for_each(|writer| writer.join().map_err(|panic| super::panicked("a writer", &*panic))?))
             .await
             .map_err(|e| e.to_string())??;
         let db = model::connect(dsn, 1, polyspec_orm::Config::default()).await.map_err(|e| e.to_string())?;
@@ -3348,7 +3385,7 @@ mod database {
         // An absent retry passes 0 unless default_retry leaves it out (INT-43).
         if crate::recipe_reads::read(step, "default_retry")["default_retry"].as_bool() != Some(true) {
             let retry = u32::try_from(crate::recipe_reads::read(step, "retry")["retry"].as_u64().unwrap_or(0))
-                .map_err(|_| Failure::Step("retry is not a count".to_owned()))?;
+                .map_err(|error| Failure::Step(format!("retry is not a count: {error}")))?;
             transaction = transaction.retry(retry);
         }
         if let Some(timeout) = crate::recipe_reads::read(step, "timeout_ms")["timeout_ms"].as_u64() {
@@ -3405,11 +3442,8 @@ mod database {
     async fn probe_value(db: &Db, text: &str) -> Result<i64, String> {
         let rows = frame_rows(db, text).await.map_err(|e| format!("{text}: {e}"))?;
         let cell = rows.first().and_then(|row| row.first()).map(super::statement::cell_wrapper).ok_or_else(|| format!("{text}: no cell"))?;
-        cell["int"]
-            .as_str()
-            .or_else(|| cell["text"].as_str())
-            .and_then(|digits| digits.parse().ok())
-            .ok_or_else(|| format!("{text}: the cell {cell} is no integer"))
+        let digits = cell["int"].as_str().or_else(|| cell["text"].as_str()).ok_or_else(|| format!("{text}: the cell {cell} is no integer"))?;
+        digits.parse::<i64>().map_err(|error| format!("{text}: the cell {cell} is no integer: {error}"))
     }
 
     fn connection_db(step: &Value, context: &Context<'_>) -> Result<Db, String> {
@@ -3526,6 +3560,14 @@ mod database {
     /// The start of the failure of a nested step whose public call returned an error that the step does not expect.
     const UNEXPECTED_ERROR: &str = "unexpected error ";
 
+    /// Runs the nested steps of a step in order, up to the first that fails.
+    async fn run_nested(catalog: &mut Option<CatalogConnection>, step: &Value, context: &mut Context<'_>) -> Result<(), String> {
+        for nested in crate::recipe_reads::read(step, "steps")["steps"].as_array().into_iter().flatten() {
+            Box::pin(run_step(catalog, nested, context)).await?;
+        }
+        Ok(())
+    }
+
     async fn run_step(catalog: &mut Option<CatalogConnection>, step: &Value, context: &mut Context<'_>) -> Result<(), String> {
         if step["only"].as_array().is_some_and(|only| !only.iter().any(|name| name.as_str() == Some(context.database))) {
             return Ok(());
@@ -3574,7 +3616,9 @@ mod database {
                     Some(code) if code == want.as_str() => match suffix {
                         Some(suffix) if !message.ends_with(suffix) => Err(format!("error message {message:?} does not end with {suffix:?}")),
                         // A catalog call fails with its whole text, with no detail part.
-                        _ if exact.is_some() && Some(text.unwrap_or(message.as_str())) != exact => Err(format!("error message {text:?} ({message:?}), want {exact:?}")),
+                        _ if exact.is_some() && Some(text.unwrap_or(message.as_str())) != exact => {
+                            Err(format!("error message {text:?} ({message:?}), want {exact:?}"))
+                        }
                         _ if want_cause.is_some() && cause != want_cause => Err(format!("error cause {cause:?}, want {want_cause:?}")),
                         _ => match holds {
                             Some(holds) if !message.contains(holds) => Err(format!("error message {message:?} does not hold {holds:?}")),
@@ -3757,13 +3801,7 @@ mod database {
                         Ok(())
                     })
                     .map_err(orm)?;
-                let mut outcome = Ok(());
-                for nested in crate::recipe_reads::read(step, "steps")["steps"].as_array().into_iter().flatten() {
-                    if let Err(message) = Box::pin(run_step(catalog, nested, context)).await {
-                        outcome = Err(message);
-                        break;
-                    }
-                }
+                let outcome = run_nested(catalog, step, context).await;
                 subscription.unsubscribe();
                 outcome.map_err(fault)?;
                 Output::fields(json!({ "count": count.load(Ordering::SeqCst) }))
@@ -3931,7 +3969,7 @@ mod database {
                     let rows = frame_rows(&db, "SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'").await.map_err(orm)?;
                     let cells: Vec<Value> = rows[0].iter().map(super::statement::cell_wrapper).collect();
                     // Through a pooler the pooler applies the startup parameters with SET, so the source says nothing about the client.
-                    let pooled = std::env::var("ORM_TEST_POSTGRES_DSN").ok() != std::env::var("ORM_TEST_POSTGRES_SERVER_DSN").ok();
+                    let pooled = super::env_text("ORM_TEST_POSTGRES_DSN").map_err(fault)? != super::env_text("ORM_TEST_POSTGRES_SERVER_DSN").map_err(fault)?;
                     fields.insert("time_zone".into(), cells[0]["text"].clone());
                     fields.insert("time_zone_from_startup".into(), json!(pooled || cells[1]["text"] == "client"));
                 }
@@ -3950,13 +3988,7 @@ mod database {
                             Ok(())
                         })
                         .map_err(orm)?;
-                    let mut outcome = Ok(());
-                    for nested in crate::recipe_reads::read(step, "steps")["steps"].as_array().into_iter().flatten() {
-                        if let Err(message) = Box::pin(run_step(catalog, nested, context)).await {
-                            outcome = Err(message);
-                            break;
-                        }
-                    }
+                    let outcome = run_nested(catalog, step, context).await;
                     subscription.unsubscribe();
                     outcome.map_err(fault)?;
                     let after = probe_value(&db, &probe_text).await.map_err(fault)?;
@@ -4228,8 +4260,8 @@ mod database {
             "db.listen" => {
                 let name = bound_name(step).map_err(fault)?;
                 let db = connection_db(step, context).map_err(fault)?;
-                let times = crate::recipe_reads::read(step, "channel_repeat")["channel_repeat"].as_u64().unwrap_or(1);
-                let channel = crate::recipe_reads::read(step, "channel")["channel"].as_str().unwrap_or_default().repeat(usize::try_from(times).unwrap_or(1));
+                let times = crate::recipe_reads::read(step, "channel_repeat")["channel_repeat"].as_u64();
+                let channel = super::repeated(crate::recipe_reads::read(step, "channel")["channel"].as_str().unwrap_or_default(), times).map_err(fault)?;
                 let listener = db.listen(&channel).await.map_err(orm)?;
                 context.listeners.insert(name, listener);
                 Output::fields(json!({}))
@@ -4263,12 +4295,11 @@ mod database {
                 Output::fields(json!({}))
             }
             "wait.start" => {
-                *super::WAIT_START.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(std::time::Instant::now());
+                *super::WAIT_START.lock().unwrap() = Some(std::time::Instant::now());
                 Output::fields(json!({}))
             }
             "wait.at_least" => {
-                let started = (*super::WAIT_START.lock().unwrap_or_else(std::sync::PoisonError::into_inner))
-                    .ok_or_else(|| fault("wait.at_least: no wait.start ran".to_owned()))?;
+                let started = (*super::WAIT_START.lock().unwrap()).ok_or_else(|| fault("wait.at_least: no wait.start ran".to_owned()))?;
                 let (waited, want) = (started.elapsed().as_millis(), u128::from(crate::recipe_reads::read(step, "ms")["ms"].as_u64().unwrap_or_default()));
                 if waited < want {
                     return Err(fault(format!("wait.at_least: {waited} ms passed since wait.start, want {want}")));
@@ -4299,7 +4330,12 @@ mod database {
                 use sqlx::ConnectOptions as _;
                 let mut held = options.connect().await.map_err(|e| fault(e.to_string()))?;
                 let sql = crate::recipe_reads::read(step, "sql")["sql"].as_str().unwrap_or_default().to_owned();
-                let bind = crate::recipe_reads::read(step, "bind")["bind"].as_i64().and_then(|n| i32::try_from(n).ok()).unwrap_or_default();
+                let bind = crate::recipe_reads::read(step, "bind")["bind"]
+                    .as_i64()
+                    .map(i32::try_from)
+                    .transpose()
+                    .map_err(|e| fault(format!("bind: {e}")))?
+                    .unwrap_or_default();
                 // sqlx names the statement of a query in the statement cache of the connection.
                 let rows = sqlx::query(sqlx::AssertSqlSafe(sql)).bind(bind).fetch_all(&mut held).await.map_err(|e| fault(e.to_string()))?;
                 let first = rows.first().ok_or_else(|| fault("sql.hold_statement: the statement returned no row".to_owned()))?;
@@ -4348,7 +4384,7 @@ mod database {
                     }
                     ("case", None) => context.dsn.clone(),
                     (text, _) => match text.strip_prefix("env:") {
-                        Some(name) => std::env::var(name).map_err(|_| fault(format!("dsn.connect: {name} is unset; run make orm-test-servers")))?,
+                        Some(name) => std::env::var(name).map_err(|error| fault(format!("dsn.connect: {name}: {error}; run make orm-test-servers")))?,
                         None => text.to_owned(),
                     },
                 };
@@ -4372,7 +4408,7 @@ mod database {
     async fn model_call(step: &Value, context: &mut Context<'_>) -> Result<Output, Failure> {
         let op = crate::recipe_reads::read(step, "op")["op"].as_str().unwrap_or_default();
         // The model is the dispatch of the op: a dispatcher with one model for an op does not read it again.
-        let _ = crate::recipe_reads::read(step, "model");
+        crate::recipe_reads::read(step, "model");
         if op == "model.connect" {
             let name = crate::recipe_reads::read(step, "as")["as"].as_str().ok_or_else(|| Failure::Step("model.connect names no as".into()))?;
             // An unset pool size is the size 0, the default of the connection (CFG-4).
@@ -4389,7 +4425,7 @@ mod database {
             )
             .map_err(Failure::Step)?;
             if let Some(ms) = crate::recipe_reads::read(step, "statement_timeout_ms")["statement_timeout_ms"].as_u64() {
-                let ms = u32::try_from(ms).map_err(|_| Failure::Step(format!("statement_timeout_ms {ms} is out of range")))?;
+                let ms = u32::try_from(ms).map_err(|error| Failure::Step(format!("statement_timeout_ms {ms} is out of range: {error}")))?;
                 context.models.connect_bounded(name, &dsn, pool_size, ms).await.map_err(Failure::Call)?;
                 return Ok(Output::fields(json!({})));
             }
@@ -4742,86 +4778,23 @@ mod database {
         }
     }
 
-    /// On one native connection of the case database: the connection rules, the statements of the case for the database, then
-    /// its behavior steps. A step with dialects runs only on those; a step with fails must fail; a query compares its first
-    /// value, as text, with want, and a NULL or absent value fails it (DIA-113).
-    async fn ddl_behavior(step: &Value, database: &str, dsn: &str, dir: &Path) -> Result<(), String> {
-        use sqlx::{ConnectOptions as _, Connection as _, Row as _};
-        let path = dir.join(crate::recipe_reads::read(step, "vectors")["vectors"].as_str().unwrap_or_default());
-        let vectors: Value =
-            serde_json::from_str(&std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?).map_err(|e| e.to_string())?;
-        let id = crate::recipe_reads::read(step, "case")["case"].as_str().unwrap_or_default();
-        let vector =
-            vectors["cases"].as_array().and_then(|cases| cases.iter().find(|case| case["id"] == id)).ok_or_else(|| format!("the vectors have no case {id}"))?;
-        let rule = match database {
-            "mysql" => "SET time_zone = '+00:00'",
-            "postgres" => "SET TimeZone = 'UTC'",
-            _ => "PRAGMA foreign_keys = ON",
+    /// Runs the body on one native connection of the DSN and closes it. The driver of each database has its own connection type, so
+    /// this is a macro.
+    macro_rules! on_native_connection {
+        ($dsn:expr, |$connection:ident| $body:block) => {
+            match parse_dsn($dsn).map_err(|e| e.to_string())?.options {
+                ConnectOptions::MySql(options) => on_native_connection!(@open options, $connection, $body),
+                ConnectOptions::Postgres(options) => on_native_connection!(@open options, $connection, $body),
+                ConnectOptions::Sqlite(options) => on_native_connection!(@open options, $connection, $body),
+                ConnectOptions::Markdown(_) => Err("a markdown corpus has no native SQL driver".into()),
+            }
         };
-        let statements = vector["statements"][database].as_array().ok_or_else(|| format!("the case {id} has no statements for {database}"))?;
-        let behavior = vector["behavior"].as_array().ok_or_else(|| format!("the case {id} has no behavior"))?;
-        // The driver of each database has its own connection type, so the steps are written once as a macro.
-        macro_rules! run {
-            ($options:expr) => {{
-                let mut connection = $options.connect().await.map_err(|e| e.to_string())?;
-                let result = async {
-                    for statement in std::iter::once(rule).chain(statements.iter().filter_map(Value::as_str)) {
-                        sqlx::raw_sql(sqlx::AssertSqlSafe(statement.to_owned())).execute(&mut connection).await.map_err(|e| format!("{statement}: {e}"))?;
-                    }
-                    for entry in behavior {
-                        if entry["dialects"].as_array().is_some_and(|dialects| !dialects.iter().any(|dialect| dialect == database)) {
-                            continue;
-                        }
-                        if let Some(sql) = entry["sql"].as_str() {
-                            let done = sqlx::raw_sql(sqlx::AssertSqlSafe(sql.to_owned())).execute(&mut connection).await;
-                            match (done, entry["fails"].as_bool() == Some(true)) {
-                                (Ok(_), true) => return Err(format!("{sql} must fail")),
-                                (Err(error), false) => return Err(format!("{sql}: {error}")),
-                                _ => {}
-                            }
-                            continue;
-                        }
-                        let query = entry["query"].as_str().unwrap_or_default();
-                        let row = sqlx::raw_sql(sqlx::AssertSqlSafe(query.to_owned()))
-                            .fetch_optional(&mut connection)
-                            .await
-                            .map_err(|e| format!("{query}: {e}"))?
-                            .ok_or_else(|| format!("{query}: no row"))?;
-                        let got = row
-                            .try_get_unchecked::<Option<String>, usize>(0)
-                            .map_err(|e| format!("{query}: {e}"))?
-                            .ok_or_else(|| format!("{query}: NULL value"))?;
-                        let want = entry["want"].as_str().unwrap_or_default();
-                        if got != want {
-                            return Err(format!("{query}: got {got}, want {want}"));
-                        }
-                    }
-                    Ok::<(), String>(())
-                }
-                .await;
-                connection.close().await.map_err(|e| e.to_string())?;
-                result
-            }};
-        }
-        match parse_dsn(dsn).map_err(|e| e.to_string())?.options {
-            ConnectOptions::MySql(options) => run!(options),
-            ConnectOptions::Postgres(options) => run!(options),
-            ConnectOptions::Sqlite(options) => run!(options),
-            ConnectOptions::Markdown(_) => Err("a markdown corpus has no native SQL driver".into()),
-        }
-    }
-
-    /// The connection that the public introspect reads, which counts its catalog queries.
-    struct CountingCatalog<'c, C> {
-        inner: &'c mut C,
-        count: usize,
-    }
-
-    impl<C: dbspec::CatalogQuerier + Send> dbspec::CatalogQuerier for CountingCatalog<'_, C> {
-        async fn rows(&mut self, query: &str) -> Result<Vec<Vec<dbspec::CatalogValue>>, sqlx::Error> {
-            self.count += 1;
-            self.inner.rows(query).await
-        }
+        (@open $options:expr, $connection:ident, $body:block) => {{
+            let mut $connection = $options.connect().await.map_err(|e| e.to_string())?;
+            let result = async { $body }.await;
+            $connection.close().await.map_err(|e| e.to_string())?;
+            result
+        }};
     }
 
     /// Runs one statement of dbspec.plan_physical on the connection.
@@ -4905,6 +4878,46 @@ mod database {
         }};
     }
 
+    /// On one native connection of the case database: the connection rules, the statements of the case for the database, then
+    /// its behavior steps. A step with dialects runs only on those; a step with fails must fail; a query compares its first
+    /// value, as text, with want, and a NULL or absent value fails it (DIA-113).
+    async fn ddl_behavior(step: &Value, database: &str, dsn: &str, dir: &Path) -> Result<(), String> {
+        use sqlx::{ConnectOptions as _, Connection as _, Row as _};
+        let path = dir.join(crate::recipe_reads::read(step, "vectors")["vectors"].as_str().unwrap_or_default());
+        let vectors: Value =
+            serde_json::from_str(&std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?).map_err(|e| e.to_string())?;
+        let id = crate::recipe_reads::read(step, "case")["case"].as_str().unwrap_or_default();
+        let vector =
+            vectors["cases"].as_array().and_then(|cases| cases.iter().find(|case| case["id"] == id)).ok_or_else(|| format!("the vectors have no case {id}"))?;
+        let rule = match database {
+            "mysql" => "SET time_zone = '+00:00'",
+            "postgres" => "SET TimeZone = 'UTC'",
+            _ => "PRAGMA foreign_keys = ON",
+        };
+        let statements = vector["statements"][database].as_array().ok_or_else(|| format!("the case {id} has no statements for {database}"))?;
+        let behavior = vector["behavior"].as_array().ok_or_else(|| format!("the case {id} has no behavior"))?;
+        on_native_connection!(dsn, |connection| {
+            for statement in std::iter::once(rule).chain(statements.iter().filter_map(Value::as_str)) {
+                sqlx::raw_sql(sqlx::AssertSqlSafe(statement.to_owned())).execute(&mut connection).await.map_err(|e| format!("{statement}: {e}"))?;
+            }
+            plan_behavior!(connection, database, behavior);
+            Ok::<(), String>(())
+        })
+    }
+
+    /// The connection that the public introspect reads, which counts its catalog queries.
+    struct CountingCatalog<'c, C> {
+        inner: &'c mut C,
+        count: usize,
+    }
+
+    impl<C: dbspec::CatalogQuerier + Send> dbspec::CatalogQuerier for CountingCatalog<'_, C> {
+        async fn rows(&mut self, query: &str) -> Result<Vec<Vec<dbspec::CatalogValue>>, sqlx::Error> {
+            self.count += 1;
+            self.inner.rows(query).await
+        }
+    }
+
     /// The dbspec.plan_physical op (FCV-4, PLN-102): on one native connection of the case database, the connection rules, the
     /// rendered source and the before steps; the plan steps before finalize, on SQLite with foreign keys off and no row of
     /// foreign_key_check, and the public introspect reads the target with nothing unsupported; without an irreversible step,
@@ -4966,74 +4979,59 @@ mod database {
         let steps = dbspec::plan_steps(source.as_ref(), &plan, dialect).map_err(|e| format!("the plan steps: {e:?}"))?;
         let reversible = steps.iter().all(|s| s.finalize || !s.rollback.is_empty());
         let sqlite = database == "sqlite";
-        // The driver of each database has its own connection type, so the steps are written once as a macro.
-        macro_rules! run {
-            ($options:expr) => {{
-                let mut connection = $options.connect().await.map_err(|e| e.to_string())?;
-                let result = async {
-                    for rule in rules {
-                        plan_exec!(connection, rule);
-                    }
-                    for statement in &setup {
-                        plan_exec!(connection, statement);
-                    }
-                    plan_behavior!(connection, database, before);
-                    // SQLite turns foreign keys off while it recreates a table, and checks them afterwards.
-                    if sqlite {
-                        plan_exec!(connection, "PRAGMA foreign_keys = OFF");
-                        plan_exec!(connection, "PRAGMA legacy_alter_table = OFF");
-                    }
-                    for s in steps.iter().take_while(|s| !s.finalize) {
-                        plan_exec!(connection, &s.statement);
-                    }
-                    plan_foreign_keys!(connection, sqlite);
-                    plan_schema_is!(connection, dialect, "applied", &target);
-                    if reversible {
-                        // A rollback that goes all the way back recreates the old table with the added column hidden.
-                        for s in steps.iter().rev().filter(|s| !s.finalize) {
-                            plan_exec!(connection, if s.rollback_restore.is_empty() { &s.rollback } else { &s.rollback_restore });
-                        }
-                        plan_foreign_keys!(connection, sqlite);
-                        plan_schema_is!(connection, dialect, "rolled back", &source_text);
-                        for s in steps.iter().take_while(|s| !s.finalize) {
-                            plan_exec!(connection, if s.restore.is_empty() { &s.statement } else { &s.restore });
-                        }
-                        plan_foreign_keys!(connection, sqlite);
-                        plan_schema_is!(connection, dialect, "applied again", &target);
-                    }
-                    if sqlite {
-                        plan_exec!(connection, "PRAGMA foreign_keys = ON");
-                    }
-                    plan_behavior!(connection, database, after);
-                    // Finalize also runs with SQLite foreign keys off, as apply does: hidden tables can reference each other.
-                    if sqlite {
-                        plan_exec!(connection, "PRAGMA foreign_keys = OFF");
-                    }
-                    for s in steps.iter().filter(|s| s.finalize) {
-                        plan_exec!(connection, &s.statement);
-                    }
-                    plan_foreign_keys!(connection, sqlite);
-                    if sqlite {
-                        plan_exec!(connection, "PRAGMA foreign_keys = ON");
-                    }
-                    plan_schema_is!(connection, dialect, "finalized", &target);
-                    let left = plan_value!(connection, hidden);
-                    if left != "0" {
-                        return Err(format!("{left} tables or columns named dbspec$ remain after finalize"));
-                    }
-                    Ok::<(), String>(())
+        on_native_connection!(dsn, |connection| {
+            for rule in rules {
+                plan_exec!(connection, rule);
+            }
+            for statement in &setup {
+                plan_exec!(connection, statement);
+            }
+            plan_behavior!(connection, database, before);
+            // SQLite turns foreign keys off while it recreates a table, and checks them afterwards.
+            if sqlite {
+                plan_exec!(connection, "PRAGMA foreign_keys = OFF");
+                plan_exec!(connection, "PRAGMA legacy_alter_table = OFF");
+            }
+            for s in steps.iter().take_while(|s| !s.finalize) {
+                plan_exec!(connection, &s.statement);
+            }
+            plan_foreign_keys!(connection, sqlite);
+            plan_schema_is!(connection, dialect, "applied", &target);
+            if reversible {
+                // A rollback that goes all the way back recreates the old table with the added column hidden.
+                for s in steps.iter().rev().filter(|s| !s.finalize) {
+                    plan_exec!(connection, if s.rollback_restore.is_empty() { &s.rollback } else { &s.rollback_restore });
                 }
-                .await;
-                connection.close().await.map_err(|e| e.to_string())?;
-                result
-            }};
-        }
-        match parse_dsn(dsn).map_err(|e| e.to_string())?.options {
-            ConnectOptions::MySql(options) => run!(options),
-            ConnectOptions::Postgres(options) => run!(options),
-            ConnectOptions::Sqlite(options) => run!(options),
-            ConnectOptions::Markdown(_) => Err("a markdown corpus has no native SQL driver".into()),
-        }
+                plan_foreign_keys!(connection, sqlite);
+                plan_schema_is!(connection, dialect, "rolled back", &source_text);
+                for s in steps.iter().take_while(|s| !s.finalize) {
+                    plan_exec!(connection, if s.restore.is_empty() { &s.statement } else { &s.restore });
+                }
+                plan_foreign_keys!(connection, sqlite);
+                plan_schema_is!(connection, dialect, "applied again", &target);
+            }
+            if sqlite {
+                plan_exec!(connection, "PRAGMA foreign_keys = ON");
+            }
+            plan_behavior!(connection, database, after);
+            // Finalize also runs with SQLite foreign keys off, as apply does: hidden tables can reference each other.
+            if sqlite {
+                plan_exec!(connection, "PRAGMA foreign_keys = OFF");
+            }
+            for s in steps.iter().filter(|s| s.finalize) {
+                plan_exec!(connection, &s.statement);
+            }
+            plan_foreign_keys!(connection, sqlite);
+            if sqlite {
+                plan_exec!(connection, "PRAGMA foreign_keys = ON");
+            }
+            plan_schema_is!(connection, dialect, "finalized", &target);
+            let left = plan_value!(connection, hidden);
+            if left != "0" {
+                return Err(format!("{left} tables or columns named dbspec$ remain after finalize"));
+            }
+            Ok::<(), String>(())
+        })
     }
 
     /// The documents of a dbspec.introspect step by name and its vector, which is null for a step with paths.
@@ -5143,31 +5141,16 @@ mod database {
         // tests/dbspec/ddl.json holds the rendered statements of each dialect as an object; only a list runs.
         let extra: Vec<String> =
             vector["statements"].as_array().map(|list| list.iter().filter_map(Value::as_str).map(str::to_owned).collect()).unwrap_or_default();
-        // The driver of each database has its own connection type, so the steps are written once as a macro.
-        macro_rules! run {
-            ($options:expr) => {{
-                let mut connection = $options.connect().await.map_err(|e| e.to_string())?;
-                let result = async {
-                    for statement in rules.iter().map(|rule| (*rule).to_owned()).chain(rendered.iter().cloned()).chain(extra.iter().cloned()) {
-                        let statement = statement.replace("{schema}", &schema);
-                        sqlx::raw_sql(sqlx::AssertSqlSafe(statement.clone())).execute(&mut connection).await.map_err(|e| format!("{statement}: {e}"))?;
-                    }
-                    let mut counter = CountingCatalog { inner: &mut connection, count: 0 };
-                    let introspection = dbspec::introspect(&mut counter, dialect, "introspected").await.map_err(|e| format!("introspect: {e}"))?;
-                    let count = counter.count;
-                    Ok::<_, String>((introspection, count))
-                }
-                .await;
-                connection.close().await.map_err(|e| e.to_string())?;
-                result?
-            }};
-        }
-        let (introspection, count) = match parse_dsn(dsn).map_err(|e| e.to_string())?.options {
-            ConnectOptions::MySql(options) => run!(options),
-            ConnectOptions::Postgres(options) => run!(options),
-            ConnectOptions::Sqlite(options) => run!(options),
-            ConnectOptions::Markdown(_) => return Err("a markdown corpus has no native SQL driver".into()),
-        };
+        let (introspection, count) = on_native_connection!(dsn, |connection| {
+            for statement in rules.iter().map(|rule| (*rule).to_owned()).chain(rendered.iter().cloned()).chain(extra.iter().cloned()) {
+                let statement = statement.replace("{schema}", &schema);
+                sqlx::raw_sql(sqlx::AssertSqlSafe(statement.clone())).execute(&mut connection).await.map_err(|e| format!("{statement}: {e}"))?;
+            }
+            let mut counter = CountingCatalog { inner: &mut connection, count: 0 };
+            let introspection = dbspec::introspect(&mut counter, dialect, "introspected").await.map_err(|e| format!("introspect: {e}"))?;
+            let count = counter.count;
+            Ok::<_, String>((introspection, count))
+        })?;
         if let Some(lines) = vector["document"].as_array() {
             let lines: Vec<&str> = lines.iter().filter_map(Value::as_str).collect();
             let got = dbspec::emit(&introspection.document);
@@ -5232,12 +5215,8 @@ mod database {
     /// database of the environment, since the case database reaches the replica only by this wait. The 60 seconds are the deadline
     /// of the wait: the replica applies the writes of every client that runs in parallel, one after another.
     async fn await_replica(context: &Context<'_>) -> Result<(), String> {
-        let variable = format!("ORM_TEST_{}_SERVER_DSN", context.database.to_uppercase());
-        let server =
-            std::env::var(&variable).map_err(|_| format!("{variable} is required; run make orm-test-servers, which starts the databases and writes it"))?;
-        let name = context.dsn.split_once("://").and_then(|(_, rest)| rest.split_once('/')).map(|(_, path)| path.split('?').next().unwrap_or(path));
-        let name = name.ok_or_else(|| format!("the DSN {} names no database", context.dsn))?;
-        let source = Db::connect(&polyspec_orm_case_database::with_database(&server, name), 1, Config::default()).await.map_err(|e| e.to_string())?;
+        let session = case_session_dsn(context)?;
+        let source = Db::connect(&session, 1, Config::default()).await.map_err(|e| e.to_string())?;
         let awaited = match source.pool() {
             Pool::Postgres(pool) => postgres_barrier(pool).await,
             Pool::MySql(pool) => mysql_replica_wait(pool).await,
@@ -5264,8 +5243,8 @@ mod database {
 
     /// The wait of `await_replica` on MySQL.
     async fn mysql_replica_wait(pool: &sqlx::MySqlPool) -> Result<(), String> {
-        let replica = std::env::var("ORM_TEST_MYSQL_REPLICA_DSN").map_err(|_| {
-            "replica.await: ORM_TEST_MYSQL_REPLICA_DSN is required; run make orm-test-servers, which starts the databases and writes it".to_owned()
+        let replica = std::env::var("ORM_TEST_MYSQL_REPLICA_DSN").map_err(|error| {
+            format!("replica.await: ORM_TEST_MYSQL_REPLICA_DSN is required ({error}); run make orm-test-servers, which starts the databases and writes it")
         })?;
         let row = sqlx::query("SHOW BINARY LOG STATUS").fetch_one(pool).await.map_err(|e| format!("binary log status: {e}"))?;
         let file: String = sqlx::Row::get(&row, 0);
@@ -5279,13 +5258,18 @@ mod database {
         }
     }
 
-    async fn end_session(table: &str, context: &Context<'_>) -> Result<(), String> {
+    /// The DSN of the case database on the server itself, past a pooler.
+    fn case_session_dsn(context: &Context<'_>) -> Result<String, String> {
         let variable = format!("ORM_TEST_{}_SERVER_DSN", context.database.to_uppercase());
-        let server =
-            std::env::var(&variable).map_err(|_| format!("{variable} is required; run make orm-test-servers, which starts the databases and writes it"))?;
+        let server = std::env::var(&variable)
+            .map_err(|error| format!("{variable} is required ({error}); run make orm-test-servers, which starts the databases and writes it"))?;
         let name = context.dsn.split_once("://").and_then(|(_, rest)| rest.split_once('/')).map(|(_, path)| path.split('?').next().unwrap_or(path));
         let name = name.ok_or_else(|| format!("the DSN {} names no database", context.dsn))?;
-        let session = polyspec_orm_case_database::with_database(&server, name);
+        Ok(polyspec_orm_case_database::with_database(&server, name))
+    }
+
+    async fn end_session(table: &str, context: &Context<'_>) -> Result<(), String> {
+        let session = case_session_dsn(context)?;
         let admin = Db::connect(&session, 1, Config::default()).await.map_err(|e| e.to_string())?;
         let ended = match admin.pool() {
             Pool::Postgres(pool) => {
@@ -6632,12 +6616,10 @@ mod tables {
                 }
                 "db.last_affected" => Ok(json!({ "value": { "int": polyspec_orm::testing::last_affected(&db).unwrap_or_default().to_string() } })),
                 "db.notify" => {
-                    let channel_repeat = crate::recipe_reads::read(step, "channel_repeat")["channel_repeat"].as_u64().unwrap_or(1);
-                    let payload_repeat = crate::recipe_reads::read(step, "payload_repeat")["payload_repeat"].as_u64().unwrap_or(1);
-                    let channel =
-                        crate::recipe_reads::read(step, "channel")["channel"].as_str().unwrap_or_default().repeat(usize::try_from(channel_repeat).unwrap_or(1));
-                    let payload =
-                        crate::recipe_reads::read(step, "payload")["payload"].as_str().unwrap_or_default().repeat(usize::try_from(payload_repeat).unwrap_or(1));
+                    let channel_repeat = crate::recipe_reads::read(step, "channel_repeat")["channel_repeat"].as_u64();
+                    let payload_repeat = crate::recipe_reads::read(step, "payload_repeat")["payload_repeat"].as_u64();
+                    let channel = crate::recipe::repeated(crate::recipe_reads::read(step, "channel")["channel"].as_str().unwrap_or_default(), channel_repeat)?;
+                    let payload = crate::recipe::repeated(crate::recipe_reads::read(step, "payload")["payload"].as_str().unwrap_or_default(), payload_repeat)?;
                     db.notify(&channel, &payload).await.map_err(orm)?;
                     Ok(json!({}))
                 }
@@ -6730,7 +6712,9 @@ mod tables {
                                 if begun.fetch_add(1, Ordering::SeqCst) + 1 >= hold {
                                     gate.send_replace(true);
                                 } else {
-                                    let _ = gate.subscribe().wait_for(|opened| *opened).await;
+                                    if let Err(error) = gate.subscribe().wait_for(|opened| *opened).await {
+                                        return Err(polyspec_orm::Error::Config(format!("the gate of the held transactions closed: {error}")));
+                                    }
                                 }
                                 active.fetch_sub(1, Ordering::SeqCst);
                                 Ok(())
@@ -6742,14 +6726,16 @@ mod tables {
                     local
                         .run_until(async {
                             for task in tasks {
-                                if let Ok(Err(error)) = task.await {
-                                    failure = Some(error);
+                                match task.await {
+                                    Ok(Ok(_)) => {}
+                                    Ok(Err(error)) => failure = Some(orm(error)),
+                                    Err(error) => failure = Some(format!("a pool transaction ended: {error}")),
                                 }
                             }
                         })
                         .await;
                     if let Some(error) = failure {
-                        return Err(orm(error));
+                        return Err(error);
                     }
                     Ok(json!({ "json": { "peak": peak.load(Ordering::SeqCst), "open": open.load(Ordering::SeqCst) } }))
                 }

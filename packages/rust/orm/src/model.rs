@@ -653,7 +653,9 @@ fn added_column_value(typ: &str, value: Val) -> Result<Val> {
 fn exact_integer_text(value: &Val) -> Result<()> {
     let text = match value {
         Val::Str(text) => text.as_str(),
-        Val::Bytes(bytes) => std::str::from_utf8(bytes).map_err(|error| Error::Engine { code: codes::CODEC_DECODE.into(), msg: format!("invalid i64: {bytes:?}: {error}") })?,
+        Val::Bytes(bytes) => {
+            std::str::from_utf8(bytes).map_err(|error| Error::Engine { code: codes::CODEC_DECODE.into(), msg: format!("invalid i64: {bytes:?}: {error}") })?
+        }
         _ => return Ok(()),
     };
     let digits = text.strip_prefix('-').unwrap_or(text);

@@ -11,11 +11,11 @@ use sqlx::mysql::{MySqlConnectOptions, MySqlPool};
 use sqlx::postgres::{PgConnectOptions, PgPool};
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
 
-pub use crate::driver::NOW_MASK;
 use crate::driver::{
     arg_types, exec_mysql, exec_mysql_pool, exec_pg, exec_pg_pool, exec_sqlite, exec_sqlite_pool, fetch_mysql, fetch_mysql_pool, fetch_pg, fetch_pg_pool,
     fetch_sqlite, fetch_sqlite_pool, masked, param_arg, statement, Target, TxInner,
 };
+pub use crate::driver::{stale_plan, NOW_MASK};
 use crate::engine::{self, Dialect};
 use crate::events::{statement_kind, Sent, Subscribers, KIND_UTILITY};
 use crate::markdown::{open_markdown, parse_markdown_dsn, MarkdownDsn, MdPool};
@@ -404,8 +404,10 @@ type PoolOwner = Arc<std::sync::OnceLock<std::sync::Weak<DbInner>>>;
 async fn close_idle_beyond<DB: sqlx::Database>(pool: &sqlx::Pool<DB>, idle: usize) {
     while pool.num_idle() > idle {
         let Some(connection) = pool.try_acquire() else { return };
-        // A connection that fails to close is gone from the pool as well.
-        let _ = connection.close().await;
+        // A connection that fails to close is gone from the pool as well, so the loop goes on.
+        if connection.close().await.is_err() {
+            continue;
+        }
     }
 }
 

@@ -101,7 +101,7 @@ async fn transaction_deadlock(db: &Db, step: &Value) -> Result<Value, String> {
         .collect();
     let (mut attempts, mut deadlocks) = (0, 0);
     for flow in flows {
-        let (flow_attempts, flow_deadlocks) = flow.join().map_err(|_| "a flow thread panicked".to_owned())??;
+        let (flow_attempts, flow_deadlocks) = flow.join().map_err(|panic| polyspec_orm_tests::recipe::panicked("a flow thread", &*panic))??;
         attempts += flow_attempts;
         deadlocks += flow_deadlocks;
     }

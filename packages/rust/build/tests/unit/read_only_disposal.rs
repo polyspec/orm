@@ -22,7 +22,7 @@ async fn check() {
             db.close().await;
         }
         let catalog = CatalogConnection::connect(&dsn).await.unwrap();
-        let mut owner = catalog;
+        let owner = catalog;
         let table = format!("orm_readonly_discard_{}", std::process::id());
         Conn::acquire(&owner.pool).await.unwrap().exec(&format!("CREATE TABLE {table}(n INTEGER NOT NULL)"), &[]).await.unwrap();
         let pool = owner.pool.clone();
