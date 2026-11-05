@@ -989,6 +989,7 @@
         "packages/go/model/chain_types_test.go",
         "packages/php/tests/NativeCellReadTest.php",
         "packages/ts/tests/chain-types.mjs",
+        "packages/ts/tests/tsc-diagnostics.mjs",
         "packages/ts/tests/driver-integer-param.mjs",
         "packages/ts/tests/styled-value-checks.mjs",
         "packages/php-ext/tests/PlanCacheBoundNativeTest.php",
@@ -2460,6 +2461,7 @@
         "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
         "packages/go/orm/transaction_api_test.go",
         "packages/ts/tests/chain-types.mjs",
+        "packages/ts/tests/tsc-diagnostics.mjs",
         "packages/python/tests/test_transaction_flow.py",
         "packages/php/tests/OrmExceptionLockWaitTest.php",
         "packages/ts/tests/driver-error-lock-wait.mjs",
@@ -3493,6 +3495,7 @@
         "packages/python/tests/test_new_values.py",
         "packages/rust/orm/tests/compiler_fixtures.rs",
         "packages/ts/tests/chain-types.mjs",
+        "packages/ts/tests/tsc-diagnostics.mjs",
         "packages/go/model/chain_types_test.go",
         "packages/go/generator/gen_go_check_test.go",
         "packages/go/generator/gen_go_output_test.go",
@@ -3751,6 +3754,7 @@
             "part": "packages/ts/tests",
             "tests": [
               "packages/ts/tests/chain-types.mjs",
+              "packages/ts/tests/tsc-diagnostics.mjs",
               "packages/ts/tests/generator-none.test.mjs"
             ],
             "commands": {
@@ -7381,6 +7385,7 @@
         "packages/python/tests/test_public_interface_none.py",
         "packages/python/tests/test_recipe_keys.py",
         "packages/rust/tests/src/recipe_keys.rs",
+        "packages/rust/tests/tests/recipe_keys.rs",
         "packages/rust/tests/tests/public_interface_none.rs",
         "packages/php/tests/ComposerExtensionsTest.php"
       ],

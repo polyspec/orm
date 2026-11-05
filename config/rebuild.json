@@ -360,7 +360,7 @@
     },
     "scripts/generate/once.mts": {
       "kind": "policy",
-      "reason": "the once rule of this repository (B3-2): a generator runs only when the key of its tracked inputs differs from its stamp, and a stamp is written only on success; no ecosystem tool keys a generator run by the tracked inputs of this repository"
+      "reason": "runs a generator of this repository only when the key of its declared inputs changes (B3-2); the key covers the generator's own inputs, which no ecosystem build cache of the six runtimes knows"
     },
     "scripts/php/mode-check.php": {
       "kind": "policy",
@@ -386,13 +386,29 @@
       "kind": "policy",
       "reason": "reads the PERF hot_path_gate lines of the performance owner tests of this repository into measurement records for the coverage of performance_gate; the line format is a rule of this repository"
     },
-    "scripts/generate/once.mts": {
-      "kind": "policy",
-      "reason": "runs a generator of this repository only when the key of its declared inputs changes (B3-2); the key covers the generator's own inputs, which no ecosystem build cache of the six runtimes knows"
-    },
     "scripts/php/php-ext-build.mts": {
       "kind": "policy",
       "reason": "builds the PHP extension of this repository once per source and mode and copies that build to each site (B1-7); it calls packages/php-ext/scripts/build.sh, the phpize, configure and make of php-src, and adds only the per-key cache"
+    },
+    "scripts/clone-file.mts": {
+      "kind": "policy",
+      "reason": "the copy of a built test binary of this repository, by a clone where the file system has one; no ecosystem tool names it for this copy"
+    },
+    "scripts/features/recipe-cases.mts": {
+      "kind": "policy",
+      "reason": "writes the key cases_on of a recipe of this repository from its cases (FCV-12), the form that the parity units of those recipes read"
+    },
+    "scripts/features/recipe-keys.mts": {
+      "kind": "policy",
+      "reason": "generates the key table of the recipe format of this repository from its schema, which every runner reads (FCV-2 to FCV-4)"
+    },
+    "scripts/features/recipe-runners.mts": {
+      "kind": "policy",
+      "reason": "the rule of this repository that each runtime has one recipe runner (FCV-15); no ecosystem tool knows these runners"
+    },
+    "scripts/features/test-names.mts": {
+      "kind": "policy",
+      "reason": "reports a test name that a command of the Makefile, the features or the parity units of this repository names and no test holds"
     }
   }
 }

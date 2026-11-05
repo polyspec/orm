@@ -737,6 +737,7 @@
         "packages/ts/tests/recipe_apply.mjs",
         "packages/ts/tests/recipe_introspect.mjs",
         "packages/ts/tests/recipe_keys.mjs",
+        "packages/ts/tests/tsc-diagnostics.mjs",
         "packages/ts/tests/recipe_generator.mjs"
       ],
       "args": [
@@ -1080,6 +1081,7 @@
         "packages/rust/tests/src/recipe.rs",
         "packages/rust/tests/src/recipe_apply.rs",
         "packages/rust/tests/src/recipe_reads.rs",
+        "packages/rust/tests/src/recipe_keys.rs",
         "packages/rust/tests/src/recipe_generator.rs",
         "packages/rust/tests/tests/common/or_panic.rs",
         "packages/rust/tests/tests/model_writes/dispatch.rs",
@@ -42879,33 +42881,33 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/src/recipe_keys.rs",
-          "id": "recipe_keys::tests::a_recipe_whose_keys_the_table_holds_is_accepted"
+          "test": "packages/rust/tests/tests/recipe_keys.rs",
+          "id": "a_recipe_whose_keys_the_table_holds_is_accepted"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/src/recipe_keys.rs",
-          "id": "recipe_keys::tests::an_unknown_file_key_is_refused_by_name"
+          "test": "packages/rust/tests/tests/recipe_keys.rs",
+          "id": "an_unknown_file_key_is_refused_by_name"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/src/recipe_keys.rs",
-          "id": "recipe_keys::tests::an_unknown_case_key_is_refused_by_name_with_its_case"
+          "test": "packages/rust/tests/tests/recipe_keys.rs",
+          "id": "an_unknown_case_key_is_refused_by_name_with_its_case"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/src/recipe_keys.rs",
-          "id": "recipe_keys::tests::an_unknown_op_is_refused_by_name_with_its_step"
+          "test": "packages/rust/tests/tests/recipe_keys.rs",
+          "id": "an_unknown_op_is_refused_by_name_with_its_step"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/src/recipe_keys.rs",
-          "id": "recipe_keys::tests::a_step_key_another_op_holds_is_refused_on_the_op_that_does_not_hold_it"
+          "test": "packages/rust/tests/tests/recipe_keys.rs",
+          "id": "a_step_key_another_op_holds_is_refused_on_the_op_that_does_not_hold_it"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/src/recipe_keys.rs",
-          "id": "recipe_keys::tests::a_recipe_with_no_schema_is_refused_since_it_names_no_key_table"
+          "test": "packages/rust/tests/tests/recipe_keys.rs",
+          "id": "a_recipe_with_no_schema_is_refused_since_it_names_no_key_table"
         }
       ]
     },

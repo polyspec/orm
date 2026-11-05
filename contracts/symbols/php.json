@@ -5339,6 +5339,10 @@
     "exported": false,
     "signature": "private function assertOpen(): void"
   },
+  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::assertStoredValues": {
+    "exported": false,
+    "signature": "private static function assertStoredValues(array $row, array $changes, Polyspec\\Orm\\CatalogTableMetadata $descriptor): void"
+  },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::beginSql": {
     "exported": false,
     "signature": "private static function beginSql(string $dialect, bool $readOnly): string"
@@ -13302,6 +13306,10 @@
   "packages/php/src/RuntimeModel.php::Polyspec\\Orm\\RuntimeModel::column": {
     "exported": true,
     "signature": "public static function column(array $entity, string $name): ?array"
+  },
+  "packages/php/src/RuntimeModel.php::Polyspec\\Orm\\RuntimeModel::documentsOf": {
+    "exported": false,
+    "signature": "private static function documentsOf(array $results, string $separator, array $prefixes=[]): array"
   },
   "packages/php/src/RuntimeModel.php::Polyspec\\Orm\\RuntimeModel::encrypted": {
     "exported": true,

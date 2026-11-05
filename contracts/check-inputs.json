@@ -218,7 +218,8 @@
       "scope": "suite",
       "needs": [
         "php",
-        "rust"
+        "rust",
+        "databases"
       ]
     },
     "owner-validate": {
@@ -3800,6 +3801,7 @@
       "inputs": [
         "packages/go/model/refusal_test.go",
         "packages/ts/tests/refusal-before-request.mjs",
+        "packages/ts/tests/tsc-diagnostics.mjs",
         "packages/rust/testing/compiler-fixtures/cases.json"
       ]
     },
@@ -3826,7 +3828,8 @@
         "packages/php/tests/RecipeKeys.php",
         "packages/php/tests/RecipeKeysTest.php",
         "packages/php-ext/tests/RecipeKeysExtensionTest.php",
-        "packages/rust/tests/src/recipe_keys.rs"
+        "packages/rust/tests/src/recipe_keys.rs",
+        "packages/rust/tests/tests/recipe_keys.rs"
       ]
     },
     "pgsql-pdo-adapter-php-check": {

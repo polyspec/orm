@@ -279,10 +279,6 @@
     "exported": false,
     "signature": " fn read_limits (max_rows : Option \u003c i64 \u003e , max_bytes : Option \u003c i64 \u003e) -\u003e Result \u003c crate :: tool_db :: QueryLimits , String \u003e"
   },
-  "packages/rust/build/src/catalog/mod.rs::stale_plan": {
-    "exported": false,
-    "signature": " fn stale_plan (error : \u0026 sqlx :: Error) -\u003e bool"
-  },
   "packages/rust/build/src/catalog/mod.rs::stopped_by_budget": {
     "exported": false,
     "signature": " fn stopped_by_budget \u003c T \u003e (result : \u0026 Result \u003c T , String \u003e) -\u003e bool"
@@ -4848,8 +4844,8 @@
     "signature": "pub (crate) fn same_scalar (v : \u0026 Val , p : \u0026 Param) -\u003e Result \u003c bool \u003e"
   },
   "packages/rust/orm/src/driver.rs::stale_plan": {
-    "exported": false,
-    "signature": " fn stale_plan (error : \u0026 sqlx :: Error) -\u003e bool"
+    "exported": true,
+    "signature": "pub fn stale_plan (error : \u0026 sqlx :: Error) -\u003e bool"
   },
   "packages/rust/orm/src/driver.rs::statement": {
     "exported": false,

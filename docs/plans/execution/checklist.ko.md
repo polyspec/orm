@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: b55d81660d58f0b8a0f4d788e7fee870c878a1d6e1cdd6a94a79486a8bd1c51f -->
+<!-- source-sha256: 1b7d5726be1f1667953bd4c716aa4749aee1c87eb4e8a755ff54b4a52b48d4fc -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1747,7 +1747,7 @@
 | ORMC-2 | TypeScript 정수 parameter test의 이름을 그 내용대로 짓는다: 셀의 정확한 byte가 recipe로 옮겨 간 뒤 packages/ts/tests/driver-cell-bytes.mjs에는 그 test만 남았다. 이웃한 internal 항목의 reason은 각 test가 하는 일을 적는다. | packages/ts/tests/driver-integer-param.mjs, Makefile, config/parity.json, contracts/check-inputs.json, contracts/features.json, CHANGELOG.md, CHANGELOG.ko.md | `make native-error-cause-check/typescript-driver`, `make parity-declarations-check` | [v] |
 | ORMC-3 | dbspec-apply-stress-bench는 stress plan을 적용한다. 원인: CR15-10(54838413c)이 native test를 recipe case stress_plan_commits_each_step으로 옮기면서 명령을 지우고 변수 검사만 남겨서, `make bench`와 CI group stress_mysql, stress_pg_sqlite가 아무것도 적용하지 않고 통과했다. | Makefile, scripts/repo/check.test.mts, docs/spec/plans.md, docs/spec/plans.ko.md, CHANGELOG.md, CHANGELOG.ko.md | `make dbspec-apply-stress-bench`, `make repo-check` | [v] |
 | T360 | a_prepared_statement_stays_on_its_connection(T333)의 MySQL 절반이 문장이 제 연결에 남는다는 것을 증명한다. T333은 text를 보내는 runtime에서 어느 연결로 읽든 0인 수를 읽게 두었다. Red: 첫 연결의 prepared statement 수를 아예 읽지 않아, 같은 연결로 읽어도 MySQL에서 통과한다. Green: procedure가 두 protocol 모두에서 문장을 prepare하고, 첫 연결은 1, 두 번째 연결은 0을 읽으며, 두 번째 읽기를 첫 연결로 바꾸면 MySQL과 PostgreSQL에서 사례가 실패한다. | `contracts/fixtures/utils/utils.json` | `make feature-coverage-of/transactions` | [v] |
-| T361 | 정적 검사가 개발 줄에서 통과한다. Red: 지난 release 이후 개발이 바뀐 시험만 실행했으므로 make kit-gates-static가 실패한다. Green: 각 지적을 고치고 검사를 넓히지 않은 채 make kit-gates-static가 0으로 끝난다. | `Makefile`; `config/parity.json`; `config/rebuild.json`; `contracts/check-inputs.json`; `contracts/features.json`; `contracts/interfaces.json`; `contracts/symbols` | `make kit-gates-static` | [~] |
+| T361 | 정적 검사가 개발 줄에서 통과한다. Red: 지난 release 이후 개발이 바뀐 시험만 실행했으므로 make kit-gates-static가 실패한다. Green: 각 지적을 고치고 검사를 넓히지 않은 채 make kit-gates-static가 0으로 끝난다. | `Makefile`; `config/parity.json`; `config/rebuild.json`; `contracts/check-inputs.json`; `contracts/features.json`; `contracts/interfaces.json`; `contracts/symbols` | `make kit-gates-static` | [v] |
 | T362 | Go lint 검사가 개발 줄에서 통과한다. Red: 지난 release 이후 개발이 바뀐 시험만 실행했으므로 make kit-gates-runtime-go가 실패한다. Green: 각 지적을 고치고 검사를 넓히지 않은 채 make kit-gates-runtime-go가 0으로 끝난다. | `packages/go` | `make kit-gates-runtime-go` | [v] |
 | T363 | TypeScript lint 검사가 개발 줄에서 통과한다. Red: 지난 release 이후 개발이 바뀐 시험만 실행했으므로 make kit-gates-runtime-ts가 실패한다. Green: 각 지적을 고치고 검사를 넓히지 않은 채 make kit-gates-runtime-ts가 0으로 끝난다. | `packages/ts`; `scripts`; `tests/conformance/check`; `tests/interfaces/check` | `make kit-gates-runtime-ts` | [v] |
 | T364 | Python lint 검사가 개발 줄에서 통과한다. Red: 지난 release 이후 개발이 바뀐 시험만 실행했으므로 make kit-gates-runtime-python가 실패한다. Green: 각 지적을 고치고 검사를 넓히지 않은 채 make kit-gates-runtime-python가 0으로 끝난다. | `packages/python` | `make kit-gates-runtime-python` | [v] |

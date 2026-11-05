@@ -2452,8 +2452,8 @@
     "signature": "async function splitReadPlan(db: Db, request: Request, params: readonly unknown[]): Promise\u003c{ cached: Cached; slots: number; }\u003e"
   },
   "packages/ts/src/database.ts::splitRowKey": {
-    "exported": true,
-    "signature": "export function splitRowKey(row: readonly unknown[], refs: readonly KeyReference[]): string"
+    "exported": false,
+    "signature": "function splitRowKey(row: readonly unknown[], refs: readonly KeyReference[]): string"
   },
   "packages/ts/src/database.ts::statement": {
     "exported": true,
@@ -2806,10 +2806,6 @@
   "packages/ts/src/dbspec/apply.ts::applyPlans": {
     "exported": true,
     "signature": "export async function applyPlans(connection: Connection, dialect: DbspecDialect, plans: readonly DbspecPlan[], now: () =\u003e number, events?: DbspecApplyHandler | null): Promise\u003cvoid\u003e"
-  },
-  "packages/ts/src/dbspec/apply.ts::dbspecEffectHolds": {
-    "exported": true,
-    "signature": "export async function dbspecEffectHolds(connection: unknown, dialect: DbspecDialect, effect: DbspecEffect): Promise\u003cboolean\u003e"
   },
   "packages/ts/src/dbspec/apply.ts::finalizePlans": {
     "exported": true,
@@ -6944,15 +6940,15 @@
     "signature": "public scan(sql: string, params: readonly DriverValue[], sink: RowSink, done: StatementDone): Promise\u003cvoid\u003e"
   },
   "packages/ts/src/driver.ts::RowSink": {
-    "exported": true,
+    "exported": false,
     "signature": "interface RowSink"
   },
   "packages/ts/src/driver.ts::RowSink.columns": {
-    "exported": true,
+    "exported": false,
     "signature": "columns(columns: DriverColumn[]): void"
   },
   "packages/ts/src/driver.ts::RowSink.row": {
-    "exported": true,
+    "exported": false,
     "signature": "row(values: unknown[]): boolean"
   },
   "packages/ts/src/driver.ts::SentOrigin": {
@@ -7190,6 +7186,10 @@
   "packages/ts/src/driver.ts::mysqlParams": {
     "exported": true,
     "signature": "export function mysqlParams(params: readonly DriverValue[]): DriverValue[]"
+  },
+  "packages/ts/src/driver.ts::mysqlResult": {
+    "exported": false,
+    "signature": "function mysqlResult(value: QueryResult, fields: FieldPacket[] | undefined): DriverResult"
   },
   "packages/ts/src/driver.ts::mysqlScan": {
     "exported": false,
@@ -10600,8 +10600,8 @@
     "signature": "function finishWrite(r: WriteRequest): Request"
   },
   "packages/ts/src/model.ts::groupValue": {
-    "exported": true,
-    "signature": "export function groupValue(db: Db, column: Assemble['columns'][number], raw: unknown, schema: Entity): unknown"
+    "exported": false,
+    "signature": "function groupValue(db: Db, column: Assemble['columns'][number], raw: unknown, schema: Entity): unknown"
   },
   "packages/ts/src/model.ts::grouped": {
     "exported": false,

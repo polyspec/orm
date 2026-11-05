@@ -1263,7 +1263,7 @@ recipe-unknown-key-check/python: recipe-keys-check python-venv-check
 recipe-unknown-key-check/php: recipe-keys-check php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/RecipeKeysTest.php
 recipe-unknown-key-check/rust: recipe-keys-check lease-tool
-	cd packages/rust && $(CARGO_TEST) recipe-unknown-key-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --lib recipe_keys
+	cd packages/rust && $(CARGO_TEST) recipe-unknown-key-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test recipe_keys
 recipe-unknown-key-check/php-extension: recipe-keys-check php-vendor-check
 	@set -eu; run_dir="$(abspath .runtime/run)/recipe-unknown-key-php-extension-check-$$PPID"; trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; $(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/RecipeKeysExtensionTest.php
 

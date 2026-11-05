@@ -5775,6 +5775,10 @@
     "exported": false,
     "signature": "receiver=*Planner func(scope *scope, columns []string) []string"
   },
+  "packages/go/engine/planner/planner.go::Planner.readColumn": {
+    "exported": false,
+    "signature": "receiver=*Planner func(s *scope, name string, col *runtimemodel.Field) string"
+  },
   "packages/go/engine/planner/planner.go::Planner.readSQLStyles": {
     "exported": false,
     "signature": "receiver=*Planner func(styles []string) []string"
