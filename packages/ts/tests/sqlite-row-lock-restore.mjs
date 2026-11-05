@@ -21,7 +21,7 @@ function makeFrame({ primary, setZero, restore }) {
 
 // Requirements: INT-49.
 caseTest('SQLite NOWAIT busy_timeout restore outcomes preserve primary and cleanup errors', COMPUTE, async () => {
-  const db = new Db({ name: 'sqlite' }, 'UTC', {});
+  const db = new Db({ name: 'sqlite' }, 'UTC', {}, { version: 1, key: '', keyring: undefined });
   const primaryCause = { errcode: 5, message: 'database is locked' };
   const restore = new OrmError(codes.DRIVER, 'restore rejected');
   for (const [primaryFailure, restoreFailure] of [[false, false], [false, true], [true, false], [true, true]]) {
