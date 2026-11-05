@@ -4334,10 +4334,11 @@ static bool cat_update_body(zval *db, const char *dialect, zval *pdo, zval *orig
             zval *stored = zend_hash_index_find(Z_ARRVAL_P(first_row), i);
             zval *written = zend_hash_index_find(Z_ARRVAL_P(updated), i);
             if (!cat_same_cell(stored, written)) {
+                /* The name lives in the descriptor, so the exception takes it before the descriptor is released. */
                 zval nrv, *name = catalog_prop(column, "name", &nrv);
+                db_throw_orm("ROW_WRITE_MISMATCH", "stored ordinary values of \"%s\" differ", Z_STRVAL_P(name));
                 zval_ptr_dtor(&after);
                 zval_ptr_dtor(&descriptor);
-                db_throw_orm("ROW_WRITE_MISMATCH", "stored ordinary values of \"%s\" differ", Z_STRVAL_P(name));
                 return false;
             }
         }
