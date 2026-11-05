@@ -1,6 +1,6 @@
 [package]
 name = "polyspec-orm"
-version = "0.0.21"
+version = "0.0.22"
 edition = "2021"
 rust-version = "1.99.0"
 publish = false
@@ -17,7 +17,7 @@ categories = ["database"]
 test-faults = []
 
 [dependencies]
-polyspec-orm-schema = { version = "=0.0.21", path = "../schema" }
+polyspec-orm-schema = { version = "=0.0.22", path = "../schema" }
 ordered-json = { package = "polyspec-ordered-json", version = ">=0.0.20, <0.1.0", git = "https://github.com/polyspec/ordered-json.git", tag = "v0.0.20" }
 rustls = { version = "0.23", default-features = false, features = ["std"] }
 sqlx = { version = "0.9", features = ["runtime-tokio", "mysql", "postgres", "sqlite", "tls-rustls-ring-native-roots", "chrono", "rust_decimal", "json", "ipnet"] }

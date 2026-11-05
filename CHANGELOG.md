@@ -3,6 +3,9 @@
 
 ## Unreleased
 
+## 0.0.22
+
+- Fixes: the Go catalog reports a stopped read and the failure of a close, and the Go PostgreSQL driver returns an error where it panicked.
 - Recipe cases prove CFG-22 on every runtime that has the behaviour: a session setting and a prepared statement stay on their connection (`utils`), and each connection counts its own pool (`connection_pool`).
 - A SQLite lock wait between two connections that write the same row ends with `CANCELED` after the busy timeout and is not retried, because SQLite reports no row-lock deadlock: SQLITE_LOCKED (6, 262) is `DRIVER` in every runtime, and transaction_deadlock_retry runs the sqlite case in all six runtimes (PLN-24, CFG-12) (T343-3)
 - A catalog insert names the column whose stored value differs, and the declared capacity refusal of a Rust insert names its column, in every path and runtime; a PostgreSQL AFTER trigger that rewrites the row is the recipe case `row_insert_that_an_after_trigger_rewrites`.
