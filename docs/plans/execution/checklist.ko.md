@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: c5b785b423ffe9be4c440861e90b5eb4057cf6b6792d7be98c1fee7223bfbd78 -->
+<!-- source-sha256: 7aafd52ce84225eb3e561b2459081c38457141651f07cd202c6c85925f312b95 -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1764,3 +1764,4 @@
 | T376 | CI의 pooler lane에 그 target이 요구하는 flowmark build가 있다. Red: CI run 41986216792의 test (clients_pooler)가 flowmark-check에서 실패한다. client-pooler-check는 그 binary를 요구하는데 contracts/check-inputs.json의 항목이 flowmark를 적지 않아 job이 설치하지 않는다. | contracts/check-inputs.json | `node --test scripts/check/run.test.mts` | [v] |
 | T377 | MySQL privilege fixture가 go-test-check를 실행하는 모든 lane에 닿는다. Red: CI run 41986216792의 test (dbspec)가 TestDialectFacts에서 ORM_TEST_MYSQL_PRIVILEGE_DSN is required로 실패한다. dbspec-introspect-compare-check가 go-test-check를 실행하면서 그 fixture를 needs에 적지 않기 때문이다. | contracts/check-inputs.json | `node --test scripts/check/run.test.mts` | [v] |
 | T378 | Rust의 decimal physical case가 마감 전에 빌드된 binary를 실행한다. Red: CI run 41986216792의 test (feature_helpers)가 decimal/mysql/rust/1에서 cargo timed out after 120000 ms로 실패한다. case가 마감 안에서 cargo test를 실행해, 같은 실행의 다른 helper가 공유 target 폴더에 빌드하는 것을 기다리고 다시 빌드하기 때문이다. | Makefile, scripts/decimal-physical-check.mts, scripts/physical-command-case.test.mts | `node --test scripts/physical-command-case.test.mts` | [v] |
+| T379 | orm의 Markdown conformance가 flowmark의 마지막 release에서 돈다. Red: tests/markdown/flowmark.version이 flowmark v0.0.4보다 192 commit 뒤인 2026-10-24 commit을 고정해, markdown group이 consumer가 받지 않는 server로 client를 증명한다. | tests/markdown/flowmark.version | `make orm-install-flowmark` | [v] |
