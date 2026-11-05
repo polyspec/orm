@@ -137,6 +137,24 @@ final class RegistrySchemaNativeTest extends TestCase
         self::assertSame($otherRuntime, Registry::model($other->manifestHash));
     }
 
+    // The runtime model holds its own reference to the parsed entities, so they outlive what the registry holds.
+    public function testModelOfParsedEntitiesKeepsThemAfterTheRegistryReplacesThem(): void
+    {
+        $text = "dbspec 1 registry_parsed_owner\n\ntable item {\n  id i64 identity\n  primary key (id)\n}\n";
+        $manifest = RuntimeModel::build(RuntimeModel::loadSet($text, ''));
+        $hash = $manifest->manifestHash;
+        Registry::generated($hash, $manifest->manifestText, '');
+        $entities = $manifest->entities;
+        $entities['copy'] = $entities['item'];
+        Registry::parsed($hash, RuntimeModel::FORMAT, $entities);
+        unset($entities);
+        $model = Registry::model($hash);
+        Registry::parsed($hash, RuntimeModel::FORMAT, []);
+        $reused = array_fill(0, 8, 'reused');
+        self::assertSame(['item', 'copy'], array_keys($model->entities));
+        self::assertCount(8, $reused);
+    }
+
     // Registry::model builds the runtime model of generated text with no registered model class through
     // loadSet; repeated builds must leave the Zend heap intact.
     public function testModelOfGeneratedTextKeepsTheHeapIntact(): void

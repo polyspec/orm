@@ -659,7 +659,10 @@ PHP_METHOD(Polyspec_Orm_RuntimeModel, verifyModel) {
 }
 void polyspec_runtime_model_from_parsed(zval *out, zend_string *hash, zend_string *text, zval *entities, zend_string *external) {
     ENTER();
-    construct_model(out, zs(hash), zs(text), entities, external ? zs(external) : SL(""));
+    // construct_model takes the reference it is given, and the caller keeps its own.
+    zval owned;
+    ZVAL_COPY(&owned, entities);
+    construct_model(out, zs(hash), zs(text), &owned, external ? zs(external) : SL(""));
     LEAVE();
 }
 PHP_METHOD(Polyspec_Orm_RuntimeModel, fromModels) {
