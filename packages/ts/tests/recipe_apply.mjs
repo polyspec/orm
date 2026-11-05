@@ -77,7 +77,7 @@ function sessionOf(s, context) {
 const cell = value => (value === null ? { null: true } : { text: value instanceof Uint8Array ? Buffer.from(value).toString() : String(value) });
 
 /** Makes one call of the command; its value is the code of its failure, or ok, and the events that count names. */
-async function command(s, context, { sql, runStep }) {
+async function command(s, context, runStep) {
   const session = sessionOf(s, context);
   const plans = s.plans.map(name => {
     const plan = context.bound.get(name);
@@ -109,7 +109,7 @@ async function command(s, context, { sql, runStep }) {
     else if (s.message !== undefined && failure.message === s.message) code = 'message';
     else throw error;
     if (s.detail !== undefined && !failure.message.toLowerCase().includes(s.detail.toLowerCase())) {
-      throw new Error(`the message ${JSON.stringify(failure.message)} does not hold ${JSON.stringify(s.detail)}`);
+      throw new Error(`the message ${JSON.stringify(failure.message)} does not hold ${JSON.stringify(s.detail)}`, { cause: error });
     }
   }
   const elapsed = Date.now() - started;
@@ -159,6 +159,6 @@ export function applyOps({ sql, runStep }) {
       return {};
     }),
   };
-  for (const op of Object.keys(COMMANDS)) ops[op] = (s, context) => command(s, context, { sql, runStep });
+  for (const op of Object.keys(COMMANDS)) ops[op] = (s, context) => command(s, context, runStep);
   return ops;
 }

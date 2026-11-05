@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 import { query } from '../dist/database.js';
-import { CompositeAccount, CompositeMembership, Db, Engine } from '../dist/index.js';
+import { CompositeAccount, Engine } from '../dist/index.js';
 
 // Requirements: DSL-153.
 caseTest('parent-slot-expansion/preserves-bare-dollar', COMPUTE, async () => {

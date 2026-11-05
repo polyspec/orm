@@ -1,4 +1,4 @@
-import { GroupRow, GroupRows, OrmError } from '../dist/index.js';
+import { GroupRow, OrmError } from '../dist/index.js';
 import { addedColumnValue } from '../dist/model.js';
 import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 

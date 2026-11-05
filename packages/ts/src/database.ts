@@ -398,8 +398,8 @@ export function rowKey(row: readonly unknown[], refs: readonly KeyReference[]): 
   return keyOfValues(values);
 }
 
-/** @internal The identity used only while merging split root queries. */
-export function splitRowKey(row: readonly unknown[], refs: readonly KeyReference[]): string {
+/** The identity used only while merging split root queries. */
+function splitRowKey(row: readonly unknown[], refs: readonly KeyReference[]): string {
   const key = rowKey(row, refs);
   if (key === undefined) throw new OrmError(codes.CODEC_DECODE, 'split query row identity contains SQL NULL');
   return key;

@@ -9,7 +9,8 @@ import { caseTest, PROCESS } from '../../tests/testcase.mts';
 import * as ownerSelection from './owners.mts';
 import type { CheckInputs, Owner, TargetDeclaration } from './owners.mts';
 import { parseJson, refusedPaths } from '../json/schema.mts';
-import { readFeatures } from './manifest.mts';
+import { parseFeatures, readFeatures } from './manifest.mts';
+import { readParityConfig } from '../json/formats.mts';
 import { alternatives, checkCommand, expand, featureCommands, makefileCommands, memoryTree, readMakefile, readTree, staleNames } from './test-names.mts';
 
 const { CHECK_INPUTS_SCHEMA, checkInputErrors, makeArguments, manifestChanges, manifestInputErrors, pathScopeErrors, readCheckInputs, selectHelpers, selectOwners, selectTargets, untestedPaths } = ownerSelection;
@@ -377,7 +378,7 @@ caseTest('the feature contracts of this checkout pass', PROCESS, () => {
 
 // A Rust verification names a test program that exists: `cargo test --no-run` fails the whole command on a program that was removed.
 caseTest('every Rust verification names a test program of the workspace', 60_000, async () => {
-  const features = (await readFeatures(root)) as unknown as { features: { verification?: { id: string; command: string }[] }[] };
+  const features = readFeatures(root);
   const programs = execFileSync('git', ['ls-files', 'packages/rust/*/tests/*.rs', 'packages/rust/*/tests/*/main.rs'], { cwd: root, encoding: 'utf8' })
     .split('\n').filter(Boolean).map(path => /\/tests\/(?:([^/]+)\/main|([^/]+))\.rs$/.exec(path)).map(match => match?.[1] ?? match?.[2]);
   const missing = features.features.flatMap(feature => feature.verification ?? []).flatMap(verification =>
@@ -449,9 +450,9 @@ caseTest('every declared command, binding and input names a test of the tree', 1
   const read = async (path: string) => readFile(join(root, path), 'utf8');
   const stale = staleNames(readTree(root), {
     makefile: await read('Makefile'),
-    features: JSON.parse(await read('contracts/features.json')),
-    parity: JSON.parse(await read('config/parity.json')),
-    checkInputs: JSON.parse(await read('contracts/check-inputs.json')),
+    features: parseFeatures(await read('contracts/features.json'), 'contracts/features.json'),
+    parity: readParityConfig(join(root, 'config/parity.json')),
+    checkInputs: parseJson<CheckInputs>(await read('contracts/check-inputs.json'), CHECK_INPUTS_SCHEMA, 'contracts/check-inputs.json'),
   });
   assert.deepEqual([...stale].map(([name, places]) => `${name} <- ${places.join(', ')}`).sort(), []);
 });

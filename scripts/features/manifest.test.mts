@@ -139,9 +139,9 @@ caseTest('the composite-key recipe holds distinct bounded tuples with equal conc
     ['go', 'php', 'php-extension', 'python', 'rust', 'typescript'],
     'composite_keys declares all six client owners',
   );
-  const recipe = JSON.parse(readFileSync(new URL(`../../${recipePath}`, import.meta.url), 'utf8')) as {
+  const recipe = parseJson<{
     cases: { id: string; steps: { op: string; model?: string; rows?: Record<string, { int?: string; text?: string }>[] }[] }[];
-  };
+  }>(readFileSync(new URL(`../../${recipePath}`, import.meta.url), 'utf8'), new URL('schema/recipe.schema.json', import.meta.url).pathname, recipePath);
   const compositeCase = recipe.cases.find(item => item.id === 'composite_key_rows');
   assert.ok(compositeCase, 'the recipe holds composite_key_rows');
   const created = (model: string) => compositeCase.steps.find(step => step.op === 'model.creates' && step.model === model)?.rows ?? [];
@@ -175,7 +175,6 @@ const markdownServerContracts = [
   { path: 'packages/php/tests/Recipe.php', required: ['start_markdown_test_server(', 'markdown_test_server_received_messages('], forbidden: ['markdown_fake_server(', 'markdown_received('] },
   { path: 'packages/php-ext/tests/ModelWriteSurfaceTest.php', required: ['start_markdown_test_server(', 'markdown_test_server_received_messages('], forbidden: ['markdown_fake_server(', 'markdown_received('] },
   { path: 'packages/go/markdownmodel/ir_answers_test.go', required: ['startMarkdownTestServerWithKeyedAnswers(', 'startMarkdownTestServerWithAnswer(', 'listenMarkdownTestServer(', 'serveMarkdownTestConnection('], forbidden: ['keyedServer(', 'answeringServer(', 'listenLocal(', 'serveListener('] },
-  { path: 'packages/python/tests/test_markdown.py', required: ['class MarkdownTestServer:', 'def received_messages(self)', 'self._received_messages'], forbidden: ['class FakeServer:', 'def messages(self)', 'self.received_messages:'] },
   { path: 'packages/python/tests/chain_answer.py', required: ['start_markdown_test_server_with_keyed_answers(', 'start_markdown_test_server_with_answer(', 'listen_markdown_test_server(', 'accept_markdown_test_connection('], forbidden: ['keyed_server(', 'answering_server(', 'listen_once(', 'accept_once('] },
   { path: 'packages/ts/tests/recipe.mjs', required: ['startMarkdownTestServerWithKeyedAnswers(', 'startMarkdownTestServerWithAnswer(', 'listenMarkdownTestServer('], forbidden: ['keyedServer(', 'answeringServer(', 'listenMarkdownServer('] },
   { path: 'packages/ts/tests/markdown_test_listener.mjs', required: ['listenMarkdownTestServer('], forbidden: ['listenMarkdownServer('] },

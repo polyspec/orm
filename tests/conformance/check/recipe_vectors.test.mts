@@ -4,8 +4,12 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { NO_RECIPE_CASE, RUNNER_SOURCES, compareOutput, declaredBodies, expectations, plain, runnerCommand, sequenceDifferences, sequenceStatement } from './recipe_vectors.mts';
+import { NO_RECIPE_CASE, RUNNER_SOURCES, compareOutput, declaredBodies, expectations, list, plain, readRecipe, record, runnerCommand, sequenceDifferences, sequenceStatement, type Sequence } from './recipe_vectors.mts';
+import { readJsonFile } from '../../../scripts/json/schema.mts';
 import { COMPUTE, caseTest } from '../../testcase.mts';
+
+const VECTORS_SCHEMA = join(import.meta.dirname, '../../../tests/conformance/schema/vectors.schema.json');
+const INTERFACES_SCHEMA = join(import.meta.dirname, '../../../scripts/schema/interfaces-manifest.schema.json');
 
 caseTest('a wrapper of a recipe value reads as plain JSON', COMPUTE, () => {
   assert.deepEqual(plain({ array: [{ object: [['a', { int: '7' }], ['b', { text: 'x' }]] }, { null: 'int' }, { bool: true }] }), [{ a: 7, b: 'x' }, null, true]);
@@ -16,13 +20,13 @@ caseTest('each body with generated methods has the expects of its recipe case on
   for (const database of ['mysql', 'postgres', 'sqlite']) {
     const want = expectations('generated', database);
     assert.deepEqual([...want.keys()], ['terminal_by', 'terminal_reuse', 'relation_empty', 'aes_values', 'hex_malformed', 'empty_reads', 'now_defaults', 'delete_recursive', 'affected_counts']);
-    assert.equal((want.get('terminal_by')?.result as { count: number }).count, 40);
+    assert.equal(record(want.get('terminal_by')?.result).count, 40);
     assert.deepEqual(want.get('hex_malformed')?.result, { odd_length: 'CODEC_DECODE', white_space: 'CODEC_DECODE' });
     assert.ok((want.get('terminal_by')?.statements.length ?? 0) > 0);
     assert.deepEqual(want.get('now_defaults')?.result, { created_equals_updated: true, created_near_clock: true });
-    assert.deepEqual((want.get('now_defaults')?.statements as { transaction: number }[]).map(statement => statement.transaction), [1, 1, 1, 1, 1]);
+    assert.deepEqual(list(want.get('now_defaults')?.statements).map(statement => record(statement).transaction), [1, 1, 1, 1, 1]);
     assert.deepEqual(want.get('delete_recursive')?.result, { members: 2, members_left: 0, service_left: null });
-    assert.equal((want.get('affected_counts')?.result as { upsert_updated: number }).upsert_updated, 1);
+    assert.equal(record(want.get('affected_counts')?.result).upsert_updated, 1);
   }
 });
 
@@ -31,7 +35,7 @@ caseTest('the sequence statement comes from the recipe', COMPUTE, () => {
 });
 
 caseTest('the fixed-clock expects state the exact clock where the client writes it', COMPUTE, () => {
-  const fixed = (database: string) => (expectations('fixed-clock', database).get('clock_truncate_write')?.result as { at6_fixed: boolean }).at6_fixed;
+  const fixed = (database: string) => record(expectations('fixed-clock', database).get('clock_truncate_write')?.result).at6_fixed;
   assert.equal(fixed('sqlite'), true);
   assert.equal(fixed('postgres'), true);
   assert.equal(fixed('mysql'), false);
@@ -47,12 +51,9 @@ caseTest('a result or a statement that differs from its expect fails', COMPUTE, 
   assert.throws(() => { compareOutput('masked text', { result: want.result, statements: [{ sql: 'SELECT 1', binds: ['$SEQ'] }] }, { result: want.result, statements: [{ sql: 'SELECT 1', binds: ['a'] }] }); }, /statement 0 binds/);
 });
 
-const recipeCases = (): { id: string; steps: never[] }[] => JSON.parse(readFileSync(
-  join(import.meta.dirname, '../../../contracts/fixtures/conformance_verification/conformance_verification.json'), 'utf8',
-)).cases;
 caseTest('every vector name is a recipe case or a fixed-clock body', COMPUTE, () => {
-  const cases = new Set(recipeCases().map(item => item.id));
-  const { vectors } = JSON.parse(readFileSync(join(import.meta.dirname, '../vectors.json'), 'utf8')) as { vectors: { name: string }[] };
+  const cases = new Set(readRecipe().cases.map(item => item.id));
+  const { vectors } = readJsonFile<{ vectors: { name: string }[] }>(join(import.meta.dirname, '../vectors.json'), VECTORS_SCHEMA);
   for (const { name } of vectors) assert.ok(cases.has(name) || name in NO_RECIPE_CASE, `the vector ${name} has no recipe case`);
 });
 
@@ -82,28 +83,28 @@ caseTest('TestPHPExtensionCommandLine', COMPUTE, () => {
   assert.deepEqual(runnerCommand('php', 'dsn', ['one']), ['php', ['packages/php/testing/conformance/runner.php', '--dsn', 'dsn', '--vector', 'one']], 'php command line');
 });
 
-const contracts = (): { id: string; expected?: never; statements?: string[] }[] =>
-  (JSON.parse(readFileSync(join(import.meta.dirname, '../../../contracts/interfaces.json'), 'utf8')) as { sequences: { id: string; statements?: string[] }[] }).sequences;
+const contracts = (): Sequence[] => readJsonFile<{ sequences: Sequence[] }>(join(import.meta.dirname, '../../../contracts/interfaces.json'), INTERFACES_SCHEMA).sequences;
 
 caseTest('every state contract of the interfaces holds in its recipe case on each database', COMPUTE, () => {
-  const cases = new Map(recipeCases().map(item => [item.id, item]));
+  const cases = new Map(readRecipe().cases.map(item => [item.id, item]));
   const sequences = contracts();
   assert.ok(sequences.length > 0, 'contracts/interfaces.json holds no state contract');
   for (const sequence of sequences) {
     const held = cases.get(sequence.id);
     assert.ok(held, `the state contract ${sequence.id} has no recipe case`);
     for (const database of ['mysql', 'postgres', 'sqlite']) {
-      assert.deepEqual(sequenceDifferences(sequence, held as never, database), [], `${database}: ${sequence.id}`);
+      assert.deepEqual(sequenceDifferences(sequence, held, database), [], `${database}: ${sequence.id}`);
     }
   }
 });
 
 caseTest('a changed statement kind or result of a state contract is a difference', COMPUTE, () => {
-  const cases = new Map(recipeCases().map(item => [item.id, item]));
+  const cases = new Map(readRecipe().cases.map(item => [item.id, item]));
   const sequence = contracts().find(item => item.id === 'transactions');
   assert.ok(sequence);
-  const held = cases.get('transactions') as never;
+  const held = cases.get('transactions');
+  assert.ok(held);
   assert.deepEqual(sequenceDifferences(sequence, held, 'sqlite'), []);
   assert.notDeepEqual(sequenceDifferences({ ...sequence, statements: (sequence.statements ?? []).slice(1) }, held, 'sqlite'), [], 'a missing statement');
-  assert.notDeepEqual(sequenceDifferences({ ...sequence, expected: [false, 1, 1, 'runner', true, 0] as never }, held, 'sqlite'), [], 'a changed result');
+  assert.notDeepEqual(sequenceDifferences({ ...sequence, expected: [false, 1, 1, 'runner', true, 0] }, held, 'sqlite'), [], 'a changed result');
 });

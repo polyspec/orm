@@ -2,6 +2,7 @@
 // schema cannot state (VERSION, the paths on disk, the unique ids, the shards, the fixtures) are in scripts/features/check.mts.
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { parseRecipeCases, type RecipeCases } from '../json/formats.mts';
 import { parseJson, readJsonFile } from '../json/schema.mts';
 
 /** A language of the clients (the declared implementations of config/parity.json). */
@@ -48,30 +49,39 @@ export function readFeatures(root: string): FeatureManifest {
   return withRecipeCases(readJsonFile<FeatureManifest>(resolve(root, 'contracts/features.json'), FEATURES_SCHEMA), root);
 }
 
-/** The part of a recipe (contracts/fixtures) that names the cases of its owners. */
-type RecipeCases = { cases: { id: string; only?: string[] }[] };
+/** A native command of an owner of a feature that runs a recipe, with the language of the owner and the database that lists it. */
+export type OwnerRecipeCommand = { language: string; database: string; recipe: string; command: NativeCommand };
+
+/** ownerRecipeCommands lists the recipe commands of the owners of a feature; every holds when each list of each owner has one, the feature's owners are then recipe owners. */
+export function ownerRecipeCommands(feature: ManifestFeature): { every: boolean; commands: OwnerRecipeCommand[] } {
+  const owners = Object.entries(feature.coverage?.owners ?? {});
+  const found: OwnerRecipeCommand[] = [];
+  let every = owners.length > 0;
+  for (const [language, owner] of owners) {
+    const commands = Object.entries(owner.commands ?? {});
+    if (!commands.length || commands.some(([, list]) => !(list ?? []).some(command => command.recipe))) every = false;
+    for (const [database, list] of commands) {
+      for (const command of list ?? []) {
+        if (command.recipe) found.push({ language, database, recipe: command.recipe, command });
+      }
+    }
+  }
+  return { every, commands: found };
+}
 
 // withRecipeCases fills the cases of each recipe owner from its recipe, the list of the owner (FCV-12), which the manifest
 // does not copy; a feature all of whose owners are recipe owners has the cases of those recipes as its coverage cases.
 function withRecipeCases(manifest: FeatureManifest, root: string): FeatureManifest {
   const recipes = new Map<string, RecipeCases>();
   for (const feature of manifest.features) {
-    const owners = Object.values(feature.coverage?.owners ?? {});
+    const { every, commands } = ownerRecipeCommands(feature);
     const whole = new Set<string>();
-    let every = owners.length > 0;
-    for (const owner of owners) {
-      const commands = Object.entries(owner.commands ?? {});
-      if (!commands.length || commands.some(([, list]) => !(list ?? []).some(command => command.recipe))) every = false;
-      for (const [database, list] of commands) {
-        for (const command of list ?? []) {
-          if (!command.recipe) continue;
-          const recipe = recipes.get(command.recipe) ?? JSON.parse(readFileSync(resolve(root, command.recipe), 'utf8')) as RecipeCases;
-          recipes.set(command.recipe, recipe);
-          const on = command.database ?? database;
-          command.cases = recipe.cases.filter(item => item.only === undefined || item.only.includes(on)).map(item => item.id);
-          command.cases.forEach(id => whole.add(id));
-        }
-      }
+    for (const { database, recipe: path, command } of commands) {
+      const recipe = recipes.get(path) ?? parseRecipeCases(readFileSync(resolve(root, path), 'utf8'), path);
+      recipes.set(path, recipe);
+      const on = command.database ?? database;
+      command.cases = recipe.cases.filter(item => item.only === undefined || item.only.includes(on)).map(item => item.id);
+      command.cases.forEach(id => whole.add(id));
     }
     if (every && feature.coverage) feature.coverage.cases = [...whole];
   }

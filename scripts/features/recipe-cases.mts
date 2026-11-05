@@ -6,15 +6,16 @@
 import { globSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseRecipeCases, type RecipeCases } from '../json/formats.mts';
+import { parseJsonValue } from '../json/schema.mts';
 
-type RecipeCase = { id: string; only?: string[] };
 type CasesOn = { mysql: string[]; postgres: string[]; sqlite: string[] };
 
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const KEY = ',\n  "cases_on": ';
 
 /** The case ids that each database runs, in the recipe's order. */
-export function casesOn(cases: RecipeCase[]): CasesOn {
+export function casesOn(cases: RecipeCases['cases']): CasesOn {
   const on = (database: string) => cases.filter(item => item.only === undefined || item.only.includes(database)).map(item => item.id);
   return { mysql: on('mysql'), postgres: on('postgres'), sqlite: on('sqlite') };
 }
@@ -23,17 +24,18 @@ export function casesOn(cases: RecipeCase[]): CasesOn {
 export function withCasesOn(text: string): string {
   const at = text.indexOf(KEY);
   const body = at === -1 ? text.slice(0, text.lastIndexOf('\n}')) : text.slice(0, at);
-  const lists = JSON.stringify(casesOn((JSON.parse(`${body}\n}`) as { cases: RecipeCase[] }).cases), null, 2).replaceAll('\n', '\n  ');
+  const lists = JSON.stringify(casesOn(parseRecipeCases(`${body}\n}`, 'recipe').cases), null, 2).replaceAll('\n', '\n  ');
   return `${body}${KEY}${lists}\n}\n`;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   for (const file of globSync('contracts/fixtures/*/*.json', { cwd: root })) {
     const text = readFileSync(resolve(root, file), 'utf8');
-    const value = JSON.parse(text) as { cases?: unknown };
-    if (!Array.isArray(value.cases) || !(value.cases as RecipeCase[]).some(item => item.only !== undefined)) continue;
+    const value = parseJsonValue(text, file);
+    const items = value !== null && typeof value === 'object' && !Array.isArray(value) ? value.cases : undefined;
+    if (!Array.isArray(items) || !items.some(item => item !== null && typeof item === 'object' && 'only' in item)) continue;
     // A recipe of one database has one unit, on that database, whose cases all run there.
-    if (Object.values(casesOn(value.cases as RecipeCase[])).some(list => list.length === 0)) continue;
+    if (Object.values(casesOn(parseRecipeCases(text, file).cases)).some(list => list.length === 0)) continue;
     writeFileSync(resolve(root, file), withCasesOn(text));
   }
 }

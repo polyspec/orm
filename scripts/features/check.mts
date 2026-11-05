@@ -8,7 +8,7 @@ import type { Check } from './select.mts';
 import { manifestInputErrors } from './owners.mts';
 import { readFeatures, type FeatureManifest } from './manifest.mts';
 import { boundTestPaths, implementationFiles, implementationLanguages, implementationTestInventory, koreanDocumentPath, unlistedFeatureTestErrors, unitTests, unknownParityUnits } from './languages.mts';
-import { JsonError, readJsonFile, SchemaError } from '../json/schema.mts';
+import { JsonError, parseJsonValue, readJsonFile, SchemaError } from '../json/schema.mts';
 import { parseSelection, selectChecks, selectionErrors, SHARDS } from './select.mts';
 import { completionItemAdapterErrors } from './behavior-adapters.mts';
 import { checkBehaviorAdapterCases } from '../../tests/interfaces/check/contract.mts';
@@ -97,8 +97,9 @@ for (const feature of manifest.features) {
     // A document set and a recipe have checks of their own (FCV-3); this schema is that of a feature fixture.
     if (relative.endsWith('/dbspec-set.json')) continue;
     try {
-      const declared = JSON.parse(await readFile(resolve(root, relative), 'utf8')) as { $schema?: string };
-      if (declared.$schema?.endsWith('recipe.schema.json')) continue;
+      const declared = parseJsonValue(await readFile(resolve(root, relative), 'utf8'), relative);
+      const named = declared !== null && typeof declared === 'object' && !Array.isArray(declared) ? declared.$schema : undefined;
+      if (typeof named === 'string' && named.endsWith('recipe.schema.json')) continue;
       const fixture = readJsonFile<{ feature: string }>(resolve(root, relative), FIXTURE_SCHEMA);
       if (fixture.feature !== feature.id) errors.push(`${feature.id}: fixture ${relative} has a different feature id`);
     } catch (error) {

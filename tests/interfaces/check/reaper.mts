@@ -3,6 +3,7 @@
 // of this process's standard input, and the system closes it when the checker ends, so the end of the input is the event.
 // A line is `+<pid>`, a group that started, or `-<pid>`, a group that ended.
 import { createInterface } from 'node:readline';
+import { errorCode } from '../../errors.mts';
 
 const groups = new Set<number>();
 const lines = createInterface({ input: process.stdin });
@@ -17,7 +18,7 @@ lines.on('close', () => {
       process.kill(-pid, 'SIGKILL');
     } catch (error) {
       // The group ended after its last line was written.
-      if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error;
+      if (errorCode(error) !== 'ESRCH') throw error;
     }
   }
 });

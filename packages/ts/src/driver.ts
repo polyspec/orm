@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { connect as netConnect, isIP } from 'node:net';
 import mysql, { type Pool as MySqlPool, type PoolConnection as MySqlConnection } from 'mysql2/promise';
-import type { FieldPacket } from 'mysql2';
+import type { FieldPacket, QueryResult } from 'mysql2';
 import pg from 'pg';
 import { PostgresListener } from './listen.js';
 import { OrmError } from './runtime_error.js';
@@ -41,7 +41,7 @@ export interface DriverResult {
  * Receives a streamed result: columns once, before the first row, then each row. A row returns false to stop the result; the
  * statement then ends and the connection is no longer usable for the rows that remain, so the caller discards it.
  */
-export interface RowSink {
+interface RowSink {
   columns(columns: DriverColumn[]): void;
   row(values: unknown[]): boolean;
 }
@@ -355,20 +355,21 @@ export function mysqlParams(params: readonly DriverValue[]): DriverValue[] {
   return params.map(value => (typeof value === 'number' && Number.isInteger(value) ? BigInt(value) : value));
 }
 
-async function mysqlExecute(connection: MySqlPool | MySqlConnection, sql: string, params: readonly DriverValue[]): Promise<DriverResult> {
-  const [value, fields] = await connection.execute({ sql, rowsAsArray: true }, mysqlParams(params));
+/** A MySQL answer as a driver result: the rows of a statement that returns them, or the counts of one that does not. */
+function mysqlResult(value: QueryResult, fields: FieldPacket[] | undefined): DriverResult {
   const columns = (fields ?? []).map(mysqlColumn);
   if (Array.isArray(value)) return { rows: arrayRows(value), affected: 0, insertId: null, columns };
-  const result = value as { affectedRows: number; insertId: number };
-  return { rows: [], affected: result.affectedRows, insertId: result.insertId || null, columns };
+  return { rows: [], affected: value.affectedRows, insertId: value.insertId || null, columns };
+}
+
+async function mysqlExecute(connection: MySqlPool | MySqlConnection, sql: string, params: readonly DriverValue[]): Promise<DriverResult> {
+  const [value, fields] = await connection.execute({ sql, rowsAsArray: true }, mysqlParams(params));
+  return mysqlResult(value, fields);
 }
 
 async function mysqlControl(connection: MySqlConnection, sql: string, params: readonly DriverValue[]): Promise<DriverResult> {
   const [value, fields] = await connection.query({ sql, rowsAsArray: true }, [...params]);
-  const columns = (fields ?? []).map(mysqlColumn);
-  if (Array.isArray(value)) return { rows: arrayRows(value), affected: 0, insertId: null, columns };
-  const result = value as { affectedRows: number; insertId: number };
-  return { rows: [], affected: result.affectedRows, insertId: result.insertId || null, columns };
+  return mysqlResult(value, fields);
 }
 
 /** Streams the rows of one MySQL statement. A row that sink refuses ends the statement; the connection is then discarded by its caller. */
@@ -511,7 +512,7 @@ const statementCaches = new WeakMap<object, StatementNames>();
  */
 function stalePlan(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
-  const code = (error as { code?: unknown }).code;
+  const code = 'code' in error ? error.code : undefined;
   if (code === '0A000') return error.message.includes('cached plan must not change result type');
   return typeof code === 'string' && ['42883', '42804', '22P02', '22003', '22007', '22008'].includes(code);
 }

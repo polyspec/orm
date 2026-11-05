@@ -41,19 +41,19 @@ function parse(text: string, source: string): unknown {
   }
 }
 
-// validators holds the compiled schemas by their text: ajv keeps every schema object it compiles for the life of the process,
-// so compiling a schema once per check grows the heap until a run of many checks aborts.
-const validators = new Map<string, ValidateFunction>();
+// schemas holds the schema objects by their text: ajv keeps every schema object it compiles for the life of the process, and
+// compiles one object once, so a new object per check would grow the heap until a run of many checks aborts.
+const schemas = new Map<string, object>();
 
 /** validator is the compiled schema of the file, compiled once for each text the file holds. */
 export function validator<T>(schema: string): ValidateFunction<T> {
   const text = readFileSync(schema, 'utf8');
-  const known = validators.get(text);
-  if (known) return known as ValidateFunction<T>;
+  const known = schemas.get(text);
+  if (known) return ajv.compile<T>(known);
   const rules = parse(text, schema);
   if (rules === null || typeof rules !== 'object' || Array.isArray(rules)) throw new JsonError(`${schema}: a JSON Schema is an object`);
   const compiled = ajv.compile<T>(rules);
-  validators.set(text, compiled);
+  schemas.set(text, rules);
   return compiled;
 }
 
@@ -74,6 +74,22 @@ function issue(error: ErrorObject): SchemaIssue {
 /** parseJson is the value of the JSON text against the schema file; it throws a JsonError or a SchemaError naming source. */
 export function parseJson<T>(text: string, schema: string, source: string): T {
   return checkJson<T>(parse(text, source), schema, source);
+}
+
+/** A value of JSON. */
+export type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
+
+const isJson = (value: unknown): value is Json => {
+  if (value === null || typeof value === 'boolean' || typeof value === 'number' || typeof value === 'string') return true;
+  if (Array.isArray(value)) return value.every(isJson);
+  return typeof value === 'object' && Object.values(value).every(isJson);
+};
+
+/** parseJsonValue is the value of JSON text of no schema, whose reader narrows what it reads; invalid JSON throws a JsonError naming source. */
+export function parseJsonValue(text: string, source: string): Json {
+  const value = parse(text, source);
+  if (!isJson(value)) throw new JsonError(`${source}: not a JSON value`);
+  return value;
 }
 
 /** readJsonFile is the value of the JSON file against the schema file. */

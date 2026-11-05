@@ -58,6 +58,11 @@ export type GoTestEvent = {
 /** parseGoTestEvent reads one line of go test -json; source names it in the errors. */
 export const parseGoTestEvent = (line: string, source: string): GoTestEvent => parseJson<GoTestEvent>(line, schema('go-test-event'), source);
 
+/** The fields of a recipe that the scripts read to list its cases. */
+export type RecipeCases = { cases: { id: string; only?: string[] }[] };
+/** parseRecipeCases reads the text of a recipe; source names it in the errors. */
+export const parseRecipeCases = (text: string, source: string): RecipeCases => parseJson<RecipeCases>(text, schema('recipe-cases'), source);
+
 /** One JSON message of cargo. */
 export type CargoMessage = {
   reason: string; executable?: string | null; manifest_path?: string; profile?: { test?: boolean }; target?: { name?: string; kind?: string[] };

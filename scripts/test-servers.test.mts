@@ -324,7 +324,8 @@ caseTest('a refused attempt leaves the lease directory untouched, so waiters do 
   try {
     for (const [held, file, request] of [['exclusive', 'exclusive.json', 'exclusive'], ['exclusive', 'exclusive.json', 'shared'], ['shared', 'shared-1-a.json', 'exclusive']] as const) {
       const leases = join(root, `${held}-${request}`);
-      writeHolder(leases, file, { kind: held, pid: holder.pid! });
+      assert.ok(holder.pid !== undefined, 'the holder process started');
+      writeHolder(leases, file, { kind: held, pid: holder.pid });
       const before = statSync(leases, { bigint: true }).mtimeNs;
       const refused: SpawnSyncReturns<string> = spawnSync(lease, ['run', leases, request, '--', 'true'], { encoding: 'utf8' });
       assert.equal(refused.status, 3, refused.stderr);

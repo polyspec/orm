@@ -1031,8 +1031,9 @@ caseTest('a coverage process deadline is not shorter than the longest declared t
 caseTest('a process that never ends is stopped at its deadline', PROCESS, async () => {
   const result = await run(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], undefined, 100);
   assert.equal(result.error, 'timeout after 100 ms');
-  assert.ok(result.pid !== undefined, 'the run reports the pid it started');
-  assert.throws(() => process.kill(result.pid as number, 0), { code: 'ESRCH' });
+  const { pid } = result;
+  assert.ok(pid !== undefined, 'the run reports the pid it started');
+  assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' });
 });
 
 // A results file of a database item holds `CASE <id> [<database>] PASS` lines of its database; a line without the database or

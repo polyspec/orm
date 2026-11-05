@@ -6,10 +6,10 @@ import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promi
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { caseTest, COMPUTE } from '../../tests/testcase.mts';
-import { readParityConfig } from '../json/formats.mts';
-import { checkJson, readJsonFile, refusedPaths } from '../json/schema.mts';
-import { executeCoverage, languages, recipeCaseIds, selectFeatures, type Manifest } from './coverage.mts';
-import { readFeatures } from './manifest.mts';
+import { parseRecipeCases, readParityConfig } from '../json/formats.mts';
+import { checkJson, parseJsonValue, readJsonFile, refusedPaths, type Json } from '../json/schema.mts';
+import { executeCoverage, languages, recipeCaseIds, selectFeatures, type Manifest, type Owner } from './coverage.mts';
+import { FEATURES_SCHEMA, ownerRecipeCommands, readFeatures } from './manifest.mts';
 import { casesOn, withCasesOn } from './recipe-cases.mts';
 import { testDirectoryOf } from './packages.mts';
 
@@ -17,7 +17,6 @@ const root = new URL('../..', import.meta.url).pathname;
 const schema = resolve(root, 'scripts/features/schema/recipe.schema.json');
 const fixtures = resolve(root, 'scripts/features/fixtures/recipes');
 
-type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 type Recipe = { [key: string]: Json };
 
 // read is a fixture recipe, checked against the recipe schema as it is read.
@@ -35,6 +34,19 @@ function at(value: Json, path: Key[]): Json {
     node = next;
   }
   return node;
+}
+
+// label is a value of a recipe in the message of a fault.
+const label = (value: Json | undefined): string => typeof value === 'string' ? value : JSON.stringify(value);
+
+// jsonFile is a JSON file of the repository whose shape the case narrows.
+const jsonFile = (file: string): Json => parseJsonValue(readFileSync(resolve(root, file), 'utf8'), file);
+
+// items is the list that path names.
+function items(value: Json, path: Key[]): Json[] {
+  const list = at(value, path);
+  if (!Array.isArray(list)) throw new Error(`${path.join('.')} of the recipe is not a list`);
+  return list;
 }
 
 // change is a copy of the recipe with the member that path names set to value, or deleted when no value is given.
@@ -124,7 +136,7 @@ function expectFaults(recipe: Json): string[] {
         const expect = step[key];
         if (expect === null || typeof expect !== 'object' || Array.isArray(expect) || expect === undefined) continue;
         const named = Object.keys(expect).sort().join(',');
-        if (named !== [...only].sort().join(',')) faults.push(`${where} ${String(step.op)} ${key} names ${named}, want ${[...only].sort().join(',')}`);
+        if (named !== [...only].sort().join(',')) faults.push(`${where} ${label(step.op)} ${key} names ${named}, want ${[...only].sort().join(',')}`);
       }
       walk(step.steps ?? null, only, where);
     }
@@ -132,7 +144,7 @@ function expectFaults(recipe: Json): string[] {
   if (recipe === null || typeof recipe !== 'object' || Array.isArray(recipe) || !('fixture' in recipe) || !Array.isArray(recipe.cases)) return faults;
   for (const kase of recipe.cases) {
     if (kase === null || typeof kase !== 'object' || Array.isArray(kase)) continue;
-    walk(kase.steps ?? null, Array.isArray(kase.only) ? kase.only.map(String) : DATABASES, String(kase.id));
+    walk(kase.steps ?? null, Array.isArray(kase.only) ? kase.only.map(String) : DATABASES, label(kase.id));
   }
   return faults;
 }
@@ -150,7 +162,7 @@ caseTest('an expect names exactly the databases that run its step', COMPUTE, () 
   assert.notDeepEqual(expectFaults(change(change(database, ['cases', 0, 'steps', decode, 'only'], ['postgres']), ['cases', 0, 'steps', decode, 'expect', 'postgres'])), [], 'a step with only whose expect leaves it out');
   const parity = readParityConfig(resolve(root, 'config/parity.json'));
   const files = (parity.suites ?? []).flatMap(glob => globSync(glob, { cwd: root }));
-  assert.deepEqual(files.flatMap(file => expectFaults(JSON.parse(readFileSync(resolve(root, file), 'utf8')) as Json).map(fault => `${file}: ${fault}`)), []);
+  assert.deepEqual(files.flatMap(file => expectFaults(jsonFile(file)).map(fault => `${file}: ${fault}`)), []);
 });
 
 // One subtest per recipe, so that a run reports every invalid recipe and not the first.
@@ -174,7 +186,7 @@ for (const file of suiteFiles) {
 caseTest('the recipe is the list of the cases of its owners', COMPUTE, () => {
   const differences: string[] = [];
   // The manifest holds no copy of what the recipe lists: a copy goes stale when a lane adds a case to the recipe.
-  const written = JSON.parse(readFileSync(resolve(root, 'contracts/features.json'), 'utf8')) as Manifest;
+  const written = readJsonFile<Manifest>(resolve(root, 'contracts/features.json'), FEATURES_SCHEMA);
   for (const feature of written.features ?? []) {
     const owners = Object.entries(feature.coverage?.owners ?? {});
     const recipeOnly = owners.length > 0 && owners.every(([, owner]) => {
@@ -184,21 +196,13 @@ caseTest('the recipe is the list of the cases of its owners', COMPUTE, () => {
     if (recipeOnly && feature.coverage?.cases !== undefined) differences.push(`${feature.id}: coverage.cases copies its recipe`);
   }
   for (const feature of readFeatures(root).features ?? []) {
-    const owners = Object.entries(feature.coverage?.owners ?? {});
+    const { every, commands } = ownerRecipeCommands(feature);
     const whole = new Set<string>();
-    let every = owners.length > 0;
-    for (const [language, owner] of owners) {
-      const commands = Object.entries(owner.commands ?? {});
-      if (!commands.length || commands.some(([, list]) => !(list ?? []).some(command => command.recipe))) every = false;
-      for (const [database, list] of commands) {
-        for (const command of list ?? []) {
-          if (!command.recipe) continue;
-          const ids = recipeCaseIds(readFileSync(resolve(root, command.recipe), 'utf8'), command.database ?? database);
-          ids.forEach(id => whole.add(id));
-          if (JSON.stringify([...command.cases].sort()) !== JSON.stringify([...ids].sort()))
-            differences.push(`${feature.id}/${language}/${database}: ${command.cases.length} declared, ${ids.length} in ${command.recipe}`);
-        }
-      }
+    for (const { language, database, recipe, command } of commands) {
+      const ids = recipeCaseIds(readFileSync(resolve(root, recipe), 'utf8'), command.database ?? database);
+      ids.forEach(id => whole.add(id));
+      if (JSON.stringify([...command.cases].sort()) !== JSON.stringify([...ids].sort()))
+        differences.push(`${feature.id}/${language}/${database}: ${command.cases.length} declared, ${ids.length} in ${recipe}`);
     }
     if (every && JSON.stringify([...(feature.coverage?.cases ?? [])].sort()) !== JSON.stringify([...whole].sort()))
       differences.push(`${feature.id}: coverage.cases is not the list of its recipe`);
@@ -209,12 +213,12 @@ caseTest('the recipe is the list of the cases of its owners', COMPUTE, () => {
 // sampleOwner is a manifest in which the TypeScript owner runs entry as a recipe owner; the other owners are declared and
 // not selected, since the checker requires an owner for each language that the parity of the feature claims.
 function sampleOwner(entry: string, recipe: string, cases: string[]): Manifest {
-  const owners = Object.fromEntries(languages.map(language => {
+  const owners = Object.fromEntries(languages.map((language): [string, Owner] => {
     const part = testDirectoryOf(language);
     return [language, { part, tests: [`${part}/other`], commands: {} }];
   }));
   owners.typescript = { part: 'packages/ts', tests: [entry],
-    commands: { none: [{ runner: 'node', test: entry, cases, recipe }] } } as never;
+    commands: { none: [{ runner: 'node', test: entry, cases, recipe }] } };
   return selectFeatures({ features: [{ id: 'sample', status: 'partial', parity: languages.map(name => `fixture-${name}`),
     coverage: { kind: 'independent', cases: ['whole'], owners, dependents: [] } }] }, 'sample', ['owner/typescript']);
 }
@@ -304,10 +308,9 @@ caseTest('the cases of a recipe on a database leave out a case that names only o
 // is a case of that recipe, so that a new vector cannot stay unrun.
 // Requirements: FCV-2, DIA-133.
 caseTest('the recipe dbspec_introspect names every case of tests/dbspec/introspect.json', COMPUTE, () => {
-  const vectors = JSON.parse(readFileSync('tests/dbspec/introspect.json', 'utf8')).cases.map((vector: { id: string }) => vector.id);
-  const recipe = JSON.parse(readFileSync('contracts/fixtures/dbspec_introspect/dbspec_introspect.json', 'utf8'));
-  const named = recipe.cases.flatMap((entry: { steps: { vectors?: string; case?: string }[] }) =>
-    entry.steps.filter(step => step.vectors === '../../../tests/dbspec/introspect.json').map(step => step.case));
+  const vectors = items(jsonFile('tests/dbspec/introspect.json'), ['cases']).map(vector => label(at(vector, ['id'])));
+  const named = items(jsonFile('contracts/fixtures/dbspec_introspect/dbspec_introspect.json'), ['cases']).flatMap(entry =>
+    items(entry, ['steps']).filter(step => step !== null && typeof step === 'object' && !Array.isArray(step) && step.vectors === '../../../tests/dbspec/introspect.json').map(step => label(at(step, ['case']))));
   assert.deepEqual([...named].sort(), [...vectors].sort());
 });
 
@@ -320,7 +323,7 @@ caseTest('a suite unit of a database selects the cases that database runs', COMP
     const database = DATABASES.find(name => unit.id.endsWith(`-${name}`));
     if (unit.kind !== 'suite' || database === undefined || !unit.file?.startsWith('contracts/fixtures/')) continue;
     const text = readFileSync(resolve(root, unit.file), 'utf8');
-    const { cases } = JSON.parse(text) as { cases: { id: string; only?: string[] }[] };
+    const { cases } = parseRecipeCases(text, unit.file);
     if (unit.cases === `$.cases_on.${database}[*]`) {
       if (text !== withCasesOn(text)) problems.push(`${unit.file}: cases_on differs from its cases; run node scripts/features/recipe-cases.mts`);
       continue;
@@ -329,6 +332,6 @@ caseTest('a suite unit of a database selects the cases that database runs', COMP
   }
   assert.deepEqual(problems.slice(0, 5), []);
   const sample = '{\n  "cases": [\n    {"id": "a", "only": ["mysql"]},\n    {"id": "b"}\n  ]\n}\n';
-  assert.deepEqual(casesOn(JSON.parse(sample).cases), { mysql: ['a', 'b'], postgres: ['b'], sqlite: ['b'] });
+  assert.deepEqual(casesOn(parseRecipeCases(sample, 'sample').cases), { mysql: ['a', 'b'], postgres: ['b'], sqlite: ['b'] });
   assert.equal(withCasesOn(withCasesOn(sample)), withCasesOn(sample));
 });

@@ -6,7 +6,7 @@ import { isUtf8 } from 'node:buffer';
 import { createHash } from 'node:crypto';
 import { lstatSync } from 'node:fs';
 import * as codes from './codes.js';
-import { driverError, openDriver, parseDsn, sqlitePath, type DriverColumn, type DriverName, type DriverPool, type DriverResult, type DriverSession, type DriverValue, type RowSink } from './driver.js';
+import { driverError, openDriver, parseDsn, sqlitePath, type DriverColumn, type DriverName, type DriverPool, type DriverResult, type DriverSession, type DriverValue } from './driver.js';
 import { OrmError } from './runtime_error.js';
 
 /** Budgets of the catalog connection (docs/spec/interfaces.md). A result over its budget is refused, never truncated. */
@@ -1306,7 +1306,8 @@ export class CatalogConnection {
         return await this.pool.reserve();
       } catch (error) {
         // The driver error of the reserve holds the server's error as its cause.
-        const full = (error as { cause?: { errno?: unknown } }).cause?.errno === 1226;
+        const cause = error instanceof Error ? error.cause : undefined;
+        const full = typeof cause === 'object' && cause !== null && 'errno' in cause && cause.errno === 1226;
         if (!full || Date.now() >= this.reopenUntil) throw error;
         await new Promise(resolve => { setTimeout(resolve, 10); });
       }

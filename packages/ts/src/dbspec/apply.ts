@@ -108,7 +108,7 @@ const ROLLING_BACK = 'rolling_back';
  * A query that reads the kind of effect for each dialect. The arguments are the table and name of the effect, of which the query
  * uses one, and the query returns a count.
  */
-export const EFFECT_QUERIES: Readonly<Record<DbspecDialect, Readonly<Record<string, string>>>> = Object.freeze({
+const EFFECT_QUERIES: Readonly<Record<DbspecDialect, Readonly<Record<string, string>>>> = Object.freeze({
   mysql: Object.freeze({
     table: 'SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?',
     column: 'SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?',
@@ -720,16 +720,6 @@ function newApplier(connection: unknown, dialect: DbspecDialect, plans: readonly
   const { plans: chain, diagnostics } = chainPlans(plans);
   if (chain === null) throw new DbspecApplyError('chain', '', 0, present(diagnostics[0], 'diagnostics[0]').message);
   return new Applier(connection, dialect, chain, now, events ?? null);
-}
-
-/**
- * Reads whether an effect holds on the connection now; the cleanup test
- * reads an effect query through it.
- *
- * @internal
- */
-export async function dbspecEffectHolds(connection: unknown, dialect: DbspecDialect, effect: DbspecEffect): Promise<boolean> {
-  return new Applier(connection, dialect, [], () => 0, null).effectHolds(effect);
 }
 
 type Connection = DbspecApplyMySqlConnection | DbspecApplyPostgresConnection | DbspecApplySqliteConnection;

@@ -4,9 +4,10 @@
 // temporary directory. Prohibited multi_statement calls are found in the source text.
 import { spawn } from 'node:child_process';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import type { Socket } from 'node:net';
+import { Socket } from 'node:net';
 import { extname, join, resolve } from 'node:path';
 import { parseJson } from '../../../scripts/json/schema.mts';
+import { errorCode } from '../../errors.mts';
 import { stepLines, type Step } from '../../testcase.mts';
 import { byteOrder } from './json.mts';
 import type { Symbols } from './manifest.mts';
@@ -33,7 +34,8 @@ function reaper(): Socket {
   if (reaperInput !== undefined) return reaperInput;
   const child = spawn(process.execPath, [join(import.meta.dirname, 'reaper.mts')], { detached: true, stdio: ['pipe', 'ignore', 'ignore'] });
   child.unref();
-  const input = child.stdin as Socket;
+  const input = child.stdin;
+  if (!(input instanceof Socket)) throw new Error('interface check: the reaper input is not a socket');
   input.unref();
   input.on('error', error => { console.error(`interface check: the reaper input failed: ${error.message}`); });
   reaperInput = input;
@@ -42,14 +44,14 @@ function reaper(): Socket {
 
 // run executes the program and collects its output. If onOutput is given, it also sends both outputs there. The program leads a process
 // group of its own, so that an abort of the signal, and the end of this checker through reaper.mts, end it with what it started.
-export function run(program: string, args: string[], options: { cwd?: string; signal?: AbortSignal; onOutput?: (chunk: string) => void } = {}): Promise<Output> {
+export function run(program: string, args: string[], options: { cwd?: string; env?: NodeJS.ProcessEnv; signal?: AbortSignal; onOutput?: (chunk: string) => void } = {}): Promise<Output> {
   return new Promise((resolvePromise, reject) => {
     const { signal } = options;
     if (signal?.aborted) {
-      reject(signal.reason as Error);
+      reject(signal.reason);
       return;
     }
-    const child = spawn(program, args, { cwd: options.cwd, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
+    const child = spawn(program, args, { cwd: options.cwd, env: options.env, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
     const group = child.pid;
     if (group !== undefined) reaper().write(`+${group}\n`);
     const end = () => {
@@ -58,7 +60,7 @@ export function run(program: string, args: string[], options: { cwd?: string; si
         process.kill(-group, 'SIGKILL');
       } catch (error) {
         // The group ended before the abort.
-        if ((error as NodeJS.ErrnoException).code !== 'ESRCH') reject(error as Error);
+        if (errorCode(error) !== 'ESRCH') reject(error);
       }
     };
     signal?.addEventListener('abort', end, { once: true });
@@ -72,7 +74,7 @@ export function run(program: string, args: string[], options: { cwd?: string; si
     child.on('close', (code, exitSignal) => {
       signal?.removeEventListener('abort', end);
       if (group !== undefined) reaper().write(`-${group}\n`);
-      if (signal?.aborted) reject(signal.reason as Error);
+      if (signal?.aborted) reject(signal.reason);
       else resolvePromise({ code, signal: exitSignal, stdout: Buffer.concat(stdout).toString('utf8'), stderr: Buffer.concat(stderr).toString('utf8') });
     });
   });
@@ -91,11 +93,17 @@ export async function extract(
   toolRoot: string,
   options: ExtractOptions = {},
 ): Promise<Symbols> {
-  let program: string, args: string[];
+  let program: string, args: string[], env: NodeJS.ProcessEnv | undefined;
   if (lang === 'go') [program, args] = [tools.go ?? '', [root, ...roots]];
   else if (lang === 'php') {
     const loadPhpAutoloader = options.loadPhpAutoloader ?? true;
     [program, args] = ['php', [join(toolRoot, 'packages/php/testing/interfaces/php.php'), ...(loadPhpAutoloader ? [] : ['--no-autoload']), root, ...roots]];
+    // The parser requires each file of its roots, the extension's stub among them, and a test of an extension run loads
+    // the extension through PHP_INI_SCAN_DIR (kit K900): the child leaves it out, or the stub redeclares the classes.
+    if (!loadPhpAutoloader) {
+      const { PHP_INI_SCAN_DIR: _scan, ...rest } = process.env;
+      env = rest;
+    }
   }
   else if (lang === 'typescript') [program, args] = ['node', [join(toolRoot, 'packages/ts/testing/interfaces/typescript.mts'), root, ...roots]];
   else if (lang === 'python') {
@@ -107,7 +115,7 @@ export async function extract(
   if (program === '') throw new Error(`${lang} declarations: this run built no ${lang} symbol extractor`);
   let output: Output;
   try {
-    output = await run(program, args, signal ? { signal } : {});
+    output = await run(program, args, { ...(signal ? { signal } : {}), ...(env ? { env } : {}) });
   } catch (error) {
     throw new Error(`${lang} declarations: ${error instanceof Error ? error.message : String(error)}\n`, { cause: error });
   }

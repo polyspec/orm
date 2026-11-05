@@ -279,7 +279,7 @@ export function encodeStyled(styles: readonly string[], state: StyledValue<unkno
     if (typeof transformed !== 'string') throw new CodecError(codes.CODEC_ENCODE, `${stage} takes a string value`);
     current = utf8.encode(transformed);
   }
-  for (const [index, style] of styles.entries()) {
+  for (const style of styles) {
     switch (style) {
       case 'serialize':
         current = utf8.encode(phpSerialize(commonValue(transformed, 'serialize')));

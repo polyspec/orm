@@ -3,7 +3,7 @@
 import { readFile } from 'node:fs/promises';
 import { decode } from '../dist/codec.js';
 import * as orm from '../dist/index.js';
-import { caseTest, cases as caseRunner, COMPUTE } from '../../../tests/testcase.mts';
+import { cases as caseRunner, COMPUTE } from '../../../tests/testcase.mts';
 
 const fixture = JSON.parse(await readFile(new URL('../../../contracts/fixtures/styled_column_states.json', import.meta.url), 'utf8'));
 const suite = caseRunner();

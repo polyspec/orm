@@ -11,7 +11,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
-  Account, Author, CORE, CompositeAccount, CompositeMembership, Model, OrmError, SCHEMA, Service,
+  Account, Author, CompositeAccount, CompositeMembership, OrmError, Service,
   ServiceMember, ServiceRegion, StyledValue, User, connect as connectBench,
 } from '../dist/index.js';
 import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
@@ -56,16 +56,6 @@ function modelCase(name, dialects, body) {
   });
 }
 const DIALECTS = ['sqlite', 'mysql', 'postgres'];
-
-/** Runs statements on the PostgreSQL database of a DSN through the pg driver. */
-async function postgres(dsn, statements) {
-  const client = postgresClient(dsn);
-  await client.connect();
-  try {
-    await client.query('SET client_min_messages = warning');
-    for (const s of statements) await client.query(s);
-  } finally { await client.end(); }
-}
 
 /** Installs the schema twice through a connection to the new case database, which must be empty first. */
 async function install(dsn) {

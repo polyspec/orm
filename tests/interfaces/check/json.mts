@@ -56,7 +56,7 @@ function write(value: unknown, indent: string, current: string): string {
 }
 
 /** losslessJson parses JSON text with every number as a JsonNumber holding its source text. */
-export function losslessJson(text: string): unknown {
+function losslessJson(text: string): unknown {
   const value: unknown = JSON.parse(text, (_key: string, item: unknown, context?: { source?: string }) =>
     typeof item === 'number' ? new JsonNumber(context?.source ?? String(item)) : item);
   return value;
@@ -65,15 +65,4 @@ export function losslessJson(text: string): unknown {
 /** readLosslessJson is losslessJson of a file. */
 export function readLosslessJson(path: string): unknown {
   return losslessJson(readFileSync(path, 'utf8'));
-}
-
-/** deepEqual compares two values parsed by losslessJson as Go's reflect.DeepEqual compares decoded JSON. */
-export function deepEqual(a: unknown, b: unknown): boolean {
-  if (a instanceof JsonNumber || b instanceof JsonNumber) return a instanceof JsonNumber && b instanceof JsonNumber && a.text === b.text;
-  if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') return a === b || (a == null && b == null);
-  if (Array.isArray(a) || Array.isArray(b)) {
-    return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((item: unknown, index: number) => deepEqual(item, b[index]));
-  }
-  const left = Object.entries(a), right = new Map(Object.entries(b));
-  return left.length === right.size && left.every(([key, item]) => right.has(key) && deepEqual(item, right.get(key)));
 }

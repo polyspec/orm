@@ -8,6 +8,7 @@ import { createServer, type Server, type Socket } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { isolatedEnvironment } from '../../environment.mts';
+import { errorCode } from '../../errors.mts';
 import { caseTest, PROCESS } from '../../testcase.mts';
 import { run } from './extract.mts';
 
@@ -65,7 +66,7 @@ function endProcess(pid: number): void {
   try {
     process.kill(pid, 'SIGKILL');
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error;
+    if (errorCode(error) !== 'ESRCH') throw error;
   }
 }
 

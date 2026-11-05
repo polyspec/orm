@@ -56,14 +56,6 @@ async function code(promise) {
   try { await promise; return null; } catch (error) { return error instanceof OrmError ? error.code : String(error); }
 }
 
-async function assertProbeColumn(db, values, column, expected) {
-  const row = new Probe().connect(db);
-  for (const [name, value] of Object.entries(values)) row[CORE].setValue(name, value);
-  const seq = (await row.create())[CORE].column('seq');
-  const read = await new Probe().connect(db).seq(seq).get();
-  assert.equal(read[CORE].column(column), expected);
-}
-
 if (!process.env.ORM_TEST_MYSQL_DSN) throw new Error('ORM_TEST_MYSQL_DSN is required; run make orm-test-servers, which starts the databases and writes it; run the test through its make target, which reads the environment of make orm-test-servers');
 if (!process.env.ORM_TEST_POSTGRES_DSN) throw new Error('ORM_TEST_POSTGRES_DSN is required; run make orm-test-servers, which starts the databases and writes it; run the test through its make target, which reads the environment of make orm-test-servers');
 

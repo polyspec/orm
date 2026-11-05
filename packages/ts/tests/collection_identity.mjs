@@ -4,7 +4,6 @@ import { readFile } from 'node:fs/promises';
 import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 
 const fixture = JSON.parse(await readFile(new URL('../../../tests/collection/keys.json', import.meta.url), 'utf8'));
-const orm = await import('../dist/index.js');
 const databaseModule = await import('../dist/database.js');
 const { keyOfValues, rowKey } = databaseModule;
 

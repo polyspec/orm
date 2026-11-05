@@ -436,7 +436,7 @@ async function load(c: Core, kind: 'one' | 'all'): Promise<Collection> {
   return assemble(c, ex, r.external, result);
 }
 
-export function groupValue(db: Db, column: Assemble['columns'][number], raw: unknown, schema: Entity): unknown {
+function groupValue(db: Db, column: Assemble['columns'][number], raw: unknown, schema: Entity): unknown {
   const declared = column.column === column.name ? fieldOf(schema, column.name) : undefined;
   if (raw === undefined) throw new OrmError(codes.INTERNAL, `group result column ${column.name} is missing`);
   if (column.name === 'row_count') return raw;
@@ -1047,7 +1047,11 @@ function toJson(c: Core): Record<string, unknown> {
 
 /** A value for JSON.stringify with each bigint, at any depth, as a raw JSON number of its exact digits (COD-26). */
 function exactIntegers(value: unknown): unknown {
-  if (typeof value === 'bigint') return Reflect.apply(Reflect.get(JSON, 'rawJSON'), JSON, [String(value)]);
+  if (typeof value === 'bigint') {
+    const rawJSON: unknown = Reflect.get(JSON, 'rawJSON');
+    if (typeof rawJSON !== 'function') throw new TypeError('this runtime has no JSON.rawJSON');
+    return Reflect.apply(rawJSON, JSON, [String(value)]);
+  }
   if (Array.isArray(value)) return value.map(exactIntegers);
   if (value === null || typeof value !== 'object' || Object.getPrototypeOf(value) !== Object.prototype) return value;
   return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, exactIntegers(item)]));

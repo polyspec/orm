@@ -18,7 +18,7 @@ import { execFileSync } from 'node:child_process';
 import { CI_SETUP, expandNeeds, failedCiSetup, GROUP_OUTPUTS, groupOutputs, groupSetupErrors, RUNNER_STEPS, stepCondition } from '../check/ci-setup.mts';
 import { declaredNeeds, readCheckInputs } from '../check/inputs.mts';
 import { readFeatures } from '../features/manifest.mts';
-import { readComposer, readPackage, readParityConfig } from '../json/formats.mts';
+import { parseRecipeCases, readComposer, readPackage, readParityConfig } from '../json/formats.mts';
 import { kitCopies, kitOwnedPaths } from './kit-copies.mts';
 import { andLists, segments, shellSegments } from './shell.mts';
 import { readWorkflow } from './workflow.mts';
@@ -44,7 +44,7 @@ const trackedFiles = (pattern: string) => execFileSync('git', ['ls-files', '-z',
 const scriptTexts = await scriptCommands(repository.pathname, trackedFiles('*'));
 const trackedAll = new Set(trackedFiles('*'));
 caseTest('the stress case of the dbspec_apply recipe runs under the 120 second deadline of a database case on every runtime', COMPUTE, () => {
-  const recipe = JSON.parse(text('contracts/fixtures/dbspec_apply/dbspec_apply.json')) as { cases: { id: string }[] };
+  const recipe = parseRecipeCases(text('contracts/fixtures/dbspec_apply/dbspec_apply.json'), 'contracts/fixtures/dbspec_apply/dbspec_apply.json');
   assert.ok(recipe.cases.some(recipeCase => recipeCase.id === 'stress_plan_commits_each_step'), 'the recipe holds the stress case');
   const holds: [string, RegExp][] = [
     ['packages/go/testcase/testcase.go', /\bDatabase = 2 \* time\.Minute\b/],

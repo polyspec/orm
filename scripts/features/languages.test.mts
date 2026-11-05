@@ -1,12 +1,11 @@
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { caseTest, COMPUTE } from '../../tests/testcase.mts';
 import { readParityConfig } from '../json/formats.mts';
-import { parseJson } from '../json/schema.mts';
 import { boundTestPaths, featureLanguages, implementationFiles, implementationInternalTestPaths, implementationLanguages, implementationSourceRoots, implementationSupportGlobs, implementationTestGlobs, implementationTestInventory, isDeclaredSharedTest, isFeatureTestPath, isImplementationInternalTest, koreanDocumentPath, unknownParityUnits, unitTests, unlistedFeatureTestErrors } from './languages.mts';
 
 const root = resolve(new URL('../..', import.meta.url).pathname);

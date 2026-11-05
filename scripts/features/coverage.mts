@@ -10,7 +10,7 @@ import { errorCode } from '../../tests/errors.mts';
 import { GO_TEST_TAGS } from '../../tests/go-test.mts';
 import { readFeatures } from './manifest.mts';
 import { implementationLanguages, featureLanguages } from './languages.mts';
-import type { ParityConfig } from '../json/formats.mts';
+import { parseRecipeCases, type ParityConfig } from '../json/formats.mts';
 import { programEnvironment, readBinaries } from '../../tests/cargo-test.mts';
 
 // cargoTestScript is the script that builds the test binary under the lease and copies it.
@@ -63,7 +63,6 @@ const validTests = (part: string, tests: unknown): tests is string[] => Array.is
     typeof file === 'string' && file.startsWith(part + '/') &&
     file.slice(part.length + 1).split('/').every(segment =>
       segment && segment !== '.' && segment !== '..' && /^[A-Za-z0-9_.-]+$/.test(segment)));
-const checkerRoot = resolve(new URL('../..', import.meta.url).pathname);
 
 function requirements(feature: Feature, coverage: Coverage, errors: string[], parityConfig?: ParityConfig): Item[] {
   const selectedDatabase = selectedDatabases.get(feature);
@@ -297,8 +296,7 @@ async function recipeOutput(path: string): Promise<string> {
 // recipeCaseIds is the ids of the cases of a recipe file that run on database: a case with `only` runs on the databases it
 // names (FCV-3). The recipe is the list of the cases of its owner.
 export function recipeCaseIds(text: string, database: string): string[] {
-  const recipe = JSON.parse(text) as { cases: { id: string; only?: string[] }[] };
-  return recipe.cases.filter(item => item.only === undefined || item.only.includes(database)).map(item => item.id);
+  return parseRecipeCases(text, 'recipe').cases.filter(item => item.only === undefined || item.only.includes(database)).map(item => item.id);
 }
 
 // entryTest plans a test entry (FCV-12). Every runtime runs the entry with its own test runner and the entry appends a

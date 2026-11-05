@@ -2,9 +2,18 @@
 // contracts/features.json, config/parity.json and contracts/check-inputs.json name, and reports each name that no test of the tree holds.
 // A runner reports such a name one at a time, or not at all where another alternative of the filter still selects a test.
 import { existsSync, readFileSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { basename, dirname, join, normalize } from 'node:path';
 import { minimatch } from 'minimatch';
+
+// must is an item that the form of its list or match holds: a capture group that matched, or an index inside the bounds. A missing one is
+// a fault of this checker.
+const must = (value: string | undefined): string => {
+  if (value === undefined) throw new Error('test-names: a match or a list does not hold the item its form states');
+  return value;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
 
 export type NamedCommand = { place: string; command: string };
 export type Tree = { files: string[]; read: (path: string) => string; ignored: (path: string) => boolean };
@@ -21,13 +30,11 @@ export const readTree = (root: string): Tree => {
     }
     return text;
   };
+  // git check-ignore exits 0 for an ignored path; any other exit leaves the path not ignored, so that a name it holds is reported.
   const ignored = (path: string) => {
-    try {
-      execFileSync('git', ['check-ignore', '-q', '--no-index', path], { cwd: root, stdio: 'ignore' });
-      return true;
-    } catch {
-      return false;
-    }
+    const check = spawnSync('git', ['check-ignore', '-q', '--no-index', path], { cwd: root, stdio: 'ignore' });
+    if (check.error !== undefined) throw check.error;
+    return check.status === 0;
   };
   return { files, read, ignored };
 };
@@ -43,9 +50,9 @@ export const memoryTree = (contents: Record<string, string>): Tree => ({
 const recipeCases = (tree: Tree, text: string): string[] => [...new Set(text.match(/\b(?:contracts\/fixtures|tests|testing)\/[\w./-]+\.json/g) ?? [])]
   .flatMap(path => tree.files.filter(file => file === path || file.endsWith(`/${path}`)))
   .flatMap(path => {
-    const recipe = JSON.parse(tree.read(path)) as { cases?: { id?: string }[] } | { id?: string }[];
-    const cases = Array.isArray(recipe) ? recipe : recipe.cases;
-    return Array.isArray(cases) ? cases.flatMap(item => item?.id ?? []) : [];
+    const recipe: unknown = JSON.parse(tree.read(path));
+    const cases = isRecord(recipe) ? recipe.cases : recipe;
+    return Array.isArray(cases) ? cases.flatMap((item: unknown) => isRecord(item) && typeof item.id === 'string' ? [item.id] : []) : [];
   });
 
 // alternatives enumerates the branches of a regular expression, so that each name of `^(TestA|TestB)$` is judged by itself: a filter that
@@ -112,7 +119,7 @@ export const shellSegments = (command: string): string[][] => {
     words = [];
   };
   for (let at = 0; at < command.length; at += 1) {
-    const char = command[at] as string;
+    const char = command.charAt(at);
     if (quote !== '') {
       if (char === quote) quote = '';
       else if (char === '\\' && quote === '"' && /["\\$`]/.test(command[at + 1] ?? '')) {
@@ -143,7 +150,7 @@ const unresolvedPattern = (pattern: string) => /\$(?![|)/]|$)|`/.test(pattern);
 const wordValue = (words: string[], flag: string): string[] => {
   const values: string[] = [];
   words.forEach((word, index) => {
-    if (word === flag && index + 1 < words.length) values.push(words[index + 1] as string);
+    if (word === flag && index + 1 < words.length) values.push(must(words[index + 1]));
     else if (word.startsWith(`${flag}=`)) values.push(word.slice(flag.length + 1));
   });
   return values;
@@ -154,7 +161,7 @@ type Report = (kind: string, name: string) => void;
 // goNames lists the top-level test functions of the test files of a package directory.
 const goNames = (tree: Tree, directory: string, recursive: boolean): string[] => tree.files
   .filter(path => path.endsWith('_test.go') && (recursive ? path.startsWith(`${directory}/`) : dirname(path) === directory))
-  .flatMap(path => [...tree.read(path).matchAll(/^func ((?:Test|Fuzz|Benchmark|Example)\w*)\(/gm)].map(match => match[1] as string));
+  .flatMap(path => [...tree.read(path).matchAll(/^func ((?:Test|Fuzz|Benchmark|Example)\w*)\(/gm)].map(match => must(match[1])));
 
 const checkGo = (tree: Tree, words: string[], cwd: string, report: Report) => {
   const start = words.findIndex((word, index) => word.endsWith('go-test.mts') || word === 'go' && words[index + 1] === 'test');
@@ -172,7 +179,7 @@ const checkGo = (tree: Tree, words: string[], cwd: string, report: Report) => {
     for (const value of wordValue(words, flag)) {
       if (unresolvedPattern(value)) continue;
       for (const branch of alternatives(value)) {
-        const [name, ...subtests] = branch.split('/') as [string, ...string[]];
+        const [name = '', ...subtests] = branch.split('/');
         if (name === '^$' || name === '') continue;
         if (!selects(name, names)) report('go test', `${flag} ${name} in ${packages.map(item => item.directory).join(' ')}`);
         const text = tree.files.filter(path => path.endsWith('_test.go') && packages.some(({ directory }) => dirname(path) === directory)).map(path => tree.read(path)).join('\n');
@@ -202,12 +209,12 @@ const phpScope = (tree: Tree, paths: string[]): PhpScope => {
     const source = tree.read(path);
     text += source;
     const namespace = /^namespace ([\w\\]+);/m.exec(source)?.[1] ?? '';
-    const classes = [...source.matchAll(/^\s*(?:(?:abstract|final|readonly)\s+)*(?:class|trait)\s+(\w+)/gm)].map(match => match[1] as string);
+    const classes = [...source.matchAll(/^\s*(?:(?:abstract|final|readonly)\s+)*(?:class|trait)\s+(\w+)/gm)].map(match => must(match[1]));
     const prefix = owner ?? `${namespace}\\${classes[0] ?? basename(path, '.php')}`;
     for (const match of source.matchAll(/function\s+(\w+)\s*\(/g)) names.push(`${prefix}::${match[1]}`);
-    for (const match of source.matchAll(/\brequire(?:_once)?\s+__DIR__\s*\.\s*'\/([^']+)'/g)) visit(normalize(join(dirname(path), match[1] as string)), prefix);
+    for (const match of source.matchAll(/\brequire(?:_once)?\s+__DIR__\s*\.\s*'\/([^']+)'/g)) visit(normalize(join(dirname(path), must(match[1]))), prefix);
     const related = [...source.matchAll(/\bextends\s+\\?([\w\\]+)/g), ...source.matchAll(/^\s+use\s+\\?([\w\\, ]+);/gm)]
-      .flatMap(match => (match[1] as string).split(',')).map(name => name.trim().split('\\').pop() as string);
+      .flatMap(match => must(match[1]).split(',')).map(name => name.trim().split('\\').at(-1) ?? '');
     for (const name of related) {
       for (const candidate of all.filter(file => basename(file, '.php') === name || new RegExp(`^\\s*(?:(?:abstract|final|readonly)\\s+)*(?:class|trait)\\s+${name}\\b`, 'm').test(tree.read(file)))) visit(candidate, prefix);
     }
@@ -220,7 +227,7 @@ const checkPhp = (tree: Tree, words: string[], cwd: string, report: Report) => {
   const start = words.findIndex(word => /(^|\/)phpunit$/.test(word));
   if (start < 0) return;
   const rest = words.slice(start + 1);
-  const paths = rest.filter(word => /\.php$/.test(word) && !unresolved(word) && !word.endsWith('phpunit.xml.dist')).map(word => normalize(join(cwd, word)));
+  const paths = rest.filter(word => word.endsWith('.php') && !unresolved(word) && !word.endsWith('phpunit.xml.dist')).map(word => normalize(join(cwd, word)));
   for (const path of paths.filter(item => tree.files.includes(item) && item.endsWith('Test.php'))) {
     if (!phpScope(tree, [path]).names.some(name => /::test/.test(name)) && !/#\[Test\]/.test(phpScope(tree, [path]).text)) report('php test', `${path} holds no test`);
   }
@@ -230,7 +237,7 @@ const checkPhp = (tree: Tree, words: string[], cwd: string, report: Report) => {
     for (const branch of alternatives(value)) {
       const dataSet = / with data set "([^"]+)"/.exec(branch) ?? /^with data set "([^"]+)"/.exec(branch);
       const method = branch.replace(/ ?with data set .*$/, '');
-      if (dataSet !== null && !scope.text.includes(dataSet[1] as string)) report('php data set', `${branch} in ${paths.join(' ')}`);
+      if (dataSet !== null && !scope.text.includes(must(dataSet[1]))) report('php data set', `${branch} in ${paths.join(' ')}`);
       if (method !== '' && method !== '^' && !selects(method, scope.names) && !selects(method, scope.cases)) report('php test', `--filter ${method}${paths.length > 0 ? ` in ${paths.join(' ')}` : ''}`);
     }
   }
@@ -244,13 +251,13 @@ const pythonClasses = (tree: Tree) => {
       const match = /^class (\w+)(?:\(([^)]*)\))?:/.exec(line);
       if (match === null) return;
       const methods = new Set<string>();
-      for (let next = index + 1; next < lines.length && !/^\S/.test(lines[next] as string); next += 1) {
-        const method = /^ +(?:async )?def (\w+)/.exec(lines[next] as string);
-        if (method !== null) methods.add(method[1] as string);
+      for (let next = index + 1; next < lines.length && !/^\S/.test(must(lines[next])); next += 1) {
+        const method = /^ +(?:async )?def (\w+)/.exec(must(lines[next]));
+        if (method !== null) methods.add(must(method[1]));
       }
-      const known = classes.get(match[1] as string);
-      const bases = (match[2] ?? '').split(',').map(base => base.trim().split('.').pop() as string).filter(Boolean);
-      if (known === undefined) classes.set(match[1] as string, { bases, methods });
+      const known = classes.get(must(match[1]));
+      const bases = (match[2] ?? '').split(',').map(base => base.trim().split('.').at(-1) ?? '').filter(Boolean);
+      if (known === undefined) classes.set(must(match[1]), { bases, methods });
       else { known.bases.push(...bases); for (const method of methods) known.methods.add(method); }
     });
   }
@@ -315,7 +322,7 @@ const checkPythonDiscover = (tree: Tree, words: string[], report: Report) => {
 const checkPython = (tree: Tree, words: string[], report: Report) => {
   const moduleAt = words.findIndex((word, index) => (word === '-m' || word === '--module') && /^(unittest$|packages\.python\.)/.test(words[index + 1] ?? ''));
   if (moduleAt >= 0) {
-    const module = words[moduleAt + 1] as string;
+    const module = must(words[moduleAt + 1]);
     if (module !== 'unittest') checkPythonName(tree, module, report);
     if (words[moduleAt + 2] === 'discover' || words[moduleAt + 3] === 'discover') {
       checkPythonDiscover(tree, words, report);
@@ -326,7 +333,7 @@ const checkPython = (tree: Tree, words: string[], report: Report) => {
       if (unresolved(word) || word.startsWith('-') || word === 'discover') continue;
       if (word.startsWith('packages.python.')) checkPythonName(tree, word, report);
       else if (file !== undefined && /^[A-Za-z_]\w*(\.\w+)?$/.test(word)) {
-        const [className, method] = word.split('.') as [string, string | undefined];
+        const [className = '', method] = word.split('.');
         checkPythonMember(tree, file, className, method, `${module} ${word}`, report);
       }
     }
@@ -340,7 +347,7 @@ const rustIncluded = (tree: Tree, start: string, seen = new Set<string>()): Set<
   seen.add(start);
   const source = tree.read(start);
   const base = /(?:^|\/)(?:main|lib|mod)\.rs$/.test(start) || /\/tests\/[^/]+\.rs$/.test(start) ? dirname(start) : start.replace(/\.rs$/, '');
-  for (const match of source.matchAll(/#\[path\s*=\s*"([^"]+)"\]/g)) rustIncluded(tree, normalize(join(dirname(start), match[1] as string)), seen);
+  for (const match of source.matchAll(/#\[path\s*=\s*"([^"]+)"\]/g)) rustIncluded(tree, normalize(join(dirname(start), must(match[1]))), seen);
   for (const match of source.matchAll(/^\s*(?:pub(?:\([a-z]+\))?\s+)?mod\s+(\w+)\s*;/gm)) {
     rustIncluded(tree, `${base}/${match[1]}.rs`, seen);
     rustIncluded(tree, `${base}/${match[1]}/mod.rs`, seen);
@@ -351,11 +358,11 @@ const rustIncluded = (tree: Tree, start: string, seen = new Set<string>()): Set<
 const rustCrates = (tree: Tree) => tree.files.filter(path => basename(path) === 'Cargo.toml').map(path => ({
   directory: dirname(path),
   name: /^name\s*=\s*"([^"]+)"/m.exec(tree.read(path))?.[1] ?? '',
-  programs: [...tree.read(path).matchAll(/\[\[test\]\]\s*\nname\s*=\s*"([^"]+)"(?:\s*\npath\s*=\s*"([^"]+)")?/g)].map(match => ({ name: match[1] as string, path: match[2] })),
+  programs: [...tree.read(path).matchAll(/\[\[test\]\]\s*\nname\s*=\s*"([^"]+)"(?:\s*\npath\s*=\s*"([^"]+)")?/g)].map(match => ({ name: must(match[1]), path: match[2] })),
 }));
 
 const rustPrograms = (tree: Tree, crates: ReturnType<typeof rustCrates>, scope: ReturnType<typeof rustCrates>, name: string): string[] => scope.flatMap(crate => {
-  const declared = crate.programs.filter(item => item.name === name && item.path !== undefined).map(item => join(crate.directory, item.path as string));
+  const declared = crate.programs.flatMap(item => item.name === name && item.path !== undefined ? [join(crate.directory, item.path)] : []);
   return [...declared, `${crate.directory}/tests/${name}.rs`, `${crate.directory}/tests/${name}/main.rs`].filter(path => tree.files.includes(path));
 });
 
@@ -381,7 +388,7 @@ const checkRust = (tree: Tree, words: string[], cwd: string, report: Report) => 
   const filters: string[] = [];
   let after = false;
   for (let index = 0; index < args.length; index += 1) {
-    const word = args[index] as string;
+    const word = must(args[index]);
     if (word === '--') {
       after = true;
     } else if (word.startsWith('-')) {
@@ -391,7 +398,7 @@ const checkRust = (tree: Tree, words: string[], cwd: string, report: Report) => 
   if (filters.length === 0) return;
   const paths = programs.length > 0 ? [...files] : tree.files.filter(path => path.endsWith('.rs') && scope.some(crate => path.startsWith(`${crate.directory}/`)) && (args.includes('--lib') ? !/\/tests\/[^/]+\.rs$/.test(path) : true));
   const source = paths.map(path => tree.read(path)).join('\n');
-  const names = new Set([...source.matchAll(/\b(?:fn|mod)\s+(\w+)/g)].map(match => match[1] as string));
+  const names = new Set([...source.matchAll(/\b(?:fn|mod)\s+(\w+)/g)].map(match => must(match[1])));
   for (const path of paths) names.add(basename(path, '.rs'));
   const identifiers = [...names, ...recipeCases(tree, source)];
   for (const filter of filters) {
@@ -408,7 +415,7 @@ const nodeSources = (tree: Tree, path: string, seen = new Set<string>()): Set<st
   if (seen.has(path) || !tree.files.includes(path)) return seen;
   seen.add(path);
   for (const match of tree.read(path).matchAll(/\bfrom\s+['"](\.{1,2}\/[^'"]+)['"]|\bimport\s+['"](\.{1,2}\/[^'"]+)['"]/g)) {
-    nodeSources(tree, normalize(join(dirname(path), (match[1] ?? match[2]) as string)), seen);
+    nodeSources(tree, normalize(join(dirname(path), must(match[1] ?? match[2]))), seen);
   }
   return seen;
 };
@@ -462,7 +469,7 @@ const checkPaths = (tree: Tree, words: string[], cwd: string, report: Report) =>
   for (const word of words) {
     const match = PATH_WORD.exec(word);
     if (match === null) continue;
-    const path = normalize(match[1] === '/' ? match[2] as string : join(cwd, match[2] as string));
+    const path = normalize(match[1] === '/' ? must(match[2]) : join(cwd, must(match[2])));
     if (unresolved(path)) continue;
     const held = /[*?{[]/.test(path) ? tree.files.some(file => minimatch(file, path)) : tree.files.includes(path);
     if (!held && !tree.ignored(path)) report('test file', path);
@@ -560,15 +567,15 @@ export const expand = (text: string, variables: Map<string, string>, overrides: 
       else if (/^\d+$/.test(name) || /^[@<^*]$/.test(name)) out += `$(${name})`;
       else out += '';
     } else if (name === 'if') {
-      const [condition, yes, no] = splitArguments() as [string, string | undefined, string | undefined];
+      const [condition = '', yes, no] = splitArguments();
       out += expand(expand(condition, variables, overrides, depth + 1).trim() !== '' ? yes ?? '' : no ?? '', variables, overrides, depth + 1);
     } else if (name === 'call') {
-      const [fn, ...args] = splitArguments() as [string, ...string[]];
+      const [fn = '', ...args] = splitArguments();
       let value = variables.get(fn.trim()) ?? '';
       args.forEach((arg, index) => { value = value.replaceAll(`$(${index + 1})`, arg); });
       out += expand(value, variables, overrides, depth + 1);
     } else if (name === 'subst') {
-      const [from, to, ...rest] = splitArguments() as [string, string, ...string[]];
+      const [from = '', to = '', ...rest] = splitArguments();
       out += expand(rest.join(','), variables, overrides, depth + 1).replaceAll(from, to);
     } else if (name === 'abspath' || name === 'realpath') {
       out += expand(body, variables, overrides, depth + 1).trim().split(/\s+/).map(path => `/${path.replace(/^\/+/, '')}`).join(' ');
@@ -599,7 +606,7 @@ export const readMakefile = (text: string): Makefile => {
     }
     const define = /^define\s+(\S+)/.exec(line);
     if (define !== null) {
-      defining = { name: define[1] as string, lines: [] };
+      defining = { name: must(define[1]), lines: [] };
       continue;
     }
     if (line.startsWith('\t')) {
@@ -609,17 +616,17 @@ export const readMakefile = (text: string): Makefile => {
     if (line.startsWith('#') || line.trim() === '') continue;
     const variable = /^(?:export\s+)?([A-Za-z_][\w.-]*)\s*(\?=|:=|::=|\+=|=)\s*(.*)$/.exec(line);
     if (variable !== null) {
-      const name = variable[1] as string;
-      const operator = variable[2] as string;
+      const name = must(variable[1]);
+      const operator = must(variable[2]);
       if (operator === '+=') variables.set(name, `${variables.get(name) ?? ''} ${variable[3]}`);
-      else if (operator !== '?=' || !variables.has(name)) variables.set(name, variable[3] as string);
+      else if (operator !== '?=' || !variables.has(name)) variables.set(name, must(variable[3]));
       current = [];
       continue;
     }
     const rule = /^([^\s:#=][^:#=]*?)\s*:(?!=)\s*(.*)$/.exec(line);
     if (rule !== null) {
       current = [];
-      for (const target of (rule[1] as string).split(/\s+/)) {
+      for (const target of must(rule[1]).split(/\s+/)) {
         if (target.includes('%')) patterns.push(target);
         targets.add(target);
         recipes.set(target, current);
@@ -651,8 +658,8 @@ const pathHeld = (tree: Tree, path: string) => /[*?{[]/.test(path) ? tree.files.
 // bindingLeaf is the part of a parity binding id that its test file or recipe declares.
 const bindingLeaf = (implementation: string, id: string): string => {
   if (implementation === 'go') return id.includes('/') ? id.slice(id.indexOf('/') + 1) : id;
-  if (implementation === 'php' || implementation === 'php-extension') return (/ with data set "([^"]+)"/.exec(id)?.[1]) ?? id.replace(/ .*$/, '').split('::').pop() as string;
-  if (implementation === 'rust') return id.split('::').pop() as string;
+  if (implementation === 'php' || implementation === 'php-extension') return (/ with data set "([^"]+)"/.exec(id)?.[1]) ?? id.replace(/ .*$/, '').split('::').at(-1) ?? '';
+  if (implementation === 'rust') return id.split('::').at(-1) ?? '';
   return id;
 };
 
@@ -664,7 +671,7 @@ const bindingSources = (tree: Tree, implementation: string, test: string): strin
 };
 
 type Features = { features: { id: string; tests?: string[]; verification?: { id: string; command: string; inputs?: string[] }[]; coverage?: { owners?: Record<string, { tests?: string[]; commands?: Record<string, { test?: string; recipe?: string; symbol?: string }[]> }> } }[]; helpers?: { id: string; command?: string; paths?: string[]; tests?: string[] }[] };
-type Parity = { units: { id: string; bindings?: { implementation: string; test: string; id?: string; symbol?: string; command?: string }[] }[] };
+type Parity = { units: { id: string; bindings?: { implementation: string; test?: string; id?: string; symbol?: string }[] }[] };
 type Inputs = { targets: Record<string, { inputs?: string[] }>; paths: Record<string, unknown> };
 
 // staleNames is every name of the four declaring files that no test of the tree holds, each with the places that name it.
@@ -711,8 +718,8 @@ export const staleNames = (tree: Tree, sources: { makefile: string; features: Fe
   for (const unit of sources.parity.units) {
     for (const binding of unit.bindings ?? []) {
       const place = `config/parity.json ${unit.id}`;
-      if (!pathHeld(tree, binding.test)) {
-        add(`test file: ${binding.test}`, place);
+      if (binding.test === undefined || !pathHeld(tree, binding.test)) {
+        add(`test file: ${binding.test ?? 'none'}`, place);
         continue;
       }
       const text = bindingSources(tree, binding.implementation, binding.test);
@@ -725,9 +732,6 @@ export const staleNames = (tree: Tree, sources: { makefile: string; features: Fe
         if (!cases.includes(leaf) && !titled && !pieces.every(piece => searched.includes(piece))) add(`parity binding: ${binding.id} in ${binding.test}`, place);
       }
       if (binding.symbol !== undefined && !text.includes(bindingLeaf(binding.implementation, binding.symbol))) add(`parity symbol: ${binding.symbol} in ${binding.test}`, place);
-      if (binding.command !== undefined) {
-        for (const name of checkCommand(tree, binding.command, makefile.targets)) add(name, place);
-      }
     }
   }
   for (const [target, declaration] of Object.entries(sources.checkInputs.targets)) {

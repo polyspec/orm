@@ -89,7 +89,7 @@ const bindingLeaf = (id: string): string => {
 };
 
 // A PHP class holds the tests of the traits it uses, which live in support files; a test that a class inherits is judged in the file of its parent.
-const fileTests = (implementation: string, file: string, files: string[], read: (path: string) => string, traits: Map<string, string>): string[] => {
+const fileTests = (implementation: string, file: string, read: (path: string) => string, traits: Map<string, string>): string[] => {
   const text = read(file);
   const own = declared(implementation, text);
   if (implementation !== 'php' && implementation !== 'php-extension') return own;
@@ -97,7 +97,7 @@ const fileTests = (implementation: string, file: string, files: string[], read: 
     .flatMap(([, names = '']) => names.split(','))
     .flatMap(name => {
       const trait = traits.get(name.trim().split('\\').at(-1) ?? '');
-      return trait === undefined ? [] : fileTests(implementation, trait, files, read, traits);
+      return trait === undefined ? [] : fileTests(implementation, trait, read, traits);
     })];
 };
 
@@ -133,7 +133,7 @@ export const unboundNativeTestErrors = (units: ParityUnit[], spec: string, files
   for (const [file, { implementation, names, whole }] of bound) {
     if (whole) continue;
     const kept = new Set(lines.filter(line => line.file === file).flatMap(line => line.names));
-    const tests = new Set(fileTests(implementation, file, files, read, traits));
+    const tests = new Set(fileTests(implementation, file, read, traits));
     for (const test of tests) {
       if (!names.has(test) && !kept.has(test)) errors.push(`${file}: the native test ${test} has no binding in config/parity.json and no line of FCV-2; make it the cases of a recipe (FCV-2 to FCV-4), bind it to the unit that states it, or state why it stays native in FCV-2 of docs/spec/feature-coverage.md`);
     }
