@@ -67,8 +67,6 @@ func testModel(t *testing.T, document string) *runtimemodel.Model {
 	return testmodel.Load(t, document)
 }
 
-func intp(i int) *int { return &i }
-
 func TestScalarSubqueryMissingColumnIsInternal(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	m := testModel(t, runtimeDocument)

@@ -3,6 +3,7 @@ package buildconstraints
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"go/build/constraint"
 	"io/fs"
@@ -87,12 +88,12 @@ func tagsOf(expression constraint.Expr, set map[string]bool) {
 }
 
 // fileTags are the sorted tags of the build constraints of a Go file: the comment lines before its package clause.
-func fileTags(path string) ([]string, error) {
+func fileTags(path string) (_ []string, err error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = file.Close() }()
+	defer func() { err = errors.Join(err, file.Close()) }()
 	set := map[string]bool{}
 	lines := bufio.NewScanner(file)
 	lines.Buffer(nil, 1<<24)

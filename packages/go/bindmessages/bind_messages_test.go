@@ -43,15 +43,7 @@ func markdownBuilder(t *testing.T, calls []string) (string, string) {
 	t.Helper()
 	testcase.Start(t, testcase.Compute)
 	first := make(chan json.RawMessage, 1)
-	db, err := bindmodel.Connect(startMarkdownSendListener(t, first), orm.Config{})
-	if err != nil {
-		t.Fatalf("connect: %v", err)
-	}
-	t.Cleanup(func() {
-		if err := db.Close(); err != nil {
-			t.Errorf("close: %v", err)
-		}
-	})
+	db := connectSendListener(t, first)
 	model := bindmodel.Slots().Connect(db)
 	for _, call := range calls {
 		switch call {
@@ -183,13 +175,11 @@ func modelAssign(t *testing.T, model, column string, value json.RawMessage) (jso
 	})
 }
 
-// sendFirst runs call on a connection to a listener that answers connect and records the first message after it, and returns
-// that message's value, or the code of the orm error that call returns before it sends a message.
-func sendFirst(t *testing.T, call func(db *orm.DB) error) (json.RawMessage, string) {
+// connectSendListener connects to a new listener that records the first message after connect in first; the connection
+// closes with the test.
+func connectSendListener(t *testing.T, first chan<- json.RawMessage) *orm.DB {
 	t.Helper()
-	first := make(chan json.RawMessage, 1)
-	dsn := startMarkdownSendListener(t, first)
-	db, err := bindmodel.Connect(dsn, orm.Config{})
+	db, err := bindmodel.Connect(startMarkdownSendListener(t, first), orm.Config{})
 	if err != nil {
 		t.Fatalf("connect: %v", err)
 	}
@@ -198,6 +188,15 @@ func sendFirst(t *testing.T, call func(db *orm.DB) error) (json.RawMessage, stri
 			t.Errorf("close: %v", err)
 		}
 	})
+	return db
+}
+
+// sendFirst runs call on a connection to a listener that answers connect and records the first message after it, and returns
+// that message's value, or the code of the orm error that call returns before it sends a message.
+func sendFirst(t *testing.T, call func(db *orm.DB) error) (json.RawMessage, string) {
+	t.Helper()
+	first := make(chan json.RawMessage, 1)
+	db := connectSendListener(t, first)
 	callErr := call(db)
 	select {
 	case msg := <-first:

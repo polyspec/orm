@@ -71,7 +71,7 @@ func writeSetTree(root string, tree map[string]setTreeEntry) error {
 
 // checkReadSet runs one dbspec.read_set step: it writes the tree under an empty temporary directory, reads the set with the
 // public ReadSet, and compares the paths and the bytes of the files or the rule and path of each error (FCV-4, DBS-11).
-func checkReadSet(s step, database string) error {
+func checkReadSet(s step, database string) (err error) {
 	raw, ok := s.k("expect").Expect[database]
 	if !ok {
 		return fmt.Errorf("dbspec.read_set has no expect for %s", database)
@@ -92,7 +92,7 @@ func checkReadSet(s step, database string) error {
 	if err != nil {
 		return err
 	}
-	defer func() { _ = os.RemoveAll(root) }()
+	defer removeTemp(root, &err)
 	if err := writeSetTree(root, s.k("tree").SetTree); err != nil {
 		return err
 	}

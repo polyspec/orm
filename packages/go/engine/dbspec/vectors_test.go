@@ -2,7 +2,6 @@ package dbspec
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 )
 
@@ -66,29 +65,4 @@ func expectDiagnostics(text string, set map[string]string, want []vectorError) e
 		return fmt.Errorf("diagnostics = %+v, want %+v (messages %+v)", got, want, diagnostics)
 	}
 	return nil
-}
-
-// parseDocumentSet parses all documents of a case, in document-name order, each
-// against the other documents of the case.
-func parseDocumentSet(docs map[string][]string) ([]*Document, error) {
-	names := make([]string, 0, len(docs))
-	for name := range docs {
-		names = append(names, name)
-	}
-	slices.Sort(names)
-	documents := make([]*Document, 0, len(names))
-	for _, name := range names {
-		set := map[string]string{}
-		for other, lines := range docs {
-			if other != name {
-				set[other] = joinLines(lines, false)
-			}
-		}
-		document, _, diagnostics := Parse(joinLines(docs[name], false), set)
-		if err := expectDocument(document, diagnostics); err != nil {
-			return nil, fmt.Errorf("%s: %w", name, err)
-		}
-		documents = append(documents, document)
-	}
-	return documents, nil
 }

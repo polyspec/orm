@@ -224,16 +224,11 @@ func unconnectedAccountOp(s databaseStep, c *databaseContext) (outcome, error) {
 		_, err = m.Create()
 		return outcome{fields: map[string]any{}}, err
 	case "model.count":
-		where, err := modelValues(s.k("where").Where, c)
+		m, err := compositeAccountWhere(s, c, model.CompositeAccount())
 		if err != nil {
 			return outcome{}, err
 		}
-		m, err := compositeAccountFilter(model.CompositeAccount(), where)
-		if err != nil {
-			return outcome{}, err
-		}
-		n, err := m.GetCount()
-		return outcome{fields: map[string]any{"value": map[string]any{"int": strconv.FormatInt(n, 10)}}}, err
+		return modelCount(m)
 	}
 	return outcome{}, fmt.Errorf("model op %s has no unconnected form", s.k("op").Op)
 }
@@ -251,13 +246,22 @@ func setCompositeAccount(m *model.CompositeAccountModel, values map[string]any) 
 	return m, nil
 }
 
-// compositeAccountWhere is the CompositeAccount chain on db narrowed by the where of s.
-func compositeAccountWhere(s databaseStep, c *databaseContext, db *orm.DB) (*model.CompositeAccountModel, error) {
+// modelCount is the outcome of a model.count step on the chain m.
+func modelCount(m interface{ GetCount() (int64, error) }) (outcome, error) {
+	n, err := m.GetCount()
+	if err != nil {
+		return outcome{}, err
+	}
+	return outcome{fields: map[string]any{"value": wrapperOf(n)}}, nil
+}
+
+// compositeAccountWhere is the CompositeAccount chain m narrowed by the where of s.
+func compositeAccountWhere(s databaseStep, c *databaseContext, m *model.CompositeAccountModel) (*model.CompositeAccountModel, error) {
 	where, err := modelValues(s.k("where").Where, c)
 	if err != nil {
 		return nil, err
 	}
-	return compositeAccountFilter(model.CompositeAccount().Connect(db), where)
+	return compositeAccountFilter(m, where)
 }
 
 // compositeAccountFilter narrows a CompositeAccount chain by the equalities of a model op.
@@ -366,7 +370,7 @@ func compositeAccountOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome
 		_, err = rows[0].Update()
 		return outcome{fields: affectedFields(db)}, err
 	case "model.delete":
-		m, err := compositeAccountWhere(s, c, db)
+		m, err := compositeAccountWhere(s, c, model.CompositeAccount().Connect(db))
 		if err != nil {
 			return outcome{}, err
 		}
@@ -380,12 +384,11 @@ func compositeAccountOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome
 		}
 		return out, err
 	case "model.count":
-		m, err := compositeAccountWhere(s, c, db)
+		m, err := compositeAccountWhere(s, c, model.CompositeAccount().Connect(db))
 		if err != nil {
 			return outcome{}, err
 		}
-		n, err := m.GetCount()
-		return outcome{fields: map[string]any{"value": map[string]any{"int": strconv.FormatInt(n, 10)}}}, err
+		return modelCount(m)
 	case "model.get_by", "model.query":
 		where := s.k("key").Key
 		if s.k("op").Op == "model.query" {
@@ -875,11 +878,7 @@ func authorOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome, error) {
 		if err != nil {
 			return outcome{}, err
 		}
-		n, err := m.GetCount()
-		if err != nil {
-			return outcome{}, err
-		}
-		return outcome{fields: map[string]any{"value": wrapperOf(n)}}, nil
+		return modelCount(m)
 	case "model.query":
 		where, err := modelValues(s.k("where").Where, c)
 		if err != nil {

@@ -141,8 +141,11 @@ func checkIntrospectShown(t *testing.T, dir string, s step, database string) err
 	querier := shownQuerier{db: db, vectors: &vectors, create: strings.Join(found.Create, "\n") + "\n", name: found.Name}
 	document, unsupported, err := dbspec.Introspect(context.Background(), querier, dbspec.DialectMySQL, "introspected")
 	if want.Error != "" {
-		if err == nil || err.Error() != want.Error {
-			return fmt.Errorf("the introspection returned %v, want the error %q", err, want.Error)
+		if err == nil {
+			return fmt.Errorf("the introspection succeeded, want the error %q", want.Error)
+		}
+		if err.Error() != want.Error {
+			return fmt.Errorf("the introspection returned %w, want the error %q", err, want.Error)
 		}
 		return nil
 	}

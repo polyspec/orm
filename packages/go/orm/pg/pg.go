@@ -28,7 +28,11 @@ func init() {
 	sql.Register("polyspec-pgx", configuredDriver{})
 	orm.RegisterDriver("postgres", "polyspec-pgx", mapErr)
 	orm.RegisterDeallocator("postgres", func(ctx context.Context, driverConn any) error {
-		return driverConn.(*stdlib.Conn).Conn().DeallocateAll(ctx)
+		conn, ok := driverConn.(*stdlib.Conn)
+		if !ok {
+			return fmt.Errorf("the postgres deallocator received a connection of type %T", driverConn)
+		}
+		return conn.Conn().DeallocateAll(ctx)
 	})
 }
 

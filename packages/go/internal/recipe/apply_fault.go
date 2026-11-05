@@ -112,7 +112,7 @@ func checkApplyFault(t *testing.T, s step, bound map[string]result, database str
 	if s.k("fail_statements").FailStatements != nil {
 		fault.fail = map[string]error{}
 		for _, f := range s.k("fail_statements").FailStatements {
-			var injected error = errors.New(f.Message)
+			injected := errors.New(f.Message)
 			if f.SQLiteResult != 0 {
 				injected = sqliteResult{message: f.Message, code: f.SQLiteResult}
 			}
@@ -146,7 +146,7 @@ func checkApplyFault(t *testing.T, s step, bound map[string]result, database str
 	if want.Code != "" {
 		var applyErr *dbspec.ApplyError
 		if !errors.As(failure, &applyErr) || applyErr.Code != want.Code {
-			return fmt.Errorf("the call returned %v, want the code %s", failure, want.Code)
+			return fmt.Errorf("the call returned %w, want the code %s", failure, want.Code)
 		}
 	}
 	messages := strings.Split(failure.Error(), "\n")
@@ -160,7 +160,7 @@ func checkApplyFault(t *testing.T, s step, bound map[string]result, database str
 		return fmt.Errorf("the cleanup errors are %q, want %q", messages[1:], want.Cleanup)
 	}
 	if fault.cause != nil && !errors.Is(failure, fault.cause) {
-		return fmt.Errorf("the error %v does not hold the catalog read error", failure)
+		return fmt.Errorf("the error %w does not hold the catalog read error", failure)
 	}
 	if want.HistoryState != "" {
 		var state string

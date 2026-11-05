@@ -48,7 +48,7 @@ func TestMapMySQLErrClassifiesReadOnly(t *testing.T) {
 
 func TestMapDriverErrorContextKeepsCanceledCode(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	_, mapped := mapCanceledDriverError()
+	mapped := mapCanceledDriverError()
 	if ErrorCode(mapped) != CodeCanceled {
 		t.Fatalf("mapped code = %q, want %s: %v", ErrorCode(mapped), CodeCanceled, mapped)
 	}

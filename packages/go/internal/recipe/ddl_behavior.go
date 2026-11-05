@@ -1,6 +1,7 @@
 package recipe
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"path/filepath"
@@ -19,19 +20,39 @@ var ddlConnectionRules = map[string]string{
 	"sqlite":   "PRAGMA foreign_keys = ON",
 }
 
+// ddlVectorCase reads the case with the given id from the ddl vectors at the path under dir.
+func ddlVectorCase(dir, path, id string) (ddlcases.Case, error) {
+	vectors, err := ddlcases.Read(filepath.Join(dir, path))
+	if err != nil {
+		return ddlcases.Case{}, err
+	}
+	index := slices.IndexFunc(vectors.Cases, func(candidate ddlcases.Case) bool { return candidate.ID == id })
+	if index < 0 {
+		return ddlcases.Case{}, fmt.Errorf("the vectors have no case %s", id)
+	}
+	return vectors.Cases[index], nil
+}
+
+// execBehaviorStep runs the statement of a behavior step; a step with fails must fail.
+func execBehaviorStep(ctx context.Context, raw *sql.DB, step ddlcases.Step) error {
+	_, err := raw.ExecContext(ctx, step.SQL)
+	if step.Fails && err == nil {
+		return fmt.Errorf("%s must fail", step.SQL)
+	}
+	if !step.Fails && err != nil {
+		return fmt.Errorf("%s: %w", step.SQL, err)
+	}
+	return nil
+}
+
 // ddlBehavior runs one dbspec.ddl_behavior step on one native connection of the case database: the connection rules, the
 // statements of the case for the database, then its behavior steps. A step with dialects runs only on those; a step with
 // fails must fail; a query compares its first value, as text, with want; a NULL or absent value fails it (DIA-113).
 func ddlBehavior(s databaseStep, c *databaseContext) error {
-	vectors, err := ddlcases.Read(filepath.Join(c.dir, s.k("vectors").Vectors))
+	vector, err := ddlVectorCase(c.dir, s.k("vectors").Vectors, s.k("case").Case)
 	if err != nil {
 		return err
 	}
-	index := slices.IndexFunc(vectors.Cases, func(candidate ddlcases.Case) bool { return candidate.ID == s.k("case").Case })
-	if index < 0 {
-		return fmt.Errorf("the vectors have no case %s", s.k("case").Case)
-	}
-	vector := vectors.Cases[index]
 	statements, ok := vector.Statements[c.database]
 	if !ok {
 		return fmt.Errorf("the case %s has no statements for %s", s.k("case").Case, c.database)
@@ -50,12 +71,8 @@ func ddlBehavior(s databaseStep, c *databaseContext) error {
 			continue
 		}
 		if step.SQL != "" {
-			_, err := raw.ExecContext(c.ctx, step.SQL)
-			if step.Fails && err == nil {
-				return fmt.Errorf("%s must fail", step.SQL)
-			}
-			if !step.Fails && err != nil {
-				return fmt.Errorf("%s: %w", step.SQL, err)
+			if err := execBehaviorStep(c.ctx, raw, step); err != nil {
+				return err
 			}
 			continue
 		}

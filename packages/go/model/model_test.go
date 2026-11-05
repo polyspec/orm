@@ -1,7 +1,6 @@
 package model_test
 
 import (
-	"database/sql"
 	"slices"
 	"strings"
 	"testing"
@@ -41,13 +40,6 @@ func databases(t *testing.T) map[string]*orm.DB {
 		out[driver] = db
 	}
 	return out
-}
-
-// openNative opens the database of a client DSN through the native
-// database/sql driver.
-func openNative(t *testing.T, driver, dsn string) *sql.DB {
-	t.Helper()
-	return testdb.Open(t, driver, dsn)
 }
 
 func each(t *testing.T, fn func(t *testing.T, db *orm.DB)) {

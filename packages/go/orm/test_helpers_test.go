@@ -118,13 +118,6 @@ func openSchemaDBConfig(t *testing.T, dsn string, s *orm.Schema, cfg orm.Config)
 	return db
 }
 
-// createZoneRow creates one row of the zone table through db, with start_dt at
-// the current time in UTC; a failure fails the test.
-func createZoneRow(t *testing.T, db *orm.DB, ent *orm.Entity) {
-	t.Helper()
-	createZoneRowAt(t, db, ent, time.Now().UTC().Format(time.DateTime))
-}
-
 // createZoneRowAt creates one row of the zone table through db, with start_dt
 // set to start; a failure fails the test.
 func createZoneRowAt(t *testing.T, db *orm.DB, ent *orm.Entity, start string) {
@@ -225,28 +218,10 @@ func eachDatabase(t *testing.T, drivers []string, s *orm.Schema, installs int, b
 	}
 }
 
-var rollbackColumns = []string{"seq", "label"}
-
-// rollbackFixture installs rollback_probe in a new database and returns the connected model constructor.
-func rollbackFixture(t *testing.T, driver string) (*orm.DB, func() *orm.Core) {
-	t.Helper()
-	s := fixtureSchema(t, "rollback")
-	db := openSchemaDB(t, newDatabase(t, driver), s)
-	ent := rowEntity("rollback_probe", s, rollbackColumns...)
-	return db, coreFunc(db, ent)
-}
-
 // serverSession is the DSN that opens the case database dsn on the server, not on the pooler:
 // it replaces the path of ORM_TEST_<DRIVER>_SERVER_DSN with the case database name.
 func serverSession(t *testing.T, driver, dsn string) string {
 	t.Helper()
 	server := requireDSN(t, "ORM_TEST_"+strings.ToUpper(driver)+"_SERVER_DSN")
 	return testdb.Retarget(t, server, testdb.DatabaseOf(t, dsn))
-}
-
-func probeCreate(model func() *orm.Core, label string) error {
-	c := model()
-	c.Set("label", label)
-	_, err := c.Create()
-	return err
 }

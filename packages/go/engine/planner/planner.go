@@ -574,13 +574,7 @@ func (p *Planner) selectGroupCountList(b *builder, sb *strings.Builder, s *scope
 		if *idx > 0 {
 			sb.WriteString(", ")
 		}
-		expr := p.D.ReadExpr(p.qcol(s, name), p.readSQLStyles(col.Codec))
-		if col.Type == "time" {
-			expr = p.D.ReadTime(expr, col.Precision)
-		}
-		if col.Type == "uuid" {
-			expr = p.D.ReadUUID(expr)
-		}
+		expr := p.readColumn(s, name, col)
 		out := s.alias + "__" + name
 		sb.WriteString(expr + " AS " + p.D.Quote(out))
 		*outNames = append(*outNames, out)
@@ -596,6 +590,18 @@ func (p *Planner) selectGroupCountList(b *builder, sb *strings.Builder, s *scope
 	asm.Columns = append(asm.Columns, plan.OutCol{Index: *idx, Name: "row_count", Type: "i64"})
 	*idx++
 	return nil
+}
+
+// readColumn is the expression that selects the named column of the scope in the form its codec and type read.
+func (p *Planner) readColumn(s *scope, name string, col *runtimemodel.Field) string {
+	expr := p.D.ReadExpr(p.qcol(s, name), p.readSQLStyles(col.Codec))
+	if col.Type == "time" {
+		expr = p.D.ReadTime(expr, col.Precision)
+	}
+	if col.Type == "uuid" {
+		expr = p.D.ReadUUID(expr)
+	}
+	return expr
 }
 
 // selectList writes the projection for a scope and its joins, recording the
@@ -641,13 +647,7 @@ func (p *Planner) selectList(b *builder, sb *strings.Builder, s *scope, asm *pla
 				return err
 			}
 		default:
-			expr = p.D.ReadExpr(p.qcol(s, c.column), p.readSQLStyles(col.Codec))
-			if col.Type == "time" {
-				expr = p.D.ReadTime(expr, col.Precision)
-			}
-			if col.Type == "uuid" {
-				expr = p.D.ReadUUID(expr)
-			}
+			expr = p.readColumn(s, c.column, col)
 			styles = p.clientStyles(col.Codec)
 		}
 		sb.WriteString(expr + " AS " + p.D.Quote(s.alias+"__"+c.name))

@@ -663,13 +663,3 @@ func mysqlConfig(raw string) (*mysql.Config, error) {
 	cfg.DBName = strings.TrimPrefix(u.Path, "/")
 	return cfg, nil
 }
-
-// MySQLDriverDSN returns the driver form of a mysql:// DSN URI, the form that
-// sql.Open takes, by the same conversion mysqlConfig performs.
-func MySQLDriverDSN(raw string) (string, error) {
-	cfg, err := mysqlConfig(raw)
-	if err != nil {
-		return "", err
-	}
-	return cfg.FormatDSN(), nil
-}

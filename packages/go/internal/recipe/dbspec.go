@@ -81,10 +81,7 @@ func checkDBSpec(s step, dir, database string) error {
 		var want struct {
 			ManifestHash string `json:"manifest_hash"`
 		}
-		if err := json.Unmarshal(raw, &want); err != nil {
-			return err
-		}
-		_, documents, err := readDocuments(dir, s.k("documents").Documents)
+		documents, err := wantedDocuments(dir, s, raw, &want)
 		if err != nil {
 			return err
 		}
@@ -102,10 +99,7 @@ func checkDBSpec(s step, dir, database string) error {
 			SQLite   []string `json:"sqlite"`
 			Refused  string   `json:"refused"`
 		}
-		if err := json.Unmarshal(raw, &want); err != nil {
-			return err
-		}
-		_, documents, err := readDocuments(dir, s.k("documents").Documents)
+		documents, err := wantedDocuments(dir, s, raw, &want)
 		if err != nil {
 			return err
 		}
@@ -132,16 +126,12 @@ func checkDBSpec(s step, dir, database string) error {
 		var want struct {
 			Tokens [][4]any `json:"tokens"`
 		}
-		if err := json.Unmarshal(raw, &want); err != nil {
+		text, set, err := wantedText(dir, s, raw, &want)
+		if err != nil {
 			return err
 		}
-		text, set := inlineDocument(s)
 		if s.k("document").Document != "" {
-			raw, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(s.k("document").Document)))
-			if err != nil {
-				return err
-			}
-			text, set = string(raw), nil
+			set = nil
 		}
 		analysis := dbspec.Analyze(text, set)
 		if s.k("document").Document != "" && len(analysis.Diagnostics) > 0 {
@@ -161,16 +151,9 @@ func checkDBSpec(s step, dir, database string) error {
 				Column int      `json:"column"`
 			} `json:"positions"`
 		}
-		if err := json.Unmarshal(raw, &want); err != nil {
+		text, set, err := wantedText(dir, s, raw, &want)
+		if err != nil {
 			return err
-		}
-		text, set := inlineDocument(s)
-		if s.k("document").Document != "" {
-			raw, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(s.k("document").Document)))
-			if err != nil {
-				return err
-			}
-			text = string(raw)
 		}
 		parsed, positions, diagnostics := dbspec.Parse(text, set)
 		if want.Positions == nil {
@@ -245,7 +228,7 @@ func checkDBSpec(s step, dir, database string) error {
 		model, invalid := runtimemodel.LoadSet(linesText(s.k("owned").Owned), linesText(s.k("external").External))
 		if invalid != nil {
 			if invalid.Code() != want.Error {
-				return fmt.Errorf("%v, want %+v", invalid, want)
+				return fmt.Errorf("%w, want %+v", invalid, want)
 			}
 			if want.Message != "" && invalid.Message() != want.Message {
 				return fmt.Errorf("message %q, want %q", invalid.Message(), want.Message)
@@ -254,11 +237,11 @@ func checkDBSpec(s step, dir, database string) error {
 			if want.Diagnostics != nil {
 				problems := strings.Split(invalid.Message(), "; ")
 				if len(problems) != len(want.Diagnostics) {
-					return fmt.Errorf("%v, want %+v", invalid, want)
+					return fmt.Errorf("%w, want %+v", invalid, want)
 				}
 				for i, problem := range problems {
 					if !strings.HasPrefix(problem, want.Diagnostics[i]+": ") {
-						return fmt.Errorf("%v, want %+v", invalid, want)
+						return fmt.Errorf("%w, want %+v", invalid, want)
 					}
 				}
 			}
@@ -503,6 +486,32 @@ func inlineDocument(s step) (string, map[string]string) {
 		set[name] = joinText(lines, s.k("crlf").CRLF, s.k("mixed").Mixed)
 	}
 	return joinText(s.k("text").Text, s.k("crlf").CRLF, s.k("mixed").Mixed), set
+}
+
+// wantedDocuments decodes the expect of the step into want and reads the documents of the step.
+func wantedDocuments(dir string, s step, raw json.RawMessage, want any) ([]*dbspec.Document, error) {
+	if err := json.Unmarshal(raw, want); err != nil {
+		return nil, err
+	}
+	_, documents, err := readDocuments(dir, s.k("documents").Documents)
+	return documents, err
+}
+
+// wantedText decodes the expect of the step into want, and returns the inline text and set of the step, with the text of the
+// file that the document of the step names in place of the inline text.
+func wantedText(dir string, s step, raw json.RawMessage, want any) (string, map[string]string, error) {
+	if err := json.Unmarshal(raw, want); err != nil {
+		return "", nil, err
+	}
+	text, set := inlineDocument(s)
+	if s.k("document").Document != "" {
+		file, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(s.k("document").Document)))
+		if err != nil {
+			return "", nil, err
+		}
+		text = string(file)
+	}
+	return text, set, nil
 }
 
 // emitStable parses text with the set, emits it, and checks that the emission parses and emits to itself.

@@ -2,26 +2,19 @@ package recipe
 
 import (
 	"fmt"
-	"path/filepath"
 	"slices"
 
 	"github.com/polyspec/orm/packages/go/engine/dbspec"
 	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
-	"github.com/polyspec/orm/packages/go/internal/dbspec/ddlcases"
 )
 
 // renderStatements runs one dbspec.render_statements step: it parses each document of the case against the others and
 // renders the set for each dialect, in the given order and reversed, to exactly the statements of the case (FCV-4, DIA-113).
 func renderStatements(s step, dir string) error {
-	vectors, err := ddlcases.Read(filepath.Join(dir, s.k("vectors").Vectors))
+	vector, err := ddlVectorCase(dir, s.k("vectors").Vectors, s.k("case").Case)
 	if err != nil {
 		return err
 	}
-	index := slices.IndexFunc(vectors.Cases, func(candidate ddlcases.Case) bool { return candidate.ID == s.k("case").Case })
-	if index < 0 {
-		return fmt.Errorf("the vectors have no case %s", s.k("case").Case)
-	}
-	vector := vectors.Cases[index]
 	names := make([]string, 0, len(vector.Documents))
 	for name := range vector.Documents {
 		names = append(names, name)

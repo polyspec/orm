@@ -25,16 +25,16 @@ type stepReads struct {
 
 // newStepReads holds the keys of the raw step; a raw value that is no object holds none.
 func newStepReads(raw json.RawMessage) *stepReads {
-	var fields map[string]json.RawMessage
+	var fields map[string]any
 	reads := &stepReads{keys: map[string]bool{}, read: map[string]bool{}}
 	if err := json.Unmarshal(raw, &fields); err != nil {
 		return reads
 	}
-	for key, value := range fields {
+	for key := range fields {
 		reads.keys[key] = true
-		if key == "op" {
-			_ = json.Unmarshal(value, &reads.op)
-		}
+	}
+	if op, ok := fields["op"].(string); ok {
+		reads.op = op
 	}
 	return reads
 }

@@ -1,7 +1,6 @@
 package orm_test
 
 import (
-	"cmp"
 	"github.com/polyspec/orm/packages/go/testcase"
 	"path/filepath"
 	"slices"
@@ -67,15 +66,6 @@ func hookRows(t *testing.T, e *orm.Entity, db *orm.DB) []map[string]any {
 	t.Helper()
 	rows, err := orm.Gets[*keywordRow](hookItem(e, db, nil))
 	return rowVals(t, rows, err)
-}
-
-func hookCount(t *testing.T, e *orm.Entity, db *orm.DB) int64 {
-	t.Helper()
-	n, err := hookItem(e, db, nil).GetCount()
-	if err != nil {
-		t.Fatal(err)
-	}
-	return n
 }
 
 // seedHookItems inserts a1 and a2 (part a) and b1 (part b) through the connection.
@@ -160,10 +150,6 @@ func TestRequestHook(t *testing.T) {
 			c.run(t, db, e, entry)
 		})
 	}
-}
-
-func cmpInt(a, b any) int {
-	return cmp.Compare(mustAs[int64](a), mustAs[int64](b))
 }
 
 // TestRequestBuilderErrorBeforeLockIsKept checks that a request whose builder already failed reports that error, and not the

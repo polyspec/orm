@@ -12,10 +12,8 @@ import (
 // do not cover yet. Each document is written with LF line ends.
 
 type ruleCase struct {
-	id     string
-	lines  []string
-	set    map[string][]string
-	errors []vectorError
+	id    string
+	lines []string
 }
 
 func errs(spec ...any) []vectorError {
@@ -33,9 +31,6 @@ func docSet(set map[string][]string) map[string]string {
 	}
 	return out
 }
-
-// users is a valid table block used by many cases.
-var users = []string{"table users {", "  id i64 identity", "  primary key (id)", "}"}
 
 func with(lines ...[]string) []string {
 	out := []string{"dbspec 1 shop", ""}

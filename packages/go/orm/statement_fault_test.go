@@ -48,6 +48,24 @@ func loadStatementFault(t *testing.T) statementFaultFixture {
 	return f
 }
 
+var rollbackColumns = []string{"seq", "label"}
+
+// rollbackFixture installs rollback_probe in a new database and returns the connected model constructor.
+func rollbackFixture(t *testing.T, driver string) (*orm.DB, func() *orm.Core) {
+	t.Helper()
+	s := fixtureSchema(t, "rollback")
+	db := openSchemaDB(t, newDatabase(t, driver), s)
+	ent := rowEntity("rollback_probe", s, rollbackColumns...)
+	return db, coreFunc(db, ent)
+}
+
+func probeCreate(model func() *orm.Core, label string) error {
+	c := model()
+	c.Set("label", label)
+	_, err := c.Create()
+	return err
+}
+
 // statementFault makes a new database for each case of the fixture and runs that case.
 // rollbackFixture installs the rollback_probe table. All cases use the same table.
 func statementFault(t *testing.T, driver string) {

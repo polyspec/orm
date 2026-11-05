@@ -431,12 +431,12 @@ type dsnConfig struct {
 
 // sqliteFileName opens a SQLite DSN with the query on a new file called name, and returns the names in its directory
 // other than the journals of that file (dsn.sqlite_file, CFG-26, COD-8).
-func sqliteFileName(name, query string, config dsnConfig) (string, error) {
+func sqliteFileName(name, query string, config dsnConfig) (_ string, err error) {
 	directory, err := os.MkdirTemp("", "orm-recipe-sqlite-name-")
 	if err != nil {
 		return "", err
 	}
-	defer func() { _ = os.RemoveAll(directory) }()
+	defer removeTemp(directory, &err)
 	_, refused := connectDriver("sqlite://"+filepath.Join(directory, name)+"?"+query, config)
 	entries, err := os.ReadDir(directory)
 	if err != nil {
@@ -459,27 +459,26 @@ func sqliteFileName(name, query string, config dsnConfig) (string, error) {
 
 // markdownConnect runs the markdown.connect op: it returns the outcome of the connection, or an error with no code when the
 // listener did not receive the line of the step.
-func markdownConnect(s step) error {
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+func markdownConnect(s step) (err error) {
+	var got string
+	listener, err := listenOnce(func(conn net.Conn) error {
+		line, err := bufio.NewReader(conn).ReadString('\n')
+		if err != nil {
+			return err
+		}
+		got = strings.TrimRight(line, "\n")
+		_, err = fmt.Fprintln(conn, s.k("reply").Reply)
+		return err
+	})
 	if err != nil {
 		return err
 	}
-	defer func() { _ = listener.Close() }()
-	received := make(chan string, 1)
-	go func() {
-		defer close(received)
-		conn, err := listener.Accept()
-		if err != nil {
-			return
-		}
-		defer func() { _ = conn.Close() }()
-		line, _ := bufio.NewReader(conn).ReadString('\n')
-		_, _ = fmt.Fprintln(conn, s.k("reply").Reply)
-		received <- strings.TrimRight(line, "\n")
-	}()
-	port := listener.Addr().(*net.TCPAddr).Port
-	_, connected := connectDriver(fmt.Sprintf("markdown://127.0.0.1:%d/%s?token=%s", port, s.k("corpus").Corpus, s.k("token").Token), dsnConfig{})
-	if got := <-received; got != s.k("received").Received {
+	defer func() { err = closeFirst(err, listener.Close()) }()
+	_, connected := connectDriver(fmt.Sprintf("markdown://127.0.0.1:%d/%s?token=%s", listener.port, s.k("corpus").Corpus, s.k("token").Token), dsnConfig{})
+	if err := <-listener.served; err != nil {
+		return err
+	}
+	if got != s.k("received").Received {
 		return fmt.Errorf("the listener received %q, want %q", got, s.k("received").Received)
 	}
 	return connected
@@ -488,31 +487,25 @@ func markdownConnect(s step) error {
 // markdownSession runs the markdown.session op: on a listener that answers each line with the next of the replies, a read-only
 // transaction that holds a nested one, then a transaction. It returns the error of the last one, or an error with no code when
 // the listener did not receive the messages of the step.
-func markdownSession(s step) error {
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		return err
-	}
-	defer func() { _ = listener.Close() }()
-	received := make(chan []string, 1)
-	go func() {
-		var got []string
-		defer func() { received <- got }()
-		conn, err := listener.Accept()
-		if err != nil {
-			return
-		}
-		defer func() { _ = conn.Close() }()
+func markdownSession(s step) (err error) {
+	var got []string
+	listener, err := listenOnce(func(conn net.Conn) error {
 		lines := bufio.NewScanner(conn)
 		for lines.Scan() {
 			got = append(got, lines.Text())
 			if len(got) <= len(s.k("replies").Replies) {
-				_, _ = fmt.Fprintln(conn, s.k("replies").Replies[len(got)-1])
+				if _, err := fmt.Fprintln(conn, s.k("replies").Replies[len(got)-1]); err != nil {
+					return err
+				}
 			}
 		}
-	}()
-	port := listener.Addr().(*net.TCPAddr).Port
-	db, err := orm.Connect(fmt.Sprintf("markdown://127.0.0.1:%d/%s?token=%s", port, s.k("corpus").Corpus, s.k("token").Token), orm.Config{})
+		return lines.Err()
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { err = closeFirst(err, listener.Close()) }()
+	db, err := orm.Connect(fmt.Sprintf("markdown://127.0.0.1:%d/%s?token=%s", listener.port, s.k("corpus").Corpus, s.k("token").Token), orm.Config{})
 	if err != nil {
 		return fmt.Errorf("connect: %s", err.Error())
 	}
@@ -525,10 +518,43 @@ func markdownSession(s step) error {
 	if err := db.Close(); err != nil {
 		return fmt.Errorf("close: %s", err.Error())
 	}
-	if got := <-received; !slices.Equal(got, s.k("messages").Messages) {
+	if err := <-listener.served; err != nil {
+		return err
+	}
+	if !slices.Equal(got, s.k("messages").Messages) {
 		return fmt.Errorf("the listener received %q, want %q", got, s.k("messages").Messages)
 	}
 	return failure
+}
+
+// onceListener is a listener on a local port that serves its first connection in the background; served receives the
+// error of that connection when it ends, after which what serve wrote may be read.
+type onceListener struct {
+	net.Listener
+	port   int
+	served chan error
+}
+
+// listenOnce listens on a local port and serves the first connection with serve, then closes that connection.
+func listenOnce(serve func(conn net.Conn) error) (*onceListener, error) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return nil, err
+	}
+	address, ok := listener.Addr().(*net.TCPAddr)
+	if !ok {
+		return nil, closeFirst(fmt.Errorf("the listener address is a %T", listener.Addr()), listener.Close())
+	}
+	served := make(chan error, 1)
+	go func() {
+		conn, err := listener.Accept()
+		if err != nil {
+			served <- err
+			return
+		}
+		served <- closeFirst(serve(conn), conn.Close())
+	}()
+	return &onceListener{Listener: listener, port: address.Port, served: served}, nil
 }
 
 // connectDriver opens the DSN with Connect, runs SELECT 1 through the statement runner (INT-150), closes the connection
@@ -630,7 +656,7 @@ func check(raw json.RawMessage, r result, styles []string) error {
 			return fmt.Errorf("error %q (%w), want %s", got, r.err, outcome.Error)
 		}
 		if !strings.Contains(r.err.Error(), outcome.MessageHolds) {
-			return fmt.Errorf("error %q, want a message that holds %q", r.err, outcome.MessageHolds)
+			return fmt.Errorf("error %q, want a message that holds %q", r.err.Error(), outcome.MessageHolds)
 		}
 		return nil
 	}
@@ -1370,10 +1396,8 @@ func plannerRequest(dir string, s step) (*runtimemodel.Model, []byte, error) {
 // checkParamUses states the uses of each parameter of a validated request, the slot form that a markdown connection
 // reads for it (DIA-31, PRT-67): {uses: [[{type} or {type, assign, column, length, null, precision, scale}]]}.
 func checkParamUses(dir string, s step, database string) error {
-	var outcome struct {
-		Value json.RawMessage `json:"value"`
-	}
-	if err := json.Unmarshal(s.k("expect").Expect[database], &outcome); err != nil {
+	want, err := expectedValue(s, database)
+	if err != nil {
 		return err
 	}
 	m, body, err := plannerRequest(dir, s)
@@ -1403,16 +1427,14 @@ func checkParamUses(dir string, s step, database string) error {
 		}
 		list = append(list, entries)
 	}
-	return sameJSON("ir.param_uses", map[string]any{"uses": list}, outcome.Value)
+	return sameJSON("ir.param_uses", map[string]any{"uses": list}, want)
 }
 
 // checkPlannerColumns states the output columns that the names of the step select from the first statement of the plan
 // of each dialect: their type and whether they are hidden (PRT-69, DIA-33).
 func checkPlannerColumns(dir string, s step, database string) error {
-	var outcome struct {
-		Value json.RawMessage `json:"value"`
-	}
-	if err := json.Unmarshal(s.k("expect").Expect[database], &outcome); err != nil {
+	want, err := expectedValue(s, database)
+	if err != nil {
 		return err
 	}
 	m, request, err := plannerRequest(dir, s)
@@ -1420,16 +1442,8 @@ func checkPlannerColumns(dir string, s step, database string) error {
 		return err
 	}
 	for _, dialect := range plannerDialects {
-		e, err := engine.New(m, dialect)
+		compiled, err := compiledPlan(m, dialect, request)
 		if err != nil {
-			return err
-		}
-		out, err := e.Compile(request)
-		if err != nil {
-			return fmt.Errorf("%s: %w", dialect, err)
-		}
-		var compiled plan.Plan
-		if err := json.Unmarshal(out, &compiled); err != nil {
 			return err
 		}
 		assemble := compiled.Steps[0].Assemble
@@ -1441,11 +1455,35 @@ func checkPlannerColumns(dir string, s step, database string) error {
 				}
 			}
 		}
-		if err := sameJSON("planner.columns "+dialect, got, outcome.Value); err != nil {
+		if err := sameJSON("planner.columns "+dialect, got, want); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// expectedValue is the value of the expect of the step for the database.
+func expectedValue(s step, database string) (json.RawMessage, error) {
+	var outcome struct {
+		Value json.RawMessage `json:"value"`
+	}
+	err := json.Unmarshal(s.k("expect").Expect[database], &outcome)
+	return outcome.Value, err
+}
+
+// compiledPlan compiles the request for the dialect.
+func compiledPlan(m *runtimemodel.Model, dialect string, request []byte) (plan.Plan, error) {
+	var compiled plan.Plan
+	e, err := engine.New(m, dialect)
+	if err != nil {
+		return compiled, err
+	}
+	out, err := e.Compile(request)
+	if err != nil {
+		return compiled, fmt.Errorf("%s: %w", dialect, err)
+	}
+	err = json.Unmarshal(out, &compiled)
+	return compiled, err
 }
 
 // sameJSON compares a value with the JSON of an expect, whatever the order of their keys.
@@ -1524,16 +1562,8 @@ func checkPlanner(dir string, s step, database string) error {
 	}
 	got := map[string]any{}
 	for _, dialect := range plannerDialects {
-		e, err := engine.New(m, dialect)
+		compiled, err := compiledPlan(m, dialect, request)
 		if err != nil {
-			return err
-		}
-		out, err := e.Compile(request)
-		if err != nil {
-			return fmt.Errorf("%s: %w", dialect, err)
-		}
-		var compiled plan.Plan
-		if err := json.Unmarshal(out, &compiled); err != nil {
 			return err
 		}
 		statements := plannerStatements(compiled)
@@ -1630,21 +1660,7 @@ func dbspecStep(s step, bound map[string]result, database string) error {
 	if err != nil {
 		return err
 	}
-	body, err := json.Marshal(got)
-	if err != nil {
-		return err
-	}
-	var actual, expected any
-	if err := json.Unmarshal(body, &actual); err != nil {
-		return err
-	}
-	if err := json.Unmarshal(want, &expected); err != nil {
-		return err
-	}
-	if !reflect.DeepEqual(actual, expected) {
-		return fmt.Errorf("%s: got %s, want %s", s.k("op").Op, body, want)
-	}
-	return nil
+	return sameJSON(s.k("op").Op, got, want)
 }
 
 // dbspecParse runs dbspec.parse (Parse) or dbspec.parse_plan (ParsePlan) on the lines of s, binds the result to s.As, and
@@ -1703,11 +1719,7 @@ func dbspecPlanSteps(s step, bound map[string]result) (any, error) {
 // dbspecAddTablesSteps runs dbspec.add_tables_steps (AddTablesAndColumnsSteps) on the source and target that s names, with no
 // unsupported items, for the dialect of s, and returns {added, statements, differences}.
 func dbspecAddTablesSteps(s step, bound map[string]result) (any, error) {
-	source, err := dbspecDocument(s.k("source").Source, bound)
-	if err != nil {
-		return nil, err
-	}
-	target, err := dbspecDocument(s.k("target").Target, bound)
+	source, target, err := dbspecSourceAndTarget(s, bound)
 	if err != nil {
 		return nil, err
 	}
@@ -1821,11 +1833,7 @@ func dbspecChain(s step, bound map[string]result) (any, error) {
 // dbspecCompare runs dbspec.compare (CompareSchemas) and returns {differences: rows, diagnostics: rows}, whose diagnostics
 // carry their message for every rule.
 func dbspecCompare(s step, bound map[string]result) (any, error) {
-	source, err := dbspecDocument(s.k("source").Source, bound)
-	if err != nil {
-		return nil, err
-	}
-	target, err := dbspecDocument(s.k("target").Target, bound)
+	source, target, err := dbspecSourceAndTarget(s, bound)
 	if err != nil {
 		return nil, err
 	}
@@ -1906,6 +1914,16 @@ func sourceAndPlan(s step, bound map[string]result) (*dbspec.Document, *dbspec.P
 	}
 	plan, err := dbspecPlan(s.k("plan").Plan, bound)
 	return source, plan, err
+}
+
+// dbspecSourceAndTarget are the documents that the source and the target of s name.
+func dbspecSourceAndTarget(s step, bound map[string]result) (source, target *dbspec.Document, err error) {
+	source, err = dbspecDocument(s.k("source").Source, bound)
+	if err != nil {
+		return nil, nil, err
+	}
+	target, err = dbspecDocument(s.k("target").Target, bound)
+	return source, target, err
 }
 
 // dbspecDocument is the document that a source or target names; null is the empty schema (nil).
@@ -2043,8 +2061,11 @@ func checkKeyring(s step, database string) error {
 	}
 	keyring, err := s.k("keyring").Keyring.keyring()
 	if want.Error != "" {
+		if err == nil {
+			return fmt.Errorf("the keyring returned no error, want %s", want.Error)
+		}
 		if code := orm.ErrorCode(err); code != want.Error {
-			return fmt.Errorf("the keyring returned %v, want %s", err, want.Error)
+			return fmt.Errorf("the keyring returned %w, want %s", err, want.Error)
 		}
 		return nil
 	}

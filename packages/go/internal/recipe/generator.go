@@ -342,7 +342,7 @@ func camel(table string) string {
 }
 
 // checkGeneratedFiles runs one generator.check step (FCV-4, DBS-175) through orm-gen gen --check of this module.
-func checkGeneratedFiles(dir string, s step) error {
+func checkGeneratedFiles(dir string, s step) (err error) {
 	module, err := moduleRoot()
 	if err != nil {
 		return err
@@ -355,7 +355,7 @@ func checkGeneratedFiles(dir string, s step) error {
 	if err != nil {
 		return err
 	}
-	defer func() { _ = os.RemoveAll(work) }()
+	defer removeTemp(work, &err)
 	out := filepath.Join(work, "model")
 	gen := func(extra ...string) (string, int, error) {
 		args := append([]string{"run", "./cmd/orm-gen", "gen", "--lang", "go", "--set", set, "--out", out}, extra...)
@@ -455,7 +455,7 @@ func moduleRoot() (string, error) {
 }
 
 // checkRefusedGeneration runs one generator.refused step (FCV-4, DBS-27) through orm-gen gen of this client.
-func checkRefusedGeneration(dir string, s step) error {
+func checkRefusedGeneration(dir string, s step) (err error) {
 	module, err := moduleRoot()
 	if err != nil {
 		return err
@@ -464,7 +464,7 @@ func checkRefusedGeneration(dir string, s step) error {
 	if err != nil {
 		return err
 	}
-	defer func() { _ = os.RemoveAll(work) }()
+	defer removeTemp(work, &err)
 	for name, entry := range s.k("files").Tree {
 		var text string
 		if err := json.Unmarshal(entry, &text); err != nil {
@@ -492,9 +492,12 @@ func checkRefusedGeneration(dir string, s step) error {
 	command := exec.Command("go", args...)
 	command.Dir = module
 	stdout, err := command.Output()
+	if err == nil {
+		return fmt.Errorf("generator.refused: the run succeeded, stdout %q, want exit 1 and nothing", stdout)
+	}
 	var exit *exec.ExitError
 	if !errors.As(err, &exit) || exit.ExitCode() != 1 || len(stdout) != 0 {
-		return fmt.Errorf("generator.refused: got %v, stdout %q, want exit 1 and nothing", err, stdout)
+		return fmt.Errorf("generator.refused: got %w, stdout %q, want exit 1 and nothing", err, stdout)
 	}
 	rest := string(exit.Stderr)
 	for _, part := range s.k("parts").Parts {

@@ -12,22 +12,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/polyspec/orm/packages/go/engine/dbspec"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // probeDeadline bounds one probe, including its DDL and catalog queries.
 const probeDeadline = 30 * time.Second
-
-// schemaTextOf returns the schema text of an introspected document, or the empty
-// text when the document has no table.
-func schemaTextOf(document *dbspec.Document) string {
-	if len(document.Tables) == 0 {
-		return ""
-	}
-	m, _ := dbspec.ManifestOf([]*dbspec.Document{document})
-	return m.SchemaText
-}
 
 // uniqueToken returns a token that names a physical test run: the process id and
 // a random value, so that the names do not overlap with another run at the same time.

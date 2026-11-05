@@ -357,10 +357,18 @@ func (s *catalogSession) querySized(query string, args []any, maxRows int, maxBy
 	stopped := false
 	defer func() {
 		if stopped {
-			// The budget error is the one reported: a close that the stop interrupted may fail, as the stop ended the read.
+			// The budget error is the one reported: a close that the stop interrupted may fail, as the stop ended the read,
+			// so its error stays only as a cause of the budget error.
 			s.stopped = true
 			cancel()
-			_ = rows.Close()
+			if closeErr := rows.Close(); closeErr != nil {
+				var coded *ir.Error
+				if errors.As(err, &coded) {
+					raw, err = catalogRaw{}, &ir.Error{Code: coded.Code, Msg: coded.Msg, Cause: errors.Join(coded.Cause, closeErr)}
+				} else {
+					raw, err = catalogRaw{}, errors.Join(err, closeErr)
+				}
+			}
 			return
 		}
 		if closeErr := rows.Close(); closeErr != nil {

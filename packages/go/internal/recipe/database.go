@@ -669,8 +669,11 @@ func runStepWith(s databaseStep, c *databaseContext, op func(databaseStep, *data
 		}
 		if want, ok := expected["cause"].(string); ok {
 			cause := errors.Unwrap(err)
-			if cause == nil || cause.Error() != want {
-				return fmt.Errorf("error cause %v, want %q", cause, want)
+			if cause == nil {
+				return fmt.Errorf("error %q has no cause, want %q", err.Error(), want)
+			}
+			if cause.Error() != want {
+				return fmt.Errorf("error cause %w, want %q", cause, want)
 			}
 		}
 		if holds, ok := expected["message_holds"].(string); ok && !strings.Contains(err.Error(), holds) {
@@ -735,6 +738,11 @@ func closeFirst(err, closeErr error) error {
 		return closeErr
 	}
 	return errors.Join(err, closeErr)
+}
+
+// removeTemp removes the temporary directory of a step when the step ends, and joins a failure to the error of the step.
+func removeTemp(directory string, err *error) {
+	*err = closeFirst(*err, os.RemoveAll(directory))
 }
 
 // readBindCell reads the body of the bind cell at seq through a new connection, and closes that connection.
@@ -831,15 +839,11 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			"columns": names, "order_by": page.OrderBy, "has_more": page.HasMore, "rows": rows,
 		}}, nil
 	case "catalog.read_only_query":
-		query, err := databaseText(s.k("sql").SQL, c)
+		query, binds, limits, err := catalogQueryStep(s, c)
 		if err != nil {
 			return outcome{}, err
 		}
-		binds, err := queryBinds(s.k("binds").Binds, c)
-		if err != nil {
-			return outcome{}, err
-		}
-		result, err := c.catalog.ReadOnlyQuery(c.ctx, query, binds, orm.CatalogQueryLimits{MaxRows: s.k("max_rows").MaxRows, MaxBytes: s.k("max_bytes").MaxBytes})
+		result, err := c.catalog.ReadOnlyQuery(c.ctx, query, binds, limits)
 		if err != nil {
 			return outcome{}, err
 		}
@@ -849,15 +853,11 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		return outcome{fields: map[string]any{"columns": result.Columns, "row_count": len(result.Rows), "rows": rows}}, nil
 	case "catalog.read_only_grid_query":
-		query, err := databaseText(s.k("sql").SQL, c)
+		query, binds, limits, err := catalogQueryStep(s, c)
 		if err != nil {
 			return outcome{}, err
 		}
-		binds, err := queryBinds(s.k("binds").Binds, c)
-		if err != nil {
-			return outcome{}, err
-		}
-		result, err := c.catalog.ReadOnlyGridQuery(c.ctx, query, binds, orm.CatalogQueryLimits{MaxRows: s.k("max_rows").MaxRows, MaxBytes: s.k("max_bytes").MaxBytes})
+		result, err := c.catalog.ReadOnlyGridQuery(c.ctx, query, binds, limits)
 		if err != nil {
 			return outcome{}, err
 		}
@@ -1018,7 +1018,10 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			return outcome{}, closeFirst(err, raw.Close())
 		}
 		c.held = raw
-		c.t.Cleanup(func() { _ = held.Close(); _ = raw.Close() })
+		c.t.Cleanup(func() {
+			testcase.Close(c.t, held)
+			testcase.Close(c.t, raw)
+		})
 		return outcome{}, nil
 	case "sql.hold_statement":
 		var named string
@@ -1610,7 +1613,11 @@ func awaitReplica(c *databaseContext) error {
 		if err != nil {
 			return err
 		}
-		defer func() { _ = tx.Rollback() }()
+		defer func() {
+			if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
+				c.t.Errorf("roll back the barrier transaction: %v", err)
+			}
+		}()
 		if _, err := tx.Exec("SET LOCAL synchronous_commit = remote_apply"); err != nil {
 			return err
 		}
@@ -1989,6 +1996,17 @@ func cellRows[T any](rows [][]T, convert func(T) (any, error)) ([]any, error) {
 
 // assignments are the assignments of an object of column names, in its order, whose values are recipe wrappers, refs to
 // bound value wrappers or per-database objects.
+// catalogQueryStep reads the statement, the binds and the limits of a catalog query step.
+func catalogQueryStep(s databaseStep, c *databaseContext) (string, []any, orm.CatalogQueryLimits, error) {
+	limits := orm.CatalogQueryLimits{MaxRows: s.k("max_rows").MaxRows, MaxBytes: s.k("max_bytes").MaxBytes}
+	query, err := databaseText(s.k("sql").SQL, c)
+	if err != nil {
+		return "", nil, limits, err
+	}
+	binds, err := queryBinds(s.k("binds").Binds, c)
+	return query, binds, limits, err
+}
+
 // queryBinds reads the positional binds of a read-only query: a list of recipe values, each converted as an assignment value.
 func queryBinds(raw json.RawMessage, c *databaseContext) ([]any, error) {
 	if len(raw) == 0 {

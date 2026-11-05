@@ -86,15 +86,6 @@ func as[T any](t testing.TB, v any) T {
 	return testcase.As[T](t, v)
 }
 
-// mustAs returns v as a T, and panics when v is another type; it serves the callbacks that have no test.
-func mustAs[T any](v any) T {
-	out, err := asErr[T](v)
-	if err != nil {
-		panic(err)
-	}
-	return out
-}
-
 // asErr returns v as a T, or an error when v is another type.
 func asErr[T any](v any) (T, error) {
 	return testcase.AsErr[T](v)

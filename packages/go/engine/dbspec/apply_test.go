@@ -122,12 +122,3 @@ func stopAfterApplied(stop error) func(ApplyEvent) error {
 		return nil
 	}
 }
-
-// applyOK applies the plans to c with the clock now, and fails the test when
-// apply fails.
-func applyOK(t *testing.T, ctx context.Context, c Execer, plans []*Plan, now func() time.Time) {
-	t.Helper()
-	if _, err := Apply(ctx, c, DialectSQLite, plans, now, nil); err != nil {
-		t.Fatal(err)
-	}
-}

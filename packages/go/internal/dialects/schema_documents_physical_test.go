@@ -53,12 +53,8 @@ func schemaDocumentSets(t *testing.T) []schemaDocument {
 		}
 		for _, path := range paths {
 			name := strings.TrimSuffix(filepath.Base(path), ".dbs")
-			others := map[string]string{}
-			for other, text := range texts {
-				if other != name {
-					others[other] = text
-				}
-			}
+			others := maps.Clone(texts)
+			delete(others, name)
 			document, _, diagnostics := dbspec.Parse(texts[name], others)
 			if len(diagnostics) > 0 {
 				t.Fatalf("%s: %v", path, diagnostics)

@@ -29,19 +29,7 @@ var _ = func() {
 
 func TestChainArgumentTypes(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	const modelPath = "github.com/polyspec/orm/packages/go/model"
-	const ormPath = "github.com/polyspec/orm/packages/go/orm"
-	loaded, err := packages.Load(&packages.Config{Mode: packages.NeedName | packages.NeedTypes | packages.NeedImports | packages.NeedDeps}, modelPath, ormPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	imported := map[string]*types.Package{}
-	for _, p := range loaded {
-		if len(p.Errors) > 0 {
-			t.Fatalf("load %s: %v", p.PkgPath, p.Errors)
-		}
-		imported[p.PkgPath] = p.Types
-	}
+	imported := loadModelTypes(t)
 	for _, c := range []struct {
 		call   string
 		accept bool
@@ -67,26 +55,59 @@ func TestChainArgumentTypes(t *testing.T) {
 	} {
 		t.Run(c.call, func(t *testing.T) {
 			src := "package snippet\n\nimport (\n\t\"" + modelPath + "\"\n\t\"" + ormPath + "\"\n)\n\nvar _ = orm.Null\n\nfunc use() { model.Author()." + c.call + " }\n"
-			fset := token.NewFileSet()
-			file, err := parser.ParseFile(fset, "snippet.go", src, 0)
-			if err != nil {
-				t.Fatal(err)
-			}
-			var errs []string
-			conf := types.Config{
-				Importer: importerFunc(func(path string) (*types.Package, error) { return imported[path], nil }),
-				Error:    func(err error) { errs = append(errs, err.Error()) },
-			}
-			// Check returns the first error that Error collects, so err is nil only when errs is empty.
-			_, err = conf.Check("snippet", fset, []*ast.File{file}, nil)
-			if c.accept && err != nil {
+			errs := checkSnippet(t, imported, src)
+			if c.accept && len(errs) != 0 {
 				t.Fatalf("model.Author().%s does not compile: %s", c.call, strings.Join(errs, "; "))
 			}
-			if !c.accept && err == nil {
+			if !c.accept && len(errs) == 0 {
 				t.Fatalf("model.Author().%s compiles; the chain must reject its argument", c.call)
 			}
 		})
 	}
+}
+
+// The import paths of the packages that a snippet type-checks against.
+const (
+	modelPath = "github.com/polyspec/orm/packages/go/model"
+	ormPath   = "github.com/polyspec/orm/packages/go/orm"
+)
+
+// loadModelTypes loads the types of the generated model and of the orm package, by import path.
+func loadModelTypes(t *testing.T) map[string]*types.Package {
+	t.Helper()
+	loaded, err := packages.Load(&packages.Config{Mode: packages.NeedName | packages.NeedTypes | packages.NeedImports | packages.NeedDeps}, modelPath, ormPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	imported := map[string]*types.Package{}
+	for _, p := range loaded {
+		if len(p.Errors) > 0 {
+			t.Fatalf("load %s: %v", p.PkgPath, p.Errors)
+		}
+		imported[p.PkgPath] = p.Types
+	}
+	return imported
+}
+
+// checkSnippet type-checks the source of a package against the imported packages, and returns every error of the type
+// checker.
+func checkSnippet(t *testing.T, imported map[string]*types.Package, src string) []string {
+	t.Helper()
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "snippet.go", src, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var errs []string
+	conf := types.Config{
+		Importer: importerFunc(func(path string) (*types.Package, error) { return imported[path], nil }),
+		Error:    func(err error) { errs = append(errs, err.Error()) },
+	}
+	// Check returns the first error that Error collects, so err is nil only when errs is empty.
+	if _, err := conf.Check("snippet", fset, []*ast.File{file}, nil); (err != nil) != (len(errs) != 0) {
+		t.Fatalf("the type checker returned %v and collected %q", err, errs)
+	}
+	return errs
 }
 
 // importerFunc imports the packages that the test loaded.

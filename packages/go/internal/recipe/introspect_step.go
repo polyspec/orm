@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -92,12 +93,8 @@ func introspectParseSet(texts map[string]string) ([]*dbspec.Document, error) {
 	slices.Sort(names)
 	documents := make([]*dbspec.Document, 0, len(names))
 	for _, name := range names {
-		others := map[string]string{}
-		for other, text := range texts {
-			if other != name {
-				others[other] = text
-			}
-		}
+		others := maps.Clone(texts)
+		delete(others, name)
 		document, _, diagnostics := dbspec.Parse(texts[name], others)
 		if len(diagnostics) > 0 {
 			return nil, fmt.Errorf("%s: %v", name, diagnostics)

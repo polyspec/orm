@@ -238,12 +238,8 @@ func (r planRun) behavior(steps []ddlcases.Step) error {
 			continue
 		}
 		if step.SQL != "" {
-			_, err := r.raw.ExecContext(r.c.ctx, step.SQL)
-			if step.Fails && err == nil {
-				return fmt.Errorf("%s must fail", step.SQL)
-			}
-			if !step.Fails && err != nil {
-				return fmt.Errorf("%s: %w", step.SQL, err)
+			if err := execBehaviorStep(r.c.ctx, r.raw, step); err != nil {
+				return err
 			}
 			continue
 		}
