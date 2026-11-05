@@ -8556,6 +8556,7 @@
         "packages/rust/build/tests/tool_values.rs",
         "packages/rust/build/tests/typed_binds.rs",
         "packages/rust/build/tests/unit/mutation_commit.rs",
+        "packages/rust/build/tests/unit/mutation_connection.rs",
         "packages/rust/build/tests/unit/mutation_safety.rs",
         "packages/rust/build/tests/unit/read_only_disposal.rs",
         "packages/rust/build/tests/unit/read_only_policy.rs",
@@ -8632,6 +8633,7 @@
           "shard": "rust",
           "inputs": [
             "packages/rust/build/tests/unit/mutation_commit.rs",
+            "packages/rust/build/tests/unit/mutation_connection.rs",
             "packages/rust/build/tests/unit/mutation_safety.rs",
             "packages/rust/build/tests/unit/read_only_disposal.rs",
             "packages/rust/build/tests/unit/read_only_policy.rs",

@@ -412,6 +412,15 @@ impl Conn {
             Self::Sqlite(c) => c.close_on_drop(),
         }
     }
+    /// Gives a connection that `discard_on_drop` marked back to its pool, which holds it for the next session: only a session that
+    /// ended cleanly calls this. The caller waits for it, so the next acquire finds the connection idle and opens no other.
+    pub(crate) async fn return_to_pool(mut self) {
+        match &mut self {
+            Self::MySql(c) => c.return_to_pool().await,
+            Self::Postgres(c) => c.return_to_pool().await,
+            Self::Sqlite(c) => c.return_to_pool().await,
+        }
+    }
     /// Forgets the named statements of a PostgreSQL connection, on the server and in its statement cache.
     pub(crate) async fn forget_statements(&mut self) -> Result<(), sqlx::Error> {
         match self {

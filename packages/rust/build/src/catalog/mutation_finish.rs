@@ -20,6 +20,9 @@ pub(super) async fn finish<T: Send + 'static>(mut connection: Conn, result: Resu
     let task = tokio::spawn(async move {
         match connection.exec("COMMIT", &[]).await {
             Ok(_) => {
+                // The commit ended the transaction and its locks, so the next mutation of this catalog takes this connection. Every
+                // other end leaves the mark of `discard_on_drop`: a connection whose transaction may still be open never returns.
+                connection.return_to_pool().await;
                 publish(MutationPhase::Committed);
                 Ok(value)
             }
@@ -53,3 +56,7 @@ fn explicitly_rejected(error: &sqlx::Error) -> bool {
 #[cfg(test)]
 #[path = "../../tests/unit/mutation_commit.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "../../tests/unit/mutation_connection.rs"]
+mod connection_tests;

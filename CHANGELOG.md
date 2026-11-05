@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Fixes: a committed mutation of the Rust catalog hands its connection back to the pool, so the next mutation reuses it (INT-106b); a mutation that fails still discards its connection.
 - Tests: the Rust suite of `packages/rust/tests` is one test program, `all`, whose groups run one after another and print their size and progress; every trial is kept, under a name that starts with its former program.
 
 ## 0.0.22

@@ -16261,6 +16261,25 @@
       ]
     },
     {
+      "id": "rust-catalog-mutation-finish-committed-mutations-share-one-connection",
+      "kind": "feature",
+      "requirements": [
+        "INT-106b"
+      ],
+      "bindings": [
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/unit/mutation_connection.rs",
+          "id": "catalog::mutation_finish::connection_tests::committed_mutations_of_a_catalog_share_one_connection"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
+    },
+    {
       "id": "rust-catalog-mutation-finish-broken-commit-acknowledgement-is-not-explicit-rejection",
       "kind": "feature",
       "requirements": [
