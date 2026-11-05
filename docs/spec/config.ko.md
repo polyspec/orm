@@ -1,5 +1,5 @@
 <!-- doc-id: config -->
-<!-- source-sha256: 6e20680eaa1e12920eff21762121734a6381b831dd13157340249674433e4639 -->
+<!-- source-sha256: 07f8066626826ae8c3e0c8f801ea44fb8c445c9c4c99c20e7953cfe6ecaedb1d -->
 # 런타임 연결
 
 클라이언트는 연결 값을 인자로 받으며 환경 변수나 비밀 저장소를 스스로 읽지 않는다. 클라이언트는 설정 파일을 읽지 않는다.
@@ -76,6 +76,7 @@ ORM은 문을 서버 사이에서 분배하지 않는다. replica에서 읽을 �
 
 - **CFG-21** 모델이나 읽어 온 행은 자신이 연결된 연결만 사용한다. `master`의 트랜잭션 안에서 `slave1`에 연결한 모델은 트랜잭션 밖에서 `slave1`로 실행되고, `connect`가 없는 모델은 트랜잭션 안에서 실행된다.
 - **CFG-22** 연결마다 풀, prepared statement, 세션 설정이 따로 있다.
+- **CFG-22a** Go와 Rust와 TypeScript와 Python: MySQL과 PostgreSQL에서 연결의 `stats()`는 자기 pool의 connection만 집계한다(CFG-5a).
 - **CFG-23** replica는 primary가 commit한 변경을 그 뒤에 적용한다. 같은 요청의 쓰기를 읽어야 하는 읽기는 primary 연결을 사용하며, orm은 연결을 스스로 고르지 않는다.
 - **CFG-24** replica는 쓰기를 거부한다. PostgreSQL은 SQLSTATE 25006을, `super_read_only`인 MySQL replica는 오류 1290을 반환한다. 클라이언트는 읽기 전용 트랜잭션의 쓰기와 읽기 전용으로 열린 SQLite 데이터베이스에 대한 쓰기와 마찬가지로 드라이버 메시지와 함께 `READ_ONLY`를 반환한다.
 - **CFG-25** 스키마 도구와 `utils().schema().install`은 primary에서 실행하고, replica는 복제로 스키마를 적용한다.

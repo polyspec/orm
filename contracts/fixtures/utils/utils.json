@@ -11,7 +11,8 @@
     "INT-72",
     "INT-73",
     "INT-79",
-    "INT-59"
+    "INT-59",
+    "CFG-22"
   ],
   "fixture": "contracts/fixtures/statement_events/dbspec-set.json",
   "cases": [
@@ -1255,6 +1256,320 @@
           }
         }
       ]
+    },
+    {
+      "id": "a_session_setting_stays_on_its_connection",
+      "requirements": [
+        "CFG-22"
+      ],
+      "not_through_pooler": "A pooler shares its server sessions between clients, so what one session holds does not tell the connections of the client apart.",
+      "steps": [
+        {
+          "op": "model.connect",
+          "as": "first",
+          "pool_size": 1
+        },
+        {
+          "op": "model.connect",
+          "as": "second",
+          "pool_size": 1
+        },
+        {
+          "op": "utils.run",
+          "connection": "first",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SET @cfg22_mark = 1",
+                "postgres": "SELECT set_config('orm.cfg22_mark', '1', false)",
+                "sqlite": "PRAGMA cache_size = 1234"
+              }
+            },
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SELECT IF(@cfg22_mark IS NULL, 0, 1)",
+                "postgres": "SELECT CASE WHEN current_setting('orm.cfg22_mark', true) = '1' THEN 1 ELSE 0 END",
+                "sqlite": "SELECT CASE WHEN cache_size = 1234 THEN 1 ELSE 0 END FROM pragma_cache_size"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "second",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SELECT IF(@cfg22_mark IS NULL, 0, 1)",
+                "postgres": "SELECT CASE WHEN current_setting('orm.cfg22_mark', true) = '1' THEN 1 ELSE 0 END",
+                "sqlite": "SELECT CASE WHEN cache_size = 1234 THEN 1 ELSE 0 END FROM pragma_cache_size"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "first",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SELECT IF(@cfg22_mark IS NULL, 0, 1)",
+                "postgres": "SELECT CASE WHEN current_setting('orm.cfg22_mark', true) = '1' THEN 1 ELSE 0 END",
+                "sqlite": "SELECT CASE WHEN cache_size = 1234 THEN 1 ELSE 0 END FROM pragma_cache_size"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a_prepared_statement_stays_on_its_connection",
+      "requirements": [
+        "CFG-22"
+      ],
+      "only": [
+        "mysql",
+        "postgres"
+      ],
+      "not_through_pooler": "A pooler shares its server sessions between clients, so what one session holds does not tell the connections of the client apart.",
+      "steps": [
+        {
+          "op": "model.connect",
+          "as": "first",
+          "pool_size": 1
+        },
+        {
+          "op": "model.connect",
+          "as": "second",
+          "pool_size": 1
+        },
+        {
+          "op": "utils.run",
+          "connection": "first",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SELECT 'cfg22_statement'",
+                "postgres": "PREPARE cfg22_statement AS SELECT 1",
+                "sqlite": "SELECT 1"
+              }
+            },
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SELECT 1",
+                "postgres": "SELECT COUNT(*) FROM pg_prepared_statements WHERE name = 'cfg22_statement'",
+                "sqlite": "SELECT 0"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "second",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SELECT COUNT(*) FROM performance_schema.prepared_statements_instances WHERE OWNER_THREAD_ID = PS_CURRENT_THREAD_ID() AND SQL_TEXT LIKE CONCAT('%cfg22_', 'statement%')",
+                "postgres": "SELECT COUNT(*) FROM pg_prepared_statements WHERE name = 'cfg22_statement'",
+                "sqlite": "SELECT 0"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
     }
   ],
   "cases_on": {
@@ -1269,7 +1584,9 @@
       "a_lock_needs_a_transaction",
       "stats_report_the_pool_of_the_connection",
       "table_privileges_on_postgres_only",
-      "table_privilege_targets_are_refused_before_any_statement"
+      "table_privilege_targets_are_refused_before_any_statement",
+      "a_session_setting_stays_on_its_connection",
+      "a_prepared_statement_stays_on_its_connection"
     ],
     "postgres": [
       "local_value_is_readable_in_its_transaction",
@@ -1281,7 +1598,9 @@
       "a_lock_needs_a_transaction",
       "stats_report_the_pool_of_the_connection",
       "table_privileges_on_postgres_only",
-      "table_privilege_targets_are_refused_before_any_statement"
+      "table_privilege_targets_are_refused_before_any_statement",
+      "a_session_setting_stays_on_its_connection",
+      "a_prepared_statement_stays_on_its_connection"
     ],
     "sqlite": [
       "local_value_is_readable_in_its_transaction",
@@ -1293,7 +1612,8 @@
       "a_lock_needs_a_transaction",
       "stats_report_the_pool_of_the_connection",
       "table_privileges_on_postgres_only",
-      "table_privilege_targets_are_refused_before_any_statement"
+      "table_privilege_targets_are_refused_before_any_statement",
+      "a_session_setting_stays_on_its_connection"
     ]
   }
 }

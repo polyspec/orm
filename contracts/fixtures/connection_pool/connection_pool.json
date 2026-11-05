@@ -6,7 +6,8 @@
     "CFG-5a",
     "FCV-2",
     "FCV-3",
-    "FCV-4"
+    "FCV-4",
+    "CFG-22a"
   ],
   "fixture": "contracts/fixtures/statement_events/dbspec-set.json",
   "cases": [
@@ -762,6 +763,92 @@
           }
         }
       ]
+    },
+    {
+      "id": "each_connection_counts_its_own_pool",
+      "requirements": [
+        "CFG-22a"
+      ],
+      "only": [
+        "mysql",
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "as": "first",
+          "pool_size": 3
+        },
+        {
+          "op": "model.connect",
+          "as": "second",
+          "pool_size": 5
+        },
+        {
+          "op": "pool.transactions",
+          "connection": "first",
+          "hold": 3,
+          "transactions": 3,
+          "expect": {
+            "mysql": {
+              "json": {
+                "peak": 3,
+                "open": 3
+              }
+            },
+            "postgres": {
+              "json": {
+                "peak": 3,
+                "open": 3
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.stats",
+          "connection": "first",
+          "expect": {
+            "mysql": {
+              "json": {
+                "max_open_connections": 3,
+                "open_connections": 3,
+                "in_use": 0,
+                "idle": 3
+              }
+            },
+            "postgres": {
+              "json": {
+                "max_open_connections": 3,
+                "open_connections": 3,
+                "in_use": 0,
+                "idle": 3
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.stats",
+          "connection": "second",
+          "expect": {
+            "mysql": {
+              "json": {
+                "max_open_connections": 5,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            },
+            "postgres": {
+              "json": {
+                "max_open_connections": 5,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            }
+          }
+        }
+      ]
     }
   ],
   "cases_on": {
@@ -775,7 +862,8 @@
       "a_connection_within_its_lifetime_is_reused",
       "a_connection_whose_lifetime_passes_in_use_is_not_used_again",
       "an_idle_connection_past_its_lifetime_is_closed",
-      "an_idle_size_above_the_default_pool_size_is_refused"
+      "an_idle_size_above_the_default_pool_size_is_refused",
+      "each_connection_counts_its_own_pool"
     ],
     "postgres": [
       "the_pool_size_is_the_open_maximum",
@@ -787,7 +875,8 @@
       "a_connection_within_its_lifetime_is_reused",
       "a_connection_whose_lifetime_passes_in_use_is_not_used_again",
       "an_idle_connection_past_its_lifetime_is_closed",
-      "an_idle_size_above_the_default_pool_size_is_refused"
+      "an_idle_size_above_the_default_pool_size_is_refused",
+      "each_connection_counts_its_own_pool"
     ],
     "sqlite": [
       "an_idle_size_above_the_pool_size_is_refused",

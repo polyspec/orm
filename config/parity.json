@@ -8718,6 +8718,7 @@
       "id": "utils-mysql",
       "kind": "suite",
       "requirements": [
+        "CFG-22",
         "INT-134",
         "INT-51",
         "INT-52",
@@ -8764,6 +8765,7 @@
       "id": "utils-postgres",
       "kind": "suite",
       "requirements": [
+        "CFG-22",
         "INT-134",
         "INT-51",
         "INT-52",
@@ -8810,6 +8812,7 @@
       "id": "utils-sqlite",
       "kind": "suite",
       "requirements": [
+        "CFG-22",
         "INT-134",
         "INT-51",
         "INT-52",
@@ -9258,6 +9261,7 @@
       "id": "connection_pool-mysql",
       "kind": "suite",
       "requirements": [
+        "CFG-22a",
         "CFG-5a"
       ],
       "file": "contracts/fixtures/connection_pool/connection_pool.json",
@@ -9297,6 +9301,7 @@
       "id": "connection_pool-postgres",
       "kind": "suite",
       "requirements": [
+        "CFG-22a",
         "CFG-5a"
       ],
       "file": "contracts/fixtures/connection_pool/connection_pool.json",

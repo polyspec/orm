@@ -75,6 +75,7 @@ The ORM does not route statements between servers. Reads from replicas use one c
 
 - **CFG-21** A model or a loaded row uses the connection it is connected to and no other. Inside a transaction of `master`, a model connected to `slave1` runs on `slave1` outside the transaction, and a model without `connect` runs in the transaction.
 - **CFG-22** Each connection has its own pool, prepared statements, and session settings.
+- **CFG-22a** Go and Rust and TypeScript and Python: `stats()` of a connection counts only the connections of its own pool on MySQL and PostgreSQL (CFG-5a).
 - **CFG-23** A replica applies the changes of the primary after the primary commits them. A read that must see a write of the same request uses the primary connection; orm does not choose the connection itself.
 - **CFG-24** A replica rejects a write: PostgreSQL returns SQLSTATE 25006 and a MySQL replica with `super_read_only` returns error 1290. The clients return `READ_ONLY` with the driver message, as they do for a write in a read-only transaction and for a write to a SQLite database opened read-only.
 - **CFG-25** The schema tools and `utils().schema().install` run on the primary, and the replicas apply the schema through replication.

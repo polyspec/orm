@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ede56ad9253020a453efc596da9563fd06968ad02d71e67bceccbf2d2335ae04 -->
+<!-- source-sha256: 81cc088c4ac88a2a1ff23bb6fec1229f737073b039d4e7a936f87cd507a754f7 -->
 # 변경 이력
 
 ## Unreleased
 
+- recipe case가 그 동작을 가진 모든 runtime에서 CFG-22를 증명한다: 세션 설정과 prepared statement는 자기 연결에만 남고(`utils`), 각 연결은 자기 pool만 집계한다(`connection_pool`).
 - 같은 행을 쓰는 두 연결 사이의 SQLite 잠금 대기는 busy timeout 뒤 `CANCELED`로 끝나고 재시도하지 않는다. SQLite는 행 잠금 교착을 보고하지 않기 때문이다: SQLITE_LOCKED(6, 262)는 모든 runtime에서 `DRIVER`이고, transaction_deadlock_retry는 여섯 runtime 모두에서 sqlite case를 실행한다(PLN-24, CFG-12) (T343-3)
 - catalog insert는 모든 경로와 runtime에서 저장 값이 다른 열의 이름을 적고, Rust insert의 선언 용량 거부도 열 이름을 적는다. 행을 바꾸는 PostgreSQL AFTER trigger는 recipe case `row_insert_that_an_after_trigger_rewrites`가 확인한다.
 - Fixes: 거부된 권한 대상, 잘못된 schema 이름, 선언 용량, 달라진 저장 값의 문구가 Go, TypeScript, Python, Rust와 두 PHP mode에서 하나가 됐다. markdown DSN은 모든 runtime에서 token을 읽기 전에 다른 parameter를 거부하고, TypeScript catalog는 삽입한 행을 다시 읽어 삽입 뒤 trigger가 고친 값을 `ROW_WRITE_MISMATCH`로 보고한다.

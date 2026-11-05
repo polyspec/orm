@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Recipe cases prove CFG-22 on every runtime that has the behaviour: a session setting and a prepared statement stay on their connection (`utils`), and each connection counts its own pool (`connection_pool`).
 - A SQLite lock wait between two connections that write the same row ends with `CANCELED` after the busy timeout and is not retried, because SQLite reports no row-lock deadlock: SQLITE_LOCKED (6, 262) is `DRIVER` in every runtime, and transaction_deadlock_retry runs the sqlite case in all six runtimes (PLN-24, CFG-12) (T343-3)
 - A catalog insert names the column whose stored value differs, and the declared capacity refusal of a Rust insert names its column, in every path and runtime; a PostgreSQL AFTER trigger that rewrites the row is the recipe case `row_insert_that_an_after_trigger_rewrites`.
 - Fixes: a refused privilege target, an invalid schema name, a declared capacity and a stored value that differs now have one text in Go, TypeScript, Python, Rust and the two PHP modes; a markdown DSN refuses another parameter before it reads the token in every runtime, and the TypeScript catalog reads an inserted row again, so a trigger that rewrites it after the insert is reported as `ROW_WRITE_MISMATCH`.
