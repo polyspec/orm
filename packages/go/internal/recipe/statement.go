@@ -169,7 +169,7 @@ func statementOp(s databaseStep, c *databaseContext) (outcome, bool, error) {
 		if err != nil {
 			return outcome{}, true, err
 		}
-		if err := applyMasks(events, s.k("masks").Masks, c.database); err != nil {
+		if err := applyMasks(events, s.k("masks").Masks, c.dialect()); err != nil {
 			return outcome{}, true, err
 		}
 		return outcome{fields: map[string]any{"value": map[string]any{"array": events}}}, true, nil
@@ -228,7 +228,7 @@ func runFrame(s databaseStep, c *databaseContext) (outcome, error) {
 	for _, row := range rows {
 		cells := []any{}
 		for _, cell := range row {
-			wrapped, err := plain(cell, "", c.database)
+			wrapped, err := plain(cell, "", c.dialect())
 			if err != nil {
 				return outcome{}, err
 			}
@@ -295,7 +295,7 @@ func bindValue(b any) any {
 func eventValue(e orm.StatementEvent, numbers map[int64]int64, c *databaseContext) (any, error) {
 	binds := []any{}
 	for _, b := range e.Binds {
-		w, err := plain(bindValue(b), "", c.database)
+		w, err := plain(bindValue(b), "", c.dialect())
 		if err != nil {
 			return nil, err
 		}

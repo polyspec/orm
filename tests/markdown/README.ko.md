@@ -1,16 +1,17 @@
 <!-- doc-id: tests-markdown-readme -->
-<!-- source-sha256: 418e9e302890bee8d8d3119b74cc799e01f04b1d4e0338657a23a31d8dfc9176 -->
-# Markdown executor 적합성
+<!-- source-sha256: fd70bee8879003667b1676759364377d6bd0c9637734b6c15b8797edf20db27b -->
+# Markdown corpus 적합성
 
-markdown IR executor([프로토콜](../../docs/spec/protocol.ko.md#_5-ir-executors))는 데이터베이스가 아니라 flowmark
-server에서 실행하므로, 그 적합성에는 비교할 SQL text와 bind 목록이 없다. 각 클라이언트는 flowmark server가 제공하는
-corpus 하나에서 `cases.json`의 case를 실행하고, case마다 결과를 그 `expect`와 비교한다.
+markdown 연결은 flowmark server가 corpus에서 문장에 답하는 SQLite 연결이다([dialect](../../docs/spec/dialects.ko.md)).
+recipe는 다른 모든 데이터베이스처럼 그 위에서 실행되고, 이 case들은 corpus에만 있는 것을 다룬다: document, `key_prefix`
+key, 대소문자를 가리지 않고 unique한 key, engine 밖에서 편집된 파일, corpus가 install하는 catalog. 각 클라이언트는
+flowmark server가 제공하는 corpus 하나에서 `cases.json`의 case를 실행하고, case마다 결과를 그 `expect`와 비교한다.
 
 | 파일 | 역할 |
 |---|---|
 | `cases.json` | case ID의 순서와 각 case의 기대 결과. case를 선언하는 유일한 곳이다 |
 | `corpus/dbspec/dbspec-set.json`, `corpus/dbspec/conformance.dbs` | catalog set과 corpus: `people`(`key_prefix`, soft delete column, 수정 시각 column, unique key를 가진 `document` table), `tasks`(`people`로 가는 foreign key), `logs`(`identity` key), `codec_rows`(base64 codec과 명시 선택 payload) |
-| `refused/aes.dbs`, `refused/audit.dbs` | corpus가 거절하는 catalog: `aes` column과 `audit` setting이며, `install_refuses_aes`와 `install_refuses_audit`가 각자의 새 corpus로 install하고 `flowmark install`이 출력한 code를 `{"error": <code>}`로 답한다 |
+| `catalogs/aes.dbs`, `catalogs/audit.dbs` | `aes` column과 `audit` setting의 catalog이며, `install_aes`와 `install_audit`가 각자의 새 corpus에서 set의 유일한 document로 install하고 `{"error": null}`, 또는 `flowmark install`이 출력한 code를 `{"error": <code>}`로 답한다 |
 | `flowmark.version` | case를 실행하는 `flowmark`의 `github.com/polyspec/flowmark/packages/go` Go module 판 |
 | `packages/go/markdownmodel` | catalog에서 생성한 Go model과 Go 실행기 `TestMarkdownConformance` |
 | `packages/php/markdownmodel` | catalog에서 생성한 PHP model. PHP 실행기는 PHPUnit test `packages/php/tests/MarkdownConformanceTest.php`이며 case마다 그 id로 이름 붙은 data set으로 실행한다 |
@@ -46,7 +47,7 @@ case의 결과는 JSON 값이며, 결과와 `expect`를 모두 JSON으로 읽은
 
 - model은 그 배열 형태(`toArray`)이고, collection은 collection 순서의 배열 형태 목록이며, 묶은 개수는 그 group 행의
   목록이다.
-- `date` 값은 클라이언트가 어떤 type으로 갖든 runtime value model의 text `YYYY-MM-DD`([프로토콜](../../docs/spec/protocol.ko.md#_5-ir-executors))다.
+- `date` 값은 클라이언트가 어떤 type으로 갖든 runtime value model의 text `YYYY-MM-DD`([프로토콜](../../docs/spec/protocol.ko.md#_5-markdown-connections))다.
   배열 형태가 date를 datetime으로 쓰는 클라이언트는 그 text로 쓴다.
 - 개수, 합, 평균, 쓰기의 행 수는 숫자이고, `paginate`는 `{"items", "total_count", "total_pages"}`다.
 - 실패한 case는 `{"error": <code>}`, 곧 오류의 orm code이며, `write_conflict`는 `{"error": <code>, "name": <name>}`,
@@ -56,14 +57,14 @@ case의 결과는 JSON 값이며, 결과와 `expect`를 모두 JSON으로 읽은
 각 case는 capability 표의 surface 하나를 다룬다. 모든 IR 종류(`one`, `all`, `count`, `group_count`, `sum`, `avg`,
 `paginate`, 행 하나와 여러 행과 `identity` key와 `on_duplicate`의 `insert`, `optimistic`이 있고 없는 `update`,
 foreign key 거절과 soft delete의 `delete`, `restore`), join과 relation, commit, rollback, savepoint rollback의
-트랜잭션, 읽기 전용 트랜잭션, row lock `update`와 거절되는 `update_nowait`, 거절되는 `getQuery()`와 `isolation`,
-engine 밖의 편집을 만난 commit(`WRITE_CONFLICT`, 재시도하지 않는다), retry option으로 commit하는 transaction(`transaction_retry_commit`, `{"error", "runs"}`: commit의 code나 null과 callback이 실행된 횟수이며, `tests/ir/answers.json`이 이를 `WRITE_CONFLICT`와 `DEADLOCK`으로 답한 commit으로도 실행한다), corpus나 token이 다른 연결(`CONFIG`),
-오름차순과 내림차순의 NULL 순서와 `orderByRandom`, 대소문자를 가리지 않으면 다른 key와 같은 primary key(`DUPLICATE_KEY`와
-`on_duplicate` insert가 만나는 행), tuple 조건, scalar `Sub` aggregate와 `IN` subquery, limit이 있고 없는 scalar column
+트랜잭션, 읽기 전용 트랜잭션, row lock `update`와 `update_nowait`, SQLite처럼 동작하는 `getQuery()`와 `isolation`,
+engine 밖의 편집을 만난 commit(`WRITE_CONFLICT`, 재시도하지 않는다), retry option으로 commit하는 transaction(`transaction_retry_commit`, `{"error", "runs"}`: commit의 code나 null과 callback이 실행된 횟수이다), corpus나 token이 다른 연결(`CONFIG`),
+오름차순과 내림차순의 NULL 순서와 `orderByRandom`, 대소문자를 가리지 않으면 다른 key와 같은 primary key(`on_duplicate` insert도
+`DUPLICATE_KEY`이며, 그대로 남는 행), tuple 조건, scalar `Sub` aggregate와 `IN` subquery, limit이 있고 없는 scalar column
 subquery(`IR_INVALID`), 만나는 column 비교와 만나지 않는 column 비교(`OPERATOR_NOT_ALLOWED`), `contains`와
 `contains_binary`, `datetime(0)` column의 `default now`와 9999-12-31을 넘는 상대 시각 함수, index된 column을 통한 읽기,
-거절되는 `force_index`(`CAPABILITY_UNSUPPORTED`), 파일 편집으로 쓸 수 없게 된 table(파일을 되돌릴 때까지 파일을 밝히는
+`force_index`, 파일 편집으로 쓸 수 없게 된 table(파일을 되돌릴 때까지 파일을 밝히는
 `CONSTRAINT`), base64 codec 쓰기와 decode 읽기, 명시 선택 column의 기본 읽기에서 `COLUMN_UNSELECTED`, 해당 값의 명시
-읽기, codec update, 생략한 명시 선택 값이 SQL NULL로 남는 동작, `refused/`의 catalog(`SCHEMA_INVALID`)이다. code와
+읽기, codec update, 생략한 명시 선택 값이 SQL NULL로 남는 동작, `catalogs/`의 catalog이다. code와
 다른 member를 함께 담는 결과는 code만 쓴다. 예를 들어
 `{"broken": "CONSTRAINT", "names_file": true, "restored": 2}`이다.

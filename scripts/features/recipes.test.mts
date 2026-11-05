@@ -123,7 +123,8 @@ caseTest('the recipe schema refuses each break of the format', COMPUTE, () => {
 });
 
 // expectFaults are the steps of a recipe with a fixture whose expect names another set than the databases that run the step:
-// those of the only of the step, else of its case, else all three (FCV-4, FCV-10).
+// those of the only of the step, else of its case, else all three (FCV-4, FCV-10). A markdown connection is a SQLite
+// connection, so it reads the sqlite entry, and an entry of its own is named only where its result differs (DIA-154).
 const DATABASES = ['mysql', 'postgres', 'sqlite'];
 function expectFaults(recipe: Json): string[] {
   const faults: string[] = [];
@@ -135,8 +136,12 @@ function expectFaults(recipe: Json): string[] {
       for (const key of ['expect', 'expect_unnamed']) {
         const expect = step[key];
         if (expect === null || typeof expect !== 'object' || Array.isArray(expect) || expect === undefined) continue;
-        const named = Object.keys(expect).sort().join(',');
-        if (named !== [...only].sort().join(',')) faults.push(`${where} ${label(step.op)} ${key} names ${named}, want ${[...only].sort().join(',')}`);
+        const servers = (names: string[]) => names.filter(name => name !== 'markdown').sort().join(',');
+        const named = Object.keys(expect);
+        const want = servers(only);
+        if (servers(named) !== want || (named.includes('markdown') && !only.includes('sqlite'))) {
+          faults.push(`${where} ${label(step.op)} ${key} names ${[...named].sort().join(',')}, want ${want}`);
+        }
       }
       walk(step.steps ?? null, only, where);
     }
@@ -144,8 +149,7 @@ function expectFaults(recipe: Json): string[] {
   if (recipe === null || typeof recipe !== 'object' || Array.isArray(recipe) || !('fixture' in recipe) || !Array.isArray(recipe.cases)) return faults;
   for (const kase of recipe.cases) {
     if (kase === null || typeof kase !== 'object' || Array.isArray(kase)) continue;
-    const onMarkdown = 'markdown_fixture' in recipe && !('not_on_markdown' in kase);
-    walk(kase.steps ?? null, Array.isArray(kase.only) ? kase.only.map(String) : onMarkdown ? [...DATABASES, 'markdown'] : DATABASES, label(kase.id));
+    walk(kase.steps ?? null, Array.isArray(kase.only) ? kase.only.map(String) : DATABASES, label(kase.id));
   }
   return faults;
 }
@@ -321,7 +325,7 @@ caseTest('a suite unit of a database selects the cases that database runs', COMP
   const problems: string[] = [];
   const units = readParityConfig(resolve(root, 'config/parity.json')).units as { id: string; kind?: string; file?: string; cases?: string }[];
   for (const unit of units) {
-    const database = DATABASES.find(name => unit.id.endsWith(`-${name}`));
+    const database = [...DATABASES, 'markdown'].find(name => unit.id.endsWith(`-${name}`));
     if (unit.kind !== 'suite' || database === undefined || !unit.file?.startsWith('contracts/fixtures/')) continue;
     const text = readFileSync(resolve(root, unit.file), 'utf8');
     const { cases } = parseRecipeCases(text, unit.file);
@@ -329,7 +333,9 @@ caseTest('a suite unit of a database selects the cases that database runs', COMP
       if (text !== withCasesOn(text)) problems.push(`${unit.file}: cases_on differs from its cases; run node scripts/features/recipe-cases.mts`);
       continue;
     }
-    for (const item of cases) if (item.only !== undefined && !item.only.includes(database)) problems.push(`${unit.id} selects ${item.id}, which runs only on ${item.only.join(', ')}`);
+    // A markdown connection runs what SQLite runs (DIA-154).
+    const runs = database === 'markdown' ? ['sqlite', 'markdown'] : [database];
+    for (const item of cases) if (item.only !== undefined && !runs.some(name => item.only?.includes(name))) problems.push(`${unit.id} selects ${item.id}, which runs only on ${item.only.join(', ')}`);
   }
   assert.deepEqual(problems.slice(0, 5), []);
   const sample = '{\n  "cases": [\n    {"id": "a", "only": ["mysql"]},\n    {"id": "b"}\n  ]\n}\n';

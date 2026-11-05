@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -24,13 +25,37 @@ var flowmarkListening = regexp.MustCompile(`^\[serve\] listening on 127\.0\.0\.1
 // it and returns its markdown DSN. The server stops when the test ends (FCV-3).
 func NewCorpus(t testing.TB, setPath string) string {
 	t.Helper()
+	dsn, _ := NewCorpusDir(t, setPath)
+	return dsn
+}
+
+// LoadCorpus loads rows, one JSON array of objects of column values in their stored form, into table of the corpus at dir
+// through `flowmark rows.load` (a corpus has no catalog connection, DIA-185).
+func LoadCorpus(t testing.TB, dir, table string, rows []byte) error {
+	t.Helper()
+	cmd := exec.CommandContext(testcase.Of(t).Context(), os.Getenv("FLOWMARK"), "rows.load", dir, table)
+	cmd.Stdin = bytes.NewReader(rows)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("flowmark rows.load %s: %w: %s", table, err, out)
+	}
+	return nil
+}
+
+// NewCorpusDir is NewCorpus that also returns the directory of the corpus.
+func NewCorpusDir(t testing.TB, setPath string) (string, string) {
+	t.Helper()
 	c := testcase.Of(t)
 	bin := os.Getenv("FLOWMARK")
 	if bin == "" {
 		t.Fatal("FLOWMARK is required; make orm-install-flowmark builds the version that tests/markdown/flowmark.version pins")
 	}
 	dir := filepath.Join(t.TempDir(), corpusName)
-	if err := copySet(setPath, filepath.Join(dir, "dbspec")); err != nil {
+	if setPath == "" {
+		// A recipe of no fixture, or one whose steps install it, starts as a case database with no table.
+		if err := os.MkdirAll(filepath.Join(dir, "dbspec"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	} else if err := copySet(setPath, filepath.Join(dir, "dbspec")); err != nil {
 		t.Fatalf("copy the set %s: %v", setPath, err)
 	}
 	if out, err := exec.CommandContext(c.Context(), bin, "install", dir).CombinedOutput(); err != nil {
@@ -38,7 +63,7 @@ func NewCorpus(t testing.TB, setPath string) string {
 	}
 	c.Step("corpus %s installed", dir)
 	server := StartFlowmark(t, bin, dir, corpusName)
-	return "markdown://127.0.0.1:" + server.Port + "/" + corpusName + "?token=" + server.Token
+	return "markdown://127.0.0.1:" + server.Port + "/" + corpusName + "?token=" + server.Token, dir
 }
 
 // FlowmarkServer is a running flowmark server: its port, its token, and what it wrote to its standard error.
@@ -52,7 +77,8 @@ type FlowmarkServer struct {
 // ends, after every cleanup that the test registers later.
 func StartFlowmark(t testing.TB, bin, dir, corpus string) FlowmarkServer {
 	t.Helper()
-	cmd := exec.Command(bin, "serve", dir, "--port", "0")
+	// A corpus of a test is disposable, as a test database server is: a commit does not wait for the disk.
+	cmd := exec.Command(bin, "serve", dir, "--port", "0", "--synchronous", "off", "--tx-idle-ms", "600000")
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	stdout, err := cmd.StdoutPipe()
@@ -103,6 +129,7 @@ func copySet(setPath, into string) error {
 	}
 	var set struct {
 		Documents []string `json:"documents"`
+		External  []string `json:"external"`
 	}
 	if err := json.Unmarshal(text, &set); err != nil {
 		return err
@@ -110,7 +137,7 @@ func copySet(setPath, into string) error {
 	if err := os.WriteFile(filepath.Join(into, filepath.Base(setPath)), text, 0o644); err != nil {
 		return err
 	}
-	for _, document := range set.Documents {
+	for _, document := range append(set.Documents, set.External...) {
 		body, err := os.ReadFile(filepath.Join(filepath.Dir(setPath), document))
 		if err != nil {
 			return err

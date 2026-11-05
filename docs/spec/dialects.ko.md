@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 49283de91fb55314318dea212af2d87fd784c593a430823a5aae51506eca5735 -->
+<!-- source-sha256: 39774acd485160dcf888ec6c651bb1628b31ef25b6d658c816ebf08c8670780e -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -361,47 +361,46 @@ Audit context 선택지. Audit trigger는 클라이언트가 transaction 안에�
 - **DIA-133a** PHP와 PHP extension: 실패한 catalog query는 PDO connection의 모든 error mode에서, silent mode에서도 호출의 error다.
 - **DIA-133b** PHP-extension package `polyspec/orm-php-ext`은 `Dbspec::introspect`를 native로 구현하고, 그 method가 library의 method를 대신한다.
 
-## Markdown IR executor
+## Markdown corpus
 
-markdown executor의 표면과 그 판정은 `tests/markdown/flowmark.version`이 고정한 판의 flowmark [spec 60](https://github.com/polyspec/flowmark/blob/16a55a50fc8d/docs/spec/60-dialect.md)에 있는 capability 표가 정한 것이며, 이 문서는 그 표를 옮기지 않는다.
+markdown 연결은 flowmark server가 corpus에서 문에 답하는 SQLite 연결이므로([protocol](protocol.ko.md#_5-markdown-connections)) SQLite dialect의 모든 규칙이 이 연결에 적용된다. 아래 행은 corpus가 SQLite에 더하는 것을 적고, 표면이 SQLite와 같으면 그렇다고 적는다. recipe는 SQLite의 모든 case를 markdown 연결에서도 실행한다. server가 문에 답하는 방식은 flowmark의 [operations](https://github.com/polyspec/flowmark/blob/16a55a50fc8d/docs/spec/40-ops.md)가 정한다.
 
-- **DIA-154** DSN scheme `markdown://`은 SQL dialect 대신 flowmark IR executor를 고른다([protocol](protocol.ko.md#_5-ir-executors)). executor는 SQL text를 만들지 않으므로, 이 client의 각 표면은 여기 적은 규칙으로 지원되거나, 그 행의 코드로 거부된다.
-
-- **DIA-155** `one`, `all`, `count`, `group_count`, `sum`, `avg` — 결과: memory의 corpus 위에서 지원; 규칙: `group_count`는 NULL을 함께 묶는다
-- **DIA-156** 정렬 — 결과: IR `order`는 column의 type으로 정렬하며, NULL은 오름차순에서 모든 값 앞에, 내림차순에서 모든 값 뒤에 오고, 동률은 저장 순서다; 규칙: `group_count`의 group과 `limit_per_parent`의 순위에도 같다. 없는 읽기는 저장 순서를 돌려준다([document model](https://github.com/polyspec/flowmark/blob/16a55a50fc8d/docs/spec/20-document-model.md)). 근거: MySQL과 SQLite는 오름차순에서 NULL을 처음에, PostgreSQL은 마지막에 둔다. MySQL에는 `NULLS FIRST`가 없으므로, NULL을 가장 작게 두는 것이 세 database가 모방 없이 render하는 유일한 규칙이다
-- **DIA-157** `group_by` — 결과: `count`와 `group_count`의 root에서만 유효하며, 그 밖에서는 `IR_INVALID`다; 규칙: 그것이 있으면 `order` 항목은 group column, 그 column 함수, 또는 `random`이어야 한다(아니면 `IR_INVALID`) — orm의 규칙. 근거: 모든 행 읽기는 primary key를 고르므로, group된 행 읽기는 MySQL 1055, PostgreSQL 42803, SQLite에서는 임의의 행이며, group되지 않은 column으로의 정렬도 같다
-- **DIA-158** `paginate` — 결과: 지원; 규칙: 요청 하나가 일관된 corpus 하나를 읽는다. canonical root page limit은 ORM의 `offset_p`, `count_p` i64 parameter를 사용하며 page 행에 적용하고 `count`는 여전히 모든 일치 행을 계산한다. 잘못된 parameter 값은 corpus를 읽기 전에 실패한다
-- **DIA-159** `insert`(단일, 다중 행) — 결과: 지원; 규칙: `identity`, `key_prefix`, `order` column은 executor가 할당하며 생략할 수 있다. default는 명시적으로 쓴다. insert는 값이나 NULL로 배정한다 — `plus_p`와 `minus_p`는 거기서 `IR_INVALID`이고 `on_duplicate`에서는 유효하다(orm의 규칙). 근거: MySQL은 그런 배정을 default에서 계산하고, PostgreSQL과 SQLite는 거절한다
-- **DIA-160** `update` — 결과: 지원; 규칙: 읽은 뒤 바뀐 대상은 덮어쓰지 않고 `WRITE_CONFLICT`로 실패하며, transaction이 읽은 뒤의 변경 때문에 쓰기가 다른 쓰기가 되는 commit도 그렇다. 클라이언트는 `DEADLOCK`과 달리 `WRITE_CONFLICT`를 재시도하지 않는다. primary key나 identity column의 배정은 `IR_INVALID`다([document model](https://github.com/polyspec/flowmark/blob/16a55a50fc8d/docs/spec/20-document-model.md))
-- **DIA-161** `delete`, `restore` — 결과: 지원; 규칙: `restore`는 SQL 형태를 지키며(soft delete column을 비우고, 지운 동안 unique key를 유지), 그 key는 request hook 뒤에 orm의 `ir.RestoreKey`(orm protocol 1.5)가 set 값과 `and`로 이은 `eq` 조건에서 고르므로, hook의 조건은 update를 좁히듯 restore를 좁힌다. 참조되는 행의 delete는 같은 delete가 참조하는 행을 지우더라도 `FOREIGN_KEY`([constraints](https://github.com/polyspec/flowmark/blob/16a55a50fc8d/docs/spec/50-constraints.md)). primary key, identity, soft delete column을 배정하는 `restore`는 `IR_INVALID`다
-- **DIA-162** `optimistic` — 결과: 지원; 규칙: 일치가 없으면 `OPTIMISTIC_LOCK`
-- **DIA-163** `on_duplicate` — 결과: insert된 행과 만날 수 있는 key; 규칙: insert가 `identity`나 `key_prefix`에 맡기지 않는 한 primary key, 그리고 각 unique key — 가 정확히 하나이고 insert가 그 모든 column을 배정할 때 지원한다. 그 key가 충돌 대상이며, 그 밖의 `on_duplicate`는 `IR_INVALID`다(MySQL의 아무 key 규칙과 PostgreSQL과 SQLite의 충돌 대상을 같은 key로 만드는 orm의 규칙). primary key는 아래 비교가 정하는 대로 행과 만난다. 근거: MySQL은 자신의 key 순서로 아무 unique key에서나 행과 만나는 반면, PostgreSQL과 SQLite는 충돌 대상 하나를 지정하고 다른 key에서의 만남은 `DUPLICATE_KEY`다. 행과 만날 수 있는 key가 하나이면 셋은 구성상 같다
-- **DIA-164** primary key 비교 — 결과: A–Z의 대소문자를 가리지 않는다; 규칙: SQL에서 orm의 binary collation과 다른데, key는 file 이름이자 anchor이기 때문이다([document model](https://github.com/polyspec/flowmark/blob/16a55a50fc8d/docs/spec/20-document-model.md)): key가 다른 key와 대소문자를 무시하고 같은 insert는 `DUPLICATE_KEY`이며, 충돌 key가 primary key인 `on_duplicate` insert는 그 행 — 바이트 단위로 같은 key가 먼저, 아니면 byte 순서에서 가장 작은 것 — 과 만나고, 그 행은 자기 key를 유지한다. 근거: `ON DUPLICATE KEY UPDATE`와 `ON CONFLICT`는 충돌 key의 index가 그 index의 비교로 보고하는 중복에서 작동한다
-- **DIA-165** `lock` `update`, `share` — 결과: 문서화된 no-op으로 받는다; 규칙: server transaction이 이미 corpus lock을 잡고 있다
-- **DIA-166** `lock` `update_nowait`, `share_nowait` — 결과: `CAPABILITY_UNSUPPORTED`
-- **DIA-167** relation(`limit_per_parent`, `if_parent`, `flatten`, `key_by`, `no_cascade_delete`) — 결과: 지원; 규칙: executor가 조립하며, `flatten` relation은 `one` relation으로 답하고 client model이 그것을 부모의 array와 JSON 형태에 병합한다(orm의 규칙). `key_by`는 non-null column이어야 한다(아니면 `IR_INVALID`). 근거: orm은 병합을 client model의 array와 JSON 형태에 두며, 부모가 가진 이름은 부모의 값을 유지한다. 병합된 답은 client에게 부모 자신의 column과 구별할 수 없는 행을 넘긴다. NULL collection key는 client 언어마다 다르게 답하므로, nullable `key_by`는 형태로 거절한다
-- **DIA-168** subquery(`tuple_in`, `tuple_not_in`, scalar `Sub` aggregate) — 결과: 지원
-- **DIA-169** scalar column subquery(`agg` 없는 `columns.sub`) — 결과: `limit` count 1과, 그 entity의 모든 primary key column을 담고 `random`이 없는 `order`가 있을 때 유효하며, 아니면 `IR_INVALID`다(orm의 규칙); 규칙: 값은 그 행의 column이며, 일치하는 행이 없으면 NULL이다. 근거: 여러 행의 scalar subquery는 MySQL 1242, PostgreSQL 21000, SQLite에서는 첫 행이므로, 한 행을 내는 형태만이 하나의 결과를 가진다
-- **DIA-170** column 비교(`*_col`, subquery의 `in`, join `left`/`right`, relation key) — 결과: 두 column은 dbspec의 check operand처럼 만난다; 규칙: 정수끼리, scale이 같은 `decimal`, `f64`, `varchar`와 `text`, 정밀도가 같은 `time`이나 `datetime`, 그리고 `uuid`, `date`, `bool`, `bytes`는 각각 자신과. 다른 쌍은 `OPERATOR_NOT_ALLOWED`다(orm의 규칙). 근거: PostgreSQL은 `integer = varchar`를 거절하고, MySQL은 변환하며, SQLite는 affinity로 비교한다. `date = datetime`, scale이 다른 decimal, 2^53 근처의 정수와 `f64`도 세 database에서 갈린다
-- **DIA-171** `contains`(`Lk` 연산자) — 결과: 지원; 규칙: column의 텍스트가 parameter의 텍스트를 substring으로 담으면 참이다. ASCII 문자 A–Z와 a–z는 대소문자를 가리지 않고, 그 밖의 문자는 code point로 비교한다. NULL column이나 parameter는 unknown이며, parameter의 `%`, `_`, `\`는 문자 그대로다. 근거: SQL parity — orm의 `COLLATE "C"` 아래 PostgreSQL `ILIKE`, SQLite `LIKE`, orm의 MySQL ASCII fold가 이 결과를 준다
-- **DIA-172** `contains_binary`(`Lb` 연산자) — 결과: 지원; 규칙: column의 텍스트가 parameter의 텍스트를 substring으로 담으면 참이며, code point로 비교한다. NULL column이나 parameter는 unknown이며, parameter의 `%`, `_`, `\`는 문자 그대로다. 근거: `utf8mb4_0900_bin` 아래 MySQL `LIKE`, `COLLATE "C"` 아래 PostgreSQL `LIKE`, SQLite `instr`가 일치한다
-- **DIA-173** `now`, `default now`, `updated`, `soft_delete` — 결과: 요청마다 값 하나인 요청의 `now`; 규칙: `datetime(p)`에 쓸 때는 p자리로 자르고, 비교할 때는 여섯 자리다([operations](https://github.com/polyspec/flowmark/blob/16a55a50fc8d/docs/spec/40-ops.md)). 결과가 0001-01-01부터 9999-12-31 23:59:59.999999 밖에 있거나 간격을 표현할 수 없는 상대 시각 함수는 NULL이다(orm의 규칙). 근거: MySQL과 SQLite는 범위를 넘으면 NULL을 주며, NULL은 다른 dialect를 guard로 맞출 수 있는 유일한 결과다
-- **DIA-174** `soft_delete` — 결과: 모든 읽기는 soft delete된 행을 제외한다; 규칙: root, 각 join 자식(join 조건에서 제외하므로 left join은 null을 묶는다), 각 relation과 각 subquery. `restore`만이 그런 행에 일치한다. 근거: 읽기는 늘 soft delete된 행을 제외한다는 orm의 규칙
-- **DIA-175** codec columns — 결과: orm 요청에서는 client가 적용한다; 규칙: 엔진이 시작하는 쓰기(CLI, MCP, sidecar, 이력)는 orm의 Go codec package로 codec을 적용하며, 검증은 같은 package로 decode한다. 저장 값은 encode된 값이며, byte를 만드는 단계는 base64다
-- **DIA-176** indexes — 결과: 허용되며 메모리에서 파생된다
-- **DIA-177** `select explicit`, `entity`, `navigation` — 결과: client 쪽이며 저장에 효과가 없다
-- **DIA-178** `aes`, `aes_version`, `blind_index` — 결과: corpus에서 schema 오류; 규칙: key는 client를 떠나지 않는다
-- **DIA-179** `audit`, `immutable` setting — 결과: corpus에서 schema 오류; 규칙: 대신 `state_machine … history`
-- **DIA-180** transaction — 결과: session 위의 `begin`부터 `commit`/`rollback`까지; 규칙: `readOnly`를 지킨다: 클라이언트는 `read_only` true인 `begin`을 쓰고, executor는 그 transaction에 쓰기 lock을 잡지 않으며 그 안의 모든 쓰기를 `READ_ONLY`로 거절한다
-- **DIA-181** savepoint — 결과: 중첩 stage
-- **DIA-182** `orderByRandom` — 결과: 지원; 규칙: 순서에 seed를 쓰지 않는다
-- **DIA-183** audit 값을 가진 transaction — 결과: `CAPABILITY_UNSUPPORTED`
-- **DIA-184** `isolation`, `timeoutMs` option — 결과: `CAPABILITY_UNSUPPORTED`
-- **DIA-185** `getQuery()`, `getPagePlanSteps()`, statement event, `subscribe()` — 결과: `CAPABILITY_UNSUPPORTED`; 규칙: SQL 텍스트가 없다
-- **DIA-186** `force_index` — 결과: `CAPABILITY_UNSUPPORTED`; 규칙: index는 이름을 지정하지 않고 파생된다
-- **DIA-187** `fulltext` — 결과: `OPERATOR_NOT_ALLOWED`; 규칙: SQLite는 table에 full-text index가 없다(orm dialects.md)
-- **DIA-188** lock, local setting, privilege, AES rotation utility — 결과: `CAPABILITY_UNSUPPORTED`
-- **DIA-189** schema install, dbplan chain — 결과: `CAPABILITY_UNSUPPORTED`; 규칙: `flowmark install`이 corpus를 만들고([schema](https://github.com/polyspec/flowmark/blob/16a55a50fc8d/docs/spec/30-schema.md)), 진화는 [migration](https://github.com/polyspec/flowmark/blob/16a55a50fc8d/docs/spec/80-migration.md)을 따른다
+- **DIA-154** DSN scheme `markdown://`은 flowmark server에 연결하는 SQLite dialect를 고른다([protocol](protocol.ko.md#_5-markdown-connections)). 클라이언트는 각 요청을 SQLite에서처럼 계획하고 그 문을 server에 전한다.
+- **DIA-155** `one`, `all`, `count`, `group_count`, `sum`, `avg` — 결과: SQLite와 같다.
+- **DIA-156** 정렬 — 결과: SQLite와 같다. 오름차순에서 NULL은 모든 값 앞, 내림차순에서는 모든 값 뒤다.
+- **DIA-157** `group_by` — 결과: SQLite와 같다. orm의 규칙을 따른다.
+- **DIA-158** `paginate` — 결과: SQLite와 같다. 문 하나는 일관된 corpus 하나를 읽는다.
+- **DIA-159** `insert`(단일 행과 여러 행) — 결과: SQLite와 같다. 규칙: `key_prefix` key와 `order` column은 corpus가 할당하므로 insert는 이를 생략할 수 있다(PRT-73).
+- **DIA-160** `update` — 결과: SQLite와 같다. 규칙: transaction이 읽은 뒤 engine 밖에서 바뀐 파일을 찾은 `COMMIT`은 `WRITE_CONFLICT`이며, 클라이언트는 이를 다시 시도하지 않는다(PRT-71).
+- **DIA-161** `delete`, `restore` — 결과: SQLite와 같다. 규칙: foreign key는 SQLite의 것이고, corpus의 규칙도 모든 쓰기를 판정한다([constraints](https://github.com/polyspec/flowmark/blob/16a55a50fc8d/docs/spec/50-constraints.md)).
+- **DIA-162** `optimistic` — 결과: SQLite와 같다.
+- **DIA-163** `on_duplicate` — 결과: SQLite와 같다. orm의 conflict key 하나를 쓴다.
+- **DIA-164** primary key 비교 — 결과: SQLite와 같이 byte 단위로 비교한다. 규칙: key는 파일 이름이자 anchor이므로([document model](https://github.com/polyspec/flowmark/blob/16a55a50fc8d/docs/spec/20-document-model.md)), 표의 다른 key와 A–Z의 대소문자만 다른 key는 `on_duplicate` insert를 포함한 모든 쓰기에서 `DUPLICATE_KEY`다.
+- **DIA-165** `lock` `update`, `share` — 결과: SQLite와 같다.
+- **DIA-166** `lock` `update_nowait`, `share_nowait` — 결과: SQLite와 같다.
+- **DIA-167** 관계(`limit_per_parent`, `if_parent`, `flatten`, `key_by`, `no_cascade_delete`) — 결과: SQLite와 같다. 클라이언트가 조립한다.
+- **DIA-168** subquery(`tuple_in`, `tuple_not_in`, scalar `Sub` 집계) — 결과: SQLite와 같다.
+- **DIA-169** scalar column subquery — 결과: SQLite와 같다. orm의 규칙을 따른다.
+- **DIA-170** column 비교 — 결과: SQLite와 같다. orm의 규칙을 따른다.
+- **DIA-171** `contains` — 결과: SQLite와 같다.
+- **DIA-172** `contains_binary` — 결과: SQLite와 같다.
+- **DIA-173** `now`, `default now`, `updated`, `soft_delete` — 결과: SQLite와 같다. 요청의 clock을 쓴다.
+- **DIA-174** `soft_delete` — 결과: SQLite와 같다. orm의 규칙을 따른다.
+- **DIA-175** codec column — 결과: SQLite와 같이 클라이언트가 적용한다. 규칙: engine이 시작하는 쓰기(CLI, MCP, sidecar, history)는 orm의 Go codec package로 codec을 적용하고, 검증도 같은 package로 디코딩한다.
+- **DIA-176** index — 결과: SQLite와 같다. corpus의 데이터베이스가 선언된 index를 가진다.
+- **DIA-177** `select explicit`, `entity`, `navigation` — 결과: SQLite와 같이 클라이언트에서 처리한다.
+- **DIA-178** `aes`, `aes_version`, `blind_index` — 결과: SQLite와 같다. 클라이언트가 암호화하고 복호화한다. 규칙: corpus는 이 설정을 받으며, engine은 자기가 시작하는 쓰기와 검증을 위해 주입된 key를 읽는다([schema](https://github.com/polyspec/flowmark/blob/16a55a50fc8d/docs/spec/30-schema.md)).
+- **DIA-179** `audit`, `immutable` 설정 — 결과: SQLite와 같다. orm이 audit 기록과 history를 쓴다. 규칙: corpus는 engine을 통한 `immutable` 표의 변경도 거부한다.
+- **DIA-180** 트랜잭션 — 결과: SQLite의 문이다. 규칙: `readOnly`는 SQLite의 `query_only`다.
+- **DIA-181** savepoint — 결과: SQLite와 같다.
+- **DIA-182** `orderByRandom` — 결과: SQLite와 같다.
+- **DIA-183** audit 값을 가진 트랜잭션 — 결과: SQLite와 같다.
+- **DIA-184** `isolation`, `timeoutMs` 옵션 — 결과: SQLite와 같다.
+- **DIA-185** `getQuery()`, `getPagePlanSteps()`, statement event, `subscribe()`, `utils().run(fn)` — 결과: SQLite와 같다. 문은 SQLite의 문이다.
+- **DIA-186** `force_index` — 결과: SQLite와 같다.
+- **DIA-187** `fulltext` — 결과: SQLite와 같다.
+- **DIA-188** lock, local-setting, privilege, AES-rotation utility — 결과: SQLite와 같다.
+- **DIA-189** schema install, dbplan chain — 결과: SQLite와 같다. 규칙: corpus에서 schema 문은 자기 트랜잭션이며, `dbspec/statements.json`에 덧붙는다([operations](https://github.com/polyspec/flowmark/blob/16a55a50fc8d/docs/spec/40-ops.md)).
 - **DIA-190** 사용할 수 없는 table(`format.block`, `format.section`, `format.encoding`이나 그 행 사이의 `parent.cycle`이 있는 file, 바이트 단위로 같은 key를 가진 두 행, 또는 자리의 `corpus.walk` 항목) — 결과: 그 행이 필요한 모든 요청은 읽기든 쓰기든 file과 진단을 밝히며 `CONSTRAINT`로 실패하며, 다른 file들의 행만으로 답하지 않는다([canonical format](https://github.com/polyspec/flowmark/blob/16a55a50fc8d/docs/spec/10-canonical-format.md))
 
 ## Notifications
@@ -410,5 +409,5 @@ markdown executor의 표면과 그 판정은 `tests/markdown/flowmark.version`�
 - **DIA-193** **notify.** `notify`는 자기 handle의 연결에서 `SELECT pg_notify($1, $2)`를 실행한다. transaction 안에서는 알림이 그 transaction이 commit될 때 전달되고 rollback되면 버려지며, 밖에서는 자기 문의 commit에 전달된다. PostgreSQL payload는 8000바이트보다 짧아야 한다. UTF-8 8000바이트 이상이거나 U+0000을 포함한 payload는 문을 실행하기 전에 `DRIVER`로 실패한다.
 - **DIA-194** **listen.** `listen(channel)`은 pool 밖의 자기 연결을 열고, channel을 인용된 식별자로 `LISTEN`을 실행하며, 알림마다 channel, payload, 보낸 프로세스의 pid를 준다. 받기 대기가 없을 때 도착한 알림은 도착 순서대로 보관한다. 연결이 끊기면 구독은 `CONNECTION_LOST`로 끝난다.
 - **DIA-195** **unlisten과 취소.** `unlisten(channel)`은 listen 연결에서 `UNLISTEN`을 실행하고 그 channel의 전달을 멈춘다. `close()`는 구독의 모든 channel에 `UNLISTEN`을 실행하고 연결을 클라이언트에 오류 없이 돌려준다. 대기 중인 받기는 [CFG-9](config.ko.md)가 정하는 대로 그 언어의 취소 수단으로 취소한다: Go는 `db.WithContext(ctx)`의 context를, TypeScript는 `db.withSignal(signal)`의 signal을 취소한다. Python, PHP, Rust에는 받기를 위한 그런 수단이 없으므로 그 받기는 기한을 받으며, 기한이 지나면 받기가 끝난다. 취소되었거나 기한이 지난 받기는 `CANCELED`로 실패하고 구독을 닫으며, 그 뒤의 호출은 `CONFIG`로 실패한다.
-- **DIA-196** **다른 데이터베이스.** MySQL, SQLite, markdown executor에서 `notify`, `listen`, `unlisten`은 문이나 연결을 쓰기 전에 `CAPABILITY_UNSUPPORTED`로 실패한다. 어느 것도 조용한 no-op이 아니다.
+- **DIA-196** **다른 데이터베이스.** MySQL, SQLite, markdown 연결에서 `notify`, `listen`, `unlisten`은 문이나 연결을 쓰기 전에 `CAPABILITY_UNSUPPORTED`로 실패한다. 어느 것도 조용한 no-op이 아니다.
 - **DIA-197** Python 드라이버 형식: Python client는 엔진이 쓴 문장을 자기 드라이버 형식으로 바꿔 전송한다. MySQL의 `?` 표지는 `%s`가 되고 값을 순서대로 받는다. PostgreSQL의 `$n` 표지는 이름 `pn`을 가진 `%(pn)s`가 된다. 인용 문자열, 인용 식별자, 주석 안의 표지는 글자이므로 그대로 둔다. 드라이버가 문장 전체를 형식화하므로 문장의 모든 `%`는 `%%`로 쓴다. 값이 없는 문장은 인자 없이 그대로 드라이버에 넘긴다.

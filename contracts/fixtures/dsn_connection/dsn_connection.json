@@ -28,6 +28,11 @@
           "op": "dsn.connect",
           "dsn": "case",
           "expect": {
+            "markdown": {
+              "value": {
+                "text": "markdown"
+              }
+            },
             "mysql": {
               "value": {
                 "text": "mysql"
@@ -74,6 +79,11 @@
           "dsn": "case",
           "query": "timezone=UTC",
           "expect": {
+            "markdown": {
+              "value": {
+                "text": "markdown"
+              }
+            },
             "mysql": {
               "value": {
                 "text": "mysql"
@@ -96,6 +106,11 @@
           "dsn": "case",
           "query": "timezone=%2B00:00",
           "expect": {
+            "markdown": {
+              "value": {
+                "text": "markdown"
+              }
+            },
             "mysql": {
               "value": {
                 "text": "mysql"
@@ -148,6 +163,11 @@
           "dsn": "case",
           "query": "_pragma=busy_timeout(5000)&timezone=UTC",
           "expect": {
+            "markdown": {
+              "value": {
+                "text": "markdown"
+              }
+            },
             "sqlite": {
               "value": {
                 "text": "sqlite"
@@ -3572,6 +3592,21 @@
       "lost_listener_connection_ends_the_subscription"
     ],
     "sqlite": [
+      "dsn_connection",
+      "dsn_parameters_of_this_page",
+      "sqlite_file_name_is_the_path",
+      "sqlite_refused_dsn_creates_no_file",
+      "connection_is_utc_by_default",
+      "connection_timezone_utc",
+      "connection_timezone_offset",
+      "sqlite_refuses_a_date_only_datetime",
+      "sqlite_lock_past_busy_timeout_is_canceled",
+      "sqlite_read_during_a_write_sees_committed_rows",
+      "sqlite_statement_timeout_keeps_the_busy_timeout",
+      "sqlite_read_only_file_rejects_a_write",
+      "other_databases_refuse_notify_and_listen"
+    ],
+    "markdown": [
       "dsn_connection",
       "dsn_parameters_of_this_page",
       "sqlite_file_name_is_the_path",

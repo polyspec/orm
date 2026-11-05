@@ -32,3 +32,9 @@ func TestRecipeModelQueriesChainSqlite(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, modelQueriesChainRecipe, "sqlite")
 }
+
+// TestRecipeModelQueriesChainMarkdown runs the recipe on flowmark, each case on a corpus of its own (FCV-3).
+func TestRecipeModelQueriesChainMarkdown(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, modelQueriesChainRecipe, "markdown")
+}

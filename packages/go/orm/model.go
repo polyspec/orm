@@ -318,29 +318,14 @@ func (a *assembler) model(b *Core, asm *plan.Assemble, row []any) (*Core, error)
 }
 
 // joinRow returns the row of join ch and whether that row exists. In SQL results the join column sits with the parent row,
-// and if its first column is NULL, it does not exist. In markdown answers, the parent row's last cell holds the join row.
+// and if its first column is NULL, it does not exist.
 func (a *assembler) joinRow(ch *plan.Child, row []any) ([]any, bool, error) {
-	if a.res.markdown {
-		links, err := markdownLinks(row)
-		if err != nil {
-			return nil, false, err
-		}
-		jrow := links.joins[ch.Rel]
-		return jrow, jrow != nil, nil
-	}
 	return row, ch.Assemble != nil && len(ch.Assemble.Columns) > 0 && row[ch.Assemble.Columns[0].Index] != nil, nil
 }
 
 // related is the row of relation ch for parent row row, and its layout. In SQL results, the rows of the relation step
-// are found by key; in markdown answers, the parent row's last cell holds the relation row.
+// are found by key.
 func (a *assembler) related(ch *plan.Child, row []any) ([][]any, *plan.Assemble, error) {
-	if a.res.markdown {
-		links, err := markdownLinks(row)
-		if err != nil {
-			return nil, nil, err
-		}
-		return links.rels[ch.Rel], ch.Assemble, nil
-	}
 	rows, err := a.res.related(ch, row)
 	if err != nil {
 		return nil, nil, err
@@ -1028,10 +1013,10 @@ func (c *Core) Create() (Model, error) {
 	if err != nil {
 		return nil, err
 	}
-	// These are the columns that write the received key: identity, or the key the markdown executor decides (key_prefix).
-	// They are the single primary key column whose value the request did not supply.
+	// These are the columns that write the received key: identity, or the key_prefix key that a corpus allocated to a
+	// primary key the request did not supply.
 	assignedKey := ent.Identity
-	if assignedKey == "" && d.md != nil && len(ent.PK) == 1 && id != nil && !slices.ContainsFunc(c.sets, func(s setSpec) bool { return s.column == ent.PK[0] }) {
+	if _, allocated := id.(string); assignedKey == "" && allocated && ent.KeyPrefix != "" && !slices.ContainsFunc(c.sets, func(s setSpec) bool { return s.column == ent.PK[0] }) {
 		assignedKey = ent.PK[0]
 	}
 	if assignedKey != "" {

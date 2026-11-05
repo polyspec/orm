@@ -2,7 +2,6 @@ package bindmessages_test
 
 import (
 	"bufio"
-	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -10,6 +9,7 @@ import (
 	"math"
 	"net"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -73,7 +73,7 @@ func markdownBuilder(t *testing.T, calls []string) (string, string) {
 // markdownSend runs one markdown.send step. It returns the first message that the listener receives, the message of a begin or
 // the parameter of a statement, or the code of the error that the call returns before it sends a message. A non-empty processZone
 // is the process default zone for the step, restored afterward.
-func markdownSend(t *testing.T, column, operator string, params []json.RawMessage, begin *bool, surface, processZone string) (json.RawMessage, string) {
+func markdownSend(t *testing.T, column, operator string, params []json.RawMessage, begin *bool, processZone string) (json.RawMessage, string) {
 	t.Helper()
 	testcase.Start(t, testcase.Compute)
 	if processZone != "" {
@@ -85,10 +85,7 @@ func markdownSend(t *testing.T, column, operator string, params []json.RawMessag
 		time.Local = loc
 		defer func() { time.Local = prev }()
 	}
-	return sendFirst(t, func(db *orm.DB) error {
-		if surface != "" {
-			return refusedSurface(t, db, surface)
-		}
+	return sendFirst(t, begin != nil, func(db *orm.DB) error {
 		if begin != nil {
 			var opts []orm.TransactionOption
 			if *begin {
@@ -110,56 +107,6 @@ func markdownSend(t *testing.T, column, operator string, params []json.RawMessag
 	})
 }
 
-// refusedSurface runs the public call of a markdown.send surface, one that has no form on a markdown connection (DIA-183 to DIA-189).
-func refusedSurface(t *testing.T, db *orm.DB, surface string) error {
-	t.Helper()
-	empty := func() error { return nil }
-	switch surface {
-	case "audit":
-		return db.Transaction(empty, orm.Audit(map[string]any{"actor": "tester"}))
-	case "isolation":
-		return db.Transaction(empty, orm.Isolation(orm.Serializable))
-	case "timeout_ms":
-		return db.Transaction(empty, orm.TimeoutMs(100))
-	case "get_query":
-		_, err := bindmodel.Slots().Connect(db).GetQuery()
-		return err
-	case "subscribe":
-		_, err := db.Subscribe(func(orm.StatementEvent) error { return nil })
-		return err
-	case "lock":
-		return db.Utils().Lock("k")
-	case "set_local":
-		return db.Utils().SetLocal("k", "v")
-	case "local":
-		_, err := db.Utils().Local("k")
-		return err
-	case "backend_waiting_for_lock":
-		_, err := db.Utils().BackendWaitingForLock(context.Background())
-		return err
-	case "privileges":
-		_, err := db.Utils().Privileges().InspectTable("public.items")
-		return err
-	case "aes_status":
-		_, err := db.Utils().Aes().Status(nil, orm.AESKeyring{})
-		return err
-	case "aes_rotate":
-		_, err := db.Utils().Aes().Rotate(nil, orm.AESKeyring{})
-		return err
-	case "schema_install":
-		return db.Utils().Schema().Install(nil)
-	case "schema_evolution":
-		_, err := db.Utils().Schema().AddTablesAndColumns(nil)
-		return err
-	case "schema_exists":
-		_, err := db.Utils().Schema().Exists("orm")
-		return err
-	default:
-		t.Fatalf("markdown.send surface %s has no call in the Go cases", surface)
-	}
-	return nil
-}
-
 // modelAssign runs one model.assign step: the public setter of the column of a new row of the model, then its insert, which
 // the listener of sendFirst records. The setter takes the host value of the wrapper, so a nil wrapper is not reached here: the
 // typed setter takes no null, and the case excludes go.
@@ -169,7 +116,7 @@ func modelAssign(t *testing.T, model, column string, value json.RawMessage) (jso
 	if model != "slots" || column != "varchar_value" {
 		t.Fatalf("model.assign of %s.%s has no typed setter in the Go cases", model, column)
 	}
-	return sendFirst(t, func(db *orm.DB) error {
+	return sendFirst(t, false, func(db *orm.DB) error {
 		_, err := bindmodel.Slots().Connect(db).SetVarcharValue(text(t, value)).Create()
 		return err
 	})
@@ -192,14 +139,18 @@ func connectSendListener(t *testing.T, first chan<- json.RawMessage) *orm.DB {
 }
 
 // sendFirst runs call on a connection to a listener that answers connect and records the first message after it, and returns
-// that message's value, or the code of the orm error that call returns before it sends a message.
-func sendFirst(t *testing.T, call func(db *orm.DB) error) (json.RawMessage, string) {
+// that message's value, or the code of the orm error that call returns before it sends a message. A whole step returns the
+// whole message, as the statement that begins a transaction is compared.
+func sendFirst(t *testing.T, whole bool, call func(db *orm.DB) error) (json.RawMessage, string) {
 	t.Helper()
 	first := make(chan json.RawMessage, 1)
 	db := connectSendListener(t, first)
 	callErr := call(db)
 	select {
 	case msg := <-first:
+		if whole {
+			return msg, ""
+		}
 		return messageValue(t, msg), ""
 	default:
 	}
@@ -211,18 +162,14 @@ func sendFirst(t *testing.T, call func(db *orm.DB) error) (json.RawMessage, stri
 	return nil, ""
 }
 
-// messageValue is the message that an expect compares: the whole message of a begin, or the first parameter of a statement.
+// messageValue is the message that an expect compares: the first parameter of a statement.
 func messageValue(t *testing.T, msg json.RawMessage) json.RawMessage {
 	t.Helper()
 	var m struct {
-		Op     string            `json:"op"`
 		Params []json.RawMessage `json:"params"`
 	}
 	if err := json.Unmarshal(msg, &m); err != nil {
 		t.Fatalf("the message %s is not JSON: %v", msg, err)
-	}
-	if m.Op == "begin" {
-		return msg
 	}
 	// A statement with no parameter (a nil compared with eq is IS NULL, DSL-48) has the empty list as its message.
 	if len(m.Params) == 0 {
@@ -501,6 +448,7 @@ func startMarkdownSendListener(t *testing.T, first chan<- json.RawMessage) strin
 	ln := markdowntest.ListenMarkdownTestServer(t)
 	markdowntest.ServeMarkdownTestConnection(t, ln, func(conn net.Conn) error {
 		r := bufio.NewReader(conn)
+		recorded := false
 		for index := 0; ; index++ {
 			line, err := r.ReadString('\n')
 			if err != nil {
@@ -508,10 +456,26 @@ func startMarkdownSendListener(t *testing.T, first chan<- json.RawMessage) strin
 			}
 			reply := `{"ok":true}`
 			if index > 0 {
-				if index == 1 {
-					first <- json.RawMessage(line)
+				// The setup statements of orm's SQLite dialect, such as the row lock table that a transaction needs, are
+				// answered as done; the first message of the call is recorded, and every later one is refused.
+				var m struct {
+					Op  string `json:"op"`
+					SQL string `json:"sql"`
 				}
-				reply = `{"error":{"code":"IR_INVALID","message":"recorded by the markdown.send listener"}}`
+				if err := json.Unmarshal([]byte(line), &m); err != nil {
+					return err
+				}
+				setup := m.Op == "statement" && strings.HasPrefix(m.SQL, `CREATE TABLE IF NOT EXISTS "orm__`)
+				switch {
+				case setup:
+					reply = `{"columns":[],"rows":[],"affected":0,"last_insert_id":0}`
+				case !recorded:
+					recorded = true
+					first <- json.RawMessage(line)
+					reply = `{"error":{"code":"IR_INVALID","message":"recorded by the markdown.send listener"}}`
+				default:
+					reply = `{"error":{"code":"IR_INVALID","message":"recorded by the markdown.send listener"}}`
+				}
 			}
 			if _, err := conn.Write([]byte(reply + "\n")); err != nil {
 				return markdowntest.ClientEnded(err)

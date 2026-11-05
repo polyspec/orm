@@ -56,7 +56,7 @@ type Subscription struct {
 // Notify sends payload to channel with pg_notify (DIA-193). Inside a
 // Transaction the notification is delivered with the commit of that
 // transaction; outside one, at the commit of its own statement. On MySQL,
-// SQLite and the markdown executor it fails with CAPABILITY_UNSUPPORTED.
+// SQLite and a markdown connection it fails with CAPABILITY_UNSUPPORTED.
 func (d *DB) Notify(channel, payload string) error {
 	if err := d.listenable("notify"); err != nil {
 		return err
@@ -91,7 +91,7 @@ func (d *DB) Notify(channel, payload string) error {
 // Listen opens a LISTEN subscription on channel (DIA-194). It uses a connection
 // of its own, outside the pool, which the context of the handle cancels: a
 // receive whose context is done fails with CANCELED and closes the
-// subscription. On MySQL, SQLite and the markdown executor it fails with
+// subscription. On MySQL, SQLite and a markdown connection it fails with
 // CAPABILITY_UNSUPPORTED.
 func (d *DB) Listen(channel string) (*Subscription, error) {
 	if err := d.listenable("listen"); err != nil {

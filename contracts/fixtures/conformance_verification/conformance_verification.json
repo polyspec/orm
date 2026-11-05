@@ -6079,9 +6079,7 @@
      "label": {
       "text": "white-space"
      },
-     "value": {
-      "text": " 4F"
-     }
+     "value": {"mysql": {"text": " 4F"}, "postgres": {"text": " 4F"}, "sqlite": {"text": " 4F"}}
     },
     {
      "seq": {
@@ -54594,7 +54592,7 @@
      "reason": "the user of both rows, so that the sum is one value",
      "sql": "UPDATE author SET user_seq = 907 WHERE seq IN (906, 1906)"
     },
-    {
+        {
      "op": "model.query",
      "connection": "db",
      "model": "User",
@@ -54673,7 +54671,7 @@
      "reason": "two values of account_id that sum above the i64 of its plan type",
      "sql": "INSERT INTO composite_account (tenant_id, account_id, name) VALUES (900, 9000000000000000000, 'a'), (900, 9000000000000000001, 'b')"
     },
-    {
+        {
      "op": "model.query",
      "connection": "db",
      "model": "User",
@@ -54791,7 +54789,7 @@
      "reason": "the fractional value of that column",
      "sql": "INSERT INTO composite_account (tenant_id, account_id, name) VALUES (900, 1.5, 'a')"
     },
-    {
+        {
      "op": "model.query",
      "connection": "db",
      "model": "User",
@@ -55181,7 +55179,7 @@
      "reason": "exactly the digits of the integer, which reads as that integer",
      "sql": "INSERT INTO composite_account (tenant_id, account_id, name) VALUES (900, '7', 'a')"
     },
-    {
+        {
      "op": "model.query",
      "connection": "db",
      "model": "User",
@@ -55258,7 +55256,7 @@
      "reason": "a leading zero is not exactly the digits of an integer",
      "sql": "UPDATE composite_account SET account_id = '007' WHERE tenant_id = 900"
     },
-    {
+        {
      "op": "model.query",
      "connection": "db",
      "model": "User",
@@ -55320,7 +55318,7 @@
      "reason": "a sign that is not minus is not exactly the digits of an integer",
      "sql": "UPDATE composite_account SET account_id = '+7' WHERE tenant_id = 900"
     },
-    {
+        {
      "op": "model.query",
      "connection": "db",
      "model": "User",
@@ -55382,7 +55380,7 @@
      "reason": "a trailing space is not exactly the digits of an integer",
      "sql": "UPDATE composite_account SET account_id = '7 ' WHERE tenant_id = 900"
     },
-    {
+        {
      "op": "model.query",
      "connection": "db",
      "model": "User",
@@ -55650,7 +55648,7 @@
      "reason": "a text that is no date",
      "sql": "INSERT INTO day_cell (label, day) VALUES ('a', 'bad2')"
     },
-    {
+        {
      "op": "model.query",
      "connection": "db",
      "model": "User",
@@ -79221,7 +79219,7 @@
       "postgres": "INSERT INTO byte_cell (body) VALUES ('\\x007f80ff41'::bytea), ('\\xff00417f80'::bytea)"
      }
     },
-    {
+        {
      "op": "model.query",
      "connection": "db",
      "model": "ByteCell",
@@ -83281,6 +83279,98 @@
       "styled_sql_null_in_relation_and_join_rows"
     ],
     "sqlite": [
+      "conditions_connectors",
+      "conditions_group",
+      "conditions_leading_group",
+      "conditions_leading_prefix",
+      "conditions_values",
+      "terminal_by",
+      "terminal_reuse",
+      "expression_forms",
+      "columns",
+      "joins",
+      "relations",
+      "relation_child_on_another_connection",
+      "collection_connect_reaches_every_model",
+      "relation_empty",
+      "relation_null_key",
+      "external_read",
+      "subqueries",
+      "aggregates",
+      "empty_reads",
+      "audit_lazy",
+      "functions",
+      "get_query",
+      "aes_values",
+      "write_cycle",
+      "required_columns",
+      "creates_and_save",
+      "creates_batch",
+      "creates_batch_too_large",
+      "transactions",
+      "restore",
+      "restore_or_create",
+      "restore_or_create_connected",
+      "joins_soft_deleted",
+      "relative_time_out_of_range",
+      "hex_malformed",
+      "datetime_p0_roundtrip",
+      "time_p3_roundtrip",
+      "date_roundtrip",
+      "date_null",
+      "upsert_one_key",
+      "uuid_roundtrip",
+      "ip_hex_roundtrip",
+      "affected_counts",
+      "datetime_precision_rejected",
+      "varchar_length_rejected",
+      "text_nul_rejected",
+      "uuid_form_rejected",
+      "contains_null",
+      "null_into_not_null",
+      "order_nulls",
+      "scalar_column_subquery",
+      "relations_flatten",
+      "added_sum_above_i32",
+      "added_sum_above_i64",
+      "added_sum_fractional",
+      "added_column_types",
+      "added_text_not_exact",
+      "added_text_not_a_time",
+      "errors",
+      "core_conditions",
+      "core_columns_and_pages",
+      "core_writes",
+      "core_duplicate_relation",
+      "core_in_list_padding",
+      "core_projected_reads",
+      "page_statement_does_not_hold_its_values",
+      "value_function_parameter_indexes",
+      "now_defaults",
+      "contains_ascii_fold",
+      "contains_binary_code_point",
+      "delete_recursive",
+      "relation_row_lock",
+      "expect_revision",
+      "column_pairs",
+      "aes_status",
+      "delete_lock",
+      "core_value_types",
+      "invalid_stored_cells_sqlite",
+      "driver_bytes_cells_are_exact",
+      "core_styled_null",
+      "core_decimal_values",
+      "core_styled_states",
+      "styled_integer_json_output",
+      "query_now_and_random_order",
+      "clock_microseconds",
+      "clock_soft_delete_microseconds",
+      "clock_now_condition",
+      "temporal_stored_text",
+      "time_text_refused",
+      "styled_sql_null_in_relation_and_join_rows"
+    ],
+    "markdown": [
       "conditions_connectors",
       "conditions_group",
       "conditions_leading_group",

@@ -881,6 +881,10 @@
     "sqlite": [
       "an_idle_size_above_the_pool_size_is_refused",
       "an_idle_size_above_the_default_pool_size_is_refused"
+    ],
+    "markdown": [
+      "an_idle_size_above_the_pool_size_is_refused",
+      "an_idle_size_above_the_default_pool_size_is_refused"
     ]
   }
 }

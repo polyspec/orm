@@ -349,6 +349,9 @@ func validatePredicateHostInput(owner *Core, p *predSpec) error {
 		return err
 	}
 	ent := m.Entities[owner.ent.Name]
+	if ent == nil {
+		return &ir.Error{Code: CodeEntityUnknown, Msg: owner.ent.Name}
+	}
 	validate := func(column string, value any) error {
 		field := ent.Field(column)
 		if field == nil {

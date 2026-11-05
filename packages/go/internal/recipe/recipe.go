@@ -67,9 +67,6 @@ type step struct {
 	Key      *string                    `json:"key"`
 	As       string                     `json:"as"`
 	Request  json.RawMessage            `json:"request"`
-	Chain    string                     `json:"chain"`
-	Answer   json.RawMessage            `json:"answer"`
-	Answers  map[string]json.RawMessage `json:"answers"`
 	DSN      string                     `json:"dsn"`
 	Config   dsnConfig                  `json:"config"`
 	Schema   string                     `json:"schema"`
@@ -107,10 +104,8 @@ type step struct {
 	Reply    string `json:"reply"`
 	Received string `json:"received"`
 	// Replies and Messages are the fields of markdown.session: the lines the listener answers and the lines it must receive.
-	Replies  []string `json:"replies"`
-	Messages []string `json:"messages"`
-	// Surface is the public call of a markdown.send step that has no form on a markdown connection.
-	Surface     string                     `json:"surface"`
+	Replies     []string                   `json:"replies"`
+	Messages    []string                   `json:"messages"`
 	Mermaid     json.RawMessage            `json:"mermaid"`
 	SkeletonOf  string                     `json:"skeleton_of"`
 	Expect      map[string]json.RawMessage `json:"expect"`
@@ -151,16 +146,9 @@ type step struct {
 // MarkdownSend runs one markdown.send step on a markdown connection to a listener that records the first message it receives,
 // and returns that message (the JSON of the message, or of the parameter of a statement) and the code of the error that the
 // public call returned before it sent one. A begin step passes begin, the statement passes column, operator and params.
-// A step with a surface passes that name.
 // A non-empty processZone is the IANA zone name that is the process default zone while the step runs.
 // It is supplied by the test package that owns the listener and the generated bind models, since they cannot be reached from here.
-type MarkdownSend func(t *testing.T, column, operator string, params []json.RawMessage, begin *bool, surface, processZone string) (message json.RawMessage, code string)
-
-// IRAnswer runs the chain of one ir.answer step on a listener that answers with the answer, or with answers keyed by the op of
-// a control message or the kind of a request, and returns the result of the chain or its error. It is supplied by the test
-// that owns the chain registry and the listener, since a chain cannot be reached from this package. With params set (the expect
-// of the step is {"params": [...]}, PRT-66), the function returns the params of the request that the listener received instead.
-type IRAnswer func(t *testing.T, chain string, answer json.RawMessage, answers map[string]json.RawMessage, params bool) (any, error)
+type MarkdownSend func(t *testing.T, column, operator string, params []json.RawMessage, begin *bool, processZone string) (message json.RawMessage, code string)
 
 // MarkdownBuilder runs one markdown.builder step: the builder calls on the generated model of the bind fixture, then its count
 // terminal, on a listener that records a message. It returns the code and the text of the error of the terminal, and fails the test
@@ -176,7 +164,6 @@ type Option func(*options)
 type ModelAssign func(t *testing.T, model, column string, value json.RawMessage) (json.RawMessage, string)
 
 type options struct {
-	irAnswer IRAnswer
 	// dir is the directory of the recipe file, which the dbspec ops resolve their documents against.
 	dir             string
 	markdownSend    MarkdownSend
@@ -197,11 +184,6 @@ func WithModelAssign(fn ModelAssign) Option {
 // WithMarkdownSend supplies the function that runs each markdown.send step of a recipe without a database.
 func WithMarkdownSend(fn MarkdownSend) Option {
 	return func(o *options) { o.markdownSend = fn }
-}
-
-// WithIRAnswer supplies the function that runs the chain of each ir.answer step of a recipe without a database.
-func WithIRAnswer(fn IRAnswer) Option {
-	return func(o *options) { o.irAnswer = fn }
 }
 
 // result is what a step produced: the decoded value of a decode, the cell of an encode, or the error of either.
@@ -241,7 +223,7 @@ func reportCase(t *testing.T, id, database string) {
 }
 
 // Run runs every case of the recipe at path, relative to the test's package directory, on database. The options configure
-// the ops that need a function from the test, such as WithIRAnswer.
+// the ops that need a function from the test, such as WithMarkdownSend.
 func Run(t *testing.T, path, database string, opts ...Option) {
 	t.Helper()
 	if database != None {
@@ -324,9 +306,6 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 	}
 	if s.k("op").Op == "ir.validate" {
 		return checkValidate(s.k("expect").Expect[database], validate(model, s.k("request").Request, s.k("manifest_hash").ManifestHash))
-	}
-	if s.k("op").Op == "ir.answer" {
-		return checkAnswer(t, s, database, o.irAnswer)
 	}
 	if s.k("op").Op == "markdown.send" {
 		return checkSend(t, s, o.markdownSend)
@@ -1290,57 +1269,6 @@ func checkValidate(raw json.RawMessage, err error) error {
 	return nil
 }
 
-// checkAnswer runs the chain of an ir.answer step with fn and compares its result with the value of the expect of database.
-// The result is normalized as a JSON value, an orm error becomes {"error": CODE}, and any other error fails the step.
-func checkAnswer(t *testing.T, s step, database string, fn IRAnswer) error {
-	if fn == nil {
-		return fmt.Errorf("ir.answer needs the WithIRAnswer option of the test")
-	}
-	raw, ok := s.k("expect").Expect[database]
-	if !ok {
-		return fmt.Errorf("ir.answer has no expect for %s", database)
-	}
-	var outcome struct {
-		Value  json.RawMessage `json:"value"`
-		Params json.RawMessage `json:"params"`
-	}
-	if err := decodeOutcome(raw, &outcome); err != nil {
-		return err
-	}
-	if outcome.Value == nil && outcome.Params == nil {
-		return fmt.Errorf("ir.answer expect for %s has neither value nor params", database)
-	}
-	params := outcome.Params != nil
-	want := outcome.Value
-	if params {
-		want = outcome.Params
-	}
-	var wantValue any
-	if err := json.Unmarshal(want, &wantValue); err != nil {
-		return err
-	}
-	got, err := fn(t, s.k("chain").Chain, s.k("answer").Answer, s.k("answers").Answers, params)
-	if err != nil {
-		code := orm.ErrorCode(err)
-		if code == "" {
-			return fmt.Errorf("chain %s failed without an orm code: %w", s.k("chain").Chain, err)
-		}
-		got = map[string]any{"error": code}
-	}
-	body, err := json.Marshal(got)
-	if err != nil {
-		return fmt.Errorf("chain %s result %#v: %w", s.k("chain").Chain, got, err)
-	}
-	var actual any
-	if err := json.Unmarshal(body, &actual); err != nil {
-		return err
-	}
-	if !reflect.DeepEqual(actual, wantValue) {
-		return fmt.Errorf("chain %s: got %s, want %s", s.k("chain").Chain, body, want)
-	}
-	return nil
-}
-
 // plannerDialects are the dialects that a planner.compile step compiles its request for, in the order of the planner fixture.
 var plannerDialects = []string{"mysql", "postgres", "sqlite"}
 
@@ -1971,7 +1899,7 @@ func checkSend(t *testing.T, s step, fn MarkdownSend) error {
 		}
 		begin = &b.ReadOnly
 	}
-	message, code := fn(t, s.k("column").Column, s.k("operator").Operator, s.k("params").Params, begin, s.k("surface").Surface, s.k("process_zone").ProcessZone)
+	message, code := fn(t, s.k("column").Column, s.k("operator").Operator, s.k("params").Params, begin, s.k("process_zone").ProcessZone)
 	return checkMessage(s.k("expect").Expect, message, code)
 }
 

@@ -30,3 +30,9 @@ func TestRecipeCompositeKeysSqlite(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, compositeKeysRecipe, "sqlite")
 }
+
+// TestRecipeCompositeKeysMarkdown runs the recipe on flowmark, each case on a corpus of its own (FCV-3).
+func TestRecipeCompositeKeysMarkdown(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, compositeKeysRecipe, "markdown")
+}

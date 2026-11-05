@@ -57,7 +57,7 @@ codes:
     origin: executor
   - code: OPTIMISTIC_LOCK         # updateOptimistic matched no row (updated_ts changed)
     origin: executor
-  - code: WRITE_CONFLICT          # a target changed since it was read, or a change since the read makes the transaction's writes other writes; names the file and line; the client never retries it
+  - code: WRITE_CONFLICT          # a COMMIT on a markdown connection found a file changed outside the engine since the transaction read it; names the file and line; the client never retries it
     origin: executor
   - code: CODEC_DECODE            # styled column bytes could not be decoded (docs/spec/codec.md)
     origin: executor
@@ -71,7 +71,7 @@ codes:
     origin: generator
   - code: GENERATOR_SCAN_UNATTACHED # a scanned getter call that no alias, new or addColumn call attaches (docs/spec/dsl.md, DSL-44)
     origin: generator
-  - code: CANCELED                # the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout); a lock wait of the markdown executor that ends is CANCELED too, and so is a MySQL lock wait timeout (1205, innodb_lock_wait_timeout), and so is a MySQL lock wait timeout (1205, innodb_lock_wait_timeout)
+  - code: CANCELED                # the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout); a lock wait of a markdown connection that ends is CANCELED too, and so is a MySQL lock wait timeout (1205, innodb_lock_wait_timeout), and so is a MySQL lock wait timeout (1205, innodb_lock_wait_timeout)
     origin: executor
   - code: ROLLBACK                # a transaction or savepoint callback failed and its rollback failed too; the error keeps both errors
     origin: executor

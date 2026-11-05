@@ -1,5 +1,5 @@
 <!-- doc-id: packages-orm-rust-readme -->
-<!-- source-sha256: 44b85139207524cbd4e118e684030fbc29ee2e3dc73decc03995996e57beceed -->
+<!-- source-sha256: 83db1546ed28b6f44f96049a7d8b095d0d6c39f79580d14ba7647d6f8798b328 -->
 [English](README.md)
 
 # orm — Rust 클라이언트
@@ -48,7 +48,7 @@ let rows = Author::new().connect(&db).service_seq(7).and_is_close(false).order_b
 
 ## 연결
 
-`model::connect(dsn, pool_size, config)`와 `Db::connect(dsn, pool_size, config)`는 DSN URI를 받는다. `Db::connect`는 등록된 set 없이 연결을 연다. scheme은 `mysql`, `postgres`, `sqlite`, 또는 markdown IR executor로 flowmark server가 제공하는 corpus인 `markdown`(`markdown://127.0.0.1:<port>/<corpus>?token=<token>`, [docs/spec/protocol.ko.md](../../docs/spec/protocol.ko.md#_5-ir-executors)) 중 하나를 선택하고 `timezone` 매개변수는 연결 시간대를 정한다. 인증 정보는 DSN으로, AES 키는 `Config`로 전달한다. `caching_sha2_password`를 쓰는 MySQL 연결에는 TLS가 필요하다. DSN에 `ssl-mode=verify_ca`와 `ssl-ca`를 지정한다. 클라이언트는 암호화하지 않은 연결의 RSA 인증을 켜지 않는다.
+`model::connect(dsn, pool_size, config)`와 `Db::connect(dsn, pool_size, config)`는 DSN URI를 받는다. `Db::connect`는 등록된 set 없이 연결을 연다. scheme은 `mysql`, `postgres`, `sqlite`, 또는 flowmark server가 제공하고 SQLite dialect의 문장에 답하는 corpus인 `markdown`(`markdown://127.0.0.1:<port>/<corpus>?token=<token>`, [docs/spec/protocol.ko.md](../../docs/spec/protocol.ko.md#_5-markdown-connections)) 중 하나를 선택하고 `timezone` 매개변수는 연결 시간대를 정한다. 인증 정보는 DSN으로, AES 키는 `Config`로 전달한다. `caching_sha2_password`를 쓰는 MySQL 연결에는 TLS가 필요하다. DSN에 `ssl-mode=verify_ca`와 `ssl-ca`를 지정한다. 클라이언트는 암호화하지 않은 연결의 RSA 인증을 켜지 않는다.
 
 `db.utils().schema().install(&model::SCHEMA)`는 document set을 연결의 데이터베이스에 맞게 render하고 statement를 적용한 뒤 그 set을 연결에 등록한다. manifest text가 `manifestHash`로 hash되지 않으면 `CONFIG`를 반환한다. set의 테이블이 모두 있으면 아무것도 만들지 않고 일부만 있으면 `CONFIG`를 반환하며, 그다음 set의 테이블이 set과 다르면 각 차이를 적은 `CONFIG`를 반환한다. `db.utils().schema().register(&model::SCHEMA)`는 데이터베이스를 읽지 않고 열린 연결에 set을 등록한다.
 `db.utils().schema().add_tables_and_columns(&model::SCHEMA).await`는 설치한 set을 올린다: 데이터베이스에 없는 테이블을 만들고 기존 테이블에 빠진 컬럼 가운데 null이거나 default가 있는 컬럼을 dialect의 plan step(`polyspec_orm_schema::dbspec::add_tables_and_columns_steps`)으로 추가하며, 그 step은 각 테이블을 index, foreign key, check, 트리거와 함께 만들고 바뀐 각 테이블의 audit 트리거를 바꾼다. 만든 테이블을 `table`, 추가한 컬럼을 `table.column`으로 반환한다. 다른 모든 차이는 어떤 statement보다 먼저 `SCHEMA_DIFFERS`를 반환한다(docs/spec/schema.md, "Adding tables and columns"). MySQL과 SQLite는 트랜잭션 밖에서 추가한다.

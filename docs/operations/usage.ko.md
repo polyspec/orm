@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 3faca199441db30d557595d59b2a5f1ac01cd193b22b6a36657036b1b945cef5 -->
+<!-- source-sha256: db5bb1fa532b236a8652e65929dc3bb054a0abe1bc4d2bea5383a8f7744abfc1 -->
 # 사용법
 
 하나의 dbspec document set에서 language client를 생성한다. 공통 contract는 Go, PHP, PHP extension, TypeScript, Python, Rust 여섯 구현에 적용되며 확장의 미완료 native 범위는 별도로 추적한다.
@@ -513,7 +513,7 @@ request를 직접 compile하는 program은, 예를 들어 행을 identity key와
 
 ### Request hook {#request-hook}
 
-Python SQL 연결은 `asyncio.Future`인 `future`를 받는 `db.with_future(future)`로 취소 핸들을 만든다. future를 취소하면 파생 핸들에서 실행 중인 문을 중단하고 `CANCELED`를 반환한다. 정상 완료는 연결에 영향을 주지 않는다. Python 데이터베이스 호출은 동기식이므로 취소할 호출은 `asyncio.to_thread`에서 실행한다. 취소된 transaction도 pool connection을 재사용하기 전에 rollback을 수행한다. 파생 핸들은 취소 상태를 유지하므로 이후 작업은 root `db`로 실행한다. Python markdown executor는 `with_future`를 지원하지 않는다.
+Python SQL 연결은 `asyncio.Future`인 `future`를 받는 `db.with_future(future)`로 취소 핸들을 만든다. future를 취소하면 파생 핸들에서 실행 중인 문을 중단하고 `CANCELED`를 반환한다. 정상 완료는 연결에 영향을 주지 않는다. Python 데이터베이스 호출은 동기식이므로 취소할 호출은 `asyncio.to_thread`에서 실행한다. 취소된 transaction도 pool connection을 재사용하기 전에 rollback을 수행한다. 파생 핸들은 취소 상태를 유지하므로 이후 작업은 root `db`로 실행한다. markdown 연결에서는 future를 취소하면 실행 중인 문의 연결을 닫는다(CFG-9).
 
 `withRequestHook`은 같은 연결의 handle을 돌려준다. 그 handle의 hook은 handle의 각 request([protocol](../spec/protocol.ko.md#_1-request))를 client가 plan하기 직전에 받는다. hook은 predicate, assignment, 매개변수를 더할 수 있고, client는 hook에 자기 의미를 붙이지 않는다.
 
@@ -547,7 +547,7 @@ Python SQL 연결은 `asyncio.Future`인 `future`를 받는 `db.with_future(futu
 | `OPTIMISTIC_LOCK` | `update(true)`가 더 새로운 `updated_ts`를 발견했다. 다시 읽고 재시도한다 |
 | `LOCK_NOT_AVAILABLE` | `*_nowait` 행 잠금이 즉시 잠금을 얻지 못했다. transaction conflict로 재시도하지 않는다 |
 | `DUPLICATE_KEY` / `DEADLOCK` | 원문을 유지한 드라이버 오류. 교착 오류는 트랜잭션 재시도 뒤에 반환된다 |
-| `WRITE_CONFLICT` | IR executor가 읽은 뒤 바뀐 대상을 찾았거나, commit에서 transaction의 쓰기를 다른 쓰기로 만드는 읽은 뒤의 변경을 찾았다. 파일과 줄을 적는다. `DEADLOCK`과 달리 retry option이 있어도 재시도하지 않는다 |
+| `WRITE_CONFLICT` | markdown 연결의 `COMMIT`이 transaction이 읽은 뒤 engine 밖에서 바뀐 corpus 파일을 찾았다. 파일과 줄을 적는다. `DEADLOCK`과 달리 retry option이 있어도 재시도하지 않는다 |
 | `CANCELED` | 문이 끝나기 전에 중단되었다. 취소, 시간 제한, 또는 SQLite `busy_timeout`이 끝날 때까지 다른 연결이 잠금을 놓지 않은 경우이며 재시도하지 않는다 |
 | `READ_ONLY` | 쓰기가 읽기 전용 서버나 연결에 도달했다. replica, 읽기 전용 트랜잭션, 읽기 전용으로 열린 SQLite 데이터베이스가 해당한다. 쓰기는 primary 연결에서 실행한다 |
 | `CONSTRAINT` | CHECK 제약이 행을 거부했다. 오류는 드라이버 메시지와 드라이버 오류를 유지한다 |

@@ -5,7 +5,6 @@
     "cases",
     "cases_on",
     "fixture",
-    "markdown_fixture",
     "note",
     "requirements",
     "schema",
@@ -15,7 +14,6 @@
   "case": [
     "id",
     "install",
-    "not_on_markdown",
     "not_through_pooler",
     "only",
     "requirements",
@@ -166,6 +164,13 @@
       "op",
       "row"
     ],
+    "corpus.write": [
+      "file",
+      "only",
+      "op",
+      "reason",
+      "text"
+    ],
     "sql.exec": [
       "only",
       "op",
@@ -269,13 +274,6 @@
       "op",
       "schema"
     ],
-    "ir.answer": [
-      "answer",
-      "answers",
-      "chain",
-      "expect",
-      "op"
-    ],
     "markdown.send": [
       "begin",
       "column",
@@ -283,8 +281,7 @@
       "op",
       "operator",
       "params",
-      "process_zone",
-      "surface"
+      "process_zone"
     ],
     "model.assign": [
       "column",

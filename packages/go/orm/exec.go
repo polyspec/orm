@@ -320,9 +320,6 @@ type Statement struct {
 
 func getQuery(ex executor, r *request) (*Statement, error) {
 	d := ex.base()
-	if err := d.unsupportedOnMarkdown("getQuery"); err != nil {
-		return nil, err
-	}
 	if err := applyRequestHook(ex, r); err != nil {
 		return nil, err
 	}
@@ -351,9 +348,6 @@ type QueryPlanStep struct {
 // pagePlanSteps is the steps of the plan of a page request, from the plan call that paginate runs.
 func pagePlanSteps(ex executor, r *request) ([]QueryPlanStep, error) {
 	d := ex.base()
-	if err := d.unsupportedOnMarkdown("getPagePlanSteps"); err != nil {
-		return nil, err
-	}
 	if err := preparePage(ex, r); err != nil {
 		return nil, err
 	}
@@ -450,9 +444,6 @@ type result struct {
 	main   [][]any
 	steps  map[int]*stepRows
 	params []any
-	// markdown means the result is a markdown answer: the last cell of each row holds that row's join and
-	// relation rows (mdLinks).
-	markdown bool
 }
 
 type stepRows struct {
@@ -560,10 +551,6 @@ func query(ex executor, r *request) (*result, error) {
 		return nil, err
 	}
 	defer done()
-	if d.md != nil {
-		res, _, err := markdownRead(ex, r)
-		return res, err
-	}
 	c, slots, err := d.splitReadPlan(r)
 	if err != nil {
 		return nil, err
@@ -1114,9 +1101,6 @@ func scalar(ex executor, r *request) (any, error) {
 		return nil, err
 	}
 	defer done()
-	if d.md != nil {
-		return markdownScalar(ex, r)
-	}
 	_, slots, err := d.splitReadPlan(r)
 	if err != nil {
 		return nil, err
@@ -1204,9 +1188,6 @@ func paginate(ex executor, r *request) (*result, int64, error) {
 		return nil, 0, err
 	}
 	d, ctx := ex.base(), ex.context()
-	if d.md != nil {
-		return markdownRead(ex, r)
-	}
 	c, err := d.plan(r)
 	if err != nil {
 		return nil, 0, err
@@ -1242,7 +1223,7 @@ func paginate(ex executor, r *request) (*result, int64, error) {
 
 // write runs an insert, update, delete, or restore and returns the key of the
 // inserted row and the affected row count: the generated identity on a SQL
-// database, the first key the markdown executor answers.
+// database, the key_prefix key that a corpus allocated on a markdown connection.
 func write(ex executor, r *request) (key any, affected int64, err error) {
 	return writeAfterHook(ex, r, nil)
 }
@@ -1269,13 +1250,6 @@ func writeAfterHook(ex executor, r *request, after func(*request) error) (key an
 		}
 	}
 	d, ctx := ex.base(), ex.context()
-	if d.md != nil {
-		keys, affected, err := markdownWrite(ex, r)
-		if err != nil || len(keys) == 0 {
-			return nil, affected, err
-		}
-		return keys[0], affected, nil
-	}
 	var lastID int64
 	c, err := d.plan(r)
 	if err != nil {
@@ -1309,12 +1283,20 @@ func writeAfterHook(ex executor, r *request, after func(*request) error) (key an
 		return nil, 0, d.modelDone(ex, st, st.SQL, args, masks, start, err)
 	}
 	if r.ir.Kind == "insert" && strings.Contains(st.SQL, " RETURNING ") {
-		err = stmt.QueryRowContext(ctx, args...).Scan(&lastID)
-		err = mapDriverErrContext(d.scanAgain(ctx, ex.transaction() == nil, st.SQL, args, err, &lastID), ctx)
+		// The returned key is the identity, an integer, or the key_prefix key that a corpus allocated, a text.
+		var returned any
+		err = stmt.QueryRowContext(ctx, args...).Scan(&returned)
+		err = mapDriverErrContext(d.scanAgain(ctx, ex.transaction() == nil, st.SQL, args, err, &returned), ctx)
 		if err := d.modelDone(ex, st, st.SQL, args, masks, start, err); err != nil {
 			return nil, 0, err
 		}
-		return lastID, 1, nil
+		switch v := returned.(type) {
+		case int32:
+			return int64(v), 1, nil
+		case []byte:
+			return string(v), 1, nil
+		}
+		return returned, 1, nil
 	}
 	res, err := stmt.ExecContext(ctx, args...)
 	res, err = d.execAgain(ctx, ex.transaction() == nil, st.SQL, args, res, err)

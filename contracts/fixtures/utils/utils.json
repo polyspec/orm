@@ -1622,6 +1622,19 @@
       "table_privileges_on_postgres_only",
       "table_privilege_targets_are_refused_before_any_statement",
       "a_session_setting_stays_on_its_connection"
+    ],
+    "markdown": [
+      "local_value_is_readable_in_its_transaction",
+      "was_inserted_follows_the_savepoints",
+      "was_inserted_needs_a_transaction_and_valid_arguments",
+      "no_backend_waits_without_a_waiter",
+      "utils_hold_their_groups",
+      "session_state_ends_with_the_transaction",
+      "a_lock_needs_a_transaction",
+      "stats_report_the_pool_of_the_connection",
+      "table_privileges_on_postgres_only",
+      "table_privilege_targets_are_refused_before_any_statement",
+      "a_session_setting_stays_on_its_connection"
     ]
   }
 }

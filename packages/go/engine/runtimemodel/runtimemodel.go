@@ -49,6 +49,10 @@ type Entity struct {
 	Updated    string
 	SoftDelete string
 	AESVersion string
+	// KeyPrefix is the prefix of the key_prefix setting and Order the column of the order setting; each is empty if
+	// there is none.
+	KeyPrefix string
+	Order     string
 	// Audit is the audit setting; it is nil if absent.
 	Audit *Audit
 	// External reports a table of an external document: it is read like any entity, and every
@@ -306,6 +310,12 @@ func entityOf(t *dbspec.Table) *Entity {
 	}
 	if s.SoftDelete != nil {
 		e.SoftDelete = s.SoftDelete.Column
+	}
+	if s.KeyPrefix != nil {
+		e.KeyPrefix = s.KeyPrefix.Prefix
+	}
+	if s.Order != nil {
+		e.Order = s.Order.Column
 	}
 	if s.AESVersion != nil {
 		e.AESVersion = s.AESVersion.Column

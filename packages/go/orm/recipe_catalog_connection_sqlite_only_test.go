@@ -15,3 +15,10 @@ func TestRecipeCatalogConnectionSqliteOnly(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, catalogConnectionSqliteOnlyRecipe, "sqlite")
 }
+
+// TestRecipeCatalogConnectionSqliteOnlyMarkdown runs the SQLite-only cases on flowmark, whose connection is a SQLite
+// connection (FCV-3).
+func TestRecipeCatalogConnectionSqliteOnlyMarkdown(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, catalogConnectionSqliteOnlyRecipe, "markdown")
+}

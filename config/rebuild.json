@@ -150,10 +150,6 @@
       "kind": "policy",
       "reason": "serves the built site with node:http without a SPA fallback and records each request, because the docs check must find a deep route that has no HTML page, which a preview server with fallback hides"
     },
-    "scripts/docs/markdown-tables.mts": {
-      "kind": "policy",
-      "reason": "the source-owned list of Flowmark tables that writing-style.mts removes before the style check; the list is maintained with its source specifications rather than generated"
-    },
     "scripts/docs/tables.mts": {
       "kind": "replaced",
       "reason": "mdast-util-from-markdown with mdast-util-gfm reads the Markdown tables and their cells from the source text, so an escaped pipe stays in its cell; the table reading that check.mts and rules.mts share is in this file (item KSTD-5-4-1)"
@@ -161,10 +157,6 @@
     "scripts/docs/rules.mts": {
       "kind": "replaced",
       "reason": "mdast-util-from-markdown with mdast-util-gfm reads the Markdown tables instead of splitting lines on the pipe; item KSTD-5-4-1 moves the table reading to it"
-    },
-    "scripts/docs/writing-style.mts": {
-      "kind": "policy",
-      "reason": "filters only the declared Flowmark-owned tables from the authored-text rules check while that check still examines every other source line; it writes no generated output"
     },
     "scripts/features/build.mts": {
       "kind": "policy",

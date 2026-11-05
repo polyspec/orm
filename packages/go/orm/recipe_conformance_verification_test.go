@@ -30,3 +30,9 @@ func TestRecipeConformanceVerificationSqlite(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, conformanceVerificationRecipe, "sqlite")
 }
+
+// TestRecipeConformanceVerificationMarkdown runs the recipe on flowmark, each case on a corpus of its own (FCV-3).
+func TestRecipeConformanceVerificationMarkdown(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, conformanceVerificationRecipe, "markdown")
+}

@@ -45,3 +45,9 @@ func TestRecipeDbspecIntrospectSqlite(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, dbspecIntrospectRecipe, "sqlite")
 }
+
+// TestRecipeDbspecIntrospectMarkdown runs the recipe on flowmark, each case on a corpus of its own (FCV-3).
+func TestRecipeDbspecIntrospectMarkdown(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, dbspecIntrospectRecipe, "markdown")
+}

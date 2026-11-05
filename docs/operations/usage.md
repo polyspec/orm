@@ -512,7 +512,7 @@ A program that compiles requests itself, such as a load that writes rows with th
 
 ### Request hook
 
-Python SQL connections can derive a cancellation handle with `db.with_future(future)`, where `future` is an `asyncio.Future`. Cancelling that future interrupts the statement in flight on the derived handle and reports `CANCELED`; completing it normally does not affect the connection. Python database calls are synchronous, so run a cancellable call with `asyncio.to_thread`. A cancelled transaction still runs its rollback before the pooled connection is reused. The derived handle remains cancelled; use the root `db` for later work. The Python markdown executor does not support `with_future`.
+Python SQL connections can derive a cancellation handle with `db.with_future(future)`, where `future` is an `asyncio.Future`. Cancelling that future interrupts the statement in flight on the derived handle and reports `CANCELED`; completing it normally does not affect the connection. Python database calls are synchronous, so run a cancellable call with `asyncio.to_thread`. A cancelled transaction still runs its rollback before the pooled connection is reused. The derived handle remains cancelled; use the root `db` for later work. On a markdown connection, cancelling the future closes the connection of the statement in flight (CFG-9).
 
 `withRequestHook` returns a handle on the same connection whose hook receives each request ([protocol](../spec/protocol.md#_1-request)) of the handle right before the client plans it. The hook may add predicates, assignments and parameters; the client gives the hook no meaning of its own.
 
@@ -546,7 +546,7 @@ Python SQL connections can derive a cancellation handle with `db.with_future(fut
 | `OPTIMISTIC_LOCK` | `update(true)` found a newer `updated_ts`; read again and retry |
 | `LOCK_NOT_AVAILABLE` | A `*_nowait` row-lock request could not acquire the lock immediately; do not retry it as a transaction conflict |
 | `DUPLICATE_KEY` / `DEADLOCK` | Mapped driver error with original text retained; deadlock follows the transaction retries |
-| `WRITE_CONFLICT` | An IR executor found a target changed since it was read, or, at the commit, a change since the read that makes the transaction's writes other writes; it names the file and line. It is never retried, even with retry options, unlike `DEADLOCK` |
+| `WRITE_CONFLICT` | A `COMMIT` on a markdown connection found a file of the corpus changed outside the engine since the transaction read it; it names the file and line. It is never retried, even with retry options, unlike `DEADLOCK` |
 | `CANCELED` | The statement stopped before it finished: a cancellation, a timeout bound, or a SQLite lock that another connection still held when `busy_timeout` ended; it is not retried |
 | `READ_ONLY` | A write reached a read-only server or connection: a replica, a read-only transaction, or a SQLite database opened read-only; send the write through the primary connection |
 | `CONSTRAINT` | A CHECK constraint refused the row; the error keeps the driver message and the driver error |

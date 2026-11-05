@@ -43,6 +43,9 @@ func Name() string {
 func New(t testing.TB, driver string) string {
 	t.Helper()
 	c := testcase.Of(t)
+	if driver == "markdown" {
+		return NewCorpus(t, "")
+	}
 	if driver == "sqlite" {
 		path := filepath.Join(os.TempDir(), fmt.Sprintf("orm-case-%d-%d.sqlite", os.Getpid(), counter.Add(1)))
 		file, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
@@ -128,6 +131,10 @@ func Open(t testing.TB, driver, dsn string) *sql.DB {
 	if driver == "sqlite" {
 		// the path of sqlite:///path. The driver "sqlite" is registered by a test that imports the SQLite driver package.
 		sqlDriver, native = "sqlite", strings.TrimPrefix(strings.SplitN(dsn, "?", 2)[0], "sqlite://")
+	}
+	if driver == "markdown" {
+		// The driver "markdown" is registered by orm, which a test of a corpus imports.
+		sqlDriver = "markdown"
 	}
 	raw, err := sql.Open(sqlDriver, native)
 	if err != nil {

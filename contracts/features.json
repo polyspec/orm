@@ -8113,12 +8113,6 @@
         "packages/rust/tests/tests/markdown_conformance.rs",
         "packages/ts/tests/markdown_conformance.mjs",
         "packages/ts/tests/markdown_cases.mjs",
-        "packages/ts/tests/ir_answers.mjs",
-        "packages/go/markdownmodel/ir_answers_test.go",
-        "packages/php/tests/IrAnswersTest.php",
-        "packages/python/tests/ir_answers.py",
-        "packages/rust/tests/tests/ir_answers.rs",
-        "tests/ir/answers.json",
         "packages/go/internal/conformance/main.go",
         "packages/go/internal/conformance/main_test.go",
         "packages/php/testing/conformance/runner.php",
@@ -8131,7 +8125,6 @@
         "packages/python/tests/conformance_result.py",
         "packages/php-ext/tests/MarkdownConformanceNativeTest.php",
         "packages/rust/orm/src/value.rs",
-        "packages/php-ext/tests/IrAnswersTestExtensionTest.php",
         "packages/ts/tests/conformance_verification-mysql.test.mjs",
         "packages/ts/tests/conformance_verification-postgres.test.mjs",
         "packages/ts/tests/conformance_verification-sqlite.test.mjs",
@@ -8157,60 +8150,6 @@
         "docs/spec/protocol.md"
       ],
       "verification": [
-        {
-          "id": "ir-answers-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/markdownmodel -run '^TestRecipeIRAnswersNone$' -count=1",
-          "shard": "other",
-          "inputs": [
-            "packages/go/markdownmodel/ir_answers_test.go",
-            "packages/go/internal/recipe/recipe.go",
-            "tests/ir/answers.json"
-          ]
-        },
-        {
-          "id": "ir-answers-php",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/IrAnswersTest.php",
-          "shard": "other",
-          "inputs": [
-            "packages/php/tests/IrAnswersTest.php",
-            "packages/php/tests/Recipe.php",
-            "packages/php/src/Markdown.php",
-            "tests/ir/answers.json"
-          ]
-        },
-        {
-          "id": "ir-answers-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.ir_answers",
-          "shard": "other",
-          "inputs": [
-            "packages/python/tests/ir_answers.py",
-            "packages/python/tests/recipe.py",
-            "packages/python/tests/chain_answer.py",
-            "packages/python/src/polyspec/orm/markdown.py",
-            "tests/ir/answers.json"
-          ]
-        },
-        {
-          "id": "ir-answers-typescript",
-          "command": "node --conditions=orm-test packages/ts/tests/ir_answers.mjs",
-          "shard": "other",
-          "inputs": [
-            "packages/ts/tests/recipe.mjs",
-            "packages/ts/tests/ir_answers.mjs",
-            "packages/ts/tests/markdown_cases.mjs",
-            "tests/ir/answers.json"
-          ]
-        },
-        {
-          "id": "ir-answers-rust",
-          "command": "node tests/cargo-test.mts ir-answers-check -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --test ir_answers",
-          "shard": "rust",
-          "inputs": [
-            "packages/rust/tests/tests/ir_answers.rs",
-            "packages/rust/tests/src/recipe.rs",
-            "tests/ir/answers.json"
-          ]
-        },
         {
           "id": "conformance-build",
           "command": "node tests/run-long.mts go-vet/conformance -- go vet -tags ormtest ./packages/go/internal/conformance",

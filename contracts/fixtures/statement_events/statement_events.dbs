@@ -5,4 +5,7 @@ table event_probe {
   label varchar(32)
   primary key (seq)
   unique uq_event_probe_label (label)
+  settings {
+    store document table
+  }
 }

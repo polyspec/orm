@@ -66,7 +66,7 @@ func planPhysical(s databaseStep, c *databaseContext) error {
 	if len(diagnostics) > 0 {
 		return fmt.Errorf("the manifest of the target: %v", diagnostics)
 	}
-	dialect := dbspec.Dialect(c.database)
+	dialect := dbspec.Dialect(c.dialect())
 	var source *dbspec.Document
 	var setup []string
 	sourceText := ""
@@ -95,8 +95,8 @@ func planPhysical(s databaseStep, c *databaseContext) error {
 	// One connection, so that the connection rules and the foreign key setting hold for every statement after them.
 	raw.SetMaxOpenConns(1)
 	run := planRun{c: c, raw: raw, dialect: dialect}
-	sqlite := c.database == "sqlite"
-	if err := run.exec(introspectConnectionRules[c.database]...); err != nil {
+	sqlite := c.dialect() == "sqlite"
+	if err := run.exec(introspectConnectionRules[c.dialect()]...); err != nil {
 		return err
 	}
 	if err := run.exec(setup...); err != nil {
@@ -191,7 +191,7 @@ func planPhysical(s databaseStep, c *databaseContext) error {
 	if err := run.schemaIs("finalized", target.SchemaText); err != nil {
 		return err
 	}
-	hidden, err := run.value(planHiddenLeft[c.database])
+	hidden, err := run.value(planHiddenLeft[c.dialect()])
 	if err != nil {
 		return err
 	}
@@ -234,7 +234,7 @@ func (r planRun) value(query string) (string, error) {
 // query compares its first value, as text, with want.
 func (r planRun) behavior(steps []ddlcases.Step) error {
 	for _, step := range steps {
-		if len(step.Dialects) > 0 && !slices.Contains(step.Dialects, r.c.database) {
+		if len(step.Dialects) > 0 && !slices.Contains(step.Dialects, r.c.dialect()) {
 			continue
 		}
 		if step.SQL != "" {
