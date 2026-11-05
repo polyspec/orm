@@ -3307,7 +3307,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/aes_keys.rs",
-          "id": "aes_keys::aes_read_row_without_version_cell_is_internal"
+          "id": "aes_keys::aes_read_row_without_version_cell_is_internal",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "aes_keys::aes_read_row_without_version_cell_is_internal"
+          ]
         }
       ]
     },
@@ -3385,7 +3397,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/aes_keys.rs",
-          "id": "aes_keys::aes_read_plan_without_version_column_is_internal"
+          "id": "aes_keys::aes_read_plan_without_version_column_is_internal",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "aes_keys::aes_read_plan_without_version_column_is_internal"
+          ]
         }
       ]
     },
@@ -3667,7 +3691,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/compiler_fixtures.rs",
-          "id": "compiler_fixtures::dbs174-plan-unknown-dialect-e0308"
+          "id": "compiler_fixtures::dbs174-plan-unknown-dialect-e0308",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "compiler_fixtures::dbs174-plan-unknown-dialect-e0308"
+          ]
         }
       ]
     },
@@ -3706,7 +3742,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/compiler_fixtures.rs",
-          "id": "compiler_fixtures::dbs174-render-unknown-dialect-e0308"
+          "id": "compiler_fixtures::dbs174-render-unknown-dialect-e0308",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "compiler_fixtures::dbs174-render-unknown-dialect-e0308"
+          ]
         }
       ]
     },
@@ -4147,7 +4195,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/mysql_tls.rs",
-          "id": "mysql_tls::tls_options_follow_sqlx_parameter_support"
+          "id": "mysql_tls::tls_options_follow_sqlx_parameter_support",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "mysql_tls::tls_options_follow_sqlx_parameter_support"
+          ]
         }
       ]
     },
@@ -4674,7 +4734,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/zone.rs",
-          "id": "zone::driver_parameters_reach_sqlx"
+          "id": "zone::driver_parameters_reach_sqlx",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "zone::driver_parameters_reach_sqlx"
+          ]
         }
       ]
     },
@@ -6172,7 +6244,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/compiler_fixtures.rs",
-          "id": "compiler_fixtures::int78-bound-param-write-e0594"
+          "id": "compiler_fixtures::int78-bound-param-write-e0594",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "compiler_fixtures::int78-bound-param-write-e0594"
+          ]
         }
       ]
     },
@@ -6211,7 +6295,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/zone.rs",
-          "id": "zone::dropping_a_transaction_frees_a_single_connection"
+          "id": "zone::dropping_a_transaction_frees_a_single_connection",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "zone::dropping_a_transaction_frees_a_single_connection"
+          ]
         },
         {
           "implementation": "rust",
@@ -6255,7 +6351,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/zone.rs",
-          "id": "zone::dropping_a_query_cancels_it"
+          "id": "zone::dropping_a_query_cancels_it",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "zone::dropping_a_query_cancels_it"
+          ]
         },
         {
           "implementation": "php",
@@ -6368,7 +6476,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/code_catalog.rs",
-          "id": "code_catalog::matches_errors_yaml"
+          "id": "code_catalog::matches_errors_yaml",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "code_catalog::matches_errors_yaml"
+          ]
         }
       ]
     },
@@ -6409,7 +6529,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/generate.rs",
-          "id": "generate::the_builder_takes_the_documents_only_from_the_set_file"
+          "id": "generate::the_builder_takes_the_documents_only_from_the_set_file",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "generate::the_builder_takes_the_documents_only_from_the_set_file"
+          ]
         }
       ]
     },
@@ -6443,7 +6575,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/zone.rs",
-          "id": "zone::pool_discards_ended_idle_connection"
+          "id": "zone::pool_discards_ended_idle_connection",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "zone::pool_discards_ended_idle_connection"
+          ]
         },
         {
           "implementation": "php",
@@ -6986,7 +7130,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/coverage_dsn.rs",
-          "id": "coverage_dsn::coverage_dsn_connection"
+          "id": "coverage_dsn::coverage_dsn_connection",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "coverage_dsn::coverage_dsn_connection"
+          ]
         }
       ],
       "owner": {
@@ -7049,7 +7205,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/package_entry.rs",
-          "id": "package_entry::public_package_entry"
+          "id": "package_entry::public_package_entry",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "package_entry::public_package_entry"
+          ]
         }
       ]
     },
@@ -7433,7 +7601,18 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/decimal_model.rs",
-          "symbol": "decimal_model_fixture"
+          "symbol": "decimal_model::decimal_model_fixture",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "decimal_model::decimal_model_fixture::"
+          ]
         }
       ]
     },
@@ -7480,7 +7659,18 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/identity_load.rs",
-          "symbol": "identity_load"
+          "symbol": "identity_load",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "identity_load::"
+          ]
         }
       ]
     },
@@ -7856,7 +8046,18 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/styled_column_states.rs",
-          "symbol": "styled_column_state_fixture"
+          "symbol": "styled_column_states::styled_column_state_fixture",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "styled_column_states::styled_column_state_fixture::"
+          ]
         }
       ]
     },
@@ -11387,7 +11588,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/schema/tests/cases/dbspec_set_working_directory.rs",
-          "id": "dbspec_set_working_directory::a_set_path_without_a_directory_reads_from_the_working_directory"
+          "id": "dbspec_set_working_directory::a_set_path_without_a_directory_reads_from_the_working_directory",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "dbspec_set_working_directory::a_set_path_without_a_directory_reads_from_the_working_directory"
+          ]
         }
       ]
     },
@@ -12063,7 +12276,18 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/sqlite_file_name.rs",
-          "symbol": "sqlite_path_cases"
+          "symbol": "sqlite_file_name::sqlite_path_cases",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "sqlite_file_name::sqlite_path_cases::"
+          ]
         }
       ]
     },
@@ -12175,7 +12399,18 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/statement_fault.rs",
-          "symbol": "statement_fault_cases"
+          "symbol": "statement_fault::statement_fault_cases",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "statement_fault::statement_fault_cases::"
+          ]
         }
       ]
     },
@@ -12722,17 +12957,53 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/generate.rs",
-          "id": "generate::generated_field_types_follow_the_runtime_model"
+          "id": "generate::generated_field_types_follow_the_runtime_model",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "generate::generated_field_types_follow_the_runtime_model"
+          ]
         },
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/generate.rs",
-          "id": "generate::generated_rows_reject_unselected_fields_and_separate_group_results"
+          "id": "generate::generated_rows_reject_unselected_fields_and_separate_group_results",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "generate::generated_rows_reject_unselected_fields_and_separate_group_results"
+          ]
         },
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/generate.rs",
-          "id": "generate::nullable_json_fields_keep_sql_null_separate_from_json_null"
+          "id": "generate::nullable_json_fields_keep_sql_null_separate_from_json_null",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "generate::nullable_json_fields_keep_sql_null_separate_from_json_null"
+          ]
         },
         {
           "implementation": "typescript",
@@ -13274,7 +13545,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/zone.rs",
-          "id": "zone::statement_timeout_negative_is_unrepresentable"
+          "id": "zone::statement_timeout_negative_is_unrepresentable",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "zone::statement_timeout_negative_is_unrepresentable"
+          ]
         }
       ]
     },
@@ -13700,7 +13983,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/zone.rs",
-          "id": "zone::pool_idle_size_and_lifetime"
+          "id": "zone::pool_idle_size_and_lifetime",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "zone::pool_idle_size_and_lifetime"
+          ]
         },
         {
           "implementation": "php",
@@ -13908,17 +14203,53 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/compiler_fixtures.rs",
-          "id": "compiler_fixtures::dsl124-db-begin-e0599"
+          "id": "compiler_fixtures::dsl124-db-begin-e0599",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "compiler_fixtures::dsl124-db-begin-e0599"
+          ]
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/compiler_fixtures.rs",
-          "id": "compiler_fixtures::dsl124-db-commit-e0599"
+          "id": "compiler_fixtures::dsl124-db-commit-e0599",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "compiler_fixtures::dsl124-db-commit-e0599"
+          ]
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/compiler_fixtures.rs",
-          "id": "compiler_fixtures::dsl124-db-rollback-e0599"
+          "id": "compiler_fixtures::dsl124-db-rollback-e0599",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "compiler_fixtures::dsl124-db-rollback-e0599"
+          ]
         }
       ]
     },
@@ -13957,7 +14288,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/transaction_flow.rs",
-          "id": "transaction_flow::spawned_task_has_no_transaction"
+          "id": "transaction_flow::spawned_task_has_no_transaction",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "transaction_flow::spawned_task_has_no_transaction"
+          ]
         }
       ]
     },
@@ -13997,7 +14340,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/transaction_flow.rs",
-          "id": "transaction_flow::overlapping_statements_on_the_transaction_connection_return_config"
+          "id": "transaction_flow::overlapping_statements_on_the_transaction_connection_return_config",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "transaction_flow::overlapping_statements_on_the_transaction_connection_return_config"
+          ]
         }
       ]
     },
@@ -14051,12 +14406,36 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/transaction_flow.rs",
-          "id": "transaction_flow::spawned_task_has_no_transaction"
+          "id": "transaction_flow::spawned_task_has_no_transaction",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "transaction_flow::spawned_task_has_no_transaction"
+          ]
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/transaction_flow.rs",
-          "id": "transaction_flow::overlapping_statements_on_the_transaction_connection_return_config"
+          "id": "transaction_flow::overlapping_statements_on_the_transaction_connection_return_config",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "transaction_flow::overlapping_statements_on_the_transaction_connection_return_config"
+          ]
         }
       ]
     },
@@ -14099,7 +14478,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/compiler_fixtures.rs",
-          "id": "compiler_fixtures::dsl49-nonnull-null-e0277"
+          "id": "compiler_fixtures::dsl49-nonnull-null-e0277",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "compiler_fixtures::dsl49-nonnull-null-e0277"
+          ]
         }
       ],
       "owner": {
@@ -14605,7 +14996,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/generate.rs",
-          "id": "generate::a_table_named_like_the_runtime_crate_gets_a_model_module_of_its_own"
+          "id": "generate::a_table_named_like_the_runtime_crate_gets_a_model_module_of_its_own",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "generate::a_table_named_like_the_runtime_crate_gets_a_model_module_of_its_own"
+          ]
         }
       ],
       "owner": {
@@ -14624,7 +15027,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/generate.rs",
-          "id": "generate::bound_setter_results_preserve_model_calls_after_extraction"
+          "id": "generate::bound_setter_results_preserve_model_calls_after_extraction",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "generate::bound_setter_results_preserve_model_calls_after_extraction"
+          ]
         }
       ],
       "owner": {
@@ -14643,7 +15058,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/generate.rs",
-          "id": "generate::column_function_order_takes_the_function"
+          "id": "generate::column_function_order_takes_the_function",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "generate::column_function_order_takes_the_function"
+          ]
         }
       ],
       "owner": {
@@ -14663,7 +15090,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/generate.rs",
-          "id": "generate::generates_called_methods"
+          "id": "generate::generates_called_methods",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "generate::generates_called_methods"
+          ]
         }
       ],
       "owner": {
@@ -14682,7 +15121,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/generate.rs",
-          "id": "generate::ignores_calls_of_other_types"
+          "id": "generate::ignores_calls_of_other_types",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "generate::ignores_calls_of_other_types"
+          ]
         }
       ],
       "owner": {
@@ -14701,7 +15152,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/generate.rs",
-          "id": "generate::infallible_setter_does_not_accept_result_methods"
+          "id": "generate::infallible_setter_does_not_accept_result_methods",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "generate::infallible_setter_does_not_accept_result_methods"
+          ]
         }
       ],
       "owner": {
@@ -14742,7 +15205,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/generate.rs",
-          "id": "generate::manifest_text_is_embedded_with_its_hash"
+          "id": "generate::manifest_text_is_embedded_with_its_hash",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "generate::manifest_text_is_embedded_with_its_hash"
+          ]
         },
         {
           "implementation": "typescript",
@@ -14776,7 +15251,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/generate.rs",
-          "id": "generate::relation_getters_report_a_mismatched_relation_value"
+          "id": "generate::relation_getters_report_a_mismatched_relation_value",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "generate::relation_getters_report_a_mismatched_relation_value"
+          ]
         }
       ],
       "owner": {
@@ -14795,7 +15282,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/generate.rs",
-          "id": "generate::styled_setter_result_handling_preserves_model_calls"
+          "id": "generate::styled_setter_result_handling_preserves_model_calls",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "generate::styled_setter_result_handling_preserves_model_calls"
+          ]
         }
       ],
       "owner": {
@@ -14814,7 +15313,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/generate.rs",
-          "id": "generate::styled_setter_result_transformations_are_not_column_calls"
+          "id": "generate::styled_setter_result_transformations_are_not_column_calls",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "generate::styled_setter_result_transformations_are_not_column_calls"
+          ]
         }
       ],
       "owner": {
@@ -14833,7 +15344,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/generate.rs",
-          "id": "generate::unknown_model_after_result_error_mapping_still_fails"
+          "id": "generate::unknown_model_after_result_error_mapping_still_fails",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "generate::unknown_model_after_result_error_mapping_still_fails"
+          ]
         }
       ],
       "owner": {
@@ -14852,7 +15375,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/generate.rs",
-          "id": "generate::unknown_model_call_after_setter_result_handling_still_fails"
+          "id": "generate::unknown_model_call_after_setter_result_handling_still_fails",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "generate::unknown_model_call_after_setter_result_handling_still_fails"
+          ]
         }
       ],
       "owner": {
@@ -15048,7 +15583,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/row_commit_permit.rs",
-          "id": "row_commit_permit::rejected_commit_permits_rollback_all_native_mutations"
+          "id": "row_commit_permit::rejected_commit_permits_rollback_all_native_mutations",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "row_commit_permit::rejected_commit_permits_rollback_all_native_mutations"
+          ]
         }
       ],
       "owner": {
@@ -15122,7 +15669,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/row_insert_identity.rs",
-          "id": "row_insert_identity::insert_phases_and_joined_keys_follow_the_transaction"
+          "id": "row_insert_identity::insert_phases_and_joined_keys_follow_the_transaction",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "row_insert_identity::insert_phases_and_joined_keys_follow_the_transaction"
+          ]
         }
       ],
       "owner": {
@@ -15234,7 +15793,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/row_mutation.rs",
-          "id": "row_mutation::mutation_phases_follow_the_transaction"
+          "id": "row_mutation::mutation_phases_follow_the_transaction",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "row_mutation::mutation_phases_follow_the_transaction"
+          ]
         }
       ],
       "owner": {
@@ -15390,7 +15961,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/row_snapshot.rs",
-          "id": "row_snapshot::row_baseline_rejects_what_only_the_rust_forms_hold"
+          "id": "row_snapshot::row_baseline_rejects_what_only_the_rust_forms_hold",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "row_snapshot::row_baseline_rejects_what_only_the_rust_forms_hold"
+          ]
         }
       ],
       "owner": {
@@ -15669,7 +16252,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/tool_cells.rs",
-          "id": "tool_cells::physical_tool_cells_reject_loss_without_substituting_values"
+          "id": "tool_cells::physical_tool_cells_reject_loss_without_substituting_values",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "tool_cells::physical_tool_cells_reject_loss_without_substituting_values"
+          ]
         }
       ],
       "owner": {
@@ -15688,7 +16283,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/tool_columns.rs",
-          "id": "tool_columns::physical_query_columns_preserve_empty_results_and_duplicate_aliases"
+          "id": "tool_columns::physical_query_columns_preserve_empty_results_and_duplicate_aliases",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "tool_columns::physical_query_columns_preserve_empty_results_and_duplicate_aliases"
+          ]
         }
       ],
       "owner": {
@@ -15707,7 +16314,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/tool_columns.rs",
-          "id": "tool_columns::physical_catalog_query_runs_a_stale_statement_again_on_postgres_alone"
+          "id": "tool_columns::physical_catalog_query_runs_a_stale_statement_again_on_postgres_alone",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "tool_columns::physical_catalog_query_runs_a_stale_statement_again_on_postgres_alone"
+          ]
         }
       ],
       "owner": {
@@ -15726,7 +16345,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/tool_statement.rs",
-          "id": "tool_statement::bounded_query_rejects_ambiguous_multiple_result_sets"
+          "id": "tool_statement::bounded_query_rejects_ambiguous_multiple_result_sets",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "tool_statement::bounded_query_rejects_ambiguous_multiple_result_sets"
+          ]
         }
       ],
       "owner": {
@@ -15745,7 +16376,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/tool_values.rs",
-          "id": "tool_values::physical_tool_accessors_preserve_errors_on_all_databases"
+          "id": "tool_values::physical_tool_accessors_preserve_errors_on_all_databases",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "tool_values::physical_tool_accessors_preserve_errors_on_all_databases"
+          ]
         }
       ],
       "owner": {
@@ -15764,7 +16407,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/tool_values.rs",
-          "id": "tool_values::tool_accessors_reject_invalid_values_without_defaults_or_contents"
+          "id": "tool_values::tool_accessors_reject_invalid_values_without_defaults_or_contents",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "tool_values::tool_accessors_reject_invalid_values_without_defaults_or_contents"
+          ]
         }
       ],
       "owner": {
@@ -15783,7 +16438,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/typed_binds.rs",
-          "id": "typed_binds::native_typed_binds_preserve_values_and_typed_nulls"
+          "id": "typed_binds::native_typed_binds_preserve_values_and_typed_nulls",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "typed_binds::native_typed_binds_preserve_values_and_typed_nulls"
+          ]
         }
       ],
       "owner": {
@@ -15803,7 +16470,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/typed_binds.rs",
-          "id": "typed_binds::native_typed_writes_roundtrip_reject_and_rollback"
+          "id": "typed_binds::native_typed_writes_roundtrip_reject_and_rollback",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "typed_binds::native_typed_writes_roundtrip_reject_and_rollback"
+          ]
         }
       ],
       "owner": {
@@ -16184,7 +16863,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/model_output.rs",
-          "id": "model_output::array_output_of_an_unrepresentable_number_is_an_error"
+          "id": "model_output::array_output_of_an_unrepresentable_number_is_an_error",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "model_output::array_output_of_an_unrepresentable_number_is_an_error"
+          ]
         }
       ],
       "owner": {
@@ -16205,7 +16896,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/rollback.rs",
-          "id": "rollback::rollback_fault_entry"
+          "id": "rollback::rollback_fault_entry",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "rollback::rollback_fault_entry"
+          ]
         }
       ],
       "owner": {
@@ -16327,7 +17030,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/zone.rs",
-          "id": "zone::postgres_float_round_trip"
+          "id": "zone::postgres_float_round_trip",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "zone::postgres_float_round_trip"
+          ]
         }
       ],
       "owner": {
@@ -16775,7 +17490,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/row_mutation.rs",
-          "id": "row_mutation::mutation_phases_follow_the_transaction"
+          "id": "row_mutation::mutation_phases_follow_the_transaction",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "row_mutation::mutation_phases_follow_the_transaction"
+          ]
         }
       ]
     },
@@ -17372,7 +18099,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/generate.rs",
-          "id": "generate::a_time_setter_takes_the_text_form"
+          "id": "generate::a_time_setter_takes_the_text_form",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "generate::a_time_setter_takes_the_text_form"
+          ]
         }
       ]
     },
@@ -23861,7 +24600,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/generate.rs",
-          "id": "generate::generates_called_methods"
+          "id": "generate::generates_called_methods",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "generate::generates_called_methods"
+          ]
         },
         {
           "implementation": "typescript",
@@ -25451,17 +26202,53 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/rollback.rs",
-          "id": "rollback::transaction_forms_rollback_fault_sqlite"
+          "id": "rollback::transaction_forms_rollback_fault_sqlite",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "rollback::transaction_forms_rollback_fault_sqlite"
+          ]
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/rollback.rs",
-          "id": "rollback::transaction_forms_rollback_fault_mysql"
+          "id": "rollback::transaction_forms_rollback_fault_mysql",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "rollback::transaction_forms_rollback_fault_mysql"
+          ]
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/rollback.rs",
-          "id": "rollback::transaction_forms_rollback_fault_postgres"
+          "id": "rollback::transaction_forms_rollback_fault_postgres",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "rollback::transaction_forms_rollback_fault_postgres"
+          ]
         }
       ],
       "owner": {
@@ -25825,7 +26612,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/sqlite_concurrency.rs",
-          "id": "sqlite_concurrency::writers_in_several_processes"
+          "id": "sqlite_concurrency::writers_in_several_processes",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "sqlite_concurrency::writers_in_several_processes"
+          ]
         }
       ]
     },
@@ -28007,7 +28806,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/generate.rs",
-          "id": "generate::generated_field_types_follow_the_runtime_model"
+          "id": "generate::generated_field_types_follow_the_runtime_model",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "generate::generated_field_types_follow_the_runtime_model"
+          ]
         },
         {
           "implementation": "rust",
@@ -28060,7 +28871,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/generate.rs",
-          "id": "generate::generated_field_types_follow_the_runtime_model"
+          "id": "generate::generated_field_types_follow_the_runtime_model",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "generate::generated_field_types_follow_the_runtime_model"
+          ]
         }
       ]
     },
@@ -28115,7 +28938,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/generate.rs",
-          "id": "generate::generated_field_types_follow_the_runtime_model"
+          "id": "generate::generated_field_types_follow_the_runtime_model",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "generate::generated_field_types_follow_the_runtime_model"
+          ]
         }
       ]
     },
@@ -28439,7 +29274,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/compiler_fixtures.rs",
-          "id": "compiler_fixtures::dsl50-ordering-list-e0277"
+          "id": "compiler_fixtures::dsl50-ordering-list-e0277",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "compiler_fixtures::dsl50-ordering-list-e0277"
+          ]
         }
       ],
       "owner": {
@@ -29465,7 +30312,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/was_inserted.rs",
-          "id": "was_inserted::was_inserted_postgres"
+          "id": "was_inserted::was_inserted_postgres",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "was_inserted::was_inserted_postgres"
+          ]
         }
       ]
     },
@@ -30124,7 +30983,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/value_types.rs",
-          "id": "value_types::runtime_value_types"
+          "id": "value_types::runtime_value_types",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "value_types::runtime_value_types"
+          ]
         },
         {
           "implementation": "go",
@@ -30183,7 +31054,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/value_types.rs",
-          "id": "value_types::runtime_value_types"
+          "id": "value_types::runtime_value_types",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "value_types::runtime_value_types"
+          ]
         },
         {
           "implementation": "php",
@@ -30271,7 +31154,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/generate.rs",
-          "id": "generate::generates_called_methods"
+          "id": "generate::generates_called_methods",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "generate::generates_called_methods"
+          ]
         },
         {
           "implementation": "typescript",
@@ -42028,7 +42923,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/audit.rs",
-          "id": "audit::audit_transaction_entry_points"
+          "id": "audit::audit_transaction_entry_points",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "audit::audit_transaction_entry_points"
+          ]
         }
       ],
       "owner": {
@@ -42083,52 +42990,172 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/compiler_fixtures.rs",
-          "id": "compiler_fixtures::refusal-chains-typed-positive"
+          "id": "compiler_fixtures::refusal-chains-typed-positive",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "compiler_fixtures::refusal-chains-typed-positive"
+          ]
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/compiler_fixtures.rs",
-          "id": "compiler_fixtures::refusal-missing-connector-e0308"
+          "id": "compiler_fixtures::refusal-missing-connector-e0308",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "compiler_fixtures::refusal-missing-connector-e0308"
+          ]
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/compiler_fixtures.rs",
-          "id": "compiler_fixtures::refusal-dangling-connector-e0308"
+          "id": "compiler_fixtures::refusal-dangling-connector-e0308",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "compiler_fixtures::refusal-dangling-connector-e0308"
+          ]
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/compiler_fixtures.rs",
-          "id": "compiler_fixtures::refusal-empty-list-e0308"
+          "id": "compiler_fixtures::refusal-empty-list-e0308",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "compiler_fixtures::refusal-empty-list-e0308"
+          ]
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/compiler_fixtures.rs",
-          "id": "compiler_fixtures::refusal-no-connection-e0308"
+          "id": "compiler_fixtures::refusal-no-connection-e0308",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "compiler_fixtures::refusal-no-connection-e0308"
+          ]
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/compiler_fixtures.rs",
-          "id": "compiler_fixtures::refusal-lock-outside-transaction-e0308"
+          "id": "compiler_fixtures::refusal-lock-outside-transaction-e0308",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "compiler_fixtures::refusal-lock-outside-transaction-e0308"
+          ]
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/compiler_fixtures.rs",
-          "id": "compiler_fixtures::refusal-join-child-with-connection-e0308"
+          "id": "compiler_fixtures::refusal-join-child-with-connection-e0308",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "compiler_fixtures::refusal-join-child-with-connection-e0308"
+          ]
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/compiler_fixtures.rs",
-          "id": "compiler_fixtures::refusal-page-with-limit-e0308"
+          "id": "compiler_fixtures::refusal-page-with-limit-e0308",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "compiler_fixtures::refusal-page-with-limit-e0308"
+          ]
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/compiler_fixtures.rs",
-          "id": "compiler_fixtures::refusal-relation-with-limit-e0308"
+          "id": "compiler_fixtures::refusal-relation-with-limit-e0308",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "compiler_fixtures::refusal-relation-with-limit-e0308"
+          ]
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/compiler_fixtures.rs",
-          "id": "compiler_fixtures::refusal-unjoined-model-placement-e0308"
+          "id": "compiler_fixtures::refusal-unjoined-model-placement-e0308",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "compiler_fixtures::refusal-unjoined-model-placement-e0308"
+          ]
         },
         {
           "implementation": "php",
@@ -42515,7 +43542,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/generate.rs",
-          "id": "generate::rejects_unknown_names_of_a_known_model"
+          "id": "generate::rejects_unknown_names_of_a_known_model",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "generate::rejects_unknown_names_of_a_known_model"
+          ]
         }
       ],
       "owner": {
@@ -42558,7 +43597,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/generate.rs",
-          "id": "generate::generated_code_carries_no_allow_attribute"
+          "id": "generate::generated_code_carries_no_allow_attribute",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "generate::generated_code_carries_no_allow_attribute"
+          ]
         }
       ],
       "owner": {
@@ -43300,7 +44351,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/cases/collection_identity.rs",
-          "id": "collection_identity::composite_components_preserve_typed_identity_and_shared_encoding"
+          "id": "collection_identity::composite_components_preserve_typed_identity_and_shared_encoding",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "collection_identity::composite_components_preserve_typed_identity_and_shared_encoding"
+          ]
         }
       ]
     },
@@ -43333,7 +44396,19 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/cases/tool_limits.rs",
-          "id": "tool_limits::physical_tool_queries_reject_budgets_without_partial_success"
+          "id": "tool_limits::physical_tool_queries_reject_budgets_without_partial_success",
+          "command": [
+            "cargo",
+            "test",
+            "--manifest-path",
+            "tests/Cargo.toml",
+            "--test",
+            "all",
+            "--",
+            "--test-threads=1",
+            "--exact",
+            "tool_limits::physical_tool_queries_reject_budgets_without_partial_success"
+          ]
         }
       ],
       "owner": {
