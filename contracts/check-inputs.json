@@ -2342,6 +2342,7 @@
     "dbspec-introspect-compare-check": {
       "scope": "owner",
       "needs": [
+        "mysql-privilege-server",
         "go",
         "rust",
         "php",
