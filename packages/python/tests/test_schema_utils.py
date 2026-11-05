@@ -10,10 +10,6 @@ from . import testcase
 ROOT = Path(__file__).resolve().parents[3]
 
 
-if __name__ == "__main__":
-    testcase.main()
-
-
 class SchemaRegisterTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -115,3 +111,7 @@ class SchemaRegisterTest(unittest.TestCase):
             self.db.engines[self.schema.manifest_hash],
             self.db.engines.get(self.schema.manifest_hash),
         )
+
+
+if __name__ == "__main__":
+    testcase.main()
