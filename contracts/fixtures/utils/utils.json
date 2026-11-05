@@ -1475,6 +1475,14 @@
           "pool_size": 1
         },
         {
+          "op": "sql.exec",
+          "only": [
+            "mysql"
+          ],
+          "reason": "MySQL refuses a PREPARE statement over the prepared protocol that Rust uses, and runs one inside a procedure on either protocol",
+          "sql": "CREATE PROCEDURE cfg22_prepare() BEGIN PREPARE cfg22_statement FROM 'SELECT 1'; END"
+        },
+        {
           "op": "utils.run",
           "connection": "first",
           "statements": [
@@ -1482,16 +1490,16 @@
               "kind": "utility",
               "tables": [],
               "sql": {
-                "mysql": "SELECT 'cfg22_statement'",
+                "mysql": "CALL cfg22_prepare()",
                 "postgres": "PREPARE cfg22_statement AS SELECT 1",
-                "sqlite": "SELECT 1"
+                "sqlite": "SELECT 0"
               }
             },
             {
               "kind": "utility",
               "tables": [],
               "sql": {
-                "mysql": "SELECT 1",
+                "mysql": "SELECT COUNT(*) FROM performance_schema.prepared_statements_instances WHERE STATEMENT_NAME = 'cfg22_statement' AND OWNER_THREAD_ID = PS_CURRENT_THREAD_ID()",
                 "postgres": "SELECT COUNT(*) FROM pg_prepared_statements WHERE name = 'cfg22_statement'",
                 "sqlite": "SELECT 0"
               }
@@ -1534,7 +1542,7 @@
               "kind": "utility",
               "tables": [],
               "sql": {
-                "mysql": "SELECT COUNT(*) FROM performance_schema.prepared_statements_instances WHERE OWNER_THREAD_ID = PS_CURRENT_THREAD_ID() AND SQL_TEXT LIKE CONCAT('%cfg22_', 'statement%')",
+                "mysql": "SELECT COUNT(*) FROM performance_schema.prepared_statements_instances WHERE STATEMENT_NAME = 'cfg22_statement' AND OWNER_THREAD_ID = PS_CURRENT_THREAD_ID()",
                 "postgres": "SELECT COUNT(*) FROM pg_prepared_statements WHERE name = 'cfg22_statement'",
                 "sqlite": "SELECT 0"
               }
