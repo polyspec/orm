@@ -32,6 +32,8 @@ final class RuntimeModel
     /**
      * The format of the entities that build makes. Generated code holds them with this number, and data of another
      * number is not used. A change of what build makes raises it (OrmGenParsedModelTest holds the fingerprint).
+     *
+     * @internal
      */
     public const FORMAT = 1;
 
@@ -292,6 +294,7 @@ final class RuntimeModel
      * Compares the meta() of one generated class with its entity in $manifest and returns it without manifest_hash, the
      * rule and the failure of fromModels.
      *
+     * @internal
      * @param class-string<Model> $class
      * @param array<string, array> $manifest entity => its fields
      */

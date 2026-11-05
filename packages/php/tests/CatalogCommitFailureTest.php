@@ -80,6 +80,11 @@ final class CatalogCommitFailureTest extends TestCase
                 parent::__construct('sqlite::memory:');
             }
 
+            public function inTransaction(): bool
+            {
+                return true;
+            }
+
             public function exec(string $statement): int|false
             {
                 if ($statement === 'ROLLBACK') {

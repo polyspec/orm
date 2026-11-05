@@ -8091,9 +8091,9 @@
         }
       ],
       "parity": [
-        "conformance-mysql",
-        "conformance-postgres",
-        "conformance-sqlite",
+        "conformance_verification-mysql",
+        "conformance_verification-postgres",
+        "conformance_verification-sqlite",
         "coverage-conformance-verification-conformance-vector",
         "markdown-conformance",
         "conformance-errors-refusal"

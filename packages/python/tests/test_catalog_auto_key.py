@@ -324,7 +324,7 @@ class CatalogAutoKeyTest(unittest.TestCase):
         self.assertEqual(raised.exception.code, "ROW_WRITE_MISMATCH")
         self.assertEqual(
             str(raised.exception),
-            "ROW_WRITE_MISMATCH: stored inserted values differ",
+            'ROW_WRITE_MISMATCH: stored inserted values of "n" differ',
         )
 
     # Native (FCV-2): only a fake driver observes the statements of the catalog on MySQL, whose table with a trigger is

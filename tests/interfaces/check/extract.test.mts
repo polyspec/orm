@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { createServer, type Server, type Socket } from 'node:net';
+import { createServer, type Server } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { isolatedEnvironment } from '../../environment.mts';
@@ -30,20 +30,24 @@ ${HOLD}
   return path;
 }
 
-type Holders = { server: Server; port: number; both: Promise<Socket[]>; pids: Set<number> };
+// The end of a connection is recorded from its accept, so an end that comes before a test asks for it is not lost.
+type Holder = { pid: number; gone: Promise<unknown> };
+type Holders = { server: Server; port: number; both: Promise<Holder[]>; pids: Set<number> };
 
 /** Listens for the two connections of a hung extractor and its child. */
 async function listen(): Promise<Holders> {
   const pids = new Set<number>();
-  const sockets: Socket[] = [];
-  let announce: (sockets: Socket[]) => void = () => {};
-  const both = new Promise<Socket[]>(done => { announce = done; });
+  const held: Holder[] = [];
+  let announce: (held: Holder[]) => void = () => {};
+  const both = new Promise<Holder[]>(done => { announce = done; });
   const server = createServer(socket => {
     socket.on('error', () => {});
+    const gone = new Promise(done => { socket.once('close', done); });
     socket.once('data', chunk => {
-      pids.add(Number(String(chunk).trim()));
-      sockets.push(socket);
-      if (sockets.length === 2) announce(sockets);
+      const pid = Number(String(chunk).trim());
+      pids.add(pid);
+      held.push({ pid, gone });
+      if (held.length === 2) announce(held);
     });
   });
   await new Promise<void>(done => { server.listen(0, '127.0.0.1', done); });
@@ -52,11 +56,25 @@ async function listen(): Promise<Holders> {
   return { server, port: address.port, both, pids };
 }
 
-/** Resolves when every socket has closed, and rejects when the signal of the case aborts first. */
-function closed(sockets: Socket[], signal: AbortSignal): Promise<unknown> {
-  const ended = Promise.all(sockets.map(socket => new Promise(done => { socket.once('close', done); })));
+/** Whether the process runs: signal 0 tests for it and sends nothing. */
+function running(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    if (errorCode(error) !== 'ESRCH') throw error;
+    return false;
+  }
+}
+
+/** Resolves when every connection has closed, and rejects when the signal of the case aborts first, naming the processes that still run. */
+function closed(held: Holder[], signal: AbortSignal): Promise<unknown> {
+  const ended = Promise.all(held.map(holder => holder.gone));
   const deadline = new Promise((_, fail) => {
-    signal.addEventListener('abort', () => { fail(new Error('a process that the checker started is still running at the deadline')); }, { once: true });
+    signal.addEventListener('abort', () => {
+      const left = held.filter(holder => running(holder.pid)).map(holder => holder.pid);
+      fail(new Error(`a process that the checker started is still running at the deadline: ${left.length === 0 ? 'none runs, so a connection did not report its end' : left.join(', ')}`));
+    }, { once: true });
   });
   return Promise.race([ended, deadline]);
 }
@@ -92,9 +110,9 @@ for (const signalName of ['SIGKILL', 'SIGTERM'] as const) {
         env: isolatedEnvironment({ ORM_PYTHON: hungExtractor(directory), ORM_HANG_PORT: String(holders.port) }),
       });
       try {
-        const sockets = await holders.both;
+        const held = await holders.both;
         checker.kill(signalName);
-        await closed(sockets, signal);
+        await closed(held, signal);
       } finally {
         checker.kill('SIGKILL');
       }

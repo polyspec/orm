@@ -1758,6 +1758,8 @@ parity-prepare-php-extension: lease-tool
 	mkdir -p $(PARITY_RUN_DIR)
 	$(call php_ext_build,$(PARITY_RUN_DIR)/polyspec_orm.so,release)
 	$(call php_ext_build,$(PARITY_NATIVE_TEST_EXTENSION),native-test)
+	mkdir -p $(PARITY_RUN_DIR)/php-scan
+	printf 'extension=%s\n' '$(PARITY_RUN_DIR)/polyspec_orm.so' > $(PARITY_RUN_DIR)/php-scan/polyspec_orm.ini
 parity-prepare-rust: lease-tool
 	test -n "$(STEP_RUN_DIR)" || { echo "parity-prepare-rust: STEP_RUN_DIR is unset; run the Rust parity bindings check through make check-run, whose step owns the directory"; exit 1; }
 	mkdir -p $(PARITY_RUN_DIR)
@@ -1813,6 +1815,9 @@ parity-bindings-rust-check: parity-prepare-rust
 $(PARITY_GATE_TARGETS): export FLOWMARK := $(FLOWMARK)
 $(PARITY_GATE_TARGETS): export ORM_PARITY_PHP_EXTENSION = $(PARITY_RUN_DIR)/polyspec_orm.so
 $(PARITY_GATE_TARGETS): export ORM_PARITY_PHP_EXTENSION_NATIVE_TEST = $(PARITY_NATIVE_TEST_EXTENSION)
+# ORM_PARITY_PHP_SCAN holds the ini file that loads the extension. PHPUnit starts a child of a test in a separate process
+# without the -d of its parent, and a child inherits PHP_INI_SCAN_DIR, so a binding of such a test names this directory.
+$(PARITY_GATE_TARGETS): export ORM_PARITY_PHP_SCAN = $(PARITY_RUN_DIR)/php-scan
 $(PARITY_GATE_TARGETS): export POLYSPEC_ORM_EXTENSION = $(PARITY_RUN_DIR)/polyspec_orm.so
 # ORM_PHP_DYNAMIC_MODULES names the modules the extension loads dynamically, as test-php-ext exports it (T296), for the
 # DeclarationsTest of the php-extension bindings.
@@ -2853,7 +2858,9 @@ parity-declarations-check: typescript-read
 # The parity gates of kit read the error file of every implementation of config/parity.json (errors.file): codes.ts, Code.php and
 # codes.py among them. lint-php analyses packages/php/src, and test-php-ext compares the extension with that library and runs its tests.
 parity-declarations-check parity-check parity-api-check $(KIT_PARITY_BINDING_TARGETS): orm-codes
-lint-php test-php-ext: orm-codes-php
+lint-php: orm-codes-php
+# The interface_symbols case of test-php-ext runs interfaces/api-units, which reads the error file of every implementation.
+test-php-ext: orm-codes
 # The staged commit gate has no ignored generated models; recreate them before linting Go modules.
 lint-go: go-models
 # orm-install-php installs the one Composer project of the repository, the development root (vendor-php): it installs packages/php
