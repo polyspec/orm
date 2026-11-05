@@ -1893,6 +1893,7 @@
     "client-pooler-check": {
       "scope": "suite",
       "needs": [
+        "flowmark",
         "go",
         "rust",
         "php",
