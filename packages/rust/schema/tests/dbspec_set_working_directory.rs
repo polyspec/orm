@@ -15,7 +15,6 @@ impl Drop for Tree {
     }
 }
 
-#[test]
 fn a_set_path_without_a_directory_reads_from_the_working_directory() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let tree = Tree(std::env::temp_dir().join(format!("orm-set-working-directory-{}", std::process::id())));
@@ -29,4 +28,8 @@ fn a_set_path_without_a_directory_reads_from_the_working_directory() {
     let set = result.expect("the set reads");
     assert_eq!(set.documents.iter().map(|f| (f.path.clone(), f.bytes.clone())).collect::<Vec<_>>(), [(PathBuf::from("shop.dbs"), b"dbspec 1 shop\n".to_vec())]);
     assert!(set.external.is_empty());
+}
+
+pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
+    polyspec_orm_testcase::native_trials!("dbspec_set_working_directory": a_set_path_without_a_directory_reads_from_the_working_directory)
 }

@@ -1,10 +1,9 @@
-#[path = "common/physical_fixture.rs"]
-mod physical_fixture;
+use crate::physical_fixture;
 
 use polyspec_orm_build::tool_db;
 
 // Requirements: SCH-3.
-#[tokio::test]
+#[tokio::main(flavor = "current_thread")]
 async fn physical_tool_cells_reject_loss_without_substituting_values() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), physical_tool_cells()).await.expect("physical tool cell test deadline");
@@ -40,4 +39,8 @@ async fn physical_tool_cells() {
     }
     std::fs::remove_file(path).expect("remove owned SQLite test fixture");
     assert!(failures.is_empty(), "lossy cases accepted: {failures:?}");
+}
+
+pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
+    polyspec_orm_testcase::native_trials!("tool_cells": physical_tool_cells_reject_loss_without_substituting_values)
 }

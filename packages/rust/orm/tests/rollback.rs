@@ -9,12 +9,10 @@ use model_connect::connected;
 use polyspec_orm_test_support::model_connect;
 use polyspec_orm_test_support::model_row;
 
-#[path = "common/or_panic.rs"]
-mod or_panic;
+use crate::or_panic;
 use or_panic::OrPanic;
 
-#[path = "common/case_database_run.rs"]
-mod case_database_run;
+use crate::case_database_run;
 use case_database_run::run_case;
 
 use std::time::Duration;
@@ -123,21 +121,21 @@ async fn bounded(driver: &str, case: &str) {
     run_case(database, driver, case, CASE_DEADLINE, run).await;
 }
 
-#[tokio::test]
+#[tokio::main(flavor = "current_thread")]
 // Requirements: INT-72a.
 async fn transaction_forms_rollback_fault_sqlite() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("sqlite", "transaction_forms_rollback_fault").await;
 }
 
-#[tokio::test]
+#[tokio::main(flavor = "current_thread")]
 // Requirements: INT-72a.
 async fn transaction_forms_rollback_fault_mysql() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("mysql", "transaction_forms_rollback_fault").await;
 }
 
-#[tokio::test]
+#[tokio::main(flavor = "current_thread")]
 // Requirements: INT-72a.
 async fn transaction_forms_rollback_fault_postgres() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -147,12 +145,15 @@ async fn transaction_forms_rollback_fault_postgres() {
 /// The test entry point exists only when feature `test-faults` is enabled, and no
 /// default feature enables it.
 /// Requirements: PRT-44, PRT-54, PRT-59.
-#[test]
 fn rollback_fault_entry() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let manifest = std::fs::read_to_string(polyspec_orm_testcase::manifest_dir().join("Cargo.toml")).unwrap();
+    let manifest = std::fs::read_to_string(polyspec_orm_testcase::manifest_dir().join("../orm/Cargo.toml")).unwrap();
     let features = manifest.split("[features]").nth(1).expect("the crate declares its features").split("\n[").next().unwrap();
     assert!(features.contains("test-faults = []"), "the crate declares the feature test-faults: {features}");
     let default = features.lines().find(|line| line.trim_start().starts_with("default"));
     assert!(default.is_none_or(|line| !line.contains("test-faults")), "a default feature enables test-faults: {default:?}");
+}
+
+pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
+    polyspec_orm_testcase::native_trials!("rollback": transaction_forms_rollback_fault_sqlite, transaction_forms_rollback_fault_mysql, transaction_forms_rollback_fault_postgres, rollback_fault_entry)
 }

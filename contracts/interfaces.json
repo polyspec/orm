@@ -156,7 +156,7 @@
           "cases": [
             {
               "test": "packages/rust/orm/tests/zone.rs",
-              "id": "dropping_a_query_cancels_it"
+              "id": "zone::dropping_a_query_cancels_it"
             }
           ]
         },

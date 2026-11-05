@@ -3,8 +3,7 @@
 //! and action, and `immutable` of `dbspec::runtime_model`. tests/dbspec/runtime-model.json holds what all
 //! runtimes share.
 
-#[path = "common/or_panic.rs"]
-mod or_panic;
+use crate::or_panic;
 use or_panic::OrPanic;
 
 use polyspec_orm_case_clock::CaseClock;
@@ -24,7 +23,6 @@ fn document(path: &str) -> Document {
     dbspec::parse(&source(path), &BTreeMap::new()).map(|parsed| parsed.document).or_panic(|errors| format!("{path}: {errors:?}"))
 }
 
-#[test]
 fn manifest_text_without_header_is_rejected() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(DEADLINE));
     let clock = CaseClock::start();
@@ -42,7 +40,6 @@ fn manifest_text_without_header_is_rejected() {
     polyspec_orm_testcase::step(format_args!("dbspec runtime manifest without header cpu={cpu:?} wall={wall:?}"));
 }
 
-#[test]
 fn runtime_model_of_bench() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(DEADLINE));
     let clock = CaseClock::start();
@@ -63,7 +60,6 @@ fn runtime_model_of_bench() {
     polyspec_orm_testcase::step(format_args!("dbspec runtime model of bench cpu={cpu:?} wall={wall:?}"));
 }
 
-#[test]
 fn runtime_model_names_entities_and_reads_settings() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(DEADLINE));
     let clock = CaseClock::start();
@@ -85,4 +81,8 @@ fn runtime_model_names_entities_and_reads_settings() {
         polyspec_orm_testcase::warning(format_args!("cpu {cpu:?} exceeds {DEADLINE:?} (wall {wall:?})"));
     }
     polyspec_orm_testcase::step(format_args!("dbspec runtime model settings cpu={cpu:?} wall={wall:?}"));
+}
+
+pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
+    polyspec_orm_testcase::native_trials!("dbspec_runtime": manifest_text_without_header_is_rejected, runtime_model_of_bench, runtime_model_names_entities_and_reads_settings)
 }

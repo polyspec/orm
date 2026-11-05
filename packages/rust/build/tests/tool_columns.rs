@@ -1,9 +1,8 @@
-#[path = "common/physical_fixture.rs"]
-mod physical_fixture;
+use crate::physical_fixture;
 
 use polyspec_orm_build::tool_db::{self, QueryLimits, Val};
 
-#[tokio::test]
+#[tokio::main(flavor = "current_thread")]
 // Requirements: INT-135.
 async fn physical_query_columns_preserve_empty_results_and_duplicate_aliases() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -32,7 +31,7 @@ async fn check() {
     std::fs::remove_file(path).unwrap();
 }
 
-#[tokio::test]
+#[tokio::main(flavor = "current_thread")]
 // Requirements: INT-125a.
 async fn physical_catalog_query_runs_a_stale_statement_again_on_postgres_alone() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -79,4 +78,8 @@ async fn stale_statement() {
     catalog.query("DROP TABLE catalog_stale_statement", &[], limits()).await.unwrap();
     catalog.close().await;
     physical_fixture::finish_physical_dialect(database, connection, "mysql", "passed").await;
+}
+
+pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
+    polyspec_orm_testcase::native_trials!("tool_columns": physical_query_columns_preserve_empty_results_and_duplicate_aliases, physical_catalog_query_runs_a_stale_statement_again_on_postgres_alone)
 }

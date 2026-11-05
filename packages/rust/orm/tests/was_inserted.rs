@@ -2,8 +2,7 @@
 //! PostgreSQL. The model is the clock fixture (contracts/fixtures/clock.dbs). Each case runs in a case database of its own
 //! (polyspec-orm-case-database). The test fails when ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
 
-#[path = "common/clock_test_support.rs"]
-mod clock_test_support;
+use crate::clock_test_support;
 use clock_test_support::{connected, ClockEvent, OrPanic, CLOCK_SCHEMA};
 
 use std::time::Duration;
@@ -70,9 +69,13 @@ async fn bounded(driver: &str) {
     database.drop().await;
 }
 
-#[tokio::test]
+#[tokio::main(flavor = "current_thread")]
 // Requirements: INT-53.
 async fn was_inserted_postgres() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(CASE_DEADLINE, bounded("postgres")).await.expect("postgres: the case ends");
+}
+
+pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
+    polyspec_orm_testcase::native_trials!("was_inserted": was_inserted_postgres)
 }

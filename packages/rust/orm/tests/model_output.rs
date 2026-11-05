@@ -3,11 +3,9 @@
 
 use polyspec_orm::{Core, Model, Val};
 
-#[path = "common/secret_config.rs"]
-mod secret_config;
+use crate::secret_config;
 use secret_config::{Secret, SECRET};
 
-#[test]
 // The test of COD-27 (docs/spec).
 fn array_output_of_an_unrepresentable_number_is_an_error() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -23,4 +21,8 @@ fn array_output_of_an_unrepresentable_number_is_an_error() {
         Err(e) => assert_eq!(e.code(), "CODEC_ENCODE", "{e}"),
         Ok(v) => panic!("Val::to_json returned {v}"),
     }
+}
+
+pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
+    polyspec_orm_testcase::native_trials!("model_output": array_output_of_an_unrepresentable_number_is_an_error)
 }

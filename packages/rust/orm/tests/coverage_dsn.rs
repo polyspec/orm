@@ -2,7 +2,7 @@ use polyspec_orm::db::Pool;
 
 // The public connection call of the crate (INT-14) on a SQLite file, which needs no server: the dsn_connection recipe runs the call on
 // every database, and make feature-check runs it (contracts/fixtures/dsn_connection/dsn_connection.json).
-#[tokio::test]
+#[tokio::main(flavor = "current_thread")]
 // Requirements: CFG-1, INT-14.
 async fn coverage_dsn_connection() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -19,4 +19,8 @@ async fn coverage_dsn_connection() {
     }
     db.close().await;
     std::fs::remove_dir_all(&dir).unwrap();
+}
+
+pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
+    polyspec_orm_testcase::native_trials!("coverage_dsn": coverage_dsn_connection)
 }

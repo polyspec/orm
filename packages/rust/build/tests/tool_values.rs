@@ -1,10 +1,8 @@
-#[path = "common/physical_fixture.rs"]
-mod physical_fixture;
+use crate::physical_fixture;
 
 use polyspec_orm_build::tool_db::{self, Val};
 
 // Requirements: SCH-4.
-#[test]
 fn tool_accessors_reject_invalid_values_without_defaults_or_contents() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let clock = polyspec_orm_case_clock::CaseClock::start();
@@ -41,7 +39,7 @@ fn tool_accessors_reject_invalid_values_without_defaults_or_contents() {
 }
 
 // Requirements: SCH-4.
-#[tokio::test]
+#[tokio::main(flavor = "current_thread")]
 async fn physical_tool_accessors_preserve_errors_on_all_databases() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), physical_accessors()).await.expect("physical accessor test deadline");
@@ -69,4 +67,8 @@ async fn physical_accessors() {
         physical_fixture::finish_physical_dialect(database, connection, dialect, "passed").await;
     }
     std::fs::remove_file(path).expect("remove owned SQLite fixture");
+}
+
+pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
+    polyspec_orm_testcase::native_trials!("tool_values": tool_accessors_reject_invalid_values_without_defaults_or_contents, physical_tool_accessors_preserve_errors_on_all_databases)
 }

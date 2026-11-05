@@ -353,7 +353,8 @@ async function entryTest(item: Item, command: NativeCommand, root: string): Prom
     if (!new RegExp(`\\bfunc\\s+${symbol}\\s*\\(`).test(await readFile(testPath, 'utf8'))) throw new Error(`test symbol ${symbol} is absent from declared test file`);
     return { format: 'go', cwd: dirname(testPath), symbol, cases, database };
   }
-  return { format: 'cargo', cwd: await owningCrate(testPath, resolve(root, item.part)), testPath, cases, database };
+  const program = (await programModules(root)).has(testPath) ? resolve(root, RUST_TEST_PROGRAM_CRATE) : undefined;
+  return { format: 'cargo', cwd: program ?? await owningCrate(testPath, resolve(root, item.part)), testPath, cases, database };
 }
 
 // owningCrate is the directory of the Cargo manifest of a Rust test file, within the part of its owner.
@@ -512,6 +513,30 @@ function cargoMetadataOf(text: string): CargoMetadata {
   return { packages, ...(root === undefined ? {} : { workspace_root: jsonString(root, 'cargo metadata workspace_root') }) };
 }
 
+/** The crate of the one Rust test program, and its root file, which names by #[path] the tests that stay in their release package. */
+export const RUST_TEST_PROGRAM_CRATE = 'packages/rust/tests';
+const RUST_TEST_PROGRAM_ROOT = `${RUST_TEST_PROGRAM_CRATE}/tests/all/main.rs`;
+
+/** The modules that a root file of a test program names by #[path], by the file of each. */
+export function programPathModules(rootFile: string, text: string): Map<string, string> {
+  const modules = new Map<string, string>();
+  for (const match of text.matchAll(/#\[path = "([^"]+)"\]\s*mod (\w+);/g)) {
+    if (match[1] && match[2]) modules.set(resolve(dirname(rootFile), match[1]), match[2]);
+  }
+  return modules;
+}
+
+/** The modules of the one Rust test program, by file. */
+async function programModules(root: string): Promise<Map<string, string>> {
+  const file = resolve(root, RUST_TEST_PROGRAM_ROOT);
+  try {
+    return programPathModules(file, await readFile(file, 'utf8'));
+  } catch (error) {
+    if (errorCode(error) !== 'ENOENT') throw error;
+    return new Map();
+  }
+}
+
 /** The files included by an explicit Rust #[path] declaration in a library target. */
 export async function cargoPathModuleFiles(targets: CargoTarget[]): Promise<{ target: string; file: string }[]> {
   const modules: { target: string; file: string }[] = [];
@@ -641,9 +666,13 @@ async function buildCargo(plans: Plans, directory: string, builds: Builds, build
       const features = cargoFeaturesForPackage(project, selectedPackage, requestedFeatures);
       const dependencyRoot = dirname(workspaceManifestPath);
       const pathModules = await cargoPathModuleFiles(selectedPackage.targets);
+      const program = selectedPackage.targets.find(target => target.kind.includes('test') && resolve(target.src_path) === resolve(plans.root, RUST_TEST_PROGRAM_ROOT));
+      const included = program === undefined ? new Map<string, string>() : await programModules(plans.root);
+      if (program !== undefined) pathModules.push(...[...included.keys()].map(file => ({ target: program.name, file })));
       const targetArgs = cargoTargetArgs(selectedPackage.targets, crateSpecs.map(spec => spec.testPath), pathModules);
       for (const { testPath } of crateSpecs) {
-        const filter = cargoModuleFilter(selectedPackage.targets, testPath);
+        const name = included.get(testPath);
+        const filter = name === undefined ? cargoModuleFilter(selectedPackage.targets, testPath) : `${name}::`;
         if (filter !== undefined) filters.set(testPath, filter);
       }
       const copies = resolve(directory, `cargo-${builds.cargo.size}-${relative(plans.root, crate).replaceAll('/', '_') || 'root'}`);

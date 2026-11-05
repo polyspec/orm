@@ -16,7 +16,6 @@ fn assert_versionless_row_is_internal(asm: &polyspec_orm::plan::Assemble) {
 
 // Requirements: COD-56.
 // FCV-2: the case builds a read plan without its version column, an input that no recipe value can hold; it stays native.
-#[test]
 fn aes_read_plan_without_version_column_is_internal() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     assert_versionless_row_is_internal(&aes_read_assemble_without_version());
@@ -24,7 +23,6 @@ fn aes_read_plan_without_version_column_is_internal() {
 
 // Requirements: COD-48.
 // FCV-2: the case builds a selected row without its version cell, an input that no recipe value can hold; it stays native.
-#[test]
 fn aes_read_row_without_version_cell_is_internal() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     assert_versionless_row_is_internal(&aes_read_assemble());
@@ -66,4 +64,8 @@ fn decode_error_code(assembly: &polyspec_orm::plan::Assemble, row: Vec<Val>, key
         Ok(()) => String::new(),
         Err(error) => error.code().to_owned(),
     }
+}
+
+pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
+    polyspec_orm_testcase::native_trials!("aes_keys": aes_read_plan_without_version_column_is_internal, aes_read_row_without_version_cell_is_internal)
 }

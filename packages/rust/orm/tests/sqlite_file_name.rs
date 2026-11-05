@@ -1,10 +1,6 @@
 //! tests/dsn/sqlite-paths.json on the Rust client. A SQLite DSN with a query creates the file from the path
 //! alone: the case `sqlite_file_name_is_the_path` of contracts/fixtures/dsn_connection.
 
-#[macro_use]
-#[path = "common/json_trials.rs"]
-mod json_trials;
-
 use polyspec_orm_testcase::Trial;
 
 /// tests/dsn/sqlite-paths.json: a DSN path opens the percent-decoded file, and an invalid
@@ -15,7 +11,7 @@ fn sqlite_path_cases() -> Vec<Trial> {
     let vectors: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&path).expect("sqlite-paths.json")).expect("sqlite-paths.json");
     let cases = vectors["cases"].as_array().expect("cases");
     assert!(vectors["version"] == 1 && !cases.is_empty(), "tests/dsn/sqlite-paths.json has no cases");
-    json_trials!(cases, "sqlite_path_cases", std::time::Duration::from_secs(10), sqlite_path_case)
+    json_trials!(cases, "sqlite_file_name::sqlite_path_cases", std::time::Duration::from_secs(10), sqlite_path_case)
 }
 
 async fn sqlite_path_case(index: usize, case: &serde_json::Value) {
@@ -54,6 +50,6 @@ async fn sqlite_path_case(index: usize, case: &serde_json::Value) {
     }
 }
 
-fn main() {
-    polyspec_orm_testcase::run(sqlite_path_cases());
+pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
+    sqlite_path_cases()
 }

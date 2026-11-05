@@ -2,8 +2,7 @@
 //! and a NULL key is CODEC_DECODE. The unit test reads the fixture and needs no database.
 //! Usage: cargo test -p polyspec-orm --test collection_identity (from packages/rust).
 
-#[path = "common/or_panic.rs"]
-mod or_panic;
+use crate::or_panic;
 use or_panic::OrPanic;
 
 use polyspec_orm::chrono::DateTime;
@@ -57,7 +56,6 @@ fn hex_decode(text: &str) -> Vec<u8> {
     (0..text.len()).step_by(2).map(|i| u8::from_str_radix(&text[i..i + 2], 16).expect("fixture hex")).collect()
 }
 
-#[test]
 fn composite_components_preserve_typed_identity_and_shared_encoding() {
     // Requirements: PRT-35.
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -74,10 +72,13 @@ fn composite_components_preserve_typed_identity_and_shared_encoding() {
     }
 }
 
-#[test]
 fn a_null_composite_row_has_no_key() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let values: Vec<Val> = fixture()["nullable_composite"].as_array().expect("nullable_composite").iter().map(composite_value_of).collect();
     let refs = vec![KeyRef { column: "first".into(), index: 0 }, KeyRef { column: "second".into(), index: 1 }];
     assert!(Key::of_row(&values, &refs).expect("nullable row result").is_none());
+}
+
+pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
+    polyspec_orm_testcase::native_trials!("collection_identity": composite_components_preserve_typed_identity_and_shared_encoding, a_null_composite_row_has_no_key)
 }

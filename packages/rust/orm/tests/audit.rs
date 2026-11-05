@@ -6,14 +6,6 @@
 //! MySQL, and PostgreSQL, each database runs in its own case database (polyspec-orm-case-database),
 //! and it fails if ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is missing.
 
-#[path = "common/audit_rows.rs"]
-mod audit_rows;
-#[path = "common/result_code.rs"]
-mod result_code;
-
-#[path = "common/or_panic.rs"]
-mod or_panic;
-
 use polyspec_orm_case_database::CaseDatabase;
 
 /// Runs the case in a new case database for each driver. The case connects and installs audit.dbs.
@@ -26,9 +18,13 @@ async fn on_each_database(name: &str, case: impl AsyncFn(&str, &str)) {
     }
 }
 
-#[tokio::test]
+#[tokio::main(flavor = "current_thread")]
 // Requirements: INT-44a.
 async fn audit_transaction_entry_points() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    on_each_database("audit_transaction_entry_points", audit_rows::entry_points_case).await;
+    on_each_database("audit_transaction_entry_points", crate::audit_rows::entry_points_case).await;
+}
+
+pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
+    polyspec_orm_testcase::native_trials!("audit": audit_transaction_entry_points)
 }

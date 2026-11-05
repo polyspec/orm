@@ -2,8 +2,7 @@
 //! (`polyspec_orm::codec`), one libtest-mimic trial `styled_column_state_fixture::<id>` per case. The codec cases that
 //! every client shares are the codec recipe, tests/codec/codec.json (packages/rust/tests/tests/all/codec_none.rs).
 
-#[path = "common/or_panic.rs"]
-mod or_panic;
+use crate::or_panic;
 use or_panic::OrPanic;
 
 use polyspec_orm::codec::{decode, encode, encode_ordered};
@@ -31,7 +30,9 @@ fn styled_column_state_fixture() -> Vec<Trial> {
         .map(|case| {
             let id = case["id"].as_str().expect("case ID").to_owned();
             let case = case.clone();
-            polyspec_orm_testcase::trial(format!("styled_column_state_fixture::{id}"), polyspec_orm_testcase::COMPUTE, move || styled_case(&case))
+            polyspec_orm_testcase::trial(format!("styled_column_states::styled_column_state_fixture::{id}"), polyspec_orm_testcase::COMPUTE, move || {
+                styled_case(&case)
+            })
         })
         .collect()
 }
@@ -97,6 +98,6 @@ fn styled_case(case: &Value) {
     }
 }
 
-fn main() {
-    polyspec_orm_testcase::run(styled_column_state_fixture());
+pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
+    styled_column_state_fixture()
 }

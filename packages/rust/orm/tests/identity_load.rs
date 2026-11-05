@@ -9,9 +9,6 @@
 
 use std::time::Duration;
 
-#[path = "common/map_rows.rs"]
-mod map_rows;
-
 use polyspec_orm::{engine, ir, plan, Db, Dialect, Manifest, Param, Schema};
 use polyspec_orm_case_database::CaseDatabase;
 use polyspec_orm_testcase::Trial;
@@ -158,14 +155,14 @@ async fn read_rows(db: &Db, query: &str) -> Result<Vec<(i64, String)>, String> {
     macro_rules! read {
         ($pool:expr) => {{
             let rows = sqlx::raw_sql(sqlx::AssertSqlSafe(query.to_owned())).fetch_all($pool).await.map_err(|e| format!("{query}: {e}"))?;
-            map_rows::map_rows(&rows, |row| {
-                map_rows::sequence_label(row).map_err(|(column, error)| format!("{query}: {}: {error}", if column == 0 { "seq" } else { "label" }))
+            crate::map_rows::map_rows(&rows, |row| {
+                crate::map_rows::sequence_label(row).map_err(|(column, error)| format!("{query}: {}: {error}", if column == 0 { "seq" } else { "label" }))
             })
             .into_iter()
             .collect()
         }};
     }
-    map_rows::for_sql_pools!(db.pool(), read)
+    crate::map_rows::for_sql_pools!(db.pool(), read)
 }
 
 /// Runs the execute case's steps on connection `db` and compares the rows.
@@ -256,6 +253,6 @@ fn identity_load() -> Vec<Trial> {
         .collect()
 }
 
-fn main() {
-    polyspec_orm_testcase::run_in_order(identity_load());
+pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
+    identity_load()
 }

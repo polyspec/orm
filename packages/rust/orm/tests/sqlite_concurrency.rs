@@ -1,27 +1,20 @@
 //! SQLite locking across processes: several processes commit read-then-write transactions on one file without
 //! transaction retries (CFG-42). A recipe case runs on the connections of one test process in Rust.
 
-#[path = "common/or_panic.rs"]
-mod or_panic;
+use crate::or_panic;
 use or_panic::OrPanic;
 
 use futures_util::future::join_all;
 use polyspec_orm::{Db, Model, Param};
 
-#[path = "common/sqlite_case.rs"]
-mod sqlite_case;
+use crate::sqlite_case;
 use sqlite_case::{Database, SCHEMA};
 
 async fn database(name: &str) -> Database {
     sqlite_case::database("sqlite-lock", name).await
 }
 
-#[macro_use]
-#[path = "common/typed_model.rs"]
-mod typed_model;
-
-#[path = "common/service_model.rs"]
-mod service_model;
+use crate::service_model;
 use service_model::service;
 
 /// The database of a writer process started by `writers_in_several_processes`.
@@ -70,7 +63,7 @@ async fn count(db: &Db) -> i64 {
     polyspec_orm::model::get_count(service(Some(db)).core()).await.unwrap()
 }
 
-#[tokio::test]
+#[tokio::main(flavor = "current_thread")]
 // Requirements: CFG-42.
 async fn writers_in_several_processes() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
@@ -86,7 +79,7 @@ async fn writers_in_several_processes() {
     let children: Vec<_> = (0..3)
         .map(|i| {
             std::process::Command::new(&exe)
-                .args(["writers_in_several_processes", "--exact", "--test-threads=1"])
+                .args(["sqlite_concurrency::writers_in_several_processes", "--exact", "--test-threads=1"])
                 .env(WRITER_DSN, &dsn)
                 .env(WRITER_NAME, format!("p{i}"))
                 .stdout(std::process::Stdio::piped())
@@ -100,4 +93,8 @@ async fn writers_in_several_processes() {
         assert!(out.status.success(), "writer process {i}: {}\n{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr));
     }
     assert_eq!(count(&open(&dsn, 1).await[0]).await, 240, "services");
+}
+
+pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
+    polyspec_orm_testcase::native_trials!("sqlite_concurrency": writers_in_several_processes)
 }

@@ -9,8 +9,7 @@ use polyspec_orm_test_support::model_connect;
 
 use polyspec_orm_test_support::model_row;
 
-#[path = "common/or_panic.rs"]
-mod or_panic;
+use crate::or_panic;
 use or_panic::OrPanic;
 
 use std::collections::BTreeMap;
@@ -63,7 +62,7 @@ fn connected(db: &Db) -> Record {
     model_connect::connected(db)
 }
 
-#[tokio::test]
+#[tokio::main(flavor = "current_thread")]
 // Requirements: INT-99, COD-20.
 async fn runtime_value_types() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -91,4 +90,8 @@ async fn runtime_value_types() {
         database.drop().await;
         polyspec_orm_testcase::step(format_args!("runtime_value_types {driver}"));
     }
+}
+
+pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
+    polyspec_orm_testcase::native_trials!("value_types": runtime_value_types)
 }

@@ -1,7 +1,6 @@
 //! The MySQL parameters that the Rust client passes to sqlx. The TLS connection, its refusals and the session settings
 //! are cases of contracts/fixtures/dsn_connection.
 
-#[test]
 // Rust passes TLS options through to sqlx, whose accepted parameters differ from the other clients.
 // Requirements: CFG-18, CFG-36.
 fn tls_options_follow_sqlx_parameter_support() {
@@ -17,4 +16,8 @@ fn tls_options_follow_sqlx_parameter_support() {
             panic!("sqlx parameter should parse for {dsn}: {error}");
         }
     }
+}
+
+pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
+    polyspec_orm_testcase::native_trials!("mysql_tls": tls_options_follow_sqlx_parameter_support)
 }

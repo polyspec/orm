@@ -5,23 +5,17 @@
 
 use polyspec_orm::{Db, Model};
 
-#[path = "common/sqlite_case.rs"]
-mod sqlite_case;
+use crate::sqlite_case;
 use sqlite_case::{Database, SCHEMA};
 
 async fn database(name: &str) -> Database {
     sqlite_case::database("transaction-flow", name).await
 }
 
-#[macro_use]
-#[path = "common/typed_model.rs"]
-mod typed_model;
-
-#[path = "common/service_model.rs"]
-mod service_model;
+use crate::service_model;
 use service_model::service;
 
-#[tokio::test]
+#[tokio::main(flavor = "current_thread")]
 // Requirements: PLN-18.
 async fn spawned_task_has_no_transaction() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -41,7 +35,7 @@ async fn spawned_task_has_no_transaction() {
     assert_eq!(spawned.as_deref(), Some(polyspec_orm::codes::CONFIG), "a task spawned in the callback has no active transaction");
 }
 
-#[tokio::test]
+#[tokio::main(flavor = "current_thread")]
 // Requirements: PLN-18.
 async fn overlapping_statements_on_the_transaction_connection_return_config() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -69,4 +63,8 @@ async fn overlapping_statements_on_the_transaction_connection_return_config() {
     db.close().await;
     assert_eq!(codes[0], None, "the held statement of the transaction gave {codes:?}");
     assert_eq!(codes[1].as_deref(), Some(polyspec_orm::codes::CONFIG), "the overlapping statement of the transaction gave {codes:?}, not CONFIG");
+}
+
+pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
+    polyspec_orm_testcase::native_trials!("transaction_flow": spawned_task_has_no_transaction, overlapping_statements_on_the_transaction_connection_return_config)
 }

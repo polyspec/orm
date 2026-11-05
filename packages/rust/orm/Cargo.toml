@@ -1,4 +1,6 @@
 [package]
+# Its integration tests run as groups of the one test program, packages/rust/tests/tests/all.
+autotests = false
 name = "polyspec-orm"
 version = "0.0.22"
 edition = "2021"
@@ -63,40 +65,5 @@ log = "0.4"
 
 # These test targets run a shared vector file with one libtest-mimic trial per case id
 # (polyspec_orm_testcase::trial), so their harness is libtest-mimic.
-[[test]]
-name = "styled_column_states"
-path = "tests/styled_column_states.rs"
-harness = false
-
-[[test]]
-name = "compiler_fixtures"
-path = "tests/compiler_fixtures.rs"
-harness = false
-
-[[test]]
-name = "code_catalog"
-path = "tests/code_catalog.rs"
-harness = false
-
-[[test]]
-name = "decimal_model"
-path = "tests/decimal_model.rs"
-harness = false
-
-[[test]]
-name = "identity_load"
-path = "tests/identity_load.rs"
-harness = false
-
-[[test]]
-name = "sqlite_file_name"
-path = "tests/sqlite_file_name.rs"
-harness = false
-
-[[test]]
-name = "statement_fault"
-path = "tests/statement_fault.rs"
-harness = false
-
 [lints]
 workspace = true

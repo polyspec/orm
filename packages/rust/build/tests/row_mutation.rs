@@ -1,5 +1,4 @@
-#[path = "common/physical_fixture.rs"]
-mod physical_fixture;
+use crate::physical_fixture;
 
 use polyspec_orm_build::{
     catalog::{CatalogConnection, MutationPhase, RowSnapshot, TableRef},
@@ -10,10 +9,9 @@ use std::sync::{
     Arc, Mutex,
 };
 
-#[path = "lock_probe/mod.rs"]
-mod lock_probe;
+use crate::lock_probe;
 
-#[tokio::test]
+#[tokio::main(flavor = "current_thread")]
 // Runtime-unique (FCV-14): the phase publisher, the cancellation flag and a commit future that can be dropped exist only in
 // the Rust update_row, delete_row and insert_row; what any runtime answers is the recipe case row_mutation_lifecycle.
 // Requirements: INT-106a, INT-118, PRT-79.
@@ -269,4 +267,8 @@ fn cancel_at_phase(flag: &Arc<AtomicBool>, target: MutationPhase) -> Arc<dyn Fn(
             flag.store(true, Ordering::SeqCst)
         }
     })
+}
+
+pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
+    polyspec_orm_testcase::native_trials!("row_mutation": mutation_phases_follow_the_transaction)
 }

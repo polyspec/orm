@@ -1,9 +1,8 @@
-#[path = "common/physical_fixture.rs"]
-mod physical_fixture;
+use crate::physical_fixture;
 use physical_fixture::{dsn_for, sqlite_path};
 
 use polyspec_orm_build::tool_db::{self, GridCell, ParamType, QueryLimits, P};
-#[tokio::test]
+#[tokio::main(flavor = "current_thread")]
 // Requirements: INT-116.
 async fn native_typed_binds_preserve_values_and_typed_nulls() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -41,7 +40,7 @@ async fn native_typed_binds_preserve_values_and_typed_nulls() {
     .expect("typed bind deadline");
 }
 
-#[tokio::test]
+#[tokio::main(flavor = "current_thread")]
 // Requirements: INT-116, INT-122.
 async fn native_typed_writes_roundtrip_reject_and_rollback() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -229,4 +228,8 @@ async fn native_typed_writes_roundtrip_reject_and_rollback() {
     })
     .await
     .expect("typed write deadline");
+}
+
+pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
+    polyspec_orm_testcase::native_trials!("typed_binds": native_typed_binds_preserve_values_and_typed_nulls, native_typed_writes_roundtrip_reject_and_rollback)
 }

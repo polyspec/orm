@@ -8,8 +8,7 @@
 //! target, and a parity binding runs one section through make feature-rust-unit.
 use polyspec_orm_testcase::OrPanic;
 
-#[path = "../common/result_code.rs"]
-mod result_code;
+use crate::result_code;
 use result_code::code;
 
 // Requirements: DBS-112, DBS-114.

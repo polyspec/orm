@@ -18,12 +18,10 @@ use polyspec_orm_test_support::model_connect;
 use polyspec_orm_test_support::rollback_probe;
 use rollback_probe::{Probe, PROBE_SCHEMA};
 
-#[path = "common/or_panic.rs"]
-mod or_panic;
+use crate::or_panic;
 use or_panic::OrPanic;
 
-#[path = "common/case_database_run.rs"]
-mod case_database_run;
+use crate::case_database_run;
 use case_database_run::run_case;
 
 use std::time::Duration;
@@ -167,7 +165,7 @@ fn statement_fault_cases() -> Vec<polyspec_orm_testcase::Trial> {
         .cases
         .into_iter()
         .map(|case| {
-            polyspec_orm_testcase::async_trial(format!("statement_fault_cases::{case}"), CASE_DEADLINE * 3, move || async move {
+            polyspec_orm_testcase::async_trial(format!("statement_fault::statement_fault_cases::{case}"), CASE_DEADLINE * 3, move || async move {
                 for driver in ["sqlite", "mysql", "postgres"] {
                     let outcome = futures_util::FutureExt::catch_unwind(std::panic::AssertUnwindSafe(bounded(driver, &case))).await;
                     if let Err(payload) = outcome {
@@ -236,24 +234,60 @@ async fn empty_argument_refused_postgres() {
     bounded("postgres", "empty_argument_refused").await;
 }
 
-fn main() {
+pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
     let mut trials = vec![polyspec_orm_testcase::trial(
-        "every_fixture_case_has_a_test_per_driver",
+        "statement_fault::every_fixture_case_has_a_test_per_driver",
         polyspec_orm_testcase::DATABASE,
         every_fixture_case_has_a_test_per_driver,
     )];
     trials.extend(statement_fault_cases());
-    trials.push(polyspec_orm_testcase::async_trial("refused_insert_sqlite", polyspec_orm_testcase::DATABASE, refused_insert_sqlite));
-    trials.push(polyspec_orm_testcase::async_trial("refused_insert_mysql", polyspec_orm_testcase::DATABASE, refused_insert_mysql));
-    trials.push(polyspec_orm_testcase::async_trial("refused_insert_postgres", polyspec_orm_testcase::DATABASE, refused_insert_postgres));
-    trials.push(polyspec_orm_testcase::async_trial("consumed_by_one_statement_sqlite", polyspec_orm_testcase::DATABASE, consumed_by_one_statement_sqlite));
-    trials.push(polyspec_orm_testcase::async_trial("consumed_by_one_statement_mysql", polyspec_orm_testcase::DATABASE, consumed_by_one_statement_mysql));
-    trials.push(polyspec_orm_testcase::async_trial("consumed_by_one_statement_postgres", polyspec_orm_testcase::DATABASE, consumed_by_one_statement_postgres));
-    trials.push(polyspec_orm_testcase::async_trial("refused_in_transaction_sqlite", polyspec_orm_testcase::DATABASE, refused_in_transaction_sqlite));
-    trials.push(polyspec_orm_testcase::async_trial("refused_in_transaction_mysql", polyspec_orm_testcase::DATABASE, refused_in_transaction_mysql));
-    trials.push(polyspec_orm_testcase::async_trial("refused_in_transaction_postgres", polyspec_orm_testcase::DATABASE, refused_in_transaction_postgres));
-    trials.push(polyspec_orm_testcase::async_trial("empty_argument_refused_sqlite", polyspec_orm_testcase::DATABASE, empty_argument_refused_sqlite));
-    trials.push(polyspec_orm_testcase::async_trial("empty_argument_refused_mysql", polyspec_orm_testcase::DATABASE, empty_argument_refused_mysql));
-    trials.push(polyspec_orm_testcase::async_trial("empty_argument_refused_postgres", polyspec_orm_testcase::DATABASE, empty_argument_refused_postgres));
-    polyspec_orm_testcase::run_in_order(trials);
+    trials.push(polyspec_orm_testcase::async_trial("statement_fault::refused_insert_sqlite", polyspec_orm_testcase::DATABASE, refused_insert_sqlite));
+    trials.push(polyspec_orm_testcase::async_trial("statement_fault::refused_insert_mysql", polyspec_orm_testcase::DATABASE, refused_insert_mysql));
+    trials.push(polyspec_orm_testcase::async_trial("statement_fault::refused_insert_postgres", polyspec_orm_testcase::DATABASE, refused_insert_postgres));
+    trials.push(polyspec_orm_testcase::async_trial(
+        "statement_fault::consumed_by_one_statement_sqlite",
+        polyspec_orm_testcase::DATABASE,
+        consumed_by_one_statement_sqlite,
+    ));
+    trials.push(polyspec_orm_testcase::async_trial(
+        "statement_fault::consumed_by_one_statement_mysql",
+        polyspec_orm_testcase::DATABASE,
+        consumed_by_one_statement_mysql,
+    ));
+    trials.push(polyspec_orm_testcase::async_trial(
+        "statement_fault::consumed_by_one_statement_postgres",
+        polyspec_orm_testcase::DATABASE,
+        consumed_by_one_statement_postgres,
+    ));
+    trials.push(polyspec_orm_testcase::async_trial(
+        "statement_fault::refused_in_transaction_sqlite",
+        polyspec_orm_testcase::DATABASE,
+        refused_in_transaction_sqlite,
+    ));
+    trials.push(polyspec_orm_testcase::async_trial(
+        "statement_fault::refused_in_transaction_mysql",
+        polyspec_orm_testcase::DATABASE,
+        refused_in_transaction_mysql,
+    ));
+    trials.push(polyspec_orm_testcase::async_trial(
+        "statement_fault::refused_in_transaction_postgres",
+        polyspec_orm_testcase::DATABASE,
+        refused_in_transaction_postgres,
+    ));
+    trials.push(polyspec_orm_testcase::async_trial(
+        "statement_fault::empty_argument_refused_sqlite",
+        polyspec_orm_testcase::DATABASE,
+        empty_argument_refused_sqlite,
+    ));
+    trials.push(polyspec_orm_testcase::async_trial(
+        "statement_fault::empty_argument_refused_mysql",
+        polyspec_orm_testcase::DATABASE,
+        empty_argument_refused_mysql,
+    ));
+    trials.push(polyspec_orm_testcase::async_trial(
+        "statement_fault::empty_argument_refused_postgres",
+        polyspec_orm_testcase::DATABASE,
+        empty_argument_refused_postgres,
+    ));
+    trials
 }

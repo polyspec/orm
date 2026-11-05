@@ -10,8 +10,7 @@ use std::sync::{
 
 #[path = "row_insert_identity/expression.rs"]
 mod expression;
-#[path = "lock_probe/mod.rs"]
-mod lock_probe;
+use crate::lock_probe;
 
 async fn open_dialect_fixture(dialect: &str, sqlite_path: &Path) -> (String, polyspec_orm::Db, tool_db::Conn) {
     let dsn = match dialect {
@@ -39,7 +38,7 @@ async fn close_dialect_fixture(
     polyspec_orm_testcase::step(format_args!("{dialect} finished"));
 }
 
-#[tokio::test]
+#[tokio::main(flavor = "current_thread")]
 // Runtime-unique (FCV-14): the phase publisher, the cancellation flag and inserts joined on one connection exist only in the
 // Rust insert_row; what any runtime answers is the recipe cases generated_keys and generated_key_lifecycle.
 // Requirements: INT-123a.
@@ -163,4 +162,8 @@ async fn schema_lock(catalog: &CatalogConnection, dsn: &str, metadata: &polyspec
     assert!(matches!(result, Err(ref error) if error.starts_with("JOB_CANCELLED")), "the probed insert ends cancelled: {result:?}");
     let held = held.lock().unwrap().unwrap_or(false);
     held
+}
+
+pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
+    polyspec_orm_testcase::native_trials!("row_insert_identity": insert_phases_and_joined_keys_follow_the_transaction)
 }

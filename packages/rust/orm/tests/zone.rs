@@ -12,12 +12,7 @@ use polyspec_orm_case_database::CaseDatabase;
 use sqlx::Connection as _;
 use std::time::Duration;
 
-#[macro_use]
-#[path = "common/typed_model.rs"]
-mod typed_model;
-
-#[path = "common/or_panic.rs"]
-mod or_panic;
+use crate::or_panic;
 use or_panic::OrPanic;
 
 /// Removes the directory at path; one that is already gone is not an error, any other failure panics with its cause.
@@ -65,7 +60,6 @@ fn event(db: &Db) -> ZoneEvent {
 }
 
 /// A parameter other than `timezone` reaches sqlx, which reads it as its own connect option.
-#[test]
 // Requirements: CFG-19, CFG-20, CFG-37.
 fn driver_parameters_reach_sqlx() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -78,7 +72,7 @@ fn driver_parameters_reach_sqlx() {
 }
 
 /// The pool size a connection is opened with is its maximum open connections.
-#[tokio::test]
+#[tokio::main(flavor = "current_thread")]
 // Requirements: CFG-4.
 async fn pool_size() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -94,7 +88,7 @@ async fn pool_size() {
 /// `pool_idle_size` bounds the idle connections a pool keeps, and
 /// `pool_lifetime_ms` closes a connection after its lifetime; an idle size
 /// above the pool size returns CONFIG.
-#[tokio::test]
+#[tokio::main(flavor = "current_thread")]
 // Requirements: CFG-5.
 async fn pool_idle_size_and_lifetime() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -150,7 +144,7 @@ async fn pool_idle_size_and_lifetime() {
 
 /// An idle direct server connection is discarded; the next statement uses a new one. Poolers may multiplex a client
 /// connection without retaining an idle server session, so this lifetime case uses the direct server DSN.
-#[tokio::test]
+#[tokio::main(flavor = "current_thread")]
 // Requirements: INT-92.
 async fn pool_discards_ended_idle_connection() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -262,7 +256,6 @@ impl HeldRows {
     }
 }
 
-#[test]
 // Rust exposes statement_timeout_ms as u32, so a negative value cannot be represented at this API boundary.
 // Requirements: CFG-6, CFG-36.
 fn statement_timeout_negative_is_unrepresentable() {
@@ -273,7 +266,7 @@ fn statement_timeout_negative_is_unrepresentable() {
 
 /// A PostgreSQL connection reads float8 values exactly in the text format
 /// of the simple protocol and in the binary format of prepared statements.
-#[tokio::test]
+#[tokio::main(flavor = "current_thread")]
 // Requirements: CFG-32.
 async fn postgres_float_round_trip() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -293,7 +286,7 @@ async fn postgres_float_round_trip() {
 /// Dropping the future of a statement cancels the statement, and the
 /// connection it ran on stays usable. The statement is an update of a row
 /// that another connection holds, so it waits until its future is dropped.
-#[tokio::test]
+#[tokio::main(flavor = "current_thread")]
 // Requirements: CFG-9.
 async fn dropping_a_query_cancels_it() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -331,7 +324,7 @@ async fn dropping_a_query_cancels_it() {
 /// Dropping a transaction future closes its checked-out connection instead
 /// of waiting for SQLx's five-second close-on-drop path. On MySQL and
 /// PostgreSQL the transaction waits for a row that another connection holds.
-#[tokio::test]
+#[tokio::main(flavor = "current_thread")]
 // Requirements: INT-67.
 async fn dropping_a_transaction_frees_a_single_connection() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -382,4 +375,8 @@ async fn dropping_a_transaction_frees_a_single_connection() {
         db.close().await;
         database.drop().await;
     }
+}
+
+pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
+    polyspec_orm_testcase::native_trials!("zone": driver_parameters_reach_sqlx, pool_size, pool_idle_size_and_lifetime, pool_discards_ended_idle_connection, statement_timeout_negative_is_unrepresentable, postgres_float_round_trip, dropping_a_query_cancels_it, dropping_a_transaction_frees_a_single_connection)
 }

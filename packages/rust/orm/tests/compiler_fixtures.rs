@@ -30,7 +30,7 @@ fn run_fixture(id: &str) {
     assert!(status.success(), "Rust compiler fixture {id} failed: {status}");
 }
 
-fn main() {
+pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
     let path = polyspec_orm_testcase::manifest_dir().join("../testing/compiler-fixtures/cases.json");
     let fixtures: Vec<Fixture> = serde_json::from_slice(&fs::read(path).expect("compiler-fixtures/cases.json")).expect("compiler-fixtures/cases.json");
     assert!(!fixtures.is_empty(), "compiler-fixtures/cases.json has no case");
@@ -46,5 +46,5 @@ fn main() {
             })
         })
         .collect();
-    polyspec_orm_testcase::run_in_order(trials);
+    trials
 }

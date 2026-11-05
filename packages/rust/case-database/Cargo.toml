@@ -18,3 +18,8 @@ url = "2"
 
 [lints]
 workspace = true
+
+# This crate holds no unit test, so cargo builds no test binary for it.
+[lib]
+test = false
+doctest = false

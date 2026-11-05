@@ -25,7 +25,7 @@ fn catalog(yaml: &str) -> Vec<(String, String)> {
 fn matches_errors_yaml() {
     let root = polyspec_orm_testcase::manifest_dir();
     let yaml = std::fs::read_to_string(root.join("../../../docs/spec/errors.yaml")).expect("docs/spec/errors.yaml");
-    let source = std::fs::read_to_string(root.join("src/codes.rs")).expect("src/codes.rs");
+    let source = std::fs::read_to_string(root.join("../orm/src/codes.rs")).expect("src/codes.rs");
     let codes = catalog(&yaml);
     let lines: Vec<&str> = source.lines().collect();
     for (code, note) in &codes {
@@ -37,10 +37,6 @@ fn matches_errors_yaml() {
     assert_eq!(lines.iter().filter(|line| line.starts_with("pub const ")).count(), codes.len(), "codes.rs holds other codes than docs/spec/errors.yaml");
 }
 
-fn main() {
-    polyspec_orm_testcase::run(vec![polyspec_orm_testcase::trial(
-        "code_catalog::matches_errors_yaml".to_owned(),
-        polyspec_orm_testcase::COMPUTE,
-        matches_errors_yaml,
-    )]);
+pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
+    vec![polyspec_orm_testcase::trial("code_catalog::matches_errors_yaml".to_owned(), polyspec_orm_testcase::COMPUTE, matches_errors_yaml)]
 }

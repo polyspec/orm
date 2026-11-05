@@ -13,7 +13,9 @@ fn decimal_model_fixture() -> Vec<Trial> {
         .map(|case| {
             let (case, columns) = (case.clone(), columns.clone());
             let id = case["id"].as_str().unwrap().to_owned();
-            polyspec_orm_testcase::trial(format!("decimal_model_fixture::{id}"), polyspec_orm_testcase::COMPUTE, move || decimal_model_case(&case, &columns))
+            polyspec_orm_testcase::trial(format!("decimal_model::decimal_model_fixture::{id}"), polyspec_orm_testcase::COMPUTE, move || {
+                decimal_model_case(&case, &columns)
+            })
         })
         .collect()
 }
@@ -29,6 +31,6 @@ fn decimal_model_case(case: &Value, columns: &[Value]) {
     }
 }
 
-fn main() {
-    polyspec_orm_testcase::run(decimal_model_fixture());
+pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
+    decimal_model_fixture()
 }

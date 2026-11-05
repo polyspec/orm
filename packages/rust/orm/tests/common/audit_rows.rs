@@ -5,8 +5,7 @@
 use crate::or_panic::OrPanic;
 use polyspec_orm_test_support::model_row;
 
-#[path = "map_rows.rs"]
-mod map_rows;
+use crate::map_rows;
 use crate::result_code::code;
 
 use std::collections::BTreeMap;

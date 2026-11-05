@@ -1,6 +1,6 @@
 use polyspec_orm_build::tool_db::{Conn, QueryLimits};
 
-#[tokio::test]
+#[tokio::main(flavor = "current_thread")]
 // Requirements: INT-125.
 async fn bounded_query_rejects_ambiguous_multiple_result_sets() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -15,4 +15,8 @@ async fn bounded_query_rejects_ambiguous_multiple_result_sets() {
     })
     .await
     .expect("statement test deadline");
+}
+
+pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
+    polyspec_orm_testcase::native_trials!("tool_statement": bounded_query_rejects_ambiguous_multiple_result_sets)
 }

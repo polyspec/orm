@@ -314,7 +314,7 @@
         },
         {
           "id": "dsn-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts dsn-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test zone --test sqlite_file_name",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts dsn-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- zone:: sqlite_file_name::",
           "shard": "rust",
           "inputs": [
             "packages/rust/orm/tests/zone.rs",
@@ -352,7 +352,7 @@
         },
         {
           "id": "dsn-mysql-tls-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts dsn-mysql-tls-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test mysql_tls",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts dsn-mysql-tls-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- mysql_tls::",
           "shard": "rust",
           "inputs": [
             "packages/rust/orm/tests/mysql_tls.rs"
@@ -404,7 +404,7 @@
         },
         {
           "id": "idle-connection-end-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts idle-connection-end-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --offline --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test zone pool_discards_ended_idle_connection -- --exact --test-threads=1",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts idle-connection-end-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --offline --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- zone::pool_discards_ended_idle_connection --exact --test-threads=1",
           "shard": "rust",
           "inputs": [
             "packages/rust/orm/tests/zone.rs",
@@ -1191,7 +1191,7 @@
         },
         {
           "id": "queries-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts queries-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test model_output",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts queries-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- model_output::",
           "shard": "rust",
           "inputs": [
             "packages/rust/orm/tests/model_output.rs"
@@ -1399,7 +1399,7 @@
         },
         {
           "id": "decimal-model-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts decimal-model-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test decimal_model",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts decimal-model-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- decimal_model::",
           "shard": "rust",
           "inputs": [
             "packages/rust/orm/tests/decimal_model.rs",
@@ -1409,7 +1409,7 @@
         },
         {
           "id": "values-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts values-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test value_types",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts values-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- value_types::",
           "shard": "rust",
           "inputs": [
             "packages/rust/orm/tests/value_types.rs"
@@ -1475,7 +1475,7 @@
         },
         {
           "id": "collection-identity-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts collection-identity-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test collection_identity",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts collection-identity-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- collection_identity::",
           "shard": "rust",
           "inputs": [
             "packages/rust/orm/tests/collection_identity.rs",
@@ -2077,7 +2077,7 @@
         },
         {
           "id": "identity-load-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts identity-load-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test identity_load",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts identity-load-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- identity_load::",
           "shard": "rust",
           "inputs": [
             "packages/rust/orm/tests/identity_load.rs",
@@ -2614,7 +2614,7 @@
         },
         {
           "id": "statement-fault-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts statement-fault-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test statement_fault",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts statement-fault-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- statement_fault::",
           "shard": "rust",
           "inputs": [
             "packages/rust/orm/tests/statement_fault.rs",
@@ -2656,7 +2656,7 @@
         },
         {
           "id": "rollback-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts rollback-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test rollback",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts rollback-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- rollback::",
           "shard": "rust",
           "inputs": [
             "packages/rust/orm/tests/rollback.rs",
@@ -2744,7 +2744,7 @@
         },
         {
           "id": "sqlite-concurrency-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts sqlite-concurrency-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test sqlite_concurrency",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts sqlite-concurrency-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- sqlite_concurrency::",
           "shard": "rust",
           "inputs": [
             "packages/rust/orm/tests/sqlite_concurrency.rs"
@@ -3642,7 +3642,7 @@
         },
         {
           "id": "generation-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts generation-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test generate",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts generation-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- generate::",
           "shard": "rust",
           "inputs": [
             "packages/rust/build/tests/generate.rs",
@@ -5890,7 +5890,7 @@
         },
         {
           "id": "styled-column-states-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts styled-column-states-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test styled_column_states",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts styled-column-states-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- styled_column_states::",
           "shard": "rust",
           "inputs": [
             "packages/rust/orm/tests/styled_column_states.rs",
@@ -5899,7 +5899,7 @@
         },
         {
           "id": "encryption-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts encryption-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test aes_keys",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts encryption-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- aes_keys::",
           "shard": "rust",
           "inputs": [
             "packages/rust/orm/tests/aes_keys.rs"
@@ -6966,7 +6966,7 @@
         },
         {
           "id": "audit-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts audit-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test audit",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts audit-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- audit::",
           "shard": "rust",
           "inputs": [
             "packages/rust/orm/tests/audit.rs"
@@ -8610,7 +8610,7 @@
       "verification": [
         {
           "id": "catalog-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts catalog-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test 'tool_*' --test 'row_*' --test typed_binds --test generate",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts catalog-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- tool_cells:: tool_columns:: tool_limits:: tool_statement:: tool_values:: row_commit_permit:: row_insert_identity:: row_mutation:: row_snapshot:: typed_binds:: generate::",
           "shard": "rust",
           "inputs": [
             "packages/rust/build/tests/tool_cells.rs",
@@ -8645,7 +8645,7 @@
         },
         {
           "id": "row-insert-identity-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts row-insert-identity-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test row_insert_identity",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts row-insert-identity-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- row_insert_identity::",
           "shard": "rust",
           "inputs": [
             "packages/rust/build/tests/row_insert_identity/expression.rs",
@@ -8662,7 +8662,7 @@
         },
         {
           "id": "tool-db-native-typed-binds-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts tool-db-native-typed-binds-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test typed_binds native_typed_binds_preserve_values_and_typed_nulls -- --exact",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts tool-db-native-typed-binds-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- typed_binds::native_typed_binds_preserve_values_and_typed_nulls --exact",
           "shard": "rust",
           "inputs": [
             "packages/rust/build/tests/typed_binds.rs"
@@ -8670,7 +8670,7 @@
         },
         {
           "id": "tool-db-native-typed-writes-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts tool-db-native-typed-writes-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test typed_binds native_typed_writes_roundtrip_reject_and_rollback -- --exact",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts tool-db-native-typed-writes-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- typed_binds::native_typed_writes_roundtrip_reject_and_rollback --exact",
           "shard": "rust",
           "inputs": [
             "packages/rust/build/tests/typed_binds.rs"
@@ -10568,7 +10568,7 @@
       "tests": [
         "packages/rust/orm/tests/was_inserted.rs"
       ],
-      "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts rust-clock-test-support-helper -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test was_inserted"
+      "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts rust-clock-test-support-helper -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- was_inserted::"
     },
     {
       "id": "php-database-test-assertions",

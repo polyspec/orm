@@ -703,8 +703,8 @@ dbspec-rust-check: dbspec-rust-check/documents dbspec-rust-check/set dbspec-rust
 dbspec-rust-check/documents: dbspec-rust-check/documents/runtime dbspec-rust-check/documents/recipes
 .PHONY: dbspec-rust-check/documents/runtime dbspec-rust-check/documents/recipes
 dbspec-rust-check/documents/runtime:
-	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_runtime --test dbspec_model -- --nocapture
-	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_runtime --test dbspec_model -- --nocapture
+	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test all -- dbspec_runtime:: dbspec_model:: --nocapture
+	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test all -- dbspec_runtime:: dbspec_model:: --nocapture
 dbspec-rust-check/documents/recipes:
 	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test all -- dbspec_render_statements_none:: dbspec_mermaid_none:: --nocapture
 	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test all -- dbspec_render_statements_none:: dbspec_mermaid_none:: --nocapture
@@ -715,7 +715,7 @@ dbspec-rust-check/set: dbspec-rust-check/set/vectors dbspec-rust-check/set/unit
 dbspec-rust-check/set/vectors: dbspec-rust-check/set/vectors/working-directory dbspec-rust-check/set/vectors/read
 .PHONY: dbspec-rust-check/set/vectors/working-directory dbspec-rust-check/set/vectors/read
 dbspec-rust-check/set/vectors/working-directory:
-	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-schema --test dbspec_set_working_directory -- --nocapture
+	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test all -- dbspec_set_working_directory:: --nocapture
 dbspec-rust-check/set/vectors/read:
 	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test all -- dbspec_read_set_none:: --nocapture
 dbspec-rust-check/set/unit:
@@ -1286,7 +1286,7 @@ conformance-refusal-check/go:
 conformance-refusal-check/typescript: typescript-read
 	$(RUN_TESTS) node -- packages/ts/tests/refusal-before-request.mjs
 conformance-refusal-check/rust-fixtures: lease-tool
-	cd packages/rust && $(CARGO_TEST) conformance-refusal-rust-fixtures -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm --test compiler_fixtures -- --test-threads=1 compiler_fixtures::refusal-
+	cd packages/rust && $(CARGO_TEST) conformance-refusal-rust-fixtures -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace -p polyspec-orm-tests --features $(ORM_RUST_TEST_FEATURES) --test all -- --test-threads=1 compiler_fixtures::refusal-
 
 # conformance-generated-methods-check runs the conformance bodies that call generated methods on a database that holds the
 # fixture and seed of the recipe conformance_verification, and compares them with the expects of its cases (T334-3-5-1).
@@ -1484,10 +1484,10 @@ generator-consumer-check/rust-field-types/generated-field-types: lease-tool
 generator-consumer-check/rust-field-types/fixed-method-list: lease-tool
 	cd packages/rust && $(CARGO_TEST) generator-consumer-rust-fixed-method-list -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-build --lib generate::fixed_method_tests::fixed_list_names_the_public_methods_of_the_fixed_impl -- --test-threads=1 --exact
 generator-consumer-check/rust-emission: lease-tool
-	cd packages/rust && $(CARGO_TEST) generator-consumer-rust-emission -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-build --test generate generated_rows_reject_unselected_fields_and_separate_group_results -- --test-threads=1 --exact
+	cd packages/rust && $(CARGO_TEST) generator-consumer-rust-emission -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace -p polyspec-orm-tests --features $(ORM_RUST_TEST_FEATURES) --test all -- generate::generated_rows_reject_unselected_fields_and_separate_group_results --test-threads=1 --exact
 generator-consumer-check/rust-chain-scan: generator-consumer-check/rust-chain-scan/generates-called-methods
 generator-consumer-check/rust-chain-scan/generates-called-methods: lease-tool
-	cd packages/rust && $(CARGO_TEST) generator-consumer-rust-chain-scan -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-build --test generate generates_called_methods -- --test-threads=1 --exact
+	cd packages/rust && $(CARGO_TEST) generator-consumer-rust-chain-scan -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace -p polyspec-orm-tests --features $(ORM_RUST_TEST_FEATURES) --test all -- generate::generates_called_methods --test-threads=1 --exact
 generator-consumer-check/rust-integration: lease-tool
 	cd packages/rust && $(CARGO_TEST) generator-consumer-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-tests --test all integration_program::generated_typed_getter_is_a_checked_public_consumer_api -- --test-threads=1 --exact
 
@@ -1496,7 +1496,7 @@ generator-consumer-check/rust-integration: lease-tool
 rust-compiler-fixtures-check: rust-compiler-fixtures-check/native rust-compiler-fixtures-check/unit
 
 rust-compiler-fixtures-check/native: lease-tool
-	cd packages/rust && $(CARGO_TEST) rust-compiler-fixtures-native -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm --test compiler_fixtures -- --test-threads=1
+	cd packages/rust && $(CARGO_TEST) rust-compiler-fixtures-native -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace -p polyspec-orm-tests --features $(ORM_RUST_TEST_FEATURES) --test all -- compiler_fixtures:: --test-threads=1
 
 rust-compiler-fixtures-check/unit: lease-tool
 	$(NODE) --test scripts/rust/compiler-fixtures.test.mts
@@ -1660,7 +1660,7 @@ styled-column-states-unit-check: typescript-current php-vendor-check php-model-c
 	if [ "$$last_result" -eq 0 ]; then run_case php-extension env ORM_PHP_MODE=extension POLYSPEC_ORM_EXTENSION="$$extension" $(RUN_TESTS) phpunit --php-extension "$$extension" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelNativeTest.php --filter testStyledColumnDistinguishesUnselectedSqlNullAndEncodedNull; fi; \
 	run_case typescript $(NODE) --test --test-name-pattern='^(sql_null|json_null|json_object_with_kind|empty_text|serialize_sql_null|serialize_value_null|yaml_sql_null|yaml_value_null|unselected|nonnull_sql_null|jsons_sql_null|jsons_value_null|nonnull_value_null)$$' packages/ts/tests/styled-value.mjs; \
 	run_case python $(PYTHON_VENV)/bin/python -m packages.python.tests.test_styled_column_states; \
-	run_case rust env PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) styled-column-states-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --manifest-path packages/rust/Cargo.toml --locked --offline -p polyspec-orm --test styled_column_states 'styled_column_state_fixture::' -- --test-threads=1; \
+	run_case rust env PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) styled-column-states-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --manifest-path packages/rust/Cargo.toml --locked --offline -p polyspec-orm-tests --test all -- 'styled_column_states::styled_column_state_fixture::' --test-threads=1; \
 	exit "$$status"
 
 
@@ -2088,7 +2088,7 @@ collection-composite-key-check: typescript-read php-vendor-check python-venv-che
 	$(GO_TEST) ./packages/go/orm -run '^(TestCompositeCollectionKeyTypedComponentsFromFixture|TestNullableCompositeRowHasNoCollectionKey)$$' -count=1 || status=1; \
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CollectionIdentityTest.php --filter 'testCompositeComponentsPreserveTypedIdentityAndSharedEncoding|testNullCompositeRowHasNoCollectionKey' || status=1; \
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_collection_identity.CollectionIdentityTest.test_a_key_outside_the_python_key_type_is_refused packages.python.tests.test_collection_identity.CollectionIdentityTest.test_composite_components_preserve_typed_identity_and_shared_encoding packages.python.tests.test_collection_identity.CollectionIdentityTest.test_a_null_composite_row_has_no_collection_key || status=1; \
-	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --test collection_identity composite || status=1; \
+	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm-tests --test all -- collection_identity::composite || status=1; \
 	if $(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); then \
 	  env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelAssemblyTest.php packages/php-ext/tests/CollectionTest.php --filter 'testTypedIdentityOrderedReplacementAndArrayViews|testCompositeComponentsPreserveTypedIdentityAndSharedEncoding|testNullCompositeRowHasNoCollectionKey' || status=1; \
 	else status=1; fi; \
@@ -3281,7 +3281,7 @@ transaction-failure-rust-check: transaction-failure-rust-check/lib transaction-f
 transaction-failure-rust-check/lib:
 	$(if $(TRANSACTION_FAILURE_RUST_FAULT_FILTER),:,cd packages/rust && $(CARGO_TEST) transaction-failure-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --lib end_failures_are_reported -- --nocapture)
 transaction-failure-rust-check/fault:
-	cd packages/rust && $(CARGO_TEST) transaction-failure-rust-fault -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test rollback $(if $(TRANSACTION_FAILURE_RUST_FAULT_FILTER),$(TRANSACTION_FAILURE_RUST_FAULT_FILTER),rollback_fault_sqlite) -- --nocapture
+	cd packages/rust && $(CARGO_TEST) transaction-failure-rust-fault -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test all -- $(if $(TRANSACTION_FAILURE_RUST_FAULT_FILTER),$(TRANSACTION_FAILURE_RUST_FAULT_FILTER),rollback::rollback_fault_sqlite) --nocapture
 
 # The shared blind-index target regression runs only the Python client's pure planner tests.
 
@@ -3313,7 +3313,7 @@ php-extension-package-entry-check: php-vendor-check php-models
 	env ORM_PHP_MODE=extension ORM_PHP_DYNAMIC_MODULES='$(PHP_EXTENSION_DYNAMIC_MODULES)' POLYSPEC_ORM_EXTENSION="$$run_dir/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --filter 'test(Package|Client)' packages/php-ext/tests/DeclarationsTest.php
 
 rust-package-entry-check:
-	cd packages/rust && $(CARGO_TEST) rust-package-entry-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --test package_entry public_package_entry -- --exact --nocapture
+	cd packages/rust && $(CARGO_TEST) rust-package-entry-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test all -- package_entry::public_package_entry --exact --nocapture
 
 typescript-package-entry-check: typescript-read
 	$(NODE) --conditions=orm-test --test --test-name-pattern='package-entry/runtime-exports' packages/ts/tests/statement_fault_entry.mjs

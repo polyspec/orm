@@ -7,7 +7,6 @@ use std::collections::BTreeMap;
 
 const SOURCE: &str = "dbspec 1 shop\n\ntable orders {\n  id i64 identity\n  primary key (id)\n}\n";
 
-#[test]
 fn model_is_read_changed_and_emitted() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let mut document = parse(SOURCE, &BTreeMap::new()).expect("valid document").document;
@@ -26,4 +25,8 @@ fn model_is_read_changed_and_emitted() {
     let text = emit(&document);
     assert_eq!(text, "dbspec 1 shop\n\ntable orders {\n  id i64 identity\n  total decimal(13,2)\n  primary key (id)\n}\n");
     parse(&text, &BTreeMap::new()).expect("emitted document is valid");
+}
+
+pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
+    polyspec_orm_testcase::native_trials!("dbspec_model": model_is_read_changed_and_emitted)
 }

@@ -3,7 +3,6 @@ use std::sync::{atomic::Ordering, Arc, Mutex};
 
 /// A mutation that answers within one poll runs to its end before a test that only stops polling it can probe
 /// anything; a probe that runs inside the Locked publisher sees the mutation at Locked, whatever the scheduling.
-#[test]
 fn a_probe_inside_the_locked_publisher_sees_the_mutation_at_locked() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     // 0: before Locked, 1: at Locked, 2: finished.
@@ -24,4 +23,8 @@ fn a_probe_inside_the_locked_publisher_sees_the_mutation_at_locked() {
     tokio::runtime::Builder::new_current_thread().build().unwrap().block_on(mutation);
     assert_eq!(*seen.lock().unwrap(), Some(1), "the probe ran while the mutation was at Locked");
     assert_eq!(stage.load(Ordering::SeqCst), 2);
+}
+
+pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
+    polyspec_orm_testcase::native_trials!("lock_probe_order": a_probe_inside_the_locked_publisher_sees_the_mutation_at_locked)
 }

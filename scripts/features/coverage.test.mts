@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { testDirectoryOf } from './packages.mts';
-import { cargoBuildArgs, cargoFeaturesForPackage, cargoModuleFilter, cargoPathModuleFiles, cargoTargetArgs, cargoWorkspaceManifestPath, checkCoverage, databases, executeCoverage, resultCases, languages, NATIVE_DEADLINE, run, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
+import { cargoBuildArgs, cargoFeaturesForPackage, cargoModuleFilter, programPathModules, cargoPathModuleFiles, cargoTargetArgs, cargoWorkspaceManifestPath, checkCoverage, databases, executeCoverage, resultCases, languages, NATIVE_DEADLINE, run, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
 import { readFeatures } from './manifest.mts';
 import { readParityConfig, type ParityConfig } from '../json/formats.mts';
 
@@ -216,6 +216,13 @@ caseTest('Rust coverage runs a module of a test program through the filter of it
   assert.equal(cargoModuleFilter(targets, join(root, 'packages/rust/tests/tests/all/main.rs')), undefined);
   assert.equal(cargoModuleFilter(targets, join(root, 'packages/rust/orm/tests/zone.rs')), undefined);
   assert.equal(cargoModuleFilter(targets, join(root, 'packages/rust/orm/src/driver.rs')), undefined);
+});
+
+caseTest('Rust coverage finds a test that its package holds and the one program names by #[path]', COMPUTE, () => {
+  const root = new URL('../..', import.meta.url).pathname;
+  const main = join(root, 'packages/rust/tests/tests/all/main.rs');
+  const modules = programPathModules(main, '#[path = "../../../orm/tests/zone.rs"]\nmod zone;\n#[path = "common/x.rs"]\npub mod x;\nmod own;\n');
+  assert.deepEqual([...modules], [[join(root, 'packages/rust/orm/tests/zone.rs'), 'zone']]);
 });
 
 caseTest('Rust coverage maps explicit library path modules to the library test target', COMPUTE, async () => {

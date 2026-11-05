@@ -63,7 +63,6 @@ fn generate_with_set(dir: PathBuf, source: &str, set: PathBuf) -> Result<String,
     text
 }
 
-#[test]
 // The test of DSL-38, DSL-41, DSL-117, DSL-156, INT-27, PLN-1, PLN-40 (docs/spec).
 fn generates_called_methods() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -94,7 +93,6 @@ fn generates_called_methods() {
     assert!(!text.contains("pub fn and_seq("), "a method that is not called was generated");
 }
 
-#[test]
 // Requirements: DSL-33, PRT-75.
 fn generates_fulltext_boolean_methods_for_multiple_columns() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -110,7 +108,6 @@ fn generates_fulltext_boolean_methods_for_multiple_columns() {
     assert!(text.contains("op: \"fulltext_boolean\", column: \"\", columns: &[\"name\", \"short_description\", \"content\"]"), "{text}");
 }
 
-#[test]
 // Requirements: INT-66.
 fn generated_code_carries_no_allow_attribute() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -124,7 +121,6 @@ fn generated_code_carries_no_allow_attribute() {
     }
 }
 
-#[test]
 // Requirements: DBS-114.
 fn generated_rows_reject_unselected_fields_and_separate_group_results() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -138,7 +134,6 @@ fn generated_rows_reject_unselected_fields_and_separate_group_results() {
     assert!(text.contains("pub async fn gets_count(&self) -> polyspec_orm::Result<polyspec_orm::GroupRows>"), "group rows must not be partial models");
 }
 
-#[test]
 // Requirements: DBS-112, DBS-116.
 fn nullable_json_fields_keep_sql_null_separate_from_json_null() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -163,7 +158,6 @@ fn nullable_json_fields_keep_sql_null_separate_from_json_null() {
     assert!(text.contains("self.__orm.require_field(\"jsons_tags\")?;"), "unselected field access must fail");
 }
 
-#[test]
 fn column_function_order_takes_the_function() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let text = generate("fn main() { ZoneEvent::new().order_by_start_dt_asc(polyspec_orm::year()); }").unwrap();
@@ -171,7 +165,6 @@ fn column_function_order_takes_the_function() {
     assert!(text.contains("pub fn order_by_seq_asc(mut self) -> Self"));
 }
 
-#[test]
 // The test of DSL-37 (docs/spec).
 fn rejects_unknown_names_of_a_known_model() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -180,7 +173,6 @@ fn rejects_unknown_names_of_a_known_model() {
     assert!(err.contains("main.rs:2:43: ZoneEvent has no method name"), "{err}");
 }
 
-#[test]
 fn ignores_calls_of_other_types() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let text = generate("fn main() { let v = vec![1]; v.len(); v.iter().map(|x| x + 1); }").unwrap();
@@ -188,7 +180,6 @@ fn ignores_calls_of_other_types() {
 }
 
 // Requirements: DBS-100, DBS-104, DBS-111, DBS-120.
-#[test]
 fn manifest_text_is_embedded_with_its_hash() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -211,7 +202,6 @@ fn manifest_text_is_embedded_with_its_hash() {
     assert!(audit_position < zone_position, "generated entities follow manifest document order");
 }
 
-#[test]
 // Requirements: DBS-112, DBS-116, DBS-121, INT-2, INT-3, INT-4, INT-5, INT-6, INT-7, INT-8, COD-2.
 fn generated_field_types_follow_the_runtime_model() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -260,7 +250,6 @@ fn generated_field_types_follow_the_runtime_model() {
     }
 }
 
-#[test]
 fn styled_setter_result_handling_preserves_model_calls() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let root = bench();
@@ -273,7 +262,6 @@ fn styled_setter_result_handling_preserves_model_calls() {
     }
 }
 
-#[test]
 fn unknown_model_call_after_setter_result_handling_still_fails() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let root = bench();
@@ -285,7 +273,6 @@ fn unknown_model_call_after_setter_result_handling_still_fails() {
     assert!(error.contains("missing_method"), "{error}");
 }
 
-#[test]
 fn styled_setter_result_transformations_are_not_column_calls() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let root = bench();
@@ -299,7 +286,6 @@ fn styled_setter_result_transformations_are_not_column_calls() {
     }
 }
 
-#[test]
 fn unknown_model_after_result_error_mapping_still_fails() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let root = bench();
@@ -311,7 +297,6 @@ fn unknown_model_after_result_error_mapping_still_fails() {
     }
 }
 
-#[test]
 fn infallible_setter_does_not_accept_result_methods() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let root = bench();
@@ -320,7 +305,6 @@ fn infallible_setter_does_not_accept_result_methods() {
     assert!(error.contains("map_err"), "{error}");
 }
 
-#[test]
 fn bound_setter_results_preserve_model_calls_after_extraction() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let root = bench();
@@ -331,7 +315,6 @@ fn bound_setter_results_preserve_model_calls_after_extraction() {
 }
 
 /// The relation getter reports a failed downcast as `polyspec_orm::Result` instead of discarding it as None.
-#[test]
 fn relation_getters_report_a_mismatched_relation_value() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let text = generate_with_schema(
@@ -349,7 +332,6 @@ fn relation_getters_report_a_mismatched_relation_value() {
 
 /// The same source and schema give the same generated source however the scan and output path are written (relative to the package directory, absolute,
 /// a path with `./`, or a path with a trailing `/`).
-#[test]
 fn scan_path_spelling_keeps_the_generated_source() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -385,7 +367,6 @@ fn scan_path_spelling_keeps_the_generated_source() {
     }
 }
 
-#[test]
 fn a_table_named_like_the_runtime_crate_gets_a_model_module_of_its_own() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -401,7 +382,6 @@ fn a_table_named_like_the_runtime_crate_gets_a_model_module_of_its_own() {
     assert!(!text.contains("pub mod polyspec_orm {"), "a model module named polyspec_orm shadows the runtime crate");
 }
 
-#[test]
 fn a_restore_or_create_call_is_a_fixed_method() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     // restore_or_create is a method of every generated model (fixed.rs.txt), so a scanned call to it is accepted and the
@@ -413,7 +393,6 @@ fn a_restore_or_create_call_is_a_fixed_method() {
 /// The builder takes its documents only from the set file: a document beside the set file that the set does not list
 /// generates no model.
 // Requirements: ORES-21, DBS-5, DBS-98.
-#[test]
 fn the_builder_takes_the_documents_only_from_the_set_file() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -428,7 +407,6 @@ fn the_builder_takes_the_documents_only_from_the_set_file() {
 
 /// A setter of a datetime column takes the text form, so the type check refuses a native date or time value.
 // Requirements: DBS-121.
-#[test]
 fn a_time_setter_takes_the_text_form() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let text = generate("fn main() {}").unwrap();
@@ -442,4 +420,8 @@ fn remove_test_dir(path: &std::path::Path) {
             panic!("remove {}: {error}", path.display());
         }
     }
+}
+
+pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
+    polyspec_orm_testcase::native_trials!("generate": generates_called_methods, generates_fulltext_boolean_methods_for_multiple_columns, generated_code_carries_no_allow_attribute, generated_rows_reject_unselected_fields_and_separate_group_results, nullable_json_fields_keep_sql_null_separate_from_json_null, column_function_order_takes_the_function, rejects_unknown_names_of_a_known_model, ignores_calls_of_other_types, manifest_text_is_embedded_with_its_hash, generated_field_types_follow_the_runtime_model, styled_setter_result_handling_preserves_model_calls, unknown_model_call_after_setter_result_handling_still_fails, styled_setter_result_transformations_are_not_column_calls, unknown_model_after_result_error_mapping_still_fails, infallible_setter_does_not_accept_result_methods, bound_setter_results_preserve_model_calls_after_extraction, relation_getters_report_a_mismatched_relation_value, scan_path_spelling_keeps_the_generated_source, a_table_named_like_the_runtime_crate_gets_a_model_module_of_its_own, a_restore_or_create_call_is_a_fixed_method, the_builder_takes_the_documents_only_from_the_set_file, a_time_setter_takes_the_text_form)
 }
