@@ -1,11 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 448b06ffaab8db9f5754dc8612555f6928444c3d4262ecbdd023df910d069a4c -->
+<!-- source-sha256: 10e79d694c119d9f98de8427c570e8950cd6f61fd7181eb537acceba2276ce3b -->
 # 변경 이력
 
 ## Unreleased
 
-- Fixes: Rust catalog의 commit된 변경은 연결을 pool로 돌려주어 다음 변경이 그 연결을 다시 쓴다(INT-106b). 실패한 변경은 그대로 연결을 버린다.
-- Tests: `packages/rust/tests`의 Rust 시험 묶음은 시험 program `all` 하나이고, group이 하나씩 차례로 돌며 크기와 진행을 출력한다. 모든 trial이 남고, 이름은 이전 program의 이름으로 시작한다.
+- Fixes: Rust, Go, TypeScript, Python catalog의 commit된 변경은 연결을 다음 session에 남겨 다음 변경이 그 연결을 다시 쓴다(INT-106b~INT-106e). 실패한 변경은 그대로 연결을 버린다.
+- Tests: workspace의 Rust 시험 묶음은 시험 program `all` 하나이고, group이 하나씩 차례로 돌며 크기와 진행을 출력한다. 모든 trial이 남고, 이름은 이전 program의 이름으로 시작하며, package의 시험은 그 package의 test case crate로 남는다.
 
 ## 0.0.22
 

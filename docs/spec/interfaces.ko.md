@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 8ade3cd914c8a8217fe593fee4bc85af9edfd76e8ad5c818055cd3bb8d61377e -->
+<!-- source-sha256: 75908b2d2f95e8fcc32e493f47d271b2c68bbb4db80a328fb6bb203e548855a7 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -555,7 +555,10 @@ prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메
 - **INT-105** `polyspec-orm-build`의 커밋 허가(permit)는 거부된 네이티브 insert, update, delete를 롤백한다. 커밋 성공이 되는 일은 없다.
 - **INT-106** 네이티브 update는 새 트랜잭션에서 원본 행을 키로 잠그고, descriptor와 원본 행을 비교하며, 커밋 전에 기록 후 값이 정확한지 검증한다. 검증이 실패하거나 커밋 전에 취소되면 롤백한다. InnoDB가 아닌 MySQL 테이블과 트리거가 있는 MySQL 테이블은 거부된다.
 - **INT-106a** `polyspec-orm-build`의 `update_row`, `delete_row`, `insert_row`는 트랜잭션 순서대로 `MutationPhase`를 알린다. 커밋 전에 본 취소는 `JOB_CANCELLED`로 롤백하고, `Locked`는 다른 연결이 행 잠금을 보는 시점이며, `CommitStarted` 뒤의 취소는 커밋을 멈추지 않고, 버려진 future도 시작한 커밋을 끝내며, 명시적 커밋 거부는 `RolledBack`으로, 커밋 중 끊긴 연결은 `Indeterminate`로 끝난다. 이는 Rust의 형식에만 해당한다. 다른 runtime에는 phase 알림과 취소 flag가 없다.
-- **INT-106b** `polyspec-orm-build`의 `update_row`, `delete_row`, `insert_row`는 commit된 변경의 연결을 catalog의 pool로 돌려주어, 그 catalog의 다음 변경이 그 연결을 새 transaction으로 쓰고 연속된 변경이 연결 하나만 열게 한다. 다른 모든 종료는 transaction이 아직 열려 있을 수 있으므로 연결을 닫는다. 이는 Rust catalog에만 해당한다.
+- **INT-106b** `polyspec-orm-build`의 `update_row`, `delete_row`, `insert_row`는 commit된 변경의 연결을 catalog의 pool로 돌려주어, 그 catalog의 다음 변경이 그 연결을 새 transaction으로 쓰고 연속된 변경이 연결 하나만 열게 한다. 다른 모든 종료는 transaction이 아직 열려 있을 수 있으므로 연결을 닫는다.
+- **INT-106c** `github.com/polyspec/orm/packages/go`의 `UpdateRow`, `DeleteRow`, `InsertRow`는 INT-106b와 같은 조건으로 commit된 변경의 연결을 catalog의 pool로 돌려준다.
+- **INT-106d** `@polyspec/orm`의 `updateRow`, `deleteRow`, `insertRow`는 INT-106b와 같은 조건으로 commit된 변경의 연결을 catalog의 pool로 돌려준다.
+- **INT-106e** `polyspec-orm` Python package의 `update_row`, `delete_row`, `insert_row`는 INT-106b와 같은 조건으로 commit된 변경의 연결을 그 catalog의 다음 session을 위해 남긴다. 남긴 연결이 끝났으면 아무것도 실행하기 전에 새 연결이 그 자리를 잇고, socket을 열지 않는 SQLite file은 전처럼 닫는다.
 - **INT-107** 행 기준(baseline)은 정확한 타입 값을 비교한다: 부동소수 비트, decimal scale, 이진 바이트, 생성 열의 원본 값. 이 중 하나라도 다르면 충돌이다.
 - **INT-108** 행 기준은 검사를 마친 불변 행 하나를 캡처한다. 캡처 대상은 제약 순서의 신뢰할 수 있는 NOT NULL 선언 기본 키 값과 descriptor 및 타입 셀의 값 민감 SHA-256 리비전이다. 이후 페이지가 바뀌어도 캡처된 셀은 바뀌지 않는다.
 - **INT-109** 행 기준은 뷰, 신뢰할 수 없는 식별자, 잘못된 projection이나 키, 잘못된 decimal, NOT NULL 열의 NULL, 페이지 한도에서 거부된다. 잘못된 열 이름을 가진 descriptor는 `ROW_SNAPSHOT_INVALID`로 실패하며, 그 메시지는 그 이름의 `TABLE_REFERENCE_INVALID` 실패로 끝난다. 바뀐 descriptor, 없거나 바뀐 행, 모호한 식별자는 서로 다른 충돌이다.

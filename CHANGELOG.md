@@ -3,8 +3,8 @@
 
 ## Unreleased
 
-- Fixes: a committed mutation of the Rust catalog hands its connection back to the pool, so the next mutation reuses it (INT-106b); a mutation that fails still discards its connection.
-- Tests: the Rust suite of `packages/rust/tests` is one test program, `all`, whose groups run one after another and print their size and progress; every trial is kept, under a name that starts with its former program.
+- Fixes: a committed mutation of the Rust, Go, TypeScript and Python catalog leaves its connection to the next session, so the next mutation reuses it (INT-106b to INT-106e); a mutation that fails still discards its connection.
+- Tests: the Rust suite of the workspace is one test program, `all`, whose groups run one after another and print their size and progress; every trial is kept, under a name that starts with its former program, and the tests of a package stay in that package as a test case crate.
 
 ## 0.0.22
 

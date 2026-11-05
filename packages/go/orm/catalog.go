@@ -113,8 +113,8 @@ func (c *CatalogConnection) ensureOpen() error {
 	return nil
 }
 
-// catalogSession is one pooled connection inside one transaction. The connection is discarded when the session ends, so
-// a session setting such as the SQLite query_only pragma never returns to the pool.
+// catalogSession is one pooled connection inside one transaction. The connection is discarded when the session ends without
+// an acknowledged COMMIT, so a session setting such as the SQLite query_only pragma never returns to the pool.
 type catalogSession struct {
 	catalog *CatalogConnection
 	// stopped is set when a budget stopped a read: the cancel of the read closed the socket on MySQL and PostgreSQL.
@@ -162,7 +162,9 @@ func (c *CatalogConnection) begin(ctx context.Context, readOnly bool) (*catalogS
 		// A catalog session runs after schema changes by design, and through PgBouncer a Parse of a text that the server connection
 		// already holds never reaches the server, so a plan from before the change would fail with "cached plan must not change
 		// result type". The transaction holds that server connection for the whole session (CFG-28).
-		if _, err := conn.ExecContext(ctx, "DEALLOCATE ALL"); err != nil {
+		// A connection from the pool may hold statements of an earlier session: the driver forgets them on the client too, or
+		// the next use of a text it remembers would name a statement that the server has released.
+		if err := c.db.deallocate(ctx, conn); err != nil {
 			return nil, s.discard(mapDriverErrContext(err, ctx))
 		}
 	}
@@ -209,6 +211,16 @@ func (s *catalogSession) discard(err error) error {
 	}
 	if s.dialect == "mysql" {
 		s.catalog.reopenUntil.Store(time.Now().Add(2 * time.Second).UnixNano())
+	}
+	return err
+}
+
+// release returns the connection of a session whose COMMIT the server acknowledged to the pool, for the next session: that
+// transaction and its locks have ended, and a writable session changes no setting of its connection (INT-106c).
+func (s *catalogSession) release() error {
+	err := s.rollbacks.stop(s.conn)
+	if closeErr := s.conn.Close(); closeErr != nil {
+		err = errors.Join(err, mapDriverErr(closeErr))
 	}
 	return err
 }
@@ -290,7 +302,7 @@ func catalogWrite[T any](ctx context.Context, c *CatalogConnection, fn func(s *c
 			Cause: mapped,
 		})
 	}
-	return value, s.discard(nil)
+	return value, s.release()
 }
 
 // CurrentNamespace reports the namespace of the connection: the current schema of PostgreSQL, the current database of

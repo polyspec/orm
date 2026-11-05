@@ -8588,6 +8588,9 @@
         "packages/rust/build/src/catalog/row_snapshot.rs",
         "packages/rust/build/src/tool_db.rs",
         "packages/go/orm/catalog_mutation_test.go",
+        "packages/go/orm/catalog_mutation_connection_test.go",
+        "packages/ts/tests/catalog-mutation-connection.test.mjs",
+        "packages/python/tests/test_catalog_mutation_connection.py",
         "packages/go/orm/catalog_temporal_test.go",
         "packages/go/orm/catalog_page_validation_test.go",
         "packages/php/tests/CatalogPageValidationTest.php",
@@ -8625,6 +8628,30 @@
             "packages/rust/build/tests/row_snapshot.rs",
             "packages/rust/build/tests/typed_binds.rs",
             "packages/rust/build/tests/generate.rs"
+          ]
+        },
+        {
+          "id": "catalog-mutation-connection-go",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestCommittedCatalogMutationsShareOneConnection$' -count=1",
+          "shard": "other",
+          "inputs": [
+            "packages/go/orm/catalog_mutation_connection_test.go"
+          ]
+        },
+        {
+          "id": "catalog-mutation-connection-typescript",
+          "command": "node --conditions=orm-test --test packages/ts/tests/catalog-mutation-connection.test.mjs",
+          "shard": "other",
+          "inputs": [
+            "packages/ts/tests/catalog-mutation-connection.test.mjs"
+          ]
+        },
+        {
+          "id": "catalog-mutation-connection-python",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_catalog_mutation_connection",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/test_catalog_mutation_connection.py"
           ]
         },
         {

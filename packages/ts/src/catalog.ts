@@ -954,7 +954,7 @@ function catalogKind(dialect: DriverName, native: string): CatalogTableKind {
   throw err(CODE_KIND, `relation kind "${native}" of ${dialect}`);
 }
 
-/** A bound session: one pooled connection inside one transaction. It is discarded when it ends, so a session setting never returns to the pool. */
+/** A bound session: one pooled connection inside one transaction. It is discarded when it ends without an acknowledged COMMIT, so a session setting never returns to the pool. */
 class Session {
   /** Set when a read stopped a statement before its end: the connection then holds rows that were not read, and only a discard is safe. */
   public stopped = false;
@@ -1379,7 +1379,9 @@ export class CatalogConnection {
       this.discard(session);
       throw new OrmError(CODE_COMMIT_UNKNOWN, message, mapped, rollback);
     }
-    this.discard(session);
+    // The acknowledged COMMIT ended the transaction and its locks, and a writable session changes no setting of its connection, so
+    // the next session takes this connection (INT-106d).
+    session.release(false);
     return value;
   }
 

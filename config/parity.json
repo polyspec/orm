@@ -16261,6 +16261,68 @@
       ]
     },
     {
+      "id": "go-catalog-committed-mutations-share-one-connection",
+      "kind": "feature",
+      "requirements": [
+        "INT-106c"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/catalog_mutation_connection_test.go",
+          "id": "TestCommittedCatalogMutationsShareOneConnection"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "go-module",
+        "package": "github.com/polyspec/orm/packages/go"
+      }
+    },
+    {
+      "id": "ts-catalog-committed-mutations-share-one-connection",
+      "kind": "feature",
+      "requirements": [
+        "INT-106d"
+      ],
+      "bindings": [
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog-mutation-connection.test.mjs",
+          "id": "committed catalog mutations share one connection on postgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog-mutation-connection.test.mjs",
+          "id": "committed catalog mutations share one connection on mysql"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "@polyspec/orm"
+      }
+    },
+    {
+      "id": "py-catalog-committed-mutations-share-one-connection",
+      "kind": "feature",
+      "requirements": [
+        "INT-106e"
+      ],
+      "bindings": [
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_mutation_connection.py",
+          "id": "test_committed_mutations_share_one_connection"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec-orm"
+      }
+    },
+    {
       "id": "rust-catalog-mutation-finish-committed-mutations-share-one-connection",
       "kind": "feature",
       "requirements": [

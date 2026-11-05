@@ -2676,11 +2676,11 @@ def _run_case_on(
             ("case", case.get("seed", {}).get("rows")),
         ):
             for table, values in (rows or {}).items():
+                metadata = catalog.describe_table(
+                    {"namespace": namespace, "name": table}
+                )
                 for index, row in enumerate(values):
                     try:
-                        metadata = catalog.describe_table(
-                            {"namespace": namespace, "name": table}
-                        )
                         catalog.insert_row(metadata, _assignments(row, context))
                     except Exception as error:
                         raise AssertionError(
@@ -2825,6 +2825,9 @@ def _op_reconnect(step: dict, context: dict) -> dict:
         raise AssertionError(
             "the server accepted the connection that the step expects it to refuse"
         )
+    # A committed mutation leaves its connection in the catalog that this step replaces (INT-106e).
+    if not context.get("closed"):
+        context["catalog"].close()
     catalog = connect_catalog(dsn)
     context["namespace"] = catalog.current_namespace()
     context["catalog"] = catalog

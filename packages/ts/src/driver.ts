@@ -690,6 +690,12 @@ class PostgresSession implements DriverSession {
     return observed(this.name, sql, done, 'statement', () => pgScan(this.client, sql, params, sink));
   }
   public async control(sql: string, params: readonly DriverValue[], done: StatementDone): Promise<DriverResult> {
+    // The server forgets its named statements here, and a client from the pool may list some of an earlier session: it forgets them
+    // too, or the next use of a text it remembers would name a statement that the server has released.
+    if (sql === 'DEALLOCATE ALL') {
+      statementCaches.delete(this.client);
+      privateMember<{ parsedStatements: Record<string, string> }>(this.client, 'connection').parsedStatements = {};
+    }
     const result = await observed(this.name, sql, done, 'statement', () => afterFailure(this.client.query({ text: sql, values: [...params], rowMode: 'array' }), () => this.failure));
     return { rows: result.rows as unknown[][], affected: result.rowCount ?? 0, insertId: null, columns: result.fields.map(pgColumn) };
   }
