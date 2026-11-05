@@ -1359,6 +1359,7 @@ dependencies = [
  "rand 0.10.2",
  "regex",
  "rust_decimal",
+ "rustls",
  "saphyr-parser",
  "serde",
  "serde-saphyr",

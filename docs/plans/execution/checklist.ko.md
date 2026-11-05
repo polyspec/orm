@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: b60a2f82e9b8306cb2e14368c1e896b951373bcf7af4b36767e63c2e31bb79a1 -->
+<!-- source-sha256: 2cc42d1eaa8887911d8431da90d08acc272524ed2e712e0f0b2e639abaa2758c -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1756,3 +1756,5 @@
 | T367 | scripts/features/test-names.mts가 parity binding의 명령을 판정한다. 이 검사는 config/parity.json의 단어 목록인 binding 명령을 문자열로 읽어 한 번도 판정하지 못했고, T363이 그 호출을 제거했다. 제대로 읽으면 `make -C`, `VAR=value` 단어, `cwd` 기준 binding 때문에 잘못된 이름 약 25개를 보고하므로 이 형태들을 읽는 처리가 따로 필요하다. 보류: 새 개발이므로 release 뒤에 한다. | `scripts/features/test-names.mts` | `node --test scripts/features/test-names.test.mts` | [!] 원인: 새 개발이므로 release를 기다린다; 재시도: 일괄 release 뒤에 |
 | T368 | Rust와 PHP 확장 lint 검사가 개발 줄에서 통과한다. Red: 지난 release 이후 개발이 바뀐 시험만 실행했으므로 make lint-rust와 make lint-php-ext가 실패한다. Green: 둘 다 0으로 끝나고, 모든 지적이 고쳐졌으며 넓힌 검사가 없다. Rust 시험이 삼키던 실패, 닫기 실패, 선언 용량의 원인이 이제 보고된다. | `packages/rust`; `packages/php-ext/src` | `make lint-rust`; `make lint-php-ext` | [v] |
 | T369 | 개발 줄을 모든 package의 다음 release로 발행한다. Red: 소비자가 설치하는 package에 개발 줄의 작업이 없다. Green: tag commit의 CI가 통과하고, config/release.json의 모든 package가 release-verify를 통과한다. | `VERSION`; `CHANGELOG.md`; `CHANGELOG.ko.md` | `make kit-gates-static` | [~] |
+| T370 | benchmarks/rust/Cargo.lock이 polyspec-orm의 모든 의존성을 적는다. Red: 0fa301d7b가 polyspec-orm manifest에 rustls를 넣은 뒤로 make orm-install-rust-crates의 cargo fetch --locked가 그 workspace에서 101로 끝나, CI run 41971288757의 작업 8개가 install 단계에서 실패한다. Green: make orm-install-rust-crates가 0으로 끝나고, 갱신된 lock으로 workspace가 빌드된다. | `benchmarks/rust/Cargo.lock` | `make orm-install-rust-crates` | [v] |
+| T371 | push에서 실행되는 검사가 추적되는 모든 Cargo.lock을 manifest와 대조한다. push 전 local 검사 중 benchmarks/rust에 --locked로 cargo를 실행하는 것이 없어 T370이 CI까지 갔다. Rust 검사는 packages/rust를 빌드하고, 세 workspace를 모두 읽는 것은 install 단계 make orm-install-rust-crates뿐이다. | `Makefile`; `contracts/check-inputs.json` | `make orm-install-rust-crates` | [!] 원인: 새 개발이며 release가 먼저다; 재시도: release 뒤 |
