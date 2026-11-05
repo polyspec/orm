@@ -110,15 +110,15 @@
         "packages/ts/tests/model.mjs",
         "packages/ts/tests/pool_bounds.mjs",
         "packages/ts/tests/idle-connection-end.mjs",
-        "packages/rust/orm/tests/zone.rs",
-        "packages/rust/orm/tests/sqlite_file_name.rs",
+        "packages/rust/orm/tests/cases/zone.rs",
+        "packages/rust/orm/tests/cases/sqlite_file_name.rs",
         "packages/php/tests/CoverageDsnTest.php",
         "packages/rust/tests/tests/all/integration_program/mod.rs",
         "packages/go/orm/sqlite_path_test.go",
         "packages/rust/tests/tests/all/example_dsn.rs",
         "packages/php/tests/SqliteWithoutMysqlTest.php",
         "packages/php-ext/tests/OrmExceptionNativeTest.php",
-        "packages/rust/orm/tests/mysql_tls.rs",
+        "packages/rust/orm/tests/cases/mysql_tls.rs",
         "tests/dsn/sqlite-paths.json",
         "packages/php/tests/MarkdownTest.php",
         "packages/php-ext/src/markdown_native.c",
@@ -214,7 +214,7 @@
         "packages/python/tests/test_bind_messages_none.py",
         "packages/python/tests/test_dsn_reject_none.py",
         "packages/python/tests/test_model_socket_mysql.py",
-        "packages/rust/orm/tests/coverage_dsn.rs",
+        "packages/rust/orm/tests/cases/coverage_dsn.rs",
         "packages/rust/tests/tests/all/bind_messages.rs",
         "packages/rust/tests/tests/all/dsn_reject_none.rs",
         "packages/rust/tests/tests/all/model_socket_mysql.rs"
@@ -317,8 +317,8 @@
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts dsn-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- zone:: sqlite_file_name::",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/zone.rs",
-            "packages/rust/orm/tests/sqlite_file_name.rs",
+            "packages/rust/orm/tests/cases/zone.rs",
+            "packages/rust/orm/tests/cases/sqlite_file_name.rs",
             "contracts/fixtures/zone.dbs",
             "tests/dsn/sqlite-paths.json"
           ]
@@ -355,7 +355,7 @@
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts dsn-mysql-tls-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- mysql_tls::",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/mysql_tls.rs"
+            "packages/rust/orm/tests/cases/mysql_tls.rs"
           ]
         },
         {
@@ -407,7 +407,7 @@
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts idle-connection-end-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --offline --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- zone::pool_discards_ended_idle_connection --exact --test-threads=1",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/zone.rs",
+            "packages/rust/orm/tests/cases/zone.rs",
             "packages/rust/case-database/src/lib.rs"
           ]
         },
@@ -934,7 +934,7 @@
         "packages/rust/tests/tests/all/integration_program/mod.rs",
         "packages/go/engine/engine_test.go",
         "packages/go/engine/compile_bench_test.go",
-        "packages/rust/orm/tests/model_output.rs",
+        "packages/rust/orm/tests/cases/model_output.rs",
         "packages/go/internal/conformance/main_test.go",
         "packages/go/decimalmodel/decimal_physical_test.go",
         "packages/php/tests/DecimalModelTest.php",
@@ -947,7 +947,7 @@
         "packages/go/orm/related_test.go",
         "packages/php/tests/UnselectedColumnTest.php",
         "packages/php/tests/UnselectedColumnDbTest.php",
-        "packages/rust/orm/tests/value_types.rs",
+        "packages/rust/orm/tests/cases/value_types.rs",
         "packages/rust/tests/tests/all/result_chains.rs",
         "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
         "packages/go/orm/shape_test.go",
@@ -961,7 +961,7 @@
         "packages/go/decimalmodel/schema_set_test.go",
         "contracts/fixtures/decimal_schema.dbs",
         "packages/php/tests/RuntimeDbTest.php",
-        "packages/rust/orm/tests/decimal_model.rs",
+        "packages/rust/orm/tests/cases/decimal_model.rs",
         "packages/ts/tests/typecheck.ts",
         "packages/ts/tests/decimal_model_type.ts",
         "packages/ts/src/bin/orm-gen.ts",
@@ -980,7 +980,7 @@
         "packages/php-ext/tests/ParentSlotExpansionNativeTest.php",
         "packages/ts/tests/parent-slot-expansion.mjs",
         "packages/rust/orm/src/driver_parent_slot_tests.rs",
-        "packages/rust/orm/tests/collection_identity.rs",
+        "packages/rust/orm/tests/cases/collection_identity.rs",
         "packages/ts/tests/collection_identity.mjs",
         "packages/python/tests/test_collection_identity.py",
         "packages/python/tests/test_group_rows.py",
@@ -999,7 +999,7 @@
         "packages/rust/orm/src/engine/mod.rs",
         "packages/rust/orm/src/model.rs",
         "packages/rust/orm/src/driver/tests.rs",
-        "packages/rust/orm/tests/compiler_fixtures.rs",
+        "packages/rust/orm/tests/cases/compiler_fixtures.rs",
         "packages/php-ext/tests/CollectionIdentityTestExtensionTest.php",
         "packages/php-ext/tests/DecimalModelTestExtensionTest.php",
         "packages/php-ext/tests/GroupRowsTestExtensionTest.php",
@@ -1194,7 +1194,7 @@
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts queries-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- model_output::",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/model_output.rs"
+            "packages/rust/orm/tests/cases/model_output.rs"
           ]
         },
         {
@@ -1402,7 +1402,7 @@
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts decimal-model-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- decimal_model::",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/decimal_model.rs",
+            "packages/rust/orm/tests/cases/decimal_model.rs",
             "contracts/fixtures/dbspec-set.json",
             "packages/rust/tests/dbspec-set.json"
           ]
@@ -1412,7 +1412,7 @@
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts values-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- value_types::",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/value_types.rs"
+            "packages/rust/orm/tests/cases/value_types.rs"
           ]
         },
         {
@@ -1478,7 +1478,7 @@
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts collection-identity-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- collection_identity::",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/collection_identity.rs",
+            "packages/rust/orm/tests/cases/collection_identity.rs",
             "tests/collection/keys.json"
           ]
         },
@@ -1804,7 +1804,7 @@
         "packages/ts/tests/styled-value.mjs",
         "packages/ts/tests/styled-value-features.mjs",
         "packages/rust/tests/tests/all/integration_program/mod.rs",
-        "packages/rust/build/tests/generate.rs",
+        "packages/rust/build/tests/cases/generate.rs",
         "packages/go/decimalmodel/decimal_physical_test.go",
         "packages/php/tests/DecimalModelTest.php",
         "packages/php/tests/DecimalModelDbTest.php",
@@ -1821,7 +1821,7 @@
         "packages/go/model/styled_state_test.go",
         "packages/go/orm/exec_decode_test.go",
         "packages/php/tests/StyledValueTest.php",
-        "packages/rust/orm/tests/decimal_model.rs",
+        "packages/rust/orm/tests/cases/decimal_model.rs",
         "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
         "packages/go/orm/assignment_propagation_test.go",
         "contracts/fixtures/clock.dbs",
@@ -1830,7 +1830,7 @@
         "packages/php/tests/IdentityLoadTest.php",
         "packages/ts/tests/identity-load.mjs",
         "packages/python/tests/identity_load.py",
-        "packages/rust/orm/tests/identity_load.rs",
+        "packages/rust/orm/tests/cases/identity_load.rs",
         "packages/python/tests/test_mysql_found_rows.py",
         "packages/python/tests/test_new_values.py",
         "packages/python/tests/test_insert_parts.py",
@@ -2080,7 +2080,7 @@
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts identity-load-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- identity_load::",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/identity_load.rs",
+            "packages/rust/orm/tests/cases/identity_load.rs",
             "contracts/fixtures/identity_load.dbs",
             "contracts/fixtures/identity_load.json"
           ]
@@ -2426,11 +2426,11 @@
         "packages/php/tests/ModelTest.php",
         "packages/php-ext/tests/TransactionFailureNativeTest.php",
         "packages/ts/tests/model.mjs",
-        "packages/rust/orm/tests/zone.rs",
+        "packages/rust/orm/tests/cases/zone.rs",
         "packages/rust/tests/tests/all/integration_program/mod.rs",
         "packages/go/orm/goexit_test.go",
         "packages/go/model/sqlite_concurrency_test.go",
-        "packages/rust/orm/tests/sqlite_concurrency.rs",
+        "packages/rust/orm/tests/cases/sqlite_concurrency.rs",
         "packages/go/orm/context_reset_test.go",
         "packages/php/tests/sqlite_concurrency_writer.php",
         "packages/go/orm/coverage_transaction_failure_test.go",
@@ -2438,7 +2438,7 @@
         "packages/php/tests/TransactionFailureTest.php",
         "packages/php/tests/TransactionFailureCases.php",
         "packages/php/tests/ModelTestFailingPdo.php",
-        "packages/rust/orm/tests/rollback.rs",
+        "packages/rust/orm/tests/cases/rollback.rs",
         "packages/ts/tests/transaction-failure.mjs",
         "packages/go/orm/cancelled_session_test.go",
         "packages/go/orm/transaction_end_test.go",
@@ -2447,7 +2447,7 @@
         "packages/go/orm/statement_fault_test.go",
         "packages/go/orm/statement_fault_entry_test.go",
         "packages/php/tests/StatementFaultTest.php",
-        "packages/rust/orm/tests/statement_fault.rs",
+        "packages/rust/orm/tests/cases/statement_fault.rs",
         "packages/ts/tests/statement_fault.mjs",
         "packages/ts/tests/statement_fault_entry.mjs",
         "packages/python/tests/statement_fault.py",
@@ -2466,7 +2466,7 @@
         "packages/php/tests/OrmExceptionLockWaitTest.php",
         "packages/ts/tests/driver-error-lock-wait.mjs",
         "packages/ts/tests/transaction-flow.mjs",
-        "packages/rust/orm/tests/transaction_flow.rs",
+        "packages/rust/orm/tests/cases/transaction_flow.rs",
         "packages/php-ext/tests/ConnectionTimeoutCleanupTest.php",
         "packages/ts/tests/sqlite-row-lock-restore.mjs",
         "packages/ts/tests/was-inserted.mjs",
@@ -2482,7 +2482,7 @@
         "packages/rust/orm/src/utils.rs",
         "packages/rust/orm/src/db/executor_route_tests.rs",
         "packages/rust/orm/src/db/sqlite_row_lock_restore_tests.rs",
-        "packages/rust/orm/tests/compiler_fixtures.rs",
+        "packages/rust/orm/tests/cases/compiler_fixtures.rs",
         "packages/php-ext/tests/ModelTestExtensionTest.php",
         "packages/php-ext/tests/RollbackTestExtensionTest.php",
         "packages/php-ext/tests/SqliteRowLockRestoreTestExtensionTest.php",
@@ -2617,7 +2617,7 @@
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts statement-fault-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- statement_fault::",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/statement_fault.rs",
+            "packages/rust/orm/tests/cases/statement_fault.rs",
             "contracts/fixtures/statement_fault.json",
             "contracts/fixtures/rollback.dbs"
           ]
@@ -2659,7 +2659,7 @@
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts rollback-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- rollback::",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/rollback.rs",
+            "packages/rust/orm/tests/cases/rollback.rs",
             "contracts/fixtures/rollback.dbs"
           ]
         },
@@ -2747,7 +2747,7 @@
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts sqlite-concurrency-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- sqlite_concurrency::",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/sqlite_concurrency.rs"
+            "packages/rust/orm/tests/cases/sqlite_concurrency.rs"
           ]
         },
         {
@@ -3189,7 +3189,7 @@
           "shard": "rust",
           "inputs": [
             "packages/rust/orm/src/tx.rs",
-            "packages/rust/orm/tests/rollback.rs",
+            "packages/rust/orm/tests/cases/rollback.rs",
             "contracts/fixtures/rollback.dbs"
           ]
         }
@@ -3493,7 +3493,7 @@
         "packages/php/tests/RuntimeModelTest.php",
         "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
         "packages/python/tests/test_new_values.py",
-        "packages/rust/orm/tests/compiler_fixtures.rs",
+        "packages/rust/orm/tests/cases/compiler_fixtures.rs",
         "packages/ts/tests/chain-types.mjs",
         "packages/ts/tests/tsc-diagnostics.mjs",
         "packages/go/model/chain_types_test.go",
@@ -3507,7 +3507,7 @@
         "packages/go/generator/generator_test.go",
         "packages/php/tests/EngineTest.php",
         "packages/ts/tests/generate.mjs",
-        "packages/rust/build/tests/generate.rs",
+        "packages/rust/build/tests/cases/generate.rs",
         "packages/php/tests/OrmGenTest.php",
         "packages/php/tests/ModelMethodsTest.php",
         "packages/php/tests/OrmGenScanTest.php",
@@ -3645,7 +3645,7 @@
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts generation-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- generate::",
           "shard": "rust",
           "inputs": [
-            "packages/rust/build/tests/generate.rs",
+            "packages/rust/build/tests/cases/generate.rs",
             "contracts/fixtures/zone.dbs",
             "tests/dbspec/files/dbschema.dbs",
             "tests/dbspec/files/empty.dbs"
@@ -3736,7 +3736,7 @@
           "rust": {
             "part": "packages/rust",
             "tests": [
-              "packages/rust/orm/tests/compiler_fixtures.rs",
+              "packages/rust/orm/tests/cases/compiler_fixtures.rs",
               "packages/rust/tests/tests/all/coverage_model_generation.rs",
               "packages/rust/tests/tests/all/generator_none.rs"
             ],
@@ -3930,9 +3930,9 @@
         "packages/php/tests/DbspecRenderStatementsRecipeTest.php",
         "packages/php/tests/DbspecRulesTest.php",
         "packages/php/tests/DbspecStressTest.php",
-        "packages/rust/schema/tests/dbspec_model.rs",
+        "packages/rust/schema/tests/cases/dbspec_model.rs",
         "packages/rust/tests/tests/all/dbspec_render_statements_none.rs",
-        "packages/rust/schema/tests/dbspec_runtime.rs",
+        "packages/rust/schema/tests/cases/dbspec_runtime.rs",
         "packages/rust/tests/tests/all/dbspec_introspect_mysql.rs",
         "packages/rust/tests/tests/all/dbspec_introspect_postgres.rs",
         "packages/rust/tests/tests/all/dbspec_introspect_sqlite.rs",
@@ -3993,7 +3993,7 @@
         "packages/go/engine/dbspec/set_test.go",
         "packages/go/orm/recipe_dbspec_read_set_test.go",
         "packages/rust/tests/tests/all/dbspec_read_set_none.rs",
-        "packages/rust/schema/tests/dbspec_set_working_directory.rs",
+        "packages/rust/schema/tests/cases/dbspec_set_working_directory.rs",
         "packages/rust/tests/tests/all/dbspec_show_create_introspect_none.rs",
         "packages/ts/tests/dbspec_read_set-none.test.mjs",
         "packages/ts/tests/dbspec-set-edges.mjs",
@@ -4257,8 +4257,8 @@
           "shard": "other",
           "inputs": [
             "packages/rust/tests/tests/all/dbspec_render_statements_none.rs",
-            "packages/rust/schema/tests/dbspec_runtime.rs",
-            "packages/rust/schema/tests/dbspec_model.rs",
+            "packages/rust/schema/tests/cases/dbspec_runtime.rs",
+            "packages/rust/schema/tests/cases/dbspec_model.rs",
             "contracts/fixtures/bench/bench.dbs",
             "packages/rust/schema/tests/common/vector_file.rs",
             "tests/dbspec/ddl.json",
@@ -4270,7 +4270,7 @@
             "tests/dbspec/show-create.json",
             "packages/rust/tests/tests/all/dbspec_show_create_introspect_none.rs",
             "packages/rust/tests/tests/all/dbspec_read_set_none.rs",
-            "packages/rust/schema/tests/dbspec_set_working_directory.rs",
+            "packages/rust/schema/tests/cases/dbspec_set_working_directory.rs",
             "tests/dbspec/set-files.json",
             "packages/rust/schema/src/dbspec/set.rs",
             "tests/dbspec/set-parse.json",
@@ -4673,7 +4673,7 @@
         "packages/go/orm/timezone_test.go",
         "packages/php/tests/ModelTest.php",
         "packages/ts/tests/model.mjs",
-        "packages/rust/orm/tests/zone.rs",
+        "packages/rust/orm/tests/cases/zone.rs",
         "packages/php/tests/SchemaSetTest.php",
         "packages/ts/tests/schema-set.mjs",
         "packages/ts/tests/dbspec_set_decimal-mysql.test.mjs",
@@ -5767,7 +5767,7 @@
       "tests": [
         "packages/go/orm/codec_test.go",
         "packages/go/orm/aes_rotation_test.go",
-        "packages/rust/orm/tests/aes_keys.rs",
+        "packages/rust/orm/tests/cases/aes_keys.rs",
         "packages/ts/tests/model.mjs",
         "packages/ts/tests/codec_case.mjs",
         "packages/go/orm/fuzz_test.go",
@@ -5794,7 +5794,7 @@
         "packages/ts/tests/codec-none.test.mjs",
         "packages/python/tests/test_codec_none.py",
         "packages/rust/tests/tests/all/codec_none.rs",
-        "packages/rust/orm/tests/styled_column_states.rs",
+        "packages/rust/orm/tests/cases/styled_column_states.rs",
         "packages/ts/tests/codec-integer-beyond-i64-none.test.mjs",
         "packages/python/tests/test_codec_integer_beyond_i64_none.py",
         "packages/rust/tests/tests/all/codec_integer_beyond_i64_none.rs",
@@ -5893,7 +5893,7 @@
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts styled-column-states-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- styled_column_states::",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/styled_column_states.rs",
+            "packages/rust/orm/tests/cases/styled_column_states.rs",
             "contracts/fixtures/styled_column_states.json"
           ]
         },
@@ -5902,7 +5902,7 @@
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts encryption-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- aes_keys::",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/aes_keys.rs"
+            "packages/rust/orm/tests/cases/aes_keys.rs"
           ]
         },
         {
@@ -6901,8 +6901,8 @@
         "contracts/fixtures/audit_triggers/audit_triggers.dbs",
         "contracts/fixtures/audit_triggers/dbspec-set.json",
         "packages/go/orm/audit_transaction_test.go",
-        "packages/rust/orm/tests/audit.rs",
-        "packages/rust/orm/tests/common/audit_rows.rs",
+        "packages/rust/orm/tests/cases/audit.rs",
+        "packages/rust/orm/tests/cases/common/audit_rows.rs",
         "contracts/fixtures/external_audit/external_audit.json",
         "contracts/fixtures/external_audit/member.dbs",
         "contracts/fixtures/external_audit/core.dbs",
@@ -6910,7 +6910,7 @@
       ],
       "tests": [
         "packages/php/tests/ModelTest.php",
-        "packages/rust/orm/tests/audit.rs",
+        "packages/rust/orm/tests/cases/audit.rs",
         "packages/ts/tests/model.mjs",
         "packages/go/orm/audit_transaction_test.go",
         "packages/php/tests/RuntimeDbTest.php",
@@ -6969,7 +6969,7 @@
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts audit-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- audit::",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/audit.rs"
+            "packages/rust/orm/tests/cases/audit.rs"
           ]
         }
       ],
@@ -7361,7 +7361,7 @@
         "packages/php-ext/tests/PublicInterfaceSignedRecipeTestExtensionTest.php",
         "packages/go/orm/package_entry_test.go",
         "packages/php/tests/PackageEntryPointTest.php",
-        "packages/rust/orm/tests/package_entry.rs",
+        "packages/rust/orm/tests/cases/package_entry.rs",
         "packages/python/tests/test_package_entry.py",
         "packages/python/tests/test_orm_gen.py",
         "packages/python/tests/test_driver_cells.py",
@@ -8543,18 +8543,18 @@
         "packages/rust/tests/tests/all/common/mod.rs"
       ],
       "tests": [
-        "packages/rust/build/tests/lock_probe/mod.rs",
-        "packages/rust/build/tests/row_commit_permit.rs",
-        "packages/rust/build/tests/row_insert_identity.rs",
-        "packages/rust/build/tests/row_insert_identity/expression.rs",
-        "packages/rust/build/tests/row_mutation.rs",
-        "packages/rust/build/tests/row_snapshot.rs",
-        "packages/rust/build/tests/tool_cells.rs",
-        "packages/rust/build/tests/tool_columns.rs",
-        "packages/rust/build/tests/tool_limits.rs",
-        "packages/rust/build/tests/tool_statement.rs",
-        "packages/rust/build/tests/tool_values.rs",
-        "packages/rust/build/tests/typed_binds.rs",
+        "packages/rust/build/tests/cases/lock_probe/mod.rs",
+        "packages/rust/build/tests/cases/row_commit_permit.rs",
+        "packages/rust/build/tests/cases/row_insert_identity.rs",
+        "packages/rust/build/tests/cases/row_insert_identity/expression.rs",
+        "packages/rust/build/tests/cases/row_mutation.rs",
+        "packages/rust/build/tests/cases/row_snapshot.rs",
+        "packages/rust/build/tests/cases/tool_cells.rs",
+        "packages/rust/build/tests/cases/tool_columns.rs",
+        "packages/rust/build/tests/cases/tool_limits.rs",
+        "packages/rust/build/tests/cases/tool_statement.rs",
+        "packages/rust/build/tests/cases/tool_values.rs",
+        "packages/rust/build/tests/cases/typed_binds.rs",
         "packages/rust/build/tests/unit/mutation_commit.rs",
         "packages/rust/build/tests/unit/mutation_connection.rs",
         "packages/rust/build/tests/unit/mutation_safety.rs",
@@ -8616,18 +8616,18 @@
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts catalog-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- tool_cells:: tool_columns:: tool_limits:: tool_statement:: tool_values:: row_commit_permit:: row_insert_identity:: row_mutation:: row_snapshot:: typed_binds:: generate::",
           "shard": "rust",
           "inputs": [
-            "packages/rust/build/tests/tool_cells.rs",
-            "packages/rust/build/tests/tool_columns.rs",
-            "packages/rust/build/tests/tool_limits.rs",
-            "packages/rust/build/tests/tool_statement.rs",
-            "packages/rust/build/tests/tool_values.rs",
-            "packages/rust/build/tests/row_commit_permit.rs",
-            "packages/rust/build/tests/row_insert_identity.rs",
-            "packages/rust/build/tests/row_mutation.rs",
-            "packages/rust/build/tests/lock_probe/mod.rs",
-            "packages/rust/build/tests/row_snapshot.rs",
-            "packages/rust/build/tests/typed_binds.rs",
-            "packages/rust/build/tests/generate.rs"
+            "packages/rust/build/tests/cases/tool_cells.rs",
+            "packages/rust/build/tests/cases/tool_columns.rs",
+            "packages/rust/build/tests/cases/tool_limits.rs",
+            "packages/rust/build/tests/cases/tool_statement.rs",
+            "packages/rust/build/tests/cases/tool_values.rs",
+            "packages/rust/build/tests/cases/row_commit_permit.rs",
+            "packages/rust/build/tests/cases/row_insert_identity.rs",
+            "packages/rust/build/tests/cases/row_mutation.rs",
+            "packages/rust/build/tests/cases/lock_probe/mod.rs",
+            "packages/rust/build/tests/cases/row_snapshot.rs",
+            "packages/rust/build/tests/cases/typed_binds.rs",
+            "packages/rust/build/tests/cases/generate.rs"
           ]
         },
         {
@@ -8675,8 +8675,8 @@
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts row-insert-identity-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- row_insert_identity::",
           "shard": "rust",
           "inputs": [
-            "packages/rust/build/tests/row_insert_identity/expression.rs",
-            "packages/rust/build/tests/lock_probe/mod.rs"
+            "packages/rust/build/tests/cases/row_insert_identity/expression.rs",
+            "packages/rust/build/tests/cases/lock_probe/mod.rs"
           ]
         },
         {
@@ -8692,7 +8692,7 @@
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts tool-db-native-typed-binds-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- typed_binds::native_typed_binds_preserve_values_and_typed_nulls --exact",
           "shard": "rust",
           "inputs": [
-            "packages/rust/build/tests/typed_binds.rs"
+            "packages/rust/build/tests/cases/typed_binds.rs"
           ]
         },
         {
@@ -8700,7 +8700,7 @@
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts tool-db-native-typed-writes-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- typed_binds::native_typed_writes_roundtrip_reject_and_rollback --exact",
           "shard": "rust",
           "inputs": [
-            "packages/rust/build/tests/typed_binds.rs"
+            "packages/rust/build/tests/cases/typed_binds.rs"
           ]
         },
         {
@@ -10353,6 +10353,13 @@
       "paths": [
         "packages/rust/tests/tests/all/common/mod.rs",
         "packages/rust/build/tests/common/*.rs",
+        "packages/rust/build/tests/cases/common/*.rs",
+        "packages/rust/build/tests/cases/lib.rs",
+        "packages/rust/orm/tests/cases/common/*.rs",
+        "packages/rust/orm/tests/cases/lib.rs",
+        "packages/rust/schema/tests/cases/common/*.rs",
+        "packages/rust/schema/tests/cases/lib.rs",
+        "packages/rust/testcase/tests/cases/lib.rs",
         "packages/rust/testcase/src/*.rs",
         "packages/rust/orm/tests/common/*.rs",
         "packages/rust/tests/tests/all/main.rs"
@@ -10371,7 +10378,7 @@
       "tests": [
         "packages/go/orm/codes_test.go",
         "packages/php/tests/CodeCatalogTest.php",
-        "packages/rust/orm/tests/code_catalog.rs",
+        "packages/rust/orm/tests/cases/code_catalog.rs",
         "packages/ts/tests/code-catalog.mjs",
         "packages/python/tests/test_code_catalog.py"
       ],
@@ -10590,10 +10597,10 @@
     {
       "id": "rust-clock-integration-test-support",
       "paths": [
-        "packages/rust/orm/tests/common/clock_test_support.rs"
+        "packages/rust/orm/tests/cases/common/clock_test_support.rs"
       ],
       "tests": [
-        "packages/rust/orm/tests/was_inserted.rs"
+        "packages/rust/orm/tests/cases/was_inserted.rs"
       ],
       "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts rust-clock-test-support-helper -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- was_inserted::"
     },

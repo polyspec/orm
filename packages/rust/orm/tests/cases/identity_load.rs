@@ -15,8 +15,8 @@ use polyspec_orm_testcase::Trial;
 use serde_json::{json, Map, Value};
 
 static LOAD_SCHEMA: Schema =
-    Schema::new(include_str!("../../../../contracts/fixtures/identity_load.dbs"), "sha256:5b9923a69ed67de11e46bc3b825656d177d6e3664a867ca4d4d779b2677f97de");
-const CASES: &str = include_str!("../../../../contracts/fixtures/identity_load.json");
+    Schema::new(include_str!("../../../../../contracts/fixtures/identity_load.dbs"), "sha256:5b9923a69ed67de11e46bc3b825656d177d6e3664a867ca4d4d779b2677f97de");
+const CASES: &str = include_str!("../../../../../contracts/fixtures/identity_load.json");
 /// The deadline an execute case uses on one database. The sum for three databases fits within the case deadline DATABASE.
 const DATABASE_DEADLINE: Duration = Duration::from_secs(35);
 const DRIVERS: [&str; 3] = ["mysql", "postgres", "sqlite"];

@@ -112,7 +112,7 @@
         "Makefile",
         "scripts/rust/compiler-fixtures.mts",
         "scripts/rust/compiler-fixtures.schema.json",
-        "packages/rust/orm/tests/compiler_fixtures.rs",
+        "packages/rust/orm/tests/cases/compiler_fixtures.rs",
         "packages/rust/testing/compiler-fixtures/cases.json",
         "packages/rust/tests/build.rs",
         "packages/rust/tests/bench_model.rs"
@@ -608,7 +608,7 @@
         "packages/python/tests/test_orm_gen.py",
         "packages/python/tests/test_query_methods.py",
         "packages/rust/build/src/generate.rs",
-        "packages/rust/build/tests/generate.rs",
+        "packages/rust/build/tests/cases/generate.rs",
         "packages/rust/tests/tests/all/integration_program/mod.rs"
       ]
     },
@@ -812,7 +812,7 @@
         "packages/python/src/polyspec/orm/__init__.py",
         "packages/python/tests/test_collection_identity.py",
         "packages/rust/orm/src/collection.rs",
-        "packages/rust/orm/tests/collection_identity.rs",
+        "packages/rust/orm/tests/cases/collection_identity.rs",
         "packages/rust/orm/src/model.rs"
       ]
     },
@@ -1981,7 +1981,7 @@
         "rust"
       ],
       "inputs": [
-        "packages/rust/orm/tests/package_entry.rs"
+        "packages/rust/orm/tests/cases/package_entry.rs"
       ]
     },
     "typescript-package-entry-check": {
@@ -2812,7 +2812,7 @@
       ],
       "inputs": [
         "packages/rust/orm/src/tx.rs",
-        "packages/rust/orm/tests/rollback.rs",
+        "packages/rust/orm/tests/cases/rollback.rs",
         "contracts/fixtures/rollback.dbs",
         "Makefile"
       ]
@@ -3253,7 +3253,7 @@
         "packages/python/tests/test_styled_column_states.py",
         "packages/rust/orm/src/codec.rs",
         "packages/rust/orm/src/model.rs",
-        "packages/rust/orm/tests/styled_column_states.rs"
+        "packages/rust/orm/tests/cases/styled_column_states.rs"
       ]
     },
     "request-hook-php-extension-check": {

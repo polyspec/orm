@@ -22,7 +22,8 @@ fn ordered_json_value(value: &ordered_json::Value) -> Value {
 /// Each case of contracts/fixtures/styled_column_states.json: the stored value decodes to its state and writes back
 /// unchanged.
 fn styled_column_state_fixture() -> Vec<Trial> {
-    let fixture: Value = serde_json::from_str(include_str!("../../../../contracts/fixtures/styled_column_states.json")).expect("styled column state fixture");
+    let fixture: Value =
+        serde_json::from_str(include_str!("../../../../../contracts/fixtures/styled_column_states.json")).expect("styled column state fixture");
     let cases = fixture["cases"].as_array().expect("cases array");
     assert_eq!(cases.len(), 13, "every shared styled-column case remains present");
     cases

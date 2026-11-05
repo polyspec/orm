@@ -12,7 +12,7 @@ use std::collections::BTreeMap;
 
 use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, Val};
 pub static SCHEMA: Schema =
-    Schema::new(include_str!("../../../../../contracts/fixtures/audit.dbs"), "sha256:c651e923992a61fa5712620c7cf6cf7d1a509796b23c4ae597f58e9f561a0c1f");
+    Schema::new(include_str!("../../../../../../contracts/fixtures/audit.dbs"), "sha256:c651e923992a61fa5712620c7cf6cf7d1a509796b23c4ae597f58e9f561a0c1f");
 
 static ITEM: Entity =
     Entity { name: "item", schema: &SCHEMA, new: polyspec_orm::model::new_boxed::<Item>, collect: polyspec_orm::model::collect_boxed::<Item> };

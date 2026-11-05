@@ -21,7 +21,7 @@ use polyspec_orm::{Core, Db, Entity, Model, Param, Schema};
 use polyspec_orm_case_database::CaseDatabase;
 
 static ROLLBACK_SCHEMA: Schema =
-    Schema::new(include_str!("../../../../contracts/fixtures/rollback.dbs"), "sha256:c57c6748bed0458f6d9843a0e0861ca8ea89c3bde5c4308f2e049b6a87a1203c");
+    Schema::new(include_str!("../../../../../contracts/fixtures/rollback.dbs"), "sha256:c57c6748bed0458f6d9843a0e0861ca8ea89c3bde5c4308f2e049b6a87a1203c");
 static ROLLBACK_PROBE: Entity = Entity {
     name: "rollback_probe",
     schema: &ROLLBACK_SCHEMA,

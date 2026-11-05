@@ -513,15 +513,16 @@ function cargoMetadataOf(text: string): CargoMetadata {
   return { packages, ...(root === undefined ? {} : { workspace_root: jsonString(root, 'cargo metadata workspace_root') }) };
 }
 
-/** The crate of the one Rust test program, and its root file, which names by #[path] the tests that stay in their release package. */
+/** The crate of the one Rust test program, and its root file, which runs as a group each test module of a test case crate. */
 export const RUST_TEST_PROGRAM_CRATE = 'packages/rust/tests';
 const RUST_TEST_PROGRAM_ROOT = `${RUST_TEST_PROGRAM_CRATE}/tests/all/main.rs`;
 
-/** The modules that a root file of a test program names by #[path], by the file of each. */
-export function programPathModules(rootFile: string, text: string): Map<string, string> {
+/** The test modules of test case crates that a root file of a test program runs, by the file of each: `polyspec_orm_<package>_cases`, or `polyspec_orm_cases` of the package orm, holds them in `<package>/tests/cases`. */
+export function programCaseModules(rootFile: string, text: string): Map<string, string> {
+  const packages = resolve(dirname(rootFile), '../../..');
   const modules = new Map<string, string>();
-  for (const match of text.matchAll(/#\[path = "([^"]+)"\]\s*mod (\w+);/g)) {
-    if (match[1] && match[2]) modules.set(resolve(dirname(rootFile), match[1]), match[2]);
+  for (const match of text.matchAll(/\bpolyspec_orm(?:_(\w+?))?_cases::(\w+)::trials\b/g)) {
+    if (match[2]) modules.set(resolve(packages, match[1] ?? 'orm', 'tests/cases', `${match[2]}.rs`), match[2]);
   }
   return modules;
 }
@@ -530,7 +531,7 @@ export function programPathModules(rootFile: string, text: string): Map<string, 
 async function programModules(root: string): Promise<Map<string, string>> {
   const file = resolve(root, RUST_TEST_PROGRAM_ROOT);
   try {
-    return programPathModules(file, await readFile(file, 'utf8'));
+    return programCaseModules(file, await readFile(file, 'utf8'));
   } catch (error) {
     if (errorCode(error) !== 'ENOENT') throw error;
     return new Map();
@@ -686,6 +687,10 @@ async function buildCargo(plans: Plans, directory: string, builds: Builds, build
         for (const file of await dependencyFiles(binary.copy, dependencyRoot)) {
           files.set(file, [...(files.get(file) ?? []), binary.copy]);
         }
+      }
+      // A test case crate is a library of the program, so the dep-info of the program does not list its modules.
+      for (const binary of copied.tests.filter(candidate => candidate.target === program?.name)) {
+        for (const file of included.keys()) files.set(file, [...(files.get(file) ?? []), binary.copy]);
       }
       step(`${new Set([...files.values()].flat()).size} test binaries`);
     });

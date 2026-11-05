@@ -38,7 +38,7 @@ struct Fixture {
     cases: Vec<String>,
 }
 
-const FIXTURE_JSON: &str = include_str!("../../../../contracts/fixtures/statement_fault.json");
+const FIXTURE_JSON: &str = include_str!("../../../../../contracts/fixtures/statement_fault.json");
 const CASE_DEADLINE: Duration = Duration::from_secs(30);
 
 fn fixture() -> Fixture {

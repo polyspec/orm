@@ -42,7 +42,7 @@ fn datetime_param(t: NaiveDateTime) -> Param {
 }
 
 static SCHEMA: Schema =
-    Schema::new(include_str!("../../../../contracts/fixtures/zone.dbs"), "sha256:c889e6d039d9245e5093d386a7c707419fddf5f9a303d39a5eb7cca4c8499891");
+    Schema::new(include_str!("../../../../../contracts/fixtures/zone.dbs"), "sha256:c889e6d039d9245e5093d386a7c707419fddf5f9a303d39a5eb7cca4c8499891");
 
 static ENTITY: Entity =
     Entity { name: "zone_event", schema: &SCHEMA, new: polyspec_orm::model::new_boxed::<ZoneEvent>, collect: polyspec_orm::model::collect_boxed::<ZoneEvent> };

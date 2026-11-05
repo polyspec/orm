@@ -1,0 +1,29 @@
+[package]
+name = "polyspec-orm-build-cases"
+version = "0.0.22"
+edition = "2021"
+rust-version = "1.99.0"
+publish = false
+
+[lib]
+path = "lib.rs"
+test = false
+doctest = false
+
+[dependencies]
+polyspec-orm-build = { path = "../..", features = ["live-db"] }
+polyspec-orm = { path = "../../../orm", features = ["test-faults"] }
+polyspec-orm-schema = { path = "../../../schema" }
+polyspec-orm-testcase = { path = "../../../testcase" }
+polyspec-orm-case-database = { path = "../../../case-database" }
+polyspec-orm-case-clock = { path = "../../../case-clock" }
+polyspec-orm-test-support = { path = "../../../test-support" }
+sha2 = "0.10"
+futures-util = "0.3"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
+sqlx = { version = "0.9", features = ["runtime-tokio", "mysql", "postgres", "sqlite"] }
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+serde_json = "1"
+
+[lints]
+workspace = true

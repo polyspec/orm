@@ -12,49 +12,23 @@ pub mod fulltext_dispatch;
 #[path = "model_writes/dispatch.rs"]
 pub mod model_writes_dispatch;
 
-#[macro_use]
-#[path = "../../../orm/tests/common/audit_rows.rs"]
-pub mod audit_rows;
-#[macro_use]
-#[path = "../../../orm/tests/common/json_trials.rs"]
-pub mod json_trials;
-#[macro_use]
-#[path = "../../../orm/tests/common/map_rows.rs"]
-pub mod map_rows;
-#[macro_use]
-#[path = "../../../orm/tests/common/typed_model.rs"]
-pub mod typed_model;
-#[path = "../../../orm/tests/aes_keys.rs"]
-mod aes_keys;
 mod aes_rotation_mysql;
 mod aes_rotation_postgres;
 mod aes_rotation_sqlite;
-#[path = "../../../orm/tests/audit.rs"]
-mod audit;
 mod audit_triggers_mysql;
 mod audit_triggers_postgres;
 mod audit_triggers_sqlite;
 mod bind_messages;
 mod canonical_none;
-#[path = "../../../orm/tests/common/case_database_run.rs"]
-pub mod case_database_run;
 mod catalog_connection_mysql;
 mod catalog_connection_postgres;
 mod catalog_connection_sqlite;
 mod catalog_connection_sqlite_only;
 mod client_bench_args;
 mod client_bench_dsn;
-#[path = "../../../orm/tests/common/clock_test_support.rs"]
-pub mod clock_test_support;
-#[path = "../../../orm/tests/code_catalog.rs"]
-mod code_catalog;
 mod codec_integer_beyond_i64_none;
 mod codec_none;
-#[path = "../../../orm/tests/collection_identity.rs"]
-mod collection_identity;
 mod collection_none;
-#[path = "../../../orm/tests/compiler_fixtures.rs"]
-mod compiler_fixtures;
 mod complex_query_mysql;
 mod complex_query_postgres;
 mod complex_query_sqlite;
@@ -71,8 +45,6 @@ mod connection_pool_sqlite;
 mod constraints_and_relations_mysql;
 mod constraints_and_relations_postgres;
 mod constraints_and_relations_sqlite;
-#[path = "../../../orm/tests/coverage_dsn.rs"]
-mod coverage_dsn;
 mod coverage_model_generation;
 mod coverage_performance_gate;
 mod dbspec_add_tables_steps_none;
@@ -87,8 +59,6 @@ mod dbspec_introspect_sqlite;
 mod dbspec_limits_none;
 mod dbspec_load_set_none;
 mod dbspec_mermaid_none;
-#[path = "../../../schema/tests/dbspec_model.rs"]
-mod dbspec_model;
 mod dbspec_plan_cases_none;
 mod dbspec_plan_chains_none;
 mod dbspec_plan_comparisons_none;
@@ -100,16 +70,10 @@ mod dbspec_render_physical_postgres;
 mod dbspec_render_physical_sqlite;
 mod dbspec_render_statements_none;
 mod dbspec_rules_recipe_none;
-#[path = "../../../schema/tests/dbspec_runtime.rs"]
-mod dbspec_runtime;
 mod dbspec_set_decimal_mysql;
 mod dbspec_set_decimal_postgres;
 mod dbspec_set_decimal_sqlite;
-#[path = "../../../schema/tests/dbspec_set_working_directory.rs"]
-mod dbspec_set_working_directory;
 mod dbspec_show_create_introspect_none;
-#[path = "../../../orm/tests/decimal_model.rs"]
-mod decimal_model;
 mod decimal_physical;
 mod default_select_set_none;
 mod dsl_none;
@@ -122,18 +86,12 @@ mod external_audit_mysql;
 mod external_audit_postgres;
 mod external_audit_sqlite;
 mod files_none;
-#[path = "../../../testcase/tests/form.rs"]
-mod form;
 mod fulltext_search_recipe_mysql;
 mod fulltext_search_recipe_postgres;
 mod fulltext_search_recipe_sqlite;
-#[path = "../../../build/tests/generate.rs"]
-mod generate;
 mod generator_none;
 mod generator_scan_none;
 mod hashes_none;
-#[path = "../../../orm/tests/identity_load.rs"]
-mod identity_load;
 mod immutable_write_mysql;
 mod immutable_write_postgres;
 mod immutable_write_sqlite;
@@ -141,13 +99,7 @@ mod integration_program;
 mod invalid_none;
 mod ir_answers;
 mod ir_validate_none;
-#[path = "../../../build/tests/lock_probe/mod.rs"]
-pub mod lock_probe;
-#[path = "../../../build/tests/lock_probe_order.rs"]
-mod lock_probe_order;
 mod markdown_conformance;
-#[path = "../../../orm/tests/model_output.rs"]
-mod model_output;
 mod model_queries_chain_mysql;
 mod model_queries_chain_postgres;
 mod model_queries_chain_sqlite;
@@ -161,21 +113,13 @@ mod model_writes_chain_sqlite;
 mod model_writes_mysql;
 mod model_writes_postgres;
 mod model_writes_sqlite;
-#[path = "../../../orm/tests/mysql_tls.rs"]
-mod mysql_tls;
 mod normalize_none;
-#[path = "common/or_panic.rs"]
-pub mod or_panic;
-#[path = "../../../orm/tests/package_entry.rs"]
-mod package_entry;
 mod parameter_chunking_mysql;
 mod parameter_chunking_postgres;
 mod parameter_chunking_sqlite;
 mod performance_gate_mysql;
 mod performance_gate_postgres;
 mod performance_gate_sqlite;
-#[path = "../../../build/tests/common/physical_fixture.rs"]
-pub mod physical_fixture;
 mod planner_compile_none;
 mod positions_none;
 mod public_interface_none;
@@ -184,111 +128,65 @@ mod request_hook_mysql;
 mod request_hook_postgres;
 mod request_hook_sqlite;
 mod result_chains;
-#[path = "common/result_code.rs"]
-pub mod result_code;
-#[path = "../../../orm/tests/rollback.rs"]
-mod rollback;
-#[path = "../../../build/tests/row_commit_permit.rs"]
-mod row_commit_permit;
-#[path = "../../../build/tests/row_insert_identity.rs"]
-mod row_insert_identity;
-#[path = "../../../build/tests/row_mutation.rs"]
-mod row_mutation;
-#[path = "../../../build/tests/row_snapshot.rs"]
-mod row_snapshot;
 mod runtime_model_entities_none;
 mod runtime_model_plans_none;
 mod schema_definition_none;
 mod schema_install_mysql;
 mod schema_install_postgres;
 mod schema_install_sqlite;
-#[path = "../../../orm/tests/common/secret_config.rs"]
-pub mod secret_config;
-#[path = "../../../orm/tests/common/service_model.rs"]
-pub mod service_model;
 mod set_parse_none;
 mod sets_none;
-#[path = "../../../orm/tests/common/sqlite_case.rs"]
-pub mod sqlite_case;
-#[path = "../../../orm/tests/sqlite_concurrency.rs"]
-mod sqlite_concurrency;
-#[path = "../../../orm/tests/sqlite_file_name.rs"]
-mod sqlite_file_name;
 mod statement_events_mysql;
 mod statement_events_postgres;
 mod statement_events_sqlite;
-#[path = "../../../orm/tests/statement_fault.rs"]
-mod statement_fault;
 mod statement_runner_mysql;
 mod statement_runner_postgres;
 mod statement_runner_sqlite;
-#[path = "../../../orm/tests/styled_column_states.rs"]
-mod styled_column_states;
-#[path = "../../../build/tests/tool_cells.rs"]
-mod tool_cells;
-#[path = "../../../build/tests/tool_columns.rs"]
-mod tool_columns;
-#[path = "../../../build/tests/tool_limits.rs"]
-mod tool_limits;
-#[path = "../../../build/tests/tool_statement.rs"]
-mod tool_statement;
-#[path = "../../../build/tests/tool_values.rs"]
-mod tool_values;
-#[path = "../../../orm/tests/transaction_flow.rs"]
-mod transaction_flow;
 mod transactions_mysql;
 mod transactions_postgres;
 mod transactions_sqlite;
-#[path = "../../../build/tests/typed_binds.rs"]
-mod typed_binds;
 mod utils_recipe_mysql;
 mod utils_recipe_postgres;
 mod utils_recipe_sqlite;
-#[path = "../../../orm/tests/value_types.rs"]
-mod value_types;
-#[path = "../../../orm/tests/was_inserted.rs"]
-mod was_inserted;
-#[path = "../../../orm/tests/zone.rs"]
-mod zone;
 
 fn main() {
     polyspec_orm_testcase::run_groups(vec![
-        polyspec_orm_testcase::Group::new("aes_keys", aes_keys::trials),
-        polyspec_orm_testcase::Group::new("audit", audit::trials),
-        polyspec_orm_testcase::Group::new("code_catalog", code_catalog::trials),
-        polyspec_orm_testcase::Group::new("collection_identity", collection_identity::trials),
-        polyspec_orm_testcase::Group::new("compiler_fixtures", compiler_fixtures::trials).in_order(),
-        polyspec_orm_testcase::Group::new("coverage_dsn", coverage_dsn::trials),
-        polyspec_orm_testcase::Group::new("dbspec_model", dbspec_model::trials),
-        polyspec_orm_testcase::Group::new("dbspec_runtime", dbspec_runtime::trials),
-        polyspec_orm_testcase::Group::new("dbspec_set_working_directory", dbspec_set_working_directory::trials),
-        polyspec_orm_testcase::Group::new("decimal_model", decimal_model::trials),
-        polyspec_orm_testcase::Group::new("form", form::trials),
-        polyspec_orm_testcase::Group::new("generate", generate::trials),
-        polyspec_orm_testcase::Group::new("identity_load", identity_load::trials).in_order(),
-        polyspec_orm_testcase::Group::new("lock_probe_order", lock_probe_order::trials),
-        polyspec_orm_testcase::Group::new("model_output", model_output::trials),
-        polyspec_orm_testcase::Group::new("mysql_tls", mysql_tls::trials),
-        polyspec_orm_testcase::Group::new("package_entry", package_entry::trials),
-        polyspec_orm_testcase::Group::new("rollback", rollback::trials),
-        polyspec_orm_testcase::Group::new("row_commit_permit", row_commit_permit::trials),
-        polyspec_orm_testcase::Group::new("row_insert_identity", row_insert_identity::trials),
-        polyspec_orm_testcase::Group::new("row_mutation", row_mutation::trials),
-        polyspec_orm_testcase::Group::new("row_snapshot", row_snapshot::trials),
-        polyspec_orm_testcase::Group::new("sqlite_concurrency", sqlite_concurrency::trials),
-        polyspec_orm_testcase::Group::new("sqlite_file_name", sqlite_file_name::trials),
-        polyspec_orm_testcase::Group::new("statement_fault", statement_fault::trials).in_order(),
-        polyspec_orm_testcase::Group::new("styled_column_states", styled_column_states::trials),
-        polyspec_orm_testcase::Group::new("tool_cells", tool_cells::trials),
-        polyspec_orm_testcase::Group::new("tool_columns", tool_columns::trials),
-        polyspec_orm_testcase::Group::new("tool_limits", tool_limits::trials),
-        polyspec_orm_testcase::Group::new("tool_statement", tool_statement::trials),
-        polyspec_orm_testcase::Group::new("tool_values", tool_values::trials),
-        polyspec_orm_testcase::Group::new("transaction_flow", transaction_flow::trials),
-        polyspec_orm_testcase::Group::new("typed_binds", typed_binds::trials),
-        polyspec_orm_testcase::Group::new("value_types", value_types::trials),
-        polyspec_orm_testcase::Group::new("was_inserted", was_inserted::trials),
-        polyspec_orm_testcase::Group::new("zone", zone::trials),
+        polyspec_orm_testcase::Group::new("aes_keys", polyspec_orm_cases::aes_keys::trials),
+        polyspec_orm_testcase::Group::new("audit", polyspec_orm_cases::audit::trials),
+        polyspec_orm_testcase::Group::new("code_catalog", polyspec_orm_cases::code_catalog::trials),
+        polyspec_orm_testcase::Group::new("collection_identity", polyspec_orm_cases::collection_identity::trials),
+        polyspec_orm_testcase::Group::new("compiler_fixtures", polyspec_orm_cases::compiler_fixtures::trials).in_order(),
+        polyspec_orm_testcase::Group::new("coverage_dsn", polyspec_orm_cases::coverage_dsn::trials),
+        polyspec_orm_testcase::Group::new("dbspec_model", polyspec_orm_schema_cases::dbspec_model::trials),
+        polyspec_orm_testcase::Group::new("dbspec_runtime", polyspec_orm_schema_cases::dbspec_runtime::trials),
+        polyspec_orm_testcase::Group::new("dbspec_set_working_directory", polyspec_orm_schema_cases::dbspec_set_working_directory::trials),
+        polyspec_orm_testcase::Group::new("decimal_model", polyspec_orm_cases::decimal_model::trials),
+        polyspec_orm_testcase::Group::new("form", polyspec_orm_testcase_cases::form::trials),
+        polyspec_orm_testcase::Group::new("generate", polyspec_orm_build_cases::generate::trials),
+        polyspec_orm_testcase::Group::new("identity_load", polyspec_orm_cases::identity_load::trials).in_order(),
+        polyspec_orm_testcase::Group::new("lock_probe_order", polyspec_orm_build_cases::lock_probe_order::trials),
+        polyspec_orm_testcase::Group::new("model_output", polyspec_orm_cases::model_output::trials),
+        polyspec_orm_testcase::Group::new("mysql_tls", polyspec_orm_cases::mysql_tls::trials),
+        polyspec_orm_testcase::Group::new("package_entry", polyspec_orm_cases::package_entry::trials),
+        polyspec_orm_testcase::Group::new("rollback", polyspec_orm_cases::rollback::trials),
+        polyspec_orm_testcase::Group::new("row_commit_permit", polyspec_orm_build_cases::row_commit_permit::trials),
+        polyspec_orm_testcase::Group::new("row_insert_identity", polyspec_orm_build_cases::row_insert_identity::trials),
+        polyspec_orm_testcase::Group::new("row_mutation", polyspec_orm_build_cases::row_mutation::trials),
+        polyspec_orm_testcase::Group::new("row_snapshot", polyspec_orm_build_cases::row_snapshot::trials),
+        polyspec_orm_testcase::Group::new("sqlite_concurrency", polyspec_orm_cases::sqlite_concurrency::trials),
+        polyspec_orm_testcase::Group::new("sqlite_file_name", polyspec_orm_cases::sqlite_file_name::trials),
+        polyspec_orm_testcase::Group::new("statement_fault", polyspec_orm_cases::statement_fault::trials).in_order(),
+        polyspec_orm_testcase::Group::new("styled_column_states", polyspec_orm_cases::styled_column_states::trials),
+        polyspec_orm_testcase::Group::new("tool_cells", polyspec_orm_build_cases::tool_cells::trials),
+        polyspec_orm_testcase::Group::new("tool_columns", polyspec_orm_build_cases::tool_columns::trials),
+        polyspec_orm_testcase::Group::new("tool_limits", polyspec_orm_build_cases::tool_limits::trials),
+        polyspec_orm_testcase::Group::new("tool_statement", polyspec_orm_build_cases::tool_statement::trials),
+        polyspec_orm_testcase::Group::new("tool_values", polyspec_orm_build_cases::tool_values::trials),
+        polyspec_orm_testcase::Group::new("transaction_flow", polyspec_orm_cases::transaction_flow::trials),
+        polyspec_orm_testcase::Group::new("typed_binds", polyspec_orm_build_cases::typed_binds::trials),
+        polyspec_orm_testcase::Group::new("value_types", polyspec_orm_cases::value_types::trials),
+        polyspec_orm_testcase::Group::new("was_inserted", polyspec_orm_cases::was_inserted::trials),
+        polyspec_orm_testcase::Group::new("zone", polyspec_orm_cases::zone::trials),
         polyspec_orm_testcase::Group::new("aes_rotation_mysql", aes_rotation_mysql::trials),
         polyspec_orm_testcase::Group::new("aes_rotation_postgres", aes_rotation_postgres::trials),
         polyspec_orm_testcase::Group::new("aes_rotation_sqlite", aes_rotation_sqlite::trials),

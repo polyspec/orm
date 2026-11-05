@@ -17675,6 +17675,10 @@
     "exported": false,
     "signature": "receiver=*catalogSession func(query string, args []any, maxRows int, maxBytes int, size func(value any, native string) (int, error)) (raw catalogRaw, err error)"
   },
+  "packages/go/orm/catalog.go::catalogSession.release": {
+    "exported": false,
+    "signature": "receiver=*catalogSession func() error"
+  },
   "packages/go/orm/catalog.go::catalogSize": {
     "exported": false,
     "signature": "func(value any) int"
@@ -21430,6 +21434,10 @@
   "packages/go/orm/sqlite_time.go::invalidTimeText": {
     "exported": false,
     "signature": "func(v, colType string) error"
+  },
+  "packages/go/orm/stale_plan.go::DB.deallocate": {
+    "exported": false,
+    "signature": "receiver=*DB func(ctx context.Context, conn *sql.Conn) error"
   },
   "packages/go/orm/stale_plan.go::DB.execAgain": {
     "exported": false,

@@ -68,7 +68,7 @@ for (const fixture of fixtures) {
   }
 }
 const known = new Set(fixtures.map(fixture => fixture.id));
-// Each case is one trial of packages/rust/orm/tests/compiler_fixtures.rs, which runs this runner with that case.
+// Each case is one trial of packages/rust/orm/tests/cases/compiler_fixtures.rs, which runs this runner with that case.
 if (requestedCases.length === 0) throw new Error('select a compiler fixture with --case; make rust-compiler-fixtures-check runs every case as its own trial');
 if (new Set(requestedCases).size !== requestedCases.length) throw new Error('compiler fixture selections must be unique');
 for (const id of requestedCases) if (!known.has(id)) throw new Error(`unknown Rust compiler fixture ${id}`);

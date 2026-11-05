@@ -4,7 +4,7 @@ use polyspec_orm_testcase::Trial;
 
 /// Each case of contracts/fixtures/decimal_model.json is the trial `decimal_model_fixture::<id>`.
 fn decimal_model_fixture() -> Vec<Trial> {
-    let fixture: Value = polyspec_orm::serde_json::from_str(include_str!("../../../../contracts/fixtures/decimal_model.json")).unwrap();
+    let fixture: Value = polyspec_orm::serde_json::from_str(include_str!("../../../../../contracts/fixtures/decimal_model.json")).unwrap();
     let columns = fixture["columns"].as_array().unwrap().clone();
     fixture["cases"]
         .as_array()

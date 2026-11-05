@@ -13,7 +13,10 @@ fn main() {
     builder.generate();
     let out = std::path::PathBuf::from(std::env::var_os("OUT_DIR").expect("OUT_DIR is required; build the crate with cargo, which sets it for build scripts"));
     polyspec_orm_build::Builder::set("dbspec-set.json").scan("tests/all/integration_program/mod.rs").out_dir(out.join("nonnull")).generate();
-    polyspec_orm_build::Builder::set("../../../contracts/fixtures/dbspec-set.json").scan("tests/all/decimal_physical.rs").out_dir(out.join("decimal")).generate();
+    polyspec_orm_build::Builder::set("../../../contracts/fixtures/dbspec-set.json")
+        .scan("tests/all/decimal_physical.rs")
+        .out_dir(out.join("decimal"))
+        .generate();
     // The member document uses ext_core of core.dbs: its used tables are entities of the member set (ExtAudit among them), so the
     // member models carry the getter of the external relation as they carry any relation (tests/all/integration_program/mod.rs).
     polyspec_orm_build::Builder::set("external/dbspec-set.json").scan("tests/all/integration_program/mod.rs").out_dir(out.join("external")).generate();

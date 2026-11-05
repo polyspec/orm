@@ -1563,6 +1563,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "polyspec-orm-build-cases"
+version = "0.0.22"
+dependencies = [
+ "chrono",
+ "futures-util",
+ "polyspec-orm",
+ "polyspec-orm-build",
+ "polyspec-orm-case-clock",
+ "polyspec-orm-case-database",
+ "polyspec-orm-schema",
+ "polyspec-orm-test-support",
+ "polyspec-orm-testcase",
+ "serde_json",
+ "sha2 0.10.9",
+ "sqlx",
+ "tokio",
+]
+
+[[package]]
 name = "polyspec-orm-case-clock"
 version = "0.0.22"
 dependencies = [
@@ -1582,6 +1601,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "polyspec-orm-cases"
+version = "0.0.22"
+dependencies = [
+ "chrono",
+ "futures-util",
+ "libsqlite3-sys",
+ "log",
+ "polyspec-orm",
+ "polyspec-orm-case-clock",
+ "polyspec-orm-case-database",
+ "polyspec-orm-test-support",
+ "polyspec-orm-testcase",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "sqlx",
+ "tokio",
+]
+
+[[package]]
 name = "polyspec-orm-schema"
 version = "0.0.22"
 dependencies = [
@@ -1594,6 +1633,18 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.9",
+]
+
+[[package]]
+name = "polyspec-orm-schema-cases"
+version = "0.0.22"
+dependencies = [
+ "jsonschema",
+ "polyspec-orm-case-clock",
+ "polyspec-orm-schema",
+ "polyspec-orm-test-support",
+ "polyspec-orm-testcase",
+ "serde_json",
 ]
 
 [[package]]
@@ -1616,25 +1667,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "polyspec-orm-testcase-cases"
+version = "0.0.22"
+dependencies = [
+ "polyspec-orm-testcase",
+ "tokio",
+]
+
+[[package]]
 name = "polyspec-orm-tests"
 version = "0.0.22"
 dependencies = [
  "chrono",
  "cpu-time",
- "futures-util",
- "jsonschema",
- "libsqlite3-sys",
- "log",
  "polyspec-orm",
  "polyspec-orm-build",
- "polyspec-orm-case-clock",
+ "polyspec-orm-build-cases",
  "polyspec-orm-case-database",
- "polyspec-orm-schema",
+ "polyspec-orm-cases",
+ "polyspec-orm-schema-cases",
  "polyspec-orm-test-support",
  "polyspec-orm-testcase",
+ "polyspec-orm-testcase-cases",
  "serde",
  "serde_json",
- "sha2 0.10.9",
  "sqlx",
  "symlink",
  "tokio",

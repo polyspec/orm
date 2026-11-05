@@ -10,7 +10,7 @@ use polyspec_orm::{Db, Schema};
 /// leaves out, so the document text itself is not the manifest text.
 #[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
 pub static MANIFEST_TEXT: LazyLock<String> = LazyLock::new(|| {
-    let text = include_str!("../../../../../contracts/fixtures/bench/bench.dbs");
+    let text = include_str!("../../../../../../contracts/fixtures/bench/bench.dbs");
     let document = polyspec_orm::dbspec::parse(text, &Default::default()).expect("bench.dbs parses").document;
     polyspec_orm::dbspec::manifest(&[&document]).expect("the manifest of bench.dbs").manifest_text
 });
