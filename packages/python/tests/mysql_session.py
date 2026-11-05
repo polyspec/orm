@@ -6,6 +6,7 @@ import unittest
 from . import testcase
 from polyspec.orm.database import _PostgresConnection, parse_dsn
 
+
 class MysqlSessionTest(unittest.TestCase):
     # Requirements: CFG-7.
     def test_postgres_session_settings_are_startup_parameters(self):

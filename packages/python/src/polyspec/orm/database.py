@@ -1027,8 +1027,7 @@ class _PostgresConnection:
             else code in ("42883", "42804", "22P02", "22003", "22007", "22008")
         )
         return (
-            stale
-            and self.connection.info.transaction_status == TransactionStatus.IDLE
+            stale and self.connection.info.transaction_status == TransactionStatus.IDLE
         )
 
     def _run(self, text: str, args):

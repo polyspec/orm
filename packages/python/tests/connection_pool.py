@@ -12,7 +12,6 @@ import tempfile
 import threading
 import time
 import unittest
-from concurrent.futures import ThreadPoolExecutor
 from types import SimpleNamespace
 from urllib.parse import urlsplit
 
@@ -217,6 +216,7 @@ class ConnectionPoolTest(unittest.TestCase):
                 self.assertEqual(db.stats().max_open_connections, 3, "poolSize")
             finally:
                 db.close()
+
         self.each(body, ("sqlite",))
 
     def test_idle_size_and_lifetime(self):
@@ -243,6 +243,7 @@ class ConnectionPoolTest(unittest.TestCase):
                 db.close()
             db = models.connect(dsn, poolSize=1, poolLifetimeMs=200)
             try:
+
                 def taken():
                     return db.transaction(
                         lambda: db.active_frame().connection, {"retry": 0}
@@ -269,10 +270,19 @@ class ConnectionPoolTest(unittest.TestCase):
             setup = models.connect(dsn)
             install_bench(setup)
             setup.close()
-            root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+            root = os.path.abspath(
+                os.path.join(os.path.dirname(__file__), "..", "..", "..")
+            )
             children = [
                 subprocess.Popen(
-                    [sys.executable, "-c", SQLITE_WRITER_PROCESS, dsn, f"process-{index}", "40"],
+                    [
+                        sys.executable,
+                        "-c",
+                        SQLITE_WRITER_PROCESS,
+                        dsn,
+                        f"process-{index}",
+                        "40",
+                    ],
                     cwd=root,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,

@@ -60,10 +60,14 @@ def bench_item(database):
     variable = BENCH_DSN_VARIABLES[database]
     dsn = os.environ.get(variable)
     if not dsn:
-        raise RuntimeError(f"{variable} is missing; run this case through make perf-check")
+        raise RuntimeError(
+            f"{variable} is missing; run this case through make perf-check"
+        )
     url = urlsplit(dsn)
     if url.scheme != database:
-        raise RuntimeError(f"{variable} scheme {url.scheme!r} does not match {database}")
+        raise RuntimeError(
+            f"{variable} scheme {url.scheme!r} does not match {database}"
+        )
     return database, dsn, url
 
 

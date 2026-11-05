@@ -369,7 +369,9 @@ def conformance_cases() -> dict:
         )
 
     def collection_typed_key(s):
-        rows = s.models.Logs().connect(s.db).fetch_value(lambda row: row.get_note()).gets()
+        rows = (
+            s.models.Logs().connect(s.db).fetch_value(lambda row: row.get_note()).gets()
+        )
 
         def row_id(row):
             return None if row is None else row.get_id()

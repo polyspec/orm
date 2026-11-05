@@ -52,7 +52,6 @@ class SqliteCatalog:
 
 
 class CatalogDescribedTemporalTest(unittest.TestCase):
-
     def test_write_refuses_a_datetime_for_a_temporal_column(self):
         catalog = SqliteCatalog(self, TEMPORAL_DDL).catalog
         table = {"namespace": "main", "name": "temporal"}

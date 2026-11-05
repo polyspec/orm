@@ -14,8 +14,7 @@ def tokens_of(text, documents=None):
     ]
 
 
-TABLE = "dbspec 1 app\n\ntable t {\n  id i64\n  primary key (id)\n}\n"
-# The tokens of the header and of the opening of the table in TABLE, which the document tests share.
+# The tokens of the header and of the opening of the table of a document.
 TABLE_OPENING = [
     (1, 0, 6, "keyword"),
     (1, 7, 8, "number"),

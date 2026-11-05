@@ -105,7 +105,6 @@ class StatementRunnerTest(unittest.TestCase):
     def test_frame_run_returns_rows_and_a_non_text_statement_is_config_postgres(self):
         self.server_case("postgres", self.assert_frame_rows_and_config)
 
-
     # Requirements: INT-161.
     def test_active_frame_is_the_frame_of_the_runner_sqlite(self):
         db = Db.connect(f"sqlite://{os.path.join(self.tmp.name, 'runner.sqlite3')}")

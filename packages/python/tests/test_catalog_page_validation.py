@@ -26,7 +26,9 @@ class CatalogPageValidationTest(unittest.TestCase):
             def describe(self, _table):
                 return before
 
-            def run(self, _query, _params, _max_rows, _max_bytes, described=None, keep=None):
+            def run(
+                self, _query, _params, _max_rows, _max_bytes, described=None, keep=None
+            ):
                 return type("Raw", (), {"names": ["renamed"], "rows": []})()
 
         catalog = object.__new__(CatalogConnection)

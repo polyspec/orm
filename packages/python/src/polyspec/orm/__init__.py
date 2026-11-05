@@ -26,7 +26,12 @@ from polyspec.orm.engine import (
     model_of_documents,
     parse_document_set,
 )
-from polyspec.orm.errors import OrmError, joined_errors, rollback_failed, transaction_conflict
+from polyspec.orm.errors import (
+    OrmError,
+    joined_errors,
+    rollback_failed,
+    transaction_conflict,
+)
 from polyspec.orm.model import Collection, EntityDef, Key, Model, register_model
 from polyspec.orm.schema import Schema
 from polyspec.orm.styled_value import StyledValue

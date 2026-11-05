@@ -57,7 +57,8 @@ class SchemaRegisterTest(unittest.TestCase):
         before = dict(self.db.engines)
         with tempfile.TemporaryDirectory(prefix="orm-schema-register-changed-") as tmp:
             other = generate_document(
-                f"{tmp}/note", ROOT / "contracts" / "fixtures" / "schema_install" / "note.dbs"
+                f"{tmp}/note",
+                ROOT / "contracts" / "fixtures" / "schema_install" / "note.dbs",
             ).SCHEMA
             # The manifest text of another set, declared with the hash of this set.
             changed = Schema(
@@ -80,7 +81,8 @@ class SchemaRegisterTest(unittest.TestCase):
 
         with tempfile.TemporaryDirectory(prefix="orm-schema-connect-failed-") as tmp:
             other = generate_document(
-                f"{tmp}/note", ROOT / "contracts" / "fixtures" / "schema_install" / "note.dbs"
+                f"{tmp}/note",
+                ROOT / "contracts" / "fixtures" / "schema_install" / "note.dbs",
             ).SCHEMA
             changed = Schema(
                 manifest_text=other.manifest_text,

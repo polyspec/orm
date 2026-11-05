@@ -10,8 +10,6 @@ from pathlib import Path
 from . import testcase
 
 from polyspec.orm.database import Db
-from polyspec.orm.engine import model_of_documents, parse_document_set
-from polyspec.orm.schema import Schema
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -127,20 +125,6 @@ def insert_service_and_author(db) -> None:
         '"service_member_seq", "start_dt", "end_dt", "aes_key_version") '
         "VALUES (?, 1, 1, 1, 1, ?, ?, 1)",
         ["a", "2026-06-01 00:00:00.000000", "2026-06-01 00:00:00.000000"],
-    )
-
-
-def rollback_schema():
-    """The Schema of contracts/fixtures/rollback.dbs, as the engine parses it."""
-    model = model_of_documents(
-        parse_document_set(
-            [(ROOT / "contracts" / "fixtures" / "rollback.dbs").read_text()]
-        )
-    )
-    return Schema(
-        manifest_text=model.manifest_text,
-        manifest_hash=model.manifest_hash,
-        external_text=model.external_text,
     )
 
 
@@ -293,6 +277,7 @@ class SqliteEndToEndTest(unittest.TestCase):
         with self.assertRaisesRegex(Exception, "CONFIG"):
             self.models.Author().connect(self.db).limit(0, 1).gets_page(1, 10)
 
+
 class SqliteAuditTest(unittest.TestCase):
     deadline = testcase.PROCESS
 
@@ -321,6 +306,7 @@ class SqliteAuditTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.db.close()
+
 
 if __name__ == "__main__":
     testcase.main()

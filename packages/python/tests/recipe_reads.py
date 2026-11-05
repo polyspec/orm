@@ -96,7 +96,11 @@ class ReadStep(_Recording):
 
     def outcome(self, value: Any) -> Any:
         """The resolved outcome of the database, which records its reads as the outcome of the step does."""
-        return _Recording(value, self._read, "expect.") if isinstance(value, dict) else value
+        return (
+            _Recording(value, self._read, "expect.")
+            if isinstance(value, dict)
+            else value
+        )
 
     def _unread_outcome(self) -> list[str]:
         outcome = self._raw.get("expect", {}).get(self._database)
@@ -106,12 +110,18 @@ class ReadStep(_Recording):
 
     def _fail(self, unread: list[str]) -> None:
         if unread:
-            raise AssertionError(f"the helper did not read {', '.join(unread)} of {self._raw['op']}")
+            raise AssertionError(
+                f"the helper did not read {', '.join(unread)} of {self._raw['op']}"
+            )
 
     def check_outcome(self) -> None:
         """After an op that ended with its expected error: what the op did not reach is not asked of it."""
         self._fail(self._unread_outcome())
 
     def check(self) -> None:
-        keys = [key for key in self._raw if key not in _ANNOTATIONS and key not in self._read]
+        keys = [
+            key
+            for key in self._raw
+            if key not in _ANNOTATIONS and key not in self._read
+        ]
         self._fail(keys + self._unread_outcome())

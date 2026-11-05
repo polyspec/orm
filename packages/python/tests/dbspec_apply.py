@@ -129,5 +129,6 @@ class DbspecApplyTest(unittest.TestCase):
                 blocker.close()
                 connection.close()
 
+
 if __name__ == "__main__":
     testcase.main()

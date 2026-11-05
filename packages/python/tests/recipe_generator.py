@@ -169,7 +169,9 @@ def check_generated_files(step: dict, recipe_dir: Path) -> None:
         if code != 0:
             raise AssertionError(f"generator.check: generate exit {code}: {output}")
         file = next(
-            path for path in sorted(out.iterdir()) if path.is_file() and path.stat().st_size
+            path
+            for path in sorted(out.iterdir())
+            if path.is_file() and path.stat().st_size
         )
         # A file that the generation does not write is not compared.
         (out / "zz_notes.py").write_text("# notes\n", encoding="utf-8")

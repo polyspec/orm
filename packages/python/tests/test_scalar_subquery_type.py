@@ -1,4 +1,3 @@
-import copy
 import json
 import unittest
 from packages.python.tests import testcase

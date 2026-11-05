@@ -231,7 +231,9 @@ def _key_instant(cell):
     if cell is None:
         return None
     instant = datetime.datetime.fromisoformat(cell) if isinstance(cell, str) else cell
-    return instant if instant.tzinfo is not None else instant.replace(tzinfo=datetime.UTC)
+    return (
+        instant if instant.tzinfo is not None else instant.replace(tzinfo=datetime.UTC)
+    )
 
 
 def _collection_key(c: Core, m: Core, asm: dict, row):

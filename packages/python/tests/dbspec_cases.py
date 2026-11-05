@@ -23,5 +23,6 @@ class DbspecPositionTest(unittest.TestCase):
         with self.assertRaises(dataclasses.FrozenInstanceError):
             position.line = 6
 
+
 if __name__ == "__main__":
     testcase.main()

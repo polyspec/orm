@@ -11,6 +11,7 @@ from polyspec.orm.dbspec import (
     read_dbspec_file,
     render_dbspec,
 )
+from polyspec.orm.catalog import _driver_errors
 from polyspec.orm.dbspec.introspect import introspect_dbspec
 from polyspec.orm.dbspec.plan import parse_plan
 from polyspec.orm.dbspec.plan_steps import plan_steps
@@ -88,9 +89,7 @@ def _catalog_query_failure(dialect: str, database: str, dsn: str) -> dict:
     connection = connect(database, dsn)
     try:
         introspect_dbspec(Adapter(connection), dialect, "introspected")
-    except TypeError:
-        raise
-    except Exception:
+    except _driver_errors(database):
         return {"failed": True}
     finally:
         connection.close()
@@ -163,7 +162,9 @@ def _introspect_refusal(dialect):
         introspect_dbspec(Adapter(connection), dialect, "introspected")
     except TypeError as refusal:
         if dialect not in str(refusal):
-            raise AssertionError(f"the refusal {refusal!r} does not name {dialect}") from refusal
+            raise AssertionError(
+                f"the refusal {refusal!r} does not name {dialect}"
+            ) from refusal
         return {"refused": dialect}
     finally:
         connection.close()
@@ -238,11 +239,13 @@ def _op_dbspec_plan_physical(step: dict, context: dict) -> dict:
                 if "query" in entry:
                     got = value(entry["query"])
                     if got != entry["want"]:
-                        raise AssertionError(f"{entry['query']}: got {got}, want {entry['want']}")
+                        raise AssertionError(
+                            f"{entry['query']}: got {got}, want {entry['want']}"
+                        )
                     continue
                 try:
                     session.execute(entry["sql"])
-                except Exception as error:  # noqa: BLE001 - any driver error of the refused statement
+                except Exception as error:
                     if not entry.get("fails"):
                         raise AssertionError(f"{entry['sql']}: {error}") from error
                     continue
@@ -258,17 +261,23 @@ def _op_dbspec_plan_physical(step: dict, context: dict) -> dict:
         def schema_is(what: str, want: str) -> None:
             result = introspect_dbspec(session, database, "introspected")
             if result["unsupported"]:
-                raise AssertionError(f"{what}: unsupported objects {result['unsupported']}")
+                raise AssertionError(
+                    f"{what}: unsupported objects {result['unsupported']}"
+                )
             document = result["document"]
             got = _schema_text([document]) if document.tables else ""
             if got != want:
-                raise AssertionError(f"{what}: the schema text differs\n--- want\n{want}--- got\n{got}")
+                raise AssertionError(
+                    f"{what}: the schema text differs\n--- want\n{want}--- got\n{got}"
+                )
 
         def forward(restore: bool) -> None:
             for s in steps:
                 if s["finalize"]:
                     break
-                session.execute(s["restore"] if restore and s["restore"] != "" else s["statement"])
+                session.execute(
+                    s["restore"] if restore and s["restore"] != "" else s["statement"]
+                )
             foreign_keys()
 
         for sql in [*CONNECTION_RULES[database], *setup]:
@@ -284,7 +293,11 @@ def _op_dbspec_plan_physical(step: dict, context: dict) -> dict:
             # A rollback that goes all the way back recreates the old table with the added column hidden.
             for s in reversed(steps):
                 if not s["finalize"]:
-                    session.execute(s["rollback_restore"] if s["rollback_restore"] != "" else s["rollback"])
+                    session.execute(
+                        s["rollback_restore"]
+                        if s["rollback_restore"] != ""
+                        else s["rollback"]
+                    )
             foreign_keys()
             schema_is("rolled back", source_text)
             forward(True)
@@ -304,7 +317,9 @@ def _op_dbspec_plan_physical(step: dict, context: dict) -> dict:
         schema_is("finalized", target)
         hidden = value(_PLAN_HIDDEN_LEFT[database])
         if hidden != "0":
-            raise AssertionError(f"{hidden} tables or columns named dbspec$ remain after finalize")
+            raise AssertionError(
+                f"{hidden} tables or columns named dbspec$ remain after finalize"
+            )
     finally:
         connection.close()
     return {}

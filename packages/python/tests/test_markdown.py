@@ -1,8 +1,4 @@
-# The markdown bind cases of tests/bind/vectors.json (docs/spec/protocol.md §5), and the fake server that records the messages
-# of one connection in place of the flowmark server, which the tests of a markdown connection share.
-import queue
-import socket
-import threading
+# The markdown bind cases of tests/bind/vectors.json (docs/spec/protocol.md §5).
 import math
 import unittest
 
@@ -11,48 +7,6 @@ from polyspec.orm.errors import OrmError
 from . import testcase
 
 TOKEN = "0123456789abcdef0123456789abcdef"
-
-
-class MarkdownTestServer:
-    """Receives and records the messages of one connection instead of the flowmark server, and writes the script's replies in order."""
-
-    def __init__(self, test: unittest.TestCase, *answers: str):
-        self.listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.listener.bind(("127.0.0.1", 0))
-        self.listener.listen(1)
-        self._received_messages: queue.Queue = queue.Queue(1)
-        self.thread = threading.Thread(target=self._serve, args=(answers,), daemon=True)
-        self.thread.start()
-        test.addCleanup(self.close)
-
-    def _serve(self, answers) -> None:
-        got: list = []
-        try:
-            conn, _ = self.listener.accept()
-        except OSError:
-            self._received_messages.put(None)
-            return
-        with conn, conn.makefile("rwb") as stream:
-            for answer in answers:
-                line = stream.readline()
-                if not line:
-                    break
-                got.append(line.decode("utf-8").rstrip("\n"))
-                stream.write(answer.encode("utf-8") + b"\n")
-                stream.flush()
-        self._received_messages.put(got)
-
-    def dsn(self) -> str:
-        host, port = self.listener.getsockname()
-        return f"markdown://{host}:{port}/tracker?token={TOKEN}"
-
-    def received_messages(self) -> list:
-        # Deadline of one case: if the fake server does not finish the script, the case fails.
-        return self._received_messages.get(timeout=10)
-
-    def close(self) -> None:
-        self.listener.close()
-        self.thread.join(10)
 
 
 def vector_value(value):

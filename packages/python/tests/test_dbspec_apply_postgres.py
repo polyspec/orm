@@ -3,7 +3,9 @@
 from .recipe import recipe_tests
 from . import testcase
 
-load_tests = recipe_tests("contracts/fixtures/dbspec_apply/dbspec_apply.json", "postgres")
+load_tests = recipe_tests(
+    "contracts/fixtures/dbspec_apply/dbspec_apply.json", "postgres"
+)
 
 if __name__ == "__main__":
     testcase.main()

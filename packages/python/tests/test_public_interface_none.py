@@ -3,7 +3,9 @@
 from .recipe import NONE, recipe_tests
 from . import testcase
 
-load_tests = recipe_tests("contracts/fixtures/public_interface/public_interface.json", NONE)
+load_tests = recipe_tests(
+    "contracts/fixtures/public_interface/public_interface.json", NONE
+)
 
 if __name__ == "__main__":
     testcase.main()

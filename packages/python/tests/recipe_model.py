@@ -29,7 +29,7 @@ def connect_dsn(dsn, database, case_dsn, socket=None):
     if dsn is None or dsn == "case":
         return case_dsn
     if dsn.startswith("case?"):
-        return f"{case_dsn}{'&' if '?' in case_dsn else '?'}{dsn[len('case?'):]}"
+        return f"{case_dsn}{'&' if '?' in case_dsn else '?'}{dsn[len('case?') :]}"
     if dsn == "case-pooler":
         pooler = os.environ.get("ORM_TEST_PGBOUNCER_DSN")
         if not pooler:
@@ -345,7 +345,9 @@ def model_ops(native, database_value, step_argument, audit_source_of):
         if step["model"] != "CompositeAccount":
             raise AssertionError(f"model {step['model']} has no model.create entry")
         model = composite_set(
-            None if step.get("unconnected") else connection(step["connection"], context),
+            None
+            if step.get("unconnected")
+            else connection(step["connection"], context),
             values_of(step["values"], context),
         )
         model.create()
@@ -382,7 +384,9 @@ def model_ops(native, database_value, step_argument, audit_source_of):
 
     def model_duplicate_create(step, context):
         if step["model"] != "CompositeAccount":
-            raise AssertionError(f"model {step['model']} has no model.duplicate_create entry")
+            raise AssertionError(
+                f"model {step['model']} has no model.duplicate_create entry"
+            )
         db = connection(step["connection"], context)
         model = composite_set(db, values_of(step["values"], context))
         model.duplication(
@@ -440,7 +444,9 @@ def model_ops(native, database_value, step_argument, audit_source_of):
 
     def model_count(step, context):
         if step.get("unconnected"):
-            count = composite_filter(None, values_of(step.get("where"), context)).get_count()
+            count = composite_filter(
+                None, values_of(step.get("where"), context)
+            ).get_count()
             return {"value": {"int": str(count)}}
         db = connection(step["connection"], context)
         if step["model"] == "Author":
@@ -539,10 +545,7 @@ def model_ops(native, database_value, step_argument, audit_source_of):
                 model.limit(offset, limit)
             return {
                 "rows": [
-                    [
-                        _wrap(getattr(row, COLUMNS[column][1])())
-                        for column in columns
-                    ]
+                    [_wrap(getattr(row, COLUMNS[column][1])()) for column in columns]
                     for row in model.gets().values()
                 ]
             }

@@ -88,5 +88,6 @@ class WasInsertedTest(unittest.TestCase):
 
         self.run_case("postgres", body)
 
+
 if __name__ == "__main__":
     testcase.main()

@@ -110,17 +110,3 @@ def native_query(driver: str, dsn: str, statements: list[str]) -> list[list[dict
     returns the rows of each statement as dicts in column order."""
     with native_session(driver, dsn) as run:
         return [run(sql) for sql in statements]
-
-
-def error_code(run) -> str | None:
-    """The code of an ORM or host-codec error that run raises, or None when it returns."""
-    from polyspec.orm.codec import CodecError
-    from polyspec.orm.errors import OrmError
-
-    try:
-        run()
-    except (OrmError, CodecError) as error:
-        return error.code
-    return None
-
-

@@ -92,6 +92,9 @@ function_column
 # sqlite3 reads the row_factory of a connection; the native query of the coverage runner (tests/coverage_case.py) sets it.
 _.row_factory
 
+# sqlite3 reads the text_factory of a connection, which reads text that is not UTF-8 (INT-153).
+_.text_factory
+
 # Error codes of the catalog that orm-gen writes from docs/spec/errors.yaml for every client: this client receives
 # WRITE_CONFLICT from the markdown executor's answer as text and raises no RELATION_UNKNOWN, so no Python code names the
 # constant. The catalog keeps every code of each client, which the parity of the codes compares.

@@ -68,6 +68,7 @@ class DecimalModelDbTest(unittest.TestCase):
         case = models.DecimalCase
         db = models.connect(dsn)
         try:
+
             def write():
                 case().set_seq(1).set_amount("48.0450").set_large_value(
                     "9007199254740993"

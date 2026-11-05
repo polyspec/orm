@@ -65,6 +65,7 @@ class RequestHookTest(RequestHookCase):
         ).set_label("read").create()
         self.assertEqual(seen, [True], "the hook receives its params as a tuple")
 
+
 class InsertPartsTest(RequestHookCase):
     """A batch that is not a positive integer is CONFIG before any statement (docs/spec/protocol.md 2.1). The recipes
     write batches that every runtime can hold; a negative number, a bool and a float reach the argument only where the
@@ -76,7 +77,10 @@ class InsertPartsTest(RequestHookCase):
     def test_refused(self):
         events = []
         self.db.subscribe(events.append)
-        rows = [self.models.HookItem().set_part("p").set_label(label) for label in ("a", "b")]
+        rows = [
+            self.models.HookItem().set_part("p").set_label(label)
+            for label in ("a", "b")
+        ]
         for size in (-1, True, 2.0):
             with self.assertRaises(OrmError) as caught:
                 self.models.HookItem().connect(self.db).creates(rows, size)

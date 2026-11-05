@@ -243,10 +243,6 @@ def _scan_tree(
             return None
         return receiver
 
-    def model_of(node, names):
-        value = value_of(node, names)
-        return value if isinstance(value, str) else None
-
     def models_of(node, names):
         # Each class that the expression may hold, so that a call on it is recorded for each of them.
         return [m for m in _members(value_of(node, names)) if isinstance(m, str)]

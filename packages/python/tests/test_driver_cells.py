@@ -2,7 +2,6 @@
 # PyMySQL and psycopg return decimal.Decimal, which the codec of the client does not read; the conversions return exact
 # text, while the native binary conversion remains unchanged.
 import unittest
-from types import SimpleNamespace
 
 
 import psycopg
@@ -11,11 +10,7 @@ from psycopg.pq import Format
 from psycopg.postgres import types as pg_types
 from pymysql.constants import FIELD_TYPE
 
-from polyspec.orm.core import Core
-from polyspec.orm.dbspec import dbspec_manifest, parse_dbspec
 from polyspec.orm.driver_cells import mysql_conversions, postgres_loaders
-from polyspec.orm.model import EntityDef, Model, register_model
-from polyspec.orm.model_exec import _Assembler
 from . import testcase
 
 

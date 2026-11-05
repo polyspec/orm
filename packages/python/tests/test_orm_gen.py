@@ -620,7 +620,9 @@ class WriteTextIfChangedTest(unittest.TestCase):
             self.assertEqual(os.listdir(directory), ["models.py"])
 
 
-REGISTRY_DOCUMENT = "dbspec 1 registry\n\ntable note {\n  seq i64\n  primary key (seq)\n}\n"
+REGISTRY_DOCUMENT = (
+    "dbspec 1 registry\n\ntable note {\n  seq i64\n  primary key (seq)\n}\n"
+)
 
 
 class ModelRegistryTest(unittest.TestCase):

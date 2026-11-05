@@ -18,6 +18,7 @@ import threading
 import time
 import types
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -74,7 +75,7 @@ from polyspec.orm.dbspec.add_tables import add_tables_and_columns_steps
 from polyspec.orm.dbspec.compare import compare_schemas
 from polyspec.orm.dbspec.introspect import introspect_dbspec
 from polyspec.orm.dbspec.mermaid import export_mermaid, import_mermaid
-from polyspec.orm.dbspec.apply import DbspecApplyError, apply_plans, rollback_plans
+from polyspec.orm.dbspec.apply import apply_plans, rollback_plans
 from polyspec.orm.dbspec.plan import chain_plans, emit_plan, parse_plan
 from polyspec.orm.dbspec.plan_diff import diff_plan
 from polyspec.orm.dbspec.plan_steps import effect_text, plan_steps
@@ -88,8 +89,16 @@ from . import chain_answer, testcase
 from .case_database import case_database
 from .recipe_apply import apply_ops
 from .coverage_case import native_query, native_session
-from .recipe_generator import check_generated_files, check_refused_generation, check_generator
-from .recipe_introspect import _introspect_refusal, _op_dbspec_introspect, _op_dbspec_plan_physical
+from .recipe_generator import (
+    check_generated_files,
+    check_refused_generation,
+    check_generator,
+)
+from .recipe_introspect import (
+    _introspect_refusal,
+    _op_dbspec_introspect,
+    _op_dbspec_plan_physical,
+)
 from .server_database import with_database
 from .recipe_keys import check_keys
 from .recipe_model import connect_dsn, model_ops
@@ -120,7 +129,11 @@ class RecipeCase(VectorCase):
     def deadline(self) -> float:
         """The interface check is another process; the other cases compute in memory."""
         steps = self.case["steps"]
-        return testcase.PROCESS if any(step["op"] == "interface.symbols" for step in steps) else testcase.COMPUTE
+        return (
+            testcase.PROCESS
+            if any(step["op"] == "interface.symbols" for step in steps)
+            else testcase.COMPUTE
+        )
 
 
 class ChainRecipeCase(RecipeCase):
@@ -424,7 +437,13 @@ def _collection_key(step: dict, database: str) -> None:
             return datetime.fromisoformat(entry["value"])
         return entry["value"]
 
-    names = {str: "text", bool: "bool", int: "int", bytes: "bytes", datetime: "datetime"}
+    names = {
+        str: "text",
+        bool: "bool",
+        int: "int",
+        bytes: "bytes",
+        datetime: "datetime",
+    }
     collection = Collection()
     try:
         groups = []
@@ -440,8 +459,12 @@ def _collection_key(step: dict, database: str) -> None:
         }
         stored = collection.keys()
         distinct = [native(step["keys"][group]) for group in dict.fromkeys(groups)]
-        if stored != distinct or [type(key) for key in stored] != [type(key) for key in distinct]:
-            raise AssertionError(f"the keys changed their native values or order: {stored}")
+        if stored != distinct or [type(key) for key in stored] != [
+            type(key) for key in distinct
+        ]:
+            raise AssertionError(
+                f"the keys changed their native values or order: {stored}"
+            )
     except OrmError as error:
         got = {"error": error.code, "message": str(error)}
     if got != step["expect"][database]:
@@ -703,7 +726,9 @@ def _dialect_refusal(name: str, call) -> dict:
         call()
     except TypeError as refusal:
         if name not in str(refusal):
-            raise AssertionError(f"the refusal {refusal!r} does not name {name}") from refusal
+            raise AssertionError(
+                f"the refusal {refusal!r} does not name {name}"
+            ) from refusal
         return {"refused": name}
     raise AssertionError(f"the call accepted the dialect {name}")
 
@@ -732,7 +757,9 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
     elif op == "dbspec.render":
         _texts, documents = _read_documents(directory, step["documents"])
         if "dialect" in step:
-            got = _dialect_refusal(step["dialect"], lambda: render_dbspec(documents, step["dialect"]))
+            got = _dialect_refusal(
+                step["dialect"], lambda: render_dbspec(documents, step["dialect"])
+            )
             _expect_equal(got, expect, "refused dialect")
             return
         for dialect in ("mysql", "postgres", "sqlite"):
@@ -746,16 +773,31 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
             )
     elif op == "dbspec.analyze":
         if "document" in step:
-            text, header_set = (directory / step["document"]).read_bytes().decode("utf-8"), {}
+            text, header_set = (
+                (directory / step["document"]).read_bytes().decode("utf-8"),
+                {},
+            )
         else:
             text, header_set = _inline_document(step)
         analysis = analyze_dbspec(text, header_set)
         if "document" in step and list(analysis.diagnostics):
-            raise AssertionError(f"the analysis has a diagnostic: {list(analysis.diagnostics)!r}")
+            raise AssertionError(
+                f"the analysis has a diagnostic: {list(analysis.diagnostics)!r}"
+            )
         parsed_document, positions, diagnostics = parse_dbspec(text, header_set)
-        _expect_equal(analysis.document, parsed_document, "the analysis holds the parsed document")
-        _expect_equal(analysis.positions, positions, "the analysis holds the positions of the parse")
-        _expect_equal(list(analysis.diagnostics), list(diagnostics), "the analysis holds the diagnostics of the parse")
+        _expect_equal(
+            analysis.document, parsed_document, "the analysis holds the parsed document"
+        )
+        _expect_equal(
+            analysis.positions,
+            positions,
+            "the analysis holds the positions of the parse",
+        )
+        _expect_equal(
+            list(analysis.diagnostics),
+            list(diagnostics),
+            "the analysis holds the diagnostics of the parse",
+        )
         if "tokens" not in expect:
             raise AssertionError("the expect names no tokens")
         tokens = [[t.line, t.start, t.end, t.token_class] for t in analysis.tokens]
@@ -769,7 +811,9 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
         _document, positions, diagnostics = parse_dbspec(text, header_set)
         if expect["positions"] is None:
             if _document is not None or positions is not None or not list(diagnostics):
-                raise AssertionError(f"a failed parse returned {_document!r}, {positions!r}, {list(diagnostics)!r}")
+                raise AssertionError(
+                    f"a failed parse returned {_document!r}, {positions!r}, {list(diagnostics)!r}"
+                )
             return
         if list(diagnostics):
             raise AssertionError(f"the document does not parse: {list(diagnostics)!r}")
@@ -801,25 +845,34 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
             "a formatted text is its own format",
         )
     elif op == "dbspec.load_set":
+
         def text(lines):
             return "\n".join(lines) + "\n" if lines else ""
 
         try:
-            documents = RuntimeModel.load_set(text(step["owned"]), text(step["external"]))
+            documents = RuntimeModel.load_set(
+                text(step["owned"]), text(step["external"])
+            )
         except OrmError as error:
             _expect_equal(error.code, expect.get("error"), "error")
             if "message" in expect:
-                _expect_equal(str(error), f"{expect['error']}: {expect['message']}", "message")
+                _expect_equal(
+                    str(error), f"{expect['error']}: {expect['message']}", "message"
+                )
             # Each diagnostic is "<line>:<column> <rule>: <message>", in order (SCH-12).
             if "diagnostics" in expect:
                 prefix = f"{expect['error']}: "
                 if not str(error).startswith(prefix):
-                    raise AssertionError(f"the error {error} does not start with its code")
-                problems = str(error)[len(prefix):].split("; ")
+                    raise AssertionError(
+                        f"the error {error} does not start with its code"
+                    )
+                problems = str(error)[len(prefix) :].split("; ")
                 _expect_equal(len(problems), len(expect["diagnostics"]), str(error))
                 for problem, want in zip(problems, expect["diagnostics"]):
                     if not problem.startswith(f"{want}: "):
-                        raise AssertionError(f"the error {error} does not hold the diagnostic {want}")
+                        raise AssertionError(
+                            f"the error {error} does not hold the diagnostic {want}"
+                        )
         else:
             _expect_equal(
                 [{"name": d.name, "external": d.external} for d in documents],
@@ -828,15 +881,24 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
             )
             if "manifest_hash" in expect:
                 built, _ = dbspec_manifest(documents)
-                _expect_equal(built.manifest_hash, expect["manifest_hash"], "manifest hash")
+                _expect_equal(
+                    built.manifest_hash, expect["manifest_hash"], "manifest hash"
+                )
     elif op == "dbspec.runtime_model":
+
         def read(paths):
             return [(directory / path).read_bytes().decode("utf-8") for path in paths]
 
-        model = model_of_documents(parse_document_set(read(step["documents"]), read(step.get("external", []))))
+        model = model_of_documents(
+            parse_document_set(read(step["documents"]), read(step.get("external", [])))
+        )
         _expect_equal(list(model.entities), expect["entities"], "entities")
         if "manifest_text" in expect:
-            _expect_equal(model.manifest_text, "\n".join(expect["manifest_text"]) + "\n", "manifest text")
+            _expect_equal(
+                model.manifest_text,
+                "\n".join(expect["manifest_text"]) + "\n",
+                "manifest text",
+            )
         if "manifest_hash" in expect:
             _expect_equal(model.manifest_hash, expect["manifest_hash"], "manifest hash")
         for name, values in expect.get("models", {}).items():
@@ -869,7 +931,9 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
 
             def named(have, want):
                 return {
-                    key: named(have[key], value) if isinstance(value, dict) else have[key]
+                    key: named(have[key], value)
+                    if isinstance(value, dict)
+                    else have[key]
                     for key, value in want.items()
                 }
 
@@ -1060,7 +1124,9 @@ def _refused_surface(surface: str, models, db) -> None:
     utils = db.utils()
     calls = {
         "audit": lambda: db.transaction(lambda: None, {"audit": {"actor": "tester"}}),
-        "isolation": lambda: db.transaction(lambda: None, {"isolation": "serializable"}),
+        "isolation": lambda: db.transaction(
+            lambda: None, {"isolation": "serializable"}
+        ),
         "timeout_ms": lambda: db.transaction(lambda: None, {"timeoutMs": 100}),
         "get_query": lambda: models.Slots().connect(db).get_query(),
         "subscribe": lambda: db.subscribe(lambda event: None),
@@ -1237,13 +1303,17 @@ def _dbspec_apply_fault(step: dict, bound: dict, database: str) -> None:
         call = rollback_plans if step["call"] == "rollback" else apply_plans
         try:
             call(fault, "sqlite", plans, now, events)
-        except Exception as error:  # noqa: BLE001 - the expect states the failure of any type
+        except Exception as error:
             if "code" in expect and getattr(error, "code", None) != expect["code"]:
-                raise AssertionError(f"the call raised {error!r}, want {expect['code']}") from error
+                raise AssertionError(
+                    f"the call raised {error!r}, want {expect['code']}"
+                ) from error
             if "failure" in expect:
                 _expect_equal(str(error), expect["failure"], "failure")
             if not str(error).endswith(expect.get("failure_ends_with", "")):
-                raise AssertionError(f"the failure {error} does not end with {expect['failure_ends_with']}")
+                raise AssertionError(
+                    f"the failure {error} does not end with {expect['failure_ends_with']}"
+                )
             # The failure holds a note for each cleanup error, in order (PLN-101, PLN-106).
             if "cleanup" in expect:
                 _expect_equal(
@@ -1252,13 +1322,19 @@ def _dbspec_apply_fault(step: dict, bound: dict, database: str) -> None:
                     "cleanup",
                 )
             if fault.cause is not None and error.cause is not fault.cause:
-                raise AssertionError(f"the error {error} does not hold the catalog read error") from error
+                raise AssertionError(
+                    f"the error {error} does not hold the catalog read error"
+                ) from error
         else:
             raise AssertionError(f"the call succeeded, want {expect}")
         if "history_state" in expect:
-            state = fault.connection.execute('SELECT state FROM "dbspec$plans"').fetchone()[0]
+            state = fault.connection.execute(
+                'SELECT state FROM "dbspec$plans"'
+            ).fetchone()[0]
             if state != expect["history_state"]:
-                raise AssertionError(f"the history state is {state}, want {expect['history_state']}")
+                raise AssertionError(
+                    f"the history state is {state}, want {expect['history_state']}"
+                )
         for kind in expect.get("absent_events", []):
             if kind in kinds:
                 raise AssertionError(f"the events {kinds} hold {kind}")
@@ -1279,33 +1355,52 @@ def _dbspec_read_set(step: dict, database: str) -> None:
             ((kind, value),) = entry.items()
             if kind == "symlink":
                 resolved = os.path.join(os.path.dirname(target), *value.split("/"))
-                os.symlink(value.replace("/", os.sep), target, target_is_directory=os.path.isdir(resolved))
+                os.symlink(
+                    value.replace("/", os.sep),
+                    target,
+                    target_is_directory=os.path.isdir(resolved),
+                )
             elif kind == "hardlink":
                 os.link(os.path.join(root, *value.split("/")), target)
             else:
                 with open(target, "xb") as handle:
-                    handle.write(value.encode("utf-8") if kind == "file" else bytes.fromhex(value))
+                    handle.write(
+                        value.encode("utf-8")
+                        if kind == "file"
+                        else bytes.fromhex(value)
+                    )
         result, errors = read_dbspec_set(root + "/" + step["set_file"])
         if "errors" in expect:
             if result is not None:
                 raise AssertionError(f"a failed read returned files {result!r}")
             _expect_equal(
                 [(error.rule, error.path) for error in errors],
-                [(error["rule"], root + "/" + error["path"]) for error in expect["errors"]],
+                [
+                    (error["rule"], root + "/" + error["path"])
+                    for error in expect["errors"]
+                ],
                 "errors",
             )
             for error, wanted in zip(errors, expect["errors"]):
                 if error.path not in error.message:
-                    raise AssertionError(f"the message {error.message!r} does not name {error.path!r}")
+                    raise AssertionError(
+                        f"the message {error.message!r} does not name {error.path!r}"
+                    )
                 if wanted.get("message_holds", "") not in error.message:
-                    raise AssertionError(f"the message {error.message!r} does not hold {wanted['message_holds']!r}")
+                    raise AssertionError(
+                        f"the message {error.message!r} does not hold {wanted['message_holds']!r}"
+                    )
             return
         _expect_equal([(error.rule, error.path) for error in errors], [], "errors")
         for files, paths, name in (
             (result.documents, expect["documents"], "documents"),
             (result.external, expect["external"], "external"),
         ):
-            _expect_equal([file.path for file in files], [root + "/" + path for path in paths], f"{name} paths")
+            _expect_equal(
+                [file.path for file in files],
+                [root + "/" + path for path in paths],
+                f"{name} paths",
+            )
             for file, path in zip(files, paths):
                 with open(root + "/" + path, "rb") as handle:
                     _expect_equal(file.data, handle.read(), f"the bytes of {path}")
@@ -1327,7 +1422,12 @@ def _dbspec_render_statements(step: dict, recipe_dir: Path) -> None:
     documents = []
     for name, lines in vector["documents"].items():
         document, _positions, diagnostics = parse_dbspec(
-            text(lines), {other: text(ls) for other, ls in vector["documents"].items() if other != name}
+            text(lines),
+            {
+                other: text(ls)
+                for other, ls in vector["documents"].items()
+                if other != name
+            },
         )
         if list(diagnostics):
             raise AssertionError(f"{name}: {list(diagnostics)!r}")
@@ -1357,7 +1457,9 @@ def _dbspec_introspect_shown(step: dict, recipe_dir: Path, database: str) -> Non
             introspect_dbspec(connection, "mysql", "introspected")
         except ValueError as error:
             if str(error) != expect["error"]:
-                raise AssertionError(f"error {error}, want {expect['error']}") from error
+                raise AssertionError(
+                    f"error {error}, want {expect['error']}"
+                ) from error
             return
         raise AssertionError(f"no error, want {expect['error']}")
     result = introspect_dbspec(connection, "mysql", "introspected")
@@ -1371,7 +1473,9 @@ def _dbspec_introspect_shown(step: dict, recipe_dir: Path, database: str) -> Non
         for item in result["unsupported"]
     ]
     if checks != expect["checks"] or unsupported != expect["unsupported"]:
-        raise AssertionError(f"checks {checks}, unsupported {unsupported}, want {expect}")
+        raise AssertionError(
+            f"checks {checks}, unsupported {unsupported}, want {expect}"
+        )
 
 
 class _SqliteCatalogConnection:
@@ -1432,11 +1536,16 @@ def _keyring_versions(step: dict, database: str) -> None:
         keyring = _keyring(step["keyring"])
     except OrmError as error:
         if error.code != expect.get("error"):
-            raise AssertionError(f"the keyring returned {error}, want {expect}") from error
+            raise AssertionError(
+                f"the keyring returned {error}, want {expect}"
+            ) from error
         return
     if "error" in expect:
         raise AssertionError(f"the keyring was built, want {expect['error']}")
-    if keyring.current_version != expect["current"] or keyring.versions() != expect["versions"]:
+    if (
+        keyring.current_version != expect["current"]
+        or keyring.versions() != expect["versions"]
+    ):
         raise AssertionError(
             f"current {keyring.current_version}, versions {keyring.versions()}, want {expect}"
         )
@@ -1489,7 +1598,12 @@ def _markdown_builder(step: dict, database: str) -> None:
 
 
 # The chain method prefix of each operator of markdown.send (DSL-50, DSL-160).
-OPERATOR_METHODS = {"eq_method": "eq_", "ne_method": "ne_", "gt_method": "gt_", "new_method": "new_"}
+OPERATOR_METHODS = {
+    "eq_method": "eq_",
+    "ne_method": "ne_",
+    "gt_method": "gt_",
+    "new_method": "new_",
+}
 
 
 def _send_chain_value(wrapper: dict):
@@ -1696,7 +1810,11 @@ def _plan(step: dict, recipe_dir: Path, database: str) -> None:
                 "sql": planned["sql"],
                 "tables": planned["tables"],
                 **(
-                    {"assemble_types": {c["name"]: c["type"] for c in planned["assemble"]["columns"]}}
+                    {
+                        "assemble_types": {
+                            c["name"]: c["type"] for c in planned["assemble"]["columns"]
+                        }
+                    }
                     if step.get("assemble_types")
                     else {}
                 ),
@@ -1742,7 +1860,11 @@ def _dbspec(step: dict, bound: dict, database: str) -> None:
         got = {"text": emit_plan(_dbspec_value(step["plan"], bound, "plan"))}
     elif op == "dbspec.introspect_refusal":
         got = _introspect_refusal(step["dialect"])
-    elif op == "dbspec.plan_steps" and step["dialect"] not in ("mysql", "postgres", "sqlite"):
+    elif op == "dbspec.plan_steps" and step["dialect"] not in (
+        "mysql",
+        "postgres",
+        "sqlite",
+    ):
         got = _dialect_refusal(
             step["dialect"],
             lambda: plan_steps(
@@ -1970,7 +2092,9 @@ def _connect_driver(dsn: str, config: dict | None = None) -> str:
         "pool_lifetime_ms": "poolLifetimeMs",
         "statement_timeout_ms": "statementTimeoutMs",
     }
-    options = {names[key]: value for key, value in (config or {}).items() if key in names}
+    options = {
+        names[key]: value for key, value in (config or {}).items() if key in names
+    }
     if "aes_version" in (config or {}):
         options["aesVersion"] = config["aes_version"]
     if "aes_key" in (config or {}):
@@ -1982,17 +2106,27 @@ def _connect_driver(dsn: str, config: dict | None = None) -> str:
         )
     db = Db.connect(dsn, options)
     try:
-        rows = db.utils().run(lambda frame: frame.run("SELECT 1", [], "utility"))["rows"]
+        rows = db.utils().run(lambda frame: frame.run("SELECT 1", [], "utility"))[
+            "rows"
+        ]
         if [[int(cell) for cell in row] for row in rows] != [[1]]:
-            raise AssertionError(f"SELECT 1 on the connection of {db.driver} returned {rows!r}")
+            raise AssertionError(
+                f"SELECT 1 on the connection of {db.driver} returned {rows!r}"
+            )
         session_read = (config or {}).get("session_read")
         if session_read is not None:
-            read = db.utils().run(lambda frame: frame.run(session_read["sql"], [], "utility"))["rows"]
+            read = db.utils().run(
+                lambda frame: frame.run(session_read["sql"], [], "utility")
+            )["rows"]
             if [[str(cell) for cell in row] for row in read] != [session_read["row"]]:
-                raise AssertionError(f"{session_read['sql']} returned {read!r}, want {session_read['row']!r}")
+                raise AssertionError(
+                    f"{session_read['sql']} returned {read!r}, want {session_read['row']!r}"
+                )
         if (config or {}).get("tls_version"):
             status = db.utils().run(
-                lambda frame: frame.run("SHOW SESSION STATUS LIKE 'Ssl_version'", [], "utility")
+                lambda frame: frame.run(
+                    "SHOW SESSION STATUS LIKE 'Ssl_version'", [], "utility"
+                )
             )["rows"]
             if not status or str(status[0][1]) not in ("TLSv1.2", "TLSv1.3"):
                 raise AssertionError(f"the Ssl_version of the connection is {status!r}")
@@ -2001,62 +2135,74 @@ def _connect_driver(dsn: str, config: dict | None = None) -> str:
         db.close()
 
 
-def _markdown_connect(step: dict, database: str) -> None:
-    """Runs the markdown.connect op (FCV-4, PRT-64): Db.connect on a listener that answers the first line with the reply
-    of the step, and checks the line it received and the outcome of the expect of database."""
+def _markdown_listener(answer) -> tuple[socket.socket, threading.Thread, int]:
+    """A listener on a free port, the started thread that passes the stream of its one connection to answer, and the port."""
     listener = socket.create_server(("127.0.0.1", 0))
-    received = []
 
     def serve() -> None:
         connection, _ = listener.accept()
         with connection, connection.makefile("rwb") as stream:
-            received.append(stream.readline().decode().rstrip("\n"))
-            stream.write(step["reply"].encode() + b"\n")
-            stream.flush()
+            answer(stream)
 
     server = threading.Thread(target=serve, daemon=True)
     server.start()
-    port = listener.getsockname()[1]
+    return listener, server, listener.getsockname()[1]
+
+
+def _markdown_connect(step: dict, database: str) -> None:
+    """Runs the markdown.connect op (FCV-4, PRT-64): Db.connect on a listener that answers the first line with the reply
+    of the step, and checks the line it received and the outcome of the expect of database."""
+    received = []
+
+    def answer(stream) -> None:
+        received.append(stream.readline().decode().rstrip("\n"))
+        stream.write(step["reply"].encode() + b"\n")
+        stream.flush()
+
+    listener, server, port = _markdown_listener(answer)
     outcome = step["expect"][database]
     got = None
     message = ""
     try:
-        _connect_driver(f"markdown://127.0.0.1:{port}/{step['corpus']}?token={step['token']}")
+        _connect_driver(
+            f"markdown://127.0.0.1:{port}/{step['corpus']}?token={step['token']}"
+        )
     except OrmError as error:
         got = error.code
         message = str(error)
     server.join()
     listener.close()
     if received != [step["received"]]:
-        raise AssertionError(f"the listener received {received}, want {step['received']}")
+        raise AssertionError(
+            f"the listener received {received}, want {step['received']}"
+        )
     if got != outcome["error"]:
         raise AssertionError(f"got {got}, want {outcome['error']}")
     if outcome.get("message_holds", "") not in message:
-        raise AssertionError(f"message {message}, want one that holds {outcome['message_holds']}")
+        raise AssertionError(
+            f"message {message}, want one that holds {outcome['message_holds']}"
+        )
 
 
 def _markdown_session(step: dict, database: str) -> None:
     """Runs the markdown.session op (FCV-4, PRT-64): on a listener that answers each line with the next of the replies of the
     step, a read-only transaction that holds a nested one, then a transaction, whose error is compared with the expect."""
-    listener = socket.create_server(("127.0.0.1", 0))
     received = []
 
-    def serve() -> None:
-        connection, _ = listener.accept()
-        with connection, connection.makefile("rwb") as stream:
-            for reply in step["replies"]:
-                line = stream.readline()
-                if not line:
-                    break
-                received.append(line.decode().rstrip("\n"))
-                stream.write(reply.encode() + b"\n")
-                stream.flush()
+    def answer(stream) -> None:
+        for reply in step["replies"]:
+            line = stream.readline()
+            if not line:
+                break
+            received.append(line.decode().rstrip("\n"))
+            stream.write(reply.encode() + b"\n")
+            stream.flush()
 
-    server = threading.Thread(target=serve, daemon=True)
-    server.start()
-    port = listener.getsockname()[1]
+    listener, server, port = _markdown_listener(answer)
     outcome = step["expect"][database]
-    db = Db.connect(f"markdown://127.0.0.1:{port}/{step['corpus']}?token={step['token']}")
+    db = Db.connect(
+        f"markdown://127.0.0.1:{port}/{step['corpus']}?token={step['token']}"
+    )
     got = None
     message = ""
     try:
@@ -2071,11 +2217,15 @@ def _markdown_session(step: dict, database: str) -> None:
     server.join(10)
     listener.close()
     if received != step["messages"]:
-        raise AssertionError(f"the listener received {received}, want {step['messages']}")
+        raise AssertionError(
+            f"the listener received {received}, want {step['messages']}"
+        )
     if got != outcome["error"]:
         raise AssertionError(f"got {got}, want {outcome['error']}")
     if outcome.get("message_holds", "") not in message:
-        raise AssertionError(f"message {message}, want one that holds {outcome['message_holds']}")
+        raise AssertionError(
+            f"message {message}, want one that holds {outcome['message_holds']}"
+        )
 
 
 def _dsn_connect(step: dict, database: str) -> None:
@@ -2426,7 +2576,10 @@ def _database_recipe_tests(path: str, database: str):
         case
         for case in recipe["cases"]
         if database in case.get("only", DATABASES)
-        and not ("not_through_pooler" in case and os.environ.get("ORM_CLIENT_DB_POOLER") == "1")
+        and not (
+            "not_through_pooler" in case
+            and os.environ.get("ORM_CLIENT_DB_POOLER") == "1"
+        )
     ]
     return vector_load_tests(DatabaseRecipeCase, cases, _reporting(check, database))
 
@@ -2659,13 +2812,19 @@ def _op_reconnect(step: dict, context: dict) -> dict:
     if "refused_message" in step:
         try:
             connect_catalog(dsn).current_namespace()
-        except Exception as error:  # noqa: BLE001 - any error of the refused connection
+        except Exception as error:
             if step["refused_message"] not in str(error).lower():
-                raise AssertionError(f"the server refused the connection for another reason: {error}") from error
+                raise AssertionError(
+                    f"the server refused the connection for another reason: {error}"
+                ) from error
             if getattr(error, "code", None) != step["refused_code"]:
-                raise AssertionError(f"the refused connection has another code than {step['refused_code']}: {error}") from error
+                raise AssertionError(
+                    f"the refused connection has another code than {step['refused_code']}: {error}"
+                ) from error
             return {}
-        raise AssertionError("the server accepted the connection that the step expects it to refuse")
+        raise AssertionError(
+            "the server accepted the connection that the step expects it to refuse"
+        )
     catalog = connect_catalog(dsn)
     context["namespace"] = catalog.current_namespace()
     context["catalog"] = catalog
@@ -2674,7 +2833,10 @@ def _op_reconnect(step: dict, context: dict) -> dict:
 
 
 def _op_hold_connection(step: dict, context: dict) -> dict:
-    session = native_session(context["database"], _user_from_database_dsn(context["dsn"], step["user_from_database"]))
+    session = native_session(
+        context["database"],
+        _user_from_database_dsn(context["dsn"], step["user_from_database"]),
+    )
     session.__enter__()
     context["held"] = session
     return {}
@@ -2684,8 +2846,14 @@ def _op_hold_statement(step: dict, context: dict) -> dict:
     import psycopg
 
     # prepare_threshold 0 names the statement of its first run; psycopg writes the placeholder $1 as %s.
-    session = psycopg.connect(connect_dsn(step["dsn"], context["database"], context["dsn"]), prepare_threshold=0, autocommit=True)
-    backend = session.execute(step["sql"].replace("$1", "%s"), (step["bind"],)).fetchone()[0]
+    session = psycopg.connect(
+        connect_dsn(step["dsn"], context["database"], context["dsn"]),
+        prepare_threshold=0,
+        autocommit=True,
+    )
+    backend = session.execute(
+        step["sql"].replace("$1", "%s"), (step["bind"],)
+    ).fetchone()[0]
     context["held"] = session
     return {"value": {"int": str(backend)}}
 
@@ -2823,7 +2991,6 @@ def _op_transaction_writers(step: dict, context: dict) -> dict:
     def write(index: int) -> None:
         db = models.connect(context["dsn"])
         try:
-
             for number in range(step["writes"]):
 
                 def body(number=number) -> None:
@@ -2836,7 +3003,10 @@ def _op_transaction_writers(step: dict, context: dict) -> dict:
         finally:
             db.close()
 
-    threads = [threading.Thread(target=write, args=(index,)) for index in range(step["writers"])]
+    threads = [
+        threading.Thread(target=write, args=(index,))
+        for index in range(step["writers"])
+    ]
     for thread in threads:
         thread.start()
     for thread in threads:
@@ -2865,14 +3035,22 @@ def _op_replica_await(step: dict, context: dict) -> dict:
             )[0]["mode"]
             run("COMMIT")
         if mode != "remote_apply":
-            raise AssertionError(f"synchronous_commit of the barrier transaction is {mode}")
+            raise AssertionError(
+                f"synchronous_commit of the barrier transaction is {mode}"
+            )
         return {}
     replica = os.environ.get("ORM_TEST_MYSQL_REPLICA_DSN")
     if not replica:
-        raise AssertionError("replica.await: ORM_TEST_MYSQL_REPLICA_DSN is required; run make orm-test-servers, which starts the databases and writes it")
+        raise AssertionError(
+            "replica.await: ORM_TEST_MYSQL_REPLICA_DSN is required; run make orm-test-servers, which starts the databases and writes it"
+        )
     status = native_query("mysql", context["dsn"], ["SHOW BINARY LOG STATUS"])[0][0]
     file, position = status["File"], int(status["Position"])
-    waited = native_query("mysql", replica, [f"SELECT SOURCE_POS_WAIT('{file}', {position}, 60) AS waited"])[0][0]["waited"]
+    waited = native_query(
+        "mysql",
+        replica,
+        [f"SELECT SOURCE_POS_WAIT('{file}', {position}, 60) AS waited"],
+    )[0][0]["waited"]
     if waited is None or int(waited) < 0:
         raise AssertionError(f"the replica did not reach {file}:{position}")
     return {}
@@ -2886,14 +3064,25 @@ def _op_database_read_only(step: dict, context: dict) -> dict:
 
 def _op_db_listen(step: dict, context: dict) -> dict:
     """A LISTEN subscription (FCV-4, DIA-194)."""
-    return {"bind": _connection_of(step, context).listen(step["channel"] * step.get("channel_repeat", 1))}
+    return {
+        "bind": _connection_of(step, context).listen(
+            step["channel"] * step.get("channel_repeat", 1)
+        )
+    }
 
 
 def _op_subscription_receive(step: dict, context: dict) -> dict:
     """The next notification, whose deadline is the timeout of the Python form of a receive (DIA-195)."""
-    notification = _bound_value(step["ref"], context).receive(step.get("within_ms", 10000) / 1000)
+    notification = _bound_value(step["ref"], context).receive(
+        step.get("within_ms", 10000) / 1000
+    )
     payload = notification.payload
-    return {"json": [notification.channel, len(payload.encode()) if step.get("payload_bytes") is True else payload]}
+    return {
+        "json": [
+            notification.channel,
+            len(payload.encode()) if step.get("payload_bytes") is True else payload,
+        ]
+    }
 
 
 def _op_subscription_unlisten(step: dict, context: dict) -> dict:
@@ -2919,7 +3108,11 @@ def _op_session_end_listener(step: dict, context: dict) -> dict:
     )[0]
     if len(rows) != 1:
         raise AssertionError(f"the listener session of {step['channel']}: {rows}")
-    native_query(context["database"], session, [f"SELECT pg_terminate_backend({int(rows[0]['pid'])}, 5000)"])
+    native_query(
+        context["database"],
+        session,
+        [f"SELECT pg_terminate_backend({int(rows[0]['pid'])}, 5000)"],
+    )
     return {}
 
 
@@ -2931,7 +3124,9 @@ def _op_wait_start(step: dict, context: dict) -> dict:
 def _op_wait_at_least(step: dict, context: dict) -> dict:
     waited = (time.monotonic() - context["wait_start"]) * 1000
     if waited < step["ms"]:
-        raise AssertionError(f"wait.at_least: {waited} ms passed since wait.start, want {step['ms']}")
+        raise AssertionError(
+            f"wait.at_least: {waited} ms passed since wait.start, want {step['ms']}"
+        )
     return {}
 
 
@@ -2942,7 +3137,9 @@ def _op_session_end(step: dict, context: dict) -> dict:
     variable = f"ORM_TEST_{database.upper()}_SERVER_DSN"
     server = os.environ.get(variable)
     if not server:
-        raise AssertionError(f"{variable} is required; run make orm-test-servers, which starts the databases and writes it")
+        raise AssertionError(
+            f"{variable} is required; run make orm-test-servers, which starts the databases and writes it"
+        )
     session = with_database(server, urlsplit(context["dsn"]).path.lstrip("/"))
     query = (
         f"SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = '{table}' AND l.pid <> pg_backend_pid() LIMIT 1"
@@ -2983,7 +3180,10 @@ def _op_ddl_behavior(step: dict, context: dict) -> dict:
         raise AssertionError(f"the vectors have no case {step['case']}")
     database = context["database"]
     with native_session(database, context["dsn"]) as run:
-        for statement in [_DDL_CONNECTION_RULES[database], *vector["statements"][database]]:
+        for statement in [
+            _DDL_CONNECTION_RULES[database],
+            *vector["statements"][database],
+        ]:
             run(statement)
         for entry in vector["behavior"]:
             if "dialects" in entry and database not in entry["dialects"]:
@@ -2991,7 +3191,7 @@ def _op_ddl_behavior(step: dict, context: dict) -> dict:
             if "sql" in entry:
                 try:
                     run(entry["sql"])
-                except Exception as error:  # noqa: BLE001 - any driver error of the refused statement
+                except Exception as error:
                     if not entry.get("fails"):
                         raise AssertionError(f"{entry['sql']}: {error}") from error
                     continue
@@ -3005,7 +3205,9 @@ def _op_ddl_behavior(step: dict, context: dict) -> dict:
             if value is None:
                 raise AssertionError(f"{entry['query']}: NULL value")
             if str(value) != entry["want"]:
-                raise AssertionError(f"{entry['query']}: got {value!s}, want {entry['want']}")
+                raise AssertionError(
+                    f"{entry['query']}: got {value!s}, want {entry['want']}"
+                )
     return {}
 
 
@@ -3023,7 +3225,7 @@ def _op_sql_exec(step: dict, context: dict) -> dict:
         return {}
     try:
         native_query(context["database"], context["dsn"], [statement])
-    except Exception as error:  # noqa: BLE001 - any driver error of the refused statement
+    except Exception as error:
         text = step.get("refused_message", "")
         if text not in str(error).lower():
             raise AssertionError(
@@ -3046,7 +3248,9 @@ def _op_dsn_connect(step: dict, context: dict) -> dict:
         name = dsn[len("env:") :]
         dsn = os.environ.get(name, "")
         if not dsn:
-            raise AssertionError(f"dsn.connect: {name} is unset; run make orm-test-servers")
+            raise AssertionError(
+                f"dsn.connect: {name} is unset; run make orm-test-servers"
+            )
     return {"value": {"text": _connect_driver(dsn, step.get("config"))}}
 
 
@@ -3056,7 +3260,9 @@ def _op_dsn_sqlite_file(step: dict, _context: dict) -> dict:
     name = step["name"]
     with tempfile.TemporaryDirectory(prefix="orm-recipe-sqlite-name-") as directory:
         try:
-            _connect_driver(f"sqlite://{directory}/{name}?{step['query']}", step.get("config"))
+            _connect_driver(
+                f"sqlite://{directory}/{name}?{step['query']}", step.get("config")
+            )
         except OrmError:
             left = os.listdir(directory)
             if left:
@@ -3177,9 +3383,24 @@ def _column_value(model: Model, column: str, raw: dict, context: dict) -> Any:
     return _styled_argument(raw, [] if field is None else list(field.stages), {})
 
 
+# The public functions that a function call of a recipe names (FCV-4, F5).
+_CHAIN_FUNCTIONS = {
+    "year": orm.year,
+    "month": orm.month,
+    "day_of_week": orm.day_of_week,
+    "days_ago": orm.days_ago,
+    "days_later": orm.days_later,
+    "months_ago": orm.months_ago,
+    "months_later": orm.months_later,
+    "seconds_ago": orm.seconds_ago,
+    "seconds_later": orm.seconds_later,
+    "now": orm.now,
+}
+
+
 def _chain_func(call: dict) -> Any:
     """The public function of a function call (F5)."""
-    function = getattr(orm, call["fn"], None)
+    function = _CHAIN_FUNCTIONS.get(call["fn"])
     if function is None:
         raise AssertionError(f"function {call['fn']} has no recipe entry")
     numbers = [int(arg["int"]) for arg in call.get("args", []) if "int" in arg]
@@ -3771,7 +3992,11 @@ def _op_clock_read(step: dict, _context: dict) -> dict:
         raise AssertionError(f"clock.read has no edge {step['edge']}")
     micros = time.time_ns() // 1000 + (999 if step["edge"] == "upper" else 0)
     seconds, fraction = divmod(micros, 1_000_000)
-    return {"value": {"text": f"{time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(seconds))}.{fraction:06d}"}}
+    return {
+        "value": {
+            "text": f"{time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(seconds))}.{fraction:06d}"
+        }
+    }
 
 
 def _db_last_affected(step: dict, context: dict) -> dict:
@@ -3821,12 +4046,20 @@ def _utils_privilege(step: dict, context: dict) -> dict:
 
 
 def _utils_was_inserted(step: dict, context: dict) -> dict:
-    inserted = _connection_of(step, context).utils().was_inserted(step["table"], step["sequence"])
+    inserted = (
+        _connection_of(step, context)
+        .utils()
+        .was_inserted(step["table"], step["sequence"])
+    )
     return {"value": {"bool": inserted}}
 
 
 def _utils_backend_waiting_for_lock(step: dict, context: dict) -> dict:
-    return {"value": {"bool": _connection_of(step, context).utils().backend_waiting_for_lock()}}
+    return {
+        "value": {
+            "bool": _connection_of(step, context).utils().backend_waiting_for_lock()
+        }
+    }
 
 
 def _utils_groups(step: dict, context: dict) -> dict:
@@ -3838,7 +4071,13 @@ def _utils_groups(step: dict, context: dict) -> dict:
         "schema": utils.schema(),
         "stats": utils.stats(),
     }
-    return {"value": {"array": [{"text": name} for name, group in held.items() if group is not None]}}
+    return {
+        "value": {
+            "array": [
+                {"text": name} for name, group in held.items() if group is not None
+            ]
+        }
+    }
 
 
 def _pool_transactions(step: dict, context: dict) -> dict:
@@ -3848,7 +4087,6 @@ def _pool_transactions(step: dict, context: dict) -> dict:
     lock = threading.Lock()
     gate = threading.Event()
     state = {"active": 0, "peak": 0, "open": 0, "begun": 0}
-    failures = []
 
     def body():
         with lock:
@@ -3863,19 +4101,13 @@ def _pool_transactions(step: dict, context: dict) -> dict:
         with lock:
             state["active"] -= 1
 
-    def flow():
-        try:
-            db.transaction(body, {"retry": 0})
-        except BaseException as failure:
-            failures.append(failure)
-
-    threads = [threading.Thread(target=flow) for _ in range(step["transactions"])]
-    for thread in threads:
-        thread.start()
-    for thread in threads:
-        thread.join()
-    if failures:
-        raise failures[0]
+    with ThreadPoolExecutor(max_workers=step["transactions"]) as pool:
+        flows = [
+            pool.submit(db.transaction, body, {"retry": 0})
+            for _ in range(step["transactions"])
+        ]
+    for flow in flows:
+        flow.result()
     return {"json": {"peak": state["peak"], "open": state["open"]}}
 
 
@@ -4256,10 +4488,16 @@ _DATABASE_OPS = {
     ),
     "statements.count": lambda step, context: _op_statements_count(step, context),
     "transaction": lambda step, context: _op_transaction(step, context),
-    "transaction.attempts": lambda step, context: _op_transaction_attempts(step, context),
+    "transaction.attempts": lambda step, context: _op_transaction_attempts(
+        step, context
+    ),
     "clock.read": lambda step, context: _op_clock_read(step, context),
-    "transaction.deadlock": lambda step, context: _op_transaction_deadlock(step, context),
-    "events.server_transactions": lambda step, context: _op_server_transactions(step, context),
+    "transaction.deadlock": lambda step, context: _op_transaction_deadlock(
+        step, context
+    ),
+    "events.server_transactions": lambda step, context: _op_server_transactions(
+        step, context
+    ),
     "dsn.connect": _op_dsn_connect,
     "dsn.sqlite_file": _op_dsn_sqlite_file,
     "catalog.connect": _op_connect,
@@ -4323,7 +4561,9 @@ def _run_database_step(raw_step: dict, context: dict) -> None:
     expected = (
         None
         if "expect" not in step
-        else step.outcome(_resolve_refs(raw_step["expect"][context["database"]], context))
+        else step.outcome(
+            _resolve_refs(raw_step["expect"][context["database"]], context)
+        )
     )
     try:
         actual = op(step, context)
@@ -4360,14 +4600,15 @@ def _run_database_step(raw_step: dict, context: dict) -> None:
                 raise AssertionError(
                     f"error {str(error)!r} keeps the rollback error {rollback!r}, want code {expected['rollback']}"
                 ) from error
-        if expected.get("keeps_callback") is True and error.cause is not CALLBACK_FAILURE:
+        if (
+            expected.get("keeps_callback") is True
+            and error.cause is not CALLBACK_FAILURE
+        ):
             raise AssertionError(
                 f"error {str(error)!r} does not keep the error of the callback"
             ) from error
         if expected.get("driver_cause") is True and error.__cause__ is None:
-            raise AssertionError(
-                f"error {str(error)!r} has no driver cause"
-            ) from error
+            raise AssertionError(f"error {str(error)!r} has no driver cause") from error
         step.check_outcome()
         return
     except CallbackError as error:
@@ -4375,7 +4616,9 @@ def _run_database_step(raw_step: dict, context: dict) -> None:
         if expected is None or expected.get("error") != "CALLBACK":
             raise
         if error is not CALLBACK_FAILURE:
-            raise AssertionError(f"the transaction raised {error!r}, not the error of its callback") from error
+            raise AssertionError(
+                f"the transaction raised {error!r}, not the error of its callback"
+            ) from error
         return
     if "as" in step:
         context["bound"][step["as"]] = actual.get("bind", actual.get("value"))

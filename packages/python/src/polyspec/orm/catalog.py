@@ -896,7 +896,9 @@ def _changes(metadata: CatalogTableMetadata, values, code: str, dialect: str) ->
     """Checks named assignments against a descriptor and returns (column index, normalized value) in the order given."""
     values = list(values)
     # A key of defaults alone takes no assignment (INT-123).
-    if (not values and code != codes.ROW_INSERT_INVALID) or len(values) > len(metadata.columns):
+    if (not values and code != codes.ROW_INSERT_INVALID) or len(values) > len(
+        metadata.columns
+    ):
         raise _error(code, "invalid column assignments")
     normalized = _params([value for _, value in values])
     seen = set()
@@ -1364,7 +1366,10 @@ class _Session:
                     self.abandoned = True
                     self.wrapper.close()
                     # The cursor and its result would read the rest when they are collected, from a closed socket.
-                    if self.raw._result is not None:
+                    if (
+                        self.raw._result is not None
+                        and self.raw._result.unbuffered_active
+                    ):
                         self.raw._result.unbuffered_active = False
                     cursor.connection = None
             elif cursor_name is not None:

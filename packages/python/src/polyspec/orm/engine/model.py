@@ -238,7 +238,9 @@ def model_of_documents(documents) -> RuntimeModel:
     if manifest is None:
         raise OrmError(
             codes.SCHEMA_INVALID,
-            "; ".join(f"{d.line}:{d.column} {d.rule}: {d.message}" for d in diagnostics),
+            "; ".join(
+                f"{d.line}:{d.column} {d.rule}: {d.message}" for d in diagnostics
+            ),
         )
     entities = {}
     ordered = sorted(documents, key=lambda d: d.name)
