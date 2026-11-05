@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: 511c41bc535eeb0c78185307f22cac7424610082128ba9856a31adc8e9a4489a -->
+<!-- source-sha256: c5b785b423ffe9be4c440861e90b5eb4057cf6b6792d7be98c1fee7223bfbd78 -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1763,4 +1763,4 @@
 | T374 | 시험 SIGTERM of the checker ends its hung extractor가 마감을 넘겨 process를 남기지 않는다. Red: 2026-11-05 다른 실행 3개와 함께 돌린 python의 local parity 실행에서, checker가 시작한 process가 남아 그 case가 300초 뒤 실패했다. 같은 실행에서 SIGKILL case는 통과했고, 단독 6회와 동시 48회 반복은 통과했으므로 원인은 아직 모른다. | tests/interfaces/check/extract.mts, tests/interfaces/check/reaper.mts, tests/interfaces/check/extract.test.mts | `node --test tests/interfaces/check/extract.test.mts` | [v] |
 | T376 | CI의 pooler lane에 그 target이 요구하는 flowmark build가 있다. Red: CI run 41986216792의 test (clients_pooler)가 flowmark-check에서 실패한다. client-pooler-check는 그 binary를 요구하는데 contracts/check-inputs.json의 항목이 flowmark를 적지 않아 job이 설치하지 않는다. | contracts/check-inputs.json | `node --test scripts/check/run.test.mts` | [v] |
 | T377 | MySQL privilege fixture가 go-test-check를 실행하는 모든 lane에 닿는다. Red: CI run 41986216792의 test (dbspec)가 TestDialectFacts에서 ORM_TEST_MYSQL_PRIVILEGE_DSN is required로 실패한다. dbspec-introspect-compare-check가 go-test-check를 실행하면서 그 fixture를 needs에 적지 않기 때문이다. | contracts/check-inputs.json | `node --test scripts/check/run.test.mts` | [v] |
-| T378 | Rust의 decimal physical case가 마감 전에 빌드된 binary를 실행한다. Red: CI run 41986216792의 test (feature_helpers)가 decimal/mysql/rust/1에서 cargo timed out after 120000 ms로 실패한다. case가 마감 안에서 cargo test를 실행해, 같은 실행의 다른 helper가 공유 target 폴더에 빌드하는 것을 기다리고 다시 빌드하기 때문이다. | Makefile, scripts/decimal-physical-check.mts, scripts/physical-command-case.test.mts | `node --test scripts/physical-command-case.test.mts` | [~] |
+| T378 | Rust의 decimal physical case가 마감 전에 빌드된 binary를 실행한다. Red: CI run 41986216792의 test (feature_helpers)가 decimal/mysql/rust/1에서 cargo timed out after 120000 ms로 실패한다. case가 마감 안에서 cargo test를 실행해, 같은 실행의 다른 helper가 공유 target 폴더에 빌드하는 것을 기다리고 다시 빌드하기 때문이다. | Makefile, scripts/decimal-physical-check.mts, scripts/physical-command-case.test.mts | `node --test scripts/physical-command-case.test.mts` | [v] |

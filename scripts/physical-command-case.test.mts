@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { inspect } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { caseTest, COMPUTE } from '../tests/testcase.mts';
@@ -9,19 +12,26 @@ const kitRunTests = fileURLToPath(import.meta.resolve('@polyspec/kit/run-tests')
 
 caseTest('dispatches each decimal owner to its native command and rejects unknown runtimes', COMPUTE, () => {
   const extension = '/build/polyspec_orm.so';
+  const rustRun = mkdtempSync(join(tmpdir(), 'orm-decimal-rust-'));
+  writeFileSync(join(rustRun, 'binaries.json'), JSON.stringify({
+    tests: [{ executable: '/target/decimal_physical', manifestDir: '/packages/rust/tests', target: 'decimal_physical', copy: '/run/0-decimal_physical' }], programs: {},
+  }));
   const cases = [
     ['go', 'go', ['test', '-tags', 'ormtest', '-json']],
     ['php', 'php', ['vendor-php/bin/phpunit']],
     ['php-extension', process.execPath, [kitRunTests, 'phpunit']],
-    ['rust', 'cargo', ['test', '--offline']],
+    ['rust', '/run/0-decimal_physical', ['decimal_postgres', '--exact']],
     ['python', '/venv/bin/python', ['-m', 'packages.python.tests.decimal_model_db']],
     ['typescript', 'node', ['packages/ts/tests/decimal_model_db.mjs']],
   ] as const;
   for (const [language, expectedProgram, expectedArgs] of cases) {
-    const [program, args] = command(language, 'postgres', { POLYSPEC_ORM_EXTENSION: extension, ORM_PYTHON: '/venv/bin/python' });
+    const [program, args] = command(language, 'postgres', { POLYSPEC_ORM_EXTENSION: extension, ORM_PYTHON: '/venv/bin/python', ORM_DECIMAL_RUST_RUN: rustRun });
     assert.equal(program, expectedProgram, `${language} program`);
     assert.deepEqual(args.slice(0, expectedArgs.length), expectedArgs, `${language} command`);
   }
+  assert.equal(commandEnvironment('rust', { ORM_DECIMAL_RUST_RUN: rustRun })['CARGO_MANIFEST_DIR'], '/packages/rust/tests');
+  assert.throws(() => command('rust', 'postgres', {}), /ORM_DECIMAL_RUST_RUN is required/);
+  rmSync(rustRun, { recursive: true, force: true });
 
   const [extensionProgram, extensionArgs] = command('php-extension', 'postgres', { POLYSPEC_ORM_EXTENSION: extension });
   assert.equal(extensionProgram, process.execPath);

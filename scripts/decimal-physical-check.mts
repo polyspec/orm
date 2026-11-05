@@ -4,6 +4,7 @@ import { run, state, step, TIMEOUT_MS } from './physical.mts';
 import { reportUnchangedState, runPhysicalCommandCase } from './physical-command-case.mts';
 import { parseGoTestEvent } from './json/formats.mts';
 import { implementationLanguages } from './features/languages.mts';
+import { readBinaries } from '../tests/cargo-test.mts';
 import { withTestTags } from '../tests/go-test.mts';
 
 const databases = ['mysql', 'postgres', 'sqlite'];
@@ -28,7 +29,7 @@ export function command(language: string, database: string, environment: NodeJS.
       `with data set "${database}"$`, 'packages/php-ext/tests/DecimalModelDbNativeTest.php']];
   }
   if (language === 'rust') {
-    return ['cargo', ['test', '--offline', '--locked', '--manifest-path', 'packages/rust/Cargo.toml', '-p', 'polyspec-orm-tests', '--test', 'decimal_physical', id, '--', '--exact']];
+    return [rustTest(environment).copy, [id, '--exact']];
   }
   if (language === 'python') {
     // ORM_PYTHON is the Python of the venv that make orm-install-python builds.
@@ -40,7 +41,17 @@ export function command(language: string, database: string, environment: NodeJS.
   throw new Error(`unknown decimal physical runtime: ${language}`);
 }
 
+/** The copy of the Rust test binary that make decimal-physical-check builds before the deadlines of the cases. */
+function rustTest(environment: NodeJS.ProcessEnv): { copy: string; manifestDir: string } {
+  const directory = environment['ORM_DECIMAL_RUST_RUN'];
+  if (!directory) throw new Error('ORM_DECIMAL_RUST_RUN is required; run this check through make decimal-physical-check, which builds the Rust test');
+  const [test] = readBinaries(directory).tests;
+  if (test === undefined) throw new Error(`${directory}/binaries.json names no Rust test`);
+  return test;
+}
+
 export function commandEnvironment(language: string, environment: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  if (language === 'rust') return { ...environment, CARGO_MANIFEST_DIR: rustTest(environment).manifestDir };
   return language === 'php-extension' ? { ...environment, ORM_PHP_MODE: 'extension' } : environment;
 }
 

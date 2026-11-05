@@ -1860,13 +1860,18 @@ decimal-bench-sqlite: typescript-current
 # uses (the Rust test binary decimal_physical and the Go decimalmodel test) is a long-running
 # task, so it runs first under RUN_LONG with no deadline before the case (the Go build publishes into .runtime/bin and fills the build cache), and the case
 # Run what was built.
+# The case runs the copy of the Rust test binary (tests/cargo-test.mts --copy): a cargo test in its deadline would wait for and rebuild
+# what the other helpers of this run build in the shared target directory.
+decimal-physical-check: DECIMAL_RUST_RUN = $(abspath .runtime/run)/decimal-physical-$PPID
 decimal-physical-check: php-vendor-check lease-tool python-venv-check orm-install-php-extension-tools
 	$(READ_TYPESCRIPT)
 	test -n "$(DECIMAL_ENV)" -a -f "$(DECIMAL_ENV)" || { echo 'DECIMAL_ENV names no decimal database of this run; run make run-databases TARGETS=feature-helper-check, whose helper decimal-physical runs $@' >&2; exit 1; }
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/decimal-physical -- $(CARGO_LEASED) cargo test --no-run --offline --locked --manifest-path packages/rust/Cargo.toml -p polyspec-orm-tests --test decimal_physical
+	mkdir -p $(DECIMAL_RUST_RUN)
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/decimal-physical -- $(CARGO_LEASED) $(NODE) $(abspath tests/cargo-test.mts) --copy $(DECIMAL_RUST_RUN) -- cargo test --no-run --message-format=json-render-diagnostics --offline --locked --manifest-path packages/rust/Cargo.toml -p polyspec-orm-tests --test decimal_physical
 	$(RUN_LONG) go-build/decimal-physical -- $(PUBLISH) $(abspath .runtime/bin/decimalmodel.test) go test -c -o @OUT@ ./packages/go/decimalmodel
 	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
-	. $(DECIMAL_ENV) && ORM_PYTHON=$(PYTHON_VENV)/bin/python POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) $(NODE) scripts/decimal-physical-check.mts
+	. $(DECIMAL_ENV) && ORM_DECIMAL_RUST_RUN=$(DECIMAL_RUST_RUN) ORM_PYTHON=$(PYTHON_VENV)/bin/python POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) $(NODE) scripts/decimal-physical-check.mts
+	rm -rf $(DECIMAL_RUST_RUN)
 
 # interface-check runs the tests of the interface checker (tests/interfaces/check) and the checker itself with --self-test. The checker expands the entity
 # unit rules into the dbspec entity order that the TypeScript client build (packages/ts/dist) reads.
