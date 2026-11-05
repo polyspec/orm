@@ -1,6 +1,6 @@
 //! The dispatcher of the model ops of a recipe (docs/spec/feature-coverage.md FCV-4), and the reads of the wrapped values of
 //! their steps. The dispatcher holds the connections that model.connect opened in a case and closes them; a recipe gives
-//! its ops as `CaseModels`, or, on the generated models of the bench set that a trial binary includes as `crate::model`, as
+//! its ops as `CaseModels`, or, on the generated models of the bench set that the test program includes as `crate::model`, as
 //! `BenchModels`.
 
 use std::collections::HashMap;

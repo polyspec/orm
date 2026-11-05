@@ -28,7 +28,7 @@ export function command(language: string, database: string, environment: NodeJS.
       `with data set "${database}"$`, 'packages/php-ext/tests/DecimalModelDbNativeTest.php']];
   }
   if (language === 'rust') {
-    return ['cargo', ['test', '--offline', '--locked', '--manifest-path', 'packages/rust/Cargo.toml', '-p', 'polyspec-orm-tests', '--test', 'decimal_physical', id, '--', '--exact']];
+    return ['cargo', ['test', '--offline', '--locked', '--manifest-path', 'packages/rust/Cargo.toml', '-p', 'polyspec-orm-tests', '--test', 'all', `decimal_physical::${id}`, '--', '--exact']];
   }
   if (language === 'python') {
     // ORM_PYTHON is the Python of the venv that make orm-install-python builds.

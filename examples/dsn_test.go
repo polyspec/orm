@@ -1,6 +1,6 @@
 // Package examples_test checks that the Go and PHP example programs, without ORM_BENCH_MYSQL_DSN,
 // do not connect, and fail while printing that variable name. The Rust example
-// is checked by packages/rust/tests/tests/example_dsn.rs.
+// is checked by packages/rust/tests/tests/all/example_dsn.rs.
 package examples_test
 
 import (

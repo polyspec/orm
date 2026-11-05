@@ -1,5 +1,5 @@
 <!-- doc-id: packages-orm-rust-readme -->
-<!-- source-sha256: 44b85139207524cbd4e118e684030fbc29ee2e3dc73decc03995996e57beceed -->
+<!-- source-sha256: 92d36ffc4bf011c71f627e07e6a7e3827a0a9e6bfcc03a94ee891d0b71946ce8 -->
 [English](README.md)
 
 # orm — Rust 클라이언트
@@ -130,7 +130,7 @@ cd packages/rust
 cargo clippy --workspace --all-targets -- -D warnings
 ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ORM_TEST_MYSQL_SERVER_DSN=… ORM_TEST_POSTGRES_SERVER_DSN=… cargo test --workspace
 cargo build -p polyspec-orm-tests
-ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ORM_TEST_MYSQL_REPLICA_DSN=… ORM_TEST_POSTGRES_REPLICA_DSN=… cargo test -p polyspec-orm-tests --test integration_program
+ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ORM_TEST_MYSQL_REPLICA_DSN=… ORM_TEST_POSTGRES_REPLICA_DSN=… cargo test -p polyspec-orm-tests --test all -- integration_program::
 ./target/debug/conformance --dsn "mysql://…" ../../contracts/fixtures/bench/bench.dbs
 ```
 

@@ -213,7 +213,7 @@ caseTest('a selected make target runs with the environments of owner-check and t
 const t42 = [
   'packages/go/orm/recipe_statement_events_test.go', 'packages/go/orm/events.go',
   'packages/php/src/StatementEvent.php', 'packages/php/tests/StatementEventsRecipeTest.php',
-  'packages/rust/orm/src/events.rs', 'packages/rust/tests/tests/statement_events_sqlite.rs',
+  'packages/rust/orm/src/events.rs', 'packages/rust/tests/tests/all/statement_events_sqlite.rs',
   'packages/ts/src/events.ts', 'packages/ts/tests/statement_events-sqlite.test.mjs',
   'contracts/fixtures/statement_events/statement_events.dbs',
 ];

@@ -1,6 +1,6 @@
 //! The shared styled column states of contracts/fixtures/styled_column_states.json through the public codec API
 //! (`polyspec_orm::codec`), one libtest-mimic trial `styled_column_state_fixture::<id>` per case. The codec cases that
-//! every client shares are the codec recipe, tests/codec/codec.json (packages/rust/tests/tests/codec_none.rs).
+//! every client shares are the codec recipe, tests/codec/codec.json (packages/rust/tests/tests/all/codec_none.rs).
 
 #[path = "common/or_panic.rs"]
 mod or_panic;

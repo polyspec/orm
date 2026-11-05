@@ -250,7 +250,7 @@ export function performanceCommands(parity: Pick<ParityConfig, 'units'>, env: No
         }
         case 'rust':
           // libtest holds what a passing test writes unless --nocapture lets it through.
-          commands.push({ ...entry, program: env.MAKE ?? 'make', args: ['-s', 'feature-rust-unit', 'FEATURE_CRATE=packages/rust/tests', 'FEATURE_CARGO_TARGET=--test coverage_performance_gate', `FEATURE_TEST=${symbol} --nocapture`] });
+          commands.push({ ...entry, program: env.MAKE ?? 'make', args: ['-s', 'feature-rust-unit', 'FEATURE_CRATE=packages/rust/tests', 'FEATURE_CARGO_TARGET=--test all', `FEATURE_TEST=${symbol} --nocapture`] });
           break;
       }
     }

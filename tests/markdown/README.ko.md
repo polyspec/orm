@@ -1,5 +1,5 @@
 <!-- doc-id: tests-markdown-readme -->
-<!-- source-sha256: 418e9e302890bee8d8d3119b74cc799e01f04b1d4e0338657a23a31d8dfc9176 -->
+<!-- source-sha256: 956a5f71d919780c7e1c7d81a2a54b075d108c375e6a585152c651cd6a94f19f -->
 # Markdown executor 적합성
 
 markdown IR executor([프로토콜](../../docs/spec/protocol.ko.md#_5-ir-executors))는 데이터베이스가 아니라 flowmark
@@ -16,7 +16,7 @@ corpus 하나에서 `cases.json`의 case를 실행하고, case마다 결과를 �
 | `packages/php/markdownmodel` | catalog에서 생성한 PHP model. PHP 실행기는 PHPUnit test `packages/php/tests/MarkdownConformanceTest.php`이며 case마다 그 id로 이름 붙은 data set으로 실행한다 |
 | `packages/php-ext/tests/MarkdownConformanceNativeTest.php` | PHP extension을 불러 같은 case를 실행하고, 생성 model 연산이 extension의 internal `Model` method에 들어가는지도 확인한다 |
 | `packages/python/tests/markdown_conformance.py` | Python 실행기. catalog에서 Python model을 자기 임시 directory에 생성한다 |
-| `packages/rust/tests/tests/markdown_conformance.rs` | Rust 실행기 `markdown_conformance`. model은 그 crate의 `build.rs`가 catalog에서 생성한다 |
+| `packages/rust/tests/tests/all/markdown_conformance.rs` | Rust 실행기 `markdown_conformance`. model은 그 crate의 `build.rs`가 catalog에서 생성한다 |
 | `packages/ts/src/models/markdown_fixture` | catalog에서 생성한 TypeScript model. TypeScript 실행기 `packages/ts/tests/markdown_conformance.mjs`가 case보다 먼저 generator 출력과 비교하며, 실행기는 각 case를 `markdown-conformance/<id>`로 보고한다 |
 
 ## 실행

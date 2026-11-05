@@ -80,7 +80,7 @@ caseTest('a measurement runs every binding of the three hot-path units, naming i
   assert.equal(new Set(commands.map(command => `${command.runtime}/${command.database}`)).size, 18);
   const on = (runtime: string, database: string) => commands.find(command => command.runtime === runtime && command.database === database);
   assert.deepEqual(on('go', 'sqlite')?.args, ['tests/go-test.mts', '-v', '-timeout', '0', './packages/go/bench', '-run', '^TestPerformanceMeasurementSQLite$', '-count=1']);
-  assert.deepEqual(on('rust', 'mysql')?.args.at(-1), 'FEATURE_TEST=coverage_hot_path_gate_mysql --nocapture');
+  assert.deepEqual(on('rust', 'mysql')?.args.at(-1), 'FEATURE_TEST=coverage_performance_gate::coverage_hot_path_gate_mysql --nocapture');
   assert.deepEqual(on('typescript', 'postgres')?.args, ['packages/ts/tests/coverage_performance_gate_postgres.mjs', 'hot_path_gate']);
   assert.deepEqual(on('python', 'mysql')?.args, ['-m', 'packages.python.tests.coverage_performance_gate_mysql', 'hot_path_gate']);
   assert.ok(on('php', 'postgres')?.args.includes('/::testHotPathGate$/'));

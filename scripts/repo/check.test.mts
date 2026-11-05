@@ -577,7 +577,7 @@ caseTest('the Rust test recipe gives Kit one libtest thread option', PROCESS, as
     if (!isStringArray(parsed)) throw new Error('cargo test arguments fixture is not a string array');
     const actual = parsed;
     const harness = actual.slice(actual.indexOf('--') + 1);
-    assert.deepEqual(harness, ['--test-threads=1', '--nocapture']);
+    assert.deepEqual(harness, ['--test-threads=1', 'dbspec_apply_verification_errors_none::', '--nocapture']);
     assert.equal(actual.filter(argument => argument === '--test-threads=1').length, 1);
   } finally {
     rmSync(directory, { recursive: true, force: true });

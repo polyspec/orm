@@ -25,7 +25,7 @@ export const RUNNERS: { [implementation: string]: Runner } = {
   python: { call: /\brecipe_tests\b/, files: /^packages\/python\/tests\/recipe(_model)?\.py$/ },
   rust: {
     call: /\brecipe::\w*trials/,
-    files: /^packages\/rust\/tests\/(src\/(recipe|recipe_apply|bench_set_dispatch)\.rs|tests\/[^/]+\/dispatch\.rs)$/,
+    files: /^packages\/rust\/tests\/(src\/(recipe|recipe_apply|bench_set_dispatch)\.rs|tests\/all\/[^/]+\/dispatch\.rs)$/,
   },
 };
 

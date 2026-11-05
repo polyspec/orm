@@ -91,8 +91,6 @@ rules:
       - "!packages/python/testing/conformance"
       # The TypeScript runner and its result reader compile against the sources of packages/ts.
       - "!packages/ts/testing/conformance"
-      # The integration tests are a target of the Cargo test crate of packages/rust, which takes its dev-dependencies.
-      - "!packages/rust/tests/tests/integration"
       # The VS Code integration test starts the extension host of packages/dbspec-vscode for that extension alone.
       - "!packages/dbspec-vscode/tests/integration"
     message: "K244: an integration or conformance suite lives in tests/integration/<runtime> or tests/conformance/<runtime> of the root"

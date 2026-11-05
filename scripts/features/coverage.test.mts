@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { testDirectoryOf } from './packages.mts';
-import { cargoBuildArgs, cargoFeaturesForPackage, cargoPathModuleFiles, cargoTargetArgs, cargoWorkspaceManifestPath, checkCoverage, databases, executeCoverage, resultCases, languages, NATIVE_DEADLINE, run, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
+import { cargoBuildArgs, cargoFeaturesForPackage, cargoModuleFilter, cargoPathModuleFiles, cargoTargetArgs, cargoWorkspaceManifestPath, checkCoverage, databases, executeCoverage, resultCases, languages, NATIVE_DEADLINE, run, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
 import { readFeatures } from './manifest.mts';
 import { readParityConfig, type ParityConfig } from '../json/formats.mts';
 
@@ -203,6 +203,19 @@ caseTest('Rust coverage maps nested modules to the most specific Cargo test targ
     { name: 'integration', kind: ['test'], src_path: join(root, 'packages/rust/tests/tests/integration.rs'), test: true },
     { name: 'nested', kind: ['test'], src_path: join(root, 'packages/rust/tests/tests/integration/main.rs'), test: true },
   ], [nestedIntegration]), /maps to 2 Cargo test targets at its most specific module root/);
+});
+
+caseTest('Rust coverage runs a module of a test program through the filter of its module path', COMPUTE, () => {
+  const root = new URL('../..', import.meta.url).pathname;
+  const program = { name: 'all', kind: ['test'], src_path: join(root, 'packages/rust/tests/tests/all/main.rs'), test: true };
+  const alone = { name: 'zone', kind: ['test'], src_path: join(root, 'packages/rust/orm/tests/zone.rs'), test: true };
+  const library = { name: 'polyspec-orm', kind: ['lib'], src_path: join(root, 'packages/rust/orm/src/lib.rs'), test: true };
+  const targets = [library, program, alone];
+  assert.equal(cargoModuleFilter(targets, join(root, 'packages/rust/tests/tests/all/transactions_mysql.rs')), 'transactions_mysql::');
+  assert.equal(cargoModuleFilter(targets, join(root, 'packages/rust/tests/tests/all/integration_program/mod.rs')), 'integration_program::');
+  assert.equal(cargoModuleFilter(targets, join(root, 'packages/rust/tests/tests/all/main.rs')), undefined);
+  assert.equal(cargoModuleFilter(targets, join(root, 'packages/rust/orm/tests/zone.rs')), undefined);
+  assert.equal(cargoModuleFilter(targets, join(root, 'packages/rust/orm/src/driver.rs')), undefined);
 });
 
 caseTest('Rust coverage maps explicit library path modules to the library test target', COMPUTE, async () => {

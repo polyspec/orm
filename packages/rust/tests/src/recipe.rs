@@ -2959,7 +2959,7 @@ mod database {
     /// each model op calls the generated model that its step names, on the connection that its `connection` field names; a
     /// model.update or model.delete with `row` (and no connection) runs on the connection of its bound row.
     /// The fields that a model op receives have their values resolved: a ref is its bound value, and a per-database object
-    /// is its entry for the database. A trial binary implements it over the models of its fixture.
+    /// is its entry for the database. A test module implements it over the models of its fixture.
     pub trait ModelDispatcher: Send {
         /// Whether the ops run on the table path (FCV-4), which reads the fields of a step as the document writes them.
         fn table_path(&self) -> bool {
@@ -3047,24 +3047,22 @@ mod database {
         database_trials_with_models(entry, path, database, no_models)
     }
 
-    /// database_trials with the generated models of the trial binary: model.connect opens connections, and the model ops
+    /// What builds the dispatcher of the model ops of each case of a recipe.
+    pub type Models = Arc<dyn Fn() -> Box<dyn ModelDispatcher> + Send + Sync>;
+
+    /// database_trials with the generated models of the test program: model.connect opens connections, and the model ops
     /// call the models through the dispatcher that `models` builds for each case (FCV-4).
     pub fn database_trials_with_models(entry: &str, path: &str, database: &str, models: fn() -> Box<dyn ModelDispatcher>) -> Vec<polyspec_orm_testcase::Trial> {
-        trials_of(entry, path, database, models, false)
+        trials_of(entry, path, database, Arc::new(models), false)
     }
 
     /// database_trials_with_models for the table path, whose ops read the members of an object in the order of the
     /// document (WRITTEN_ORDER).
-    pub fn database_trials_written_order(
-        entry: &str,
-        path: &str,
-        database: &str,
-        models: fn() -> Box<dyn ModelDispatcher>,
-    ) -> Vec<polyspec_orm_testcase::Trial> {
+    pub fn database_trials_written_order(entry: &str, path: &str, database: &str, models: Models) -> Vec<polyspec_orm_testcase::Trial> {
         trials_of(entry, path, database, models, true)
     }
 
-    fn trials_of(entry: &str, path: &str, database: &str, models: fn() -> Box<dyn ModelDispatcher>, written_order: bool) -> Vec<polyspec_orm_testcase::Trial> {
+    fn trials_of(entry: &str, path: &str, database: &str, models: Models, written_order: bool) -> Vec<polyspec_orm_testcase::Trial> {
         assert!(DATABASES.contains(&database), "recipe {path}: unknown database {database}");
         let (root, text) = super::recipe_text(path);
         let (mut recipe, ordered) = read_recipe(&root.join(path), &text);
@@ -3084,7 +3082,7 @@ mod database {
             .filter(|(_, case)| case["only"].as_array().is_none_or(|only| only.iter().any(|name| name.as_str() == Some(database))))
             .filter(|(_, case)| case["not_through_pooler"].is_null() || std::env::var("ORM_CLIENT_DB_POOLER").as_deref() != Ok("1"))
             .map(|(index, case)| {
-                let (recipe, schema, dir, models) = (recipe.clone(), schema.clone(), dir.clone(), models);
+                let (recipe, schema, dir, models) = (recipe.clone(), schema.clone(), dir.clone(), models.clone());
                 let mut case = case.clone();
                 case["seed_order"] = ordered_cases[index].clone();
                 if written_order {
@@ -3095,7 +3093,7 @@ mod database {
                 let (path, database) = (path.to_owned(), database.to_owned());
                 let id = case["id"].as_str().unwrap_or_default().to_owned();
                 polyspec_orm_testcase::async_trial(format!("{entry}::{id}"), polyspec_orm_testcase::DATABASE, move || async move {
-                    run_case(&path, &recipe, &case, &database, schema.as_deref(), &dir, models).await;
+                    run_case(&path, &recipe, &case, &database, schema.as_deref(), &dir, &*models).await;
                     super::report_case(&id, &database);
                 })
             })
@@ -3215,7 +3213,7 @@ mod database {
         database: &str,
         schemas: Option<&(Schema, Vec<Schema>)>,
         dir: &Path,
-        models: fn() -> Box<dyn ModelDispatcher>,
+        models: &(dyn Fn() -> Box<dyn ModelDispatcher> + Send + Sync),
     ) {
         let id = case["id"].as_str().unwrap_or_default();
         let case_database = CaseDatabase::create(database).await;
@@ -3236,7 +3234,7 @@ mod database {
         schemas: Option<&'a (Schema, Vec<Schema>)>,
         dir: &'a Path,
         case_database: &'a CaseDatabase,
-        models: fn() -> Box<dyn ModelDispatcher>,
+        models: &'a (dyn Fn() -> Box<dyn ModelDispatcher> + Send + Sync),
     }
 
     async fn case_body(run: CaseRun<'_>) -> Result<(), String> {
@@ -3275,7 +3273,7 @@ mod database {
         database: &str,
         schemas: Option<&(Schema, Vec<Schema>)>,
         case_database: &CaseDatabase,
-        models: fn() -> Box<dyn ModelDispatcher>,
+        models: &(dyn Fn() -> Box<dyn ModelDispatcher> + Send + Sync),
     ) -> Result<(), String> {
         let open = catalog.as_mut().ok_or("the catalog connection is not open")?;
         let namespace = open.current_namespace().await.map_err(|e| format!("database {database}: current namespace: {e}"))?;
@@ -5434,23 +5432,23 @@ mod tables {
     pub fn table_trials(entry: &str, path: &str, fixture: &str, database: &str) -> Vec<polyspec_orm_testcase::Trial> {
         let root = polyspec_orm_testcase::manifest_dir().join("../../..");
         let schema = super::database::fixture_schema_of(&root.join(fixture));
-        if CURRENT.set(schema).is_err() {
-            panic!("{entry}: a trial binary runs one table recipe");
-        }
-        database_trials_written_order(entry, path, database, dispatcher)
+        database_trials_written_order(entry, path, database, Arc::new(move || dispatcher(schema)))
     }
 
-    /// The schema of the trial binary: one table recipe runs per binary.
-    static CURRENT: OnceLock<&'static Schema> = OnceLock::new();
+    thread_local! {
+        /// The schema of the table recipe of the case on this thread. A database case runs on a thread of its own, and many
+        /// table recipes run in one test program.
+        static CURRENT: std::cell::Cell<Option<&'static Schema>> = const { std::cell::Cell::new(None) };
+    }
 
-    /// The entities of the tables of the binary: each lives as long as the process, as the core of a model requires.
-    static ENTITIES: OnceLock<Mutex<HashMap<String, &'static Entity>>> = OnceLock::new();
+    /// The entities of the tables of each schema: each lives as long as the process, as the core of a model requires.
+    static ENTITIES: OnceLock<Mutex<HashMap<(usize, String), &'static Entity>>> = OnceLock::new();
 
-    /// The runtime model of the tables of the binary, read once per table.
-    static FIELDS: OnceLock<Mutex<HashMap<String, Arc<polyspec_orm::dbspec::Entity>>>> = OnceLock::new();
+    /// The runtime model of each entity, read once.
+    static FIELDS: OnceLock<Mutex<HashMap<usize, Arc<polyspec_orm::dbspec::Entity>>>> = OnceLock::new();
 
-    fn dispatcher() -> Box<dyn ModelDispatcher> {
-        let schema = CURRENT.get().copied().expect("table_trials sets the schema of the binary");
+    fn dispatcher(schema: &'static Schema) -> Box<dyn ModelDispatcher> {
+        CURRENT.set(Some(schema));
         crate::bench_models::case_dispatcher(Tables {
             handles: HashMap::new(),
             schema,
@@ -5572,12 +5570,14 @@ mod tables {
 
     /// The entity of the table of a model of the fixture (FCV-4).
     fn entity_of(model: &str) -> Result<&'static Entity, String> {
-        let schema = CURRENT.get().copied().ok_or_else(|| "table_trials sets the schema of the binary".to_owned())?;
+        let schema = CURRENT.get().ok_or_else(|| "this thread runs no case of a table recipe".to_owned())?;
         let table = snake_of(model);
+        let key = (std::ptr::from_ref(schema) as usize, table);
         let mut entities = ENTITIES.get_or_init(Mutex::default).lock().expect("the entities");
-        if let Some(&entity) = entities.get(&table) {
+        if let Some(&entity) = entities.get(&key) {
             return Ok(entity);
         }
+        let table = key.1.clone();
         let name = leaked(&table);
         let entity: &'static Entity = Box::leak(Box::new(Entity {
             name,
@@ -5585,18 +5585,19 @@ mod tables {
             new: polyspec_orm::model::new_boxed::<TableRow>,
             collect: polyspec_orm::model::collect_boxed::<TableRow>,
         }));
-        entities.insert(table, entity);
+        entities.insert(key, entity);
         Ok(entity)
     }
 
     /// The runtime model of an entity, read once.
     fn fields_of(entity: &Entity) -> polyspec_orm::Result<Arc<polyspec_orm::dbspec::Entity>> {
         let mut fields = FIELDS.get_or_init(Mutex::default).lock().expect("the fields");
-        if let Some(found) = fields.get(entity.name) {
+        let key = std::ptr::from_ref(entity) as usize;
+        if let Some(found) = fields.get(&key) {
             return Ok(found.clone());
         }
         let found = Arc::new(entity.entity_schema()?);
-        fields.insert(entity.name.to_owned(), found.clone());
+        fields.insert(key, found.clone());
         Ok(found)
     }
 

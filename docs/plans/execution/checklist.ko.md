@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: 2cc42d1eaa8887911d8431da90d08acc272524ed2e712e0f0b2e639abaa2758c -->
+<!-- source-sha256: 9b3fbc1d7fef8260e9294491d3077d7dc8974a96b7787e2b8d3f48973b80a10a -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1758,3 +1758,4 @@
 | T369 | 개발 줄을 모든 package의 다음 release로 발행한다. Red: 소비자가 설치하는 package에 개발 줄의 작업이 없다. Green: tag commit의 CI가 통과하고, config/release.json의 모든 package가 release-verify를 통과한다. | `VERSION`; `CHANGELOG.md`; `CHANGELOG.ko.md` | `make kit-gates-static` | [~] |
 | T370 | benchmarks/rust/Cargo.lock이 polyspec-orm의 모든 의존성을 적는다. Red: 0fa301d7b가 polyspec-orm manifest에 rustls를 넣은 뒤로 make orm-install-rust-crates의 cargo fetch --locked가 그 workspace에서 101로 끝나, CI run 41971288757의 작업 8개가 install 단계에서 실패한다. Green: make orm-install-rust-crates가 0으로 끝나고, 갱신된 lock으로 workspace가 빌드된다. | `benchmarks/rust/Cargo.lock` | `make orm-install-rust-crates` | [v] |
 | T371 | push에서 실행되는 검사가 추적되는 모든 Cargo.lock을 manifest와 대조한다. push 전 local 검사 중 benchmarks/rust에 --locked로 cargo를 실행하는 것이 없어 T370이 CI까지 갔다. Rust 검사는 packages/rust를 빌드하고, 세 workspace를 모두 읽는 것은 install 단계 make orm-install-rust-crates뿐이다. | `Makefile`; `contracts/check-inputs.json` | `make orm-install-rust-crates` | [!] 원인: 새 개발이며 release가 먼저다; 재시도: release 뒤 |
+| T372 | polyspec-orm-tests의 Rust 시험 묶음은 크기와 진행을 보여 주는 시험 program 하나다. Red: 시험 program 135개(선언 127개, cargo가 찾은 8개)와 conformance program의 case 3개, binary 8.36 GB, trial 3205개이고 실행이 어디까지 왔는지 말하는 줄이 없다. Green: 이름이 all인 program 하나의 group이 하나씩 차례로 돌고, 각 group은 이전 program의 이름을 가지며, group마다 한 줄과 마지막 합계를 출력한다. 이전 --list의 모든 trial이 이후 --list에 있고, trial의 동시성은 그대로이며, 따로 남은 target은 없다. | `packages/rust/tests/Cargo.toml`; `packages/rust/tests/tests/all/main.rs`; `packages/rust/testcase/src/groups.rs` | `make parity-declarations-check` | [~] |

@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 816ed00724a23d3df67791446864cb1925d6ebaab5bc25403c33e231ad8993a9 -->
+<!-- source-sha256: 0cf7695c61a6702f35c9a8b24314be57bf520ca8a15109b898645d16b5a55e6f -->
 # 변경 이력
 
 ## Unreleased
+
+- Tests: `packages/rust/tests`의 Rust 시험 묶음은 시험 program `all` 하나이고, group이 하나씩 차례로 돌며 크기와 진행을 출력한다. 모든 trial이 남고, 이름은 이전 program의 이름으로 시작한다.
 
 ## 0.0.22
 

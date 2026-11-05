@@ -119,7 +119,7 @@ const parityUnits = (): ParityUnit[] => readParityConfig(join(root, 'config/pari
 const poolerRecipes = (lane: 'php' | 'php-extension' | 'typescript' | 'python'): Command[] => process.env['ORM_CLIENT_DB_POOLER'] === '1' ? poolerRecipeCommands(lane, parityUnits()) : [];
 /** The value of TARGET_POOL_SIZE, the connection pool of each Rust integration test, read from its declaration (T343-1). */
 export function rustTargetPoolSize(repository: string): number {
-  const source = readFileSync(resolve(repository, 'packages/rust/tests/tests/integration_program/main.rs'), 'utf8');
+  const source = readFileSync(resolve(repository, 'packages/rust/tests/tests/all/integration_program/mod.rs'), 'utf8');
   const match = /const TARGET_POOL_SIZE: u32 = (\d+);/.exec(source);
   if (match === null) throw new Error('client-db-test: TARGET_POOL_SIZE is not declared in the integration program');
   return Number(match[1]);
@@ -137,7 +137,7 @@ export function rustPoolerThreadArguments(backends: number, poolSize: number): s
  */
 export function rustOwnedElsewhereSkipArguments(repository: string): string[] {
   const markdown = readJsonFile<{ cases: { id: string }[] }>(resolve(repository, 'tests/markdown/cases.json'), MARKDOWN_CASES_SCHEMA);
-  const measurements = ['mysql', 'postgres', 'sqlite'].map(database => `coverage_hot_path_gate_${database}`);
+  const measurements = ['mysql', 'postgres', 'sqlite'].map(database => `coverage_performance_gate::coverage_hot_path_gate_${database}`);
   return [...markdown.cases.map(testCase => `markdown_conformance::${testCase.id}`).sort(), ...measurements].flatMap(symbol => ['--skip', symbol]);
 }
 

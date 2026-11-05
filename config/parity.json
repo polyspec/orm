@@ -1036,8 +1036,7 @@
         "packages/rust/**/tests/**/coverage_*.rs"
       ],
       "support": [
-        "packages/rust/tests/tests/integration/main.rs",
-        "packages/rust/tests/tests/integration_program/bench_set.rs",
+        "packages/rust/tests/tests/all/integration_program/bench_set.rs",
         "packages/rust/build/tests/lock_probe/mod.rs",
         "packages/rust/build/tests/row_insert_identity/expression.rs",
         "packages/rust/orm/tests/common/audit_rows.rs",
@@ -1045,7 +1044,7 @@
         "packages/rust/tests/build.rs",
         "packages/rust/tests/bench_model.rs",
         "packages/rust/tests/src/client_bench.rs",
-        "packages/rust/tests/tests/common/mod.rs",
+        "packages/rust/tests/tests/all/common/mod.rs",
         "packages/rust/build/src/test_support.rs",
         "packages/rust/build/tests/common/grid_open.rs",
         "packages/rust/build/tests/common/physical_dialects.rs",
@@ -1074,7 +1073,7 @@
         "packages/rust/orm/tests/common/typed_model.rs",
         "packages/rust/schema/tests/common/or_panic.rs",
         "packages/rust/schema/tests/common/vector_file.rs",
-        "packages/rust/tests/tests/common/result_code.rs",
+        "packages/rust/tests/tests/all/common/result_code.rs",
         "packages/rust/orm/tests/common/clock_test_support.rs",
         "packages/rust/schema/tests/common/json_lines.rs",
         "packages/rust/tests/src/lib.rs",
@@ -1083,12 +1082,13 @@
         "packages/rust/tests/src/recipe_reads.rs",
         "packages/rust/tests/src/recipe_keys.rs",
         "packages/rust/tests/src/recipe_generator.rs",
-        "packages/rust/tests/tests/common/or_panic.rs",
-        "packages/rust/tests/tests/model_writes/dispatch.rs",
-        "packages/rust/tests/tests/fulltext_search/chain.rs",
-        "packages/rust/tests/tests/fulltext_search/dispatch.rs",
+        "packages/rust/tests/tests/all/common/or_panic.rs",
+        "packages/rust/tests/tests/all/model_writes/dispatch.rs",
+        "packages/rust/tests/tests/all/fulltext_search/chain.rs",
+        "packages/rust/tests/tests/all/fulltext_search/dispatch.rs",
         "packages/rust/tests/src/bench_models.rs",
-        "packages/rust/tests/src/bench_set_dispatch.rs"
+        "packages/rust/tests/src/bench_set_dispatch.rs",
+        "packages/rust/tests/tests/all/main.rs"
       ],
       "symbols": {
         "extractor": "rust",
@@ -1129,6 +1129,14 @@
           "reason": "harness: an internal test of the Rust package that checks the test harness of the owner, not a behaviour of the contract (K313)"
         },
         {
+          "glob": "packages/rust/tests/src/conformance_values.rs",
+          "reason": "harness: an internal test of the Rust package that checks the test harness of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/rust/tests/tests/all/conformance_runner.rs",
+          "reason": "harness: an internal test of the Rust package that checks the test harness of the owner, not a behaviour of the contract (K313)"
+        },
+        {
           "glob": "packages/rust/build/tests/unit/row_insert_lock.rs",
           "reason": "test: a unit test of the private SQL-text helper postgres_insert_lock of the catalog, reached through super::*, not a behaviour of the contract (K313)"
         },
@@ -1161,6 +1169,10 @@
           "reason": "harness: runs deliberate testcase fixtures in child processes and checks testcase report formatting and deadline results; it tests the Rust test harness"
         },
         {
+          "glob": "packages/rust/testcase/src/groups.rs",
+          "reason": "harness: checks how the runner of the Rust test program reads its command line; it tests the Rust test harness"
+        },
+        {
           "glob": "packages/rust/build/src/tests/build_environment.rs",
           "reason": "harness: verifies Cargo build-script environment propagation through child processes; this tests Rust build plumbing, not shared ORM behavior"
         },
@@ -1173,15 +1185,15 @@
           "reason": "harness: tests the Rust case-clock helper that reports process and thread CPU time for test reporting; it is test instrumentation, not ORM behavior"
         },
         {
-          "glob": "packages/rust/tests/tests/client_bench_args.rs",
+          "glob": "packages/rust/tests/tests/all/client_bench_args.rs",
           "reason": "harness: tests missing, malformed and nonpositive iteration arguments of the standalone Rust client_bench executable before it connects; this is benchmark CLI validation, not ORM behavior"
         },
         {
-          "glob": "packages/rust/tests/tests/client_bench_dsn.rs",
+          "glob": "packages/rust/tests/tests/all/client_bench_dsn.rs",
           "reason": "harness: tests the standalone Rust client_bench executable refuses a missing or empty benchmark DSN before connecting; this is benchmark CLI validation, not the public client DSN contract"
         },
         {
-          "glob": "packages/rust/tests/tests/example_dsn.rs",
+          "glob": "packages/rust/tests/tests/all/example_dsn.rs",
           "reason": "harness: tests the standalone complex and demo examples refuse to start without their benchmark DSN; this is example preflight behavior, not the ORM client contract"
         },
         {
@@ -2823,7 +2835,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_postgres.rs",
           "id": "dsn_connection_postgres::channel_outside_its_range_is_config"
         },
         {
@@ -2853,7 +2865,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_postgres.rs",
           "id": "dsn_connection_postgres::payload_outside_its_range_is_driver"
         },
         {
@@ -2883,7 +2895,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_postgres.rs",
           "id": "dsn_connection_postgres::notification_arrives_with_its_commit_in_order"
         },
         {
@@ -2913,7 +2925,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_postgres.rs",
           "id": "dsn_connection_postgres::unlisten_stops_delivery_and_a_receive_past_its_deadline_closes"
         },
         {
@@ -2943,7 +2955,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_postgres.rs",
           "id": "dsn_connection_postgres::lost_listener_connection_ends_the_subscription"
         },
         {
@@ -2988,12 +3000,12 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_mysql.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_mysql.rs",
           "id": "dsn_connection_mysql::other_databases_refuse_notify_and_listen"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_sqlite.rs",
           "id": "dsn_connection_sqlite::other_databases_refuse_notify_and_listen"
         }
       ]
@@ -3105,7 +3117,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/aes_rotation_mysql.rs",
+          "test": "packages/rust/tests/tests/all/aes_rotation_mysql.rs",
           "symbol": "aes_rotation_mysql"
         }
       ]
@@ -3157,7 +3169,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/aes_rotation_postgres.rs",
+          "test": "packages/rust/tests/tests/all/aes_rotation_postgres.rs",
           "symbol": "aes_rotation_postgres"
         }
       ]
@@ -3209,7 +3221,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/aes_rotation_sqlite.rs",
           "symbol": "aes_rotation_sqlite"
         }
       ]
@@ -3248,7 +3260,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/aes_rotation_sqlite.rs",
           "id": "aes_rotation_sqlite::read_path_codes"
         }
       ]
@@ -3404,7 +3416,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_apply_verification_errors_none.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_apply_verification_errors_none.rs",
           "id": "dbspec_apply_verification_errors_none::cleanup-the-failure-then-every-cleanup-error-in-order"
         }
       ]
@@ -3446,7 +3458,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_apply_verification_errors_none.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_apply_verification_errors_none.rs",
           "symbol": "dbspec_apply_verification_errors_none"
         }
       ]
@@ -3485,7 +3497,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_render_physical_mysql.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_render_physical_mysql.rs",
           "symbol": "dbspec_render_physical_mysql"
         }
       ]
@@ -3524,7 +3536,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_render_physical_postgres.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_render_physical_postgres.rs",
           "symbol": "dbspec_render_physical_postgres"
         }
       ]
@@ -3563,7 +3575,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_render_physical_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_render_physical_sqlite.rs",
           "symbol": "dbspec_render_physical_sqlite"
         }
       ]
@@ -3726,7 +3738,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/set_parse_none.rs",
+          "test": "packages/rust/tests/tests/all/set_parse_none.rs",
           "id": "set_parse_none::byte-order-mark"
         }
       ]
@@ -3784,7 +3796,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/sets_none.rs",
+          "test": "packages/rust/tests/tests/all/sets_none.rs",
           "id": "sets_none::repeated-document-name"
         }
       ]
@@ -3823,7 +3835,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_mysql.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_mysql.rs",
           "id": "dsn_connection_mysql::mysql_tls_verifies_the_server_identity"
         }
       ]
@@ -3862,7 +3874,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_mysql.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_mysql.rs",
           "id": "dsn_connection_mysql::mysql_tls_refuses_an_untrusted_identity"
         }
       ]
@@ -4291,32 +4303,32 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "test": "packages/rust/tests/tests/all/dsn_reject_none.rs",
           "id": "dsn_reject_none::mysql_tls_address_literal"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "test": "packages/rust/tests/tests/all/dsn_reject_none.rs",
           "id": "dsn_reject_none::mysql_tls_ipv6_literal"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "test": "packages/rust/tests/tests/all/dsn_reject_none.rs",
           "id": "dsn_reject_none::mysql_tls_socket"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "test": "packages/rust/tests/tests/all/dsn_reject_none.rs",
           "id": "dsn_reject_none::mysql_tls_ipv6_literal_without_port"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "test": "packages/rust/tests/tests/all/dsn_reject_none.rs",
           "id": "dsn_reject_none::mysql_tls_address_literal_encoded_ca"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "test": "packages/rust/tests/tests/all/dsn_reject_none.rs",
           "id": "dsn_reject_none::mysql_tls_socket_on_a_host_name"
         }
       ]
@@ -4355,7 +4367,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "test": "packages/rust/tests/tests/all/dsn_reject_none.rs",
           "id": "dsn_reject_none::sqlite_relative_path"
         },
         {
@@ -4385,7 +4397,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "test": "packages/rust/tests/tests/all/dsn_reject_none.rs",
           "id": "dsn_reject_none::sqlite_root_path"
         },
         {
@@ -4415,7 +4427,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_sqlite.rs",
           "id": "dsn_connection_sqlite::sqlite_file_name_is_the_path"
         }
       ]
@@ -4454,7 +4466,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_postgres.rs",
           "id": "dsn_connection_postgres::dsn_parameters_of_this_page"
         },
         {
@@ -4484,7 +4496,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "test": "packages/rust/tests/tests/all/dsn_reject_none.rs",
           "id": "dsn_reject_none::sqlite_txlock_immediate"
         },
         {
@@ -4514,7 +4526,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "test": "packages/rust/tests/tests/all/dsn_reject_none.rs",
           "id": "dsn_reject_none::sqlite_txlock_deferred"
         }
       ]
@@ -4860,52 +4872,52 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_mysql.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_mysql.rs",
           "id": "dsn_connection_mysql::connection_is_utc_by_default"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_mysql.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_mysql.rs",
           "id": "dsn_connection_mysql::connection_timezone_utc"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_mysql.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_mysql.rs",
           "id": "dsn_connection_mysql::connection_timezone_offset"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_postgres.rs",
           "id": "dsn_connection_postgres::connection_is_utc_by_default"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_postgres.rs",
           "id": "dsn_connection_postgres::connection_timezone_utc"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_postgres.rs",
           "id": "dsn_connection_postgres::connection_timezone_offset"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_sqlite.rs",
           "id": "dsn_connection_sqlite::connection_is_utc_by_default"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_sqlite.rs",
           "id": "dsn_connection_sqlite::connection_timezone_utc"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_sqlite.rs",
           "id": "dsn_connection_sqlite::connection_timezone_offset"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_sqlite.rs",
           "id": "dsn_connection_sqlite::sqlite_refuses_a_date_only_datetime"
         }
       ]
@@ -4944,7 +4956,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "test": "packages/rust/tests/tests/all/dsn_reject_none.rs",
           "id": "dsn_reject_none::timezone_mysql_offset"
         },
         {
@@ -4974,7 +4986,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "test": "packages/rust/tests/tests/all/dsn_reject_none.rs",
           "id": "dsn_reject_none::timezone_postgres_zone"
         },
         {
@@ -5004,7 +5016,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "test": "packages/rust/tests/tests/all/dsn_reject_none.rs",
           "id": "dsn_reject_none::timezone_sqlite_zone"
         },
         {
@@ -5034,7 +5046,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "test": "packages/rust/tests/tests/all/dsn_reject_none.rs",
           "id": "dsn_reject_none::timezone_unknown_zone"
         },
         {
@@ -5064,7 +5076,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_sqlite.rs",
           "id": "dsn_connection_sqlite::dsn_parameters_of_this_page"
         }
       ]
@@ -5133,17 +5145,17 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_mysql.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_mysql.rs",
           "id": "dsn_connection_mysql::dsn_connection"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_postgres.rs",
           "id": "dsn_connection_postgres::dsn_connection"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_sqlite.rs",
           "id": "dsn_connection_sqlite::dsn_connection"
         }
       ]
@@ -5202,8 +5214,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration_program/main.rs",
-          "id": "generated_nonnull_styled_setter_rejects_sql_null",
+          "test": "packages/rust/tests/tests/all/integration_program/mod.rs",
+          "id": "integration_program::generated_nonnull_styled_setter_rejects_sql_null",
           "command": [
             "make",
             "-s",
@@ -5211,13 +5223,13 @@
             "${ORM_CHECKOUT}",
             "feature-rust-unit",
             "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_TEST=generated_nonnull_styled_setter_rejects_sql_null"
+            "FEATURE_CARGO_TARGET=--test all",
+            "FEATURE_TEST=integration_program::generated_nonnull_styled_setter_rejects_sql_null"
           ]
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/result_chains.rs",
+          "test": "packages/rust/tests/tests/all/result_chains.rs",
           "id": "result_chains::generated_model_result_chains_preserve_assigned_values",
           "command": [
             "make",
@@ -5226,7 +5238,7 @@
             "${ORM_CHECKOUT}",
             "feature-rust-unit",
             "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
+            "FEATURE_CARGO_TARGET=--test all",
             "FEATURE_TEST=result_chains::generated_model_result_chains_preserve_assigned_values"
           ]
         }
@@ -5281,7 +5293,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/model_queries_chain_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/model_queries_chain_sqlite.rs",
           "id": "model_queries_chain_sqlite::page_holds_the_first_rows_and_the_total"
         },
         {
@@ -5301,7 +5313,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/model_queries_chain_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/model_queries_chain_sqlite.rs",
           "id": "model_queries_chain_sqlite::sum_of_a_column"
         },
         {
@@ -5321,7 +5333,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/model_queries_chain_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/model_queries_chain_sqlite.rs",
           "id": "model_queries_chain_sqlite::relation_loads_the_child_of_a_row"
         },
         {
@@ -5341,7 +5353,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/model_queries_chain_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/model_queries_chain_sqlite.rs",
           "id": "model_queries_chain_sqlite::joined_child_keeps_its_scalar_subquery_order_and_index"
         }
       ]
@@ -5380,7 +5392,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/model_queries_chain_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/model_queries_chain_sqlite.rs",
           "id": "model_queries_chain_sqlite::joined_child_keeps_its_scalar_subquery_order_and_index"
         }
       ]
@@ -5419,7 +5431,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/model_queries_chain_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/model_queries_chain_sqlite.rs",
           "id": "model_queries_chain_sqlite::function_column_is_keyed_by_its_alias"
         }
       ]
@@ -5481,7 +5493,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/model_writes_chain_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/model_writes_chain_sqlite.rs",
           "id": "model_writes_chain_sqlite::ordered_json_keeps_its_member_order_and_number_text"
         },
         {
@@ -5501,7 +5513,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/model_writes_chain_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/model_writes_chain_sqlite.rs",
           "id": "model_writes_chain_sqlite::ordered_json_keeps_a_repeated_member_name"
         },
         {
@@ -5521,7 +5533,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/model_writes_chain_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/model_writes_chain_sqlite.rs",
           "id": "model_writes_chain_sqlite::codec_columns_round_trip"
         },
         {
@@ -5541,7 +5553,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/model_writes_chain_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/model_writes_chain_sqlite.rs",
           "id": "model_writes_chain_sqlite::ip_with_embedded_whitespace_is_refused"
         }
       ]
@@ -5580,7 +5592,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/request_hook_sqlite.rs",
           "id": "request_hook_sqlite::without_hook"
         }
       ]
@@ -5620,7 +5632,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/request_hook_sqlite.rs",
           "id": "request_hook_sqlite::read_filter"
         }
       ]
@@ -5659,7 +5671,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/request_hook_sqlite.rs",
           "id": "request_hook_sqlite::invalid_param"
         }
       ]
@@ -5698,7 +5710,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/request_hook_sqlite.rs",
           "id": "request_hook_sqlite::restore_no_key"
         }
       ]
@@ -5737,7 +5749,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/request_hook_sqlite.rs",
           "id": "request_hook_sqlite::restore_rewritten_key"
         }
       ]
@@ -5776,7 +5788,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/request_hook_sqlite.rs",
           "id": "request_hook_sqlite::restore_hook_set_key"
         }
       ]
@@ -5815,7 +5827,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/request_hook_sqlite.rs",
           "id": "request_hook_sqlite::restore_rewritten_key_set_scope"
         }
       ]
@@ -5854,7 +5866,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/request_hook_sqlite.rs",
           "id": "request_hook_sqlite::relation_scope"
         }
       ]
@@ -5912,7 +5924,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/request_hook_mysql.rs",
+          "test": "packages/rust/tests/tests/all/request_hook_mysql.rs",
           "symbol": "request_hook_mysql"
         }
       ]
@@ -5970,7 +5982,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/request_hook_postgres.rs",
+          "test": "packages/rust/tests/tests/all/request_hook_postgres.rs",
           "symbol": "request_hook_postgres"
         }
       ]
@@ -6028,7 +6040,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/request_hook_sqlite.rs",
           "symbol": "request_hook_sqlite"
         }
       ]
@@ -6062,7 +6074,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/request_hook_sqlite.rs",
           "id": "request_hook_sqlite::reads_params"
         },
         {
@@ -6479,7 +6491,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "test": "packages/rust/tests/tests/all/planner_compile_none.rs",
           "id": "planner_compile_none::param_uses_column_function"
         },
         {
@@ -6509,7 +6521,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "test": "packages/rust/tests/tests/all/planner_compile_none.rs",
           "id": "planner_compile_none::param_uses_interval"
         },
         {
@@ -6539,7 +6551,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "test": "packages/rust/tests/tests/all/planner_compile_none.rs",
           "id": "planner_compile_none::param_uses_contains"
         },
         {
@@ -6569,7 +6581,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "test": "packages/rust/tests/tests/all/planner_compile_none.rs",
           "id": "planner_compile_none::param_uses_if_parent"
         },
         {
@@ -6599,7 +6611,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "test": "packages/rust/tests/tests/all/planner_compile_none.rs",
           "id": "planner_compile_none::param_uses_optimistic"
         }
       ]
@@ -6706,17 +6718,17 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/transactions_mysql.rs",
+          "test": "packages/rust/tests/tests/all/transactions_mysql.rs",
           "id": "transactions_mysql::rollback_failed_reports_both_errors"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/transactions_postgres.rs",
+          "test": "packages/rust/tests/tests/all/transactions_postgres.rs",
           "id": "transactions_postgres::rollback_failed_reports_both_errors"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/transactions_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/transactions_sqlite.rs",
           "id": "transactions_sqlite::sqlite_rolled_back_transaction_reports_the_trigger"
         }
       ]
@@ -6796,17 +6808,17 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/transactions_mysql.rs",
+          "test": "packages/rust/tests/tests/all/transactions_mysql.rs",
           "id": "transactions_mysql::savepoint_rollback_failed_reports_both_errors"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/transactions_postgres.rs",
+          "test": "packages/rust/tests/tests/all/transactions_postgres.rs",
           "id": "transactions_postgres::savepoint_rollback_failed_reports_both_errors"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/transactions_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/transactions_sqlite.rs",
           "id": "transactions_sqlite::sqlite_rolled_back_savepoint_reports_the_trigger"
         }
       ]
@@ -7076,8 +7088,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/decimal_physical.rs",
-          "id": "schema_set_edited_manifest_sqlite"
+          "test": "packages/rust/tests/tests/all/decimal_physical.rs",
+          "id": "decimal_physical::schema_set_edited_manifest_sqlite"
         },
         {
           "implementation": "go",
@@ -7086,8 +7098,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/decimal_physical.rs",
-          "id": "schema_set_edited_manifest_mysql"
+          "test": "packages/rust/tests/tests/all/decimal_physical.rs",
+          "id": "decimal_physical::schema_set_edited_manifest_mysql"
         },
         {
           "implementation": "go",
@@ -7096,8 +7108,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/decimal_physical.rs",
-          "id": "schema_set_edited_manifest_postgres"
+          "test": "packages/rust/tests/tests/all/decimal_physical.rs",
+          "id": "decimal_physical::schema_set_edited_manifest_postgres"
         }
       ]
     },
@@ -7163,7 +7175,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_load_set_none.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_load_set_none.rs",
           "symbol": "dbspec_load_set_none"
         }
       ]
@@ -7310,7 +7322,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/aes_rotation_mysql.rs",
+          "test": "packages/rust/tests/tests/all/aes_rotation_mysql.rs",
           "id": "aes_rotation_mysql::ordered_json_column_round_trip_and_rotation"
         },
         {
@@ -7330,7 +7342,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/aes_rotation_postgres.rs",
+          "test": "packages/rust/tests/tests/all/aes_rotation_postgres.rs",
           "id": "aes_rotation_postgres::ordered_json_column_round_trip_and_rotation"
         },
         {
@@ -7360,7 +7372,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/aes_rotation_sqlite.rs",
           "id": "aes_rotation_sqlite::ordered_json_column_round_trip_and_rotation"
         }
       ]
@@ -7531,7 +7543,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "test": "packages/rust/tests/tests/all/planner_compile_none.rs",
           "symbol": "planner_compile_none"
         }
       ]
@@ -7570,7 +7582,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "test": "packages/rust/tests/tests/all/planner_compile_none.rs",
           "id": "planner_compile_none::planner_joined_child_conditions_grouped"
         },
         {
@@ -7600,7 +7612,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "test": "packages/rust/tests/tests/all/planner_compile_none.rs",
           "id": "planner_compile_none::planner_joined_child_conditions_appended"
         }
       ]
@@ -7639,7 +7651,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "test": "packages/rust/tests/tests/all/planner_compile_none.rs",
           "id": "planner_compile_none::planner_rejects_upsert_primary_and_unique_key"
         },
         {
@@ -7669,7 +7681,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "test": "packages/rust/tests/tests/all/planner_compile_none.rs",
           "id": "planner_compile_none::planner_rejects_upsert_unique_key_not_assigned"
         },
         {
@@ -7699,7 +7711,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "test": "packages/rust/tests/tests/all/planner_compile_none.rs",
           "id": "planner_compile_none::planner_rejects_upsert_without_a_key"
         },
         {
@@ -7729,7 +7741,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "test": "packages/rust/tests/tests/all/planner_compile_none.rs",
           "id": "planner_compile_none::planner_upsert_composite_primary_key"
         }
       ]
@@ -7776,7 +7788,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/schema_definition_none.rs",
+          "test": "packages/rust/tests/tests/all/schema_definition_none.rs",
           "symbol": "schema_definition_none"
         }
       ]
@@ -7892,7 +7904,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/codec_none.rs",
+          "test": "packages/rust/tests/tests/all/codec_none.rs",
           "symbol": "codec_none"
         }
       ]
@@ -7943,7 +7955,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_mysql.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_mysql.rs",
           "symbol": "dsn_connection_mysql"
         }
       ]
@@ -7993,7 +8005,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_postgres.rs",
           "symbol": "dsn_connection_postgres"
         }
       ]
@@ -8043,7 +8055,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_sqlite.rs",
           "symbol": "dsn_connection_sqlite"
         }
       ]
@@ -8112,7 +8124,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_mysql.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_mysql.rs",
           "symbol": "catalog_connection_mysql"
         }
       ]
@@ -8181,7 +8193,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_postgres.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_postgres.rs",
           "symbol": "catalog_connection_postgres"
         }
       ]
@@ -8248,7 +8260,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "symbol": "catalog_connection_sqlite"
         }
       ]
@@ -8325,7 +8337,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/performance_gate_mysql.rs",
+          "test": "packages/rust/tests/tests/all/performance_gate_mysql.rs",
           "symbol": "performance_gate_mysql"
         }
       ]
@@ -8364,7 +8376,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/performance_gate_postgres.rs",
+          "test": "packages/rust/tests/tests/all/performance_gate_postgres.rs",
           "symbol": "performance_gate_postgres"
         }
       ]
@@ -8403,7 +8415,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/performance_gate_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/performance_gate_sqlite.rs",
           "symbol": "performance_gate_sqlite"
         }
       ]
@@ -8458,7 +8470,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_mysql.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_mysql.rs",
           "symbol": "statement_events_mysql"
         }
       ]
@@ -8513,7 +8525,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_postgres.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_postgres.rs",
           "symbol": "statement_events_postgres"
         }
       ]
@@ -8567,7 +8579,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_sqlite.rs",
           "symbol": "statement_events_sqlite"
         }
       ]
@@ -8615,7 +8627,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_apply_mysql.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_apply_mysql.rs",
           "symbol": "dbspec_apply_mysql"
         }
       ]
@@ -8663,7 +8675,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_apply_postgres.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_apply_postgres.rs",
           "symbol": "dbspec_apply_postgres"
         }
       ]
@@ -8711,7 +8723,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_apply_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_apply_sqlite.rs",
           "symbol": "dbspec_apply_sqlite"
         }
       ]
@@ -8758,7 +8770,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/utils_recipe_mysql.rs",
+          "test": "packages/rust/tests/tests/all/utils_recipe_mysql.rs",
           "symbol": "utils_recipe_mysql"
         }
       ]
@@ -8805,7 +8817,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/utils_recipe_postgres.rs",
+          "test": "packages/rust/tests/tests/all/utils_recipe_postgres.rs",
           "symbol": "utils_recipe_postgres"
         }
       ]
@@ -8852,7 +8864,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/utils_recipe_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/utils_recipe_sqlite.rs",
           "symbol": "utils_recipe_sqlite"
         }
       ]
@@ -8928,7 +8940,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_runner_mysql.rs",
+          "test": "packages/rust/tests/tests/all/statement_runner_mysql.rs",
           "symbol": "statement_runner_mysql"
         }
       ]
@@ -8975,7 +8987,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_runner_postgres.rs",
+          "test": "packages/rust/tests/tests/all/statement_runner_postgres.rs",
           "symbol": "statement_runner_postgres"
         }
       ]
@@ -9022,7 +9034,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_runner_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/statement_runner_sqlite.rs",
           "symbol": "statement_runner_sqlite"
         }
       ]
@@ -9162,7 +9174,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/complex_query_mysql.rs",
+          "test": "packages/rust/tests/tests/all/complex_query_mysql.rs",
           "symbol": "complex_query_mysql"
         }
       ]
@@ -9208,7 +9220,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/complex_query_postgres.rs",
+          "test": "packages/rust/tests/tests/all/complex_query_postgres.rs",
           "symbol": "complex_query_postgres"
         }
       ]
@@ -9254,7 +9266,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/complex_query_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/complex_query_sqlite.rs",
           "symbol": "complex_query_sqlite"
         }
       ]
@@ -9294,7 +9306,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/connection_pool_mysql.rs",
+          "test": "packages/rust/tests/tests/all/connection_pool_mysql.rs",
           "symbol": "connection_pool_mysql"
         }
       ]
@@ -9334,7 +9346,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/connection_pool_postgres.rs",
+          "test": "packages/rust/tests/tests/all/connection_pool_postgres.rs",
           "symbol": "connection_pool_postgres"
         }
       ]
@@ -9373,7 +9385,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/connection_pool_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/connection_pool_sqlite.rs",
           "symbol": "connection_pool_sqlite"
         }
       ]
@@ -9551,7 +9563,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_mysql.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_mysql.rs",
           "symbol": "conformance_verification_mysql"
         }
       ]
@@ -9729,7 +9741,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_postgres.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_postgres.rs",
           "symbol": "conformance_verification_postgres"
         }
       ]
@@ -9907,7 +9919,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_sqlite.rs",
           "symbol": "conformance_verification_sqlite"
         }
       ]
@@ -9953,7 +9965,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/fulltext_search_recipe_mysql.rs",
+          "test": "packages/rust/tests/tests/all/fulltext_search_recipe_mysql.rs",
           "symbol": "fulltext_search_recipe_mysql"
         }
       ]
@@ -9999,7 +10011,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/fulltext_search_recipe_postgres.rs",
+          "test": "packages/rust/tests/tests/all/fulltext_search_recipe_postgres.rs",
           "symbol": "fulltext_search_recipe_postgres"
         }
       ]
@@ -10045,7 +10057,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/fulltext_search_recipe_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/fulltext_search_recipe_sqlite.rs",
           "symbol": "fulltext_search_recipe_sqlite"
         }
       ]
@@ -10099,7 +10111,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/model_writes_mysql.rs",
+          "test": "packages/rust/tests/tests/all/model_writes_mysql.rs",
           "symbol": "model_writes_mysql"
         }
       ]
@@ -10153,7 +10165,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/model_writes_postgres.rs",
+          "test": "packages/rust/tests/tests/all/model_writes_postgres.rs",
           "symbol": "model_writes_postgres"
         }
       ]
@@ -10207,7 +10219,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/model_writes_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/model_writes_sqlite.rs",
           "symbol": "model_writes_sqlite"
         }
       ]
@@ -10263,7 +10275,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/model_writes_chain_mysql.rs",
+          "test": "packages/rust/tests/tests/all/model_writes_chain_mysql.rs",
           "symbol": "model_writes_chain_mysql"
         }
       ]
@@ -10319,7 +10331,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/model_writes_chain_postgres.rs",
+          "test": "packages/rust/tests/tests/all/model_writes_chain_postgres.rs",
           "symbol": "model_writes_chain_postgres"
         }
       ]
@@ -10375,7 +10387,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/model_writes_chain_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/model_writes_chain_sqlite.rs",
           "symbol": "model_writes_chain_sqlite"
         }
       ]
@@ -10419,7 +10431,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/model_socket_mysql.rs",
+          "test": "packages/rust/tests/tests/all/model_socket_mysql.rs",
           "symbol": "model_socket_mysql"
         }
       ]
@@ -10459,7 +10471,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/codec_none.rs",
+          "test": "packages/rust/tests/tests/all/codec_none.rs",
           "id": "codec_none::decode_errors"
         }
       ]
@@ -10498,7 +10510,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/ir_validate_none.rs",
+          "test": "packages/rust/tests/tests/all/ir_validate_none.rs",
           "id": "ir_validate_none::col_op_bool_order"
         },
         {
@@ -10528,7 +10540,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/ir_validate_none.rs",
+          "test": "packages/rust/tests/tests/all/ir_validate_none.rs",
           "id": "ir_validate_none::operators_follow_type_and_codec"
         },
         {
@@ -10558,7 +10570,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/ir_validate_none.rs",
+          "test": "packages/rust/tests/tests/all/ir_validate_none.rs",
           "id": "ir_validate_none::limit_params_subquery_invalid"
         }
       ]
@@ -10615,7 +10627,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/ir_validate_none.rs",
+          "test": "packages/rust/tests/tests/all/ir_validate_none.rs",
           "symbol": "ir_validate_none"
         }
       ]
@@ -10828,7 +10840,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_mysql.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_mysql.rs",
           "symbol": "conformance_verification_mysql"
         }
       ]
@@ -11040,7 +11052,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_postgres.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_postgres.rs",
           "symbol": "conformance_verification_postgres"
         }
       ]
@@ -11253,7 +11265,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_sqlite.rs",
           "symbol": "conformance_verification_sqlite"
         }
       ]
@@ -11352,7 +11364,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/canonical_none.rs",
+          "test": "packages/rust/tests/tests/all/canonical_none.rs",
           "symbol": "canonical_none"
         }
       ]
@@ -11411,7 +11423,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/normalize_none.rs",
+          "test": "packages/rust/tests/tests/all/normalize_none.rs",
           "symbol": "normalize_none"
         }
       ]
@@ -11537,7 +11549,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/invalid_none.rs",
+          "test": "packages/rust/tests/tests/all/invalid_none.rs",
           "symbol": "invalid_none"
         }
       ]
@@ -11585,7 +11597,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/hashes_none.rs",
+          "test": "packages/rust/tests/tests/all/hashes_none.rs",
           "symbol": "hashes_none"
         }
       ]
@@ -11631,7 +11643,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/sets_none.rs",
+          "test": "packages/rust/tests/tests/all/sets_none.rs",
           "symbol": "sets_none"
         }
       ]
@@ -11672,7 +11684,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/files_none.rs",
+          "test": "packages/rust/tests/tests/all/files_none.rs",
           "symbol": "files_none"
         }
       ]
@@ -11729,7 +11741,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/positions_none.rs",
+          "test": "packages/rust/tests/tests/all/positions_none.rs",
           "symbol": "positions_none"
         }
       ]
@@ -11836,7 +11848,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_read_set_none.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_read_set_none.rs",
           "symbol": "dbspec_read_set_none"
         }
       ]
@@ -11908,7 +11920,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_render_statements_none.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_render_statements_none.rs",
           "symbol": "dbspec_render_statements_none"
         }
       ]
@@ -11947,7 +11959,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_show_create_introspect_none.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_show_create_introspect_none.rs",
           "symbol": "dbspec_show_create_introspect_none"
         }
       ]
@@ -11998,7 +12010,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_mermaid_none.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_mermaid_none.rs",
           "symbol": "dbspec_mermaid_none"
         }
       ]
@@ -12080,7 +12092,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_plan_cases_none.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_plan_cases_none.rs",
           "symbol": "dbspec_plan_cases_none"
         }
       ]
@@ -12151,7 +12163,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_plan_invalid_none.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_plan_invalid_none.rs",
           "symbol": "dbspec_plan_invalid_none"
         }
       ]
@@ -12222,7 +12234,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_plan_chains_none.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_plan_chains_none.rs",
           "symbol": "dbspec_plan_chains_none"
         }
       ]
@@ -12294,7 +12306,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_plan_parse_none.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_plan_parse_none.rs",
           "symbol": "dbspec_plan_parse_none"
         }
       ]
@@ -12365,7 +12377,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_plan_comparisons_none.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_plan_comparisons_none.rs",
           "symbol": "dbspec_plan_comparisons_none"
         }
       ]
@@ -12405,7 +12417,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_add_tables_steps_none.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_add_tables_steps_none.rs",
           "symbol": "dbspec_add_tables_steps_none"
         }
       ]
@@ -12478,7 +12490,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_mysql.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_mysql.rs",
           "id": "statement_events_mysql::server_transactions_mysql"
         },
         {
@@ -12508,7 +12520,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_postgres.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_postgres.rs",
           "id": "statement_events_postgres::server_transactions_postgres"
         },
         {
@@ -12633,7 +12645,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/markdown_conformance.rs",
+          "test": "packages/rust/tests/tests/all/markdown_conformance.rs",
           "symbol": "markdown_conformance"
         },
         {
@@ -12723,7 +12735,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/set_parse_none.rs",
+          "test": "packages/rust/tests/tests/all/set_parse_none.rs",
           "symbol": "set_parse_none"
         }
       ]
@@ -12801,7 +12813,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_show_create_introspect_none.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_show_create_introspect_none.rs",
           "symbol": "dbspec_show_create_introspect_none"
         }
       ]
@@ -12840,7 +12852,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "test": "packages/rust/tests/tests/all/planner_compile_none.rs",
           "id": "planner_compile_none::planner_aes_version_selected_once"
         }
       ]
@@ -12883,7 +12895,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_sqlite.rs",
           "id": "conformance_verification_sqlite::query_now_and_random_order"
         },
         {
@@ -12913,7 +12925,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_sqlite.rs",
           "id": "conformance_verification_sqlite::functions"
         },
         {
@@ -12943,7 +12955,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_sqlite.rs",
           "id": "conformance_verification_sqlite::creates_and_save"
         }
       ]
@@ -13083,13 +13095,13 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration_program/main.rs",
-          "id": "generated_typed_getter_is_a_checked_public_consumer_api"
+          "test": "packages/rust/tests/tests/all/integration_program/mod.rs",
+          "id": "integration_program::generated_typed_getter_is_a_checked_public_consumer_api"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration_program/main.rs",
-          "id": "generated_fields_require_selection_or_assignment",
+          "test": "packages/rust/tests/tests/all/integration_program/mod.rs",
+          "id": "integration_program::generated_fields_require_selection_or_assignment",
           "command": [
             "make",
             "-s",
@@ -13097,8 +13109,8 @@
             "${ORM_CHECKOUT}",
             "feature-rust-unit",
             "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_TEST=generated_fields_require_selection_or_assignment"
+            "FEATURE_CARGO_TARGET=--test all",
+            "FEATURE_TEST=integration_program::generated_fields_require_selection_or_assignment"
           ]
         },
         {
@@ -13176,8 +13188,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration_program/main.rs",
-          "id": "conditions",
+          "test": "packages/rust/tests/tests/all/integration_program/mod.rs",
+          "id": "integration_program::conditions",
           "command": [
             "make",
             "-s",
@@ -13185,8 +13197,8 @@
             "${ORM_CHECKOUT}",
             "feature-rust-unit",
             "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_TEST=conditions"
+            "FEATURE_CARGO_TARGET=--test all",
+            "FEATURE_TEST=integration_program::conditions"
           ]
         },
         {
@@ -13226,8 +13238,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration_program/main.rs",
-          "id": "conditions",
+          "test": "packages/rust/tests/tests/all/integration_program/mod.rs",
+          "id": "integration_program::conditions",
           "command": [
             "make",
             "-s",
@@ -13235,8 +13247,8 @@
             "${ORM_CHECKOUT}",
             "feature-rust-unit",
             "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_TEST=conditions"
+            "FEATURE_CARGO_TARGET=--test all",
+            "FEATURE_TEST=integration_program::conditions"
           ]
         },
         {
@@ -13277,8 +13289,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration_program/main.rs",
-          "id": "columns_and_subqueries",
+          "test": "packages/rust/tests/tests/all/integration_program/mod.rs",
+          "id": "integration_program::columns_and_subqueries",
           "command": [
             "make",
             "-s",
@@ -13286,8 +13298,8 @@
             "${ORM_CHECKOUT}",
             "feature-rust-unit",
             "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_TEST=columns_and_subqueries"
+            "FEATURE_CARGO_TARGET=--test all",
+            "FEATURE_TEST=integration_program::columns_and_subqueries"
           ]
         },
         {
@@ -13386,8 +13398,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration_program/main.rs",
-          "id": "writes",
+          "test": "packages/rust/tests/tests/all/integration_program/mod.rs",
+          "id": "integration_program::writes",
           "command": [
             "make",
             "-s",
@@ -13395,8 +13407,8 @@
             "${ORM_CHECKOUT}",
             "feature-rust-unit",
             "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_TEST=writes"
+            "FEATURE_CARGO_TARGET=--test all",
+            "FEATURE_TEST=integration_program::writes"
           ]
         }
       ]
@@ -13505,17 +13517,17 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/utils_recipe_mysql.rs",
+          "test": "packages/rust/tests/tests/all/utils_recipe_mysql.rs",
           "id": "utils_recipe_mysql::session_state_ends_with_the_transaction"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/utils_recipe_postgres.rs",
+          "test": "packages/rust/tests/tests/all/utils_recipe_postgres.rs",
           "id": "utils_recipe_postgres::session_state_ends_with_the_transaction"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/utils_recipe_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/utils_recipe_sqlite.rs",
           "id": "utils_recipe_sqlite::session_state_ends_with_the_transaction"
         }
       ]
@@ -13569,12 +13581,12 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_mysql.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_mysql.rs",
           "id": "dsn_connection_mysql::statement_timeout_cancels_and_keeps_the_connection"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_postgres.rs",
           "id": "dsn_connection_postgres::statement_timeout_cancels_and_keeps_the_connection"
         }
       ]
@@ -13615,7 +13627,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_postgres.rs",
           "id": "dsn_connection_postgres::statement_timeout_through_a_pooler"
         }
       ]
@@ -13684,7 +13696,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/connection_pool_mysql.rs",
+          "test": "packages/rust/tests/tests/all/connection_pool_mysql.rs",
           "id": "connection_pool_mysql::the_pool_size_is_the_open_maximum"
         },
         {
@@ -13704,7 +13716,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/connection_pool_mysql.rs",
+          "test": "packages/rust/tests/tests/all/connection_pool_mysql.rs",
           "id": "connection_pool_mysql::an_unset_or_zero_pool_size_opens_at_most_ten"
         },
         {
@@ -13768,7 +13780,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/connection_pool_mysql.rs",
+          "test": "packages/rust/tests/tests/all/connection_pool_mysql.rs",
           "id": "connection_pool_mysql::an_idle_size_above_the_pool_size_is_refused"
         },
         {
@@ -13788,7 +13800,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/connection_pool_mysql.rs",
+          "test": "packages/rust/tests/tests/all/connection_pool_mysql.rs",
           "id": "connection_pool_mysql::an_idle_size_above_the_default_pool_size_is_refused"
         },
         {
@@ -13887,7 +13899,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/connection_pool_mysql.rs",
+          "test": "packages/rust/tests/tests/all/connection_pool_mysql.rs",
           "id": "connection_pool_mysql::transactions_wait_at_the_open_maximum"
         },
         {
@@ -13936,7 +13948,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/connection_pool_mysql.rs",
+          "test": "packages/rust/tests/tests/all/connection_pool_mysql.rs",
           "id": "connection_pool_mysql::the_idle_size_closes_what_it_does_not_keep"
         },
         {
@@ -13956,7 +13968,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/connection_pool_mysql.rs",
+          "test": "packages/rust/tests/tests/all/connection_pool_mysql.rs",
           "id": "connection_pool_mysql::an_unset_idle_size_keeps_the_pool_size"
         },
         {
@@ -13976,7 +13988,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/connection_pool_mysql.rs",
+          "test": "packages/rust/tests/tests/all/connection_pool_mysql.rs",
           "id": "connection_pool_mysql::a_connection_within_its_lifetime_is_reused"
         },
         {
@@ -13996,7 +14008,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/connection_pool_mysql.rs",
+          "test": "packages/rust/tests/tests/all/connection_pool_mysql.rs",
           "id": "connection_pool_mysql::a_connection_whose_lifetime_passes_in_use_is_not_used_again"
         },
         {
@@ -14016,7 +14028,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/connection_pool_mysql.rs",
+          "test": "packages/rust/tests/tests/all/connection_pool_mysql.rs",
           "id": "connection_pool_mysql::an_idle_connection_past_its_lifetime_is_closed"
         },
         {
@@ -14130,7 +14142,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "test": "packages/rust/tests/tests/all/dsn_reject_none.rs",
           "id": "dsn_reject_none::markdown_connect_refused"
         }
       ]
@@ -14637,17 +14649,17 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_mysql.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_mysql.rs",
           "id": "conformance_verification_mysql::datetime_p0_roundtrip"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_mysql.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_mysql.rs",
           "id": "conformance_verification_mysql::time_p3_roundtrip"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_mysql.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_mysql.rs",
           "id": "conformance_verification_mysql::datetime_precision_rejected"
         }
       ]
@@ -14736,17 +14748,17 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_postgres.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_postgres.rs",
           "id": "conformance_verification_postgres::datetime_p0_roundtrip"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_postgres.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_postgres.rs",
           "id": "conformance_verification_postgres::time_p3_roundtrip"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_postgres.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_postgres.rs",
           "id": "conformance_verification_postgres::datetime_precision_rejected"
         }
       ]
@@ -14795,7 +14807,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_sqlite.rs",
           "id": "conformance_verification_sqlite::datetime_p0_roundtrip"
         },
         {
@@ -14820,7 +14832,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_sqlite.rs",
           "id": "conformance_verification_sqlite::time_p3_roundtrip"
         },
         {
@@ -14845,7 +14857,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_sqlite.rs",
           "id": "conformance_verification_sqlite::datetime_precision_rejected"
         },
         {
@@ -14875,7 +14887,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_sqlite.rs",
           "id": "conformance_verification_sqlite::temporal_stored_text"
         }
       ]
@@ -14933,7 +14945,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::catalog_lifecycle"
         }
       ]
@@ -14972,7 +14984,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::catalog_read"
         }
       ]
@@ -15287,7 +15299,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_mysql.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_mysql.rs",
           "id": "catalog_connection_mysql::grid_decimal_values"
         },
         {
@@ -15336,7 +15348,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::grid_number_values"
         },
         {
@@ -15395,17 +15407,17 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_mysql.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_mysql.rs",
           "id": "catalog_connection_mysql::read_statements"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_mysql.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_mysql.rs",
           "id": "catalog_connection_mysql::catalog_read_binds"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::read_only_query_refusals"
         },
         {
@@ -15464,7 +15476,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::generated_keys"
         },
         {
@@ -15479,7 +15491,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::generated_key_lifecycle"
         },
         {
@@ -15586,12 +15598,12 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::row_mutation"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::row_mutation_lifecycle"
         },
         {
@@ -15659,7 +15671,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::row_baseline_exact_values"
         }
       ]
@@ -15698,7 +15710,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::row_baseline_key_order"
         },
         {
@@ -15747,7 +15759,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::row_baseline_rejected"
         },
         {
@@ -15815,7 +15827,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::row_update_verification"
         },
         {
@@ -15859,7 +15871,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::row_update_verification"
         },
         {
@@ -15889,7 +15901,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_mysql.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_mysql.rs",
           "id": "catalog_connection_mysql::row_byte_capacity_mysql"
         }
       ]
@@ -15928,7 +15940,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_mysql.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_mysql.rs",
           "id": "catalog_connection_mysql::catalog_read"
         }
       ]
@@ -15967,12 +15979,12 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::catalog_read"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::describe_native_forms"
         },
         {
@@ -16021,12 +16033,12 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::catalog_read"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::quoted_composite_table_page"
         },
         {
@@ -16238,12 +16250,12 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::temporal_default_precision"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::catalog_describe_metadata"
         }
       ]
@@ -16354,7 +16366,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::read_only_grid_shapes"
         }
       ]
@@ -16470,7 +16482,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/codec_none.rs",
+          "test": "packages/rust/tests/tests/all/codec_none.rs",
           "id": "codec_none::sql_null_is_not_a_value"
         }
       ]
@@ -16549,7 +16561,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_sqlite.rs",
           "id": "dsn_connection_sqlite::sqlite_lock_past_busy_timeout_is_canceled"
         }
       ]
@@ -16741,7 +16753,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::temporal_write_and_limits"
         },
         {
@@ -16815,7 +16827,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_mysql.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_mysql.rs",
           "id": "catalog_connection_mysql::described_temporal_matrix"
         }
       ]
@@ -16854,12 +16866,12 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::catalog_read"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::catalog_read_budgets"
         },
         {
@@ -16889,7 +16901,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::grid_binary_row"
         }
       ]
@@ -16975,32 +16987,32 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::catalog_read"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::grid_declared_columns"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::grid_column_and_row_order"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::row_mutation"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::catalog_lifecycle"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::generated_keys"
         },
         {
@@ -17020,7 +17032,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::generated_identity_sqlite"
         }
       ]
@@ -17157,7 +17169,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_introspect_messages_none.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_introspect_messages_none.rs",
           "symbol": "dbspec_introspect_messages_none"
         }
       ]
@@ -17297,7 +17309,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_mysql.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_mysql.rs",
           "id": "conformance_verification_mysql::value_function_parameter_indexes"
         },
         {
@@ -17317,7 +17329,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_postgres.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_postgres.rs",
           "id": "conformance_verification_postgres::value_function_parameter_indexes"
         },
         {
@@ -17337,7 +17349,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_sqlite.rs",
           "id": "conformance_verification_sqlite::value_function_parameter_indexes"
         },
         {
@@ -17386,7 +17398,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/ir_validate_none.rs",
+          "test": "packages/rust/tests/tests/all/ir_validate_none.rs",
           "id": "ir_validate_none::request_of_another_manifest"
         }
       ]
@@ -17567,8 +17579,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration_program/main.rs",
-          "id": "generated_external_model_reads_its_table",
+          "test": "packages/rust/tests/tests/all/integration_program/mod.rs",
+          "id": "integration_program::generated_external_model_reads_its_table",
           "command": [
             "make",
             "-s",
@@ -17576,8 +17588,8 @@
             "${ORM_CHECKOUT}",
             "feature-rust-unit",
             "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_TEST=generated_external_model_reads_its_table"
+            "FEATURE_CARGO_TARGET=--test all",
+            "FEATURE_TEST=integration_program::generated_external_model_reads_its_table"
           ]
         }
       ]
@@ -18037,7 +18049,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/ir_answers.rs",
+          "test": "packages/rust/tests/tests/all/ir_answers.rs",
           "symbol": "ir_answers"
         }
       ]
@@ -18077,7 +18089,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_set_decimal_mysql.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_set_decimal_mysql.rs",
           "symbol": "dbspec_set_decimal_mysql"
         }
       ]
@@ -18117,7 +18129,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_set_decimal_postgres.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_set_decimal_postgres.rs",
           "symbol": "dbspec_set_decimal_postgres"
         }
       ]
@@ -18157,7 +18169,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_set_decimal_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_set_decimal_sqlite.rs",
           "symbol": "dbspec_set_decimal_sqlite"
         }
       ]
@@ -18196,8 +18208,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_model_generation.rs",
-          "id": "coverage_model_generation_check"
+          "test": "packages/rust/tests/tests/all/coverage_model_generation.rs",
+          "id": "coverage_model_generation::coverage_model_generation_check"
         }
       ]
     },
@@ -24244,7 +24256,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/model_queries_chain_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/model_queries_chain_sqlite.rs",
           "id": "model_queries_chain_sqlite::null_collection_key_is_refused_after_one_select"
         }
       ]
@@ -25860,7 +25872,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/parameter_chunking_mysql.rs",
+          "test": "packages/rust/tests/tests/all/parameter_chunking_mysql.rs",
           "symbol": "parameter_chunking_mysql"
         }
       ]
@@ -25902,7 +25914,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/parameter_chunking_postgres.rs",
+          "test": "packages/rust/tests/tests/all/parameter_chunking_postgres.rs",
           "symbol": "parameter_chunking_postgres"
         }
       ]
@@ -25944,7 +25956,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/parameter_chunking_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/parameter_chunking_sqlite.rs",
           "symbol": "parameter_chunking_sqlite"
         }
       ]
@@ -26050,7 +26062,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/transactions_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/transactions_sqlite.rs",
           "id": "transactions_sqlite::sqlite_writers_commit_every_row"
         }
       ]
@@ -26166,7 +26178,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_sqlite.rs",
           "id": "dsn_connection_sqlite::sqlite_read_during_a_write_sees_committed_rows"
         }
       ]
@@ -26190,7 +26202,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/constraints_and_relations_mysql.rs",
+          "test": "packages/rust/tests/tests/all/constraints_and_relations_mysql.rs",
           "id": "constraints_and_relations_mysql::constraint_errors"
         },
         {
@@ -26219,7 +26231,7 @@
       "bindings": [
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/immutable_write_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/immutable_write_sqlite.rs",
           "id": "immutable_write_sqlite::immutable_write"
         },
         {
@@ -26283,7 +26295,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/generator_none.rs",
+          "test": "packages/rust/tests/tests/all/generator_none.rs",
           "id": "generator_none::check_reports_differences_without_writing"
         }
       ]
@@ -26297,8 +26309,8 @@
       "bindings": [
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_model_generation.rs",
-          "id": "coverage_model_generation_check"
+          "test": "packages/rust/tests/tests/all/coverage_model_generation.rs",
+          "id": "coverage_model_generation::coverage_model_generation_check"
         }
       ],
       "owner": {
@@ -26436,122 +26448,122 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_mysql.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_mysql.rs",
           "id": "statement_events_mysql::model_statements"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_postgres.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_postgres.rs",
           "id": "statement_events_postgres::model_statements"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_sqlite.rs",
           "id": "statement_events_sqlite::model_statements"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_mysql.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_mysql.rs",
           "id": "statement_events_mysql::transaction_savepoint"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_postgres.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_postgres.rs",
           "id": "statement_events_postgres::transaction_savepoint"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_sqlite.rs",
           "id": "statement_events_sqlite::transaction_savepoint"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_mysql.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_mysql.rs",
           "id": "statement_events_mysql::transaction_rollback"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_postgres.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_postgres.rs",
           "id": "statement_events_postgres::transaction_rollback"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_sqlite.rs",
           "id": "statement_events_sqlite::transaction_rollback"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_mysql.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_mysql.rs",
           "id": "statement_events_mysql::savepoint_rollback"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_postgres.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_postgres.rs",
           "id": "statement_events_postgres::savepoint_rollback"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_sqlite.rs",
           "id": "statement_events_sqlite::savepoint_rollback"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_mysql.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_mysql.rs",
           "id": "statement_events_mysql::failed_statement"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_postgres.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_postgres.rs",
           "id": "statement_events_postgres::failed_statement"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_sqlite.rs",
           "id": "statement_events_sqlite::failed_statement"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_mysql.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_mysql.rs",
           "id": "statement_events_mysql::subscriber_error"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_postgres.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_postgres.rs",
           "id": "statement_events_postgres::subscriber_error"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_sqlite.rs",
           "id": "statement_events_sqlite::subscriber_error"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_mysql.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_mysql.rs",
           "id": "statement_events_mysql::unsubscribe"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_postgres.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_postgres.rs",
           "id": "statement_events_postgres::unsubscribe"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_sqlite.rs",
           "id": "statement_events_sqlite::unsubscribe"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_mysql.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_mysql.rs",
           "id": "statement_events_mysql::install"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_postgres.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_postgres.rs",
           "id": "statement_events_postgres::install"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_sqlite.rs",
           "id": "statement_events_sqlite::install"
         },
         {
@@ -26810,22 +26822,22 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_sqlite.rs",
           "id": "conformance_verification_sqlite::conditions_values"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_sqlite.rs",
           "id": "conformance_verification_sqlite::relations"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_sqlite.rs",
           "id": "conformance_verification_sqlite::functions"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_sqlite.rs",
           "id": "conformance_verification_sqlite::creates_and_save"
         },
         {
@@ -26884,7 +26896,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/schema_definition_none.rs",
+          "test": "packages/rust/tests/tests/all/schema_definition_none.rs",
           "id": "schema_definition_none::dbspec_emit_round_trip"
         }
       ]
@@ -26923,7 +26935,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/schema_definition_none.rs",
+          "test": "packages/rust/tests/tests/all/schema_definition_none.rs",
           "id": "schema_definition_none::dbspec_manifest_hash"
         }
       ]
@@ -26962,7 +26974,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/schema_definition_none.rs",
+          "test": "packages/rust/tests/tests/all/schema_definition_none.rs",
           "id": "schema_definition_none::dbspec_render_ddl"
         }
       ]
@@ -27002,7 +27014,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/schema_definition_none.rs",
+          "test": "packages/rust/tests/tests/all/schema_definition_none.rs",
           "id": "schema_definition_none::dbspec_analyze_tokens"
         }
       ]
@@ -27041,7 +27053,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/schema_definition_none.rs",
+          "test": "packages/rust/tests/tests/all/schema_definition_none.rs",
           "id": "schema_definition_none::dbspec_format"
         }
       ]
@@ -27080,7 +27092,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/schema_definition_none.rs",
+          "test": "packages/rust/tests/tests/all/schema_definition_none.rs",
           "id": "schema_definition_none::dbspec_parse_positions"
         }
       ]
@@ -27119,7 +27131,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/codec_none.rs",
+          "test": "packages/rust/tests/tests/all/codec_none.rs",
           "id": "codec_none::aes_bench_salt"
         }
       ]
@@ -27158,7 +27170,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/codec_none.rs",
+          "test": "packages/rust/tests/tests/all/codec_none.rs",
           "id": "codec_none::aes_envelope_form"
         }
       ]
@@ -27197,7 +27209,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/codec_none.rs",
+          "test": "packages/rust/tests/tests/all/codec_none.rs",
           "id": "codec_none::aes_invalid_tag"
         }
       ]
@@ -27236,7 +27248,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/codec_none.rs",
+          "test": "packages/rust/tests/tests/all/codec_none.rs",
           "id": "codec_none::aes_envelope_without_hex"
         }
       ]
@@ -27275,7 +27287,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/codec_none.rs",
+          "test": "packages/rust/tests/tests/all/codec_none.rs",
           "id": "codec_none::blind_index_vector"
         }
       ]
@@ -27314,7 +27326,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "test": "packages/rust/tests/tests/all/planner_compile_none.rs",
           "id": "planner_compile_none::planner_blind_index_multi_row_source_position"
         },
         {
@@ -27344,7 +27356,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "test": "packages/rust/tests/tests/all/planner_compile_none.rs",
           "id": "planner_compile_none::planner_blind_index_ordinary_insert_has_no_slot"
         },
         {
@@ -27374,7 +27386,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "test": "packages/rust/tests/tests/all/planner_compile_none.rs",
           "id": "planner_compile_none::planner_blind_index_rejects_two_sources"
         },
         {
@@ -27404,7 +27416,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "test": "packages/rust/tests/tests/all/planner_compile_none.rs",
           "id": "planner_compile_none::planner_blind_index_explicit_target_wins"
         },
         {
@@ -27434,7 +27446,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "test": "packages/rust/tests/tests/all/planner_compile_none.rs",
           "id": "planner_compile_none::planner_blind_index_insert_source_with_on_duplicate"
         },
         {
@@ -27464,7 +27476,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "test": "packages/rust/tests/tests/all/planner_compile_none.rs",
           "id": "planner_compile_none::planner_blind_index_on_duplicate_explicit_target"
         },
         {
@@ -27494,7 +27506,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "test": "packages/rust/tests/tests/all/planner_compile_none.rs",
           "id": "planner_compile_none::planner_blind_index_on_duplicate_rejects_two_sources"
         }
       ]
@@ -27552,7 +27564,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_sqlite.rs",
           "id": "conformance_verification_sqlite::clock_microseconds"
         },
         {
@@ -27572,7 +27584,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_mysql.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_mysql.rs",
           "id": "conformance_verification_mysql::clock_microseconds"
         },
         {
@@ -27592,7 +27604,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_postgres.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_postgres.rs",
           "id": "conformance_verification_postgres::clock_microseconds"
         }
       ]
@@ -27631,7 +27643,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_sqlite.rs",
           "id": "conformance_verification_sqlite::clock_soft_delete_microseconds"
         },
         {
@@ -27651,7 +27663,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_mysql.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_mysql.rs",
           "id": "conformance_verification_mysql::clock_soft_delete_microseconds"
         },
         {
@@ -27671,7 +27683,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_postgres.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_postgres.rs",
           "id": "conformance_verification_postgres::clock_soft_delete_microseconds"
         }
       ]
@@ -27711,7 +27723,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_sqlite.rs",
           "id": "conformance_verification_sqlite::clock_now_condition"
         },
         {
@@ -27731,7 +27743,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_mysql.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_mysql.rs",
           "id": "conformance_verification_mysql::clock_now_condition"
         },
         {
@@ -27751,7 +27763,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/conformance_verification_postgres.rs",
+          "test": "packages/rust/tests/tests/all/conformance_verification_postgres.rs",
           "id": "conformance_verification_postgres::clock_now_condition"
         }
       ]
@@ -27808,12 +27820,12 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_mysql.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_mysql.rs",
           "id": "dsn_connection_mysql::primary_and_replica_use_their_own_connections"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_postgres.rs",
           "id": "dsn_connection_postgres::primary_and_replica_use_their_own_connections"
         }
       ]
@@ -27867,12 +27879,12 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_mysql.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_mysql.rs",
           "id": "dsn_connection_mysql::replica_rejects_a_write"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_postgres.rs",
           "id": "dsn_connection_postgres::replica_rejects_a_write"
         },
         {
@@ -27902,7 +27914,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_sqlite.rs",
           "id": "dsn_connection_sqlite::sqlite_read_only_file_rejects_a_write"
         }
       ]
@@ -27916,12 +27928,12 @@
       "bindings": [
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_mysql.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_mysql.rs",
           "id": "dsn_connection_mysql::primary_and_replica_use_their_own_connections"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
+          "test": "packages/rust/tests/tests/all/dsn_connection_postgres.rs",
           "id": "dsn_connection_postgres::primary_and_replica_use_their_own_connections"
         }
       ],
@@ -27993,7 +28005,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/aes_rotation_mysql.rs",
+          "test": "packages/rust/tests/tests/all/aes_rotation_mysql.rs",
           "id": "aes_rotation_mysql::write_uses_the_key_of_the_current_version"
         },
         {
@@ -28013,7 +28025,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/aes_rotation_postgres.rs",
+          "test": "packages/rust/tests/tests/all/aes_rotation_postgres.rs",
           "id": "aes_rotation_postgres::write_uses_the_key_of_the_current_version"
         },
         {
@@ -28043,7 +28055,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/aes_rotation_sqlite.rs",
           "id": "aes_rotation_sqlite::write_uses_the_key_of_the_current_version"
         },
         {
@@ -28063,7 +28075,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/aes_rotation_sqlite.rs",
           "id": "aes_rotation_sqlite::an_aes_key_that_differs_from_the_current_version_is_refused"
         },
         {
@@ -28073,7 +28085,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/aes_rotation_mysql.rs",
+          "test": "packages/rust/tests/tests/all/aes_rotation_mysql.rs",
           "id": "aes_rotation_mysql::an_aes_configuration_without_a_usable_current_key_is_refused"
         },
         {
@@ -28083,7 +28095,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/aes_rotation_postgres.rs",
+          "test": "packages/rust/tests/tests/all/aes_rotation_postgres.rs",
           "id": "aes_rotation_postgres::an_aes_configuration_without_a_usable_current_key_is_refused"
         },
         {
@@ -28093,7 +28105,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/aes_rotation_sqlite.rs",
           "id": "aes_rotation_sqlite::an_aes_configuration_without_a_usable_current_key_is_refused"
         },
         {
@@ -28113,7 +28125,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/aes_rotation_sqlite.rs",
           "id": "aes_rotation_sqlite::a_refused_aes_configuration_opens_no_database_file"
         },
         {
@@ -28156,7 +28168,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/aes_rotation_mysql.rs",
+          "test": "packages/rust/tests/tests/all/aes_rotation_mysql.rs",
           "id": "aes_rotation_mysql::rotation_takes_rows_not_at_the_current_version"
         },
         {
@@ -28176,7 +28188,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/aes_rotation_postgres.rs",
+          "test": "packages/rust/tests/tests/all/aes_rotation_postgres.rs",
           "id": "aes_rotation_postgres::rotation_takes_rows_not_at_the_current_version"
         },
         {
@@ -28206,7 +28218,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/aes_rotation_sqlite.rs",
           "id": "aes_rotation_sqlite::rotation_takes_rows_not_at_the_current_version"
         },
         {
@@ -28216,7 +28228,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/aes_rotation_mysql.rs",
+          "test": "packages/rust/tests/tests/all/aes_rotation_mysql.rs",
           "id": "aes_rotation_mysql::a_rotation_that_fails_on_a_row_keeps_every_row_at_its_version"
         },
         {
@@ -28226,7 +28238,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/aes_rotation_postgres.rs",
+          "test": "packages/rust/tests/tests/all/aes_rotation_postgres.rs",
           "id": "aes_rotation_postgres::a_rotation_that_fails_on_a_row_keeps_every_row_at_its_version"
         },
         {
@@ -28236,7 +28248,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/aes_rotation_sqlite.rs",
           "id": "aes_rotation_sqlite::a_rotation_that_fails_on_a_row_keeps_every_row_at_its_version"
         },
         {
@@ -28434,7 +28446,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "test": "packages/rust/tests/tests/all/planner_compile_none.rs",
           "id": "planner_compile_none::planner_scalar_subquery_aggregate_types"
         }
       ],
@@ -28514,8 +28526,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_performance_gate.rs",
-          "id": "coverage_hot_path_gate_mysql",
+          "test": "packages/rust/tests/tests/all/coverage_performance_gate.rs",
+          "id": "coverage_performance_gate::coverage_hot_path_gate_mysql",
           "command": [
             "make",
             "-s",
@@ -28523,8 +28535,8 @@
             "${ORM_CHECKOUT}",
             "feature-rust-unit",
             "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test coverage_performance_gate",
-            "FEATURE_TEST=coverage_hot_path_gate_mysql"
+            "FEATURE_CARGO_TARGET=--test all",
+            "FEATURE_TEST=coverage_performance_gate::coverage_hot_path_gate_mysql"
           ]
         }
       ]
@@ -28601,8 +28613,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_performance_gate.rs",
-          "id": "coverage_hot_path_gate_postgres",
+          "test": "packages/rust/tests/tests/all/coverage_performance_gate.rs",
+          "id": "coverage_performance_gate::coverage_hot_path_gate_postgres",
           "command": [
             "make",
             "-s",
@@ -28610,8 +28622,8 @@
             "${ORM_CHECKOUT}",
             "feature-rust-unit",
             "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test coverage_performance_gate",
-            "FEATURE_TEST=coverage_hot_path_gate_postgres"
+            "FEATURE_CARGO_TARGET=--test all",
+            "FEATURE_TEST=coverage_performance_gate::coverage_hot_path_gate_postgres"
           ]
         }
       ]
@@ -28688,8 +28700,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_performance_gate.rs",
-          "id": "coverage_hot_path_gate_sqlite",
+          "test": "packages/rust/tests/tests/all/coverage_performance_gate.rs",
+          "id": "coverage_performance_gate::coverage_hot_path_gate_sqlite",
           "command": [
             "make",
             "-s",
@@ -28697,8 +28709,8 @@
             "${ORM_CHECKOUT}",
             "feature-rust-unit",
             "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test coverage_performance_gate",
-            "FEATURE_TEST=coverage_hot_path_gate_sqlite"
+            "FEATURE_CARGO_TARGET=--test all",
+            "FEATURE_TEST=coverage_performance_gate::coverage_hot_path_gate_sqlite"
           ]
         }
       ]
@@ -28770,7 +28782,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/model_queries_chain_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/model_queries_chain_sqlite.rs",
           "id": "model_queries_chain_sqlite::group_rows_keep_their_types_and_their_null"
         }
       ]
@@ -28810,7 +28822,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/invalid_none.rs",
+          "test": "packages/rust/tests/tests/all/invalid_none.rs",
           "id": "invalid_none::analyze-limit-no-tokens"
         }
       ]
@@ -28851,7 +28863,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_limits_none.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_limits_none.rs",
           "id": "dbspec_limits_none::document-size"
         },
         {
@@ -28881,7 +28893,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_limits_none.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_limits_none.rs",
           "id": "dbspec_limits_none::document-size-counts-bytes"
         },
         {
@@ -28911,7 +28923,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_limits_none.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_limits_none.rs",
           "id": "dbspec_limits_none::document-size-at-the-limit"
         },
         {
@@ -28941,7 +28953,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_limits_none.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_limits_none.rs",
           "id": "dbspec_limits_none::table-count"
         },
         {
@@ -28971,7 +28983,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_limits_none.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_limits_none.rs",
           "id": "dbspec_limits_none::table-count-at-the-limit"
         },
         {
@@ -29001,7 +29013,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_limits_none.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_limits_none.rs",
           "id": "dbspec_limits_none::table-column-count"
         },
         {
@@ -29031,7 +29043,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_limits_none.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_limits_none.rs",
           "id": "dbspec_limits_none::limit-after-earlier-errors"
         }
       ]
@@ -29070,7 +29082,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_limits_none.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_limits_none.rs",
           "id": "dbspec_limits_none::total-column-count"
         }
       ]
@@ -29110,7 +29122,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_limits_none.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_limits_none.rs",
           "id": "dbspec_limits_none::foreign-key-count"
         }
       ]
@@ -29164,7 +29176,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_rules_recipe_none.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_rules_recipe_none.rs",
           "id": "dbspec_rules_recipe_none::bare-cr"
         }
       ]
@@ -29286,18 +29298,18 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/decimal_physical.rs",
-          "id": "decimal_mysql"
+          "test": "packages/rust/tests/tests/all/decimal_physical.rs",
+          "id": "decimal_physical::decimal_mysql"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/decimal_physical.rs",
-          "id": "decimal_postgres"
+          "test": "packages/rust/tests/tests/all/decimal_physical.rs",
+          "id": "decimal_physical::decimal_postgres"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/decimal_physical.rs",
-          "id": "decimal_sqlite"
+          "test": "packages/rust/tests/tests/all/decimal_physical.rs",
+          "id": "decimal_physical::decimal_sqlite"
         }
       ]
     },
@@ -29521,7 +29533,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/model_queries_chain_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/model_queries_chain_sqlite.rs",
           "id": "model_queries_chain_sqlite::remove_all_columns_keeps_the_keys_and_the_added_column"
         },
         {
@@ -29541,7 +29553,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/model_queries_chain_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/model_queries_chain_sqlite.rs",
           "id": "model_queries_chain_sqlite::removing_an_added_column_keeps_the_function_column"
         }
       ]
@@ -29580,7 +29592,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_limits_none.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_limits_none.rs",
           "id": "dbspec_limits_none::stress-canonical-roundtrip"
         }
       ]
@@ -29649,22 +29661,22 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::catalog_read"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::grid_declared_columns"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::grid_column_and_row_order"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::catalog_lifecycle"
         }
       ]
@@ -29779,7 +29791,7 @@
       "bindings": [
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_apply_verification_errors_none.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_apply_verification_errors_none.rs",
           "id": "dbspec_apply_verification_errors_none::cleanup-the-failure-then-every-cleanup-error-in-order"
         }
       ],
@@ -29867,7 +29879,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/bind_messages.rs",
+          "test": "packages/rust/tests/tests/all/bind_messages.rs",
           "symbol": "bind_messages"
         }
       ]
@@ -29989,7 +30001,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_mysql.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_mysql.rs",
           "id": "statement_events_mysql::subscriber_error"
         },
         {
@@ -29999,7 +30011,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_postgres.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_postgres.rs",
           "id": "statement_events_postgres::subscriber_error"
         },
         {
@@ -30009,7 +30021,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_sqlite.rs",
           "id": "statement_events_sqlite::subscriber_error"
         },
         {
@@ -30059,7 +30071,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_mysql.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_mysql.rs",
           "id": "statement_events_mysql::subscriber_orm_error"
         },
         {
@@ -30069,7 +30081,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_postgres.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_postgres.rs",
           "id": "statement_events_postgres::subscriber_orm_error"
         },
         {
@@ -30079,7 +30091,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/statement_events_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/statement_events_sqlite.rs",
           "id": "statement_events_sqlite::subscriber_orm_error"
         }
       ]
@@ -30108,7 +30120,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/aes_rotation_mysql.rs",
+          "test": "packages/rust/tests/tests/all/aes_rotation_mysql.rs",
           "id": "aes_rotation_mysql::rotation_rewrites_every_aes_column"
         },
         {
@@ -30128,7 +30140,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/aes_rotation_postgres.rs",
+          "test": "packages/rust/tests/tests/all/aes_rotation_postgres.rs",
           "id": "aes_rotation_postgres::rotation_rewrites_every_aes_column"
         },
         {
@@ -30158,7 +30170,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/aes_rotation_sqlite.rs",
           "id": "aes_rotation_sqlite::rotation_rewrites_every_aes_column"
         }
       ]
@@ -30188,7 +30200,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/aes_rotation_mysql.rs",
+          "test": "packages/rust/tests/tests/all/aes_rotation_mysql.rs",
           "id": "aes_rotation_mysql::rotation_takes_rows_not_at_the_current_version"
         },
         {
@@ -30208,7 +30220,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/aes_rotation_postgres.rs",
+          "test": "packages/rust/tests/tests/all/aes_rotation_postgres.rs",
           "id": "aes_rotation_postgres::rotation_takes_rows_not_at_the_current_version"
         },
         {
@@ -30238,7 +30250,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/aes_rotation_sqlite.rs",
           "id": "aes_rotation_sqlite::rotation_takes_rows_not_at_the_current_version"
         }
       ]
@@ -30278,7 +30290,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/default_select_set_none.rs",
+          "test": "packages/rust/tests/tests/all/default_select_set_none.rs",
           "symbol": "default_select_set_none"
         }
       ]
@@ -30323,7 +30335,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/runtime_model_plans_none.rs",
+          "test": "packages/rust/tests/tests/all/runtime_model_plans_none.rs",
           "symbol": "runtime_model_plans_none"
         }
       ]
@@ -30367,7 +30379,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/runtime_model_entities_none.rs",
+          "test": "packages/rust/tests/tests/all/runtime_model_entities_none.rs",
           "symbol": "runtime_model_entities_none"
         }
       ]
@@ -30509,7 +30521,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/utils_recipe_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/utils_recipe_sqlite.rs",
           "id": "utils_recipe_sqlite::stats_report_the_pool_of_the_connection"
         }
       ]
@@ -40529,7 +40541,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/codec_integer_beyond_i64_none.rs",
+          "test": "packages/rust/tests/tests/all/codec_integer_beyond_i64_none.rs",
           "symbol": "codec_integer_beyond_i64_none"
         }
       ],
@@ -40658,7 +40670,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/public_interface_none.rs",
+          "test": "packages/rust/tests/tests/all/public_interface_none.rs",
           "symbol": "public_interface_none"
         }
       ]
@@ -40752,7 +40764,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "test": "packages/rust/tests/tests/all/dsn_reject_none.rs",
           "symbol": "dsn_reject_none"
         }
       ]
@@ -40939,7 +40951,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_introspect_mysql.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_introspect_mysql.rs",
           "symbol": "dbspec_introspect_mysql"
         }
       ]
@@ -41013,7 +41025,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_introspect_postgres.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_introspect_postgres.rs",
           "symbol": "dbspec_introspect_postgres"
         }
       ]
@@ -41087,7 +41099,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_introspect_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_introspect_sqlite.rs",
           "symbol": "dbspec_introspect_sqlite"
         }
       ]
@@ -41251,7 +41263,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/schema_install_mysql.rs",
+          "test": "packages/rust/tests/tests/all/schema_install_mysql.rs",
           "symbol": "schema_install_mysql"
         }
       ]
@@ -41315,7 +41327,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/schema_install_postgres.rs",
+          "test": "packages/rust/tests/tests/all/schema_install_postgres.rs",
           "symbol": "schema_install_postgres"
         }
       ]
@@ -41379,7 +41391,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/schema_install_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/schema_install_sqlite.rs",
           "symbol": "schema_install_sqlite"
         }
       ]
@@ -41489,7 +41501,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/model_queries_mysql.rs",
+          "test": "packages/rust/tests/tests/all/model_queries_mysql.rs",
           "symbol": "model_queries_mysql"
         }
       ]
@@ -41553,7 +41565,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/model_queries_postgres.rs",
+          "test": "packages/rust/tests/tests/all/model_queries_postgres.rs",
           "symbol": "model_queries_postgres"
         }
       ]
@@ -41617,7 +41629,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/model_queries_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/model_queries_sqlite.rs",
           "symbol": "model_queries_sqlite"
         }
       ]
@@ -41686,7 +41698,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/model_queries_chain_mysql.rs",
+          "test": "packages/rust/tests/tests/all/model_queries_chain_mysql.rs",
           "symbol": "model_queries_chain_mysql"
         }
       ]
@@ -41755,7 +41767,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/model_queries_chain_postgres.rs",
+          "test": "packages/rust/tests/tests/all/model_queries_chain_postgres.rs",
           "symbol": "model_queries_chain_postgres"
         }
       ]
@@ -41824,7 +41836,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/model_queries_chain_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/model_queries_chain_sqlite.rs",
           "symbol": "model_queries_chain_sqlite"
         }
       ]
@@ -41871,7 +41883,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/constraints_and_relations_mysql.rs",
+          "test": "packages/rust/tests/tests/all/constraints_and_relations_mysql.rs",
           "symbol": "constraints_and_relations_mysql"
         }
       ]
@@ -41911,7 +41923,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/immutable_write_mysql.rs",
+          "test": "packages/rust/tests/tests/all/immutable_write_mysql.rs",
           "symbol": "immutable_write_mysql"
         }
       ]
@@ -41958,7 +41970,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/constraints_and_relations_postgres.rs",
+          "test": "packages/rust/tests/tests/all/constraints_and_relations_postgres.rs",
           "symbol": "constraints_and_relations_postgres"
         }
       ]
@@ -41998,7 +42010,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/immutable_write_postgres.rs",
+          "test": "packages/rust/tests/tests/all/immutable_write_postgres.rs",
           "symbol": "immutable_write_postgres"
         }
       ]
@@ -42045,7 +42057,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/constraints_and_relations_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/constraints_and_relations_sqlite.rs",
           "symbol": "constraints_and_relations_sqlite"
         }
       ]
@@ -42085,7 +42097,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/immutable_write_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/immutable_write_sqlite.rs",
           "symbol": "immutable_write_sqlite"
         }
       ]
@@ -42125,7 +42137,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/external_audit_mysql.rs",
+          "test": "packages/rust/tests/tests/all/external_audit_mysql.rs",
           "symbol": "external_audit_mysql"
         }
       ]
@@ -42165,7 +42177,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/external_audit_postgres.rs",
+          "test": "packages/rust/tests/tests/all/external_audit_postgres.rs",
           "symbol": "external_audit_postgres"
         }
       ]
@@ -42205,7 +42217,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/external_audit_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/external_audit_sqlite.rs",
           "symbol": "external_audit_sqlite"
         }
       ]
@@ -42244,7 +42256,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite_only.rs",
+          "test": "packages/rust/tests/tests/all/catalog_connection_sqlite_only.rs",
           "symbol": "catalog_connection_sqlite_only"
         }
       ]
@@ -42305,7 +42317,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/transactions_mysql.rs",
+          "test": "packages/rust/tests/tests/all/transactions_mysql.rs",
           "symbol": "transactions_mysql"
         }
       ]
@@ -42366,7 +42378,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/transactions_postgres.rs",
+          "test": "packages/rust/tests/tests/all/transactions_postgres.rs",
           "symbol": "transactions_postgres"
         }
       ]
@@ -42427,7 +42439,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/transactions_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/transactions_sqlite.rs",
           "symbol": "transactions_sqlite"
         }
       ]
@@ -42481,7 +42493,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/audit_triggers_mysql.rs",
+          "test": "packages/rust/tests/tests/all/audit_triggers_mysql.rs",
           "symbol": "audit_triggers_mysql"
         }
       ]
@@ -42535,7 +42547,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/audit_triggers_postgres.rs",
+          "test": "packages/rust/tests/tests/all/audit_triggers_postgres.rs",
           "symbol": "audit_triggers_postgres"
         }
       ]
@@ -42589,7 +42601,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/audit_triggers_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/audit_triggers_sqlite.rs",
           "symbol": "audit_triggers_sqlite"
         }
       ]
@@ -42881,33 +42893,33 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/recipe_keys.rs",
-          "id": "a_recipe_whose_keys_the_table_holds_is_accepted"
+          "test": "packages/rust/tests/tests/all/recipe_keys.rs",
+          "id": "recipe_keys::a_recipe_whose_keys_the_table_holds_is_accepted"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/recipe_keys.rs",
-          "id": "an_unknown_file_key_is_refused_by_name"
+          "test": "packages/rust/tests/tests/all/recipe_keys.rs",
+          "id": "recipe_keys::an_unknown_file_key_is_refused_by_name"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/recipe_keys.rs",
-          "id": "an_unknown_case_key_is_refused_by_name_with_its_case"
+          "test": "packages/rust/tests/tests/all/recipe_keys.rs",
+          "id": "recipe_keys::an_unknown_case_key_is_refused_by_name_with_its_case"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/recipe_keys.rs",
-          "id": "an_unknown_op_is_refused_by_name_with_its_step"
+          "test": "packages/rust/tests/tests/all/recipe_keys.rs",
+          "id": "recipe_keys::an_unknown_op_is_refused_by_name_with_its_step"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/recipe_keys.rs",
-          "id": "a_step_key_another_op_holds_is_refused_on_the_op_that_does_not_hold_it"
+          "test": "packages/rust/tests/tests/all/recipe_keys.rs",
+          "id": "recipe_keys::a_step_key_another_op_holds_is_refused_on_the_op_that_does_not_hold_it"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/recipe_keys.rs",
-          "id": "a_recipe_with_no_schema_is_refused_since_it_names_no_key_table"
+          "test": "packages/rust/tests/tests/all/recipe_keys.rs",
+          "id": "recipe_keys::a_recipe_with_no_schema_is_refused_since_it_names_no_key_table"
         }
       ]
     },
@@ -42949,7 +42961,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/composite_keys_mysql.rs",
+          "test": "packages/rust/tests/tests/all/composite_keys_mysql.rs",
           "symbol": "composite_keys_mysql"
         }
       ]
@@ -42992,7 +43004,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/composite_keys_postgres.rs",
+          "test": "packages/rust/tests/tests/all/composite_keys_postgres.rs",
           "symbol": "composite_keys_postgres"
         }
       ]
@@ -43035,7 +43047,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/composite_keys_sqlite.rs",
+          "test": "packages/rust/tests/tests/all/composite_keys_sqlite.rs",
           "symbol": "composite_keys_sqlite"
         }
       ]
@@ -43076,7 +43088,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/generator_scan_none.rs",
+          "test": "packages/rust/tests/tests/all/generator_scan_none.rs",
           "symbol": "generator_scan_none"
         }
       ]
@@ -43247,7 +43259,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/generator_none.rs",
+          "test": "packages/rust/tests/tests/all/generator_none.rs",
           "symbol": "generator_none"
         }
       ]
@@ -43463,7 +43475,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/fulltext_search_recipe_mysql.rs",
+          "test": "packages/rust/tests/tests/all/fulltext_search_recipe_mysql.rs",
           "id": "fulltext_search_recipe_mysql::chain_fulltext_boolean"
         },
         {
@@ -43493,7 +43505,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/fulltext_search_recipe_mysql.rs",
+          "test": "packages/rust/tests/tests/all/fulltext_search_recipe_mysql.rs",
           "id": "fulltext_search_recipe_mysql::chain_fulltext"
         }
       ]
@@ -43572,7 +43584,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dsl_none.rs",
+          "test": "packages/rust/tests/tests/all/dsl_none.rs",
           "symbol": "dsl_none"
         }
       ]
@@ -43669,7 +43681,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/collection_none.rs",
+          "test": "packages/rust/tests/tests/all/collection_none.rs",
           "symbol": "collection_none"
         }
       ]
@@ -43766,7 +43778,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_limits_none.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_limits_none.rs",
           "symbol": "dbspec_limits_none"
         }
       ]
@@ -43855,7 +43867,7 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_rules_recipe_none.rs",
+          "test": "packages/rust/tests/tests/all/dbspec_rules_recipe_none.rs",
           "symbol": "dbspec_rules_recipe_none"
         }
       ]

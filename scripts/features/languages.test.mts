@@ -72,8 +72,8 @@ caseTest('shared feature tests come from parity test globs or exact bindings, wh
   assert.equal(isDeclaredSharedTest('php', 'packages/php/tests/TransactionsRecipeTest.php', globs), false);
   assert.ok(boundTestPaths('php', parity).includes('packages/php/tests/TransactionsRecipeTest.php'));
   assert.equal(isDeclaredSharedTest('php', 'packages/php/tests/CallbackFailed.php', globs), false);
-  assert.equal(isDeclaredSharedTest('rust', 'packages/rust/tests/tests/transactions_mysql.rs', globs), false);
-  assert.ok(boundTestPaths('rust', parity).includes('packages/rust/tests/tests/transactions_mysql.rs'));
+  assert.equal(isDeclaredSharedTest('rust', 'packages/rust/tests/tests/all/transactions_mysql.rs', globs), false);
+  assert.ok(boundTestPaths('rust', parity).includes('packages/rust/tests/tests/all/transactions_mysql.rs'));
   assert.equal(isDeclaredSharedTest('rust', 'packages/rust/orm/tests/common/test_support.rs', globs), false);
   assert.equal(isDeclaredSharedTest('typescript', 'packages/ts/tests/coverage_transactions.mjs', globs), true);
   assert.equal(isDeclaredSharedTest('typescript', 'packages/ts/tests/coverage_case.mjs', globs), true);

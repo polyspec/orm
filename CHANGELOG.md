@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- Tests: the Rust suite of `packages/rust/tests` is one test program, `all`, whose groups run one after another and print their size and progress; every trial is kept, under a name that starts with its former program.
+
 ## 0.0.22
 
 - Fixes: the Go catalog reports a stopped read and the failure of a close, and the Go PostgreSQL driver returns an error where it panicked.

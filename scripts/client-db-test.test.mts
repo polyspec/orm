@@ -106,8 +106,8 @@ caseTest('the Go lane leaves the markdown conformance test to the target that pa
 caseTest('the Rust lane runs the recipe programs in its workspace run and leaves out only what another target owns', COMPUTE, () => {
   const skipped = rustOwnedElsewhereSkipArguments(root).filter((_, index) => index % 2 === 1);
   for (const database of ['mysql', 'postgres', 'sqlite']) {
-    assert.ok(skipped.includes(`coverage_hot_path_gate_${database}`), `the measurement of ${database}`);
+    assert.ok(skipped.includes(`coverage_performance_gate::coverage_hot_path_gate_${database}`), `the measurement of ${database}`);
     assert.ok(!skipped.includes(`model_writes_chain_${database}`), `the recipe program of ${database}`);
   }
-  assert.ok(skipped.every(symbol => symbol.startsWith('markdown_conformance::') || symbol.startsWith('coverage_hot_path_gate_')), skipped.join(' '));
+  assert.ok(skipped.every(symbol => symbol.startsWith('markdown_conformance::') || symbol.startsWith('coverage_performance_gate::coverage_hot_path_gate_')), skipped.join(' '));
 });
