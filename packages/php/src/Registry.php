@@ -54,6 +54,7 @@ final class Registry
      * the manifest. It is kept only for a manifest text registered under the same hash and in the runtime model
      * format of this library; otherwise it is ignored and the process parses the manifest.
      *
+     * @internal
      * @param array<string, array> $entities
      */
     public static function parsed(string $hash, int $format, array $entities): void
@@ -98,6 +99,7 @@ final class Registry
      * generated bootstrap.php names the class of each entity of its set. No class is loaded, so a process loads only
      * the files of the models it uses. A class is compared with its entity by verify, when a statement first uses it.
      *
+     * @internal
      * @param array<string, class-string<Model>> $classes entity => class
      */
     public static function classes(string $hash, array $classes): void
@@ -124,6 +126,7 @@ final class Registry
      * Compares a generated class with the parsed entity of its set, once per process. A class of a set without parsed
      * entities was compared by the runtime model of its set (RuntimeModel::fromModels).
      *
+     * @internal
      * @param class-string<Model> $class
      */
     public static function verify(string $class): void
@@ -190,6 +193,7 @@ final class Registry
      * The entities of a loaded document set: the parsed entities that generated code holds, which loads no class, or
      * the meta() of each registered class.
      *
+     * @internal
      * @return array<string, array> entity => its fields
      */
     public static function entities(string $hash): array

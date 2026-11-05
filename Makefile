@@ -2844,7 +2844,9 @@ parity-declarations-check: typescript-read
 # The parity gates of kit read the error file of every implementation of config/parity.json (errors.file): codes.ts, Code.php and
 # codes.py among them. lint-php analyses packages/php/src, and test-php-ext compares the extension with that library and runs its tests.
 parity-declarations-check parity-check parity-api-check $(KIT_PARITY_BINDING_TARGETS): orm-codes
-lint-php test-php-ext: orm-codes-php
+lint-php: orm-codes-php
+# The interface_symbols case of test-php-ext runs interfaces/api-units, which reads the error file of every implementation.
+test-php-ext: orm-codes
 # The staged commit gate has no ignored generated models; recreate them before linting Go modules.
 lint-go: go-models
 # orm-install-php installs the one Composer project of the repository, the development root (vendor-php): it installs packages/php

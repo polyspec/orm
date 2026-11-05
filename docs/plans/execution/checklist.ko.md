@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: 2cc42d1eaa8887911d8431da90d08acc272524ed2e712e0f0b2e639abaa2758c -->
+<!-- source-sha256: d0020e8d04ec5afb4f7ac2ff4a9c31c075ad179c03dea2dc9682ccb0bc110c3b -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1758,3 +1758,4 @@
 | T369 | 개발 줄을 모든 package의 다음 release로 발행한다. Red: 소비자가 설치하는 package에 개발 줄의 작업이 없다. Green: tag commit의 CI가 통과하고, config/release.json의 모든 package가 release-verify를 통과한다. | `VERSION`; `CHANGELOG.md`; `CHANGELOG.ko.md` | `make kit-gates-static` | [~] |
 | T370 | benchmarks/rust/Cargo.lock이 polyspec-orm의 모든 의존성을 적는다. Red: 0fa301d7b가 polyspec-orm manifest에 rustls를 넣은 뒤로 make orm-install-rust-crates의 cargo fetch --locked가 그 workspace에서 101로 끝나, CI run 41971288757의 작업 8개가 install 단계에서 실패한다. Green: make orm-install-rust-crates가 0으로 끝나고, 갱신된 lock으로 workspace가 빌드된다. | `benchmarks/rust/Cargo.lock` | `make orm-install-rust-crates` | [v] |
 | T371 | push에서 실행되는 검사가 추적되는 모든 Cargo.lock을 manifest와 대조한다. push 전 local 검사 중 benchmarks/rust에 --locked로 cargo를 실행하는 것이 없어 T370이 CI까지 갔다. Rust 검사는 packages/rust를 빌드하고, 세 workspace를 모두 읽는 것은 install 단계 make orm-install-rust-crates뿐이다. | `Makefile`; `contracts/check-inputs.json` | `make orm-install-rust-crates` | [!] 원인: 새 개발이며 release가 먼저다; 재시도: release 뒤 |
+| T372 | parity의 API 단계가 개발 줄에서 통과한다. Red: CI run 41972986303에서 make parity-api-check가 407건을 보고한다. R1 364건은 lane이 없앤 심볼이고(더는 어느 시험도 호출하지 않는 scan 생성 TypeScript member 357건, fromMysqli, SQL_BYTES, of_collection_row, 두 model의 getBySeq), R11 42건은 어느 unit도 선언하지 않은 public 심볼, R17 1건은 internal 표시가 빠진 stub method다. test-php-ext의 interface_symbols case도 codes.py가 생성되지 않은 runner에서 실패한다. Green: 각 심볼을 선언, 제거 또는 internal 표시하여 make parity-api-check가 0으로 끝나고, test-php-ext가 모든 구현의 오류 파일을 생성한다. | `config/parity.json`; `Makefile`; `packages/php/src/Registry.php`; `packages/php/src/RuntimeModel.php`; `packages/php-ext/src/polyspec_orm.stub.php`; `contracts/symbols`; `contracts/interfaces.json` | `make kit-gates-static` | [v] |

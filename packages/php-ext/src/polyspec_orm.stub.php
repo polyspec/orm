@@ -1627,6 +1627,7 @@ final class Db
     public function execute(array $step, array $params): void {}
     /** @internal @return array{sql: string, binds: list<mixed>} */
     public function pagePlanSteps(?TxFrame $frame, Request $r): array {}
+    /** @internal */
     public function statement(Request $r): array {}
     /** @internal */
     public function clock(): \DateTimeImmutable {}
@@ -1992,15 +1993,19 @@ final class Registry
     private static array $parsed = [];
     private static array $verified = [];
     public static function generated(string $hash, string $text, string $external = ''): void {}
+    /** @internal */
     public static function parsed(string $hash, int $format, array $entities): void {}
     public static function schema(Schema $schema): void {}
     public static function register(string $class): void {}
+    /** @internal */
     public static function classes(string $hash, array $classes): void {}
+    /** @internal */
     public static function verify(string $class): void {}
     public static function loaded(string $hash): bool {}
     public static function manifestText(string $hash): string {}
     public static function model(string $hash): RuntimeModel {}
     public static function models(string $hash): array {}
+    /** @internal */
     public static function entities(string $hash): array {}
     private static function unloaded(string $hash): OrmException {}
 }
@@ -2031,6 +2036,7 @@ final class SchemaUtils
 /** The native runtime model of the canonical dbspec document set. */
 final class RuntimeModel
 {
+    /** @internal */
     public const int FORMAT = 1;
     public readonly string $manifestHash;
     public readonly string $manifestText;
@@ -2066,6 +2072,7 @@ final class RuntimeModel
     public static function build(array $documents): RuntimeModel {}
     /** @param array $classes */
     public static function fromModels(string $manifestHash, string $manifestText, array $classes, string $externalText = ''): RuntimeModel {}
+    /** @internal */
     public static function verifyModel(string $class, array $manifest): array {}
     public function entity(string $name): ?array {}
     public static function column(array $entity, string $name): ?array {}
