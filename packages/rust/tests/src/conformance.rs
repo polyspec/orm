@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex};
 polyspec_orm::models!();
 
 use model::{Author, ClockCell, HexCell, Service, ServiceMember, UpsertCell};
-use polyspec_orm::{Collection, Db, Model, Null, Param};
+use polyspec_orm::{Collection, Db, Model, Null};
 use serde_json::{json, Map, Value};
 
 use polyspec_orm_test_support::statement_record;
@@ -98,7 +98,7 @@ async fn main() {
     let _recording = db
         .subscribe(move |e: &polyspec_orm::StatementEvent<'_>| {
             let mut log = hook.lock().unwrap();
-            let binds: Vec<Value> = e.binds.iter().map(|b| norm(&param_json(b).or_panic(|e| format!("invalid query bind: {e}")), &log)).collect();
+            let binds: Vec<Value> = e.binds.iter().map(|b| norm(&param_json(b).or_panic(|e| format!("invalid query bind: {e}")), &log.seqs)).collect();
             let transaction = e.transaction.map(|n| {
                 let next = log.transactions.len() as u64 + 1;
                 *log.transactions.entry(n).or_insert(next)
