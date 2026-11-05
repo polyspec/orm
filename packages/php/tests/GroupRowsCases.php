@@ -62,8 +62,9 @@ trait GroupRowsCases
         }
     }
 
-    // The forms of a count that only a driver cell holds: a text and a float. The answer of a listener holds neither, since its
-    // count is a JSON number (PRT-69), so the collection recipe cannot write them (FCV-2). Requirements: INT-68, INT-90.
+    // The forms of a count that only a driver cell holds: a text and a float. The answer of a listener holds neither,
+    // since its count is a JSON number (PRT-69), so the collection recipe cannot write them (FCV-2).
+    // Requirements: INT-68, INT-90.
     public function testGroupRowDriverCellForms(): void
     {
         $this->assertGroupRowOwnership();
@@ -76,7 +77,13 @@ trait GroupRowsCases
                 $this->assertGroupRowCountError($error);
             }
         }
-        foreach ([['0', 0], ['9007199254740991', 9007199254740991], [3.0, 3], [9007199254740991.0, 9007199254740991]] as [$input, $expected]) {
+        $forms = [
+            ['0', 0],
+            ['9007199254740991', 9007199254740991],
+            [3.0, 3],
+            [9007199254740991.0, 9007199254740991],
+        ];
+        foreach ($forms as [$input, $expected]) {
             $row = new GroupRow([['row_count', $input]]);
             self::assertSame($expected, $row->count());
             self::assertSame($expected, $row->toArray()['row_count']);

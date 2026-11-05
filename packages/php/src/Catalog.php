@@ -157,9 +157,10 @@ final class Catalog
     }
 
     /**
-     * Opens a connection. A connection that this catalog closed holds its place in max_user_connections until the server ends
-     * that thread. The server announces that to no one, so this is a timer: the connect is tried again within the 2 s of CFG-35
-     * from the close (within 40 ms measured). A connect that follows no close of this catalog fails at once.
+     * Opens a connection. A connection that this catalog closed holds its place in max_user_connections until the
+     * server ends that thread. The server announces that to no one, so this is a timer: the connect is tried again
+     * within the 2 s of CFG-35 from the close (within 40 ms measured). A connect that follows no close of this catalog
+     * fails at once.
      */
     private function openConnection(): Db
     {
@@ -168,7 +169,11 @@ final class Catalog
                 return Orm::connect($this->dsn, new Config());
             } catch (OrmException $refused) {
                 $cause = $refused->getPrevious();
-                if (!$cause instanceof \PDOException || (int) $cause->getCode() !== 1226 || hrtime(true) / 1e9 >= $this->reopenUntil) {
+                if (
+                    !$cause instanceof \PDOException
+                    || (int) $cause->getCode() !== 1226
+                    || hrtime(true) / 1e9 >= $this->reopenUntil
+                ) {
                     throw $refused;
                 }
                 usleep(10000);
@@ -244,7 +249,8 @@ final class Catalog
             try {
                 $raw = $this->query($pdo, $sql, [], $limit + 1, self::PAGE_BYTES);
             } catch (OrmException $failure) {
-                // A column that went away during the read fails the statement: the descriptor tells that from any other failure.
+                // A column that went away during the read fails the statement: the descriptor tells that from any other
+                // failure.
                 if ($failure->code_ !== Code::CATALOG_LIMIT && !$this->streamLeft) {
                     try {
                         $changed = !self::samePageDescriptor($this->describe($pdo, $ref), $metadata);
@@ -252,7 +258,11 @@ final class Catalog
                         $changed = false;
                     }
                     if ($changed) {
-                        throw new OrmException(Code::TABLE_PAGE_METADATA_CHANGED, 'descriptor changed during read', $failure);
+                        throw new OrmException(
+                            Code::TABLE_PAGE_METADATA_CHANGED,
+                            'descriptor changed during read',
+                            $failure
+                        );
                     }
                 }
                 throw $failure;
@@ -616,14 +626,7 @@ final class Catalog
                 if ($this->describe($pdo, $declared->table) != $descriptor) {
                     throw new OrmException(Code::ROW_SCHEMA_CHANGED, 'insertion descriptor changed');
                 }
-                foreach ($changes as [$index, $value]) {
-                    if (self::cellKey($after[0][$index]) !== self::cellKey($value)) {
-                        throw new OrmException(
-                            Code::ROW_WRITE_MISMATCH,
-                            'stored inserted values of "' . $descriptor->columns[$index]->name . '" differ'
-                        );
-                    }
-                }
+                self::assertStoredValues($after[0], $changes, $descriptor);
                 return new CatalogResult(self::columnNames($descriptor), $after);
             }
         );
@@ -928,11 +931,11 @@ final class Catalog
      * @return T
      */
     /**
-     * Waits for the server to end a stream whose kill failed (INT-157, CFG-35). PDO reads the rest of a streaming result
-     * whenever a statement or its connection closes, so the read stops reading instead. The server then fails its write
-     * and ends the connection after net_write_timeout. This is a timer because no orthodox mechanism exists: the busy
-     * connection cannot be asked and no second one can be opened. If the server has not ended the stream by then, the
-     * close reads the rest, which is slower and still correct.
+     * Waits for the server to end a stream whose kill failed (INT-157, CFG-35). PDO reads the rest of a streaming
+     * result whenever a statement or its connection closes, so the read stops reading instead. The server then fails
+     * its write and ends the connection after net_write_timeout. This is a timer because no orthodox mechanism exists:
+     * the busy connection cannot be asked and no second one can be opened. If the server has not ended the stream by
+     * then, the close reads the rest, which is slower and still correct.
      */
     private function leaveStream(): void
     {
@@ -1238,7 +1241,8 @@ final class Catalog
                 $pdo->exec('PRAGMA query_only = ' . ($readOnly ? 'ON' : 'OFF'));
             }
             if ($readOnly && $this->dialect === 'mysql') {
-                // At REPEATABLE READ the information schema answers from the snapshot of the transaction, so a descriptor read after the rows could not differ from the one read before them (INT-121).
+                // At REPEATABLE READ the information schema answers from the snapshot of the transaction, so a
+                // descriptor read after the rows could not differ from the one read before them (INT-121).
                 $pdo->exec('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
             }
             $pdo->exec(self::beginSql($this->dialect, $readOnly));
@@ -1499,15 +1503,26 @@ final class Catalog
         if (count($rows) !== 1) {
             throw new OrmException($countCode, $countMessage);
         }
+        self::assertStoredValues($rows[0], $changes, $descriptor);
+        return $rows[0];
+    }
+
+    /**
+     * ROW_WRITE_MISMATCH when a cell of the stored row differs from the value that the insert wrote to it.
+     *
+     * @param list<mixed> $row
+     * @param list<array{int, mixed}> $changes
+     */
+    private static function assertStoredValues(array $row, array $changes, CatalogTableMetadata $descriptor): void
+    {
         foreach ($changes as [$index, $value]) {
-            if (self::cellKey($rows[0][$index]) !== self::cellKey($value)) {
+            if (self::cellKey($row[$index]) !== self::cellKey($value)) {
                 throw new OrmException(
                     Code::ROW_WRITE_MISMATCH,
                     'stored inserted values of "' . $descriptor->columns[$index]->name . '" differ'
                 );
             }
         }
-        return $rows[0];
     }
 
     /**
@@ -2058,7 +2073,10 @@ final class Catalog
                 }
                 continue;
             }
-            if ($dialect === 'sqlite' && in_array(strtoupper($column->nativeType), ['DATE', 'TIME', 'DATETIME'], true)) {
+            if (
+                $dialect === 'sqlite'
+                && in_array(strtoupper($column->nativeType), ['DATE', 'TIME', 'DATETIME'], true)
+            ) {
                 $kind = strtolower($column->nativeType);
                 foreach ($rows as $r => $row) {
                     if ($row[$i] === null) {

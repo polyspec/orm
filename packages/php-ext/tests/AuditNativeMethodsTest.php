@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-// The audit calls of the recipe audit_triggers run in the classes of the extension. This test stays native (FCV-2): only
-// the PHP extension has internal classes, so no recipe of another runtime holds this behaviour.
+// The audit calls of the recipe audit_triggers run in the classes of the extension. This test stays native (FCV-2):
+// only the PHP extension has internal classes, so no recipe of another runtime holds this behaviour.
 // Requirements: INT-44b.
 
 use PHPUnit\Framework\Attributes\Small;

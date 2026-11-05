@@ -43,7 +43,13 @@ final readonly class GroupRow implements \JsonSerializable
             }
             return $value;
         }
-        if (is_float($value) && is_finite($value) && floor($value) === $value && $value >= 0.0 && $value <= (float) $maxSafe) {
+        if (
+            is_float($value)
+            && is_finite($value)
+            && floor($value) === $value
+            && $value >= 0.0
+            && $value <= (float) $maxSafe
+        ) {
             return (int) $value;
         }
         $maxSafeText = (string) $maxSafe;

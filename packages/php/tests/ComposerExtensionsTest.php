@@ -88,7 +88,7 @@ final class ComposerExtensionsTest extends TestCase
     private static function extensionOf(string $kind, string $name): ?string
     {
         if ($kind === 'function') {
-            if (!function_exists($name)) {
+            if (!in_array(strtolower($name), get_defined_functions()['internal'], true)) {
                 return null;
             }
             $extension = (new \ReflectionFunction($name))->getExtensionName();

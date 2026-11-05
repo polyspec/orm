@@ -6,7 +6,7 @@ namespace Polyspec\Orm\Tests;
 
 use RuntimeException;
 
-/** The error the callback throws to roll back the transaction. */
+/** The error a callback throws to stop what calls it: a transaction, which rolls back, or a dbspec command. */
 final class Stop extends RuntimeException
 {
 }

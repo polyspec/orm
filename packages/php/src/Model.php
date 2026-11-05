@@ -779,8 +779,8 @@ abstract class Model implements \JsonSerializable, ModelMetadata
 
     /** @param list<array> $keys */
     /**
-     * Adds the conditions of one chain call. An error of a value is the error of the builder call: it is recorded, and the
-     * terminal returns the first one before it sends a statement (INT-88).
+     * Adds the conditions of one chain call. An error of a value is the error of the builder call: it is recorded, and
+     * the terminal returns the first one before it sends a statement (INT-88).
      */
     private function whereChain(string $conn, array $keys, array $args): void
     {
@@ -1292,11 +1292,14 @@ abstract class Model implements \JsonSerializable, ModelMetadata
             $shape['original'][] = $meta['updated'];
         }
         if (count($asm['key'] ?? []) === 1) {
-            // A bool or datetime key goes through keyCells: its cell is an integer or a text, and the key keeps the declared
-            // type (INT-11, PRT-35).
+            // A bool or datetime key goes through keyCells: its cell is an integer or a text, and the key keeps the
+            // declared type (INT-11, PRT-35).
             $typed = false;
             foreach ($asm['columns'] as $col) {
-                $typed = $typed || ($col['index'] === $asm['key'][0]['index'] && in_array($col['type'], ['bool', 'datetime'], true));
+                $typed = $typed
+                    || (
+                        $col['index'] === $asm['key'][0]['index'] && in_array($col['type'], ['bool', 'datetime'], true)
+                    );
             }
             if (!$typed) {
                 $shape['key'] = $asm['key'][0]['index'];

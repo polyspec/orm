@@ -33,15 +33,13 @@ final class StatementRunnerTest extends TestCase
     #[DataProvider('drivers')]
     public function testStatementRunnerNonText(string $driver): void
     {
-        with_case_database($driver, static function (string $step): void {
-        }, static fn(string $dsn) => self::nonTextStatementFailsWithConfig($dsn));
+        self::onCaseDatabase($driver, self::nonTextStatementFailsWithConfig(...));
     }
 
     // Requirements: INT-150a.
     #[DataProvider('drivers')]
     public function testFrameAfterItsTransactionEnded(string $driver): void
     {
-        with_case_database($driver, static function (string $step): void {
-        }, static fn(string $dsn) => self::frameAfterItsTransactionEndedFailsWithConfig($dsn));
+        self::onCaseDatabase($driver, self::frameAfterItsTransactionEndedFailsWithConfig(...));
     }
 }

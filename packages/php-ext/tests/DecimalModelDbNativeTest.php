@@ -6,12 +6,16 @@ namespace Polyspec\Orm\Extension\Tests;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Medium;
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Tests\DecimalModelDbTest;
 use Polyspec\Orm\Tests\NativeMethodAssertions;
 use Polyspec\Orm\Tests\ThreeDrivers;
 
+// The registry holds one class per entity of a manifest and the recipe of a process has its own namespace, so each case
+// runs in a process of its own.
 #[Medium]
+#[RunTestsInSeparateProcesses]
 final class DecimalModelDbNativeTest extends TestCase
 {
     use NativeMethodAssertions;

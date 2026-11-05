@@ -32,7 +32,10 @@ final class RecipeGenerator
             return [$status, $stdout . $stderr];
         };
         $expect = static function (array $lines, string $file) use ($gen): void {
-            $want = implode('', array_map(static fn (string $line): string => str_replace('<file>', $file, $line) . "\n", $lines));
+            $want = implode(
+                '',
+                array_map(static fn (string $line): string => str_replace('<file>', $file, $line) . "\n", $lines)
+            );
             Assert::assertSame([$lines === [] ? 0 : 1, $want], $gen('--check'));
         };
         try {
@@ -99,7 +102,11 @@ final class RecipeGenerator
                 $from = $at + strlen($part);
             }
             if (!isset($step['free_tail'])) {
-                Assert::assertSame('', trim(substr($stderr, $from)), "the output holds more after its last part: $stderr");
+                Assert::assertSame(
+                    '',
+                    trim(substr($stderr, $from)),
+                    "the output holds more after its last part: $stderr"
+                );
             }
             Assert::assertFileDoesNotExist($out, 'the generation wrote the output');
         } finally {

@@ -13,17 +13,11 @@ use Polyspec\Orm\Dbspec\ApplyError;
 use Polyspec\Orm\Dbspec\ApplyEvent;
 use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Orm;
-use RuntimeException;
 use Throwable;
 
-/** What an on with stop throws from the event handler, so the code of the command is stopped. */
-final class RecipeApplyStop extends RuntimeException
-{
-}
-
 /**
- * The ops of the dbspec apply API (docs/spec/feature-coverage.md FCV-4): each command is one call of the public API on a
- * named connection, and steps nested in its on field run inside the event handler.
+ * The ops of the dbspec apply API (docs/spec/feature-coverage.md FCV-4): each command is one call of the public API on
+ * a named connection, and steps nested in its on field run inside the event handler.
  */
 final class RecipeApply
 {
@@ -49,7 +43,6 @@ final class RecipeApply
     private const SERVER_ENV = ['mysql' => 'ORM_TEST_MYSQL_SERVER_DSN', 'postgres' => 'ORM_TEST_POSTGRES_SERVER_DSN'];
 
     /**
-     * @param array<string, mixed> $s
      * @param array<string, mixed> $context
      * @param Closure(array<string, mixed>): void $runStep
      * @return array<string, mixed>
@@ -65,7 +58,9 @@ final class RecipeApply
                 return ['bind' => $parsed->plan];
             case 'dbspec.connect':
                 if (($s['through'] ?? null) === 'pooler') {
-                    return ['bind' => self::open(self::required('ORM_TEST_PGBOUNCER_DSN'), self::nameOf($context['dsn']))];
+                    return [
+                        'bind' => self::open(self::required('ORM_TEST_PGBOUNCER_DSN'), self::nameOf($context['dsn'])),
+                    ];
                 }
                 return ['bind' => self::direct($context['database'], $context['dsn'])];
             case 'dbspec.exec':
@@ -147,11 +142,7 @@ final class RecipeApply
         return $session;
     }
 
-    /**
-     * @param array<string, mixed> $s
-     * @param array<string, mixed> $context
-     * @return array<string, mixed>
-     */
+    /** @param array<string, mixed> $context @return array<string, mixed> */
     private static function exec(RecipeStep $s, array $context): array
     {
         $text = is_string($s['sql']) ? $s['sql'] : $s['sql'][$context['database']];
@@ -169,11 +160,7 @@ final class RecipeApply
         return ['value' => ['array' => $array]];
     }
 
-    /**
-     * @param array<string, mixed> $s
-     * @param array<string, mixed> $context
-     * @return array<string, mixed>
-     */
+    /** @param array<string, mixed> $context @return array<string, mixed> */
     private static function schema(RecipeStep $s, array $context): array
     {
         $result = Dbspec::introspect(self::session($s, $context), $context['database'], 'x');
@@ -194,7 +181,6 @@ final class RecipeApply
     /**
      * Makes one call of the command; its value is the code of its failure, or ok, and the events that count names.
      *
-     * @param array<string, mixed> $s
      * @param array<string, mixed> $context
      * @param Closure(array<string, mixed>): void $runStep
      * @return array<string, mixed>
@@ -225,7 +211,8 @@ final class RecipeApply
                 $runStep($nested);
             }
             if (($on['stop'] ?? false) === true) {
-                throw new RecipeApplyStop('the recipe stops the command');
+                // What an on with stop throws from the event handler, so the code of the command is stopped.
+                throw new Stop('the recipe stops the command');
             }
         };
         $now = static fn(): DateTimeImmutable => new DateTimeImmutable('2023-11-14T22:13:20.000000Z');
@@ -236,7 +223,7 @@ final class RecipeApply
             Dbspec::$command($session, $context['database'], $plans, $now, $handler);
         } catch (Throwable $error) {
             $failure = $error instanceof ApplyCleanupError ? ($error->getPrevious() ?? $error) : $error;
-            if ($failure instanceof RecipeApplyStop) {
+            if ($failure instanceof Stop) {
                 $code = 'stopped';
             } elseif ($failure instanceof ApplyError) {
                 $code = $failure->code_;
@@ -250,8 +237,14 @@ final class RecipeApply
             }
         }
         $elapsed = (hrtime(true) - $started) / 1_000_000;
-        if (isset($s['elapsed']) && ($elapsed < $s['elapsed']['at_least_ms'] || $elapsed >= $s['elapsed']['below_ms'])) {
-            Assert::fail("the command took $elapsed ms, want at least {$s['elapsed']['at_least_ms']} and below {$s['elapsed']['below_ms']}");
+        if (
+            isset($s['elapsed'])
+            && ($elapsed < $s['elapsed']['at_least_ms'] || $elapsed >= $s['elapsed']['below_ms'])
+        ) {
+            Assert::fail(
+                "the command took $elapsed ms, want at least {$s['elapsed']['at_least_ms']} and below "
+                    . "{$s['elapsed']['below_ms']}"
+            );
         }
         $members = [['code', ['text' => $code]]];
         if (!$s->has('count')) {

@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-// Wraps a SQLite PDO to inject a result that cannot be closed into the effect query of apply (docs/spec/plans.md "Apply").
+// Wraps a SQLite PDO to inject a result that cannot be closed into the effect query of apply (docs/spec/plans.md
+// "Apply").
 
 use Closure;
 use PDO;

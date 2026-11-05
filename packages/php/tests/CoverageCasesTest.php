@@ -82,5 +82,4 @@ final class CoverageCasesTest extends TestCase
         );
         $this->assertSame([3, 'out', 'err'], [$status, $stdout, $stderr], 'child');
     }
-
 }

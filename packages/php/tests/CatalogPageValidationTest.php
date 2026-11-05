@@ -22,25 +22,13 @@ final class CatalogPageValidationTest extends TestCase
         self::assertFalse((new \ReflectionClass(Catalog::class))->isInternal());
     }
 
-    // Requirements: INT-109. The recipe case descriptor_column_name holds the code and the message in every runtime; the
-    // previous exception is the form of the cause that only PHP has.
+    // Requirements: INT-109. The recipe case descriptor_column_name holds the code and the message in every runtime;
+    // the previous exception is the form of the cause that only PHP has.
     public function testInvalidDescriptorKeepsTheColumnNameFailureAsItsPrevious(): void
     {
-        $metadata = new CatalogTableMetadata(
-            ['namespace' => 'main', 'name' => 'sample'],
-            'table',
-            [new CatalogColumn("\xFF", 'text', false, false, false, null, false)],
-            ["\xFF"],
-            true,
-        );
-        try {
+        coverageAssertColumnNameFailureIsPrevious(static function (CatalogTableMetadata $metadata): void {
             (new \ReflectionMethod(Catalog::class, 'descriptorKeys'))->invoke(null, $metadata);
-            self::fail('a descriptor with a non-UTF-8 column name was accepted');
-        } catch (OrmException $error) {
-            self::assertSame(Code::ROW_SNAPSHOT_INVALID, $error->code_);
-            self::assertInstanceOf(OrmException::class, $error->getPrevious());
-            self::assertSame(Code::TABLE_REFERENCE_INVALID, $error->getPrevious()->code_);
-        }
+        });
     }
 
     // Requirements: INT-103, INT-117.

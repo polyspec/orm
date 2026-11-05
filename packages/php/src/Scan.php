@@ -21,7 +21,8 @@ final class Scan
     /** Methods of a model whose result is no model: a call on it ends the chain. */
     private const TERMINALS = [
         'delete', 'deleteRow', 'creates', 'toArray', 'toJson', 'jsonSerialize', 'connection', 'meta',
-        'readColumn', 'writeColumn', 'getsCount', 'getCount', 'getSum', 'getAvg', 'getsPage', 'getPagePlanSteps', 'getQuery'
+        'readColumn', 'writeColumn', 'getsCount', 'getCount', 'getSum', 'getAvg', 'getsPage', 'getPagePlanSteps',
+        'getQuery'
     ];
     /** Methods of a model whose closure receives a model of the receiver's class as its first parameter. */
     private const MODEL_CALLBACKS = ['and', 'or', 'not', 'andNot', 'orNot', 'on', 'fetchKey', 'fetchValue'];

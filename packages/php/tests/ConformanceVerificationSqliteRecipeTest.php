@@ -1,6 +1,7 @@
 <?php
 
-// Requirements: DBS-115, DIA-11, DIA-14, DIA-18, DIA-24, DIA-37, DIA-56, DSL-54, DSL-99, DSL-137, DSL-139, DSL-144, INT-39, PRT-77, DSL-10, DSL-19, DSL-47, DSL-67, DSL-96, DSL-98, DSL-123, PRT-14.
+// Requirements: DBS-115, DIA-11, DIA-14, DIA-18, DIA-24, DIA-37, DIA-56, DSL-54, DSL-99, DSL-137, DSL-139, DSL-144,
+// Requirements: INT-39, PRT-77, DSL-10, DSL-19, DSL-47, DSL-67, DSL-96, DSL-98, DSL-123, PRT-14.
 // The conformance_verification recipe, contracts/fixtures/conformance_verification/conformance_verification.json, on
 // sqlite (docs/spec/feature-coverage.md FCV-3 and FCV-4).
 declare(strict_types=1);
@@ -20,9 +21,7 @@ class ConformanceVerificationSqliteRecipeTest extends TestCase
     // creates_batch_too_large, above the 128M default of PHP.
     public static function setUpBeforeClass(): void
     {
-        if (ini_set('memory_limit', '256M') === false) {
-            throw new \RuntimeException('the conformance_verification recipe requires its declared 256M memory_limit');
-        }
+        self::requireMemoryLimit('256M');
     }
 
     protected static function recipe(): string

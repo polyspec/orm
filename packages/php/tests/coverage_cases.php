@@ -6,6 +6,10 @@ declare(strict_types=1);
 // runs those test methods with PHPUnit).
 
 use PHPUnit\Framework\Assert;
+use Polyspec\Orm\CatalogColumn;
+use Polyspec\Orm\CatalogTableMetadata;
+use Polyspec\Orm\Code;
+use Polyspec\Orm\OrmException;
 
 /** Fails in extension mode if a client entry point has fallen back to its PHP implementation. */
 function coverageAssertEntryClassesAreInternal(): void
@@ -15,6 +19,31 @@ function coverageAssertEntryClassesAreInternal(): void
     }
     foreach (['Polyspec\\Orm\\Db', 'Polyspec\\Orm\\Planner'] as $entry) {
         Assert::assertTrue((new ReflectionClass($entry))->isInternal(), "$entry is the extension class");
+    }
+}
+
+/** The metadata of a table whose one column has a name that is not UTF-8. */
+function coverageNonUtf8ColumnMetadata(): CatalogTableMetadata
+{
+    return new CatalogTableMetadata(
+        ['namespace' => 'main', 'name' => 'sample'],
+        'table',
+        [new CatalogColumn("\xFF", 'text', false, false, false, null, false)],
+        ["\xFF"],
+        true,
+    );
+}
+
+/** The read of that metadata fails with ROW_SNAPSHOT_INVALID, whose previous exception is the column name failure. */
+function coverageAssertColumnNameFailureIsPrevious(callable $read): void
+{
+    try {
+        $read(coverageNonUtf8ColumnMetadata());
+        Assert::fail('a descriptor with a non-UTF-8 column name was accepted');
+    } catch (OrmException $error) {
+        Assert::assertSame(Code::ROW_SNAPSHOT_INVALID, $error->code_);
+        Assert::assertInstanceOf(OrmException::class, $error->getPrevious());
+        Assert::assertSame(Code::TABLE_REFERENCE_INVALID, $error->getPrevious()->code_);
     }
 }
 

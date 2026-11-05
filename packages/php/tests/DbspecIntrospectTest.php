@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-// Native under FCV-2: the error mode of a PDO connection exists only in this runtime. The failing query of an exception-mode
-// connection is the recipe case catalog_query_failure.
+// Native under FCV-2: the error mode of a PDO connection exists only in this runtime. The failing query of an
+// exception-mode connection is the recipe case catalog_query_failure.
 // Requirements: DIA-133a.
 
 use PDO;

@@ -48,10 +48,10 @@ use RuntimeException;
 
 final class Recipe
 {
+    use RecipeModel;
+
     /** The time of the last wait.start (FCV-4), in nanoseconds. */
     private static int $waitStart = 0;
-
-    use RecipeModel;
 
     /** The ops that RecipeModel runs, by their full names (FCV-15). */
     private const MODEL_OPS = [
@@ -90,14 +90,16 @@ final class Recipe
 
     /** The dbspec ops on parsed texts that dbspecStep runs (FCV-4). */
     private const DBSPEC_OPS = [
-        'dbspec.parse', 'dbspec.parse_plan', 'dbspec.emit_plan', 'dbspec.diff', 'dbspec.plan_steps', 'dbspec.add_tables_steps', 'dbspec.chain',
+        'dbspec.parse', 'dbspec.parse_plan', 'dbspec.emit_plan', 'dbspec.diff', 'dbspec.plan_steps',
+        'dbspec.add_tables_steps', 'dbspec.chain',
         'dbspec.compare', 'dbspec.introspect_refusal',
     ];
 
     /** The dbspec ops whose documents are files relative to the recipe, which dbspecFileStep runs (FCV-4). */
     private const DBSPEC_FILE_OPS = [
         'dbspec.parse_emit', 'dbspec.manifest', 'dbspec.render', 'dbspec.analyze', 'dbspec.parse_positions',
-        'dbspec.format', 'dbspec.parse_set', 'dbspec.set', 'dbspec.load_set', 'dbspec.runtime_model', 'dbspec.read_file', 'dbspec.read_bytes',
+        'dbspec.format', 'dbspec.parse_set', 'dbspec.set', 'dbspec.load_set', 'dbspec.runtime_model',
+        'dbspec.read_file', 'dbspec.read_bytes',
     ];
 
     /** The Mermaid ops (FCV-4), on the public Mermaid calls of Dbspec (DBS-169). */
@@ -115,8 +117,9 @@ final class Recipe
     private static array $document = [];
 
     /**
-     * The id of each case of the recipe at path, relative to the repository root, as the data sets of its tests. PHPUnit calls
-     * every provider when it builds the suite, whatever the filter of the run, so this reads each recipe once and keeps no case.
+     * The id of each case of the recipe at path, relative to the repository root, as the data sets of its tests.
+     * PHPUnit calls every provider when it builds the suite, whatever the filter of the run, so this reads each recipe
+     * once and keeps no case.
      *
      * @return array<string, array{string}>
      */
@@ -139,8 +142,8 @@ final class Recipe
     }
 
     /**
-     * The data sets of the cases of the recipe at path that run on database: a case that does not run there is no test of it,
-     * as in every other runtime (FCV-12).
+     * The data sets of the cases of the recipe at path that run on database: a case that does not run there is no test
+     * of it, as in every other runtime (FCV-12).
      *
      * @return array<string, array{string}>
      */
@@ -196,7 +199,8 @@ final class Recipe
     }
 
     /**
-     * A case with `only` runs on the databases that it names, and a case with `not_through_pooler` outside the pooler lane.
+     * A case with `only` runs on the databases that it names, and a case with `not_through_pooler` outside the pooler
+     * lane.
      *
      * @param array<string, mixed> $case
      */
@@ -376,7 +380,9 @@ final class Recipe
         $model = RuntimeModel::build(RuntimeModel::files([$schema]));
         $got = 'no error';
         try {
-            (new Validator($model))->validate($step['request'] + ['manifest_hash' => $step['manifest_hash'] ?? $model->manifestHash]);
+            (new Validator($model))->validate(
+                $step['request'] + ['manifest_hash' => $step['manifest_hash'] ?? $model->manifestHash]
+            );
         } catch (OrmException $error) {
             $got = $error->code_;
         }
@@ -405,22 +411,32 @@ final class Recipe
         [$model, $request] = self::plannerRequest($step, $path);
         $validator = new Validator($model);
         $validator->validate($request);
-        $uses = array_map(static fn(array $list): array => array_map(static fn(array $use): array => $use['column'] === null
-            ? ['type' => $use['type']]
-            : ($use['assign'] ?? false ? ['assign' => true] : []) + [
-                'column' => $use['column']['name'],
-                'length' => $use['column']['length'] ?? 0,
-                'null' => $use['column']['nullable'],
-                'precision' => $use['column']['precision'] ?? 0,
-                'scale' => $use['column']['scale'] ?? 0,
-                'type' => $use['type'],
-            ], $list), $validator->paramUses($request));
-        Assert::assertSame(self::sortedKeys($step['expect'][$database]['value']), self::sortedKeys(['uses' => $uses]), 'ir.param_uses');
+        $uses = array_map(
+            static fn(array $list): array => array_map(
+                static fn(array $use): array => $use['column'] === null
+                    ? ['type' => $use['type']]
+                    : ($use['assign'] ?? false ? ['assign' => true] : []) + [
+                        'column' => $use['column']['name'],
+                        'length' => $use['column']['length'] ?? 0,
+                        'null' => $use['column']['nullable'],
+                        'precision' => $use['column']['precision'] ?? 0,
+                        'scale' => $use['column']['scale'] ?? 0,
+                        'type' => $use['type'],
+                    ],
+                $list
+            ),
+            $validator->paramUses($request)
+        );
+        Assert::assertSame(
+            self::sortedKeys($step['expect'][$database]['value']),
+            self::sortedKeys(['uses' => $uses]),
+            'ir.param_uses'
+        );
     }
 
     /**
-     * States the output columns that the names of the step select from the first statement of the plan of each dialect: their
-     * type and whether they are hidden (PRT-69, DIA-33).
+     * States the output columns that the names of the step select from the first statement of the plan of each dialect:
+     * their type and whether they are hidden (PRT-69, DIA-33).
      */
     private static function plannerColumnsStep(RecipeStep $step, string $path, string $database): void
     {
@@ -435,7 +451,11 @@ final class Recipe
                     }
                 }
             }
-            Assert::assertSame(self::sortedKeys($step['expect'][$database]['value']), self::sortedKeys($got), "$dialect planner.columns");
+            Assert::assertSame(
+                self::sortedKeys($step['expect'][$database]['value']),
+                self::sortedKeys($got),
+                "$dialect planner.columns"
+            );
         }
     }
 
@@ -600,7 +620,11 @@ final class Recipe
                     $step['dialect'],
                     static fn() => Dbspec::planSteps($source, $plan, $step['dialect']),
                 );
-                Assert::assertSame(self::sortedKeys($expect->all()), self::sortedKeys($got), "$op: result differs from the expect");
+                Assert::assertSame(
+                    self::sortedKeys($expect->all()),
+                    self::sortedKeys($got),
+                    "$op: result differs from the expect"
+                );
                 return;
             }
             $result = Dbspec::planSteps($source, self::dbspecBound($step['plan'], $bound), $step['dialect']);
@@ -609,12 +633,16 @@ final class Recipe
         } else {
             Assert::fail("OP_UNKNOWN $op");
         }
-        Assert::assertSame(self::sortedKeys($expect->all()), self::sortedKeys($got), "$op: result differs from the expect");
+        Assert::assertSame(
+            self::sortedKeys($expect->all()),
+            self::sortedKeys($got),
+            "$op: result differs from the expect"
+        );
     }
 
     /**
-     * Runs a call that takes the dialect name and returns {refused: name} when it throws an InvalidArgumentException that
-     * names it (DBS-174).
+     * Runs a call that takes the dialect name and returns {refused: name} when it throws an InvalidArgumentException
+     * that names it (DBS-174).
      */
     private static function dialectRefusal(string $name, callable $call): array
     {
@@ -767,9 +795,9 @@ final class Recipe
     }
 
     /**
-     * Runs a collection.key step: each value through the public Collection::keyOf and Collection::identityOf. Its groups are,
-     * for each key, the index of the first key equal to it, and its types the native type that keyOf keeps (INT-11, INT-63,
-     * PRT-35).
+     * Runs a collection.key step: each value through the public Collection::keyOf and Collection::identityOf. Its
+     * groups are, for each key, the index of the first key equal to it, and its types the native type that keyOf keeps
+     * (INT-11, INT-63, PRT-35).
      */
     private static function collectionKeyStep(RecipeStep $step, string $database): void
     {
@@ -862,7 +890,11 @@ final class Recipe
                         "SHOW SESSION STATUS LIKE 'Ssl_version'",
                     ),
                 );
-                Assert::assertContains($status[0][1] ?? null, ['TLSv1.2', 'TLSv1.3'], 'the Ssl_version of the connection');
+                Assert::assertContains(
+                    $status[0][1] ?? null,
+                    ['TLSv1.2', 'TLSv1.3'],
+                    'the Ssl_version of the connection'
+                );
             }
             return $db->driver();
         } finally {
@@ -871,8 +903,8 @@ final class Recipe
     }
 
     /**
-     * The names in a new directory, other than the journals, after a connection to a file of it (dsn.sqlite_file, FCV-4,
-     * CFG-26).
+     * The names in a new directory, other than the journals, after a connection to a file of it (dsn.sqlite_file,
+     * FCV-4, CFG-26).
      */
     private static function sqliteFileNames(string $name, string $query, array $config = []): string
     {
@@ -921,7 +953,8 @@ final class Recipe
 
     /**
      * The markdown.session op (FCV-4, PRT-64): on a listener that answers each line with the next of the replies of the
-     * step, a read-only transaction that holds a nested one, then a transaction, whose error is compared with the expect.
+     * step, a read-only transaction that holds a nested one, then a transaction, whose error is compared with the
+     * expect.
      */
     private static function markdownSessionStep(RecipeStep $step, string $database): void
     {
@@ -1170,7 +1203,10 @@ final class Recipe
             case 'dbspec.render':
                 [, $documents] = self::dbspecDocuments($dir, $step['documents']);
                 if ($step->has('dialect')) {
-                    $got = self::dialectRefusal($step['dialect'], static fn() => Dbspec::render($documents, $step['dialect']));
+                    $got = self::dialectRefusal(
+                        $step['dialect'],
+                        static fn() => Dbspec::render($documents, $step['dialect'])
+                    );
                     Assert::assertSame($expect->all(), $got, 'refused dialect');
                     return;
                 }
@@ -1283,7 +1319,11 @@ final class Recipe
                     'documents',
                 );
                 if ($expect->has('manifest_hash')) {
-                    Assert::assertSame($expect['manifest_hash'], Dbspec::manifest($documents)->manifest->manifestHash, 'manifest hash');
+                    Assert::assertSame(
+                        $expect['manifest_hash'],
+                        Dbspec::manifest($documents)->manifest->manifestHash,
+                        'manifest hash'
+                    );
                 }
                 return;
             case 'dbspec.runtime_model':
@@ -1291,10 +1331,16 @@ final class Recipe
                     static fn(string $path): string => self::dbspecFile($dir, $path),
                     $paths,
                 );
-                $model = RuntimeModel::build(RuntimeModel::parseSet($read($step['documents']), $read($step['external'] ?? [])));
+                $model = RuntimeModel::build(
+                    RuntimeModel::parseSet($read($step['documents']), $read($step['external'] ?? []))
+                );
                 Assert::assertSame($expect['entities'], array_keys($model->entities), 'entities');
                 if ($expect->has('manifest_text')) {
-                    Assert::assertSame(implode("\n", $expect['manifest_text']) . "\n", $model->manifestText, 'manifest text');
+                    Assert::assertSame(
+                        implode("\n", $expect['manifest_text']) . "\n",
+                        $model->manifestText,
+                        'manifest text'
+                    );
                 }
                 if ($expect->has('manifest_hash')) {
                     Assert::assertSame($expect['manifest_hash'], $model->manifestHash, 'manifest hash');
@@ -1302,7 +1348,9 @@ final class Recipe
                 $named = static function (array $have, array $want) use (&$named): array {
                     $out = [];
                     foreach ($want as $key => $value) {
-                        $out[$key] = is_array($value) && !array_is_list($value) ? $named($have[$key], $value) : $have[$key];
+                        $out[$key] = is_array($value) && !array_is_list($value)
+                            ? $named($have[$key], $value)
+                            : $have[$key];
                     }
                     return $out;
                 };
@@ -1431,7 +1479,8 @@ final class Recipe
     }
 
     /**
-     * The lines of a text (FCV-4): a repeat gives its lines count times with {var} replaced, a fill one line of its text.
+     * The lines of a text (FCV-4): a repeat gives its lines count times with {var} replaced, a fill one line of its
+     * text.
      *
      * @param list<mixed> $items
      * @return list<string>
@@ -1760,9 +1809,9 @@ final class Recipe
     }
 
     /**
-     * Runs one dbspec.apply_fault step (FCV-4): the public apply or rollback on a SQLite connection, after applied_first
-     * and sql, with the fail_catalog_read-th read of the SQLite master query in the call failing. An injected failure must
-     * reach the apply error as its cause (PLN-92, PLN-93, PLN-96).
+     * Runs one dbspec.apply_fault step (FCV-4): the public apply or rollback on a SQLite connection, after
+     * applied_first and sql, with the fail_catalog_read-th read of the SQLite master query in the call failing. An
+     * injected failure must reach the apply error as its cause (PLN-92, PLN-93, PLN-96).
      *
      * @param array<string, mixed> $step
      * @param array<string, mixed> $bound
@@ -1813,7 +1862,8 @@ final class Recipe
             $error = $caught;
         }
         Assert::assertNotNull($error, 'the call succeeded');
-        // ApplyCleanupError holds the failure as its previous throwable and the cleanup errors in order (PLN-98, PLN-106).
+        // ApplyCleanupError holds the failure as its previous throwable and the cleanup errors in order (PLN-98,
+        // PLN-106).
         $cleanup = [];
         if ($error instanceof \Polyspec\Orm\Dbspec\ApplyCleanupError) {
             $cleanup = array_map(static fn(\Throwable $e): string => $e->getMessage(), $error->cleanup);
@@ -1840,7 +1890,10 @@ final class Recipe
             );
         }
         if (isset($expect['history_state'])) {
-            Assert::assertSame($expect['history_state'], $pdo->query('SELECT state FROM "dbspec$plans"')->fetchColumn());
+            Assert::assertSame(
+                $expect['history_state'],
+                $pdo->query('SELECT state FROM "dbspec$plans"')->fetchColumn()
+            );
         }
         foreach ($expect['absent_events'] ?? [] as $kind) {
             Assert::assertNotContains($kind, $kinds);
@@ -1848,9 +1901,9 @@ final class Recipe
     }
 
     /**
-     * Runs one dbspec.read_set step (FCV-4): it writes the tree under an empty temporary directory, with real links in the
-     * order written, reads the set with the public Dbspec::readSet, and compares the paths and the bytes of the files or
-     * the rule and path of each error (DBS-11).
+     * Runs one dbspec.read_set step (FCV-4): it writes the tree under an empty temporary directory, with real links in
+     * the order written, reads the set with the public Dbspec::readSet, and compares the paths and the bytes of the
+     * files or the rule and path of each error (DBS-11).
      */
     private static function dbspecReadSetStep(RecipeStep $step, string $database): void
     {
@@ -1891,7 +1944,10 @@ final class Recipe
             Assert::assertSame([], $result->errors, 'errors');
             foreach (['documents', 'external'] as $list) {
                 Assert::assertSame(
-                    array_map(static fn(string $p): array => ["$root/$p", (string) file_get_contents("$root/$p")], $expect[$list]),
+                    array_map(
+                        static fn(string $p): array => ["$root/$p", (string) file_get_contents("$root/$p")],
+                        $expect[$list]
+                    ),
                     array_map(static fn(object $f): array => [$f->path, $f->bytes], $result->$list),
                     "$list files",
                 );
@@ -1903,7 +1959,8 @@ final class Recipe
 
     /**
      * Runs one dbspec.render_statements step (FCV-4): it parses each document of the case of the vectors against the
-     * others and renders the set for each dialect, in the given order and reversed, to exactly the statements of the case (DIA-113).
+     * others and renders the set for each dialect, in the given order and reversed, to exactly the statements of the
+     * case (DIA-113).
      */
     private static function dbspecRenderStatementsStep(RecipeStep $step, string $dir): void
     {
@@ -1956,7 +2013,12 @@ final class Recipe
      */
     private static function dbspecIntrospectShownStep(RecipeStep $step, string $dir, string $database): void
     {
-        $vectors = json_decode((string) file_get_contents($dir . '/' . $step['vectors']), true, 512, JSON_THROW_ON_ERROR);
+        $vectors = json_decode(
+            (string) file_get_contents($dir . '/' . $step['vectors']),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
         $found = null;
         foreach ($vectors['cases'] as $vector) {
             if ($vector['id'] === $step['case']) {
@@ -2235,7 +2297,12 @@ final class Recipe
     private static function sendQuery(RecipeStep $step, mixed $db): void
     {
         $column = $step['column'];
-        $operatorPrefix = ['eq_method' => 'eq', 'ne_method' => 'ne', 'gt_method' => 'gt', 'new_method' => 'new'][$step['operator']] ?? null;
+        $operatorPrefix = [
+            'eq_method' => 'eq',
+            'ne_method' => 'ne',
+            'gt_method' => 'gt',
+            'new_method' => 'new',
+        ][$step['operator']] ?? null;
         if ($operatorPrefix !== null) {
             // A chain method of an operator (DSL-50), which __call dispatches.
             $method = $operatorPrefix . ucfirst(self::BIND_FILTERS[$column]
@@ -2781,7 +2848,8 @@ final class Recipe
      */
     private static function databaseStep(array $raw, array &$context): void
     {
-        // The PHP client names no statement, so a step that a named statement fails holds this outcome here (CFG-28, FCV-4).
+        // The PHP client names no statement, so a step that a named statement fails holds this outcome here (CFG-28,
+        // FCV-4).
         if (isset($raw['expect_unnamed'])) {
             $raw['expect'] = $raw['expect_unnamed'];
         }
@@ -2806,19 +2874,38 @@ final class Recipe
                 Assert::assertSame($expected['cause'], $error->getPrevious()?->getMessage(), 'the error cause');
             }
             if (isset($expected['message_holds'])) {
-                Assert::assertStringContainsString($expected['message_holds'], $error->getMessage(), 'the error message');
+                Assert::assertStringContainsString(
+                    $expected['message_holds'],
+                    $error->getMessage(),
+                    'the error message'
+                );
             }
             if (($expected['keeps_callback'] ?? false) === true) {
                 Assert::assertInstanceOf(CallbackFailed::class, $error->getPrevious(), 'the error of the callback');
             }
             if (isset($expected['rollback'])) {
                 Assert::assertSame($expected['rollback'], $error->rollback?->code_, 'the rollback error');
-                Assert::assertStringContainsString($error->rollback->getMessage(), $error->getMessage(), 'the error message');
+                Assert::assertStringContainsString(
+                    $error->rollback->getMessage(),
+                    $error->getMessage(),
+                    'the error message'
+                );
             }
             if (($expected['driver_cause'] ?? false) === true) {
                 Assert::assertInstanceOf(\PDOException::class, $error->getPrevious(), 'the driver cause of the error');
             }
-            $step->checkOutcome($expected, 'error', 'file_created', 'message_suffix', 'message', 'cause', 'message_holds', 'keeps_callback', 'rollback', 'driver_cause');
+            $step->checkOutcome(
+                $expected,
+                'error',
+                'file_created',
+                'message_suffix',
+                'message',
+                'cause',
+                'message_holds',
+                'keeps_callback',
+                'rollback',
+                'driver_cause'
+            );
             return;
         } catch (CallbackFailed $failure) {
             // The step ends with its failed callback, so an enclosing transaction goes on (FCV-4).
@@ -2939,8 +3026,8 @@ final class Recipe
                 }
                 return ['count' => $count];
             case 'transaction':
-                // The options of the transaction (INT-46): a nested transaction that names one is refused with CONFIG. An
-                // absent retry passes 0 unless default_retry leaves it out (INT-43).
+                // The options of the transaction (INT-46): a nested transaction that names one is refused with CONFIG.
+                // An absent retry passes 0 unless default_retry leaves it out (INT-43).
                 $options = [
                     'isolation' => $s['isolation'] ?? '',
                     'readOnly' => ($s['read_only'] ?? false) === true,
@@ -3160,7 +3247,12 @@ final class Recipe
                             $page->hasMore,
                         );
                     }
-                    if (isset($with['limit']) || isset($with['result_column_name']) || isset($with['drop_last_cell']) || isset($with['fill_last_cell'])) {
+                    if (
+                        isset($with['limit'])
+                        || isset($with['result_column_name'])
+                        || isset($with['drop_last_cell'])
+                        || isset($with['fill_last_cell'])
+                    ) {
                         $columns = $page->result->columns;
                         $rows = $page->result->rows;
                         if (isset($with['result_column_name'])) {
@@ -3170,7 +3262,10 @@ final class Recipe
                             array_pop($rows[0]);
                         }
                         if (isset($with['fill_last_cell'])) {
-                            $rows[0][array_key_last($rows[0])] = str_repeat($with['fill_last_cell']['fill'], $with['fill_last_cell']['count']);
+                            $rows[0][array_key_last($rows[0])] = str_repeat(
+                                $with['fill_last_cell']['fill'],
+                                $with['fill_last_cell']['count']
+                            );
                         }
                         $page = new CatalogTablePage(
                             $page->metadata,
@@ -3233,12 +3328,15 @@ final class Recipe
                 (self::boundValue($s['ref'], $context)->stop)();
                 return [];
             case 'utils.run':
-                // One Utils::run whose function runs the statements in order on its frame (INT-150); the value is the rows of the last.
+                // One Utils::run whose function runs the statements in order on its frame (INT-150); the value is the
+                // rows of the last.
                 $rows = self::connectionOf($s, $context)->utils()->run(
                     static function (TxFrame $frame) use ($s, $context): array {
                         $last = [];
                         foreach ($s['statements'] as $statement) {
-                            $text = is_string($statement['sql']) ? $statement['sql'] : $statement['sql'][$context['database']];
+                            $text = is_string($statement['sql'])
+                                ? $statement['sql']
+                                : $statement['sql'][$context['database']];
                             $last = $frame->run(
                                 $statement['kind'],
                                 $statement['tables'],
@@ -3350,15 +3448,18 @@ final class Recipe
                 }
                 return ['value' => $body === null ? ['null' => 'text'] : ['text' => $body]];
             case 'transaction.writers':
-                // PHP runs one thread, so each writer is a process (CFG-12).
-                $extension = getenv('POLYSPEC_ORM_EXTENSION');
-                $php = is_string($extension) && $extension !== '' && extension_loaded('polyspec_orm')
-                    ? [PHP_BINARY, '-d', 'extension=' . $extension]
-                    : [PHP_BINARY];
+                // PHP runs one thread, so each writer is a process (CFG-12). A process inherits the PHP_INI_SCAN_DIR
+                // through which run-tests of kit loads the extension, so it runs the implementation of this one.
                 $writers = [];
                 for ($i = 0; $i < $s['writers']; $i++) {
                     $process = proc_open(
-                        [...$php, __DIR__ . '/sqlite_concurrency_writer.php', $context['dsn'], "w$i", (string) $s['writes']],
+                        [
+                            PHP_BINARY,
+                            __DIR__ . '/sqlite_concurrency_writer.php',
+                            $context['dsn'],
+                            "w$i",
+                            (string) $s['writes'],
+                        ],
                         [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
                         $pipes
                     );
@@ -3371,34 +3472,48 @@ final class Recipe
                 }
                 $writersDb = \Polyspec\Orm\Tests\Model\connect($context['dsn'], new Config());
                 try {
-                    return ['value' => ['int' => (string) (new \Polyspec\Orm\Tests\Model\Service())($writersDb)->getCount()]];
+                    return [
+                        'value' => [
+                            'int' => (string) (new \Polyspec\Orm\Tests\Model\Service())($writersDb)->getCount(),
+                        ],
+                    ];
                 } finally {
                     $writersDb->close();
                 }
             case 'replica.await':
-                // Returns after the replica has applied every change that the primary committed before the call (CFG-23). On
-                // PostgreSQL a transaction with synchronous_commit=remote_apply that writes WAL, here a transactional logical
-                // message, commits after the standby has applied it. On MySQL SOURCE_POS_WAIT on the replica waits for the binary
-                // log position of the primary, on the database of the environment, since the case database reaches the replica
-                // only by this wait. The 60 seconds are the deadline of the wait: the replica applies the writes of every client.
+                // Returns after the replica has applied every change that the primary committed before the call
+                // (CFG-23). On PostgreSQL a transaction with synchronous_commit=remote_apply that writes WAL, here a
+                // transactional logical message, commits after the standby has applied it. On MySQL SOURCE_POS_WAIT on
+                // the replica waits for the binary log position of the primary, on the database of the environment,
+                // since the case database reaches the replica only by this wait. The 60 seconds are the deadline of the
+                // wait: the replica applies the writes of every client.
                 $source = case_admin($context['dsn']);
                 if ($context['database'] === 'postgres') {
                     $source->beginTransaction();
                     $source->exec('SET LOCAL synchronous_commit = remote_apply');
                     $mode = $source->query(
-                        "SELECT current_setting('synchronous_commit'), pg_logical_emit_message(true, 'orm-test-barrier', '')"
+                        "SELECT current_setting('synchronous_commit'), pg_logical_emit_message(true, "
+                            . "'orm-test-barrier', '')"
                     )->fetchColumn();
                     Assert::assertSame('remote_apply', $mode, 'synchronous_commit of the barrier transaction');
                     $source->commit();
                     return [];
                 }
                 $replica = (string) getenv('ORM_TEST_MYSQL_REPLICA_DSN');
-                Assert::assertNotSame('', $replica, 'ORM_TEST_MYSQL_REPLICA_DSN is required; run make orm-test-servers, which starts the databases and writes it');
+                Assert::assertNotSame(
+                    '',
+                    $replica,
+                    'ORM_TEST_MYSQL_REPLICA_DSN is required; run make orm-test-servers, which starts the databases '
+                        . 'and writes it'
+                );
                 $status = $source->query('SHOW BINARY LOG STATUS')->fetch(\PDO::FETCH_NUM);
                 $wait = case_admin($replica)->prepare('SELECT SOURCE_POS_WAIT(?, ?, 60)');
                 $wait->execute([$status[0], (int) $status[1]]);
                 $waited = $wait->fetchColumn();
-                Assert::assertTrue($waited !== null && (int) $waited >= 0, "the replica did not reach {$status[0]}:{$status[1]}");
+                Assert::assertTrue(
+                    $waited !== null && (int) $waited >= 0,
+                    "the replica did not reach {$status[0]}:{$status[1]}"
+                );
                 return [];
             case 'database.read_only':
                 // The file of the case database becomes one that the process may only read (CFG-24).
@@ -3406,10 +3521,16 @@ final class Recipe
                 return [];
             // The ops of a LISTEN subscription (FCV-4, DIA-194, DIA-195).
             case 'db.listen':
-                return ['bind' => self::connectionOf($s, $context)->listen(str_repeat($s['channel'], $s['channel_repeat'] ?? 1))];
+                return [
+                    'bind' => self::connectionOf($s, $context)->listen(
+                        str_repeat($s['channel'], $s['channel_repeat'] ?? 1)
+                    ),
+                ];
             case 'subscription.receive':
                 $notification = self::boundValue($s['ref'], $context)->receive(($s['within_ms'] ?? 10000) / 1000);
-                $payload = ($s['payload_bytes'] ?? false) === true ? strlen($notification->payload) : $notification->payload;
+                $payload = ($s['payload_bytes'] ?? false) === true
+                    ? strlen($notification->payload)
+                    : $notification->payload;
                 return ['json' => [$notification->channel, $payload]];
             case 'subscription.unlisten':
                 self::boundValue($s['ref'], $context)->unlisten($s['channel']);
@@ -3419,7 +3540,10 @@ final class Recipe
                 return [];
             case 'session.end_listener':
                 $pdo = case_admin(self::connectDsn('case-server', $context['database'], $context['dsn']));
-                $find = $pdo->prepare('SELECT pid FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid() AND query = ? LIMIT 1');
+                $find = $pdo->prepare(
+                    'SELECT pid FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid() '
+                        . 'AND query = ? LIMIT 1'
+                );
                 $find->execute(['LISTEN "' . $s['channel'] . '"']);
                 $pid = $find->fetchColumn();
                 Assert::assertNotFalse($pid, "the listener session of {$s['channel']}");
@@ -3436,14 +3560,22 @@ final class Recipe
                 // Through the server DSN, not a pooler, which may handle KILL on its own (CFG-15).
                 $variable = 'ORM_TEST_' . strtoupper($context['database']) . '_SERVER_DSN';
                 $server = (string) getenv($variable);
-                Assert::assertNotSame('', $server, "$variable is required; run make orm-test-servers, which starts the databases and writes it");
+                Assert::assertNotSame(
+                    '',
+                    $server,
+                    "$variable is required; run make orm-test-servers, which starts the databases and writes it"
+                );
                 $pdo = case_admin(
                     case_dsn_with_database($server, ltrim((string) parse_url($context['dsn'], PHP_URL_PATH), '/'))
                 );
                 $postgres = $context['database'] === 'postgres';
                 $id = $pdo->query($postgres
-                    ? "SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = '{$s['table']}' AND l.pid <> pg_backend_pid() LIMIT 1"
-                    : "SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = '{$s['table']}' LIMIT 1")->fetchColumn();
+                    ? "SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT "
+                        . "oid FROM pg_database WHERE datname = current_database()) AND c.relname = '{$s['table']}' "
+                        . "AND l.pid <> pg_backend_pid() LIMIT 1"
+                    : "SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t "
+                        . "ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = "
+                        . "'{$s['table']}' LIMIT 1")->fetchColumn();
                 Assert::assertNotFalse($id, "the transaction session holds a lock on {$s['table']}");
                 $pdo->exec($postgres ? 'SELECT pg_terminate_backend(' . (int) $id . ', 5000)' : 'KILL ' . (int) $id);
                 return [];
@@ -3452,17 +3584,29 @@ final class Recipe
             case 'dbspec.plan_physical':
                 return RecipeIntrospect::planPhysical($s, $context);
             case 'dbspec.ddl_behavior':
-                // On one native connection of the case database, the connection rules, the statements of the case for the
-                // database, then its behavior steps. A step with dialects runs only on those; a step with fails must fail;
-                // a query compares its first value, as text, with want, and a NULL or absent value fails it (DIA-113).
-                $vectors = json_decode((string) file_get_contents($context['dir'] . '/' . $s['vectors']), true, 512, JSON_THROW_ON_ERROR);
-                $matching = array_values(array_filter($vectors['cases'], static fn(array $c): bool => $c['id'] === $s['case']));
+                // On one native connection of the case database, the connection rules, the statements of the case for
+                // the database, then its behavior steps. A step with dialects runs only on those; a step with fails
+                // must fail; a query compares its first value, as text, with want, and a NULL or absent value fails it
+                // (DIA-113).
+                $vectors = json_decode(
+                    (string) file_get_contents($context['dir'] . '/' . $s['vectors']),
+                    true,
+                    512,
+                    JSON_THROW_ON_ERROR
+                );
+                $matching = array_values(
+                    array_filter($vectors['cases'], static fn(array $c): bool => $c['id'] === $s['case'])
+                );
                 if ($matching === []) {
                     throw new \RuntimeException("the vectors have no case {$s['case']}");
                 }
                 $database = $context['database'];
                 $pdo = case_admin($context['dsn']);
-                $rule = ['mysql' => "SET time_zone = '+00:00'", 'postgres' => "SET TimeZone = 'UTC'", 'sqlite' => 'PRAGMA foreign_keys = ON'][$database];
+                $rule = [
+                    'mysql' => "SET time_zone = '+00:00'",
+                    'postgres' => "SET TimeZone = 'UTC'",
+                    'sqlite' => 'PRAGMA foreign_keys = ON',
+                ][$database];
                 foreach ([$rule, ...$matching[0]['statements'][$database]] as $statement) {
                     $pdo->exec($statement);
                 }
@@ -3495,7 +3639,8 @@ final class Recipe
                 // PDO on PostgreSQL parses a statement under a name of its own, unless it emulates.
                 $context['held'] = case_admin(self::connectDsn($s['dsn'], $context['database'], $context['dsn']));
                 $context['held']->setAttribute(\PDO::ATTR_EMULATE_PREPARES, false);
-                // PDO binds no value to a $1 of the text, so the placeholder is its ?, which PDO sends as $1: the same text.
+                // PDO binds no value to a $1 of the text, so the placeholder is its ?, which PDO sends as $1: the same
+                // text.
                 $held = $context['held']->prepare(str_replace('$1', '?', $s['sql']));
                 $held->execute([$s['bind']]);
                 $context['held_statement'] = $held;
@@ -3518,7 +3663,8 @@ final class Recipe
                         $pdo->exec($statement);
                         return [];
                     }
-                    // A native SQLite connection starts with foreign keys off; the runners of the other clients open it with them on.
+                    // A native SQLite connection starts with foreign keys off; the runners of the other clients open it
+                    // with them on.
                     if ($context['database'] === 'sqlite') {
                         $pdo->exec('PRAGMA foreign_keys = ON');
                     }
@@ -3531,7 +3677,9 @@ final class Recipe
                         }
                         return [];
                     }
-                    throw new \RuntimeException("the database accepted the statement that the step expects it to refuse: $statement");
+                    throw new \RuntimeException(
+                        "the database accepted the statement that the step expects it to refuse: $statement"
+                    );
                 }
                 return [];
             case 'query.search':
@@ -3648,7 +3796,8 @@ final class Recipe
         });
         $namespace = 'Polyspec\\Orm\\Tests\\RecipeModels\\F' . substr($key, 0, 12);
         generateModels($documents, "$work/source", "$work/models", $namespace, $external);
-        // A set that the process already loaded keeps its classes: the registry holds one class per entity of a manifest.
+        // A set that the process already loaded keeps its classes: the registry holds one class per entity of a
+        // manifest.
         $declarations = (string) file_get_contents("$work/models/schema_declarations.php");
         if (preg_match("/^const MANIFEST_HASH = '([^']+)';$/m", $declarations, $match) !== 1) {
             Assert::fail("the generated models of $setPath declare no manifest hash");
@@ -3954,8 +4103,8 @@ final class Recipe
     }
 
     /**
-     * events.server_transactions (FCV-4, INT-149): the nested steps run twice, and the difference of the probe counts the
-     * server transactions of each run. The probe runs in a frame of its own, so its cost is measured first.
+     * events.server_transactions (FCV-4, INT-149): the nested steps run twice, and the difference of the probe counts
+     * the server transactions of each run. The probe runs in a frame of its own, so its cost is measured first.
      *
      * @param array<string, mixed> $s
      * @param array<string, mixed> $context
@@ -3974,7 +4123,8 @@ final class Recipe
             [$setting, $source] = array_values(
                 $frameRows("SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'")[0]
             );
-            // Through a pooler the pooler applies the startup parameters with SET, so the source says nothing about the client.
+            // Through a pooler the pooler applies the startup parameters with SET, so the source says nothing about the
+            // client.
             $pooled = getenv('ORM_TEST_POSTGRES_DSN') !== getenv('ORM_TEST_POSTGRES_SERVER_DSN');
             $fields['time_zone'] = $setting;
             $fields['time_zone_from_startup'] = $pooled || $source === 'client';
@@ -4008,9 +4158,9 @@ final class Recipe
     }
 
     /**
-     * Two flows write two rows in opposite order (PLN-24), each a child process, as the request of PHP is one flow: each
-     * holds its first row until the other holds its own, so the database ends one flow with its deadlock error, the client
-     * retries it, and both commit.
+     * Two flows write two rows in opposite order (PLN-24), each a child process, as the request of PHP is one flow:
+     * each holds its first row until the other holds its own, so the database ends one flow with its deadlock error,
+     * the client retries it, and both commit.
      */
     private static function transactionDeadlock(RecipeStep $s, array $context): array
     {
@@ -4019,15 +4169,13 @@ final class Recipe
             (string) self::chainValue($row['tenant_id'], $context),
             (string) self::chainValue($row['account_id'], $context),
         ];
-        $extension = getenv('POLYSPEC_ORM_EXTENSION');
-        $php = is_string($extension) && $extension !== '' && extension_loaded('polyspec_orm')
-            ? [PHP_BINARY, '-d', 'extension=' . $extension]
-            : [PHP_BINARY];
+        // A flow inherits the PHP_INI_SCAN_DIR through which run-tests of kit loads the extension, so it runs the
+        // implementation of this process.
         $children = [];
         foreach ([0, 1] as $index) {
             $process = proc_open(
                 [
-                    ...$php,
+                    PHP_BINARY,
                     __DIR__ . '/transaction_deadlock_child.php',
                     $context['dsn'],
                     ...$key($s['rows'][$index]),
@@ -4042,7 +4190,10 @@ final class Recipe
         }
         // The schema of the case reaches each flow on its first line of input.
         $schema = $context['schema'];
-        $line = json_encode([$schema->manifestText, $schema->manifestHash, $schema->externalText], JSON_THROW_ON_ERROR) . "\n";
+        $line = json_encode(
+            [$schema->manifestText, $schema->manifestHash, $schema->externalText],
+            JSON_THROW_ON_ERROR
+        ) . "\n";
         foreach ($children as [, $pipes]) {
             fwrite($pipes[0], $line);
         }
@@ -4432,7 +4583,8 @@ final class Recipe
             $relation = $s['relation'];
             unset($relation['columns']);
             $child = self::chainRelation($relation, $build, $context);
-            // Only a relation that names connect runs on the connection of the query; without it the child has no handle and takes the connection of its parent (INT-87).
+            // Only a relation that names connect runs on the connection of the query; without it the child has no
+            // handle and takes the connection of its parent (INT-87).
             if (($relation['connect'] ?? false) === true) {
                 $child->connect($db);
             }
@@ -4524,7 +4676,10 @@ final class Recipe
                 $model->$call(self::chainValue($value['arith']['amount'], $context));
             } elseif (isset($value['styled'])) {
                 $model->{'set' . $name}(StyledValue::value(self::chainValue($value['styled'], $context)));
-            } elseif (array_key_exists('null', $value) && RuntimeModel::styled($model::meta()['columns'][$column] ?? ['codec' => []])) {
+            } elseif (
+                array_key_exists('null', $value)
+                && RuntimeModel::styled($model::meta()['columns'][$column] ?? ['codec' => []])
+            ) {
                 // A null of a styled column is SQL NULL, the styled value its typed setter takes.
                 $model->{'set' . $name}(StyledValue::sqlNull());
             } elseif (isset($value['object'])) {
@@ -4532,8 +4687,12 @@ final class Recipe
                 $model->{'set' . $name}(self::styledArgument($value, $codec, []));
             } else {
                 $argument = self::chainValue($value, $context);
-                if ($argument === null && !(new \ReflectionMethod($model, 'set' . $name))->getParameters()[0]->allowsNull()) {
-                    // The typed setter of a non-null column takes no NULL, so the row writes it through the column writer.
+                if (
+                    $argument === null
+                    && !(new \ReflectionMethod($model, 'set' . $name))->getParameters()[0]->allowsNull()
+                ) {
+                    // The typed setter of a non-null column takes no NULL, so the row writes it through the column
+                    // writer.
                     (new \ReflectionMethod($model, 'writeColumn'))->invoke($model, $column, null);
                 } else {
                     $model->{'set' . $name}($argument);
@@ -4658,7 +4817,9 @@ final class Recipe
                 return [];
             case 'row.connect':
                 // connect of a bound row (CFG-21): a later write of the row runs on that connection.
-                self::boundValue(is_string($s['row']) ? $s['row'] : $s['row']['ref'], $context)->connect(self::connectionOf($s, $context));
+                self::boundValue(is_string($s['row']) ? $s['row'] : $s['row']['ref'], $context)->connect(
+                    self::connectionOf($s, $context)
+                );
                 return [];
             case 'collection.connect':
                 // connect of a bound collection (INT-85): true when it returns that collection.
@@ -4685,7 +4846,11 @@ final class Recipe
                 return [];
             case 'db.last_affected':
                 require_once dirname(__DIR__) . '/testing/Faults.php';
-                return ['value' => ['int' => (string) \Polyspec\Orm\Testing\Faults::lastAffected(self::connectionOf($s, $context))]];
+                return [
+                    'value' => [
+                        'int' => (string) \Polyspec\Orm\Testing\Faults::lastAffected(self::connectionOf($s, $context)),
+                    ],
+                ];
             case 'db.notify':
                 self::connectionOf($s, $context)->notify(
                     str_repeat($s['channel'], $s['channel_repeat'] ?? 1),
@@ -4714,15 +4879,18 @@ final class Recipe
                         $privileges->revokeTable($s['table'], $s['privilege'], $s['role']);
                         return ['value' => ['bool' => true]];
                 }
-                Assert::fail("utils.privilege has no call {$s['call']}");
+                throw new \PHPUnit\Framework\AssertionFailedError("utils.privilege has no call {$s['call']}");
             case 'utils.was_inserted':
                 $utils = self::connectionOf($s, $context)->utils();
                 return ['value' => ['bool' => $utils->wasInserted($s['table'], $s['sequence'])]];
             case 'utils.backend_waiting_for_lock':
                 return ['value' => ['bool' => self::connectionOf($s, $context)->utils()->backendWaitingForLock()]];
             case 'pool.transactions':
-                // PHP keeps no pool (CFG-4), so the recipe connection_pool has no PHP binding and this op never runs here.
-                throw new \RuntimeException(sprintf('PHP keeps no pool for %d transactions holding %d', $s['transactions'], $s['hold']));
+                // PHP keeps no pool (CFG-4), so the recipe connection_pool has no PHP binding and this op never runs
+                // here.
+                throw new \RuntimeException(
+                    sprintf('PHP keeps no pool for %d transactions holding %d', $s['transactions'], $s['hold'])
+                );
             case 'utils.stats':
                 // The pool counts of the connection (INT-79).
                 $stats = self::connectionOf($s, $context)->utils()->stats();
@@ -4768,7 +4936,10 @@ final class Recipe
         if (($s['plan'] ?? false) === true) {
             $steps = isset($s['plan_page'])
                 ? $model->getPagePlanSteps($s['plan_page']['page'], $s['plan_page']['per_page'])
-                : $model->getPagePlanSteps(intdiv($s['limit']['offset'], $s['limit']['count']) + 1, $s['limit']['count']);
+                : $model->getPagePlanSteps(
+                    intdiv($s['limit']['offset'], $s['limit']['count']) + 1,
+                    $s['limit']['count']
+                );
             return ['json' => array_map(static function (array $step) use ($s): array {
                 $count = [];
                 foreach ($s['plan_count'] as $text) {
@@ -4986,14 +5157,18 @@ final class Recipe
         if (is_bool($value)) {
             return ['bool' => $value];
         }
-        if (is_string($value) && $nativeType === null && ctype_digit($value) && strlen($value) >= 19
-            && filter_var($value, FILTER_VALIDATE_INT) === false) {
+        if (
+            is_string($value) && $nativeType === null && ctype_digit($value) && strlen($value) >= 19
+            && filter_var($value, FILTER_VALIDATE_INT) === false
+        ) {
             // PHP holds a MySQL unsigned value beyond its integer as its digits (INT-102).
             return ['int' => $value];
         }
         // A PHP string is its bytes, so a value is binary by its column type or when it is not text (INT-153).
-        if (is_string($value) && (preg_match('/binary|bytea|blob/i', $nativeType ?? '') === 1
-            || mb_check_encoding($value, 'UTF-8') === false)) {
+        if (
+            is_string($value) && (preg_match('/binary|bytea|blob/i', $nativeType ?? '') === 1
+            || mb_check_encoding($value, 'UTF-8') === false)
+        ) {
             return ['bytes_hex' => bin2hex($value)];
         }
         if (is_string($value)) {

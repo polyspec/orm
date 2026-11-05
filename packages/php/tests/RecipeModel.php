@@ -140,7 +140,9 @@ trait RecipeModel
                 self::compositeAccountSet(null, self::modelValues($s['values'], $context))->create();
                 return [];
             })(),
-            'model.count' => ['value' => ['int' => (string) (new \Polyspec\Orm\Tests\Model\CompositeAccount())->getCount()]],
+            'model.count' => [
+                'value' => ['int' => (string) (new \Polyspec\Orm\Tests\Model\CompositeAccount())->getCount()],
+            ],
             default => Assert::fail("model op {$s['op']} has no unconnected form"),
         };
     }
@@ -165,9 +167,16 @@ trait RecipeModel
         if ($dsn === 'case-pooler') {
             $pooler = getenv('ORM_TEST_PGBOUNCER_DSN');
             if (!is_string($pooler) || $pooler === '') {
-                Assert::fail('dsn case-pooler: ORM_TEST_PGBOUNCER_DSN is required; run make orm-test-servers, which starts the databases and writes it');
+                Assert::fail(
+                    'dsn case-pooler: ORM_TEST_PGBOUNCER_DSN is required; run make orm-test-servers, which starts the '
+                        . 'databases and writes it'
+                );
             }
-            $replaced = preg_replace('~^(\w+://[^/]*)/[^?]*~', '$1' . (string) parse_url($caseDsn, PHP_URL_PATH), $pooler);
+            $replaced = preg_replace(
+                '~^(\w+://[^/]*)/[^?]*~',
+                '$1' . (string) parse_url($caseDsn, PHP_URL_PATH),
+                $pooler
+            );
             if (!is_string($replaced)) {
                 Assert::fail("dsn case-pooler: $pooler is not a DSN");
             }
@@ -177,9 +186,16 @@ trait RecipeModel
             $variable = 'ORM_TEST_' . strtoupper($database) . '_SERVER_DSN';
             $server = getenv($variable);
             if (!is_string($server) || $server === '') {
-                Assert::fail("dsn case-server: $variable is required; run make orm-test-servers, which starts the databases and writes it");
+                Assert::fail(
+                    "dsn case-server: $variable is required; run make orm-test-servers, which starts the databases "
+                        . "and writes it"
+                );
             }
-            $replaced = preg_replace('~^(\w+://[^/]*)/[^?]*~', '$1' . (string) parse_url($caseDsn, PHP_URL_PATH), $server);
+            $replaced = preg_replace(
+                '~^(\w+://[^/]*)/[^?]*~',
+                '$1' . (string) parse_url($caseDsn, PHP_URL_PATH),
+                $server
+            );
             if (!is_string($replaced)) {
                 Assert::fail("dsn case-server: $server is not a DSN");
             }
@@ -189,9 +205,16 @@ trait RecipeModel
             $variable = 'ORM_TEST_' . strtoupper($database) . '_REPLICA_DSN';
             $replica = getenv($variable);
             if (!is_string($replica) || $replica === '') {
-                Assert::fail("dsn case-replica: $variable is required; run make orm-test-servers, which starts the databases and writes it");
+                Assert::fail(
+                    "dsn case-replica: $variable is required; run make orm-test-servers, which starts the databases "
+                        . "and writes it"
+                );
             }
-            $replaced = preg_replace('~^(\w+://[^/]*)/[^?]*~', '$1' . (string) parse_url($caseDsn, PHP_URL_PATH), $replica);
+            $replaced = preg_replace(
+                '~^(\w+://[^/]*)/[^?]*~',
+                '$1' . (string) parse_url($caseDsn, PHP_URL_PATH),
+                $replica
+            );
             if (!is_string($replaced)) {
                 Assert::fail("dsn case-replica: $replica is not a DSN");
             }

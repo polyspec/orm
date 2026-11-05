@@ -1,7 +1,7 @@
 <?php
 
-// Conformance runner (PHP). Runs the bodies that no recipe step reaches, the generated-method and the fixed-clock bodies
-// (tests/conformance/README.md), and prints the document of packages/go/internal/conformance/main.go.
+// Conformance runner (PHP). Runs the bodies that no recipe step reaches, the generated-method and the fixed-clock
+// bodies (tests/conformance/README.md), and prints the document of packages/go/internal/conformance/main.go.
 // Usage: php packages/php/testing/conformance/runner.php --dsn URI [--vector NAME]...
 // --vector can be repeated; when given, only the vectors with that name run. An unknown name is an error.
 declare(strict_types=1);

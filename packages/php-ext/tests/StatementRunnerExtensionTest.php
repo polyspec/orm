@@ -12,8 +12,6 @@ use Polyspec\Orm\Tests\ThreeDrivers;
 use Polyspec\Orm\TxFrame;
 use ReflectionClass;
 
-use function Polyspec\Orm\Tests\with_case_database;
-
 // Checks the native statement runner of INT-150 on SQLite, MySQL, and PostgreSQL. The cases are the ones of the PHP
 // runtime (Polyspec\Orm\Tests\StatementRunnerCases), and this file adds that the surface is native. Each case runs in
 // its own case database, and a missing test server fails.
@@ -37,8 +35,7 @@ final class StatementRunnerExtensionTest extends TestCase
     public function testStatementRunnerRefusesNonTextStatementWithConfig(string $driver): void
     {
         self::assertRunnerSurface();
-        with_case_database($driver, static function (string $step): void {
-        }, static fn(string $dsn) => self::nonTextStatementFailsWithConfig($dsn));
+        self::onCaseDatabase($driver, self::nonTextStatementFailsWithConfig(...));
     }
 
     // Requirements: INT-150a.
@@ -46,7 +43,6 @@ final class StatementRunnerExtensionTest extends TestCase
     public function testFrameAfterItsTransactionEnded(string $driver): void
     {
         self::assertRunnerSurface();
-        with_case_database($driver, static function (string $step): void {
-        }, static fn(string $dsn) => self::frameAfterItsTransactionEndedFailsWithConfig($dsn));
+        self::onCaseDatabase($driver, self::frameAfterItsTransactionEndedFailsWithConfig(...));
     }
 }

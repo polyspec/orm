@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Extension\Tests;
 
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Tests\DecimalModelDbTest;
 use Polyspec\Orm\Tests\NativeMethodAssertions;
 
+// The registry holds one class per entity of a manifest and the recipe of a process has its own namespace, so the case
+// runs in a process of its own.
+#[RunTestsInSeparateProcesses]
 final class DecimalModelSqliteNativeTest extends TestCase
 {
     use NativeMethodAssertions;

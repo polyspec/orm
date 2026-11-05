@@ -12,8 +12,8 @@ use PHPUnit\Framework\Assert;
 use Traversable;
 
 /**
- * A step of a recipe or its outcome as the helper reads it (FCV-4): a key that the helper never reads asserts nothing, so
- * a run records what it reads and an unread key fails the case by name.
+ * A step of a recipe or its outcome as the helper reads it (FCV-4): a key that the helper never reads asserts nothing,
+ * so a run records what it reads and an unread key fails the case by name.
  *
  * @implements ArrayAccess<string, mixed>
  * @implements IteratorAggregate<string, mixed>
@@ -31,7 +31,8 @@ final class RecipeStep implements ArrayAccess, Countable, IteratorAggregate
     private ?self $outcome = null;
 
     /**
-     * @param array<string, mixed> $raw the step; with $database its expect of that database is read through a record too.
+     * @param array<string, mixed> $raw the step; with $database its expect of that database is read through a record
+     * too.
      */
     public function __construct(private array $raw, ?string $database = null)
     {

@@ -20,9 +20,7 @@ class ConformanceVerificationPostgresRecipeTest extends TestCase
     // creates_batch_too_large, above the 128M default of PHP.
     public static function setUpBeforeClass(): void
     {
-        if (ini_set('memory_limit', '256M') === false) {
-            throw new \RuntimeException('the conformance_verification recipe requires its declared 256M memory_limit');
-        }
+        self::requireMemoryLimit('256M');
     }
 
     protected static function recipe(): string

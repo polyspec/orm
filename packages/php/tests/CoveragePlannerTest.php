@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-// The invariants of the planner that the compile recipe tests/planner/compile.json (PlannerCompileTest.php) does not state.
+// The invariants of the planner that the compile recipe tests/planner/compile.json (PlannerCompileTest.php) does not
+// state.
 
 
 use Polyspec\Orm\Dialect;

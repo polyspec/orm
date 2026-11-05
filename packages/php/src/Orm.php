@@ -108,8 +108,8 @@ final class Orm
         } catch (\PDOException $e) {
             $tls = $sslCa !== null && str_contains($e->getMessage(), 'SSL');
             $prefix = $tls ? 'mysql TLS connection failed: ' : 'cannot connect: ';
-            // A connection that the server refuses is DRIVER, as any other error of the driver (CFG-1). A certificate, a file
-            // and a time zone that the server does not know are what the DSN gives.
+            // A connection that the server refuses is DRIVER, as any other error of the driver (CFG-1). A certificate,
+            // a file and a time zone that the server does not know are what the DSN gives.
             $refused = !$tls && $driver !== 'sqlite' && (int) $e->getCode() !== 1298;
             throw new OrmException($refused ? Code::DRIVER : Code::CONFIG, $prefix . $e->getMessage(), $e);
         }

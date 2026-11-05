@@ -67,14 +67,18 @@ final class RecipeIntrospect
             $triples = array_map(static fn($u): array => [$u->kind, $u->table, $u->name], $result->unsupported);
             $want = array_map(static fn(array $entry): array => array_slice($entry, 0, 3), $vector['unsupported']);
             if ($triples !== $want) {
-                throw new RuntimeException('unsupported objects ' . json_encode($triples) . ', want ' . json_encode($want));
+                throw new RuntimeException(
+                    'unsupported objects ' . json_encode($triples) . ', want ' . json_encode($want)
+                );
             }
             foreach ($vector['unsupported'] as $index => $entry) {
                 if ($result->unsupported[$index]->reason === '') {
                     throw new RuntimeException("the reason of {$entry[2]} is empty");
                 }
                 if (isset($entry[3]) && !str_contains($result->unsupported[$index]->reason, $entry[3])) {
-                    throw new RuntimeException("the reason of {$entry[2]}: {$result->unsupported[$index]->reason}, want rule {$entry[3]}");
+                    throw new RuntimeException(
+                        "the reason of {$entry[2]}: {$result->unsupported[$index]->reason}, want rule {$entry[3]}"
+                    );
                 }
             }
             return ['queries' => $queries];
@@ -128,7 +132,9 @@ final class RecipeIntrospect
             $sourceText = self::planSchemaText($source);
         }
         $planned = Dbspec::planSteps($source, $plan, $database);
-        $steps = $planned->steps ?? throw new RuntimeException('the plan steps: ' . plan_diagnostics($planned->diagnostics));
+        $steps = $planned->steps ?? throw new RuntimeException(
+            'the plan steps: ' . plan_diagnostics($planned->diagnostics)
+        );
         $reversible = true;
         foreach ($steps as $planStep) {
             if (!$planStep->finalize && $planStep->rollback === '') {
@@ -254,7 +260,8 @@ final class RecipeIntrospect
     }
 
     /**
-     * The empty case database with the catalog queries of another dialect: their failure is the error of the call (DIA-133).
+     * The empty case database with the catalog queries of another dialect: their failure is the error of the call
+     * (DIA-133).
      *
      * @return array{failed: true}
      */
@@ -334,6 +341,8 @@ final class RecipeIntrospect
         }
         usort($combined->tables, static fn(Table $a, Table $b): int => strcmp($a->name, $b->name));
         $manifest = Dbspec::manifest([$combined]);
-        return $manifest->manifest?->schemaText ?? throw new RuntimeException('manifest: ' . json_encode($manifest->diagnostics));
+        return $manifest->manifest?->schemaText ?? throw new RuntimeException(
+            'manifest: ' . json_encode($manifest->diagnostics)
+        );
     }
 }

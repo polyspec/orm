@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-// The refusals of Dbspec::apply and Dbspec::rollback on a database that differs from the chain (docs/spec/plans.md). The
-// physical run of the plan cases is the recipe case plan_physical_* of
+// The refusals of Dbspec::apply and Dbspec::rollback on a database that differs from the chain (docs/spec/plans.md).
+// The physical run of the plan cases is the recipe case plan_physical_* of
 // contracts/fixtures/dbspec_introspect/dbspec_introspect.json (PLN-102).
 
 use PDO;

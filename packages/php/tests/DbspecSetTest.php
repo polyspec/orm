@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-// A set path without a directory, whose root is the working directory (docs/spec/dbspec.md "Document sets"): the working directory
-// is the state of a process, so no recipe step can state it (FCV-2).
+// A set path without a directory, whose root is the working directory (docs/spec/dbspec.md "Document sets"): the
+// working directory is the state of a process, so no recipe step can state it (FCV-2).
 // Requirements: DBS-12.
 
 use PHPUnit\Framework\Attributes\Small;

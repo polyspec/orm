@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-// The rollback fault of the test entry point, and a server that ends the session of a new Db before its first statement,
-// which then fails with CONNECTION_LOST and is sent once (CFG-38). The failed rollbacks of CFG-15 and INT-155 are cases of
-// contracts/fixtures/transactions/transactions.json. Each case runs in a case database of its own (case_database.php).
+// The rollback fault of the test entry point, and a server that ends the session of a new Db before its first
+// statement, which then fails with CONNECTION_LOST and is sent once (CFG-38). The failed rollbacks of CFG-15 and
+// INT-155 are cases of contracts/fixtures/transactions/transactions.json. Each case runs in a case database of its own
+// (case_database.php).
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RollbackTest.php
 // [--filter <case>]
 
@@ -21,6 +22,8 @@ use Polyspec\Orm\OrmException;
 use Polyspec\Orm\Testing\Faults;
 use Polyspec\Orm\Tests\RollbackCase\RollbackProbe;
 use PHPUnit\Framework\Attributes\Medium;
+use PHPUnit\Framework\Attributes\PreserveGlobalState;
+use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 
@@ -67,7 +70,8 @@ class RollbackTest extends TestCase
         $server = requiredDsn($env);
         if ($server === false || $server === '') {
             throw new RuntimeException(
-                "$env is required; run make orm-test-servers, which starts the databases and writes it; run the test through its make target, which reads the "
+                "$env is required; run make orm-test-servers, which starts the databases and writes it; run the test "
+                    . "through its make target, which reads the "
                 . "environment of make orm-test-servers"
             );
         }
@@ -130,7 +134,10 @@ class RollbackTest extends TestCase
         self::fixture();
     }
 
+    // Another test of a process may have required the entry point, so this case reads the class in its own process.
     // Requirements: PRT-46, PRT-56, PRT-61.
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
     public function testFaultEntry(): void
     {
         self::check(self::$faultsAutoloaded === false, 'the package autoloader loads Polyspec\\Orm\\Testing\\Faults');

@@ -18,6 +18,13 @@ use Polyspec\Orm\TxFrame;
 /** The refusals of INT-150a and INT-150b that the statement runner tests of the library and of the extension share. */
 trait StatementRunnerCases
 {
+    /** Runs a case on its own case database, whose creation steps nothing reports. */
+    private static function onCaseDatabase(string $driver, callable $case): void
+    {
+        with_case_database($driver, static function (string $step): void {
+        }, $case);
+    }
+
     /** A statement that is not text fails with CONFIG, and the runner ends the transaction it opened. */
     private static function nonTextStatementFailsWithConfig(string $dsn): void
     {
@@ -58,7 +65,11 @@ trait StatementRunnerCases
             }
             $stop();
             Assert::assertNotNull($failure, 'a frame after its transaction ended ran a statement');
-            Assert::assertSame(Code::CONFIG, $failure->code_, 'a frame after its transaction ended did not fail with CONFIG');
+            Assert::assertSame(
+                Code::CONFIG,
+                $failure->code_,
+                'a frame after its transaction ended did not fail with CONFIG'
+            );
             Assert::assertSame(0, $statements, 'a frame after its transaction ended sent a statement');
         } finally {
             $db->close();

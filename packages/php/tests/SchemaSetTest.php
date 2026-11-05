@@ -103,8 +103,8 @@ final class SchemaSetTest extends TestCase
     }
 
     /**
-     * Generated code of a manifest text edited under its declared hash fails with SCHEMA_HASH_MISMATCH when it is loaded
-     * (DBS-120). The connect and install of such a text are cases of the statement_events recipe.
+     * Generated code of a manifest text edited under its declared hash fails with SCHEMA_HASH_MISMATCH when it is
+     * loaded (DBS-120). The connect and install of such a text are cases of the statement_events recipe.
      */
     private static function editedManifest(): void
     {

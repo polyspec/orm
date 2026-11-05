@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Tests;
 
 /*
- * markdown IR executor unit case (docs/spec/protocol.md §5): the request message and the bind cases. The session messages
- * and the refused surfaces of a markdown connection are cases of the recipe tests/bind/messages.json.
+ * markdown IR executor unit case (docs/spec/protocol.md §5): the request message and the bind cases. The session
+ * messages and the refused surfaces of a markdown connection are cases of the recipe tests/bind/messages.json.
  * The size of a class is Large, that of the largest case (a child process).
  * Instead of the flowmark server, markdown_test_server.php records the messages of one connection and writes the chosen
  * answers.

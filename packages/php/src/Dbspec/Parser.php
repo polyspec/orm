@@ -837,7 +837,8 @@ final class Parser
     private function useLine(): void
     {
         $t = $this->tokens;
-        // The words of a use line that fails are names of a failed line, whose references report nothing more (DBS-153).
+        // The words of a use line that fails are names of a failed line, whose references report nothing more
+        // (DBS-153).
         $count = count($this->document->uses);
         try {
             $this->readUseLine($t);

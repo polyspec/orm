@@ -23,7 +23,9 @@ abstract class PerformanceGateCoverageCase extends TestCase
         $name = 'BENCH_' . strtoupper($database) . '_DSN';
         $dsn = getenv($name);
         if (!is_string($dsn) || $dsn === '') {
-            throw new RuntimeException("$name is required; run make orm-test-servers, which starts the databases and writes it");
+            throw new RuntimeException(
+                "$name is required; run make orm-test-servers, which starts the databases and writes it"
+            );
         }
         if (static::NATIVE_EXTENSION) {
             Assert::assertTrue((new ReflectionMethod(Model::class, 'gets'))->isInternal());

@@ -1,8 +1,9 @@
 <?php
 
-// One flow of the op transaction.deadlock of Recipe.php. Inside transaction(), at read_committed with a retry of 3: write the
-// flow name to the first row, print "locked", wait for a line on stdin, then write it to the second row. The other flow runs
-// with the rows swapped. The first line of stdin is the JSON of the schema of the case. Prints "done <callback runs> <1 when the first attempt ended with DEADLOCK, otherwise 0>".
+// One flow of the op transaction.deadlock of Recipe.php. Inside transaction(), at read_committed with a retry of 3:
+// write the flow name to the first row, print "locked", wait for a line on stdin, then write it to the second row. The
+// other flow runs with the rows swapped. The first line of stdin is the JSON of the schema of the case. Prints "done
+// <callback runs> <1 when the first attempt ended with DEADLOCK, otherwise 0>".
 // Usage: php transaction_deadlock_child.php <dsn> <tenant> <account> <other tenant> <other account> <name>
 declare(strict_types=1);
 
@@ -27,7 +28,10 @@ $deadlocked = 0;
 $db->transaction(
     function () use (&$runs, &$deadlocked, $db, $tenant, $account, $otherTenant, $otherAccount, $name): void {
         $runs++;
-        (new CompositeAccount())($db)->getByTenantIdAndAccountId((int) $tenant, (int) $account)->setName($name)->update();
+        (new CompositeAccount())($db)
+            ->getByTenantIdAndAccountId((int) $tenant, (int) $account)
+            ->setName($name)
+            ->update();
         if ($runs === 1) {
             fwrite(STDOUT, "locked\n");
             fgets(STDIN);

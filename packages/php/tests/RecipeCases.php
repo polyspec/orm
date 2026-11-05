@@ -11,8 +11,8 @@ trait RecipeCases
     abstract protected static function recipe(): string;
 
     /**
-     * The data set of each case holds its id, not the case: PHPUnit keeps a data set for each test it builds, whatever the
-     * filter of the run.
+     * The data set of each case holds its id, not the case: PHPUnit keeps a data set for each test it builds, whatever
+     * the filter of the run.
      *
      * @return array<string, array{string}>
      */
@@ -37,6 +37,16 @@ trait RecipeCases
     public static function casesOnSqlite(): array
     {
         return Recipe::casesOn(static::recipe(), 'sqlite');
+    }
+
+    /** Sets the memory limit that the recipe of the test class declares it needs. */
+    private static function requireMemoryLimit(string $limit): void
+    {
+        if (ini_set('memory_limit', $limit) === false) {
+            throw new \RuntimeException(
+                'the recipe ' . static::recipe() . " requires its declared $limit memory_limit"
+            );
+        }
     }
 
     private function runCase(string $id, string $database): void

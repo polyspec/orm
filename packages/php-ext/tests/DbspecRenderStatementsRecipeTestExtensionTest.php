@@ -7,7 +7,8 @@ namespace Polyspec\Orm\Extension\Tests;
 use PHPUnit\Framework\Attributes\Small;
 use Polyspec\Orm\Tests\DbspecRenderStatementsRecipeTest;
 
-// The rendered statements recipe, tests/dbspec/render-statements.json, through the PHP extension (docs/spec/feature-coverage.md FCV-4).
+// The rendered statements recipe, tests/dbspec/render-statements.json, through the PHP extension
+// (docs/spec/feature-coverage.md FCV-4).
 // Requirements: DBS-35, DBS-37, DBS-41, DBS-84, DBS-88, DBS-90, DBS-91.
 // Requirements: DBS-92, DBS-93, DBS-95, DBS-96, DIA-113, DIA-114, DIA-115.
 // Requirements: DIA-116, DIA-117, DIA-118, DIA-119, DIA-120, DIA-121, DIA-122.

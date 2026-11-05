@@ -115,5 +115,4 @@ final class ConnectionUtcNativeTest extends TestCase
         }
         return $author->create();
     }
-
 }

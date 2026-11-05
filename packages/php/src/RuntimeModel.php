@@ -6,6 +6,7 @@ namespace Polyspec\Orm;
 
 use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Dbspec\Document;
+use Polyspec\Orm\Dbspec\SetDocument;
 
 /**
  * The runtime model of a dbspec document set (docs/spec/dbspec.md "Runtime model").
@@ -76,20 +77,7 @@ final class RuntimeModel
     {
         $labels = [...array_keys($owned), ...array_keys($external)];
         $results = Dbspec::parseSet(array_values($owned), array_values($external));
-        $documents = [];
-        $errors = [];
-        foreach ($results as $i => $result) {
-            foreach ($result->diagnostics as $d) {
-                $errors[] = "{$labels[$i]}: {$d->line}:{$d->column} {$d->rule}: document {$result->name}: {$d->message}";
-            }
-            if ($result->document !== null) {
-                $documents[] = $result->document;
-            }
-        }
-        if ($errors !== []) {
-            throw new OrmException(Code::SCHEMA_INVALID, implode("\n", $errors));
-        }
-        return $documents;
+        return self::documentsOf($results, "\n", array_map(static fn(string $label): string => "$label: ", $labels));
     }
 
     /**
@@ -102,18 +90,32 @@ final class RuntimeModel
     {
         $external = $externalText === '' ? [] : self::splitManifest($externalText);
         $results = Dbspec::parseSet(array_values(self::splitManifest($manifestText)), array_values($external));
+        return self::documentsOf($results, '; ');
+    }
+
+    /**
+     * The documents of parse results. Their diagnostics, each after the prefix of its result and joined by the
+     * separator, are SCHEMA_INVALID.
+     *
+     * @param list<SetDocument> $results
+     * @param list<string> $prefixes
+     * @return list<Document>
+     */
+    private static function documentsOf(array $results, string $separator, array $prefixes = []): array
+    {
         $documents = [];
         $errors = [];
-        foreach ($results as $result) {
+        foreach ($results as $i => $result) {
             foreach ($result->diagnostics as $d) {
-                $errors[] = "{$d->line}:{$d->column} {$d->rule}: document {$result->name}: {$d->message}";
+                $prefix = $prefixes[$i] ?? '';
+                $errors[] = "$prefix{$d->line}:{$d->column} {$d->rule}: document {$result->name}: {$d->message}";
             }
             if ($result->document !== null) {
                 $documents[] = $result->document;
             }
         }
         if ($errors !== []) {
-            throw new OrmException(Code::SCHEMA_INVALID, implode('; ', $errors));
+            throw new OrmException(Code::SCHEMA_INVALID, implode($separator, $errors));
         }
         return $documents;
     }
@@ -127,7 +129,10 @@ final class RuntimeModel
     public static function splitManifest(string $text): array
     {
         if (!str_starts_with($text, 'dbspec 1 ')) {
-            throw new OrmException(Code::SCHEMA_INVALID, '1:1 header: manifest text does not start with a dbspec header');
+            throw new OrmException(
+                Code::SCHEMA_INVALID,
+                '1:1 header: manifest text does not start with a dbspec header'
+            );
         }
         $out = [];
         foreach (preg_split('/(?<=\n)(?=dbspec 1 )/', $text) as $document) {
