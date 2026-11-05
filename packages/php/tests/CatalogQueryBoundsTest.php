@@ -59,7 +59,7 @@ final class CatalogQueryBoundsTest extends TestCase
             ] as [$code, $message]
         ) {
             try {
-                $verify->invoke(null, [], [], $code, $message, 'unused');
+                $verify->invoke(null, [], [], $code, $message, $metadata);
                 self::fail('a missing generated-key row was accepted');
             } catch (OrmException $error) {
                 self::assertSame($code, $error->code_);
@@ -73,12 +73,12 @@ final class CatalogQueryBoundsTest extends TestCase
                 [[1, 'requested']],
                 Code::ROW_WRITE_MISMATCH,
                 'unused',
-                'inserted values differ'
+                $metadata
             );
             self::fail('a returned generated-key row with changed values was accepted');
         } catch (OrmException $error) {
             self::assertSame(Code::ROW_WRITE_MISMATCH, $error->code_);
-            self::assertSame('ROW_WRITE_MISMATCH: inserted values differ', $error->getMessage());
+            self::assertSame('ROW_WRITE_MISMATCH: stored inserted values of "value" differ', $error->getMessage());
         }
     }
 

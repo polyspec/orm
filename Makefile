@@ -1750,7 +1750,7 @@ parity-prepare-php-extension: lease-tool
 	$(call php_ext_build,$(PARITY_RUN_DIR)/polyspec_orm.so,release)
 	$(call php_ext_build,$(PARITY_NATIVE_TEST_EXTENSION),native-test)
 	mkdir -p $(PARITY_RUN_DIR)/php-scan
-	printf 'extension=%s\n' '$(PARITY_RUN_DIR)/polyspec_orm.so' > $(PARITY_RUN_DIR)/php-scan/polyspec_orm.ini
+	$(PUBLISH) $(PARITY_RUN_DIR)/php-scan/polyspec_orm.ini printf 'extension=%s\n' '$(PARITY_RUN_DIR)/polyspec_orm.so'
 parity-prepare-rust: lease-tool
 	test -n "$(STEP_RUN_DIR)" || { echo "parity-prepare-rust: STEP_RUN_DIR is unset; run the Rust parity bindings check through make check-run, whose step owns the directory"; exit 1; }
 	mkdir -p $(PARITY_RUN_DIR)

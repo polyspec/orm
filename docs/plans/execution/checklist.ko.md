@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: 7aafd52ce84225eb3e561b2459081c38457141651f07cd202c6c85925f312b95 -->
+<!-- source-sha256: e0f4109496f07bcb3c6822722d8d503fcd86c370da76ffc6f1150f00446b9d14 -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1765,3 +1765,4 @@
 | T377 | MySQL privilege fixture가 go-test-check를 실행하는 모든 lane에 닿는다. Red: CI run 41986216792의 test (dbspec)가 TestDialectFacts에서 ORM_TEST_MYSQL_PRIVILEGE_DSN is required로 실패한다. dbspec-introspect-compare-check가 go-test-check를 실행하면서 그 fixture를 needs에 적지 않기 때문이다. | contracts/check-inputs.json | `node --test scripts/check/run.test.mts` | [v] |
 | T378 | Rust의 decimal physical case가 마감 전에 빌드된 binary를 실행한다. Red: CI run 41986216792의 test (feature_helpers)가 decimal/mysql/rust/1에서 cargo timed out after 120000 ms로 실패한다. case가 마감 안에서 cargo test를 실행해, 같은 실행의 다른 helper가 공유 target 폴더에 빌드하는 것을 기다리고 다시 빌드하기 때문이다. | Makefile, scripts/decimal-physical-check.mts, scripts/physical-command-case.test.mts | `node --test scripts/physical-command-case.test.mts` | [v] |
 | T379 | orm의 Markdown conformance가 flowmark의 마지막 release에서 돈다. Red: tests/markdown/flowmark.version이 flowmark v0.0.4보다 192 commit 뒤인 2026-10-24 commit을 고정해, markdown group이 consumer가 받지 않는 server로 client를 증명한다. | tests/markdown/flowmark.version | `make orm-install-flowmark` | [v] |
+| T380 | static lane의 검사가 개발 line에서 통과한다. Red: CI run 41986216792의 test (static)가 세 target에서 실패한다. repo-check는 T373이 ini 파일을 제자리에 쓰고 FCV-2가 Rust recipe_keys 시험을 옛 경로로 적어서, php-catalog-bounds-check는 시험이 verifyInsertedRow의 table metadata 자리에 문자열을 넘겨서, php-lifecycle-extension-native-check는 시험이 등록한 connection id 101이 Db가 slot을 등록하는 object id와 같아질 수 있어서다. | Makefile, docs/spec/feature-coverage.md, docs/spec/feature-coverage.ko.md, packages/php/tests/CatalogQueryBoundsTest.php, packages/php-ext/tests/QueryCancellationNativeTest.php | `make repo-check` | [v] |
