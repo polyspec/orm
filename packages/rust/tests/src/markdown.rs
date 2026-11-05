@@ -774,3 +774,47 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
         other => unreachable!("case {other} is not in CASES"),
     })
 }
+
+/// The corpus name of a recipe case; each case has a directory of its own.
+pub const CASE_CORPUS: &str = "recipe";
+
+/// A corpus of a recipe case and its server, which stops when this drops, before the directory goes.
+pub struct CaseCorpus {
+    pub dsn: String,
+    _server: Server,
+    _scratch: Scratch,
+}
+
+/// Installs the documents of the dbspec set at `set` as a new corpus and starts the flowmark of FLOWMARK on it.
+pub async fn case_corpus(set: &Path) -> CaseCorpus {
+    let bin = std::env::var("FLOWMARK").expect("FLOWMARK is required; make orm-install-flowmark builds the version that tests/markdown/flowmark.version pins");
+    static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let number = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let scratch = Scratch(std::env::temp_dir().join(format!("orm-corpus-{}-{number}", std::process::id())));
+    let dir = scratch.0.join(CASE_CORPUS);
+    let dbspec = dir.join("dbspec");
+    std::fs::create_dir_all(&dbspec).unwrap();
+    let text = std::fs::read_to_string(set).unwrap();
+    std::fs::write(dbspec.join(set.file_name().unwrap()), &text).unwrap();
+    let parsed: Value = serde_json::from_str(&text).unwrap();
+    for document in parsed["documents"].as_array().expect("a set has documents").iter().filter_map(Value::as_str) {
+        std::fs::copy(set.parent().unwrap().join(document), dbspec.join(document)).unwrap();
+    }
+    let install = Command::new(&bin).arg("install").arg(&dir).output().unwrap();
+    assert!(install.status.success(), "flowmark install: {}", String::from_utf8_lossy(&install.stderr));
+    let mut child = Command::new(&bin).arg("serve").arg(&dir).args(["--port", "0"]).stdout(Stdio::piped()).spawn().unwrap();
+    let stdout = child.stdout.take().unwrap();
+    let server = Server(child);
+    let line = tokio::task::spawn_blocking(move || {
+        let mut line = String::new();
+        std::io::BufRead::read_line(&mut std::io::BufReader::new(stdout), &mut line).unwrap();
+        line
+    })
+    .await
+    .unwrap();
+    let port = line.trim_end().strip_prefix("[serve] listening on 127.0.0.1:").and_then(|rest| rest.split(' ').next()).unwrap_or_else(|| panic!("flowmark serve printed {line:?}, not its listening line")).to_owned();
+    let file: Value = serde_json::from_str(&std::fs::read_to_string(dir.join(".flowmark/server.json")).unwrap()).unwrap();
+    let token = file["token"].as_str().expect("server.json has a token").to_owned();
+    CaseCorpus { dsn: format!("markdown://127.0.0.1:{port}/{CASE_CORPUS}?token={token}"), _server: server, _scratch: scratch }
+}
+

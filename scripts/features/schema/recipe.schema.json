@@ -30,6 +30,11 @@
       "pattern": "(^|/)dbspec-set\\.json$|^none$",
       "description": "A dbspec-set.json document set, or none: the cases of a recipe with fixture none run on an empty case database (FCV-3)."
     },
+    "markdown_fixture": {
+      "type": "string",
+      "pattern": "(^|/)dbspec-set\\.json$",
+      "description": "The dbspec-set.json that flowmark installs for a case of the markdown suite (FCV-3). It holds the store settings of flowmark and only what flowmark's rules accept."
+    },
     "seed": {
       "$ref": "#/$defs/seed"
     },
@@ -39,6 +44,7 @@
       "additionalProperties": false,
       "required": ["mysql", "postgres", "sqlite"],
       "properties": {
+        "markdown": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
         "mysql": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
         "postgres": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
         "sqlite": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
@@ -235,6 +241,11 @@
         },
         "only": {
           "$ref": "#/$defs/only"
+        },
+        "not_on_markdown": {
+          "description": "The rule by which flowmark refuses the case; the markdown suite of the recipe leaves it out (FCV-3).",
+          "type": "string",
+          "minLength": 1
         },
         "not_through_pooler": {
           "description": "Why the case needs a direct server. The pooler lane (client-pooler-check) leaves it out; the direct lanes run it.",
@@ -608,6 +619,9 @@
           ],
           "additionalProperties": false,
           "properties": {
+            "markdown": {
+              "$ref": "#/$defs/value"
+            },
             "mysql": {
               "$ref": "#/$defs/value"
             },
@@ -656,6 +670,10 @@
           ],
           "additionalProperties": false,
           "properties": {
+            "markdown": {
+              "type": "string",
+              "minLength": 1
+            },
             "mysql": {
               "type": "string",
               "minLength": 1
@@ -780,6 +798,9 @@
           "minProperties": 1,
           "additionalProperties": false,
           "properties": {
+            "markdown": {
+              "$ref": "#/$defs/outcome"
+            },
             "mysql": {
               "$ref": "#/$defs/outcome"
             },
@@ -1581,6 +1602,9 @@
                 ],
                 "additionalProperties": false,
                 "properties": {
+                  "markdown": {
+                    "type": "string"
+                  },
                   "mysql": {
                     "type": "string"
                   },
@@ -1630,6 +1654,9 @@
                 ],
                 "additionalProperties": false,
                 "properties": {
+                  "markdown": {
+                    "type": "string"
+                  },
                   "mysql": {
                     "type": "string"
                   },
@@ -1847,6 +1874,9 @@
             "minProperties": 1,
             "additionalProperties": false,
             "properties": {
+              "markdown": {
+                "$ref": "#/$defs/outcomes/deadlock"
+              },
               "mysql": {
                 "$ref": "#/$defs/outcomes/deadlock"
               },
@@ -2872,6 +2902,9 @@
                         ],
                         "additionalProperties": false,
                         "properties": {
+                          "markdown": {
+                            "type": "array"
+                          },
                           "mysql": {
                             "type": "array"
                           },
@@ -5645,6 +5678,9 @@
             "minProperties": 1,
             "additionalProperties": false,
             "properties": {
+              "markdown": {
+                "$ref": "#/$defs/outcomes/serverTransactions"
+              },
               "mysql": {
                 "$ref": "#/$defs/outcomes/serverTransactions"
               },
@@ -5832,6 +5868,7 @@
             "type": "object",
             "propertyNames": {
               "enum": [
+                "markdown",
                 "mysql",
                 "postgres",
                 "sqlite"
@@ -6088,6 +6125,13 @@
                     ],
                     "additionalProperties": false,
                     "properties": {
+                      "markdown": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                          "type": "string"
+                        }
+                      },
                       "mysql": {
                         "type": "array",
                         "minItems": 1,
@@ -9550,12 +9594,14 @@
                         "minProperties": 1,
                         "propertyNames": {
                           "enum": [
+                            "markdown",
                             "mysql",
                             "postgres",
                             "sqlite"
                           ]
                         },
                         "properties": {
+                          "markdown": true,
                           "mysql": true,
                           "postgres": true,
                           "sqlite": true

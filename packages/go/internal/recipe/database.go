@@ -40,6 +40,8 @@ const schemaPath = "scripts/features/schema/recipe.schema.json"
 type databaseFile struct {
 	Schema  string         `json:"$schema"`
 	Fixture string         `json:"fixture"`
+	// The set that flowmark installs for a case of the markdown suite (FCV-3).
+	MarkdownFixture string `json:"markdown_fixture"`
 	Seed    *seed          `json:"seed"`
 	Cases   []databaseCase `json:"cases"`
 }
@@ -55,6 +57,8 @@ type databaseCase struct {
 	Install          *bool             `json:"install"`
 	Only             []string          `json:"only"`
 	NotThroughPooler string            `json:"not_through_pooler"`
+	// The rule by which flowmark refuses the case; the markdown suite leaves it out (FCV-3).
+	NotOnMarkdown string `json:"not_on_markdown"`
 	Seed             *seed             `json:"seed"`
 	Steps            []json.RawMessage `json:"steps"`
 }
@@ -268,12 +272,18 @@ type databaseContext struct {
 // runDatabase runs every case of the recipe at path on database, each as a subtest on a case database of its own (FCV-3).
 func runDatabase(t *testing.T, path, database string) {
 	t.Helper()
-	if database != "mysql" && database != "postgres" && database != "sqlite" {
+	if database != "mysql" && database != "postgres" && database != "sqlite" && database != "markdown" {
 		t.Fatalf("recipe %s: unknown database %s", path, database)
 	}
 	f := readRecipe[databaseFile](t, path)
 	if f.Fixture == "" {
 		t.Fatalf("recipe %s: no fixture, so it has no database", path)
+	}
+	if database == "markdown" {
+		if f.MarkdownFixture == "" {
+			t.Fatalf("recipe %s: no markdown_fixture, so it has no markdown suite", path)
+		}
+		f.Fixture = f.MarkdownFixture
 	}
 	// A fixture of "none" runs every case on an empty case database (FCV-3); the helper never infers it.
 	var schema *orm.Schema
@@ -294,6 +304,10 @@ func runDatabase(t *testing.T, path, database string) {
 		// A case with only runs on the databases it names; the others do not register it (TypeScript does the same).
 		// A case that needs a direct server states why; the pooler lane does not register it (FCV-10).
 		if c.NotThroughPooler != "" && os.Getenv("ORM_CLIENT_DB_POOLER") == "1" {
+			continue
+		}
+		// A case that flowmark refuses by its rule states the rule; the markdown suite does not register it (FCV-3).
+		if c.NotOnMarkdown != "" && database == "markdown" {
 			continue
 		}
 		if len(c.Only) > 0 && !slices.Contains(c.Only, database) {
@@ -496,14 +510,28 @@ func fixtureSchema(setPath string) (*orm.Schema, []*orm.Schema, error) {
 func runCase(t *testing.T, path string, f databaseFile, c databaseCase, database string, schema *orm.Schema, external []*orm.Schema) {
 	step := testcase.Of(t)
 	ctx := step.Context()
-	dsn := testdb.New(t, database)
-	db, err := orm.Connect(dsn, orm.Config{})
+	markdown := database == "markdown"
+	var dsn string
+	if markdown {
+		// flowmark install creates the corpus from the set (DIA-189), so the case has no install and no catalog connection.
+		relative, _ := strings.CutSuffix(f.Schema, schemaPath)
+		dsn = testdb.NewCorpus(t, filepath.Join(filepath.Dir(path), relative, f.MarkdownFixture))
+	} else {
+		dsn = testdb.New(t, database)
+	}
+	var db *orm.DB
+	var err error
+	if markdown {
+		db, err = orm.ConnectSchema(dsn, schema, orm.Config{})
+	} else {
+		db, err = orm.Connect(dsn, orm.Config{})
+	}
 	if err != nil {
 		t.Fatalf("recipe %s case %s on %s: connect: %v", path, c.ID, database, err)
 	}
 	defer testcase.Close(t, db)
 	// A case with install: false gets no fixture here; its steps install it (FCV-4, schema.install).
-	if schema != nil && (c.Install == nil || *c.Install) {
+	if !markdown && schema != nil && (c.Install == nil || *c.Install) {
 		for _, shared := range append(external, schema) {
 			if err := db.Utils().Schema().Install(shared); err != nil {
 				t.Fatalf("recipe %s case %s on %s: install: %v", path, c.ID, database, err)
@@ -511,17 +539,22 @@ func runCase(t *testing.T, path string, f databaseFile, c databaseCase, database
 		}
 		step.Step("schema installed")
 	}
-	catalog, err := orm.ConnectCatalog(dsn)
-	if err != nil {
-		t.Fatalf("recipe %s case %s on %s: catalog: %v", path, c.ID, database, err)
-	}
-	namespace, err := catalog.CurrentNamespace(ctx)
-	if err != nil {
-		t.Fatalf("recipe %s case %s on %s: current namespace: %v", path, c.ID, database, err)
-	}
-	name := testdb.DatabaseOf(t, dsn)
-	if database == "sqlite" {
-		name = strings.TrimSuffix(filepath.Base(strings.TrimPrefix(dsn, "sqlite://")), ".sqlite")
+	var catalog *orm.CatalogConnection
+	var namespace string
+	name := "recipe"
+	if !markdown {
+		catalog, err = orm.ConnectCatalog(dsn)
+		if err != nil {
+			t.Fatalf("recipe %s case %s on %s: catalog: %v", path, c.ID, database, err)
+		}
+		namespace, err = catalog.CurrentNamespace(ctx)
+		if err != nil {
+			t.Fatalf("recipe %s case %s on %s: current namespace: %v", path, c.ID, database, err)
+		}
+		name = testdb.DatabaseOf(t, dsn)
+		if database == "sqlite" {
+			name = strings.TrimSuffix(filepath.Base(strings.TrimPrefix(dsn, "sqlite://")), ".sqlite")
+		}
 	}
 	state := &databaseContext{
 		t: t, ctx: ctx, db: db, dir: filepath.Dir(path), catalog: catalog, namespace: namespace, database: database, dsn: dsn, schema: schema, tablePath: f.Fixture != generatedFixture,
@@ -543,7 +576,11 @@ func runCase(t *testing.T, path string, f databaseFile, c databaseCase, database
 		if s == nil || len(s.Rows) == 0 {
 			continue
 		}
-		if err := insertSeed(state, s.Rows); err != nil {
+		insert := insertSeed
+		if markdown {
+			insert = insertMarkdownSeed
+		}
+		if err := insert(state, s.Rows); err != nil {
 			t.Fatalf("recipe %s case %s on %s: seed: %v", path, c.ID, database, err)
 		}
 	}
@@ -594,6 +631,32 @@ func insertSeed(c *databaseContext, rows json.RawMessage) error {
 	return nil
 }
 
+// insertMarkdownSeed inserts the seed rows of each table through the model of the table: a corpus has no catalog
+// connection (DIA-185), and its rows have no other public write.
+func insertMarkdownSeed(c *databaseContext, rows json.RawMessage) error {
+	tables, err := orderedMembers(rows)
+	if err != nil {
+		return err
+	}
+	for _, table := range tables {
+		var values []json.RawMessage
+		if err := json.Unmarshal(table.value, &values); err != nil {
+			return err
+		}
+		for i, row := range values {
+			core := chainCore(table.key, c)
+			core.Connect(c.db)
+			if err := chainAssign(core, row, c); err != nil {
+				return fmt.Errorf("%s row %d: %w", table.key, i, err)
+			}
+			if _, err := core.Create(); err != nil {
+				return fmt.Errorf("%s row %d: %w", table.key, i, err)
+			}
+		}
+	}
+	return nil
+}
+
 // runRawStep decodes one step and runs it. A model op of a fixture that generates no models has the query fields, which
 // chain.go reads; every other step is a databaseStep. It returns the name of the op.
 func runRawStep(raw json.RawMessage, c *databaseContext) (string, error) {
@@ -631,6 +694,9 @@ func runStepWith(s databaseStep, c *databaseContext, op func(databaseStep, *data
 	// A step with only runs on the databases it names, and its expect names exactly those (scripts/features/recipes.test.mts).
 	if len(s.k("only").Only) > 0 && !slices.Contains(s.k("only").Only, c.database) {
 		return nil
+	}
+	if _, named := s.k("expect").Expect[c.database]; !named && c.database == "markdown" && len(s.k("expect").Expect) > 0 {
+		return errors.New("the expect of this step names no markdown result")
 	}
 	var expected map[string]any
 	if raw, ok := s.k("expect").Expect[c.database]; ok {

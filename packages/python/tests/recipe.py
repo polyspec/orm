@@ -86,7 +86,7 @@ from polyspec.orm.engine.validate import validate
 from polyspec.orm.styled_value import StyledValue
 
 from . import chain_answer, testcase
-from .case_database import case_database
+from .case_database import case_corpus, case_database
 from .recipe_apply import apply_ops
 from .coverage_case import native_query, native_session
 from .recipe_generator import (
@@ -2540,7 +2540,7 @@ def _equal(got: dict, want: dict, ordered: bool) -> bool:
 
 
 # The database path (FCV-3 and FCV-4): each case runs on a case database of its own through the public catalog API.
-DATABASES = ("mysql", "postgres", "sqlite")
+DATABASES = ("mysql", "postgres", "sqlite", "markdown")
 
 
 class DatabaseRecipeCase(VectorCase):
@@ -2558,14 +2558,22 @@ def _database_recipe_tests(path: str, database: str):
     recipe = json.loads(text)
     if "fixture" not in recipe:
         raise ValueError(f"recipe {path}: no fixture, so it has no database")
+    markdown = database == "markdown"
+    if markdown and "markdown_fixture" not in recipe:
+        raise ValueError(
+            f"recipe {path}: no markdown_fixture, so it has no markdown suite"
+        )
+    fixture = recipe["markdown_fixture"] if markdown else recipe["fixture"]
     # A fixture of none runs every case on an empty case database; the helper never infers it (FCV-3).
     schema, install_first = (
-        (None, [])
-        if recipe["fixture"] == NONE
-        else _fixture_schema(ROOT / recipe["fixture"])
+        (None, []) if fixture == NONE else _fixture_schema(ROOT / fixture)
     )
 
     def check(test: unittest.TestCase, case: dict) -> None:
+        if markdown:
+            with case_corpus(ROOT / fixture) as dsn:
+                _run_markdown_case(path, recipe, case, schema, dsn)
+            return
         with (
             tempfile.TemporaryDirectory(prefix="orm_recipe_") as directory,
             case_database(database, directory, "orm_recipe") as dsn,
@@ -2580,6 +2588,8 @@ def _database_recipe_tests(path: str, database: str):
             "not_through_pooler" in case
             and os.environ.get("ORM_CLIENT_DB_POOLER") == "1"
         )
+        # A case that flowmark refuses by its rule states the rule (FCV-3).
+        and not (markdown and "not_on_markdown" in case)
     ]
     return vector_load_tests(DatabaseRecipeCase, cases, _reporting(check, database))
 
@@ -2641,6 +2651,62 @@ def _run_case(
         db.close()
 
 
+def _run_markdown_case(
+    path: str, recipe: dict, case: dict, schema: Schema, dsn: str
+) -> None:
+    """A case on a corpus: flowmark install made its tables (DIA-189), and a corpus has no catalog connection, so the
+    seed rows go through the models."""
+    db = Db.connect_schema(dsn, schema)
+    closers: list = []
+    context = {
+        "fixture": recipe["fixture"],
+        "catalog": None,
+        "namespace": None,
+        "database": "markdown",
+        "dsn": dsn,
+        "schema": schema,
+        "tables": {},
+        "bound": {"database": {"text": "recipe"}},
+        "db": db,
+        "dir": (ROOT / path).parent,
+        "closers": closers,
+        "fields": {},
+        "records": [],
+        "hook_bases": {},
+    }
+    try:
+        for part, table, index, row in _seed_rows(recipe, case):
+            try:
+                _chain_assign(_new_row(context, db, table), row, context).create()
+            except Exception as error:
+                raise AssertionError(
+                    f"recipe {path}, case {case['id']}, {part} seed row {index} of {table}, database markdown: "
+                    f"{error!r}"
+                ) from error
+        for index, step in enumerate(case["steps"]):
+            try:
+                _run_database_step(step, context)
+            except Exception as error:
+                raise AssertionError(
+                    f"recipe {path}, case {case['id']}, step {index} ({step['op']}), database markdown: {error!r}"
+                ) from error
+    finally:
+        for close in closers:
+            close()
+        db.close()
+
+
+def _seed_rows(recipe: dict, case: dict):
+    """The seed rows of the recipe and then of the case, each with its part, table and index."""
+    for part, rows in (
+        ("recipe", recipe.get("seed", {}).get("rows")),
+        ("case", case.get("seed", {}).get("rows")),
+    ):
+        for table, values in (rows or {}).items():
+            for index, row in enumerate(values):
+                yield part, table, index, row
+
+
 def _run_case_on(
     path: str,
     recipe: dict,
@@ -2671,22 +2737,17 @@ def _run_case_on(
     try:
         namespace = catalog.current_namespace()
         context["namespace"] = namespace
-        for part, rows in (
-            ("recipe", recipe.get("seed", {}).get("rows")),
-            ("case", case.get("seed", {}).get("rows")),
-        ):
-            for table, values in (rows or {}).items():
-                for index, row in enumerate(values):
-                    try:
-                        metadata = catalog.describe_table(
-                            {"namespace": namespace, "name": table}
-                        )
-                        catalog.insert_row(metadata, _assignments(row, context))
-                    except Exception as error:
-                        raise AssertionError(
-                            f"recipe {path}, case {case['id']}, {part} seed row {index} of {table}, database {database}: "
-                            f"{error!r}"
-                        ) from error
+        for part, table, index, row in _seed_rows(recipe, case):
+            try:
+                metadata = catalog.describe_table(
+                    {"namespace": namespace, "name": table}
+                )
+                catalog.insert_row(metadata, _assignments(row, context))
+            except Exception as error:
+                raise AssertionError(
+                    f"recipe {path}, case {case['id']}, {part} seed row {index} of {table}, database {database}: "
+                    f"{error!r}"
+                ) from error
         for owner in (recipe, case):
             if "after" in owner.get("seed", {}):
                 _run_database_step(owner["seed"]["after"], context)

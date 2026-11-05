@@ -144,7 +144,8 @@ function expectFaults(recipe: Json): string[] {
   if (recipe === null || typeof recipe !== 'object' || Array.isArray(recipe) || !('fixture' in recipe) || !Array.isArray(recipe.cases)) return faults;
   for (const kase of recipe.cases) {
     if (kase === null || typeof kase !== 'object' || Array.isArray(kase)) continue;
-    walk(kase.steps ?? null, Array.isArray(kase.only) ? kase.only.map(String) : DATABASES, label(kase.id));
+    const onMarkdown = 'markdown_fixture' in recipe && !('not_on_markdown' in kase);
+    walk(kase.steps ?? null, Array.isArray(kase.only) ? kase.only.map(String) : onMarkdown ? [...DATABASES, 'markdown'] : DATABASES, label(kase.id));
   }
   return faults;
 }

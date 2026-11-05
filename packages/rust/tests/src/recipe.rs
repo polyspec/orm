@@ -2904,6 +2904,8 @@ mod database {
 
     /// The databases of a recipe with a fixture (FCV-3).
     const DATABASES: [&str; 3] = ["mysql", "postgres", "sqlite"];
+    /// The database of the markdown suite of a recipe, a corpus that flowmark serves (FCV-3).
+    const MARKDOWN: &str = "markdown";
     /// The message of the error that a transaction callback returns when its op has fail: true.
     const CALLBACK_FAILED: &str = "statement events recipe callback failed";
     /// The expect code of that callback error; it is not an orm error code.
@@ -3039,6 +3041,39 @@ mod database {
         wait_start: Option<std::time::Instant>,
     }
 
+    impl<'a> Context<'a> {
+        #[expect(clippy::too_many_arguments, reason = "the inputs of a case, which each step reads; the rest of the context starts empty")]
+        fn new(
+            namespace: String,
+            database: &'a str,
+            dsn: String,
+            bound: HashMap<String, Bound>,
+            db: &'a Db,
+            dir: &'a Path,
+            models: Box<dyn ModelDispatcher>,
+            schemas: Option<&'a (Schema, Vec<Schema>)>,
+        ) -> Self {
+            Self {
+                held: None,
+                held_statement: None,
+                namespace,
+                database,
+                dsn,
+                bound,
+                db,
+                dir,
+                models,
+                schemas,
+                apply: crate::recipe_apply::ApplyOps::default(),
+                subscriptions: HashMap::new(),
+                listeners: HashMap::new(),
+                recordings: HashMap::new(),
+                attempts: 0,
+                wait_start: None,
+            }
+        }
+    }
+
     /// One trial for each case of the recipe at `path`, relative to the repository root, on `database` ("mysql",
     /// "postgres" or "sqlite"), named `<entry>::<case id>`. Each case runs on a case database of its own. A recipe with
     /// model ops uses database_trials_with_models.
@@ -3064,13 +3099,20 @@ mod database {
     }
 
     fn trials_of(entry: &str, path: &str, database: &str, models: fn() -> Box<dyn ModelDispatcher>, written_order: bool) -> Vec<polyspec_orm_testcase::Trial> {
-        assert!(DATABASES.contains(&database), "recipe {path}: unknown database {database}");
+        let markdown = database == MARKDOWN;
+        assert!(markdown || DATABASES.contains(&database), "recipe {path}: unknown database {database}");
         let (root, text) = super::recipe_text(path);
         let (mut recipe, ordered) = read_recipe(&root.join(path), &text);
         // serde_json sorts the keys of an object, so the order of the seed tables comes from the document (seed_order).
         recipe["seed_order"] = json!(seed_order(member(&ordered, "seed")));
         let recipe = Arc::new(recipe);
         let Some(fixture) = recipe["fixture"].as_str() else { panic!("recipe {path}: no fixture, so it has no database") };
+        let fixture = if markdown {
+            let Some(set) = recipe["markdown_fixture"].as_str() else { panic!("recipe {path}: no markdown_fixture, so it has no markdown suite") };
+            set
+        } else {
+            fixture
+        };
         // A fixture of none runs every case on an empty case database; the helper never infers it (FCV-3).
         let schema = if fixture == "none" { None } else { Some(Arc::new(fixture_schema(&root.join(fixture)))) };
         let dir = Arc::new(root.join(path).parent().map(Path::to_path_buf).unwrap_or_default());
@@ -3081,6 +3123,8 @@ mod database {
             .iter()
             .enumerate()
             .filter(|(_, case)| case["only"].as_array().is_none_or(|only| only.iter().any(|name| name.as_str() == Some(database))))
+            // A case that flowmark refuses by its rule states the rule; the markdown suite does not register it (FCV-3).
+            .filter(|(_, case)| !markdown || case["not_on_markdown"].is_null())
             .filter(|(_, case)| case["not_through_pooler"].is_null() || std::env::var("ORM_CLIENT_DB_POOLER").as_deref() != Ok("1"))
             .map(|(index, case)| {
                 let (recipe, schema, dir, models) = (recipe.clone(), schema.clone(), dir.clone(), models);
@@ -3205,8 +3249,8 @@ mod database {
         (manifest, install_first)
     }
 
-    /// Runs one case on a case database of its own and drops the database; a failure names the recipe, the case, the
-    /// index of the step and the database.
+    /// Runs one case on a database of its own and removes it: a case database, or on flowmark a corpus whose tables
+    /// flowmark install made (DIA-189). A failure names the recipe, the case, the index of the step and the database.
     async fn run_case(
         path: &str,
         recipe: &Value,
@@ -3217,12 +3261,63 @@ mod database {
         models: fn() -> Box<dyn ModelDispatcher>,
     ) {
         let id = case["id"].as_str().unwrap_or_default();
-        let case_database = CaseDatabase::create(database).await;
-        let result = case_body(CaseRun { recipe, case, database, schemas, dir, case_database: &case_database, models }).await;
-        case_database.drop().await;
+        let result = if database == MARKDOWN {
+            let root = polyspec_orm_testcase::manifest_dir().join("../../..");
+            let set = root.join(recipe["markdown_fixture"].as_str().unwrap_or_default());
+            let corpus = crate::markdown::case_corpus(&set).await;
+            let result = markdown_steps(recipe, case, schemas, dir, &corpus.dsn, models).await;
+            drop(corpus);
+            result
+        } else {
+            let case_database = CaseDatabase::create(database).await;
+            let result = case_body(CaseRun { recipe, case, database, schemas, dir, case_database: &case_database, models }).await;
+            case_database.drop().await;
+            result
+        };
         if let Err(failure) = result {
             panic!("recipe {path}, case {id}, {failure}");
         }
+    }
+
+    /// The steps of a case on a corpus. A corpus has no catalog connection, so the seed rows go through the models.
+    async fn markdown_steps(
+        recipe: &Value,
+        case: &Value,
+        schemas: Option<&(Schema, Vec<Schema>)>,
+        dir: &Path,
+        dsn: &str,
+        models: fn() -> Box<dyn ModelDispatcher>,
+    ) -> Result<(), String> {
+        let (schema, _) = schemas.ok_or("a markdown suite has a fixture")?;
+        let db = Db::connect_schema(dsn, schema, 1, Config::default()).await.map_err(|e| format!("database markdown: connect: {e}"))?;
+        let mut catalog = None;
+        let bound = HashMap::from([("database".to_owned(), Bound::Json(json!({ "text": crate::markdown::CASE_CORPUS })))]);
+        let mut context = Context::new(String::new(), MARKDOWN, dsn.to_owned(), bound, &db, dir, models(), schemas);
+        let outcome = markdown_seed_and_steps(&mut catalog, recipe, case, &mut context).await;
+        let closed = context.apply.close();
+        context.models.close().await;
+        db.close().await;
+        outcome.and(closed)
+    }
+
+    async fn markdown_seed_and_steps(catalog: &mut Option<CatalogConnection>, recipe: &Value, case: &Value, context: &mut Context<'_>) -> Result<(), String> {
+        let seeds: Vec<Value> = [(&recipe["seed"]["rows"], &recipe["seed_order"]), (&case["seed"]["rows"], &case["seed_order"])]
+            .into_iter()
+            .flat_map(|(rows, order)| {
+                order.as_array().into_iter().flatten().filter_map(Value::as_str).flat_map(move |table| {
+                    rows.get(table).and_then(Value::as_array).into_iter().flatten().map(move |row| json!({"op": "model.create", "model": table, "connection": "seed", "values": row}))
+                })
+            })
+            .collect();
+        if !seeds.is_empty() {
+            let open = json!({"op": "model.connect", "pool_size": 1, "as": "seed"});
+            run_step(catalog, &open, context).await.map_err(|failure| format!("seed, database markdown: {failure}"))?;
+            for seed in &seeds {
+                run_step(catalog, seed, context).await.map_err(|failure| format!("seed row, database markdown: {failure}"))?;
+            }
+        }
+        polyspec_orm_testcase::step("seed rows inserted");
+        case_steps(catalog, case, context).await
     }
 
     /// The inputs of one case that its steps read: the recipe, the case, the database, the schemas of its fixture, the
@@ -3280,24 +3375,7 @@ mod database {
         let namespace = open.current_namespace().await.map_err(|e| format!("database {database}: current namespace: {e}"))?;
         let bound = HashMap::from([("database".to_owned(), Bound::Json(json!({ "text": case_database.name() })))]);
         let dsn = case_database.dsn().to_owned();
-        let mut context = Context {
-            held: None,
-            held_statement: None,
-            namespace,
-            database,
-            dsn,
-            bound,
-            db,
-            dir,
-            models: models(),
-            schemas,
-            apply: crate::recipe_apply::ApplyOps::default(),
-            subscriptions: HashMap::new(),
-            listeners: HashMap::new(),
-            recordings: HashMap::new(),
-            attempts: 0,
-            wait_start: None,
-        };
+        let mut context = Context::new(namespace, database, dsn, bound, db, dir, models(), schemas);
         let outcome = seed_and_steps(catalog, recipe, case, &mut context).await;
         let closed = context.apply.close();
         context.models.close().await;
@@ -3330,9 +3408,14 @@ mod database {
             }
         }
         polyspec_orm_testcase::step("seed rows inserted");
+        case_steps(catalog, case, context).await
+    }
+
+    /// The steps of a case in their order; a step with an only is skipped on the databases that its list does not name.
+    async fn case_steps(catalog: &mut Option<CatalogConnection>, case: &Value, context: &mut Context<'_>) -> Result<(), String> {
+        let database = context.database;
         for (index, current) in case["steps"].as_array().into_iter().flatten().enumerate() {
             let op = current["op"].as_str().unwrap_or_default();
-            // A step with an only is skipped on the databases that its list does not name.
             if current["only"].as_array().is_some_and(|only| !only.iter().any(|name| name.as_str() == Some(database))) {
                 continue;
             }
@@ -3574,6 +3657,9 @@ mod database {
         }
         let expected = match crate::recipe_reads::read(step, "expect").get("expect") {
             None => None,
+            Some(expect) if context.database == MARKDOWN && expect.get(MARKDOWN).is_none() => {
+                return Err("the expect of this step names no markdown result".to_owned());
+            }
             Some(expect) => Some(resolve_refs(&expect[context.database], context)?),
         };
         let want_error = expected.as_ref().and_then(|e| e.get("error")).and_then(Value::as_str).map(str::to_owned);

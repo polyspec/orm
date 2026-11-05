@@ -16,6 +16,7 @@
     "PRT-65"
   ],
   "fixture": "contracts/fixtures/request_hook/dbspec-set.json",
+  "markdown_fixture": "contracts/fixtures/request_hook/dbspec-set.json",
   "cases": [
     {
       "id": "without_hook",
@@ -591,7 +592,8 @@
             }
           }
         }
-      ]
+      ],
+      "not_on_markdown": "DIA-185: statement events have no form on flowmark"
     },
     {
       "id": "read_filter",
@@ -926,7 +928,8 @@
           },
           "connection": "db"
         }
-      ]
+      ],
+      "not_on_markdown": "DIA-185: getQuery has no form on flowmark"
     },
     {
       "id": "read_fail",
@@ -1083,7 +1086,8 @@
           },
           "connection": "db"
         }
-      ]
+      ],
+      "not_on_markdown": "DIA-185: statement events have no form on flowmark"
     },
     {
       "id": "same_handle_child_hook_once",
@@ -1274,6 +1278,38 @@
                   }
                 ]
               ]
+            },
+            "markdown": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "parent"
+                  },
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ],
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "parent"
+                  },
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a2"
+                  }
+                ]
+              ]
             }
           },
           "connection": "db"
@@ -1294,6 +1330,12 @@
               }
             },
             "sqlite": {
+              "counts": {
+                "hook_entry": 1,
+                "hook_item": 1
+              }
+            },
+            "markdown": {
               "counts": {
                 "hook_entry": 1,
                 "hook_item": 1
@@ -1502,6 +1544,38 @@
                   }
                 ]
               ]
+            },
+            "markdown": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  },
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ],
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  },
+                  {
+                    "text": "b"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ]
+              ]
             }
           },
           "connection": "db"
@@ -1605,6 +1679,24 @@
                   }
                 ]
               ]
+            },
+            "markdown": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  },
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ]
+              ]
             }
           },
           "connection": "db"
@@ -1677,6 +1769,24 @@
               ]
             },
             "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  },
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ]
+              ]
+            },
+            "markdown": {
               "rows": [
                 [
                   {
@@ -1776,6 +1886,24 @@
                   }
                 ]
               ]
+            },
+            "markdown": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  },
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ]
+              ]
             }
           },
           "connection": "db"
@@ -1843,6 +1971,24 @@
               ]
             },
             "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  },
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ]
+              ]
+            },
+            "markdown": {
               "rows": [
                 [
                   {
@@ -1935,6 +2081,11 @@
               "value": {
                 "int": "2"
               }
+            },
+            "markdown": {
+              "value": {
+                "int": "2"
+              }
             }
           },
           "connection": "db"
@@ -2008,6 +2159,34 @@
               ]
             },
             "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "h"
+                  },
+                  {
+                    "text": "single"
+                  }
+                ],
+                [
+                  {
+                    "text": "h"
+                  },
+                  {
+                    "text": "bulk1"
+                  }
+                ],
+                [
+                  {
+                    "text": "h"
+                  },
+                  {
+                    "text": "bulk2"
+                  }
+                ]
+              ]
+            },
+            "markdown": {
               "rows": [
                 [
                   {
@@ -2224,6 +2403,34 @@
                   }
                 ]
               ]
+            },
+            "markdown": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ],
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a2"
+                  }
+                ],
+                [
+                  {
+                    "text": "b"
+                  },
+                  {
+                    "text": "b1"
+                  }
+                ]
+              ]
             }
           },
           "connection": "db"
@@ -2253,6 +2460,11 @@
               }
             },
             "sqlite": {
+              "value": {
+                "int": "3"
+              }
+            },
+            "markdown": {
               "value": {
                 "int": "3"
               }
@@ -2340,6 +2552,44 @@
               }
             },
             "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "kind",
+                        {
+                          "text": "update"
+                        }
+                      ],
+                      [
+                        "entity",
+                        {
+                          "text": "hook_item"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "kind",
+                        {
+                          "text": "delete"
+                        }
+                      ],
+                      [
+                        "entity",
+                        {
+                          "text": "hook_item"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "markdown": {
               "value": {
                 "array": [
                   {
@@ -2460,6 +2710,25 @@
                       }
                     ]
                   ]
+                },
+                "markdown": {
+                  "rows": [
+                    [
+                      {
+                        "text": "a1"
+                      }
+                    ],
+                    [
+                      {
+                        "text": "a2"
+                      }
+                    ],
+                    [
+                      {
+                        "text": "b1"
+                      }
+                    ]
+                  ]
                 }
               }
             }
@@ -2514,6 +2783,28 @@
               }
             },
             "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "kind",
+                        {
+                          "text": "all"
+                        }
+                      ],
+                      [
+                        "entity",
+                        {
+                          "text": "hook_item"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "markdown": {
               "value": {
                 "array": [
                   {
@@ -2642,6 +2933,21 @@
               ]
             },
             "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "k"
+                  },
+                  {
+                    "int": "7"
+                  }
+                ]
+              ]
+            },
+            "markdown": {
               "rows": [
                 [
                   {
@@ -2811,6 +3117,21 @@
                   }
                 ]
               ]
+            },
+            "markdown": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "x"
+                  },
+                  {
+                    "text": "n1"
+                  }
+                ]
+              ]
             }
           }
         }
@@ -2916,6 +3237,9 @@
             },
             "sqlite": {
               "error": "NO_ROWS"
+            },
+            "markdown": {
+              "error": "NO_ROWS"
             }
           },
           "connection": "db"
@@ -2941,6 +3265,9 @@
               "rows": []
             },
             "sqlite": {
+              "rows": []
+            },
+            "markdown": {
               "rows": []
             }
           }
@@ -3018,6 +3345,21 @@
               ]
             },
             "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "y"
+                  },
+                  {
+                    "text": "n2"
+                  }
+                ]
+              ]
+            },
+            "markdown": {
               "rows": [
                 [
                   {
@@ -3157,7 +3499,8 @@
             }
           }
         }
-      ]
+      ],
+      "not_on_markdown": "DIA-185: statement events have no form on flowmark"
     },
     {
       "id": "invalid_param",
@@ -3253,7 +3596,8 @@
             }
           }
         }
-      ]
+      ],
+      "not_on_markdown": "DIA-185: statement events have no form on flowmark"
     },
     {
       "id": "restore_rewritten_key",
@@ -3405,6 +3749,21 @@
                   }
                 ]
               ]
+            },
+            "markdown": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "text": "y"
+                  },
+                  {
+                    "text": "n4"
+                  }
+                ]
+              ]
             }
           },
           "connection": "db"
@@ -3447,6 +3806,18 @@
               ]
             },
             "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "text": "n4"
+                  }
+                ]
+              ]
+            },
+            "markdown": {
               "rows": [
                 [
                   {
@@ -3603,6 +3974,21 @@
                   }
                 ]
               ]
+            },
+            "markdown": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "n5"
+                  }
+                ]
+              ]
             }
           },
           "connection": "db"
@@ -3645,6 +4031,18 @@
               ]
             },
             "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "n5"
+                  }
+                ]
+              ]
+            },
+            "markdown": {
               "rows": [
                 [
                   {
@@ -3811,6 +4209,21 @@
                   }
                 ]
               ]
+            },
+            "markdown": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "text": "y"
+                  },
+                  {
+                    "text": "n6"
+                  }
+                ]
+              ]
             }
           },
           "connection": "db"
@@ -3853,6 +4266,18 @@
               ]
             },
             "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "text": "n6"
+                  }
+                ]
+              ]
+            },
+            "markdown": {
               "rows": [
                 [
                   {
@@ -3991,6 +4416,34 @@
                   }
                 ]
               }
+            },
+            "markdown": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "kind",
+                        {
+                          "text": "insert"
+                        }
+                      ],
+                      [
+                        "entity",
+                        {
+                          "text": "hook_item"
+                        }
+                      ],
+                      [
+                        "param",
+                        {
+                          "text": "read"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
             }
           }
         },
@@ -4042,10 +4495,91 @@
                   }
                 ]
               ]
+            },
+            "markdown": {
+              "rows": [
+                [
+                  {
+                    "text": "r"
+                  },
+                  {
+                    "text": "read"
+                  }
+                ]
+              ]
             }
           }
         }
       ]
     }
-  ]
+  ],
+  "cases_on": {
+    "mysql": [
+      "without_hook",
+      "read_filter",
+      "read_fail",
+      "same_handle_child_hook_once",
+      "relation_scope",
+      "insert_assign",
+      "loaded_row_writes",
+      "upsert_scope",
+      "restore_key",
+      "restore_condition",
+      "restore_no_key",
+      "invalid_param",
+      "restore_rewritten_key",
+      "restore_hook_set_key",
+      "restore_rewritten_key_set_scope",
+      "reads_params"
+    ],
+    "postgres": [
+      "without_hook",
+      "read_filter",
+      "read_fail",
+      "same_handle_child_hook_once",
+      "relation_scope",
+      "insert_assign",
+      "loaded_row_writes",
+      "upsert_scope",
+      "restore_key",
+      "restore_condition",
+      "restore_no_key",
+      "invalid_param",
+      "restore_rewritten_key",
+      "restore_hook_set_key",
+      "restore_rewritten_key_set_scope",
+      "reads_params"
+    ],
+    "sqlite": [
+      "without_hook",
+      "read_filter",
+      "read_fail",
+      "same_handle_child_hook_once",
+      "relation_scope",
+      "insert_assign",
+      "loaded_row_writes",
+      "upsert_scope",
+      "restore_key",
+      "restore_condition",
+      "restore_no_key",
+      "invalid_param",
+      "restore_rewritten_key",
+      "restore_hook_set_key",
+      "restore_rewritten_key_set_scope",
+      "reads_params"
+    ],
+    "markdown": [
+      "same_handle_child_hook_once",
+      "relation_scope",
+      "insert_assign",
+      "loaded_row_writes",
+      "upsert_scope",
+      "restore_key",
+      "restore_condition",
+      "restore_rewritten_key",
+      "restore_hook_set_key",
+      "restore_rewritten_key_set_scope",
+      "reads_params"
+    ]
+  }
 }

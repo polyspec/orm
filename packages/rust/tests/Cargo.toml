@@ -354,6 +354,11 @@ harness = false
 # Each case of the request_hook recipe, contracts/fixtures/request_hook/request_hook.json, is the trial request_hook_mysql::<case id>
 # on a case database of its own (FCV-3 and FCV-4).
 [[test]]
+name = "request_hook_markdown"
+path = "tests/request_hook_markdown.rs"
+harness = false
+
+[[test]]
 name = "request_hook_mysql"
 path = "tests/request_hook_mysql.rs"
 harness = false

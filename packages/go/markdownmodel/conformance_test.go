@@ -4,7 +4,6 @@
 package markdownmodel_test
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -21,6 +20,7 @@ import (
 
 	"debug/buildinfo"
 
+	"github.com/polyspec/orm/packages/go/internal/testdb"
 	"github.com/polyspec/orm/packages/go/markdownmodel"
 	"github.com/polyspec/orm/packages/go/orm"
 	"github.com/polyspec/orm/packages/go/testcase"
@@ -175,8 +175,6 @@ func pinnedFlowmarkBuild(info *buildinfo.BuildInfo, pin string) bool {
 	return len(revision) == 12 && strings.HasPrefix(settings["vcs.revision"], revision) && settings["vcs.modified"] == "false"
 }
 
-var listening = regexp.MustCompile(`^\[serve\] listening on 127\.0\.0\.1:([0-9]+) for the corpus (.+)$`)
-
 // serve installs corpus/ as a new corpus, starts its server, and connects to it. When the test ends,
 // it closes the connection, stops the server, and waits for it to finish.
 func serve(t *testing.T, bin string) *served {
@@ -206,54 +204,18 @@ func serve(t *testing.T, bin string) *served {
 		t.Fatalf("flowmark install: %v\n%s", err, out)
 	}
 	c.Step("flowmark serve %s --port 0", s.dir)
-	cmd := exec.Command(bin, "serve", s.dir, "--port", "0")
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := cmd.Start(); err != nil {
-		t.Fatal(err)
-	}
+	server := testdb.StartFlowmark(t, bin, s.dir, s.corpus)
+	s.port = server.Port
+	s.token = server.Token
+	// Registered after the server's cleanup, so the connection closes before the server stops.
 	t.Cleanup(func() {
 		if s.db != nil {
 			testcase.Close(t, s.db)
 		}
-		if err := cmd.Process.Signal(os.Interrupt); err != nil && !errors.Is(err, os.ErrProcessDone) {
-			if err := cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
-				t.Errorf("kill flowmark serve: %v", err)
-			}
-		}
-		// The interrupted server ends with an exit status, which is the expected end of it; Wait reports
-		// only an error that is not an exit status, such as a failure of the wait itself.
-		if err := cmd.Wait(); err != nil {
-			var exit *exec.ExitError
-			if !errors.As(err, &exit) {
-				t.Errorf("wait for flowmark serve: %v", err)
-			}
-		}
 	})
-	line, err := bufio.NewReader(stdout).ReadString('\n')
-	m := listening.FindStringSubmatch(strings.TrimSuffix(line, "\n"))
-	if err != nil || m == nil || m[2] != s.corpus {
-		t.Fatalf("flowmark serve printed %q (%v), not its listening line; stderr:\n%s", line, err, stderr.String())
-	}
-	s.port = m[1]
-	var file struct {
-		Token string `json:"token"`
-	}
-	b, err := os.ReadFile(filepath.Join(s.dir, ".flowmark", "server.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := json.Unmarshal(b, &file); err != nil {
-		t.Fatalf("server.json: %v", err)
-	}
-	s.token = file.Token
 	db, err := markdownmodel.Connect(s.dsn(s.corpus, s.token), orm.Config{})
 	if err != nil {
-		t.Fatalf("connect: %v; stderr:\n%s", err, stderr.String())
+		t.Fatalf("connect: %v; stderr:\n%s", err, server.Stderr.String())
 	}
 	s.db = db
 	return s

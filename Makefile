@@ -2536,8 +2536,8 @@ audit-triggers-check/php-extension: lease-tool php-vendor-check build-php-ext
 # request-hook-check/go runs the recipe contracts/fixtures/request_hook/request_hook.json on the three databases in Go
 # (docs/spec/feature-coverage.md FCV-3 and FCV-4): the entries TestRecipeRequestHook<Db> of packages/go/orm.
 .PHONY: request-hook-check/go
-request-hook-check/go: lease-tool
-	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeRequestHook(Mysql|Postgres|Sqlite)$$' -count=1
+request-hook-check/go: lease-tool flowmark-check
+	$(WITH_TEST_ENV) FLOWMARK=$(FLOWMARK) $(GO_TEST) ./packages/go/orm -run '^TestRecipeRequestHook(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
 
 # parameter-chunking-check/rust runs the recipe contracts/fixtures/parameter_chunking/parameter_chunking.json on the three
 # databases in Rust (docs/spec/feature-coverage.md FCV-3 and FCV-4), each database as one test target of packages/rust/tests.
@@ -2554,15 +2554,15 @@ aes-rotation-check/rust: lease-tool
 # request-hook-check/rust runs the recipe contracts/fixtures/request_hook/request_hook.json on the three databases in Rust
 # (docs/spec/feature-coverage.md FCV-3 and FCV-4), each database as one test target of packages/rust/tests.
 .PHONY: request-hook-check/rust
-request-hook-check/rust: lease-tool
-	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) request-hook-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test request_hook_mysql --test request_hook_postgres --test request_hook_sqlite
+request-hook-check/rust: lease-tool flowmark-check
+	$(WITH_TEST_ENV) cd packages/rust && FLOWMARK=$(FLOWMARK) $(CARGO_TEST) request-hook-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test request_hook_markdown --test request_hook_mysql --test request_hook_postgres --test request_hook_sqlite
 
 # request-hook-check/typescript runs the recipe contracts/fixtures/request_hook/request_hook.json on the three databases in
 # TypeScript (docs/spec/feature-coverage.md FCV-3 and FCV-4), with the native cases that a declarative step cannot observe.
 .PHONY: request-hook-check/typescript
-request-hook-check/typescript: typescript-current
+request-hook-check/typescript: typescript-current flowmark-check
 	$(READ_TYPESCRIPT)
-	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/request_hook-mysql.test.mjs packages/ts/tests/request_hook-postgres.test.mjs packages/ts/tests/request_hook-sqlite.test.mjs
+	$(WITH_TEST_ENV) FLOWMARK=$(FLOWMARK) $(NODE) --test packages/ts/tests/request_hook-markdown.test.mjs packages/ts/tests/request_hook-mysql.test.mjs packages/ts/tests/request_hook-postgres.test.mjs packages/ts/tests/request_hook-sqlite.test.mjs
 
 # parameter-chunking-check/typescript runs the recipe contracts/fixtures/parameter_chunking/parameter_chunking.json on the
 # three databases in TypeScript (docs/spec/feature-coverage.md FCV-3 and FCV-4).
@@ -2575,7 +2575,8 @@ parameter-chunking-check/typescript: typescript-current
 # (docs/spec/feature-coverage.md FCV-3 and FCV-4), with the native cases that a declarative step cannot observe in
 # test_request_hook.py (a native owner, not this check).
 .PHONY: request-hook-check/python
-request-hook-check/python: lease-tool python-venv-check
+request-hook-check/python: lease-tool python-venv-check flowmark-check
+	FLOWMARK=$(FLOWMARK) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_request_hook_markdown
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_request_hook_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_request_hook_postgres
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_request_hook_sqlite
@@ -2592,7 +2593,8 @@ parameter-chunking-check/python: lease-tool python-venv-check
 # (docs/spec/feature-coverage.md FCV-3 and FCV-4), one entry per database, with the native cases that a declarative step
 # cannot observe in request_hook_cases.php (feature coverage, not this check).
 .PHONY: request-hook-check/php
-request-hook-check/php: lease-tool php-vendor-check php-models
+request-hook-check/php: lease-tool php-vendor-check php-models flowmark-check
+	FLOWMARK=$(FLOWMARK) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/RequestHookMarkdownRecipeTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/RequestHookMysqlRecipeTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/RequestHookPostgresRecipeTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/RequestHookSqliteRecipeTest.php
@@ -2633,7 +2635,8 @@ aes-rotation-check/php-extension: lease-tool php-vendor-check build-php-ext
 # the PHP extension (docs/spec/feature-coverage.md FCV-3 and FCV-4), one entry per database, with the native cases that a
 # declarative step cannot observe in RequestHookTestExtensionTest.php (not this check).
 .PHONY: request-hook-check/php-extension
-request-hook-check/php-extension: lease-tool php-vendor-check build-php-ext
+request-hook-check/php-extension: lease-tool php-vendor-check build-php-ext flowmark-check
+	FLOWMARK=$(FLOWMARK) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/RequestHookMarkdownRecipeTestExtensionTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/RequestHookMysqlRecipeTestExtensionTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/RequestHookPostgresRecipeTestExtensionTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php

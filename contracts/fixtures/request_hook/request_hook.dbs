@@ -5,6 +5,9 @@ table hook_item {
   part varchar(16)
   label varchar(32)
   primary key (id)
+  settings {
+    store document table
+  }
 }
 
 table hook_entry {
@@ -16,6 +19,7 @@ table hook_entry {
   primary key (id)
   unique uq_hook_entry_label (part, label)
   settings {
+    store document table
     soft_delete deleted_at
   }
 }
@@ -27,4 +31,7 @@ table hook_upsert {
   hits i64 null
   primary key (id)
   unique uq_hook_upsert_key (scope_col, name)
+  settings {
+    store document table
+  }
 }

@@ -322,6 +322,7 @@
         "packages/php/tests/CallbackFailed.php",
         "packages/php/tests/CannedCatalogPdo.php",
         "packages/php/tests/CatalogAnswerPdo.php",
+        "packages/php/tests/CaseCorpus.php",
         "packages/php/tests/CatalogAnswerStatement.php",
         "packages/php/tests/CodecYamlProbe.php",
         "packages/php/tests/CollectionIdentityCases.php",
@@ -5884,7 +5885,7 @@
         "FCV-14"
       ],
       "file": "contracts/fixtures/request_hook/request_hook.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.mysql[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -5942,7 +5943,7 @@
         "FCV-14"
       ],
       "file": "contracts/fixtures/request_hook/request_hook.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.postgres[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -6000,7 +6001,7 @@
         "FCV-14"
       ],
       "file": "contracts/fixtures/request_hook/request_hook.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.sqlite[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -6029,6 +6030,64 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
           "symbol": "request_hook_sqlite"
+        }
+      ]
+    },
+    {
+      "id": "request_hook-markdown",
+      "kind": "suite",
+      "requirements": [
+        "INT-78",
+        "PRT-2",
+        "PRT-4",
+        "PRT-5",
+        "PRT-6",
+        "PRT-41",
+        "CFG-21",
+        "INT-36",
+        "INT-37",
+        "PLN-16",
+        "DIA-161",
+        "INT-38",
+        "PRT-65",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14"
+      ],
+      "file": "contracts/fixtures/request_hook/request_hook.json",
+      "cases": "$.cases_on.markdown[*]",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_request_hook_test.go",
+          "symbol": "TestRecipeRequestHookMarkdown"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RequestHookMarkdownRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\RequestHookMarkdownRecipeTest::testMarkdown"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RequestHookMarkdownRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\RequestHookMarkdownRecipeTestExtensionTest::testMarkdown"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/request_hook-markdown.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_request_hook_markdown.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/request_hook_markdown.rs",
+          "symbol": "request_hook_markdown"
         }
       ]
     },

@@ -128,7 +128,7 @@ final class Recipe
         if (!isset(self::$caseIds[$path])) {
             $recipe = RecipeKeys::decoded($path, (string) file_get_contents(dirname(__DIR__, 3) . '/' . $path));
             self::$caseIds[$path] = [];
-            self::$databaseCaseIds[$path] = ['mysql' => [], 'postgres' => [], 'sqlite' => []];
+            self::$databaseCaseIds[$path] = ['mysql' => [], 'postgres' => [], 'sqlite' => [], 'markdown' => []];
             foreach ($recipe['cases'] as $case) {
                 self::$caseIds[$path][$case['id']] = [$case['id']];
                 foreach (array_keys(self::$databaseCaseIds[$path]) as $database) {
@@ -207,6 +207,10 @@ final class Recipe
     private static function caseRuns(array $case, string $database): bool
     {
         if (isset($case['only']) && !in_array($database, $case['only'], true)) {
+            return false;
+        }
+        // A case that flowmark refuses by its rule states the rule; the markdown suite does not hold it (FCV-3).
+        if ($database === 'markdown' && isset($case['not_on_markdown'])) {
             return false;
         }
         return !isset($case['not_through_pooler']) || getenv('ORM_CLIENT_DB_POOLER') !== '1';
@@ -2651,7 +2655,7 @@ final class Recipe
     // The database path (FCV-3 and FCV-4): each case runs on a case database of its own through the public catalog API.
 
     /** The databases of a recipe with a fixture (FCV-3). */
-    private const DATABASES = ['mysql', 'postgres', 'sqlite'];
+    private const DATABASES = ['mysql', 'postgres', 'sqlite', 'markdown'];
 
     /** @var array<string, array{0: Schema, 1: list<Schema>}> the Schema and the external Schemas of each fixture set, built once per process */
     private static array $schemas = [];
@@ -2669,6 +2673,18 @@ final class Recipe
         $recipe = self::document($path);
         if (!isset($recipe['fixture'])) {
             Assert::fail("recipe $path: no fixture, so it has no database");
+        }
+        if ($database === 'markdown') {
+            if (!isset($recipe['markdown_fixture'])) {
+                Assert::fail("recipe $path: no markdown_fixture, so it has no markdown suite");
+            }
+            $fixture = $recipe['markdown_fixture'];
+            [$schema] = self::$schemas[$fixture] ??= self::fixtureSchema($root . '/' . $fixture);
+            $run = static function (string $dsn) use ($path, $recipe, $case, $schema): void {
+                self::runMarkdownCase($path, $recipe, $case, $schema, $dsn);
+            };
+            CaseCorpus::with($root . '/' . $fixture, $run);
+            return;
         }
         // A fixture of none runs every case on an empty case database; the helper never infers it (FCV-3).
         [$schema, $installFirst] = $recipe['fixture'] === 'none'
@@ -2727,6 +2743,55 @@ final class Recipe
     private static function diagnostics(array $diagnostics): string
     {
         return json_encode($diagnostics, JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR);
+    }
+
+    /**
+     * A case on a corpus: flowmark install made its tables (DIA-189), and a corpus has no catalog connection, so the
+     * seed rows go through the models.
+     */
+    private static function runMarkdownCase(string $path, array $recipe, array $case, Schema $schema, string $dsn): void
+    {
+        $db = Orm::connectSchema($dsn, $schema, new Config());
+        $context = [
+            'catalog' => null,
+            'namespace' => '',
+            'database' => 'markdown',
+            'dsn' => $dsn,
+            'schema' => $schema,
+            'fixture' => dirname(__DIR__, 3) . '/' . $recipe['markdown_fixture'],
+            'tablePath' => $recipe['fixture'] !== self::GENERATED_FIXTURE,
+            'bound' => ['database' => ['text' => CaseCorpus::NAME]],
+            'db' => $db,
+            'dir' => dirname(__DIR__, 3) . '/' . dirname($path),
+            'fields' => [],
+            'records' => [],
+            'hookBases' => [],
+        ];
+        try {
+            foreach ([$recipe['seed']['rows'] ?? [], $case['seed']['rows'] ?? []] as $rows) {
+                foreach ($rows as $table => $values) {
+                    foreach ($values as $row) {
+                        self::chainAssign(self::newRow($table, $db, $context), $row, $context)->create();
+                    }
+                }
+            }
+            foreach ($case['steps'] as $index => $step) {
+                if (isset($step['only']) && !in_array('markdown', $step['only'], true)) {
+                    continue;
+                }
+                try {
+                    self::databaseStep($step, $context);
+                } catch (\Throwable $failure) {
+                    Assert::fail(
+                        "recipe $path, case {$case['id']}, step $index ({$step['op']}), database markdown: "
+                        . get_class($failure) . ': ' . $failure->getMessage()
+                    );
+                }
+            }
+        } finally {
+            self::closeModelConnections();
+            $db->close();
+        }
     }
 
     /**
@@ -2852,6 +2917,9 @@ final class Recipe
         // FCV-4).
         if (isset($raw['expect_unnamed'])) {
             $raw['expect'] = $raw['expect_unnamed'];
+        }
+        if ($context['database'] === 'markdown' && isset($raw['expect']) && !isset($raw['expect']['markdown'])) {
+            Assert::fail("the expect of {$raw['op']} names no markdown result");
         }
         $step = new RecipeStep($raw);
         $expected = isset($step['expect'][$context['database']])

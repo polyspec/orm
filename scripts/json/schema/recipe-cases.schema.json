@@ -1,10 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "The cases of a recipe",
-  "description": "The fields of a recipe that orm's scripts read to list its cases: the id of each case and the databases it names. scripts/features/schema/recipe.schema.json states the whole format, which this schema leaves open.",
+  "description": "The fields of a recipe that orm's scripts read to list its cases: the id of each case, the databases it names, its refusal on flowmark and the markdown fixture. scripts/features/schema/recipe.schema.json states the whole format, which this schema leaves open.",
   "type": "object",
   "required": ["cases"],
   "properties": {
+    "markdown_fixture": { "type": "string" },
     "cases": {
       "type": "array",
       "items": {
@@ -12,7 +13,8 @@
         "required": ["id"],
         "properties": {
           "id": { "type": "string" },
-          "only": { "type": "array", "items": { "type": "string" } }
+          "only": { "type": "array", "items": { "type": "string" } },
+          "not_on_markdown": { "type": "string" }
         }
       }
     }

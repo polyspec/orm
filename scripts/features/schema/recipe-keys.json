@@ -5,6 +5,7 @@
     "cases",
     "cases_on",
     "fixture",
+    "markdown_fixture",
     "note",
     "requirements",
     "schema",
@@ -14,6 +15,7 @@
   "case": [
     "id",
     "install",
+    "not_on_markdown",
     "not_through_pooler",
     "only",
     "requirements",

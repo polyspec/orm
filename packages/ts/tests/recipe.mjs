@@ -26,7 +26,7 @@ import { paramUses } from '../dist/engine/params.js';
 import { Engine, Service, connect as connectBench } from '../dist/index.js';
 import { spawn } from 'node:child_process';
 import { styledField } from '../dist/core.js';
-import { relatedDsn, withCaseDatabase } from './case-database.mjs';
+import { relatedDsn, withCaseCorpus, withCaseDatabase } from './case-database.mjs';
 import { checkKeys } from './recipe_keys.mjs';
 import { checkGeneratedFiles, checkRefusedGeneration, checkGenerator } from './recipe_generator.mjs';
 import { connectDsn, modelOps } from './recipe_model.mjs';
@@ -489,7 +489,7 @@ function equal(got, want, ordered) {
 
 // The database path (FCV-3 and FCV-4): each case runs on a case database of its own through the public catalog API.
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
-const DATABASES = new Set(['mysql', 'postgres', 'sqlite']);
+const DATABASES = new Set(['mysql', 'postgres', 'sqlite', 'markdown']);
 
 // databaseRecipe registers one test per case of the recipe at path on the database (FCV-3).
 async function databaseRecipe(path, database) {
@@ -499,13 +499,23 @@ async function databaseRecipe(path, database) {
   const recipe = JSON.parse(text);
   const name = path;
   if (recipe.fixture === undefined) throw new Error(`recipe ${name}: no fixture, so it has no database`);
+  const markdown = database === 'markdown';
+  if (markdown && recipe.markdown_fixture === undefined) throw new Error(`recipe ${name}: no markdown_fixture, so it has no markdown suite`);
+  const fixture = markdown ? recipe.markdown_fixture : recipe.fixture;
   // A fixture of none runs every case on an empty case database; the helper never infers it (FCV-3).
-  const { schema, installFirst } = recipe.fixture === NONE_FIXTURE
+  const { schema, installFirst } = fixture === NONE_FIXTURE
     ? { schema: undefined, installFirst: [] }
-    : await fixtureSchema(resolve(root, recipe.fixture));
+    : await fixtureSchema(resolve(root, fixture));
   for (const recipeCase of recipe.cases) {
     if (recipeCase.only !== undefined && !recipeCase.only.includes(database)) continue;
     if (recipeCase.not_through_pooler !== undefined && process.env.ORM_CLIENT_DB_POOLER === '1') continue;
+    // A case that flowmark refuses by its rule states the rule; the markdown suite does not register it (FCV-3).
+    if (markdown && recipeCase.not_on_markdown !== undefined) continue;
+    if (markdown) {
+      registerRecipeCase(recipeCase, database, DATABASE, ({ step }) =>
+        withCaseCorpus(resolve(root, fixture), step, caseDatabase => runMarkdownCase({ name, recipe, recipeCase, database, schema, caseDatabase, step })));
+      continue;
+    }
     registerRecipeCase(recipeCase, database, DATABASE, ({ step }) =>
       withCaseDatabase(database, step, caseDatabase => runCase({ name, recipe, recipeCase, database, schema, installFirst, caseDatabase, step })));
   }
@@ -579,6 +589,40 @@ async function runCase({ name, recipe, recipeCase, database, schema, installFirs
   }
 }
 
+/** The steps of a case in their order; a failure names the recipe, the case, the index of the step and the database. */
+async function runCaseSteps({ name, recipeCase, database, context, step }) {
+  for (const [index, current] of recipeCase.steps.entries()) {
+    const where = `recipe ${name}, case ${recipeCase.id}, step ${index} (${current.op}), database ${database}`;
+    try {
+      await runStep(current, context);
+    } catch (error) {
+      throw new Error(`${where}: ${error.message}`, { cause: error });
+    }
+    step(`step ${index} ${current.op}`);
+  }
+}
+
+/** A case on a corpus: flowmark install made its tables (DIA-189), and a corpus has no catalog connection, so the seed rows go through the models. */
+async function runMarkdownCase({ name, recipe, recipeCase, database, schema, caseDatabase, step }) {
+  const db = await Db.connectSchema(caseDatabase.dsn, schema);
+  const closers = [];
+  try {
+    const bound = new Map([['database', { text: caseDatabase.name }]]);
+    const classes = classesFromModel(registerModel(schema.manifestText, schema.manifestHash, schema.externalText));
+    const context = { catalog: null, namespace: '', database, caseOnly: recipeCase.only, markdownSuite: true, dsn: caseDatabase.dsn, bound, tablePath: recipe.fixture !== GENERATED_FIXTURE, db, schema, classes, dir: dirname(resolve(root, name)), closers, closed: false, records: [], hookBases: new Map(), fields: new Map(), step, caseName: caseDatabase.name };
+    for (const rows of [recipe.seed?.rows, recipeCase.seed?.rows]) {
+      for (const [table, values] of Object.entries(rows ?? {})) {
+        for (const row of values) await chainAssign(coreModel(table, context).connect(db), row, context).create();
+      }
+    }
+    step('seed rows inserted');
+    await runCaseSteps({ name, recipeCase, database, context, step });
+  } finally {
+    for (const close of closers) await close();
+    await db.close();
+  }
+}
+
 async function runCaseOn({ name, recipe, recipeCase, database, schema, caseDatabase, step, db }) {
   const closers = [];
   const catalog = await connectCatalog(caseDatabase.dsn);
@@ -587,7 +631,7 @@ async function runCaseOn({ name, recipe, recipeCase, database, schema, caseDatab
     const namespace = await catalog.currentNamespace();
     const bound = new Map([['database', { text: caseDatabase.name }]]);
     const classes = schema === undefined ? {} : classesFromModel(registerModel(schema.manifestText, schema.manifestHash, schema.externalText));
-    context = { catalog, namespace, database, caseOnly: recipeCase.only, dsn: caseDatabase.dsn, bound, tablePath: recipe.fixture !== GENERATED_FIXTURE, db, schema, classes, dir: dirname(resolve(root, name)), closers, closed: false, records: [], hookBases: new Map(), fields: new Map(), step, caseName: caseDatabase.name, casePath: caseDatabase.path };
+    context = { catalog, namespace, database, caseOnly: recipeCase.only, withMarkdown: recipe.markdown_fixture !== undefined && recipeCase.not_on_markdown === undefined, dsn: caseDatabase.dsn, bound, tablePath: recipe.fixture !== GENERATED_FIXTURE, db, schema, classes, dir: dirname(resolve(root, name)), closers, closed: false, records: [], hookBases: new Map(), fields: new Map(), step, caseName: caseDatabase.name, casePath: caseDatabase.path };
     for (const rows of [recipe.seed?.rows, recipeCase.seed?.rows]) {
       for (const [table, values] of Object.entries(rows ?? {})) {
         const metadata = await catalog.describeTable({ namespace, name: table });
@@ -598,15 +642,7 @@ async function runCaseOn({ name, recipe, recipeCase, database, schema, caseDatab
       if (after !== undefined) await runStep(after, context);
     }
     step('seed rows inserted');
-    for (const [index, current] of recipeCase.steps.entries()) {
-      const where = `recipe ${name}, case ${recipeCase.id}, step ${index} (${current.op}), database ${database}`;
-      try {
-        await runStep(current, context);
-      } catch (error) {
-        throw new Error(`${where}: ${error.message}`, { cause: error });
-      }
-      step(`step ${index} ${current.op}`);
-    }
+    await runCaseSteps({ name, recipeCase, database, context, step });
   } finally {
     for (const close of closers) await close();
     if (context === undefined) await catalog.close();
@@ -1044,7 +1080,7 @@ async function runStep(rawStep, context) {
   if (s.only !== undefined && !s.only.includes(context.database)) return;
   if (s.expect !== undefined) {
     const named = Object.keys(s.expect).sort().join(',');
-    const want = (s.only ?? context.caseOnly ?? ['mysql', 'postgres', 'sqlite']).slice().sort().join(',');
+    const want = (s.only ?? context.caseOnly ?? (context.markdownSuite || context.withMarkdown ? ['markdown', 'mysql', 'postgres', 'sqlite'] : ['mysql', 'postgres', 'sqlite'])).slice().sort().join(',');
     if (named !== want) throw new Error(`the expect of ${s.op} names ${named}, want ${want}`);
   }
   const expected = rawStep.expect === undefined ? undefined : reads.outcome(resolveRefs(rawStep.expect[context.database], context));

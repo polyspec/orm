@@ -22,9 +22,12 @@ static bool md_list_same(zval *left, zval *right);
 static zval *md_find(zval *value, const char *key)
 {
     ZVAL_DEREF(value);
-    if (Z_TYPE_P(value) == IS_ARRAY) return zend_hash_str_find(Z_ARRVAL_P(value), key, strlen(key));
-    if (Z_TYPE_P(value) == IS_OBJECT) return zend_read_property(Z_OBJCE_P(value), Z_OBJ_P(value), key, strlen(key), 1, NULL);
-    return NULL;
+    zval *found = NULL;
+    if (Z_TYPE_P(value) == IS_ARRAY) found = zend_hash_str_find(Z_ARRVAL_P(value), key, strlen(key));
+    if (Z_TYPE_P(value) == IS_OBJECT) found = zend_read_property(Z_OBJCE_P(value), Z_OBJ_P(value), key, strlen(key), 1, NULL);
+    /* A property that a request hook changed can hold a PHP reference. */
+    if (found != NULL) ZVAL_DEREF(found);
+    return found;
 }
 
 static zval *md_index(zval *value, zend_ulong index)
