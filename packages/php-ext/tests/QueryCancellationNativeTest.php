@@ -52,7 +52,7 @@ final class QueryCancellationNativeTest extends TestCase
         $firstCalls = 0;
         $secondCalls = 0;
         $inactiveCalls = 0;
-        // A Db registers under the object id of its state, a small number; an id at the top of the range never names its slot.
+        // A Db registers under the small object id of its state; an id at the top of the range never names its slot.
         $firstSlot = $cancellation->registerCancelQuery(PHP_INT_MAX, self::countingCancelQuery($firstCalls));
         $secondSlot = $cancellation->registerCancelQuery(PHP_INT_MAX - 1, self::countingCancelQuery($secondCalls));
         $inactiveSlot = $cancellation->registerCancelQuery(PHP_INT_MAX - 2, self::countingCancelQuery($inactiveCalls));
