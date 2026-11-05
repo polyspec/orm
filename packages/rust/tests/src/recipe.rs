@@ -120,9 +120,6 @@ pub fn trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testc
         .collect()
 }
 
-/// The time of the last wait.start (FCV-4).
-static WAIT_START: std::sync::Mutex<Option<std::time::Instant>> = std::sync::Mutex::new(None);
-
 /// What a joined thread that panicked says: who it was and the text of its panic.
 pub fn panicked(who: &str, panic: &(dyn std::any::Any + Send)) -> String {
     let text = panic.downcast_ref::<&str>().copied().or_else(|| panic.downcast_ref::<String>().map(String::as_str));
@@ -3038,6 +3035,8 @@ mod database {
         recordings: HashMap<String, Arc<Mutex<super::statement::Recorded>>>,
         /// The callback runs of the transaction step that ended last (transaction.attempts).
         attempts: u64,
+        /// The time of the last wait.start of the case (FCV-4).
+        wait_start: Option<std::time::Instant>,
     }
 
     /// One trial for each case of the recipe at `path`, relative to the repository root, on `database` ("mysql",
@@ -3297,6 +3296,7 @@ mod database {
             listeners: HashMap::new(),
             recordings: HashMap::new(),
             attempts: 0,
+            wait_start: None,
         };
         let outcome = seed_and_steps(catalog, recipe, case, &mut context).await;
         let closed = context.apply.close();
@@ -4295,11 +4295,11 @@ mod database {
                 Output::fields(json!({}))
             }
             "wait.start" => {
-                *super::WAIT_START.lock().unwrap() = Some(std::time::Instant::now());
+                context.wait_start = Some(std::time::Instant::now());
                 Output::fields(json!({}))
             }
             "wait.at_least" => {
-                let started = (*super::WAIT_START.lock().unwrap()).ok_or_else(|| fault("wait.at_least: no wait.start ran".to_owned()))?;
+                let started = context.wait_start.ok_or_else(|| fault("wait.at_least: no wait.start ran".to_owned()))?;
                 let (waited, want) = (started.elapsed().as_millis(), u128::from(crate::recipe_reads::read(step, "ms")["ms"].as_u64().unwrap_or_default()));
                 if waited < want {
                     return Err(fault(format!("wait.at_least: {waited} ms passed since wait.start, want {want}")));
