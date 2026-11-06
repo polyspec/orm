@@ -423,6 +423,9 @@ markdown connection too. flowmark's [operations](https://github.com/polyspec/flo
 - **DIA-189** schema install, dbplan chains — Result: as on SQLite; Rule: a schema statement is its own transaction on a
   corpus, appended to `dbspec/statements.json` ([operations](https://github.com/polyspec/flowmark/blob/16a55a50fc8d/docs/spec/40-ops.md)).
 - **DIA-190** an unavailable table (a file with `format.block`, `format.section`, `format.encoding` or a `parent.cycle` among its rows, two rows with byte-for-byte equal keys, or a `corpus.walk` entry at its place) — Result: every request that needs its rows, read or write, fails `CONSTRAINT`, naming the file and the diagnostic; Rule: no answer comes from the other files' rows alone ([canonical format](https://github.com/polyspec/flowmark/blob/16a55a50fc8d/docs/spec/10-canonical-format.md))
+- **DIA-199** Go and Rust and TypeScript and Python: the pool options of a markdown connection (DIA-154), `poolSize`,
+  `poolIdleSize` and `poolLifetimeMs` (CFG-4, CFG-5) — Result: as on SQLite: an idle size above the pool size, set or
+  default, is refused with `CONFIG`. PHP and the PHP extension keep no pool (CFG-4).
 
 ## Notifications
 

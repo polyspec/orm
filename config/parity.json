@@ -9950,7 +9950,7 @@
       "id": "connection_pool-markdown",
       "kind": "suite",
       "requirements": [
-        "CFG-5a"
+        "DIA-199"
       ],
       "file": "contracts/fixtures/connection_pool/connection_pool.json",
       "cases": "$.cases_on.markdown[*]",

@@ -1766,6 +1766,70 @@
         "packages/php/tests/RecipeCases.php"
       ]
     },
+    "connection-pool-check/go": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "databases",
+        "flowmark"
+      ],
+      "inputs": [
+        "contracts/fixtures/connection_pool/**",
+        "packages/go/orm/recipe_connection_pool_test.go",
+        "packages/go/internal/recipe/recipe.go",
+        "packages/go/internal/recipe/database.go",
+        "packages/go/orm/dsn.go"
+      ]
+    },
+    "connection-pool-check/rust": {
+      "scope": "owner",
+      "needs": [
+        "rust",
+        "databases",
+        "flowmark"
+      ],
+      "inputs": [
+        "contracts/fixtures/connection_pool/**",
+        "packages/rust/tests/tests/connection_pool_mysql.rs",
+        "packages/rust/tests/tests/connection_pool_postgres.rs",
+        "packages/rust/tests/tests/connection_pool_sqlite.rs",
+        "packages/rust/tests/tests/connection_pool_markdown.rs",
+        "packages/rust/tests/src/recipe.rs",
+        "packages/rust/tests/Cargo.toml"
+      ]
+    },
+    "connection-pool-check/typescript": {
+      "scope": "owner",
+      "needs": [
+        "node-modules",
+        "databases",
+        "flowmark"
+      ],
+      "inputs": [
+        "contracts/fixtures/connection_pool/**",
+        "packages/ts/tests/connection_pool-mysql.test.mjs",
+        "packages/ts/tests/connection_pool-postgres.test.mjs",
+        "packages/ts/tests/connection_pool-sqlite.test.mjs",
+        "packages/ts/tests/connection_pool-markdown.test.mjs",
+        "packages/ts/tests/recipe.mjs"
+      ]
+    },
+    "connection-pool-check/python": {
+      "scope": "owner",
+      "needs": [
+        "python",
+        "databases",
+        "flowmark"
+      ],
+      "inputs": [
+        "contracts/fixtures/connection_pool/**",
+        "packages/python/tests/test_connection_pool_mysql.py",
+        "packages/python/tests/test_connection_pool_postgres.py",
+        "packages/python/tests/test_connection_pool_sqlite.py",
+        "packages/python/tests/test_connection_pool_markdown.py",
+        "packages/python/tests/recipe.py"
+      ]
+    },
     "php-codec-causes-check": {
       "scope": "owner",
       "needs": [

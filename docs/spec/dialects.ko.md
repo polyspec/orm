@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 39774acd485160dcf888ec6c651bb1628b31ef25b6d658c816ebf08c8670780e -->
+<!-- source-sha256: 71a728a1cf2b9195a1ac312a5c5ef91e51e162f272d27f6c00b97d460bcd5ca2 -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -402,6 +402,9 @@ markdown 연결은 flowmark server가 corpus에서 문에 답하는 SQLite 연�
 - **DIA-188** lock, local-setting, privilege, AES-rotation utility — 결과: SQLite와 같다.
 - **DIA-189** schema install, dbplan chain — 결과: SQLite와 같다. 규칙: corpus에서 schema 문은 자기 트랜잭션이며, `dbspec/statements.json`에 덧붙는다([operations](https://github.com/polyspec/flowmark/blob/16a55a50fc8d/docs/spec/40-ops.md)).
 - **DIA-190** 사용할 수 없는 table(`format.block`, `format.section`, `format.encoding`이나 그 행 사이의 `parent.cycle`이 있는 file, 바이트 단위로 같은 key를 가진 두 행, 또는 자리의 `corpus.walk` 항목) — 결과: 그 행이 필요한 모든 요청은 읽기든 쓰기든 file과 진단을 밝히며 `CONSTRAINT`로 실패하며, 다른 file들의 행만으로 답하지 않는다([canonical format](https://github.com/polyspec/flowmark/blob/16a55a50fc8d/docs/spec/10-canonical-format.md))
+- **DIA-199** Go와 Rust와 TypeScript와 Python: markdown 연결(DIA-154)의 pool 설정 `poolSize`, `poolIdleSize`,
+  `poolLifetimeMs`(CFG-4, CFG-5) — 결과: SQLite에서와 같다. 설정했든 기본값이든 pool 크기를 넘는 idle 크기는 `CONFIG`로
+  거부된다. PHP와 PHP extension은 pool을 유지하지 않는다(CFG-4).
 
 ## Notifications
 
