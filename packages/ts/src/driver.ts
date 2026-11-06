@@ -41,7 +41,7 @@ export interface DriverResult {
  * Receives a streamed result: columns once, before the first row, then each row. A row returns false to stop the result; the
  * statement then ends and the connection is no longer usable for the rows that remain, so the caller discards it.
  */
-interface RowSink {
+export interface RowSink {
   columns(columns: DriverColumn[]): void;
   row(values: unknown[]): boolean;
 }
@@ -101,8 +101,10 @@ function seconds(started: number): number { return (performance.now() - started)
 /**
  * Runs one statement that work sends, and calls done when the result has been read or the statement failed. A failure is
  * converted into a driver error, given to done, and thrown.
+ *
+ * @internal
  */
-async function observed<T>(name: DriverName, sql: string, done: StatementDone, origin: SentOrigin, work: () => Promise<T> | T): Promise<T> {
+export async function observed<T>(name: DriverName, sql: string, done: StatementDone, origin: SentOrigin, work: () => Promise<T> | T): Promise<T> {
   const started = performance.now();
   let result: T;
   try {
@@ -837,7 +839,7 @@ class SqliteSession implements DriverSession {
 /** A DSN of a SQL database: the driver, the connection time zone and the MySQL TLS CA. */
 export interface SqlDsn { driver: DriverName; zone: string; sslCa?: string; }
 
-/** A markdown:// DSN: the flowmark server address, the corpus and the token of the markdown IR executor (docs/spec/protocol.md §5). */
+/** A markdown:// DSN: the flowmark server address, the corpus and the token of a flowmark server (docs/spec/protocol.md §5). */
 interface MarkdownParsedDsn { driver: 'markdown'; zone: string; markdown: MarkdownDsn; }
 
 export type ParsedDsn = SqlDsn | MarkdownParsedDsn;

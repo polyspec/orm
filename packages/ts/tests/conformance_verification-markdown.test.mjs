@@ -1,0 +1,5 @@
+// Requirements: DBS-115, DIA-11, DIA-14, DIA-18, DIA-24, DIA-37, DIA-56, DSL-54, DSL-99, DSL-137, DSL-139, DSL-144, INT-39, PRT-77.
+// The suite unit conformance_verification-markdown (docs/spec/feature-coverage.md FCV-3).
+import { runRecipe } from './recipe.mjs';
+
+await runRecipe('contracts/fixtures/conformance_verification/conformance_verification.json', 'markdown');

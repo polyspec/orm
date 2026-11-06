@@ -185,13 +185,13 @@ function session(connection: unknown, dialect: DbspecDialect): Session {
       const c = connection;
       return {
         exec: async (sql, args = []) => {
-          if (args.length === 0) c.exec(sql);
-          else c.prepare(sql).run(...args);
+          if (args.length === 0) await c.exec(sql);
+          else await c.prepare(sql).run(...args);
         },
         rows: async (sql, args = []) => {
           const statement = c.prepare(sql);
           statement.setReturnArrays(true);
-          return rowArrays(statement.all(...args), 'sqlite');
+          return rowArrays(await statement.all(...args), 'sqlite');
         },
       };
     }
@@ -692,9 +692,21 @@ class Applier {
 }
 
 function sqliteLockResult(error: unknown): boolean {
-  if (typeof error !== 'object' || error === null || !('errcode' in error)) return false;
-  const code = (error as { errcode?: unknown }).errcode;
-  return typeof code === 'number' && Number.isInteger(code) && ((code & 0xff) === 5 || (code & 0xff) === 6);
+  const code = sqliteResultCode(error);
+  return code !== undefined && ((code & 0xff) === 5 || (code & 0xff) === 6);
+}
+
+/**
+ * The SQLite result code of a failed statement: the errcode of a node:sqlite error, or the errcode of its cause, which an OrmError of
+ * a SQLite connection holds, as one of a session of a flowmark server does (docs/spec/protocol.md PRT-71).
+ */
+function sqliteResultCode(error: unknown): number | undefined {
+  for (const holder of [error, error instanceof Error ? error.cause : undefined]) {
+    if (typeof holder !== 'object' || holder === null || !('errcode' in holder)) continue;
+    const code = (holder as { errcode?: unknown }).errcode;
+    if (typeof code === 'number' && Number.isInteger(code)) return code;
+  }
+  return undefined;
 }
 
 function messageOf(error: unknown): string {

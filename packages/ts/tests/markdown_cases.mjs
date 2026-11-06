@@ -1,6 +1,5 @@
-// The cases of the markdown conformance (tests/markdown/cases.json) as functions of the TypeScript client. Each takes a served
-// corpus (markdown_conformance.mjs, the flowmark server) or a connection (ir_answers.mjs, the IR answers of
-// tests/ir/answers.json) and returns the result that tests/markdown/README.md defines.
+// The cases of the markdown conformance (tests/markdown/cases.json) as functions of the TypeScript client. Each takes a corpus
+// that the flowmark server serves (markdown_conformance.mjs) and returns the result that tests/markdown/README.md defines.
 import { execFile } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -12,7 +11,7 @@ import { CodecRows, Logs, People, Tasks, connect } from '../dist/models/markdown
 /** The error that the callback throws to roll back the transaction. */
 export const stop = new Error('stop');
 
-const refusedDir = fileURLToPath(new URL('../../../tests/markdown/refused/', import.meta.url));
+const catalogDir = fileURLToPath(new URL('../../../tests/markdown/catalogs/', import.meta.url));
 
 /** The orm code of the error that the promise rejects with, or null when it resolves; another error is thrown again. */
 async function codeOf(promise) {
@@ -25,13 +24,14 @@ async function codeOf(promise) {
   }
 }
 
-/** The code that flowmark install prints when it refuses tests/markdown/refused/<name>.dbs, {error: code}; an install that succeeds is {error: null}. */
-async function refusedInstall(s, name) {
-  const root = await mkdtemp(path.join(tmpdir(), 'orm-markdown-refused-'));
+/** Installs tests/markdown/catalogs/<name>.dbs as the one document of the set of a new corpus and answers {error: null}, or the code of its refusal, {error: code}. */
+async function installCatalog(s, name) {
+  const root = await mkdtemp(path.join(tmpdir(), 'orm-markdown-catalog-'));
   try {
     const dir = path.join(root, name);
     await mkdir(path.join(dir, 'dbspec'), { recursive: true });
-    await writeFile(path.join(dir, 'dbspec', `${name}.dbs`), await readFile(path.join(refusedDir, `${name}.dbs`)));
+    await writeFile(path.join(dir, 'dbspec', `${name}.dbs`), await readFile(path.join(catalogDir, `${name}.dbs`)));
+    await writeFile(path.join(dir, 'dbspec', 'dbspec-set.json'), JSON.stringify({ schema: 1, documents: [`${name}.dbs`] }));
     try {
       await promisify(execFile)(s.bin, ['install', dir]);
       return { error: null };
@@ -221,14 +221,14 @@ export const conformanceCases = {
   }),
   // orderByRandom is supported and not seeded, so the case answers the keys sorted (DIA-182).
   order_random: async s => (await new People().connect(s.db).removeAllColumns().orderByRandom().gets()).values().map(m => m.getId()).sort(),
-  // The key t3 equals T3 without regard to case: a plain insert is DUPLICATE_KEY, and an on_duplicate insert meets T3,
-  // which keeps its key (DIA-164).
+  // The key t3 equals T3 without regard to case: a plain insert is DUPLICATE_KEY, and so is an on_duplicate insert,
+  // whose conflict meets a key byte for byte, as on SQLite; T3 keeps its row (DIA-164).
   primary_key_case: async s => {
     const duplicate = await codeOf(new Tasks().connect(s.db).setId('t3').setOwner('P2').setTitle('dup').setPoints(1).create());
-    await new Tasks().connect(s.db).setId('t3').setOwner('P2').setTitle('ship it').setPoints(8)
-      .duplication(new Tasks().setTitle('ship it')).create();
+    const upsert = await codeOf(new Tasks().connect(s.db).setId('t3').setOwner('P2').setTitle('ship it').setPoints(8)
+      .duplication(new Tasks().setTitle('ship it')).create());
     const met = (await new Tasks().connect(s.db).removeAllColumns().addColumnTitle().id('T3').get()).toArray();
-    return { duplicate, met, count: await new Tasks().connect(s.db).getCount() };
+    return { duplicate, upsert, met, count: await new Tasks().connect(s.db).getCount() };
   },
   // Two columns compared with a list of value groups, IN and NOT IN (DIA-168).
   tuple_in: async s => {
@@ -283,7 +283,7 @@ export const conformanceCases = {
   },
   // A read through the column of the index ix_tasks_owner, which the corpus derives in memory (DIA-176).
   index_read: async s => (await new Tasks().connect(s.db).removeAllColumns().owner('P2').gets()).toArray(),
-  // An index hint, which the corpus does not name: CAPABILITY_UNSUPPORTED (DIA-186).
+  // force_index reads through the index it names, as SQLite does (DIA-186).
   force_index: async s => new Tasks().connect(s.db).forceIndexIxTasksOwner().owner('P1').gets(),
   // A heading of another table in tasks.flowmark.md is format.block: a read of tasks fails CONSTRAINT naming the file,
   // and reads again once the file is restored (DIA-190).
@@ -322,10 +322,10 @@ export const conformanceCases = {
   select_explicit_insert_omitted: async s => ({ id: (await new CodecRows().setId('C2').connect(s.db).create()).getId() }),
   // select_explicit_read_null includes the omitted SQL NULL column in the read.
   select_explicit_read_null: async s => (await new CodecRows().connect(s.db).removeAllColumns().addColumnPayload().id('C2').get()).getPayload().kind,
-  // A catalog with an aes column is a schema error on a corpus (DIA-178).
-  install_refuses_aes: async s => refusedInstall(s, 'aes'),
-  // A catalog with an audit setting is a schema error on a corpus (DIA-179).
-  install_refuses_audit: async s => refusedInstall(s, 'audit'),
+  // install_aes installs a catalog with an aes column and its key version column (DIA-178).
+  install_aes: async s => installCatalog(s, 'aes'),
+  // install_audit installs a catalog with an audit setting, its record table and its history table (DIA-179).
+  install_audit: async s => installCatalog(s, 'audit'),
 };
 
 /** The result, written as JSON and read back: it has the same form as expect in cases.json. The TypeScript model holds dates as the YYYY-MM-DD text that README

@@ -5,7 +5,6 @@ import { Db, DatetimeKey, keyOfValues, keyText, keyValue, pagePlanSteps, paginat
 import { restoreKey } from './engine/validate.js';
 import { fieldOf, type Entity, type Field, type RuntimeModel } from './engine/model.js';
 import type { Assemble, Request } from './ir.js';
-import { markdownLinks } from './markdown.js';
 import { columnName, parseChain, parseOrder, snake, splitPair, upperFirst, type ChainKey } from './names.js';
 import { present } from './present.js';
 import { OrmError } from './runtime_error.js';
@@ -363,20 +362,17 @@ class Assembler {
 
   /**
    * The row of join ch, or undefined if there is none. In an SQL result the join column is on the parent row too, and if the first column is NULL
-   * then there is none. In a markdown answer, the last cell of the parent row holds the join row.
+   * then there is none.
    */
   private joinRow(ch: Assemble['children'][number], row: readonly unknown[]): readonly unknown[] | undefined {
-    if (this.result.markdown) return markdownLinks(row).joins.get(ch.rel) ?? undefined;
     const first = present(ch.assemble, `the assembly of join ${ch.rel}`).columns[0];
     return first !== undefined && row[first.index] !== null ? row : undefined;
   }
 
   /**
-   * The row of the relation ch for parent row parent, and its layout. In an SQL result the relation step's row is found by key; in a markdown
-   * answer the last cell of the parent row holds the relation row.
+   * The row of the relation ch for parent row parent, and its layout: the relation step's row is found by key.
    */
   private related(ch: Assemble['children'][number], parent: readonly unknown[]): [unknown[][], Assemble] {
-    if (this.result.markdown) return [markdownLinks(parent).rels.get(ch.rel) ?? [], present(ch.assemble, `the assembly of relation ${ch.rel}`)];
     const sr = present(this.result.steps.get(ch.step), `the result of step ${ch.step}`);
     const childAsm = present(sr.step.assemble, `the assembly of step ${ch.step}`);
     const ifp = sr.step.parent?.if_parent;
@@ -709,10 +705,10 @@ async function create(c: Core): Promise<Model> {
       ? (type === 'styled' ? StyledValue.sqlNull() : null)
       : convert(type, s.value, ex.db.zone, field));
   }
-  // A column that takes the key it is given: an identity, or the key the markdown executor decides (key_prefix), for the case where the request gives no value,
-  // and the only primary key column.
+  // The column that takes the key it is given: the identity, or the key_prefix key that a corpus allocated to a primary key the
+  // request did not supply.
   let assignedKey = schema.identity;
-  if (assignedKey === '' && ex.db.md !== undefined && schema.primaryKey.length === 1 && key !== null && !c.sets.some(s => s.column === schema.primaryKey[0])) {
+  if (assignedKey === '' && typeof key === 'string' && schema.keyPrefix !== '' && !c.sets.some(s => s.column === schema.primaryKey[0])) {
     assignedKey = present(schema.primaryKey[0], `the primary key of ${schema.name}`);
   }
   if (assignedKey !== '') {
@@ -742,7 +738,7 @@ async function creates(c: Core, models: readonly Model[], batch: number): Promis
     return s.column;
   });
   const parts = insertParts(models.length, batch);
-  batchFits(ex.db.driver, parts, columns.length);
+  batchFits(ex.db.dialect, parts, columns.length);
   const schema = c.ent.entity;
   let total = 0;
   await inTransaction(c.conn, async () => {

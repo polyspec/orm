@@ -59,6 +59,10 @@ export interface Entity {
   readonly softDelete: string;
   /** The `aes_version` column, or ''. */
   readonly aesVersion: string;
+  /** The prefix of the `key_prefix` setting, or ''. */
+  readonly keyPrefix: string;
+  /** The column of the `order` setting, or ''. */
+  readonly order: string;
   /** The audit column of an `audit` setting, or ''. Every insert and update writes the key of the transaction's audit record into it. */
   readonly auditColumn: string;
   /** The audit record table of an `audit` setting (its references table), or ''. */
@@ -127,6 +131,8 @@ function entityOfTable(t: DbspecTable): Entity {
   let updated = '';
   let softDelete = '';
   let aesVersion = '';
+  let keyPrefix = '';
+  let order = '';
   let auditColumn = '';
   let auditRecord = '';
   const explicit = new Set<string>();
@@ -138,6 +144,8 @@ function entityOfTable(t: DbspecTable): Entity {
       case 'updated': updated = s.column; break;
       case 'soft_delete': softDelete = s.column; break;
       case 'aes_version': aesVersion = s.column; break;
+      case 'key_prefix': keyPrefix = s.prefix; break;
+      case 'order': order = s.column; break;
       case 'select_explicit': for (const c of s.columns) explicit.add(c); break;
       case 'codec': stages.set(s.column, s.stages); break;
       case 'blind_index': blind.set(s.column, s.indexColumn); break;
@@ -173,6 +181,8 @@ function entityOfTable(t: DbspecTable): Entity {
     updated,
     softDelete,
     aesVersion,
+    keyPrefix,
+    order,
     auditColumn,
     auditRecord,
     external: false,

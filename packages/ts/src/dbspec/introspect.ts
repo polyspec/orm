@@ -98,6 +98,6 @@ function sqliteQuery(connection: DbspecSqliteConnection): CatalogQuery {
   return async sql => {
     const statement = connection.prepare(sql);
     statement.setReturnArrays(true);
-    return rowArrays(statement.all(), 'sqlite').map(values => new CatalogRow(sql, values));
+    return rowArrays(await statement.all(), 'sqlite').map(values => new CatalogRow(sql, values));
   };
 }

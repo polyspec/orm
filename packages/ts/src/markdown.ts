@@ -1,18 +1,10 @@
-// The IR executor client of flowmark that serves markdown:// connections (docs/spec/protocol.md §5 "IR executors", docs/spec/dialects.md "Markdown IR
-// executor"). The client validates the request and sends it as an IR executor message without planning it, and assembles the answer's rows
-// into models.
+// The client of a flowmark server that serves markdown:// connections (docs/spec/protocol.md §5 "Markdown connections",
+// docs/spec/dialects.md "Markdown"). A flowmark server runs a statement of SQL in SQLite's dialect on the corpus (DIA-185), so a
+// markdown connection is a SQLite connection whose statements the server answers: the driver below sends each statement in a
+// statement message and reads its answer as node:sqlite reads a row.
 import { connect as netConnect, type Socket } from 'node:net';
 import { parse as parseJson, ParseError, type Value } from '@polyspec/ordered-json';
-import { checkAssign, checkParam, useSlotType } from './bind_check.js';
-import { hostEncode } from './codec.js';
-import { decodeAssembly, timeValue, type Db, type Executor, type Result } from './database.js';
-import type { PoolBounds, PoolStats } from './driver.js';
-import { functionType, paramUses, type ParamUse } from './engine/params.js';
-import { entityOf, fieldOf, type Entity, type RuntimeModel } from './engine/model.js';
-import { validate } from './engine/validate.js';
-import type { Assemble, Child, OutputColumn, Request, RequestQuery, Subquery } from './ir.js';
-import { sameList } from './list.js';
-import { present } from './present.js';
+import { observed, type DriverColumn, type DriverPool, type DriverResult, type DriverSession, type DriverValue, type PoolBounds, type PoolStats, type RowSink, type StatementDone } from './driver.js';
 import { OrmError } from './runtime_error.js';
 import * as codes from './codes.js';
 
@@ -21,6 +13,8 @@ export interface MarkdownDsn {
   readonly address: string;
   readonly corpus: string;
   readonly token: string;
+  /** The _pragma values of the DSN, name and value, which each session states first, as on a SQLite DSN. */
+  readonly pragmas: ReadonlyArray<readonly [string, string]>;
 }
 
 const dsnForm = 'markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>';
@@ -43,29 +37,30 @@ export function parseMarkdownDsn(url: URL): MarkdownDsn {
     corpus = '';
   }
   if (corpus === '' || corpus.includes('/')) throw new OrmError(codes.CONFIG, `${dsnForm}; the path ${JSON.stringify(url.pathname)} is not one corpus name: give the corpus root's directory name`);
+  // timezone is the rule of every scheme, which parseDsn has already checked (a corpus keeps datetime in UTC).
   for (const key of url.searchParams.keys()) {
-    if (key !== 'token') throw new OrmError(codes.CONFIG, `${dsnForm}; it does not accept ${key}`);
+    if (key !== 'token' && key !== 'timezone' && key !== '_pragma') throw new OrmError(codes.CONFIG, `${dsnForm}; it does not accept ${key}`);
   }
   const tokens = url.searchParams.getAll('token');
   const [token] = tokens;
   if (tokens.length !== 1 || token === undefined || token === '') throw new OrmError(codes.CONFIG, `${dsnForm}; give one token, the token of .flowmark/server.json of the corpus`);
-  return { address: `${url.hostname}:${port}`, corpus, token };
+  const pragmas = url.searchParams.getAll('_pragma').map(pragma => {
+    const [, name, value] = /^([a-z_]+)\(([A-Za-z0-9_]+)\)$/.exec(pragma) ?? [];
+    if (name === undefined || value === undefined || (name === 'busy_timeout' && !/^\d+$/.test(value))) throw new OrmError(codes.CONFIG, `${dsnForm}; _pragma ${pragma} is invalid`);
+    return [name, value] as const;
+  });
+  return { address: `${url.hostname}:${port}`, corpus, token, pragmas };
 }
 
 function canceled(): OrmError {
   return new OrmError(codes.CANCELED, 'the call was cancelled');
 }
 
-/** One control message: begin(read_only), commit, rollback, savepoint, release, rollback_to(name). */
-function controlLine(op: string, readOnly = false, name = ''): string {
-  return JSON.stringify({ op, ...(readOnly ? { read_only: true } : {}), ...(name !== '' ? { name } : {}) });
-}
-
 /**
  * One connection to the flowmark server, that is, one server session. Only one call uses it at a time: the pool hands it out, or a transaction
  * holds it. Lines the server writes are received as socket events and kept.
  */
-export class MarkdownSession {
+class MarkdownSession {
   /** Means the connection can no longer be used: a read or write failed, a signal cut it, or the server ended it. */
   public broken = false;
   public readonly created = performance.now();
@@ -172,13 +167,16 @@ export class MarkdownSession {
     if (failure !== undefined) {
       const code = failure.kind === 'object' ? failure.get('code') : undefined;
       const message = failure.kind === 'object' ? failure.get('message') : undefined;
+      const result = failure.kind === 'object' ? failure.get('result_code') : undefined;
       if (code?.kind !== 'string' || code.stringValue() === '') {
         this.close();
         throw new OrmError(codes.INTERNAL, `the flowmark server answered the error ${failure.raw} without a code`);
       }
       // The server closes the connection after writing CONNECTION_LOST (idle transaction).
       if (code.stringValue() === codes.CONNECTION_LOST) this.close();
-      throw new OrmError(code.stringValue(), message?.kind === 'string' ? message.stringValue() : '');
+      // The cause is the refusal as a SQLite driver states it: its result code, since the statements are in SQLite's dialect.
+      const text = message?.kind === 'string' ? message.stringValue() : '';
+      throw new OrmError(code.stringValue(), text, { code: code.stringValue(), message: text, errcode: result?.kind === 'number' ? Number(result.numberLiteral()) : 0 });
     }
     return answer;
   }
@@ -194,7 +192,7 @@ export class MarkdownSession {
 }
 
 /** The session pool of a markdown connection. Open sessions never exceed bounds.size, and idle sessions are kept up to bounds.idleSize. */
-export class MarkdownPool {
+class MarkdownPool {
   private idle: MarkdownSession[] = [];
   private open = 0;
   private inUse = 0;
@@ -219,7 +217,7 @@ export class MarkdownPool {
     this.open++;
     this.inUse++;
     try {
-      return await MarkdownSession.dial(this.dsn, signal);
+      return await dialStatements(this.dsn, signal);
     } catch (error) {
       this.open--;
       this.inUse--;
@@ -269,297 +267,194 @@ export class MarkdownPool {
   }
 }
 
-/** The control message that opens a transaction. A read-only transaction sends read_only. */
-export function beginLine(readOnly: boolean): string { return controlLine('begin', readOnly); }
+/** The wire form of a column of a statement answer. */
+interface AnswerColumn { name: string; type: string; }
 
-/** The control message that ends a transaction: commit or rollback. */
-export function endLine(op: 'commit' | 'rollback'): string { return controlLine(op); }
+/** One statement answer, or one fetch answer of the rows that go on. */
+interface StatementAnswer { columns: DriverColumn[]; rows: unknown[][]; affected: number; lastInsertId: bigint; more: boolean; }
 
-/** Savepoint control message: savepoint, release, rollback_to. */
-export function savepointLine(op: 'savepoint' | 'release' | 'rollback_to', name: string): string { return controlLine(op, false, name); }
+function answerError(what: string, raw: string): OrmError {
+  return new OrmError(codes.INTERNAL, `the answer of a ${what}: ${raw}`);
+}
 
 /**
- * The runtime value model JSON of parameter i: decimal is a string, bytes are base64, datetime is UTC
- * YYYY-MM-DD HH:MM:SS.ffffff, date is YYYY-MM-DD, time is HH:MM:SS.ffffff (the digits after p are 0, and string values match too). Which form is used is decided by the
- * type of the slot that the parameter fills. A slot of a hex or ip style column is sent with the value encoded by the client, as in an SQL connection.
+ * The wire form of a bound value (PRT-67): a JSON value, and the form that an answer writes for a value that JSON cannot hold:
+ * {"bytes": base64} for bytes and {"float": "+Inf"} or {"float": "-Inf"} for an infinity. A boolean binds as 1 or 0, as on a
+ * SQLite connection.
  */
-function markdownParam(db: Pick<Db, 'zone' | 'aesKey'>, i: number, value: unknown, uses: readonly ParamUse[]): string {
-  const use = uses[0];
-  if (use?.column !== undefined && value !== null && value !== undefined) {
-    const host = use.column.stages.filter(s => s === 'aes' || s === 'hex' || s === 'ip');
-    if (host.length > 0) value = hostEncode(value, host, db.aesKey);
-  }
-  if (value instanceof Uint8Array) return JSON.stringify(Buffer.from(value).toString('base64'));
-  if (typeof value === 'string' && use?.type === 'bytes') return JSON.stringify(Buffer.from(value).toString('base64'));
-  if (typeof value === 'string' && (use?.type === 'date' || use?.type === 'time' || use?.type === 'datetime')) return JSON.stringify(timeValue(value, use.type, db.zone, 6));
+function statementParam(value: DriverValue): string {
+  if (value instanceof Uint8Array) return JSON.stringify({ bytes: Buffer.from(value).toString('base64') });
   if (typeof value === 'bigint') return value.toString();
-  if (typeof value === 'number' && !Number.isFinite(value)) throw new OrmError(codes.CODEC_ENCODE, `parameter ${i} (${value}) has no JSON form`);
-  if (value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return JSON.stringify(value);
-  throw new OrmError(codes.CODEC_ENCODE, `parameter ${i} (${typeof value}) has no JSON form`);
+  if (typeof value === 'boolean') return value ? '1' : '0';
+  if (typeof value === 'number' && !Number.isFinite(value)) {
+    if (Number.isNaN(value)) throw new OrmError(codes.CONFIG, 'a statement parameter of NaN has no JSON form');
+    return JSON.stringify({ float: value > 0 ? '+Inf' : '-Inf' });
+  }
+  return JSON.stringify(value);
 }
 
 /**
- * Validates the request and runs its request message {ir_version, manifest_hash, request, params, now} in the session of ex, then
- * returns the answer and the request's runtime model. Outside a transaction, one session from the pool is used for the duration of that request.
+ * Reads one cell of an answer as node:sqlite reads it on a SQLite connection: an integer as a bigint, a fraction as a number,
+ * a text as a string, a blob as a Uint8Array, or null.
  */
-async function markdownCall(ex: Executor, request: Request, params: readonly unknown[]): Promise<{ answer: Value; model: RuntimeModel }> {
-  const db = ex.db;
-  const model = db.markdownModel(request.manifest_hash);
-  request.n_params = params.length;
-  validate(model, request);
-  const uses = paramUses(model, request);
-  params.forEach((value, i) => {
-    for (const use of uses[i] ?? []) {
-      checkAssign(i, value, useSlotType(use));
-      if (use.column?.stages.some(s => s === 'aes' || s === 'hex' || s === 'ip')) continue;
-      checkParam(i, value, useSlotType(use), db.zone);
-    }
-  });
-  const values = params.map((value, i) => markdownParam(db, i, value, uses[i] ?? []));
-  const line = `{"ir_version":${JSON.stringify(request.ir_version)},"manifest_hash":${JSON.stringify(request.manifest_hash)},"request":${JSON.stringify(request)},"params":[${values.join(',')}],"now":${JSON.stringify(db.now(db.clockMicros(), 6))}}`;
-  if (ex.frame !== undefined) return { answer: await present(ex.frame.md, 'the flowmark session of a markdown transaction').call(line, db.signal), model };
-  const pool = present(db.md, 'the flowmark pool of a markdown database');
-  const s = await pool.acquire(db.signal);
-  try {
-    return { answer: await s.call(line, db.signal), model };
-  } finally {
-    pool.release(s);
-  }
-}
-
-function answerError(message: string): OrmError {
-  return new OrmError(codes.INTERNAL, `the flowmark answer: ${message}`);
-}
-
-/** The join and relation rows that a markdown answer's row has in its last cell. */
-export interface MarkdownLinks {
-  readonly joins: Map<string, unknown[] | null>;
-  readonly rels: Map<string, unknown[][]>;
-}
-
-/** The join and relation that a markdown answer's row had in its last cell. */
-export function markdownLinks(row: readonly unknown[]): MarkdownLinks {
-  const links = row[row.length - 1];
-  if (links !== null && typeof links === 'object' && links instanceof LinksOf) return links;
-  return new LinksOf();
-}
-
-class LinksOf implements MarkdownLinks {
-  public readonly joins = new Map<string, unknown[] | null>();
-  public readonly rels = new Map<string, unknown[][]>();
-}
-
-/** The type of a scalar subquery column. */
-function subType(m: RuntimeModel, sub: Subquery): string {
-  switch (sub.agg) {
-    case 'count': return 'i64';
-    case 'avg': return 'f64';
-  }
-  const ent = entityOf(m, sub.query.entity);
-  if (ent === undefined) throw new OrmError(codes.INTERNAL, `scalar subquery entity ${sub.query.entity} is missing`);
-  const column = fieldOf(ent, sub.column ?? '');
-  if (column === undefined) throw new OrmError(codes.INTERNAL, `${ent.name}.${sub.column ?? ''} is missing from a validated scalar subquery`);
-  // INT-160: a sum leaves the range of its column.
-  return sub.agg === 'sum' && (column.type === 'i16' || column.type === 'i32') ? 'i64' : column.type;
-}
-
-/**
- * One node of the answer: exactly one each of root, join, and relation. asm records the row layout of the node, and joins and rels are that join and
- * relation. The node's first row decides the columns of asm, and later rows must have the same outputs in the same order.
- */
-class MarkdownNode {
-  public readonly asm: Assemble;
-  private readonly ent: Entity;
-  private readonly joins = new Map<string, MarkdownNode>();
-  private readonly rels = new Map<string, MarkdownNode>();
-  private built = false;
-
-  public constructor(private readonly m: RuntimeModel, private readonly q: RequestQuery, private readonly groups: boolean, private readonly db: Db) {
-    this.ent = present(entityOf(m, q.entity), `entity ${q.entity}`);
-    this.asm = { entity: this.ent.name, alias: '', columns: [], children: [], key: [] };
-    for (const j of q.joins ?? []) {
-      const child = new MarkdownNode(m, j.query, false, db);
-      this.joins.set(j.rel, child);
-      this.asm.children.push(childOf(j.rel, 'join', false, false, child.asm));
-    }
-    for (const rel of q.relations ?? []) {
-      const child = new MarkdownNode(m, rel.query, false, db);
-      this.rels.set(rel.rel, child);
-      const target = present(entityOf(m, rel.query.entity), `entity ${rel.query.entity}`);
-      const parentKeys = (rel.keys ?? []).map(k => k.left);
-      const childKeys = (rel.keys ?? []).map(k => k.right);
-      // If this row is the one that a relation row's foreign key points to, those rows belong to this row (as in the planner).
-      const cascade = rel.query.no_cascade_delete !== true && sameList(parentKeys, this.ent.primaryKey) && !sameList(childKeys, target.primaryKey);
-      this.asm.children.push(childOf(rel.rel, rel.kind ?? 'one', rel.query.flatten === true, cascade, child.asm));
-    }
-  }
-
-  /** The placement of an output name: a subquery, a column function, or a column of the node's entity. Since the markdown executor leaves all codec stages to the client, the whole codec of the column is the style to decode. */
-  private outCol(name: string, index: number): OutputColumn {
-    if (this.groups && name === 'row_count') return { index, name, column: '', type: 'i64', styles: [], hidden: false };
-    const c = this.q.columns;
-    if (c !== undefined && !this.groups) {
-      const sub = c.sub?.[name];
-      if (sub !== undefined) return { index, name, column: '', type: subType(this.m, sub), styles: [], hidden: false };
-      const cf = c.fn?.[name];
-      if (cf !== undefined) {
-        const field = fieldOf(this.ent, cf.column);
-        if (field === undefined) throw new OrmError(codes.INTERNAL, `${this.ent.name}.${cf.column} is missing from validated column-function metadata`);
-        return { index, name, column: cf.column, type: functionType(cf.fn.name, field, this.ent.name, cf.column), styles: [], hidden: false };
-      }
-    }
-    const f = fieldOf(this.ent, name);
-    if (f === undefined) throw answerError(`${this.ent.name} answers ${name}, which is no output of the request`);
-    return { index, name, column: name, type: f.type, styles: [...f.stages], hidden: false };
-  }
-
-  /** Takes the columns and key of asm from the first row's outputs of the node. */
-  public build(outputs: readonly string[]): void {
-    outputs.forEach((name, i) => this.asm.columns.push(this.outCol(name, i)));
-    const keys = this.groups ? this.q.group_by ?? [] : this.ent.primaryKey;
-    for (const key of keys) {
-      const index = outputs.indexOf(key);
-      if (index < 0) throw answerError(`${this.ent.name} answers no ${key}, a key of its rows`);
-      this.asm.key.push({ column: key, index });
-    }
-    this.built = true;
-  }
-
-  /** Reads one answer row as the position row of the node layout: the output values, and in the last cell the join and relation rows. */
-  public row(raw: Value): unknown[] {
-    if (raw.kind !== 'object') throw answerError(`a row of ${this.ent.name} is ${raw.raw}, not a JSON object`);
-    const members = [...raw.members];
-    const outputs = members.filter(([name]) => !this.joins.has(name) && !this.rels.has(name)).map(([name]) => name);
-    if (!this.built) this.build(outputs);
-    if (outputs.length !== this.asm.columns.length) throw answerError(`a row of ${this.ent.name} answers ${JSON.stringify(outputs)}, another output than its first row`);
-    const values: unknown[] = Array.from({ length: outputs.length + 1 });
-    const links = new LinksOf();
-    let k = 0;
-    for (const [name, value] of members) {
-      const join = this.joins.get(name);
-      if (join !== undefined) {
-        links.joins.set(name, value.kind === 'null' ? null : join.row(value));
-        continue;
-      }
-      const rel = this.rels.get(name);
-      if (rel !== undefined) {
-        links.rels.set(name, rel.relationRows(value));
-        continue;
-      }
-      const col = this.asm.columns[k];
-      if (col === undefined) throw answerError(`a row of ${this.ent.name} answers more columns than its first row`);
-      if (col.name !== name) throw answerError(`a row of ${this.ent.name} answers ${name} where its first row answers ${col.name}`);
-      try {
-        values[k] = answerValue(col.type, value);
-      } catch (error) {
-        if (!(error instanceof OrmError)) throw error;
-        throw new OrmError(error.code, `${this.ent.name}.${col.name}: ${error.message}`);
-      }
-      k++;
-    }
-    // A join has its own row, so it decodes only the node's own columns. The corpus catalog rejects aes columns, so
-    // there is no keyring (docs/spec/dialects.md).
-    decodeAssembly(values, { ...this.asm, children: [] }, this.db);
-    values[outputs.length] = links;
-    return values;
-  }
-
-  /** Reads a relation's value as a list of rows: a one relation is an object or null, a many relation is an array, and a key_by relation is an object grouped by key. */
-  public relationRows(raw: Value): unknown[][] {
-    if (raw.kind === 'null') return [];
-    if (raw.kind === 'array') return this.rows(raw.items);
-    if ((this.q.key_by ?? '') !== '' && raw.kind === 'object') return this.rows([...raw.members.values()]);
-    return [this.row(raw)];
-  }
-
-  public rows(items: readonly Value[]): unknown[][] {
-    return items.map(item => this.row(item));
-  }
-
-  /** A group_count node of an answer with no rows is laid out by the request's group column and row_count. */
-  public buildGroups(): void {
-    if (!this.built) this.build([...this.q.group_by ?? [], 'row_count']);
-  }
-}
-
-function childOf(rel: string, kind: string, flatten: boolean, cascade: boolean, assemble: Assemble): Child {
-  return { rel, kind, step: -1, parent_keys: [], child_keys: [], key: [], flatten, cascade, assemble };
-}
-
-/** Reads one answer value as a cell of the column type. The value is the same runtime value model as a parameter. */
-function answerValue(type: string, raw: Value): unknown {
-  if (raw.kind === 'null') return null;
-  const bad = () => new OrmError(codes.CODEC_DECODE, `the answer value ${raw.raw} is not a ${type} value`);
-  switch (type) {
-    case 'i16': case 'i32': case 'i64':
-      if (raw.kind !== 'number' || !/^-?[0-9]+$/.test(raw.numberLiteral())) throw bad();
-      return Number(raw.numberLiteral());
-    case 'f64':
-      if (raw.kind !== 'number') throw bad();
-      return Number(raw.numberLiteral());
-    case 'bool':
-      if (raw.kind !== 'boolean') throw bad();
-      return raw.booleanValue();
-    case 'bytes': {
-      if (raw.kind !== 'string') throw bad();
-      const text = raw.stringValue();
-      const bytes = Buffer.from(text, 'base64');
-      if (bytes.toString('base64') !== text) throw bad();
-      return new Uint8Array(bytes);
-    }
-  }
-  if (raw.kind !== 'string') throw bad();
-  return raw.stringValue();
-}
-
-/** The value of sum and avg answers, and the key of an inserted row: an integer, a decimal, a decimal string, or null if none. */
-function aggregateValue(raw: Value): number | string | null {
+function statementCell(raw: Value): unknown {
   switch (raw.kind) {
     case 'null': return null;
-    case 'number': return Number(raw.numberLiteral());
     case 'string': return raw.stringValue();
+    case 'number': {
+      const literal = raw.numberLiteral();
+      return /^-?[0-9]+$/.test(literal) ? BigInt(literal) : Number(literal);
+    }
+    case 'object': {
+      const float = raw.get('float');
+      if (float?.kind === 'string' && (float.stringValue() === '+Inf' || float.stringValue() === '-Inf')) return float.stringValue() === '+Inf' ? Infinity : -Infinity;
+      const text = raw.get('text');
+      // A text that is not UTF-8 reads as node:sqlite reads it, each invalid sequence a replacement character.
+      if (text?.kind === 'string') return new TextDecoder().decode(base64(text.stringValue(), raw.raw));
+      const bytes = raw.get('bytes');
+      if (bytes?.kind === 'string') return new Uint8Array(base64(bytes.stringValue(), raw.raw));
+    }
   }
-  throw answerError(`the value ${raw.raw} is no number`);
+  throw answerError('statement', `the cell ${raw.raw} is no value`);
 }
 
-/** Reads the answer to a row read (one, all, group_count, paginate) as a positional result. The result's plan is one layout of the root node, and the last cell of each row is its join and relation. */
-export async function markdownRead(ex: Executor, request: Request, params: readonly unknown[]): Promise<{ result: Result; total: number }> {
-  const { answer, model } = await markdownCall(ex, request, params);
+/** The bytes of the base64 text of cell raw. */
+function base64(text: string, raw: string): Buffer {
+  const bytes = Buffer.from(text, 'base64');
+  if (bytes.toString('base64') !== text) throw answerError('statement', `the cell ${raw} holds no base64 text`);
+  return bytes;
+}
+
+/** Reads a statement or fetch answer; columns holds the columns of the statement for a fetch, whose answer names none. */
+function readAnswer(what: string, answer: Value, columns: DriverColumn[] | undefined): StatementAnswer {
   const rows = answer.get('rows');
-  if (rows?.kind !== 'array') throw answerError(`a ${request.kind} answer ${answer.raw} has no rows`);
-  const count = answer.get('count');
-  if (request.kind === 'paginate' && count?.kind !== 'number') throw answerError(`a paginate answer ${answer.raw} has no count`);
-  const root = new MarkdownNode(model, request, request.kind === 'group_count', ex.db);
-  const main = root.rows(rows.items);
-  if (request.kind === 'group_count') root.buildGroups();
-  const result: Result = {
-    plan: { manifest_hash: request.manifest_hash, kind: request.kind, steps: [{ id: 0, role: 'main', sql: '', tables: [], bind_slots: [], assemble: root.asm }] },
-    main, steps: new Map(), params, markdown: true,
+  if (rows !== undefined && rows.kind !== 'array') throw answerError(what, answer.raw);
+  const read: unknown[][] = (rows?.kind === 'array' ? rows.items : []).map(row => {
+    if (row.kind !== 'array') throw answerError(what, answer.raw);
+    return row.items.map(statementCell);
+  });
+  const number = (name: string): bigint => {
+    const value = answer.get(name);
+    if (value === undefined) return 0n;
+    if (value.kind !== 'number' || !/^-?[0-9]+$/.test(value.numberLiteral())) throw answerError(what, answer.raw);
+    return BigInt(value.numberLiteral());
   };
-  return { result, total: count?.kind === 'number' ? Number(count.numberLiteral()) : 0 };
-}
-
-/** The answer to count, sum, and avg. */
-export async function markdownScalar(ex: Executor, request: Request, params: readonly unknown[]): Promise<unknown> {
-  const { answer } = await markdownCall(ex, request, params);
-  if (request.kind === 'count') {
-    const count = answer.get('count');
-    if (count?.kind !== 'number') throw answerError(`a count answer ${answer.raw} has no count`);
-    return Number(count.numberLiteral());
+  const more = answer.get('more');
+  if (more !== undefined && more.kind !== 'boolean') throw answerError(what, answer.raw);
+  let cols = columns;
+  if (cols === undefined) {
+    const list = answer.get('columns');
+    if (list !== undefined && list.kind !== 'array') throw answerError(what, answer.raw);
+    cols = (list?.kind === 'array' ? list.items : []).map((column): AnswerColumn => {
+      const name = column.kind === 'object' ? column.get('name') : undefined;
+      const type = column.kind === 'object' ? column.get('type') : undefined;
+      if (name?.kind !== 'string' || (type !== undefined && type.kind !== 'string' && type.kind !== 'null')) throw answerError(what, answer.raw);
+      return { name: name.stringValue(), type: type?.kind === 'string' ? type.stringValue() : '' };
+    });
   }
-  const value = answer.get('value');
-  if (value === undefined) throw answerError(`a ${request.kind} answer ${answer.raw} has no value`);
-  return aggregateValue(value);
+  return { columns: cols, rows: read, affected: Number(number('affected')), lastInsertId: number('last_insert_id'), more: more?.kind === 'boolean' && more.booleanValue() };
 }
 
-/** The answer to write, {affected, keys}. keys holds the primary keys of the inserted rows in insert order: an identity is an integer, and a key_prefix key is text. */
-export async function markdownWrite(ex: Executor, request: Request, params: readonly unknown[]): Promise<{ keys: Array<number | string | null>; affected: number }> {
-  const { answer } = await markdownCall(ex, request, params);
-  const affected = answer.get('affected');
-  if (affected?.kind !== 'number') throw answerError(`a ${request.kind} answer ${answer.raw} has no affected`);
-  const keys = answer.get('keys');
-  const out = keys?.kind === 'array' ? keys.items.map(aggregateValue) : [];
-  const n = Number(affected.numberLiteral());
-  if (request.kind === 'update' && request.optimistic !== undefined && n === 0) throw new OrmError(codes.OPTIMISTIC_LOCK, 'the row changed after it was read');
-  return { keys: out, affected: n };
+/** Runs one statement in session s and returns its first rows. */
+async function statement(s: MarkdownSession, sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined): Promise<StatementAnswer> {
+  const line = `{"op":"statement","sql":${JSON.stringify(sql)},"params":[${params.map(statementParam).join(',')}]}`;
+  return readAnswer('statement', await s.call(line, signal), undefined);
+}
+
+/** The rows that go on after a, which the server holds until a fetch reads the last of them. */
+async function fetchMore(s: MarkdownSession, a: StatementAnswer, signal: AbortSignal | undefined): Promise<StatementAnswer> {
+  return readAnswer('fetch', await s.call('{"op":"fetch"}', signal), a.columns);
+}
+
+/** Runs one statement and reads all its rows, as a SQLite connection reads them: a statement with rows answers their count as its affected. */
+async function execute(s: MarkdownSession, sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined): Promise<DriverResult> {
+  let a = await statement(s, sql, params, signal);
+  const rows = [...a.rows];
+  const columns = a.columns;
+  while (a.more) {
+    a = await fetchMore(s, a, signal);
+    rows.push(...a.rows);
+  }
+  if (columns.length === 0) return { rows, affected: a.affected, insertId: a.lastInsertId, columns };
+  const first = rows[0]?.[0];
+  return { rows, affected: rows.length, insertId: typeof first === 'string' || typeof first === 'number' || typeof first === 'bigint' ? first : null, columns };
+}
+
+/** Streams the rows of one statement into sink; when the sink stops before the end, close ends the rows the server still holds. */
+async function scan(s: MarkdownSession, sql: string, params: readonly DriverValue[], sink: RowSink): Promise<void> {
+  let a = await statement(s, sql, params, undefined);
+  sink.columns(a.columns);
+  for (;;) {
+    for (const row of a.rows) {
+      if (sink.row(row)) continue;
+      if (a.more) await s.call('{"op":"close"}', undefined);
+      return;
+    }
+    if (!a.more) return;
+    a = await fetchMore(s, a, undefined);
+  }
+}
+
+/** Opens a session of dsn and states its _pragma values first. */
+async function dialStatements(dsn: MarkdownDsn, signal: AbortSignal | undefined): Promise<MarkdownSession> {
+  const s = await MarkdownSession.dial(dsn, signal);
+  try {
+    for (const [name, value] of dsn.pragmas) await statement(s, `PRAGMA ${name} = ${value}`, [], signal);
+  } catch (error) {
+    s.close();
+    throw error;
+  }
+  return s;
+}
+
+/**
+ * The driver pool of a markdown connection: the statements of the SQLite dialect run in flowmark sessions, so the pool is a
+ * SQLite pool to every surface of the connection.
+ */
+class MarkdownPoolDriver implements DriverPool {
+  public readonly name = 'sqlite' as const;
+  public constructor(private readonly pool: MarkdownPool) {}
+  public async execute(sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined, done: StatementDone): Promise<DriverResult> {
+    const s = await this.pool.acquire(signal);
+    try {
+      return await observed(this.name, sql, done, 'statement', () => execute(s, sql, params, signal));
+    } finally {
+      this.pool.release(s);
+    }
+  }
+  public async reserve(): Promise<DriverSession> {
+    return new MarkdownDriverSession(await this.pool.acquire(undefined), this.pool);
+  }
+  public stats(): PoolStats { return this.pool.stats(); }
+  public async close(): Promise<void> { this.pool.close(); }
+}
+
+/**
+ * One held flowmark session as a driver session. It reports no transaction state: a flowmark session keeps its transaction open
+ * after a failed statement, so it has no rollback of its own to learn of.
+ */
+class MarkdownDriverSession implements DriverSession {
+  public readonly name = 'sqlite' as const;
+  private released = false;
+  public constructor(private readonly s: MarkdownSession, private readonly pool: MarkdownPool) {}
+  public execute(sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined, done: StatementDone): Promise<DriverResult> {
+    return observed(this.name, sql, done, 'statement', () => execute(this.s, sql, params, signal));
+  }
+  public control(sql: string, params: readonly DriverValue[], done: StatementDone): Promise<DriverResult> {
+    return observed(this.name, sql, done, 'statement', () => execute(this.s, sql, params, undefined));
+  }
+  public scan(sql: string, params: readonly DriverValue[], sink: RowSink, done: StatementDone): Promise<void> {
+    return observed(this.name, sql, done, 'statement', () => scan(this.s, sql, params, sink));
+  }
+  public release(discard: boolean): void {
+    if (this.released) return;
+    this.released = true;
+    if (discard) this.s.close();
+    this.pool.release(this.s);
+  }
+}
+
+/** Opens the driver pool of a markdown DSN. */
+export function openMarkdown(dsn: MarkdownDsn, bounds: PoolBounds): DriverPool {
+  return new MarkdownPoolDriver(new MarkdownPool(dsn, bounds));
 }

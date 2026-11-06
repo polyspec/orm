@@ -2,7 +2,6 @@
 // "Parameters"): the SQL bind path reads the slot of the plan step, an IR executor the uses of ir.ParamUses.
 import { timeValue } from './database.js';
 import { normalizeDecimal } from './decimal.js';
-import type { ParamUse } from './engine/params.js';
 import type { BindSlot } from './ir.js';
 import { OrmError } from './runtime_error.js';
 import * as codes from './codes.js';
@@ -24,16 +23,6 @@ export interface ParamSlot {
 /** The logical type of a param bind slot of a plan step. */
 export function bindSlotType(slot: BindSlot): ParamSlot {
   return { type: slot.col_type, precision: slot.precision ?? 0, scale: slot.scale ?? 0, length: slot.length ?? 0, notNull: slot.not_null === true, column: slot.column };
-}
-
-/**
- * The logical type of a parameter use: a use of its column's type takes the column's precision, scale and length; a
- * datetime or time of a function takes six digits.
- */
-export function useSlotType(use: ParamUse): ParamSlot {
-  const f = use.column;
-  if (f !== undefined && f.type === use.type) return { type: use.type, precision: f.precision, scale: f.scale, length: f.length, notNull: use.assign === true && !f.nullable, column: f.name };
-  return { type: use.type, precision: use.type === 'datetime' || use.type === 'time' ? 6 : 0, scale: 0, length: 0 };
 }
 
 const canonicalUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;

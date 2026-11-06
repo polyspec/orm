@@ -111,6 +111,8 @@ export async function createCaseDatabase(dialect, step) {
  * fails, the case fails. If body and the drop both fail, the error carries both reasons.
  */
 export async function withCaseDatabase(dialect, step, body) {
+  // The case database of a markdown connection is a corpus of no table.
+  if (dialect === 'markdown') return withCaseCorpus(null, step, body);
   const database = await createCaseDatabase(dialect, step);
   let failure = null;
   let result;
@@ -131,7 +133,8 @@ const FLOWMARK_LISTENING = /^\[serve\] listening on 127\.0\.0\.1:([0-9]+) for th
 const CORPUS = 'recipe';
 
 /**
- * Runs body on a new corpus of the dbspec set at setPath, served by the flowmark of FLOWMARK (FCV-3). The server stops and
+ * Runs body on a new corpus of the dbspec set at setPath, or on a corpus of no table when setPath is null (a recipe of no fixture,
+ * or a case whose steps install it), served by the flowmark of FLOWMARK (FCV-3). body takes { name, dsn, dir }. The server stops and
  * the corpus is removed when body ends.
  */
 export async function withCaseCorpus(setPath, step, body) {
@@ -142,12 +145,15 @@ export async function withCaseCorpus(setPath, step, body) {
   let server;
   try {
     await mkdir(join(dir, 'dbspec'), { recursive: true });
-    const set = JSON.parse(await readFile(setPath, 'utf8'));
-    await copyFile(setPath, join(dir, 'dbspec', basename(setPath)));
-    for (const document of set.documents) await copyFile(join(dirname(setPath), document), join(dir, 'dbspec', document));
+    if (setPath !== null) {
+      const set = JSON.parse(await readFile(setPath, 'utf8'));
+      await copyFile(setPath, join(dir, 'dbspec', basename(setPath)));
+      for (const document of [...set.documents, ...(set.external ?? [])]) await copyFile(join(dirname(setPath), document), join(dir, 'dbspec', document));
+    }
     await execute(bin, ['install', dir]);
     step(`corpus ${dir} installed`);
-    server = spawn(bin, ['serve', dir, '--port', '0'], { stdio: ['ignore', 'pipe', 'inherit'] });
+    // A corpus of a test is disposable, as a test database server is: a commit does not wait for the disk.
+    server = spawn(bin, ['serve', dir, '--port', '0', '--synchronous', 'off', '--tx-idle-ms', '600000'], { stdio: ['ignore', 'pipe', 'inherit'] });
     const line = await new Promise((done, fail) => {
       let text = '';
       server.stdout.on('data', chunk => {
@@ -161,7 +167,7 @@ export async function withCaseCorpus(setPath, step, body) {
     const m = FLOWMARK_LISTENING.exec(line);
     if (m === null || m[2] !== CORPUS) throw new Error(`flowmark serve printed ${JSON.stringify(line)}, not its listening line`);
     const { token } = JSON.parse(await readFile(join(dir, '.flowmark', 'server.json'), 'utf8'));
-    return await body({ name: CORPUS, dsn: `markdown://127.0.0.1:${m[1]}/${CORPUS}?token=${token}` });
+    return await body({ name: CORPUS, dir, dsn: `markdown://127.0.0.1:${m[1]}/${CORPUS}?token=${token}` });
   } finally {
     if (server !== undefined) {
       server.removeAllListeners('exit');
