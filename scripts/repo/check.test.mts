@@ -469,6 +469,22 @@ caseTest('every PHPUnit run of the Makefile goes through run-tests', COMPUTE, ()
   assert.deepEqual(text('Makefile').split('\n').filter(line => direct.test(line)), []);
 });
 
+caseTest('test-php-ext gives its native tests the pinned flowmark, and flowmark-check refuses a missing one', COMPUTE, () => {
+  // A simple assignment takes the value FLOWMARK has where make reads it, so the export of test-php-ext must follow the definition
+  // of FLOWMARK; the database of make (-p) holds the value that the target exports.
+  const lines = text('Makefile').split('\n');
+  const exportLine = lines.indexOf('test-php-ext: export FLOWMARK := $(FLOWMARK)') + 1;
+  assert.ok(exportLine > 0, 'test-php-ext exports FLOWMARK');
+  const database = spawnSync('make', ['-pn', 'test-php-ext'], { cwd: repository.pathname, encoding: 'utf8', env: isolatedEnvironment(), maxBuffer: 1 << 28 });
+  assert.equal(database.status, 0, database.stderr);
+  const exported = new RegExp(`line ${exportLine}\\)\\n# FLOWMARK := (.*)$`, 'm').exec(database.stdout)?.[1];
+  assert.equal(exported, join(repository.pathname, '.runtime/bin/flowmark'));
+  const check = (flowmark: string) => spawnSync('make', ['-s', 'flowmark-check', `FLOWMARK=${flowmark}`], { cwd: repository.pathname, encoding: 'utf8', env: isolatedEnvironment() }).status;
+  assert.notEqual(check(''), 0, 'an empty FLOWMARK is refused');
+  assert.notEqual(check(join(repository.pathname, '.runtime/bin/no-flowmark')), 0, 'a missing FLOWMARK is refused');
+  assert.equal(check(process.execPath), 0, 'an executable FLOWMARK passes');
+});
+
 caseTest('the PHP extension suite and its profiled native cases use their owning inputs', COMPUTE, () => {
   const makefile = text('Makefile');
   const filterText = /^PHP_EXTENSION_NATIVE_CASES = (.+)$/m.exec(makefile)?.[1];

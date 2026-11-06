@@ -834,9 +834,6 @@ test-php-ext: export ORM_PHP_DYNAMIC_MODULES = $(PHP_EXTENSION_DYNAMIC_MODULES)
 # The extension target owns the native package tests.
 PHP_EXTENSION_NATIVE_CASES = ^Polyspec\\Orm\\Extension\\Tests\\(?!(?:MermaidErrorBoundaryTest::|ParentSlotExpansionNativeTest::|MarkdownConformanceNativeTest::))
 test-php-ext: export CASES ?= $(PHP_EXTENSION_NATIVE_CASES)
-# The native tests hold the markdown units of the extension, which run on the flowmark server of FLOWMARK.
-test-php-ext: export FLOWMARK := $(FLOWMARK)
-test-php-ext: flowmark-check
 # PHP_EXTENSION_TESTS runs PHPUnit files of packages/php with the extension loaded, through kit's run-tests, which gives each test
 # its own timeout (K436); the test bootstrap fails either extension PHPUnit command that loads a userland fallback (T182-6-19).
 PHP_EXTENSION_TESTS = env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) -- --configuration packages/php/phpunit.xml.dist
@@ -1736,6 +1733,10 @@ conformance-check: conformance-result-check conformance-generated-methods-check 
 # orm-install-flowmark installs it here. The test fails unless the version matches what the build information pins, so a flowmark checkout
 # built at the pinned revision can be given as FLOWMARK=<that path>.
 FLOWMARK ?= $(abspath .runtime/bin/flowmark)
+# The native tests hold the markdown units of the extension, which run on the flowmark server of FLOWMARK. The export follows the
+# definition of FLOWMARK, since a simple assignment takes the value that FLOWMARK has where make reads it.
+test-php-ext: export FLOWMARK := $(FLOWMARK)
+test-php-ext: flowmark-check
 .PHONY: markdown-conformance-check markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/php-extension markdown-conformance-check/python markdown-conformance-check/rust markdown-conformance-check/typescript orm-install-flowmark
 # parity-prepare builds what the bindings of config/parity.json load before a Kit parity gate runs them, into the
 # directory of this make run: the PHP extension that the php-extension implementation loads
@@ -1798,7 +1799,7 @@ parity-bench-env-check:
 # flowmark-check names the flowmark binary that the markdown conformance units read (FLOWMARK) before parity-check runs them;
 # orm-install-flowmark builds it from the version pinned in tests/markdown/flowmark.version.
 flowmark-check:
-	test -x $(FLOWMARK) || { echo "flowmark-check: $(FLOWMARK) is missing; run make orm-install-flowmark, which builds the version pinned in tests/markdown/flowmark.version"; exit 1; }
+	test -n "$(FLOWMARK)" && test -x "$(FLOWMARK)" || { echo "flowmark-check: $(FLOWMARK) is missing; run make orm-install-flowmark, which builds the version pinned in tests/markdown/flowmark.version"; exit 1; }
 
 # Every provider parity phase has the same fixtures and runtime paths as the original full parity target. A phase builds only
 # the native outputs its bindings load: the php-extension bindings load the extension (ORM_PARITY_PHP_EXTENSION) and the rust
