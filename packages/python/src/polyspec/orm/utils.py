@@ -12,7 +12,6 @@ from polyspec.orm import codes
 from polyspec.orm.aes import AesKeyring, _stored_version
 from polyspec.orm.codec import CodecError
 from polyspec.orm.errors import OrmError, transaction_conflict
-from polyspec.orm.markdown import unsupported_on_markdown
 from polyspec.orm.model import Model
 from polyspec.orm.schema import Schema
 
@@ -91,11 +90,10 @@ class Utils:
         )
 
     def lock(self, key: str) -> None:
-        unsupported_on_markdown(self.db, "lock")
         frame = _active(self.db, "lock")
         if not valid_key(key):
             raise OrmError(codes.CONFIG, f"lock key {key!r} is invalid")
-        driver = self.db.driver
+        driver = self.db.sql_driver
         if driver == "mysql":
             rows = frame.run("SELECT GET_LOCK(?, 50)", [key], "utility")["rows"]
             if not rows or rows[0][0] != 1:
@@ -107,18 +105,16 @@ class Utils:
             self.db.row_lock(frame, "update")
 
     def set_local(self, key: str, value: str) -> None:
-        unsupported_on_markdown(self.db, "setLocal")
         frame = _active(self.db, "setLocal")
         if not valid_key(key):
             raise OrmError(codes.CONFIG, f"local key {key!r} is invalid")
-        if self.db.driver == "postgres":
+        if self.db.sql_driver == "postgres":
             frame.run(POSTGRES_SET_LOCAL, [key, value], "utility")
-        elif self.db.driver == "mysql":
+        elif self.db.sql_driver == "mysql":
             frame.run("SET @`orm." + key + "` = ?", [value], "utility")
         frame.locals[key] = value
 
     def local(self, key: str) -> str:
-        unsupported_on_markdown(self.db, "local")
         frame = _active(self.db, "local")
         if key not in frame.locals:
             raise OrmError(codes.NO_ROWS, f"local value {key} is not set")
@@ -140,9 +136,8 @@ class Utils:
 
     def backend_waiting_for_lock(self) -> bool:
         """Whether another backend of the PostgreSQL connection waits for a lock (INT-53). MySQL and SQLite return False
-        without a statement; a markdown connection is CAPABILITY_UNSUPPORTED."""
-        unsupported_on_markdown(self.db, "backendWaitingForLock")
-        if self.db.driver != "postgres":
+        without a statement, and so does a markdown connection, which is SQLite's."""
+        if self.db.sql_driver != "postgres":
             return False
         # pg_stat_activity is a snapshot per transaction: the statistics are cleared first, so that a backend that starts to wait
         # after the transaction has read the view is seen.
@@ -189,14 +184,9 @@ class SchemaUtils:
         )
         from polyspec.orm.errors import OrmError
 
-        unsupported_on_markdown(
-            self.db,
-            "addTablesAndColumns (schema evolution follows the flowmark migration "
-            "rules)",
-        )
         model = _schema_model(schema)
         target = _schema_target(model)
-        driver = self.db.driver
+        driver = self.db.sql_driver
 
         def apply(run) -> list:
             live = _introspect_set(run, driver, model)
@@ -225,9 +215,7 @@ class SchemaUtils:
             return list(result["added"])
 
         if driver == "postgres":
-            return self.db.transaction(
-                lambda: apply(_frame_runner(self.db)), {"retry": 0}
-            )
+            return self.utils._run(lambda: apply(_frame_runner(self.db)))
         if _frame_of(self.db) is not None:
             raise OrmError(
                 codes.CONFIG,
@@ -245,11 +233,8 @@ class SchemaUtils:
         refuses a transaction (docs/spec/schema.md "Schema installation")."""
         from polyspec.orm.dbspec import installed_differences, render_dbspec_statements
 
-        unsupported_on_markdown(
-            self.db, "schema install (flowmark install creates a corpus)"
-        )
         model = _schema_model(schema)
-        driver = self.db.driver
+        driver = self.db.sql_driver
         rendered = render_dbspec_statements(list(model.documents), driver)
         if rendered["statements"] is None:
             d = rendered["diagnostics"][0]
@@ -292,11 +277,10 @@ class SchemaUtils:
         if driver == "mysql":
             apply(_session_runner(self.db))
         else:
-            self.db.transaction(lambda: apply(_frame_runner(self.db)), {"retry": 0})
+            self.utils._run(lambda: apply(_frame_runner(self.db)))
         self.register(schema)
 
     def _check(self, sql: str, values: list | None = None) -> bool:
-        unsupported_on_markdown(self.db, "schema inspection")
         rows = self.utils._read("schema", [], sql, list(values or []))
         value = rows[0][0] if rows else None
         return value is True or (not isinstance(value, bool) and value == 1)
@@ -306,7 +290,7 @@ class SchemaUtils:
         view whose name starts with the schema name and __."""
         if not valid_key(name):
             raise OrmError(codes.CONFIG, f"identifier {name} is invalid")
-        driver = self.db.driver
+        driver = self.db.sql_driver
         if driver == "postgres":
             return self._check(
                 "SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = $1)", [name]
@@ -326,7 +310,7 @@ class SchemaUtils:
         """Reports whether a table of the schema exists; on SQLite the table is named <schema>__<table>."""
         if not valid_key(name) or not valid_key(table):
             raise OrmError(codes.CONFIG, "schema and table names are required")
-        driver = self.db.driver
+        driver = self.db.sql_driver
         if driver == "postgres":
             return self._check(
                 "SELECT to_regclass($1) IS NOT NULL", [f"{name}.{table}"]
@@ -349,7 +333,7 @@ class SchemaUtils:
         partitioned table, view, materialized view or foreign table in public. On MySQL a table or view of
         the connected database is content, and on SQLite a table or view other than the sqlite_ and orm__
         tables is content."""
-        driver = self.db.driver
+        driver = self.db.sql_driver
         if driver == "postgres":
             return self._check(
                 "SELECT NOT EXISTS (SELECT 1 FROM pg_namespace n WHERE n.nspname NOT LIKE "
@@ -391,7 +375,7 @@ class PrivilegeUtils:
         self.utils = utils
 
     def _table(self, table: str) -> str:
-        if self.utils.db.driver != "postgres":
+        if self.utils.db.sql_driver != "postgres":
             raise OrmError(
                 codes.CAPABILITY_UNSUPPORTED,
                 "table privileges are supported only by postgres",
@@ -494,7 +478,6 @@ class AesUtils:
         rotation")."""
         from polyspec.orm.errors import OrmError
 
-        unsupported_on_markdown(self.utils.db, "aes rotation")
         entity = model.entity_def.entity
         if not entity.aes_version:
             raise OrmError(
@@ -512,7 +495,7 @@ class AesUtils:
                 f"entity {entity.name} has no AES columns with a key version",
             )
         db = self.utils.db
-        driver = db.driver
+        driver = db.sql_driver
 
         def q(name: str) -> str:
             return _quote(driver, name)
@@ -578,7 +561,6 @@ class AesUtils:
         return db.transaction(body, {"retry": 0})
 
     def status(self, model: Model, keyring: AesKeyring) -> AesRotationStatus:
-        unsupported_on_markdown(self.utils.db, "aes rotation")
         entity = model.entity_def.entity
         if not entity.aes_version:
             raise OrmError(
@@ -586,9 +568,9 @@ class AesUtils:
                 f"entity {entity.name} has no AES columns with a key version",
             )
         db = self.utils.db
-        version = _quote(db.driver, entity.aes_version)
+        version = _quote(db.sql_driver, entity.aes_version)
         query = (
-            f"SELECT {version}, COUNT(*) FROM {_quote(db.driver, entity.table)} "
+            f"SELECT {version}, COUNT(*) FROM {_quote(db.sql_driver, entity.table)} "
             f"GROUP BY {version} ORDER BY {version}"
         )
         status = AesRotationStatus(current=keyring.current_version)

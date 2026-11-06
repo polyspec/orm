@@ -41,18 +41,7 @@ from polyspec.orm.engine import Engine
 from polyspec.orm.aes import _stored_version
 from polyspec.orm.errors import OrmError, rollback_failed
 from polyspec.orm.events import StatementEvent, Subscribers, statement_kind
-from polyspec.orm.markdown import (
-    MarkdownDsn,
-    begin_markdown,
-    dial_markdown,
-    end_markdown,
-    markdown_read,
-    markdown_scalar,
-    markdown_write,
-    parse_markdown_dsn,
-    savepoint_markdown,
-    unsupported_on_markdown,
-)
+from polyspec.orm.markdown import MarkdownConnection, MarkdownDsn, parse_markdown_dsn
 from polyspec.orm.ir import IRRequest
 from polyspec.orm.keys import key_text, scalar_key
 from polyspec.orm.model import Model
@@ -194,6 +183,17 @@ def _sqlite_path(url) -> str:
     return path
 
 
+def _check_timezone(parameters: dict) -> None:
+    """The timezone parameter of a DSN accepts only UTC and +00:00."""
+    requested = parameters.get("timezone")
+    if requested is not None and requested not in ("UTC", "+00:00"):
+        raise OrmError(
+            codes.CONFIG,
+            f"dsn timezone {requested}: every connection reads and "
+            f"writes datetime values in UTC",
+        )
+
+
 def parse_dsn(dsn: str) -> ParsedDsn:
     """Splits a DSN URI into the dialect and the connection time zone. Every connection reads and writes datetime
     values as UTC (docs/spec/dialects.md "Date and time"), so the timezone parameter
@@ -207,6 +207,8 @@ def parse_dsn(dsn: str) -> ParsedDsn:
         ) from None
     scheme = url.scheme
     if scheme == "markdown":
+        # timezone is the rule of every scheme; a corpus keeps datetime in UTC.
+        _check_timezone(dict(parse_qsl(url.query, keep_blank_values=True)))
         return ParsedDsn(scheme, "+00:00", url, parse_markdown_dsn(url))
     if scheme not in DSN_PARAMETERS:
         raise OrmError(
@@ -222,13 +224,7 @@ def parse_dsn(dsn: str) -> ParsedDsn:
                 f"{scheme} DSN has the unknown parameter {name}; it "
                 f"accepts {', '.join(DSN_PARAMETERS[scheme])}",
             )
-    requested = parameters.get("timezone")
-    if requested is not None and requested not in ("UTC", "+00:00"):
-        raise OrmError(
-            codes.CONFIG,
-            f"dsn timezone {requested}: every connection reads and "
-            f"writes datetime values in UTC",
-        )
+    _check_timezone(parameters)
     zone = "+00:00"
     ssl_ca = None
     if scheme == "mysql":
@@ -1712,14 +1708,16 @@ class Db:
         options = dict(options or {})
         self.dsn = dsn
         self.parsed = parse_dsn(dsn)
+        # driver is the database of the connection: mysql, postgres, sqlite, or markdown, a corpus that a flowmark
+        # server serves. sql_driver is the dialect of the statements the connection sends: mysql, postgres or sqlite,
+        # which a markdown connection is, since a flowmark server runs SQL in SQLite's dialect (DIA-185).
         self.driver = self.parsed.driver
-        # A markdown connection does not plan (docs/spec/protocol.md §5), so it has no dialect.
-        self.dialect = None
-        if self.driver != "markdown":
-            dialect_class = dialect_of(self.driver)
-            if dialect_class is None:
-                raise OrmError(codes.CONFIG, f"unsupported DSN scheme {self.driver}")
-            self.dialect = dialect_class()
+        self.corpus = self.driver == "markdown"
+        self.sql_driver = "sqlite" if self.corpus else self.driver
+        dialect_class = dialect_of(self.sql_driver)
+        if dialect_class is None:
+            raise OrmError(codes.CONFIG, f"unsupported DSN scheme {self.driver}")
+        self.dialect = dialect_class()
         self.zone = self.parsed.zone
         self.aes_key = options.get("aesKey", "")
         self.blind_index_key = options.get("blindIndexKey", "")
@@ -1743,10 +1741,8 @@ class Db:
         self.audit_source = options.get("auditSource")
         self.pool_config = _connection_config(options)
         self.statement_timeout_ms = self.pool_config.statement_timeout_ms
-        if self.driver == "markdown" and self.statement_timeout_ms > 0:
-            unsupported_on_markdown(self, "statement timeout")
         self.engines: dict[str, Engine] = {}
-        # The runtime model registered for each manifest; SQL engines also hold their planner for that model.
+        # The runtime model registered for each manifest; its engine holds the planner for that model.
         self.schemas: dict[str, RuntimeModel] = {}
         self.plans: dict[str, dict] = {}
         self.plan_cache_size = options.get("planCacheSize", 1024)
@@ -1756,14 +1752,11 @@ class Db:
         self._root: Db | None = None
         self.request_hook: RequestHook | None = None
         self._cancellation: _FutureCancellation | None = None
-        if self.driver == "markdown":
-            # A markdown connection keeps one server session (docs/spec/protocol.md §5).
-            self._connection = self._open()
-        else:
-            self._shared.pool = _Pool(self._open, self.pool_config)
-            # The first connection opens now, so a DSN that does not connect fails here.
-            self._shared.pool.release(self._shared.pool.acquire())
-            self._connection = _Leased(self)
+        self._shared.pool = _Pool(self._open, self.pool_config)
+        # The first connection opens now, so a DSN that does not connect fails here; a markdown session checks that
+        # the server accepts the corpus and token.
+        self._shared.pool.release(self._shared.pool.acquire())
+        self._connection = _Leased(self)
 
     def utils(self) -> Utils:
         """The transaction tools of this connection (lock, transaction-local values, AES status)."""
@@ -1774,12 +1767,6 @@ class Db:
     def stats(self) -> DbStats:
         """The connection statistics of the pool (docs/spec/interfaces.md "Utilities", stats())."""
         pool = self._shared.pool
-        if pool is None:
-            # The one server session of a markdown connection, in use while a transaction holds it.
-            busy = 1 if _active_for(self) is not None else 0
-            return DbStats(
-                max_open_connections=1, open_connections=1, in_use=busy, idle=1 - busy
-            )
         opened, in_use, idle = pool.stats()
         return DbStats(
             max_open_connections=pool.size,
@@ -1830,8 +1817,8 @@ class Db:
         if self.driver == "mysql":
             return _MysqlConnection(self.parsed, self.statement_timeout_ms)
         if self.driver == "markdown":
-            # Connects one session to check that the server accepts the corpus and token.
-            return dial_markdown(self.parsed.markdown)
+            # A flowmark server runs SQL in SQLite's dialect (DIA-185): its session is a SQLite connection.
+            return MarkdownConnection(self.parsed.markdown)
         return _PostgresConnection(self.parsed, self.statement_timeout_ms)
 
     def register(self, schema: Schema) -> "Db":
@@ -1846,10 +1833,9 @@ class Db:
     def _register_set(self, manifest_hash: str, model: RuntimeModel) -> None:
         """Registers the runtime model of the manifest for validation and planning. A set that is already registered is not changed."""
         self.schemas.setdefault(manifest_hash, model)
-        if self.driver == "markdown":
-            return
         if manifest_hash not in self.engines:
-            self.engines[manifest_hash] = Engine(model, self.driver)
+            # A corpus assigns the key_prefix keys and the order positions that an insert leaves out.
+            self.engines[manifest_hash] = Engine(model, self.sql_driver, self.corpus)
 
     @property
     def closed(self) -> bool:
@@ -1871,7 +1857,6 @@ class Db:
         """Returns a handle whose active statements are interrupted when future is cancelled."""
         if not isinstance(future, asyncio.Future):
             raise OrmError(codes.CONFIG, "with_future takes an asyncio Future")
-        unsupported_on_markdown(self, "statement cancellation")
         handle = copy.copy(self)
         handle._root = self.root()
         handle._cancellation = _FutureCancellation(future)
@@ -1927,18 +1912,13 @@ class Db:
     ) -> Callable[[], None]:
         """Registers a subscriber that receives the event of every statement sent by this connection
         and its derived handles (docs/operations/usage.md "Statement events"). A subscriber
-        is called in registration order after the statement ends and before work continues, and must not throw.
-        A markdown connection sends no statement, so it is CAPABILITY_UNSUPPORTED."""
-        unsupported_on_markdown(self, "statement events")
+        is called in registration order after the statement ends and before work continues, and must not throw."""
         return self.events.subscribe(subscriber)
 
     def close(self) -> None:
         if not self._shared.closed:
             self._shared.closed = True
-            if self._shared.pool is None:
-                self._connection.close()
-            else:
-                self._shared.pool.close()
+            self._shared.pool.close()
 
     def plan(self, request: dict) -> dict:
         if self._shared.closed:
@@ -2010,7 +1990,7 @@ class Db:
                         raise OrmError(
                             codes.CODEC_ENCODE, "decimal bind requires exact text"
                         )
-                    if self.driver == "sqlite":
+                    if self.sql_driver == "sqlite":
                         value = decimal_scaled(
                             value, slot.get("precision") or 0, slot.get("scale") or 0
                         )
@@ -2131,8 +2111,6 @@ class Db:
             or timeout_ms < 0
         ):
             raise OrmError(codes.CONFIG, "transaction timeoutMs must not be negative")
-        if "audit" in options:
-            unsupported_on_markdown(self, "a transaction with audit values")
         outer = _active_for(self)
         # The audit record is checked before the transaction starts and, on every attempt, is
         # inserted right before the first write of an audited table.
@@ -2236,9 +2214,7 @@ class Db:
         name = "orm_audit"
 
         def control(kind: str, sql: str) -> None:
-            if self.driver == "markdown":
-                savepoint_markdown(frame, kind, name)
-            elif kind == "savepoint" or not self._sqlite_rolled_back(frame):
+            if kind == "savepoint" or not self._sqlite_rolled_back(frame):
                 frame.run(sql, [], kind, faultable=False)
 
         def rollback(error):
@@ -2401,7 +2377,7 @@ class Db:
         serializes the ORM's lock requests in turn. A write waits up to busy_timeout,
         and a NOWAIT request waits zero. Other databases take the lock in the statement's lock clause
         ."""
-        if self.driver != "sqlite" or mode == "":
+        if self.sql_driver != "sqlite" or mode == "":
             return
         no_wait = mode.endswith("_nowait")
 
@@ -2455,16 +2431,12 @@ class Db:
                 run(f"PRAGMA busy_timeout={previous}")
 
     def _begin(self, options: dict) -> TxFrame:
-        driver = self.driver
+        driver = self.sql_driver
         if options.get("timeoutMs", 0) > 0 and driver != "postgres":
             raise OrmError(
                 codes.CAPABILITY_UNSUPPORTED,
                 "transaction timeoutMs is supported only by postgres",
             )
-        if driver == "markdown":
-            frame = TxFrame(self, self.events.next_transaction(), options)
-            begin_markdown(self, frame, options)
-            return frame
         isolation = options.get("isolation")
         level = _ISOLATION_SQL.get(isolation, "") if isolation is not None else ""
         if isolation is not None and level == "":
@@ -2551,16 +2523,16 @@ class Db:
     def _sqlite_rolled_back(self, frame: TxFrame) -> bool:
         """Whether SQLite rolled the transaction back by itself, as it does after RAISE(ROLLBACK) or an I/O error. The
         transaction then has neither savepoints nor anything to roll back, and a ROLLBACK would fail with "no transaction is
-        active" on top of the error that ended it (INT-155)."""
-        return self.driver == "sqlite" and not frame.connection.in_transaction()
+        active" on top of the error that ended it (INT-155). A markdown session reports no state (None): a flowmark
+        session keeps its transaction open after a failed statement."""
+        return (
+            self.sql_driver == "sqlite" and frame.connection.in_transaction() is False
+        )
 
     def _finish(self, frame: TxFrame, commit: bool) -> None:
         if frame.finished:
             return
         frame.finished = True
-        if self.driver == "markdown":
-            end_markdown(frame, "commit" if commit else "rollback")
-            return
         errors: list = []
 
         def attempt(sql: str, values=None, faultable: bool = False):
@@ -2570,7 +2542,7 @@ class Db:
                 errors.append(error)
                 return None
 
-        if self.driver == "sqlite":
+        if self.sql_driver == "sqlite":
             if frame.options.get("readOnly"):
                 attempt("PRAGMA query_only = 0")
             if frame.options.get("isolation") == "read_uncommitted":
@@ -2587,7 +2559,7 @@ class Db:
                         codes.CONFIG, f"lock {key} was not held at transaction end"
                     )
                 )
-        if self.driver == "mysql":
+        if self.sql_driver == "mysql":
             # Statements that delete values are sent in key order.
             for key in sorted(frame.locals):
                 attempt(f"SET @`orm.{key}` = NULL")
@@ -2602,10 +2574,13 @@ class Db:
                     if error.code == codes.SUBSCRIBER:
                         raise
                     # A failed COMMIT may have ended the transaction, so only one that is still open is rolled back, and
-                    # the pool closes a session whose state is unknown. The error is the COMMIT's alone.
+                    # the pool closes a session whose state is unknown: one of MySQL or PostgreSQL, or one that
+                    # reports none, such as a markdown session whose server rolls back the transaction of a closed
+                    # connection (PRT-71). The error is the COMMIT's alone.
                     errors.append(error)
-                    discard = self.driver != "sqlite"
-                    if not frame.connection.in_transaction():
+                    open_ = frame.connection.in_transaction()
+                    discard = open_ is None or self.sql_driver != "sqlite"
+                    if not open_:
                         raise
             if not self._sqlite_rolled_back(frame):
                 frame.run(codes.ROLLBACK, [], "rollback", faultable=False)
@@ -2635,10 +2610,7 @@ class Db:
         name = f"orm_sp_{frame.savepoints}"
 
         def control(kind: str, sql: str) -> None:
-            # A SQL connection sends that statement; a markdown connection sends a control message of the same name.
-            if self.driver == "markdown":
-                savepoint_markdown(frame, kind, name)
-            elif kind == "savepoint" or not self._sqlite_rolled_back(frame):
+            if kind == "savepoint" or not self._sqlite_rolled_back(frame):
                 frame.run(sql, [], kind, faultable=False)
 
         try:
@@ -2763,7 +2735,7 @@ def _sqlite_busy(error) -> bool:
 
 def _hooked(db: Db, request: dict, params, after_hook=None):
     """Applies the request hook of the handle to the request before it is planned, and returns (request, params).
-    The hook adds values to a copy of params with add_param, and n_params becomes their count. A non-markdown request
+    The hook adds values to a copy of params with add_param, and n_params becomes their count. The request
     is then canonicalized (canonical.py), so the plan cache key does not depend on IN list lengths."""
     hook = db.request_hook
     if hook is None:
@@ -2782,8 +2754,6 @@ def _hooked(db: Db, request: dict, params, after_hook=None):
     # The hook has run and the planner has not yet renumbered the parameters: a caller reads the request as the hook left it.
     if after_hook is not None:
         after_hook(request, values)
-    if db.driver == "markdown":
-        return request, values
     # The plan cache is keyed by the canonical request (canonical.py), so IN lists of one bucket share a plan.
     return canonical_request(request, values)
 
@@ -2795,13 +2765,11 @@ def query(ex: Executor, request: dict, params):
     def work():
         _check_lock(ex, request)
         db = ex.db
-        if db.driver == "markdown":
-            return markdown_read(ex, request, params)[0]
         cached, slots = _split_read_plan(db, request, params)
         lock = _request_lock(request)
         if lock:
             db.row_lock(ex.frame, lock)
-        parts = _root_in_parts(request, slots, db.driver, params)
+        parts = _root_in_parts(request, slots, db.sql_driver, params)
         # A split request runs only its parts: cached is then the plan of its
         # first value (_split_read_plan).
         if parts:
@@ -2893,7 +2861,7 @@ def _relations(ex: Executor, cached: dict, params, main):
         values = _parent_values(step, parents, params)
         data: list = []
         if values:
-            for chunk in _relation_chunks(step, values, ex.db.driver):
+            for chunk in _relation_chunks(step, values, ex.db.sql_driver):
                 data.extend(_select(ex, cached, step, params, chunk))
         keys = _child_keys(cached["plan"], step["id"])
         by_key: dict = {}
@@ -3012,14 +2980,16 @@ def _split_read_plan(db, request: dict, params):
     bind limit is planned with its longest root IN list cut to its first value, so
     no plan holds a bind slot per value of the list; _root_in_parts plans the
     parts, each within the bind limit."""
-    target = _root_in_target(request) if len(params) > _driver_limit(db.driver) else -1
+    target = (
+        _root_in_target(request) if len(params) > _driver_limit(db.sql_driver) else -1
+    )
     if target < 0:
         cached = db.plan(request)
         return cached, len(cached["plan"]["steps"][0]["bind_slots"])
     ps = request["where"]["items"][target]["pred"]["ps"]
     cached = db.plan(_with_root_in_list(request, target, ps[:1]))
     slots = len(cached["plan"]["steps"][0]["bind_slots"]) - 1 + len(ps)
-    if slots <= _driver_limit(db.driver):
+    if slots <= _driver_limit(db.sql_driver):
         cached = db.plan(request)
         slots = len(cached["plan"]["steps"][0]["bind_slots"])
     return cached, slots
@@ -3134,10 +3104,8 @@ def scalar(ex: Executor, request: dict, params):
     def work():
         _check_lock(ex, request)
         db = ex.db
-        if db.driver == "markdown":
-            return markdown_scalar(ex, request, params)
         cached, slots = _split_read_plan(db, request, params)
-        parts = _root_in_parts(request, slots, db.driver, params)
+        parts = _root_in_parts(request, slots, db.sql_driver, params)
         if len(parts) == 1:
             step = db.plan(parts[0])["plan"]["steps"][0]
             result = db._send_step(ex, step["sql"], step, params)
@@ -3167,9 +3135,6 @@ def paginate(ex: Executor, request: dict, params):
     def work():
         _check_lock(ex, request)
         db = ex.db
-        if db.driver == "markdown":
-            result, total = markdown_read(ex, request, params)
-            return {"result": result, "total": total}
         cached = db.plan(request)
         main = _select(ex, cached, cached["plan"]["steps"][0], params)
         step = next((s for s in cached["plan"]["steps"] if s["role"] == "count"), None)
@@ -3185,15 +3150,12 @@ def paginate(ex: Executor, request: dict, params):
 
 def write(ex: Executor, request: dict, params, after_hook=None):
     """Runs insert, update, delete, and restore, and returns the key of the inserted row and the affected row count: in SQL databases the generated
-    identity; in the markdown executor it is the first key of the answer. 'request' and 'params' are the executed request left by the request hook and its
-    parameters."""
+    identity, or the key_prefix key that a corpus allocated on a markdown connection. 'request' and 'params' are the executed
+    request left by the request hook and its parameters."""
     request, params = _hooked(ex.db, request, params, after_hook)
 
     def work():
         db = ex.db
-        if db.driver == "markdown":
-            keys, affected = markdown_write(ex, request, params)
-            return {"id": keys[0] if keys else None, "affected": affected}
         cached = db.plan(request)
         step = cached["plan"]["steps"][0]
         settle = None
@@ -3208,7 +3170,10 @@ def write(ex: Executor, request: dict, params, after_hook=None):
         if settle is not None:
             settle(result["affected"], None)
         if request["kind"] == "insert" and " RETURNING " in step["sql"]:
-            return {"id": int(result["rows"][0][0]), "affected": 1}
+            # The returned key is the identity, an integer, or the key_prefix key that a corpus allocated, a text.
+            returned = result["rows"][0][0]
+            key = returned if isinstance(returned, str) else int(returned)
+            return {"id": key, "affected": 1}
         if (
             request["kind"] == "update"
             and request.get("optimistic")
@@ -3250,7 +3215,6 @@ def _record_inserted(ex: Executor, request: dict, key) -> None:
 
 def page_plan_steps(ex: Executor, request: dict, params) -> list[dict]:
     """Returns the steps of the plan of a page request, from the plan call that paginate runs."""
-    unsupported_on_markdown(ex.db, "getPagePlanSteps")
     request, _ = _hooked(ex.db, request, params)
     _check_lock(ex, request)
     return [
@@ -3261,7 +3225,6 @@ def page_plan_steps(ex: Executor, request: dict, params) -> list[dict]:
 
 def statement(ex: Executor, request: dict, params):
     """Returns the statement of the select request without running it."""
-    unsupported_on_markdown(ex.db, "getQuery")
     request, params = _hooked(ex.db, request, params)
     cached = ex.db.plan(request)
     step = cached["plan"]["steps"][0]

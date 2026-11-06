@@ -85,7 +85,7 @@ from polyspec.orm.names import ChainKey
 from polyspec.orm.engine.validate import validate
 from polyspec.orm.styled_value import StyledValue
 
-from . import chain_answer, testcase
+from . import testcase
 from .case_database import case_corpus, case_database
 from .recipe_apply import apply_ops
 from .coverage_case import native_query, native_session
@@ -103,7 +103,6 @@ from .server_database import with_database
 from .recipe_keys import check_keys
 from .recipe_model import connect_dsn, model_ops
 from .recipe_reads import ReadStep
-from .markdown_conformance import same
 from .test_sqlite import generate
 from .vector_case import VectorCase, vector_load_tests
 
@@ -134,18 +133,6 @@ class RecipeCase(VectorCase):
             if any(step["op"] == "interface.symbols" for step in steps)
             else testcase.COMPUTE
         )
-
-
-class ChainRecipeCase(RecipeCase):
-    """A case of a recipe with ir.answer steps: the class prepares the chain runner once for all its cases."""
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        chain_answer.prepare()
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        chain_answer.release()
 
 
 class _Failed:
@@ -190,9 +177,6 @@ def recipe_tests(path: str, database: str):
     def dispatch(step: dict, bound: dict[str, Any]) -> None:
         if step["op"] == "ir.validate":
             _validate(step, model, database)
-            return
-        if step["op"] == "ir.answer":
-            _answer(step, database)
             return
         if step["op"] == "collection.key":
             _collection_key(step, database)
@@ -274,13 +258,7 @@ def recipe_tests(path: str, database: str):
                     f"recipe {path} case {case['id']} step {index} ({step['op']}) on {database}: {error}"
                 ) from error
 
-    has_chain = any(
-        step["op"] == "ir.answer" for case in recipe["cases"] for step in case["steps"]
-    )
-    cases = recipe["cases"]
-    return vector_load_tests(
-        ChainRecipeCase if has_chain else RecipeCase, cases, _reporting(check, database)
-    )
+    return vector_load_tests(RecipeCase, recipe["cases"], _reporting(check, database))
 
 
 def _mermaid(step: dict, bound: dict, database: str, directory: Path) -> None:
@@ -403,25 +381,6 @@ def mermaid_skeleton(document: Any) -> list:
     return out
 
 
-def _answer(step: dict, database: str) -> None:
-    """Runs the chain of an ir.answer step on the listener of the chain runner, and checks its normalized result against
-    the expect of database: {value: JSON}, compared as the markdown conformance cases compare theirs, or {params: [...]},
-    which compares the params of the request that the listener received (PRT-66, PRT-67)."""
-    outcome = step["expect"].get(database)
-    if outcome is None or ("value" not in outcome and "params" not in outcome):
-        raise AssertionError(
-            f"ir.answer has neither value nor params expect for {database}"
-        )
-    if "params" in outcome and "answers" in step:
-        raise AssertionError("a params expect needs one answer, not answers")
-    got, sent, failed = chain_answer.run_chain(step["chain"], step)
-    want = outcome["value"] if "value" in outcome else outcome["params"]
-    if "params" in outcome and not failed:
-        got = _request_params(sent)
-    if not same(got, want):
-        raise AssertionError(f"got {json.dumps(got)}, want {json.dumps(want)}")
-
-
 def _collection_key(step: dict, database: str) -> None:
     """Runs a collection.key step: each value through the public put and get of a Collection. Its groups are, for each key, the
     index of the first key equal to it, and its types the native type of the key that the collection returns (INT-11, INT-63,
@@ -469,15 +428,6 @@ def _collection_key(step: dict, database: str) -> None:
         got = {"error": error.code, "message": str(error)}
     if got != step["expect"][database]:
         raise AssertionError(f"got {got}, want {step['expect'][database]}")
-
-
-def _request_params(sent: list) -> list:
-    """The params of the request message that a listener received, in the JSON form of PRT-67 (PRT-66)."""
-    for line in sent:
-        message = json.loads(line)
-        if "request" in message:
-            return message.get("params", [])
-    raise AssertionError("the listener received no request message")
 
 
 def _expect_equal(got, want, what: str) -> None:
@@ -1002,9 +952,11 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
 
 
 # The markdown.send steps (docs/spec/feature-coverage.md FCV-4): each runs one public call on a listener that answers connect with
-# {"ok": true} and records the first message after it, and answers that message with an error so the call ends.
+# {"ok": true}, answers the setup statements of orm's SQLite dialect as done, records the first other message, and answers that
+# message with an error so the call ends.
 SEND_TOKEN = "0123456789abcdef0123456789abcdef"
 SEND_ERROR = b'{"error":{"code":"IR_INVALID","message":"recorded by the markdown.send listener"}}'
+SEND_DONE = b'{"columns":[],"rows":[],"affected":0,"last_insert_id":0}'
 # The typed filters of the bind fixture tests/bind/slots.dbs that a markdown.send statement may name, by column (DBS-121).
 SEND_FILTERS = frozenset(
     [
@@ -1063,8 +1015,9 @@ def _bind_models():
 
 
 def _start_send_listener(received: list):
-    """A listener on a free loopback port that takes one connection: it answers the first line with {"ok": true}, appends the
-    second line to received, and answers every later line with SEND_ERROR."""
+    """A listener on a free loopback port that takes one connection: it answers the first line with {"ok": true}, answers the
+    setup statements of orm's SQLite dialect, such as the row lock table that a transaction needs, with SEND_DONE, appends the
+    first other line to received, and answers it and every later line with SEND_ERROR."""
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     listener.bind(("127.0.0.1", 0))
     listener.listen(1)
@@ -1083,11 +1036,14 @@ def _start_send_listener(received: list):
                     line = lines.readline()
                     if not line:
                         return
+                    text = line.decode("utf-8").rstrip("\n")
                     if index == 0:
                         reply = b'{"ok":true}'
+                    elif _setup_statement(text):
+                        reply = SEND_DONE
                     else:
-                        if index == 1:
-                            received.append(line.decode("utf-8").rstrip("\n"))
+                        if not received:
+                            received.append(text)
                         reply = SEND_ERROR
                     index += 1
                     conn.sendall(reply + b"\n")
@@ -1097,6 +1053,14 @@ def _start_send_listener(received: list):
     thread = threading.Thread(target=serve, daemon=True)
     thread.start()
     return listener, thread
+
+
+def _setup_statement(text: str) -> bool:
+    """Whether a message is a setup statement of orm's SQLite dialect, the CREATE TABLE IF NOT EXISTS of a table of orm."""
+    message = json.loads(text)
+    return message.get("op") == "statement" and message.get("sql", "").startswith(
+        'CREATE TABLE IF NOT EXISTS "orm__'
+    )
 
 
 def _send_in_process_zone(step: dict) -> None:
@@ -1119,34 +1083,10 @@ def _send_in_process_zone(step: dict) -> None:
         time.tzset()
 
 
-def _refused_surface(surface: str, models, db) -> None:
-    """Runs the public call of a markdown.send surface, one that has no form on a markdown connection (DIA-183 to DIA-189)."""
-    utils = db.utils()
-    calls = {
-        "audit": lambda: db.transaction(lambda: None, {"audit": {"actor": "tester"}}),
-        "isolation": lambda: db.transaction(
-            lambda: None, {"isolation": "serializable"}
-        ),
-        "timeout_ms": lambda: db.transaction(lambda: None, {"timeoutMs": 100}),
-        "get_query": lambda: models.Slots().connect(db).get_query(),
-        "subscribe": lambda: db.subscribe(lambda event: None),
-        "lock": lambda: utils.lock("k"),
-        "set_local": lambda: utils.set_local("k", "v"),
-        "local": lambda: utils.local("k"),
-        "backend_waiting_for_lock": lambda: utils.backend_waiting_for_lock(),
-        "privileges": lambda: utils.privileges().inspect_table("public.items"),
-        "aes_status": lambda: utils.aes().status(None, None),
-        "aes_rotate": lambda: utils.aes().rotate(None, None),
-        "schema_install": lambda: utils.schema().install(None),
-        "schema_evolution": lambda: utils.schema().add_tables_and_columns(None),
-        "schema_exists": lambda: utils.schema().exists("orm"),
-    }
-    calls[surface]()
-
-
 def _send(step: dict, call=None) -> None:
     """Runs one markdown.send step and checks its expect, which is not per database: {"message": JSON} against the first
-    message the listener received (the whole message of a begin, the one parameter of a statement), or {"error": CODE} against
+    message the listener received (the whole message of the statement that begins a transaction, the one parameter of a
+    statement), or {"error": CODE} against
     the code of the orm error that the call raises before it sends a message. A call, when given, runs the public call of the
     step in place of its filter or transaction."""
     received: list = []
@@ -1161,8 +1101,6 @@ def _send(step: dict, call=None) -> None:
         try:
             if call is not None:
                 call(models, db)
-            elif "surface" in step:
-                _refused_surface(step["surface"], models, db)
             elif "begin" in step:
                 db.transaction(
                     lambda: None, {"readOnly": step["begin"].get("read_only") is True}
@@ -1188,7 +1126,7 @@ def _send(step: dict, call=None) -> None:
         raise AssertionError(
             f"the call returned error {code or 'none'} before a message, want {json.dumps(expect.get('message'))}"
         )
-    got = _message_value(received[0])
+    got = json.loads(received[0]) if "begin" in step else _message_value(received[0])
     if got != expect["message"]:
         raise AssertionError(
             f"message {json.dumps(got)}, want {json.dumps(expect['message'])} (message {received[0]})"
@@ -1719,10 +1657,8 @@ def _query_slot(models, db, step: dict) -> None:
 
 
 def _message_value(text: str):
-    """The message that an expect compares: the whole message of a begin, or the one parameter of a statement."""
+    """The message that an expect compares: the one parameter of a statement."""
     message = json.loads(text)
-    if message.get("op") == "begin":
-        return message
     params = message.get("params")
     # A statement with no parameter (a nil compared with eq is IS NULL, DSL-48) has the empty list as its message.
     if params == []:
@@ -2543,6 +2479,25 @@ def _equal(got: dict, want: dict, ordered: bool) -> bool:
 DATABASES = ("mysql", "postgres", "sqlite", "markdown")
 
 
+def _on_database(only, database: str) -> bool:
+    """Whether a case or step with the list only runs on database: a corpus speaks SQLite's dialect, so what names
+    sqlite names it too (FCV-3)."""
+    return not only or database in only or (database == "markdown" and "sqlite" in only)
+
+
+def _dialect_key(database: str, entries) -> str:
+    """The key of a value that names its text by database: a corpus runs SQL in SQLite's dialect (DIA-185), so it
+    reads the SQLite entry unless the value states its own."""
+    if database == "markdown" and "markdown" not in (entries or {}):
+        return "sqlite"
+    return database
+
+
+def _dialect_of(context: dict) -> str:
+    """The SQL dialect of the case database: a corpus runs SQL in SQLite's (DIA-185)."""
+    return "sqlite" if context["database"] == "markdown" else context["database"]
+
+
 class DatabaseRecipeCase(VectorCase):
     """A case of a recipe on a database: it creates and drops a database and runs a bounded number of statements."""
 
@@ -2559,11 +2514,7 @@ def _database_recipe_tests(path: str, database: str):
     if "fixture" not in recipe:
         raise ValueError(f"recipe {path}: no fixture, so it has no database")
     markdown = database == "markdown"
-    if markdown and "markdown_fixture" not in recipe:
-        raise ValueError(
-            f"recipe {path}: no markdown_fixture, so it has no markdown suite"
-        )
-    fixture = recipe["markdown_fixture"] if markdown else recipe["fixture"]
+    fixture = recipe["fixture"]
     # A fixture of none runs every case on an empty case database; the helper never infers it (FCV-3).
     schema, install_first = (
         (None, []) if fixture == NONE else _fixture_schema(ROOT / fixture)
@@ -2571,8 +2522,13 @@ def _database_recipe_tests(path: str, database: str):
 
     def check(test: unittest.TestCase, case: dict) -> None:
         if markdown:
-            with case_corpus(ROOT / fixture) as dsn:
-                _run_markdown_case(path, recipe, case, schema, dsn)
+            # flowmark install creates the corpus from the set (DIA-189); a case with install: false starts on a
+            # corpus of no table.
+            installed = fixture != NONE and case.get("install", True) is not False
+            with case_corpus(ROOT / fixture if installed else None) as (dsn, corpus):
+                _run_case(
+                    path, recipe, case, database, schema, dsn, install_first, corpus
+                )
             return
         with (
             tempfile.TemporaryDirectory(prefix="orm_recipe_") as directory,
@@ -2583,13 +2539,11 @@ def _database_recipe_tests(path: str, database: str):
     cases = [
         case
         for case in recipe["cases"]
-        if database in case.get("only", DATABASES)
+        if _on_database(case.get("only"), database)
         and not (
             "not_through_pooler" in case
             and os.environ.get("ORM_CLIENT_DB_POOLER") == "1"
         )
-        # A case that flowmark refuses by its rule states the rule (FCV-3).
-        and not (markdown and "not_on_markdown" in case)
     ]
     return vector_load_tests(DatabaseRecipeCase, cases, _reporting(check, database))
 
@@ -2640,59 +2594,19 @@ def _run_case(
     schema: Schema | None,
     dsn: str,
     install_first: list,
+    corpus: Path | None = None,
 ) -> None:
     db = Db.connect(dsn)
     try:
         if schema is not None and case.get("install", True) is not False:
-            for shared in [*install_first, schema]:
-                db.utils().schema().install(shared)
-        _run_case_on(path, recipe, case, database, schema, dsn, db)
+            if database == "markdown":
+                # flowmark install made the corpus from the set; the connection takes the set as an install registers it.
+                db.utils().schema().register(schema)
+            else:
+                for shared in [*install_first, schema]:
+                    db.utils().schema().install(shared)
+        _run_case_on(path, recipe, case, database, schema, dsn, db, corpus)
     finally:
-        db.close()
-
-
-def _run_markdown_case(
-    path: str, recipe: dict, case: dict, schema: Schema, dsn: str
-) -> None:
-    """A case on a corpus: flowmark install made its tables (DIA-189), and a corpus has no catalog connection, so the
-    seed rows go through the models."""
-    db = Db.connect_schema(dsn, schema)
-    closers: list = []
-    context = {
-        "fixture": recipe["fixture"],
-        "catalog": None,
-        "namespace": None,
-        "database": "markdown",
-        "dsn": dsn,
-        "schema": schema,
-        "tables": {},
-        "bound": {"database": {"text": "recipe"}},
-        "db": db,
-        "dir": (ROOT / path).parent,
-        "closers": closers,
-        "fields": {},
-        "records": [],
-        "hook_bases": {},
-    }
-    try:
-        for part, table, index, row in _seed_rows(recipe, case):
-            try:
-                _chain_assign(_new_row(context, db, table), row, context).create()
-            except Exception as error:
-                raise AssertionError(
-                    f"recipe {path}, case {case['id']}, {part} seed row {index} of {table}, database markdown: "
-                    f"{error!r}"
-                ) from error
-        for index, step in enumerate(case["steps"]):
-            try:
-                _run_database_step(step, context)
-            except Exception as error:
-                raise AssertionError(
-                    f"recipe {path}, case {case['id']}, step {index} ({step['op']}), database markdown: {error!r}"
-                ) from error
-    finally:
-        for close in closers:
-            close()
         db.close()
 
 
@@ -2715,6 +2629,7 @@ def _run_case_on(
     schema: Schema | None,
     dsn: str,
     db: Db,
+    corpus: Path | None = None,
 ) -> None:
     catalog = connect_catalog(dsn)
     closers: list = []
@@ -2724,6 +2639,8 @@ def _run_case_on(
         "namespace": None,
         "database": database,
         "dsn": dsn,
+        # The directory of the corpus of a case of the markdown suite.
+        "corpus": corpus,
         "schema": schema,
         "tables": {},
         "bound": {"database": {"text": _database_name(dsn)}},
@@ -2844,7 +2761,9 @@ def _op_connect(step: dict, context: dict) -> dict:
         try:
             connect_catalog(f"sqlite://{path}").close()
         except OrmError:
-            want = step["expect"][context["database"]].get("file_created", False)
+            want = step["expect"][
+                _dialect_key(context["database"], step["expect"])
+            ].get("file_created", False)
             if path.exists() != want:
                 raise AssertionError(f"file_created is {path.exists()}, want {want}")
             raise
@@ -3118,8 +3037,33 @@ def _op_replica_await(step: dict, context: dict) -> dict:
 
 
 def _op_database_read_only(step: dict, context: dict) -> dict:
-    """The file of the case database becomes one that the process may only read (CFG-24)."""
+    """The file of the case database becomes one that the process may only read (CFG-24); a corpus, its directories."""
+    if context["database"] == "markdown":
+        _chmod_corpus(context["corpus"], True)
+        context["closers"].append(lambda: _chmod_corpus(context["corpus"], False))
+        return {}
     os.chmod(context["dsn"].removeprefix("sqlite://").split("?")[0], 0o444)
+    return {}
+
+
+def _chmod_corpus(root: Path, read_only: bool) -> None:
+    """Makes the directories of the corpus at root ones the process may only read, or writable again."""
+    root.chmod(0o555 if read_only else 0o755)
+    for entry in root.iterdir():
+        if entry.is_dir() and not entry.is_symlink():
+            _chmod_corpus(entry, read_only)
+
+
+def _op_corpus_write(step: dict, context: dict) -> dict:
+    """A file of the corpus, written behind the engine as sql.exec changes a table behind the schema."""
+    if context.get("corpus") is None:
+        raise AssertionError(
+            f"corpus.write on {context['database']}, which has no corpus"
+        )
+    _ = step.get("reason")
+    path = context["corpus"] / step["file"]
+    path.write_text(step["text"], encoding="utf-8")
+    path.chmod(0o600)
     return {}
 
 
@@ -3239,8 +3183,8 @@ def _op_ddl_behavior(step: dict, context: dict) -> dict:
     vector = next((c for c in vectors["cases"] if c["id"] == step["case"]), None)
     if vector is None:
         raise AssertionError(f"the vectors have no case {step['case']}")
-    database = context["database"]
-    with native_session(database, context["dsn"]) as run:
+    database = _dialect_of(context)
+    with native_session(context["database"], context["dsn"]) as run:
         for statement in [
             _DDL_CONNECTION_RULES[database],
             *vector["statements"][database],
@@ -3277,7 +3221,7 @@ def _op_sql_exec(step: dict, context: dict) -> dict:
     statement = (
         step["sql"]
         if isinstance(step["sql"], str)
-        else step["sql"].get(context["database"])
+        else step["sql"].get(_dialect_key(context["database"], step["sql"]))
     )
     if statement is None:
         return {}
@@ -3705,7 +3649,8 @@ def _row_json(row, pick) -> Any:
 
 def _wants_rows(step: dict, context: dict) -> bool:
     """The expect of the database of the case compares rows of wrappers."""
-    return "rows" in (step.get("expect", {}).get(context["database"]) or {})
+    expect = step.get("expect", {})
+    return "rows" in (expect.get(_dialect_key(context["database"], expect)) or {})
 
 
 def _chain_cells(parents: list, step: dict) -> list:
@@ -4261,7 +4206,7 @@ def _op_events_captured(step: dict, context: dict) -> dict:
         subscription.recording.events, step.get("compare", ""), context
     )
     # A mask replaces a bind that no recipe can fix (FCV-4 events.captured).
-    for mask in step.get("masks", {}).get(context["database"], []):
+    for mask in step.get("masks", {}).get(_dialect_of(context), []):
         binds = events[mask["event"]]["object"][1][1]["array"]
         binds[mask["bind"]] = {"text": mask["value"]}
     if step.get("compare") == "statements":
@@ -4580,6 +4525,7 @@ _DATABASE_OPS = {
     "session.end": _op_session_end,
     "replica.await": _op_replica_await,
     "database.read_only": _op_database_read_only,
+    "corpus.write": _op_corpus_write,
     "db.listen": _op_db_listen,
     "subscription.receive": _op_subscription_receive,
     "subscription.unlisten": _op_subscription_unlisten,
@@ -4612,19 +4558,18 @@ _DATABASE_OPS = {
 def _run_database_step(raw_step: dict, context: dict) -> None:
     """Maps the op of step to its call and checks the result against the expect of the database. A step whose expect is
     an error passes only when the call fails with that orm error code."""
-    if database_only := raw_step.get("only"):
-        if context["database"] not in database_only:
-            return
-    step = ReadStep(raw_step, context["database"])
+    if not _on_database(raw_step.get("only"), context["database"]):
+        return
+    # A markdown connection reads the sqlite entry of an expect, and an entry of its own only where its result differs.
+    key = _dialect_key(context["database"], raw_step.get("expect"))
+    step = ReadStep(raw_step, key)
     op = _DATABASE_OPS.get(step["op"]) or _MODEL_OPS.get(step["op"])
     if op is None:
         raise AssertionError(f"OP_UNKNOWN {step['op']}")
     expected = (
         None
         if "expect" not in step
-        else step.outcome(
-            _resolve_refs(raw_step["expect"][context["database"]], context)
-        )
+        else step.outcome(_resolve_refs(raw_step["expect"][key], context))
     )
     try:
         actual = op(step, context)
@@ -4699,7 +4644,12 @@ def _run_database_step(raw_step: dict, context: dict) -> None:
 
 def _sql(field, context: dict) -> str:
     """A field that holds SQL or a database-decided value: the string itself, or the entry of the database."""
-    return field if isinstance(field, str) else field[context["database"]]
+    if isinstance(field, str):
+        return field
+    key = _dialect_key(context["database"], field)
+    if key not in field:
+        raise AssertionError(f"the SQL field has no entry for {context['database']}")
+    return field[key]
 
 
 def _limits(step: dict) -> tuple:
@@ -4762,8 +4712,10 @@ def _binds(step: dict, context: dict) -> tuple:
 
 
 def _database_value(value, context: dict) -> Any:
-    if isinstance(value, dict) and all(name in value for name in DATABASES):
-        return value[context["database"]]
+    if isinstance(value, dict) and all(
+        name in value for name in ("mysql", "postgres", "sqlite")
+    ):
+        return value[_dialect_key(context["database"], value)]
     return value
 
 
@@ -4909,7 +4861,11 @@ def _schema_argument(arg: dict, context: dict) -> Schema:
 def _inspected_schema(value, context: dict) -> str:
     """The schema argument of schema.exists and schema.installed: the name, or that of the database, where $database is
     the name of the case database."""
-    name = value if isinstance(value, str) else value[context["database"]]
+    name = (
+        value
+        if isinstance(value, str)
+        else value[_dialect_key(context["database"], value)]
+    )
     if name == "$database":
         return context["dsn"].split("?", 1)[0].rsplit("/", 1)[1]
     return name

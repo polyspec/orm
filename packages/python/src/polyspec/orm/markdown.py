@@ -1,35 +1,36 @@
-# markdown IR executor: a markdown:// DSN connection sends IR requests to the flowmark server and assembles the answer rows into models
-# (docs/spec/protocol.md §5 "IR executors", docs/spec/dialects.md "Markdown IR executor"). The rules are the same as the Go client's markdown.go.
-# The Python client uses one server connection, as SQL connections do.
+# The client of a flowmark server that serves markdown:// connections (docs/spec/protocol.md §5 "Markdown connections",
+# docs/spec/dialects.md "Markdown"). A flowmark server runs a statement of SQL in SQLite's dialect on the corpus (DIA-185),
+# so a markdown connection is a SQLite connection whose statements the server answers: the connection below sends each
+# statement in a statement message and reads its answer as sqlite3 reads a row. The rules are the same as the Go client's
+# markdown.go and markdown_sql.go.
 from __future__ import annotations
 
 import base64
 import json
+import math
+import re
 import socket
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from urllib.parse import parse_qsl
 
 from polyspec.orm import codes
-from polyspec.orm.engine.model import Entity, RuntimeModel, entity_of, field_of
-from polyspec.orm.bind_check import check_assign, check_param, use_slot_type
-from polyspec.orm.engine.params import ParamUse, function_type, param_uses
-from polyspec.orm.engine.validate import validate
 from polyspec.orm.errors import OrmError
 
 __all__ = ["MarkdownDsn", "parse_markdown_dsn"]
 
 _FORM = "markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>"
-# Host stage: the client encodes the values and sends them, as with SQL connections.
-_HOST_STAGES = ("aes", "hex", "ip")
+_PRAGMA = re.compile(r"([a-z_]+)\(([A-Za-z0-9_]+)\)")
 
 
 @dataclass(frozen=True)
 class MarkdownDsn:
-    """The flowmark server address, corpus name, and token of a markdown:// DSN."""
+    """The flowmark server address, corpus name, and token of a markdown:// DSN. pragmas are the _pragma values of the
+    DSN, name and value, which each session states first, as on a SQLite DSN."""
 
     address: str
     corpus: str
     token: str
+    pragmas: tuple = field(default=())
 
 
 def parse_markdown_dsn(url) -> MarkdownDsn:
@@ -62,7 +63,8 @@ def parse_markdown_dsn(url) -> MarkdownDsn:
         )
     parameters = parse_qsl(url.query, keep_blank_values=True)
     for name, _ in parameters:
-        if name != "token":
+        # timezone is the rule of every scheme, which parse_dsn has already checked (a corpus keeps datetime in UTC).
+        if name not in ("token", "timezone", "_pragma"):
             raise OrmError(codes.CONFIG, f"{_FORM}; it does not accept {name}")
     tokens = [value for name, value in parameters if name == "token"]
     if len(tokens) != 1 or tokens[0] == "":
@@ -70,22 +72,33 @@ def parse_markdown_dsn(url) -> MarkdownDsn:
             codes.CONFIG,
             f"{_FORM}; give one token, the token of .flowmark/server.json of the corpus",
         )
-    return MarkdownDsn(f"127.0.0.1:{port}", corpus, tokens[0])
-
-
-def unsupported_on_markdown(db, surface: str) -> None:
-    """Raises the error that SQL-only surfaces receive on a markdown connection (docs/spec/dialects.md "Markdown IR executor"). On other
-    connections it does nothing."""
-    if db.driver == "markdown":
-        raise OrmError(
-            codes.CAPABILITY_UNSUPPORTED,
-            f"{surface} is not supported by the markdown IR executor",
-        )
+    pragmas = []
+    for name, value in parameters:
+        if name != "_pragma":
+            continue
+        match = _PRAGMA.fullmatch(value)
+        if match is None or (
+            match.group(1) == "busy_timeout" and not match.group(2).isdigit()
+        ):
+            raise OrmError(codes.CONFIG, f"{_FORM}; _pragma {value} is invalid")
+        pragmas.append((match.group(1), match.group(2)))
+    return MarkdownDsn(f"127.0.0.1:{port}", corpus, tokens[0], tuple(pragmas))
 
 
 def _plain(value) -> str:
     """The JSON form of a value on one line. Non-ASCII characters are not escaped, so the value passes through as is."""
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+
+
+class MarkdownServerError(Exception):
+    """The refusal the flowmark server answered, as the cause a SQLite driver's error is: sqlite_errorcode is the SQLite
+    result code it states, since the statements of a flowmark connection are in SQLite's dialect (PRT-71)."""
+
+    def __init__(self, code: str, message: str, result_code: int | None):
+        super().__init__(f"{code}: {message}")
+        self.code = code
+        self.message = message
+        self.sqlite_errorcode = result_code
 
 
 class MdSession:
@@ -105,8 +118,8 @@ class MdSession:
             self.sock.close()
 
     def call(self, msg: dict) -> dict:
-        """Sends one message as one line and reads one line of reply. If the reply is {"error": {code, message}}, it is the error with that code
-        error."""
+        """Sends one message as one line and reads one line of reply. If the reply is {"error": {code, message}}, it is
+        the error with that code, whose cause holds the SQLite result code the server states."""
         if self.broken:
             raise OrmError(codes.CONNECTION_LOST, "the flowmark session has ended")
         try:
@@ -117,7 +130,7 @@ class MdSession:
             ) from None
         try:
             answer = self.exchange(line.encode("utf-8") + b"\n")
-        except OSError as error:
+        except (OSError, ValueError) as error:
             self.close()
             raise OrmError(
                 codes.CONNECTION_LOST,
@@ -150,7 +163,12 @@ class MdSession:
             if e["code"] == codes.CONNECTION_LOST:
                 self.close()
             message = e.get("message")
-            raise OrmError(e["code"], message if isinstance(message, str) else "")
+            text = message if isinstance(message, str) else ""
+            result = e.get("result_code")
+            if isinstance(result, bool) or not isinstance(result, int):
+                result = None
+            cause = MarkdownServerError(e["code"], text, result)
+            raise OrmError(e["code"], text, cause) from cause
         return probe
 
     def exchange(self, line: bytes) -> bytes:
@@ -160,6 +178,23 @@ class MdSession:
         if not answer.endswith(b"\n"):
             raise OSError("the server closed the connection")
         return answer[:-1]
+
+    def statement(self, sql: str, values, text=None) -> dict:
+        """Runs one statement in the session (PRT-65) and returns its answer, its rows read as sqlite3 reads them; text
+        reads the bytes of a text that is not UTF-8, as the text_factory of a sqlite3 connection does."""
+        answer = self.call(
+            {
+                "op": "statement",
+                "sql": sql,
+                "params": [statement_param(value) for value in values],
+            }
+        )
+        return _read_answer("statement", answer, None, text)
+
+    def fetch(self, columns: list, text=None) -> dict:
+        """The rows that go on after an answer whose more is true, which the server holds until a fetch reads the last
+        of them (PRT-66)."""
+        return _read_answer("fetch", self.call({"op": "fetch"}), columns, text)
 
 
 def dial_markdown(dsn: MarkdownDsn) -> MdSession:
@@ -185,441 +220,234 @@ def dial_markdown(dsn: MarkdownDsn) -> MdSession:
     return s
 
 
-def markdown_model(db, manifest_hash: str) -> RuntimeModel:
-    """The runtime model of the schema registered on this connection. A manifest that is not registered gives
-    SCHEMA_HASH_MISMATCH, as with SQL connections."""
-    model = db.schemas.get(manifest_hash)
-    if model is None:
-        raise OrmError(
-            codes.SCHEMA_HASH_MISMATCH,
-            f"manifest {manifest_hash} is not registered on this connection: "
-            f"connect through its generated package or register it",
-        )
-    return model
-
-
-def markdown_call(ex, request: dict, params) -> tuple[dict, RuntimeModel]:
-    """Validates the request, runs the request message in the session ex, and returns the answer."""
-    db = ex.db
-    if db.closed:
-        raise OrmError(codes.CONFIG, "database is closed")
-    m = markdown_model(db, request["manifest_hash"])
-    request["n_params"] = len(params)
-    validate(m, request)
-    uses = param_uses(m, request)
-    for i, value in enumerate(params):
-        for use in uses[i]:
-            check_assign(i, value, use_slot_type(use))
-            if use.column is not None and any(
-                s in _HOST_STAGES for s in use.column.stages
-            ):
-                continue
-            check_param(i, value, use_slot_type(use), db.zone)
-    msg = {
-        "ir_version": request["ir_version"],
-        "manifest_hash": request["manifest_hash"],
-        "request": request,
-        "params": [
-            markdown_param(db, i, value, uses[i]) for i, value in enumerate(params)
-        ],
-        "now": db.now(db.clock_micros(), 6),
-    }
-    session = ex.frame.connection if ex.frame is not None else db._connection
-    if session is None:
-        raise OrmError(codes.CONFIG, "transaction already finished")
-    return session.call(msg), m
-
-
-def markdown_param(db, i: int, value, uses: list[ParamUse]):
-    """The runtime value model JSON value of parameter i: decimal is a string, bytes are base64, and datetime is UTC
-    YYYY-MM-DD HH:MM:SS.ffffff, date is YYYY-MM-DD, and time is HH:MM:SS.ffffff. The form is decided by the type of the slot
-    that the parameter fills. The slots of hex and ip style columns are encoded by the client and sent, as with SQL connections."""
-    from polyspec.orm.codec import host_encode
-    from polyspec.orm.database import time_value
-
-    use = uses[0] if uses else ParamUse("")
-    if use.column is not None and value is not None:
-        host = [s for s in use.column.stages if s in _HOST_STAGES]
-        if host:
-            value = host_encode(value, host, db.aes_key)
-    if value is None or isinstance(value, bool):
+def statement_param(value):
+    """The wire form of a bound value (PRT-67): a JSON value, and the form that an answer writes for a value that JSON
+    cannot hold: {"bytes": base64} for bytes, {"text": base64} for a text that is not UTF-8 and {"float": "+Inf"} or
+    {"float": "-Inf"} for an infinity. A boolean binds as 1 or 0, as sqlite3 binds it."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        try:
+            value.encode("utf-8")
+        except UnicodeEncodeError:
+            raw = value.encode("utf-8", "surrogatepass")
+            return {"text": base64.b64encode(raw).decode("ascii")}
         return value
-    if use.type in ("date", "time", "datetime") and isinstance(value, str):
-        return time_value(value, use.type, db.zone, 6)
-    if isinstance(value, (bytes, bytearray)):
-        return base64.b64encode(bytes(value)).decode("ascii")
-    if isinstance(value, str) and use.type == "bytes":
-        return base64.b64encode(value.encode("utf-8")).decode("ascii")
-    if isinstance(value, (str, int, float)):
+    if isinstance(value, bool):
+        return 1 if value else 0
+    if isinstance(value, int):
         return value
+    if isinstance(value, float):
+        if math.isnan(value):
+            raise OrmError(
+                codes.CONFIG, "a statement parameter of NaN has no JSON form"
+            )
+        if math.isinf(value):
+            return {"float": "+Inf" if value > 0 else "-Inf"}
+        return value
+    if isinstance(value, (bytes, bytearray, memoryview)):
+        return {"bytes": base64.b64encode(bytes(value)).decode("ascii")}
     raise OrmError(
-        codes.CODEC_ENCODE, f"parameter {i} ({type(value).__name__}) has no JSON form"
+        codes.CONFIG,
+        f"a statement parameter of {type(value).__name__} has no form on a SQLite connection",
     )
 
 
-def _answer_error(message: str) -> OrmError:
-    return OrmError(codes.INTERNAL, f"the flowmark answer: {message}")
+def _answer_error(what: str, raw) -> OrmError:
+    return OrmError(codes.INTERNAL, f"the answer of a {what}: {_plain(raw)}")
 
 
-class MdLinks:
-    """The join and relation values of one answer row. They are placed in the row's last cell."""
-
-    __slots__ = ("joins", "rels")
-
-    def __init__(self):
-        self.joins: dict = {}
-        self.rels: dict = {}
+def _base64(text: str, what: str, raw) -> bytes:
+    try:
+        return base64.b64decode(text, validate=True)
+    except ValueError:
+        # binascii.Error, the error of a text that is no base64, is a ValueError.
+        raise _answer_error(what, raw) from None
 
 
-class MdNode:
-    """One node of the answer: root, join, or relation, one each. asm describes the row layout of the node; children are that join and
-    relation. The node's first row decides the columns of asm, and later rows must have the same outputs in the same order."""
-
-    def __init__(self, m: RuntimeModel, q: dict, groups: bool):
-        self.q = q
-        self.ent: Entity = entity_of(m, q["entity"])
-        self.m = m
-        self.groups = groups
-        self.asm = {
-            "entity": self.ent.name,
-            "alias": "",
-            "columns": [],
-            "children": [],
-            "key": [],
-        }
-        self.built = False
-        self.joins: dict[str, MdNode] = {}
-        self.rels: dict[str, MdNode] = {}
-        for join in q.get("joins") or []:
-            child = MdNode(m, join["query"], False)
-            self.joins[join["rel"]] = child
-            self.asm["children"].append(
-                {
-                    "rel": join["rel"],
-                    "kind": "join",
-                    "step": 0,
-                    "parent_keys": [],
-                    "child_keys": [],
-                    "key": [],
-                    "flatten": False,
-                    "cascade": False,
-                    "assemble": child.asm,
-                }
-            )
-        for relation in q.get("relations") or []:
-            child = MdNode(m, relation["query"], False)
-            self.rels[relation["rel"]] = child
-            target = entity_of(m, relation["query"]["entity"])
-            parent_keys = [k["left"] for k in relation.get("keys") or []]
-            child_keys = [k["right"] for k in relation.get("keys") or []]
-            self.asm["children"].append(
-                {
-                    "rel": relation["rel"],
-                    "kind": relation["kind"],
-                    "step": 0,
-                    "parent_keys": [],
-                    "child_keys": [],
-                    "key": [],
-                    "flatten": bool(relation["query"].get("flatten")),
-                    # If this row is the row that a relation row's foreign key points to, those rows belong to this row (as in the planner).
-                    "cascade": not relation["query"].get("no_cascade_delete")
-                    and parent_keys == list(self.ent.primary_key)
-                    and child_keys != list(target.primary_key),
-                    "assemble": child.asm,
-                }
-            )
-
-    def out_col(self, name: str, index: int) -> dict:
-        """The layout of an output name: a subquery, a column function, or a column of the node's entity. The markdown executor leaves
-        all codec stages to the client, so the style is the whole stage of the column that decodes."""
-        if self.groups and name == "row_count":
-            return {
-                "index": index,
-                "name": name,
-                "column": "",
-                "type": "i64",
-                "styles": [],
-                "hidden": False,
-            }
-        columns = self.q.get("columns") or {}
-        if not self.groups:
-            sub = (columns.get("sub") or {}).get(name)
-            if sub is not None:
-                return {
-                    "index": index,
-                    "name": name,
-                    "column": "",
-                    "type": sub_type(self.m, sub),
-                    "styles": [],
-                    "hidden": False,
-                }
-            cf = (columns.get("fn") or {}).get(name)
-            if cf is not None:
-                field = field_of(self.ent, cf["column"])
-                if field is None:
-                    raise OrmError(
-                        codes.INTERNAL,
-                        f"{self.ent.name}.{cf['column']} is missing from validated column-function metadata",
-                    )
-                return {
-                    "index": index,
-                    "name": name,
-                    "column": cf["column"],
-                    "type": function_type(
-                        cf["fn"]["name"], field, self.ent.name, cf["column"]
-                    ),
-                    "styles": [],
-                    "hidden": False,
-                }
-        f = field_of(self.ent, name)
-        if f is None:
-            raise _answer_error(
-                f"{self.ent.name} answers {name}, which is no output of the request"
-            )
-        return {
-            "index": index,
-            "name": name,
-            "column": name,
-            "type": f.type,
-            "styles": list(f.stages),
-            "hidden": False,
-        }
-
-    def build(self, outputs: list[str]) -> None:
-        """The first row of the node's output decides the asm columns and keys."""
-        for i, name in enumerate(outputs):
-            self.asm["columns"].append(self.out_col(name, i))
-        keys = (self.q.get("group_by") or []) if self.groups else self.ent.primary_key
-        for key in keys:
-            if key not in outputs:
-                raise _answer_error(
-                    f"{self.ent.name} answers no {key}, a key of its rows"
-                )
-            self.asm["key"].append({"column": key, "index": outputs.index(key)})
-        self.built = True
-
-    def row(self, raw, db) -> list:
-        """Reads one answer row as a position row of the node's layout: the output values, and in the last cell, the join and relation
-        rows."""
-        if not isinstance(raw, dict):
-            raise _answer_error(
-                f"a row of {self.ent.name}: {_plain(raw)} is not a JSON object"
-            )
-        outputs = [
-            name for name in raw if name not in self.joins and name not in self.rels
-        ]
-        if not self.built:
-            self.build(outputs)
-        columns = self.asm["columns"]
-        if len(outputs) != len(columns):
-            raise _answer_error(
-                f"a row of {self.ent.name} answers {outputs}, another output than its first row"
-            )
-        values: list = []
-        links = MdLinks()
-        for name, value in raw.items():
-            if name in self.joins:
-                links.joins[name] = (
-                    None if value is None else self.joins[name].row(value, db)
-                )
-                continue
-            if name in self.rels:
-                links.rels[name] = self.rels[name].relation_rows(value, db)
-                continue
-            col = columns[len(values)]
-            if col["name"] != name:
-                raise _answer_error(
-                    f"a row of {self.ent.name} answers {name} where its first row answers "
-                    f"{col['name']}"
-                )
-            values.append(answer_value(col["type"], value, f"{self.ent.name}.{name}"))
-        from polyspec.orm.database import _decode_assembly
-
-        # The corpus catalog rejects aes columns, so there is no keyring (docs/spec/dialects.md).
-        _decode_assembly(values, {"columns": columns, "children": []}, db)
-        values.append(links)
-        return values
-
-    def relation_rows(self, raw, db) -> list:
-        """Reads a relation's value as a list of rows: a one relation is an object or null, a many relation is an array, and a key_by
-        relation is an object grouped by key."""
-        if raw is None:
-            return []
-        if isinstance(raw, list):
-            return self.rows(raw, db)
-        if self.q.get("key_by"):
-            if not isinstance(raw, dict):
-                raise _answer_error(
-                    f"keyed relation rows of {self.ent.name}: {_plain(raw)} is not a JSON object"
-                )
-            return self.rows(list(raw.values()), db)
-        return [self.row(raw, db)]
-
-    def rows(self, items: list, db) -> list:
-        return [self.row(item, db) for item in items]
+def _replaced(data: bytes) -> str:
+    """A text that is not UTF-8, each invalid sequence a replacement character."""
+    return data.decode("utf-8", "replace")
 
 
-def sub_type(m: RuntimeModel, sub: dict) -> str:
-    """The type of a scalar subquery column."""
-    if sub.get("agg") == "count":
-        return "i64"
-    if sub.get("agg") == "avg":
-        return "f64"
-    entity_name = sub["query"]["entity"]
-    entity = entity_of(m, entity_name)
-    if entity is None:
-        raise OrmError(
-            codes.INTERNAL, f"scalar subquery entity {entity_name} is missing"
-        )
-    column_name = sub["column"]
-    f = field_of(entity, column_name)
-    if f is None:
-        raise OrmError(
-            codes.INTERNAL,
-            f"{entity.name}.{column_name} is missing from a validated scalar subquery",
-        )
-    # INT-160: a sum leaves the range of its column.
-    return "i64" if sub.get("agg") == "sum" and f.type in ("i16", "i32") else f.type
-
-
-def answer_value(type_: str, raw, where: str):
-    """Reads one answer value as a Python value of the column's type. The value is in the same runtime value model as the parameters."""
-    if raw is None:
-        return None
-
-    def bad():
-        return OrmError(
-            codes.CODEC_DECODE,
-            f"{where}: the answer value {_plain(raw)} is not a {type_} value",
-        )
-
-    if type_ in ("i16", "i32", "i64"):
-        if isinstance(raw, bool) or not isinstance(raw, int):
-            raise bad()
-        return raw
-    if type_ == "f64":
-        if isinstance(raw, bool) or not isinstance(raw, (int, float)):
-            raise bad()
-        return float(raw)
-    if type_ == "bool":
-        if not isinstance(raw, bool):
-            raise bad()
-        return raw
-    if type_ == "bytes":
-        if not isinstance(raw, str):
-            raise bad()
-        try:
-            return base64.b64decode(raw, validate=True)
-        except ValueError:
-            raise bad() from None
-    if not isinstance(raw, str):
-        raise bad()
-    return raw
-
-
-def aggregate_value(raw):
-    """The value of sum and avg answers: an integer, a decimal, or a decimal string, or None if there is none."""
+def statement_cell(raw, what: str = "statement", text=None):
+    """Reads one cell of an answer as sqlite3 reads it on a SQLite connection: an integer as an int, a fraction as a
+    float, a text as a str, a blob as bytes, or None. text reads the bytes of a text that is not UTF-8."""
     if raw is None or isinstance(raw, str):
         return raw
-    if isinstance(raw, bool) or not isinstance(raw, (int, float)):
-        raise _answer_error(f"the aggregate {_plain(raw)} is no number")
-    return raw
+    if isinstance(raw, bool):
+        raise _answer_error(what, raw)
+    if isinstance(raw, (int, float)):
+        return raw
+    if isinstance(raw, dict) and len(raw) == 1:
+        if raw.get("float") in ("+Inf", "-Inf"):
+            return math.inf if raw["float"] == "+Inf" else -math.inf
+        if isinstance(raw.get("text"), str):
+            return (text or _replaced)(_base64(raw["text"], what, raw))
+        if isinstance(raw.get("bytes"), str):
+            return _base64(raw["bytes"], what, raw)
+    raise _answer_error(what, raw)
 
 
-def markdown_read(ex, request: dict, params) -> tuple[dict, int]:
-    """Reads the answer of a row read (one, all, group_count, paginate) as a positional result. The plan of the result is the layout of the root node,
-    and the last cell of each row is that join and relation."""
-    answer, m = markdown_call(ex, request, params)
-    rows = answer.get("rows")
-    if not isinstance(rows, list):
-        raise _answer_error(f"a {request['kind']} answer {_plain(answer)} has no rows")
-    count = answer.get("count")
-    if request["kind"] == "paginate" and (
-        isinstance(count, bool) or not isinstance(count, int)
-    ):
-        raise _answer_error(f"a paginate answer {_plain(answer)} has no count")
-    root = MdNode(m, request, request["kind"] == "group_count")
-    if root.groups and not rows:
-        # An empty group answer has no first row to name the outputs, so they are the group_by keys and
-        # row_count, the same outputs every group row answers.
-        root.build([*(request.get("group_by") or []), "row_count"])
-    main = root.rows(rows, ex.db)
-    plan = {
-        "manifest_hash": request["manifest_hash"],
-        "kind": request["kind"],
-        "steps": [{"id": 0, "role": "main", "assemble": root.asm}],
-    }
+def _read_answer(what: str, answer: dict, columns: list | None, text=None) -> dict:
+    """Reads a statement or fetch answer; columns holds the column names of the statement for a fetch, whose answer
+    names none."""
+    rows = answer.get("rows", [])
+    if not isinstance(rows, list) or not all(isinstance(row, list) for row in rows):
+        raise _answer_error(what, answer)
+    numbers = {}
+    for name in ("affected", "last_insert_id"):
+        value = answer.get(name, 0)
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise _answer_error(what, answer)
+        numbers[name] = value
+    more = answer.get("more", False)
+    if not isinstance(more, bool):
+        raise _answer_error(what, answer)
+    if columns is None:
+        listed = answer.get("columns", [])
+        if not isinstance(listed, list):
+            raise _answer_error(what, answer)
+        columns = []
+        for column in listed:
+            if not isinstance(column, dict) or not isinstance(column.get("name"), str):
+                raise _answer_error(what, answer)
+            columns.append(column["name"])
     return {
-        "plan": plan,
-        "main": main,
-        "steps": {},
-        "params": params,
-        "markdown": True,
-    }, count or 0
+        "columns": columns,
+        "rows": [[statement_cell(cell, what, text) for cell in row] for row in rows],
+        "affected": numbers["affected"],
+        "last_insert_id": numbers["last_insert_id"],
+        "more": more,
+    }
 
 
-def markdown_scalar(ex, request: dict, params):
-    """The answer for count, sum, and avg."""
-    answer, _ = markdown_call(ex, request, params)
-    if request["kind"] == "count":
-        count = answer.get("count")
-        if isinstance(count, bool) or not isinstance(count, int):
-            raise _answer_error(f"a count answer {_plain(answer)} has no count")
-        return count
-    if "value" not in answer:
-        raise _answer_error(f"a {request['kind']} answer {_plain(answer)} has no value")
-    return aggregate_value(answer["value"])
+class MarkdownCursor:
+    """A cursor of a flowmark session, the methods of a sqlite3 cursor that a catalog session calls: it reads the rows of
+    a statement batch by batch and closes the rows the server still holds when it stops early (PRT-66)."""
 
+    def __init__(self, connection: "MarkdownDbapi"):
+        self._connection = connection
+        self._answer: dict | None = None
+        self._next = 0
+        self.description = None
+        self.rowcount = -1
+        self.lastrowid = None
 
-def markdown_write(ex, request: dict, params) -> tuple[list, int]:
-    """The write answer {affected, keys}. keys holds the primary keys of the inserted rows in insert order: an identity is
-    an integer; a key_prefix key is text."""
-    answer, _ = markdown_call(ex, request, params)
-    affected = answer.get("affected")
-    if isinstance(affected, bool) or not isinstance(affected, int):
-        raise _answer_error(
-            f"a {request['kind']} answer {_plain(answer)} has no affected"
+    def execute(self, sql: str, args=()):
+        self._end()
+        session = self._connection.session
+        answer = session.statement(sql, list(args), self._connection.text_factory)
+        self._connection.track(sql)
+        self._answer, self._next = answer, 0
+        self.description = (
+            [(name, None, None, None, None, None, None) for name in answer["columns"]]
+            if answer["columns"]
+            else None
         )
-    keys = [aggregate_value(key) for key in answer.get("keys") or []]
-    if request["kind"] == "update" and request.get("optimistic") and affected == 0:
-        raise OrmError(codes.OPTIMISTIC_LOCK, "the row changed after it was read")
-    return keys, affected
+        self.rowcount = answer["affected"]
+        self.lastrowid = answer["last_insert_id"]
+        return self
+
+    def fetchone(self):
+        answer = self._answer
+        if answer is None:
+            return None
+        while self._next == len(answer["rows"]):
+            if not answer["more"]:
+                return None
+            answer["more"] = False
+            batch = self._connection.session.fetch(
+                answer["columns"], self._connection.text_factory
+            )
+            answer["rows"], answer["more"], self._next = batch["rows"], batch["more"], 0
+        row = answer["rows"][self._next]
+        self._next += 1
+        return tuple(row)
+
+    def fetchall(self) -> list:
+        rows = []
+        for row in iter(self.fetchone, None):
+            rows.append(row)
+        return rows
+
+    def _end(self) -> None:
+        """Ends the rows the server still holds."""
+        answer, self._answer = self._answer, None
+        if answer is not None and answer["more"]:
+            answer["more"] = False
+            self._connection.session.call({"op": "close"})
+
+    def close(self) -> None:
+        self._end()
 
 
-def markdown_links(row: list) -> MdLinks:
-    """The join and relation that the answer row holds in its last cell."""
-    links = row[-1] if row else None
-    return links if isinstance(links, MdLinks) else MdLinks()
+class MarkdownDbapi:
+    """A flowmark session as the sqlite3 connection that a catalog session holds: cursor, text_factory and
+    in_transaction. in_transaction is the state of the transaction statements the session ran: BEGIN opens it, and
+    COMMIT and ROLLBACK end it."""
+
+    def __init__(self, session: MdSession):
+        self.session = session
+        self.text_factory = None
+        self.in_transaction = False
+
+    def cursor(self) -> MarkdownCursor:
+        return MarkdownCursor(self)
+
+    def track(self, sql: str) -> None:
+        word = sql.lstrip().split(None, 2)
+        head = word[0].upper() if word else ""
+        if head == "BEGIN":
+            self.in_transaction = True
+        elif head in ("COMMIT", "END") or (
+            head == "ROLLBACK" and (len(word) == 1 or word[1].upper() != "TO")
+        ):
+            self.in_transaction = False
 
 
-def begin_message(read_only: bool) -> dict:
-    """The begin control message of a transaction: a read-only transaction sends read_only true, any other leaves the
-    member out (docs/spec/protocol.md section 5 Session, the cases control_begin of tests/bind/messages.json)."""
-    return {"op": "begin", "read_only": True} if read_only else {"op": "begin"}
+class MarkdownConnection:
+    """One flowmark session as a connection of the pool: the statements of the SQLite dialect run on it, so the
+    connection is a SQLite connection to every surface of the Db (PRT-72). connection is the session as a sqlite3
+    connection, which a catalog session reads."""
 
+    def __init__(self, dsn: MarkdownDsn):
+        self.session = dial_markdown(dsn)
+        try:
+            for name, value in dsn.pragmas:
+                self.session.statement(f"PRAGMA {name} = {value}", [])
+        except BaseException:
+            self.session.close()
+            raise
+        self.connection = MarkdownDbapi(self.session)
 
-def begin_markdown(db, frame, options: dict) -> None:
-    """Opens a markdown transaction: the frame holds the connection's session until the transaction ends, and sends begin.
-    A read-only transaction sends read_only."""
-    if options.get("isolation") is not None:
-        unsupported_on_markdown(db, "the transaction isolation option")
-    frame.connection = db._connection
-    try:
-        frame.connection.call(begin_message(bool(options.get("readOnly"))))
-    except BaseException:
-        frame.finished = True
-        frame.connection = None
-        raise
+    def execute(self, sql: str, values):
+        """Runs one statement and reads all its rows, fetching the batches that go on."""
+        answer = self.session.statement(sql, list(values))
+        rows = answer["rows"]
+        last = answer
+        while last["more"]:
+            last = self.session.fetch(answer["columns"])
+            rows.extend(last["rows"])
+        return {
+            "rows": rows,
+            "insert_id": answer["last_insert_id"],
+            "affected": answer["affected"],
+        }
 
+    def in_transaction(self) -> bool | None:
+        """None: a flowmark session keeps its transaction open after a failed statement, so the client has no rollback
+        of its own to learn of, and the state after a failed COMMIT is unknown (PRT-71)."""
+        return None
 
-def end_markdown(frame, op: str) -> None:
-    """Ends the transaction with commit or rollback, and returns the session to the connection."""
-    try:
-        frame.connection.call({"op": op})
-    finally:
-        frame.connection = None
+    def is_alive(self) -> bool:
+        return not self.session.broken
 
+    def cancel_query(self) -> None:
+        """Cuts the connection: the call that waits is CANCELED, and the server rolls back the transaction of the closed
+        connection and releases its locks (PRT-71)."""
+        self.session.broken = True
+        self.session.sock.shutdown(socket.SHUT_RDWR)
 
-def savepoint_markdown(frame, op: str, name: str) -> None:
-    """Sends one savepoint control message: savepoint, release, or rollback_to."""
-    frame.connection.call({"op": op, "name": name})
+    def close(self) -> None:
+        self.session.close()

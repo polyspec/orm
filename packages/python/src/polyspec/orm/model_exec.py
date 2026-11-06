@@ -25,7 +25,6 @@ from polyspec.orm.database import (
 from polyspec.orm.engine.model import Entity, field_of
 from polyspec.orm.engine.validate import restore_key
 from polyspec.orm.errors import OrmError
-from polyspec.orm.markdown import markdown_links
 from polyspec.orm.model import Collection, Model
 from polyspec.orm.names import ChainKey
 from polyspec.orm.styled_value import StyledValue
@@ -174,19 +173,14 @@ class _Assembler:
 
     def _join_row(self, child, row):
         """The row of a join child, or None if there is none. In a SQL result the join column sits in the parent row with the first column
-        NULL meaning there is none. In a markdown answer, the parent row's last cell holds the join row."""
-        if self.result.get("markdown"):
-            return markdown_links(row).joins.get(child["rel"])
+        NULL meaning there is none."""
         first = (
             child["assemble"]["columns"][0] if child["assemble"]["columns"] else None
         )
         return row if first is not None and row[first["index"]] is not None else None
 
     def _related(self, child, parent):
-        """The row of a relation child for the parent row parent, and its placement. In a SQL result, the relation step's row is found by key, and
-        in a markdown answer, the parent row's last cell holds the relation row."""
-        if self.result.get("markdown"):
-            return markdown_links(parent).rels.get(child["rel"], []), child["assemble"]
+        """The row of a relation child for the parent row parent, and its placement: the relation step's row is found by key."""
         step_result = self.result["steps"].get(child["step"])
         if step_result is None:
             return [], None
@@ -506,14 +500,13 @@ def create(c: Core):
             )
         else:
             core.values[s.column] = convert(type_, s.value, ex.db.zone, field)
-    # Columns that take the key: the identity, or a key that the markdown executor decides (key_prefix), and the one primary key column
-    # that the request gives no value for.
+    # The column that takes the key it is given: the identity, or the key_prefix key that a corpus allocated to a
+    # primary key the request did not supply.
     assigned_key = schema.identity
     if (
         assigned_key == ""
-        and ex.db.driver == "markdown"
-        and len(schema.primary_key) == 1
-        and written["id"] is not None
+        and isinstance(written["id"], str)
+        and schema.key_prefix != ""
         and all(s.column != schema.primary_key[0] for s in c.sets)
     ):
         assigned_key = schema.primary_key[0]
@@ -554,14 +547,14 @@ def creates(c: Core, models, batch: int) -> int:
         columns.append(s.column)
     schema = c.ent.entity
     parts = _insert_parts(len(models), batch)
-    limit = 999 if ex.db.driver == "sqlite" else 65535
+    limit = 999 if ex.db.sql_driver == "sqlite" else 65535
     for n, size in enumerate(parts, 1):
         binds = size * len(columns)
         if binds > limit:
             raise OrmError(
                 codes.BATCH_TOO_LARGE,
                 f"creates batch {n} of {size} rows binds {binds} parameters, "
-                f"over the {ex.db.driver} limit of {limit}",
+                f"over the {ex.db.sql_driver} limit of {limit}",
             )
     total = 0
 

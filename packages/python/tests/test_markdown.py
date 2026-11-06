@@ -6,8 +6,6 @@ import unittest
 from polyspec.orm.errors import OrmError
 from . import testcase
 
-TOKEN = "0123456789abcdef0123456789abcdef"
-
 
 def vector_value(value):
     """A value of a bind case as the host value a Python program passes: {"int": text} an int, {"f64": text} a

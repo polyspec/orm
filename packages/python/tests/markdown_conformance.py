@@ -1,4 +1,4 @@
-# markdown IR executor conformance (tests/markdown/README.md): runs every case of tests/markdown/cases.json, in that order,
+# markdown corpus conformance (tests/markdown/README.md): runs every case of tests/markdown/cases.json, in that order,
 # with the Python client against one flowmark server of the flowmark build that FLOWMARK points to. The build
 # must be the build pinned by flowmark.version; if it is missing or a different build, the run fails (it is not skipped).
 import json
@@ -211,15 +211,18 @@ def code_of(run) -> str | None:
     return None
 
 
-def refused_install(s: Served, name: str) -> dict:
-    """The code that flowmark install prints when it refuses tests/markdown/refused/<name>.dbs, {"error": code}; an
-    install that succeeds is {"error": None}."""
-    with tempfile.TemporaryDirectory(prefix="orm-markdown-refused-") as root:
+def install_catalog(s: Served, name: str) -> dict:
+    """Installs tests/markdown/catalogs/<name>.dbs as the one document of the set of a new corpus and answers
+    {"error": None}, or the code of its refusal, {"error": code}."""
+    with tempfile.TemporaryDirectory(prefix="orm-markdown-catalog-") as root:
         directory = Path(root) / name
         (directory / "dbspec").mkdir(parents=True)
         shutil.copyfile(
-            CONFORMANCE_DIR / "refused" / f"{name}.dbs",
+            CONFORMANCE_DIR / "catalogs" / f"{name}.dbs",
             directory / "dbspec" / f"{name}.dbs",
+        )
+        (directory / "dbspec" / "dbspec-set.json").write_text(
+            json.dumps({"schema": 1, "documents": [f"{name}.dbs"]}), encoding="utf-8"
         )
         installed = subprocess.run(
             [s.binary, "install", str(directory)], capture_output=True, text=True
@@ -579,11 +582,12 @@ def conformance_cases() -> dict:
         )
 
     def lock_nowait(s):
-        return s.db.transaction(
+        s.db.transaction(
             lambda: s.models.People().connect(s.db).id("P1").for_update_no_wait().get()
         )
 
     def get_query(s):
+        # get_query is the statement of a read, the same text as on SQLite: {"sql", "binds"}.
         return s.models.People().connect(s.db).get_query()
 
     def isolation(s):
@@ -610,7 +614,7 @@ def conformance_cases() -> dict:
     def transaction_retry_commit(s):
         # A transaction that reads P1 and writes its own name back, with retry options: the commit's code
         # (None when it commits) and how many times the callback ran. WRITE_CONFLICT is never retried,
-        # DEADLOCK is (tests/ir/answers.json).
+        # DEADLOCK is (PRT-71).
         runs = []
 
         def body():
@@ -649,8 +653,8 @@ def conformance_cases() -> dict:
         return sorted(m.get_id() for m in rows.values())
 
     def primary_key_case(s):
-        # The key t3 equals T3 without regard to case: a plain insert is DUPLICATE_KEY, and an on_duplicate insert
-        # meets T3, which keeps its key (DIA-164).
+        # The key t3 equals T3 without regard to case: a plain insert is DUPLICATE_KEY, and so is an on_duplicate
+        # insert, whose conflict meets a key byte for byte, as on SQLite; T3 keeps its row (DIA-164).
         def tasks():
             return s.models.Tasks().connect(s.db)
 
@@ -664,11 +668,24 @@ def conformance_cases() -> dict:
                 .create()
             )
         )
-        tasks().set_id("t3").set_owner("P2").set_title("ship it").set_points(
-            8
-        ).duplication(s.models.Tasks().set_title("ship it")).create()
+        upsert = code_of(
+            lambda: (
+                tasks()
+                .set_id("t3")
+                .set_owner("P2")
+                .set_title("ship it")
+                .set_points(8)
+                .duplication(s.models.Tasks().set_title("ship it"))
+                .create()
+            )
+        )
         met = array_form(tasks().remove_all_columns().add_column_title().id("T3").get())
-        return {"duplicate": duplicate, "met": met, "count": tasks().get_count()}
+        return {
+            "duplicate": duplicate,
+            "upsert": upsert,
+            "met": met,
+            "count": tasks().get_count(),
+        }
 
     def tuple_in(s):
         # Two columns compared with a list of value groups, IN and NOT IN (DIA-168).
@@ -832,14 +849,15 @@ def conformance_cases() -> dict:
         return [array_form(m) for m in rows.values()]
 
     def force_index(s):
-        # An index hint, which the corpus does not name: CAPABILITY_UNSUPPORTED (DIA-186).
-        return (
+        # force_index reads through the index it names, as SQLite does (DIA-186).
+        rows = (
             s.models.Tasks()
             .connect(s.db)
             .force_index_ix_tasks_owner()
             .owner("P1")
             .gets()
         )
+        return [array_form(m) for m in rows.values()]
 
     def unavailable_table(s):
         # A heading of another table in tasks.flowmark.md is format.block: a read of tasks fails CONSTRAINT naming the
@@ -992,10 +1010,10 @@ def conformance_cases() -> dict:
         "codec_update": codec_update,
         "select_explicit_insert_omitted": select_explicit_insert_omitted,
         "select_explicit_read_null": select_explicit_read_null,
-        # A catalog with an aes column is a schema error on a corpus (DIA-178).
-        "install_refuses_aes": lambda s: refused_install(s, "aes"),
-        # A catalog with an audit setting is a schema error on a corpus (DIA-179).
-        "install_refuses_audit": lambda s: refused_install(s, "audit"),
+        # install_aes installs a catalog with an aes column and its key version column (DIA-178).
+        "install_aes": lambda s: install_catalog(s, "aes"),
+        # install_audit installs a catalog with an audit setting, its record table and its history table (DIA-179).
+        "install_audit": lambda s: install_catalog(s, "audit"),
     }
 
 

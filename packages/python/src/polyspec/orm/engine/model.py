@@ -79,6 +79,10 @@ class Entity:
     audit_column: str
     # Audit record table of the `audit` setting (the references table), or ''.
     audit_record: str
+    # Prefix of the `key_prefix` setting, or ''.
+    key_prefix: str = ""
+    # Column of the `order` setting, or ''.
+    order: str = ""
     # True for a used table of an external document: it is read like any entity, and every
     # write fails with CONFIG before any statement (docs/spec/dbspec.md "External documents").
     external: bool = False
@@ -155,6 +159,8 @@ def _entity_of_table(t) -> Entity:
     aes_version = ""
     audit_column = ""
     audit_record = ""
+    key_prefix = ""
+    order = ""
     explicit = set()
     stages = {}
     blind = {}
@@ -168,6 +174,10 @@ def _entity_of_table(t) -> Entity:
             soft_delete = s.column
         elif s.kind == "aes_version":
             aes_version = s.column
+        elif s.kind == "key_prefix":
+            key_prefix = s.prefix
+        elif s.kind == "order":
+            order = s.column
         elif s.kind == "select_explicit":
             explicit.update(s.columns)
         elif s.kind == "codec":
@@ -213,6 +223,8 @@ def _entity_of_table(t) -> Entity:
         aes_version=aes_version,
         audit_column=audit_column,
         audit_record=audit_record,
+        key_prefix=key_prefix,
+        order=order,
     )
 
 

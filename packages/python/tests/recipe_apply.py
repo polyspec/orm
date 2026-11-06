@@ -18,6 +18,8 @@ from polyspec.orm.dbspec.apply import (
 )
 from polyspec.orm.dbspec.introspect import introspect_dbspec
 from polyspec.orm.dbspec.plan import parse_plan
+from polyspec.orm.database import parse_dsn
+from polyspec.orm.markdown import MarkdownConnection
 
 from .case_database import case_database
 from .dbspec_apply_runner import Adapter
@@ -43,6 +45,11 @@ _COMMANDS = {
 }
 
 
+def _dialect_of(database: str) -> str:
+    """The SQL dialect of a case database: a corpus runs SQL in SQLite's (DIA-185)."""
+    return "sqlite" if database == "markdown" else database
+
+
 class _Stop(Exception):
     """What an on with stop raises from the event handler, so the code of the command is stopped."""
 
@@ -62,9 +69,16 @@ class _Session:
     def __init__(self, dialect: str, connection) -> None:
         self.dialect = dialect
         self.connection = connection
-        self.adapter = Adapter(dialect, connection)
+        # A corpus session already runs a statement with its values and answers {'rows': [...]}.
+        self.adapter = (
+            connection
+            if isinstance(connection, MarkdownConnection)
+            else Adapter(dialect, connection)
+        )
 
     def run(self, text: str) -> list:
+        if isinstance(self.connection, MarkdownConnection):
+            return self.connection.execute(text, [])["rows"]
         if self.dialect == "sqlite":
             cursor = self.connection.execute(text)
             rows = cursor.fetchall()
@@ -84,7 +98,10 @@ class _Session:
 def _direct(context: dict, dsn: str) -> _Session:
     """The session of a direct connection to the database of the case DSN dsn, with the rules of a new connection."""
     database = context["database"]
-    if database == "sqlite":
+    if database == "markdown":
+        # A corpus is reached through one session of its flowmark server, which answers SQLite's statements (DIA-185).
+        connection = MarkdownConnection(parse_dsn(dsn).markdown)
+    elif database == "sqlite":
         connection = sqlite3.connect(
             unquote(dsn[len("sqlite://") :]), isolation_level=None
         )
@@ -96,8 +113,8 @@ def _direct(context: dict, dsn: str) -> _Session:
             if database == "mysql"
             else psycopg.connect(server, dbname=name, autocommit=True)
         )
-    session = _Session(database, connection)
-    for rule in _CONNECTION_RULES[database]:
+    session = _Session(_dialect_of(database), connection)
+    for rule in _CONNECTION_RULES[_dialect_of(database)]:
         session.run(rule)
     return session
 
@@ -143,7 +160,7 @@ def _connect(step: dict, context: dict) -> dict:
 
 def _schema(step: dict, context: dict) -> dict:
     result = introspect_dbspec(
-        _session_of(step, context).adapter, context["database"], "x"
+        _session_of(step, context).adapter, _dialect_of(context["database"]), "x"
     )
     if result["unsupported"]:
         raise AssertionError(f"dbspec.schema: unsupported {result['unsupported']}")
@@ -211,7 +228,11 @@ def apply_ops(sql, run_step) -> dict:
         code = "ok"
         try:
             _COMMANDS[step["op"]](
-                session.adapter, context["database"], plans, lambda: _NOW, handler
+                session.adapter,
+                _dialect_of(context["database"]),
+                plans,
+                lambda: _NOW,
+                handler,
             )
         except _Stop:
             code = "stopped"

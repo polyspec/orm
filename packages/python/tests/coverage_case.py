@@ -44,6 +44,26 @@ def native_session(driver: str, dsn: str):
     from urllib.parse import parse_qsl, unquote, urlsplit
 
     url = urlsplit(dsn)
+    if driver == "markdown":
+        # A corpus has no native driver but its flowmark server, which states SQL in SQLite's dialect (DIA-185): one
+        # session of it, through which a test states SQL as it does on a SQLite file.
+        from polyspec.orm.database import parse_dsn
+        from polyspec.orm.markdown import MarkdownConnection
+
+        corpus = MarkdownConnection(parse_dsn(dsn).markdown)
+
+        def run_markdown(sql: str) -> list[dict]:
+            cursor = corpus.connection.cursor().execute(sql)
+            names = [column[0] for column in cursor.description or ()]
+            rows = [dict(zip(names, row)) for row in cursor.fetchall()]
+            cursor.close()
+            return rows
+
+        try:
+            yield run_markdown
+        finally:
+            corpus.close()
+        return
     if driver == "sqlite":
         import sqlite3
 
