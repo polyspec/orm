@@ -3253,7 +3253,8 @@
       "scope": "owner",
       "needs": [
         "python",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "mise.toml",

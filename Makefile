@@ -1772,10 +1772,13 @@ conformance-check: conformance-result-check conformance-generated-methods-check 
 # orm-install-flowmark installs it here. The test fails unless the version matches what the build information pins, so a flowmark checkout
 # built at the pinned revision can be given as FLOWMARK=<that path>.
 FLOWMARK ?= $(abspath .runtime/bin/flowmark)
-# The native tests hold the markdown units of the extension, which run on the flowmark server of FLOWMARK. The export follows the
-# definition of FLOWMARK, since a simple assignment takes the value that FLOWMARK has where make reads it.
+# The native tests of the extension and the Python tests that python-unit-check discovers hold markdown units, which run on the
+# flowmark server of FLOWMARK. The export follows the definition of FLOWMARK, since a simple assignment takes the value that
+# FLOWMARK has where make reads it.
 test-php-ext: export FLOWMARK := $(FLOWMARK)
 test-php-ext: flowmark-check
+python-unit-check: export FLOWMARK := $(FLOWMARK)
+python-unit-check: flowmark-check
 .PHONY: markdown-conformance-check markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/php-extension markdown-conformance-check/python markdown-conformance-check/rust markdown-conformance-check/typescript orm-install-flowmark
 # parity-prepare builds what the bindings of config/parity.json load before a Kit parity gate runs them, into the
 # directory of this make run: the PHP extension that the php-extension implementation loads
