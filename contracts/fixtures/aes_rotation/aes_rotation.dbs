@@ -35,3 +35,26 @@ table secret_config {
     aes_version aes_key_version
   }
 }
+
+table rot_parent {
+  seq i64 identity
+  aes_key_version i32
+  token varchar(255) null
+  primary key (seq)
+  settings {
+    codec token aes hex
+    aes_version aes_key_version
+  }
+}
+
+table rot_child {
+  seq i64 identity
+  rot_parent_seq i64
+  aes_key_version i32
+  token varchar(255) null
+  primary key (seq)
+  settings {
+    codec token aes hex
+    aes_version aes_key_version
+  }
+}

@@ -320,45 +320,78 @@ pub fn read_frame_row(row: &DriverRow, zone: Zone) -> Result<Vec<Val>> {
 
 /// Decodes styled cells of every positional row of a step in place: the host stages a
 /// dialect left to the executor (aes/hex/ip, with the AES secret) first, then the codec
-/// stages (docs/spec/codec.md).
+/// stages (docs/spec/codec.md). Each node, the root and each joined child, reads the key
+/// version of its own row (COD-6).
 pub fn decode_styled(asm: &crate::plan::Assemble, data: &mut [Vec<Val>], aes_keys: &std::collections::BTreeMap<i32, String>) -> Result<()> {
-    let styled = crate::codec::styled_cols(asm);
-    if styled.is_empty() {
+    let mut nodes = Vec::new();
+    styled_nodes(asm, &mut nodes)?;
+    if nodes.is_empty() {
         return Ok(());
     }
-    let has_aes = styled.iter().any(|c| c.host.iter().any(|style| style == "aes"));
-    let version_index = if has_aes {
-        // COD-44: the planner selects the version column of every AES column, so a plan without one is broken: no version is assumed.
-        let column = asm.aes_version.map(|at| &asm.columns[at]).ok_or_else(|| Error::Engine {
-            code: crate::codes::INTERNAL.into(),
-            msg: format!("{}: the plan reads an AES column without its key version column", asm.entity),
-        })?;
-        Some(column.index)
-    } else {
-        None
-    };
     for row in data.iter_mut() {
-        for sc in &styled {
-            let mut v = std::mem::take(&mut row[sc.index]);
-            // A NULL value stays NULL: its version is not read, so a NULL version with a NULL value is not an error (COD-44).
-            if !sc.host.is_empty() && !matches!(v, Val::Null) {
-                let key = if sc.host.iter().any(|style| style == "aes") {
-                    let index = version_index.ok_or_else(|| Error::Engine {
-                        code: crate::codes::INTERNAL.into(),
-                        msg: format!("{}: the AES version column is not selected", asm.entity),
-                    })?;
-                    let version = aes_row_version(row, index)?;
-                    aes_keys.get(&version).map(String::as_str).ok_or_else(|| Error::Config(format!("AES version {version} is not declared")))?
-                } else {
-                    // Non-AES host stages do not consume an AES key.
-                    ""
-                };
-                v = crate::codec::host_decode(&v, &sc.host, key).map_err(|error| crate::model::column_decode_error(&sc.entity, &sc.name, error))?;
+        for node in &nodes {
+            for sc in &node.styled {
+                let mut v = std::mem::take(&mut row[sc.index]);
+                // A NULL value stays NULL: its version is not read, so a NULL version with a NULL value is not an error (COD-44).
+                if !sc.host.is_empty() && !matches!(v, Val::Null) {
+                    let key = if sc.host.iter().any(|style| style == "aes") {
+                        let index = node.version_index.ok_or_else(|| Error::Engine {
+                            code: crate::codes::INTERNAL.into(),
+                            msg: format!("{}: the AES version column is not selected", node.entity),
+                        })?;
+                        let version = aes_row_version(row, index)?;
+                        aes_keys.get(&version).map(String::as_str).ok_or_else(|| Error::Config(format!("AES version {version} is not declared")))?
+                    } else {
+                        // Non-AES host stages do not consume an AES key.
+                        ""
+                    };
+                    v = crate::codec::host_decode(&v, &sc.host, key).map_err(|error| crate::model::column_decode_error(&sc.entity, &sc.name, error))?;
+                }
+                if !sc.codec.is_empty() {
+                    v = crate::codec::decode(&sc.codec, &v).map_err(|error| crate::model::column_decode_error(&sc.entity, &sc.name, error))?;
+                }
+                row[sc.index] = v;
             }
-            if !sc.codec.is_empty() {
-                v = crate::codec::decode(&sc.codec, &v).map_err(|error| crate::model::column_decode_error(&sc.entity, &sc.name, error))?;
-            }
-            row[sc.index] = v;
+        }
+    }
+    Ok(())
+}
+
+/// The styled columns of one node of an assembly with the cell of its own key version.
+struct StyledNode<'a> {
+    entity: &'a str,
+    styled: Vec<crate::codec::StyledCol>,
+    version_index: Option<usize>,
+}
+
+/// Collects the nodes with styled columns, the root first, then each joined child in plan order.
+fn styled_nodes<'a>(asm: &'a crate::plan::Assemble, out: &mut Vec<StyledNode<'a>>) -> Result<()> {
+    let styled: Vec<crate::codec::StyledCol> = asm
+        .columns
+        .iter()
+        .filter(|c| !c.styles.is_empty())
+        .map(|c| {
+            let (codec, host) = crate::codec::split_host(&c.styles);
+            crate::codec::StyledCol { index: c.index, entity: asm.entity.clone(), name: c.name.clone(), codec, host }
+        })
+        .collect();
+    if !styled.is_empty() {
+        let has_aes = styled.iter().any(|c| c.host.iter().any(|style| style == "aes"));
+        let version_index = if has_aes {
+            // COD-44: the planner selects the version column of every AES column, so a plan without one is broken: no version is assumed.
+            let column = asm.aes_version.map(|at| &asm.columns[at]).ok_or_else(|| Error::Engine {
+                code: crate::codes::INTERNAL.into(),
+                msg: format!("{}: the plan reads an AES column without its key version column", asm.entity),
+            })?;
+            Some(column.index)
+        } else {
+            None
+        };
+        out.push(StyledNode { entity: &asm.entity, styled, version_index });
+    }
+    for child in &asm.children {
+        if let Some(assemble) = &child.assemble {
+            styled_nodes(assemble, out)?;
         }
     }
     Ok(())

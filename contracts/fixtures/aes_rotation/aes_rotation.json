@@ -5657,6 +5657,130 @@
           }
         }
       ]
+    },
+    {
+      "id": "a_joined_row_decrypts_with_the_key_version_of_its_own_row",
+      "requirements": [
+        "COD-6",
+        "COD-41"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "one",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "two",
+          "aes_keyring": {
+            "versions": {
+              "1": "aes-rotation-key-one",
+              "2": "aes-rotation-key-two"
+            },
+            "current": 2
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "two",
+          "model": "RotParent",
+          "values": {
+            "token": {
+              "text": "parent-of-two"
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "one",
+          "model": "RotChild",
+          "values": {
+            "rot_parent_seq": {
+              "int": "1"
+            },
+            "token": {
+              "text": "child-of-one"
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "two",
+          "model": "RotParent",
+          "joins": [
+            {
+              "model": "RotChild",
+              "match": [
+                "seq",
+                "rot_parent_seq"
+              ],
+              "as": "c"
+            }
+          ],
+          "order": [
+            {
+              "column": "seq",
+              "dir": "asc"
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "json": [
+                {
+                  "seq": 1,
+                  "aes_key_version": 2,
+                  "token": "parent-of-two",
+                  "rot_child_model": {
+                    "seq": 1,
+                    "rot_parent_seq": 1,
+                    "aes_key_version": 1,
+                    "token": "child-of-one"
+                  }
+                }
+              ]
+            },
+            "postgres": {
+              "json": [
+                {
+                  "seq": 1,
+                  "aes_key_version": 2,
+                  "token": "parent-of-two",
+                  "rot_child_model": {
+                    "seq": 1,
+                    "rot_parent_seq": 1,
+                    "aes_key_version": 1,
+                    "token": "child-of-one"
+                  }
+                }
+              ]
+            },
+            "sqlite": {
+              "json": [
+                {
+                  "seq": 1,
+                  "aes_key_version": 2,
+                  "token": "parent-of-two",
+                  "rot_child_model": {
+                    "seq": 1,
+                    "rot_parent_seq": 1,
+                    "aes_key_version": 1,
+                    "token": "child-of-one"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
     }
   ],
   "cases_on": {
@@ -5687,7 +5811,8 @@
       "a_stored_version_that_names_another_key_fails_the_read",
       "a_rotation_of_an_unreadable_column_keeps_the_row",
       "rotation_keeps_a_null_aes_column_beside_a_rewritten_one",
-      "stored_version_text_above_i32_fails_the_read"
+      "stored_version_text_above_i32_fails_the_read",
+      "a_joined_row_decrypts_with_the_key_version_of_its_own_row"
     ],
     "postgres": [
       "read_path_codes",
@@ -5716,7 +5841,8 @@
       "a_stored_version_that_names_another_key_fails_the_read",
       "a_rotation_of_an_unreadable_column_keeps_the_row",
       "rotation_keeps_a_null_aes_column_beside_a_rewritten_one",
-      "stored_version_text_above_i32_fails_the_read"
+      "stored_version_text_above_i32_fails_the_read",
+      "a_joined_row_decrypts_with_the_key_version_of_its_own_row"
     ],
     "sqlite": [
       "read_path_codes",
@@ -5746,7 +5872,8 @@
       "a_stored_version_that_names_another_key_fails_the_read",
       "a_rotation_of_an_unreadable_column_keeps_the_row",
       "rotation_keeps_a_null_aes_column_beside_a_rewritten_one",
-      "stored_version_text_above_i32_fails_the_read"
+      "stored_version_text_above_i32_fails_the_read",
+      "a_joined_row_decrypts_with_the_key_version_of_its_own_row"
     ],
     "markdown": [
       "read_path_codes",
@@ -5776,7 +5903,8 @@
       "a_stored_version_that_names_another_key_fails_the_read",
       "a_rotation_of_an_unreadable_column_keeps_the_row",
       "rotation_keeps_a_null_aes_column_beside_a_rewritten_one",
-      "stored_version_text_above_i32_fails_the_read"
+      "stored_version_text_above_i32_fails_the_read",
+      "a_joined_row_decrypts_with_the_key_version_of_its_own_row"
     ]
   }
 }

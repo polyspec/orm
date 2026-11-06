@@ -57,11 +57,11 @@ func (si *scanInfo) put(b *scanBuf) {
 
 type styledScanCol struct {
 	index int
-	// entity and name are what a decode error names (COD-41); a joined column names its own entity.
-	entity string
-	name   string
-	codec  []string
-	host   []string
+	name  string
+	codec []string
+	host  []string
+	// asm is the assembly of the node that owns the column: its entity and its version column.
+	asm *plan.Assemble
 }
 
 func newCached(key uint64, p *plan.Plan) *cached {
@@ -938,9 +938,11 @@ func runSelect(ctx context.Context, ex executor, c *cached, st *plan.Step, r *re
 }
 
 func decodeSelectedRow(vals []any, si *scanInfo, st *plan.Step, keyring AESKeyring) error {
-	if st.Assemble.AESVersion == nil && slices.ContainsFunc(si.styled, func(sc styledScanCol) bool { return slices.Contains(sc.host, "aes") }) {
-		// The planner selects the version column of every AES column, so a plan without one is broken: no version is assumed.
-		return codecErr(CodeInternal, "%s has an AES column and no version column", st.Assemble.Entity)
+	for _, sc := range si.styled {
+		if sc.asm.AESVersion == nil && slices.Contains(sc.host, "aes") {
+			// The planner selects the version column of every AES column, so a plan without one is broken: no version is assumed.
+			return codecErr(CodeInternal, "%s has an AES column and no version column", sc.asm.Entity)
+		}
 	}
 	for _, sc := range si.styled {
 		v := vals[sc.index]
@@ -954,8 +956,9 @@ func decodeSelectedRow(vals []any, si *scanInfo, st *plan.Step, keyring AESKeyri
 		// A host stage without aes (hex, ip) is decoded without a key.
 		switch {
 		case slices.Contains(sc.host, "aes"):
-			// The version is read only for a non-NULL AES cell: a NULL cell with a NULL version stays NULL.
-			version, verr := selectedRowVersion(vals, st.Assemble)
+			// The version is read only for a non-NULL AES cell: a NULL cell with a NULL version stays NULL. Each node
+			// reads the version of its own row, so a joined row decrypts with the key that wrote it (COD-6).
+			version, verr := selectedRowVersion(vals, sc.asm)
 			if verr != nil {
 				return verr
 			}
@@ -964,11 +967,11 @@ func decodeSelectedRow(vals []any, si *scanInfo, st *plan.Step, keyring AESKeyri
 			v, err = HostDecode(v, sc.host, "")
 		}
 		if err != nil {
-			return columnDecodeErr(sc.entity, sc.name, err)
+			return columnDecodeErr(sc.asm.Entity, sc.name, err)
 		}
 		if len(sc.codec) > 0 {
 			if v, err = Decode(sc.codec, v); err != nil {
-				return columnDecodeErr(sc.entity, sc.name, err)
+				return columnDecodeErr(sc.asm.Entity, sc.name, err)
 			}
 		}
 		vals[sc.index] = v
@@ -1074,7 +1077,7 @@ func styledScanCols(a *plan.Assemble) []styledScanCol {
 			continue
 		}
 		codec, host := splitHost(c.Styles)
-		out = append(out, styledScanCol{index: c.Index, entity: a.Entity, name: c.Name, codec: codec, host: host})
+		out = append(out, styledScanCol{index: c.Index, name: c.Name, codec: codec, host: host, asm: a})
 	}
 	for _, ch := range a.Children {
 		if ch.Kind == "join" {

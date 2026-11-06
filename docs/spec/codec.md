@@ -15,7 +15,7 @@
 
 - **COD-5** `aes` writes `ORM-AES2\0 || nonce || ciphertext || tag`. The nonce is 12 random bytes, the tag is the AES-256-GCM authentication tag, and the associated data is `ORM-AES2\0`. The AES key is SHA-256(`polyspec/orm/aes-256-gcm/v2\0` || configured key bytes). `aes_hex` applies AES first and uppercase hex second.
 
-- **COD-6** Every AES column has a non-null integer `aes_key_version` column in the same entity. New writes use `secrets.aes_version`. Reads use the stored row version to select `secrets.aes_keys[version]`. Missing versions and authentication failures stop the operation; the codes of these failures are set by COD-44 and COD-47 to COD-60. The runtime does not decode the previous ECB format.
+- **COD-6** Every AES column has a non-null integer `aes_key_version` column in the same entity. New writes use `secrets.aes_version`. Reads use the stored row version to select `secrets.aes_keys[version]`. Each node of a read, the root and each joined row, reads the version stored in its own row, so a joined row stored under another version than its parent decrypts with its own key. Missing versions and authentication failures stop the operation; the codes of these failures are set by COD-44 and COD-47 to COD-60. The runtime does not decode the previous ECB format.
 
 ### Encrypted JSON value
 

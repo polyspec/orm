@@ -1,5 +1,5 @@
 <!-- doc-id: codec -->
-<!-- source-sha256: 609106d9bcd70cb4f47094ec1000a636e11e39a1d32542085e4c7e47224b2694 -->
+<!-- source-sha256: d8cc3831382dfbab9b8374af97d7a6e502bdda9e878a454432e416e549ca4324 -->
 # 코덱 — 컬럼 스타일의 읽기/쓰기 (S2)
 
 - **COD-1** Go 데이터베이스 값 변환은 잘못된 형식, null, 범위 초과, 유한하지 않은 값, 지원하지 않는 값에 `CODEC_DECODE`를 반환한다. 모든 클라이언트에서 host 인코딩과 blind index는 host 단계 목록이 비었거나 값이 텍스트·바이트가 아니면 `CODEC_ENCODE`를 반환한다: host 단계는 텍스트의 UTF-8이나 받은 바이트를 받고 값을 그 종류대로 bind하므로, 정수·실수·bool은 평문이 아니다(`tests/codec/codec.json`의 case `host_values_by_kind`). SQL NULL은 host 단계를 SQL NULL로 지난다. `aes`, `hex`, `ip`가 아닌 style은 `serialize` 같은 codec style을 포함해 값을 읽기 전에 `CODEC_UNSUPPORTED`를 반환하고, hex가 아닌 `hex` cell과 header, nonce, tag보다 짧은 `aes` cell은 `CODEC_DECODE`를 반환한다(case `host_stage_errors`). 생성 모델 대입은 컬럼 이름을 붙여 변환 오류를 보고한다. 행 조립은 오류를 호출자에게 반환하고 insert는 쓰기 전에 대입 필드를 검증한다. 빈 바이트 배열은 SQL NULL과 구분한다. scalar 집계 변환은 유효한 십진수를 가장 가까운 유한 binary64 값으로 받는다.
@@ -17,7 +17,7 @@
 
 - **COD-5** `aes`는 `ORM-AES2\0 || nonce || ciphertext || tag`를 저장한다. nonce는 12바이트 random 값이고 tag는 AES-256-GCM 인증 tag다. associated data는 `ORM-AES2\0`이다. AES key는 SHA-256(`polyspec/orm/aes-256-gcm/v2\0`와 설정 key bytes의 결합)이다. `aes_hex`는 AES 처리 후 uppercase hex를 적용한다.
 
-- **COD-6** 모든 AES column은 같은 entity의 non-null integer `aes_key_version` column을 가진다. 새 write는 `secrets.aes_version`을 사용한다. read는 row에 저장된 version으로 `secrets.aes_keys[version]`을 선택한다. version이 없거나 인증에 실패하면 작업을 중단하며, 이 실패의 코드는 COD-44와 COD-47부터 COD-60까지가 정한다. runtime은 이전 ECB 형식을 decode하지 않는다.
+- **COD-6** 모든 AES column은 같은 entity의 non-null integer `aes_key_version` column을 가진다. 새 write는 `secrets.aes_version`을 사용한다. read는 row에 저장된 version으로 `secrets.aes_keys[version]`을 선택한다. read의 각 node, 곧 root와 join한 각 row는 자기 row에 저장된 version을 쓰므로, 부모와 다른 version으로 저장된 join row도 자기 key로 decrypt된다. version이 없거나 인증에 실패하면 작업을 중단하며, 이 실패의 코드는 COD-44와 COD-47부터 COD-60까지가 정한다. runtime은 이전 ECB 형식을 decode하지 않는다.
 
 ### 암호화한 JSON 값 {#encrypted-json-value}
 
