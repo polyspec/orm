@@ -481,7 +481,8 @@ caseTest('a whole suite that holds markdown units gets the pinned flowmark, and 
     assert.ok(lines.includes(`${target}: flowmark-check`), `${target} runs flowmark-check first`);
     const database = spawnSync('make', ['-pn', target], { cwd: repository.pathname, encoding: 'utf8', env: isolatedEnvironment(), maxBuffer: 1 << 28 });
     assert.equal(database.status, 0, database.stderr);
-    const exported = new RegExp(`line ${exportLine}\\)\\n# FLOWMARK := (.*)$`, 'm').exec(database.stdout)?.[1];
+    // GNU make 3.81 prints a target variable as `# FLOWMARK := value` and GNU make 4 as `<target>: FLOWMARK := value`.
+    const exported = new RegExp(`line ${exportLine}\\)\\n(?:# |${target}: )FLOWMARK := (.*)$`, 'm').exec(database.stdout)?.[1];
     assert.equal(exported, join(repository.pathname, '.runtime/bin/flowmark'), `${target} exports the pinned flowmark`);
   }
   const check = (flowmark: string) => spawnSync('make', ['-s', 'flowmark-check', `FLOWMARK=${flowmark}`], { cwd: repository.pathname, encoding: 'utf8', env: isolatedEnvironment() }).status;

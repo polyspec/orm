@@ -19,8 +19,8 @@ type Runner = {
 
 export const RUNNERS: { [implementation: string]: Runner } = {
   go: { call: /\brecipe\.Run/, files: /^packages\/go\/internal\/recipe\/[^/]+\.go$/ },
-  php: { call: /\bRecipeCases\b|\bDatabaseRecipeTestCase\b|\bRecipe::|\bextends \w*Test\b/, files: /^packages\/php\/tests\/Recipe(Model)?\.php$/ },
-  'php-extension': { call: /\bRecipeCases\b|\bDatabaseRecipeTestCase\b|\bRecipe::|\bextends \w*Test\b/, files: /^packages\/php\/tests\/Recipe(Model)?\.php$/ },
+  php: { call: /\bRecipeCases\b|\b(?:Database|Sqlite)RecipeTestCase\b|\bRecipe::|\bextends \w*Test\b/, files: /^packages\/php\/tests\/Recipe(Model)?\.php$/ },
+  'php-extension': { call: /\bRecipeCases\b|\b(?:Database|Sqlite)RecipeTestCase\b|\bRecipe::|\bextends \w*Test\b/, files: /^packages\/php\/tests\/Recipe(Model)?\.php$/ },
   typescript: { call: /\brunRecipe\b/, files: /^packages\/ts\/tests\/recipe(_model)?\.mjs$/ },
   python: { call: /\brecipe_tests\b/, files: /^packages\/python\/tests\/recipe(_model)?\.py$/ },
   rust: {

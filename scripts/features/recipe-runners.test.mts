@@ -26,6 +26,16 @@ caseTest('a tree of one runner per runtime has no finding', COMPUTE, () => {
   assert.deepEqual(findings(tree()), []);
 });
 
+caseTest('a PHP binding that extends a recipe test class of PHP hands its recipe to the runner', COMPUTE, () => {
+  for (const base of ['DatabaseRecipeTestCase', 'SqliteRecipeTestCase']) {
+    const php = tree({
+      units: [{ id: 'unit', kind: 'suite', recipe: true, bindings: [{ implementation: 'php', test: 'packages/php/tests/UnitRecipeTest.php' }] }],
+      extra: [['packages/php/tests/UnitRecipeTest.php', `final class UnitRecipeTest extends ${base}\n{\n}`]],
+    });
+    assert.deepEqual(findings(php), [], base);
+  }
+});
+
 caseTest('a binding that hands its recipe to no runner is a finding', COMPUTE, () => {
   const refused = tree({ extra: [['packages/ts/tests/unit.test.mjs', 'run the cases here;']] });
   assert.match(findings(refused).join('\n'), /hands no recipe to the runner/);
