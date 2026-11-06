@@ -1185,6 +1185,10 @@ export class Db {
           // which hostEncode checks.
           checkAssign(slot.param, value, bindSlotType(slot));
           if (!slot.transform && slot.host_styles.length === 0) checkParam(slot.param, value, bindSlotType(slot), this.zone);
+          // A text in a bytes slot binds as its UTF-8 bytes, a blob, so SQLite stores a blob as MySQL and PostgreSQL do (PRT-67).
+          if (!slot.transform && slot.host_styles.length === 0 && slot.col_type === 'bytes' && typeof value === 'string') {
+            value = Buffer.from(value, 'utf8');
+          }
           if ((slot.col_type === 'datetime' || slot.col_type === 'date' || slot.col_type === 'time') && value !== null) {
             value = timeValue(value, slot.col_type, this.zone, slot.precision ?? 0);
           }

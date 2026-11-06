@@ -2739,38 +2739,44 @@ conformance-verification-check/rust: lease-tool flowmark-check
 	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) conformance-verification-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test conformance_verification_mysql --test conformance_verification_postgres --test conformance_verification_sqlite --test conformance_verification_markdown
 
 # conformance-verification-check/typescript runs the recipe contracts/fixtures/conformance_verification/conformance_verification.json on the three
-# databases (docs/spec/feature-coverage.md FCV-3 and FCV-4).
+# databases (docs/spec/feature-coverage.md FCV-3 and FCV-4), and conformance_verification_dynamic.json, which Go and Rust type at compile time.
 .PHONY: conformance-verification-check/typescript
 conformance-verification-check/typescript: typescript-current flowmark-check
 	$(READ_TYPESCRIPT)
-	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/conformance_verification-mysql.test.mjs packages/ts/tests/conformance_verification-postgres.test.mjs packages/ts/tests/conformance_verification-sqlite.test.mjs packages/ts/tests/conformance_verification-markdown.test.mjs
+	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/conformance_verification-mysql.test.mjs packages/ts/tests/conformance_verification-postgres.test.mjs packages/ts/tests/conformance_verification-sqlite.test.mjs packages/ts/tests/conformance_verification-markdown.test.mjs packages/ts/tests/conformance_verification_dynamic-mysql.test.mjs packages/ts/tests/conformance_verification_dynamic-postgres.test.mjs packages/ts/tests/conformance_verification_dynamic-sqlite.test.mjs packages/ts/tests/conformance_verification_dynamic-markdown.test.mjs
 
 # conformance-verification-check/python runs the recipe contracts/fixtures/conformance_verification/conformance_verification.json on the three
-# databases (docs/spec/feature-coverage.md FCV-3 and FCV-4).
+# databases (docs/spec/feature-coverage.md FCV-3 and FCV-4), and conformance_verification_dynamic.json, which Go and Rust type at compile time.
 .PHONY: conformance-verification-check/python
 conformance-verification-check/python: lease-tool python-venv-check flowmark-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_conformance_verification_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_conformance_verification_postgres
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_conformance_verification_sqlite
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_conformance_verification_markdown
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_conformance_verification_dynamic_mysql
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_conformance_verification_dynamic_postgres
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_conformance_verification_dynamic_sqlite
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_conformance_verification_dynamic_markdown
 
 # conformance-verification-check/php runs the recipe contracts/fixtures/conformance_verification/conformance_verification.json on the three
-# databases (docs/spec/feature-coverage.md FCV-3 and FCV-4).
+# databases (docs/spec/feature-coverage.md FCV-3 and FCV-4), and conformance_verification_dynamic.json, which Go and Rust type at compile time.
 .PHONY: conformance-verification-check/php
 conformance-verification-check/php: lease-tool php-vendor-check php-models flowmark-check
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ConformanceVerificationMysqlRecipeTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ConformanceVerificationPostgresRecipeTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ConformanceVerificationSqliteRecipeTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ConformanceVerificationMarkdownRecipeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ConformanceVerificationDynamicRecipeTest.php
 
 # conformance-verification-check/php-extension runs the recipe contracts/fixtures/conformance_verification/conformance_verification.json on the three
-# databases (docs/spec/feature-coverage.md FCV-3 and FCV-4).
+# databases (docs/spec/feature-coverage.md FCV-3 and FCV-4), and conformance_verification_dynamic.json, which Go and Rust type at compile time.
 .PHONY: conformance-verification-check/php-extension
 conformance-verification-check/php-extension: lease-tool php-vendor-check build-php-ext flowmark-check
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ConformanceVerificationMarkdownRecipeTestExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ConformanceVerificationDynamicRecipeTestExtensionTest.php
 
 # complex-query-check/go runs the recipe contracts/fixtures/complex_query/complex_query.json on the three
 # databases (docs/spec/feature-coverage.md FCV-3 and FCV-4).

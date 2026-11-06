@@ -82,6 +82,7 @@ require_once dirname(__DIR__, 2) . '/php/tests/ConformanceVerificationMysqlRecip
 require_once dirname(__DIR__, 2) . '/php/tests/ConformanceVerificationPostgresRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ConformanceVerificationSqliteRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ConformanceVerificationMarkdownRecipeTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/ConformanceVerificationDynamicRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/PerformanceGateRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ModelQueriesRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ConstraintsAndRelationsRecipeTest.php';

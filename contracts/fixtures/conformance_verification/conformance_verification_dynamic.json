@@ -1,0 +1,123 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "PRT-67"
+  ],
+  "fixture": "contracts/fixtures/conformance_verification/dbspec-set.json",
+  "cases": [
+    {
+      "id": "text_into_bytes_column_stores_its_bytes",
+      "requirements": [
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "ByteCell",
+          "values": {
+            "body": {
+              "text": "ab"
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "db",
+          "statements": [
+            {
+              "kind": "select",
+              "tables": [
+                "byte_cell"
+              ],
+              "sql": {
+                "mysql": "SELECT HEX(`body`) FROM `byte_cell`",
+                "postgres": "SELECT encode(\"body\", 'hex') FROM \"byte_cell\"",
+                "sqlite": "SELECT typeof(\"body\"), hex(\"body\") FROM \"byte_cell\""
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "6162"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "6162"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "blob"
+                      },
+                      {
+                        "text": "6162"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "ByteCell",
+          "order": [
+            "seq"
+          ],
+          "columns": [
+            "seq",
+            "body"
+          ],
+          "bytes_hex_of": "body",
+          "expect": {
+            "mysql": {
+              "json": [
+                "6162"
+              ]
+            },
+            "postgres": {
+              "json": [
+                "6162"
+              ]
+            },
+            "sqlite": {
+              "json": [
+                "6162"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

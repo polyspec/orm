@@ -2020,6 +2020,18 @@ static bool args_of(zval *self, zval *step, zval *params, zval *parents, zval *f
                         zval_ptr_dtor(&v);
                         goto fail;
                     }
+                    /* PHP holds bytes as a string, so a string in a bytes slot binds as a blob, which SQLite stores as a
+                     * blob as MySQL and PostgreSQL do (PRT-67). */
+                    if (is_str(aget(b, "col_type"), "bytes") && Z_TYPE(v) == IS_STRING) {
+                        zval bv;
+                        bool bok = newobj(BYTES_CLASS, &bv, 1, &v);
+                        zval_ptr_dtor(&v);
+                        if (!bok) {
+                            zval_ptr_dtor(&slot);
+                            goto fail;
+                        }
+                        ZVAL_COPY_VALUE(&v, &bv);
+                    }
                 }
                 zval_ptr_dtor(&slot);
                 zval *colz = aget(b, "col_type");

@@ -285,7 +285,9 @@
             }
           ],
           "expect": {
-            "message": "ab"
+            "message": {
+              "bytes": "YWI="
+            }
           }
         }
       ]

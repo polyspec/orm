@@ -8113,6 +8113,10 @@
         "conformance_verification-mysql",
         "conformance_verification-postgres",
         "conformance_verification-sqlite",
+        "conformance_verification_dynamic-mysql",
+        "conformance_verification_dynamic-postgres",
+        "conformance_verification_dynamic-sqlite",
+        "conformance_verification_dynamic-markdown",
         "coverage-conformance-verification-conformance-vector",
         "markdown-conformance",
         "conformance-errors-refusal"
@@ -8158,6 +8162,16 @@
         "packages/rust/tests/tests/conformance_verification_mysql.rs",
         "packages/rust/tests/tests/conformance_verification_postgres.rs",
         "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+        "packages/php/tests/ConformanceVerificationDynamicRecipeTest.php",
+        "packages/php-ext/tests/ConformanceVerificationDynamicRecipeTestExtensionTest.php",
+        "packages/ts/tests/conformance_verification_dynamic-mysql.test.mjs",
+        "packages/ts/tests/conformance_verification_dynamic-postgres.test.mjs",
+        "packages/ts/tests/conformance_verification_dynamic-sqlite.test.mjs",
+        "packages/ts/tests/conformance_verification_dynamic-markdown.test.mjs",
+        "packages/python/tests/test_conformance_verification_dynamic_mysql.py",
+        "packages/python/tests/test_conformance_verification_dynamic_postgres.py",
+        "packages/python/tests/test_conformance_verification_dynamic_sqlite.py",
+        "packages/python/tests/test_conformance_verification_dynamic_markdown.py",
         "tests/conformance/check/recipe_vectors.mts",
         "tests/conformance/check/recipe_vectors.test.mts",
         "tests/conformance/check/state.mts",
@@ -8269,7 +8283,8 @@
             "tests": [
               "packages/php/tests/ConformanceVerificationMysqlRecipeTest.php",
               "packages/php/tests/ConformanceVerificationPostgresRecipeTest.php",
-              "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php"
+              "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+              "packages/php/tests/ConformanceVerificationDynamicRecipeTest.php"
             ],
             "commands": {
               "mysql": [
@@ -8277,6 +8292,12 @@
                   "runner": "php",
                   "test": "packages/php/tests/ConformanceVerificationMysqlRecipeTest.php",
                   "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json",
+                  "symbol": "testMysql"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/ConformanceVerificationDynamicRecipeTest.php",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json",
                   "symbol": "testMysql"
                 }
               ],
@@ -8286,6 +8307,12 @@
                   "test": "packages/php/tests/ConformanceVerificationPostgresRecipeTest.php",
                   "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json",
                   "symbol": "testPostgres"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/ConformanceVerificationDynamicRecipeTest.php",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json",
+                  "symbol": "testPostgres"
                 }
               ],
               "sqlite": [
@@ -8293,6 +8320,12 @@
                   "runner": "php",
                   "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
                   "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json",
+                  "symbol": "testSqlite"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/ConformanceVerificationDynamicRecipeTest.php",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json",
                   "symbol": "testSqlite"
                 }
               ]
@@ -8303,7 +8336,8 @@
             "tests": [
               "packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php",
               "packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php",
-              "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php"
+              "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+              "packages/php-ext/tests/ConformanceVerificationDynamicRecipeTestExtensionTest.php"
             ],
             "commands": {
               "mysql": [
@@ -8311,6 +8345,12 @@
                   "runner": "php",
                   "test": "packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php",
                   "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json",
+                  "symbol": "testMysql"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/ConformanceVerificationDynamicRecipeTestExtensionTest.php",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json",
                   "symbol": "testMysql"
                 }
               ],
@@ -8320,6 +8360,12 @@
                   "test": "packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php",
                   "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json",
                   "symbol": "testPostgres"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/ConformanceVerificationDynamicRecipeTestExtensionTest.php",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json",
+                  "symbol": "testPostgres"
                 }
               ],
               "sqlite": [
@@ -8328,13 +8374,20 @@
                   "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
                   "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json",
                   "symbol": "testSqlite"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/ConformanceVerificationDynamicRecipeTestExtensionTest.php",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json",
+                  "symbol": "testSqlite"
                 }
               ]
             },
             "inputs": [
               "packages/php/tests/ConformanceVerificationMysqlRecipeTest.php",
               "packages/php/tests/ConformanceVerificationPostgresRecipeTest.php",
-              "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php"
+              "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+              "packages/php/tests/ConformanceVerificationDynamicRecipeTest.php"
             ]
           },
           "rust": {
@@ -8373,7 +8426,10 @@
             "tests": [
               "packages/ts/tests/conformance_verification-mysql.test.mjs",
               "packages/ts/tests/conformance_verification-postgres.test.mjs",
-              "packages/ts/tests/conformance_verification-sqlite.test.mjs"
+              "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+              "packages/ts/tests/conformance_verification_dynamic-mysql.test.mjs",
+              "packages/ts/tests/conformance_verification_dynamic-postgres.test.mjs",
+              "packages/ts/tests/conformance_verification_dynamic-sqlite.test.mjs"
             ],
             "commands": {
               "mysql": [
@@ -8381,6 +8437,11 @@
                   "runner": "node",
                   "test": "packages/ts/tests/conformance_verification-mysql.test.mjs",
                   "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/conformance_verification_dynamic-mysql.test.mjs",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json"
                 }
               ],
               "postgres": [
@@ -8388,6 +8449,11 @@
                   "runner": "node",
                   "test": "packages/ts/tests/conformance_verification-postgres.test.mjs",
                   "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/conformance_verification_dynamic-postgres.test.mjs",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json"
                 }
               ],
               "sqlite": [
@@ -8395,6 +8461,11 @@
                   "runner": "node",
                   "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
                   "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/conformance_verification_dynamic-sqlite.test.mjs",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json"
                 }
               ]
             }
@@ -8404,7 +8475,10 @@
             "tests": [
               "packages/python/tests/test_conformance_verification_mysql.py",
               "packages/python/tests/test_conformance_verification_postgres.py",
-              "packages/python/tests/test_conformance_verification_sqlite.py"
+              "packages/python/tests/test_conformance_verification_sqlite.py",
+              "packages/python/tests/test_conformance_verification_dynamic_mysql.py",
+              "packages/python/tests/test_conformance_verification_dynamic_postgres.py",
+              "packages/python/tests/test_conformance_verification_dynamic_sqlite.py"
             ],
             "commands": {
               "mysql": [
@@ -8412,6 +8486,11 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_conformance_verification_mysql.py",
                   "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/test_conformance_verification_dynamic_mysql.py",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json"
                 }
               ],
               "postgres": [
@@ -8419,6 +8498,11 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_conformance_verification_postgres.py",
                   "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/test_conformance_verification_dynamic_postgres.py",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json"
                 }
               ],
               "sqlite": [
@@ -8426,6 +8510,11 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_conformance_verification_sqlite.py",
                   "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/test_conformance_verification_dynamic_sqlite.py",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json"
                 }
               ]
             }

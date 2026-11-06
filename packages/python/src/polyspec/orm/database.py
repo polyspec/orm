@@ -1978,6 +1978,10 @@ class Db:
                 check_assign(slot["param"], value, bind_slot_type(slot))
                 if not slot.get("transform") and not slot.get("host_styles"):
                     check_param(slot["param"], value, bind_slot_type(slot), self.zone)
+                    # A text in a bytes slot binds as its UTF-8 bytes, a blob, so SQLite stores a blob as MySQL and
+                    # PostgreSQL do (PRT-67).
+                    if slot["col_type"] == "bytes" and isinstance(value, str):
+                        value = value.encode("utf-8", "surrogatepass")
                 if (
                     slot["col_type"] in ("datetime", "date", "time")
                     and value is not None

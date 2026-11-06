@@ -1644,6 +1644,11 @@ final class Db
                     ParamCheck::checkAssign($b['param'], $v, ParamCheck::bindSlotType($b));
                     if (($b['transform'] ?? '') === '' && empty($b['host_styles'])) {
                         ParamCheck::check($b['param'], $v, ParamCheck::bindSlotType($b), $this->zone);
+                        // PHP holds bytes as a string, so a string in a bytes slot binds as a blob, which SQLite
+                        // stores as a blob as MySQL and PostgreSQL do (PRT-67).
+                        if (($b['col_type'] ?? '') === 'bytes' && is_string($v)) {
+                            $v = new Bytes($v);
+                        }
                     }
                     $colType = $b['col_type'] ?? '';
                     if (($colType === 'datetime' || $colType === 'date' || $colType === 'time') && $v !== null) {

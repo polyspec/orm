@@ -10999,6 +10999,162 @@
       ]
     },
     {
+      "id": "conformance_verification_dynamic-mysql",
+      "kind": "suite",
+      "requirements": [
+        "PRT-67"
+      ],
+      "file": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json",
+      "cases": "$.cases_on.mysql[*]",
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "conformance_verification",
+        "parts": [
+          "owner/php",
+          "owner/php-extension",
+          "owner/typescript",
+          "owner/python"
+        ]
+      },
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationDynamicRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ConformanceVerificationDynamicRecipeTest::testMysql"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationDynamicRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ConformanceVerificationDynamicRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification_dynamic-mysql.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_dynamic_mysql.py"
+        }
+      ]
+    },
+    {
+      "id": "conformance_verification_dynamic-postgres",
+      "kind": "suite",
+      "requirements": [
+        "PRT-67"
+      ],
+      "file": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json",
+      "cases": "$.cases_on.postgres[*]",
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "conformance_verification",
+        "parts": [
+          "owner/php",
+          "owner/php-extension",
+          "owner/typescript",
+          "owner/python"
+        ]
+      },
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationDynamicRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ConformanceVerificationDynamicRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationDynamicRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ConformanceVerificationDynamicRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification_dynamic-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_dynamic_postgres.py"
+        }
+      ]
+    },
+    {
+      "id": "conformance_verification_dynamic-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "PRT-67"
+      ],
+      "file": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json",
+      "cases": "$.cases_on.sqlite[*]",
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "conformance_verification",
+        "parts": [
+          "owner/php",
+          "owner/php-extension",
+          "owner/typescript",
+          "owner/python"
+        ]
+      },
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationDynamicRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ConformanceVerificationDynamicRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationDynamicRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ConformanceVerificationDynamicRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification_dynamic-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_dynamic_sqlite.py"
+        }
+      ]
+    },
+    {
+      "id": "conformance_verification_dynamic-markdown",
+      "kind": "suite",
+      "requirements": [
+        "PRT-67"
+      ],
+      "file": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json",
+      "cases": "$.cases_on.markdown[*]",
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "conformance_verification",
+        "parts": [
+          "owner/php",
+          "owner/php-extension",
+          "owner/typescript",
+          "owner/python"
+        ]
+      },
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationDynamicRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ConformanceVerificationDynamicRecipeTest::testMarkdown"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationDynamicRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ConformanceVerificationDynamicRecipeTestExtensionTest::testMarkdown"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification_dynamic-markdown.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_dynamic_markdown.py"
+        }
+      ]
+    },
+    {
       "id": "fulltext-search-recipe-mysql",
       "kind": "suite",
       "requirements": [
