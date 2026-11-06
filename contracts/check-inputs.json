@@ -1039,7 +1039,9 @@
         "packages/ts/tests/column_function_metadata.mjs",
         "packages/php/src/Validator.php",
         "packages/php/src/Planner.php",
-        "packages/php/src/Markdown.php",
+        "packages/php/src/MarkdownSession.php",
+        "packages/php/src/Internal/MarkdownPdoAdapter.php",
+        "packages/php/src/Internal/MarkdownStatementAdapter.php",
         "packages/php/tests/ColumnFunctionMetadataAssertions.php",
         "packages/php/tests/CoveragePlannerTest.php",
         "packages/php-ext/tests/ColumnFunctionMetadataTest.php",
@@ -1101,7 +1103,6 @@
         "packages/rust/orm/src/markdown.rs",
         "packages/rust/orm/tests/unit/coverage_planner.rs",
         "packages/rust/tests/tests/planner_compile_none.rs",
-        "packages/rust/orm/tests/unit/markdown_scalar_subquery.rs",
         "packages/ts/src/engine/planner.ts",
         "packages/ts/src/markdown.ts",
         "packages/ts/tests/scalar_subquery_type.mjs",
@@ -1141,8 +1142,7 @@
         "packages/rust/orm/src/engine/validate.rs",
         "packages/rust/orm/src/ir.rs",
         "packages/rust/orm/src/request.rs",
-        "packages/rust/orm/src/testing/ir_request.rs",
-        "packages/rust/orm/tests/unit/markdown_scalar_subquery.rs"
+        "packages/rust/orm/src/testing/ir_request.rs"
       ]
     },
     "php-plan-cache-memory-check": {
@@ -1207,7 +1207,6 @@
         "packages/rust/orm/tests/unit/coverage_planner.rs",
         "packages/rust/tests/tests/planner_compile_none.rs",
         "packages/rust/orm/src/testing/ir_request.rs",
-        "packages/rust/orm/tests/unit/markdown_scalar_subquery.rs",
         "packages/ts/src/engine/*.ts",
         "packages/ts/src/ir.ts",
         "packages/ts/tests/plan-cache-in.mjs",
@@ -1407,6 +1406,7 @@
     "schema-install-check/php": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "php",
         "composer",
         "databases"
@@ -1426,6 +1426,7 @@
     "schema-install-check/php-extension": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "php",
         "composer",
         "php-extension-tools",
@@ -1568,6 +1569,7 @@
     "statement-events-check/php": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "php",
         "composer",
         "databases"
@@ -1583,6 +1585,7 @@
     "statement-events-check/php-extension": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "php",
         "composer",
         "php-extension-tools",
@@ -1636,6 +1639,7 @@
     "catalog-connection-check/php": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "php",
         "composer",
         "databases"
@@ -1653,6 +1657,7 @@
     "catalog-connection-check/php-extension": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "php",
         "composer",
         "php-extension-tools",
@@ -1736,6 +1741,7 @@
     "dsn-connection-check/php": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "php",
         "composer",
         "databases"
@@ -1752,6 +1758,7 @@
     "dsn-connection-check/php-extension": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "php",
         "composer",
         "php-extension-tools",
@@ -2003,8 +2010,7 @@
         "packages/php/tests/MarkdownTest.php",
         "packages/ts/tests/markdown.mjs",
         "packages/python/tests/test_markdown.py",
-        "packages/rust/orm/tests/unit/bind_vectors.rs",
-        "packages/rust/orm/tests/unit/bind_message.rs"
+        "packages/rust/orm/tests/unit/bind_vectors.rs"
       ]
     },
     "collection-recipe-check": {
@@ -2228,6 +2234,7 @@
     "dbspec-introspect-php-check": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "go",
         "php",
         "composer",
@@ -2249,6 +2256,7 @@
     "dbspec-introspect-php-extension-check": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "go",
         "php",
         "composer",
@@ -2504,6 +2512,7 @@
     "dbspec-introspect-compare-check": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "mysql-privilege-server",
         "go",
         "rust",
@@ -2693,6 +2702,7 @@
     "dbspec-php-check/render": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "php",
         "composer",
         "databases"
@@ -2706,6 +2716,7 @@
     "dbspec-php-extension-check": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "go",
         "php",
         "composer",
@@ -3072,6 +3083,7 @@
     "dbspec-apply-pairs-check": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "go",
         "rust",
         "php",
@@ -3447,7 +3459,6 @@
         "Makefile",
         "packages/rust/orm/src/codec.rs",
         "packages/rust/orm/src/driver.rs",
-        "packages/rust/orm/tests/unit/bind_message.rs",
         "packages/rust/orm/tests/unit/driver_cause.rs",
         "packages/rust/build/src/catalog/temporal.rs",
         "packages/rust/build/src/catalog/row_snapshot.rs",
@@ -4315,6 +4326,7 @@
     "model-queries-check/php": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "php",
         "composer",
         "databases"
@@ -4333,6 +4345,7 @@
     "model-queries-check/php-extension": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "php",
         "composer",
         "php-extension-tools",
@@ -4434,6 +4447,7 @@
     "constraints-and-relations-check/php": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "php",
         "composer",
         "databases"
@@ -4451,6 +4465,7 @@
     "constraints-and-relations-check/php-extension": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "php",
         "composer",
         "php-extension-tools",
@@ -4471,6 +4486,7 @@
     "php-ext-memory-check": {
       "scope": "suite",
       "needs": [
+        "flowmark",
         "php",
         "composer",
         "php-extension-tools",
@@ -4743,6 +4759,7 @@
     "audit-triggers-check/php": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "php",
         "composer",
         "databases"
@@ -4833,6 +4850,7 @@
     "audit-triggers-check/php-extension": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "php",
         "composer",
         "php-extension-tools",
