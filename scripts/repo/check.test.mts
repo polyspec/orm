@@ -658,8 +658,8 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   }
   for (const runtime of ['go', 'php', 'php-extension', 'typescript', 'python', 'rust']) {
     const groupRuntime = runtime.replaceAll('-', '_');
-    const markdown = `markdown-conformance-check/${runtime}`;
-    assert.deepEqual(targets[`markdown_${groupRuntime}`], [markdown], `${markdown} is the only target in its native runtime cell`);
+    const markdown = [`markdown-conformance-check/${runtime}`, `markdown-session-check/${runtime}`];
+    assert.deepEqual(targets[`markdown_${groupRuntime}`], markdown, `${markdown.join(' and ')} are the only targets in their native runtime cell`);
   }
   assert.deepEqual(targets.feature_performance, ['feature-performance-check'], 'the performance measurement has its own CI job');
   assert.equal(targets.parity, undefined, 'the parity gate runs in the gates workflow of kit, not in a CI group (KSTD-5-115)');

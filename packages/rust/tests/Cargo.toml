@@ -384,6 +384,11 @@ name = "catalog_connection_sqlite_only"
 path = "tests/catalog_connection_sqlite_only.rs"
 harness = false
 
+[[test]]
+name = "catalog_connection_sqlite_only_markdown"
+path = "tests/catalog_connection_sqlite_only_markdown.rs"
+harness = false
+
 
 # Each case of the conformance_verification recipe, contracts/fixtures/conformance_verification/conformance_verification.json, is the trial conformance_verification_mysql::<case id>
 # (docs/spec/feature-coverage.md FCV-3).

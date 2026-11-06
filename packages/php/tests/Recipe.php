@@ -3501,15 +3501,6 @@ final class Recipe
                 }
                 Assert::assertTrue(chmod(explode('?', substr($context['dsn'], strlen('sqlite://')))[0], 0o444));
                 return [];
-            case 'corpus.write':
-                // A file of the corpus, written behind the engine as sql.exec changes a table behind the schema.
-                if (($context['corpusDir'] ?? null) === null) {
-                    Assert::fail("corpus.write on {$context['database']}, which has no corpus");
-                }
-                $file = $context['corpusDir'] . '/' . $s['file'];
-                Assert::assertNotFalse(file_put_contents($file, $s['text']), "corpus.write $file");
-                Assert::assertTrue(chmod($file, 0o600));
-                return [];
             // The ops of a LISTEN subscription (FCV-4, DIA-194, DIA-195).
             case 'db.listen':
                 return [

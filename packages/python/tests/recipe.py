@@ -3074,19 +3074,6 @@ def _chmod_corpus(root: Path, read_only: bool) -> None:
             _chmod_corpus(entry, read_only)
 
 
-def _op_corpus_write(step: dict, context: dict) -> dict:
-    """A file of the corpus, written behind the engine as sql.exec changes a table behind the schema."""
-    if context.get("corpus") is None:
-        raise AssertionError(
-            f"corpus.write on {context['database']}, which has no corpus"
-        )
-    _ = step.get("reason")
-    path = context["corpus"] / step["file"]
-    path.write_text(step["text"], encoding="utf-8")
-    path.chmod(0o600)
-    return {}
-
-
 def _op_db_listen(step: dict, context: dict) -> dict:
     """A LISTEN subscription (FCV-4, DIA-194)."""
     return {
@@ -4553,7 +4540,6 @@ _DATABASE_OPS = {
     "session.end": _op_session_end,
     "replica.await": _op_replica_await,
     "database.read_only": _op_database_read_only,
-    "corpus.write": _op_corpus_write,
     "db.listen": _op_db_listen,
     "subscription.receive": _op_subscription_receive,
     "subscription.unlisten": _op_subscription_unlisten,

@@ -26,7 +26,7 @@ import { Engine, Service, connect as connectBench } from '../dist/index.js';
 import { spawn } from 'node:child_process';
 import { styledField } from '../dist/core.js';
 import { relatedDsn, withCaseCorpus, withCaseDatabase } from './case-database.mjs';
-import { chmod, readdir, writeFile } from 'node:fs/promises';
+import { chmod, readdir } from 'node:fs/promises';
 import { checkKeys } from './recipe_keys.mjs';
 import { checkGeneratedFiles, checkRefusedGeneration, checkGenerator } from './recipe_generator.mjs';
 import { connectDsn, modelOps } from './recipe_model.mjs';
@@ -963,13 +963,6 @@ const OPS = {
       return {};
     }
     chmodSync(context.dsn.slice('sqlite://'.length).split('?')[0], 0o444);
-    return {};
-  },
-  // A file of the corpus, written behind the engine as sql.exec changes a table behind the schema.
-  async 'corpus.write'(s, context) {
-    if (context.corpusDir === undefined) throw new Error(`corpus.write on ${context.database}, which has no corpus`);
-    void s.reason;
-    await writeFile(join(context.corpusDir, s.file), s.text, { mode: 0o600 });
     return {};
   },
   // The ops of a LISTEN subscription (FCV-4, DIA-194, DIA-195). The TypeScript form of a receive with a deadline is a signal

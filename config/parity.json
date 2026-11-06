@@ -399,6 +399,7 @@
         "packages/php/tests/StatementRunnerCases.php",
         "packages/php/tests/Recipe.php",
         "packages/php/tests/RecipeCases.php",
+        "packages/php/tests/SqliteRecipeTestCase.php",
         "packages/php/tests/DatabaseRecipeTestCase.php",
         "packages/php/tests/PlanCacheCompositeCases.php",
         "packages/php/tests/RecipeRecording.php",
@@ -731,7 +732,6 @@
         "packages/ts/tests/generated_model_output.mjs",
         "packages/ts/tests/schema_of.mjs",
         "packages/ts/tests/generator_scan.mjs",
-        "packages/ts/tests/markdown-read-db.mjs",
         "packages/ts/tests/recipe.mjs",
         "packages/ts/tests/recipe_model.mjs",
         "packages/ts/tests/sqlite_writer_child.mjs",
@@ -877,10 +877,6 @@
         {
           "glob": "packages/ts/tests/dbspec-unicode.mjs",
           "reason": "generated: exhaustively checks the private generated Unicode range table against its own membership predicate; shared syntax vectors cover parser behavior"
-        },
-        {
-          "glob": "packages/ts/tests/markdown-read-db.test.mjs",
-          "reason": "harness: checks the shape of an injected fake Markdown database adapter; it does not execute a public Markdown read"
         },
         {
           "glob": "packages/ts/tests/dbspec-stress.mjs",
@@ -43444,6 +43440,45 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/catalog_connection_sqlite_only.rs",
           "symbol": "catalog_connection_sqlite_only"
+        }
+      ]
+    },
+    {
+      "id": "catalog_connection-sqlite-only-markdown",
+      "kind": "suite",
+      "requirements": [
+        "INT-103"
+      ],
+      "file": "contracts/fixtures/catalog_connection/catalog_connection-sqlite-only.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_catalog_connection_sqlite_only_test.go",
+          "symbol": "TestRecipeCatalogConnectionSqliteOnlyMarkdown"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CatalogConnectionSqliteOnlyRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\CatalogConnectionSqliteOnlyRecipeTest::testMarkdown"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CatalogConnectionSqliteOnlyRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionSqliteOnlyRecipeTestExtensionTest::testMarkdown"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite-only-markdown.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_sqlite_only_markdown.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite_only_markdown.rs",
+          "symbol": "catalog_connection_sqlite_only_markdown"
         }
       ]
     },

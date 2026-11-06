@@ -92,7 +92,6 @@
                         "not": {
                           "enum": [
                             "model.connect",
-                            "corpus.write",
                             "sql.exec",
                             "dbspec.ddl_behavior",
                             "dbspec.plan_physical",
@@ -860,7 +859,6 @@
             "codec.blind_index",
             "collection.key",
             "collection.connect",
-            "corpus.write",
             "sql.exec",
             "session.end",
             "transaction.writers",
@@ -1057,9 +1055,6 @@
         },
         {
           "$ref": "#/$defs/ops/collection.connect"
-        },
-        {
-          "$ref": "#/$defs/ops/corpus.write"
         },
         {
           "$ref": "#/$defs/ops/sql.exec"
@@ -3799,37 +3794,6 @@
           },
           "table": {
             "$ref": "#/$defs/name"
-          }
-        }
-      },
-      "corpus.write": {
-        "description": "Writes one file of the corpus of the case behind the engine, as sql.exec changes a table behind the schema on a SQL database (FCV-3).",
-        "type": "object",
-        "required": [
-          "op",
-          "file",
-          "text",
-          "reason",
-          "only"
-        ],
-        "additionalProperties": false,
-        "properties": {
-          "op": {
-            "const": "corpus.write"
-          },
-          "file": {
-            "type": "string",
-            "minLength": 1
-          },
-          "text": {
-            "type": "string"
-          },
-          "reason": {
-            "type": "string",
-            "minLength": 1
-          },
-          "only": {
-            "$ref": "#/$defs/only"
           }
         }
       },

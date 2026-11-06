@@ -8629,6 +8629,7 @@
         "catalog_connection-postgres",
         "catalog_connection-sqlite",
         "catalog_connection-sqlite-only",
+        "catalog_connection-sqlite-only-markdown",
         "catalog-temporal-native-default-precision",
         "catalog-row-baseline-compares-exact-values",
         "catalog-table-page-prepared-columns-differ-from-the-descriptor",
@@ -8693,8 +8694,11 @@
         "packages/php/tests/CatalogConnectionSqliteOnlyRecipeTest.php",
         "packages/php-ext/tests/CatalogConnectionSqliteOnlyRecipeTestExtensionTest.php",
         "packages/ts/tests/catalog_connection-sqlite-only.test.mjs",
+        "packages/ts/tests/catalog_connection-sqlite-only-markdown.test.mjs",
         "packages/python/tests/test_catalog_connection_sqlite_only.py",
+        "packages/python/tests/test_catalog_connection_sqlite_only_markdown.py",
         "packages/rust/tests/tests/catalog_connection_sqlite_only.rs",
+        "packages/rust/tests/tests/catalog_connection_sqlite_only_markdown.rs",
         "packages/php/tests/CatalogOneConnectionTest.php",
         "packages/php-ext/tests/CatalogOneConnectionTestExtensionTest.php",
         "packages/ts/tests/catalog_connection-markdown.test.mjs",
@@ -10131,12 +10135,10 @@
     {
       "id": "typescript-internal-column-error",
       "paths": [
-        "packages/ts/tests/internal-column-error.mjs",
-        "packages/ts/tests/markdown-read-db.mjs"
+        "packages/ts/tests/internal-column-error.mjs"
       ],
       "tests": [
-        "packages/ts/tests/internal-column-error.test.mjs",
-        "packages/ts/tests/markdown-read-db.test.mjs"
+        "packages/ts/tests/internal-column-error.test.mjs"
       ],
       "command": "make --no-print-directory typescript-internal-column-error-helper-check"
     },

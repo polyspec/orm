@@ -165,13 +165,6 @@
       "op",
       "row"
     ],
-    "corpus.write": [
-      "file",
-      "only",
-      "op",
-      "reason",
-      "text"
-    ],
     "sql.exec": [
       "only",
       "op",

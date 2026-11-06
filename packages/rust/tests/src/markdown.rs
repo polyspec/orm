@@ -67,11 +67,6 @@ fn set_folders(root: &Path, permissions: impl Fn(std::fs::Permissions) -> std::f
     Ok(())
 }
 
-/// Writes `text` to the corpus file at `path`, behind the engine.
-pub fn write_corpus_file(path: &Path, text: &str) -> Result<(), String> {
-    std::fs::write(path, text).map_err(|e| format!("{}: {e}", path.display()))
-}
-
 /// The flowmark server the test started. Dropping it ends the process and waits for it.
 pub struct Server(Child);
 

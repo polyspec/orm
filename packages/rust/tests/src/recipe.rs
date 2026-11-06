@@ -4373,15 +4373,6 @@ mod database {
                 }
                 Output::fields(json!({}))
             }
-            // A file of the corpus, written behind the engine as sql.exec changes a table behind the schema.
-            "corpus.write" => {
-                let corpus = context.corpus.as_ref().ok_or_else(|| fault(format!("corpus.write on {}, which has no corpus", context.database)))?;
-                crate::recipe_reads::read(step, "reason");
-                let file = crate::recipe_reads::read(step, "file")["file"].as_str().unwrap_or_default().to_owned();
-                let text = crate::recipe_reads::read(step, "text")["text"].as_str().unwrap_or_default().to_owned();
-                crate::markdown::write_corpus_file(&corpus.join(&file), &text).map_err(fault)?;
-                Output::fields(json!({}))
-            }
             "sql.exec" => {
                 if let Some(sql) = sql_entry(&crate::recipe_reads::read(step, "sql")["sql"], context).map_err(fault)? {
                     let done = native_exec(&context.dsn, sql).await;

@@ -1032,7 +1032,6 @@
         "packages/rust/orm/src/markdown.rs",
         "packages/rust/orm/tests/unit/coverage_planner.rs",
         "packages/rust/tests/tests/planner_compile_none.rs",
-        "packages/rust/orm/tests/unit/markdown_column_function.rs",
         "packages/ts/src/engine/params.ts",
         "packages/ts/src/engine/planner.ts",
         "packages/ts/src/markdown.ts",
@@ -1467,7 +1466,8 @@
       "scope": "owner",
       "needs": [
         "go",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/catalog_connection/**",
@@ -1488,6 +1488,7 @@
       "inputs": [
         "contracts/fixtures/catalog_connection/**",
         "packages/rust/tests/tests/catalog_connection_sqlite_only.rs",
+        "packages/rust/tests/tests/catalog_connection_sqlite_only_markdown.rs",
         "packages/rust/tests/tests/catalog_connection_mysql.rs",
         "packages/rust/tests/tests/catalog_connection_postgres.rs",
         "packages/rust/tests/tests/catalog_connection_sqlite.rs",
@@ -1610,6 +1611,7 @@
       "inputs": [
         "contracts/fixtures/catalog_connection/**",
         "packages/ts/tests/catalog_connection-sqlite-only.test.mjs",
+        "packages/ts/tests/catalog_connection-sqlite-only-markdown.test.mjs",
         "packages/ts/tests/catalog_connection-mysql.test.mjs",
         "packages/ts/tests/catalog_connection-postgres.test.mjs",
         "packages/ts/tests/catalog_connection-sqlite.test.mjs",
@@ -1628,6 +1630,7 @@
       "inputs": [
         "contracts/fixtures/catalog_connection/**",
         "packages/python/tests/test_catalog_connection_sqlite_only.py",
+        "packages/python/tests/test_catalog_connection_sqlite_only_markdown.py",
         "packages/python/tests/test_catalog_connection_mysql.py",
         "packages/python/tests/test_catalog_connection_postgres.py",
         "packages/python/tests/test_catalog_connection_sqlite.py",
@@ -2378,9 +2381,7 @@
       "inputs": [
         "Makefile",
         "packages/ts/tests/internal-column-error.mjs",
-        "packages/ts/tests/internal-column-error.test.mjs",
-        "packages/ts/tests/markdown-read-db.mjs",
-        "packages/ts/tests/markdown-read-db.test.mjs"
+        "packages/ts/tests/internal-column-error.test.mjs"
       ]
     },
     "typescript-dbspec-plan-fixture-check": {

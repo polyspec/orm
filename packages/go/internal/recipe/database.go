@@ -1388,16 +1388,6 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			return outcome{}, err
 		}
 		return okOutcome(), nil
-	case "corpus.write":
-		// A file of the corpus, written behind the engine as sql.exec changes a table behind the schema.
-		if c.corpusDir == "" {
-			return outcome{}, fmt.Errorf("corpus.write on %s, which has no corpus", c.database)
-		}
-		_ = s.k("reason")
-		if err := os.WriteFile(filepath.Join(c.corpusDir, s.k("file").File), []byte(s.k("text").Text), 0o600); err != nil {
-			return outcome{}, err
-		}
-		return okOutcome(), nil
 	case "sql.exec":
 		statement, present, err := sqlExecText(s.k("sql").SQL, c)
 		if err != nil {

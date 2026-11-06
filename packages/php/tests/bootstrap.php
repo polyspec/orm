@@ -45,6 +45,7 @@ require_once __DIR__ . '/Recipe.php';
 require_once __DIR__ . '/RecipeRecording.php';
 require_once __DIR__ . '/RecipeSubscription.php';
 require_once __DIR__ . '/RecipeCases.php';
+require_once __DIR__ . '/SqliteRecipeTestCase.php';
 require_once __DIR__ . '/DatabaseRecipeTestCase.php';
 require_once __DIR__ . '/PlanCacheCompositeCases.php';
 require_once __DIR__ . '/CodecRecipeTest.php';
