@@ -97,7 +97,7 @@ impl<'a> Utils<'a> {
     }
 
     fn ph(&self, n: usize) -> String {
-        if self.db.driver() == "postgres" {
+        if self.db.sql_driver() == "postgres" {
             format!("${n}")
         } else {
             "?".into()
@@ -150,20 +150,18 @@ impl<'a> Utils<'a> {
 
     /// Runs an existence-check statement that takes only text binds.
     async fn exists(&self, sql: &str, params: &[Param]) -> Result<bool> {
-        self.db.unsupported_on_markdown("schema inspection")?;
         let rows = self.query(&self.read(), KIND_SCHEMA, &[], sql.to_owned(), params, &vec!["text"; params.len()]).await?;
         Ok(rows.first().and_then(|r| r.first()).map(truthy).unwrap_or(false))
     }
 
     /// Takes a named lock released when the transaction ends.
     pub async fn lock(&self, key: &str) -> Result<()> {
-        self.db.unsupported_on_markdown("lock")?;
         let t = self.active("lock")?;
         if !valid_key(key) {
             return Err(Error::Config(format!("lock key {key:?} is invalid")));
         }
         let ex = Executor::Tx(t.clone());
-        match self.db.driver() {
+        match self.db.sql_driver() {
             "mysql" => {
                 let rows = self.query(&ex, KIND_UTILITY, &[], "SELECT GET_LOCK(?, 50)".into(), &[Param::Str(key.into())], &["text"]).await?;
                 let got = rows.first().and_then(|r| r.first()).cloned().unwrap_or(Val::Null);
@@ -182,14 +180,13 @@ impl<'a> Utils<'a> {
 
     /// Sets a transaction-local value.
     pub async fn set_local(&self, key: &str, value: &str) -> Result<()> {
-        self.db.unsupported_on_markdown("set_local")?;
         let t = self.active("set_local")?;
         if !valid_key(key) {
             return Err(Error::Config(format!("local key {key:?} is invalid")));
         }
         let ex = Executor::Tx(t.clone());
         let params = [Param::Str(key.into()), Param::Str(value.into())];
-        match self.db.driver() {
+        match self.db.sql_driver() {
             "postgres" => {
                 self.exec(&ex, KIND_UTILITY, &[], "SELECT set_config($1, $2, true)".into(), &params, &["text", "text"]).await?;
             }
@@ -217,8 +214,7 @@ impl<'a> Utils<'a> {
     /// statement; a markdown connection is CAPABILITY_UNSUPPORTED. The statement runs on a connection of the pool, as Go does, so
     /// that the statistics of a transaction do not hide a backend that starts to wait.
     pub async fn backend_waiting_for_lock(&self) -> Result<bool> {
-        self.db.unsupported_on_markdown("backendWaitingForLock")?;
-        if self.db.driver() != "postgres" {
+        if self.db.sql_driver() != "postgres" {
             return Ok(false);
         }
         let rows = self.query(&Executor::Db(self.db.clone()), KIND_UTILITY, &[], BACKEND_WAITING_FOR_LOCK.into(), &[], &[]).await?;
@@ -226,7 +222,6 @@ impl<'a> Utils<'a> {
     }
 
     pub fn local(&self, key: &str) -> Result<String> {
-        self.db.unsupported_on_markdown("local")?;
         let t = self.active("local")?;
         let v = t.locals.lock().unwrap().get(key).cloned();
         v.ok_or_else(|| Error::Engine { code: codes::NO_ROWS.into(), msg: format!("local value {key} is not set") })
@@ -274,11 +269,10 @@ impl SchemaUtils<'_> {
     /// implicitly commits schema statements, so
     /// it applies them outside a transaction, and inside one it is CONFIG.
     pub async fn install(&self, schema: &Schema) -> Result<()> {
-        self.u.db.unsupported_on_markdown("schema install (flowmark install creates a corpus)")?;
         schema.registered()?;
         let documents = schema.documents()?;
         let refs: Vec<&Document> = documents.iter().collect();
-        let dialect = match self.u.db.driver() {
+        let dialect = match self.u.db.sql_driver() {
             "mysql" => dbspec::Dialect::MySql,
             "postgres" => dbspec::Dialect::Postgres,
             _ => dbspec::Dialect::Sqlite,
@@ -304,6 +298,7 @@ impl SchemaUtils<'_> {
                         match guard.as_mut() {
                             Some(TxInner::Postgres(conn)) => install_on(on, &mut **conn, dialect, &statements, &target, &refs).await,
                             Some(TxInner::Sqlite(conn)) => install_on(on, &mut **conn, dialect, &statements, &target, &refs).await,
+                            Some(TxInner::Markdown(conn)) => install_on(on, conn, dialect, &statements, &target, &refs).await,
                             _ => Err(Error::internal("a schema install transaction holds another connection")),
                         }
                     })
@@ -326,7 +321,6 @@ impl SchemaUtils<'_> {
     /// so both are applied outside a transaction and are CONFIG inside one. Created tables are reported as "table", and added
     /// columns as "table.column", by table name and column order.
     pub async fn add_tables_and_columns(&self, schema: &Schema) -> Result<Vec<String>> {
-        self.u.db.unsupported_on_markdown("add_tables_and_columns (schema evolution follows the flowmark migration rules)")?;
         schema.registered()?;
         let documents = schema.documents()?;
         let refs: Vec<&Document> = documents.iter().collect();
@@ -348,7 +342,7 @@ impl SchemaUtils<'_> {
             }
             _ if active_for(self.u.db).is_some() => Err(Error::Config(format!(
                 "{} adds tables and columns outside a transaction: MySQL commits schema statements implicitly and SQLite turns foreign keys off to rebuild a table",
-                self.u.db.driver()
+                self.u.db.sql_driver()
             ))),
             crate::db::Pool::MySql(pool) => {
                 let mut conn = pool.acquire().await?;
@@ -356,14 +350,22 @@ impl SchemaUtils<'_> {
             }
             crate::db::Pool::Sqlite(pool) => {
                 let mut conn = pool.acquire().await?;
-                let result = without_foreign_keys(db, &mut conn, &target, &refs).await;
+                let result = without_foreign_keys(db, &mut *conn, &target, &refs).await;
                 if result.is_err() {
                     // A connection whose foreign keys may have been turned off is not returned to the pool.
                     conn.close_on_drop();
                 }
                 result
             }
-            crate::db::Pool::Markdown(_) => Err(Error::internal("add_tables_and_columns reached a markdown connection")),
+            crate::db::Pool::Markdown(pool) => {
+                let mut conn = pool.acquire().await?;
+                let result = without_foreign_keys(db, &mut conn, &target, &refs).await;
+                if result.is_err() {
+                    // A session whose foreign keys may have been turned off is not returned to the pool.
+                    conn.discard();
+                }
+                result
+            }
         }
     }
 
@@ -373,7 +375,7 @@ impl SchemaUtils<'_> {
             return Err(Error::Config(format!("identifier {name} is invalid")));
         }
         let p = [Param::Str(name.into())];
-        match self.u.db.driver() {
+        match self.u.db.sql_driver() {
             "postgres" => self.u.exists("SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = $1)", &p).await,
             "mysql" => self.u.exists("SELECT EXISTS(SELECT 1 FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?)", &p).await,
             _ => {
@@ -390,7 +392,7 @@ impl SchemaUtils<'_> {
         if !valid_key(name) || !valid_key(table) {
             return Err(Error::Config("schema and table names are required".into()));
         }
-        match self.u.db.driver() {
+        match self.u.db.sql_driver() {
             "postgres" => self.u.exists("SELECT to_regclass($1) IS NOT NULL", &[Param::Str(format!("{name}.{table}"))]).await,
             "mysql" => {
                 self.u
@@ -418,7 +420,7 @@ impl SchemaUtils<'_> {
     /// database is content, and on SQLite a table or view other than the sqlite_
     /// and orm__ tables is content.
     pub async fn empty(&self) -> Result<bool> {
-        match self.u.db.driver() {
+        match self.u.db.sql_driver() {
             "postgres" => self.u.exists(r"SELECT NOT EXISTS (SELECT 1 FROM pg_namespace n WHERE n.nspname NOT LIKE 'pg\_%' AND n.nspname <> 'information_schema' AND (n.nspname <> 'public' OR EXISTS (SELECT 1 FROM pg_class c WHERE c.relnamespace = n.oid AND c.relkind IN ('r', 'p', 'v', 'm', 'f'))))", &[]).await,
             "mysql" => self.u.exists("SELECT NOT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE())", &[]).await,
             _ => self.u.exists(r"SELECT NOT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite\_%' ESCAPE '\' AND name NOT LIKE 'orm\_\_%' ESCAPE '\')", &[]).await,
@@ -443,7 +445,7 @@ pub struct PrivilegeUtils<'a> {
 
 impl PrivilegeUtils<'_> {
     fn table(&self, table: &str) -> Result<(String, String)> {
-        if self.u.db.driver() != "postgres" {
+        if self.u.db.sql_driver() != "postgres" {
             return Err(Error::Engine { code: codes::CAPABILITY_UNSUPPORTED.into(), msg: "table privileges are supported only by postgres".into() });
         }
         let parts: Vec<&str> = table.split('.').collect();
@@ -579,7 +581,6 @@ pub struct AesUtils<'a> {
 
 impl AesUtils<'_> {
     fn spec<M: Model>(&self, m: &M) -> Result<AesSpec> {
-        self.u.db.unsupported_on_markdown("aes rotation")?;
         let entity = m.core().entity();
         let name = entity.name;
         let ent = entity.entity_schema()?;
@@ -600,7 +601,7 @@ impl AesUtils<'_> {
     /// Reads the key version of every row of the model table.
     pub async fn status<M: Model>(&self, m: &M, keyring: &AesKeyring) -> Result<AesRotationStatus> {
         let spec = self.spec(m)?;
-        let d = self.u.db.driver();
+        let d = self.u.db.sql_driver();
         let version = quote(d, &spec.version);
         let sql = format!("SELECT {version}, COUNT(*) FROM {} GROUP BY {version} ORDER BY {version}", quote(d, &spec.table));
         let mut status = AesRotationStatus { current: keyring.current, total: 0, pending: 0, versions: BTreeMap::new() };
@@ -623,7 +624,7 @@ impl AesUtils<'_> {
     /// version in one transaction and returns the number of rotated rows.
     pub async fn rotate<M: Model>(&self, m: &M, keyring: &AesKeyring) -> Result<u64> {
         let spec = self.spec(m)?;
-        let d = self.u.db.driver();
+        let d = self.u.db.sql_driver();
         let q = |name: &str| quote(d, name);
         let mut columns: Vec<String> = spec.keys.iter().map(|k| q(k)).collect();
         columns.push(q(&spec.version));
@@ -693,7 +694,7 @@ async fn add_tables_and_columns_on<C>(
 ) -> Result<Vec<String>>
 where
     C: CatalogFetch,
-    for<'c> &'c mut C: sqlx::Executor<'c>,
+    for<'c> &'c mut C: events::RawStatement<'c>,
 {
     let mut live = introspect_set(on, &mut *conn, dialect, documents).await?;
     let planned = dbspec::add_tables_and_columns_steps(&live.document, &live.unsupported, target, dialect);
@@ -731,7 +732,7 @@ async fn install_on<C>(
 ) -> Result<()>
 where
     C: CatalogFetch,
-    for<'c> &'c mut C: sqlx::Executor<'c>,
+    for<'c> &'c mut C: events::RawStatement<'c>,
 {
     let mut live = introspect_set(on, &mut *conn, dialect, documents).await?;
     let found: std::collections::BTreeSet<&str> =
@@ -816,7 +817,11 @@ fn invalid(errors: Vec<dbspec::Diagnostic>) -> Error {
 /// Turns off foreign keys on the SQLite connection, adds tables and columns in a BEGIN IMMEDIATE transaction, then checks the foreign
 /// key check returns no rows; only then it commits and turns foreign keys back on (docs/spec/plans.md,
 /// "Apply", SQLite rebuild).
-async fn without_foreign_keys(db: &Db, conn: &mut sqlx::SqliteConnection, target: &Document, documents: &[&Document]) -> Result<Vec<String>> {
+async fn without_foreign_keys<C>(db: &Db, conn: &mut C, target: &Document, documents: &[&Document]) -> Result<Vec<String>>
+where
+    C: CatalogFetch,
+    for<'c> &'c mut C: events::RawStatement<'c>,
+{
     let outside = |sql| Sent::bare(KIND_UTILITY, &[], None, sql);
     events::raw_schema(db, &mut *conn, outside("PRAGMA foreign_keys = OFF")).await?;
     // This transaction is also an outer transaction of the connection, so it receives a number.
@@ -828,9 +833,11 @@ async fn without_foreign_keys(db: &Db, conn: &mut sqlx::SqliteConnection, target
             let on = Observed { db, transaction: number };
             let added = add_tables_and_columns_on(on, &mut *conn, dbspec::Dialect::Sqlite, target, documents).await?;
             let check = "SELECT COUNT(*) FROM pragma_foreign_key_check";
-            let broken =
-                events::guarded(db, inside(KIND_SCHEMA, check), async { sqlx::query_scalar::<_, i64>(check).fetch_one(&mut *conn).await.map_err(Error::from) })
-                    .await?;
+            let rows = events::guarded(db, inside(KIND_SCHEMA, check), async { conn.fetch(check).await.map_err(Error::from) }).await?;
+            let broken = match C::values(&rows)?.first().and_then(|row| row.first()) {
+                Some(dbspec::CatalogValue::Int(n)) => *n,
+                other => return Err(Error::internal(format!("{check} answered {other:?}"))),
+            };
             if broken != 0 {
                 return Err(Error::internal(format!("the rebuilt tables break {broken} foreign keys")));
             }

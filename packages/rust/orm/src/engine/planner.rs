@@ -16,6 +16,9 @@ use polyspec_orm_schema::dbspec::{Entity, Field, FieldDefault, Type};
 pub(crate) struct Planner<'m> {
     pub m: &'m Manifest,
     pub d: Dialect,
+    /// The database assigns the `key_prefix` key and the `order` position of a row that an insert leaves out: a corpus that
+    /// a flowmark server serves (docs/spec/protocol.md PRT-73).
+    pub assigns: bool,
 }
 
 /// One entity occurrence in a statement (the root or a join) with its alias.
@@ -283,14 +286,25 @@ fn validate_aes_assignments(ent: &Entity, set: &[ir::Assign], require_complete: 
     Ok(())
 }
 
+/// The one primary key column of a `key_prefix` table, whose key a corpus allocates.
+fn corpus_key(ent: &Entity) -> Option<&str> {
+    match (ent.key_prefix.as_ref(), ent.primary_key.as_slice()) {
+        (Some(_), [key]) => Some(key.as_str()),
+        _ => None,
+    }
+}
+
 /// An insert writes all the columns it needs: NOT NULL columns without a default, other than the identity,
 /// the AES key version the planner writes, and the audit columns the executor writes.
 /// Columns that have a default are left out, so the database default is used.
-fn validate_required_assignments(ent: &Entity, set: &[ir::Assign]) -> Result<()> {
+fn validate_required_assignments(ent: &Entity, set: &[ir::Assign], assigns: bool) -> Result<()> {
     let version = aes_version_column(ent);
     let audited = audit_column(ent);
     for col in &ent.fields {
         if col.nullable || col.default.is_some() || col.identity || col.name == version || col.name == audited || assigned(set, &col.name) {
+            continue;
+        }
+        if assigns && (corpus_key(ent) == Some(col.name.as_str()) || ent.order.as_deref() == Some(col.name.as_str())) {
             continue;
         }
         return Err(err(codes::IR_INVALID, format!("required column {}.{} is not set", ent.name, col.name)));
@@ -1198,7 +1212,7 @@ impl<'m> Planner<'m> {
         let set = add_blind_index_assignments(ent, r.set.clone())?;
         validate_aes_assignments(ent, &set, false)?;
         validate_audit_assignment(ent, &set)?;
-        validate_required_assignments(ent, &set)?;
+        validate_required_assignments(ent, &set, self.assigns)?;
         // load writes the row with its stored key as is, so it accepts and requires the identity column value.
         if let Some(identity) = ent.identity.as_deref().filter(|_| r.load) {
             if !set.iter().any(|a| a.column == identity && a.p.is_some()) {
@@ -1280,6 +1294,9 @@ impl<'m> Planner<'m> {
         }
         if let Some(identity) = ent.identity.as_deref().filter(|_| self.d.insert_returning_id()) {
             sql.push_str(&format!(" RETURNING {}", self.d.quote(identity)));
+        } else if let Some(key) = corpus_key(ent).filter(|_| self.assigns) {
+            // The key that the corpus allocated, or the key of the row an upsert met.
+            sql.push_str(&format!(" RETURNING {}", self.d.quote(key)));
         }
         b.checked()?;
         Ok(Step { role: "main".into(), sql, tables: b.tables(), bind_slots: b.binds, ..Default::default() })

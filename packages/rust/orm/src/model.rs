@@ -13,7 +13,6 @@ use crate::core::{config, CondGroup, CondKind, CondNode, Core, PredSpec, PredVal
 use crate::db::{apply_request_hook, Db, Executor, QueryPlanStep, Statement};
 use crate::driver::{child_keys, first_cell, parent_values, positional, relation_chunks, same_scalar};
 use crate::ir;
-use crate::markdown::{markdown_read, markdown_scalar, markdown_write, MdRow};
 use crate::plan::{Assemble, Plan};
 use crate::request::{build, result_name, Req};
 use crate::schema::Schema;
@@ -202,37 +201,14 @@ struct QueryResult {
     main: Vec<Vec<Val>>,
     steps: HashMap<u32, StepRows>,
     params: Vec<Param>,
-    /// A row of a markdown reply: each row has the rows of its joins and relations. In SQL results it is None, and `main` and
-    /// `steps` take its place.
-    markdown: Option<Vec<MdRow>>,
-    /// The total row count of a markdown paginate reply.
+    /// The total row count of a paginate request, read from its count step.
     count: Option<i64>,
-}
-
-/// One row of a result: a positional row of a SQL result, or a row of a markdown reply.
-#[derive(Clone, Copy)]
-enum RowRef<'r> {
-    Sql(&'r [Val]),
-    Markdown(&'r MdRow),
-}
-
-impl<'r> RowRef<'r> {
-    /// The node's column values.
-    fn vals(self) -> &'r [Val] {
-        match self {
-            RowRef::Sql(vals) => vals,
-            RowRef::Markdown(row) => &row.vals,
-        }
-    }
 }
 
 impl QueryResult {
     /// The root rows.
-    fn rows(&self) -> Vec<RowRef<'_>> {
-        match &self.markdown {
-            Some(rows) => rows.iter().map(RowRef::Markdown).collect(),
-            None => self.main.iter().map(|row| RowRef::Sql(row)).collect(),
-        }
+    fn rows(&self) -> Vec<&[Val]> {
+        self.main.iter().map(Vec::as_slice).collect()
     }
 
     fn related(&self, ch: &crate::plan::Child, parent: &[Val]) -> Result<Vec<&[Val]>> {
@@ -295,7 +271,7 @@ fn batch_fits(driver: &str, parts: &[usize], columns: usize) -> Result<()> {
 /// root_in_parts plans the parts, each within the bind limit.
 async fn split_read_plan(db: &Db, req: &mut Req) -> Result<(Arc<Plan>, usize)> {
     req.canonicalize()?;
-    let target = if req.params.len() > bind_limit(db.driver()) { root_in_target(req) } else { None };
+    let target = if req.params.len() > bind_limit(db.sql_driver()) { root_in_target(req) } else { None };
     let Some(target) = target else {
         let plan = db.plan(req).await?;
         let slots = plan.steps[0].bind_slots.len();
@@ -305,7 +281,7 @@ async fn split_read_plan(db: &Db, req: &mut Req) -> Result<(Arc<Plan>, usize)> {
     let mut probe = with_root_in_list(req, target, vec![ps[0]]);
     let plan = db.plan_split_part(&mut probe, req.params.len()).await?;
     let slots = plan.steps[0].bind_slots.len() - 1 + ps.len();
-    if slots <= bind_limit(db.driver()) {
+    if slots <= bind_limit(db.sql_driver()) {
         let plan = db.plan(req).await?;
         let slots = plan.steps[0].bind_slots.len();
         return Ok((plan, slots));
@@ -439,23 +415,12 @@ async fn select(ex: &Executor, conn: &Option<Db>, req: &mut Req) -> Result<Query
     let db = ex.db().clone();
     // The lock of the request, at the root or on a relation step, is checked and taken once, before any statement (PRT-8).
     let lock = checked_lock(ex, req)?;
-    if db.is_markdown() {
-        let read = markdown_read(ex, req).await?;
-        return Ok(QueryResult {
-            plan: read.plan,
-            main: Vec::new(),
-            steps: HashMap::new(),
-            params: req.params.clone(),
-            markdown: Some(read.rows),
-            count: read.count,
-        });
-    }
     // A split request runs only its parts: plan is then the plan of its first value (split_read_plan).
     let (plan, slots) = split_read_plan(&db, req).await?;
     let st = &plan.steps[0];
     let asm = st.assemble.clone().ok_or_else(|| Error::internal("no assemble"))?;
     let aes_keys = &db.inner.cfg.aes_keys;
-    let parts = root_in_parts(req, slots, db.driver())?;
+    let parts = root_in_parts(req, slots, db.sql_driver())?;
     ex.sqlite_row_lock(&lock).await?;
     let mut main = Vec::new();
     if parts.is_empty() {
@@ -475,7 +440,7 @@ async fn select(ex: &Executor, conn: &Option<Db>, req: &mut Req) -> Result<Query
             }
         }
     }
-    let mut out = QueryResult { plan: plan.clone(), main, steps: HashMap::new(), params: req.params.clone(), markdown: None, count: None };
+    let mut out = QueryResult { plan: plan.clone(), main, steps: HashMap::new(), params: req.params.clone(), count: None };
     for st in plan.steps.iter().skip(1) {
         if st.role == "count" && req.ir.kind == "paginate" {
             let raw = ex.query(st, &req.params, Vec::new()).await?;
@@ -494,7 +459,7 @@ async fn select(ex: &Executor, conn: &Option<Db>, req: &mut Req) -> Result<Query
         let mut sr = StepRows { data: Vec::new(), by_key: HashMap::new() };
         if !vals.is_empty() {
             let asm = st.assemble.as_ref().expect("relation step has an assemble");
-            for chunk in relation_chunks(st, vals, db.driver())? {
+            for chunk in relation_chunks(st, vals, db.sql_driver())? {
                 let raw = ex.query(st, &req.params, chunk).await?;
                 sr.data.extend(positional(&raw, asm, aes_keys, db.inner.zone)?);
             }
@@ -527,8 +492,7 @@ struct Built {
 }
 
 impl<'a> Assembler<'a> {
-    fn model(&mut self, b: &Core, asm: &Assemble, row_ref: RowRef<'_>) -> Result<Built> {
-        let row = row_ref.vals();
+    fn model(&mut self, b: &Core, asm: &Assemble, row: &[Val]) -> Result<Built> {
         let mut m = (b.ent.new)(Core::new(b.ent));
         {
             let core = m.core_dyn_mut();
@@ -576,12 +540,8 @@ impl<'a> Assembler<'a> {
                     .map(|j| j.child.as_ref())
                     .ok_or_else(|| Error::internal(format!("join result {} without a model", ch.rel)))?;
                 let casm = ch.assemble.as_ref().expect("join child has an assemble");
-                // In SQL results the join column is with the parent row, and if the first column is NULL there is no row. In markdown replies
-                // the parent row holds the join row.
-                let joined = match row_ref {
-                    RowRef::Sql(vals) => casm.columns.first().is_some_and(|c| !vals[c.index].is_null()).then_some(row_ref),
-                    RowRef::Markdown(md) => md.joins.get(&ch.rel).and_then(Option::as_ref).map(RowRef::Markdown),
-                };
+                // The join columns are with the parent row, and if the first column is NULL there is no row.
+                let joined = casm.columns.first().is_some_and(|c| !row[c.index].is_null()).then_some(row);
                 let value = match joined {
                     Some(joined) => Some(Arc::from(self.model(child, casm, joined)?.model)),
                     None => None,
@@ -595,23 +555,15 @@ impl<'a> Assembler<'a> {
                 .find(|r| result_name(&r.child, r.many) == ch.rel)
                 .map(|r| (r.child.as_ref(), r.many))
                 .ok_or_else(|| Error::internal(format!("relation result {} without a model", ch.rel)))?;
-            // In SQL results the relation step's row is found by key; in markdown replies the parent row holds the relation rows.
+            // The relation step's rows are found by key.
             let res = self.res;
-            let (rows, casm): (Vec<RowRef<'_>>, Arc<Assemble>) = match row_ref {
-                RowRef::Sql(vals) => (
-                    res.related(ch, vals)?.into_iter().map(RowRef::Sql).collect(),
-                    res.plan.steps[ch.step as usize].assemble.clone().expect("relation step has an assemble"),
-                ),
-                RowRef::Markdown(md) => (
-                    md.rels.get(&ch.rel).map(|rows| rows.iter().map(RowRef::Markdown).collect()).unwrap_or_default(),
-                    ch.assemble.clone().expect("a markdown relation has an assemble"),
-                ),
-            };
+            let rows = res.related(ch, row)?;
+            let casm: Arc<Assemble> = res.plan.steps[ch.step as usize].assemble.clone().expect("relation step has an assemble");
             if many {
                 let mut items = Vec::new();
                 for &cr in &rows {
                     let built = self.model(child, &casm, cr)?;
-                    let key = collection_key(child, built.model.as_ref(), &casm, cr.vals())?;
+                    let key = collection_key(child, built.model.as_ref(), &casm, cr)?;
                     items.push((key, built.model));
                 }
                 let coll = (child.ent.collect)(items, HashMap::new());
@@ -729,7 +681,7 @@ async fn assemble(c: &Core, req: &Req, res: &QueryResult) -> Result<Loaded> {
     let mut models = Vec::new();
     for row in res.rows() {
         let built = a.model(c, &asm, row)?;
-        let key = collection_key(c, built.model.as_ref(), &asm, row.vals())?;
+        let key = collection_key(c, built.model.as_ref(), &asm, row)?;
         keys.push(key);
         models.push(built.model);
     }
@@ -917,7 +869,7 @@ pub async fn gets_count<M: Model>(m: &M) -> Result<GroupRows> {
         let mut values = Vec::with_capacity(columns.len());
         for column in columns {
             if !column.hidden {
-                let value = row.vals().get(column.index).cloned().ok_or_else(|| Error::internal("group result column is missing"))?;
+                let value = row.get(column.index).cloned().ok_or_else(|| Error::internal("group result column is missing"))?;
                 if matches!(value, Val::Null) && column.column == column.name && entity.field(&column.column).is_some_and(|field| !field.nullable) {
                     return Err(Error::Engine { code: codes::CODEC_DECODE.into(), msg: format!("group column {} is SQL NULL", column.name) });
                 }
@@ -940,7 +892,7 @@ pub async fn gets_count<M: Model>(m: &M) -> Result<GroupRows> {
 pub async fn gets_page<M: Model>(m: &M, page: u32, per_page: u32) -> Result<Page<M>> {
     let (ex, q, mut req) = page_request(m.core(), page, per_page)?;
     let res = select(&ex, &q.conn, &mut req).await?;
-    // Markdown replies carry a count; a SQL select reads its count step in plan order.
+    // A select reads its count step in plan order.
     let total = res.count.ok_or_else(|| Error::internal("paginate plan has no count result"))?;
     if total < 0 {
         return Err(Error::internal("negative row count"));
@@ -963,12 +915,9 @@ async fn scalar(c: &Core, kind: &str) -> Result<Val> {
     }
     hook_request(&c.conn, &ex, &mut req)?;
     let db = ex.db().clone();
-    if db.is_markdown() {
-        return markdown_scalar(&ex, &mut req).await;
-    }
     let (plan, slots) = split_read_plan(&db, &mut req).await?;
     let st = &plan.steps[0];
-    let mut parts = root_in_parts(&mut req, slots, db.driver())?;
+    let mut parts = root_in_parts(&mut req, slots, db.sql_driver())?;
     if let [part] = parts.as_mut_slice() {
         let pp = db.plan_split_part(part, req.params.len()).await?;
         let rows = ex.query(&pp.steps[0], &req.params, Vec::new()).await?;
@@ -1042,7 +991,6 @@ fn page_request(c: &Core, page: u32, per_page: u32) -> Result<(Executor, Core, R
 /// The steps of the plan that `gets_page` runs, in their order, without executing it.
 pub async fn get_page_plan_steps(c: &Core, page: u32, per_page: u32) -> Result<Vec<QueryPlanStep>> {
     let (ex, q, mut req) = page_request(c, page, per_page)?;
-    ex.db().unsupported_on_markdown("get_page_plan_steps")?;
     hook_request(&q.conn, &ex, &mut req)?;
     checked_lock(&ex, &req)?;
     let plan = ex.db().plan(&mut req).await?;
@@ -1120,8 +1068,7 @@ pub(crate) fn validate_host_value(styles: &[String], value: &Param) -> Result<()
 }
 
 /// Runs insert, update, delete, and restore, and returns the key of the inserted row and the number of changed rows: on SQL databases
-/// the generated identity; on the markdown executor, the first key it replied with (an integer for identity, text for key_prefix keys).
-/// Null if there is no key.
+/// the generated identity, or on a markdown connection the key_prefix key that the corpus allocated, a text. Null if there is no key.
 async fn write(ex: &Executor, conn: &Option<Db>, req: &mut Req) -> Result<(Val, u64)> {
     write_after_hook(ex, conn, req, |_| Ok(())).await
 }
@@ -1143,10 +1090,6 @@ async fn write_request(ex: &Executor, conn: &Option<Db>, req: &mut Req, after: i
     hook_request(conn, ex, req)?;
     after(req)?;
     let db = ex.db().clone();
-    if db.is_markdown() {
-        let (keys, affected) = markdown_write(ex, req).await?;
-        return finish_write(req, keys.into_iter().next().unwrap_or(Val::Null), affected);
-    }
     let plan = db.plan(req).await?;
     let st = &plan.steps[0];
     // The audit record precedes the first write of an audited table; an update, delete or restore guards it
@@ -1191,7 +1134,11 @@ pub(crate) fn binds_audit(st: &crate::plan::Step) -> bool {
 async fn sql_write(ex: &Executor, st: &crate::plan::Step, req: &Req) -> Result<(Val, u64)> {
     if req.ir.kind == "insert" && st.sql.contains(" RETURNING ") {
         let rows = ex.query(st, &req.params, Vec::new()).await?;
-        return Ok((Val::I64(first_cell(&rows, ex.db().inner.zone)?.as_i64()?), 1));
+        // The returned key is the identity, an integer, or the key_prefix key that a corpus allocated, a text (PRT-73).
+        return Ok(match first_cell(&rows, ex.db().inner.zone)? {
+            Val::Str(key) => (Val::Str(key), 1),
+            other => (Val::I64(other.as_i64()?), 1),
+        });
     }
     let (id, affected) = ex.execute(st, &req.params).await?;
     // An upsert writes one row: MySQL counts 2 for the one that updates, PostgreSQL and SQLite 1.
@@ -1256,11 +1203,11 @@ pub async fn create<M: Model>(m: &mut M) -> Result<M> {
             _ => {}
         }
     }
-    // The column that takes the received key: identity, or a key the markdown executor sets (key_prefix) when the request gives no value
-    // is the single primary key column.
+    // The column that takes the received key: identity, or the key_prefix key that a corpus allocated to a primary key the
+    // request did not supply (PRT-73).
     let assigned_key = match (&ent.identity, ent.primary_key.as_slice()) {
         (Some(identity), _) => Some(identity),
-        (None, [pk]) if ex.db().is_markdown() && !key.is_null() && !c.sets.iter().any(|s| &s.column == pk) => Some(pk),
+        (None, [pk]) if matches!(key, Val::Str(_)) && ent.key_prefix.is_some() && !c.sets.iter().any(|s| &s.column == pk) => Some(pk),
         _ => None,
     };
     if let Some(column) = assigned_key {
@@ -1308,7 +1255,7 @@ pub async fn creates<M: Model>(m: &M, rows: Vec<M>, batch: usize) -> Result<u64>
     }
     let columns: Vec<String> = first.sets.iter().map(|s| s.column.clone()).collect();
     let parts = insert_parts(rows.len(), batch);
-    batch_fits(ex.db().driver(), &parts, columns.len())?;
+    batch_fits(ex.db().sql_driver(), &parts, columns.len())?;
     in_transaction(&c.conn, async || {
         let mut total = 0;
         let mut start = 0;

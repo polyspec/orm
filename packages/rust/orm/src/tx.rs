@@ -13,7 +13,6 @@ use futures_util::FutureExt as _;
 use crate::db::{Db, Executor, Pool};
 use crate::driver::{CancellableConnection, MySqlOwnedTx, TxInner};
 use crate::events::{self, Sent, KIND_BEGIN, KIND_COMMIT, KIND_RELEASE, KIND_ROLLBACK, KIND_ROLLBACK_TO, KIND_SAVEPOINT, KIND_UTILITY};
-use crate::markdown::{begin_message, MdControl, MdPool};
 use crate::schema::Schema;
 use crate::value::{Param, Val};
 use crate::{codes, Error, Result};
@@ -68,7 +67,6 @@ pub(crate) struct AuditInsert {
 /// is not a column of that table, or the primary key is not a single column, it is CONFIG; a source's error is returned as is.
 /// The source is called here once, before the transaction starts.
 fn audit_record(db: &Db, values: &AuditValues) -> Result<AuditInsert> {
-    db.unsupported_on_markdown("a transaction with audit values")?;
     let Some(source) = &db.inner.cfg.audit_source else {
         return Err(Error::Config("the transaction has audit values but the connection has no audit source: set Config::audit_source".into()));
     };
@@ -224,20 +222,17 @@ impl TxShared {
     }
 
     /// Runs one step of savepoint `name`: if `kind` is KIND_SAVEPOINT it creates it, if KIND_RELEASE it releases it,
-    /// if KIND_ROLLBACK_TO it reverts the work after it. A SQL connection sends that statement and publishes its event, and
-    /// a markdown connection sends a control message of the same name (docs/spec/protocol.md §5 "Session").
+    /// if KIND_ROLLBACK_TO it reverts the work after it. The connection sends that statement and publishes its event; a markdown
+    /// connection sends it as a statement of the session (docs/spec/protocol.md PRT-65).
     pub(crate) async fn savepoint_step(&self, kind: &str, name: &str) -> Result<()> {
-        let (op, statement) = match kind {
-            KIND_SAVEPOINT => ("savepoint", format!("SAVEPOINT {name}")),
-            KIND_RELEASE => ("release", format!("RELEASE SAVEPOINT {name}")),
-            KIND_ROLLBACK_TO => ("rollback_to", format!("ROLLBACK TO SAVEPOINT {name}")),
+        let statement = match kind {
+            KIND_SAVEPOINT => format!("SAVEPOINT {name}"),
+            KIND_RELEASE => format!("RELEASE SAVEPOINT {name}"),
+            KIND_ROLLBACK_TO => format!("ROLLBACK TO SAVEPOINT {name}"),
             other => return Err(Error::internal(format!("{other} is no savepoint step"))),
         };
         let mut guard = self.enter()?;
         let inner = guard.as_mut().ok_or_else(|| Error::Config("transaction already finished".into()))?;
-        if let TxInner::Markdown(session) = inner {
-            return session.call(&MdControl { op, read_only: false, name: Some(name) }).await.map(drop);
-        }
         // A transaction that SQLite rolled back by itself took its savepoints with it (INT-155).
         if let TxInner::Sqlite(t) = inner {
             if kind != KIND_SAVEPOINT && !crate::db::sqlite_in_transaction(t).await? {
@@ -248,14 +243,13 @@ impl TxShared {
     }
 }
 
-/// Runs a statement without a bind on the transaction connection and publishes its event. A markdown connection
-/// does not send the statement.
+/// Runs a statement without a bind on the transaction connection and publishes its event.
 pub(crate) async fn raw_on(db: &Db, inner: &mut TxInner, s: Sent<'_>) -> Result<()> {
     match inner {
         TxInner::MySql(t) => events::raw(db, &mut **t.conn.as_mut().expect("active MySQL transaction connection"), s).await,
         TxInner::Postgres(t) => events::raw(db, &mut **t, s).await,
         TxInner::Sqlite(t) => events::raw(db, &mut **t, s).await,
-        TxInner::Markdown(_) => Err(Error::internal("a markdown transaction sends no statement")),
+        TxInner::Markdown(t) => events::raw(db, t, s).await,
     }
 }
 
@@ -936,7 +930,7 @@ async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool, timeout_m
             }
             TxInner::Postgres(CancellableConnection::new(p.acquire().await?))
         }
-        Pool::Sqlite(p) => {
+        Pool::Sqlite(_) | Pool::Markdown(_) => {
             // SQLite's row lock table is created once, before the connection's first transaction.
             ensure_sqlite_lock_table(db).await?;
             // A write transaction holds the write lock from its start and waits
@@ -952,9 +946,13 @@ async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool, timeout_m
             if uncommitted || read_only {
                 sqlite_mode = Some((uncommitted, read_only));
             }
-            TxInner::Sqlite(CancellableConnection::new(p.acquire().await?))
+            match db.pool() {
+                Pool::Sqlite(p) => TxInner::Sqlite(CancellableConnection::new(p.acquire().await?)),
+                // A transaction of a markdown connection holds one session from its BEGIN to its end (PRT-72).
+                Pool::Markdown(p) => TxInner::Markdown(p.acquire().await?),
+                _ => return Err(Error::internal("a SQLite transaction on another pool")),
+            }
         }
-        Pool::Markdown(pool) => return begin_markdown(db, pool, isolation, read_only).await,
     };
     let tx = TxShared::new(db, inner, sqlite_mode);
     let mut began = false;
@@ -976,17 +974,6 @@ async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool, timeout_m
     Ok(tx)
 }
 
-/// Opens a markdown transaction: holds one session from the pool until the transaction ends and sends begin. A read-only
-/// transaction sends read_only (docs/spec/protocol.md §5 "Session"). Isolation is CAPABILITY_UNSUPPORTED.
-async fn begin_markdown(db: &Db, pool: &Arc<MdPool>, isolation: Option<Isolation>, read_only: bool) -> Result<TxShared> {
-    if isolation.is_some() {
-        db.unsupported_on_markdown("the transaction isolation option")?;
-    }
-    let mut session = pool.acquire().await?;
-    session.call(&begin_message(read_only)).await?;
-    Ok(TxShared::new(db, TxInner::Markdown(session), None))
-}
-
 /// The table that the SQLite row lock uses.
 pub(crate) const ROW_LOCK_TABLE: &str = "orm__row_lock";
 
@@ -994,12 +981,15 @@ async fn ensure_sqlite_lock_table(db: &Db) -> Result<()> {
     if db.inner.sqlite_lock_ready.load(Ordering::Acquire) {
         return Ok(());
     }
-    if let Pool::Sqlite(p) = db.pool() {
-        let tables = [ROW_LOCK_TABLE.to_owned()];
-        let create = "CREATE TABLE IF NOT EXISTS \"orm__row_lock\" (\"id\" INTEGER PRIMARY KEY CHECK (\"id\" = 1))";
-        events::raw(db, p, Sent::bare(KIND_UTILITY, &tables, None, create)).await?;
-        db.inner.sqlite_lock_ready.store(true, Ordering::Release);
+    let tables = [ROW_LOCK_TABLE.to_owned()];
+    let create = "CREATE TABLE IF NOT EXISTS \"orm__row_lock\" (\"id\" INTEGER PRIMARY KEY CHECK (\"id\" = 1))";
+    let sent = Sent::bare(KIND_UTILITY, &tables, None, create);
+    match db.pool() {
+        Pool::Sqlite(p) => events::raw(db, p, sent).await?,
+        Pool::Markdown(p) => events::raw(db, &mut p.acquire().await?, sent).await?,
+        _ => return Ok(()),
     }
+    db.inner.sqlite_lock_ready.store(true, Ordering::Release);
     Ok(())
 }
 
@@ -1055,16 +1045,16 @@ async fn finish(tx: &TxShared, inner: &mut TxInner) -> Result<()> {
             }
         }
     }
-    if let TxInner::Sqlite(t) = inner {
+    if matches!(inner, TxInner::Sqlite(_) | TxInner::Markdown(_)) {
         let mode = tx.sqlite_mode.lock().unwrap().take();
         if let Some((uncommitted, read_only)) = mode {
             if read_only {
-                if let Err(error) = events::raw(db, &mut **t, Sent::bare(KIND_UTILITY, &[], number, "PRAGMA query_only = 0")).await {
+                if let Err(error) = raw_on(db, inner, Sent::bare(KIND_UTILITY, &[], number, "PRAGMA query_only = 0")).await {
                     errors.push(error);
                 }
             }
             if uncommitted {
-                if let Err(error) = events::raw(db, &mut **t, Sent::bare(KIND_UTILITY, &[], number, "PRAGMA read_uncommitted = 0")).await {
+                if let Err(error) = raw_on(db, inner, Sent::bare(KIND_UTILITY, &[], number, "PRAGMA read_uncommitted = 0")).await {
                     errors.push(error);
                 }
             }
@@ -1101,14 +1091,14 @@ async fn end(tx: &TxShared, inner: TxInner, kind: &str, sql: &str, clean: bool) 
                 t.returned().await;
             }
         }
-        // A markdown connection sends a control message of the same name. The pool closes a failed session.
+        // A markdown session reports no autocommit state, so its ROLLBACK is always sent. A session whose end failed, or whose
+        // cleanup failed, has an unknown state, so it is closed instead of returned to the pool.
         TxInner::Markdown(mut session) => {
-            let op = match kind {
-                KIND_COMMIT => "commit",
-                KIND_ROLLBACK => "rollback",
-                other => return Err(Error::internal(format!("{other} does not end a transaction"))),
-            };
-            session.call(&MdControl { op, read_only: false, name: None }).await?;
+            let ended = events::raw(&tx.db, &mut session, s).await;
+            if ended.is_err() || !clean {
+                session.discard();
+            }
+            ended?;
         }
     }
     tx.db.keep_idle_size().await;

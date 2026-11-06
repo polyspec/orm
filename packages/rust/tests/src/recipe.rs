@@ -1021,22 +1021,6 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
         "dbspec.export_mermaid" | "dbspec.import_mermaid" => return mermaid(step, bound, database, dir),
         _ => {}
     }
-    if crate::recipe_reads::read(step, "op")["op"] == "ir.answer" {
-        // The chain runs on a listener that answers with the step's answer (or answers), and its value is compared as JSON (FCV-3).
-        // An expect of {params} compares the params of the request that the listener received instead (PRT-66, PRT-67).
-        let expect = &crate::recipe_reads::read(step, "expect")["expect"][database];
-        let params = expect.get("params").is_some();
-        if params && crate::recipe_reads::read(step, "answers")["answers"].is_object() {
-            return Err("a params expect needs one answer, not answers".to_owned());
-        }
-        let present = if params { expect.get("params") } else { expect.get("value") };
-        let Some(want) = present else {
-            return Err(format!("ir.answer expect for {database} has neither value nor params"));
-        };
-        let chain = crate::recipe_reads::read(step, "chain")["chain"].as_str().unwrap_or_default();
-        let got = markdown::answer(chain, &crate::recipe_reads::read(step, "answer")["answer"], &crate::recipe_reads::read(step, "answers")["answers"], params);
-        return if markdown::same(&got, want) { Ok(()) } else { Err(format!("got {got}, want {want}")) };
-    }
     if crate::recipe_reads::read(step, "op")["op"] == "markdown.send" {
         return markdown_send(step);
     }
@@ -2158,9 +2142,6 @@ fn markdown_send(step: &Value) -> Result<(), String> {
     // The process zone is the TZ environment variable of the process, restored when the step ends (even on a panic). The
     // Rust connection zone is fixed at UTC, so the bound value does not depend on it.
     let _zone = crate::recipe_reads::read(step, "process_zone")["process_zone"].as_str().map(ProcessZone::set);
-    if let Some(surface) = crate::recipe_reads::read(step, "surface")["surface"].as_str() {
-        return send_and_check(step, Call::Surface(surface.to_owned()), "markdown.send");
-    }
     let send = SendStep::parse(step)?;
     send_and_check(step, Call::Send(send), "markdown.send")
 }
@@ -2234,8 +2215,15 @@ fn model_assign(step: &Value) -> Result<(), String> {
 /// code of the error that the call returned before it sent one, against the expect of `step`.
 fn send_and_check(step: &Value, call: Call, op: &str) -> Result<(), String> {
     let listener = markdown::send_listener();
+    let call_kind = match &call {
+        Call::Send(send) => Some(send.begin.is_some()),
+        _ => None,
+    };
     let result = call_on_connection(listener.dsn.clone(), call);
+    // A begin step compares the whole first message, the statement that begins the transaction.
+    let whole = matches!(&call_kind, Some(true));
     let sent = match (listener.finish(), result) {
+        (Some(message), _) if whole => Sent::Message(message),
         (Some(message), _) => Sent::Message(message_value(&message)?),
         (None, Err(error)) => Sent::Error(error.code().to_owned()),
         (None, Ok(())) => return Err("the call returned and sent no message".to_owned()),
@@ -2306,8 +2294,6 @@ enum Call {
     Assign(String),
     /// The builder calls of a markdown.builder step, by name.
     Builder(Vec<String>),
-    /// The public call of a markdown.send surface, one that has no form on a markdown connection (DIA-183 to DIA-189).
-    Surface(String),
 }
 
 /// The call of one markdown.send step: a transaction begin with its read_only option, or a statement with its column and the
@@ -2475,31 +2461,6 @@ fn boolean(column: &str, wrapper: &str, body: &Value) -> Result<bool, String> {
 
 /// Runs one call on a connection to `dsn` with a current-thread runtime, on a thread with a stack of its own (the futures of
 /// the calls are large in a debug build), and closes the connection after the call.
-/// Runs the public call of a markdown.send surface on the connection `db`.
-async fn refused_surface(surface: &str, db: &polyspec_orm::Db) -> polyspec_orm::Result<()> {
-    let schema = polyspec_orm::Schema::new("", "");
-    let keyring = polyspec_orm::AesKeyring::new([(1, "key".to_owned())].into(), 1)?;
-    let model = bind_model::Slots::new();
-    match surface {
-        "audit" => db.transaction(async || Ok(())).audit([("actor", "tester")]).await,
-        "isolation" => db.transaction(async || Ok(())).isolation(polyspec_orm::Isolation::Serializable).await,
-        "timeout_ms" => db.transaction(async || Ok(())).timeout_ms(100).await,
-        "get_query" => bind_model::Slots::new().connect(db).get_query().await.map(drop),
-        "subscribe" => db.subscribe(|_: &polyspec_orm::StatementEvent<'_>| Ok(())).map(|subscription| subscription.unsubscribe()),
-        "lock" => db.utils().lock("k").await,
-        "set_local" => db.utils().set_local("k", "v").await,
-        "local" => db.utils().local("k").map(drop),
-        "backend_waiting_for_lock" => db.utils().backend_waiting_for_lock().await.map(drop),
-        "privileges" => db.utils().privileges().inspect_table("public.items").await.map(drop),
-        "aes_status" => db.utils().aes().status(&model, &keyring).await.map(drop),
-        "aes_rotate" => db.utils().aes().rotate(&model, &keyring).await.map(drop),
-        "schema_install" => db.utils().schema().install(&schema).await,
-        "schema_evolution" => db.utils().schema().add_tables_and_columns(&schema).await.map(drop),
-        "schema_exists" => db.utils().schema().exists("orm").await.map(drop),
-        other => panic!("markdown.send surface {other} has no call in the Rust cases"),
-    }
-}
-
 fn call_on_connection(dsn: String, call: Call) -> polyspec_orm::Result<()> {
     match std::thread::Builder::new()
         .stack_size(64 << 20)
@@ -2510,7 +2471,6 @@ fn call_on_connection(dsn: String, call: Call) -> polyspec_orm::Result<()> {
                 let result = match &call {
                     Call::Send(send) => send.call(&db).await,
                     Call::Assign(text) => bind_model::Slots::new().connect(&db).set_varchar_value(text.as_str()).create().await.map(drop),
-                    Call::Surface(surface) => refused_surface(surface, &db).await,
                     Call::Builder(calls) => {
                         let mut model = bind_model::Slots::new().connect(&db);
                         for call in calls {
@@ -2538,9 +2498,6 @@ fn call_on_connection(dsn: String, call: Call) -> polyspec_orm::Result<()> {
 
 /// The message value that an expect compares: the whole message of a begin, or the one parameter of a statement.
 fn message_value(message: &Value) -> Result<Value, String> {
-    if message["op"] == "begin" {
-        return Ok(message.clone());
-    }
     match message["params"].as_array().map(Vec::as_slice) {
         // A statement with no parameter (a nil compared with eq is IS NULL, DSL-48) has the empty list as its message.
         Some([]) => Ok(Value::Array(Vec::new())),
@@ -3039,6 +2996,8 @@ mod database {
         attempts: u64,
         /// The time of the last wait.start of the case (FCV-4).
         wait_start: Option<std::time::Instant>,
+        /// The directory of the corpus of a case of the markdown suite.
+        corpus: Option<std::path::PathBuf>,
     }
 
     impl<'a> Context<'a> {
@@ -3070,6 +3029,7 @@ mod database {
                 recordings: HashMap::new(),
                 attempts: 0,
                 wait_start: None,
+                corpus: None,
             }
         }
     }
@@ -3107,14 +3067,10 @@ mod database {
         recipe["seed_order"] = json!(seed_order(member(&ordered, "seed")));
         let recipe = Arc::new(recipe);
         let Some(fixture) = recipe["fixture"].as_str() else { panic!("recipe {path}: no fixture, so it has no database") };
-        let fixture = if markdown {
-            let Some(set) = recipe["markdown_fixture"].as_str() else { panic!("recipe {path}: no markdown_fixture, so it has no markdown suite") };
-            set
-        } else {
-            fixture
-        };
         // A fixture of none runs every case on an empty case database; the helper never infers it (FCV-3).
         let schema = if fixture == "none" { None } else { Some(Arc::new(fixture_schema(&root.join(fixture)))) };
+        // The set that flowmark install makes the corpus of a case of the markdown suite from (DIA-189).
+        let set = Arc::new((fixture != "none").then(|| root.join(fixture)));
         let dir = Arc::new(root.join(path).parent().map(Path::to_path_buf).unwrap_or_default());
         let Some(cases) = recipe["cases"].as_array() else { panic!("recipe {path} has no cases") };
         let ordered_cases: Vec<Value> =
@@ -3122,12 +3078,10 @@ mod database {
         cases
             .iter()
             .enumerate()
-            .filter(|(_, case)| case["only"].as_array().is_none_or(|only| only.iter().any(|name| name.as_str() == Some(database))))
-            // A case that flowmark refuses by its rule states the rule; the markdown suite does not register it (FCV-3).
-            .filter(|(_, case)| !markdown || case["not_on_markdown"].is_null())
+            .filter(|(_, case)| on_database(&case["only"], database))
             .filter(|(_, case)| case["not_through_pooler"].is_null() || std::env::var("ORM_CLIENT_DB_POOLER").as_deref() != Ok("1"))
             .map(|(index, case)| {
-                let (recipe, schema, dir, models) = (recipe.clone(), schema.clone(), dir.clone(), models);
+                let (recipe, schema, dir, models, set) = (recipe.clone(), schema.clone(), dir.clone(), models, set.clone());
                 let mut case = case.clone();
                 case["seed_order"] = ordered_cases[index].clone();
                 if written_order {
@@ -3138,7 +3092,7 @@ mod database {
                 let (path, database) = (path.to_owned(), database.to_owned());
                 let id = case["id"].as_str().unwrap_or_default().to_owned();
                 polyspec_orm_testcase::async_trial(format!("{entry}::{id}"), polyspec_orm_testcase::DATABASE, move || async move {
-                    run_case(&path, &recipe, &case, &database, schema.as_deref(), &dir, models).await;
+                    run_case(&path, &recipe, &case, &database, schema.as_deref(), &dir, (*set).as_deref(), models).await;
                     super::report_case(&id, &database);
                 })
             })
@@ -3249,8 +3203,27 @@ mod database {
         (manifest, install_first)
     }
 
-    /// Runs one case on a database of its own and removes it: a case database, or on flowmark a corpus whose tables
-    /// flowmark install made (DIA-189). A failure names the recipe, the case, the index of the step and the database.
+    /// Whether a case or step with the list `only` runs on `database`. A corpus speaks SQLite's dialect, so what names sqlite
+    /// names it too (DIA-185).
+    fn on_database(only: &Value, database: &str) -> bool {
+        only.as_array().is_none_or(|only| only.iter().any(|name| name.as_str() == Some(database) || (database == MARKDOWN && name.as_str() == Some("sqlite"))))
+    }
+
+    /// The key of a value that names its text by database: a corpus runs SQL in SQLite's dialect (DIA-185), so it reads the
+    /// SQLite entry unless the value states its own.
+    fn dialect_key<'v>(database: &'v str, entries: &Value) -> &'v str {
+        if database == MARKDOWN && entries.get(MARKDOWN).is_none() {
+            return "sqlite";
+        }
+        database
+    }
+
+    /// Runs one case on a database of its own and removes it: a case database, or on flowmark a corpus that flowmark install
+    /// made from the set of the fixture (DIA-189). A failure names the recipe, the case, the index of the step and the database.
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "the inputs of a case: the recipe, the case, the database, the schema, the directory, the set and the models"
+    )]
     async fn run_case(
         path: &str,
         recipe: &Value,
@@ -3258,66 +3231,27 @@ mod database {
         database: &str,
         schemas: Option<&(Schema, Vec<Schema>)>,
         dir: &Path,
+        set: Option<&Path>,
         models: fn() -> Box<dyn ModelDispatcher>,
     ) {
         let id = case["id"].as_str().unwrap_or_default();
         let result = if database == MARKDOWN {
-            let root = polyspec_orm_testcase::manifest_dir().join("../../..");
-            let set = root.join(recipe["markdown_fixture"].as_str().unwrap_or_default());
-            let corpus = crate::markdown::case_corpus(&set).await;
-            let result = markdown_steps(recipe, case, schemas, dir, &corpus.dsn, models).await;
+            // A case with install: false starts on a corpus with no table, and its steps install the fixture (FCV-9).
+            let corpus = crate::markdown::case_corpus(set.filter(|_| case["install"].as_bool() != Some(false))).await;
+            let target = CaseTarget { name: crate::markdown::CASE_CORPUS, dsn: &corpus.dsn, corpus: Some(&corpus.dir) };
+            let result = case_body(CaseRun { recipe, case, database, schemas, dir, target, models }).await;
             drop(corpus);
             result
         } else {
             let case_database = CaseDatabase::create(database).await;
-            let result = case_body(CaseRun { recipe, case, database, schemas, dir, case_database: &case_database, models }).await;
+            let target = CaseTarget { name: case_database.name(), dsn: case_database.dsn(), corpus: None };
+            let result = case_body(CaseRun { recipe, case, database, schemas, dir, target, models }).await;
             case_database.drop().await;
             result
         };
         if let Err(failure) = result {
             panic!("recipe {path}, case {id}, {failure}");
         }
-    }
-
-    /// The steps of a case on a corpus. A corpus has no catalog connection, so the seed rows go through the models.
-    async fn markdown_steps(
-        recipe: &Value,
-        case: &Value,
-        schemas: Option<&(Schema, Vec<Schema>)>,
-        dir: &Path,
-        dsn: &str,
-        models: fn() -> Box<dyn ModelDispatcher>,
-    ) -> Result<(), String> {
-        let (schema, _) = schemas.ok_or("a markdown suite has a fixture")?;
-        let db = Db::connect_schema(dsn, schema, 1, Config::default()).await.map_err(|e| format!("database markdown: connect: {e}"))?;
-        let mut catalog = None;
-        let bound = HashMap::from([("database".to_owned(), Bound::Json(json!({ "text": crate::markdown::CASE_CORPUS })))]);
-        let mut context = Context::new(String::new(), MARKDOWN, dsn.to_owned(), bound, &db, dir, models(), schemas);
-        let outcome = markdown_seed_and_steps(&mut catalog, recipe, case, &mut context).await;
-        let closed = context.apply.close();
-        context.models.close().await;
-        db.close().await;
-        outcome.and(closed)
-    }
-
-    async fn markdown_seed_and_steps(catalog: &mut Option<CatalogConnection>, recipe: &Value, case: &Value, context: &mut Context<'_>) -> Result<(), String> {
-        let seeds: Vec<Value> = [(&recipe["seed"]["rows"], &recipe["seed_order"]), (&case["seed"]["rows"], &case["seed_order"])]
-            .into_iter()
-            .flat_map(|(rows, order)| {
-                order.as_array().into_iter().flatten().filter_map(Value::as_str).flat_map(move |table| {
-                    rows.get(table).and_then(Value::as_array).into_iter().flatten().map(move |row| json!({"op": "model.create", "model": table, "connection": "seed", "values": row}))
-                })
-            })
-            .collect();
-        if !seeds.is_empty() {
-            let open = json!({"op": "model.connect", "pool_size": 1, "as": "seed"});
-            run_step(catalog, &open, context).await.map_err(|failure| format!("seed, database markdown: {failure}"))?;
-            for seed in &seeds {
-                run_step(catalog, seed, context).await.map_err(|failure| format!("seed row, database markdown: {failure}"))?;
-            }
-        }
-        polyspec_orm_testcase::step("seed rows inserted");
-        case_steps(catalog, case, context).await
     }
 
     /// The inputs of one case that its steps read: the recipe, the case, the database, the schemas of its fixture, the
@@ -3329,12 +3263,20 @@ mod database {
         database: &'a str,
         schemas: Option<&'a (Schema, Vec<Schema>)>,
         dir: &'a Path,
-        case_database: &'a CaseDatabase,
+        target: CaseTarget<'a>,
         models: fn() -> Box<dyn ModelDispatcher>,
     }
 
+    /// The database of a case: its name, its DSN and, on flowmark, the directory of its corpus.
+    #[derive(Clone, Copy)]
+    struct CaseTarget<'a> {
+        name: &'a str,
+        dsn: &'a str,
+        corpus: Option<&'a Path>,
+    }
+
     async fn case_body(run: CaseRun<'_>) -> Result<(), String> {
-        let dsn = run.case_database.dsn().to_owned();
+        let dsn = run.target.dsn.to_owned();
         let db = Db::connect(&dsn, 1, Config::default()).await.map_err(|e| format!("database {}: connect: {e}", run.database))?;
         let result = case_on(&db, run).await;
         db.close().await;
@@ -3342,14 +3284,19 @@ mod database {
     }
 
     async fn case_on(db: &Db, run: CaseRun<'_>) -> Result<(), String> {
-        let CaseRun { recipe, case, database, schemas, dir, case_database, models } = run;
+        let CaseRun { recipe, case, database, schemas, dir, target, models } = run;
         // A case with "install": false installs its fixture by its schema.install ops (FCV-9).
         if let Some(fixture) = schemas.filter(|_| case["install"].as_bool() != Some(false)) {
-            install_fixture(db, fixture).await.map_err(|e| format!("database {database}: schema install: {e}"))?;
-            polyspec_orm_testcase::step("schema installed");
+            if database == MARKDOWN {
+                // flowmark install made the corpus from the set; the connection takes the set as an install registers it.
+                db.utils().schema().register(&fixture.0).map_err(|e| format!("database {database}: register: {e}"))?;
+            } else {
+                install_fixture(db, fixture).await.map_err(|e| format!("database {database}: schema install: {e}"))?;
+                polyspec_orm_testcase::step("schema installed");
+            }
         }
-        let mut catalog = Some(CatalogConnection::connect(case_database.dsn()).await.map_err(|e| format!("database {database}: catalog connection: {e}"))?);
-        let result = run_steps(&mut catalog, db, dir, recipe, case, database, schemas, case_database, models).await;
+        let mut catalog = Some(CatalogConnection::connect(target.dsn).await.map_err(|e| format!("database {database}: catalog connection: {e}"))?);
+        let result = run_steps(&mut catalog, db, dir, recipe, case, database, schemas, target, models).await;
         if let Some(open) = catalog {
             open.close().await;
         }
@@ -3368,14 +3315,14 @@ mod database {
         case: &Value,
         database: &str,
         schemas: Option<&(Schema, Vec<Schema>)>,
-        case_database: &CaseDatabase,
+        target: CaseTarget<'_>,
         models: fn() -> Box<dyn ModelDispatcher>,
     ) -> Result<(), String> {
         let open = catalog.as_mut().ok_or("the catalog connection is not open")?;
         let namespace = open.current_namespace().await.map_err(|e| format!("database {database}: current namespace: {e}"))?;
-        let bound = HashMap::from([("database".to_owned(), Bound::Json(json!({ "text": case_database.name() })))]);
-        let dsn = case_database.dsn().to_owned();
-        let mut context = Context::new(namespace, database, dsn, bound, db, dir, models(), schemas);
+        let bound = HashMap::from([("database".to_owned(), Bound::Json(json!({ "text": target.name })))]);
+        let mut context = Context::new(namespace, database, target.dsn.to_owned(), bound, db, dir, models(), schemas);
+        context.corpus = target.corpus.map(Path::to_path_buf);
         let outcome = seed_and_steps(catalog, recipe, case, &mut context).await;
         let closed = context.apply.close();
         context.models.close().await;
@@ -3400,7 +3347,7 @@ mod database {
         }
         // The seed rows are written; the steps reach the catalog through the option, so the seed's borrow ends here.
         for after in [&recipe["seed"]["after"], &case["seed"]["after"]] {
-            let named = after["only"].as_array().is_none_or(|only| only.iter().any(|name| name.as_str() == Some(database)));
+            let named = on_database(&after["only"], database);
             if after.is_object() && named {
                 // The reads of a step are kept by its address, and the seed of the recipe is shared by the cases that run at once.
                 let after = after.clone();
@@ -3416,7 +3363,7 @@ mod database {
         let database = context.database;
         for (index, current) in case["steps"].as_array().into_iter().flatten().enumerate() {
             let op = current["op"].as_str().unwrap_or_default();
-            if current["only"].as_array().is_some_and(|only| !only.iter().any(|name| name.as_str() == Some(database))) {
+            if !on_database(&current["only"], database) {
                 continue;
             }
             run_step(catalog, current, context).await.map_err(|failure| format!("step {index} ({op}), database {database}: {failure}"))?;
@@ -3652,15 +3599,12 @@ mod database {
     }
 
     async fn run_step(catalog: &mut Option<CatalogConnection>, step: &Value, context: &mut Context<'_>) -> Result<(), String> {
-        if step["only"].as_array().is_some_and(|only| !only.iter().any(|name| name.as_str() == Some(context.database))) {
+        if !on_database(&step["only"], context.database) {
             return Ok(());
         }
         let expected = match crate::recipe_reads::read(step, "expect").get("expect") {
             None => None,
-            Some(expect) if context.database == MARKDOWN && expect.get(MARKDOWN).is_none() => {
-                return Err("the expect of this step names no markdown result".to_owned());
-            }
-            Some(expect) => Some(resolve_refs(&expect[context.database], context)?),
+            Some(expect) => Some(resolve_refs(&expect[dialect_key(context.database, expect)], context)?),
         };
         let want_error = expected.as_ref().and_then(|e| e.get("error")).and_then(Value::as_str).map(str::to_owned);
         // query.search runs on the generated models of the dispatcher too, as the model ops do (FCV-4).
@@ -4095,7 +4039,8 @@ mod database {
                 let name = crate::recipe_reads::read(step, "ref")["ref"].as_str().ok_or_else(|| fault("events.captured names no ref".into()))?;
                 let recorded = context.recordings.get(name).cloned().ok_or_else(|| fault(format!("no recording {name}")))?;
                 let mut events = recorded.lock().unwrap().captured(crate::recipe_reads::read(step, "compare")["compare"].as_str() == Some("tables"));
-                apply_masks(&mut events, &crate::recipe_reads::read(step, "masks")["masks"][context.database]).map_err(fault)?;
+                let masks = &crate::recipe_reads::read(step, "masks")["masks"];
+                apply_masks(&mut events, &masks[dialect_key(context.database, masks)]).map_err(fault)?;
                 if crate::recipe_reads::read(step, "compare")["compare"].as_str() == Some("statements") {
                     // The bound clock of a soft delete differs on each run, so the sql and the kind are compared.
                     for event in &mut events {
@@ -4115,10 +4060,10 @@ mod database {
                 Output::fields(json!({ "value": { "array": events } }))
             }
             "catalog.connect" => {
-                connect_check(
-                    &crate::recipe_reads::read(step, "dsn")["dsn"],
-                    crate::recipe_reads::read(step, "expect")["expect"][context.database]["file_created"].as_bool().unwrap_or(false),
-                )
+                connect_check(&crate::recipe_reads::read(step, "dsn")["dsn"], {
+                    let expect = &crate::recipe_reads::read(step, "expect")["expect"];
+                    expect[dialect_key(context.database, expect)]["file_created"].as_bool().unwrap_or(false)
+                })
                 .await?;
                 Output::fields(json!({}))
             }
@@ -4335,7 +4280,12 @@ mod database {
                 Output::fields(json!({}))
             }
             "database.read_only" => {
-                // The file of the case database becomes one that the process may only read (CFG-24).
+                // The file of the case database becomes one that the process may only read (CFG-24); a corpus becomes folders
+                // that the server may only read, which the run makes writable again at its end.
+                if let Some(corpus) = &context.corpus {
+                    crate::markdown::chmod_corpus(corpus, true).map_err(fault)?;
+                    return Ok(Output::fields(json!({})));
+                }
                 let path = context.dsn.strip_prefix("sqlite://").unwrap_or(&context.dsn).split('?').next().unwrap_or_default().to_owned();
                 let mut permissions = std::fs::metadata(&path).map_err(|e| fault(format!("{path}: {e}")))?.permissions();
                 permissions.set_readonly(true);
@@ -4437,6 +4387,15 @@ mod database {
                 if let Some(held) = context.held_statement.take() {
                     held.close().await.map_err(|e| fault(e.to_string()))?;
                 }
+                Output::fields(json!({}))
+            }
+            // A file of the corpus, written behind the engine as sql.exec changes a table behind the schema.
+            "corpus.write" => {
+                let corpus = context.corpus.as_ref().ok_or_else(|| fault(format!("corpus.write on {}, which has no corpus", context.database)))?;
+                crate::recipe_reads::read(step, "reason");
+                let file = crate::recipe_reads::read(step, "file")["file"].as_str().unwrap_or_default().to_owned();
+                let text = crate::recipe_reads::read(step, "text")["text"].as_str().unwrap_or_default().to_owned();
+                crate::markdown::write_corpus_file(&corpus.join(&file), &text).map_err(fault)?;
                 Output::fields(json!({}))
             }
             "sql.exec" => {
@@ -4633,7 +4592,10 @@ mod database {
     /// The SQL of a sql.exec field for the case database: a string, or the entry of the database when the object has its key.
     /// An absent key is None, so the step runs nothing on that database.
     fn inspected_schema(field: &Value, context: &Context<'_>) -> Result<String, String> {
-        let name = field.as_str().or_else(|| field[context.database].as_str()).ok_or_else(|| format!("{field} names no schema for {}", context.database))?;
+        let name = field
+            .as_str()
+            .or_else(|| field[dialect_key(context.database, field)].as_str())
+            .ok_or_else(|| format!("{field} names no schema for {}", context.database))?;
         if name != "$database" {
             return Ok(name.to_owned());
         }
@@ -4646,7 +4608,7 @@ mod database {
             return Ok(Some(text));
         }
         let entries = field.as_object().ok_or_else(|| format!("{field} is neither a string nor an object of the databases"))?;
-        match entries.get(context.database) {
+        match entries.get(dialect_key(context.database, field)) {
             None => Ok(None),
             Some(text) => text.as_str().map(Some).ok_or_else(|| format!("{text} is no SQL for {}", context.database)),
         }
@@ -4654,7 +4616,7 @@ mod database {
 
     /// A field that holds SQL or a database-decided value: the string itself, or the entry of the database.
     fn sql_field<'a>(field: &'a Value, context: &Context<'_>) -> Result<&'a str, String> {
-        field.as_str().or_else(|| field[context.database].as_str()).ok_or_else(|| format!("{field} is no SQL for {}", context.database))
+        field.as_str().or_else(|| field[dialect_key(context.database, field)].as_str()).ok_or_else(|| format!("{field} is no SQL for {}", context.database))
     }
 
     /// The counts of a read's limits, as the step gives them: an absent count is None, and the catalog checks the values.
@@ -4749,7 +4711,7 @@ mod database {
 
     fn database_value(value: Value, context: &Context<'_>) -> Value {
         match value.as_object() {
-            Some(map) if ["mysql", "postgres", "sqlite"].iter().all(|key| map.contains_key(*key)) => map[context.database].clone(),
+            Some(map) if ["mysql", "postgres", "sqlite"].iter().all(|key| map.contains_key(*key)) => value[dialect_key(context.database, &value)].clone(),
             _ => value,
         }
     }
@@ -4872,7 +4834,17 @@ mod database {
                 ConnectOptions::MySql(options) => on_native_connection!(@open options, $connection, $body),
                 ConnectOptions::Postgres(options) => on_native_connection!(@open options, $connection, $body),
                 ConnectOptions::Sqlite(options) => on_native_connection!(@open options, $connection, $body),
-                ConnectOptions::Markdown(_) => Err("a markdown corpus has no native SQL driver".into()),
+                // A corpus has no driver of its own: one session of its flowmark server runs the statements in SQLite's dialect
+                // (DIA-185).
+                ConnectOptions::Markdown(dsn) => {
+                    let pool = polyspec_orm::markdown::MdPool::connect(dsn, 1).await.map_err(|e| e.to_string())?;
+                    let result = match pool.acquire().await {
+                        Ok(mut $connection) => async { $body }.await,
+                        Err(error) => Err(error.to_string().into()),
+                    };
+                    pool.close();
+                    result
+                }
             }
         };
         (@open $options:expr, $connection:ident, $body:block) => {{
@@ -4883,11 +4855,54 @@ mod database {
         }};
     }
 
+    /// The statements of the dbspec ops on one native connection: of a SQL driver, or the session of a flowmark corpus.
+    trait NativeSql {
+        /// Runs one statement.
+        async fn exec(&mut self, sql: &str) -> Result<(), String>;
+        /// The first value of the first row of a query as text: None without a row, Some(None) for NULL.
+        async fn first_text(&mut self, query: &str) -> Result<Option<Option<String>>, String>;
+    }
+
+    macro_rules! native_sql {
+        ($($connection:ty),*) => {$(
+            impl NativeSql for $connection {
+                async fn exec(&mut self, sql: &str) -> Result<(), String> {
+                    sqlx::raw_sql(sqlx::AssertSqlSafe(sql.to_owned())).execute(&mut *self).await.map(drop).map_err(|e| e.to_string())
+                }
+                async fn first_text(&mut self, query: &str) -> Result<Option<Option<String>>, String> {
+                    use sqlx::Row as _;
+                    let row = sqlx::raw_sql(sqlx::AssertSqlSafe(query.to_owned())).fetch_optional(&mut *self).await.map_err(|e| e.to_string())?;
+                    row.map(|row| row.try_get_unchecked::<Option<String>, usize>(0).map_err(|e| e.to_string())).transpose()
+                }
+            }
+        )*};
+    }
+    native_sql!(sqlx::MySqlConnection, sqlx::PgConnection, sqlx::SqliteConnection);
+
+    impl NativeSql for polyspec_orm::markdown::MdLease {
+        async fn exec(&mut self, sql: &str) -> Result<(), String> {
+            self.raw(sql).await.map_err(|e| e.to_string())
+        }
+        /// The value as text, as SQLite's sqlite3_column_text gives it.
+        async fn first_text(&mut self, query: &str) -> Result<Option<Option<String>>, String> {
+            use polyspec_orm::markdown::MdCell;
+            let result = self.statement(query, &[]).await.map_err(|e| e.to_string())?;
+            let Some(cell) = result.rows.into_iter().next().and_then(|row| row.into_iter().next()) else { return Ok(None) };
+            Ok(Some(match cell {
+                MdCell::Null => None,
+                MdCell::Integer(n) => Some(n.to_string()),
+                MdCell::Real(x) => Some(x.to_string()),
+                MdCell::Text(text) => Some(text),
+                MdCell::TextBytes(bytes) | MdCell::Blob(bytes) => Some(String::from_utf8_lossy(&bytes).into_owned()),
+            }))
+        }
+    }
+
     /// Runs one statement of dbspec.plan_physical on the connection.
     macro_rules! plan_exec {
         ($connection:ident, $sql:expr) => {{
             let sql: &str = $sql;
-            sqlx::raw_sql(sqlx::AssertSqlSafe(sql.to_owned())).execute(&mut $connection).await.map_err(|e| format!("{sql}: {e}"))?;
+            NativeSql::exec(&mut $connection, sql).await.map_err(|e| format!("{sql}: {e}"))?;
         }};
     }
 
@@ -4895,12 +4910,11 @@ mod database {
     macro_rules! plan_value {
         ($connection:ident, $query:expr) => {{
             let query: &str = $query;
-            let row = sqlx::raw_sql(sqlx::AssertSqlSafe(query.to_owned()))
-                .fetch_optional(&mut $connection)
+            NativeSql::first_text(&mut $connection, query)
                 .await
                 .map_err(|e| format!("{query}: {e}"))?
-                .ok_or_else(|| format!("{query}: no row"))?;
-            row.try_get_unchecked::<Option<String>, usize>(0).map_err(|e| format!("{query}: {e}"))?.ok_or_else(|| format!("{query}: NULL value"))?
+                .ok_or_else(|| format!("{query}: no row"))?
+                .ok_or_else(|| format!("{query}: NULL value"))?
         }};
     }
 
@@ -4946,7 +4960,7 @@ mod database {
                     continue;
                 }
                 if let Some(sql) = entry["sql"].as_str() {
-                    let done = sqlx::raw_sql(sqlx::AssertSqlSafe(sql.to_owned())).execute(&mut $connection).await;
+                    let done = NativeSql::exec(&mut $connection, sql).await;
                     match (done, entry["fails"].as_bool() == Some(true)) {
                         (Ok(_), true) => return Err(format!("{sql} must fail")),
                         (Err(error), false) => return Err(format!("{sql}: {error}")),
@@ -4968,7 +4982,9 @@ mod database {
     /// its behavior steps. A step with dialects runs only on those; a step with fails must fail; a query compares its first
     /// value, as text, with want, and a NULL or absent value fails it (DIA-113).
     async fn ddl_behavior(step: &Value, database: &str, dsn: &str, dir: &Path) -> Result<(), String> {
-        use sqlx::{ConnectOptions as _, Connection as _, Row as _};
+        // A corpus runs the statements of SQLite (DIA-185).
+        let database = if database == MARKDOWN { "sqlite" } else { database };
+        use sqlx::{ConnectOptions as _, Connection as _};
         let path = dir.join(crate::recipe_reads::read(step, "vectors")["vectors"].as_str().unwrap_or_default());
         let vectors: Value =
             serde_json::from_str(&std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?).map_err(|e| e.to_string())?;
@@ -4984,7 +5000,7 @@ mod database {
         let behavior = vector["behavior"].as_array().ok_or_else(|| format!("the case {id} has no behavior"))?;
         on_native_connection!(dsn, |connection| {
             for statement in std::iter::once(rule).chain(statements.iter().filter_map(Value::as_str)) {
-                sqlx::raw_sql(sqlx::AssertSqlSafe(statement.to_owned())).execute(&mut connection).await.map_err(|e| format!("{statement}: {e}"))?;
+                plan_exec!(connection, statement);
             }
             plan_behavior!(connection, database, behavior);
             Ok::<(), String>(())
@@ -5010,8 +5026,10 @@ mod database {
     /// the rollback statements return to the source and the steps run again; then the after steps and the finalize steps run,
     /// the target is read again and no table or column named dbspec$ remains.
     async fn plan_physical(step: &Value, database: &str, dsn: &str, dir: &Path) -> Result<(), String> {
+        // A corpus runs the statements of SQLite (DIA-185).
+        let database = if database == MARKDOWN { "sqlite" } else { database };
         use dbspec::Dialect;
-        use sqlx::{ConnectOptions as _, Connection as _, Row as _};
+        use sqlx::{ConnectOptions as _, Connection as _};
         let json_file = |path: &Path| -> Result<Value, String> {
             serde_json::from_str(&std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?)
                 .map_err(|e| format!("{}: {e}", path.display()))
@@ -5175,7 +5193,7 @@ mod database {
     }
 
     /// The empty case database with the catalog queries of another dialect: their failure is the error of the call (DIA-133).
-    /// The only case runs on SQLite with the queries of MySQL.
+    /// The only case runs on SQLite, and on a corpus, with the queries of MySQL.
     async fn introspect_failure_step(step: &Value, dsn: &str) -> Result<(), String> {
         use sqlx::{ConnectOptions as _, Connection as _};
         let dialect = match crate::recipe_reads::read(step, "catalog_of")["catalog_of"].as_str() {
@@ -5183,12 +5201,7 @@ mod database {
             Some("postgres") => dbspec::Dialect::Postgres,
             other => return Err(format!("catalog_of {other:?} has no introspection failure case")),
         };
-        let ConnectOptions::Sqlite(options) = parse_dsn(dsn).map_err(|e| e.to_string())?.options else {
-            return Err("the catalog query failure case runs on SQLite".into());
-        };
-        let mut connection = options.connect().await.map_err(|e| e.to_string())?;
-        let failed = dbspec::introspect(&mut connection, dialect, "introspected").await.is_err();
-        connection.close().await.map_err(|e| e.to_string())?;
+        let failed = on_native_connection!(dsn, |connection| { Ok::<_, String>(dbspec::introspect(&mut connection, dialect, "introspected").await.is_err()) })?;
         if failed {
             Ok(())
         } else {
@@ -5201,6 +5214,8 @@ mod database {
     /// document and the unsupported objects; any other requires none unsupported and the schema text of the source. It returns
     /// the number of catalog queries, which the expect of the database compares (DIA-133, DIA-198).
     async fn introspect_step(step: &Value, database: &str, dsn: &str, dir: &Path) -> Result<usize, String> {
+        // A corpus runs the statements of SQLite (DIA-185).
+        let database = if database == MARKDOWN { "sqlite" } else { database };
         use dbspec::Dialect;
         use sqlx::{ConnectOptions as _, Connection as _};
         let (texts, vector) = introspect_source(step, dir)?;
@@ -5230,7 +5245,7 @@ mod database {
         let (introspection, count) = on_native_connection!(dsn, |connection| {
             for statement in rules.iter().map(|rule| (*rule).to_owned()).chain(rendered.iter().cloned()).chain(extra.iter().cloned()) {
                 let statement = statement.replace("{schema}", &schema);
-                sqlx::raw_sql(sqlx::AssertSqlSafe(statement.clone())).execute(&mut connection).await.map_err(|e| format!("{statement}: {e}"))?;
+                plan_exec!(connection, &statement);
             }
             let mut counter = CountingCatalog { inner: &mut connection, count: 0 };
             let introspection = dbspec::introspect(&mut counter, dialect, "introspected").await.map_err(|e| format!("introspect: {e}"))?;
@@ -5394,7 +5409,16 @@ mod database {
             ConnectOptions::MySql(options) => exec_and_close(options.connect().await.map_err(|e| e.to_string())?, sql).await,
             ConnectOptions::Postgres(options) => exec_and_close(options.connect().await.map_err(|e| e.to_string())?, sql).await,
             ConnectOptions::Sqlite(options) => exec_and_close(options.connect().await.map_err(|e| e.to_string())?, sql).await,
-            ConnectOptions::Markdown(_) => Err("a markdown corpus has no native SQL driver".into()),
+            // A corpus has no driver of its own: one session of the flowmark server runs the statement in its dialect (DIA-185).
+            ConnectOptions::Markdown(dsn) => {
+                let pool = polyspec_orm::markdown::MdPool::connect(dsn, 1).await.map_err(|e| e.to_string())?;
+                let result = match pool.acquire().await {
+                    Ok(mut lease) => lease.raw(sql).await.map_err(|e| e.to_string()),
+                    Err(error) => Err(error.to_string()),
+                };
+                pool.close();
+                result
+            }
         }
     }
 

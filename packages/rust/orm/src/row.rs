@@ -22,6 +22,8 @@ pub enum DriverRow {
     MySql(MySqlRow),
     Postgres(PgRow),
     Sqlite(SqliteRow),
+    /// A row of a statement on a markdown connection, read as the SQLite driver reads it (docs/spec/protocol.md PRT-69).
+    Markdown(crate::markdown::MarkdownRow),
 }
 
 impl DriverRow {
@@ -30,6 +32,7 @@ impl DriverRow {
             DriverRow::MySql(r) => r.len(),
             DriverRow::Postgres(r) => r.len(),
             DriverRow::Sqlite(r) => r.len(),
+            DriverRow::Markdown(r) => r.len(),
         }
     }
 
@@ -43,6 +46,7 @@ impl DriverRow {
             DriverRow::MySql(r) => r.column(i).name(),
             DriverRow::Postgres(r) => r.column(i).name(),
             DriverRow::Sqlite(r) => r.column(i).name(),
+            DriverRow::Markdown(r) => r.column_name(i),
         }
     }
 
@@ -291,6 +295,7 @@ pub fn read_cell(row: &DriverRow, i: usize, zone: Zone) -> Result<Val> {
         DriverRow::MySql(r) => read_cell_mysql(r, i),
         DriverRow::Postgres(r) => read_cell_pg(r, i, zone),
         DriverRow::Sqlite(r) => read_cell_sqlite(r, i),
+        DriverRow::Markdown(r) => Ok(r.cell(i)?.val()),
     }
 }
 

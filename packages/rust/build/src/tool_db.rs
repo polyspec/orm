@@ -6,6 +6,7 @@ use sqlx::{AssertSqlSafe, Column, Executor, MySql, Postgres, Row, SqlSafeStr, Sq
 
 use futures_util::TryStreamExt;
 use polyspec_orm::db::Pool;
+use polyspec_orm::markdown::{MdCell, MdLease};
 mod binds;
 mod grid;
 mod limits;
@@ -293,6 +294,57 @@ macro_rules! fetch_result {
     }};
 }
 
+/// The result of a statement on a markdown connection: its columns and rows, each cell read as the SQLite connection reads it, under
+/// the same budget.
+macro_rules! markdown_result {
+    ($conn:expr, $sql:expr, $params:expr, $budget:expr, $cell:ident, $result:ident) => {{
+        let text: String = $sql.0;
+        let wire = binds::markdown($params)?;
+        let mut rows = Vec::new();
+        // The budget reads the rows as they arrive: a row past it stops the statement on the server (CFG-35).
+        let head = $conn
+            .statement_rows(&text, &wire, |row| {
+                $budget.check_row_count(rows.len())?;
+                let values = row.into_iter().map($cell).collect::<Result<Vec<_>, sqlx::Error>>()?;
+                $budget.add_row(&values, rows.len())?;
+                rows.push(values);
+                Ok(())
+            })
+            .await?;
+        let columns = result::columns(text.len(), head.columns.iter().map(|column| (column.name.as_str(), markdown_native_type(&column.declared))))?;
+        Ok($result { columns, rows })
+    }};
+}
+
+/// The native type of a column of a markdown statement: its declared type, or NULL for an expression, as the SQLite driver names it.
+fn markdown_native_type(declared: &str) -> &str {
+    if declared.is_empty() {
+        "NULL"
+    } else {
+        declared
+    }
+}
+
+/// A plain value of a markdown statement, read as `cell!` reads a SQLite value.
+fn markdown_cell(cell: MdCell) -> Result<Val, sqlx::Error> {
+    match cell {
+        MdCell::Null => Ok(Val::Null),
+        MdCell::Integer(n) => Ok(Val::Int(n)),
+        MdCell::Text(text) => Ok(Val::Text(text)),
+        MdCell::TextBytes(bytes) | MdCell::Blob(bytes) => decode_bytes(Some(bytes)),
+        MdCell::Real(_) => Err(unsupported_value("unsupported catalog cell type REAL")),
+    }
+}
+
+/// A grid cell of a markdown statement, read as `grid_sqlite!` reads a SQLite value.
+fn markdown_grid_cell(cell: MdCell) -> Result<GridCell, sqlx::Error> {
+    match cell {
+        MdCell::Real(value) => Ok(GridCell::Float64(value.to_bits())),
+        MdCell::Blob(bytes) => Ok(GridCell::Binary(bytes)),
+        other => markdown_cell(other).map(GridCell::from),
+    }
+}
+
 /// The rows that a PostgreSQL cursor fetches in one round trip.
 const PG_CURSOR_CHUNK: usize = 256;
 
@@ -333,6 +385,7 @@ macro_rules! query_result_of {
             Conn::MySql(c) => fetch_result!(c, $sql, $params, $budget, cell, QueryResult, mysql),
             Conn::Postgres(c) => fetch_result!(c, $sql, $params, $budget, cell_pg, QueryResult, postgres),
             Conn::Sqlite(c) => fetch_result!(c, $sql, $params, $budget, cell, QueryResult, sqlite),
+            Conn::Markdown(c) => markdown_result!(c, $sql, $params, $budget, markdown_cell, QueryResult),
         }
     };
 }
@@ -344,6 +397,7 @@ macro_rules! query_values_of {
             Conn::MySql(c) => fetch_result!(c, $sql, $params, $budget, query_cell, QueryResult, mysql),
             Conn::Postgres(c) => fetch_result!(c, $sql, $params, $budget, query_cell_pg, QueryResult, postgres),
             Conn::Sqlite(c) => fetch_result!(c, $sql, $params, $budget, cell, QueryResult, sqlite),
+            Conn::Markdown(c) => markdown_result!(c, $sql, $params, $budget, markdown_cell, QueryResult),
         }
     };
 }
@@ -355,6 +409,7 @@ macro_rules! grid_result_of {
             Conn::MySql(c) => fetch_result!(c, $sql, $params, $budget, grid_mysql, GridQueryResult, mysql),
             Conn::Postgres(c) => fetch_result!(c, $sql, $params, $budget, grid_pg, GridQueryResult, postgres),
             Conn::Sqlite(c) => fetch_result!(c, $sql, $params, $budget, grid_sqlite, GridQueryResult, sqlite),
+            Conn::Markdown(c) => markdown_result!(c, $sql, $params, $budget, markdown_grid_cell, GridQueryResult),
         }
     };
 }
@@ -377,6 +432,8 @@ pub enum Conn {
     MySql(PoolConnection<MySql>),
     Postgres(PoolConnection<Postgres>),
     Sqlite(PoolConnection<Sqlite>),
+    /// A session of a markdown connection, whose server runs SQL in SQLite's dialect (DIA-185).
+    Markdown(MdLease),
 }
 
 fn has_params(params: &[P]) -> bool {
@@ -400,7 +457,7 @@ impl Conn {
             match self {
                 Self::MySql(_) => "mysql",
                 Self::Postgres(_) => "postgres",
-                Self::Sqlite(_) => "sqlite",
+                Self::Sqlite(_) | Self::Markdown(_) => "sqlite",
             },
         )
     }
@@ -410,6 +467,7 @@ impl Conn {
             Self::MySql(c) => c.close_on_drop(),
             Self::Postgres(c) => c.close_on_drop(),
             Self::Sqlite(c) => c.close_on_drop(),
+            Self::Markdown(c) => c.discard(),
         }
     }
     /// Forgets the named statements of a PostgreSQL connection, on the server and in its statement cache.
@@ -426,6 +484,7 @@ impl Conn {
             Self::MySql(c) => drop(c.detach()),
             Self::Postgres(c) => drop(c.detach()),
             Self::Sqlite(c) => drop(c.detach()),
+            Self::Markdown(mut c) => c.discard(),
         }
     }
     pub async fn acquire(pool: &Pool) -> Result<Conn, sqlx::Error> {
@@ -433,15 +492,14 @@ impl Conn {
             Pool::MySql(p) => Conn::MySql(p.acquire().await?),
             Pool::Postgres(p) => Conn::Postgres(p.acquire().await?),
             Pool::Sqlite(p) => Conn::Sqlite(p.acquire().await?),
-            Pool::Markdown(_) => {
-                return Err(sqlx::Error::Configuration("a markdown corpus has no SQL connection; give a mysql, postgres or sqlite DSN".into()));
-            }
+            Pool::Markdown(p) => Conn::Markdown(p.acquire().await?),
         })
     }
 
     /// Rolls the transaction back. A SQLite transaction that SQLite already
     /// rolled back by itself, after `RAISE(ROLLBACK)` or an I/O error, is not
-    /// rolled back again: that ROLLBACK would fail (INT-155).
+    /// rolled back again: that ROLLBACK would fail (INT-155). A markdown session
+    /// reports no autocommit state, so its ROLLBACK is always sent.
     pub async fn rollback(&mut self) -> Result<(), sqlx::Error> {
         if let Conn::Sqlite(c) = self {
             if !polyspec_orm::db::sqlite_in_transaction(c).await? {
@@ -470,6 +528,7 @@ impl Conn {
             Conn::MySql(c) => run!(c, mysql),
             Conn::Postgres(c) => run!(c, postgres),
             Conn::Sqlite(c) => run!(c, sqlite),
+            Conn::Markdown(c) => c.statement(&sql.0, &binds::markdown(params)?).await?.affected,
         })
     }
 

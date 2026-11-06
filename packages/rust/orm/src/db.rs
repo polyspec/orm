@@ -154,7 +154,7 @@ pub enum ConnectOptions {
     MySql(MySqlConnectOptions),
     Postgres(PgConnectOptions),
     Sqlite(SqliteConnectOptions),
-    /// A corpus that a flowmark server serves (docs/spec/protocol.md §5 "IR executors").
+    /// A corpus that a flowmark server serves (docs/spec/protocol.md §5 "Markdown connections").
     Markdown(MarkdownDsn),
 }
 
@@ -166,6 +166,14 @@ pub struct ParsedDsn {
 }
 
 impl ParsedDsn {
+    /// The database whose SQL the connection runs: a corpus that a flowmark server serves runs SQL in SQLite's dialect (DIA-185).
+    pub fn sql_driver(&self) -> &'static str {
+        match self.options {
+            ConnectOptions::Markdown(_) => "sqlite",
+            _ => self.driver(),
+        }
+    }
+
     pub fn driver(&self) -> &'static str {
         match self.options {
             ConnectOptions::MySql(_) => "mysql",
@@ -216,7 +224,7 @@ pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
     for (k, v) in url.query_pairs() {
         match k.as_ref() {
             "timezone" => zone_text = Some(v.into_owned()),
-            "_pragma" if url.scheme() == "sqlite" => pragmas.push(v.into_owned()),
+            "_pragma" if matches!(url.scheme(), "sqlite" | "markdown") => pragmas.push(v.into_owned()),
             "_txlock" if url.scheme() == "sqlite" => {
                 return Err(bad("sqlite DSN does not accept _txlock; write transactions begin with BEGIN IMMEDIATE".into()));
             }
@@ -279,7 +287,7 @@ pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
             }
             ConnectOptions::Sqlite(o)
         }
-        "markdown" => ConnectOptions::Markdown(parse_markdown_dsn(&url, &decoded_path(url.path(), "markdown")?, &pairs)?),
+        "markdown" => ConnectOptions::Markdown(parse_markdown_dsn(&url, &decoded_path(url.path(), "markdown")?, &pairs, &pragmas)?),
         other => return Err(bad(format!("unsupported DSN scheme {other:?}; want mysql, postgres, sqlite, or markdown"))),
     };
     Ok(ParsedDsn { options, zone })
@@ -331,7 +339,7 @@ pub(crate) struct DbInner {
     idle_trim: tokio::sync::Mutex<()>,
     /// The PostgreSQL options of the pool, which a LISTEN subscription connects with; None on other databases.
     pub(crate) listen: Option<sqlx::postgres::PgConnectOptions>,
-    /// The dialect a SQL connection plans for. Markdown connections, which do not plan, have none.
+    /// The dialect the connection plans for: SQLite's on a markdown connection, whose server runs SQL in SQLite's dialect (DIA-185).
     pub(crate) dialect: Option<Dialect>,
     pub(crate) cfg: Config,
     pub(crate) zone: Zone,
@@ -495,7 +503,8 @@ async fn run_sqlite_row_lock_sequence(ops: &mut impl SqliteRowLockSequenceOps) -
 
 struct SqliteRowLockSequence<'a> {
     db: &'a Db,
-    tx: &'a mut crate::driver::CancellableConnection<sqlx::Sqlite>,
+    /// The transaction of a SQLite or a markdown connection.
+    tx: &'a mut TxInner,
     transaction: Option<u64>,
     previous: i64,
     nowait: bool,
@@ -505,17 +514,21 @@ impl SqliteRowLockSequenceOps for SqliteRowLockSequence<'_> {
     async fn set_nowait(&mut self) -> Result<()> {
         let sql = "PRAGMA busy_timeout=0";
         let start = std::time::Instant::now();
-        let result = crate::events::raw(self.db, &mut **self.tx, Sent::bare(KIND_UTILITY, &[], self.transaction, sql)).await;
+        let result = crate::tx::raw_on(self.db, self.tx, Sent::bare(KIND_UTILITY, &[], self.transaction, sql)).await;
         self.db.statement_done(Sent::bare(KIND_UTILITY, &[], self.transaction, sql), start, result)
     }
 
     async fn take_row_lock(&mut self) -> Result<()> {
         let tables = [crate::tx::ROW_LOCK_TABLE.to_owned()];
         let insert = "INSERT INTO \"orm__row_lock\" (\"id\") VALUES (1) ON CONFLICT (\"id\") DO UPDATE SET \"id\"=excluded.\"id\"";
-        let statement = sqlx::SqlSafeStr::into_sql_str(sqlx::AssertSqlSafe(insert));
         let start = std::time::Instant::now();
-        let operation = match sqlx::raw_sql(statement).execute(&mut **self.tx).await {
-            Ok(_) => Ok(()),
+        let sent = match &mut *self.tx {
+            TxInner::Sqlite(t) => sqlx::raw_sql(sqlx::SqlSafeStr::into_sql_str(sqlx::AssertSqlSafe(insert))).execute(&mut **t).await.map(drop),
+            TxInner::Markdown(lease) => lease.raw(insert).await,
+            _ => return Err(Error::internal("a SQLite row lock on another connection")),
+        };
+        let operation = match sent {
+            Ok(()) => Ok(()),
             Err(error) => {
                 let busy = crate::sqlite_busy(&error);
                 let mapped = Error::from(error);
@@ -531,7 +544,7 @@ impl SqliteRowLockSequenceOps for SqliteRowLockSequence<'_> {
 
     async fn restore_timeout(&mut self) -> Result<()> {
         let sql = format!("PRAGMA busy_timeout={}", self.previous);
-        crate::events::raw(self.db, &mut **self.tx, Sent::bare(KIND_UTILITY, &[], self.transaction, &sql)).await
+        crate::tx::raw_on(self.db, self.tx, Sent::bare(KIND_UTILITY, &[], self.transaction, &sql)).await
     }
 }
 
@@ -596,7 +609,7 @@ impl Db {
         let idle = if cfg.pool_idle_size == 0 { pool_size } else { cfg.pool_idle_size };
         let owner = PoolOwner::default();
         let parsed = parse_dsn(dsn)?;
-        let dialect = Dialect::parse(parsed.driver());
+        let dialect = Dialect::parse(parsed.sql_driver());
         let cache = cfg.statement_cache_size;
         let timeout = cfg.statement_timeout_ms;
         // A LISTEN subscription opens a connection of its own with the options of the pool (DIA-194).
@@ -706,6 +719,15 @@ impl Db {
         }
     }
 
+    /// The database whose SQL the connection runs: sqlite on a markdown connection, whose server runs SQL in SQLite's
+    /// dialect (DIA-185), and otherwise the driver.
+    pub fn sql_driver(&self) -> &'static str {
+        match &self.inner.pool {
+            Pool::Markdown(_) => "sqlite",
+            _ => self.driver(),
+        }
+    }
+
     /// The pool of the connection.
     pub fn pool(&self) -> &Pool {
         &self.inner.pool
@@ -777,7 +799,7 @@ impl Db {
                 msg: format!("manifest {} is not registered on this connection: connect through its generated models or install it", req.schema.hash()),
             });
         }
-        let Some(dialect) = self.inner.dialect else { return Err(Error::internal("a markdown connection plans no request")) };
+        let Some(dialect) = self.inner.dialect else { return Err(Error::internal("the connection has no dialect")) };
         if let Some(n_params) = n_params {
             req.ir.n_params = n_params;
         }
@@ -794,7 +816,8 @@ impl Db {
         if let Some(p) = self.inner.plans.lock().unwrap().get(&key) {
             return Ok(p.clone());
         }
-        let mut plan = engine::compile(&manifest, dialect, &req.ir)?;
+        // A corpus assigns the key_prefix keys and the order positions that an insert leaves out (PRT-73).
+        let mut plan = engine::compile_for(&manifest, dialect, &req.ir, self.is_markdown())?;
         for st in &mut plan.steps {
             st.plan_id = key;
         }
@@ -840,7 +863,7 @@ impl Db {
     /// Sets the bind slot values of the step. `audit` is the audit record of the transaction in which the step runs.
     pub(crate) fn args(&self, st: &Step, params: &[Param], parent_vals: &[Param], audit: Option<&AuditKey>) -> Result<Vec<Param>> {
         let cfg = &self.inner.cfg;
-        let sqlite = matches!(self.inner.pool, Pool::Sqlite(_));
+        let sqlite = self.sql_driver() == "sqlite";
         let mut out = Vec::with_capacity(st.bind_slots.len() + parent_vals.len());
         let mut clock: Option<String> = None;
         for b in &st.bind_slots {
@@ -921,7 +944,7 @@ impl Db {
                 other => return Err(Error::internal(format!("bind from {other}"))),
             }
         }
-        if matches!(self.inner.pool, Pool::Sqlite(_)) {
+        if sqlite {
             for v in &mut out {
                 if let Param::DateTime(t) = v {
                     *v = Param::Str(t.format(SQLITE_DATETIME).to_string());
@@ -971,15 +994,25 @@ impl Db {
             return Ok(());
         }
         let tx = match target {
-            Target::Tx(TxInner::Sqlite(tx)) => tx,
-            Target::Pool(Pool::Sqlite(_)) => return Err(Error::Config("SQLite row locks require an ORM transaction".into())),
+            Target::Tx(tx) if matches!(**tx, TxInner::Sqlite(_) | TxInner::Markdown(_)) => &mut **tx,
+            Target::Pool(Pool::Sqlite(_) | Pool::Markdown(_)) => return Err(Error::Config("SQLite row locks require an ORM transaction".into())),
             _ => return Ok(()),
         };
         let nowait = mode.ends_with("_nowait");
         if nowait {
             let read = "PRAGMA busy_timeout";
             let start = std::time::Instant::now();
-            let r = sqlx::query_scalar::<_, i64>(read).fetch_one(&mut **tx).await.map_err(Error::from);
+            let r = match tx {
+                TxInner::Sqlite(t) => sqlx::query_scalar::<_, i64>(read).fetch_one(&mut **t).await.map_err(Error::from),
+                TxInner::Markdown(lease) => match lease.statement(read, &[]).await {
+                    Ok(result) => match result.rows.first().and_then(|row| row.first()) {
+                        Some(crate::markdown::MdCell::Integer(n)) => Ok(*n),
+                        other => Err(Error::internal(format!("PRAGMA busy_timeout answered {other:?}"))),
+                    },
+                    Err(error) => Err(Error::from(error)),
+                },
+                _ => Err(Error::internal("a SQLite row lock on another connection")),
+            };
             let previous = self.statement_done(Sent::bare(KIND_UTILITY, &[], transaction, read), start, r)?;
             let mut sequence = SqliteRowLockSequence { db: self, tx, transaction, previous, nowait: true };
             return run_sqlite_row_lock_sequence(&mut sequence).await;
@@ -1029,7 +1062,12 @@ impl Db {
             Target::Tx(TxInner::Sqlite(t)) => {
                 fetch_sqlite(&sql, &args, &mut **t).await.map(|v| v.into_iter().map(DriverRow::Sqlite).collect()).map_err(Error::from)
             }
-            Target::Pool(Pool::Markdown(_)) | Target::Tx(TxInner::Markdown(_)) => Err(Error::internal("a markdown connection sends no statement")),
+            Target::Pool(Pool::Markdown(p)) => {
+                p.bound(&sql, &args).await.map(|r| r.into_rows().into_iter().map(DriverRow::Markdown).collect()).map_err(Error::from)
+            }
+            Target::Tx(TxInner::Markdown(t)) => {
+                t.bound(&sql, &args).await.map(|r| r.into_rows().into_iter().map(DriverRow::Markdown).collect()).map_err(Error::from)
+            }
         };
         if pooled {
             self.keep_idle_size().await;
@@ -1062,7 +1100,8 @@ impl Db {
             Target::Tx(TxInner::Postgres(t)) => exec_pg(sql, &args, &arg_types(st, 0), &mut **t).await,
             Target::Pool(Pool::Sqlite(p)) => exec_sqlite_pool(sql, &args, p).await.map_err(Error::from),
             Target::Tx(TxInner::Sqlite(t)) => exec_sqlite(sql, &args, &mut **t).await.map_err(Error::from),
-            Target::Pool(Pool::Markdown(_)) | Target::Tx(TxInner::Markdown(_)) => Err(Error::internal("a markdown connection sends no statement")),
+            Target::Pool(Pool::Markdown(p)) => p.bound(sql, &args).await.map(markdown_written).map_err(Error::from),
+            Target::Tx(TxInner::Markdown(t)) => t.bound(sql, &args).await.map(markdown_written).map_err(Error::from),
         };
         if pooled {
             self.keep_idle_size().await;
@@ -1072,7 +1111,6 @@ impl Db {
 
     /// The statement of a request without executing it.
     pub(crate) async fn statement(&self, req: &mut Req) -> Result<Statement> {
-        self.unsupported_on_markdown("get_query")?;
         let plan = self.plan(req).await?;
         let st = &plan.steps[0];
         let audit = crate::tx::active_for(self).and_then(|t| t.audit());
@@ -1246,6 +1284,11 @@ impl Executor {
     }
 }
 
+/// The (last insert id, changed rows) of a markdown statement, SQLite's `last_insert_rowid()` and `changes()` (PRT-70).
+fn markdown_written(result: crate::markdown::MdResult) -> (u64, u64) {
+    (result.last_insert_id as u64, result.affected)
+}
+
 fn digits(b: &[u8]) -> bool {
     b.iter().all(u8::is_ascii_digit)
 }
@@ -1327,7 +1370,7 @@ fn sqlite_datetime_text(text: &str, zone: &Zone) -> Result<Option<String>> {
     }
 }
 
-/// The date, time, and datetime text of an IR executor message (docs/spec/protocol.md §5 "Parameters"): date is `YYYY-MM-DD`,
+/// The canonical date, time, and datetime text (docs/spec/protocol.md §5 "Parameters"): date is `YYYY-MM-DD`,
 /// time is `HH:MM:SS.ffffff`, and datetime is `YYYY-MM-DD HH:MM:SS.ffffff` in the connection time zone; fractional digits the value lacks are 0.
 /// Text in any other form is CODEC_ENCODE.
 pub(crate) fn message_time_text(text: &str, col_type: &str, zone: &Zone) -> Result<String> {

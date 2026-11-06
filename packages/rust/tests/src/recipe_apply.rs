@@ -53,6 +53,8 @@ enum Conn {
     MySql(MySqlConnection),
     Postgres(PgConnection),
     Sqlite(SqliteConnection),
+    /// The session of a flowmark corpus, whose statements are in SQLite's dialect (DIA-185).
+    Markdown(polyspec_orm::markdown::MdLease),
 }
 
 impl Conn {
@@ -61,6 +63,11 @@ impl Conn {
             Conn::MySql(c) => c.close().await,
             Conn::Postgres(c) => c.close().await,
             Conn::Sqlite(c) => c.close().await,
+            // The session closes when its lease drops, instead of returning to the pool.
+            Conn::Markdown(mut c) => {
+                c.discard();
+                Ok(())
+            }
         }
         .map_err(|e| e.to_string())
     }
@@ -72,6 +79,7 @@ impl CatalogQuerier for Conn {
             Conn::MySql(c) => CatalogQuerier::rows(c, query).await,
             Conn::Postgres(c) => CatalogQuerier::rows(c, query).await,
             Conn::Sqlite(c) => CatalogQuerier::rows(c, query).await,
+            Conn::Markdown(c) => CatalogQuerier::rows(c, query).await,
         }
     }
 }
@@ -82,6 +90,7 @@ impl ApplyConnection for Conn {
             Conn::MySql(c) => ApplyConnection::execute(c, statement).await,
             Conn::Postgres(c) => ApplyConnection::execute(c, statement).await,
             Conn::Sqlite(c) => ApplyConnection::execute(c, statement).await,
+            Conn::Markdown(c) => ApplyConnection::execute(c, statement).await,
         }
     }
 
@@ -90,6 +99,7 @@ impl ApplyConnection for Conn {
             Conn::MySql(c) => ApplyConnection::execute_bound(c, statement, args).await,
             Conn::Postgres(c) => ApplyConnection::execute_bound(c, statement, args).await,
             Conn::Sqlite(c) => ApplyConnection::execute_bound(c, statement, args).await,
+            Conn::Markdown(c) => ApplyConnection::execute_bound(c, statement, args).await,
         }
     }
 
@@ -98,6 +108,7 @@ impl ApplyConnection for Conn {
             Conn::MySql(c) => ApplyConnection::query_bound(c, query, args).await,
             Conn::Postgres(c) => ApplyConnection::query_bound(c, query, args).await,
             Conn::Sqlite(c) => ApplyConnection::query_bound(c, query, args).await,
+            Conn::Markdown(c) => ApplyConnection::query_bound(c, query, args).await,
         }
     }
 }
@@ -156,6 +167,8 @@ impl ApplyOps {
         }
         let runtime = self.runtime.as_ref().ok_or("the runtime of the apply ops")?;
         let state = &mut self.state;
+        // A corpus runs the statements of SQLite and reads its entries (DIA-185); its DSN names the corpus.
+        let database = if database == "markdown" { "sqlite" } else { database };
         // The case runs on a runtime of its own, and a runtime starts no other inside it, so the op has a thread.
         std::thread::scope(|scope| {
             scope.spawn(|| runtime.block_on(run_op(state, step, database, dsn))).join().map_err(|panic| crate::recipe::panicked("an apply op", &*panic))?
@@ -230,13 +243,18 @@ async fn direct(database: &str, dsn: &str) -> Result<Conn, String> {
             let connection = PgConnection::connect_with(&options.database(name)).await.map_err(|e| e.to_string())?;
             (Conn::Postgres(connection), "SET TimeZone = 'UTC'")
         }
-        _ => {
-            let ConnectOptions::Sqlite(options) = parse_dsn(dsn).map_err(|e| e.to_string())?.options else {
-                return Err(format!("{dsn} is not sqlite://"));
-            };
-            let connection = SqliteConnection::connect_with(&options).await.map_err(|e| e.to_string())?;
-            (Conn::Sqlite(connection), "PRAGMA foreign_keys = ON")
-        }
+        _ => match parse_dsn(dsn).map_err(|e| e.to_string())?.options {
+            ConnectOptions::Sqlite(options) => {
+                let connection = SqliteConnection::connect_with(&options).await.map_err(|e| e.to_string())?;
+                (Conn::Sqlite(connection), "PRAGMA foreign_keys = ON")
+            }
+            // A corpus: one session of its flowmark server, which holds the pool of the session.
+            ConnectOptions::Markdown(options) => {
+                let pool = polyspec_orm::markdown::MdPool::connect(options, 1).await.map_err(|e| e.to_string())?;
+                (Conn::Markdown(pool.acquire().await.map_err(|e| e.to_string())?), "PRAGMA foreign_keys = ON")
+            }
+            _ => return Err(format!("{dsn} is not sqlite:// or markdown://")),
+        },
     };
     ApplyConnection::execute(&mut session, rule).await.map_err(|e| format!("{rule}: {e}"))?;
     Ok(session)
@@ -331,6 +349,13 @@ async fn op_body(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
                 dbspec::manifest(&[&introspection.document]).map_err(|e| format!("manifest: {e:?}"))?.schema_text
             };
             Ok(json!({ "value": { "text": text } }))
+        }
+        // On a corpus the other database is a new corpus, with no table.
+        "dbspec.other_database" if dsn.starts_with("markdown://") => {
+            let other = crate::markdown::case_corpus(None).await;
+            let result = other_steps(state, step, database, &other.dsn).await;
+            drop(other);
+            result.map(|()| json!({}))
         }
         "dbspec.other_database" => {
             let other = CaseDatabase::create(database).await;

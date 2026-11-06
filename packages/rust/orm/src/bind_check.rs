@@ -1,12 +1,10 @@
 //! A parameter is checked against the logical type of each slot it fills before any statement (docs/spec/protocol.md §5
-//! "Parameters"): the SQL bind path reads the slot of the plan step, an IR executor the uses of `param_uses`.
+//! "Parameters"): the bind path reads the slot of the plan step, and `param_uses` lists the slots of each parameter.
 
 use crate::db::{bound_time_value, time_value, Zone};
-use crate::engine::ParamUse;
 use crate::plan::BindSlot;
 use crate::value::Param;
 use crate::{codes, Error, Result};
-use polyspec_orm_schema::dbspec::Type;
 
 /// The logical type of a slot that a parameter fills: a dbspec type kind with the precision of a decimal, time or
 /// datetime, the scale of a decimal and the length of a varchar.
@@ -23,22 +21,6 @@ pub(crate) struct ParamSlot<'a> {
 /// The logical type of a param bind slot of a plan step.
 pub(crate) fn bind_slot_type(b: &BindSlot) -> ParamSlot<'_> {
     ParamSlot { ty: &b.col_type, precision: b.precision, scale: b.scale, length: b.length, not_null: b.not_null, column: &b.column }
-}
-
-/// The logical type of a parameter use: a use of its column's type takes the column's precision, scale and length; a
-/// datetime or time of a function takes six digits.
-pub(crate) fn use_slot_type<'a>(u: &'a ParamUse<'_>) -> ParamSlot<'a> {
-    if let Some(f) = u.column.filter(|f| f.ty.name() == u.ty) {
-        let (precision, scale, length) = match f.ty {
-            Type::Decimal(p, s) => (p.into(), s.into(), 0),
-            Type::Time(p) | Type::DateTime(p) => (p.into(), 0, 0),
-            Type::Varchar(n) => (0, 0, n.into()),
-            _ => (0, 0, 0),
-        };
-        return ParamSlot { ty: &u.ty, precision, scale, length, not_null: u.assign && !f.nullable, column: &f.name };
-    }
-    let precision = if u.ty == "datetime" || u.ty == "time" { 6 } else { 0 };
-    ParamSlot { ty: &u.ty, precision, scale: 0, length: 0, not_null: false, column: "" }
 }
 
 fn encode_error(msg: String) -> Error {
