@@ -77,7 +77,8 @@ static zval *engine_prop(zval *self, const char *name)
 
 /* ---- Assemble ---- */
 
-/* Assemble::cells: the styled cells of one indexed node, without its joined nodes, for Codec::decodeRows. */
+/* Assemble::cells: the styled cells of one indexed node, without its joined nodes, for Codec::decodeRows; the last field of a cell is
+ * the <entity>.<column> that a CODEC_DECODE of the cell names (COD-41). */
 static bool assemble_cells(HashTable *node, zval *model, zval *out)
 {
     zval *entities = zend_read_property(Z_OBJCE_P(model), Z_OBJ_P(model), "entities", sizeof("entities") - 1, 1,
@@ -123,7 +124,9 @@ static bool assemble_cells(HashTable *node, zval *model, zval *out)
         zval *index = zend_hash_str_find(Z_ARRVAL_P(column), "index", sizeof("index") - 1);
         zval *host = zend_hash_str_find(Z_ARRVAL_P(column), "host", sizeof("host") - 1);
         zval *codec = zend_hash_str_find(Z_ARRVAL_P(column), "codec", sizeof("codec") - 1);
-        if (index == NULL || host == NULL || Z_TYPE_P(host) != IS_ARRAY || codec == NULL) {
+        zval *column_name = zend_hash_str_find(Z_ARRVAL_P(column), "name", sizeof("name") - 1);
+        if (index == NULL || host == NULL || Z_TYPE_P(host) != IS_ARRAY || codec == NULL || column_name == NULL
+            || Z_TYPE_P(column_name) != IS_STRING) {
             zval_ptr_dtor(&version);
             zval_ptr_dtor(out);
             zend_throw_error(NULL, "Polyspec\\Orm\\Assemble::cells(): a styled column is not indexed");
@@ -138,7 +141,7 @@ static bool assemble_cells(HashTable *node, zval *model, zval *out)
             }
         } ZEND_HASH_FOREACH_END();
         zval cell;
-        array_init_size(&cell, 5);
+        array_init_size(&cell, 6);
         Z_TRY_ADDREF_P(index);
         add_next_index_zval(&cell, index);
         Z_TRY_ADDREF_P(host);
@@ -148,6 +151,8 @@ static bool assemble_cells(HashTable *node, zval *model, zval *out)
         add_next_index_bool(&cell, aes);
         Z_TRY_ADDREF(version);
         add_next_index_zval(&cell, &version);
+        /* The <entity>.<column> that a CODEC_DECODE of the cell names (COD-41). */
+        add_next_index_str(&cell, zend_strpprintf(0, "%s.%s", Z_STRVAL_P(entity_name), Z_STRVAL_P(column_name)));
         add_next_index_zval(out, &cell);
     } ZEND_HASH_FOREACH_END();
     zval_ptr_dtor(&version);

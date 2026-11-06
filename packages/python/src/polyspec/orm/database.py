@@ -2841,8 +2841,12 @@ def _decode_assembly(row, assemble: dict, db: Db) -> None:
             if client:
                 value = codec_decode(client, value)
         except CodecError as error:
-            # A read of a model fails as every library failure does; the codec's own call keeps CodecError.
-            raise OrmError(error.code, str(error).partition(": ")[2], error) from error
+            # A read of a model fails as every library failure does; the codec's own call keeps CodecError. A
+            # CODEC_DECODE names its entity and column: "CODEC_DECODE: <entity>.<column>: <message>" (COD-41).
+            message = str(error).partition(": ")[2]
+            if error.code == codes.CODEC_DECODE:
+                message = f"{assemble['entity']}.{column['name']}: {message}"
+            raise OrmError(error.code, message, error) from error
         row[column["index"]] = value
     for child in assemble["children"]:
         if child["kind"] == "join" and child.get("assemble"):

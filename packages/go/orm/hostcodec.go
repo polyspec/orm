@@ -209,12 +209,13 @@ func HostDecode(raw any, styles []string, aesKey string) (any, error) {
 		var err error
 		switch styles[i] {
 		case "hex":
-			// The encoder writes only uppercase hex. For other bytes it also rejects lowercase, which hex.DecodeString accepts.
-			if i := bytes.IndexFunc(cur, func(r rune) bool { return (r < '0' || r > '9') && (r < 'A' || r > 'F') }); i >= 0 {
-				return nil, codecErr(CodeCodecDecode, "hex: byte %#x at %d is not an upper-case hex digit", cur[i], i)
+			// The encoder writes only uppercase hex, so lowercase, which hex.DecodeString accepts, is refused too; every client
+			// states the one text of COD-39.
+			if len(cur)%2 != 0 || bytes.ContainsFunc(cur, func(r rune) bool { return (r < '0' || r > '9') && (r < 'A' || r > 'F') }) {
+				return nil, codecErr(CodeCodecDecode, "hex: odd length or non-hex input")
 			}
 			if cur, err = hex.DecodeString(string(cur)); err != nil {
-				return nil, codecErr(CodeCodecDecode, "hex: %v", err)
+				return nil, codecErr(CodeCodecDecode, "hex: odd length or non-hex input")
 			}
 		case "aes":
 			if aesKey == "" {

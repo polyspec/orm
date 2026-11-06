@@ -840,15 +840,15 @@
           "expect": {
             "mysql": {
               "error": "CODEC_DECODE",
-              "message_holds": "hex: "
+              "message": "CODEC_DECODE: author.aes_hex_email: hex: odd length or non-hex input"
             },
             "postgres": {
               "error": "CODEC_DECODE",
-              "message_holds": "hex: "
+              "message": "CODEC_DECODE: author.aes_hex_email: hex: odd length or non-hex input"
             },
             "sqlite": {
               "error": "CODEC_DECODE",
-              "message_holds": "hex: "
+              "message": "CODEC_DECODE: author.aes_hex_email: hex: odd length or non-hex input"
             }
           }
         },

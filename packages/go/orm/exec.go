@@ -2,6 +2,7 @@ package orm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"slices"
@@ -56,9 +57,11 @@ func (si *scanInfo) put(b *scanBuf) {
 
 type styledScanCol struct {
 	index int
-	name  string
-	codec []string
-	host  []string
+	// entity and name are what a decode error names (COD-41); a joined column names its own entity.
+	entity string
+	name   string
+	codec  []string
+	host   []string
 }
 
 func newCached(key uint64, p *plan.Plan) *cached {
@@ -961,11 +964,11 @@ func decodeSelectedRow(vals []any, si *scanInfo, st *plan.Step, keyring AESKeyri
 			v, err = HostDecode(v, sc.host, "")
 		}
 		if err != nil {
-			return fmt.Errorf("%s.%s: %w", st.Assemble.Entity, sc.name, err)
+			return columnDecodeErr(sc.entity, sc.name, err)
 		}
 		if len(sc.codec) > 0 {
 			if v, err = Decode(sc.codec, v); err != nil {
-				return fmt.Errorf("%s.%s: %w", st.Assemble.Entity, sc.name, err)
+				return columnDecodeErr(sc.entity, sc.name, err)
 			}
 		}
 		vals[sc.index] = v
@@ -998,7 +1001,7 @@ func validateRuntimeScalars(vals []any, asm *plan.Assemble) error {
 			_, err = AsBool(vals[col.Index])
 		}
 		if err != nil {
-			return fmt.Errorf("%s.%s: %w", asm.Entity, col.Name, err)
+			return columnDecodeErr(asm.Entity, col.Name, err)
 		}
 	}
 	for _, child := range asm.Children {
@@ -1019,9 +1022,19 @@ func selectedRowVersion(vals []any, asm *plan.Assemble) (int32, error) {
 	}
 	version, err := rowVersion(vals[col.Index])
 	if err != nil {
-		return 0, fmt.Errorf("%s.%s: %w", asm.Entity, col.Name, err)
+		return 0, columnDecodeErr(asm.Entity, col.Name, err)
 	}
 	return version, nil
+}
+
+// columnDecodeErr names the entity and the column of a CODEC_DECODE of a read cell, as every client states it:
+// "CODEC_DECODE: <entity>.<column>: <message>" (COD-41). An error of another code is returned as it is.
+func columnDecodeErr(entity, column string, err error) error {
+	var coded *ir.Error
+	if !errors.As(err, &coded) || coded.Code != CodeCodecDecode {
+		return err
+	}
+	return &ir.Error{Code: coded.Code, Msg: entity + "." + column + ": " + coded.Msg, Cause: coded.Cause}
 }
 
 func restoreByteColumns(vals []any, asm *plan.Assemble) error {
@@ -1061,7 +1074,7 @@ func styledScanCols(a *plan.Assemble) []styledScanCol {
 			continue
 		}
 		codec, host := splitHost(c.Styles)
-		out = append(out, styledScanCol{index: c.Index, name: c.Name, codec: codec, host: host})
+		out = append(out, styledScanCol{index: c.Index, entity: a.Entity, name: c.Name, codec: codec, host: host})
 	}
 	for _, ch := range a.Children {
 		if ch.Kind == "join" {

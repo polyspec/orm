@@ -617,7 +617,8 @@ fn exact_integer_text(value: &Val) -> Result<()> {
     Ok(())
 }
 
-fn column_decode_error(entity: &str, column: &str, error: Error) -> Error {
+/// A `CODEC_DECODE` of a read cell names its entity and column: `CODEC_DECODE: <entity>.<column>: <message>` (COD-41).
+pub(crate) fn column_decode_error(entity: &str, column: &str, error: Error) -> Error {
     match error {
         Error::Engine { code, msg } if code == codes::CODEC_DECODE => Error::Engine { code, msg: format!("{entity}.{column}: {msg}") },
         other => other,

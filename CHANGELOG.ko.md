@@ -19,6 +19,7 @@
 - 수정: 행을 거부하는 markdown 연결의 읽기는 Go와 Rust처럼 TypeScript, Python, PHP에서도 뒤따르는 행을 close로 끝내고 close의 답과 무관하게 자기 오류를 돌려주며(PRT-66), PHP extension은 행이 거부될 때 `fetchAll`의 결과를 두 번 해제하지 않는다. op `markdown.session`은 `call`(`transactions`, `read`, `read_twice`)을 받고, `make markdown-session-check`가 여섯 runtime에서 실행하는 `tests/markdown/session.json`이 거부된 행과 거부된 close의 메시지를 확인한다(XV7).
 - 시험: UTF-8이 아닌 text는 recipe wrapper `text_hex`다(FCV-4). Go, PHP, PHP extension이 실행하는 `tests/bind/messages-raw-text.json`과 recipe `raw_text`는 typed slot이 그 값을 `CODEC_ENCODE`로 거부하는지, 그리고 `utils().run`이 그 값을 SQLite와 flowmark에 저장하고 그 byte를 다시 읽는지 확인하며, MySQL과 PostgreSQL은 그 값을 거부한다(PRT-67, XV8).
 - 수정 (Go, PHP, PHP extension): `contains` filter는 equality filter처럼 UTF-8이 아닌 text를 어떤 문장보다 먼저 `CODEC_ENCODE` "like_contains requires a UTF-8 text"로 거부한다(PRT-32, XV16).
+- 수정: 읽은 cell의 `CODEC_DECODE`는 모든 runtime에서 `CODEC_DECODE: <entity>.<column>: <message>`이고, 잘못된 hex text는 모든 runtime에서 `hex: odd length or non-hex input`이다(COD-39, COD-41, XV15).
 - corpus에 대한 SQLite 연결의 수정 (T384): PHP 거부는 code를 한 번만 말한다. 호출자가 버린 PHP 문의 행은 다음 문이 끝까지 읽지 않고 닫는다. 행이 거부된 Rust 읽기는 close의 답과 관계없이 자기 오류를 유지한다. dbspec.apply의 Python lock 결과는 OrmError의 cause에서 SQLite result code를 읽고, Python schema install은 savepoint 대신 열린 트랜잭션에 합류한다.
 - 수정: Go catalog가 멈춘 읽기와 닫기 실패를 보고하고, Go PostgreSQL driver가 panic하던 곳에서 오류를 돌려준다.
 - recipe case가 그 동작을 가진 모든 runtime에서 CFG-22를 증명한다: 세션 설정과 prepared statement는 자기 연결에만 남고(`utils`), 각 연결은 자기 pool만 집계한다(`connection_pool`).

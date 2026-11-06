@@ -353,10 +353,10 @@ pub fn decode_styled(asm: &crate::plan::Assemble, data: &mut [Vec<Val>], aes_key
                     // Non-AES host stages do not consume an AES key.
                     ""
                 };
-                v = crate::codec::host_decode(&v, &sc.host, key)?;
+                v = crate::codec::host_decode(&v, &sc.host, key).map_err(|error| crate::model::column_decode_error(&sc.entity, &sc.name, error))?;
             }
             if !sc.codec.is_empty() {
-                v = crate::codec::decode(&sc.codec, &v)?;
+                v = crate::codec::decode(&sc.codec, &v).map_err(|error| crate::model::column_decode_error(&sc.entity, &sc.name, error))?;
             }
             row[sc.index] = v;
         }

@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { bindSlotType, checkAssign, checkParam, transformParam } from './bind_check.js';
-import { blindIndex, decode, hostDecode, hostEncode } from './codec.js';
+import { CodecError, blindIndex, decode, hostDecode, hostEncode } from './codec.js';
 import type { Assemble, BindSlot, Group, KeyReference, Plan, PlanStep, Request, RequestQuery } from './ir.js';
 import { driverValue, isolationSql, openDriver, parseDsn, sqliteBusy, zoneOffset, type DriverName, type DriverPool, type DriverResult, type DriverSession, type DriverValue, type Isolation, type PoolStats, type StatementDone } from './driver.js';
 import { Subscription, checkChannel } from './listen.js';
@@ -1425,12 +1425,26 @@ export function decodeAssembly(row: unknown[], assemble: Assemble, db: Db): void
     // The version is read only for a non-NULL value. With a keyring, a version it does not declare is CONFIG; the single key is used only without a keyring (COD-8).
     if (value !== null && host.length > 0) {
       const key = host.includes('aes') && db.aesKeyring !== undefined ? db.aesKeyring.key(storedVersion(versionCell)) : db.aesKey;
-      value = hostDecode(cellBytes(value, column.index), host, key);
+      const cell = cellBytes(value, column.index);
+      value = decodedCell(assemble, column.name, () => hostDecode(cell, host, key));
     }
-    if (client.length > 0) value = decode(client, value === null ? null : cellBytes(value, column.index));
+    if (client.length > 0) {
+      const cell = value === null ? null : cellBytes(value, column.index);
+      value = decodedCell(assemble, column.name, () => decode(client, cell));
+    }
     row[column.index] = value;
   }
   for (const child of assemble.children) if (child.kind === 'join' && child.assemble) decodeAssembly(row, child.assemble, db);
+}
+
+/** A CODEC_DECODE of a read cell names its entity and column: `CODEC_DECODE: <entity>.<column>: <message>` (COD-41). */
+function decodedCell<T>(assemble: Assemble, column: string, decodeCell: () => T): T {
+  try {
+    return decodeCell();
+  } catch (error) {
+    if (!(error instanceof CodecError) || error.code !== codes.CODEC_DECODE) throw error;
+    throw new CodecError(error.code, `${assemble.entity}.${column}: ${error.message.slice(error.code.length + 2)}`, { cause: error });
+  }
 }
 
 export async function scalar(ex: Executor, given: Request, givenParams: readonly unknown[]): Promise<unknown> {
