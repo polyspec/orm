@@ -1144,11 +1144,13 @@ static bool exec_stmt_args(zval *self, zval *st, zval *args)
     return true;
 }
 
-/* exec_stmt runs exec_stmt_args. PDO binds a float as its text, and SQLite takes a text as a number only in a numeric form,
- * which INF is not, so on SQLite an infinity binds as 9.0e+999, the form of an infinity that SQLite itself writes (quote()). */
-static bool exec_stmt(zval *self, zval *st, zval *args)
+/* sqlite_args writes into mapped the arguments as SQLite reads them and returns true, or returns false when args need no
+ * change. PDO binds a float as its text, and SQLite takes a text as a number only in a numeric form, which INF is not, so
+ * on SQLite an infinity binds as 9.0e+999, the form of an infinity that SQLite itself writes (quote()). Db::exec and
+ * Db::fetch both bind through it, so a model write and a statement of Utils::run store the same value. */
+static bool sqlite_args(zval *self, zval *args, zval *mapped)
 {
-    if (!is_str(rd(self, "driver"), "sqlite") || is_corpus(self)) return exec_stmt_args(self, st, args);
+    if (!is_str(rd(self, "driver"), "sqlite") || is_corpus(self)) return false;
     bool infinite = false;
     zval *item;
     ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(args), item)
@@ -1157,21 +1159,28 @@ static bool exec_stmt(zval *self, zval *st, zval *args)
         if (Z_TYPE_P(item) == IS_DOUBLE && zend_isinf(Z_DVAL_P(item))) infinite = true;
     }
     ZEND_HASH_FOREACH_END();
-    if (!infinite) return exec_stmt_args(self, st, args);
-    zval mapped;
-    array_init_size(&mapped, zend_hash_num_elements(Z_ARRVAL_P(args)));
+    if (!infinite) return false;
+    array_init_size(mapped, zend_hash_num_elements(Z_ARRVAL_P(args)));
     zend_ulong idx;
     ZEND_HASH_FOREACH_NUM_KEY_VAL(Z_ARRVAL_P(args), idx, item)
     {
         ZVAL_DEREF(item);
         if (Z_TYPE_P(item) == IS_DOUBLE && zend_isinf(Z_DVAL_P(item))) {
-            add_index_string(&mapped, idx, Z_DVAL_P(item) > 0 ? "9.0e+999" : "-9.0e+999");
+            add_index_string(mapped, idx, Z_DVAL_P(item) > 0 ? "9.0e+999" : "-9.0e+999");
         } else {
             Z_TRY_ADDREF_P(item);
-            add_index_zval(&mapped, idx, item);
+            add_index_zval(mapped, idx, item);
         }
     }
     ZEND_HASH_FOREACH_END();
+    return true;
+}
+
+/* exec_stmt runs exec_stmt_args with the arguments of sqlite_args. */
+static bool exec_stmt(zval *self, zval *st, zval *args)
+{
+    zval mapped;
+    if (!sqlite_args(self, args, &mapped)) return exec_stmt_args(self, st, args);
     bool ok = exec_stmt_args(self, st, &mapped);
     zval_ptr_dtor(&mapped);
     return ok;
@@ -3040,6 +3049,11 @@ static bool op_fetch_rows(zval *self, void *ctx, zval *ret)
     if (!ok) {
         zval_ptr_dtor(&bound);
         return false;
+    }
+    zval mapped;
+    if (sqlite_args(self, &bound, &mapped)) {
+        zval_ptr_dtor(&bound);
+        ZVAL_COPY_VALUE(&bound, &mapped);
     }
     ok = mcall(&st, "execute", &r, 1, &bound);
     zval_ptr_dtor(&bound);
