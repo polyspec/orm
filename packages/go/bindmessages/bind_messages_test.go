@@ -29,6 +29,14 @@ func TestRecipeBindMessagesNone(t *testing.T) {
 	recipe.Run(t, "../../../tests/bind/messages.json", recipe.None, recipe.WithMarkdownSend(markdownSend), recipe.WithModelAssign(modelAssign))
 }
 
+// TestRecipeBindMessagesRawTextNone runs the cases of a text that is not UTF-8, tests/bind/messages-raw-text.json, without a
+// database (FCV-3, FCV-4): a Go string holds any bytes, so the text_hex wrapper is its host value.
+// Requirements: PRT-67.
+func TestRecipeBindMessagesRawTextNone(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	recipe.Run(t, "../../../tests/bind/messages-raw-text.json", recipe.None, recipe.WithMarkdownSend(markdownSend))
+}
+
 // TestRecipePublicInterfaceNone runs the public interface recipe, contracts/fixtures/public_interface/public_interface.json,
 // without a database (FCV-3, FCV-4).
 // Requirements: INT-17, INT-18, INT-19, INT-57, INT-61, INT-64, INT-74, INT-88, INT-89, INT-130.
@@ -329,12 +337,19 @@ func likeColumn(t *testing.T, db *orm.DB, column string, value json.RawMessage) 
 	return nil
 }
 
-// text is the text of a wrapper of a string host type.
+// text is the text of a wrapper of a string host type; a text_hex wrapper is the string of its bytes, which need not be UTF-8.
 func text(t *testing.T, value json.RawMessage) string {
 	t.Helper()
 	var w map[string]string
 	if err := json.Unmarshal(value, &w); err != nil || len(w) != 1 {
 		t.Fatalf("the parameter %s is no text wrapper", value)
+	}
+	if h, ok := w["text_hex"]; ok {
+		b, err := hex.DecodeString(h)
+		if err != nil {
+			t.Fatalf("the parameter %s holds no hex: %v", value, err)
+		}
+		return string(b)
 	}
 	for _, v := range w {
 		return v

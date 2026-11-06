@@ -341,6 +341,20 @@
         {
           "type": "object",
           "required": [
+            "text_hex"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "text_hex": {
+              "description": "A host string of these bytes that need not be UTF-8, two lowercase hex digits per byte (FCV-4); only the runtimes whose host string holds any bytes run it.",
+              "type": "string",
+              "pattern": "^([0-9a-f]{2})*$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
             "bool"
           ],
           "additionalProperties": false,

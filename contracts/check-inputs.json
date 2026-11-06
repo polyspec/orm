@@ -5022,6 +5022,59 @@
         "packages/php/tests/RecipeModel.php"
       ]
     },
+    "raw-text-check/go": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "databases",
+        "flowmark"
+      ],
+      "inputs": [
+        "contracts/fixtures/raw_text/**",
+        "contracts/fixtures/conformance_verification/*.dbs",
+        "contracts/fixtures/conformance_verification/dbspec-set.json",
+        "packages/go/orm/recipe_raw_text_test.go",
+        "packages/go/internal/recipe/recipe.go",
+        "packages/go/internal/recipe/database.go",
+        "packages/go/orm/bind_check.go"
+      ]
+    },
+    "raw-text-check/php": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "databases",
+        "flowmark"
+      ],
+      "inputs": [
+        "contracts/fixtures/raw_text/**",
+        "contracts/fixtures/conformance_verification/*.dbs",
+        "contracts/fixtures/conformance_verification/dbspec-set.json",
+        "packages/php/tests/RawTextRecipeTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php/src/ParamCheck.php"
+      ]
+    },
+    "raw-text-check/php-extension": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools",
+        "databases",
+        "flowmark"
+      ],
+      "inputs": [
+        "contracts/fixtures/raw_text/**",
+        "contracts/fixtures/conformance_verification/*.dbs",
+        "contracts/fixtures/conformance_verification/dbspec-set.json",
+        "packages/php-ext/tests/RawTextRecipeTestExtensionTest.php",
+        "packages/php/tests/RawTextRecipeTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php-ext/src/param_check_native.c"
+      ]
+    },
     "audit-triggers-check/go": {
       "scope": "owner",
       "needs": [

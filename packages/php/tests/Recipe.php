@@ -2480,6 +2480,9 @@ final class Recipe
                 };
             case 'text':
                 return $w['text'];
+            case 'text_hex':
+                // A PHP string holds any bytes, so a text that is not UTF-8 is the string of its bytes (FCV-4).
+                return hex2bin($w['text_hex']);
             case 'bytes_hex':
                 return new Bytes(hex2bin($w['bytes_hex']));
             case 'array':
@@ -5113,7 +5116,9 @@ final class Recipe
             case 'decimal':
                 return $w[$kind];
             case 'bytes_hex':
-                return hex2bin($w['bytes_hex']);
+            case 'text_hex':
+                // A text_hex wrapper is a string of its bytes, which need not be UTF-8 (FCV-4).
+                return hex2bin($w[$kind]);
             case 'bool':
                 return $w['bool'];
             case 'float':

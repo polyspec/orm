@@ -1295,7 +1295,8 @@
     "tests/markdown/*.json",
     "tests/bind/messages.json",
     "tests/bind/messages-dynamic.json",
-    "tests/bind/messages-untyped-null.json"
+    "tests/bind/messages-untyped-null.json",
+    "tests/bind/messages-raw-text.json"
   ],
   "comparators": [
     "tests/conformance",
@@ -30737,6 +30738,186 @@
         "feature": "model_writes",
         "part": "owner/python"
       }
+    },
+    {
+      "id": "markdown-message-raw-text-vectors",
+      "kind": "suite",
+      "requirements": [
+        "PRT-67"
+      ],
+      "file": "tests/bind/messages-raw-text.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/bindmessages/bind_messages_test.go",
+          "symbol": "TestRecipeBindMessagesRawTextNone"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/BindMessagesRawTextRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\BindMessagesRawTextRecipeTest::testNone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/BindMessagesRawTextRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\BindMessagesRawTextRecipeTestExtensionTest::testNone"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "model_writes",
+        "parts": [
+          "owner/go",
+          "owner/php",
+          "owner/php-extension"
+        ]
+      }
+    },
+    {
+      "id": "raw_text-mysql",
+      "kind": "suite",
+      "requirements": [
+        "PRT-67",
+        "INT-150"
+      ],
+      "file": "contracts/fixtures/raw_text/raw_text.json",
+      "cases": "$.cases[*].id",
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "model_writes",
+        "parts": [
+          "owner/go",
+          "owner/php",
+          "owner/php-extension"
+        ]
+      },
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_raw_text_test.go",
+          "symbol": "TestRecipeRawTextMysql"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RawTextRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\RawTextRecipeTest::testMysql"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RawTextRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\RawTextRecipeTestExtensionTest::testMysql"
+        }
+      ]
+    },
+    {
+      "id": "raw_text-postgres",
+      "kind": "suite",
+      "requirements": [
+        "PRT-67",
+        "INT-150"
+      ],
+      "file": "contracts/fixtures/raw_text/raw_text.json",
+      "cases": "$.cases[*].id",
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "model_writes",
+        "parts": [
+          "owner/go",
+          "owner/php",
+          "owner/php-extension"
+        ]
+      },
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_raw_text_test.go",
+          "symbol": "TestRecipeRawTextPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RawTextRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\RawTextRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RawTextRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\RawTextRecipeTestExtensionTest::testPostgres"
+        }
+      ]
+    },
+    {
+      "id": "raw_text-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "PRT-67",
+        "INT-150"
+      ],
+      "file": "contracts/fixtures/raw_text/raw_text.json",
+      "cases": "$.cases[*].id",
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "model_writes",
+        "parts": [
+          "owner/go",
+          "owner/php",
+          "owner/php-extension"
+        ]
+      },
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_raw_text_test.go",
+          "symbol": "TestRecipeRawTextSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RawTextRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\RawTextRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RawTextRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\RawTextRecipeTestExtensionTest::testSqlite"
+        }
+      ]
+    },
+    {
+      "id": "raw_text-markdown",
+      "kind": "suite",
+      "requirements": [
+        "PRT-67",
+        "INT-150",
+        "DIA-154"
+      ],
+      "file": "contracts/fixtures/raw_text/raw_text.json",
+      "cases": "$.cases[*].id",
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "model_writes",
+        "parts": [
+          "owner/go",
+          "owner/php",
+          "owner/php-extension"
+        ]
+      },
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_raw_text_test.go",
+          "symbol": "TestRecipeRawTextMarkdown"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RawTextRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\RawTextRecipeTest::testMarkdown"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RawTextRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\RawTextRecipeTestExtensionTest::testMarkdown"
+        }
+      ]
     },
     {
       "id": "statement-subscriber-failure-preserves-error",

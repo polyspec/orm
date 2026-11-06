@@ -24,6 +24,7 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/polyspec/orm/packages/go/engine/dbspec"
 	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
@@ -2176,6 +2177,10 @@ func nativeArgument(n node) (any, error) {
 		return n.text, nil
 	case "bytes_hex":
 		return hex.DecodeString(n.text)
+	case "text_hex":
+		// A Go string holds any bytes, so a text that is not UTF-8 is the string of its bytes (FCV-4).
+		b, err := hex.DecodeString(n.text)
+		return string(b), err
 	case "bool":
 		return n.text == "true", nil
 	case "float", "f64":
@@ -2225,6 +2230,10 @@ func plain(value any, nativeType, database string) (any, error) {
 		return map[string]any{"bytes_hex": hex.EncodeToString(v)}, nil
 	case string:
 		kind := temporalKind(nativeType)
+		if kind == "" && !utf8.ValidString(v) {
+			// A Go string holds any bytes: a value that is not text is its bytes, as the PHP helper writes it (INT-153).
+			return map[string]any{"bytes_hex": hex.EncodeToString([]byte(v))}, nil
+		}
 		if kind == "" {
 			kind = "text"
 		}

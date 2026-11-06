@@ -1068,6 +1068,10 @@ func toGo(n node) (any, error) {
 		return nil, fmt.Errorf("an f64 wrapper is NaN, Infinity or -Infinity, not %q", n.text)
 	case "text":
 		return n.text, nil
+	case "text_hex":
+		// A Go string holds any bytes, so a text that is not UTF-8 is the string of its bytes (FCV-4).
+		b, err := hex.DecodeString(n.text)
+		return string(b), err
 	case "bytes_hex":
 		return hex.DecodeString(n.text)
 	case "array":
