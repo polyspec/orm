@@ -49,6 +49,10 @@ final class OrmException extends \RuntimeException
      */
     public static function fromDriver(\PDOException $e, string $driver, \PDO $pdo): self
     {
+        // A flowmark server answers a refused statement with its orm code and message (docs/spec/protocol.md PRT-71).
+        if ($e instanceof Internal\MarkdownError) {
+            return new self($e->ormCode, $e->getMessage(), $e);
+        }
         $state = (string) ($e->errorInfo[0] ?? $e->getCode());
         $num = $e->errorInfo[1] ?? null;
         $message = (string) ($e->errorInfo[2] ?? '');

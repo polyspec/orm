@@ -5,21 +5,17 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Tests;
 
 /*
- * markdown IR executor unit case (docs/spec/protocol.md §5): the request message and the bind cases. The session
- * messages and the refused surfaces of a markdown connection are cases of the recipe tests/bind/messages.json.
- * The size of a class is Large, that of the largest case (a child process).
- * Instead of the flowmark server, markdown_test_server.php records the messages of one connection and writes the chosen
- * answers.
+ * The bind cases of tests/bind/vectors.json (docs/spec/protocol.md §5 "Parameters"). The session messages of a markdown
+ * connection are cases of the recipe tests/bind/messages.json, whose listeners are markdown_test_server.php: it records
+ * the messages of one connection and writes the chosen answers. The size of a class is Large, that of its runners
+ * (a child process).
  */
 
 
 use Closure;
-use DateTimeImmutable;
 use RuntimeException;
-use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Large;
 use PHPUnit\Framework\TestCase;
-use Polyspec\Orm\Config;
 use Polyspec\Orm\OrmException;
 
 const MARKDOWN_TOKEN = '0123456789abcdef0123456789abcdef';
@@ -90,28 +86,48 @@ function markdown_test_server_received_messages(array $server): array
 class MarkdownTest extends TestCase
 {
     // Requirements: PRT-66.
-    public function testRequestMessage(): void
+    public function testDroppedStatementClosesItsRows(): void
     {
-        // The request message writes parameters in the slot form: the time compared with a date column is YYYY-MM-DD. A
-        // row that is absent group count is an empty result.
-        $server = start_markdown_test_server(['{"ok":true}', '{"rows":[]}']);
-        $db = \Polyspec\Orm\Tests\MarkdownModel\connect($server[2], new Config());
-        $groups = (new \Polyspec\Orm\Tests\MarkdownModel\Tasks())->connect($db)
-            ->due('2026-10-01')->groupByOwner()->getsCount()->toArray();
-        self::assertFalse($groups !== [], 'group count of no rows = ' . json_encode($groups));
+        // A statement whose caller dropped it before its rows ended is not read to the end by the next statement: no
+        // one can read those rows, so the session ends them with close.
+        $rows = '{"columns":[{"name":"n","type":"INTEGER"}],"rows":[[1]],"affected":0,"last_insert_id":0,"more":%s}';
+        $server = start_markdown_test_server(
+            ['{"ok":true}', sprintf($rows, 'true'), '{"ok":true}', sprintf($rows, 'false')]
+        );
+        $db = \Polyspec\Orm\Orm::connect($server[2], new \Polyspec\Orm\Config());
+        $statement = $db->pdo()->query('SELECT n FROM a');
+        self::assertSame([1], $statement->fetch(\PDO::FETCH_NUM));
+        unset($statement);
+        $db->pdo()->query('SELECT n FROM b')->fetchAll();
         $db->close();
-        $received = markdown_test_server_received_messages($server);
-        $message = json_decode($received[1] ?? 'null', true);
-        self::assertFalse(!is_array($message) || $message['params'] !== [
-            '2026-10-01'
-        ] || $message['request']['kind'] !== 'group_count'
-            || $message['ir_version'] !== 1 || $message[
-                'manifest_hash'
-            ] !== \Polyspec\Orm\Tests\MarkdownModel\MANIFEST_HASH
-            || preg_match(
-                '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{6}$/D',
-                (string) $message['now']
-            ) !== 1, 'request message = ' . ($received[1] ?? 'none'));
+        $ops = array_map(
+            static fn(string $line): string => json_decode($line, true, flags: JSON_THROW_ON_ERROR)['op'],
+            markdown_test_server_received_messages($server)
+        );
+        self::assertSame(['connect', 'statement', 'close', 'statement'], $ops);
+    }
+
+    // Requirements: PRT-71.
+    public function testRefusalStatesItsCodeOnce(): void
+    {
+        // The server refuses the statement with its code and message; the error of the client states the code once,
+        // as an OrmException of every other driver does.
+        $server = start_markdown_test_server([
+            '{"ok":true}',
+            '{"error":{"code":"DUPLICATE_KEY","message":"UNIQUE constraint failed: t.id","result_code":2067}}',
+        ]);
+        $db = \Polyspec\Orm\Orm::connect($server[2], new \Polyspec\Orm\Config());
+        $error = markdown_error(static function () use ($db): void {
+            try {
+                $db->pdo()->exec('INSERT INTO t (id) VALUES (1)');
+            } catch (\PDOException $e) {
+                throw $db->driverError($e);
+            }
+        });
+        $db->close();
+        markdown_test_server_received_messages($server);
+        self::assertSame('DUPLICATE_KEY', $error?->code_);
+        self::assertSame('DUPLICATE_KEY: UNIQUE constraint failed: t.id', $error->getMessage());
     }
 
     // Requirements: PRT-67, DIA-31.

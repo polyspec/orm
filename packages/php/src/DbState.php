@@ -11,7 +11,7 @@ namespace Polyspec\Orm;
 final class DbState
 {
     /**
-     * The connection's PDO handle. A markdown connection and a closed connection have null; when that PDO
+     * The connection's PDO handle. A closed connection has null; when that PDO
      * is released, the connection closes.
      */
     public ?\PDO $pdo = null;

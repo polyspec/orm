@@ -69,9 +69,16 @@ class DsnTest extends TestCase
             'empty query parts'
         );
         self::assertSame(
-            ['127.0.0.1:49152', 'corpus', 'a token'],
+            ['127.0.0.1:49152', 'corpus', 'a token', []],
             Orm::parseMarkdownDsn('markdown://127.0.0.1:49152/corpus?token=a+token'),
             'a decoded markdown token'
+        );
+        self::assertSame(
+            ['127.0.0.1:49152', 'corpus', 't', [['busy_timeout', '200'], ['journal_mode', 'WAL']]],
+            Orm::parseMarkdownDsn(
+                'markdown://127.0.0.1:49152/corpus?token=t&_pragma=busy_timeout(200)&_pragma=journal_mode(WAL)'
+            ),
+            'the _pragma settings of a markdown DSN, in order'
         );
         // The text of a refusal in the two PHP modes; the recipes dsn_reject and dsn_reject_parameters hold the parts
         // that every runtime that refuses it shares.

@@ -38,8 +38,7 @@ final class Assemble
     }
 
     /**
-     * The styled cells of one indexed node, without its joined nodes, for Codec::decodeRows. The
-     * markdown executor answers each node in rows of its own and decodes them node by node.
+     * The styled cells of one indexed node, without its joined nodes, for Codec::decodeRows.
      */
     public static function cells(array $a, RuntimeModel $model): array
     {

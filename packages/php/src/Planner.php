@@ -10,8 +10,15 @@ namespace Polyspec\Orm;
  */
 final class Planner
 {
-    public function __construct(private readonly RuntimeModel $m, private readonly Dialect $d)
-    {
+    /**
+     * $assigns says that the database assigns the key_prefix key and the order position of a row that an insert leaves
+     * them out of, as a flowmark corpus does (docs/spec/protocol.md PRT-73).
+     */
+    public function __construct(
+        private readonly RuntimeModel $m,
+        private readonly Dialect $d,
+        private readonly bool $assigns = false,
+    ) {
     }
 
     /** @return array{manifest_hash: string, kind: string, steps: list<array>} */
@@ -842,16 +849,19 @@ final class Planner
 
     /**
      * An insert specifies every required column: NOT NULL columns with no default that are not
-     * identity, the AES key version the planner writes, or the audit columns the executor writes.
-     * A column with a default receives the database default.
+     * identity, the AES key version the planner writes, or the audit columns the executor writes, nor, on a database
+     * that assigns them, the key_prefix key and the order position. A column with a default receives the database
+     * default.
      */
-    private static function checkRequiredAssignments(array $ent, array $set): void
+    private function checkRequiredAssignments(array $ent, array $set): void
     {
         $version = self::hasAes($ent) ? $ent['aes_version'] : '';
+        $assigned = $this->assigns ? $this->m->assignedColumns($ent['entity']) : ['key' => '', 'order' => ''];
         foreach ($ent['columns'] as $c) {
             if (
                 $c['nullable'] || $c['default'] || $c['name'] === $ent['identity'] || $c['name'] === $version
                 || $c['name'] === $ent['audit'] || self::assigned($set, $c['name'])
+                || $c['name'] === $assigned['key'] || $c['name'] === $assigned['order']
             ) {
                 continue;
             }
@@ -963,7 +973,7 @@ final class Planner
         $ent = $this->m->entities[$r['entity']];
         $set = self::withBlindIndexes($ent, $r['set']);
         self::checkAesAssignments($ent, $set, false);
-        self::checkRequiredAssignments($ent, $set);
+        $this->checkRequiredAssignments($ent, $set);
         $versioned = self::hasAes($ent);
         $audited = $ent['audit'] !== '';
         // A dialect that uses the executor clock (hostNow) uses the executor clock, truncated to the column's
@@ -1079,6 +1089,9 @@ final class Planner
         }
         if ($this->d->insertReturningId() && $ent['identity'] !== '') {
             $sql .= ' RETURNING ' . $this->d->quote($ent['identity']);
+        } elseif ($this->assigns && ($key = $this->m->assignedColumns($ent['entity'])['key']) !== '') {
+            // The key that the database allocated, or the key of the row an upsert met.
+            $sql .= ' RETURNING ' . $this->d->quote($key);
         }
         return new PlanStep('main', $sql, '', $b->slots, $b->tables());
     }

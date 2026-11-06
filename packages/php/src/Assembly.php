@@ -11,11 +11,6 @@ final class Assembly
     public array $made = [];
 
     public readonly \DateTimeZone $zone;
-    /**
-     * Whether this is the result of a markdown answer: the last cell of each row is that row's join and
-     * relation rows (MarkdownLinks).
-     */
-    private readonly bool $markdown;
 
     public function __construct(
         public readonly Db $db,
@@ -24,45 +19,36 @@ final class Assembly
         public readonly bool $track = false
     ) {
         $this->zone = $db->zone();
-        $this->markdown = !empty($result['markdown']);
     }
 
     /**
-     * The row of join $ch. If absent, null. In SQL results, the join column is in the parent row, and the first column
-     * If NULL, absent. In a markdown answer, the last cell of the parent row holds the join row.
+     * The row of join $ch. If absent, null. The join columns are in the parent row, and if the first of them is NULL,
+     * the join row is absent.
      *
      * @param list<mixed> $parent
      * @return list<mixed>|null
      */
     public function joinRow(array $ch, array $parent): ?array
     {
-        if ($this->markdown) {
-            return Markdown::links($parent)->joins[$ch['rel']] ?? null;
-        }
         $first = $ch['assemble']['columns'][0]['index'] ?? null;
         return $first !== null && $parent[$first] !== null ? $parent : null;
     }
 
     /**
-     * Row placement of relation $ch: in SQL results, the placement of the relation step; in a markdown
-     * answer, the placement of the child itself.
+     * Row placement of relation $ch: the placement of the relation step.
      */
     public function relationAssemble(array $ch): array
     {
-        return $this->markdown ? $ch['assemble'] : $this->result['steps'][$ch['step']]['step']['assemble'];
+        return $this->result['steps'][$ch['step']]['step']['assemble'];
     }
 
     /**
-     * The row of parent row $parent in relation $ch. In SQL results, it is found by the key of the relation step's row,
-     * in a markdown answer, the last cell of the parent row holds the relation row.
+     * The rows of parent row $parent in relation $ch, found by the key of the relation step's rows.
      *
      * @return list<list<mixed>>
      */
     public function related(array $ch, array $parent): array
     {
-        if ($this->markdown) {
-            return Markdown::links($parent)->rels[$ch['rel']] ?? [];
-        }
         $sr = $this->result['steps'][$ch['step']] ?? null;
         if ($sr === null) {
             return [];

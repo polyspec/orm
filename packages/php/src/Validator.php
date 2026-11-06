@@ -637,7 +637,7 @@ final class Validator
      * while PostgreSQL and SQLite name one target and a meeting on another key is a unique violation, so no
      * order of keys reproduces both: an upsert has exactly one key that can meet the inserted row, and the
      * insert assigns every column of it. The candidates are the primary key, unless the insert leaves it out
-     * (an identity, or a key an IR executor assigns), and each unique key; a blind index column counts as
+     * (an identity, or a key_prefix key a corpus assigns), and each unique key; a blind index column counts as
      * assigned with its AES source.
      *
      * @param list<array<string, mixed>> $set

@@ -1335,7 +1335,7 @@ abstract class Model implements \JsonSerializable, ModelMetadata
         foreach ($shape['decimal'] as [$index, $name]) {
             $v = $vals[$index];
             $col = static::meta()['columns'][$name];
-            $values[$name] = $v === null ? null : ($a->db->driver() === 'sqlite'
+            $values[$name] = $v === null ? null : ($a->db->dialect() === 'sqlite'
                 ? Decimal::fromScaled($v, $col['precision'], $col['scale'])
                 : Decimal::decode($v, $col['precision'], $col['scale']));
         }
@@ -1739,7 +1739,7 @@ abstract class Model implements \JsonSerializable, ModelMetadata
             'f64' => self::groupFloat($raw, $name),
             'decimal' => $declared === null
                 ? throw new OrmException(Code::INTERNAL, "decimal group column $name has no declaration")
-                : ($db->driver() === 'sqlite'
+                : ($db->dialect() === 'sqlite'
                     ? Decimal::fromScaled($raw, $declared['precision'], $declared['scale'])
                     : Decimal::decode($raw, $declared['precision'], $declared['scale'])),
             'date', 'datetime' => self::timeValue($raw, $db->zone()),
@@ -1976,12 +1976,13 @@ abstract class Model implements \JsonSerializable, ModelMetadata
                 $m->values[$column] = null;
             }
         }
-        // The columns that write the received key: identity, or a key the markdown executor decides (key_prefix).
-        // The only primary key column whose value the request did not give.
+        // The column that takes the key it is given: the identity, or the key_prefix key that a corpus allocated to a
+        // primary key the request did not supply (docs/spec/protocol.md PRT-73).
         $assignedKey = $meta['identity'];
         if (
-            $assignedKey === '' && $db->driver() === 'markdown' && count($meta['pk']) === 1 && $id !== null
+            $assignedKey === '' && is_string($id) && count($meta['pk']) === 1
             && !array_key_exists($meta['pk'][0], $this->sets)
+            && Registry::model($meta['manifest_hash'])->assignedColumns($meta['entity'])['key'] === $meta['pk'][0]
         ) {
             $assignedKey = $meta['pk'][0];
         }
@@ -2042,14 +2043,14 @@ abstract class Model implements \JsonSerializable, ModelMetadata
         $meta = static::meta();
         // Rows run as batches of $batch rows in the given order in one transaction (docs/spec/protocol.md).
         $parts = Db::insertParts(count($rows), $batch);
-        $limit = Db::bindLimit($db->driver());
+        $limit = Db::bindLimit($db->dialect());
         foreach ($parts as $i => $part) {
             // A batch over the bind limit is refused before any statement, never split.
             $binds = $part * count($columns);
             if ($binds > $limit) {
                 $n = $i + 1;
                 throw new OrmException(Code::BATCH_TOO_LARGE, "creates batch $n of $part rows binds $binds "
-                    . "parameters, over the {$db->driver()} limit of $limit");
+                    . "parameters, over the {$db->dialect()} limit of $limit");
             }
         }
         $total = 0;

@@ -1,0 +1,37 @@
+<?php
+
+// Requirements: DBS-115, DIA-11, DIA-14, DIA-18, DIA-24, DIA-37, DIA-56, DSL-54, DSL-99, DSL-137, DSL-139, DSL-144,
+// Requirements: INT-39, PRT-77, DSL-10, DSL-19, DSL-47, DSL-67, DSL-96, DSL-98, DSL-123, PRT-14.
+// The conformance_verification recipe, contracts/fixtures/conformance_verification/conformance_verification.json, on
+// markdown (docs/spec/feature-coverage.md FCV-3 and FCV-4).
+declare(strict_types=1);
+
+namespace Polyspec\Orm\Tests;
+
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Medium;
+use PHPUnit\Framework\TestCase;
+
+#[Medium]
+class ConformanceVerificationMarkdownRecipeTest extends TestCase
+{
+    use RecipeCases;
+
+    // The recipe peaks at 152.5 MB in this run: 106.5 MB of recipe and harness, and the 21846 models of
+    // creates_batch_too_large, above the 128M default of PHP.
+    public static function setUpBeforeClass(): void
+    {
+        self::requireMemoryLimit('256M');
+    }
+
+    protected static function recipe(): string
+    {
+        return 'contracts/fixtures/conformance_verification/conformance_verification.json';
+    }
+
+    #[DataProvider('casesOnMarkdown')]
+    public function testMarkdown(string $id): void
+    {
+        $this->runCase($id, 'markdown');
+    }
+}

@@ -92,16 +92,14 @@ final class Catalog
     }
 
     /**
-     * Opens the catalog connection of a mysql, postgres or sqlite DSN. A markdown DSN is refused. A SQLite DSN must
-     * name an existing regular file, and the connection never creates one.
+     * Opens the catalog connection of a mysql, postgres, sqlite or markdown DSN. A SQLite DSN must name an existing
+     * regular file, and the connection never creates one. A flowmark server runs SQL in SQLite's dialect on the
+     * corpus, so the catalog of a corpus is a SQLite catalog (docs/spec/dialects.md DIA-185).
      */
     public static function connect(string $dsn): self
     {
         if (preg_match('#^markdown://#i', $dsn) === 1) {
-            throw new OrmException(
-                Code::CONFIG,
-                'CATALOG_DSN: a markdown corpus has no database catalog; give a mysql, postgres or sqlite DSN'
-            );
+            return new self(Orm::connect($dsn, new Config()), 'sqlite', $dsn);
         }
         [$driver, $pdoDsn] = Orm::parseDsn($dsn);
         if ($driver === 'sqlite') {

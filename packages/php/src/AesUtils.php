@@ -22,7 +22,6 @@ final class AesUtils
      */
     private function spec(Model $model): array
     {
-        $this->db->unsupportedOnMarkdown('aes rotation');
         $meta = $model::meta();
         $columns = [];
         foreach ($meta['columns'] as $name => $col) {
@@ -42,7 +41,7 @@ final class AesUtils
 
     private function q(string $name): string
     {
-        return $this->db->driver() === 'mysql' ? "`$name`" : "\"$name\"";
+        return $this->db->dialect() === 'mysql' ? "`$name`" : "\"$name\"";
     }
 
     public function status(Model $model, AesKeyring $keyring): AesRotationStatus
@@ -74,7 +73,7 @@ final class AesUtils
     public function rotate(Model $model, AesKeyring $keyring): int
     {
         $spec = $this->spec($model);
-        $pg = $this->db->driver() === 'postgres';
+        $pg = $this->db->dialect() === 'postgres';
         // PostgreSQL uses $n placeholders. For pdo_pgsql, they are sent as ?.
         $ph = static fn(int $n): string => $pg ? '$' . $n : '?';
         $columns = array_merge(

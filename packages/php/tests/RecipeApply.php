@@ -88,6 +88,21 @@ final class RecipeApply
         return self::command($s, $context, $runStep);
     }
 
+    /** The SQL dialect of a case database: a corpus runs SQL in SQLite's (DIA-185). */
+    private static function dialect(string $database): string
+    {
+        return $database === 'markdown' ? 'sqlite' : $database;
+    }
+
+    /**
+     * The key of a value that names its text by database: a corpus reads the SQLite entry unless the value states its
+     * own (DIA-185).
+     */
+    private static function dialectKey(string $database, array $entries): string
+    {
+        return $database === 'markdown' && !array_key_exists('markdown', $entries) ? 'sqlite' : $database;
+    }
+
     private static function required(string $name): string
     {
         $value = (string) getenv($name);
@@ -114,10 +129,17 @@ final class RecipeApply
         return new PDO($pdoDsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
     }
 
-    /** The direct connection to the database of the case DSN dsn, with the rules of a new connection. */
+    /**
+     * The direct connection to the database of the case DSN dsn, with the rules of a new connection. A corpus is
+     * reached through one session of its flowmark server, which answers SQLite's statements with SQLite's rules
+     * (DIA-185).
+     */
     private static function direct(string $database, string $dsn): PDO
     {
-        if ($database === 'sqlite') {
+        if ($database === 'markdown') {
+            $pdo = markdown_session_pdo($dsn);
+            $database = 'sqlite';
+        } elseif ($database === 'sqlite') {
             // A session with busy timeout 0, so it does not wait for the write lock of another session.
             $pdo = new PDO('sqlite:' . substr($dsn, strlen('sqlite://')), null, null, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
@@ -145,7 +167,7 @@ final class RecipeApply
     /** @param array<string, mixed> $context @return array<string, mixed> */
     private static function exec(RecipeStep $s, array $context): array
     {
-        $text = is_string($s['sql']) ? $s['sql'] : $s['sql'][$context['database']];
+        $text = is_string($s['sql']) ? $s['sql'] : $s['sql'][self::dialectKey($context['database'], $s['sql'])];
         $text = str_replace('{step}', (string) ($context['applyStep'] ?? 0), $text);
         $statement = self::session($s, $context)->query($text);
         $rows = $statement->columnCount() > 0 ? $statement->fetchAll(PDO::FETCH_NUM) : [];
@@ -163,7 +185,7 @@ final class RecipeApply
     /** @param array<string, mixed> $context @return array<string, mixed> */
     private static function schema(RecipeStep $s, array $context): array
     {
-        $result = Dbspec::introspect(self::session($s, $context), $context['database'], 'x');
+        $result = Dbspec::introspect(self::session($s, $context), self::dialect($context['database']), 'x');
         if ($result->unsupported !== []) {
             Assert::fail('dbspec.schema: unsupported ' . json_encode($result->unsupported));
         }
@@ -220,7 +242,7 @@ final class RecipeApply
         $started = hrtime(true);
         $code = 'ok';
         try {
-            Dbspec::$command($session, $context['database'], $plans, $now, $handler);
+            Dbspec::$command($session, self::dialect($context['database']), $plans, $now, $handler);
         } catch (Throwable $error) {
             $failure = $error instanceof ApplyCleanupError ? ($error->getPrevious() ?? $error) : $error;
             if ($failure instanceof Stop) {

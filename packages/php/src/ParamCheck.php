@@ -6,7 +6,7 @@ namespace Polyspec\Orm;
 
 /**
  * A parameter is checked against the logical type of each slot it fills before any statement (docs/spec/protocol.md §5
- * "Parameters"): the SQL bind path reads the slot of the plan step, an IR executor the uses of Validator::paramUses.
+ * "Parameters"): the bind path reads the slot of the plan step, and the uses of Validator::paramUses state them.
  * A slot type is [type, precision, scale, length]: a dbspec type kind with the precision of a decimal, time or
  * datetime, the scale of a decimal and the length of a varchar.
  *

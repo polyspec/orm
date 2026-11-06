@@ -21,7 +21,7 @@ final class NativeCellReadTest extends TestCase
 
     public function testRowAssemblyRejectsNonFiniteFloatCells(): void
     {
-        $db = new Db(null, 'sqlite', new Config(), new DateTimeZone('UTC'));
+        $db = new Db(new \PDO('sqlite::memory:'), 'sqlite', new Config(), new DateTimeZone('UTC'));
         $assembly = new Assembly($db, null, []);
         $assembleRow = new ReflectionMethod(Model::class, 'assembleRow');
         foreach (['ratio', 'row_count'] as $offset => $name) {
