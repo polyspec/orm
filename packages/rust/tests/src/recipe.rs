@@ -4796,7 +4796,7 @@ mod database {
                 // A corpus has no driver of its own: one session of its flowmark server runs the statements in SQLite's dialect
                 // (DIA-185).
                 ConnectOptions::Markdown(dsn) => {
-                    let pool = polyspec_orm::markdown::MdPool::connect(dsn, 1).await.map_err(|e| e.to_string())?;
+                    let pool = polyspec_orm::markdown::MarkdownPool::connect(dsn, 1).await.map_err(|e| e.to_string())?;
                     let result = match pool.acquire().await {
                         Ok(mut $connection) => async { $body }.await,
                         Err(error) => Err(error.to_string().into()),
@@ -4838,21 +4838,21 @@ mod database {
     }
     native_sql!(sqlx::MySqlConnection, sqlx::PgConnection, sqlx::SqliteConnection);
 
-    impl NativeSql for polyspec_orm::markdown::MdLease {
+    impl NativeSql for polyspec_orm::markdown::MarkdownLease {
         async fn exec(&mut self, sql: &str) -> Result<(), String> {
             self.raw(sql).await.map_err(|e| e.to_string())
         }
         /// The value as text, as SQLite's sqlite3_column_text gives it.
         async fn first_text(&mut self, query: &str) -> Result<Option<Option<String>>, String> {
-            use polyspec_orm::markdown::MdCell;
+            use polyspec_orm::markdown::MarkdownCell;
             let result = self.statement(query, &[]).await.map_err(|e| e.to_string())?;
             let Some(cell) = result.rows.into_iter().next().and_then(|row| row.into_iter().next()) else { return Ok(None) };
             Ok(Some(match cell {
-                MdCell::Null => None,
-                MdCell::Integer(n) => Some(n.to_string()),
-                MdCell::Real(x) => Some(x.to_string()),
-                MdCell::Text(text) => Some(text),
-                MdCell::TextBytes(bytes) | MdCell::Blob(bytes) => Some(String::from_utf8_lossy(&bytes).into_owned()),
+                MarkdownCell::Null => None,
+                MarkdownCell::Integer(n) => Some(n.to_string()),
+                MarkdownCell::Real(x) => Some(x.to_string()),
+                MarkdownCell::Text(text) => Some(text),
+                MarkdownCell::TextBytes(bytes) | MarkdownCell::Blob(bytes) => Some(String::from_utf8_lossy(&bytes).into_owned()),
             }))
         }
     }
@@ -5370,7 +5370,7 @@ mod database {
             ConnectOptions::Sqlite(options) => exec_and_close(options.connect().await.map_err(|e| e.to_string())?, sql).await,
             // A corpus has no driver of its own: one session of the flowmark server runs the statement in its dialect (DIA-185).
             ConnectOptions::Markdown(dsn) => {
-                let pool = polyspec_orm::markdown::MdPool::connect(dsn, 1).await.map_err(|e| e.to_string())?;
+                let pool = polyspec_orm::markdown::MarkdownPool::connect(dsn, 1).await.map_err(|e| e.to_string())?;
                 let result = match pool.acquire().await {
                     Ok(mut lease) => lease.raw(sql).await.map_err(|e| e.to_string()),
                     Err(error) => Err(error.to_string()),

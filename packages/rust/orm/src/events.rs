@@ -227,7 +227,7 @@ impl<'c, E: sqlx::Executor<'c> + 'c> RawStatement<'c> for E {
     }
 }
 
-impl<'c> RawStatement<'c> for &'c mut crate::markdown::MdLease {
+impl<'c> RawStatement<'c> for &'c mut crate::markdown::MarkdownLease {
     fn send_raw(self, sql: String) -> futures_util::future::BoxFuture<'c, Result<()>> {
         Box::pin(async move { self.raw(&sql).await.map_err(Error::from) })
     }

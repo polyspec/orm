@@ -101,7 +101,7 @@ class MarkdownServerError(Exception):
         self.sqlite_errorcode = result_code
 
 
-class MdSession:
+class MarkdownSession:
     """One connection to the flowmark server, that is, one server session."""
 
     def __init__(self, sock: socket.socket):
@@ -197,7 +197,7 @@ class MdSession:
         return _read_answer("fetch", self.call({"op": "fetch"}), columns, text)
 
 
-def dial_markdown(dsn: MarkdownDsn) -> MdSession:
+def dial_markdown(dsn: MarkdownDsn) -> MarkdownSession:
     """Connects to the server and sends connect as the first message, carrying the corpus and token."""
     host, _, port = dsn.address.rpartition(":")
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -211,7 +211,7 @@ def dial_markdown(dsn: MarkdownDsn) -> MdSession:
             f"for the corpus",
             error,
         ) from None
-    s = MdSession(sock)
+    s = MarkdownSession(sock)
     try:
         s.call({"op": "connect", "corpus": dsn.corpus, "token": dsn.token})
     except BaseException:
@@ -387,7 +387,7 @@ class MarkdownDbapi:
     in_transaction. in_transaction is the state of the transaction statements the session ran: BEGIN opens it, and
     COMMIT and ROLLBACK end it."""
 
-    def __init__(self, session: MdSession):
+    def __init__(self, session: MarkdownSession):
         self.session = session
         self.text_factory = None
         self.in_transaction = False

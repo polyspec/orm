@@ -6,7 +6,7 @@ use sqlx::{AssertSqlSafe, Column, Executor, MySql, Postgres, Row, SqlSafeStr, Sq
 
 use futures_util::TryStreamExt;
 use polyspec_orm::db::Pool;
-use polyspec_orm::markdown::{MdCell, MdLease};
+use polyspec_orm::markdown::{MarkdownCell, MarkdownLease};
 mod binds;
 mod grid;
 mod limits;
@@ -326,21 +326,21 @@ fn markdown_native_type(declared: &str) -> &str {
 }
 
 /// A plain value of a markdown statement, read as `cell!` reads a SQLite value.
-fn markdown_cell(cell: MdCell) -> Result<Val, sqlx::Error> {
+fn markdown_cell(cell: MarkdownCell) -> Result<Val, sqlx::Error> {
     match cell {
-        MdCell::Null => Ok(Val::Null),
-        MdCell::Integer(n) => Ok(Val::Int(n)),
-        MdCell::Text(text) => Ok(Val::Text(text)),
-        MdCell::TextBytes(bytes) | MdCell::Blob(bytes) => decode_bytes(Some(bytes)),
-        MdCell::Real(_) => Err(unsupported_value("unsupported catalog cell type REAL")),
+        MarkdownCell::Null => Ok(Val::Null),
+        MarkdownCell::Integer(n) => Ok(Val::Int(n)),
+        MarkdownCell::Text(text) => Ok(Val::Text(text)),
+        MarkdownCell::TextBytes(bytes) | MarkdownCell::Blob(bytes) => decode_bytes(Some(bytes)),
+        MarkdownCell::Real(_) => Err(unsupported_value("unsupported catalog cell type REAL")),
     }
 }
 
 /// A grid cell of a markdown statement, read as `grid_sqlite!` reads a SQLite value.
-fn markdown_grid_cell(cell: MdCell) -> Result<GridCell, sqlx::Error> {
+fn markdown_grid_cell(cell: MarkdownCell) -> Result<GridCell, sqlx::Error> {
     match cell {
-        MdCell::Real(value) => Ok(GridCell::Float64(value.to_bits())),
-        MdCell::Blob(bytes) => Ok(GridCell::Binary(bytes)),
+        MarkdownCell::Real(value) => Ok(GridCell::Float64(value.to_bits())),
+        MarkdownCell::Blob(bytes) => Ok(GridCell::Binary(bytes)),
         other => markdown_cell(other).map(GridCell::from),
     }
 }
@@ -423,7 +423,7 @@ pub enum Conn {
     Postgres(PoolConnection<Postgres>),
     Sqlite(PoolConnection<Sqlite>),
     /// A session of a markdown connection, whose server runs SQL in SQLite's dialect (DIA-185).
-    Markdown(MdLease),
+    Markdown(MarkdownLease),
 }
 
 fn has_params(params: &[P]) -> bool {

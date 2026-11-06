@@ -5,6 +5,7 @@
 
 ## 0.0.22
 
+- Breaking (Rust): the pool of a markdown connection is `polyspec_orm::markdown::MarkdownPool`, which was `MdPool` in 0.0.21, so `Pool::Markdown` holds an `Arc<MarkdownPool>`; every type of a markdown connection carries the prefix `Markdown` in Rust and Python, as in TypeScript (XV14).
 - A markdown corpus is a SQLite connection in all six runtimes (DIA-154, DIA-185): the flowmark server answers the statements of the SQLite dialect, so each client plans a request as on SQLite and sends each statement as op statement, reading the rows that go on with fetch and close (PRT-66), with its parameters in the forms of PRT-67, a boolean as 1 or 0. The IR executor clients, their answer assembly, tests/ir/answers.json and the ir.answer recipe op are removed. Every database case of the recipes runs on flowmark beside MySQL, PostgreSQL and SQLite, and tests/markdown pins the flowmark release v0.0.5 (T384).
 - Tests: `polyspec_orm::testing::sqlite_result_error` (feature `test-faults`) makes the error of a failed SQLite statement with its result code, which the apply fault recipe of the Rust tests injects (XV1).
 - The pool options of a markdown connection are DIA-199, as on SQLite in Go, Rust, TypeScript and Python, and the recipe `connection_pool` refuses an idle size above the pool size through the DSN of each of the four databases, which `make connection-pool-check` runs (XV2).

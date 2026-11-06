@@ -86,15 +86,15 @@ fn valid_pragma(pragma: &str) -> bool {
 /// is the code of the error catalog that the client returns (PRT-71), and `result` is the SQLite result code the server states,
 /// since the statements of a flowmark connection are in SQLite's dialect.
 #[derive(Debug)]
-pub struct MdServerError {
+pub struct MarkdownServerError {
     pub(crate) code: String,
     pub(crate) message: String,
     pub(crate) result: Option<i64>,
 }
 
-impl MdServerError {
-    fn new(code: &str, message: impl Into<String>) -> MdServerError {
-        MdServerError { code: code.to_owned(), message: message.into(), result: None }
+impl MarkdownServerError {
+    fn new(code: &str, message: impl Into<String>) -> MarkdownServerError {
+        MarkdownServerError { code: code.to_owned(), message: message.into(), result: None }
     }
 
     /// The code of the error catalog.
@@ -108,15 +108,15 @@ impl MdServerError {
     }
 }
 
-impl std::fmt::Display for MdServerError {
+impl std::fmt::Display for MarkdownServerError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}: {}", self.code, self.message)
     }
 }
 
-impl std::error::Error for MdServerError {}
+impl std::error::Error for MarkdownServerError {}
 
-impl sqlx::error::DatabaseError for MdServerError {
+impl sqlx::error::DatabaseError for MarkdownServerError {
     fn message(&self) -> &str {
         &self.message
     }
@@ -157,7 +157,7 @@ impl sqlx::error::DatabaseError for MdServerError {
 }
 
 fn session_error(code: &str, message: impl Into<String>) -> sqlx::Error {
-    sqlx::Error::Database(Box::new(MdServerError::new(code, message)))
+    sqlx::Error::Database(Box::new(MarkdownServerError::new(code, message)))
 }
 
 fn connection_lost(message: impl Into<String>) -> sqlx::Error {
@@ -177,7 +177,7 @@ impl Db {
 
 /// One connection to the flowmark server, that is, one server session. One task uses it at a time: when the pool hands it out or
 /// a transaction holds it.
-struct MdSession {
+struct MarkdownSession {
     read: BufReader<OwnedReadHalf>,
     write: OwnedWriteHalf,
     created: Instant,
@@ -187,21 +187,21 @@ struct MdSession {
 }
 
 #[derive(Serialize)]
-struct MdConnect<'a> {
+struct MarkdownConnect<'a> {
     op: &'static str,
     corpus: &'a str,
     token: &'a str,
 }
 
 #[derive(Serialize)]
-struct MdStatement<'a> {
+struct MarkdownStatement<'a> {
     op: &'static str,
     sql: &'a str,
     params: &'a [Value],
 }
 
 #[derive(Serialize)]
-struct MdOp {
+struct MarkdownOp {
     op: &'static str,
 }
 
@@ -211,9 +211,9 @@ fn null_as_empty<'de, D: serde::Deserializer<'de>, T: Deserialize<'de>>(deserial
 }
 
 #[derive(Deserialize)]
-struct MdAnswer {
+struct MarkdownAnswer {
     #[serde(default, deserialize_with = "null_as_empty")]
-    columns: Vec<MdColumn>,
+    columns: Vec<MarkdownColumn>,
     #[serde(default, deserialize_with = "null_as_empty")]
     rows: Vec<Vec<Value>>,
     #[serde(default)]
@@ -226,7 +226,7 @@ struct MdAnswer {
 
 /// A column of an answer: its name and its declared type, empty for an expression.
 #[derive(Debug, Clone, Deserialize)]
-pub struct MdColumn {
+pub struct MarkdownColumn {
     pub name: String,
     #[serde(default, rename = "type")]
     pub declared: String,
@@ -234,7 +234,7 @@ pub struct MdColumn {
 
 /// One value of a row as a SQLite connection reads it: its storage class and its value.
 #[derive(Debug, Clone, PartialEq)]
-pub enum MdCell {
+pub enum MarkdownCell {
     Null,
     Integer(i64),
     Real(f64),
@@ -244,37 +244,37 @@ pub enum MdCell {
     Blob(Vec<u8>),
 }
 
-impl MdCell {
+impl MarkdownCell {
     /// The value as the SQLite driver reads it.
     pub fn val(&self) -> Val {
         match self {
-            MdCell::Null => Val::Null,
-            MdCell::Integer(n) => Val::I64(*n),
-            MdCell::Real(x) => Val::F64(*x),
-            MdCell::Text(s) => Val::Str(s.clone()),
-            MdCell::TextBytes(b) | MdCell::Blob(b) => Val::Bytes(b.clone()),
+            MarkdownCell::Null => Val::Null,
+            MarkdownCell::Integer(n) => Val::I64(*n),
+            MarkdownCell::Real(x) => Val::F64(*x),
+            MarkdownCell::Text(s) => Val::Str(s.clone()),
+            MarkdownCell::TextBytes(b) | MarkdownCell::Blob(b) => Val::Bytes(b.clone()),
         }
     }
 }
 
 /// The columns of a statement, SQLite's `changes()` and `last_insert_rowid()`, which its first answer states.
 #[derive(Debug, Clone)]
-pub struct MdHead {
-    pub columns: Arc<[MdColumn]>,
+pub struct MarkdownHead {
+    pub columns: Arc<[MarkdownColumn]>,
     pub affected: u64,
     pub last_insert_id: i64,
 }
 
 /// The result of one statement: the columns, every row of its batches, SQLite's `changes()` and `last_insert_rowid()`.
 #[derive(Debug, Clone)]
-pub struct MdResult {
-    pub columns: Arc<[MdColumn]>,
-    pub rows: Vec<Vec<MdCell>>,
+pub struct MarkdownResult {
+    pub columns: Arc<[MarkdownColumn]>,
+    pub rows: Vec<Vec<MarkdownCell>>,
     pub affected: u64,
     pub last_insert_id: i64,
 }
 
-impl MdResult {
+impl MarkdownResult {
     /// The rows as driver rows, which share the columns.
     pub(crate) fn into_rows(self) -> Vec<MarkdownRow> {
         let columns = self.columns;
@@ -285,8 +285,8 @@ impl MdResult {
 /// One row of a statement on a markdown connection.
 #[derive(Debug, Clone)]
 pub struct MarkdownRow {
-    columns: Arc<[MdColumn]>,
-    cells: Vec<MdCell>,
+    columns: Arc<[MarkdownColumn]>,
+    cells: Vec<MarkdownCell>,
 }
 
 impl MarkdownRow {
@@ -304,7 +304,7 @@ impl MarkdownRow {
     }
 
     /// Cell `i`; past the row it is a decode error, as a driver reports an index out of range.
-    pub fn cell(&self, i: usize) -> Result<&MdCell> {
+    pub fn cell(&self, i: usize) -> Result<&MarkdownCell> {
         self.cells.get(i).ok_or_else(|| Error::internal(format!("column {i} is past the {} columns of the row", self.cells.len())))
     }
 }
@@ -342,43 +342,43 @@ pub fn wire_bytes(bytes: &[u8]) -> Value {
 }
 
 /// Reads one cell of an answer: an integer, a float, a text, NULL or bytes, as a SQLite connection reads them.
-fn wire_cell(value: Value) -> std::result::Result<MdCell, sqlx::Error> {
+fn wire_cell(value: Value) -> std::result::Result<MarkdownCell, sqlx::Error> {
     let base64 = |text: &str| base64::engine::general_purpose::STANDARD.decode(text).map_err(|e| answer_error(format!("the cell {text:?}: {e}")));
     Ok(match value {
-        Value::Null => MdCell::Null,
-        Value::Bool(b) => MdCell::Integer(i64::from(b)),
+        Value::Null => MarkdownCell::Null,
+        Value::Bool(b) => MarkdownCell::Integer(i64::from(b)),
         Value::Number(n) => match n.as_i64() {
-            Some(i) => MdCell::Integer(i),
-            None => MdCell::Real(n.as_f64().ok_or_else(|| answer_error(format!("the number {n} is no float")))?),
+            Some(i) => MarkdownCell::Integer(i),
+            None => MarkdownCell::Real(n.as_f64().ok_or_else(|| answer_error(format!("the number {n} is no float")))?),
         },
-        Value::String(s) => MdCell::Text(s),
+        Value::String(s) => MarkdownCell::Text(s),
         Value::Object(map) => match (map.get("float"), map.get("text"), map.get("bytes")) {
-            (Some(Value::String(f)), _, _) => MdCell::Real(match f.as_str() {
+            (Some(Value::String(f)), _, _) => MarkdownCell::Real(match f.as_str() {
                 "+Inf" | "Inf" => f64::INFINITY,
                 "-Inf" => f64::NEG_INFINITY,
                 other => other.parse().map_err(|e| answer_error(format!("the float {other:?}: {e}")))?,
             }),
             (_, Some(Value::String(t)), _) => {
                 let bytes = base64(t)?;
-                String::from_utf8(bytes).map_or_else(|error| MdCell::TextBytes(error.into_bytes()), MdCell::Text)
+                String::from_utf8(bytes).map_or_else(|error| MarkdownCell::TextBytes(error.into_bytes()), MarkdownCell::Text)
             }
-            (_, _, Some(Value::String(b))) => MdCell::Blob(base64(b)?),
+            (_, _, Some(Value::String(b))) => MarkdownCell::Blob(base64(b)?),
             _ => return Err(answer_error(format!("the cell {} has no form", Value::Object(map)))),
         },
         Value::Array(_) => return Err(answer_error(format!("the cell {value} has no form"))),
     })
 }
 
-impl MdSession {
+impl MarkdownSession {
     /// Connects to the server, sends the corpus and token in the first message, connect, and states the `_pragma` settings of the
     /// DSN.
-    async fn dial(dsn: &MarkdownDsn) -> std::result::Result<MdSession, sqlx::Error> {
+    async fn dial(dsn: &MarkdownDsn) -> std::result::Result<MarkdownSession, sqlx::Error> {
         let stream = TcpStream::connect(&dsn.address).await.map_err(|e| {
             session_error(codes::DRIVER, format!("connecting to the flowmark server {}: {e}; start flowmark serve for the corpus", dsn.address))
         })?;
         let (read, write) = stream.into_split();
-        let mut session = MdSession { read: BufReader::new(read), write, created: Instant::now(), broken: false };
-        session.call(&MdConnect { op: "connect", corpus: &dsn.corpus, token: &dsn.token }).await?;
+        let mut session = MarkdownSession { read: BufReader::new(read), write, created: Instant::now(), broken: false };
+        session.call(&MarkdownConnect { op: "connect", corpus: &dsn.corpus, token: &dsn.token }).await?;
         for pragma in &dsn.pragmas {
             let (name, value) = pragma.strip_suffix(')').and_then(|text| text.split_once('(')).unwrap_or((pragma, ""));
             session.statement(&format!("PRAGMA {name} = {value}"), &[]).await?;
@@ -412,7 +412,7 @@ impl MdSession {
         if code == codes::CONNECTION_LOST {
             self.broken = true;
         }
-        Err(sqlx::Error::Database(Box::new(MdServerError {
+        Err(sqlx::Error::Database(Box::new(MarkdownServerError {
             code: code.to_owned(),
             message: error.get("message").and_then(Value::as_str).unwrap_or_default().to_owned(),
             result: error.get("result_code").and_then(Value::as_i64),
@@ -429,12 +429,12 @@ impl MdSession {
         Ok(answer)
     }
 
-    fn answer(raw: &[u8], of: &str) -> std::result::Result<MdAnswer, sqlx::Error> {
+    fn answer(raw: &[u8], of: &str) -> std::result::Result<MarkdownAnswer, sqlx::Error> {
         serde_json::from_slice(raw).map_err(|e| answer_error(format!("the answer of a {of} {:?}: {e}", String::from_utf8_lossy(raw))))
     }
 
     /// Runs one statement and reads every batch of its rows (PRT-66).
-    async fn statement(&mut self, sql: &str, params: &[Value]) -> std::result::Result<MdResult, sqlx::Error> {
+    async fn statement(&mut self, sql: &str, params: &[Value]) -> std::result::Result<MarkdownResult, sqlx::Error> {
         let mut rows = Vec::new();
         let head = self
             .statement_rows(sql, params, |row| {
@@ -442,7 +442,7 @@ impl MdSession {
                 Ok(())
             })
             .await?;
-        Ok(MdResult { columns: head.columns, rows, affected: head.affected, last_insert_id: head.last_insert_id })
+        Ok(MarkdownResult { columns: head.columns, rows, affected: head.affected, last_insert_id: head.last_insert_id })
     }
 
     /// Runs one statement and hands each row to `row` as its batch arrives (PRT-66). A row that `row` refuses ends the rows
@@ -451,11 +451,11 @@ impl MdSession {
         &mut self,
         sql: &str,
         params: &[Value],
-        mut row: impl FnMut(Vec<MdCell>) -> std::result::Result<(), sqlx::Error>,
-    ) -> std::result::Result<MdHead, sqlx::Error> {
-        let raw = self.call(&MdStatement { op: "statement", sql, params }).await?;
+        mut row: impl FnMut(Vec<MarkdownCell>) -> std::result::Result<(), sqlx::Error>,
+    ) -> std::result::Result<MarkdownHead, sqlx::Error> {
+        let raw = self.call(&MarkdownStatement { op: "statement", sql, params }).await?;
         let first = Self::answer(&raw, "statement")?;
-        let head = MdHead { columns: first.columns.into(), affected: first.affected, last_insert_id: first.last_insert_id };
+        let head = MarkdownHead { columns: first.columns.into(), affected: first.affected, last_insert_id: first.last_insert_id };
         let mut more = first.more;
         let mut batch = first.rows;
         loop {
@@ -464,14 +464,14 @@ impl MdSession {
                 // The error of the refused row is the result. A close that the server refuses leaves the rows to the next
                 // statement, which ends them (PRT-66); a close whose connection broke has marked the session broken in call.
                 if more {
-                    let _close_answer: std::result::Result<Vec<u8>, sqlx::Error> = self.call(&MdOp { op: "close" }).await;
+                    let _close_answer: std::result::Result<Vec<u8>, sqlx::Error> = self.call(&MarkdownOp { op: "close" }).await;
                 }
                 return Err(error);
             }
             if !more {
                 return Ok(head);
             }
-            let raw = self.call(&MdOp { op: "fetch" }).await?;
+            let raw = self.call(&MarkdownOp { op: "fetch" }).await?;
             let next = Self::answer(&raw, "fetch")?;
             more = next.more;
             batch = next.rows;
@@ -481,38 +481,38 @@ impl MdSession {
 
 /// The session pool of a markdown connection. Open sessions do not exceed the pool size, and idle sessions are kept, up to the idle size.
 /// Sessions past their lifetime are closed while idle or when they come back.
-pub struct MdPool {
+pub struct MarkdownPool {
     dsn: MarkdownDsn,
     size: u32,
     idle_size: usize,
     lifetime: Duration,
     slots: Arc<Semaphore>,
-    state: Mutex<MdPoolState>,
+    state: Mutex<MarkdownPoolState>,
 }
 
 #[derive(Default)]
-struct MdPoolState {
-    idle: Vec<MdSession>,
+struct MarkdownPoolState {
+    idle: Vec<MarkdownSession>,
     open: u32,
     closed: bool,
 }
 
 /// A session the pool handed out. Dropping it returns it to the pool.
-pub struct MdLease {
-    session: Option<MdSession>,
-    pool: Arc<MdPool>,
+pub struct MarkdownLease {
+    session: Option<MarkdownSession>,
+    pool: Arc<MarkdownPool>,
     /// Set by discard: the session stays usable until the lease drops, and then closes instead of returning to the pool.
     discarded: bool,
     _slot: OwnedSemaphorePermit,
 }
 
-impl MdLease {
-    fn session(&mut self) -> &mut MdSession {
+impl MarkdownLease {
+    fn session(&mut self) -> &mut MarkdownSession {
         self.session.as_mut().expect("a lease holds its session")
     }
 
     /// Runs one statement with its wire parameters and reads all its rows.
-    pub async fn statement(&mut self, sql: &str, params: &[Value]) -> std::result::Result<MdResult, sqlx::Error> {
+    pub async fn statement(&mut self, sql: &str, params: &[Value]) -> std::result::Result<MarkdownResult, sqlx::Error> {
         self.session().statement(sql, params).await
     }
 
@@ -521,13 +521,13 @@ impl MdLease {
         &mut self,
         sql: &str,
         params: &[Value],
-        row: impl FnMut(Vec<MdCell>) -> std::result::Result<(), sqlx::Error>,
-    ) -> std::result::Result<MdHead, sqlx::Error> {
+        row: impl FnMut(Vec<MarkdownCell>) -> std::result::Result<(), sqlx::Error>,
+    ) -> std::result::Result<MarkdownHead, sqlx::Error> {
         self.session().statement_rows(sql, params, row).await
     }
 
     /// Runs one statement with the values a SQLite connection binds.
-    pub async fn bound(&mut self, sql: &str, args: &[Param]) -> std::result::Result<MdResult, sqlx::Error> {
+    pub async fn bound(&mut self, sql: &str, args: &[Param]) -> std::result::Result<MarkdownResult, sqlx::Error> {
         let params = args.iter().map(wire_param).collect::<std::result::Result<Vec<_>, _>>()?;
         self.statement(sql, &params).await
     }
@@ -544,7 +544,7 @@ impl MdLease {
     }
 }
 
-impl Drop for MdLease {
+impl Drop for MarkdownLease {
     fn drop(&mut self) {
         if let Some(mut session) = self.session.take() {
             session.broken |= self.discarded;
@@ -555,7 +555,7 @@ impl Drop for MdLease {
 
 /// The slot for a session being opened. If the connection fails or its future is dropped, the open count is reverted.
 struct Opening<'a> {
-    pool: &'a MdPool,
+    pool: &'a MarkdownPool,
     done: bool,
 }
 
@@ -570,22 +570,22 @@ impl Drop for Opening<'_> {
 /// The session lifetime when `pool_lifetime_ms` is 0: 30 minutes, the same as the SQL connection pool (docs/spec/config.md).
 const DEFAULT_LIFETIME: Duration = Duration::from_secs(30 * 60);
 
-impl MdPool {
+impl MarkdownPool {
     /// A pool that opens up to `size` sessions. Idle sessions are kept up to `idle`, for `lifetime_ms` (30 minutes if 0).
-    pub(crate) fn new(dsn: MarkdownDsn, size: u32, idle: u32, lifetime_ms: u32) -> Arc<MdPool> {
+    pub(crate) fn new(dsn: MarkdownDsn, size: u32, idle: u32, lifetime_ms: u32) -> Arc<MarkdownPool> {
         let lifetime = if lifetime_ms == 0 { DEFAULT_LIFETIME } else { Duration::from_millis(lifetime_ms.into()) };
-        Arc::new(MdPool {
+        Arc::new(MarkdownPool {
             dsn,
             size,
             idle_size: idle as usize,
             lifetime,
             slots: Arc::new(Semaphore::new(size as usize)),
-            state: Mutex::new(MdPoolState::default()),
+            state: Mutex::new(MarkdownPoolState::default()),
         })
     }
 
     /// Hands out an idle session or connects a new one. If open sessions equal the pool size, it waits until one returns.
-    pub async fn acquire(self: &Arc<Self>) -> std::result::Result<MdLease, sqlx::Error> {
+    pub async fn acquire(self: &Arc<Self>) -> std::result::Result<MarkdownLease, sqlx::Error> {
         // The semaphore of the slots fails only once the pool is closed.
         let Ok(slot) = self.slots.clone().acquire_owned().await else { return Err(sqlx::Error::PoolClosed) };
         {
@@ -598,31 +598,31 @@ impl MdPool {
                     state.open -= 1;
                     continue;
                 }
-                return Ok(MdLease { session: Some(session), pool: self.clone(), discarded: false, _slot: slot });
+                return Ok(MarkdownLease { session: Some(session), pool: self.clone(), discarded: false, _slot: slot });
             }
             state.open += 1;
         }
         let mut opening = Opening { pool: self, done: false };
-        let session = MdSession::dial(&self.dsn).await?;
+        let session = MarkdownSession::dial(&self.dsn).await?;
         opening.done = true;
-        Ok(MdLease { session: Some(session), pool: self.clone(), discarded: false, _slot: slot })
+        Ok(MarkdownLease { session: Some(session), pool: self.clone(), discarded: false, _slot: slot })
     }
 
     /// A pool of up to `size` sessions of the DSN, which keeps them idle for 30 minutes. It connects one session to check that the
     /// server accepts the corpus and token.
-    pub async fn connect(dsn: MarkdownDsn, size: u32) -> std::result::Result<Arc<MdPool>, sqlx::Error> {
-        let pool = MdPool::new(dsn, size, size, 0);
+    pub async fn connect(dsn: MarkdownDsn, size: u32) -> std::result::Result<Arc<MarkdownPool>, sqlx::Error> {
+        let pool = MarkdownPool::new(dsn, size, size, 0);
         drop(pool.acquire().await?);
         Ok(pool)
     }
 
     /// Runs one statement on a session of the pool, which returns to the pool after it.
-    pub(crate) async fn bound(self: &Arc<Self>, sql: &str, args: &[Param]) -> std::result::Result<MdResult, sqlx::Error> {
+    pub(crate) async fn bound(self: &Arc<Self>, sql: &str, args: &[Param]) -> std::result::Result<MarkdownResult, sqlx::Error> {
         self.acquire().await?.bound(sql, args).await
     }
 
     /// Returns a session to the pool. Broken sessions, sessions past their lifetime, and sessions of a closed pool are closed.
-    fn release(&self, session: MdSession) {
+    fn release(&self, session: MarkdownSession) {
         let mut state = self.state.lock().unwrap();
         if session.broken || state.closed || state.idle.len() >= self.idle_size || session.created.elapsed() >= self.lifetime {
             state.open -= 1;
@@ -649,8 +649,8 @@ impl MdPool {
 
 /// Opens the pool of a markdown connection. Connects one session to check that the server accepts the corpus and token, and
 /// puts it in the pool. A statement timeout leaves the statements as it leaves them on SQLite, whose bound is the busy timeout.
-pub(crate) async fn open_markdown(dsn: MarkdownDsn, size: u32, idle: u32, cfg: &crate::Config) -> Result<Arc<MdPool>> {
-    let pool = MdPool::new(dsn, size, idle, cfg.pool_lifetime_ms);
+pub(crate) async fn open_markdown(dsn: MarkdownDsn, size: u32, idle: u32, cfg: &crate::Config) -> Result<Arc<MarkdownPool>> {
+    let pool = MarkdownPool::new(dsn, size, idle, cfg.pool_lifetime_ms);
     drop(pool.acquire().await?);
     Ok(pool)
 }

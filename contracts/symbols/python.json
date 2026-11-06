@@ -3435,33 +3435,33 @@
     "exported": true,
     "signature": "class MarkdownServerError(Exception)"
   },
-  "packages/python/src/polyspec/orm/markdown.py::MdSession": {
+  "packages/python/src/polyspec/orm/markdown.py::MarkdownSession": {
     "exported": true,
-    "signature": "class MdSession"
+    "signature": "class MarkdownSession"
   },
-  "packages/python/src/polyspec/orm/markdown.py::MdSession.call": {
+  "packages/python/src/polyspec/orm/markdown.py::MarkdownSession.call": {
     "exported": true,
     "signature": "def call(self, msg: dict) -\u003e dict"
   },
-  "packages/python/src/polyspec/orm/markdown.py::MdSession.close": {
+  "packages/python/src/polyspec/orm/markdown.py::MarkdownSession.close": {
     "exported": true,
     "signature": "def close(self) -\u003e None"
   },
-  "packages/python/src/polyspec/orm/markdown.py::MdSession.exchange": {
+  "packages/python/src/polyspec/orm/markdown.py::MarkdownSession.exchange": {
     "exported": true,
     "signature": "def exchange(self, line: bytes) -\u003e bytes"
   },
-  "packages/python/src/polyspec/orm/markdown.py::MdSession.fetch": {
+  "packages/python/src/polyspec/orm/markdown.py::MarkdownSession.fetch": {
     "exported": true,
     "signature": "def fetch(self, columns: list, text=None) -\u003e dict"
   },
-  "packages/python/src/polyspec/orm/markdown.py::MdSession.statement": {
+  "packages/python/src/polyspec/orm/markdown.py::MarkdownSession.statement": {
     "exported": true,
     "signature": "def statement(self, sql: str, values, text=None) -\u003e dict"
   },
   "packages/python/src/polyspec/orm/markdown.py::dial_markdown": {
     "exported": true,
-    "signature": "def dial_markdown(dsn: MarkdownDsn) -\u003e MdSession"
+    "signature": "def dial_markdown(dsn: MarkdownDsn) -\u003e MarkdownSession"
   },
   "packages/python/src/polyspec/orm/markdown.py::parse_markdown_dsn": {
     "exported": true,

@@ -702,7 +702,7 @@ pub(crate) enum TxInner {
     Postgres(CancellableConnection<Postgres>),
     Sqlite(CancellableConnection<Sqlite>),
     /// The flowmark session held until the transaction ends.
-    Markdown(crate::markdown::MdLease),
+    Markdown(crate::markdown::MarkdownLease),
 }
 
 /// Where a statement runs: the pool (each statement on its own) or a transaction's connection.

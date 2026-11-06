@@ -1213,7 +1213,7 @@ fn markdown_args(args: &[CatalogValue]) -> Vec<serde_json::Value> {
 }
 
 /// A markdown session applies a plan as a SQLite connection does: its statements are in SQLite's dialect (DIA-185).
-impl ApplyConnection for crate::markdown::MdLease {
+impl ApplyConnection for crate::markdown::MarkdownLease {
     async fn execute(&mut self, statement: &str) -> Result<(), sqlx::Error> {
         self.raw(statement).await
     }
@@ -1224,7 +1224,7 @@ impl ApplyConnection for crate::markdown::MdLease {
 
     async fn query_bound(&mut self, query: &str, args: &[CatalogValue]) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
         let rows = self.statement(query, &markdown_args(args)).await?.rows;
-        <crate::markdown::MdLease as super::CatalogFetch>::values(&rows)
+        <crate::markdown::MarkdownLease as super::CatalogFetch>::values(&rows)
     }
 }
 

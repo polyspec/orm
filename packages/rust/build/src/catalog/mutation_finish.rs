@@ -47,7 +47,7 @@ fn explicitly_rejected(error: &sqlx::Error) -> bool {
     // A deadlock that a flowmark server reports at the commit rolled the transaction back, as PostgreSQL's class 40 does.
     if error
         .as_database_error()
-        .and_then(|error| error.try_downcast_ref::<polyspec_orm::markdown::MdServerError>())
+        .and_then(|error| error.try_downcast_ref::<polyspec_orm::markdown::MarkdownServerError>())
         .is_some_and(|error| error.code() == polyspec_orm::codes::DEADLOCK)
     {
         return true;

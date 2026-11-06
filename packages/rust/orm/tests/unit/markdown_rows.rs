@@ -1,6 +1,6 @@
 //! A read that refuses a row of a statement with more batches ends the statement with close (docs/spec/protocol.md section 5), and its own error is the
 //! result whatever the close answers: a close that the server refuses leaves the rows to the next statement, which ends them.
-use super::{MarkdownDsn, MdSession};
+use super::{MarkdownDsn, MarkdownSession};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
 
@@ -33,7 +33,7 @@ async fn scripted(close_answer: &'static str) -> (MarkdownDsn, tokio::task::Join
 
 async fn refused_read(close_answer: &'static str) -> (sqlx::Error, bool, Vec<String>) {
     let (dsn, server) = scripted(close_answer).await;
-    let mut session = MdSession::dial(&dsn).await.unwrap();
+    let mut session = MarkdownSession::dial(&dsn).await.unwrap();
     let Err(error) = session.statement_rows("SELECT n FROM t", &[], |_| Err(sqlx::Error::RowNotFound)).await else {
         panic!("a refused row ends the read with its error")
     };

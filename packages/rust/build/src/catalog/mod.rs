@@ -87,7 +87,7 @@ impl CatalogConnection {
                         .map_err(catalog_write_error)?,
                 )
             }
-            ConnectOptions::Markdown(dsn) => Pool::Markdown(polyspec_orm::markdown::MdPool::connect(dsn, 4).await.map_err(catalog_write_error)?),
+            ConnectOptions::Markdown(dsn) => Pool::Markdown(polyspec_orm::markdown::MarkdownPool::connect(dsn, 4).await.map_err(catalog_write_error)?),
         };
         let mut connection = Some(Conn::acquire(&pool).await.map_err(connect_error)?);
         let mut reopen_until = std::time::Instant::now();

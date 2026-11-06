@@ -18,7 +18,7 @@ use crate::driver::{
 pub use crate::driver::{stale_plan, NOW_MASK};
 use crate::engine::{self, Dialect};
 use crate::events::{statement_kind, Sent, Subscribers, KIND_UTILITY};
-use crate::markdown::{open_markdown, parse_markdown_dsn, MarkdownDsn, MdPool};
+use crate::markdown::{open_markdown, parse_markdown_dsn, MarkdownDsn, MarkdownPool};
 use crate::plan::{Plan, Step};
 use crate::request::Req;
 use crate::row::DriverRow;
@@ -315,7 +315,7 @@ pub enum Pool {
     MySql(MySqlPool),
     Postgres(PgPool),
     Sqlite(SqlitePool),
-    Markdown(Arc<MdPool>),
+    Markdown(Arc<MarkdownPool>),
 }
 
 impl Pool {
@@ -1011,7 +1011,7 @@ impl Db {
                 TxInner::Sqlite(t) => sqlx::query_scalar::<_, i64>(read).fetch_one(&mut **t).await.map_err(Error::from),
                 TxInner::Markdown(lease) => match lease.statement(read, &[]).await {
                     Ok(result) => match result.rows.first().and_then(|row| row.first()) {
-                        Some(crate::markdown::MdCell::Integer(n)) => Ok(*n),
+                        Some(crate::markdown::MarkdownCell::Integer(n)) => Ok(*n),
                         other => Err(Error::internal(format!("PRAGMA busy_timeout answered {other:?}"))),
                     },
                     Err(error) => Err(Error::from(error)),
@@ -1290,7 +1290,7 @@ impl Executor {
 }
 
 /// The (last insert id, changed rows) of a markdown statement, SQLite's `last_insert_rowid()` and `changes()` (PRT-70).
-fn markdown_written(result: crate::markdown::MdResult) -> (u64, u64) {
+fn markdown_written(result: crate::markdown::MarkdownResult) -> (u64, u64) {
     (result.last_insert_id as u64, result.affected)
 }
 

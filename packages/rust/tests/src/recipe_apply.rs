@@ -54,7 +54,7 @@ enum Conn {
     Postgres(PgConnection),
     Sqlite(SqliteConnection),
     /// The session of a flowmark corpus, whose statements are in SQLite's dialect (DIA-185).
-    Markdown(polyspec_orm::markdown::MdLease),
+    Markdown(polyspec_orm::markdown::MarkdownLease),
 }
 
 impl Conn {
@@ -250,7 +250,7 @@ async fn direct(database: &str, dsn: &str) -> Result<Conn, String> {
             }
             // A corpus: one session of its flowmark server, which holds the pool of the session.
             ConnectOptions::Markdown(options) => {
-                let pool = polyspec_orm::markdown::MdPool::connect(options, 1).await.map_err(|e| e.to_string())?;
+                let pool = polyspec_orm::markdown::MarkdownPool::connect(options, 1).await.map_err(|e| e.to_string())?;
                 (Conn::Markdown(pool.acquire().await.map_err(|e| e.to_string())?), "PRAGMA foreign_keys = ON")
             }
             _ => return Err(format!("{dsn} is not sqlite:// or markdown://")),

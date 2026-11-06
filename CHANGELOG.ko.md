@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: bc717225bc8c23a445a66ab80bea284b8f878de6f0631822699984f72a69f28d -->
+<!-- source-sha256: 6d1415cea777a31daeb8e2f637facc79d543bdfafd589d512a361bc5f6c141b3 -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.22
 
+- 호환 깨짐(Rust): markdown 연결의 pool은 0.0.21의 `MdPool`에서 바뀐 `polyspec_orm::markdown::MarkdownPool`이므로 `Pool::Markdown`은 `Arc<MarkdownPool>`을 가진다. markdown 연결의 모든 type은 TypeScript처럼 Rust와 Python에서도 접두어 `Markdown`을 가진다(XV14).
 - 여섯 runtime 모두에서 markdown corpus는 SQLite 연결이다(DIA-154, DIA-185). flowmark 서버가 SQLite dialect의 문에 답하므로 각 클라이언트는 요청을 SQLite에서처럼 계획하고 각 문을 op statement로 보내며, 이어지는 행은 fetch와 close로 읽는다(PRT-66). 매개변수는 PRT-67의 형식을 따르고 boolean은 1 또는 0이다. IR executor 클라이언트와 그 답 조립, tests/ir/answers.json, recipe op ir.answer는 제거했다. recipe의 모든 database case는 MySQL, PostgreSQL, SQLite와 함께 flowmark에서도 실행되며, tests/markdown은 flowmark release v0.0.5를 고정한다 (T384).
 - 시험: `polyspec_orm::testing::sqlite_result_error`(feature `test-faults`)는 result code를 가진 실패한 SQLite 문의 오류를 만들며, Rust 시험의 apply fault recipe가 이를 주입한다(XV1).
 - markdown 연결의 pool 설정은 DIA-199이며 Go, Rust, TypeScript, Python에서 SQLite와 같다. recipe `connection_pool`은 네 database 각각의 DSN으로 pool 크기를 넘는 idle 크기를 거부하고, `make connection-pool-check`가 이를 실행한다(XV2).
