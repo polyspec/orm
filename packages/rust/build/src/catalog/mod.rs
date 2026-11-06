@@ -253,12 +253,7 @@ impl CatalogConnection {
     pub async fn close(self) {
         let Self { connection, pool, .. } = self;
         drop(connection);
-        match pool {
-            Pool::MySql(pool) => pool.close().await,
-            Pool::Postgres(pool) => pool.close().await,
-            Pool::Sqlite(pool) => pool.close().await,
-            Pool::Markdown(pool) => pool.close(),
-        }
+        pool.close().await;
     }
 }
 /// Opens the transaction of a session. On PostgreSQL the session then releases the named statements of its server connection: a

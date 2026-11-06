@@ -31,8 +31,10 @@ pub struct Scratch(pub PathBuf);
 
 impl Drop for Scratch {
     fn drop(&mut self) {
-        // A case that made its corpus read-only (CFG-24) leaves folders that the removal could not empty.
-        if let Err(error) = chmod_corpus(&self.0, false) {
+        // A case that made its corpus read-only (the op database.read_only) leaves folders that the removal could not
+        // empty: they take the permissions of the scratch folder, which the run created and no case changes.
+        let scratch = std::fs::metadata(&self.0).map_err(|e| format!("stat {}: {e}", self.0.display()));
+        if let Err(error) = scratch.and_then(|scratch| set_folders(&self.0, |_| scratch.permissions())) {
             eprintln!("{error}");
         }
         if let Err(error) = std::fs::remove_dir_all(&self.0) {
@@ -41,11 +43,20 @@ impl Drop for Scratch {
     }
 }
 
-/// Makes every folder under `root` one that the server may only read (0555), or writable again (0755).
-pub fn chmod_corpus(root: &Path, read_only: bool) -> Result<(), String> {
+/// Makes every folder under `root` one that the server may only read, through the read-only permission of the file system.
+pub fn read_only_corpus(root: &Path) -> Result<(), String> {
+    set_folders(root, |mut permissions| {
+        permissions.set_readonly(true);
+        permissions
+    })
+}
+
+/// Sets the permissions of every folder under `root`, `root` included, to what `permissions` gives for its present ones.
+fn set_folders(root: &Path, permissions: impl Fn(std::fs::Permissions) -> std::fs::Permissions) -> Result<(), String> {
     let mut folders = vec![root.to_path_buf()];
     while let Some(folder) = folders.pop() {
-        folder_mode(&folder, read_only).map_err(|e| format!("chmod {}: {e}", folder.display()))?;
+        let present = std::fs::metadata(&folder).map_err(|e| format!("stat {}: {e}", folder.display()))?.permissions();
+        std::fs::set_permissions(&folder, permissions(present)).map_err(|e| format!("chmod {}: {e}", folder.display()))?;
         for entry in std::fs::read_dir(&folder).map_err(|e| format!("read {}: {e}", folder.display()))? {
             let entry = entry.map_err(|e| format!("read {}: {e}", folder.display()))?;
             if entry.file_type().map_err(|e| format!("stat {}: {e}", entry.path().display()))?.is_dir() {
@@ -56,30 +67,9 @@ pub fn chmod_corpus(root: &Path, read_only: bool) -> Result<(), String> {
     Ok(())
 }
 
-#[cfg(unix)]
-fn folder_mode(folder: &Path, read_only: bool) -> std::io::Result<()> {
-    use std::os::unix::fs::PermissionsExt as _;
-    std::fs::set_permissions(folder, std::fs::Permissions::from_mode(if read_only { 0o555 } else { 0o755 }))
-}
-
-/// A folder of Windows has no mode: its read-only attribute is what the file system offers.
-#[cfg(not(unix))]
-fn folder_mode(folder: &Path, read_only: bool) -> std::io::Result<()> {
-    let mut permissions = std::fs::metadata(folder)?.permissions();
-    #[allow(clippy::permissions_set_readonly_false)]
-    permissions.set_readonly(read_only);
-    std::fs::set_permissions(folder, permissions)
-}
-
-/// Writes `text` to the corpus file at `path` with the mode 0600, behind the engine.
+/// Writes `text` to the corpus file at `path`, behind the engine.
 pub fn write_corpus_file(path: &Path, text: &str) -> Result<(), String> {
-    use std::io::Write as _;
-    let mut options = std::fs::OpenOptions::new();
-    options.write(true).create(true).truncate(true);
-    #[cfg(unix)]
-    std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
-    let mut file = options.open(path).map_err(|e| format!("{}: {e}", path.display()))?;
-    file.write_all(text.as_bytes()).map_err(|e| format!("{}: {e}", path.display()))
+    std::fs::write(path, text).map_err(|e| format!("{}: {e}", path.display()))
 }
 
 /// The flowmark server the test started. Dropping it ends the process and waits for it.
@@ -510,7 +500,7 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             db.transaction(async || People::new().connect(db).id("P1").for_update_no_wait().get().await.map(drop)).await?;
             Value::Null
         }
-        // The statement of a read, which the connection plans in SQLite's dialect (DIA-185), and its binds.
+        // The statement of a read, which the connection plans in SQLite's dialect (docs/spec/dialects.md), and its binds.
         "get_query" => {
             let statement = People::new().connect(db).get_query().await?;
             let binds: Vec<Value> = statement.binds.iter().map(param_json).collect();
@@ -539,7 +529,7 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             json!({ "error": code, "name": read.get_name()? })
         }
         // A transaction that reads P1 and writes its own name back, with retry options: the commit's code (null when it
-        // commits) and how many times the callback ran. WRITE_CONFLICT is never retried (PRT-71).
+        // commits) and how many times the callback ran. WRITE_CONFLICT is never retried (docs/spec/protocol.md section 5).
         "transaction_retry_commit" => {
             let runs = std::sync::atomic::AtomicU32::new(0);
             let committed = db
@@ -732,9 +722,9 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
                 StyledValue::Value(_) => json!("value"),
             }
         }
-        // install_aes installs a catalog with an aes column and its key version column (DIA-178).
+        // install_aes installs a catalog with an aes column and its key version column, as docs/spec/dialects.md has it.
         "install_aes" => install_catalog(s, "aes"),
-        // install_audit installs a catalog with an audit setting, its record table and its history table (DIA-179).
+        // install_audit installs a catalog with an audit setting, its record table and its history table, as docs/spec/dialects.md has it.
         "install_audit" => install_catalog(s, "audit"),
         other => unreachable!("case {other} is not in CASES"),
     })

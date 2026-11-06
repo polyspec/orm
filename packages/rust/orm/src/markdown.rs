@@ -97,6 +97,12 @@ impl MdServerError {
         MdServerError { code: code.to_owned(), message: message.into(), result: None }
     }
 
+    /// A failure that states the SQLite result code `result` and no code of the error catalog, as the SQLite driver reports a
+    /// failed statement: the client reads its code from the result code, as it reads the error of that driver.
+    pub fn sqlite_result(message: impl Into<String>, result: i64) -> MdServerError {
+        MdServerError { code: String::new(), message: message.into(), result: Some(result) }
+    }
+
     /// The code of the error catalog.
     pub fn code(&self) -> &str {
         &self.code
@@ -110,7 +116,11 @@ impl MdServerError {
 
 impl std::fmt::Display for MdServerError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {}", self.code, self.message)
+        if self.code.is_empty() {
+            f.write_str(&self.message)
+        } else {
+            write!(f, "{}: {}", self.code, self.message)
+        }
     }
 }
 

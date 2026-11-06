@@ -18,6 +18,7 @@ use Polyspec\Orm\Code;
 final class MarkdownStatementAdapter extends PDOStatement
 {
     use FetchesAllRows;
+    use StatementState;
 
     /** @var array<int|string, array{0: mixed, 1: int}> bound values with their PDO types, by position or name */
     private array $bindings = [];
@@ -30,8 +31,6 @@ final class MarkdownStatementAdapter extends PDOStatement
     private int $affected = 0;
     /** @var list<string> the storage class of each value of the current row, as pdo_sqlite reports it */
     private array $kinds = [];
-    private array $fetchMode = [];
-    private array $errorInfoValue = ['00000', null, null];
 
     public function __construct(private readonly MarkdownPdoAdapter $pdo, private readonly string $sourceSql)
     {
@@ -39,17 +38,17 @@ final class MarkdownStatementAdapter extends PDOStatement
 
     public function bindValue(string|int $param, mixed $value, int $type = PDO::PARAM_STR): bool
     {
-        $this->bindings[self::slot($param)] = [$value, $type];
+        $this->bindings[self::slotOf($param)] = [$value, $type];
         return true;
     }
 
     public function execute(?array $params = null): bool
     {
         if ($params !== null) {
-            $this->bindings = [];
-            foreach ($params as $key => $value) {
-                $this->bindings[is_int($key) ? $key : self::slot($key)] = [$value, PDO::PARAM_STR];
-            }
+            $this->bindings = array_map(
+                static fn (mixed $value): array => [$value, PDO::PARAM_STR],
+                self::executeSlots($params),
+            );
         }
         [$sql, $order] = self::positional($this->sourceSql);
         $wire = [];
@@ -139,12 +138,6 @@ final class MarkdownStatementAdapter extends PDOStatement
         };
     }
 
-    public function fetchColumn(int $column = 0): mixed
-    {
-        $row = $this->fetch(PDO::FETCH_NUM);
-        return $row === false ? false : ($row[$column] ?? false);
-    }
-
     public function closeCursor(): bool
     {
         if ($this->more) {
@@ -194,22 +187,6 @@ final class MarkdownStatementAdapter extends PDOStatement
         return $meta;
     }
 
-    public function setFetchMode(int $mode, mixed ...$args): true
-    {
-        $this->fetchMode = [$mode, ...$args];
-        return true;
-    }
-
-    public function errorCode(): ?string
-    {
-        return $this->errorInfoValue[0];
-    }
-
-    public function errorInfo(): array
-    {
-        return $this->errorInfoValue;
-    }
-
     public function nextRowset(): bool
     {
         return false;
@@ -225,11 +202,6 @@ final class MarkdownStatementAdapter extends PDOStatement
     }
 
     /** The slot of a bound parameter: a position from 0, or a name without its colon. */
-    private static function slot(string|int $param): int|string
-    {
-        return is_int($param) ? $param - 1 : ltrim($param, ':');
-    }
-
     /**
      * The value of a parameter in the form of a statement message (PRT-67), in the type that it is bound with:
      * PARAM_NULL and null as NULL, PARAM_INT as an integer, PARAM_BOOL as the integer 1 or 0, PARAM_LOB as a blob, a

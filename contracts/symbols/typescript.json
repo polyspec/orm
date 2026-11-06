@@ -2363,6 +2363,10 @@
     "exported": true,
     "signature": "export function readLastAffected(db: Db): number | null"
   },
+  "packages/ts/src/database.ts::readParts": {
+    "exported": false,
+    "signature": "async function readParts(ex: Executor, request: Request, params: readonly unknown[]): Promise\u003c{ db: Db; cached: Cached; parts: Request[]; }\u003e"
+  },
   "packages/ts/src/database.ts::readTime": {
     "exported": true,
     "signature": "export function readTime(value: unknown, colType: string, zone: string, precision: number): string"

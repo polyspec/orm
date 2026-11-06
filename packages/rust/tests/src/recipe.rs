@@ -647,47 +647,6 @@ struct FaultConnection {
     no_row: Vec<String>,
 }
 
-/// An error of a SQLite result code, as the driver returns it.
-#[derive(Debug)]
-struct SqliteResult {
-    message: String,
-    code: i64,
-}
-
-impl std::fmt::Display for SqliteResult {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.message)
-    }
-}
-
-impl std::error::Error for SqliteResult {}
-
-impl sqlx::error::DatabaseError for SqliteResult {
-    fn message(&self) -> &str {
-        &self.message
-    }
-
-    fn code(&self) -> Option<std::borrow::Cow<'_, str>> {
-        Some(self.code.to_string().into())
-    }
-
-    fn as_error(&self) -> &(dyn std::error::Error + Send + Sync + 'static) {
-        self
-    }
-
-    fn as_error_mut(&mut self) -> &mut (dyn std::error::Error + Send + Sync + 'static) {
-        self
-    }
-
-    fn into_error(self: Box<Self>) -> Box<dyn std::error::Error + Send + Sync + 'static> {
-        self
-    }
-
-    fn kind(&self) -> sqlx::error::ErrorKind {
-        sqlx::error::ErrorKind::Other
-    }
-}
-
 /// The message of an error of a statement of the op.
 fn injected_message(error: &sqlx::Error) -> String {
     match error {
@@ -726,7 +685,7 @@ impl dbspec::CatalogQuerier for FaultConnection {
 impl dbspec::ApplyConnection for FaultConnection {
     async fn execute(&mut self, statement: &str) -> Result<(), sqlx::Error> {
         match self.fail.get(statement) {
-            Some((message, Some(code))) => Err(sqlx::Error::Database(Box::new(SqliteResult { message: message.clone(), code: *code }))),
+            Some((message, Some(code))) => Err(sqlx::Error::Database(Box::new(polyspec_orm::markdown::MdServerError::sqlite_result(message.clone(), *code)))),
             Some((message, None)) => Err(sqlx::Error::Protocol(message.clone())),
             None => self.inner.execute(statement).await,
         }
@@ -4283,7 +4242,7 @@ mod database {
                 // The file of the case database becomes one that the process may only read (CFG-24); a corpus becomes folders
                 // that the server may only read, which the run makes writable again at its end.
                 if let Some(corpus) = &context.corpus {
-                    crate::markdown::chmod_corpus(corpus, true).map_err(fault)?;
+                    crate::markdown::read_only_corpus(corpus).map_err(fault)?;
                     return Ok(Output::fields(json!({})));
                 }
                 let path = context.dsn.strip_prefix("sqlite://").unwrap_or(&context.dsn).split('?').next().unwrap_or_default().to_owned();

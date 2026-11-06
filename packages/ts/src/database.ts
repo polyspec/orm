@@ -1337,15 +1337,20 @@ function hooked(ex: Executor, request: Request, params: readonly unknown[], afte
   return { request: canon.request, params: canon.params };
 }
 
+/** The plan of a read and the parts of its split IN list (splitReadPlan), once its lock passed checkLock. */
+async function readParts(ex: Executor, request: Request, params: readonly unknown[]): Promise<{ db: Db; cached: Cached; parts: Request[] }> {
+  checkLock(ex, request);
+  const db = ex.db;
+  const { cached, slots } = await splitReadPlan(db, request, params);
+  return { db, cached, parts: rootInParts(request, slots, db.dialect, params) };
+}
+
 export async function query(ex: Executor, given: Request, givenParams: readonly unknown[]): Promise<Result> {
   const { request, params } = hooked(ex, given, givenParams);
   return guarded(ex, async () => {
-    checkLock(ex, request);
-    const db = ex.db;
-    const { cached, slots } = await splitReadPlan(db, request, params);
+    const { db, cached, parts } = await readParts(ex, request, params);
     const lock = requestLock(request);
     if (lock !== '') await db.rowLock(present(ex.frame, 'the transaction of a locking read'), lock);
-    const parts = rootInParts(request, slots, db.dialect, params);
     let main: unknown[][];
     // A split request runs only its parts: cached is then the plan of its first value (splitReadPlan).
     if (parts.length > 0) {
@@ -1431,10 +1436,7 @@ export function decodeAssembly(row: unknown[], assemble: Assemble, db: Db): void
 export async function scalar(ex: Executor, given: Request, givenParams: readonly unknown[]): Promise<unknown> {
   const { request, params } = hooked(ex, given, givenParams);
   return guarded(ex, async () => {
-    checkLock(ex, request);
-    const db = ex.db;
-    const { cached, slots } = await splitReadPlan(db, request, params);
-    const parts = rootInParts(request, slots, db.dialect, params);
+    const { db, cached, parts } = await readParts(ex, request, params);
     if (parts.length === 1) {
       const step = mainStep((await db.plan(present(parts[0], 'the one part of a split request'))).plan);
       return (await db.runStep(ex, step.sql, step, params)).rows[0]?.[0] ?? null;

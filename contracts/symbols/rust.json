@@ -3891,6 +3891,10 @@
     "exported": true,
     "signature": "pub enum Pool  { MySql (MySqlPool) , Postgres (PgPool) , Sqlite (SqlitePool) , Markdown (Arc \u003c MdPool \u003e) }"
   },
+  "packages/rust/orm/src/db.rs::Pool::close": {
+    "exported": true,
+    "signature": "pub async fn close (\u0026 self)"
+  },
   "packages/rust/orm/src/db.rs::Pool::num_idle": {
     "exported": false,
     "signature": " fn num_idle (\u0026 self) -\u003e usize"
@@ -6986,6 +6990,10 @@
   "packages/rust/orm/src/markdown.rs::MdServerError::result_code": {
     "exported": true,
     "signature": "pub fn result_code (\u0026 self) -\u003e Option \u003c i64 \u003e"
+  },
+  "packages/rust/orm/src/markdown.rs::MdServerError::sqlite_result": {
+    "exported": true,
+    "signature": "pub fn sqlite_result (message : impl Into \u003c String \u003e , result : i64) -\u003e MdServerError"
   },
   "packages/rust/orm/src/markdown.rs::MdSession": {
     "exported": false,

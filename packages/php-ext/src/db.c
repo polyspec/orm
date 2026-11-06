@@ -2878,6 +2878,16 @@ static bool plan_of(zval *self, zval *r, zval *out)
     return ok;
 }
 
+/* The plan of a request and its first step, the statement that a write and getQuery run; the caller releases both. */
+static bool main_step_of(zval *self, zval *r, zval *plan, zval *step)
+{
+    if (!plan_of(self, r, plan)) {
+        return false;
+    }
+    ZVAL_COPY(step, aidx(aget(plan, "steps"), 0));
+    return true;
+}
+
 /* Db::splitReadPlan: the plan of a read whose root IN list may be split (PRT-76), and in nbind the number of bind slots its
  * first statement needs. A request with more values than the bind limit is planned with its longest root IN list cut to its
  * first value, so no plan holds a bind slot per value of the list; root_parts makes the parts, each planned within the limit. */
@@ -3529,12 +3539,10 @@ static bool write_of_impl(zval *self, zval *frame, zval *r, zval *after, zval *o
     if (!enter(self, frame, ir)) {
         return false;
     }
-    zval plan;
-    if (!plan_of(self, r, &plan)) {
+    zval plan, step;
+    if (!main_step_of(self, r, &plan, &step)) {
         return false;
     }
-    zval step;
-    ZVAL_COPY(&step, aidx(aget(&plan, "steps"), 0));
     bool has_frame = frame != NULL && Z_TYPE_P(frame) == IS_OBJECT;
     bool settle_needed = false;
     if (has_frame && binds_audit(&step)) {
@@ -3704,12 +3712,10 @@ static bool statement_impl(zval *self, zval *r, zval *out)
     if (!apply_hook(self, r)) {
         return false;
     }
-    zval plan;
-    if (!plan_of(self, r, &plan)) {
+    zval plan, step;
+    if (!main_step_of(self, r, &plan, &step)) {
         return false;
     }
-    zval step;
-    ZVAL_COPY(&step, aidx(aget(&plan, "steps"), 0));
     zval args;
     bool ok = args_of(self, &step, rd(r, "params"), NULL, NULL, &args);
     if (ok) {

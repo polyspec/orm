@@ -11089,7 +11089,7 @@
   },
   "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter": {
     "exported": true,
-    "signature": "final class Polyspec\\Orm\\Internal\\MarkdownPdoAdapter extends PDO implements  uses "
+    "signature": "final class Polyspec\\Orm\\Internal\\MarkdownPdoAdapter extends PDO implements  uses Polyspec\\Orm\\Internal\\QueriesByPrepare"
   },
   "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter::$active": {
     "exported": false,
@@ -11205,7 +11205,7 @@
   },
   "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter": {
     "exported": true,
-    "signature": "final class Polyspec\\Orm\\Internal\\MarkdownStatementAdapter extends PDOStatement implements IteratorAggregate,Traversable uses Polyspec\\Orm\\Internal\\FetchesAllRows"
+    "signature": "final class Polyspec\\Orm\\Internal\\MarkdownStatementAdapter extends PDOStatement implements IteratorAggregate,Traversable uses Polyspec\\Orm\\Internal\\FetchesAllRows,Polyspec\\Orm\\Internal\\StatementState"
   },
   "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::$affected": {
     "exported": false,
@@ -11291,6 +11291,10 @@
     "exported": true,
     "signature": "public function execute(?array $params=null): bool"
   },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::executeSlots": {
+    "exported": false,
+    "signature": "private static function executeSlots(array $params): array"
+  },
   "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::fetch": {
     "exported": true,
     "signature": "public function fetch(int $mode=0, int $cursorOrientation=0, int $cursorOffset=0): mixed"
@@ -11347,9 +11351,9 @@
     "exported": true,
     "signature": "public function setFetchMode(int $mode, mixed ...$args): true"
   },
-  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::slot": {
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::slotOf": {
     "exported": false,
-    "signature": "private static function slot(string|int $param): string|int"
+    "signature": "private static function slotOf(string|int $param): string|int"
   },
   "packages/php/src/Internal/PgsqlLargeObjectStream.php::Polyspec\\Orm\\Internal\\PgsqlLargeObjectStream": {
     "exported": true,
@@ -11437,7 +11441,7 @@
   },
   "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter": {
     "exported": true,
-    "signature": "final class Polyspec\\Orm\\Internal\\PgsqlPdoAdapter extends Pdo\\Pgsql implements  uses "
+    "signature": "final class Polyspec\\Orm\\Internal\\PgsqlPdoAdapter extends Pdo\\Pgsql implements  uses Polyspec\\Orm\\Internal\\QueriesByPrepare"
   },
   "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::$activeStatement": {
     "exported": false,
@@ -11677,7 +11681,7 @@
   },
   "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter": {
     "exported": true,
-    "signature": "final class Polyspec\\Orm\\Internal\\PgsqlStatementAdapter extends PDOStatement implements IteratorAggregate,Traversable uses Polyspec\\Orm\\Internal\\FetchesAllRows"
+    "signature": "final class Polyspec\\Orm\\Internal\\PgsqlStatementAdapter extends PDOStatement implements IteratorAggregate,Traversable uses Polyspec\\Orm\\Internal\\FetchesAllRows,Polyspec\\Orm\\Internal\\StatementState"
   },
   "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::$affected": {
     "exported": false,
@@ -11779,6 +11783,10 @@
     "exported": true,
     "signature": "public function execute(?array $params=null): bool"
   },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::executeSlots": {
+    "exported": false,
+    "signature": "private static function executeSlots(array $params): array"
+  },
   "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::fetch": {
     "exported": true,
     "signature": "public function fetch(int $mode=0, int $cursorOrientation=0, int $cursorOffset=0): mixed"
@@ -11807,10 +11815,6 @@
     "exported": true,
     "signature": "public function getIterator(): Iterator"
   },
-  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::index": {
-    "exported": false,
-    "signature": "private function index(string|int $param): string|int"
-  },
   "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::namedRow": {
     "exported": false,
     "signature": "private function namedRow(array $names, array $values): array"
@@ -11834,6 +11838,10 @@
   "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::setFetchMode": {
     "exported": true,
     "signature": "public function setFetchMode(int $mode, mixed ...$args): true"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::slotOf": {
+    "exported": false,
+    "signature": "private static function slotOf(string|int $param): string|int"
   },
   "packages/php/src/Internal/PgsqlStatementIterator.php::Polyspec\\Orm\\Internal\\PgsqlStatementIterator": {
     "exported": true,
@@ -11875,6 +11883,14 @@
     "exported": true,
     "signature": "public function valid(): bool"
   },
+  "packages/php/src/Internal/QueriesByPrepare.php::Polyspec\\Orm\\Internal\\QueriesByPrepare": {
+    "exported": true,
+    "signature": " trait Polyspec\\Orm\\Internal\\QueriesByPrepare extends  implements  uses "
+  },
+  "packages/php/src/Internal/QueriesByPrepare.php::Polyspec\\Orm\\Internal\\QueriesByPrepare::query": {
+    "exported": true,
+    "signature": "public function query(string $query, ?int $fetchMode=null, mixed ...$fetchModeArgs): PDOStatement|false"
+  },
   "packages/php/src/Internal/StatementRows.php::Polyspec\\Orm\\Internal\\StatementRows": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Internal\\StatementRows extends  implements  uses "
@@ -11882,6 +11898,42 @@
   "packages/php/src/Internal/StatementRows.php::Polyspec\\Orm\\Internal\\StatementRows::fetchAll": {
     "exported": true,
     "signature": "public static function fetchAll(callable $fetch, int $mode=0): array"
+  },
+  "packages/php/src/Internal/StatementState.php::Polyspec\\Orm\\Internal\\StatementState": {
+    "exported": true,
+    "signature": " trait Polyspec\\Orm\\Internal\\StatementState extends  implements  uses "
+  },
+  "packages/php/src/Internal/StatementState.php::Polyspec\\Orm\\Internal\\StatementState::$errorInfoValue": {
+    "exported": false,
+    "signature": "private array"
+  },
+  "packages/php/src/Internal/StatementState.php::Polyspec\\Orm\\Internal\\StatementState::$fetchMode": {
+    "exported": false,
+    "signature": "private array"
+  },
+  "packages/php/src/Internal/StatementState.php::Polyspec\\Orm\\Internal\\StatementState::errorCode": {
+    "exported": true,
+    "signature": "public function errorCode(): ?string"
+  },
+  "packages/php/src/Internal/StatementState.php::Polyspec\\Orm\\Internal\\StatementState::errorInfo": {
+    "exported": true,
+    "signature": "public function errorInfo(): array"
+  },
+  "packages/php/src/Internal/StatementState.php::Polyspec\\Orm\\Internal\\StatementState::executeSlots": {
+    "exported": false,
+    "signature": "private static function executeSlots(array $params): array"
+  },
+  "packages/php/src/Internal/StatementState.php::Polyspec\\Orm\\Internal\\StatementState::fetchColumn": {
+    "exported": true,
+    "signature": "public function fetchColumn(int $column=0): mixed"
+  },
+  "packages/php/src/Internal/StatementState.php::Polyspec\\Orm\\Internal\\StatementState::setFetchMode": {
+    "exported": true,
+    "signature": "public function setFetchMode(int $mode, mixed ...$args): true"
+  },
+  "packages/php/src/Internal/StatementState.php::Polyspec\\Orm\\Internal\\StatementState::slotOf": {
+    "exported": false,
+    "signature": "private static function slotOf(string|int $param): string|int"
   },
   "packages/php/src/Listen.php::Polyspec\\Orm\\Listen": {
     "exported": true,

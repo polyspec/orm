@@ -1,6 +1,7 @@
 /* The native connection factory and the value-function constructors of Polyspec\\Orm\\Orm. */
 #include "dbspec.h"
 #include "markdown_native.h"
+#include "context_closure.h"
 #include "Zend/zend_exceptions.h"
 #include "Zend/zend_interfaces.h"
 #include "Zend/zend_closures.h"
@@ -1257,17 +1258,7 @@ static bool orm_connect_sql(zend_string *dsn, zval *config, zval *out, bool list
         object_init(&context);
         zend_update_property_str(zend_standard_class_def, Z_OBJ(context), "dsn", sizeof("dsn") - 1, dsn);
         zend_update_property(zend_standard_class_def, Z_OBJ(context), "config", sizeof("config") - 1, config);
-        zend_internal_function *fn = pemalloc(sizeof(*fn), 1);
-        memset(fn, 0, sizeof(*fn));
-        fn->type = ZEND_INTERNAL_FUNCTION;
-        fn->fn_flags = ZEND_ACC_PUBLIC;
-        fn->scope = zend_standard_class_def;
-        fn->function_name = zend_string_init_interned("open", sizeof("open") - 1, 1);
-        fn->handler = orm_listener_open;
-        fn->num_args = 0;
-        fn->required_num_args = 0;
-        zend_create_fake_closure(&closure, (zend_function *)fn, zend_standard_class_def, zend_standard_class_def, &context);
-        pefree(fn, 1);
+        context_closure(&closure, "open", sizeof("open") - 1, orm_listener_open, &context);
         zval_ptr_dtor(&context);
         bool set = pdo_call(out, "setListener", &set_result, 1, &closure, NULL);
         zval_ptr_dtor(&closure);
@@ -1870,11 +1861,7 @@ ZEND_METHOD(Polyspec_Orm_MarkdownSession, statement)
         Z_PARAM_STR(sql) Z_PARAM_ARRAY(params) Z_PARAM_OPTIONAL Z_PARAM_ZVAL(result_ref)
     ZEND_PARSE_PARAMETERS_END();
     zval message;
-    array_init(&message);
-    add_assoc_string(&message, "op", "statement");
-    add_assoc_str(&message, "sql", zend_string_copy(sql));
-    Z_TRY_ADDREF_P(params);
-    add_assoc_zval(&message, "params", params);
+    markdown_statement_message(&message, sql, params);
     bool ok = markdown_session_call(ZEND_THIS, &message, return_value, result_ref);
     zval_ptr_dtor(&message);
     if (!ok) RETURN_THROWS();

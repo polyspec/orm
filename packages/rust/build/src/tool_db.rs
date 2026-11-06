@@ -378,24 +378,14 @@ macro_rules! fetch_cursor_result {
     }};
 }
 
-/// The plain result of a checked statement on the connection of each dialect.
-macro_rules! query_result_of {
-    ($conn:expr, $sql:ident, $params:ident, $budget:ident) => {
+/// The plain result of a checked statement on the connection of each dialect, its MySQL and PostgreSQL values read by the cells
+/// that the caller names: `cell` and `cell_pg` for a statement, `query_cell` and `query_cell_pg` for a read query, whose temporal
+/// values are grid text (INT-153).
+macro_rules! plain_result_of {
+    ($conn:expr, $sql:ident, $params:ident, $budget:ident, $mysql_cell:ident, $pg_cell:ident) => {
         match $conn {
-            Conn::MySql(c) => fetch_result!(c, $sql, $params, $budget, cell, QueryResult, mysql),
-            Conn::Postgres(c) => fetch_result!(c, $sql, $params, $budget, cell_pg, QueryResult, postgres),
-            Conn::Sqlite(c) => fetch_result!(c, $sql, $params, $budget, cell, QueryResult, sqlite),
-            Conn::Markdown(c) => markdown_result!(c, $sql, $params, $budget, markdown_cell, QueryResult),
-        }
-    };
-}
-
-/// The plain result of a read query on the connection of each dialect, its temporal values as grid text (INT-153).
-macro_rules! query_values_of {
-    ($conn:expr, $sql:ident, $params:ident, $budget:ident) => {
-        match $conn {
-            Conn::MySql(c) => fetch_result!(c, $sql, $params, $budget, query_cell, QueryResult, mysql),
-            Conn::Postgres(c) => fetch_result!(c, $sql, $params, $budget, query_cell_pg, QueryResult, postgres),
+            Conn::MySql(c) => fetch_result!(c, $sql, $params, $budget, $mysql_cell, QueryResult, mysql),
+            Conn::Postgres(c) => fetch_result!(c, $sql, $params, $budget, $pg_cell, QueryResult, postgres),
             Conn::Sqlite(c) => fetch_result!(c, $sql, $params, $budget, cell, QueryResult, sqlite),
             Conn::Markdown(c) => markdown_result!(c, $sql, $params, $budget, markdown_cell, QueryResult),
         }
@@ -559,7 +549,7 @@ impl Conn {
     /// Ordered prepared columns and bounded checked rows, including empty results.
     pub async fn query_result_bounded(&mut self, sql: &str, params: &[P], limits: QueryLimits) -> Result<QueryResult, sqlx::Error> {
         let (sql, mut budget) = self.bounded_query(sql, params, limits)?;
-        query_result_of!(self, sql, params, budget)
+        plain_result_of!(self, sql, params, budget, cell, cell_pg)
     }
 
     /// Reads converted plain values under the client-visible cell-byte budget used by catalogs. A PostgreSQL read with no
@@ -568,7 +558,7 @@ impl Conn {
         let (sql, mut budget) = self.single_statement(sql, params, || limits::ValueBudget::new(limits))?;
         match self {
             Conn::Postgres(c) if !has_params(params) => fetch_cursor_result!(c, sql, budget, query_cell_pg, QueryResult),
-            _ => query_values_of!(self, sql, params, budget),
+            _ => plain_result_of!(self, sql, params, budget, query_cell, query_cell_pg),
         }
     }
 

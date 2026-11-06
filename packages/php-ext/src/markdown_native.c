@@ -20,6 +20,7 @@
 #include "ext/standard/php_string.h"
 #include "dbspec.h"
 #include "markdown_native.h"
+#include "context_closure.h"
 #include <math.h>
 #include <string.h>
 
@@ -37,6 +38,29 @@ static zval *md_prop(zval *object, const char *name, zval *rv)
 static void md_set(zval *object, const char *name, zval *value)
 {
     zend_update_property(Z_OBJCE_P(object), Z_OBJ_P(object), name, strlen(name), value);
+}
+
+/* Sets the fetch mode of statement to mode and its arguments, as setFetchMode and query name them. */
+static void md_set_fetch_mode(zval *statement, zend_long mode, zval *args, uint32_t argc)
+{
+    zval modes;
+    array_init_size(&modes, argc + 1);
+    add_next_index_long(&modes, mode);
+    for (uint32_t i = 0; i < argc; i++) {
+        Z_TRY_ADDREF(args[i]);
+        add_next_index_zval(&modes, &args[i]);
+    }
+    md_set(statement, "fetchMode", &modes);
+    zval_ptr_dtor(&modes);
+}
+
+void markdown_statement_message(zval *message, zend_string *sql, zval *params)
+{
+    array_init(message);
+    add_assoc_string(message, "op", "statement");
+    add_assoc_str(message, "sql", zend_string_copy(sql));
+    Z_TRY_ADDREF_P(params);
+    add_assoc_zval(message, "params", params);
 }
 
 static void md_set_bool(zval *object, const char *name, bool value)
@@ -245,15 +269,7 @@ static bool md_dial_closure(zval *dsn, zval *out)
     zval context;
     object_init(&context);
     zend_update_property(zend_standard_class_def, Z_OBJ(context), "dsn", sizeof("dsn") - 1, dsn);
-    zend_internal_function *fn = pemalloc(sizeof(*fn), 1);
-    memset(fn, 0, sizeof(*fn));
-    fn->type = ZEND_INTERNAL_FUNCTION;
-    fn->fn_flags = ZEND_ACC_PUBLIC;
-    fn->scope = zend_standard_class_def;
-    fn->function_name = zend_string_init_interned("dial", sizeof("dial") - 1, 1);
-    fn->handler = md_dial_handler;
-    zend_create_fake_closure(out, (zend_function *) fn, zend_standard_class_def, zend_standard_class_def, &context);
-    pefree(fn, 1);
+    context_closure(out, "dial", sizeof("dial") - 1, md_dial_handler, &context);
     zval_ptr_dtor(&context);
     return Z_TYPE_P(out) == IS_OBJECT;
 }
@@ -366,11 +382,7 @@ static bool md_run(zval *self, zend_string *sql, zval *params, zval *statement, 
         }
     }
     zval message;
-    array_init(&message);
-    add_assoc_string(&message, "op", "statement");
-    add_assoc_str(&message, "sql", zend_string_copy(sql));
-    Z_TRY_ADDREF_P(params);
-    add_assoc_zval(&message, "params", params);
+    markdown_statement_message(&message, sql, params);
     bool ok = md_send(self, &message, answer, statement);
     zval_ptr_dtor(&message);
     if (control == 2) md_set_bool(self, "transaction", false);
@@ -609,17 +621,7 @@ ZEND_METHOD(Polyspec_Orm_Internal_MarkdownPdoAdapter, query)
     zend_call_method_with_0_params(Z_OBJ_P(return_value), md_statement_ce, NULL, "execute", &ignored);
     zval_ptr_dtor(&ignored);
     if (EG(exception) != NULL) RETURN_THROWS();
-    if (!mode_null) {
-        zval modes;
-        array_init_size(&modes, argc + 1);
-        add_next_index_long(&modes, mode);
-        for (uint32_t i = 0; i < argc; i++) {
-            Z_TRY_ADDREF(args[i]);
-            add_next_index_zval(&modes, &args[i]);
-        }
-        md_set(return_value, "fetchMode", &modes);
-        zval_ptr_dtor(&modes);
-    }
+    if (!mode_null) md_set_fetch_mode(return_value, mode, args, argc);
 }
 
 ZEND_METHOD(Polyspec_Orm_Internal_MarkdownPdoAdapter, quote)
@@ -1376,15 +1378,7 @@ ZEND_METHOD(Polyspec_Orm_Internal_MarkdownStatementAdapter, setFetchMode)
     zval *args = NULL;
     uint32_t argc = 0;
     ZEND_PARSE_PARAMETERS_START(1, -1) Z_PARAM_LONG(mode) Z_PARAM_VARIADIC('*', args, argc) ZEND_PARSE_PARAMETERS_END();
-    zval modes;
-    array_init_size(&modes, argc + 1);
-    add_next_index_long(&modes, mode);
-    for (uint32_t i = 0; i < argc; i++) {
-        Z_TRY_ADDREF(args[i]);
-        add_next_index_zval(&modes, &args[i]);
-    }
-    md_set(ZEND_THIS, "fetchMode", &modes);
-    zval_ptr_dtor(&modes);
+    md_set_fetch_mode(ZEND_THIS, mode, args, argc);
     RETURN_TRUE;
 }
 

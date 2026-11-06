@@ -27,6 +27,8 @@ use Polyspec\Orm\OrmException;
  */
 final class MarkdownPdoAdapter extends PDO
 {
+    use QueriesByPrepare;
+
     private array $errorInfoValue = ['00000', null, null];
     private bool $transaction = false;
     private int $lastInsertId = 0;
@@ -226,16 +228,6 @@ final class MarkdownPdoAdapter extends PDO
     public function prepare(string $query, array $options = []): PDOStatement|false
     {
         return new MarkdownStatementAdapter($this, $query);
-    }
-
-    public function query(string $query, ?int $fetchMode = null, mixed ...$fetchModeArgs): PDOStatement|false
-    {
-        $statement = $this->prepare($query);
-        $statement->execute();
-        if ($fetchMode !== null) {
-            $statement->setFetchMode($fetchMode, ...$fetchModeArgs);
-        }
-        return $statement;
     }
 
     public function quote(string $string, int $type = PDO::PARAM_STR): string|false

@@ -328,6 +328,16 @@ impl Pool {
             Pool::Markdown(p) => p.stats().idle as usize,
         }
     }
+
+    /// Closes the connections of the pool: those in use close as they come back.
+    pub async fn close(&self) {
+        match self {
+            Pool::MySql(pool) => pool.close().await,
+            Pool::Postgres(pool) => pool.close().await,
+            Pool::Sqlite(pool) => pool.close().await,
+            Pool::Markdown(pool) => pool.close(),
+        }
+    }
 }
 
 static NEXT_DB: AtomicU64 = AtomicU64::new(1);
@@ -766,12 +776,7 @@ impl Db {
         self.inner.closed.store(true, Ordering::Release);
         self.inner.plans.lock().unwrap().clear();
         self.inner.plan_order.lock().unwrap().clear();
-        match &self.inner.pool {
-            Pool::MySql(pool) => pool.close().await,
-            Pool::Postgres(pool) => pool.close().await,
-            Pool::Sqlite(pool) => pool.close().await,
-            Pool::Markdown(pool) => pool.close(),
-        }
+        self.inner.pool.close().await;
     }
 
     /// Plans (or fetches from cache) the statements of the request's shape.
