@@ -61,7 +61,10 @@ def case_corpus(set_path: Path | None):
         subprocess.run(
             [binary, "install", str(directory)], check=True, capture_output=True
         )
-        # A corpus of a test is disposable, as a test database server is: a commit does not wait for the disk.
+        # A corpus of a test is disposable, as a test database server is: a commit does not wait for the disk. The events
+        # that serve writes to its stderr go to a file beside the corpus, so they do not split the result line of a
+        # test, and an assertion of this block states them.
+        stderr = open(Path(parent) / "serve.stderr", "w+", encoding="utf-8")
         server = subprocess.Popen(
             [
                 binary,
@@ -75,14 +78,16 @@ def case_corpus(set_path: Path | None):
                 "600000",
             ],
             stdout=subprocess.PIPE,
+            stderr=stderr,
             text=True,
         )
         try:
             line = server.stdout.readline().rstrip("\n")
             match = LISTENING.match(line)
             if match is None or match.group(2) != CORPUS:
+                stderr.seek(0)
                 raise AssertionError(
-                    f"flowmark serve printed {line!r}, not its listening line"
+                    f"flowmark serve printed {line!r}, not its listening line; stderr:\n{stderr.read()}"
                 )
             token = json.loads(
                 (directory / ".flowmark" / "server.json").read_text(encoding="utf-8")
@@ -95,3 +100,4 @@ def case_corpus(set_path: Path | None):
             server.send_signal(signal.SIGINT)
             server.wait()
             server.stdout.close()
+            stderr.close()
