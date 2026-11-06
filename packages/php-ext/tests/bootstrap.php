@@ -165,6 +165,7 @@ require_once dirname(__DIR__, 2) . '/php/tests/CollectionRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/BindMessagesRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/BindMessagesDynamicRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/BindMessagesUntypedNullRecipeTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/MarkdownSessionRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/MarkdownTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ModelMethodsTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ModelTest.php';

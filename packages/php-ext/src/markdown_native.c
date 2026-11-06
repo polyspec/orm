@@ -223,6 +223,21 @@ static bool md_simple(zval *self, const char *op, zval *answer, zval *statement)
 
 static bool md_statement_drain(zval *statement);
 
+/* Sends close for the rows that the session of self holds (PRT-66). A close that the server refuses leaves the rows to the
+ * next statement, which ends them, so the session stays usable; a close whose connection broke has broken the session, which
+ * the next statement outside a transaction dials again. */
+static void md_end_rows(zval *self, zval *statement)
+{
+    zval ignored;
+    if (md_simple(self, "close", &ignored, statement)) {
+        zval_ptr_dtor(&ignored);
+        return;
+    }
+    if (EG(exception) != NULL) zend_clear_exception();
+    md_no_error(self);
+    if (statement != NULL) md_no_error(statement);
+}
+
 /* Opens a new session of the DSN dsn (address, corpus, token and the _pragma pairs) into out, and states its _pragma
  * statements on it, as on a SQLite DSN. */
 static bool md_dial(zval *dsn, zval *out)
@@ -345,11 +360,7 @@ static bool md_run(zval *self, zend_string *sql, zval *params, zval *statement, 
             /* No one can read the rows of a statement that is gone, so the session ends them (PRT-66). */
             md_set_null(self, "active");
             zval session_rv, *current = md_prop(self, "session", &session_rv);
-            if (md_session_open(current)) {
-                zval ignored;
-                if (!md_simple(self, "close", &ignored, NULL)) return false;
-                zval_ptr_dtor(&ignored);
-            }
+            if (md_session_open(current)) md_end_rows(self, NULL);
         } else if (statement == NULL || Z_OBJ(held) != Z_OBJ_P(statement)) {
             bool drained = md_statement_drain(&held);
             zval_ptr_dtor(&held);
@@ -444,9 +455,7 @@ static bool md_close_rows(zval *self, zval *statement)
 {
     if (!md_holds(self, statement)) return true;
     md_set_null(self, "active");
-    zval ignored;
-    if (!md_simple(self, "close", &ignored, statement)) return false;
-    zval_ptr_dtor(&ignored);
+    md_end_rows(self, statement);
     return true;
 }
 
@@ -1187,6 +1196,18 @@ static bool md_next_row(zval *self, zval *values)
             zval_ptr_dtor(&row);
             zval_ptr_dtor(values);
             ZVAL_FALSE(values);
+            /* A row that the read refuses stops it: close ends the rows that follow, and the refusal is the error whatever
+             * the close answers (PRT-66). */
+            zend_object *refusal = EG(exception);
+            EG(exception) = NULL;
+            zval more_rv, *more = md_prop(self, "more", &more_rv);
+            if (more != NULL && Z_TYPE_P(more) == IS_TRUE) {
+                md_set_bool(self, "more", false);
+                zval pdo_rv, *pdo = md_prop(self, "pdo", &pdo_rv);
+                md_close_rows(pdo, self);
+            }
+            if (EG(exception) != NULL) zend_clear_exception();
+            EG(exception) = refusal;
             return false;
         }
         add_next_index_zval(values, &value);
@@ -1273,13 +1294,14 @@ ZEND_METHOD(Polyspec_Orm_Internal_MarkdownStatementAdapter, fetchAll)
     array_init(return_value);
     while (1) {
         zval values;
-        if (!md_next_row(ZEND_THIS, &values)) { zval_ptr_dtor(return_value); RETURN_THROWS(); }
+        if (!md_next_row(ZEND_THIS, &values)) { zval_ptr_dtor(return_value); ZVAL_UNDEF(return_value); RETURN_THROWS(); }
         if (Z_TYPE(values) == IS_FALSE) return;
         if (mode == PDO_FETCH_KEY_PAIR) {
             zval *key = zend_hash_index_find(Z_ARRVAL(values), 0), *value = zend_hash_index_find(Z_ARRVAL(values), 1);
             if (key == NULL || value == NULL) {
                 zval_ptr_dtor(&values);
                 zval_ptr_dtor(return_value);
+                ZVAL_UNDEF(return_value);
                 db_throw_orm("INTERNAL", "PDO::FETCH_KEY_PAIR reads a result of two columns");
                 RETURN_THROWS();
             }
@@ -1292,7 +1314,7 @@ ZEND_METHOD(Polyspec_Orm_Internal_MarkdownStatementAdapter, fetchAll)
         zval row;
         bool ok = md_shape(ZEND_THIS, &values, mode, column, &row);
         zval_ptr_dtor(&values);
-        if (!ok) { zval_ptr_dtor(return_value); RETURN_THROWS(); }
+        if (!ok) { zval_ptr_dtor(return_value); ZVAL_UNDEF(return_value); RETURN_THROWS(); }
         add_next_index_zval(return_value, &row);
     }
 }

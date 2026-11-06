@@ -111,8 +111,15 @@ final class MarkdownStatementAdapter extends PDOStatement
         $raw = $this->rows[$this->next++];
         $this->kinds = $this->rowKinds($raw);
         $values = [];
-        foreach ($raw as $i => $cell) {
-            $values[] = $this->cell($cell, $this->columns[$i]['type'] ?? '');
+        try {
+            foreach ($raw as $i => $cell) {
+                $values[] = $this->cell($cell, $this->columns[$i]['type'] ?? '');
+            }
+        } catch (MarkdownError $error) {
+            // A row that the read refuses stops it: close ends the rows that follow, and the refusal is the error
+            // whatever the close answers (PRT-66).
+            $this->closeCursor();
+            throw $error;
         }
         return $values;
     }

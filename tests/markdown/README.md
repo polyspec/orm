@@ -10,6 +10,7 @@ the result of each case with its `expect`.
 | file | role |
 |---|---|
 | `cases.json` | the case IDs in their order and the expected result of each, the only place a case is declared |
+| `session.json` | the recipe of the messages of a session (PRT-66): each step runs on a listener that answers from its replies, with no database (`make markdown-session-check`, FCV-4 `markdown.session`) |
 | `corpus/dbspec/dbspec-set.json`, `corpus/dbspec/conformance.dbs` | the catalog set and its corpus: `people` (a `document` table with `key_prefix`, a soft delete column, an update time column and a unique key), `tasks` (with a foreign key to `people`), `logs` (with an `identity` key) and `codec_rows` (with a base64 codec and an explicit-select payload) |
 | `catalogs/aes.dbs`, `catalogs/audit.dbs` | catalogs of an `aes` column and of an `audit` setting, which `install_aes` and `install_audit` install as the one document of the set of a new corpus of their own, answering `{"error": null}`, or the code that `flowmark install` prints, `{"error": <code>}` |
 | `flowmark.version` | the Go module version of `github.com/polyspec/flowmark/packages/go` whose `flowmark` the cases run on |

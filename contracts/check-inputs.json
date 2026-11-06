@@ -1766,6 +1766,101 @@
         "packages/php/tests/RecipeCases.php"
       ]
     },
+    "markdown-session-check/go": {
+      "scope": "owner",
+      "needs": [
+        "go"
+      ],
+      "inputs": [
+        "tests/markdown/session.json",
+        "tests/bind/dbspec-set.json",
+        "tests/bind/slots.dbs",
+        "packages/go/bindmessages/markdown_session_test.go",
+        "packages/go/internal/recipe/recipe.go",
+        "packages/go/orm/markdown.go",
+        "packages/go/orm/markdown_sql.go"
+      ]
+    },
+    "markdown-session-check/rust": {
+      "scope": "owner",
+      "needs": [
+        "rust"
+      ],
+      "inputs": [
+        "tests/markdown/session.json",
+        "tests/bind/dbspec-set.json",
+        "tests/bind/slots.dbs",
+        "packages/rust/tests/tests/markdown_session.rs",
+        "packages/rust/tests/src/recipe.rs",
+        "packages/rust/tests/Cargo.toml",
+        "packages/rust/orm/src/markdown.rs"
+      ]
+    },
+    "markdown-session-check/typescript": {
+      "scope": "owner",
+      "needs": [
+        "node-modules"
+      ],
+      "inputs": [
+        "tests/markdown/session.json",
+        "tests/bind/dbspec-set.json",
+        "tests/bind/slots.dbs",
+        "packages/ts/tests/markdown_session.mjs",
+        "packages/ts/tests/recipe.mjs",
+        "packages/ts/src/markdown.ts"
+      ]
+    },
+    "markdown-session-check/python": {
+      "scope": "owner",
+      "needs": [
+        "python"
+      ],
+      "inputs": [
+        "tests/markdown/session.json",
+        "tests/bind/dbspec-set.json",
+        "tests/bind/slots.dbs",
+        "packages/python/tests/test_markdown_session_none.py",
+        "packages/python/tests/recipe.py",
+        "packages/python/src/polyspec/orm/markdown.py"
+      ]
+    },
+    "markdown-session-check/php": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer"
+      ],
+      "inputs": [
+        "tests/markdown/session.json",
+        "tests/bind/dbspec-set.json",
+        "tests/bind/slots.dbs",
+        "packages/php/tests/MarkdownSessionRecipeTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php/tests/RecipeCases.php",
+        "packages/php/tests/markdown_test_server.php",
+        "packages/php/src/Internal/MarkdownPdoAdapter.php",
+        "packages/php/src/Internal/MarkdownStatementAdapter.php"
+      ]
+    },
+    "markdown-session-check/php-extension": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "tests/markdown/session.json",
+        "tests/bind/dbspec-set.json",
+        "tests/bind/slots.dbs",
+        "packages/php-ext/tests/MarkdownSessionRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/bootstrap.php",
+        "packages/php/tests/MarkdownSessionRecipeTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php/tests/RecipeCases.php",
+        "packages/php-ext/src/markdown_native.c"
+      ]
+    },
     "connection-pool-check/go": {
       "scope": "owner",
       "needs": [

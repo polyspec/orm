@@ -1,5 +1,5 @@
 <!-- doc-id: tests-markdown-readme -->
-<!-- source-sha256: fd70bee8879003667b1676759364377d6bd0c9637734b6c15b8797edf20db27b -->
+<!-- source-sha256: df0c7062a320c3b0ad9ce7e70f74ffb011e0710d1cf75e17effeb5e27a6e9570 -->
 # Markdown corpus 적합성
 
 markdown 연결은 flowmark server가 corpus에서 문장에 답하는 SQLite 연결이다([dialect](../../docs/spec/dialects.ko.md)).
@@ -10,6 +10,7 @@ flowmark server가 제공하는 corpus 하나에서 `cases.json`의 case를 실�
 | 파일 | 역할 |
 |---|---|
 | `cases.json` | case ID의 순서와 각 case의 기대 결과. case를 선언하는 유일한 곳이다 |
+| `session.json` | session 메시지의 recipe(PRT-66). 각 step은 database 없이 replies로 답하는 listener에서 실행된다(`make markdown-session-check`, FCV-4 `markdown.session`) |
 | `corpus/dbspec/dbspec-set.json`, `corpus/dbspec/conformance.dbs` | catalog set과 corpus: `people`(`key_prefix`, soft delete column, 수정 시각 column, unique key를 가진 `document` table), `tasks`(`people`로 가는 foreign key), `logs`(`identity` key), `codec_rows`(base64 codec과 명시 선택 payload) |
 | `catalogs/aes.dbs`, `catalogs/audit.dbs` | `aes` column과 `audit` setting의 catalog이며, `install_aes`와 `install_audit`가 각자의 새 corpus에서 set의 유일한 document로 install하고 `{"error": null}`, 또는 `flowmark install`이 출력한 code를 `{"error": <code>}`로 답한다 |
 | `flowmark.version` | case를 실행하는 `flowmark`의 `github.com/polyspec/flowmark/packages/go` Go module 판 |

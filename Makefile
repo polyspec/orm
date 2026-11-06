@@ -1709,6 +1709,38 @@ bind-message-check/typescript: typescript-current
 	$(READ_TYPESCRIPT)
 	$(NODE) --conditions=orm-test packages/ts/tests/bind_messages.mjs
 
+# markdown-session-check runs the session recipe, tests/markdown/session.json, in each runtime (FCV-3, FCV-4): each part runs the
+# entry of its runtime that calls the recipe helper, without a database. Each markdown.session step runs reads of the bind fixture
+# model on a listener that answers from its replies and checks the messages it received (PRT-66), which no database shows.
+.PHONY: markdown-session-check markdown-session-check/go markdown-session-check/rust markdown-session-check/typescript markdown-session-check/python markdown-session-check/php markdown-session-check/php-extension
+markdown-session-check: markdown-session-check/go markdown-session-check/rust markdown-session-check/typescript markdown-session-check/python markdown-session-check/php markdown-session-check/php-extension
+markdown-session-check/go:
+	$(GO_TEST) ./packages/go/bindmessages -run '^TestRecipeMarkdownSessionNone$$' -count=1
+markdown-session-check/rust: lease-tool
+	cd packages/rust && $(CARGO_TEST) markdown-session-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test markdown_session
+markdown-session-check/python: python-venv-check bind-python-models
+	ORM_PYTHON_BIND_MODELS=$(BIND_PY_MODELS) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_markdown_session_none
+markdown-session-check/php: php-vendor-check php-models
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/MarkdownSessionRecipeTest.php
+markdown-session-check/php-extension: php-vendor-check php-models build-php-ext
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/MarkdownSessionRecipeTestExtensionTest.php
+markdown-session-check/typescript: typescript-current
+	$(READ_TYPESCRIPT)
+	$(NODE) --conditions=orm-test packages/ts/tests/markdown_session.mjs
+
+CHECK_TARGETS += markdown-session-check/go
+CI_TARGETS_markdown_go += markdown-session-check/go
+CHECK_TARGETS += markdown-session-check/rust
+CI_TARGETS_markdown_rust += markdown-session-check/rust
+CHECK_TARGETS += markdown-session-check/typescript
+CI_TARGETS_markdown_typescript += markdown-session-check/typescript
+CHECK_TARGETS += markdown-session-check/python
+CI_TARGETS_markdown_python += markdown-session-check/python
+CHECK_TARGETS += markdown-session-check/php
+CI_TARGETS_markdown_php += markdown-session-check/php
+CHECK_TARGETS += markdown-session-check/php-extension
+CI_TARGETS_markdown_php_extension += markdown-session-check/php-extension
+
 # BIND_PY_MODELS is the model directory of the slot fixture tests/bind/dbspec-set.json that the Python recipe helper imports (FCV-4,
 # markdown.send). The venv orm-gen writes it into a temporary directory and renames it into place, as conformance-python-models does.
 BIND_PY_MODELS = $(abspath .runtime/run)/bind-python-models

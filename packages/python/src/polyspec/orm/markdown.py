@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import base64
+import contextlib
 import json
 import math
 import re
@@ -189,12 +190,29 @@ class MarkdownSession:
                 "params": [statement_param(value) for value in values],
             }
         )
-        return _read_answer("statement", answer, None, text)
+        return self._read_rows("statement", answer, None, text)
 
     def fetch(self, columns: list, text=None) -> dict:
         """The rows that go on after an answer whose more is true, which the server holds until a fetch reads the last
         of them (PRT-66)."""
-        return _read_answer("fetch", self.call({"op": "fetch"}), columns, text)
+        return self._read_rows("fetch", self.call({"op": "fetch"}), columns, text)
+
+    def _read_rows(self, what: str, answer: dict, columns: list | None, text) -> dict:
+        """Reads an answer. A row that the read refuses stops it: when more rows follow, close ends them, and the
+        refusal is the error whatever the close answers (PRT-66)."""
+        try:
+            return _read_answer(what, answer, columns, text)
+        except OrmError:
+            if answer.get("more") is True:
+                self.close_rows()
+            raise
+
+    def close_rows(self) -> None:
+        """Ends the rows that the session holds (PRT-66). A close that the server refuses leaves the rows to the next
+        statement, which ends them, so the session stays usable; a close whose connection broke has closed the
+        session in call."""
+        with contextlib.suppress(OrmError):
+            self.call({"op": "close"})
 
 
 def dial_markdown(dsn: MarkdownDsn) -> MarkdownSession:
@@ -376,7 +394,7 @@ class MarkdownCursor:
         answer, self._answer = self._answer, None
         if answer is not None and answer["more"]:
             answer["more"] = False
-            self._connection.session.call({"op": "close"})
+            self._connection.session.close_rows()
 
     def close(self) -> None:
         self._end()

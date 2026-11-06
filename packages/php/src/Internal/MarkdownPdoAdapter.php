@@ -84,9 +84,7 @@ final class MarkdownPdoAdapter extends PDO
             if ($held === null) {
                 // No one can read the rows of a statement that is gone, so the session ends them (PRT-66).
                 $this->active = null;
-                $this->call(function (?int &$code): void {
-                    $this->session->closeRows($code);
-                });
+                $this->endRows();
             } elseif ($held !== $statement) {
                 $held->drain();
             }
@@ -152,9 +150,23 @@ final class MarkdownPdoAdapter extends PDO
             return;
         }
         $this->active = null;
-        $this->call(function (?int &$code): void {
-            $this->session->closeRows($code);
-        });
+        $this->endRows();
+    }
+
+    /**
+     * Sends close for the rows that the session holds (PRT-66). A close that the server refuses leaves the rows to the
+     * next statement, which ends them, so the session stays usable; a close whose connection broke has broken the
+     * session, which the next statement outside a transaction dials again.
+     */
+    private function endRows(): void
+    {
+        try {
+            $this->call(function (?int &$code): void {
+                $this->session->closeRows($code);
+            });
+        } catch (MarkdownError) {
+            $this->errorInfoValue = ['00000', null, null];
+        }
     }
 
     /**

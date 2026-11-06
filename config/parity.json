@@ -30607,6 +30607,45 @@
       ]
     },
     {
+      "id": "markdown-session",
+      "kind": "suite",
+      "requirements": [
+        "PRT-66"
+      ],
+      "file": "tests/markdown/session.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/bindmessages/markdown_session_test.go",
+          "symbol": "TestRecipeMarkdownSessionNone"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/MarkdownSessionRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\MarkdownSessionRecipeTest::testNone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/MarkdownSessionRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\MarkdownSessionRecipeTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/markdown_session.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_markdown_session_none.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/markdown_session.rs",
+          "symbol": "markdown_session"
+        }
+      ]
+    },
+    {
       "id": "markdown-message-dynamic-vectors",
       "kind": "suite",
       "requirements": [

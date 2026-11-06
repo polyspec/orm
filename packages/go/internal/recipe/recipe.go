@@ -155,6 +155,14 @@ type MarkdownSend func(t *testing.T, column, operator string, params []json.RawM
 // when a message reached the listener. It is supplied by the test package that owns the listener and the generated bind models.
 type MarkdownBuilder func(t *testing.T, calls []string) (code, message string)
 
+// MarkdownRead is the read of the markdown.session calls read and read_twice: Connect opens a connection with the generated
+// bind models, and Read runs one public query of the bind fixture model on it. It is supplied by the test package that owns
+// the generated bind models.
+type MarkdownRead struct {
+	Connect func(dsn string, cfg orm.Config) (*orm.DB, error)
+	Read    func(db *orm.DB) error
+}
+
 // Option configures Run.
 type Option func(*options)
 
@@ -169,6 +177,12 @@ type options struct {
 	markdownSend    MarkdownSend
 	modelAssign     ModelAssign
 	markdownBuilder MarkdownBuilder
+	markdownRead    MarkdownRead
+}
+
+// WithMarkdownRead supplies the read of the markdown.session calls read and read_twice.
+func WithMarkdownRead(read MarkdownRead) Option {
+	return func(o *options) { o.markdownRead = read }
 }
 
 // WithMarkdownBuilder supplies the function that runs each markdown.builder step of a recipe without a database.
@@ -373,9 +387,10 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 	// markdown.connect (FCV-4, PRT-64): Connect on a markdown DSN, whose listener answers the first line with the reply.
 	case "markdown.connect":
 		r.err = markdownConnect(s)
-	// markdown.session (FCV-4, PRT-64): the control messages of two transactions on a listener that answers from replies.
+	// markdown.session (FCV-4, PRT-64, PRT-66): the messages of the public calls of one connection on a listener that answers
+	// from replies.
 	case "markdown.session":
-		r.err = markdownSession(s)
+		r.err = markdownSession(s, o.markdownRead)
 	default:
 		return fmt.Errorf("OP_UNKNOWN %s", s.k("op").Op)
 	}
@@ -463,10 +478,19 @@ func markdownConnect(s step) (err error) {
 	return connected
 }
 
-// markdownSession runs the markdown.session op: on a listener that answers each line with the next of the replies, a read-only
-// transaction that holds a nested one, then a transaction. It returns the error of the last one, or an error with no code when
-// the listener did not receive the messages of the step.
-func markdownSession(s step) (err error) {
+// markdownSession runs the markdown.session op: on a listener that answers each line with the next of the replies, the calls
+// of the step on one connection. transactions runs a read-only transaction that holds a nested one, then a transaction, and
+// returns the error of the last one; read runs one read of the bind fixture model, and read_twice runs two on the same
+// connection, the second of which must succeed, and both return the error of the first read. It returns an error with no code
+// when the listener did not receive the messages of the step.
+func markdownSession(s step, read MarkdownRead) (err error) {
+	call := s.k("call").Call
+	if call != "transactions" && call != "read" && call != "read_twice" {
+		return fmt.Errorf("markdown.session has no call %q", call)
+	}
+	if call != "transactions" && (read.Connect == nil || read.Read == nil) {
+		return fmt.Errorf("markdown.session %s needs WithMarkdownRead", call)
+	}
 	var got []string
 	listener, err := listenOnce(func(conn net.Conn) error {
 		lines := bufio.NewScanner(conn)
@@ -484,18 +508,38 @@ func markdownSession(s step) (err error) {
 		return err
 	}
 	defer func() { err = closeFirst(err, listener.Close()) }()
-	db, err := orm.Connect(fmt.Sprintf("markdown://127.0.0.1:%d/%s?token=%s", listener.port, s.k("corpus").Corpus, s.k("token").Token), orm.Config{})
-	if err != nil {
-		return fmt.Errorf("connect: %s", err.Error())
-	}
-	if err := db.Transaction(func() error {
-		return db.Transaction(func() error { return nil })
-	}, orm.ReadOnly()); err != nil {
-		return fmt.Errorf("the read-only transaction: %s", err.Error())
-	}
-	failure := db.Transaction(func() error { return nil })
-	if err := db.Close(); err != nil {
-		return fmt.Errorf("close: %s", err.Error())
+	dsn := fmt.Sprintf("markdown://127.0.0.1:%d/%s?token=%s", listener.port, s.k("corpus").Corpus, s.k("token").Token)
+	var failure error
+	switch call {
+	case "transactions":
+		db, err := orm.Connect(dsn, orm.Config{})
+		if err != nil {
+			return fmt.Errorf("connect: %s", err.Error())
+		}
+		if err := db.Transaction(func() error {
+			return db.Transaction(func() error { return nil })
+		}, orm.ReadOnly()); err != nil {
+			return fmt.Errorf("the read-only transaction: %s", err.Error())
+		}
+		failure = db.Transaction(func() error { return nil })
+		if err := db.Close(); err != nil {
+			return fmt.Errorf("close: %s", err.Error())
+		}
+	default:
+		// One pooled connection, so the second read runs on the session of the first.
+		db, err := read.Connect(dsn, orm.Config{PoolSize: 1})
+		if err != nil {
+			return fmt.Errorf("connect: %s", err.Error())
+		}
+		failure = read.Read(db)
+		if call == "read_twice" {
+			if err := read.Read(db); err != nil {
+				return fmt.Errorf("the second read: %s", err.Error())
+			}
+		}
+		if err := db.Close(); err != nil {
+			return fmt.Errorf("close: %s", err.Error())
+		}
 	}
 	if err := <-listener.served; err != nil {
 		return err

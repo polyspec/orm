@@ -886,27 +886,48 @@ final class Recipe
     }
 
     /**
-     * The markdown.session op (FCV-4, PRT-64): on a listener that answers each line with the next of the replies of the
-     * step, a read-only transaction that holds a nested one, then a transaction, whose error is compared with the
-     * expect.
+     * The markdown.session op (FCV-4, PRT-64, PRT-66): on a listener that answers each line with the next of the replies
+     * of the step, the calls of the step on one connection, whose error is compared with the expect. transactions runs a
+     * read-only transaction that holds a nested one, then a transaction, and compares the error of the last one; read
+     * runs one read of the bind fixture model, and read_twice runs two on the same connection, the second of which must
+     * succeed, and both compare the error of the first read.
      */
     private static function markdownSessionStep(RecipeStep $step, string $database): void
     {
+        $call = $step['call'];
+        if (!in_array($call, ['transactions', 'read', 'read_twice'], true)) {
+            Assert::fail("markdown.session has no call $call");
+        }
         $server = \Polyspec\Orm\Tests\start_markdown_test_server($step['replies']);
         $port = parse_url($server[2], PHP_URL_PORT);
-        $db = Orm::connect("markdown://127.0.0.1:$port/{$step['corpus']}?token={$step['token']}", new Config());
+        $dsn = "markdown://127.0.0.1:$port/{$step['corpus']}?token={$step['token']}";
         $code = null;
         $message = '';
-        $empty = static function (): void {
-        };
-        $db->transaction(static function () use ($db, $empty): void {
-            $db->transaction($empty);
-        }, readOnly: true);
-        try {
-            $db->transaction($empty);
-        } catch (OrmException $error) {
-            $code = $error->code_;
-            $message = $error->getMessage();
+        if ($call === 'transactions') {
+            $db = Orm::connect($dsn, new Config());
+            $empty = static function (): void {
+            };
+            $db->transaction(static function () use ($db, $empty): void {
+                $db->transaction($empty);
+            }, readOnly: true);
+            try {
+                $db->transaction($empty);
+            } catch (OrmException $error) {
+                $code = $error->code_;
+                $message = $error->getMessage();
+            }
+        } else {
+            self::loadBindModels();
+            $db = \Polyspec\Orm\Tests\BindModel\connect($dsn, new Config());
+            try {
+                (new \Polyspec\Orm\Tests\BindModel\Slots())->connect($db)->gets();
+            } catch (OrmException $error) {
+                $code = $error->code_;
+                $message = $error->getMessage();
+            }
+            if ($call === 'read_twice') {
+                (new \Polyspec\Orm\Tests\BindModel\Slots())->connect($db)->gets();
+            }
         }
         $db->close();
         Assert::assertSame(

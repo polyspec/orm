@@ -175,9 +175,13 @@ async function checkMarkdownConnect(step, database) {
   checkMarkdownFailure(received, [step.received], failure, expect);
 }
 
-// checkMarkdownSession runs the markdown.session op (FCV-4, PRT-64): on a listener that answers each line with the next of the replies
-// of the step, a read-only transaction that holds a nested one, then a transaction, whose error is compared with the expect.
+// checkMarkdownSession runs the markdown.session op (FCV-4, PRT-64, PRT-66): on a listener that answers each line with the next of the
+// replies of the step, the calls of the step on one connection, whose error is compared with the expect. transactions runs a read-only
+// transaction that holds a nested one, then a transaction, and compares the error of the last one; read runs one read of the bind
+// fixture model, and read_twice runs two on the same connection, the second of which must succeed, and both compare the error of the
+// first read.
 async function checkMarkdownSession(step, database) {
+  if (!['transactions', 'read', 'read_twice'].includes(step.call)) throw new Error(`markdown.session has no call ${step.call}`);
   const received = [];
   const server = await listenMarkdownTestServer(createServer(socket => {
     createInterface({ input: socket }).on('line', line => {
@@ -187,13 +191,28 @@ async function checkMarkdownSession(step, database) {
     socket.on('error', () => {});
   }));
   const expect = step.expect[dialectKey(database, step.expect)];
-  const db = await Db.connect(`markdown://127.0.0.1:${new URL(server.dsn).port}/${step.corpus}?token=${step.token}`);
+  const dsn = `markdown://127.0.0.1:${new URL(server.dsn).port}/${step.corpus}?token=${step.token}`;
   let failure;
   try {
-    await db.transaction(() => db.transaction(() => undefined), { readOnly: true });
-    await db.transaction(() => undefined).catch(error => { failure = error; });
+    if (step.call === 'transactions') {
+      const db = await Db.connect(dsn);
+      try {
+        await db.transaction(() => db.transaction(() => undefined), { readOnly: true });
+        await db.transaction(() => undefined).catch(error => { failure = error; });
+      } finally {
+        await db.close();
+      }
+    } else {
+      // One pooled connection, so the second read runs on the session of the first.
+      const db = await connectSlots(dsn, { poolSize: 1 });
+      try {
+        await new Slots().connect(db).gets().catch(error => { failure = error; });
+        if (step.call === 'read_twice') await new Slots().connect(db).gets();
+      } finally {
+        await db.close();
+      }
+    }
   } finally {
-    await db.close();
     await server.close();
   }
   checkMarkdownFailure(received, step.messages, failure, expect);

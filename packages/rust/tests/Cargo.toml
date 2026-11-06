@@ -37,6 +37,12 @@ name = "bind_messages"
 path = "tests/bind_messages.rs"
 harness = false
 
+# Each case of the session recipe, tests/markdown/session.json, is the trial markdown_session::<case id> (FCV-3, FCV-4).
+[[test]]
+name = "markdown_session"
+path = "tests/markdown_session.rs"
+harness = false
+
 # Each case of the codec recipe, tests/codec/codec.json, is the trial codec_none::<case id> (FCV-3).
 [[test]]
 name = "codec_none"

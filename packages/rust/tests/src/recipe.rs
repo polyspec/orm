@@ -329,10 +329,17 @@ fn markdown_connect(step: &Value, database: &str) -> Result<(), String> {
     }
 }
 
-/// The markdown.session op (FCV-4, PRT-64): on a listener that answers each line with the next of the replies of the step, a
-/// read-only transaction that holds a nested one, then a transaction, whose error is checked against the expect of `database`.
+/// The markdown.session op (FCV-4, PRT-64, PRT-66): on a listener that answers each line with the next of the replies of the
+/// step, the calls of the step on one connection, whose error is checked against the expect of `database`. `transactions` runs
+/// a read-only transaction that holds a nested one, then a transaction, and checks the error of the last one; `read` runs one
+/// read of the bind fixture model, and `read_twice` runs two on the same connection, the second of which must succeed, and both
+/// check the error of the first read.
 fn markdown_session(step: &Value, database: &str) -> Result<(), String> {
     use std::io::{BufRead as _, Write as _};
+    let call = crate::recipe_reads::read(step, "call")["call"].as_str().unwrap_or_default().to_owned();
+    if !["transactions", "read", "read_twice"].contains(&call.as_str()) {
+        return Err(format!("markdown.session has no call {call:?}"));
+    }
     let lines = |name: &str| -> Vec<String> {
         crate::recipe_reads::read(step, name)[name]
             .as_array()
@@ -359,15 +366,33 @@ fn markdown_session(step: &Value, database: &str) -> Result<(), String> {
         Ok(received)
     });
     let dsn = format!("markdown://127.0.0.1:{port}/{}?token={}", text("corpus"), text("token"));
-    let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|error| error.to_string())?;
-    let outcome: polyspec_orm::Result<()> = runtime.block_on(async {
-        let db = polyspec_orm::Db::connect(&dsn, 1, polyspec_orm::Config::default()).await?;
-        let nested: polyspec_orm::Result<()> = db.transaction(async || db.transaction(async || Ok(())).await).read_only().await;
-        nested?;
-        let last = db.transaction(async || Ok(())).await;
-        db.close().await;
-        last
-    });
+    // The calls run on a thread with a stack of its own, as call_on_connection runs them: the futures of the model calls are
+    // large in a debug build.
+    let calls = std::thread::Builder::new()
+        .stack_size(64 << 20)
+        .spawn(move || -> Result<polyspec_orm::Result<()>, String> {
+            let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|error| error.to_string())?;
+            runtime.block_on(async {
+                if call == "transactions" {
+                    let db = polyspec_orm::Db::connect(&dsn, 1, polyspec_orm::Config::default()).await.map_err(|error| format!("connect: {error}"))?;
+                    let nested: polyspec_orm::Result<()> = db.transaction(async || db.transaction(async || Ok(())).await).read_only().await;
+                    nested.map_err(|error| format!("the read-only transaction: {error}"))?;
+                    let last = db.transaction(async || Ok(())).await;
+                    db.close().await;
+                    return Ok(last);
+                }
+                // One pooled connection, so the second read runs on the session of the first.
+                let db = bind_model::connect(&dsn, 1, polyspec_orm::Config::default()).await.map_err(|error| format!("connect: {error}"))?;
+                let first = bind_model::Slots::new().connect(&db).gets().await.map(drop);
+                if call == "read_twice" {
+                    bind_model::Slots::new().connect(&db).gets().await.map_err(|error| format!("the second read: {error}"))?;
+                }
+                db.close().await;
+                Ok(first)
+            })
+        })
+        .map_err(|error| error.to_string())?;
+    let outcome = calls.join().map_err(|panic| panicked("the calls", &*panic))??;
     let received = server.join().map_err(|panic| panicked("the listener", &*panic))??;
     if received != messages {
         return Err(format!("the listener received {received:?}, want {messages:?}"));

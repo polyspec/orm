@@ -45,6 +45,7 @@
       "token"
     ],
     "markdown.session": [
+      "call",
       "corpus",
       "expect",
       "messages",

@@ -358,12 +358,34 @@ function readAnswer(what: string, answer: Value, columns: DriverColumn[] | undef
 /** Runs one statement in session s and returns its first rows. */
 async function statement(s: MarkdownSession, sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined): Promise<StatementAnswer> {
   const line = `{"op":"statement","sql":${JSON.stringify(sql)},"params":[${params.map(statementParam).join(',')}]}`;
-  return readAnswer('statement', await s.call(line, signal), undefined);
+  return readRows(s, 'statement', await s.call(line, signal), undefined);
 }
 
 /** The rows that go on after a, which the server holds until a fetch reads the last of them. */
 async function fetchMore(s: MarkdownSession, a: StatementAnswer, signal: AbortSignal | undefined): Promise<StatementAnswer> {
-  return readAnswer('fetch', await s.call('{"op":"fetch"}', signal), a.columns);
+  return readRows(s, 'fetch', await s.call('{"op":"fetch"}', signal), a.columns);
+}
+
+/**
+ * Reads an answer of session s. A row that the read refuses stops it: when more rows follow, close ends them, and the refusal is
+ * the error whatever the close answers (PRT-66).
+ */
+async function readRows(s: MarkdownSession, what: string, answer: Value, columns: DriverColumn[] | undefined): Promise<StatementAnswer> {
+  try {
+    return readAnswer(what, answer, columns);
+  } catch (error) {
+    const more = answer.get('more');
+    if (more?.kind === 'boolean' && more.booleanValue()) await closeRows(s);
+    throw error;
+  }
+}
+
+/**
+ * Ends the rows that session s holds (PRT-66). A close that the server refuses leaves the rows to the next statement, which ends
+ * them, so the session stays usable; a close whose connection broke has closed the session in call.
+ */
+async function closeRows(s: MarkdownSession): Promise<void> {
+  await s.call('{"op":"close"}', undefined).catch(() => undefined);
 }
 
 /** Runs one statement and reads all its rows, as a SQLite connection reads them: a statement with rows answers their count as its affected. */
@@ -387,7 +409,7 @@ async function scan(s: MarkdownSession, sql: string, params: readonly DriverValu
   for (;;) {
     for (const row of a.rows) {
       if (sink.row(row)) continue;
-      if (a.more) await s.call('{"op":"close"}', undefined);
+      if (a.more) await closeRows(s);
       return;
     }
     if (!a.more) return;

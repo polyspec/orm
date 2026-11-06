@@ -220,6 +220,12 @@
         "packages/python/tests/test_model_socket_mysql.py",
         "packages/rust/orm/tests/coverage_dsn.rs",
         "packages/rust/tests/tests/bind_messages.rs",
+        "packages/go/bindmessages/markdown_session_test.go",
+        "packages/php/tests/MarkdownSessionRecipeTest.php",
+        "packages/php-ext/tests/MarkdownSessionRecipeTestExtensionTest.php",
+        "packages/ts/tests/markdown_session.mjs",
+        "packages/python/tests/test_markdown_session_none.py",
+        "packages/rust/tests/tests/markdown_session.rs",
         "packages/rust/tests/tests/dsn_reject_none.rs",
         "packages/rust/tests/tests/model_socket_mysql.rs"
       ],

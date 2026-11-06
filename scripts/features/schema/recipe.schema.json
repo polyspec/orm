@@ -1883,15 +1883,16 @@
       },
       "markdown.session": {
         "type": "object",
-        "required": ["op", "corpus", "token", "replies", "messages", "expect"],
+        "required": ["op", "call", "corpus", "token", "replies", "messages", "expect"],
         "additionalProperties": false,
         "properties": {
           "op": { "const": "markdown.session" },
+          "call": { "enum": ["transactions", "read", "read_twice"], "description": "The public calls on one connection: transactions, a read-only transaction that holds a nested one and then a transaction; read, one read of the bind fixture model; read_twice, two such reads, the second of which must succeed." },
           "corpus": { "type": "string", "description": "The corpus of the markdown DSN." },
           "token": { "type": "string", "description": "The token of the markdown DSN." },
           "replies": { "type": "array", "items": { "type": "string" }, "description": "The lines that the listener answers, in order, one for each line it receives." },
           "messages": { "type": "array", "items": { "type": "string" }, "description": "The lines that the listener must have received when the connection closes." },
-          "expect": { "$ref": "#/$defs/expect" }
+          "expect": { "$ref": "#/$defs/expect", "description": "The outcome of the last transaction (transactions) or of the first read (read, read_twice)." }
         }
       },
       "markdown.connect": {

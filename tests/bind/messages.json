@@ -1760,6 +1760,7 @@
       "steps": [
         {
           "op": "markdown.session",
+          "call": "transactions",
           "corpus": "tracker",
           "token": "0123456789abcdef0123456789abcdef",
           "replies": [

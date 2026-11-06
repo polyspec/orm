@@ -2121,8 +2121,14 @@ def _markdown_connect(step: dict, database: str) -> None:
 
 
 def _markdown_session(step: dict, database: str) -> None:
-    """Runs the markdown.session op (FCV-4, PRT-64): on a listener that answers each line with the next of the replies of the
-    step, a read-only transaction that holds a nested one, then a transaction, whose error is compared with the expect."""
+    """Runs the markdown.session op (FCV-4, PRT-64, PRT-66): on a listener that answers each line with the next of the
+    replies of the step, the calls of the step on one connection, whose error is compared with the expect. transactions
+    runs a read-only transaction that holds a nested one, then a transaction, and compares the error of the last one; read
+    runs one read of the bind fixture model, and read_twice runs two on the same connection, the second of which must
+    succeed, and both compare the error of the first read."""
+    call = step["call"]
+    if call not in ("transactions", "read", "read_twice"):
+        raise AssertionError(f"markdown.session has no call {call}")
     received = []
 
     def answer(stream) -> None:
@@ -2136,20 +2142,34 @@ def _markdown_session(step: dict, database: str) -> None:
 
     listener, server, port = _markdown_listener(answer)
     outcome = step["expect"][database]
-    db = Db.connect(
-        f"markdown://127.0.0.1:{port}/{step['corpus']}?token={step['token']}"
-    )
+    dsn = f"markdown://127.0.0.1:{port}/{step['corpus']}?token={step['token']}"
     got = None
     message = ""
-    try:
-        db.transaction(lambda: db.transaction(lambda: None), {"readOnly": True})
+    if call == "transactions":
+        db = Db.connect(dsn)
         try:
-            db.transaction(lambda: None)
-        except OrmError as error:
-            got = error.code
-            message = str(error)
-    finally:
-        db.close()
+            db.transaction(lambda: db.transaction(lambda: None), {"readOnly": True})
+            try:
+                db.transaction(lambda: None)
+            except OrmError as error:
+                got = error.code
+                message = str(error)
+        finally:
+            db.close()
+    else:
+        models = _bind_models()
+        # One pooled connection, so the second read runs on the session of the first.
+        db = models.connect(dsn, poolSize=1)
+        try:
+            try:
+                models.Slots().connect(db).gets()
+            except OrmError as error:
+                got = error.code
+                message = str(error)
+            if call == "read_twice":
+                models.Slots().connect(db).gets()
+        finally:
+            db.close()
     server.join(10)
     listener.close()
     if received != step["messages"]:
