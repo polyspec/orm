@@ -5,6 +5,8 @@
 
 ## 0.0.22
 
+- A markdown corpus is a SQLite connection in all six runtimes (DIA-154, DIA-185): the flowmark server answers the statements of the SQLite dialect, so each client plans a request as on SQLite and sends each statement as op statement, reading the rows that go on with fetch and close (PRT-66), with its parameters in the forms of PRT-67, a boolean as 1 or 0. The IR executor clients, their answer assembly, tests/ir/answers.json and the ir.answer recipe op are removed. Every database case of the recipes runs on flowmark beside MySQL, PostgreSQL and SQLite, and tests/markdown pins the flowmark release v0.0.5 (T384).
+- Fixes of the SQLite connection to a corpus (T384): a PHP refusal states its code once; the rows of a PHP statement that its caller dropped are closed, not read to the end by the next statement; a Rust read whose row is refused keeps its own error whatever the close answers; the Python lock result of dbspec.apply reads the SQLite result code from the cause of an OrmError, and a Python schema install joins the open transaction in place of a savepoint.
 - Fixes: the Go catalog reports a stopped read and the failure of a close, and the Go PostgreSQL driver returns an error where it panicked.
 - Recipe cases prove CFG-22 on every runtime that has the behaviour: a session setting and a prepared statement stay on their connection (`utils`), and each connection counts its own pool (`connection_pool`).
 - A SQLite lock wait between two connections that write the same row ends with `CANCELED` after the busy timeout and is not retried, because SQLite reports no row-lock deadlock: SQLITE_LOCKED (6, 262) is `DRIVER` in every runtime, and transaction_deadlock_retry runs the sqlite case in all six runtimes (PLN-24, CFG-12) (T343-3)
