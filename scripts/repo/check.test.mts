@@ -469,6 +469,20 @@ caseTest('every PHPUnit run of the Makefile goes through run-tests', COMPUTE, ()
   assert.deepEqual(text('Makefile').split('\n').filter(line => direct.test(line)), []);
 });
 
+// run-tests gives one timeout to every case of a --module harness, and packages/python/tests/testcase.py keeps the deadline
+// of each case by its class (COMPUTE, DATABASE, PROCESS) and ends the process GRACE after it. So the timeout of run-tests is
+// the longest class with its grace, and the class of a case decides when it fails.
+caseTest('every Python run of run-tests gives the cases the deadlines of their testcase classes', COMPUTE, () => {
+  const makefile = text('Makefile');
+  const harness = text('packages/python/tests/testcase.py');
+  const seconds = (name: string) => Number(new RegExp(`^${name} = ([0-9.]+)$`, 'm').exec(harness)?.[1]);
+  assert.equal(Number.isFinite(seconds('PROCESS')) && Number.isFinite(seconds('GRACE')), true, 'testcase.py states PROCESS and GRACE');
+  const timeout = /^PYTHON_TESTS = \$\(RUN_TESTS\) python --timeout (\d+) --venv \$\(PYTHON_VENV\) --module packages\.python\.tests\.testcase$/m.exec(makefile)?.[1];
+  assert.equal(Number(timeout), seconds('PROCESS') + seconds('GRACE'), 'PYTHON_TESTS gives run-tests the longest deadline class with its grace');
+  assert.deepEqual(makefile.split('\n').filter(line => /\$\(RUN_TESTS\) python\b/.test(line) && !line.startsWith('PYTHON_TESTS = ')), [],
+    'every Python run of run-tests goes through PYTHON_TESTS');
+});
+
 caseTest('a whole suite that holds markdown units gets the pinned flowmark, and flowmark-check refuses a missing one', COMPUTE, () => {
   // test-php-ext runs the native tests of the extension and python-unit-check discovers every Python test; both hold markdown
   // units and run without WITH_TEST_ENV, so each exports FLOWMARK itself. A simple assignment takes the value FLOWMARK has

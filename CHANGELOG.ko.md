@@ -26,6 +26,7 @@
 - 시험: CI 그룹이 여섯 runtime의 markdown 시험을 실행한다. 각 시험은 contracts/features.json에서 SQLite 짝의 feature에 들어가고, T384가 지운 파일은 feature와 check input에서 빠지며, flowmark가 필요한 target 21개가 그것을 선언해 그 그룹이 flowmark를 설치한다(XV21).
 - 시험: SQLite 전용 catalog recipe가 unit catalog_connection-sqlite-only-markdown으로 여섯 runtime에서 flowmark 위에서 실행되고, 어떤 recipe도 쓰지 않던 recipe op corpus.write와 지워진 markdown 결과 조립의 TypeScript·Rust 시험이 빠진다(XV22).
 - 시험: python-unit-check가 markdown unit에 필요한 고정 flowmark를 Python suite에 넘긴다(XV23).
+- 시험: run-tests의 모든 Python 실행이 각 사례에 testcase class의 마감을 주어, flowmark의 database 사례가 30초에 멈추지 않고 suite의 나머지가 실행된다(XV24).
 - 시험: recipe runner 검사가 두 PHP recipe base를 이름 짓고, flowmark export의 저장소 시험이 GNU make 3.81과 4의 출력을 읽는다(XV25).
 - corpus에 대한 SQLite 연결의 수정 (T384): PHP 거부는 code를 한 번만 말한다. 호출자가 버린 PHP 문의 행은 다음 문이 끝까지 읽지 않고 닫는다. 행이 거부된 Rust 읽기는 close의 답과 관계없이 자기 오류를 유지한다. dbspec.apply의 Python lock 결과는 OrmError의 cause에서 SQLite result code를 읽고, Python schema install은 savepoint 대신 열린 트랜잭션에 합류한다.
 - 수정: Go catalog가 멈춘 읽기와 닫기 실패를 보고하고, Go PostgreSQL driver가 panic하던 곳에서 오류를 돌려준다.
