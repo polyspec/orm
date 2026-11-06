@@ -6131,6 +6131,10 @@
     "exported": false,
     "signature": "private static function jsonText(mixed $value): string"
   },
+  "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::namedDecodeFailure": {
+    "exported": false,
+    "signature": "private static function namedDecodeFailure(Polyspec\\Orm\\OrmException $e, string $name): Polyspec\\Orm\\OrmException"
+  },
   "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::normalize": {
     "exported": false,
     "signature": "private static function normalize(mixed $v): mixed"
@@ -6698,6 +6702,10 @@
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::splitRowSlot": {
     "exported": false,
     "signature": "private static function splitRowSlot(array $row, array $refs): string"
+  },
+  "packages/php/src/Db.php::Polyspec\\Orm\\Db::sqliteArgs": {
+    "exported": false,
+    "signature": "private function sqliteArgs(array $args): array"
   },
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::statement": {
     "exported": true,
@@ -11146,6 +11154,10 @@
   "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter::control": {
     "exported": false,
     "signature": "private static function control(string $sql): string"
+  },
+  "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter::endRows": {
+    "exported": false,
+    "signature": "private function endRows(): void"
   },
   "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter::errorCode": {
     "exported": true,

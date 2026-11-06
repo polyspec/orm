@@ -2279,6 +2279,10 @@
     "exported": true,
     "signature": "export function decodeAssembly(row: unknown[], assemble: Assemble, db: Db): void"
   },
+  "packages/ts/src/database.ts::decodedCell": {
+    "exported": false,
+    "signature": "function decodedCell\u003cT\u003e(assemble: Assemble, column: string, decodeCell: () =\u003e T): T"
+  },
   "packages/ts/src/database.ts::driverLimit": {
     "exported": false,
     "signature": "function driverLimit(driver: string): number"
@@ -10127,6 +10131,10 @@
     "exported": false,
     "signature": "function canceled(): OrmError"
   },
+  "packages/ts/src/markdown.ts::closeRows": {
+    "exported": false,
+    "signature": "async function closeRows(s: MarkdownSession): Promise\u003cvoid\u003e"
+  },
   "packages/ts/src/markdown.ts::dialStatements": {
     "exported": false,
     "signature": "async function dialStatements(dsn: MarkdownDsn, signal: AbortSignal | undefined): Promise\u003cMarkdownSession\u003e"
@@ -10150,6 +10158,10 @@
   "packages/ts/src/markdown.ts::readAnswer": {
     "exported": false,
     "signature": "function readAnswer(what: string, answer: Value, columns: DriverColumn[] | undefined): StatementAnswer"
+  },
+  "packages/ts/src/markdown.ts::readRows": {
+    "exported": false,
+    "signature": "async function readRows(s: MarkdownSession, what: string, answer: Value, columns: DriverColumn[] | undefined): Promise\u003cStatementAnswer\u003e"
   },
   "packages/ts/src/markdown.ts::scan": {
     "exported": false,

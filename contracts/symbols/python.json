@@ -3447,6 +3447,10 @@
     "exported": true,
     "signature": "def close(self) -\u003e None"
   },
+  "packages/python/src/polyspec/orm/markdown.py::MarkdownSession.close_rows": {
+    "exported": true,
+    "signature": "def close_rows(self) -\u003e None"
+  },
   "packages/python/src/polyspec/orm/markdown.py::MarkdownSession.exchange": {
     "exported": true,
     "signature": "def exchange(self, line: bytes) -\u003e bytes"

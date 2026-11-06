@@ -2551,6 +2551,10 @@
     "exported": false,
     "signature": " fn finish (styles : \u0026 [\u0026 str] , mut cur : Vec \u003c u8 \u003e) -\u003e Result \u003c Param \u003e"
   },
+  "packages/rust/orm/src/codec.rs::hex_bytes": {
+    "exported": false,
+    "signature": " fn hex_bytes (s : \u0026 [u8]) -\u003e Result \u003c Vec \u003c u8 \u003e \u003e"
+  },
   "packages/rust/orm/src/codec.rs::hex_decode": {
     "exported": true,
     "signature": "pub fn hex_decode (s : \u0026 str) -\u003e Result \u003c Vec \u003c u8 \u003e \u003e"
@@ -7461,7 +7465,7 @@
   },
   "packages/rust/orm/src/model.rs::column_decode_error": {
     "exported": false,
-    "signature": " fn column_decode_error (entity : \u0026 str , column : \u0026 str , error : Error) -\u003e Error"
+    "signature": "pub (crate) fn column_decode_error (entity : \u0026 str , column : \u0026 str , error : Error) -\u003e Error"
   },
   "packages/rust/orm/src/model.rs::create": {
     "exported": true,
@@ -8319,6 +8323,30 @@
     "exported": true,
     "signature": "fn val (\u0026 mut self , i : usize) -\u003e Result \u003c Val \u003e"
   },
+  "packages/rust/orm/src/row.rs::StyledNode": {
+    "exported": false,
+    "signature": " struct StyledNode \u003c 'a \u003e { entity : \u0026 'a str , styled : Vec \u003c crate :: codec :: StyledCol \u003e , names : Vec \u003c \u0026 'a str \u003e , version_index : Option \u003c usize \u003e , }"
+  },
+  "packages/rust/orm/src/row.rs::StyledNode#field.entity": {
+    "exported": false,
+    "signature": "\u0026 'a str"
+  },
+  "packages/rust/orm/src/row.rs::StyledNode#field.names": {
+    "exported": false,
+    "signature": "Vec \u003c \u0026 'a str \u003e"
+  },
+  "packages/rust/orm/src/row.rs::StyledNode#field.styled": {
+    "exported": false,
+    "signature": "Vec \u003c crate :: codec :: StyledCol \u003e"
+  },
+  "packages/rust/orm/src/row.rs::StyledNode#field.version_index": {
+    "exported": false,
+    "signature": "Option \u003c usize \u003e"
+  },
+  "packages/rust/orm/src/row.rs::StyledNode#wire": {
+    "exported": false,
+    "signature": "{\"entity\":\"unsupported:\u0026 'a str\",\"names\":\"list\u003cunsupported:\u0026 'a str\u003e\",\"styled\":\"list\u003cStyledCol\u003e\",\"version_index\":\"integer\"}"
+  },
   "packages/rust/orm/src/row.rs::aes_row_version": {
     "exported": false,
     "signature": " fn aes_row_version (row : \u0026 [Val] , index : usize) -\u003e Result \u003c i32 \u003e"
@@ -8382,6 +8410,10 @@
   "packages/rust/orm/src/row.rs::required_cell": {
     "exported": false,
     "signature": " fn required_cell \u003c T \u003e (value : Option \u003c T \u003e , i : usize) -\u003e Result \u003c T \u003e"
+  },
+  "packages/rust/orm/src/row.rs::styled_nodes": {
+    "exported": false,
+    "signature": " fn styled_nodes \u003c 'a \u003e (asm : \u0026 'a crate :: plan :: Assemble , out : \u0026 mut Vec \u003c StyledNode \u003c 'a \u003e \u003e) -\u003e Result \u003c () \u003e"
   },
   "packages/rust/orm/src/row.rs::type_name": {
     "exported": false,
