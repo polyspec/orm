@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"math"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -2177,6 +2178,8 @@ func nativeArgument(n node) (any, error) {
 		return hex.DecodeString(n.text)
 	case "bool":
 		return n.text == "true", nil
+	case "float", "f64":
+		return toGo(n)
 	case "null":
 		return nil, nil
 	case "array":
@@ -2207,6 +2210,15 @@ func plain(value any, nativeType, database string) (any, error) {
 	case bool:
 		return map[string]any{"bool": v}, nil
 	case float64:
+		// A non-finite float is the f64 wrapper, which names it as JSON cannot.
+		switch {
+		case math.IsInf(v, 1):
+			return map[string]any{"f64": "Infinity"}, nil
+		case math.IsInf(v, -1):
+			return map[string]any{"f64": "-Infinity"}, nil
+		case math.IsNaN(v):
+			return map[string]any{"f64": "NaN"}, nil
+		}
 		// The shortest text that reads back as the same float, as the TypeScript runner writes a number.
 		return map[string]any{"float": strconv.FormatFloat(v, 'g', -1, 64)}, nil
 	case []byte:

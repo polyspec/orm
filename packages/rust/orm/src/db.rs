@@ -876,11 +876,13 @@ impl Db {
                 "parent" => out.extend(parent_vals.iter().cloned()),
                 "param" => {
                     // A transformed value is the text of its operator, and a host-styled value is the input of its
-                    // first stage, which host_encode checks.
-                    if let Some(v) = params.get(b.param) {
+                    // first stage, which host_encode checks. A statement of utils().run binds its parameters as the
+                    // database takes them, so its errors are the database's own (INT-150).
+                    let utils = st.role == "utils";
+                    if let (false, Some(v)) = (utils, params.get(b.param)) {
                         crate::bind_check::check_assign(b.param, v, &crate::bind_check::bind_slot_type(b))?;
                     }
-                    if b.transform.is_empty() && b.host_styles.is_empty() {
+                    if !utils && b.transform.is_empty() && b.host_styles.is_empty() {
                         if let Some(v) = params.get(b.param) {
                             crate::bind_check::check_param(b.param, v, &crate::bind_check::bind_slot_type(b), &self.inner.zone)?;
                         }

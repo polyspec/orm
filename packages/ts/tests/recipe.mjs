@@ -1221,6 +1221,8 @@ function native(wrapper) {
     case 'text': case 'date': case 'time': case 'datetime': case 'decimal': return value;
     case 'bytes_hex': return Uint8Array.from(Buffer.from(value, 'hex'));
     case 'bool': return value;
+    // Number reads NaN, Infinity and -Infinity, the three non-finite values of the f64 wrapper.
+    case 'float': case 'f64': return Number(value);
     case 'null': case 'nil': return null;
     // An array is a list of values (an IN list of where); a sequence item adds its integers in place (FCV-4).
     case 'array': return value.flatMap(item => ('sequence' in item ? sequenceValues(item.sequence) : [native(item)]));
@@ -1241,6 +1243,8 @@ function plain(value, nativeType) {
   if (typeof value === 'boolean') return { bool: value };
   if (value instanceof Uint8Array) return { bytes_hex: Buffer.from(value).toString('hex') };
   if (typeof value === 'string') return { [temporalKind(nativeType) ?? 'text']: value };
+  // A non-finite number is the f64 wrapper, which names it as JSON cannot.
+  if (typeof value === 'number' && !Number.isFinite(value)) return { f64: String(value) };
   if (typeof value === 'number') return { float: String(value) };
   throw new Error(`no recipe wrapper for the plain value ${String(value)}`);
 }

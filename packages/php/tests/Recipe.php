@@ -5095,6 +5095,9 @@ final class Recipe
                 return hex2bin($w['bytes_hex']);
             case 'bool':
                 return $w['bool'];
+            case 'float':
+            case 'f64':
+                return self::toValue($w);
             case 'null':
                 return null;
             // An array is a list of values (an IN list of where); a sequence item adds its integers in place (FCV-4).
@@ -5149,6 +5152,10 @@ final class Recipe
         }
         if (is_string($value)) {
             return [self::temporalKind($nativeType) ?? 'text' => $value];
+        }
+        if (is_float($value) && $nativeType === null && !is_finite($value)) {
+            // A non-finite float with no column type is the f64 wrapper, which names it as JSON cannot.
+            return ['f64' => is_nan($value) ? 'NaN' : ($value > 0 ? 'Infinity' : '-Infinity')];
         }
         if (is_float($value) && $nativeType === null) {
             // A plain value with no column type is compared by its shortest round-trip decimal.

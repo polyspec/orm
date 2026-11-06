@@ -35,6 +35,14 @@ var integerRanges = map[string][2]int64{
 	"i64": {math.MinInt64, math.MaxInt64},
 }
 
+// finiteF64 refuses the non-finite f64 f of parameter i, whose host value is v, with CODEC_ENCODE.
+func finiteF64(i int, v any, f float64) error {
+	if math.IsNaN(f) || math.IsInf(f, 0) {
+		return codecErr(CodeCodecEncode, "parameter %d (%v) is not a finite f64", i, v)
+	}
+	return nil
+}
+
 // checkParam checks the value v of parameter i against the logical type s of a slot it fills,
 // before any statement: the host value kind, the range of an integer, a finite f64, the
 // precision and scale of a decimal, a date from 0001-01-01 to 9999-12-31, no non-zero digit
@@ -81,8 +89,8 @@ func (d *DB) checkParam(i int, v any, s paramSlot) error {
 				return codecErr(CodeCodecEncode, "parameter %d (%v): %v", i, v, err)
 			}
 		}
-		if math.IsNaN(f) || math.IsInf(f, 0) {
-			return codecErr(CodeCodecEncode, "parameter %d (%v) is not a finite f64", i, v)
+		if err := finiteF64(i, v, f); err != nil {
+			return err
 		}
 	case "bool":
 		if _, ok := v.(bool); !ok {

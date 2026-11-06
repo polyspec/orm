@@ -1711,6 +1711,14 @@ final class Db
         // MySQL binds each argument: the emulated prepare quotes every value that execute() receives, and MySQL
         // refuses a quoted LIMIT or OFFSET (the root page parameters, PRT-78), so an int binds as PDO::PARAM_INT.
         $mysql = $this->driver === 'mysql';
+        if ($this->driver === 'sqlite' && !$this->corpus) {
+            // PDO binds a float as its text, and SQLite takes a text as a number only in a numeric form, which INF is
+            // not: 9.0e+999 is the form of an infinity that SQLite itself writes (quote()).
+            $args = array_map(
+                static fn(mixed $v): mixed => is_float($v) && is_infinite($v) ? ($v > 0 ? '9.0e+999' : '-9.0e+999') : $v,
+                $args
+            );
+        }
         // A markdown connection binds each argument in its type, which its statement message writes (PRT-67).
         if (!$mysql && !$this->typed && !$this->corpus) {
             $st->execute($args);

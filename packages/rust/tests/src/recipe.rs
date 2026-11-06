@@ -5420,6 +5420,9 @@ mod statement {
         match cell {
             Val::Null => json!({ "null": true }),
             Val::I64(n) => json!({ "int": n.to_string() }),
+            // A non-finite float is the f64 wrapper, which names it as JSON cannot.
+            Val::F64(f) if f.is_nan() => json!({ "f64": "NaN" }),
+            Val::F64(f) if f.is_infinite() => json!({ "f64": if *f > 0.0 { "Infinity" } else { "-Infinity" } }),
             Val::F64(f) => json!({ "float": f.to_string() }),
             Val::Str(text) => json!({ "text": text }),
             other => panic!("the statement recipe has no wrapper for the cell {other:?}"),
@@ -6209,6 +6212,11 @@ mod tables {
             Param::Date(at) => Val::Date(*at),
         };
         row.core.set(column, value);
+        // A non-finite float reaches the write, whose slot check refuses it (CODEC_ENCODE, PRT-67).
+        if matches!(read, Val::F64(f) if !f.is_finite()) {
+            row.values.insert(column.to_owned(), read);
+            return Ok(());
+        }
         // A text that is no time reaches the write, whose slot check refuses it (CODEC_ENCODE, PRT-67).
         if matches!(field.map(|field| field.ty), Some(Type::DateTime(_))) && matches!(read, Val::Str(_)) && read.as_datetime().is_err() {
             row.values.insert(column.to_owned(), read);
@@ -6867,6 +6875,9 @@ mod tables {
             "text" | "decimal" | "datetime" | "date" | "time" | "uuid" => Param::Str(body.as_str().ok_or_else(|| format!("{wrapper} has no text"))?.to_owned()),
             "int" => Param::I64(body.as_str().ok_or_else(|| format!("{wrapper} has no digits"))?.parse().map_err(|e| format!("int {body}: {e}"))?),
             "bool" => Param::Bool(body.as_bool().ok_or_else(|| format!("{wrapper} is not a bool"))?),
+            // Rust parses NaN, Infinity and -Infinity, the three non-finite values of the f64 wrapper.
+            "float" | "f64" => Param::F64(body.as_str().ok_or_else(|| format!("{wrapper} has no number"))?.parse().map_err(|e| format!("float {body}: {e}"))?),
+            "bytes_hex" => Param::Bytes(super::hex_bytes(body.as_str().ok_or_else(|| format!("{wrapper} has no hex"))?)?),
             "null" => Param::Null,
             other => return Err(format!("a table model has no parameter of the wrapper {other}")),
         })

@@ -1074,7 +1074,7 @@ static bool stmt_of(zval *self, zval *sql, zval *args, zval *out)
 /* Db::exec: binds the arguments with their types where the driver needs them, and executes the statement. MySQL binds each
  * argument: the emulated prepare quotes every value that execute() receives, and MySQL refuses a quoted LIMIT or OFFSET (the root
  * page parameters, PRT-78), so an int or a bool binds as PDO::PARAM_INT, which it writes as a number. */
-static bool exec_stmt(zval *self, zval *st, zval *args)
+static bool exec_stmt_args(zval *self, zval *st, zval *args)
 {
     zval r;
     zval *drv = rd(self, "driver");
@@ -1142,6 +1142,39 @@ static bool exec_stmt(zval *self, zval *st, zval *args)
     }
     zval_ptr_dtor(&r);
     return true;
+}
+
+/* exec_stmt runs exec_stmt_args. PDO binds a float as its text, and SQLite takes a text as a number only in a numeric form,
+ * which INF is not, so on SQLite an infinity binds as 9.0e+999, the form of an infinity that SQLite itself writes (quote()). */
+static bool exec_stmt(zval *self, zval *st, zval *args)
+{
+    if (!is_str(rd(self, "driver"), "sqlite") || is_corpus(self)) return exec_stmt_args(self, st, args);
+    bool infinite = false;
+    zval *item;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(args), item)
+    {
+        ZVAL_DEREF(item);
+        if (Z_TYPE_P(item) == IS_DOUBLE && zend_isinf(Z_DVAL_P(item))) infinite = true;
+    }
+    ZEND_HASH_FOREACH_END();
+    if (!infinite) return exec_stmt_args(self, st, args);
+    zval mapped;
+    array_init_size(&mapped, zend_hash_num_elements(Z_ARRVAL_P(args)));
+    zend_ulong idx;
+    ZEND_HASH_FOREACH_NUM_KEY_VAL(Z_ARRVAL_P(args), idx, item)
+    {
+        ZVAL_DEREF(item);
+        if (Z_TYPE_P(item) == IS_DOUBLE && zend_isinf(Z_DVAL_P(item))) {
+            add_index_string(&mapped, idx, Z_DVAL_P(item) > 0 ? "9.0e+999" : "-9.0e+999");
+        } else {
+            Z_TRY_ADDREF_P(item);
+            add_index_zval(&mapped, idx, item);
+        }
+    }
+    ZEND_HASH_FOREACH_END();
+    bool ok = exec_stmt_args(self, st, &mapped);
+    zval_ptr_dtor(&mapped);
+    return ok;
 }
 
 /* Db::exec; a failed driver statement closes its cursor before the cached statement is released. */

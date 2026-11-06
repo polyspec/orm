@@ -79256,6 +79256,505 @@
    ]
   },
   {
+   "id": "slot_value_forms_roundtrip",
+   "requirements": [
+    "PRT-67",
+    "PRT-69",
+    "DIA-42"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TypedValue",
+     "values": {
+      "small": {
+       "int": "1"
+      },
+      "wide": {
+       "int": "7"
+      },
+      "ratio": {
+       "float": "1.5"
+      },
+      "active": {
+       "bool": true
+      },
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      },
+      "clock": {
+       "text": "10:20:30.500"
+      },
+      "day": {
+       "text": "2026-02-03"
+      },
+      "note": {
+       "text": "abc"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "TypedValue",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "wide",
+      "ratio",
+      "note"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "wide": 7,
+        "ratio": 1.5,
+        "note": "abc"
+       }
+      },
+      "postgres": {
+       "json": {
+        "wide": 7,
+        "ratio": 1.5,
+        "note": "abc"
+       }
+      },
+      "sqlite": {
+       "json": {
+        "wide": 7,
+        "ratio": 1.5,
+        "note": "abc"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TypedValue",
+     "values": {
+      "small": {
+       "int": "1"
+      },
+      "wide": {
+       "int": "7"
+      },
+      "ratio": {
+       "f64": "Infinity"
+      },
+      "active": {
+       "bool": true
+      },
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      },
+      "clock": {
+       "text": "10:20:30.500"
+      },
+      "day": {
+       "text": "2026-02-03"
+      },
+      "note": {
+       "text": "abc"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CODEC_ENCODE"
+      },
+      "postgres": {
+       "error": "CODEC_ENCODE"
+      },
+      "sqlite": {
+       "error": "CODEC_ENCODE"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TypedValue",
+     "values": {
+      "small": {
+       "int": "1"
+      },
+      "wide": {
+       "int": "7"
+      },
+      "ratio": {
+       "f64": "-Infinity"
+      },
+      "active": {
+       "bool": true
+      },
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      },
+      "clock": {
+       "text": "10:20:30.500"
+      },
+      "day": {
+       "text": "2026-02-03"
+      },
+      "note": {
+       "text": "abc"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CODEC_ENCODE"
+      },
+      "postgres": {
+       "error": "CODEC_ENCODE"
+      },
+      "sqlite": {
+       "error": "CODEC_ENCODE"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "BindCell",
+     "values": {
+      "label": {
+       "text": "null"
+      },
+      "body": {
+       "null": "text"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "BindCell",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "pick": [
+      "label",
+      "body"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "label": "null",
+        "body": null
+       }
+      },
+      "postgres": {
+       "json": {
+        "label": "null",
+        "body": null
+       }
+      },
+      "sqlite": {
+       "json": {
+        "label": "null",
+        "body": null
+       }
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ByteCell",
+     "values": {
+      "body": {
+       "bytes_hex": "6162"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ByteCell",
+     "values": {
+      "body": {
+       "null": "bytes_hex"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "ByteCell",
+     "where": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "bytes_hex_of": "body",
+     "expect": {
+      "mysql": {
+       "json": [
+        "6162"
+       ]
+      },
+      "postgres": {
+       "json": [
+        "6162"
+       ]
+      },
+      "sqlite": {
+       "json": [
+        "6162"
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "ByteCell",
+     "key": {
+      "seq": {
+       "int": "2"
+      }
+     },
+     "pick": [
+      "body"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "body": null
+       }
+      },
+      "postgres": {
+       "json": {
+        "body": null
+       }
+      },
+      "sqlite": {
+       "json": {
+        "body": null
+       }
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "frac"
+      },
+      "at3": {
+       "datetime": "2024-01-02 02:04:05.600"
+      },
+      "at6": {
+       "datetime": "2024-01-02 02:04:05.600000"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "ClockCell",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "pick": [
+      "at3",
+      "at6"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "at3": "2024-01-02 02:04:05.600000",
+        "at6": "2024-01-02 02:04:05.600000"
+       }
+      },
+      "postgres": {
+       "json": {
+        "at3": "2024-01-02 02:04:05.600000",
+        "at6": "2024-01-02 02:04:05.600000"
+       }
+      },
+      "sqlite": {
+       "json": {
+        "at3": "2024-01-02 02:04:05.600000",
+        "at6": "2024-01-02 02:04:05.600000"
+       }
+      }
+     }
+    },
+    {
+     "op": "utils.run",
+     "connection": "db",
+     "statements": [
+      {
+       "kind": "update",
+       "tables": [
+        "typed_value"
+       ],
+       "sql": {
+        "mysql": "UPDATE `typed_value` SET `ratio` = ? WHERE `seq` = 1",
+        "postgres": "UPDATE \"typed_value\" SET \"ratio\" = $1 WHERE \"seq\" = 1",
+        "sqlite": "UPDATE \"typed_value\" SET \"ratio\" = ? WHERE \"seq\" = 1"
+       },
+       "params": [
+        {
+         "f64": "Infinity"
+        }
+       ]
+      },
+      {
+       "kind": "select",
+       "tables": [
+        "typed_value"
+       ],
+       "sql": {
+        "mysql": "SELECT `ratio` FROM `typed_value` WHERE `seq` = 1",
+        "postgres": "SELECT \"ratio\" FROM \"typed_value\" WHERE \"seq\" = 1",
+        "sqlite": "SELECT \"ratio\" FROM \"typed_value\" WHERE \"seq\" = 1"
+       }
+      }
+     ],
+     "expect": {
+      "mysql": {
+       "error": "DRIVER"
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "f64": "Infinity"
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "f64": "Infinity"
+           }
+          ]
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "op": "utils.run",
+     "connection": "db",
+     "statements": [
+      {
+       "kind": "update",
+       "tables": [
+        "typed_value"
+       ],
+       "sql": {
+        "mysql": "UPDATE `typed_value` SET `ratio` = ? WHERE `seq` = 1",
+        "postgres": "UPDATE \"typed_value\" SET \"ratio\" = $1 WHERE \"seq\" = 1",
+        "sqlite": "UPDATE \"typed_value\" SET \"ratio\" = ? WHERE \"seq\" = 1"
+       },
+       "params": [
+        {
+         "f64": "-Infinity"
+        }
+       ]
+      },
+      {
+       "kind": "select",
+       "tables": [
+        "typed_value"
+       ],
+       "sql": {
+        "mysql": "SELECT `ratio` FROM `typed_value` WHERE `seq` = 1",
+        "postgres": "SELECT \"ratio\" FROM \"typed_value\" WHERE \"seq\" = 1",
+        "sqlite": "SELECT \"ratio\" FROM \"typed_value\" WHERE \"seq\" = 1"
+       }
+      }
+     ],
+     "expect": {
+      "mysql": {
+       "error": "DRIVER"
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "f64": "-Infinity"
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "f64": "-Infinity"
+           }
+          ]
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "TypedValue",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "ratio"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "ratio": 1.5
+       }
+      },
+      "postgres": {
+       "error": "CODEC_DECODE"
+      },
+      "sqlite": {
+       "error": "CODEC_DECODE"
+      }
+     }
+    }
+   ]
+  },
+  {
    "id": "core_styled_null",
    "requirements": [
     "COD-20"
@@ -83175,6 +83674,7 @@
       "core_value_types",
       "invalid_stored_cells_mysql",
       "driver_bytes_cells_are_exact",
+      "slot_value_forms_roundtrip",
       "core_styled_null",
       "core_decimal_values",
       "core_styled_states",
@@ -83267,6 +83767,7 @@
       "core_value_types",
       "invalid_stored_cells_postgres",
       "driver_bytes_cells_are_exact",
+      "slot_value_forms_roundtrip",
       "core_styled_null",
       "core_decimal_values",
       "core_styled_states",
@@ -83359,6 +83860,7 @@
       "core_value_types",
       "invalid_stored_cells_sqlite",
       "driver_bytes_cells_are_exact",
+      "slot_value_forms_roundtrip",
       "core_styled_null",
       "core_decimal_values",
       "core_styled_states",
@@ -83451,6 +83953,7 @@
       "core_value_types",
       "invalid_stored_cells_sqlite",
       "driver_bytes_cells_are_exact",
+      "slot_value_forms_roundtrip",
       "core_styled_null",
       "core_decimal_values",
       "core_styled_states",

@@ -3649,8 +3649,13 @@ def _row_json(row, pick) -> Any:
 
 def _wants_rows(step: dict, context: dict) -> bool:
     """The expect of the database of the case compares rows of wrappers."""
+    return _wants_field(step, context, "rows")
+
+
+def _wants_field(step: dict, context: dict, field: str) -> bool:
+    """The expect of the database of the case compares the field."""
     expect = step.get("expect", {})
-    return "rows" in (expect.get(_dialect_key(context["database"], expect)) or {})
+    return field in (expect.get(_dialect_key(context["database"], expect)) or {})
 
 
 def _chain_cells(parents: list, step: dict) -> list:
@@ -3746,7 +3751,10 @@ def _chain_write(step: dict, context: dict, terminal) -> dict:
             )
         )
     row = terminal(model)
-    fields = {"bind": row, "json": _row_json(row, step.get("pick"))}
+    fields = {"bind": row}
+    # The JSON output of the row is read only when the expect compares it, as a write returns no JSON of its own.
+    if _wants_field(step, context, "json"):
+        fields["json"] = _row_json(row, step.get("pick"))
     # With columns, the rows expect compares the row that the write returns (INT-38).
     if "columns" in step:
         fields["rows"] = _chain_cells([row], step)
@@ -4730,6 +4738,9 @@ def _native(wrapper: dict) -> Any:
         return bytes.fromhex(value)
     if kind == "bool":
         return value
+    if kind in ("float", "f64"):
+        # float reads NaN, Infinity and -Infinity, the three non-finite values of the f64 wrapper.
+        return float(value)
     if kind == "null":
         return None
     # An array is a list of values (an IN list of where); a sequence item adds its integers in place (FCV-4).
@@ -4782,6 +4793,11 @@ def _plain(value, native_type: str | None) -> dict:
         return {_temporal_kind(native_type) or "text": value}
     if isinstance(value, Decimal):
         return {"decimal": format(value, "f")}
+    if isinstance(value, float) and not math.isfinite(value):
+        # A non-finite float is the f64 wrapper, which names it as JSON cannot.
+        if math.isnan(value):
+            return {"f64": "NaN"}
+        return {"f64": "Infinity" if value > 0 else "-Infinity"}
     if isinstance(value, float):
         return {"float": repr(value)}
     raise AssertionError(

@@ -877,6 +877,15 @@ func (r *request) assign(ent *runtimemodel.Entity, s setSpec) (ir.Assign, error)
 		i := r.param(s.value)
 		a.MinusP = &i
 	default:
+		// A create reads its values back into the model before the write, where a non-finite f64 is CODEC_DECODE, so the
+		// f64 slot check of PRT-67 runs here first.
+		if f, ok := s.value.(float64); ok {
+			if col := ent.Field(s.column); col != nil && col.Type == "f64" && len(col.Codec) == 0 {
+				if err := finiteF64(len(r.params), f, f); err != nil {
+					return a, err
+				}
+			}
+		}
 		v, err := encodeValue(ent, s.column, s.value)
 		if err != nil {
 			return a, err
