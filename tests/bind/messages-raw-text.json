@@ -1,6 +1,7 @@
 {
   "$schema": "../../scripts/features/schema/recipe.schema.json",
   "requirements": [
+    "PRT-32",
     "PRT-67"
   ],
   "cases": [
@@ -14,6 +15,28 @@
           "op": "markdown.send",
           "column": "slots.text_value",
           "operator": "eq",
+          "params": [
+            {
+              "text_hex": "ff"
+            }
+          ],
+          "expect": {
+            "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bind_text_not_utf8_into_a_contains_slot",
+      "requirements": [
+        "PRT-32",
+        "PRT-67"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "column": "slots.text_value",
+          "operator": "like_contains",
           "params": [
             {
               "text_hex": "ff"

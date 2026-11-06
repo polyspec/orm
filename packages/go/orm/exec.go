@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/polyspec/orm/packages/go/engine/ir"
 	"github.com/polyspec/orm/packages/go/engine/plan"
@@ -282,7 +283,7 @@ func paramValue(b *plan.BindSlot, r *request) (any, error) {
 }
 
 // transformParam applies the value transform kind to a parameter: SQL NULL binds NULL, so
-// `col LIKE NULL` matches no row, and a value other than text is CODEC_ENCODE.
+// `col LIKE NULL` matches no row, and a value other than text, or a text that is not UTF-8, is CODEC_ENCODE.
 func transformParam(kind string, v any) (any, error) {
 	if v == nil {
 		return nil, nil
@@ -290,6 +291,9 @@ func transformParam(kind string, v any) (any, error) {
 	s, ok := v.(string)
 	if !ok {
 		return nil, codecErr(CodeCodecEncode, "%s requires a string value", kind)
+	}
+	if !utf8.ValidString(s) {
+		return nil, codecErr(CodeCodecEncode, "%s requires a UTF-8 text", kind)
 	}
 	if kind == "fulltext_boolean" {
 		out := plan.FulltextBoolean(s)

@@ -24,7 +24,7 @@ final class Transform
 
     /**
      * Applies the value transform $kind to a parameter: SQL NULL binds NULL, so `col LIKE NULL` matches no row, and
-     * a value other than text is CODEC_ENCODE.
+     * a value other than text, or a text that is not UTF-8, is CODEC_ENCODE.
      */
     public static function param(string $kind, mixed $v): ?string
     {
@@ -33,6 +33,9 @@ final class Transform
         }
         if (!is_string($v)) {
             throw new OrmException(Code::CODEC_ENCODE, "$kind requires a string value");
+        }
+        if (!mb_check_encoding($v, 'UTF-8')) {
+            throw new OrmException(Code::CODEC_ENCODE, "$kind requires a UTF-8 text");
         }
         if ($kind === 'fulltext_boolean' && self::fulltextBoolean($v) === '') {
             throw new OrmException(Code::IR_INVALID, 'fulltext search text has no term');
