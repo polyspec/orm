@@ -8,7 +8,7 @@
 
 #include "php.h"
 
-bool planner_construct(zval *self, zval *model, zval *dialect);
+bool planner_construct(zval *self, zval *model, zval *dialect, bool assigns);
 bool planner_compile(zval *self, HashTable *r, zval *ret);
 
 #endif

@@ -239,7 +239,7 @@ final class CatalogConnectionSurfaceTest extends TestCase
 
     public function testNativeCloseAttemptsBothStepsAndKeepsPrimaryAndCleanupCauses(): void
     {
-        $db = new Db(null, 'sqlite', new Config(), new DateTimeZone('UTC'));
+        $db = new Db(new \PDO('sqlite::memory:'), 'sqlite', new Config(), new DateTimeZone('UTC'));
         $state = (new ReflectionProperty(Db::class, 'state'))->getValue($db);
         $statement = new class {
             public function closeCursor(): void

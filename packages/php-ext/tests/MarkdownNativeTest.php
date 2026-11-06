@@ -6,48 +6,40 @@ namespace Polyspec\Orm\Extension\Tests;
 
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
-use Polyspec\Orm\Code;
-use Polyspec\Orm\Markdown;
-use Polyspec\Orm\MarkdownLinks;
+use Polyspec\Orm\Internal\MarkdownPdoAdapter;
+use Polyspec\Orm\Internal\MarkdownStatementAdapter;
 use Polyspec\Orm\MarkdownSession;
 
 #[Small]
 final class MarkdownNativeTest extends TestCase
 {
-    public function testMarkdownExecutorClassesAndLinksAreNative(): void
+    /**
+     * A markdown connection is a SQLite connection whose PDO handle sends each statement as a statement message of its
+     * flowmark session (DIA-185): the session and the handle and its statements are native classes of the extension.
+     */
+    public function testMarkdownSessionAndPdoAdapterAreNative(): void
     {
-        foreach ([Markdown::class, MarkdownSession::class, MarkdownLinks::class] as $class) {
+        foreach ([MarkdownSession::class, MarkdownPdoAdapter::class, MarkdownStatementAdapter::class] as $class) {
             $reflection = new \ReflectionClass($class);
             self::assertTrue($reflection->isInternal(), $class);
             self::assertSame('polyspec_orm', $reflection->getExtensionName(), $class);
             self::assertTrue($reflection->isFinal(), $class);
         }
+        self::assertSame(\PDO::class, get_parent_class(MarkdownPdoAdapter::class));
+        self::assertSame(\PDOStatement::class, get_parent_class(MarkdownStatementAdapter::class));
 
         $session = new \ReflectionClass(MarkdownSession::class);
         self::assertTrue($session->getConstructor()->isPrivate());
-        foreach (['dial', 'call', 'close'] as $method) {
+        foreach (['dial', 'call', 'statement', 'fetch', 'closeRows', 'broken', 'shutdown', 'close'] as $method) {
             self::assertTrue($session->getMethod($method)->isInternal(), 'MarkdownSession::' . $method);
         }
-
-        foreach (['beginMessage', 'unsupported', 'read', 'scalar', 'write', 'links'] as $method) {
-            self::assertTrue((new \ReflectionMethod(Markdown::class, $method))->isInternal(), 'Markdown::' . $method);
+        foreach (['run', 'fetchRows', 'closeRows', 'close', 'shutdown', 'abandon', 'prepare', 'exec'] as $method) {
+            self::assertTrue(
+                (new \ReflectionMethod(MarkdownPdoAdapter::class, $method))->isInternal(),
+                'MarkdownPdoAdapter::' . $method,
+            );
         }
-
-        self::assertSame(['op' => 'begin'], Markdown::beginMessage(false));
-        self::assertSame(['op' => 'begin', 'read_only' => true], Markdown::beginMessage(true));
-        $unsupported = Markdown::unsupported('getQuery');
-        self::assertSame(Code::CAPABILITY_UNSUPPORTED, $unsupported->code_);
-        self::assertSame(
-            'CAPABILITY_UNSUPPORTED: getQuery is not supported by the markdown IR executor',
-            $unsupported->getMessage(),
-        );
-
-        $links = new MarkdownLinks();
-        self::assertSame([], $links->joins);
-        self::assertSame([], $links->rels);
-        $links->joins = ['author' => ['A1']];
-        $links->rels = ['tasks' => [['T1'], ['T2']]];
-        self::assertSame(['author' => ['A1']], $links->joins);
-        self::assertSame(['tasks' => [['T1'], ['T2']]], $links->rels);
+        self::assertFalse(class_exists('Polyspec\\Orm\\Markdown', false), 'the markdown IR executor is removed');
+        self::assertFalse(class_exists('Polyspec\\Orm\\MarkdownLinks', false), 'the markdown IR links are removed');
     }
 }

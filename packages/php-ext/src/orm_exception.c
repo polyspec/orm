@@ -6,6 +6,7 @@
 #include "Zend/zend_smart_str.h"
 #include <string.h>
 #include "sqlite_codes.h"
+#include "markdown_native.h"
 
 static zend_string *mysql_code(zend_long number, bool has_number, zend_string *state);
 static zend_string *postgres_code(zend_string *state);
@@ -256,6 +257,29 @@ ZEND_METHOD(Polyspec_Orm_OrmException, fromDriver)
         zval_ptr_dtor(&error_info_copy);
         zend_throw_exception(spl_ce_InvalidArgumentException, "OrmException::fromDriver expects a PDO connection", 0);
         RETURN_THROWS();
+    }
+    /* A refusal of a flowmark server holds the orm code and the message it answered (PRT-71): the error is that code and
+     * message as they are, with the PDO error as its cause (Internal\MarkdownPdoAdapter). */
+    zend_class_entry *orm_ce = lookup_class_literal("Polyspec\\Orm\\OrmException");
+    zval previous_rv, *previous = zend_read_property(zend_ce_exception, Z_OBJ_P(error_value), "previous", sizeof("previous") - 1, true, &previous_rv);
+    if (markdown_pdo_is_adapter(pdo_value) && orm_ce != NULL && previous != NULL && Z_TYPE_P(previous) == IS_OBJECT
+        && instanceof_function(Z_OBJCE_P(previous), orm_ce)) {
+        zval_ptr_dtor(&error_info_copy);
+        zval code_rv, message_rv;
+        zval *server_code = zend_read_property(orm_ce, Z_OBJ_P(previous), "code_", sizeof("code_") - 1, true, &code_rv);
+        zval *server_message = zend_read_property(zend_ce_exception, Z_OBJ_P(error_value), "message", sizeof("message") - 1, true, &message_rv);
+        zval args[3];
+        ZVAL_COPY(&args[0], server_code);
+        ZVAL_COPY(&args[1], server_message);
+        ZVAL_COPY(&args[2], error_value);
+        object_init_ex(return_value, orm_ce);
+        zval ignored;
+        ZVAL_UNDEF(&ignored);
+        zend_call_known_instance_method(orm_ce->constructor, Z_OBJ_P(return_value), &ignored, 3, args);
+        for (int i = 0; i < 3; i++) zval_ptr_dtor(&args[i]);
+        zval_ptr_dtor(&ignored);
+        if (EG(exception) != NULL) RETURN_THROWS();
+        return;
     }
     if (Z_TYPE_P(error_info) == IS_ARRAY) {
         zval *sql_state = zend_hash_index_find(Z_ARRVAL_P(error_info), 0);

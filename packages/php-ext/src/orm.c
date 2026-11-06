@@ -1,14 +1,13 @@
 /* The native connection factory and the value-function constructors of Polyspec\\Orm\\Orm. */
 #include "dbspec.h"
+#include "markdown_native.h"
 #include "Zend/zend_exceptions.h"
 #include "Zend/zend_interfaces.h"
 #include "Zend/zend_closures.h"
 #include "main/php_streams.h"
 
 static bool orm_connect_markdown(zend_string *dsn, zval *config, zval *out);
-static bool markdown_session_dial(zend_string *address, zend_string *corpus, zend_string *token, zval *out);
-static bool markdown_session_call(zval *self, zval *message, zval *out);
-static void markdown_session_close(zval *self);
+
 static bool orm_connect_sql(zend_string *dsn, zval *config, zval *out, bool listener);
 static bool orm_decoded(zval *input, bool raw, zval *out);
 static bool orm_query_decode(const char *value, size_t length, zval *out);
@@ -307,9 +306,16 @@ static bool orm_query_allowed(zval *parts, const char *driver, const char *const
     return orm_query_visit(parts, orm_query_allow, &context);
 }
 
+/* The _pragma values of a DSN as [name, value] pairs, and the form that names an invalid one. */
+typedef struct {
+    zval *out;
+    const char *form;
+} orm_pragma_context;
+
 static bool orm_sqlite_pragma(const orm_query_parameter *parameter, void *context)
 {
-    zval *out = context;
+    orm_pragma_context *pragmas = context;
+    zval *out = pragmas->out;
     zval key;
     if (!orm_query_decode(parameter->key, parameter->key_length, &key)) return false;
     if (zend_string_equals_literal(Z_STR(key), "_pragma")) {
@@ -331,7 +337,7 @@ static bool orm_sqlite_pragma(const orm_query_parameter *parameter, void *contex
         if (!valid) {
             zend_string *bad = zend_string_copy(Z_STR(value));
             zval_ptr_dtor(&value); zval_ptr_dtor(&key);
-            db_throw_orm("CONFIG", "sqlite DSN _pragma %s is invalid", ZSTR_VAL(bad));
+            db_throw_orm("CONFIG", "%s_pragma %s is invalid", pragmas->form, ZSTR_VAL(bad));
             zend_string_release(bad);
             return false;
         }
@@ -346,9 +352,10 @@ static bool orm_sqlite_pragma(const orm_query_parameter *parameter, void *contex
     return true;
 }
 
-static bool orm_sqlite_pragmas(zval *parts, zval *out)
+static bool orm_sqlite_pragmas(zval *parts, zval *out, const char *form)
 {
-    return orm_query_visit(parts, orm_sqlite_pragma, out);
+    orm_pragma_context context = {out, form};
+    return orm_query_visit(parts, orm_sqlite_pragma, &context);
 }
 
 static bool orm_parse_dsn(zend_string *dsn, zval *out)
@@ -356,7 +363,7 @@ static bool orm_parse_dsn(zend_string *dsn, zval *out)
     zend_string *scheme = NULL;
     if (!orm_scheme(dsn, &scheme)) return false;
     if (zend_string_equals_literal(scheme, "markdown")) {
-        db_throw_orm("CONFIG", "a markdown DSN selects the markdown IR executor and has no PDO DSN; read it with parseMarkdownDsn");
+        db_throw_orm("CONFIG", "a markdown DSN reaches a flowmark server and has no PDO DSN; read it with parseMarkdownDsn");
         zend_string_release(scheme);
         return false;
     }
@@ -506,7 +513,7 @@ static bool orm_parse_dsn(zend_string *dsn, zval *out)
             db_throw_orm("CONFIG", "sqlite DSN does not accept _txlock; write transactions begin with BEGIN IMMEDIATE");
             goto fail_values;
         }
-        if (!orm_sqlite_pragmas(&parts, &pragmas)) goto fail_values;
+        if (!orm_sqlite_pragmas(&parts, &pragmas, "sqlite DSN ")) goto fail_values;
         zval path_value, decoded_path;
         ZVAL_STRINGL(&path_value, path_s, path_n);
         zval preg_args[2], preg_result;
@@ -575,11 +582,17 @@ typedef struct {
     size_t *found;
 } orm_markdown_query_context;
 
+/* A query parameter of a markdown DSN: token, and timezone and _pragma, the parameters of every scheme and of a SQLite DSN,
+ * which are checked by orm_markdown_settings. Any other is refused by its name before any value is read (PRT-63). */
 static bool orm_markdown_query_parameter(const orm_query_parameter *parameter, void *context)
 {
     orm_markdown_query_context *markdown = context;
     zval key;
     if (!orm_query_decode(parameter->key, parameter->key_length, &key)) return false;
+    if (zend_string_equals_literal(Z_STR(key), "timezone") || zend_string_equals_literal(Z_STR(key), "_pragma")) {
+        zval_ptr_dtor(&key);
+        return true;
+    }
     if (!zend_string_equals_literal(Z_STR(key), "token")) {
         zend_string *key_copy = zend_string_copy(Z_STR(key));
         zval_ptr_dtor(&key);
@@ -659,6 +672,27 @@ ZEND_METHOD(Polyspec_Orm_Orm, parseMarkdownDsn)
         db_throw_orm("CONFIG", "markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>; give one token, the token of .flowmark/server.json of the corpus");
         RETURN_THROWS();
     }
+    /* timezone is the rule of every scheme (a corpus keeps datetime in UTC), and _pragma a setting of each connection, as on a
+     * SQLite DSN. */
+    zval query, pragmas;
+    ZVAL_UNDEF(&query);
+    array_init(&pragmas);
+    if (!orm_query(&parts, &query)) {
+        zend_string_release(token); zval_ptr_dtor(&pragmas); zval_ptr_dtor(&corpus); zval_ptr_dtor(&parts); RETURN_THROWS();
+    }
+    zval *timezone = orm_query_value(&query, "timezone");
+    if (timezone != NULL && (Z_TYPE_P(timezone) != IS_STRING
+        || (strcmp(Z_STRVAL_P(timezone), "+00:00") != 0 && strcmp(Z_STRVAL_P(timezone), "UTC") != 0))) {
+        db_throw_orm("CONFIG", "dsn timezone %s: every connection reads and writes datetime values in UTC",
+            Z_TYPE_P(timezone) == IS_STRING ? Z_STRVAL_P(timezone) : "");
+        zend_string_release(token); zval_ptr_dtor(&query); zval_ptr_dtor(&pragmas); zval_ptr_dtor(&corpus); zval_ptr_dtor(&parts);
+        RETURN_THROWS();
+    }
+    zval_ptr_dtor(&query);
+    if (!orm_sqlite_pragmas(&parts, &pragmas, "markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>; ")) {
+        zend_string_release(token); zval_ptr_dtor(&pragmas); zval_ptr_dtor(&corpus); zval_ptr_dtor(&parts);
+        RETURN_THROWS();
+    }
     smart_str address = {0};
     smart_str_appends(&address, "127.0.0.1:");
     smart_str_append_long(&address, Z_LVAL_P(port));
@@ -667,6 +701,7 @@ ZEND_METHOD(Polyspec_Orm_Orm, parseMarkdownDsn)
     add_next_index_str(return_value, address.s);
     add_next_index_str(return_value, Z_STR(corpus));
     add_next_index_str(return_value, token);
+    add_next_index_zval(return_value, &pragmas);
     zval_ptr_dtor(&parts);
 }
 
@@ -965,6 +1000,50 @@ ZEND_NAMED_FUNCTION(orm_cancel_pg_same_connection)
     if (!pdo_call(pdo, "cancelActive", return_value, 0, NULL, NULL)) RETURN_THROWS();
 }
 
+/* The cancellation of a markdown connection shuts its session down, so a statement that waits for its answer ends now
+ * (PRT-71). */
+ZEND_NAMED_FUNCTION(orm_cancel_markdown_session)
+{
+    ZEND_PARSE_PARAMETERS_NONE();
+    zval rv;
+    zval *pdo = zend_read_property(zend_standard_class_def, Z_OBJ_P(ZEND_THIS), "pdo", sizeof("pdo") - 1, true, &rv);
+    if (!markdown_pdo_is_adapter(pdo)) {
+        zend_throw_error(NULL, "invalid markdown cancellation handle");
+        RETURN_THROWS();
+    }
+    if (!pdo_call(pdo, "shutdown", return_value, 0, NULL, NULL)) RETURN_THROWS();
+}
+
+/* The cancellation callbacks of a markdown connection: cancelConnection shuts the session of pdo down, and the next
+ * statement opens a new session, so there is no reconnect (Internal\MarkdownPdoAdapter). */
+static bool orm_store_markdown_cancellation(zval *db, zval *pdo)
+{
+    zval context, cancel, state_rv;
+    object_init(&context);
+    zend_update_property(zend_standard_class_def, Z_OBJ(context), "pdo", sizeof("pdo") - 1, pdo);
+    bool made = orm_fake_closure(&cancel, orm_cancel_markdown_session, "cancel", &context);
+    zval_ptr_dtor(&context);
+    if (!made) return false;
+    zval *state = orm_connection_state(db, &state_rv);
+    zend_update_property(Z_OBJCE_P(state), Z_OBJ_P(state), "cancelConnection", sizeof("cancelConnection") - 1, &cancel);
+    zval_ptr_dtor(&cancel);
+    zval null_value;
+    ZVAL_NULL(&null_value);
+    zend_update_property(Z_OBJCE_P(state), Z_OBJ_P(state), "reconnect", sizeof("reconnect") - 1, &null_value);
+    zval callback_rv, *callback = zend_read_property(Z_OBJCE_P(state), Z_OBJ_P(state), "cancelQuery", sizeof("cancelQuery") - 1, true, &callback_rv);
+    if (callback == NULL || Z_TYPE_P(callback) != IS_OBJECT) {
+        zval callback_context, query;
+        object_init(&callback_context);
+        zend_update_property(Z_OBJCE(callback_context), Z_OBJ(callback_context), "state", sizeof("state") - 1, state);
+        bool made_query = orm_fake_closure(&query, orm_cancel_state_query, "cancelQuery", &callback_context);
+        zval_ptr_dtor(&callback_context);
+        if (!made_query) return false;
+        zend_update_property(Z_OBJCE_P(state), Z_OBJ_P(state), "cancelQuery", sizeof("cancelQuery") - 1, &query);
+        zval_ptr_dtor(&query);
+    }
+    return EG(exception) == NULL;
+}
+
 static bool orm_store_cancellation_callbacks(zval *db, zval *pdo, zend_string *dsn, zval *config, zend_string *driver)
 {
     if (zend_string_equals_literal(driver, "postgres")) {
@@ -1213,8 +1292,8 @@ fail:
     return false;
 }
 
-/* Opens the database that the scheme of the DSN selects, as Orm::connect does: markdown:// the markdown IR executor, the
- * others a PDO connection. */
+/* Opens the database that the scheme of the DSN selects, as Orm::connect does: markdown:// a SQLite connection whose statements a
+ * flowmark server answers (DIA-185), the others a PDO connection. */
 static bool orm_connect_dsn(zend_string *dsn, zval *config, zval *out)
 {
     zend_string *scheme = NULL;
@@ -1280,6 +1359,9 @@ ZEND_METHOD(Polyspec_Orm_Orm, connectSchema)
     ZVAL_COPY_VALUE(return_value, &db);
 }
 
+/* Opens a markdown connection: a flowmark server runs SQL in SQLite's dialect on the corpus (DIA-185), so the connection is a
+ * SQLite connection whose PDO adapter sends each statement over one session (MarkdownPdoAdapter). Connecting the session checks
+ * that the server accepts the corpus and token. */
 static bool orm_connect_markdown(zend_string *dsn, zval *config, zval *out)
 {
     zval dsn_arg, parsed;
@@ -1293,55 +1375,47 @@ static bool orm_connect_markdown(zend_string *dsn, zval *config, zval *out)
         zval_ptr_dtor(&parsed);
         return false;
     }
-    if (zval_get_long(orm_config_value(config, "statementTimeoutMs")) > 0) {
-        zval_ptr_dtor(&parsed);
-        db_throw_orm("CAPABILITY_UNSUPPORTED", "markdown does not support statement timeout");
-        return false;
-    }
     zval *address = zend_hash_index_find(Z_ARRVAL(parsed), 0);
     zval *corpus = zend_hash_index_find(Z_ARRVAL(parsed), 1);
     zval *token = zend_hash_index_find(Z_ARRVAL(parsed), 2);
-    if (address == NULL || corpus == NULL || token == NULL || Z_TYPE_P(address) != IS_STRING
-        || Z_TYPE_P(corpus) != IS_STRING || Z_TYPE_P(token) != IS_STRING) {
+    zval *pragmas = zend_hash_index_find(Z_ARRVAL(parsed), 3);
+    if (address == NULL || corpus == NULL || token == NULL || pragmas == NULL || Z_TYPE_P(address) != IS_STRING
+        || Z_TYPE_P(corpus) != IS_STRING || Z_TYPE_P(token) != IS_STRING || Z_TYPE_P(pragmas) != IS_ARRAY) {
         zval_ptr_dtor(&parsed);
         db_throw_orm("INTERNAL", "the Markdown DSN parser returned invalid session arguments");
         return false;
     }
-    zval session_args[3], session;
-    ZVAL_COPY(&session_args[0], address);
-    ZVAL_COPY(&session_args[1], corpus);
-    ZVAL_COPY(&session_args[2], token);
-    bool connected = scall("Polyspec\\Orm\\MarkdownSession::dial", &session, 3, session_args);
-    for (size_t i = 0; i < 3; i++) zval_ptr_dtor(&session_args[i]);
-    if (!connected) {
-        zval_ptr_dtor(&parsed);
-        return false;
-    }
+    zval pdo;
+    bool connected = markdown_pdo_connect(Z_STR_P(address), Z_STR_P(corpus), Z_STR_P(token), pragmas, &pdo);
+    zval_ptr_dtor(&parsed);
+    if (!connected) return false;
     zval zone, utc;
     ZVAL_STRING(&utc, "UTC");
     bool zone_ok = newobj("DateTimeZone", &zone, 1, &utc);
     zval_ptr_dtor(&utc);
     if (!zone_ok) {
-        zval_ptr_dtor(&session);
-        zval_ptr_dtor(&parsed);
+        zval_ptr_dtor(&pdo);
         return false;
     }
     zval ctor[5];
-    ZVAL_NULL(&ctor[0]);
-    ZVAL_STRING(&ctor[1], "markdown");
+    ZVAL_COPY(&ctor[0], &pdo);
+    ZVAL_STRING(&ctor[1], "sqlite");
     ZVAL_COPY(&ctor[2], config);
     ZVAL_COPY_VALUE(&ctor[3], &zone);
-    ZVAL_COPY_VALUE(&ctor[4], &session);
+    ZVAL_TRUE(&ctor[4]);
     bool ok = newobj("Polyspec\\Orm\\Db", out, 5, ctor);
-    zval_ptr_dtor(&ctor[1]);
-    zval_ptr_dtor(&ctor[2]);
-    zval_ptr_dtor(&ctor[3]);
-    zval_ptr_dtor(&parsed);
+    for (int i = 0; i < 5; i++) zval_ptr_dtor(&ctor[i]);
+    if (ok && !orm_store_markdown_cancellation(out, &pdo)) {
+        zval_ptr_dtor(out);
+        ZVAL_UNDEF(out);
+        ok = false;
+    }
+    zval_ptr_dtor(&pdo);
     return ok;
 }
 
 
-/* MarkdownSession and MarkdownLinks are native classes so loading this extension never loads their PHP files. */
+/* MarkdownSession is a native class so loading this extension never loads its PHP file. */
 static zend_class_entry *markdown_session_class(void)
 {
     zend_string *name = zend_string_init(ZEND_STRL("Polyspec\\Orm\\MarkdownSession"), 0);
@@ -1381,7 +1455,7 @@ static void markdown_encode_failure(void)
     markdown_raise("INTERNAL", smart_str_extract(&message), cause);
 }
 
-static void markdown_session_close(zval *self)
+void markdown_session_close(zval *self)
 {
     zend_class_entry *ce = markdown_session_class();
     if (ce == NULL) return;
@@ -1431,8 +1505,9 @@ static bool markdown_answer_not_json(zval *self, zend_string *answer)
     return false;
 }
 
-static bool markdown_session_call(zval *self, zval *message, zval *out)
+bool markdown_session_send(zval *self, zval *message, zval *out, zend_long *result_code)
 {
+    if (result_code != NULL) *result_code = -1;
     zend_class_entry *ce = markdown_session_class();
     zval rv, *conn = ce == NULL ? NULL : zend_read_property(ce, Z_OBJ_P(self), "conn", sizeof("conn") - 1, 1, &rv);
     if (conn == NULL || Z_TYPE_P(conn) == IS_NULL) {
@@ -1532,6 +1607,9 @@ static bool markdown_session_call(zval *self, zval *message, zval *out)
         }
         zend_string *code_copy = zend_string_copy(Z_STR_P(code));
         zend_string *message = text == NULL ? zend_string_init("", 0, 0) : zval_get_string(text);
+        /* The SQLite result code of the refusal, when it has one (docs/spec/protocol.md PRT-71). */
+        zval *result = Z_TYPE_P(remote) == IS_ARRAY ? zend_hash_str_find(Z_ARRVAL_P(remote), "result_code", sizeof("result_code") - 1) : NULL;
+        if (result_code != NULL && result != NULL && Z_TYPE_P(result) == IS_LONG) *result_code = Z_LVAL_P(result);
         if (zend_string_equals_literal(code_copy, "CONNECTION_LOST")) markdown_session_close(self);
         zval_ptr_dtor(&decoded);
         db_throw_orm(ZSTR_VAL(code_copy), "%s", ZSTR_VAL(message));
@@ -1543,7 +1621,7 @@ static bool markdown_session_call(zval *self, zval *message, zval *out)
     return true;
 }
 
-static bool markdown_session_dial(zend_string *address, zend_string *corpus, zend_string *token, zval *out)
+bool markdown_session_dial(zend_string *address, zend_string *corpus, zend_string *token, zval *out)
 {
     smart_str uri = {0};
     smart_str_appends(&uri, "tcp://");
@@ -1592,7 +1670,7 @@ static bool markdown_session_dial(zend_string *address, zend_string *corpus, zen
     add_assoc_string(&message, "op", "connect");
     add_assoc_str(&message, "corpus", zend_string_copy(corpus));
     add_assoc_str(&message, "token", zend_string_copy(token));
-    if (!markdown_session_call(out, &message, &response)) {
+    if (!markdown_session_send(out, &message, &response, NULL)) {
         zval_ptr_dtor(&message);
         zend_object *failure = EG(exception) == NULL ? NULL : take_exception();
         markdown_session_close(out);
@@ -1633,9 +1711,206 @@ ZEND_METHOD(Polyspec_Orm_MarkdownSession, close)
     markdown_session_close(ZEND_THIS);
 }
 
+/* Reads the statement or fetch answer of what into the form {columns: [{name, type}], rows, affected, last_insert_id,
+ * more} (PRT-66, PRT-69): a member that is absent takes its empty value, and a member of another form is INTERNAL. */
+bool markdown_session_answer(const char *what, zval *answer)
+{
+    bool valid = Z_TYPE_P(answer) == IS_ARRAY;
+    zval columns, *member;
+    array_init(&columns);
+    zval *rows = NULL, *affected = NULL, *last = NULL, *more = NULL;
+    if (valid) {
+        member = zend_hash_str_find(Z_ARRVAL_P(answer), ZEND_STRL("columns"));
+        if (member != NULL && Z_TYPE_P(member) != IS_NULL) {
+            if (Z_TYPE_P(member) != IS_ARRAY) {
+                valid = false;
+            } else {
+                zval *c;
+                ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(member), c) {
+                    zval *name = Z_TYPE_P(c) == IS_ARRAY ? zend_hash_str_find(Z_ARRVAL_P(c), ZEND_STRL("name")) : NULL;
+                    zval *type = Z_TYPE_P(c) == IS_ARRAY ? zend_hash_str_find(Z_ARRVAL_P(c), ZEND_STRL("type")) : NULL;
+                    if (name == NULL || Z_TYPE_P(name) != IS_STRING
+                        || (type != NULL && Z_TYPE_P(type) != IS_NULL && Z_TYPE_P(type) != IS_STRING)) {
+                        valid = false;
+                        break;
+                    }
+                    zval column;
+                    array_init_size(&column, 2);
+                    add_assoc_str(&column, "name", zend_string_copy(Z_STR_P(name)));
+                    if (type != NULL && Z_TYPE_P(type) == IS_STRING) {
+                        add_assoc_str(&column, "type", zend_string_copy(Z_STR_P(type)));
+                    } else {
+                        add_assoc_string(&column, "type", "");
+                    }
+                    add_next_index_zval(&columns, &column);
+                } ZEND_HASH_FOREACH_END();
+            }
+        }
+        rows = zend_hash_str_find(Z_ARRVAL_P(answer), ZEND_STRL("rows"));
+        affected = zend_hash_str_find(Z_ARRVAL_P(answer), ZEND_STRL("affected"));
+        last = zend_hash_str_find(Z_ARRVAL_P(answer), ZEND_STRL("last_insert_id"));
+        more = zend_hash_str_find(Z_ARRVAL_P(answer), ZEND_STRL("more"));
+        if (rows != NULL && Z_TYPE_P(rows) == IS_NULL) rows = NULL;
+        if (affected != NULL && Z_TYPE_P(affected) == IS_NULL) affected = NULL;
+        if (last != NULL && Z_TYPE_P(last) == IS_NULL) last = NULL;
+        if (more != NULL && Z_TYPE_P(more) == IS_NULL) more = NULL;
+        if ((rows != NULL && (Z_TYPE_P(rows) != IS_ARRAY || !zend_array_is_list(Z_ARRVAL_P(rows))))
+            || (affected != NULL && Z_TYPE_P(affected) != IS_LONG) || (last != NULL && Z_TYPE_P(last) != IS_LONG)
+            || (more != NULL && Z_TYPE_P(more) != IS_TRUE && Z_TYPE_P(more) != IS_FALSE)) {
+            valid = false;
+        }
+        if (valid && rows != NULL) {
+            zval *row;
+            ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(rows), row) {
+                if (Z_TYPE_P(row) != IS_ARRAY || !zend_array_is_list(Z_ARRVAL_P(row))) {
+                    valid = false;
+                    break;
+                }
+            } ZEND_HASH_FOREACH_END();
+        }
+    }
+    if (!valid) {
+        zval_ptr_dtor(&columns);
+        zval flags, args[2], encoded;
+        smart_str text = {0};
+        smart_str_appends(&text, "the answer of a ");
+        smart_str_appends(&text, what);
+        smart_str_appends(&text, ": ");
+        if (orm_constant("Polyspec\\Orm\\Model::JSON_FLAGS", &flags)) {
+            ZVAL_COPY(&args[0], answer);
+            ZVAL_COPY_VALUE(&args[1], &flags);
+            if (scall("json_encode", &encoded, 2, args)) {
+                if (Z_TYPE(encoded) == IS_STRING) smart_str_append(&text, Z_STR(encoded));
+                zval_ptr_dtor(&encoded);
+            }
+            zval_ptr_dtor(&args[0]);
+            zval_ptr_dtor(&args[1]);
+        }
+        if (EG(exception) != NULL) zend_clear_exception();
+        smart_str_0(&text);
+        db_throw_orm("INTERNAL", "%s", ZSTR_VAL(text.s));
+        smart_str_free(&text);
+        return false;
+    }
+    zval form, empty;
+    array_init_size(&form, 5);
+    add_assoc_zval(&form, "columns", &columns);
+    if (rows != NULL) {
+        Z_TRY_ADDREF_P(rows);
+        add_assoc_zval(&form, "rows", rows);
+    } else {
+        array_init(&empty);
+        add_assoc_zval(&form, "rows", &empty);
+    }
+    add_assoc_long(&form, "affected", affected == NULL ? 0 : Z_LVAL_P(affected));
+    add_assoc_long(&form, "last_insert_id", last == NULL ? 0 : Z_LVAL_P(last));
+    add_assoc_bool(&form, "more", more != NULL && Z_TYPE_P(more) == IS_TRUE);
+    zval_ptr_dtor(answer);
+    ZVAL_COPY_VALUE(answer, &form);
+    return true;
+}
+
+bool markdown_session_broken(zval *self)
+{
+    zend_class_entry *ce = markdown_session_class();
+    zval rv, *conn = ce == NULL ? NULL : zend_read_property(ce, Z_OBJ_P(self), "conn", sizeof("conn") - 1, 1, &rv);
+    return conn == NULL || Z_TYPE_P(conn) != IS_RESOURCE;
+}
+
+void markdown_session_shutdown(zval *self)
+{
+    zend_class_entry *ce = markdown_session_class();
+    zval rv, *conn = ce == NULL ? NULL : zend_read_property(ce, Z_OBJ_P(self), "conn", sizeof("conn") - 1, 1, &rv);
+    if (conn == NULL || Z_TYPE_P(conn) != IS_RESOURCE) return;
+    php_stream *stream;
+    php_stream_from_zval_no_verify(stream, conn);
+    if (stream != NULL) php_stream_xport_shutdown(stream, STREAM_SHUT_RDWR);
+}
+
+ZEND_METHOD(Polyspec_Orm_MarkdownSession, broken)
+{
+    ZEND_PARSE_PARAMETERS_NONE();
+    RETURN_BOOL(markdown_session_broken(ZEND_THIS));
+}
+
+ZEND_METHOD(Polyspec_Orm_MarkdownSession, shutdown)
+{
+    ZEND_PARSE_PARAMETERS_NONE();
+    markdown_session_shutdown(ZEND_THIS);
+}
+
+/* Sends message on the session self into out, and sets the by-reference result_ref (when given) to the SQLite result
+ * code of a refusal, or null. */
+static bool markdown_session_call(zval *self, zval *message, zval *out, zval *result_ref)
+{
+    zend_long code = -1;
+    bool ok = markdown_session_send(self, message, out, &code);
+    if (result_ref != NULL) {
+        if (code >= 0) {
+            ZEND_TRY_ASSIGN_REF_LONG(result_ref, code);
+        } else {
+            ZEND_TRY_ASSIGN_REF_NULL(result_ref);
+        }
+    }
+    return ok;
+}
+
 ZEND_METHOD(Polyspec_Orm_MarkdownSession, call)
 {
-    zval *message;
-    ZEND_PARSE_PARAMETERS_START(1, 1) Z_PARAM_ARRAY(message) ZEND_PARSE_PARAMETERS_END();
-    if (!markdown_session_call(ZEND_THIS, message, return_value)) RETURN_THROWS();
+    zval *message, *result_ref = NULL;
+    ZEND_PARSE_PARAMETERS_START(1, 2) Z_PARAM_ARRAY(message) Z_PARAM_OPTIONAL Z_PARAM_ZVAL(result_ref) ZEND_PARSE_PARAMETERS_END();
+    if (!markdown_session_call(ZEND_THIS, message, return_value, result_ref)) RETURN_THROWS();
+}
+
+ZEND_METHOD(Polyspec_Orm_MarkdownSession, statement)
+{
+    zend_string *sql;
+    zval *params, *result_ref = NULL;
+    ZEND_PARSE_PARAMETERS_START(2, 3)
+        Z_PARAM_STR(sql) Z_PARAM_ARRAY(params) Z_PARAM_OPTIONAL Z_PARAM_ZVAL(result_ref)
+    ZEND_PARSE_PARAMETERS_END();
+    zval message;
+    array_init(&message);
+    add_assoc_string(&message, "op", "statement");
+    add_assoc_str(&message, "sql", zend_string_copy(sql));
+    Z_TRY_ADDREF_P(params);
+    add_assoc_zval(&message, "params", params);
+    bool ok = markdown_session_call(ZEND_THIS, &message, return_value, result_ref);
+    zval_ptr_dtor(&message);
+    if (!ok) RETURN_THROWS();
+    if (!markdown_session_answer("statement", return_value)) {
+        zval_ptr_dtor(return_value);
+        ZVAL_NULL(return_value);
+        RETURN_THROWS();
+    }
+}
+
+ZEND_METHOD(Polyspec_Orm_MarkdownSession, fetch)
+{
+    zval *result_ref = NULL;
+    ZEND_PARSE_PARAMETERS_START(0, 1) Z_PARAM_OPTIONAL Z_PARAM_ZVAL(result_ref) ZEND_PARSE_PARAMETERS_END();
+    zval message;
+    array_init(&message);
+    add_assoc_string(&message, "op", "fetch");
+    bool ok = markdown_session_call(ZEND_THIS, &message, return_value, result_ref);
+    zval_ptr_dtor(&message);
+    if (!ok) RETURN_THROWS();
+    if (!markdown_session_answer("fetch", return_value)) {
+        zval_ptr_dtor(return_value);
+        ZVAL_NULL(return_value);
+        RETURN_THROWS();
+    }
+}
+
+ZEND_METHOD(Polyspec_Orm_MarkdownSession, closeRows)
+{
+    zval *result_ref = NULL;
+    ZEND_PARSE_PARAMETERS_START(0, 1) Z_PARAM_OPTIONAL Z_PARAM_ZVAL(result_ref) ZEND_PARSE_PARAMETERS_END();
+    zval message, answer;
+    array_init(&message);
+    add_assoc_string(&message, "op", "close");
+    bool ok = markdown_session_call(ZEND_THIS, &message, &answer, result_ref);
+    zval_ptr_dtor(&message);
+    if (!ok) RETURN_THROWS();
+    zval_ptr_dtor(&answer);
 }

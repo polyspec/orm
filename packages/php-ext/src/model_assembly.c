@@ -627,36 +627,10 @@ ZEND_METHOD(Polyspec_Orm_Assembly, __construct)
     zval track_zv; ZVAL_BOOL(&track_zv, track);
     write_prop(polyspec_assembly_ce, ZEND_THIS, "track", &track_zv);
     zval made; array_init(&made); write_prop(polyspec_assembly_ce, ZEND_THIS, "made", &made); zval_ptr_dtor(&made);
-    zval *markdown = array_find(result, "markdown");
-    zval truth; ZVAL_BOOL(&truth, markdown != NULL && zend_is_true(markdown));
-    write_prop(polyspec_assembly_ce, ZEND_THIS, "markdown", &truth);
     zval zone;
     if (!call_method(Z_OBJ_P(db), "zone", &zone, 0, NULL)) RETURN_THROWS();
     write_prop(polyspec_assembly_ce, ZEND_THIS, "zone", &zone);
     zval_ptr_dtor(&zone);
-}
-
-static bool assembly_markdown_links(zval *parent, const char *field, const char *rel, zval *out)
-{
-    if (zend_hash_num_elements(Z_ARRVAL_P(parent)) == 0) { ZVAL_NULL(out); return true; }
-    zval *last = zend_hash_index_find(Z_ARRVAL_P(parent), zend_hash_num_elements(Z_ARRVAL_P(parent)) - 1);
-    if (last == NULL || Z_TYPE_P(last) != IS_OBJECT) { ZVAL_NULL(out); return true; }
-    zend_string *class_name = zend_string_init(ZEND_STRL("Polyspec\\Orm\\MarkdownLinks"), 0);
-    zend_class_entry *links_ce = zend_lookup_class(class_name);
-    zend_string_release(class_name);
-    if (links_ce == NULL || !instanceof_function(Z_OBJCE_P(last), links_ce)) { ZVAL_NULL(out); return true; }
-    zval *map = zend_read_property(links_ce, Z_OBJ_P(last), field, strlen(field), 1, NULL);
-    zval *value = zend_hash_str_find(Z_ARRVAL_P(map), rel, strlen(rel));
-    if (value == NULL) ZVAL_NULL(out); else ZVAL_COPY(out, value);
-    return true;
-}
-
-static void assembly_markdown_relation(zval *child, zval *parent, const char *field, zval *out)
-{
-    zval *rel = array_find(child, "rel");
-    zend_string *key = rel != NULL ? zval_get_string(rel) : ZSTR_EMPTY_ALLOC();
-    assembly_markdown_links(parent, field, ZSTR_VAL(key), out);
-    if (rel != NULL) zend_string_release(key);
 }
 
 #define ASSEMBLY_PARSE_CHILD_PARENT() \
@@ -666,13 +640,6 @@ static void assembly_markdown_relation(zval *child, zval *parent, const char *fi
 ZEND_METHOD(Polyspec_Orm_Assembly, joinRow)
 {
     ASSEMBLY_PARSE_CHILD_PARENT();
-    zval *markdown = read_prop_scope(polyspec_assembly_ce, Z_OBJ_P(ZEND_THIS), "markdown");
-    if (zend_is_true(markdown)) {
-        zval row;
-        assembly_markdown_relation(child, parent, "joins", &row);
-        if (Z_TYPE(row) == IS_NULL) { zval_ptr_dtor(&row); RETURN_NULL(); }
-        RETURN_ZVAL(&row, 0, 0);
-    }
     zval *assemble = array_find(child, "assemble");
     zval *columns = assemble != NULL ? array_find(assemble, "columns") : NULL;
     zval *first = columns != NULL && Z_TYPE_P(columns) == IS_ARRAY ? zend_hash_index_find(Z_ARRVAL_P(columns), 0) : NULL;
@@ -687,12 +654,6 @@ ZEND_METHOD(Polyspec_Orm_Assembly, relationAssemble)
 {
     zval *child;
     ZEND_PARSE_PARAMETERS_START(1, 1) Z_PARAM_ARRAY(child) ZEND_PARSE_PARAMETERS_END();
-    zval *markdown = read_prop_scope(polyspec_assembly_ce, Z_OBJ_P(ZEND_THIS), "markdown");
-    if (zend_is_true(markdown)) {
-        zval *assemble = array_find(child, "assemble");
-        if (assemble == NULL) RETURN_NULL();
-        RETURN_COPY(assemble);
-    }
     zval *result = read_prop_scope(polyspec_assembly_ce, Z_OBJ_P(ZEND_THIS), "result");
     zval *steps = array_find(result, "steps");
     zval *step_index = array_find(child, "step");
@@ -707,14 +668,6 @@ ZEND_METHOD(Polyspec_Orm_Assembly, relationAssemble)
 ZEND_METHOD(Polyspec_Orm_Assembly, related)
 {
     ASSEMBLY_PARSE_CHILD_PARENT();
-    zval *markdown = read_prop_scope(polyspec_assembly_ce, Z_OBJ_P(ZEND_THIS), "markdown");
-    if (zend_is_true(markdown)) {
-        zval rows;
-        assembly_markdown_relation(child, parent, "rels", &rows);
-        if (Z_TYPE(rows) != IS_ARRAY) { zval_ptr_dtor(&rows); array_init(return_value); }
-        else RETURN_ZVAL(&rows, 0, 0);
-        return;
-    }
     zval *result = read_prop_scope(polyspec_assembly_ce, Z_OBJ_P(ZEND_THIS), "result");
     zval *steps = array_find(result, "steps");
     zval *step_index = array_find(child, "step");
