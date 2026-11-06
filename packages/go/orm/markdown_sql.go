@@ -67,7 +67,7 @@ func (s *mdSession) statement(ctx context.Context, text string, args []any) (*md
 // an answer writes for a value that JSON cannot hold: {"bytes": base64} for bytes, {"text": base64} for a text that is not
 // UTF-8 and {"float": "+Inf"} or {"float": "-Inf"} for an infinity.
 func statementParam(v any) (json.RawMessage, error) {
-	var out any = v
+	out := v
 	switch t := v.(type) {
 	case []byte:
 		out = map[string]string{"bytes": base64.StdEncoding.EncodeToString(t)}
@@ -76,6 +76,12 @@ func statementParam(v any) (json.RawMessage, error) {
 	case string:
 		if !utf8.ValidString(t) {
 			out = map[string]string{"text": base64.StdEncoding.EncodeToString([]byte(t))}
+		}
+	case bool:
+		// SQLite binds a boolean as the integer 1 or 0; a parameter is a number, a string or null (PRT-67).
+		out = 0
+		if t {
+			out = 1
 		}
 	case float64:
 		if math.IsInf(t, 1) {
@@ -112,7 +118,10 @@ func statementCell(raw json.RawMessage) (any, error) {
 			data, err := base64.StdEncoding.DecodeString(text)
 			return string(data), err
 		}
-		text, _ := t["bytes"].(string)
+		text, ok := t["bytes"].(string)
+		if !ok {
+			return nil, internalErr("the cell %s is no value form of an answer", raw)
+		}
 		return base64.StdEncoding.DecodeString(text)
 	}
 	return v, nil
@@ -156,16 +165,6 @@ func (c mdConnector) Connect(ctx context.Context) (driver.Conn, error) {
 
 func (c mdConnector) Driver() driver.Driver { return mdDriver{} }
 
-// mdOneSession is the session of a markdown transaction as the one connection of a database/sql pool: the statements of
-// the transaction run on it, and its end is the transaction's.
-type mdOneSession struct{ s *mdSession }
-
-func (o mdOneSession) Connect(context.Context) (driver.Conn, error) {
-	return &mdConn{s: o.s, shared: true}, nil
-}
-
-func (o mdOneSession) Driver() driver.Driver { return mdDriver{} }
-
 type mdDriver struct{}
 
 // Open opens one session of the markdown DSN, as sql.Open("markdown", dsn) asks.
@@ -186,16 +185,11 @@ func init() { sql.Register("markdown", mdDriver{}) }
 // mdConn is one session as a database/sql connection.
 type mdConn struct {
 	s *mdSession
-	// shared is a session that its transaction ends, not this connection.
-	shared bool
 }
 
 func (c *mdConn) Prepare(text string) (driver.Stmt, error) { return &mdStmt{c: c, text: text}, nil }
 
 func (c *mdConn) Close() error {
-	if c.shared {
-		return nil
-	}
 	c.s.close()
 	return c.s.closeErr
 }

@@ -900,10 +900,6 @@
       "runner": "python",
       "internal": [
         {
-          "glob": "packages/python/tests/chain_answer.py",
-          "reason": "harness: the chain runner and the answer listener of the markdown conformance chains that the ir.answer op of tests/ir/answers.json (FCV-4) runs; the cases are bound by the suite unit ir-answers, and the module holds no test of its own"
-        },
-        {
           "glob": "packages/python/tests/test_catalog_mutation_helper.py",
           "reason": "test: calls private _lock_original_row with FakeSession to verify helper call ordering and schema-change refusal without a real SQL session"
         },
@@ -1123,7 +1119,11 @@
         },
         {
           "glob": "packages/rust/tests/src/markdown.rs",
-          "reason": "harness: the chain runner and the answer listener of the markdown conformance chains that the ir.answer op of tests/ir/answers.json (FCV-4) runs; the cases are bound by the suite unit ir-answers, and the module holds no test of its own"
+          "reason": "harness: the corpus helpers of the markdown recipe units (the corpus of a case, its file modes and its hand-written files); the cases are bound by the markdown suite units, and the module holds no test of its own"
+        },
+        {
+          "glob": "packages/rust/orm/tests/unit/markdown_rows.rs",
+          "reason": "test: the private session of a markdown connection on a scripted server that refuses close; a flowmark server answers close with ok, so no recipe can reach a refused close (K313)"
         },
         {
           "glob": "packages/rust/tests/src/conformance.rs",
@@ -1136,10 +1136,6 @@
         {
           "glob": "packages/rust/build/tests/lock_probe_order.rs",
           "reason": "harness: an internal test of the Rust package that checks the test harness of the owner, not a behaviour of the contract (K313)"
-        },
-        {
-          "glob": "packages/rust/orm/tests/unit/markdown_column_function.rs",
-          "reason": "test: asserts that Markdown output assembly detects a deliberately mutated, impossible post-validation column reference as INTERNAL; it is a defensive invariant check, not a valid public request or cross-client behavior (K313)"
         },
         {
           "glob": "packages/rust/orm/tests/unit/temporal_args.rs",
@@ -1250,20 +1246,12 @@
           "reason": "test: tests the private mapping of an unsupported tool cell to CATALOG_VALUE and the catalog codes of the tool errors; its owner is catalog-value-rust-check, while the shared behavior is covered by the catalog_connection recipe"
         },
         {
-          "glob": "packages/rust/orm/tests/unit/bind_message.rs",
-          "reason": "test: an internal test of the rust crate that tests a helper of the owner (answer_value's base64 cause), not a behaviour of the contract (K313)"
-        },
-        {
           "glob": "packages/rust/schema/tests/dbspec_model.rs",
           "reason": "test: edits the public Rust structs of a parsed document, a surface the other runtimes do not type this way; parse and emit are covered by dbspec-canonical"
         },
         {
           "glob": "packages/rust/orm/tests/unit/codec_tests.rs",
           "reason": "test: the private helpers of the Rust codec, whose faults a public call cannot reach."
-        },
-        {
-          "glob": "packages/rust/orm/tests/unit/markdown_scalar_subquery.rs",
-          "reason": "test: a column that the planner finds missing after validation is INTERNAL; a request cannot reach it, so no recipe can state it."
         },
         {
           "glob": "packages/rust/schema/src/dbspec/mod.rs",

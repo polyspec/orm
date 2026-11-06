@@ -7,7 +7,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/polyspec/orm/packages/go/engine/ir"
 	"github.com/polyspec/orm/packages/go/engine/plan"
 )
 
@@ -25,20 +24,6 @@ type paramSlot struct {
 // bindSlotType is the logical type of a param bind slot of a plan step.
 func bindSlotType(b *plan.BindSlot) paramSlot {
 	return paramSlot{Type: b.ColType, Precision: b.Precision, Scale: b.Scale, Length: b.Length, NotNull: b.NotNull, Column: b.Column}
-}
-
-// useSlotType is the logical type of a parameter use of ir.ParamUses: a use of its column's
-// type takes the column's precision, scale and length; a datetime or time of a function takes
-// six digits.
-func useSlotType(u ir.ParamUse) paramSlot {
-	if f := u.Column; f != nil && f.Type == u.Type {
-		return paramSlot{Type: u.Type, Precision: f.Precision, Scale: f.Scale, Length: f.Length, NotNull: u.Assign && !f.Null, Column: f.Name}
-	}
-	s := paramSlot{Type: u.Type}
-	if u.Type == "datetime" || u.Type == "time" {
-		s.Precision = 6
-	}
-	return s
 }
 
 var canonicalUUID = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)

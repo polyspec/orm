@@ -42,7 +42,8 @@ func TestStatementParamForms(t *testing.T) {
 				t.Fatalf("statementCell(%s): %v", raw, err)
 			}
 			if b, ok := back.([]byte); ok {
-				if string(b) != string(c.back.([]byte)) {
+				want, ok := c.back.([]byte)
+				if !ok || string(b) != string(want) {
 					t.Fatalf("statementCell(%s) = %q, want %q", raw, b, c.back)
 				}
 				return

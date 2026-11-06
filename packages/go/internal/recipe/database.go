@@ -1329,7 +1329,11 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			if err := chmodCorpus(c.corpusDir, true); err != nil {
 				return outcome{}, err
 			}
-			c.t.Cleanup(func() { _ = chmodCorpus(c.corpusDir, false) })
+			c.t.Cleanup(func() {
+				if err := chmodCorpus(c.corpusDir, false); err != nil {
+					c.t.Errorf("restoring the modes of the corpus %s: %v", c.corpusDir, err)
+				}
+			})
 			return outcome{fields: map[string]any{}}, nil
 		}
 		path, _, _ := strings.Cut(strings.TrimPrefix(c.dsn, "sqlite://"), "?")

@@ -292,8 +292,6 @@ func (u *Utils) WasInserted(entity string, key int64) (bool, error) {
 // backend view and return false without exposing driver SQL to callers.
 func (u *Utils) BackendWaitingForLock(ctx context.Context) (bool, error) {
 	d := u.db
-	if d != nil {
-	}
 	if d == nil || d.sql == nil {
 		return false, configErr("database connection is required")
 	}

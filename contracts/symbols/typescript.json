@@ -111,10 +111,6 @@
     "exported": true,
     "signature": "export function transformParam(kind: string, value: unknown): unknown"
   },
-  "packages/ts/src/bind_check.ts::useSlotType": {
-    "exported": true,
-    "signature": "export function useSlotType(use: ParamUse): ParamSlot"
-  },
   "packages/ts/src/catalog.ts::CatalogAssignment": {
     "exported": true,
     "signature": "interface CatalogAssignment"
@@ -1805,7 +1801,7 @@
   },
   "packages/ts/src/database.ts::Db": {
     "exported": true,
-    "signature": "class Db { private constructor(private readonly connection: DriverPool | MarkdownPool, public readonly zone: string, options: ConnectOptions, aes: AesConfig); }"
+    "signature": "class Db { private constructor(public readonly pool: DriverPool, public readonly zone: string, options: ConnectOptions, aes: AesConfig, private readonly corpus = false); }"
   },
   "packages/ts/src/database.ts::Db#field.aesKey": {
     "exported": true,
@@ -1827,15 +1823,11 @@
     "exported": true,
     "signature": "string"
   },
-  "packages/ts/src/database.ts::Db#field.connection": {
-    "exported": false,
-    "signature": "DriverPool | MarkdownPool"
-  },
-  "packages/ts/src/database.ts::Db#field.engines": {
+  "packages/ts/src/database.ts::Db#field.corpus": {
     "exported": false,
     "signature": "unknown"
   },
-  "packages/ts/src/database.ts::Db#field.markdownModels": {
+  "packages/ts/src/database.ts::Db#field.engines": {
     "exported": false,
     "signature": "unknown"
   },
@@ -1846,6 +1838,10 @@
   "packages/ts/src/database.ts::Db#field.plans": {
     "exported": false,
     "signature": "unknown"
+  },
+  "packages/ts/src/database.ts::Db#field.pool": {
+    "exported": true,
+    "signature": "DriverPool"
   },
   "packages/ts/src/database.ts::Db#field.requestHook": {
     "exported": true,
@@ -1883,10 +1879,6 @@
     "exported": false,
     "signature": "private async begin(options: BeginOptions): Promise\u003cTxFrame\u003e"
   },
-  "packages/ts/src/database.ts::Db.beginMarkdown": {
-    "exported": false,
-    "signature": "private async beginMarkdown(md: MarkdownPool, options: BeginOptions): Promise\u003cTxFrame\u003e"
-  },
   "packages/ts/src/database.ts::Db.checkStatementFault": {
     "exported": true,
     "signature": "public checkStatementFault(sql: string, done: StatementDone): void"
@@ -1911,10 +1903,6 @@
     "exported": false,
     "signature": "private derive(property: 'signal' | 'requestHook', value: unknown): Db"
   },
-  "packages/ts/src/database.ts::Db.endMarkdown": {
-    "exported": false,
-    "signature": "private async endMarkdown(frame: TxFrame, session: MarkdownSession, op: 'commit' | 'rollback'): Promise\u003cvoid\u003e"
-  },
   "packages/ts/src/database.ts::Db.execute": {
     "exported": true,
     "signature": "public async execute(step: PlanStep, params: readonly unknown[]): Promise\u003cvoid\u003e"
@@ -1934,10 +1922,6 @@
   "packages/ts/src/database.ts::Db.listenable": {
     "exported": false,
     "signature": "private listenable(surface: string): void"
-  },
-  "packages/ts/src/database.ts::Db.markdownModel": {
-    "exported": true,
-    "signature": "public markdownModel(manifestHash: string): RuntimeModel"
   },
   "packages/ts/src/database.ts::Db.nextTransaction": {
     "exported": true,
@@ -2002,10 +1986,6 @@
   "packages/ts/src/database.ts::Db.transaction": {
     "exported": true,
     "signature": "public async transaction\u003cT\u003e(callback: () =\u003e Promise\u003cT\u003e | T, options: TransactionOptions = {}): Promise\u003cT\u003e"
-  },
-  "packages/ts/src/database.ts::Db.unsupportedOnMarkdown": {
-    "exported": true,
-    "signature": "public unsupportedOnMarkdown(surface: string): void"
   },
   "packages/ts/src/database.ts::Db.utils": {
     "exported": true,
@@ -2091,10 +2071,6 @@
     "exported": true,
     "signature": "unknown[][]"
   },
-  "packages/ts/src/database.ts::Result#field.markdown": {
-    "exported": true,
-    "signature": "boolean"
-  },
   "packages/ts/src/database.ts::Result#field.params": {
     "exported": true,
     "signature": "readonly unknown[]"
@@ -2109,7 +2085,7 @@
   },
   "packages/ts/src/database.ts::Result#wire": {
     "exported": true,
-    "signature": "{\"plan\":\"Plan\",\"main\":\"list\u003clist\u003cunknown\u003e\u003e\",\"steps\":\"Map\u003cnumber,{step:PlanStep;data:unknown[][];byKey:Map\u003cstring,number[]\u003e}\u003e\",\"params\":\"readonlyunknown[]\",\"markdown\":\"bool\"}"
+    "signature": "{\"plan\":\"Plan\",\"main\":\"list\u003clist\u003cunknown\u003e\u003e\",\"steps\":\"Map\u003cnumber,{step:PlanStep;data:unknown[][];byKey:Map\u003cstring,number[]\u003e}\u003e\",\"params\":\"readonlyunknown[]\"}"
   },
   "packages/ts/src/database.ts::Runner": {
     "exported": true,
@@ -2165,7 +2141,7 @@
   },
   "packages/ts/src/database.ts::TxFrame": {
     "exported": true,
-    "signature": "class TxFrame { public constructor(public readonly db: Db, private readonly connection: DriverSession | MarkdownSession, public readonly number: number, public readonly options: BeginOptions); }"
+    "signature": "class TxFrame { public constructor(public readonly db: Db, public readonly session: DriverSession, public readonly number: number, public readonly options: BeginOptions); }"
   },
   "packages/ts/src/database.ts::TxFrame#field.audit": {
     "exported": true,
@@ -2174,10 +2150,6 @@
   "packages/ts/src/database.ts::TxFrame#field.busy": {
     "exported": true,
     "signature": "unknown"
-  },
-  "packages/ts/src/database.ts::TxFrame#field.connection": {
-    "exported": false,
-    "signature": "DriverSession | MarkdownSession"
   },
   "packages/ts/src/database.ts::TxFrame#field.db": {
     "exported": true,
@@ -2214,6 +2186,10 @@
   "packages/ts/src/database.ts::TxFrame#field.savepoints": {
     "exported": true,
     "signature": "unknown"
+  },
+  "packages/ts/src/database.ts::TxFrame#field.session": {
+    "exported": true,
+    "signature": "DriverSession"
   },
   "packages/ts/src/database.ts::TxFrame.control": {
     "exported": true,
@@ -2489,7 +2465,7 @@
   },
   "packages/ts/src/database.ts::writeStep": {
     "exported": false,
-    "signature": "async function writeStep(ex: Executor, request: Request, params: readonly unknown[], planned: PlanStep | undefined): Promise\u003c{ key: number | string | null; affected: number; }\u003e"
+    "signature": "async function writeStep(ex: Executor, request: Request, params: readonly unknown[], step: PlanStep): Promise\u003c{ key: number | string | null; affected: number; }\u003e"
   },
   "packages/ts/src/dbspec/add_tables_and_columns.ts::DbspecAddTablesAndColumnsSteps": {
     "exported": true,
@@ -2863,6 +2839,10 @@
     "exported": false,
     "signature": "function sqliteLockResult(error: unknown): boolean"
   },
+  "packages/ts/src/dbspec/apply.ts::sqliteResultCode": {
+    "exported": false,
+    "signature": "function sqliteResultCode(error: unknown): number | undefined"
+  },
   "packages/ts/src/dbspec/apply.ts::text": {
     "exported": false,
     "signature": "function text(value: unknown, what: string): string"
@@ -3005,7 +2985,7 @@
   },
   "packages/ts/src/dbspec/connections.ts::DbspecSqliteConnection.exec": {
     "exported": true,
-    "signature": "exec(sql: string): void"
+    "signature": "exec(sql: string): void | Promise\u003cvoid\u003e"
   },
   "packages/ts/src/dbspec/connections.ts::DbspecSqliteConnection.prepare": {
     "exported": true,
@@ -3017,7 +2997,7 @@
   },
   "packages/ts/src/dbspec/connections.ts::DbspecSqliteStatement.all": {
     "exported": true,
-    "signature": "all(...parameters: (string | number)[]): unknown[]"
+    "signature": "all(...parameters: (string | number)[]): unknown[] | Promise\u003cunknown[]\u003e"
   },
   "packages/ts/src/dbspec/connections.ts::DbspecSqliteStatement.run": {
     "exported": true,
@@ -6940,15 +6920,15 @@
     "signature": "public scan(sql: string, params: readonly DriverValue[], sink: RowSink, done: StatementDone): Promise\u003cvoid\u003e"
   },
   "packages/ts/src/driver.ts::RowSink": {
-    "exported": false,
+    "exported": true,
     "signature": "interface RowSink"
   },
   "packages/ts/src/driver.ts::RowSink.columns": {
-    "exported": false,
+    "exported": true,
     "signature": "columns(columns: DriverColumn[]): void"
   },
   "packages/ts/src/driver.ts::RowSink.row": {
-    "exported": false,
+    "exported": true,
     "signature": "row(values: unknown[]): boolean"
   },
   "packages/ts/src/driver.ts::SentOrigin": {
@@ -7208,8 +7188,8 @@
     "signature": "function numberProperty(value: unknown, name: string, what: string): number"
   },
   "packages/ts/src/driver.ts::observed": {
-    "exported": false,
-    "signature": "async function observed\u003cT\u003e(name: DriverName, sql: string, done: StatementDone, origin: SentOrigin, work: () =\u003e Promise\u003cT\u003e | T): Promise\u003cT\u003e"
+    "exported": true,
+    "signature": "export async function observed\u003cT\u003e(name: DriverName, sql: string, done: StatementDone, origin: SentOrigin, work: () =\u003e Promise\u003cT\u003e | T): Promise\u003cT\u003e"
   },
   "packages/ts/src/driver.ts::openDriver": {
     "exported": true,
@@ -7521,7 +7501,7 @@
   },
   "packages/ts/src/engine/index.ts::Engine": {
     "exported": true,
-    "signature": "class Engine { public constructor(public readonly model: RuntimeModel, public readonly dialect: string); }"
+    "signature": "class Engine { public constructor(public readonly model: RuntimeModel, public readonly dialect: string, assigns = false); }"
   },
   "packages/ts/src/engine/index.ts::Engine#field.dialect": {
     "exported": true,
@@ -7575,7 +7555,15 @@
     "exported": true,
     "signature": "readonly string[]"
   },
+  "packages/ts/src/engine/model.ts::Entity#field.keyPrefix": {
+    "exported": true,
+    "signature": "string"
+  },
   "packages/ts/src/engine/model.ts::Entity#field.name": {
+    "exported": true,
+    "signature": "string"
+  },
+  "packages/ts/src/engine/model.ts::Entity#field.order": {
     "exported": true,
     "signature": "string"
   },
@@ -7601,7 +7589,7 @@
   },
   "packages/ts/src/engine/model.ts::Entity#wire": {
     "exported": true,
-    "signature": "{\"name\":\"text\",\"table\":\"text\",\"fields\":\"readonlyField[]\",\"primaryKey\":\"readonlystring[]\",\"identity\":\"text\",\"uniques\":\"readonly(readonlystring[])[]\",\"indexes\":\"readonlystring[]\",\"indexColumns\":\"readonly(readonlystring[])[]\",\"updated\":\"text\",\"softDelete\":\"text\",\"aesVersion\":\"text\",\"auditColumn\":\"text\",\"auditRecord\":\"text\",\"external\":\"bool\"}"
+    "signature": "{\"name\":\"text\",\"table\":\"text\",\"fields\":\"readonlyField[]\",\"primaryKey\":\"readonlystring[]\",\"identity\":\"text\",\"uniques\":\"readonly(readonlystring[])[]\",\"indexes\":\"readonlystring[]\",\"indexColumns\":\"readonly(readonlystring[])[]\",\"updated\":\"text\",\"softDelete\":\"text\",\"aesVersion\":\"text\",\"keyPrefix\":\"text\",\"order\":\"text\",\"auditColumn\":\"text\",\"auditRecord\":\"text\",\"external\":\"bool\"}"
   },
   "packages/ts/src/engine/model.ts::Field": {
     "exported": true,
@@ -7905,7 +7893,11 @@
   },
   "packages/ts/src/engine/planner.ts::Planner": {
     "exported": true,
-    "signature": "class Planner { public constructor(public readonly m: RuntimeModel, public readonly d: Dialect); }"
+    "signature": "class Planner { public constructor(public readonly m: RuntimeModel, public readonly d: Dialect, private readonly assigns = false); }"
+  },
+  "packages/ts/src/engine/planner.ts::Planner#field.assigns": {
+    "exported": false,
+    "signature": "unknown"
   },
   "packages/ts/src/engine/planner.ts::Planner#field.d": {
     "exported": true,
@@ -8135,6 +8127,10 @@
     "exported": false,
     "signature": "function aesVersionColumn(ent: Entity): string"
   },
+  "packages/ts/src/engine/planner.ts::allocatedKey": {
+    "exported": false,
+    "signature": "function allocatedKey(ent: Entity): boolean"
+  },
   "packages/ts/src/engine/planner.ts::assigned": {
     "exported": false,
     "signature": "function assigned(set: readonly Assignment[], column: string): boolean"
@@ -8209,7 +8205,7 @@
   },
   "packages/ts/src/engine/planner.ts::validateRequiredAssignments": {
     "exported": false,
-    "signature": "function validateRequiredAssignments(ent: Entity, set: readonly Assignment[]): void"
+    "signature": "function validateRequiredAssignments(ent: Entity, set: readonly Assignment[], assigns: boolean): void"
   },
   "packages/ts/src/engine/validate.ts::RestoreParts": {
     "exported": true,
@@ -9871,17 +9867,57 @@
     "exported": false,
     "signature": "function quoteIdent(name: string): string"
   },
-  "packages/ts/src/markdown.ts::LinksOf": {
+  "packages/ts/src/markdown.ts::AnswerColumn": {
     "exported": false,
-    "signature": "class LinksOf"
+    "signature": "interface AnswerColumn"
   },
-  "packages/ts/src/markdown.ts::LinksOf#field.joins": {
+  "packages/ts/src/markdown.ts::AnswerColumn#field.name": {
+    "exported": false,
+    "signature": "string"
+  },
+  "packages/ts/src/markdown.ts::AnswerColumn#field.type": {
+    "exported": false,
+    "signature": "string"
+  },
+  "packages/ts/src/markdown.ts::AnswerColumn#wire": {
+    "exported": false,
+    "signature": "{\"name\":\"text\",\"type\":\"text\"}"
+  },
+  "packages/ts/src/markdown.ts::MarkdownDriverSession": {
+    "exported": false,
+    "signature": "class MarkdownDriverSession { public constructor(private readonly s: MarkdownSession, private readonly pool: MarkdownPool); }"
+  },
+  "packages/ts/src/markdown.ts::MarkdownDriverSession#field.name": {
     "exported": false,
     "signature": "unknown"
   },
-  "packages/ts/src/markdown.ts::LinksOf#field.rels": {
+  "packages/ts/src/markdown.ts::MarkdownDriverSession#field.pool": {
+    "exported": false,
+    "signature": "MarkdownPool"
+  },
+  "packages/ts/src/markdown.ts::MarkdownDriverSession#field.released": {
     "exported": false,
     "signature": "unknown"
+  },
+  "packages/ts/src/markdown.ts::MarkdownDriverSession#field.s": {
+    "exported": false,
+    "signature": "MarkdownSession"
+  },
+  "packages/ts/src/markdown.ts::MarkdownDriverSession.control": {
+    "exported": false,
+    "signature": "public control(sql: string, params: readonly DriverValue[], done: StatementDone): Promise\u003cDriverResult\u003e"
+  },
+  "packages/ts/src/markdown.ts::MarkdownDriverSession.execute": {
+    "exported": false,
+    "signature": "public execute(sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined, done: StatementDone): Promise\u003cDriverResult\u003e"
+  },
+  "packages/ts/src/markdown.ts::MarkdownDriverSession.release": {
+    "exported": false,
+    "signature": "public release(discard: boolean): void"
+  },
+  "packages/ts/src/markdown.ts::MarkdownDriverSession.scan": {
+    "exported": false,
+    "signature": "public scan(sql: string, params: readonly DriverValue[], sink: RowSink, done: StatementDone): Promise\u003cvoid\u003e"
   },
   "packages/ts/src/markdown.ts::MarkdownDsn": {
     "exported": true,
@@ -9895,96 +9931,20 @@
     "exported": true,
     "signature": "string"
   },
+  "packages/ts/src/markdown.ts::MarkdownDsn#field.pragmas": {
+    "exported": true,
+    "signature": "ReadonlyArray\u003creadonly [string, string]\u003e"
+  },
   "packages/ts/src/markdown.ts::MarkdownDsn#field.token": {
     "exported": true,
     "signature": "string"
   },
   "packages/ts/src/markdown.ts::MarkdownDsn#wire": {
     "exported": true,
-    "signature": "{\"address\":\"text\",\"corpus\":\"text\",\"token\":\"text\"}"
-  },
-  "packages/ts/src/markdown.ts::MarkdownLinks": {
-    "exported": true,
-    "signature": "interface MarkdownLinks"
-  },
-  "packages/ts/src/markdown.ts::MarkdownLinks#field.joins": {
-    "exported": true,
-    "signature": "Map\u003cstring, unknown[] | null\u003e"
-  },
-  "packages/ts/src/markdown.ts::MarkdownLinks#field.rels": {
-    "exported": true,
-    "signature": "Map\u003cstring, unknown[][]\u003e"
-  },
-  "packages/ts/src/markdown.ts::MarkdownLinks#wire": {
-    "exported": true,
-    "signature": "{\"joins\":\"Map\u003cstring,unknown[]|null\u003e\",\"rels\":\"Map\u003cstring,unknown[][]\u003e\"}"
-  },
-  "packages/ts/src/markdown.ts::MarkdownNode": {
-    "exported": false,
-    "signature": "class MarkdownNode { public constructor(private readonly m: RuntimeModel, private readonly q: RequestQuery, private readonly groups: boolean, private readonly db: Db); }"
-  },
-  "packages/ts/src/markdown.ts::MarkdownNode#field.asm": {
-    "exported": false,
-    "signature": "Assemble"
-  },
-  "packages/ts/src/markdown.ts::MarkdownNode#field.built": {
-    "exported": false,
-    "signature": "unknown"
-  },
-  "packages/ts/src/markdown.ts::MarkdownNode#field.db": {
-    "exported": false,
-    "signature": "Db"
-  },
-  "packages/ts/src/markdown.ts::MarkdownNode#field.ent": {
-    "exported": false,
-    "signature": "Entity"
-  },
-  "packages/ts/src/markdown.ts::MarkdownNode#field.groups": {
-    "exported": false,
-    "signature": "boolean"
-  },
-  "packages/ts/src/markdown.ts::MarkdownNode#field.joins": {
-    "exported": false,
-    "signature": "unknown"
-  },
-  "packages/ts/src/markdown.ts::MarkdownNode#field.m": {
-    "exported": false,
-    "signature": "RuntimeModel"
-  },
-  "packages/ts/src/markdown.ts::MarkdownNode#field.q": {
-    "exported": false,
-    "signature": "RequestQuery"
-  },
-  "packages/ts/src/markdown.ts::MarkdownNode#field.rels": {
-    "exported": false,
-    "signature": "unknown"
-  },
-  "packages/ts/src/markdown.ts::MarkdownNode.build": {
-    "exported": false,
-    "signature": "public build(outputs: readonly string[]): void"
-  },
-  "packages/ts/src/markdown.ts::MarkdownNode.buildGroups": {
-    "exported": false,
-    "signature": "public buildGroups(): void"
-  },
-  "packages/ts/src/markdown.ts::MarkdownNode.outCol": {
-    "exported": false,
-    "signature": "private outCol(name: string, index: number): OutputColumn"
-  },
-  "packages/ts/src/markdown.ts::MarkdownNode.relationRows": {
-    "exported": false,
-    "signature": "public relationRows(raw: Value): unknown[][]"
-  },
-  "packages/ts/src/markdown.ts::MarkdownNode.row": {
-    "exported": false,
-    "signature": "public row(raw: Value): unknown[]"
-  },
-  "packages/ts/src/markdown.ts::MarkdownNode.rows": {
-    "exported": false,
-    "signature": "public rows(items: readonly Value[]): unknown[][]"
+    "signature": "{\"address\":\"text\",\"corpus\":\"text\",\"token\":\"text\",\"pragmas\":\"list\u003creadonly[string,string]\u003e\"}"
   },
   "packages/ts/src/markdown.ts::MarkdownPool": {
-    "exported": true,
+    "exported": false,
     "signature": "class MarkdownPool { public constructor(private readonly dsn: MarkdownDsn, private readonly bounds: PoolBounds); }"
   },
   "packages/ts/src/markdown.ts::MarkdownPool#field.bounds": {
@@ -10016,19 +9976,19 @@
     "signature": "Array\u003c() =\u003e void\u003e"
   },
   "packages/ts/src/markdown.ts::MarkdownPool.acquire": {
-    "exported": true,
+    "exported": false,
     "signature": "public async acquire(signal: AbortSignal | undefined): Promise\u003cMarkdownSession\u003e"
   },
   "packages/ts/src/markdown.ts::MarkdownPool.close": {
-    "exported": true,
+    "exported": false,
     "signature": "public close(): void"
   },
   "packages/ts/src/markdown.ts::MarkdownPool.release": {
-    "exported": true,
+    "exported": false,
     "signature": "public release(s: MarkdownSession): void"
   },
   "packages/ts/src/markdown.ts::MarkdownPool.stats": {
-    "exported": true,
+    "exported": false,
     "signature": "public stats(): PoolStats"
   },
   "packages/ts/src/markdown.ts::MarkdownPool.wait": {
@@ -10039,16 +9999,44 @@
     "exported": false,
     "signature": "private wakeOne(): void"
   },
+  "packages/ts/src/markdown.ts::MarkdownPoolDriver": {
+    "exported": false,
+    "signature": "class MarkdownPoolDriver { public constructor(private readonly pool: MarkdownPool); }"
+  },
+  "packages/ts/src/markdown.ts::MarkdownPoolDriver#field.name": {
+    "exported": false,
+    "signature": "unknown"
+  },
+  "packages/ts/src/markdown.ts::MarkdownPoolDriver#field.pool": {
+    "exported": false,
+    "signature": "MarkdownPool"
+  },
+  "packages/ts/src/markdown.ts::MarkdownPoolDriver.close": {
+    "exported": false,
+    "signature": "public async close(): Promise\u003cvoid\u003e"
+  },
+  "packages/ts/src/markdown.ts::MarkdownPoolDriver.execute": {
+    "exported": false,
+    "signature": "public async execute(sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined, done: StatementDone): Promise\u003cDriverResult\u003e"
+  },
+  "packages/ts/src/markdown.ts::MarkdownPoolDriver.reserve": {
+    "exported": false,
+    "signature": "public async reserve(): Promise\u003cDriverSession\u003e"
+  },
+  "packages/ts/src/markdown.ts::MarkdownPoolDriver.stats": {
+    "exported": false,
+    "signature": "public stats(): PoolStats"
+  },
   "packages/ts/src/markdown.ts::MarkdownSession": {
-    "exported": true,
+    "exported": false,
     "signature": "class MarkdownSession { private constructor(private readonly socket: Socket); }"
   },
   "packages/ts/src/markdown.ts::MarkdownSession#field.broken": {
-    "exported": true,
+    "exported": false,
     "signature": "unknown"
   },
   "packages/ts/src/markdown.ts::MarkdownSession#field.created": {
-    "exported": true,
+    "exported": false,
     "signature": "unknown"
   },
   "packages/ts/src/markdown.ts::MarkdownSession#field.ended": {
@@ -10072,15 +10060,15 @@
     "signature": "(() =\u003e void) | undefined"
   },
   "packages/ts/src/markdown.ts::MarkdownSession.call": {
-    "exported": true,
+    "exported": false,
     "signature": "public async call(line: string, signal: AbortSignal | undefined): Promise\u003cValue\u003e"
   },
   "packages/ts/src/markdown.ts::MarkdownSession.close": {
-    "exported": true,
+    "exported": false,
     "signature": "public close(): void"
   },
   "packages/ts/src/markdown.ts::MarkdownSession.dial": {
-    "exported": true,
+    "exported": false,
     "signature": "public static async dial(dsn: MarkdownDsn, signal: AbortSignal | undefined): Promise\u003cMarkdownSession\u003e"
   },
   "packages/ts/src/markdown.ts::MarkdownSession.end": {
@@ -10095,73 +10083,85 @@
     "exported": false,
     "signature": "private notify(): void"
   },
-  "packages/ts/src/markdown.ts::aggregateValue": {
+  "packages/ts/src/markdown.ts::StatementAnswer": {
     "exported": false,
-    "signature": "function aggregateValue(raw: Value): number | string | null"
+    "signature": "interface StatementAnswer"
+  },
+  "packages/ts/src/markdown.ts::StatementAnswer#field.affected": {
+    "exported": false,
+    "signature": "number"
+  },
+  "packages/ts/src/markdown.ts::StatementAnswer#field.columns": {
+    "exported": false,
+    "signature": "DriverColumn[]"
+  },
+  "packages/ts/src/markdown.ts::StatementAnswer#field.lastInsertId": {
+    "exported": false,
+    "signature": "bigint"
+  },
+  "packages/ts/src/markdown.ts::StatementAnswer#field.more": {
+    "exported": false,
+    "signature": "boolean"
+  },
+  "packages/ts/src/markdown.ts::StatementAnswer#field.rows": {
+    "exported": false,
+    "signature": "unknown[][]"
+  },
+  "packages/ts/src/markdown.ts::StatementAnswer#wire": {
+    "exported": false,
+    "signature": "{\"columns\":\"list\u003cDriverColumn\u003e\",\"rows\":\"list\u003clist\u003cunknown\u003e\u003e\",\"affected\":\"integer\",\"lastInsertId\":\"integer\",\"more\":\"bool\"}"
   },
   "packages/ts/src/markdown.ts::answerError": {
     "exported": false,
-    "signature": "function answerError(message: string): OrmError"
+    "signature": "function answerError(what: string, raw: string): OrmError"
   },
-  "packages/ts/src/markdown.ts::answerValue": {
+  "packages/ts/src/markdown.ts::base64": {
     "exported": false,
-    "signature": "function answerValue(type: string, raw: Value): unknown"
-  },
-  "packages/ts/src/markdown.ts::beginLine": {
-    "exported": true,
-    "signature": "export function beginLine(readOnly: boolean): string"
+    "signature": "function base64(text: string, raw: string): Buffer"
   },
   "packages/ts/src/markdown.ts::canceled": {
     "exported": false,
     "signature": "function canceled(): OrmError"
   },
-  "packages/ts/src/markdown.ts::childOf": {
+  "packages/ts/src/markdown.ts::dialStatements": {
     "exported": false,
-    "signature": "function childOf(rel: string, kind: string, flatten: boolean, cascade: boolean, assemble: Assemble): Child"
+    "signature": "async function dialStatements(dsn: MarkdownDsn, signal: AbortSignal | undefined): Promise\u003cMarkdownSession\u003e"
   },
-  "packages/ts/src/markdown.ts::controlLine": {
+  "packages/ts/src/markdown.ts::execute": {
     "exported": false,
-    "signature": "function controlLine(op: string, readOnly = false, name = ''): string"
+    "signature": "async function execute(s: MarkdownSession, sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined): Promise\u003cDriverResult\u003e"
   },
-  "packages/ts/src/markdown.ts::endLine": {
-    "exported": true,
-    "signature": "export function endLine(op: 'commit' | 'rollback'): string"
-  },
-  "packages/ts/src/markdown.ts::markdownCall": {
+  "packages/ts/src/markdown.ts::fetchMore": {
     "exported": false,
-    "signature": "async function markdownCall(ex: Executor, request: Request, params: readonly unknown[]): Promise\u003c{ answer: Value; model: RuntimeModel; }\u003e"
+    "signature": "async function fetchMore(s: MarkdownSession, a: StatementAnswer, signal: AbortSignal | undefined): Promise\u003cStatementAnswer\u003e"
   },
-  "packages/ts/src/markdown.ts::markdownLinks": {
+  "packages/ts/src/markdown.ts::openMarkdown": {
     "exported": true,
-    "signature": "export function markdownLinks(row: readonly unknown[]): MarkdownLinks"
-  },
-  "packages/ts/src/markdown.ts::markdownParam": {
-    "exported": false,
-    "signature": "function markdownParam(db: Pick\u003cDb, 'zone' | 'aesKey'\u003e, i: number, value: unknown, uses: readonly ParamUse[]): string"
-  },
-  "packages/ts/src/markdown.ts::markdownRead": {
-    "exported": true,
-    "signature": "export async function markdownRead(ex: Executor, request: Request, params: readonly unknown[]): Promise\u003c{ result: Result; total: number; }\u003e"
-  },
-  "packages/ts/src/markdown.ts::markdownScalar": {
-    "exported": true,
-    "signature": "export async function markdownScalar(ex: Executor, request: Request, params: readonly unknown[]): Promise\u003cunknown\u003e"
-  },
-  "packages/ts/src/markdown.ts::markdownWrite": {
-    "exported": true,
-    "signature": "export async function markdownWrite(ex: Executor, request: Request, params: readonly unknown[]): Promise\u003c{ keys: Array\u003cnumber | string | null\u003e; affected: number; }\u003e"
+    "signature": "export function openMarkdown(dsn: MarkdownDsn, bounds: PoolBounds): DriverPool"
   },
   "packages/ts/src/markdown.ts::parseMarkdownDsn": {
     "exported": true,
     "signature": "export function parseMarkdownDsn(url: URL): MarkdownDsn"
   },
-  "packages/ts/src/markdown.ts::savepointLine": {
-    "exported": true,
-    "signature": "export function savepointLine(op: 'savepoint' | 'release' | 'rollback_to', name: string): string"
-  },
-  "packages/ts/src/markdown.ts::subType": {
+  "packages/ts/src/markdown.ts::readAnswer": {
     "exported": false,
-    "signature": "function subType(m: RuntimeModel, sub: Subquery): string"
+    "signature": "function readAnswer(what: string, answer: Value, columns: DriverColumn[] | undefined): StatementAnswer"
+  },
+  "packages/ts/src/markdown.ts::scan": {
+    "exported": false,
+    "signature": "async function scan(s: MarkdownSession, sql: string, params: readonly DriverValue[], sink: RowSink): Promise\u003cvoid\u003e"
+  },
+  "packages/ts/src/markdown.ts::statement": {
+    "exported": false,
+    "signature": "async function statement(s: MarkdownSession, sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined): Promise\u003cStatementAnswer\u003e"
+  },
+  "packages/ts/src/markdown.ts::statementCell": {
+    "exported": false,
+    "signature": "function statementCell(raw: Value): unknown"
+  },
+  "packages/ts/src/markdown.ts::statementParam": {
+    "exported": false,
+    "signature": "function statementParam(value: DriverValue): string"
   },
   "packages/ts/src/meet.ts::meetKind": {
     "exported": true,

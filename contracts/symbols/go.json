@@ -17323,10 +17323,6 @@
     "exported": false,
     "signature": "func(x uint64) (int64, bool, error)"
   },
-  "packages/go/orm/bind_check.go::useSlotType": {
-    "exported": false,
-    "signature": "func(u ir.ParamUse) paramSlot"
-  },
   "packages/go/orm/build.go::Core.build": {
     "exported": false,
     "signature": "receiver=*Core func(kind string) *request"
@@ -20497,15 +20493,11 @@
   },
   "packages/go/orm/markdown_sql.go::mdConn": {
     "exported": false,
-    "signature": "type mdConn struct { s *mdSession shared bool }"
+    "signature": "type mdConn struct { s *mdSession }"
   },
   "packages/go/orm/markdown_sql.go::mdConn#field.s": {
     "exported": false,
     "signature": "*mdSession"
-  },
-  "packages/go/orm/markdown_sql.go::mdConn#field.shared": {
-    "exported": false,
-    "signature": "bool"
   },
   "packages/go/orm/markdown_sql.go::mdConn.Begin": {
     "exported": false,
@@ -20562,22 +20554,6 @@
   "packages/go/orm/markdown_sql.go::mdDriver.Open": {
     "exported": false,
     "signature": "receiver=mdDriver func(name string) (driver.Conn, error)"
-  },
-  "packages/go/orm/markdown_sql.go::mdOneSession": {
-    "exported": false,
-    "signature": "type mdOneSession struct{ s *mdSession }"
-  },
-  "packages/go/orm/markdown_sql.go::mdOneSession#field.s": {
-    "exported": false,
-    "signature": "*mdSession"
-  },
-  "packages/go/orm/markdown_sql.go::mdOneSession.Connect": {
-    "exported": false,
-    "signature": "receiver=mdOneSession func(context.Context) (driver.Conn, error)"
-  },
-  "packages/go/orm/markdown_sql.go::mdOneSession.Driver": {
-    "exported": false,
-    "signature": "receiver=mdOneSession func() driver.Driver"
   },
   "packages/go/orm/markdown_sql.go::mdResult": {
     "exported": false,

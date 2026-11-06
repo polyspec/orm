@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -27,18 +26,6 @@ func NewCorpus(t testing.TB, setPath string) string {
 	t.Helper()
 	dsn, _ := NewCorpusDir(t, setPath)
 	return dsn
-}
-
-// LoadCorpus loads rows, one JSON array of objects of column values in their stored form, into table of the corpus at dir
-// through `flowmark rows.load` (a corpus has no catalog connection, DIA-185).
-func LoadCorpus(t testing.TB, dir, table string, rows []byte) error {
-	t.Helper()
-	cmd := exec.CommandContext(testcase.Of(t).Context(), os.Getenv("FLOWMARK"), "rows.load", dir, table)
-	cmd.Stdin = bytes.NewReader(rows)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("flowmark rows.load %s: %w: %s", table, err, out)
-	}
-	return nil
 }
 
 // NewCorpusDir is NewCorpus that also returns the directory of the corpus.
