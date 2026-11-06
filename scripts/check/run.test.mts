@@ -111,7 +111,9 @@ caseTest('the canonical parity target declares every client and fixture setup ne
     assert.ok(comparison.needs.includes(need), `the cross-runtime comparison independently declares ${need}`);
   const expanded = expandNeeds(parity.needs);
   assert.ok(expanded.includes('databases'));
-  assert.deepEqual(SETUP_NEEDS['databases'], ['go-lease', 'node-modules', 'server-programs']);
+  assert.deepEqual(SETUP_NEEDS['databases'], ['go-lease', 'node-modules', 'server-programs', 'flowmark']);
+  // flowmark is the fourth database of a case, and WITH_TEST_ENV hands every target FLOWMARK, so databases installs it.
+  assert.ok(expandNeeds(['databases']).includes('flowmark'));
   assert.ok(expandNeeds(['databases']).includes('go-lease'));
   const makefile = readFileSync(join(repo, 'Makefile'), 'utf8');
   // T299: make exports every variable of the TEST_ENV file of the run into itself.

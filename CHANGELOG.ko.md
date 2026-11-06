@@ -28,6 +28,7 @@
 - 시험: python-unit-check가 markdown unit에 필요한 고정 flowmark를 Python suite에 넘긴다(XV23).
 - 시험: run-tests의 모든 Python 실행이 각 사례에 testcase class의 마감을 주어, flowmark의 database 사례가 30초에 멈추지 않고 suite의 나머지가 실행된다(XV24).
 - 시험: recipe runner 검사가 두 PHP recipe base를 이름 짓고, flowmark export의 저장소 시험이 GNU make 3.81과 4의 출력을 읽는다(XV25).
+- 시험: database를 준비하는 모든 CI group이 사례의 네 번째 database인 flowmark를 설치하고, dbspec-go-check/render-physical은 markdown 항목 전에 flowmark를 확인한다(XV26).
 - corpus에 대한 SQLite 연결의 수정 (T384): PHP 거부는 code를 한 번만 말한다. 호출자가 버린 PHP 문의 행은 다음 문이 끝까지 읽지 않고 닫는다. 행이 거부된 Rust 읽기는 close의 답과 관계없이 자기 오류를 유지한다. dbspec.apply의 Python lock 결과는 OrmError의 cause에서 SQLite result code를 읽고, Python schema install은 savepoint 대신 열린 트랜잭션에 합류한다.
 - 수정: Go catalog가 멈춘 읽기와 닫기 실패를 보고하고, Go PostgreSQL driver가 panic하던 곳에서 오류를 돌려준다.
 - recipe case가 그 동작을 가진 모든 runtime에서 CFG-22를 증명한다: 세션 설정과 prepared statement는 자기 연결에만 남고(`utils`), 각 연결은 자기 pool만 집계한다(`connection_pool`).

@@ -27,6 +27,7 @@
 - Tests: python-unit-check passes the pinned flowmark to the Python suite, whose markdown units need it (XV23).
 - Tests: every Python run of run-tests gives each case the deadline of its testcase class, so a database case on flowmark is not stopped at 30 s and the rest of the suite runs (XV24).
 - Tests: the recipe runner check names both PHP recipe bases, and the repository test of the flowmark export reads the output of GNU make 3.81 and 4 (XV25).
+- Tests: every CI group that prepares the databases installs flowmark, the fourth database of a case, and dbspec-go-check/render-physical checks flowmark before its markdown entries (XV26).
 - Fixes of the SQLite connection to a corpus (T384): a PHP refusal states its code once; the rows of a PHP statement that its caller dropped are closed, not read to the end by the next statement; a Rust read whose row is refused keeps its own error whatever the close answers; the Python lock result of dbspec.apply reads the SQLite result code from the cause of an OrmError, and a Python schema install joins the open transaction in place of a savepoint.
 - Fixes: the Go catalog reports a stopped read and the failure of a close, and the Go PostgreSQL driver returns an error where it panicked.
 - Recipe cases prove CFG-22 on every runtime that has the behaviour: a session setting and a prepared statement stay on their connection (`utils`), and each connection counts its own pool (`connection_pool`).

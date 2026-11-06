@@ -2259,7 +2259,7 @@ dbspec-go-check/engine:
 	$(RUN_TESTS) go --cwd packages/go -- ./engine/dbspec -count=1
 # dbspec-go-check/render-physical runs the rendered statements of tests/dbspec/ddl.json with their behavior steps on MySQL, PostgreSQL and
 # SQLite, through the recipe tests/dbspec/render-physical.json; an unset ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN fails it by name.
-dbspec-go-check/render-physical:
+dbspec-go-check/render-physical: flowmark-check
 	$(WITH_TEST_ENV) $(RUN_TESTS) go --cwd packages/go -- ./orm -run '^TestRecipeDbspec(RenderPhysical|SetDecimal)' -count=1
 # dbspec-go-check/unicode checks that the three table files written by the generator of tests/dbspec/unicode match the current Go tables, and that the C extension and the Python module
 # give the same classification as Go at every code point.

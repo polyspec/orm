@@ -858,10 +858,11 @@ caseTest('every CI group uploads the report directory that the runner writes', C
 
 // The group setup case (G5.127) checks, for every group in CI_GROUPS, whether the group runs the target's need and the setup step of that need's setup stage requires,
 // using the repository's Makefile and contracts/check-inputs.json. databases/create starts the server as a server-programs
-// program, so a group of a target that declares only databases also needs the server-programs output. The output is checked in the control case,
-// where the target does not look at databases: stress-db skips the server-programs setup step.
+// program, and a case runs on flowmark too, so a group of a target that declares only databases also needs the server-programs and the
+// flowmark outputs. The output is checked in the control case, where the target does not look at databases: stress-db skips the
+// server-programs and the flowmark setup steps.
 caseTest('every CI group runs the setup steps of its needs and of the setup step databases/create', COMPUTE, () => {
-  assert.deepEqual(expandNeeds(['databases']), ['databases', 'go-lease', 'node-modules', 'server-programs']);
+  assert.deepEqual(expandNeeds(['databases']), ['databases', 'go-lease', 'node-modules', 'server-programs', 'flowmark']);
   assert.deepEqual(expandNeeds(['php-extension-tools']), ['php-extension-tools', 'php', 'composer', 'node-modules']);
   assert.deepEqual(expandNeeds(['interfaces-typescript']), ['interfaces-typescript', 'node-modules']);
   assert.deepEqual(expandNeeds(['parity-symbols']), ['parity-symbols', 'node-modules', 'go', 'php', 'composer']);
@@ -879,12 +880,15 @@ caseTest('every CI group runs the setup steps of its needs and of the setup step
   assert.equal(outputs('static')['parity-symbols'], false, 'the static group does not install API parity extractors');
   for (const need of ['go', 'rust', 'php', 'php-extension-tools', 'python', 'databases', 'node-modules'])
     assert.equal(outputs('conformance')[need], true, `the cross-runtime comparison group installs ${need}`);
+  // A case runs on MySQL, PostgreSQL, SQLite and flowmark, and WITH_TEST_ENV hands FLOWMARK to every target, so each group that
+  // prepares the databases installs flowmark (feature_verify_other runs the markdown entries of its verifications).
+  for (const group of groups) if (outputs(group).databases) assert.equal(outputs(group).flowmark, true, `${group} prepares the databases and installs flowmark`);
   const declaredOnly = (names: readonly string[], declared: Record<string, string[]>) => {
     const wanted = new Set(names.flatMap(name => declared[name] ?? []));
     return Object.fromEntries(Object.entries(GROUP_OUTPUTS).map(([output, from]) => [output, from.filter(need => output !== 'server-programs' || need !== 'databases').some(need => wanted.has(need))]));
   };
   assert.deepEqual(groupSetupErrors({ 'stress-db': ['stress-only'] }, { 'stress-only': ['go', 'databases'] }, declaredOnly).map(line => line.replace(/ which installs.*/, '')),
-    ['CI group stress-db skips the setup step server-programs,']);
+    ['CI group stress-db skips the setup step server-programs,', 'CI group stress-db skips the setup step flowmark,']);
   assert.deepEqual(groupSetupErrors({ 'stress-db': ['stress-only'] }, { 'stress-only': ['go', 'databases'] }), []);
 });
 
@@ -908,9 +912,9 @@ caseTest('a CI group job runs each setup step under its declared condition and r
   assert.equal(stepCondition('composer'), "${{ !cancelled() && steps.group-needs.outputs.php == 'true' }}");
   assert.equal(stepCondition('servers'), "${{ !cancelled() && steps.group-needs.outputs.databases == 'true' }}");
   assert.deepEqual(groupOutputs(['a', 'b'], { a: ['go', 'composer'], b: ['databases'] }),
-    { 'node-modules': true, 'interfaces-typescript': false, 'parity-symbols': false, go: true, rust: false, php: true, 'php-extension-tools': false, 'server-programs': true, databases: true, python: false, flowmark: false });
+    { 'node-modules': true, 'interfaces-typescript': false, 'parity-symbols': false, go: true, rust: false, php: true, 'php-extension-tools': false, 'server-programs': true, databases: true, python: false, flowmark: true });
   assert.deepEqual(groupOutputs(['b'], { b: ['databases'] }),
-    { 'node-modules': true, 'interfaces-typescript': false, 'parity-symbols': false, go: false, rust: false, php: false, 'php-extension-tools': false, 'server-programs': true, databases: true, python: false, flowmark: false });
+    { 'node-modules': true, 'interfaces-typescript': false, 'parity-symbols': false, go: false, rust: false, php: false, 'php-extension-tools': false, 'server-programs': true, databases: true, python: false, flowmark: true });
   assert.deepEqual(groupOutputs(['c'], { c: ['go', 'flowmark'] }),
     { 'node-modules': false, 'interfaces-typescript': false, 'parity-symbols': false, go: true, rust: false, php: false, 'php-extension-tools': false, 'server-programs': false, databases: false, python: false, flowmark: true });
   assert.deepEqual(groupOutputs(['php-library'], { 'php-library': ['php'] }),
