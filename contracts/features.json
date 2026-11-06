@@ -1775,7 +1775,6 @@
         "markdown-message-dynamic-vectors",
         "markdown-message-untyped-null-vectors",
         "markdown-message-python-null-vectors",
-        "markdown-message-raw-text-vectors",
         "raw_text-mysql",
         "raw_text-postgres",
         "raw_text-sqlite",
@@ -7350,7 +7349,8 @@
         "python-native-test-fault-state",
         "php-go-text-serialization-native-contract",
         "php-extension-go-text-serialization-native-contract",
-        "recipe-unknown-keys"
+        "recipe-unknown-keys",
+        "markdown-message-raw-text-vectors"
       ],
       "fixtures": [
         "contracts/interfaces.json",
@@ -7364,6 +7364,8 @@
         "packages/rust/testing/interfaces/src/main.rs",
         "packages/ts/testing/interfaces/typescript.mts",
         "packages/go/bindmessages/bind_messages_test.go",
+        "packages/php/tests/BindMessagesRawTextRecipeTest.php",
+        "packages/php-ext/tests/BindMessagesRawTextRecipeTestExtensionTest.php",
         "packages/go/orm/recipe_public_interface_signed_test.go",
         "packages/php/tests/PublicInterfaceSignedRecipeTest.php",
         "packages/ts/tests/public_interface_signed-none.test.mjs",

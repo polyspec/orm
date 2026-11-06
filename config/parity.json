@@ -306,10 +306,6 @@
         {
           "glob": "packages/go/orm/catalog_temporal_test.go",
           "reason": "test: passes a Go time.Time, which a recipe value cannot express, and calls the private bool, zero date and temporal text conversions with values no server returns; temporal_text_row_cycle_sqlite and described_temporal_text hold the public reads"
-        },
-        {
-          "glob": "packages/go/orm/markdown_wire_internal_test.go",
-          "reason": "test: the private wire forms of the bound values of a markdown statement, reached inside the package; the shared bind messages of tests/bind/messages.json run through the public calls of every runtime (K313)"
         }
       ]
     },
@@ -1277,10 +1273,6 @@
         {
           "glob": "packages/rust/orm/src/engine/mod.rs",
           "reason": "test: unit tests of the crate-private compile of the engine, reached through super; the statements of a default now column on each database are the case now_defaults of the recipe conformance_verification (K313)"
-        },
-        {
-          "glob": "packages/rust/orm/tests/unit/markdown_rows.rs",
-          "reason": "test: the private session of a markdown connection on a scripted server that refuses close; a flowmark server answers close with ok, so no recipe can reach a refused close (K313)"
         }
       ]
     }
@@ -11005,7 +10997,7 @@
         "PRT-67"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json",
-      "cases": "$.cases_on.mysql[*]",
+      "cases": "$.cases[*].id",
       "owner": {
         "kind": "coverage-parts",
         "feature": "conformance_verification",
@@ -11044,7 +11036,7 @@
         "PRT-67"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json",
-      "cases": "$.cases_on.postgres[*]",
+      "cases": "$.cases[*].id",
       "owner": {
         "kind": "coverage-parts",
         "feature": "conformance_verification",
@@ -11083,7 +11075,7 @@
         "PRT-67"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json",
-      "cases": "$.cases_on.sqlite[*]",
+      "cases": "$.cases[*].id",
       "owner": {
         "kind": "coverage-parts",
         "feature": "conformance_verification",
@@ -11122,7 +11114,7 @@
         "PRT-67"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json",
-      "cases": "$.cases_on.markdown[*]",
+      "cases": "$.cases[*].id",
       "owner": {
         "kind": "coverage-parts",
         "feature": "conformance_verification",
@@ -30922,7 +30914,7 @@
       ],
       "owner": {
         "kind": "coverage-parts",
-        "feature": "model_writes",
+        "feature": "interface_contract",
         "parts": [
           "owner/go",
           "owner/php",
@@ -30934,8 +30926,7 @@
       "id": "raw_text-mysql",
       "kind": "suite",
       "requirements": [
-        "PRT-67",
-        "INT-150"
+        "PRT-67"
       ],
       "file": "contracts/fixtures/raw_text/raw_text.json",
       "cases": "$.cases[*].id",
@@ -30970,8 +30961,7 @@
       "id": "raw_text-postgres",
       "kind": "suite",
       "requirements": [
-        "PRT-67",
-        "INT-150"
+        "PRT-67"
       ],
       "file": "contracts/fixtures/raw_text/raw_text.json",
       "cases": "$.cases[*].id",
@@ -31006,8 +30996,7 @@
       "id": "raw_text-sqlite",
       "kind": "suite",
       "requirements": [
-        "PRT-67",
-        "INT-150"
+        "PRT-67"
       ],
       "file": "contracts/fixtures/raw_text/raw_text.json",
       "cases": "$.cases[*].id",
@@ -31042,9 +31031,7 @@
       "id": "raw_text-markdown",
       "kind": "suite",
       "requirements": [
-        "PRT-67",
-        "INT-150",
-        "DIA-154"
+        "PRT-67"
       ],
       "file": "contracts/fixtures/raw_text/raw_text.json",
       "cases": "$.cases[*].id",

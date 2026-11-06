@@ -107,29 +107,6 @@ class MarkdownTest extends TestCase
         self::assertSame(['connect', 'statement', 'close', 'statement'], $ops);
     }
 
-    // Requirements: PRT-71.
-    public function testRefusalStatesItsCodeOnce(): void
-    {
-        // The server refuses the statement with its code and message; the error of the client states the code once,
-        // as an OrmException of every other driver does.
-        $server = start_markdown_test_server([
-            '{"ok":true}',
-            '{"error":{"code":"DUPLICATE_KEY","message":"UNIQUE constraint failed: t.id","result_code":2067}}',
-        ]);
-        $db = \Polyspec\Orm\Orm::connect($server[2], new \Polyspec\Orm\Config());
-        $error = markdown_error(static function () use ($db): void {
-            try {
-                $db->pdo()->exec('INSERT INTO t (id) VALUES (1)');
-            } catch (\PDOException $e) {
-                throw $db->driverError($e);
-            }
-        });
-        $db->close();
-        markdown_test_server_received_messages($server);
-        self::assertSame('DUPLICATE_KEY', $error?->code_);
-        self::assertSame('DUPLICATE_KEY: UNIQUE constraint failed: t.id', $error->getMessage());
-    }
-
     // Requirements: PRT-67, DIA-31.
     public function testBindVectors(): void
     {

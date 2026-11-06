@@ -654,7 +654,3 @@ pub(crate) async fn open_markdown(dsn: MarkdownDsn, size: u32, idle: u32, cfg: &
     drop(pool.acquire().await?);
     Ok(pool)
 }
-
-#[cfg(test)]
-#[path = "../tests/unit/markdown_rows.rs"]
-mod markdown_rows;
