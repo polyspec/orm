@@ -38,8 +38,8 @@ final class Assemble
     }
 
     /**
-     * The styled cells of one indexed node, without its joined nodes, for Codec::decodeRows; the last field of a cell is
-     * the <entity>.<column> that a CODEC_DECODE of the cell names (COD-41).
+     * The styled cells of one indexed node, without its joined nodes, for Codec::decodeRows; the last field of a cell
+     * is the <entity>.<column> that a CODEC_DECODE of the cell names (COD-41).
      */
     public static function cells(array $a, RuntimeModel $model): array
     {

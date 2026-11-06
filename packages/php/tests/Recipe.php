@@ -886,11 +886,11 @@ final class Recipe
     }
 
     /**
-     * The markdown.session op (FCV-4, PRT-64, PRT-66): on a listener that answers each line with the next of the replies
-     * of the step, the calls of the step on one connection, whose error is compared with the expect. transactions runs a
-     * read-only transaction that holds a nested one, then a transaction, and compares the error of the last one; read
-     * runs one read of the bind fixture model, and read_twice runs two on the same connection, the second of which must
-     * succeed, and both compare the error of the first read.
+     * The markdown.session op (FCV-4, PRT-64, PRT-66): on a listener that answers each line with the next of the
+     * replies of the step, the calls of the step on one connection, whose error is compared with the expect.
+     * transactions runs a read-only transaction that holds a nested one, then a transaction, and compares the error of
+     * the last one; read runs one read of the bind fixture model, and read_twice runs two on the same connection, the
+     * second of which must succeed, and both compare the error of the first read.
      */
     private static function markdownSessionStep(RecipeStep $step, string $database): void
     {
