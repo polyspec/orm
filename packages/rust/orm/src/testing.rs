@@ -85,6 +85,13 @@ pub fn fail_next_statement(db: &Db, code: &str, message: &str) {
     *db.inner.statement_fault.lock().unwrap() = Some(fault);
 }
 
+/// An error of a failed SQLite statement with the result code `result` and the text `message`, as the client reads the error of
+/// the SQLite driver: its code is the result code as text and its kind follows that code (PRT-71). The error states no code of
+/// the error catalog, so the client maps it from its result code alone.
+pub fn sqlite_result_error(message: &str, result: i64) -> sqlx::Error {
+    sqlx::Error::Database(Box::new(crate::markdown::MdServerError { code: String::new(), message: message.to_owned(), result: Some(result) }))
+}
+
 /// Consumes the configured statement fault of `db` and returns its error. None if there is no fault.
 pub(crate) fn take_statement_fault(db: &Db) -> Option<Error> {
     let fault = db.inner.statement_fault.lock().unwrap().take()?;

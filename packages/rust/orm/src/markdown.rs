@@ -87,20 +87,14 @@ fn valid_pragma(pragma: &str) -> bool {
 /// since the statements of a flowmark connection are in SQLite's dialect.
 #[derive(Debug)]
 pub struct MdServerError {
-    code: String,
-    message: String,
-    result: Option<i64>,
+    pub(crate) code: String,
+    pub(crate) message: String,
+    pub(crate) result: Option<i64>,
 }
 
 impl MdServerError {
     fn new(code: &str, message: impl Into<String>) -> MdServerError {
         MdServerError { code: code.to_owned(), message: message.into(), result: None }
-    }
-
-    /// A failure that states the SQLite result code `result` and no code of the error catalog, as the SQLite driver reports a
-    /// failed statement: the client reads its code from the result code, as it reads the error of that driver.
-    pub fn sqlite_result(message: impl Into<String>, result: i64) -> MdServerError {
-        MdServerError { code: String::new(), message: message.into(), result: Some(result) }
     }
 
     /// The code of the error catalog.
@@ -116,11 +110,7 @@ impl MdServerError {
 
 impl std::fmt::Display for MdServerError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.code.is_empty() {
-            f.write_str(&self.message)
-        } else {
-            write!(f, "{}: {}", self.code, self.message)
-        }
+        write!(f, "{}: {}", self.code, self.message)
     }
 }
 

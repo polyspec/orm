@@ -6933,7 +6933,7 @@
   },
   "packages/rust/orm/src/markdown.rs::MdServerError": {
     "exported": true,
-    "signature": "pub struct MdServerError  { code : String , message : String , result : Option \u003c i64 \u003e , }"
+    "signature": "pub struct MdServerError  { pub (crate) code : String , pub (crate) message : String , pub (crate) result : Option \u003c i64 \u003e , }"
   },
   "packages/rust/orm/src/markdown.rs::MdServerError as sqlx :: error :: DatabaseError::as_error": {
     "exported": true,
@@ -6990,10 +6990,6 @@
   "packages/rust/orm/src/markdown.rs::MdServerError::result_code": {
     "exported": true,
     "signature": "pub fn result_code (\u0026 self) -\u003e Option \u003c i64 \u003e"
-  },
-  "packages/rust/orm/src/markdown.rs::MdServerError::sqlite_result": {
-    "exported": true,
-    "signature": "pub fn sqlite_result (message : impl Into \u003c String \u003e , result : i64) -\u003e MdServerError"
   },
   "packages/rust/orm/src/markdown.rs::MdSession": {
     "exported": false,
@@ -8582,6 +8578,10 @@
   "packages/rust/orm/src/testing.rs::param_uses": {
     "exported": true,
     "signature": "pub fn param_uses (manifest : \u0026 crate :: schema :: Manifest , request : \u0026 crate :: ir :: Request) -\u003e crate :: Result \u003c serde_json :: Value \u003e"
+  },
+  "packages/rust/orm/src/testing.rs::sqlite_result_error": {
+    "exported": true,
+    "signature": "pub fn sqlite_result_error (message : \u0026 str , result : i64) -\u003e sqlx :: Error"
   },
   "packages/rust/orm/src/testing.rs::take_statement_fault": {
     "exported": false,

@@ -685,7 +685,7 @@ impl dbspec::CatalogQuerier for FaultConnection {
 impl dbspec::ApplyConnection for FaultConnection {
     async fn execute(&mut self, statement: &str) -> Result<(), sqlx::Error> {
         match self.fail.get(statement) {
-            Some((message, Some(code))) => Err(sqlx::Error::Database(Box::new(polyspec_orm::markdown::MdServerError::sqlite_result(message.clone(), *code)))),
+            Some((message, Some(code))) => Err(polyspec_orm::testing::sqlite_result_error(message, *code)),
             Some((message, None)) => Err(sqlx::Error::Protocol(message.clone())),
             None => self.inner.execute(statement).await,
         }
