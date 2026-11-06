@@ -13,6 +13,7 @@
 - 수정: PHP extension의 native 시험은 test-php-ext가 빈 값으로 export하던 FLOWMARK의 flowmark server를 읽고, flowmark-check는 빈 FLOWMARK를 거부한다. extension의 runtime lane은 고정된 flowmark를 설치한다(XV12).
 - markdown 연결의 모든 public symbol, Go, TypeScript, Rust entity의 key prefix와 order, Go planner 설정 `Assigns`는 형제 symbol의 API unit에 속하며, `wire_param`은 Rust crate 안으로 감춘다(XV13).
 - 시험: Rust recipe helper의 model query 단계는 `where`가 없으면 모든 행을 읽으므로, `model_queries`의 case `a_refused_row_ends_the_read_and_keeps_the_connection`이 MySQL, PostgreSQL, SQLite, flowmark에서 여섯 runtime으로 실행된다. codec이 값을 거부하는 행은 flowmark의 첫 batch를 넘어서도 `CODEC_DECODE`로 읽기를 끝내고, 같은 연결의 다음 count는 모든 행이다(XV4).
+- PRT-66은 일찍 멈추는 읽기를 정한다: 뒤따르는 row를 close로 끝내고 close의 답과 무관하게 자신의 결과를 지키며, 거부된 close는 그 row를 다음 문에 맡기고 연결은 계속 쓸 수 있다(XV3).
 - corpus에 대한 SQLite 연결의 수정 (T384): PHP 거부는 code를 한 번만 말한다. 호출자가 버린 PHP 문의 행은 다음 문이 끝까지 읽지 않고 닫는다. 행이 거부된 Rust 읽기는 close의 답과 관계없이 자기 오류를 유지한다. dbspec.apply의 Python lock 결과는 OrmError의 cause에서 SQLite result code를 읽고, Python schema install은 savepoint 대신 열린 트랜잭션에 합류한다.
 - 수정: Go catalog가 멈춘 읽기와 닫기 실패를 보고하고, Go PostgreSQL driver가 panic하던 곳에서 오류를 돌려준다.
 - recipe case가 그 동작을 가진 모든 runtime에서 CFG-22를 증명한다: 세션 설정과 prepared statement는 자기 연결에만 남고(`utils`), 각 연결은 자기 pool만 집계한다(`connection_pool`).
