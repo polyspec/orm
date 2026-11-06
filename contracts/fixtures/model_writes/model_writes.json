@@ -11,7 +11,8 @@
     "DSL-106",
     "DSL-109",
     "DSL-110",
-    "PLN-26"
+    "PLN-26",
+    "DIA-154"
   ],
   "fixture": "contracts/fixtures/bench/dbspec-set.json",
   "cases": [

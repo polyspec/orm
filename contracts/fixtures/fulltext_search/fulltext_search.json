@@ -5,7 +5,8 @@
     "DSL-33",
     "DIA-6",
     "DIA-187",
-    "PRT-75"
+    "PRT-75",
+    "DIA-154"
   ],
   "fixture": "contracts/fixtures/bench/dbspec-set.json",
   "cases": [

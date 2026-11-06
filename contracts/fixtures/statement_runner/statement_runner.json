@@ -1,8 +1,10 @@
 {
   "$schema": "../../../scripts/features/schema/recipe.schema.json",
   "requirements": [
+    "DIA-154",
     "INT-150",
-    "INT-77"
+    "INT-77",
+    "DIA-185"
   ],
   "fixture": "contracts/fixtures/statement_events/dbspec-set.json",
   "cases": [

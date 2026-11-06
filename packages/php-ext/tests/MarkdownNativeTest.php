@@ -15,7 +15,7 @@ final class MarkdownNativeTest extends TestCase
 {
     /**
      * A markdown connection is a SQLite connection whose PDO handle sends each statement as a statement message of its
-     * flowmark session (DIA-185): the session and the handle and its statements are native classes of the extension.
+     * flowmark session: the session and the handle and its statements are native classes of the extension.
      */
     public function testMarkdownSessionAndPdoAdapterAreNative(): void
     {

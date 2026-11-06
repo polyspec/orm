@@ -27,7 +27,9 @@
     "PLN-21",
     "PLN-24",
     "PLN-44",
-    "CFG-12"
+    "CFG-12",
+    "DIA-154",
+    "DIA-184"
   ],
   "fixture": "contracts/fixtures/bench/dbspec-set.json",
   "cases": [

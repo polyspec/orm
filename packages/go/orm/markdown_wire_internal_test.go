@@ -8,7 +8,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// TestStatementParamForms holds the wire form of each bound value (PRT-67): a value that JSON cannot hold takes the form
+// TestStatementParamForms holds the wire form of each bound value (docs/spec/protocol.md section 5): a value that JSON cannot hold takes the form
 // that an answer writes for it, so it binds as the value it is, and every form reads back as the value it was.
 func TestStatementParamForms(t *testing.T) {
 	testcase.Start(t, testcase.Compute)

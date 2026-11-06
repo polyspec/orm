@@ -9,7 +9,9 @@
     "DBS-120",
     "INT-96",
     "SCH-7",
-    "SCH-11"
+    "SCH-11",
+    "DIA-154",
+    "DIA-185"
   ],
   "fixture": "contracts/fixtures/statement_events/dbspec-set.json",
   "cases": [

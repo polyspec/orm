@@ -9,7 +9,8 @@
     "FCV-11",
     "FCV-12",
     "FCV-13",
-    "FCV-14"
+    "FCV-14",
+    "DIA-154"
   ],
   "fixture": "contracts/fixtures/bench/dbspec-set.json",
   "seed": {

@@ -306,6 +306,10 @@
         {
           "glob": "packages/go/orm/catalog_temporal_test.go",
           "reason": "test: passes a Go time.Time, which a recipe value cannot express, and calls the private bool, zero date and temporal text conversions with values no server returns; temporal_text_row_cycle_sqlite and described_temporal_text hold the public reads"
+        },
+        {
+          "glob": "packages/go/orm/markdown_wire_internal_test.go",
+          "reason": "test: the private wire forms of the bound values of a markdown statement, reached inside the package; the shared bind messages of tests/bind/messages.json run through the public calls of every runtime (K313)"
         }
       ]
     },
@@ -665,7 +669,7 @@
         },
         {
           "glob": "packages/php-ext/tests/MarkdownNativeTest.php",
-          "reason": "ecosystem: checks native Markdown executor class and method registration/ABI ownership, not Markdown execution results"
+          "reason": "ecosystem: checks that the markdown session, its PDO adapter and its statement adapter are native classes of the extension, not the results of a markdown connection"
         },
         {
           "glob": "packages/php-ext/tests/PlanCacheMemoryNativeTest.php",
@@ -717,6 +721,7 @@
         "packages/ts/tests/codec_case.mjs",
         "packages/ts/tests/coverage_case.mjs",
         "packages/ts/tests/markdown_cases.mjs",
+        "packages/ts/tests/markdown_sqlite.mjs",
         "packages/ts/tests/plan_case.mjs",
         "packages/ts/tests/request_hook_run.mjs",
         "packages/ts/tests/statement-runner-run.mjs",
@@ -1122,10 +1127,6 @@
           "reason": "harness: the corpus helpers of the markdown recipe units (the corpus of a case, its file modes and its hand-written files); the cases are bound by the markdown suite units, and the module holds no test of its own"
         },
         {
-          "glob": "packages/rust/orm/tests/unit/markdown_rows.rs",
-          "reason": "test: the private session of a markdown connection on a scripted server that refuses close; a flowmark server answers close with ok, so no recipe can reach a refused close (K313)"
-        },
-        {
           "glob": "packages/rust/tests/src/conformance.rs",
           "reason": "harness: an internal test of the Rust package that checks the test harness of the owner, not a behaviour of the contract (K313)"
         },
@@ -1276,6 +1277,10 @@
         {
           "glob": "packages/rust/orm/src/engine/mod.rs",
           "reason": "test: unit tests of the crate-private compile of the engine, reached through super; the statements of a default now column on each database are the case now_defaults of the recipe conformance_verification (K313)"
+        },
+        {
+          "glob": "packages/rust/orm/tests/unit/markdown_rows.rs",
+          "reason": "test: the private session of a markdown connection on a scripted server that refuses close; a flowmark server answers close with ok, so no recipe can reach a refused close (K313)"
         }
       ]
     }
@@ -3220,7 +3225,8 @@
         "COD-60",
         "CFG-28",
         "INT-75",
-        "DIA-154"
+        "DIA-154",
+        "DIA-188"
       ],
       "file": "contracts/fixtures/aes_rotation/aes_rotation.json",
       "cases": "$.cases_on.markdown[*]",
@@ -8903,7 +8909,8 @@
         "FCV-14",
         "SCH-11",
         "SCH-7",
-        "DIA-154"
+        "DIA-154",
+        "DIA-185"
       ],
       "file": "contracts/fixtures/statement_events/statement_events.json",
       "cases": "$.cases_on.markdown[*]",
@@ -9096,7 +9103,8 @@
         "PLN-96",
         "PLN-104",
         "PLN-105",
-        "DIA-154"
+        "DIA-154",
+        "DIA-189"
       ],
       "file": "contracts/fixtures/dbspec_apply/dbspec_apply.json",
       "cases": "$.cases_on.markdown[*]",
@@ -9285,7 +9293,8 @@
         "INT-72",
         "INT-73",
         "INT-59",
-        "DIA-154"
+        "DIA-154",
+        "DIA-188"
       ],
       "file": "contracts/fixtures/utils/utils.json",
       "cases": "$.cases_on.markdown[*]",
@@ -9503,7 +9512,8 @@
         "FCV-12",
         "FCV-13",
         "FCV-14",
-        "DIA-154"
+        "DIA-154",
+        "DIA-185"
       ],
       "file": "contracts/fixtures/statement_runner/statement_runner.json",
       "cases": "$.cases[*].id",
@@ -9940,11 +9950,20 @@
       "id": "connection_pool-markdown",
       "kind": "suite",
       "requirements": [
-        "CFG-5a",
-        "DIA-154"
+        "CFG-5a"
       ],
       "file": "contracts/fixtures/connection_pool/connection_pool.json",
       "cases": "$.cases_on.markdown[*]",
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "dsn_connection",
+        "parts": [
+          "owner/go",
+          "owner/rust",
+          "owner/typescript",
+          "owner/python"
+        ]
+      },
       "bindings": [
         {
           "implementation": "go",
@@ -13194,7 +13213,23 @@
         "DIA-179",
         "DIA-182",
         "DIA-186",
-        "DIA-190"
+        "DIA-190",
+        "INT-1",
+        "INT-62",
+        "INT-68",
+        "INT-69",
+        "INT-70",
+        "INT-71",
+        "INT-80",
+        "INT-81",
+        "INT-82",
+        "INT-83",
+        "INT-84",
+        "INT-86",
+        "PRT-36",
+        "PRT-69",
+        "PRT-71",
+        "PRT-72"
       ],
       "file": "tests/markdown/cases.json",
       "cases": "$.cases[*].id",
@@ -30505,12 +30540,7 @@
       "kind": "suite",
       "requirements": [
         "PRT-67",
-        "PRT-64",
-        "DIA-183",
-        "DIA-184",
-        "DIA-185",
-        "DIA-188",
-        "DIA-189"
+        "PRT-64"
       ],
       "file": "tests/bind/messages.json",
       "cases": "$.cases[*].id",
@@ -41825,7 +41855,8 @@
         "SCH-7",
         "SCH-8",
         "SCH-9",
-        "DIA-154"
+        "DIA-154",
+        "DIA-189"
       ],
       "file": "contracts/fixtures/schema_install/schema_install.json",
       "cases": "$.cases[*].id",
@@ -42916,7 +42947,8 @@
       "requirements": [
         "SCH-14",
         "DBS-110",
-        "DIA-154"
+        "DIA-154",
+        "DIA-183"
       ],
       "file": "contracts/fixtures/external_audit/external_audit.json",
       "cases": "$.cases[*].id",
@@ -43200,7 +43232,8 @@
         "PLN-21",
         "PLN-24",
         "PLN-44",
-        "DIA-154"
+        "DIA-154",
+        "DIA-184"
       ],
       "file": "contracts/fixtures/transactions/transactions.json",
       "cases": "$.cases_on.markdown[*]",
@@ -43417,7 +43450,8 @@
         "DSL-126",
         "INT-38",
         "INT-44",
-        "DIA-154"
+        "DIA-154",
+        "DIA-183"
       ],
       "file": "contracts/fixtures/audit_triggers/audit_triggers.json",
       "cases": "$.cases[*].id",
@@ -44524,24 +44558,9 @@
       "id": "collection-recipe",
       "kind": "suite",
       "requirements": [
-        "INT-1",
         "INT-11",
-        "INT-62",
         "INT-63",
-        "INT-68",
-        "INT-69",
-        "INT-70",
-        "INT-71",
-        "INT-80",
-        "INT-81",
-        "INT-84",
-        "INT-86",
-        "INT-90",
-        "PRT-36",
-        "PRT-35",
-        "PRT-69",
-        "INT-82",
-        "INT-83"
+        "PRT-35"
       ],
       "file": "tests/collection/collection.json",
       "cases": "$.cases[*].id",

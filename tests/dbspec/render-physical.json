@@ -1,7 +1,8 @@
 {
   "$schema": "../../scripts/features/schema/recipe.schema.json",
   "requirements": [
-    "DIA-113"
+    "DIA-113",
+    "DIA-154"
   ],
   "fixture": "none",
   "cases": [

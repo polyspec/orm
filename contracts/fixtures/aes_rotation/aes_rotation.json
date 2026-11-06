@@ -19,7 +19,9 @@
     "INT-60",
     "INT-75",
     "INT-131",
-    "COD-7"
+    "COD-7",
+    "DIA-154",
+    "DIA-188"
   ],
   "fixture": "contracts/fixtures/aes_rotation/dbspec-set.json",
   "cases": [

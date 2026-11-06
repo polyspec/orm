@@ -1,6 +1,7 @@
 {
   "$schema": "../../../scripts/features/schema/recipe.schema.json",
   "requirements": [
+    "DIA-154",
     "DSL-57",
     "DSL-58",
     "DSL-60",

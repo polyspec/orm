@@ -14,7 +14,8 @@
     "CFG-27",
     "CFG-28",
     "CFG-29",
-    "CFG-13"
+    "CFG-13",
+    "DIA-154"
   ],
   "fixture": "contracts/fixtures/catalog_connection/dbspec-set.json",
   "cases": [

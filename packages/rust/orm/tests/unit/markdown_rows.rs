@@ -1,4 +1,4 @@
-//! A read that refuses a row of a statement with more batches ends the statement with close (PRT-66), and its own error is the
+//! A read that refuses a row of a statement with more batches ends the statement with close (docs/spec/protocol.md section 5), and its own error is the
 //! result whatever the close answers: a close that the server refuses leaves the rows to the next statement, which ends them.
 use super::{MarkdownDsn, MdSession};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -42,7 +42,6 @@ async fn refused_read(close_answer: &'static str) -> (sqlx::Error, bool, Vec<Str
     (error, broken, server.await.unwrap())
 }
 
-// Requirements: PRT-66.
 #[tokio::test]
 async fn a_refused_row_closes_the_statement_and_keeps_its_error() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -52,7 +51,6 @@ async fn a_refused_row_closes_the_statement_and_keeps_its_error() {
     assert_eq!(ops, ["connect", "statement", "close"]);
 }
 
-// Requirements: PRT-66.
 #[tokio::test]
 async fn a_refused_close_keeps_the_row_error() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

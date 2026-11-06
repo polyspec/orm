@@ -2,6 +2,7 @@
   "$schema": "../../../scripts/features/schema/recipe.schema.json",
   "requirements": [
     "DBS-84",
+    "DIA-154",
     "PRT-79"
   ],
   "fixture": "contracts/fixtures/immutable_write/dbspec-set.json",

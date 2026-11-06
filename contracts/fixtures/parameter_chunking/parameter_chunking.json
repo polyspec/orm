@@ -4,7 +4,8 @@
     "PLN-44",
     "PRT-35",
     "PRT-76",
-    "CFG-28"
+    "CFG-28",
+    "DIA-154"
   ],
   "fixture": "contracts/fixtures/parameter_chunking/dbspec-set.json",
   "cases": [

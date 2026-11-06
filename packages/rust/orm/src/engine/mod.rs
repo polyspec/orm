@@ -26,7 +26,7 @@ pub fn compile(m: &Manifest, d: Dialect, r: &ir::Request) -> Result<Plan> {
 }
 
 /// Plans the request as `compile` does; `assigns` is a database that assigns the `key_prefix` key and the `order` position of
-/// a row an insert leaves out, a corpus that a flowmark server serves (docs/spec/protocol.md PRT-73).
+/// a row an insert leaves out, a corpus that a flowmark server serves (docs/spec/protocol.md section 5).
 pub(crate) fn compile_for(m: &Manifest, d: Dialect, r: &ir::Request, assigns: bool) -> Result<Plan> {
     validate::validate(m, r)?;
     planner::Planner { m, d, assigns }.compile(r)
