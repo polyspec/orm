@@ -330,7 +330,7 @@ pub fn decode_styled(asm: &crate::plan::Assemble, data: &mut [Vec<Val>], aes_key
     }
     for row in data.iter_mut() {
         for node in &nodes {
-            for sc in &node.styled {
+            for (sc, name) in node.styled.iter().zip(&node.names) {
                 let mut v = std::mem::take(&mut row[sc.index]);
                 // A NULL value stays NULL: its version is not read, so a NULL version with a NULL value is not an error (COD-44).
                 if !sc.host.is_empty() && !matches!(v, Val::Null) {
@@ -345,10 +345,10 @@ pub fn decode_styled(asm: &crate::plan::Assemble, data: &mut [Vec<Val>], aes_key
                         // Non-AES host stages do not consume an AES key.
                         ""
                     };
-                    v = crate::codec::host_decode(&v, &sc.host, key).map_err(|error| crate::model::column_decode_error(&sc.entity, &sc.name, error))?;
+                    v = crate::codec::host_decode(&v, &sc.host, key).map_err(|error| crate::model::column_decode_error(node.entity, name, error))?;
                 }
                 if !sc.codec.is_empty() {
-                    v = crate::codec::decode(&sc.codec, &v).map_err(|error| crate::model::column_decode_error(&sc.entity, &sc.name, error))?;
+                    v = crate::codec::decode(&sc.codec, &v).map_err(|error| crate::model::column_decode_error(node.entity, name, error))?;
                 }
                 row[sc.index] = v;
             }
@@ -357,24 +357,26 @@ pub fn decode_styled(asm: &crate::plan::Assemble, data: &mut [Vec<Val>], aes_key
     Ok(())
 }
 
-/// The styled columns of one node of an assembly with the cell of its own key version.
+/// The styled columns of one node of an assembly with the cell of its own key version; names holds the column of
+/// each styled cell, which a decode error names with the entity (COD-41).
 struct StyledNode<'a> {
     entity: &'a str,
     styled: Vec<crate::codec::StyledCol>,
+    names: Vec<&'a str>,
     version_index: Option<usize>,
 }
 
 /// Collects the nodes with styled columns, the root first, then each joined child in plan order.
 fn styled_nodes<'a>(asm: &'a crate::plan::Assemble, out: &mut Vec<StyledNode<'a>>) -> Result<()> {
-    let styled: Vec<crate::codec::StyledCol> = asm
+    let (styled, names): (Vec<crate::codec::StyledCol>, Vec<&str>) = asm
         .columns
         .iter()
         .filter(|c| !c.styles.is_empty())
         .map(|c| {
             let (codec, host) = crate::codec::split_host(&c.styles);
-            crate::codec::StyledCol { index: c.index, entity: asm.entity.clone(), name: c.name.clone(), codec, host }
+            (crate::codec::StyledCol { index: c.index, codec, host }, c.name.as_str())
         })
-        .collect();
+        .unzip();
     if !styled.is_empty() {
         let has_aes = styled.iter().any(|c| c.host.iter().any(|style| style == "aes"));
         let version_index = if has_aes {
@@ -387,7 +389,7 @@ fn styled_nodes<'a>(asm: &'a crate::plan::Assemble, out: &mut Vec<StyledNode<'a>
         } else {
             None
         };
-        out.push(StyledNode { entity: &asm.entity, styled, version_index });
+        out.push(StyledNode { entity: &asm.entity, styled, names, version_index });
     }
     for child in &asm.children {
         if let Some(assemble) = &child.assemble {

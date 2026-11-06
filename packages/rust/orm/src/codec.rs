@@ -588,9 +588,6 @@ impl<'a> Parser<'a> {
 /// host stages a dialect left to us (aes/hex/ip); on read, host runs before codec.
 pub struct StyledCol {
     pub index: usize,
-    /// The entity and the column that a decode error names (COD-41).
-    pub entity: String,
-    pub name: String,
     pub codec: Vec<String>,
     pub host: Vec<String>,
 }
@@ -601,7 +598,7 @@ pub fn styled_cols(a: &crate::plan::Assemble) -> Vec<StyledCol> {
     for c in &a.columns {
         if !c.styles.is_empty() {
             let (codec, host) = split_host(&c.styles);
-            out.push(StyledCol { index: c.index, entity: a.entity.clone(), name: c.name.clone(), codec, host });
+            out.push(StyledCol { index: c.index, codec, host });
         }
     }
     for ch in &a.children {
