@@ -312,7 +312,7 @@ impl MarkdownRow {
 /// The wire form of a bound value (PRT-67): a JSON value; a boolean binds as 1 or 0 as on SQLite, a datetime and a date as the text
 /// that the SQLite driver binds, `{"bytes": base64}` for bytes and `{"float": "+Inf"}` or `{"float": "-Inf"}` for an infinity. A NaN
 /// has no form, as SQLite holds none.
-pub fn wire_param(value: &Param) -> std::result::Result<Value, sqlx::Error> {
+pub(crate) fn wire_param(value: &Param) -> std::result::Result<Value, sqlx::Error> {
     Ok(match value {
         Param::Null => Value::Null,
         Param::Bool(b) => Value::from(i64::from(*b)),

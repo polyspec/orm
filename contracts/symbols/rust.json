@@ -7120,8 +7120,8 @@
     "signature": "pub fn wire_float (x : f64) -\u003e std :: result :: Result \u003c Value , sqlx :: Error \u003e"
   },
   "packages/rust/orm/src/markdown.rs::wire_param": {
-    "exported": true,
-    "signature": "pub fn wire_param (value : \u0026 Param) -\u003e std :: result :: Result \u003c Value , sqlx :: Error \u003e"
+    "exported": false,
+    "signature": "pub (crate) fn wire_param (value : \u0026 Param) -\u003e std :: result :: Result \u003c Value , sqlx :: Error \u003e"
   },
   "packages/rust/orm/src/model.rs::AnyModel": {
     "exported": true,

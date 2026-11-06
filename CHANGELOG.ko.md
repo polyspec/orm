@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 6d1415cea777a31daeb8e2f637facc79d543bdfafd589d512a361bc5f6c141b3 -->
+<!-- source-sha256: 3b69199830538f3d70fc144ff6f2d941974d275256f691cdf899f6510bb2c7c3 -->
 # 변경 이력
 
 ## Unreleased
@@ -11,6 +11,7 @@
 - 시험: `polyspec_orm::testing::sqlite_result_error`(feature `test-faults`)는 result code를 가진 실패한 SQLite 문의 오류를 만들며, Rust 시험의 apply fault recipe가 이를 주입한다(XV1).
 - markdown 연결의 pool 설정은 DIA-199이며 Go, Rust, TypeScript, Python에서 SQLite와 같다. recipe `connection_pool`은 네 database 각각의 DSN으로 pool 크기를 넘는 idle 크기를 거부하고, `make connection-pool-check`가 이를 실행한다(XV2).
 - 수정: PHP extension의 native 시험은 test-php-ext가 빈 값으로 export하던 FLOWMARK의 flowmark server를 읽고, flowmark-check는 빈 FLOWMARK를 거부한다. extension의 runtime lane은 고정된 flowmark를 설치한다(XV12).
+- markdown 연결의 모든 public symbol, Go, TypeScript, Rust entity의 key prefix와 order, Go planner 설정 `Assigns`는 형제 symbol의 API unit에 속하며, `wire_param`은 Rust crate 안으로 감춘다(XV13).
 - corpus에 대한 SQLite 연결의 수정 (T384): PHP 거부는 code를 한 번만 말한다. 호출자가 버린 PHP 문의 행은 다음 문이 끝까지 읽지 않고 닫는다. 행이 거부된 Rust 읽기는 close의 답과 관계없이 자기 오류를 유지한다. dbspec.apply의 Python lock 결과는 OrmError의 cause에서 SQLite result code를 읽고, Python schema install은 savepoint 대신 열린 트랜잭션에 합류한다.
 - 수정: Go catalog가 멈춘 읽기와 닫기 실패를 보고하고, Go PostgreSQL driver가 panic하던 곳에서 오류를 돌려준다.
 - recipe case가 그 동작을 가진 모든 runtime에서 CFG-22를 증명한다: 세션 설정과 prepared statement는 자기 연결에만 남고(`utils`), 각 연결은 자기 pool만 집계한다(`connection_pool`).
