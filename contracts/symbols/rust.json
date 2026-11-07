@@ -3581,7 +3581,7 @@
   },
   "packages/rust/orm/src/db.rs::Config": {
     "exported": true,
-    "signature": "pub struct Config  { # [doc = \" Key of aes_version for aes writes; empty takes aes_keys[aes_version]\"] # [doc = \" when a key ring is configured.\"] pub aes_key : String , pub blind_index_key : String , pub aes_version : i32 , pub aes_keys : BTreeMap \u003c i32 , String \u003e , pub plan_cache_size : usize , pub statement_cache_size : usize , # [doc = \" Bound of every statement of the connection in milliseconds; zero keeps\"] # [doc = \" the server default.\"] pub statement_timeout_ms : u32 , # [doc = \" Maximum idle connections of the pool; zero keeps up to the pool size.\"] pub pool_idle_size : u32 , # [doc = \" Lifetime of a pool connection in milliseconds; zero keeps the pool\"] # [doc = \" default of 30 minutes.\"] pub pool_lifetime_ms : u32 , # [doc = \" The audit values of the transactions that record an audit; `None`\"] # [doc = \" fails such a transaction with CONFIG.\"] pub audit_source : Option \u003c AuditSource \u003e , }"
+    "signature": "pub struct Config  { # [doc = \" Key of aes_version for aes writes; empty takes `aes_keys[aes_version]`\"] # [doc = \" when a key ring is configured.\"] pub aes_key : String , pub blind_index_key : String , pub aes_version : i32 , pub aes_keys : BTreeMap \u003c i32 , String \u003e , pub plan_cache_size : usize , pub statement_cache_size : usize , # [doc = \" Bound of every statement of the connection in milliseconds; zero keeps\"] # [doc = \" the server default.\"] pub statement_timeout_ms : u32 , # [doc = \" Maximum idle connections of the pool; zero keeps up to the pool size.\"] pub pool_idle_size : u32 , # [doc = \" Lifetime of a pool connection in milliseconds; zero keeps the pool\"] # [doc = \" default of 30 minutes.\"] pub pool_lifetime_ms : u32 , # [doc = \" The audit values of the transactions that record an audit; `None`\"] # [doc = \" fails such a transaction with CONFIG.\"] pub audit_source : Option \u003c AuditSource \u003e , }"
   },
   "packages/rust/orm/src/db.rs::Config as Default::default": {
     "exported": true,
@@ -9801,7 +9801,7 @@
   },
   "packages/rust/schema/src/dbspec/add_tables_and_columns.rs::AddTablesAndColumnsSteps": {
     "exported": true,
-    "signature": "pub struct AddTablesAndColumnsSteps  { # [doc = \" Tables to create come first in table name order as \\\"table\\\", then columns to add in column order as \\\"table.column\\\".\"] pub added : Vec \u003c String \u003e , pub steps : Vec \u003c PlanStep \u003e , # [doc = \" A difference that is neither create_table nor add_column, as \\\"\u003ckind\u003e \u003ctable\u003e[.\u003cname\u003e]\\\".\"] pub differences : Vec \u003c String \u003e , }"
+    "signature": "pub struct AddTablesAndColumnsSteps  { # [doc = \" Tables to create come first in table name order as \\\"table\\\", then columns to add in column order as \\\"table.column\\\".\"] pub added : Vec \u003c String \u003e , pub steps : Vec \u003c PlanStep \u003e , # [doc = \" A difference that is neither create_table nor add_column, as `\\\"\u003ckind\u003e \u003ctable\u003e[.\u003cname\u003e]\\\"`.\"] pub differences : Vec \u003c String \u003e , }"
   },
   "packages/rust/schema/src/dbspec/add_tables_and_columns.rs::AddTablesAndColumnsSteps#field.added": {
     "exported": true,
