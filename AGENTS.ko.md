@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: bde58352e5b56fdd753a00ebc58f97d19d3584ddf03581938cf6be3a6f680967 -->
+<!-- source-sha256: 86279c201c938619e886f4506154e99a4a5e0b30778564e7d3e5a4493d21a3a8 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -117,9 +117,9 @@
 - Own: 검사는 결과가 시간에 따라 달라지는 registry 조회를 하지 않는다: 최신 version 조회, version 범위의 해석, 오래된
   package나 새 release의 조회가 없다. lock이 정확한 version과 integrity로 고정한 package의 download는 설치이며
   허용한다. `make install`이 검사가 읽는 것을 download하고, Makefile은 cargo, go, npm, Composer를 offline으로
-  실행하며(`CARGO_NET_OFFLINE`, `GOPROXY=off`, `npm_config_offline`, `COMPOSER_DISABLE_NETWORK`), install target만
-  `$(ONLINE)`으로 version을 푼다. 빠진 download는 online으로 다시 시도하라는 말이 아니라 `run make install`과 함께
-  실패한다.
+  실행하며(`CARGO_NET_OFFLINE`, `GOPROXY=off`, `npm_config_offline`, `COMPOSER_DISABLE_NETWORK`), install target과 help에
+  ONLINE을 밝힌 target(release, worktree setup, PHP extension build)만 `$(ONLINE)`으로 network에 닿는다. 빠진
+  download는 online으로 다시 시도하라는 말이 아니라 `run make install`과 함께 실패한다.
   Enforced by: none, a judgement at review.
 - Refines S4: 검사가 쓰는 모든 toolchain은 선언 하나로 고정하고 확인한다: `mise.toml`의 node, `packages/go/go.mod`의 `go` 줄,
   `mise.toml`의 Composer, `rust-toolchain.toml`은 정확한 release를, `.php-version`과 PostgreSQL major release는

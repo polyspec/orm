@@ -25,11 +25,8 @@
    description when needed. End-to-end runs, `make owner-check` and the full suite run in CI after
    the push; no local check is required before a push.
 6. The full suite runs in CI after a push to `main` (`make check-run GROUP=<group>`). For an explicit
-   local final verification after every checklist item is terminal, run
-   `make ci-targets FINAL_RUN=1 TARGETS=check-run`. Kit's guard checks the checklist and records the
-   report under `var/report/ci-targets`. `make orm-check` delegates to `ci-targets TARGETS=check-run`
-   without setting `FINAL_RUN`; CI accepts it on GitHub Actions, and a local caller must explicitly
-   pass `FINAL_RUN=1` when requesting a final run.
+   local final verification after every checklist item is terminal, run `make orm-check`, which runs
+   `make ci-targets TARGETS=check-run` and records the report under `var/report/ci-targets`.
 
 ## Test database servers
 

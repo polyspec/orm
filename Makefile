@@ -43,7 +43,7 @@ WORKTREE_STOP = orm-test-servers-stop
 
 
 # git runs the tracked hooks (.githooks/commit-msg, .githooks/pre-commit) only when core.hooksPath is .githooks, a setting of
-# each clone, which every make run sets (the section of the kit utilities below). Each hook runs a make target: the
+# each clone, which every make run of orm sets while it differs (below the tools of orm). Each hook runs a make target: the
 # commit-msg hook runs commit-msg-hook, which checks the message being committed against the commit rules (P28) and refuses
 # a commit that breaks it. make hooks sets the setting and hooks-check checks it.
 
@@ -588,10 +588,8 @@ databases-create: typescript-current
 run-databases:
 	( $(LEASE_READY) ) && $(NODE) scripts/check/run.mts --job-summary $(abspath $(TEST_ENV)) $(TARGETS)
 
-# orm-check delegates to Kit's ci-targets guard without setting FINAL_RUN: CI accepts it on GitHub Actions, while a local
-# final verification must explicitly pass FINAL_RUN=1 after every checklist item is terminal. ci-targets records its report
-# under CI_REPORT. The full suite runs on GitHub CI after a push (.github/workflows/ci.yml), and a local check is no step
-# required before a push. check-run runs the runner
+# orm-check runs check-run through ci-targets, which runs it past failures and records its report under CI_REPORT. The
+# full suite runs on GitHub CI after a push (.github/workflows/ci.yml), and a local check is no step required before a push. check-run runs the runner
 # (scripts/check/run.mts): each run creates its own bench and decimal databases, runs the targets one by one and writes the
 # record of the run to .runtime/check/<id>/record.json. The runner reads TEST_ENV as the setup step servers and holds the
 # shared lease of those servers: when the file is missing (make orm-test-servers failed), it records only the targets that need
@@ -1545,9 +1543,9 @@ orm-test-servers-leases-clear:
 # the verification commands and coverage of the features that declare those files, and only the targets that contracts/check-inputs.json declares as scope owners
 # (AGENTS.md "Owner checks"). The run uses its own test server environment and databases.
 # make owner-check, which runs the owner-check utility of @polyspec/kit, passes this target the paths that changed under the rules of
-# config/owner-checks.json; hooks-check first checks that the hooks are installed.
+# config/owner-checks.json.
 .PHONY: feature-owner-check
-feature-owner-check: hooks-check orm-codes
+feature-owner-check: orm-codes
 	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python node scripts/features/owners.mts $(PATHS)
 
 feature-unit-check: feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners feature-unit-check/select

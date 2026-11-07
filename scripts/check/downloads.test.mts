@@ -64,6 +64,10 @@ caseTest('the Makefile runs every check offline and downloads only in the instal
   assert.deepEqual(offlineMakeErrors(`${exports}x-lock:\n\t$(ONLINE) uv lock\nlockx:\n\t$(ONLINE) uv lock\n`), [
     'Makefile lockx runs $(ONLINE) outside an install target: $(ONLINE) uv lock',
   ]);
+  // A target whose help declares ONLINE downloads by its declaration (T391); offline in its help declares nothing.
+  assert.deepEqual(offlineMakeErrors(`${exports}release-x: ## Build the archives; ONLINE\n\t$(ONLINE) build\ncheck-x: ## Check; offline\n\t$(ONLINE) build\n`), [
+    'Makefile check-x runs $(ONLINE) outside an install target: $(ONLINE) build',
+  ]);
   // A rule of two targets is read as make reads it (makeTargets of scripts/repo/testcases.mts, T137-1-4-2-2).
   assert.deepEqual(offlineMakeErrors(`${exports}install-x:\n\tnpm ci\nfetch/a fetch/b:\n\tcurl -O x\n`), [
     'Makefile fetch/a downloads (curl -O x) outside an install target; make install downloads what the checks read',

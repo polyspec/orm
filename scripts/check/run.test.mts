@@ -265,7 +265,7 @@ function recipe(target: string): string[] {
   return body;
 }
 
-// The check case checks that make orm-check delegates to Kit's ci-targets guard without forcing FINAL_RUN, and that make check-run runs
+// The check case checks that make orm-check delegates to the ci-targets of kit, and that make check-run runs
 // the runner. The first two lines of check-run are a make function that checks GROUP and has no command: without GROUP they expand to an empty line, and a GROUP that does not match
 // or a GROUP outside GitHub Actions stops make before any command (G5.111). `make -n check-run` runs with only the variables the case provides
 // as its environment (tests/environment.mts), so even when a CI group's job runs this case, that GROUP and GITHUB_ACTIONS do not reach it
@@ -273,7 +273,6 @@ function recipe(target: string): string[] {
 caseTest('make orm-check delegates to ci-targets and make check-run starts the runner', COMPUTE, () => {
   const ormCheck = recipe('orm-check');
   assert.deepEqual(ormCheck, ['$(MAKE) ci-targets TARGETS=check-run']);
-  assert.ok(!ormCheck.some(line => line.includes('FINAL_RUN=1')), ormCheck.join('\n'));
   const run = recipe('check-run');
   assert.ok(run.slice(0, 2).every(line => line.startsWith('$(if $(GROUP),') && line.endsWith(')')), run.join('\n'));
   assert.deepEqual(run.slice(2), ['( $(LEASE_READY) ) && $(NODE) scripts/check/run.mts $(abspath $(TEST_ENV)) $(CHECK_RUN_TARGETS)']);

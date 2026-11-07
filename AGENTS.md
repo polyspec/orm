@@ -139,8 +139,9 @@ from kit and holds as its own; this file states only the rules of orm.
   version range, no query about outdated packages or new releases. Downloading a package that a lock
   pins by exact version and integrity is installation and is allowed. `make install` downloads what the
   checks read, the Makefile runs cargo, go, npm and Composer offline (`CARGO_NET_OFFLINE`,
-  `GOPROXY=off`, `npm_config_offline`, `COMPOSER_DISABLE_NETWORK`), only the install targets resolve
-  versions, through `$(ONLINE)`, and a missing download fails with `run make install`, never with a
+  `GOPROXY=off`, `npm_config_offline`, `COMPOSER_DISABLE_NETWORK`), only the install targets and the
+  targets whose help declares ONLINE (the release, the worktree setup, the PHP extension build) reach
+  the network, through `$(ONLINE)`, and a missing download fails with `run make install`, never with a
   retry online.
   Enforced by: none, a judgement at review.
 - Refines S4: Every toolchain the checks use is pinned in one declaration and checked: the node of `mise.toml`, the

@@ -92,11 +92,17 @@ const DOWNLOAD = /\b(?:npm (?:ci|install)|composer (?:install|update|require)|ca
 const OFFLINE = ['CARGO_NET_OFFLINE := true', 'GOPROXY := off', 'npm_config_offline := true', 'COMPOSER_DISABLE_NETWORK := 1'];
 
 // offlineMakeErrors checks whether the Makefile runs check offline: it exports the four offline settings, and the download
-// command and $(ONLINE) appear only in the recipes of the install targets (install, install-*, orm-install-*) and of the lock targets (*-lock), which write a lock from the network by nature (T263).
+// command and $(ONLINE) appear only in the recipes of the install targets (install, install-*, orm-install-*), of the lock targets
+// (*-lock), which write a lock from the network by nature (T263), and of the targets whose help declares ONLINE, such as the
+// release, the worktree setup and the build of the PHP extension, which the Makefile of orm runs since kit ships no recipe (T391).
 export function offlineMakeErrors(makefile: string) {
   const errors = OFFLINE.filter(setting => !makefile.split('\n').includes(`export ${setting}`)).map(setting => `Makefile does not export ${setting}`);
+  const online = new Set(makefile.split('\n').flatMap(line => {
+    const rule = /^([^\s:#=][^:#=]*?):(?!=)[^#]*## .*\bONLINE\b/.exec(line);
+    return rule?.[1] ? rule[1].trim().split(/\s+/) : [];
+  }));
   for (const { target, commands } of makeTargets(makefile)) {
-    if (/^(?:(?:orm-)?install(?:-[\w-]+)?|[\w-]+-lock)$/.test(target)) continue;
+    if (online.has(target) || /^(?:(?:orm-)?install(?:-[\w-]+)?|[\w-]+-lock)$/.test(target)) continue;
     for (const recipe of commands) {
       const command = recipe.trim();
       if (command.includes('$(ONLINE)')) errors.push(`Makefile ${target} runs $(ONLINE) outside an install target: ${command}`);
