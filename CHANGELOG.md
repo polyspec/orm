@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- CI: scope parity preparation recipes to their owning runtime instead of preparing PHP, Python and TypeScript for every binding job (T388).
+
 - CI: assign independent native checks and their setup to runtime groups, leave dedicated native cases out of broad runs, detect checks reached from multiple groups, and prepare generator modules during installation instead of each check (T388).
 
 ## 0.0.22

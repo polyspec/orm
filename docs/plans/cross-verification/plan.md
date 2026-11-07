@@ -210,3 +210,12 @@ The combined six-file unit run then passed 280 of 281 cases. The remaining owner
 expected the previous list of supported setup names; adding `go-codes` to that expectation made
 the focused case pass. The native coverage, installer, runner, context and declaration changes are
 kept on `ci/t388-process`; T388 remains in progress until the full audit and branch CI are complete.
+
+The parity check prerequisites now follow the runtime declarations. PHP bindings require the PHP
+vendor check, TypeScript bindings require their current build, and Python bindings require the
+venv and bind models. Go and Rust bindings do not invoke those other runtime preparations. Only
+the full parity run and the PHP-extension binding run evaluate the PHP dynamic-module probe;
+only the full run and Python binding run generate the Python bind models. API extraction retains
+its complete interface prerequisites. The existing PHP-extension and Rust preparation recipes
+remain assigned to their owning bindings. The 11 parity-context unit cases pass; native execution
+and the elapsed-time change still need branch CI.

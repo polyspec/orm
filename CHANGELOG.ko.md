@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: afaa394b3af2a89934dac9168ca03db4b5a41a0af3d607a2feb00c5899610611 -->
+<!-- source-sha256: cc0c6cf0148b93f12b8c83fddfae33d910790e4de0349c5b4d1008c310a7770a -->
 # 변경 이력
 
 ## Unreleased
+
+- CI: 모든 binding job에서 PHP, Python, TypeScript를 준비하는 대신 parity 준비 recipe를 해당 runtime에 배치한다 (T388).
 
 - CI: 독립 native 검사와 setup을 runtime group에 배치하고 전용 target이 실행하는 native case를 전체 실행에서 제외하며 여러 group이 호출하는 검사를 탐지하고 generator module을 각 검사 대신 설치 단계에서 준비한다 (T388).
 

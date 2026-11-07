@@ -1,5 +1,5 @@
 <!-- doc-id: plan-cross-verification -->
-<!-- source-sha256: 561653c2b2fe41482478506e4ae120c23e42a83ca0f73680cb5a77434091c422 -->
+<!-- source-sha256: 9040cfdbc486e0f603c12e7b77aa485a9d0ea4b9484ee1186fc939167cf9fd90 -->
 # corpus SQLite 연결의 여섯 runtime과 네 database 교차 검증
 
 [English](plan.md)
@@ -195,3 +195,11 @@ Go module cache 누락을 찾았다. 두 부분을 수정한 뒤 setup·cache fo
 setup 이름 목록을 기대했다. 기대 목록에 `go-codes`를 추가한 뒤 해당 case가 통과했다. Native
 coverage, installer, runner, context, declaration 변경은 `ci/t388-process`에서 관리한다.
 전체 조사와 branch CI가 끝날 때까지 T388은 진행 중으로 유지한다.
+
+Parity check prerequisite을 runtime 선언에 맞춰 나눈다. PHP binding은 PHP vendor check,
+TypeScript binding은 해당 build, Python binding은 venv와 bind model을 요구한다. Go와 Rust
+binding은 이 다른 runtime의 준비를 호출하지 않는다. 전체 parity 실행과 PHP-extension binding만
+PHP dynamic-module probe를 평가하고, 전체 실행과 Python binding만 Python bind model을
+생성한다. API extraction은 전체 interface prerequisite을 유지한다. 기존 PHP-extension과 Rust
+준비 recipe는 각 binding에 배치한다. Parity-context unit case 11개가 통과했다. Native 실행과
+실행 시간 변화는 branch CI에서 확인해야 한다.

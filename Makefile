@@ -1942,8 +1942,11 @@ flowmark-check:
 # their jobs build neither. parity-check runs every binding, so it prepares both (parity-prepare).
 PARITY_GATE_TARGETS = parity-check parity-api-check $(KIT_PARITY_BINDING_TARGETS)
 # The API phase owns the interface checker; bindings need its runtime prerequisites, not another extraction and self-test.
-$(PARITY_GATE_TARGETS): parity-bench-env-check flowmark-check php-vendor-check lease-tool typescript-current interface-typescript-check python-venv-check
+$(PARITY_GATE_TARGETS): parity-bench-env-check flowmark-check lease-tool
 parity-check parity-api-check: interface-check
+parity-bindings-php-check parity-bindings-php-extension-check: php-vendor-check
+parity-bindings-typescript-check: typescript-current
+parity-bindings-python-check: python-venv-check
 parity-bindings-php-extension-check: parity-prepare-php-extension
 parity-bindings-rust-check: parity-prepare-rust
 $(PARITY_GATE_TARGETS): export FLOWMARK := $(FLOWMARK)
@@ -1955,7 +1958,7 @@ $(PARITY_GATE_TARGETS): export ORM_PARITY_PHP_SCAN = $(PARITY_RUN_DIR)/php-scan
 $(PARITY_GATE_TARGETS): export POLYSPEC_ORM_EXTENSION = $(PARITY_RUN_DIR)/polyspec_orm.so
 # ORM_PHP_DYNAMIC_MODULES names the modules the extension loads dynamically, as test-php-ext exports it (T296), for the
 # DeclarationsTest of the php-extension bindings.
-$(PARITY_GATE_TARGETS): export ORM_PHP_DYNAMIC_MODULES = $(PHP_EXTENSION_DYNAMIC_MODULES)
+parity-check parity-bindings-php-extension-check: export ORM_PHP_DYNAMIC_MODULES = $(PHP_EXTENSION_DYNAMIC_MODULES)
 # ORM_SEND_SQLITE_DSN names a file in the run-owned directory; the send-savepoint cases create it themselves.
 $(PARITY_GATE_TARGETS): export ORM_SEND_SQLITE_DSN = sqlite://$(PARITY_RUN_DIR)/send-savepoint.sqlite
 # ORM_CHECKOUT is the checkout root: a binding command names it with ${ORM_CHECKOUT}, since kit forbids .. in a command word.
@@ -1965,7 +1968,7 @@ $(PARITY_GATE_TARGETS): export ORM_CHECKOUT = $(CURDIR)
 $(PARITY_GATE_TARGETS): export ORM_NODE_REPORTER = $(KIT)/parity-node-reporter.$(KIT_EXT)
 # ORM_PYTHON_BIND_MODELS is the model directory that the Python recipe helper imports for tests/bind/messages.json; the helper
 # raises without it, so the python bindings of the parity gate need it built (bind-python-models) and named.
-$(PARITY_GATE_TARGETS): bind-python-models
+parity-check parity-bindings-python-check: bind-python-models
 $(PARITY_GATE_TARGETS): export ORM_PYTHON_BIND_MODELS = $(BIND_PY_MODELS)
 $(PARITY_GATE_TARGETS): export ORM_PROGRAM_CONFORMANCE = $(PARITY_RUN_DIR)/target/debug/conformance
 

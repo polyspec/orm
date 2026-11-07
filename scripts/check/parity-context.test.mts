@@ -223,8 +223,15 @@ caseTest('Kit parity jobs declare the context and setup targets that own their n
   assert.match(makefile, /^parity-prepare: parity-prepare-php-extension parity-prepare-rust$/m);
   // A parity gate builds only the native outputs its bindings load: the extension for php-extension, the conformance
   // program for rust, both for the full parity-check; the API phase and the other implementations build neither (CR39).
-  assert.match(makefile, /^\$\(PARITY_GATE_TARGETS\): parity-bench-env-check flowmark-check php-vendor-check lease-tool typescript-current interface-typescript-check python-venv-check$/m);
+  assert.match(makefile, /^\$\(PARITY_GATE_TARGETS\): parity-bench-env-check flowmark-check lease-tool$/m);
   assert.match(makefile, /^parity-check parity-api-check: interface-check$/m);
+  assert.match(makefile, /^parity-bindings-php-check parity-bindings-php-extension-check: php-vendor-check$/m);
+  assert.match(makefile, /^parity-bindings-typescript-check: typescript-current$/m);
+  assert.match(makefile, /^parity-bindings-python-check: python-venv-check$/m);
+  assert.match(makefile, /^parity-check parity-bindings-python-check: bind-python-models$/m);
+  assert.match(makefile, /^parity-check parity-bindings-php-extension-check: export ORM_PHP_DYNAMIC_MODULES = \$\(PHP_EXTENSION_DYNAMIC_MODULES\)$/m);
+  assert.doesNotMatch(makefile, /^\$\(PARITY_GATE_TARGETS\):.*(?:bind-python-models|ORM_PHP_DYNAMIC_MODULES)/m);
+  assert.doesNotMatch(makefile, /^\$\(PARITY_GATE_TARGETS\):.*(?:php-vendor-check|python-venv-check|typescript-current|interface-typescript-check)/m);
   assert.doesNotMatch(makefile, /^\$\(PARITY_GATE_TARGETS\):.*\binterface-check\b/m);
   assert.match(makefile, /^parity-check: parity-prepare$/m);
   assert.match(makefile, /^parity-bindings-php-extension-check: parity-prepare-php-extension$/m);
