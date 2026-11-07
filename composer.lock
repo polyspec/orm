@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "4cdb5819e659bfab2182d9dd1aa3d9ac",
+    "content-hash": "7cfac618bad52a58f9ba7beaaa6ea4d4",
     "packages": [
         {
             "name": "nikic/php-parser",
@@ -307,16 +307,16 @@
     "packages-dev": [
         {
             "name": "min-0-max/json-schema",
-            "version": "dev-polyspec-origin-2.6.0",
+            "version": "v2.6.0-p2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/min-0-max/json-schema",
-                "reference": "5978fa780990500c5d85e08464b7d7a7391f93d0"
+                "reference": "e2af352f31b5d442bf71d842d506bbd5cab52ab8"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/min-0-max/json-schema/zipball/5978fa780990500c5d85e08464b7d7a7391f93d0",
-                "reference": "5978fa780990500c5d85e08464b7d7a7391f93d0",
+                "url": "https://api.github.com/repos/min-0-max/json-schema/zipball/e2af352f31b5d442bf71d842d506bbd5cab52ab8",
+                "reference": "e2af352f31b5d442bf71d842d506bbd5cab52ab8",
                 "shasum": ""
             },
             "require": {
@@ -330,7 +330,6 @@
                 "ext-intl": "*",
                 "phpunit/phpunit": "^9.0"
             },
-            "default-branch": true,
             "type": "library",
             "extra": {
                 "branch-alias": {
@@ -374,7 +373,7 @@
                 "validation",
                 "validator"
             ],
-            "time": "2026-11-01T06:28:48+00:00"
+            "time": "2026-11-06T18:44:01+00:00"
         },
         {
             "name": "myclabs/deep-copy",
@@ -2429,9 +2428,7 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {
-        "min-0-max/json-schema": 20
-    },
+    "stability-flags": {},
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {

@@ -8,6 +8,7 @@
 
 import { parse as parseToml } from 'smol-toml';
 import semver from 'semver';
+import { parseComposer, parseComposerPackages } from '../json/formats.mts';
 import { commands, type SimpleCommand } from './shell.mts';
 import { makeRecipes } from './testcases.mts';
 import { actionSteps, environment, workflowSteps, type WorkflowStep } from './workflow.mts';
@@ -164,6 +165,31 @@ export function composerVersionErrors(miseToml: string, workflows: Record<string
   }
   if (!sameMajorMinor(running, version))
     errors.push(`Composer ${running} runs the checks; mise.toml declares ${version}, so its major and minor must be ${version.split('.').slice(0, 2).join('.')}; run make install-tools, which installs the Composer of mise.toml, or change mise.toml together with the CI evidence of the new release`);
+  return errors;
+}
+
+// A Composer version that names a branch: `dev-<branch>`, a branch alias `<x>.<y>.x-dev`, or a commit after `#`.
+const COMPOSER_BRANCH = /^dev-|-dev$|#/;
+
+// composerBranchErrors returns one error for each Composer dependency that names a branch. A branch moves, so a root installs a
+// release, and a fork names its releases in its FORK.md (T386). files is {path: text} of the tracked composer.json and composer.lock.
+//   - No requirement of require or require-dev of a composer.json starts with `dev-`, ends with `-dev` or names a commit after `#`.
+//   - No package of packages or packages-dev of a composer.lock has a version that starts with `dev-` or ends with `-dev`.
+export function composerBranchErrors(files: Record<string, string>): string[] {
+  const errors: string[] = [];
+  const advice = 'require a release, which the fork names in its FORK.md';
+  for (const [path, text] of Object.entries(files)) {
+    if (/(?:^|\/)composer\.json$/.test(path)) {
+      const manifest = parseComposer(text, path);
+      for (const field of ['require', 'require-dev'] as const)
+        for (const [name, spec] of Object.entries(manifest[field] ?? {}))
+          if (COMPOSER_BRANCH.test(spec)) errors.push(`${path} ${field} ${name} is ${spec}, a branch; ${advice}`);
+    } else if (/(?:^|\/)composer\.lock$/.test(path)) {
+      const lock = parseComposerPackages(text, path);
+      for (const item of [...lock.packages, ...(lock['packages-dev'] ?? [])])
+        if (COMPOSER_BRANCH.test(item.version)) errors.push(`${path} locks ${item.name} at ${item.version}, a branch; ${advice}`);
+    }
+  }
   return errors;
 }
 

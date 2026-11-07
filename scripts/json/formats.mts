@@ -49,6 +49,8 @@ export type ParityConfig = {
 export const readParityConfig = (file: string): ParityConfig => readJsonFile<ParityConfig>(file, schema('parity'));
 /** readComposerPackages reads a composer.lock or a vendor/composer/installed.json. */
 export const readComposerPackages = (file: string): ComposerPackages => readJsonFile<ComposerPackages>(file, schema('composer-lock'));
+/** parseComposerPackages reads the text of a composer.lock; source names it in the errors. */
+export const parseComposerPackages = (text: string, source: string): ComposerPackages => parseJson<ComposerPackages>(text, schema('composer-lock'), source);
 
 /** One event of go test -json. */
 export type GoTestEvent = {

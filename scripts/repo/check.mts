@@ -9,7 +9,7 @@ import { nodeVersionErrors, npmGitSourceErrors } from './node.mts';
 import { fixlessMessageErrors, messageFiles } from './messages.mts';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mts';
 import { connectProbeErrors, runtimeSource } from './probes.mts';
-import { composerVersionErrors, goModulePathErrors, goVersionErrors, phpVersionErrors, rustToolchainErrors } from './toolchains.mts';
+import { composerBranchErrors, composerVersionErrors, goModulePathErrors, goVersionErrors, phpVersionErrors, rustToolchainErrors } from './toolchains.mts';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mts';
 import { kitCopies, kitOwnedPaths } from './kit-copies.mts';
 import { segments } from './shell.mts';
@@ -190,6 +190,8 @@ failures.push(...nodeVersionErrors(existsSync(join(root, 'mise.toml')) ? readFil
   rootPackage.engines?.node, workflows, process.versions.node));
 // npm installs only from release archives and the registry, with no dependency fetched from git.
 failures.push(...npmGitSourceErrors(Object.fromEntries(tracked.filter(path => /(?:^|\/)package(?:-lock)?\.json$/.test(path)).map(path => [path, readFileSync(join(root, path), 'utf8')]))));
+// Composer installs releases, with no dependency at a branch (T386).
+failures.push(...composerBranchErrors(Object.fromEntries(tracked.filter(path => /(?:^|\/)composer\.(?:json|lock)$/.test(path)).map(path => [path, readFileSync(join(root, path), 'utf8')]))));
 
 // .php-version declares the one PHP release, which the workflows set up; no check compares the running php with it (T285). The
 // Rust that runs the checks is the one version declared by rust-toolchain.toml, which rustc in PATH reports from the root.

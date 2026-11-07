@@ -13,7 +13,7 @@ import { nodeVersionErrors, npmGitSourceErrors } from './node.mts';
 import { fixlessMessageErrors } from './messages.mts';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mts';
 import { connectProbeErrors } from './probes.mts';
-import { composerVersionErrors, goModulePathErrors, goVersionErrors, phpVersionErrors, rustToolchainErrors } from './toolchains.mts';
+import { composerBranchErrors, composerVersionErrors, goModulePathErrors, goVersionErrors, phpVersionErrors, rustToolchainErrors } from './toolchains.mts';
 import { execFileSync } from 'node:child_process';
 import { CI_SETUP, expandNeeds, failedCiSetup, GROUP_OUTPUTS, groupOutputs, groupSetupErrors, RUNNER_STEPS, stepCondition } from '../check/ci-setup.mts';
 import { declaredNeeds, readCheckInputs } from '../check/inputs.mts';
@@ -282,6 +282,29 @@ caseTest('a package-lock.json entry resolved from git fails', COMPUTE, () => {
   for (const resolved of ['git+ssh://git@github.com/polyspec/ordered-json.git#f491200d3179c36afe29255b0f3ee964f6e83570', 'git://github.com/polyspec/ordered-json.git', 'ssh://git@github.com/polyspec/ordered-json.git', 'github:polyspec/ordered-json'])
     assert.deepEqual(npmGitSourceErrors({ 'packages/ts/package-lock.json': lockOf(resolved) }), [
       `packages/ts/package-lock.json resolves node_modules/@polyspec/ordered-json from ${resolved}, a git source; use the release archive URL of the GitHub tag`,
+    ]);
+});
+
+const composerLockOf = (version: string) => JSON.stringify({ packages: [{ name: 'polyspec/ordered-json', version: '0.0.2' }], 'packages-dev': [{ name: 'min-0-max/json-schema', version }] });
+
+caseTest('Composer dependencies by a release pass', COMPUTE, () => {
+  assert.deepEqual(composerBranchErrors({
+    'composer.json': JSON.stringify({ require: { php: '>=8.4', 'polyspec/orm': '0.0.22' }, 'require-dev': { 'min-0-max/json-schema': '2.6.0-p2', 'phpunit/phpunit': '^13.4' } }),
+    'composer.lock': composerLockOf('v2.6.0-p2'),
+  }), []);
+});
+
+caseTest('a composer.json requirement of a branch fails', COMPUTE, () => {
+  for (const spec of ['dev-polyspec-origin-2.6.0', '2.6.x-dev', 'dev-main#5978fa780990500c5d85e08464b7d7a7391f93d0', '2.6.0#5978fa7'])
+    assert.deepEqual(composerBranchErrors({ 'composer.json': JSON.stringify({ 'require-dev': { 'min-0-max/json-schema': spec } }) }), [
+      `composer.json require-dev min-0-max/json-schema is ${spec}, a branch; require a release, which the fork names in its FORK.md`,
+    ]);
+});
+
+caseTest('a composer.lock package at a branch fails', COMPUTE, () => {
+  for (const version of ['dev-polyspec-origin-2.6.0', '2.6.x-dev'])
+    assert.deepEqual(composerBranchErrors({ 'packages/php-ext/composer.lock': composerLockOf(version) }), [
+      `packages/php-ext/composer.lock locks min-0-max/json-schema at ${version}, a branch; require a release, which the fork names in its FORK.md`,
     ]);
 });
 
