@@ -1,6 +1,6 @@
 import { isUtf8 } from 'node:buffer';
 import { CORE, Core, RowState, configError, integerRanges, isModel, styledField, type EntityDef, type ModelLike, type SetSpec } from './core.js';
-import { encodeStyled } from './codec.js';
+import { CodecError, encodeStyled } from './codec.js';
 import { Value as OrderedJsonValue, stringify as orderedJsonStringify } from '@polyspec/ordered-json';
 import { Db, DatetimeKey, keyOfValues, keyText, keyValue, pagePlanSteps, paginate, query, readTime, resolve, rowKey, scalar, scalarKey, statement, write, type Executor, type Key, type QueryPlanStep, type Result } from './database.js';
 import { restoreKey } from './engine/validate.js';
@@ -253,6 +253,19 @@ function terminal(c: Core): Executor {
 }
 
 /** Converts a cell to the value type of its column type (docs/spec/dbspec.md "Runtime model"). */
+/**
+ * The value of a model column, whose conversion refusal names the entity and the column before its message in the one form
+ * of every client: `<CODE>: <entity>.<column>: <message>` (COD-1, COD-41).
+ */
+function columnValue(entity: string, column: string, value: () => unknown): unknown {
+  try {
+    return value();
+  } catch (error) {
+    if (!(error instanceof OrmError) && !(error instanceof CodecError)) throw error;
+    throw new OrmError(error.code, `${entity}.${column}: ${error.message.slice(error.code.length + 2)}`, error);
+  }
+}
+
 function convert(type: string, value: unknown, zone: string, declared?: Field): unknown {
   if (value === null || value === undefined) return null;
   switch (type) {
@@ -330,7 +343,7 @@ class Assembler {
         if ((kind === 'varchar' || kind === 'text') && cell instanceof Uint8Array && !isUtf8(cell)) {
           throw new OrmError(codes.CODEC_DECODE, `${schema.name}.${col.name}: text is not valid UTF-8`);
         }
-        m.values.set(col.name, convert(kind, cell, this.db.zone, declared));
+        m.values.set(col.name, columnValue(schema.name, col.name, () => convert(kind, cell, this.db.zone, declared)));
       } else {
         st.extra.set(col.name, addedColumnValue(col.type, row[col.index], this.db.zone));
       }

@@ -6,6 +6,7 @@ import re
 from decimal import Decimal
 
 from polyspec.orm import codes
+from polyspec.orm.codec import CodecError
 from polyspec.orm.core import Core, SetSpec
 from polyspec.orm.database import (
     Db,
@@ -73,6 +74,16 @@ def _valid_text(cell) -> bool:
     return True
 
 
+def _column_value(entity: str, column: str, value):
+    """The value of a model column, whose conversion refusal names the entity and the column before its message in the
+    one form of every client: "<CODE>: <entity>.<column>: <message>" (COD-1, COD-41)."""
+    try:
+        return value()
+    except (OrmError, CodecError) as error:
+        message = str(error)[len(error.code) + 2 :]
+        raise OrmError(error.code, f"{entity}.{column}: {message}", error) from error
+
+
 class _Assembler:
     """Assembles the result rows into models."""
 
@@ -117,7 +128,11 @@ class _Assembler:
                         codes.CODEC_DECODE,
                         f"{schema.name}.{col['name']}: text is not valid UTF-8",
                     )
-                core.values[col["name"]] = convert(kind, cell, self.db.zone, declared)
+                core.values[col["name"]] = _column_value(
+                    schema.name,
+                    col["name"],
+                    lambda: convert(kind, cell, self.db.zone, declared),
+                )
             else:
                 row_state.extra[col["name"]] = _added_column_value(
                     col["type"], row[col["index"]], self.db.zone

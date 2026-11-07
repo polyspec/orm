@@ -10583,6 +10583,10 @@
     "exported": false,
     "signature": "function columnType(col: Field): string"
   },
+  "packages/ts/src/model.ts::columnValue": {
+    "exported": false,
+    "signature": "function columnValue(entity: string, column: string, value: () =\u003e unknown): unknown"
+  },
   "packages/ts/src/model.ts::convert": {
     "exported": false,
     "signature": "function convert(type: string, value: unknown, zone: string, declared?: Field): unknown"
