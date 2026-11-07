@@ -70,12 +70,17 @@ function asModel(value: unknown): Model {
 }
 
 /** The text of a cell that a text column reads. */
-function cellText(value: unknown): string {
-  if (value instanceof Uint8Array) return Buffer.from(value).toString();
+/** The text of a text cell: a string, or bytes that are valid UTF-8; any other cell is refused (COD-1, COD-69). */
+function cellText(type: string, value: unknown): string {
   if (typeof value === 'string') return value;
-  if (typeof value === 'number' || typeof value === 'bigint' || typeof value === 'boolean') return String(value);
-  return JSON.stringify(value) ?? typeof value;
+  if (value instanceof Uint8Array) {
+    if (!isUtf8(value)) throw new OrmError(codes.CODEC_DECODE, 'text is not valid UTF-8');
+    return Buffer.from(value).toString('utf8');
+  }
+  throw new OrmError(codes.CODEC_DECODE, `${type} cell is not text`);
 }
+
+const decimalNumberText = /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$/;
 
 const truthyCells: readonly unknown[] = [true, 1, 1n, '1', 't', 'true'];
 const falsyCells: readonly unknown[] = [false, 0, 0n, '0', 'f', 'false'];
@@ -278,16 +283,19 @@ function convert(type: string, value: unknown, zone: string, declared?: Field): 
       return converted;
     }
     case 'f64': {
-      const converted = typeof value === 'number' ? value : Number(value);
-      if (!Number.isFinite(converted)) throw new OrmError(codes.CODEC_DECODE, 'f64 cell is not finite');
+      // A number, or the decimal text of one; a boolean or another text is no f64 (COD-1).
+      const converted = typeof value === 'number' ? value
+        : typeof value === 'bigint' || (typeof value === 'string' && decimalNumberText.test(value)) ? Number(value) : NaN;
+      if (!Number.isFinite(converted)) throw new OrmError(codes.CODEC_DECODE, 'f64 cell is not a finite number');
       return converted;
     }
     case 'decimal': {
-      if (declared === undefined) throw new OrmError(codes.CODEC_DECODE, 'decimal column metadata is missing');
-      if (typeof value === 'bigint') return decimalFromScaled(value, declared.precision, declared.scale);
-      if (typeof value !== 'string') throw new OrmError(codes.CODEC_DECODE, `decimal cell has type ${typeof value}`);
-      try { return normalizeDecimal(value, declared.precision, declared.scale); }
-      catch (cause) { throw new OrmError(codes.CODEC_DECODE, `invalid decimal cell: ${String(cause)}`); }
+      if (declared === undefined) throw new OrmError(codes.INTERNAL, 'decimal column metadata is missing');
+      const refused = 'decimal cell is not a decimal of its precision and scale';
+      if (typeof value !== 'bigint' && typeof value !== 'string') throw new OrmError(codes.CODEC_DECODE, refused);
+      try {
+        return typeof value === 'bigint' ? decimalFromScaled(value, declared.precision, declared.scale) : normalizeDecimal(value, declared.precision, declared.scale);
+      } catch (cause) { throw new OrmError(codes.CODEC_DECODE, refused, cause); }
     }
     case 'bool':
       if (truthyCells.includes(value)) return true;
@@ -296,9 +304,12 @@ function convert(type: string, value: unknown, zone: string, declared?: Field): 
     case 'date': case 'time': case 'datetime':
       return readTime(value, type, zone, declared?.precision ?? (type === 'datetime' ? 6 : 0));
     case 'bytes':
-      return value instanceof Uint8Array ? value : new Uint8Array(Buffer.from(cellText(value)));
+      // A stored text is its UTF-8 bytes, as in every client (a SQLite bytes column may hold a text).
+      if (value instanceof Uint8Array) return value;
+      if (typeof value === 'string') return new Uint8Array(Buffer.from(value, 'utf8'));
+      throw new OrmError(codes.CODEC_DECODE, 'bytes cell is not bytes');
     case 'varchar': case 'text': case 'uuid':
-      return cellText(value);
+      return cellText(type, value);
     case 'styled':
       return value;
   }
@@ -339,10 +350,6 @@ class Assembler {
       const cell = versionAt ? storedVersion(row[col.index]) : row[col.index];
       if (declared) {
         const kind = columnType(declared);
-        // COD-69: a text cell that is not valid UTF-8 is refused, never returned as its bytes or replaced.
-        if ((kind === 'varchar' || kind === 'text') && cell instanceof Uint8Array && !isUtf8(cell)) {
-          throw new OrmError(codes.CODEC_DECODE, `${schema.name}.${col.name}: text is not valid UTF-8`);
-        }
         m.values.set(col.name, columnValue(schema.name, col.name, () => convert(kind, cell, this.db.zone, declared)));
       } else {
         st.extra.set(col.name, addedColumnValue(col.type, row[col.index], this.db.zone));

@@ -10569,7 +10569,7 @@
   },
   "packages/ts/src/model.ts::cellText": {
     "exported": false,
-    "signature": "function cellText(value: unknown): string"
+    "signature": "function cellText(type: string, value: unknown): string"
   },
   "packages/ts/src/model.ts::collectionKey": {
     "exported": false,

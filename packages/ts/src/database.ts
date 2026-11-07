@@ -340,7 +340,7 @@ export function timeValue(value: unknown, colType: string, zone: string, precisi
 /** Reads a stored date, time or datetime cell in its value form; any other cell is CODEC_DECODE. */
 export function readTime(value: unknown, colType: string, zone: string, precision: number): string {
   const text = timeForm(value, colType, zone, precision);
-  if (text === undefined) throw new OrmError(codes.CODEC_DECODE, `${colType} cell ${JSON.stringify(value)} is not ${timeShape(colType, precision)}`);
+  if (text === undefined) throw new OrmError(codes.CODEC_DECODE, `${colType} cell is not a ${colType}`);
   return text;
 }
 

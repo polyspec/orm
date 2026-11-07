@@ -428,11 +428,7 @@ def read_time(value, col_type: str, zone: str, precision: int) -> str:
     are CODEC_DECODE."""
     text = _time_form(value, col_type, zone, precision)
     if text is None:
-        raise OrmError(
-            codes.CODEC_DECODE,
-            f"{col_type} cell {_shown(value)} is not "
-            f"{_time_shape(col_type, precision)}",
-        )
+        raise OrmError(codes.CODEC_DECODE, f"{col_type} cell is not a {col_type}")
     return text
 
 
@@ -562,19 +558,21 @@ def convert(type_: str, value, zone: str, declared: Field | None = None):
         from polyspec.orm.decimal import decimal_from_scaled
 
         if declared is None:
-            raise OrmError(codes.CODEC_DECODE, "decimal column metadata is missing")
-        if isinstance(value, int) and not isinstance(value, bool):
-            return decimal_from_scaled(value, declared.precision, declared.scale)
-        if not isinstance(value, str):
-            raise OrmError(
-                codes.CODEC_DECODE, f"decimal cell has type {type(value).__name__}"
-            )
+            raise OrmError(codes.INTERNAL, "decimal column metadata is missing")
+        refused = OrmError(
+            codes.CODEC_DECODE,
+            "decimal cell is not a decimal of its precision and scale",
+        )
         try:
+            if isinstance(value, int) and not isinstance(value, bool):
+                return decimal_from_scaled(value, declared.precision, declared.scale)
+            if not isinstance(value, str):
+                raise refused
             return normalize_decimal(value, declared.precision, declared.scale)
         except OrmError as cause:
-            raise OrmError(
-                codes.CODEC_DECODE, f"invalid decimal cell: {cause}"
-            ) from None
+            if cause is refused:
+                raise
+            raise refused from cause
     if type_ == "bool":
         if value is True or (type(value) is int and value == 1):
             return True
@@ -595,13 +593,21 @@ def convert(type_: str, value, zone: str, declared: Field | None = None):
             else (6 if type_ == "datetime" else 0),
         )
     if type_ == "bytes":
-        return value if isinstance(value, bytes) else str(value).encode("utf-8")
+        # A stored text is its UTF-8 bytes, as in every client (a SQLite bytes column may hold a text).
+        if isinstance(value, str):
+            return value.encode("utf-8")
+        if not isinstance(value, (bytes, bytearray, memoryview)):
+            raise OrmError(codes.CODEC_DECODE, "bytes cell is not bytes")
+        return bytes(value)
     if type_ in ("varchar", "text", "uuid"):
         if isinstance(value, bytes):
-            return value.decode("utf-8")
-        if isinstance(value, StyledValue):
+            try:
+                return value.decode("utf-8")
+            except UnicodeDecodeError as cause:
+                raise OrmError(codes.CODEC_DECODE, "text is not valid UTF-8") from cause
+        if isinstance(value, (str, StyledValue)):
             return value
-        return str(value)
+        raise OrmError(codes.CODEC_DECODE, f"{type_} cell is not text")
     if type_ == "styled":
         return value
     raise OrmError(codes.INTERNAL, f"cell of unknown type {type_}")
