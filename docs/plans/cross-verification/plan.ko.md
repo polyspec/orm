@@ -1,5 +1,5 @@
 <!-- doc-id: plan-cross-verification -->
-<!-- source-sha256: 51d7504d3175c065afe24e1fce434d60b3f37c47b2788f97871e67b62c664549 -->
+<!-- source-sha256: a37b61705d01d99546ff4079f39c9df7733638dc0c2693803d5b0e8c0c77aac6 -->
 # corpus SQLite 연결의 여섯 runtime과 네 database 교차 검증
 
 [English](plan.md)
@@ -318,3 +318,44 @@ Local에서 native 시험은 실행하지 않았다.
 입증하지 않는다. 시험의 적용 대상과 필요한 공통 관찰을 선언으로 해결한 뒤
 SHOW CREATE 조사를 완료로 판단해야 한다. 남은 문제를 조사하는 동안 native 시험
 source와 요구사항의 연결을 보존한다.
+
+### Rust recipe 진입점을 모으기 전에 확인하는 process 환경
+
+Rust 진입점 37개는 main 함수만 보고 합칠 수 없다. 공통 recipe helper인
+packages/rust/tests/src/recipe.rs에 ProcessZone이 있다. markdown_send가 TZ를 바꾸고
+drop에서 이전 값을 복원한다. tests/bind/messages.json의 세 case는 America/New_York를
+선택한다. bind_messages 진입점은 병렬 실행 가능한 testcase::run을 호출한다. Direct
+Rust client command는 test thread 수를 제한하지 않고 pooler와 parity command는 한
+thread를 선택한다. 따라서 현재 선언은 direct 실행에서 겹치는 case의 process 전역
+환경을 격리하지 않는다. 복원 순서에 따라 다른 case가 설정한 값이 남을 수 있다.
+이 helper는 a718d35e6 (T334-3-15-3c)에서 추가됐다. 이는 source 근거이며 native 실패를
+재현하거나 시간을 측정한 결과는 아니다.
+
+Recipe helper의 table_trials에는 schema CURRENT OnceLock도 있다. 이 별도 database
+runner는 binary마다 table recipe 하나를 사용한다. 이 runner는 NONE 진입점 37개에
+포함되지 않으며 그 진입점을 합친다고 database recipe binary를 그대로 합칠 수 있다는
+증거가 되지는 않는다.
+
+실행 기반을 개발하기 전에 표준 도구를 사용한다. Nextest의
+[custom harness 문서](https://nexte.st/docs/design/custom-test-harnesses/)는 현재
+libtest-mimic 0.8.2를 지원하고
+[실행 문서](https://nexte.st/docs/running/)는 시험별 process 실행과 fail-fast 해제를
+설명한다. [환경 문서](https://nexte.st/docs/configuration/env-vars/)는 runtime의
+CARGO_MANIFEST_DIR와 실행 파일 path를 제공한다. 이는 후보이며 설치하거나 채택한 도구가
+아니다. Fixture 환경은 testcase::start가 watchdog thread를 만들기 전에 설정해야 한다.
+시험별 process 도구로 바꾼 것만으로 현재 ProcessZone helper를 검증한 것은 아니다.
+
+채택 전에 다음을 native command와 case로 확인한다.
+
+- 선택한 모든 case가 필요한 환경과 native selector로 실행되며 case 사이에 process 상태가 남지 않는다.
+- Native 도구가 build하고 선택한 build 단위를 명시하며 kit에 artifact 수집이나 cache 관리자를 추가하지 않는다.
+- 모든 실패와 누락 case를 보고하고 fail-fast와 retry를 해제하며 case 진단을 보존한다.
+- Report는 현재 실행의 선택·실패·skip case를 포함하고 이전 report를 증거로 사용하지 않는다.
+- Native binary path와 package 작업 directory는 표준 runner가 제공한다.
+- Doctest는 cargo test --doc로 계속 실행한다. Nextest 실행 문서는 doctest를 실행하지 않는다고 명시한다.
+
+Nextest의 [JUnit 출력](https://nexte.st/docs/machine-readable/junit/)은 각 native case를
+보고하며 성공 출력 보존과 skip case 보고를 지원한다.
+[libtest JSON 출력](https://nexte.st/docs/machine-readable/libtest-json/)은 experimental로
+명시되어 있다. 기존 parser에 맞추려고 그 experimental 형식을 선택하지 않는다.
+이번 source 조사에서 native build, nextest 설치, recipe 병합, concurrency 변경은 하지 않았다.

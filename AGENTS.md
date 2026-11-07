@@ -102,6 +102,8 @@ vendors; this file states only the rules of orm.
   Enforced by: none, recipe architecture and complete evidence are reviewed
 - Own: Common recipes describe shared observable behaviour. Tests of a language's compiler, host API or internal implementation use that language's standard test tools. Both belong in the declared execution inventory and must report their actual cases; a native test is not an exemption from coverage. One execution inventory does not require one universal recipe operation model. Add a shared recipe operation for shared behaviour, never a command or script operation solely to wrap an existing native test. Whether JSON can hold an input is not, by itself, a reason to replace a native test or to exempt it from a recipe.
   Enforced by: none, the test boundary is reviewed against executable cases
+- Own: A recipe's process environment is an input fixture, established before the case starts in a process that owns it. Parallel cases do not change a shared process environment, default locale or time zone. Restoring a value afterward does not isolate overlapping cases. Grouping recipes into a native test binary preserves this isolation as well as their case IDs and observations; changing the runner alone is not evidence that a fixture is correct.
+  Enforced by: none, fixture isolation and the native runner are reviewed together
 - Own: A test step leaves nothing behind. The check runner and `make feature-owner-check` run each step with a
   temporary directory of its own (`TMPDIR`) and in a process group of its own; a passed step that
   leaves an entry in that directory, a run directory under `.runtime/run`, or a process in its

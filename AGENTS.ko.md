@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: b7bb1f4a913d2eb9c506f959172fc492b2c98d4d14772842729786124a1650c9 -->
+<!-- source-sha256: 1924049091453a3409fad2878a9fb39a1af0cf34506e70f888c11aba9f926564 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -86,6 +86,8 @@ orm 자신의 규칙만 적는다.
   Enforced by: none, recipe 구조와 완전한 증거는 검토로 확인한다
 - Own: 공통 recipe는 함께 관찰할 수 있는 동작을 기술한다. 언어의 compiler, host API, 내부 구현을 검사하는 시험은 해당 언어의 표준 시험 도구를 사용한다. 두 종류 모두 실행 목록에 선언하고 실제 case를 보고하며, native 시험이라는 이유로 검사 범위를 면제하지 않는다. 실행 목록이 하나라고 모든 시험을 표현하는 공통 recipe 연산까지 하나로 만들 필요는 없다. 공통 recipe 연산은 공통 동작을 위해 추가하고, 기존 native 시험을 감싸기 위한 command나 script 연산은 추가하지 않는다. JSON이 입력을 담을 수 있는지 여부만으로 native 시험을 대체하거나 recipe에서 면제하지 않는다.
   Enforced by: none, 실행 가능한 case를 근거로 시험의 경계를 검토한다
+- Own: Recipe의 process 환경은 입력 fixture이며 case가 시작되기 전에 그 환경을 소유하는 process에 설정한다. 병렬 case가 공유 process의 환경, 기본 locale, 시간대를 변경하지 않는다. 나중에 값을 복원해도 겹쳐 실행되는 case를 격리하지 못한다. Recipe를 native test binary에 모을 때도 case ID와 관찰 결과뿐 아니라 이 격리를 보존한다. Runner를 바꾼 것만으로 fixture의 정확성을 입증하지 않는다.
+  Enforced by: none, fixture 격리와 native runner를 함께 검토한다
 - Own: test 단계는 아무것도 남기지 않는다. check runner와 `make feature-owner-check`는 단계마다 자기 임시 directory(`TMPDIR`)와
   자기 process group에서 실행한다. 통과한 단계가 그 directory의 entry, `.runtime/run`의 실행 directory, group의
   process를 남기면 그 단계는 남긴 것을 적고 실패하며, 실패한 단계가 남긴 것은 보고서에 들어간다. 어느 쪽이든

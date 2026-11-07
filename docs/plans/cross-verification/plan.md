@@ -334,3 +334,44 @@ correction removes one redundant suite; it does not establish a distinct PHP-ext
 observation. Test applicability and the required shared observations must be resolved declaratively
 before claiming the SHOW CREATE audit complete. The native test source and the requirement
 connection are preserved while that remaining issue is investigated.
+
+### Process environment before grouping Rust recipe entries
+
+The 37 thin Rust entries cannot be grouped solely from their main functions. The shared
+recipe helper contains ProcessZone in packages/rust/tests/src/recipe.rs: markdown_send changes
+TZ and restores its previous value on drop. Three cases in tests/bind/messages.json select
+America/New_York. The bind_messages entry calls the parallel-capable testcase::run. The direct
+Rust client command supplies no test-thread limit; the pooler and parity commands select one
+thread. Consequently the existing declarations do not isolate the direct run's process-wide
+environment between overlapping cases. Restoration order can leave a value another case set.
+The helper was introduced in a718d35e6 (T334-3-15-3c). This finding is source evidence, not a
+reproduced native failure or a timing measurement.
+
+The recipe helper also has a schema CURRENT OnceLock in table_trials. That separate database
+runner intentionally supports one table recipe per binary. It is not part of the 37 NONE entries,
+and grouping those entries is no proof that database recipe binaries can be grouped unchanged.
+
+Use standard tools before developing execution infrastructure. Nextest's
+[custom harness documentation](https://nexte.st/docs/design/custom-test-harnesses/) supports the
+installed libtest-mimic 0.8.2, and its
+[execution documentation](https://nexte.st/docs/running/) describes process-per-test execution
+and disabling fail-fast. Its
+[environment documentation](https://nexte.st/docs/configuration/env-vars/) provides runtime
+CARGO_MANIFEST_DIR and executable paths. This is a candidate, not an installed or adopted tool.
+The fixture environment must be established before testcase::start creates its watchdog thread;
+switching to a process-per-test tool does not itself verify the current ProcessZone helper.
+
+Before adoption, verify all of the following against the native commands and cases:
+
+- Every selected case executes with its required environment and native selector; no process state leaks between cases.
+- Builds remain native, the selected build units are explicit, and no artifact collection or cache manager is added to kit.
+- Every failure and missing case remains visible, fail-fast and retries are disabled, and case diagnostics are preserved.
+- Reports belong to the current execution and include selected, failed and skipped cases; prior reports are not evidence.
+- Native binary paths and package working directories come from the standard runner.
+- Doctests continue through cargo test --doc: nextest's running documentation states that it does not run them.
+
+Nextest's [JUnit output](https://nexte.st/docs/machine-readable/junit/) reports each native
+case and supports retaining successful output and reporting skipped cases. Its
+[libtest JSON output](https://nexte.st/docs/machine-readable/libtest-json/) is explicitly experimental.
+Do not select that experimental format merely to fit an existing parser. No native build, nextest
+installation, recipe grouping or concurrency change was performed for this source audit.
