@@ -281,6 +281,10 @@ vendors; this file states only the rules of orm.
 - Own: Keep English and Korean documentation aligned. Records describe this repository's behavior and contain no external origin history.
   Enforced by: `make docs-check`
 
+- Own: CI keeps a complete execution inventory of shared recipes and native checks. A native check remains native when its observation requires a compiler, host type, memory property or implementation access that the shared recipe cannot express. A shared requirement still needs its declared client coverage; a native implementation detail is no exemption. The repository owns build units, case selection, fixtures and justified serialization. Kit executes those declarations and reports results; consolidating the inventory does not require converting native tests to recipe operations or moving artifact management into kit.
+  Enforced by: none, the observation and ownership require design review
+
+
 ## Generated files
 
 - Own: A generated file is never tracked in git. This covers dependency installs (`node_modules/`, `vendor/`, `vendor-php/`, `.venv/`, `venv/`), build output (`dist/`, `target/`, `*.egg-info/`, `*.vsix`), caches (`__pycache__/`, `*.pyc`, `docs/.vitepress/cache/`), test run artifacts (`.runtime/`, `var/`, `*.test`), and tool downloads (`var/tools/`).

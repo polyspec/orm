@@ -398,3 +398,9 @@ mechanism was not adopted. The existing environment declaration suffices for thi
 Nextest remains an evaluated runner candidate rather than a requirement of the timezone fix.
 The old Cargo helper's artifact handling and the broader native build design remain separate
 work to assess; applying a fixture does not complete that work.
+
+### Native concurrency audit and design ruling
+
+The inventory unification proposal is limited to execution accounting, not conversion of every native observation to JSON operations. The paired feature coverage specification and AGENTS now state the distinction and repository ownership of build units, selectors, fixtures and serialization.
+
+Source inspection finds separate Rust testcase::run and run_in_order entry points; the latter defaults to one thread for shared resources. The recipe database trials create a CaseDatabase per case. However, feature coverage currently passes --test-threads=1 to every Rust binary. That blanket restriction requires a fixture audit before removal, and its elapsed-time impact remains unmeasured. Table recipe entry points also set CURRENT through OnceLock and reject a second schema registration in one binary. Combining those entry points before redesigning their fixture ownership would fail rather than improve CI. No concurrency setting or native entry point was changed by this ruling.

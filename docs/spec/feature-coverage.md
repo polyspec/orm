@@ -487,3 +487,11 @@ the caller's values without changing the caller's own environment.
 The Cargo helper's dry run includes the declared fixture environment with references unresolved. The client preview shows
 it in the selected Rust native plan using the same declaration as execution. The fixture and its case selectors remain
 inputs to the native runner; the case IDs and expected results remain unchanged.
+
+## Execution inventory and native checks {#execution-inventory-and-native-checks}
+
+One CI execution inventory must account for shared recipes and native checks. Shared recipes specify observable common behavior and its required runtime and database coverage. Compiler diagnostics, host type rules, memory properties and implementation observations remain native when the recipe cannot express the observation. A native check of a shared requirement still supplies executable evidence for that requirement; its implementation language does not remove required coverage.
+
+The repository declares build units, selectors, fixtures and any required serialization. Tests sharing mutable state must identify that state and the reason they cannot run concurrently. Independent cases must not inherit serialization merely because another suite needs it. Kit executes the declared harness and reports observed results. It does not decide which product tests are equivalent or manage repository build artifacts. Consolidating the inventory does not justify converting every native check into a generic command operation.
+
+Before combining native entry points, verify fixture isolation, native selector semantics, exact case identity and result attribution. A combined binary is acceptable only when it preserves those properties and every required check. Build success alone proves none of them.

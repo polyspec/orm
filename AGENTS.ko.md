@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: 1924049091453a3409fad2878a9fb39a1af0cf34506e70f888c11aba9f926564 -->
+<!-- source-sha256: f0718741c106fd61692262401c5a1e365c361c756d3e6d1be890b7808cfbe19c -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -246,6 +246,10 @@ orm 자신의 규칙만 적는다.
   Enforced by: `make conformance-check`
 - Own: 영문과 국문 문서를 동등하게 유지한다. 기록은 이 저장소의 동작을 설명하며 외부 출처의 이력을 담지 않는다.
   Enforced by: `make docs-check`
+
+- Own: CI는 shared recipe와 native check의 완전한 실행 목록을 관리한다. Compiler, host type, memory 특성 또는 내부 구현 접근이 필요하여 shared recipe로 관찰할 수 없는 검사는 native로 유지한다. Shared requirement에는 여전히 선언한 client coverage가 필요하며 native 구현 상세는 면제 사유가 아니다. Build unit, case 선택, fixture와 근거 있는 직렬화는 repository의 책임이다. Kit은 그 선언을 실행하고 결과를 보고한다. 실행 목록을 합친다는 이유로 native 시험을 recipe operation으로 바꾸거나 artifact 관리를 kit으로 옮기지 않는다.
+  Enforced by: none, 관찰 대상과 책임은 설계 검토가 필요하다
+
 
 ## 생성 파일
 

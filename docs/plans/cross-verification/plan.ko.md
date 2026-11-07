@@ -1,5 +1,5 @@
 <!-- doc-id: plan-cross-verification -->
-<!-- source-sha256: fef1b03403b3e16f3cf69ad72539accd4f1ec11121a9d4e6fc6efb35ab6ee032 -->
+<!-- source-sha256: a110d5bfe08def5b80417468cc599fc9aba81e5ac7e7396582d5076d8f010665 -->
 # corpus SQLite 연결의 여섯 runtime과 네 database 교차 검증
 
 [English](plan.md)
@@ -382,3 +382,9 @@ Nextest setup script도 공식 문서로 확인했다. 아직
 runner 후보이며 시간대 수정의 필수 도구가 아니다. 기존 Cargo helper의 artifact 처리와
 전체 native build 설계는 별도로 검토할 작업으로 남는다. Fixture를 적용한 것으로 그 작업을
 완료로 판단하지 않는다.
+
+### Native 동시 실행 조사와 설계 기준
+
+실행 목록 통합 제안은 실행 대상의 집계에 한정하며 모든 native 관찰을 JSON operation으로 바꾸는 것이 아니다. Feature coverage 명세와 AGENTS의 두 언어 문서는 이 구분과 build unit·selector·fixture·직렬화의 repository 책임을 명시한다.
+
+Source에서 Rust testcase::run과 run_in_order 진입점을 확인했다. 후자는 공유 자원 때문에 기본 thread 수를 하나로 정한다. Recipe의 database trial은 case마다 CaseDatabase를 만든다. 그러나 feature coverage는 현재 모든 Rust binary에 --test-threads=1을 전달한다. 이 일괄 제한을 제거하기 전에 fixture 조사가 필요하며 소요 시간 영향은 아직 측정하지 않았다. Table recipe 진입점은 OnceLock으로 CURRENT를 설정하며 하나의 binary에서 두 번째 schema 등록을 거절한다. Fixture 책임을 재설계하기 전에 이 진입점을 합치면 CI 개선 대신 실패를 만든다. 이번 기준 확정으로 동시 실행 설정이나 native 진입점을 바꾸지 않았다.

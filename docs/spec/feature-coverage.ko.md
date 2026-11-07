@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: 904f6fba41b7452236153680a18c41bd5f4cd902a68622f1c826915fa9cea93a -->
+<!-- source-sha256: 7ff6fe1c1f11733b489edcc499aaed4ee60fbd4addd3a58a5718acb6cc438dd8 -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 테스트 명령을 선언한다. 그 명령은 자기 recipe의 entry(FCV-12)이거나 FCV-2의 네이티브 테스트다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-unit-check`가 실패한다.
@@ -484,3 +484,11 @@ process 준비가 이 선언을 사용한다. Native parity는 표준 harness의
 Cargo helper의 dry run은 참조를 해석하지 않은 fixture 환경 선언을 포함한다. Client 미리보기는 실제 실행과
 같은 선언으로 선택한 Rust native 계획에 그 값을 보여준다. Fixture와 case selector는 native runner의
 입력으로 유지하며 case ID와 기대 결과를 보존한다.
+
+## 실행 목록과 native check {#execution-inventory-and-native-checks}
+
+CI의 하나의 실행 목록은 shared recipe와 native check를 모두 포함해야 한다. Shared recipe는 관찰 가능한 공통 동작과 필요한 runtime·database coverage를 명세한다. Compiler 진단, host type 규칙, memory 특성과 내부 구현 관찰은 recipe가 그 관찰을 표현할 수 없을 때 native로 유지한다. Shared requirement를 검사하는 native check도 해당 requirement의 실행 증거를 제공하며 구현 언어가 필요한 coverage를 면제하지 않는다.
+
+Build unit, selector, fixture와 필요한 직렬화는 repository가 선언한다. 변경 가능한 상태를 공유하는 시험은 그 상태와 동시 실행이 불가능한 이유를 명시해야 한다. 독립 case는 다른 suite가 필요로 한다는 이유만으로 직렬화를 적용받지 않는다. Kit은 선언된 harness를 실행하고 관찰한 결과를 보고한다. Product 시험의 동등성을 판단하거나 repository build artifact를 관리하지 않는다. 실행 목록을 합친다는 이유로 모든 native check를 일반 command operation으로 바꾸지 않는다.
+
+Native 진입점을 합치기 전에 fixture 격리, native selector 의미, 정확한 case 식별과 결과 귀속을 검증한다. 합친 binary는 이 특성과 모든 필수 검사를 보존할 때만 허용한다. Build 성공만으로는 이를 증명할 수 없다.
