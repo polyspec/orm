@@ -19931,6 +19931,10 @@
     "exported": false,
     "signature": "func(entity, column string, err error) error"
   },
+  "packages/go/orm/exec.go::columnErr": {
+    "exported": false,
+    "signature": "func(entity, column string, err error) error"
+  },
   "packages/go/orm/exec.go::countCols": {
     "exported": false,
     "signature": "func(a *plan.Assemble) int"

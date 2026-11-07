@@ -224,7 +224,7 @@ func (a *assembler) model(b *Core, asm *plan.Assemble, row []any) (*Core, error)
 		if col.Column != "" && col.Column == col.Name {
 			assigned, err := b.ent.Assign(m.self, col.Name, v)
 			if err != nil {
-				return nil, err
+				return nil, columnErr(b.ent.Name, col.Name, err)
 			}
 			if assigned {
 				continue
@@ -1008,7 +1008,7 @@ func (c *Core) Create() (Model, error) {
 			}
 			assigned, err := c.ent.Assign(m.self, s.column, v)
 			if err != nil {
-				return nil, err
+				return nil, columnErr(c.ent.Name, s.column, err)
 			}
 			if !assigned {
 				return nil, codecErr(CodeInternal, "insert column %q is not in generated model", s.column)

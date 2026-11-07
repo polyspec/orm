@@ -1057,6 +1057,16 @@ func columnDecodeErr(entity, column string, err error) error {
 	return &ir.Error{Code: coded.Code, Msg: entity + "." + column + ": " + coded.Msg, Cause: coded.Cause}
 }
 
+// columnErr names the entity and the column of a refused value of a generated model assignment after its code, in the
+// one form of every client: "<CODE>: <entity>.<column>: <message>" (COD-1, COD-41).
+func columnErr(entity, column string, err error) error {
+	var coded *ir.Error
+	if !errors.As(err, &coded) {
+		return fmt.Errorf("%s.%s: %w", entity, column, err)
+	}
+	return &ir.Error{Code: coded.Code, Msg: entity + "." + column + ": " + coded.Msg, Cause: coded.Cause}
+}
+
 func restoreByteColumns(vals []any, asm *plan.Assemble) error {
 	for _, col := range asm.Columns {
 		if col.Type != "bytes" || len(col.Styles) != 0 {

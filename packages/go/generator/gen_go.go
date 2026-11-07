@@ -463,7 +463,7 @@ func (g *goGen) writeModel(gm *goModel) error {
 	t, v := gm.typ, "x"
 	var b bytes.Buffer
 	b.WriteString(generatedHeader)
-	fmt.Fprintf(&b, "\npackage %s\n\nimport (\n\t\"fmt\"\n", g.pkg)
+	fmt.Fprintf(&b, "\npackage %s\n\nimport (\n", g.pkg)
 	b.WriteString("\t\"time\"\n\n\t\"github.com/polyspec/orm/packages/go/orm\"\n)\n\nvar _ time.Time\n\n")
 	ent := lowerFirst(gm.ctor) + "Entity"
 	fmt.Fprintf(&b, "// %s is a %s model or row.\ntype %s struct {\n\tm *orm.Core\n", t, e.Name, t)
@@ -487,10 +487,10 @@ func (g *goGen) writeModel(gm *goModel) error {
 		if c.Null && gt != "orm.StyledValue" {
 			fmt.Fprintf(&b, "\t\tif v == nil { x.%s = nil; break }\n", field(c))
 		} else if !c.Null && gt != "orm.StyledValue" {
-			fmt.Fprintf(&b, "\t\tif v == nil { return true, fmt.Errorf(\"column %s: %%w\", orm.ErrNullColumn) }\n", c.Name)
+			b.WriteString("\t\tif v == nil { return true, orm.ErrNullColumn }\n")
 		}
 		if gt == "orm.StyledValue" {
-			fmt.Fprintf(&b, "\t\tt, err := orm.AsStyledValue(v, %t)\n\t\tif err != nil { return true, fmt.Errorf(\"column %s: %%w\", err) }\n\t\tx.%s = t\n", c.Null, c.Name, field(c))
+			fmt.Fprintf(&b, "\t\tt, err := orm.AsStyledValue(v, %t)\n\t\tif err != nil { return true, err }\n\t\tx.%s = t\n", c.Null, field(c))
 		} else {
 			conversion := convert(gt)
 			switch {
@@ -500,7 +500,7 @@ func (g *goGen) writeModel(gm *goModel) error {
 			case c.Type == "time":
 				conversion = fmt.Sprintf("orm.AsTimeText(v, %d)", c.Precision)
 			}
-			fmt.Fprintf(&b, "\t\tt, err := %s\n\t\tif err != nil { return true, fmt.Errorf(\"column %s: %%w\", err) }\n", conversion, c.Name)
+			fmt.Fprintf(&b, "\t\tt, err := %s\n\t\tif err != nil { return true, err }\n", conversion)
 			if fieldType(c) != gt {
 				fmt.Fprintf(&b, "\t\tx.%s = &t\n", field(c))
 			} else {
