@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: cfcce454e33241ce4a6346131e3259f9fc6500e2c82da9a7df254d65ef203c27 -->
+<!-- source-sha256: 78529b105c5b8fd78bf08500a9ea473f75bba4e86a7ce84851d02277340904ee -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -153,8 +153,10 @@ orm 자신의 규칙만 적는다.
   항목으로 고친다. CI 실행이 진행 중일 때 그것에 대응하려고 다시 push하지 않는다.
   Enforced by: none, review에서의 판단이다
 - Own: `.github/workflows/ci.yml`이 저장소의 모든 검사를 가지고 `main`으로의 push와 수동 실행에서 실행된다. 마지막 job
-  `ci-passed`는 job `test`(CI group마다 job 하나)와 `docs`가 실패해도 그 뒤에 실행되고 그 모두가 성공했을 때만
-  통과한다(`make ci-passed`). `.github/workflows/docs-pages.yml`은 `main`의 site를 build하고 deploy만 한다.
+  `ci-passed`는 job `test`(CI group마다 job 하나)와 `docs`가 실패해도 그 뒤에 실행된다. 수동 실행은 항상 전체 시험을 실행한다.
+  main push는 docs/spec/feature-coverage.ko.md에 따라 동일 SHA의 성공한 수동 실행만 재사용할 수 있다.
+  `make orm-ci-passed`는 의도적으로 생략한 검사를 인정하기 전에 증거를 재확인하고 실행된 모든 결과를
+  `make ci-passed`로 전달한다. 실패나 취소가 하나라도 있으면 실패한다. `.github/workflows/docs-pages.yml`은 `main`의 site를 build하고 deploy만 한다.
   Enforced by: `make repo-check`
 - Own: `make orm-check`는 어떤 단계보다 먼저 kit의 guard(`full-run`)를 실행한다: 체크리스트 항목(하위 항목 포함)이
   `[~]`인 동안, 추적하는 file에 commit하지 않은 변경이 있는 동안, Git hook이 설치되지 않은 동안, 그리고

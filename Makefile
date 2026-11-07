@@ -400,7 +400,7 @@ client-pooler-rust-check: orm-codes-typescript lease-tool flowmark-check
 # runner-check checks the check runner (scripts/check/run.mts) and its run record (scripts/check/record.mts) with a temporary git checkout and stub steps.
 # It does not run the actual targets or databases.
 runner-check:
-	$(NODE) --test scripts/client-db-test.test.mts scripts/check/implementation-environment.test.mts scripts/check/ci-plan.test.mts scripts/check/run.test.mts scripts/check/continue.test.mts scripts/check/step.test.mts scripts/check/downloads.test.mts scripts/check/parity-context.test.mts scripts/json/schema.test.mts
+	$(NODE) --test scripts/check/ci-evidence.test.mts scripts/client-db-test.test.mts scripts/check/implementation-environment.test.mts scripts/check/ci-plan.test.mts scripts/check/run.test.mts scripts/check/continue.test.mts scripts/check/step.test.mts scripts/check/downloads.test.mts scripts/check/parity-context.test.mts scripts/json/schema.test.mts
 
 # dbspec-rust-check runs twice each the shared dbspec vectors, the Rust rule cases, the plan and Mermaid cases, and the apply cleanup errors injected through a wrapped SQLite
 # connection.
@@ -3602,3 +3602,8 @@ php-test-assertions-helper-check: php-vendor-check php-models
 .PHONY: typescript-performance-gate-unit-check
 typescript-performance-gate-unit-check:
 	$(RUN_TESTS) node -- --test packages/ts/tests/coverage_performance_gate.test.mjs
+
+# Verify repository CI evidence, then delegate every selected result to Kit.
+.PHONY: orm-ci-passed
+orm-ci-passed:
+	$(NODE) scripts/check/ci-evidence.mts required

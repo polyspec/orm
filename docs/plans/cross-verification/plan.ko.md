@@ -1,5 +1,5 @@
 <!-- doc-id: plan-cross-verification -->
-<!-- source-sha256: 9eeaada503e399a6af02e450e3b2f8bedc154fe2dca8c3b4ee865435c0dac25c -->
+<!-- source-sha256: 3882f52aa6c99e6c80eb2731176984b8eae10d2c41368ff2bb7fb09fe765549e -->
 # corpus SQLite 연결의 여섯 runtime과 네 database 교차 검증
 
 [English](plan.md)
@@ -422,3 +422,9 @@ Repository·parity context·CI preview 회귀 단위 시험 170개가 통과했�
 Kit CI 42362321849가 a89540d36243995d2f9530f3dd514b3d7ea157da에서 성공했다. Release workflow 42362755002가 v0.0.96을 공개했고 annotated tag의 commit도 그 값과 일치한다. 공개 polyspec-kit-0.0.96.tgz는 521,534 byte이며 SHA-256은 b7fc69c9136de29b964e57f8abd701f38ed6c9c22befa837b99d494803d0a4c8이다. 채택 전에 내려받은 archive의 digest·package version·workflow/bootstrap source를 확인했다.
 
 Native npm install은 package.json과 package-lock.json에서 Kit URL·version·integrity 항목만 갱신하며 Kit sync는 .github/workflows/ci-pipeline.yml만 갱신한다. Lock의 SHA-512를 내려받은 archive와 비교한다. Native npm은 이 명시적 root asset 의존성에 locked CI bootstrap과 같은 --allow-remote=root option을 요구하며 전체 fetch 정책을 바꾸지 않는다. ORM은 0.0.22를 유지하고 ORM release나 CI dispatch는 아직 하지 않았다.
+
+### main 반영 시 동일 commit의 CI 증거
+
+저장소는 검사 의존성을 설치하기 전에 main push의 전체 실행 여부를 결정한다. 수동 실행은 항상 전체 시험을 실행한다. 동일 SHA와 저장소의 ci.yml 수동 실행이 완료·성공하고 ci-passed job 하나가 성공했을 때만 그 증거를 사용한다. 마지막 조회에서 출처를 다시 검증한다. 의도적인 생략만 인정하며 실행된 성공·실패·취소는 Kit의 일반 판정기로 그대로 전달한다. API 오류는 명시적으로 실패한다. Fast-forward 반영은 시험한 SHA를 보존하며 다른 commit은 전체 CI가 필요하다.
+
+단위 증거: ci-evidence.test.mts 18개가 통과했다. 잘못된 응답, 다른 commit·저장소·workflow, 없거나 실패한 최종 job, 수동 실행의 독립성, workflow 의존성과 실제 CLI에서 Kit으로의 성공·실패 전달을 검사했다. 저장소·CI 미리보기 회귀 시험 158개와 TypeScript no-emit 및 문서 검사도 통과했다. 로컬 단위 증거이며 branch CI, main 반영과 native build 횟수 개선은 아직 검증하지 않았다. ORM release는 요청하지 않는다.

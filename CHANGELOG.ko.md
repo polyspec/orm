@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: bb0807ca176dc29a2db39dec150d394605a3e02dbab9c253580dd2a6fa396e5a -->
+<!-- source-sha256: 4b87438d6501d03d0b2ee6a01f7cf481a321e8dce75d2d67207b10c0828e1c2f -->
 # 변경 이력
 
 ## Unreleased
+
+- CI: 동일 main commit의 성공한 전체 수동 CI만 재사용하고 출처를 다시 검증하며 실행된 모든 실패를 보존한다 (T388).
 
 - CI: 공개된 Kit 0.0.96 archive와 integrity를 고정하고 독립 계획·binding별 setup workflow를 동기화한다 (T388).
 

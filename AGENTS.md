@@ -180,7 +180,9 @@ vendors; this file states only the rules of orm.
   Enforced by: none, a judgement at review
 - Own: `.github/workflows/ci.yml` holds every check of the repository and runs on a push to `main` and on
   a manual run; its last job `ci-passed` runs after the jobs `test` (one job per CI group) and `docs`,
-  also after a failed one, and passes only when every one of them succeeded (`make ci-passed`).
+  also after a failed one. Manual runs always execute the full suite. A main push may reuse a successful manual run only
+  at the exact same SHA, as docs/spec/feature-coverage.md specifies. `make orm-ci-passed` revalidates that evidence
+  before accounting for intentional skips and sends every executed result to `make ci-passed`; any failure or cancellation fails.
   `.github/workflows/docs-pages.yml` only builds and deploys the site of `main`.
   Enforced by: `make repo-check`
 - Own: `make orm-check` runs the guard of kit (`full-run`) before any step: it refuses while a

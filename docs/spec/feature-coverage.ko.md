@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: 2981632529a61a77a9cb4ed84bb91aa6c79037a7ed7fc16689193c62a35fff12 -->
+<!-- source-sha256: 2b562fa8eff22fc626e860205a1a2dbd0170b4634c7c187b58324c079c188c1d -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 테스트 명령을 선언한다. 그 명령은 자기 recipe의 entry(FCV-12)이거나 FCV-2의 네이티브 테스트다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-unit-check`가 실패한다.
@@ -500,3 +500,9 @@ Rust recipe coverage는 process 준비까지 recipe path를 보존하고 그 rec
 Setup은 소비자가 필요한 component만 build한다. Database fixture setup은 TypeScript client를 사용하며 editor package를 요구하지 않는다. `typescript-current`는 client 출력을 확인하고 오래되었을 때 기존의 exclusive build lease에서 고정된 npm으로 packages/ts의 build script만 실행한다. Client가 최신이면 build를 시작하지 않는다. `typescript-build`는 둘 다 필요한 소비자를 위해 전체 client·editor build를 유지하며 editor 검사는 CI에 계속 배치한다.
 
 Phase로 나눈 parity는 config/ci.json의 `parityBindings`에 각 implementation의 tool selector와 setup target을 명시한다. 여섯 binding job의 필수 검사는 유지한다. 공통 fixture 준비는 고정된 database server와 flowmark를 설치하고 생성 code와 lease helper가 필요한 Go module을 내려받으며 run database를 만들고 지우는 TypeScript client를 build한다. 이 TypeScript 의존성은 fixture 준비의 책임이다. 각 job은 자신의 runtime 설치만 추가하며 binding은 interface extractor를 설치하지 않는다. API symbol 검사는 완전한 준비를 유지한다.
+
+## Main 반영의 CI 증거 {#ci-evidence-on-main-promotion}
+
+수동 ci.yml 실행은 항상 전체 suite를 실행한다. Main push는 같은 repository의 ci.yml에서 정확히 같은 commit SHA로 완료한 성공한 수동 실행과 그 ci-passed job의 성공만 재사용할 수 있다. 다른 commit·다른 workflow·실패하거나 미완료인 실행·이미 증거를 재사용한 push 실행은 재사용하지 않는다. 해당 실행이 없는 main push는 전체 suite를 실행한다. API 오류나 잘못된 증거는 명확히 실패하며 성공 판정으로 바뀌지 않는다.
+
+이 선택 정책은 repository가 소유한다. 작은 evidence job이 full 또는 reuse mode와 source run 식별을 기록하고 검사 job은 그 결정에 의존하여 full mode에서 실행한다. 마지막 job은 여전히 모든 선행 job을 판정한다. Reuse mode의 의도된 건너뜀을 허용하기 전에 source를 다시 확인하고 실제로 실행한 모든 결과를 Kit의 일반 ci-passed 판정에 전달하며 실패나 취소를 보존한다. Job summary는 source run과 검증한 SHA를 기록한다. 저장된 native 결과를 다시 출력하거나 건너뛴 case를 새로 실행했다고 보고하지 않는다. Main 반영은 fast-forward로 검증한 commit을 보존한다.

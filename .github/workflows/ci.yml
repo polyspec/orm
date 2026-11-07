@@ -7,7 +7,7 @@
 # the groups together run every target of CHECK_TARGETS once. The job docs runs
 # the documentation checks of the published site, and the last job ci-passed,
 # the run whose id the release takes (make release-tag requires its success), passes
-# only when every other job succeeded. This is where the full suite
+# only when every selected job succeeded. This is where the full suite
 # runs: on every push to main and on a manual run, never stopping at a failure, and
 # recording enough to fix every failure before the next run. A check it lacks
 # belongs in a target of CHECK_TARGETS, and make repo-check fails a step after
@@ -32,14 +32,43 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Decide before installing check dependencies. Manual runs always execute the full suite.
+  evidence:
+    runs-on: ubuntu-26.04-arm
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      mode: ${{ steps.decision.outputs.mode }}
+      source_run: ${{ steps.decision.outputs.source_run }}
+      source_sha: ${{ steps.decision.outputs.source_sha }}
+      source_url: ${{ steps.decision.outputs.source_url }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v7
+        if: ${{ !cancelled() }}
+        with:
+          node-version-file: mise.toml
+          package-manager-cache: false
+      - name: CI verification plan
+        id: decision
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/check/ci-evidence.mts plan
+
   # The gates of kit (kit S12): ci-pipeline.yml, which kit-sync copies, plans and runs the shared, parity and runtime
   # gates. No job waits for it but ci-passed, which needs it: every other job installs what it runs itself.
   kit:
+    needs: [evidence]
+    if: ${{ needs.evidence.outputs.mode == 'full' }}
     uses: ./.github/workflows/ci-pipeline.yml
     permissions:
       contents: read
 
   test:
+    needs: [evidence]
+    if: ${{ needs.evidence.outputs.mode == 'full' }}
     # .github/runner declares the runner of every job; make repo-check
     # requires it.
     runs-on: ubuntu-26.04-arm
@@ -282,6 +311,8 @@ jobs:
           if-no-files-found: error
 
   docs:
+    needs: [evidence]
+    if: ${{ needs.evidence.outputs.mode == 'full' }}
     runs-on: ubuntu-26.04-arm
     env:
       VITEPRESS_BASE: /orm/
@@ -358,6 +389,8 @@ jobs:
   # vscode.provideDocumentSemanticTokens inside the VS Code that make orm-install-vscode installs (kit's installer, at the
   # minimum release of packages/dbspec-vscode). VS Code needs a display, so the test runs on a virtual X server.
   editor:
+    needs: [evidence]
+    if: ${{ needs.evidence.outputs.mode == 'full' }}
     runs-on: ubuntu-26.04-arm
     steps:
       - uses: actions/checkout@v5
@@ -420,12 +453,15 @@ jobs:
 
   # The one check of this workflow that the ruleset of main requires: it runs
   # after every other job, also after a failed or cancelled one (if: always()),
-  # and passes only when each job of needs succeeded, every CI group of test
+  # and verifies prior full evidence for intentional skips, while every executed job must succeed. Every CI group of test
   # included. make repo-check requires that it is the last job and that needs
   # lists every other job.
   ci-passed:
     if: ${{ always() }}
-    needs: [kit, test, docs, editor]
+    needs: [evidence, kit, test, docs, editor]
+    permissions:
+      contents: read
+      actions: read
     runs-on: ubuntu-26.04-arm
     steps:
       - uses: actions/checkout@v5
@@ -453,8 +489,9 @@ jobs:
       - uses: ./.github/actions/kit-bootstrap
         id: kit-bootstrap
         if: ${{ !cancelled() }}
-      - name: every job passed
+      - name: every selected job passed
         if: ${{ !cancelled() }}
         env:
           RESULTS: ${{ toJSON(needs) }}
-        run: make ci-passed
+          GH_TOKEN: ${{ github.token }}
+        run: make orm-ci-passed

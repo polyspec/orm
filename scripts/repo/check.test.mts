@@ -796,8 +796,8 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   assert.ok(typeof jobs === 'object' && jobs !== null && !Array.isArray(jobs) && 'test' in jobs, 'the CI test matrix exists');
   const testJob = jobs.test;
   assert.ok(typeof testJob === 'object' && testJob !== null && !Array.isArray(testJob), 'the test job has a mapping');
-  assert.equal('needs' in testJob ? testJob.needs : undefined, undefined,
-    'independent runtime and comparison jobs start alongside kit and install their own dependencies');
+  assert.deepEqual('needs' in testJob ? testJob.needs : undefined, ['evidence'],
+    'independent runtime and comparison jobs wait only for the evidence decision and install their own dependencies');
   assert.match(workflow, /- name: tools of mise\.toml\n        id: go\n        if: \$\{\{ !cancelled\(\) \}\}\n        env:\n          CI_GROUP_PHP: \$\{\{ steps\.group-needs\.outputs\.php \}\}\n          CI_GROUP_PYTHON: \$\{\{ steps\.group-needs\.outputs\.python \}\}\n        run: make ci-install-tools GROUP=\$\{\{ matrix\.group \}\}/,
     'CI passes the group setup needs to one Make target, not inline shell logic');
   const installTools = (group: string, php: string, python: string) => {
@@ -1180,7 +1180,7 @@ caseTest('the job ci-passed runs last under always() and needs every other job',
     'ci.yml job ci-passed does not need the job docs; list every other job under needs',
     'ci.yml job ci-passed needs pages, which is no other job of ci.yml',
   ]);
-  assert.match(ciPassedErrors(`jobs:\n${others}${job('${{ always() }}', 'test, docs').replace('make ci-passed', 'echo passed')}`)[0] ?? '', /^ci\.yml job ci-passed has the steps .* instead of \[\{"uses":"actions\/checkout@v5"\}/);
+  assert.match(ciPassedErrors(`jobs:\n${others}${job('${{ always() }}', 'test, docs').replace('make orm-ci-passed', 'echo passed')}`)[0] ?? '', /^ci\.yml job ci-passed has the steps .* instead of \[\{"uses":"actions\/checkout@v5"\}/);
   // A job without the checkout runs make where the repository is not, and make finds no Makefile.
   assert.match(ciPassedErrors(`jobs:\n${others}${job('${{ always() }}', 'test, docs').replace('      - uses: actions/checkout@v5\n', '')}`)[0] ?? '', /^ci\.yml job ci-passed has the steps \[\{"uses":"actions\/setup-node@v7"/);
 });

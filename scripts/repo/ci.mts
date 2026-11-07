@@ -800,9 +800,9 @@ export function chainedCommandErrors(features: { features?: { id: string; verifi
   return errors;
 }
 
-// CI_RUN_EXCEPTIONS are the steps that may run a command that is not a make target: summary writes the run's record after make orm-check.
+// The summary records the finished run; the evidence decision runs before Kit installation is needed.
 export const CI_RUN_EXCEPTIONS: Record<string, Record<string, string>> = {
-  '.github/workflows/ci.yml': { summary: 'node scripts/check/summary.mts' },
+  '.github/workflows/ci.yml': { summary: 'node scripts/check/summary.mts', 'CI verification plan': 'node scripts/check/ci-evidence.mts plan' },
   '.github/workflows/docs-pages.yml': {},
 };
 
@@ -865,10 +865,10 @@ export function concurrencyErrors(workflows: Record<string, string>): string[] {
 }
 
 // CI_PASSED_STEPS are the steps of ci.yml's last job, ci-passed. The check that the verify step of release requires from ci.yml is this one job: it runs with `if: always()`,
-// so it runs even when other jobs fail or are cancelled. Its needs are every other job, so make ci-passed passes only when all of those jobs succeed.
+// so it runs even when other jobs fail or are cancelled. Its needs include every job. Repository evidence validates intentional skips; every executed result reaches Kit unchanged.
 // make ci-passed runs the Makefile of the repository and the ci-passed tool of @polyspec/kit with node, so the
 // checkout, the node of mise.toml and the install of the package come before it.
-export const CI_PASSED_STEP: Record<string, unknown> = { name: 'every job passed', if: NOT_CANCELLED, env: { RESULTS: '${{ toJSON(needs) }}' }, run: 'make ci-passed' };
+export const CI_PASSED_STEP: Record<string, unknown> = { name: 'every selected job passed', if: NOT_CANCELLED, env: { RESULTS: '${{ toJSON(needs) }}', GH_TOKEN: '${{ github.token }}' }, run: 'make orm-ci-passed' };
 export const CI_PASSED_STEPS: Record<string, unknown>[] = [
   { uses: 'actions/checkout@v5' },
   { uses: 'actions/setup-node@v7', with: { 'node-version-file': 'mise.toml', 'package-manager-cache': false } },
