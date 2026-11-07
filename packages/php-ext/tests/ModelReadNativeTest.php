@@ -50,29 +50,29 @@ final class ModelReadNativeTest extends TestCase
 
     public function testNativeNumericReadersRejectLossyValuesAndCheckBounds(): void
     {
-        $integer = new \ReflectionMethod(Model::class, 'groupInteger');
-        self::assertSame(-32768, $integer->invoke(null, '-32768', 'i16', 'rank'));
-        try {
-            $integer->invoke(null, '32768', 'i16', 'rank');
-            self::fail('An out-of-range i16 must fail.');
-        } catch (OrmException $error) {
-            self::assertSame(Code::CODEC_DECODE, $error->code_);
+        // COD-1: a refused cell names its entity and column and the rule of its type, never the value.
+        $cell = new \ReflectionMethod(Model::class, 'cellValue');
+        $zone = new \DateTimeZone('UTC');
+        $i16 = ['type' => 'i16'];
+        self::assertSame(-32768, $cell->invoke(null, 'read_shape', 'rank', $i16, '-32768', false, true, $zone));
+        foreach (['32768', '01'] as $raw) {
+            try {
+                $cell->invoke(null, 'read_shape', 'rank', $i16, $raw, false, true, $zone);
+                self::fail('An out-of-range or noncanonical i16 must fail.');
+            } catch (OrmException $error) {
+                self::assertSame(
+                    'CODEC_DECODE: read_shape.rank: i16 cell is not an exact integer in its range',
+                    $error->getMessage()
+                );
+            }
         }
+        $f64 = ['type' => 'f64'];
+        self::assertSame(1.25e2, $cell->invoke(null, 'read_shape', 'ratio', $f64, '1.25e2', false, true, $zone));
         try {
-            $integer->invoke(null, '01', 'i32', 'rank');
-            self::fail('A noncanonical integer must fail.');
-        } catch (OrmException $error) {
-            self::assertSame(Code::CODEC_DECODE, $error->code_);
-        }
-
-        $float = new \ReflectionMethod(Model::class, 'groupFloat');
-        self::assertSame(1.25e2, $float->invoke(null, '1.25e2', 'ratio'));
-        try {
-            $float->invoke(null, '1e9999', 'ratio');
+            $cell->invoke(null, 'read_shape', 'ratio', $f64, '1e9999', false, true, $zone);
             self::fail('A nonfinite float must fail.');
         } catch (OrmException $error) {
-            self::assertSame(Code::CODEC_DECODE, $error->code_);
-            self::assertStringContainsString('not finite', $error->getMessage());
+            self::assertSame('CODEC_DECODE: read_shape.ratio: f64 cell is not a finite number', $error->getMessage());
         }
 
         $number = new \ReflectionMethod(Model::class, 'aggregateNumber');
@@ -155,7 +155,7 @@ final class ModelReadNativeTest extends TestCase
     // Requirements: INT-68, INT-90.
     public function testGroupBooleanIsStrictAndRowCountStaysRawForGroupRowValidation(): void
     {
-        $db = (new \ReflectionClass(Db::class))->newInstanceWithoutConstructor();
+        $db = new Db(new \PDO('sqlite::memory:'), 'sqlite', new \Polyspec\Orm\Config(), new \DateTimeZone('UTC'));
         $groupValue = new \ReflectionMethod(Model::class, 'groupValue');
         self::assertTrue($groupValue->invoke(
             new ModelReadShapeFixture(),
@@ -187,7 +187,7 @@ final class ModelReadNativeTest extends TestCase
             self::fail('An invalid grouped boolean must fail.');
         } catch (OrmException $error) {
             self::assertSame(Code::CODEC_DECODE, $error->code_);
-            self::assertSame('CODEC_DECODE: group column active is not boolean', $error->getMessage());
+            self::assertSame('CODEC_DECODE: read_shape.active: bool cell is not boolean', $error->getMessage());
         }
     }
 

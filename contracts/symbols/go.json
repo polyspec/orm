@@ -20279,9 +20279,13 @@
     "exported": false,
     "signature": "func(value any) error"
   },
-  "packages/go/orm/group_rows.go::groupColumnValue": {
+  "packages/go/orm/group_rows.go::groupCell": {
     "exported": false,
     "signature": "func(c *Core, db *DB, column plan.OutCol, declared *runtimemodel.Field, raw any) (any, error)"
+  },
+  "packages/go/orm/group_rows.go::groupColumnValue": {
+    "exported": false,
+    "signature": "func(c *Core, db *DB, entity string, column plan.OutCol, declared *runtimemodel.Field, raw any) (any, error)"
   },
   "packages/go/orm/group_rows.go::groupValue": {
     "exported": false,

@@ -2275,6 +2275,12 @@ abstract class Model implements \JsonSerializable, ModelMetadata
     private function putSet(string $column, array $spec): void {}
     private static function columnValue(array $col, mixed $v, \DateTimeZone $zone): mixed {}
     private static function timeValue(mixed $v, \DateTimeZone $zone): \DateTimeImmutable {}
+    private static function cellMessage(string $type): string {}
+    private static function cellRefusal(string $entity, string $name, string $message, ?\Throwable $previous = null): OrmException {}
+    private static function cellValue(string $entity, string $name, array $col, mixed $v, bool $sqlite, bool $integerText, \DateTimeZone $zone): mixed {}
+    private static function timeText(string $type, string $text, int $precision): ?string {}
+    private static function validDate(int $year, int $month, int $day): bool {}
+    private static function fractionDigits(string $digits, int $precision): ?string {}
     public function __call(string $name, array $args): mixed {}
     private static function prefixed(string $name, string $prefix): bool {}
     private static function arity(string $name, array $args, int $count): void {}
@@ -2312,8 +2318,6 @@ abstract class Model implements \JsonSerializable, ModelMetadata
     public function gets(): Collection {}
     public function getsCount(): GroupRows {}
     private function groupValue(Db $db, array $column, mixed $raw): mixed {}
-    private static function groupInteger(mixed $raw, string $type, string $name): int {}
-    private static function groupFloat(mixed $raw, string $name): float {}
     public function getCount(): int {}
     public function getSum(): float {}
     public function getAvg(): ?float {}

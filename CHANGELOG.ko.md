@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 0888aa4aca3c90437ecac7f1aa4092a2bb79b68f3c3cd700515f1c6335d06f67 -->
+<!-- source-sha256: 75cedfe656eea3b4bba314e281b3d326ebde1eea338199fbcc27a41c2a05a728 -->
 # 변경 이력
 
 ## Unreleased
 
+- 호환 깨짐: PHP와 PHP 확장은 각 컬럼 타입을 COD-1의 message 하나와 TypeScript가 받는 cell로 읽고, 저장된 key version을 양의 32-bit 정수로 읽으며 `aes version is not a positive 32-bit integer`로 거부한다(COD-44). Go, TypeScript, Python, PHP, PHP 확장에서 추가 컬럼과 group 컬럼은 `CODEC_DECODE: <entity>.<column>: <message>`로 거부한다. Go는 `added column <name>:`을 썼고 나머지는 컬럼을 쓰지 않았다(XV19).
 - packages/rust/orm과 packages/rust/schema의 doc 주석에 깨진 link도, 닫히지 않은 HTML tag도 없다. 그래서 rustdoc을 `-D warnings`로 실행하는 kit 0.0.98의 parity extractor가 그 symbol을 읽는다(KSTD-5-126).
 - 호환 깨짐: 모델의 `varchar` 또는 `text` 컬럼으로 읽은 저장 텍스트가 유효한 UTF-8이 아니면 모든 runtime에서 `CODEC_DECODE: <entity>.<column>: text is not valid UTF-8`이다(COD-69). PHP와 PHP 확장은 그 bytes를 돌려줬고, TypeScript는 U+FFFD로 바꿨고, Python과 Rust는 SQLite 읽기 전체를 실패시켰다(XV17).
 - 호환 깨짐: 모든 runtime에서 group row들의 JSON 출력은 각 행을 결과 순서로 쓰고, codec stage가 없는 bytes 컬럼의 bytes 값을 같은 `CODEC_ENCODE: group column <name>: JSON output cannot write bytes`로 거부하며, 배열 형식은 그 bytes를 담는다(INT-162, COD-27). Go는 정렬된 member 순서로 base64를 썼고, TypeScript는 `Uint8Array`를 index 객체로 썼고, PHP와 PHP 확장은 문자열을 담았고, Rust는 컬럼 이름을 적지 않았다. Python에 `GroupRow.to_json_text()`와 `GroupRows.to_json_text()`가 생기고, PHP와 PHP 확장은 `Bytes`를 담는다(XV30).
@@ -11,7 +12,6 @@
 - 호환 깨짐: 모든 runtime에서 모델 JSON 출력은 codec stage가 없는 bytes 컬럼을 같은 `CODEC_ENCODE: <entity>.<column>: JSON output cannot write bytes`로 거부한다(COD-26). Go는 base64로, Rust와 PHP는 UTF-8 텍스트로, TypeScript는 바이트 값의 객체로 썼고, Python은 다른 텍스트로 거부했다(XV20).
 - 호환 깨짐: 모델의 배열 형식은 모든 runtime에서 같은 값을 담는다(COD-27). 모델, collection, group row, group rows의 Rust `to_array()`는 bytes 컬럼의 바이트, 유한하지 않은 float, `1e400` 같은 문서 수를 담는 `ArrayValue`를 반환한다. 예전에는 serde_json 값을 반환해 바이트를 UTF-8 텍스트로 쓰고 나머지는 거부했다. PHP와 PHP 확장 `toArray()`는 codec stage가 없는 bytes 컬럼을 `Bytes`로 반환한다. 예전에는 text 컬럼과 같은 문자열로 반환했다(XV28).
 - recipe model step의 `json` 결과는 모든 runner에서 각 행의 배열 형식이며 바이트는 `bytes_hex` wrapper다. Go runner는 바이트를 base64로, TypeScript와 Python runner는 텍스트로 비교했고, TypeScript, Python, PHP runner는 JSON 출력으로 만들었으므로 bytes 행의 쓰기가 실패했다(XV29).
-- 호환 깨짐: 모든 runtime에서 group row들의 JSON 출력은 각 행을 결과 순서로 쓰고, codec stage가 없는 bytes 컬럼의 bytes 값을 같은 `CODEC_ENCODE: group column <name>: JSON output cannot write bytes`로 거부하며, 배열 형식은 그 bytes를 담는다(INT-162, COD-27). Go는 정렬된 member 순서로 base64를 썼고, TypeScript는 `Uint8Array`를 index 객체로 썼고, PHP와 PHP 확장은 문자열을 담았고, Rust는 컬럼 이름을 적지 않았다. Python에 `GroupRow.to_json_text()`와 `GroupRows.to_json_text()`가 생기고, PHP와 PHP 확장은 `Bytes`를 담는다(XV30).
 
 ## 0.0.22
 

@@ -347,12 +347,13 @@ class Assembler {
       const declared = col.column !== '' && col.column === col.name ? fieldOf(schema, col.name) : undefined;
       // The AES version cell is read as a stored version (COD-53): a text of digits is its number, and any other value is CODEC_DECODE.
       const versionAt = schema.aesVersion !== '' && col.name === schema.aesVersion && row[col.index] != null;
-      const cell = versionAt ? storedVersion(row[col.index]) : row[col.index];
+      const cell = row[col.index];
       if (declared) {
         const kind = columnType(declared);
-        m.values.set(col.name, columnValue(schema.name, col.name, () => convert(kind, cell, this.db.zone, declared)));
+        m.values.set(col.name, columnValue(schema.name, col.name, () => convert(kind, versionAt ? storedVersion(cell) : cell, this.db.zone, declared)));
       } else {
-        st.extra.set(col.name, addedColumnValue(col.type, row[col.index], this.db.zone));
+        // An added column is refused as a model column is, by its entity and its name (COD-1, COD-41).
+        st.extra.set(col.name, columnValue(schema.name, col.name, () => addedColumnValue(col.type, cell, this.db.zone)));
       }
     }
     for (const key of asm.key) {
@@ -474,46 +475,11 @@ function groupValue(db: Db, column: Assemble['columns'][number], raw: unknown, s
     if (!(raw instanceof StyledValue)) throw new OrmError(codes.CODEC_DECODE, `group column ${column.name} is not StyledValue`);
     return raw;
   }
-  if (type === 'bool') {
-    if (truthyCells.includes(raw)) return true;
-    if (falsyCells.includes(raw)) return false;
-    throw new OrmError(codes.CODEC_DECODE, `group column ${column.name} is not boolean`);
-  }
-  if (type === 'i16' || type === 'i32' || type === 'i64') {
-    let value: number;
-    if (typeof raw === 'string' && /^-?(0|[1-9][0-9]*)$/.test(raw)) value = Number(raw);
-    else if (typeof raw === 'bigint') value = Number(raw);
-    else if (typeof raw === 'number') value = raw;
-    else throw new OrmError(codes.CODEC_DECODE, `group column ${column.name} is not an exact integer`);
-    const [min, max] = present(integerRanges[type], `the range of ${type}`);
-    if (!Number.isSafeInteger(value) || value < min || value > max) {
-      throw new OrmError(codes.CODEC_DECODE, `group column ${column.name} is outside its exact integer range`);
-    }
-    return value;
-  }
-  if (type === 'f64') {
-    if (typeof raw !== 'number' && !(typeof raw === 'string' && /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$/.test(raw))) {
-      throw new OrmError(codes.CODEC_DECODE, `group column ${column.name} is not numeric`);
-    }
-    const value = Number(raw);
-    if (!Number.isFinite(value)) throw new OrmError(codes.CODEC_DECODE, `group column ${column.name} is not finite`);
-    return value;
-  }
-  if (type === 'decimal') return convert(type, raw, db.zone, declared);
-  if (type === 'date' || type === 'time' || type === 'datetime') {
-    if (!(raw instanceof Date) && typeof raw !== 'string') throw new OrmError(codes.CODEC_DECODE, `group column ${column.name} is not a ${type}`);
-    return convert(type, raw, db.zone, declared);
-  }
-  if (type === 'bytes') {
-    if (!(raw instanceof Uint8Array)) throw new OrmError(codes.CODEC_DECODE, `group column ${column.name} is not bytes`);
-    return raw;
-  }
-  if (['string', 'varchar', 'text', 'uuid'].includes(type)) {
-    if (typeof raw === 'string') return raw;
-    if (raw instanceof Uint8Array) return new TextDecoder('utf-8', { fatal: true }).decode(raw);
-    throw new OrmError(codes.CODEC_DECODE, `group column ${column.name} is not text`);
-  }
-  throw new OrmError(codes.INTERNAL, `group column ${column.name} has unsupported type ${type}`);
+  // A group column is refused as a model column is, by its entity and its name, and reads an integer from its exact digits on
+  // every database, as an added column does (COD-1, INT-160).
+  return columnValue(schema.name, column.name, () => (type === 'i16' || type === 'i32' || type === 'i64'
+    ? addedColumnValue(type, raw, db.zone)
+    : convert(type === 'string' ? 'text' : type, raw, db.zone, declared)));
 }
 
 async function grouped(c: Core): Promise<GroupRows> {

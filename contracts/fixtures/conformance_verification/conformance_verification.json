@@ -79192,6 +79192,16 @@
      "sql": "INSERT INTO typed_value (seq, small, wide, ratio, active, ref, clock, day, label, note) VALUES (1, 70000, 'not-an-integer', 'not-a-number', 2, 5, 'noon', 'tomorrow', 3.5, 1)"
     },
     {
+     "op": "sql.exec",
+     "reason": "the accepted forms of every client (COD-1): a float with no fraction in an integer column, the decimal text of a number in a float column, a boolean text, a time whose fraction fits its precision, a leap day",
+     "sql": "INSERT INTO typed_value (seq, small, wide, ratio, active, ref, clock, day, label, note) VALUES (2, 7.0, -12.0, '1.5e1', 't', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', '10:00:00.5', '2024-02-29', 'x', 'n')"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "the refused forms near them: the digits of an integer as a stored text, a float with a fraction, a number beyond the finite range, a boolean text no client takes, a time fraction digit beyond the precision, a day that is no day",
+     "sql": "INSERT INTO typed_value (seq, small, wide, ratio, active, ref, clock, day, label, note) VALUES (3, '7', 2.5, '1e999', 'yes', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', '10:00:00.1234', '2023-02-29', 'x', 'n')"
+    },
+    {
      "op": "model.get_by",
      "connection": "db",
      "model": "TypedValue",
@@ -79363,6 +79373,215 @@
      }
     },
     {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "TypedValue",
+     "key": {
+      "seq": {
+       "int": "2"
+      }
+     },
+     "columns": [
+      "small",
+      "wide",
+      "ratio",
+      "active",
+      "clock",
+      "day"
+     ],
+     "expect": {
+      "sqlite": {
+       "json": {
+        "small": 7,
+        "wide": -12,
+        "ratio": 15,
+        "seq": 2,
+        "active": true,
+        "clock": "10:00:00.500000",
+        "day": "2024-02-29"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "TypedValue",
+     "key": {
+      "seq": {
+       "int": "3"
+      }
+     },
+     "columns": [
+      "small"
+     ],
+     "expect": {
+      "sqlite": {
+       "error": "CODEC_DECODE",
+       "message": "CODEC_DECODE: typed_value.small: i16 cell is not an exact integer in its range"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "TypedValue",
+     "key": {
+      "seq": {
+       "int": "3"
+      }
+     },
+     "columns": [
+      "wide"
+     ],
+     "expect": {
+      "sqlite": {
+       "error": "CODEC_DECODE",
+       "message": "CODEC_DECODE: typed_value.wide: i64 cell is not an exact integer in its range"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "TypedValue",
+     "key": {
+      "seq": {
+       "int": "3"
+      }
+     },
+     "columns": [
+      "ratio"
+     ],
+     "expect": {
+      "sqlite": {
+       "error": "CODEC_DECODE",
+       "message": "CODEC_DECODE: typed_value.ratio: f64 cell is not a finite number"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "TypedValue",
+     "key": {
+      "seq": {
+       "int": "3"
+      }
+     },
+     "columns": [
+      "active"
+     ],
+     "expect": {
+      "sqlite": {
+       "error": "CODEC_DECODE",
+       "message": "CODEC_DECODE: typed_value.active: bool cell is not boolean"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "TypedValue",
+     "key": {
+      "seq": {
+       "int": "3"
+      }
+     },
+     "columns": [
+      "clock"
+     ],
+     "expect": {
+      "sqlite": {
+       "error": "CODEC_DECODE",
+       "message": "CODEC_DECODE: typed_value.clock: time cell is not a time"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "TypedValue",
+     "key": {
+      "seq": {
+       "int": "3"
+      }
+     },
+     "columns": [
+      "day"
+     ],
+     "expect": {
+      "sqlite": {
+       "error": "CODEC_DECODE",
+       "message": "CODEC_DECODE: typed_value.day: date cell is not a date"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "TypedValue",
+     "where": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": [
+      "seq"
+     ],
+     "add_columns": [
+      {
+       "expr": {
+        "sub": {
+         "model": "TypedValue",
+         "columns": [
+          "small"
+         ],
+         "where": {
+          "seq": {
+           "int": "1"
+          }
+         },
+         "order": [
+          {
+           "column": "seq",
+           "dir": "asc"
+          }
+         ],
+         "limit": {
+          "offset": 0,
+          "count": 1
+         }
+        }
+       },
+       "as": "small_copy"
+      }
+     ],
+     "expect": {
+      "sqlite": {
+       "error": "CODEC_DECODE",
+       "message": "CODEC_DECODE: typed_value.small_copy: i16 cell is not an exact integer in its range"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "TypedValue",
+     "aggregate": {
+      "agg": "count",
+      "group_by": [
+       "active"
+      ]
+     },
+     "expect": {
+      "sqlite": {
+       "error": "CODEC_DECODE",
+       "message": "CODEC_DECODE: typed_value.active: bool cell is not boolean"
+      }
+     }
+    },
+    {
      "op": "sql.exec",
      "reason": "the table again without its declared check",
      "sql": "DROP TABLE decimal_value"
@@ -79452,6 +79671,30 @@
      "key": {
       "seq": {
        "int": "1"
+      }
+     },
+     "columns": [
+      "at"
+     ],
+     "expect": {
+      "sqlite": {
+       "error": "CODEC_DECODE",
+       "message": "CODEC_DECODE: time_cell.at: datetime cell is not a datetime"
+      }
+     }
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a datetime(0) whose fraction digit is beyond its precision",
+     "sql": "INSERT INTO time_cell (seq, at) VALUES (2, '2024-01-02 03:04:05.5')"
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "TimeCell",
+     "key": {
+      "seq": {
+       "int": "2"
       }
      },
      "columns": [

@@ -1873,7 +1873,12 @@ func tableValue(s *orm.Schema, table string, row *tableRow, name string, v any) 
 		}
 		return t.Format("2006-01-02 15:04:05.000000"), nil
 	case "time":
-		return orm.AsTimeText(v, 6)
+		// The cell is read at its declared precision (COD-1) and written with six fraction digits (PRT-69).
+		text, err := orm.AsTimeText(v, field.Precision)
+		if err != nil {
+			return nil, err
+		}
+		return orm.AsTimeText(text, 6)
 	case "bytes":
 		if len(field.Codec) == 0 {
 			return orm.AsBytes(v)

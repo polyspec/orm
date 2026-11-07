@@ -7,6 +7,7 @@
  * keeps the order and the exception classes of Codec.php, so a failure gives the same code.
  */
 #include "codec.h"
+#include "aes_keyring.h"
 #include "ext/json/php_json.h"
 #include "ext/standard/base64.h"
 #include "Zend/zend_exceptions.h"
@@ -1975,29 +1976,10 @@ bool codec_host_decode(zval *raw, HashTable *styles, zend_string *aes_key, zval 
     return true;
 }
 
-/* COD-44: a stored key version is a positive 32-bit integer, as an int or as its decimal text; any other value is CODEC_DECODE and is never coerced. */
+/* COD-44: a stored key version, read by aes_stored_version; any other value is CODEC_DECODE and is never coerced. */
 static bool stored_version(zval *v, zend_long *out)
 {
-    ZVAL_DEREF(v);
-    zend_long n = 0;
-    if (Z_TYPE_P(v) == IS_LONG) {
-        n = Z_LVAL_P(v);
-    } else if (Z_TYPE_P(v) == IS_STRING && ZSTR_LEN(Z_STR_P(v)) > 0) {
-        const char *d = ZSTR_VAL(Z_STR_P(v));
-        for (size_t i = 0; i < ZSTR_LEN(Z_STR_P(v)); i++) {
-            if (d[i] < '0' || d[i] > '9' || n > 214748364) {
-                return orm_failf("CODEC_DECODE", "aes version is not a positive 32-bit integer");
-            }
-            n = n * 10 + (d[i] - '0');
-        }
-    } else {
-        return orm_failf("CODEC_DECODE", "aes version is not a positive 32-bit integer");
-    }
-    if (n < 1 || n > 2147483647) {
-        return orm_failf("CODEC_DECODE", "aes version " ZEND_LONG_FMT " is not a positive 32-bit integer", n);
-    }
-    *out = n;
-    return true;
+    return aes_stored_version(v, out) || aes_stored_version_refused();
 }
 
 /* One entry of decodeRows' $cells: [index, host stages, codec stages, whether the host stages include aes, aes_key_version index or null,

@@ -12,9 +12,18 @@
 #include "runtime_model.h"
 #include "Zend/zend_exceptions.h"
 #include "Zend/zend_interfaces.h"
+#include "ext/date/php_date.h"
+#include "Zend/zend_smart_str.h"
+#include "orm_exception_object.h"
+#include "aes_keyring.h"
 #include <math.h>
 #include <stdint.h>
 #include <string.h>
+
+static bool cell_value(zend_string *entity, zend_string *name, zval *col, zval *raw, bool sqlite, bool integer_text, zval *zone,
+    zval *out);
+static bool cell_refuse(zend_string *entity, zend_string *name, const char *type, zend_object *previous);
+static bool cell_refusal(zend_string *entity, zend_string *name, zend_string *message, zend_object *previous, zval *out);
 
 static bool read_aggregate(zval *model, const char *fn, zval *return_value);
 static zval *read_array(zval *array, const char *key);
@@ -312,93 +321,6 @@ static bool read_convert_resource(zval *value)
     return true;
 }
 
-static bool read_column_convert(zval *model, zval *db, zval *zone, zval *column, zval *column_name, zval *raw, zval *out)
-{
-    if (Z_TYPE_P(raw) == IS_NULL) { ZVAL_NULL(out); return true; }
-    zval value; ZVAL_COPY(&value, raw);
-    zval *type = read_array(column, "type"), *codec = read_array(column, "codec");
-    if (codec != NULL && Z_TYPE_P(codec) == IS_ARRAY && zend_hash_num_elements(Z_ARRVAL_P(codec)) != 0) {
-        ZVAL_COPY_VALUE(out, &value); return true;
-    }
-    if (read_string_is(type, "i16") || read_string_is(type, "i32") || read_string_is(type, "i64") ||
-        read_string_is(type, "f64") || read_string_is(type, "bool")) {
-        /* groupValue needs the emitted row column name; static column metadata does not carry it. */
-        zval context, name_copy, column_copy;
-        ZVAL_ARR(&context, zend_array_dup(Z_ARRVAL_P(column)));
-        ZVAL_COPY(&name_copy, column_name);
-        ZVAL_COPY(&column_copy, column_name);
-        zend_hash_str_update(Z_ARRVAL(context), "name", sizeof("name") - 1, &name_copy);
-        zend_hash_str_update(Z_ARRVAL(context), "column", sizeof("column") - 1, &column_copy);
-        zval args[3], converted;
-        ZVAL_COPY(&args[0], db);
-        ZVAL_COPY(&args[1], &context);
-        ZVAL_COPY(&args[2], &value);
-        ZVAL_UNDEF(&converted);
-        bool ok = read_model_call(model, "groupValue", &converted, 3, args);
-        for (int i = 0; i < 3; i++) zval_ptr_dtor(&args[i]);
-        zval_ptr_dtor(&context);
-        zval_ptr_dtor(&value);
-        if (!ok) {
-            if (!Z_ISUNDEF(converted)) zval_ptr_dtor(&converted);
-            return false;
-        }
-        ZVAL_COPY_VALUE(out, &converted);
-        return true;
-    }
-    if (read_string_is(type, "decimal")) {
-        zval *precision = read_array(column, "precision"), *scale = read_array(column, "scale");
-        if (precision == NULL || scale == NULL || Z_TYPE_P(precision) != IS_LONG || Z_TYPE_P(scale) != IS_LONG) {
-            zval_ptr_dtor(&value); read_throw("INTERNAL", "decimal column has no precision or scale"); return false;
-        }
-        zval args[3], result;
-        ZVAL_COPY(&args[0], &value); ZVAL_LONG(&args[1], Z_LVAL_P(precision)); ZVAL_LONG(&args[2], Z_LVAL_P(scale));
-        bool sqlite = false;
-        zval driver;
-        if (!read_call(db, "dialect", &driver, 0, NULL)) { zval_ptr_dtor(&value); return false; }
-        sqlite = Z_TYPE(driver) == IS_STRING && zend_string_equals_literal(Z_STR(driver), "sqlite"); zval_ptr_dtor(&driver);
-        zend_class_entry *decimal = read_lookup_class("Polyspec\\Orm\\Decimal");
-        bool ok = decimal != NULL && read_static_call(decimal, sqlite ? "fromScaled" : "decode", &result, 3, args);
-        for (int i = 0; i < 3; i++) zval_ptr_dtor(&args[i]);
-        zval_ptr_dtor(&value);
-        if (!ok) return false;
-        ZVAL_COPY_VALUE(out, &result); return true;
-    }
-    if (read_string_is(type, "date") || read_string_is(type, "datetime")) {
-        if (Z_TYPE(value) == IS_STRING) {
-            object_init_ex(out, polyspec_pending_time_ce);
-            if (EG(exception) != NULL) { zval_ptr_dtor(&value); return false; }
-            zval args[2], rv; ZVAL_COPY(&args[0], &value); ZVAL_COPY(&args[1], zone);
-            zend_call_method(Z_OBJ_P(out), polyspec_pending_time_ce, NULL, "__construct", sizeof("__construct") - 1, &rv, 2, &args[0], &args[1]);
-            zval_ptr_dtor(&args[0]); zval_ptr_dtor(&args[1]); if (!Z_ISUNDEF(rv)) zval_ptr_dtor(&rv);
-            zval_ptr_dtor(&value); return EG(exception) == NULL;
-        }
-        bool ok = model_time_value_in_zone(&value, zone, out); zval_ptr_dtor(&value); return ok;
-    }
-    if (!read_convert_resource(&value)) { zval_ptr_dtor(&value); return false; }
-    if (Z_TYPE(value) != IS_STRING) {
-        zend_string *text = zval_get_string(&value); zval_ptr_dtor(&value);
-        if (EG(exception) != NULL) return false;
-        ZVAL_STR(&value, text);
-    }
-    /* COD-69: a text cell that is not valid UTF-8 is refused, never returned as its bytes. */
-    if ((read_string_is(type, "varchar") || read_string_is(type, "text")) && !codec_valid_utf8(Z_STRVAL(value), Z_STRLEN(value))) {
-        zval_ptr_dtor(&value);
-        zval meta;
-        if (!read_static_meta(model, &meta)) return false;
-        zval *entity = read_array(&meta, "entity");
-        if (entity == NULL || Z_TYPE_P(entity) != IS_STRING) {
-            zval_ptr_dtor(&meta);
-            read_throw("INTERNAL", "the model metadata names no entity");
-            return false;
-        }
-        zend_string *message = strpprintf(0, "%s.%s: text is not valid UTF-8", Z_STRVAL_P(entity), Z_STRVAL_P(column_name));
-        zval_ptr_dtor(&meta);
-        read_throw("CODEC_DECODE", ZSTR_VAL(message)); zend_string_release(message);
-        return false;
-    }
-    ZVAL_COPY_VALUE(out, &value); return true;
-}
-
 ZEND_METHOD(Polyspec_Orm_Model, joinChild)
 {
     if (!read_non_null_string_argument(execute_data)) RETURN_THROWS();
@@ -440,6 +362,16 @@ ZEND_METHOD(Polyspec_Orm_Model, assembleRow)
     zval conn_arg, model; ZVAL_COPY(&conn_arg, conn);
     if (!read_model_call(ZEND_THIS, "newRow", &model, 1, &conn_arg)) { zval_ptr_dtor(&conn_arg); zval_ptr_dtor(&shape); RETURN_THROWS(); }
     zval_ptr_dtor(&conn_arg);
+    zval meta;
+    if (!read_static_meta(ZEND_THIS, &meta)) { zval_ptr_dtor(&model); zval_ptr_dtor(&shape); RETURN_THROWS(); }
+    zval *entity_value = read_array(&meta, "entity"), driver;
+    if (entity_value == NULL || Z_TYPE_P(entity_value) != IS_STRING) {
+        zval_ptr_dtor(&meta); zval_ptr_dtor(&model); zval_ptr_dtor(&shape); read_throw("INTERNAL", "the model metadata names no entity"); RETURN_THROWS();
+    }
+    zend_string *entity = Z_STR_P(entity_value);
+    if (!read_call(db, "dialect", &driver, 0, NULL)) { zval_ptr_dtor(&meta); zval_ptr_dtor(&model); zval_ptr_dtor(&shape); RETURN_THROWS(); }
+    bool sqlite = Z_TYPE(driver) == IS_STRING && zend_string_equals_literal(Z_STR(driver), "sqlite");
+    zval_ptr_dtor(&driver);
     zval values; array_init(&values);
     const char *convert_groups[] = {"int", "float", "decimal", "bool", "date", "string", "codec"};
     for (size_t g = 0; g < sizeof(convert_groups)/sizeof(convert_groups[0]); g++) {
@@ -449,33 +381,37 @@ ZEND_METHOD(Polyspec_Orm_Model, assembleRow)
             zval *idx = zend_hash_index_find(Z_ARRVAL_P(entry), 0), *column_name = zend_hash_index_find(Z_ARRVAL_P(entry), 1);
             if (idx == NULL || Z_TYPE_P(idx) != IS_LONG || column_name == NULL || Z_TYPE_P(column_name) != IS_STRING) continue;
             zval *raw = zend_hash_index_find(Z_ARRVAL_P(vals), (zend_ulong)Z_LVAL_P(idx));
-            if (raw == NULL) { zval_ptr_dtor(&values); zval_ptr_dtor(&model); zval_ptr_dtor(&shape); read_throw("INTERNAL", "row result column is missing"); RETURN_THROWS(); }
+            if (raw == NULL) { zval_ptr_dtor(&meta); zval_ptr_dtor(&values); zval_ptr_dtor(&model); zval_ptr_dtor(&shape); read_throw("INTERNAL", "row result column is missing"); RETURN_THROWS(); }
             zval converted;
-            if (g == 6) {
+            if (g == 6 || Z_TYPE_P(raw) == IS_NULL) {
                 ZVAL_COPY(&converted, raw);
             } else {
-                zval meta;
-                if (!read_static_meta(ZEND_THIS, &meta)) { zval_ptr_dtor(&values); zval_ptr_dtor(&model); zval_ptr_dtor(&shape); RETURN_THROWS(); }
                 zval *meta_cols = read_array(&meta, "columns");
                 zval *column = meta_cols != NULL && Z_TYPE_P(meta_cols) == IS_ARRAY
                     ? zend_hash_find(Z_ARRVAL_P(meta_cols), Z_STR_P(column_name)) : NULL;
-                /* COD-53: a stored version written as text is its digits, leading zeros included. */
                 zval *aes_version = read_array(&meta, "aes_version");
-                zval digits;
-                ZVAL_UNDEF(&digits);
-                if (g == 0 && Z_TYPE_P(raw) == IS_STRING && aes_version != NULL && Z_TYPE_P(aes_version) == IS_STRING
+                bool converted_ok;
+                if (column == NULL) {
+                    converted_ok = read_throw("INTERNAL", "row result column has no declaration");
+                } else if (aes_version != NULL && Z_TYPE_P(aes_version) == IS_STRING
                     && zend_string_equals(Z_STR_P(aes_version), Z_STR_P(column_name))) {
-                    const char *text = Z_STRVAL_P(raw);
-                    size_t length = Z_STRLEN_P(raw);
-                    while (length > 1 && text[0] == '0' && text[1] >= '0' && text[1] <= '9') { text++; length--; }
-                    ZVAL_STRINGL(&digits, text, length);
+                    /* COD-44, COD-53: the key version column holds a stored version, its digits read as its number. */
+                    zend_long version;
+                    converted_ok = aes_stored_version(raw, &version);
+                    if (converted_ok) {
+                        ZVAL_LONG(&converted, version);
+                    } else {
+                        zend_string *message = zend_string_init(ZEND_STRL("aes version is not a positive 32-bit integer"), 0);
+                        zval exception;
+                        if (cell_refusal(entity, Z_STR_P(column_name), message, NULL, &exception)) zend_throw_exception_object(&exception);
+                        zend_string_release(message);
+                    }
+                } else {
+                    converted_ok = cell_value(entity, Z_STR_P(column_name), column, raw, sqlite, !sqlite, zone, &converted);
                 }
-                bool converted_ok = column != NULL && read_column_convert(ZEND_THIS, db, zone, column, column_name, Z_ISUNDEF(digits) ? raw : &digits, &converted);
-                zval_ptr_dtor(&digits);
                 if (!converted_ok) {
                     zval_ptr_dtor(&meta); zval_ptr_dtor(&values); zval_ptr_dtor(&model); zval_ptr_dtor(&shape); RETURN_THROWS();
                 }
-                zval_ptr_dtor(&meta);
             }
             zend_hash_update(Z_ARRVAL(values), Z_STR_P(column_name), &converted);
         } ZEND_HASH_FOREACH_END();
@@ -489,33 +425,32 @@ ZEND_METHOD(Polyspec_Orm_Model, assembleRow)
             zval *idx=zend_hash_index_find(Z_ARRVAL_P(entry),0), *name=zend_hash_index_find(Z_ARRVAL_P(entry),1), *kind=zend_hash_index_find(Z_ARRVAL_P(entry),2);
             zval *raw=idx!=NULL&&Z_TYPE_P(idx)==IS_LONG?zend_hash_index_find(Z_ARRVAL_P(vals),(zend_ulong)Z_LVAL_P(idx)):NULL;
             if(name==NULL||raw==NULL) continue;
-            zval converted; ZVAL_COPY(&converted,raw); if(!read_convert_resource(&converted)){zval_ptr_dtor(&converted);zval_ptr_dtor(&st); zval_ptr_dtor(&model); zval_ptr_dtor(&shape); RETURN_THROWS();}
-            if (Z_TYPE(converted) != IS_NULL && kind != NULL) {
-                if (read_string_is(kind, "i16") || read_string_is(kind, "i32") || read_string_is(kind, "i64") ||
-                    read_string_is(kind, "f64") || read_string_is(kind, "bool")) {
-                    /* INT-160: an added column is decoded by the type of its plan column, the rule of groupValue. */
-                    zval context, name_copy, column_copy, kind_copy;
-                    array_init(&context);
-                    ZVAL_COPY(&name_copy, name);
-                    ZVAL_EMPTY_STRING(&column_copy);
-                    ZVAL_COPY(&kind_copy, kind);
-                    zend_hash_str_update(Z_ARRVAL(context), "name", sizeof("name") - 1, &name_copy);
-                    zend_hash_str_update(Z_ARRVAL(context), "column", sizeof("column") - 1, &column_copy);
-                    zend_hash_str_update(Z_ARRVAL(context), "type", sizeof("type") - 1, &kind_copy);
-                    zval args[3], decoded;
-                    ZVAL_COPY(&args[0], db);
-                    ZVAL_COPY_VALUE(&args[1], &context);
-                    ZVAL_COPY_VALUE(&args[2], &converted);
-                    ZVAL_UNDEF(&decoded);
-                    bool ok = read_model_call(&model, "groupValue", &decoded, 3, args);
-                    for (int arg = 0; arg < 3; arg++) zval_ptr_dtor(&args[arg]);
-                    if (!ok) { if (!Z_ISUNDEF(decoded)) zval_ptr_dtor(&decoded); zval_ptr_dtor(&st); zval_ptr_dtor(&model); zval_ptr_dtor(&shape); RETURN_THROWS(); }
-                    ZVAL_COPY_VALUE(&converted, &decoded);
-                } else if (read_string_is(kind, "date") || read_string_is(kind, "datetime")) {
-                    zval time;
-                    if (!model_time_value_in_zone(&converted, zone, &time)) { zval_ptr_dtor(&converted); zval_ptr_dtor(&st); zval_ptr_dtor(&model); zval_ptr_dtor(&shape); RETURN_THROWS(); }
-                    zval_ptr_dtor(&converted); ZVAL_COPY_VALUE(&converted, &time);
+            zval converted;
+            if (Z_TYPE_P(raw) != IS_NULL && kind != NULL && Z_TYPE_P(name) == IS_STRING && (
+                read_string_is(kind, "i16") || read_string_is(kind, "i32") || read_string_is(kind, "i64") ||
+                read_string_is(kind, "f64") || read_string_is(kind, "bool") || read_string_is(kind, "date") ||
+                read_string_is(kind, "datetime"))) {
+                /* INT-160: an added column is decoded by the type of its plan column; an integer may be its exact digits as
+                 * text, and a datetime has the precision 6 of an expression. */
+                zval column, kind_copy, precision, cell;
+                array_init(&column);
+                ZVAL_COPY(&kind_copy, kind);
+                ZVAL_LONG(&precision, 6);
+                zend_hash_str_update(Z_ARRVAL(column), "type", sizeof("type") - 1, &kind_copy);
+                zend_hash_str_update(Z_ARRVAL(column), "precision", sizeof("precision") - 1, &precision);
+                bool ok = cell_value(entity, Z_STR_P(name), &column, raw, sqlite, true, zone, &cell);
+                zval_ptr_dtor(&column);
+                if (ok && Z_TYPE(cell) == IS_OBJECT && Z_OBJCE(cell) == polyspec_pending_time_ce) {
+                    zval *text = zend_read_property(polyspec_pending_time_ce, Z_OBJ(cell), ZEND_STRL("text"), 1, NULL);
+                    ok = text != NULL && model_time_value_in_zone(text, zone, &converted);
+                    zval_ptr_dtor(&cell);
+                } else if (ok) {
+                    ZVAL_COPY_VALUE(&converted, &cell);
                 }
+                if (!ok) { zval_ptr_dtor(&meta); zval_ptr_dtor(&st); zval_ptr_dtor(&model); zval_ptr_dtor(&shape); RETURN_THROWS(); }
+            } else {
+                ZVAL_COPY(&converted, raw);
+                if (!read_convert_resource(&converted)) { zval_ptr_dtor(&converted); zval_ptr_dtor(&meta); zval_ptr_dtor(&st); zval_ptr_dtor(&model); zval_ptr_dtor(&shape); RETURN_THROWS(); }
             }
             if (kind != NULL && read_string_is(kind, "date")) {
                 zval *dates = read_array(&st, "extra_date");
@@ -524,6 +459,7 @@ ZEND_METHOD(Polyspec_Orm_Model, assembleRow)
             zval *extra_map=read_array(&st,"extra"); if(extra_map!=NULL&&Z_TYPE_P(extra_map)==IS_ARRAY) zend_hash_update(Z_ARRVAL_P(extra_map),Z_STR_P(name),&converted); else zval_ptr_dtor(&converted);
         } ZEND_HASH_FOREACH_END();
     }
+    zval_ptr_dtor(&meta);
     zval *original=read_array(&shape,"original"), *value_map=model_state_property(model_state_of(Z_OBJ(model)),"values"), *orig_map=read_array(&st,"original");
     if(original!=NULL&&Z_TYPE_P(original)==IS_ARRAY&&orig_map!=NULL&&Z_TYPE_P(orig_map)==IS_ARRAY){ ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(original),zval *name){ zval *v=zend_hash_find(Z_ARRVAL_P(value_map),Z_STR_P(name)); zval copy; if(v==NULL) ZVAL_NULL(&copy); else ZVAL_COPY(&copy,v); zend_hash_update(Z_ARRVAL_P(orig_map),Z_STR_P(name),&copy); } ZEND_HASH_FOREACH_END(); }
     zval *news=model_state_property(model_state_of(Z_OBJ_P(ZEND_THIS)),"news"); if(news!=NULL) model_state_property_set(model_state_of(Z_OBJ(model)),"news",news);
@@ -847,39 +783,27 @@ ZEND_METHOD(Polyspec_Orm_Model, groupValue)
     zval *declared=NULL,*declared_cols=read_array(&meta,"columns");
     if(read_string_is(source_col,Z_STRVAL_P(name))&&declared_cols!=NULL&&Z_TYPE_P(declared_cols)==IS_ARRAY)declared=zend_hash_find(Z_ARRVAL_P(declared_cols),Z_STR_P(name));
     if(Z_TYPE_P(raw)==IS_NULL){if(declared!=NULL&&!read_is_true(declared,"nullable")){zval_ptr_dtor(&meta);zend_string *message=strpprintf(0,"group column %s is SQL NULL",Z_STRVAL_P(name));read_throw("CODEC_DECODE",ZSTR_VAL(message));zend_string_release(message);RETURN_THROWS();}zval_ptr_dtor(&meta);RETURN_NULL();}
-    zval value;ZVAL_COPY(&value,raw);if(!read_convert_resource(&value)){zval_ptr_dtor(&value);zval_ptr_dtor(&meta);RETURN_THROWS();}
-    /* Only a failed stream read is false here: a driver that returns native booleans (PostgreSQL) gives false as a value. */
-    bool from_stream=Z_TYPE_P(raw)==IS_RESOURCE;
-    if(from_stream&&Z_TYPE(value)==IS_FALSE){zval_ptr_dtor(&value);zval_ptr_dtor(&meta);zend_string *message=strpprintf(0,"group column %s could not be read",Z_STRVAL_P(name));read_throw("CODEC_DECODE",ZSTR_VAL(message));zend_string_release(message);RETURN_THROWS();}
-    if(declared!=NULL){zval styled_arg[1],styled;ZVAL_COPY(&styled_arg[0],declared);bool ok=read_static_call(polyspec_runtime_model_ce,"styled",&styled,1,styled_arg);zval_ptr_dtor(&styled_arg[0]);if(!ok){zval_ptr_dtor(&value);zval_ptr_dtor(&meta);RETURN_THROWS();}bool is_styled=zend_is_true(&styled);zval_ptr_dtor(&styled);if(is_styled){if(Z_TYPE(value)!=IS_OBJECT||!instanceof_function(Z_OBJCE(value),polyspec_styled_value_ce)){zval_ptr_dtor(&value);zval_ptr_dtor(&meta);zend_string *message=strpprintf(0,"group column %s is not StyledValue",Z_STRVAL_P(name));read_throw("CODEC_DECODE",ZSTR_VAL(message));zend_string_release(message);RETURN_THROWS();}zval_ptr_dtor(&meta);ZVAL_COPY_VALUE(return_value,&value);return;}}
-    zval *type=declared!=NULL?read_array(declared,"type"):read_array(column,"type");if(type==NULL||Z_TYPE_P(type)!=IS_STRING){zval_ptr_dtor(&value);zval_ptr_dtor(&meta);read_throw("INTERNAL","group column has no type");RETURN_THROWS();}
-    if(read_string_is(type,"i16")||read_string_is(type,"i32")||read_string_is(type,"i64")){zval args[3],rv;ZVAL_COPY(&args[0],&value);ZVAL_COPY(&args[1],type);ZVAL_COPY(&args[2],name);bool ok=read_model_static_call(ZEND_THIS,"groupInteger",&rv,3,args);for(int i=0;i<3;i++)zval_ptr_dtor(&args[i]);zval_ptr_dtor(&value);zval_ptr_dtor(&meta);if(!ok)RETURN_THROWS();ZVAL_COPY_VALUE(return_value,&rv);return;}
-    if (read_string_is(type, "bool")) {
-        bool valid_true = Z_TYPE(value) == IS_TRUE ||
-            (Z_TYPE(value) == IS_LONG && Z_LVAL(value) == 1) ||
-            (Z_TYPE(value) == IS_STRING && (zend_string_equals_literal(Z_STR(value), "1") ||
-                zend_string_equals_literal(Z_STR(value), "t") || zend_string_equals_literal(Z_STR(value), "true")));
-        bool valid_false = Z_TYPE(value) == IS_FALSE ||
-            (Z_TYPE(value) == IS_LONG && Z_LVAL(value) == 0) ||
-            (Z_TYPE(value) == IS_STRING && (zend_string_equals_literal(Z_STR(value), "0") ||
-                zend_string_equals_literal(Z_STR(value), "f") || zend_string_equals_literal(Z_STR(value), "false")));
-        if (!valid_true && !valid_false) {
-            zval_ptr_dtor(&value); zval_ptr_dtor(&meta);
-            zend_string *message = strpprintf(0, "group column %s is not boolean", Z_STRVAL_P(name));
-            read_throw("CODEC_DECODE", ZSTR_VAL(message)); zend_string_release(message); RETURN_THROWS();
-        }
-        zval_ptr_dtor(&value); zval_ptr_dtor(&meta); RETURN_BOOL(valid_true);
-    }
-    if(read_string_is(type,"f64")){zval args[2],rv;ZVAL_COPY(&args[0],&value);ZVAL_COPY(&args[1],name);bool ok=read_model_static_call(ZEND_THIS,"groupFloat",&rv,2,args);zval_ptr_dtor(&args[0]);zval_ptr_dtor(&args[1]);zval_ptr_dtor(&value);zval_ptr_dtor(&meta);if(!ok)RETURN_THROWS();ZVAL_COPY_VALUE(return_value,&rv);return;}
-    if(read_string_is(type,"decimal")){if(declared==NULL){zval_ptr_dtor(&value);zval_ptr_dtor(&meta);zend_string *message=strpprintf(0,"decimal group column %s has no declaration",Z_STRVAL_P(name));read_throw("INTERNAL",ZSTR_VAL(message));zend_string_release(message);RETURN_THROWS();}zval *precision=read_array(declared,"precision"),*scale=read_array(declared,"scale");zval driver;if(precision==NULL||scale==NULL||!read_call(db,"dialect",&driver,0,NULL)){zval_ptr_dtor(&value);zval_ptr_dtor(&meta);RETURN_THROWS();}bool sqlite=Z_TYPE(driver)==IS_STRING&&zend_string_equals_literal(Z_STR(driver),"sqlite");zval_ptr_dtor(&driver);zval args[3],rv;ZVAL_COPY(&args[0],&value);ZVAL_COPY(&args[1],precision);ZVAL_COPY(&args[2],scale);zend_class_entry *decimal=read_lookup_class("Polyspec\\Orm\\Decimal");bool ok=decimal!=NULL&&read_static_call(decimal,sqlite?"fromScaled":"decode",&rv,3,args);for(int i=0;i<3;i++)zval_ptr_dtor(&args[i]);zval_ptr_dtor(&value);zval_ptr_dtor(&meta);if(!ok)RETURN_THROWS();ZVAL_COPY_VALUE(return_value,&rv);return;}
-    if(read_string_is(type,"date")||read_string_is(type,"datetime")){zval zone;if(!read_call(db,"zone",&zone,0,NULL)){zval_ptr_dtor(&value);zval_ptr_dtor(&meta);RETURN_THROWS();}bool ok=model_time_value_in_zone(&value,&zone,return_value);zval_ptr_dtor(&zone);zval_ptr_dtor(&value);zval_ptr_dtor(&meta);if(!ok)RETURN_THROWS();return;}
-    if(read_string_is(type,"varchar")||read_string_is(type,"text")||read_string_is(type,"time")||read_string_is(type,"uuid")||read_string_is(type,"bytes")){if(Z_TYPE(value)!=IS_STRING){zval_ptr_dtor(&value);zval_ptr_dtor(&meta);zend_string *message=strpprintf(0,"group column %s is not text or bytes",Z_STRVAL_P(name));read_throw("CODEC_DECODE",ZSTR_VAL(message));zend_string_release(message);RETURN_THROWS();}zval_ptr_dtor(&meta);
-        /* A bytes column without a codec stage holds its bytes as a Bytes, as in the array form of a model (COD-27). */
-        zval *stages = declared != NULL ? read_array(declared, "codec") : NULL;
-        bool no_stage = stages == NULL || Z_TYPE_P(stages) != IS_ARRAY || zend_hash_num_elements(Z_ARRVAL_P(stages)) == 0;
-        if (read_string_is(type, "bytes") && no_stage && !model_output_bytes(&value)) RETURN_THROWS();
-        ZVAL_COPY_VALUE(return_value,&value);return;}
-    zend_string *message=strpprintf(0,"group column %s has unsupported type %s",Z_STRVAL_P(name),Z_STRVAL_P(type));zval_ptr_dtor(&value);zval_ptr_dtor(&meta);read_throw("INTERNAL",ZSTR_VAL(message));zend_string_release(message);RETURN_THROWS();
+    if(declared!=NULL){zval styled_arg[1],styled;ZVAL_COPY(&styled_arg[0],declared);bool ok=read_static_call(polyspec_runtime_model_ce,"styled",&styled,1,styled_arg);zval_ptr_dtor(&styled_arg[0]);if(!ok){zval_ptr_dtor(&meta);RETURN_THROWS();}bool is_styled=zend_is_true(&styled);zval_ptr_dtor(&styled);if(is_styled){if(Z_TYPE_P(raw)!=IS_OBJECT||!instanceof_function(Z_OBJCE_P(raw),polyspec_styled_value_ce)){zval_ptr_dtor(&meta);zend_string *message=strpprintf(0,"group column %s is not StyledValue",Z_STRVAL_P(name));read_throw("CODEC_DECODE",ZSTR_VAL(message));zend_string_release(message);RETURN_THROWS();}zval_ptr_dtor(&meta);RETURN_COPY(raw);}}
+    zval *type=declared!=NULL?read_array(declared,"type"):read_array(column,"type");if(type==NULL||Z_TYPE_P(type)!=IS_STRING){zval_ptr_dtor(&meta);read_throw("INTERNAL","group column has no type");RETURN_THROWS();}
+    if(read_string_is(type,"decimal")&&declared==NULL){zval_ptr_dtor(&meta);zend_string *message=strpprintf(0,"decimal group column %s has no declaration",Z_STRVAL_P(name));read_throw("INTERNAL",ZSTR_VAL(message));zend_string_release(message);RETURN_THROWS();}
+    zval *entity=read_array(&meta,"entity");if(entity==NULL||Z_TYPE_P(entity)!=IS_STRING){zval_ptr_dtor(&meta);read_throw("INTERNAL","the model metadata names no entity");RETURN_THROWS();}
+    zval driver,zone;if(!read_call(db,"dialect",&driver,0,NULL)){zval_ptr_dtor(&meta);RETURN_THROWS();}bool sqlite=Z_TYPE(driver)==IS_STRING&&zend_string_equals_literal(Z_STR(driver),"sqlite");zval_ptr_dtor(&driver);
+    if(!read_call(db,"zone",&zone,0,NULL)){zval_ptr_dtor(&meta);RETURN_THROWS();}
+    /* A group column is refused as a model column is, by its entity and name (COD-1), and reads an integer from its exact
+     * digits on every database; a datetime of an expression has the precision 6. */
+    zval fallback,cell;bool use_fallback=declared==NULL;
+    if(use_fallback){zval type_copy,precision;array_init(&fallback);ZVAL_COPY(&type_copy,type);ZVAL_LONG(&precision,6);zend_hash_str_update(Z_ARRVAL(fallback),"type",sizeof("type")-1,&type_copy);zend_hash_str_update(Z_ARRVAL(fallback),"precision",sizeof("precision")-1,&precision);}
+    bool ok=cell_value(Z_STR_P(entity),Z_STR_P(name),use_fallback?&fallback:declared,raw,sqlite,true,&zone,&cell);
+    if(use_fallback)zval_ptr_dtor(&fallback);
+    if(ok&&Z_TYPE(cell)==IS_OBJECT&&Z_OBJCE(cell)==polyspec_pending_time_ce){zval *text=zend_read_property(polyspec_pending_time_ce,Z_OBJ(cell),ZEND_STRL("text"),1,NULL);ok=text!=NULL&&model_time_value_in_zone(text,&zone,return_value);zval_ptr_dtor(&cell);}
+    else if(ok)ZVAL_COPY_VALUE(return_value,&cell);
+    zval_ptr_dtor(&zone);
+    if(!ok){zval_ptr_dtor(&meta);RETURN_THROWS();}
+    /* A bytes column without a codec stage holds its bytes as a Bytes, as in the array form of a model (COD-27). */
+    zval *stages = declared != NULL ? read_array(declared, "codec") : NULL;
+    bool no_stage = stages == NULL || Z_TYPE_P(stages) != IS_ARRAY || zend_hash_num_elements(Z_ARRVAL_P(stages)) == 0;
+    zval_ptr_dtor(&meta);
+    if (read_string_is(type, "bytes") && no_stage && !model_output_bytes(return_value)) RETURN_THROWS();
 }
 
 ZEND_METHOD(Polyspec_Orm_Model, getsCount)
@@ -979,44 +903,365 @@ static int exact_number(zval *raw, double *out)
     return isfinite(*out) ? 1 : 2;
 }
 
-ZEND_METHOD(Polyspec_Orm_Model, groupInteger)
+/* COD-1: the message of a cell that its column type refuses, one text per type that names no value and no host type. */
+static zend_string *cell_message(const char *type)
 {
-    static const char *const scalar_types[] = {NULL, "string", "string"};
-    if (!model_reject_null_scalar_args(execute_data, scalar_types, 3)) RETURN_THROWS();
-    zval *raw;
-    zend_string *type, *name;
-    ZEND_PARSE_PARAMETERS_START(3, 3)
-        Z_PARAM_ZVAL(raw)
-        Z_PARAM_STR(type)
-        Z_PARAM_STR(name)
-    ZEND_PARSE_PARAMETERS_END();
-    zend_long value;
-    if (!exact_integer(raw, &value)) {
-        zend_string *message = strpprintf(0, "group column %s is not an exact integer", ZSTR_VAL(name));
-        read_throw("CODEC_DECODE", ZSTR_VAL(message)); zend_string_release(message); RETURN_THROWS();
+    if (!strcmp(type, "i16") || !strcmp(type, "i32") || !strcmp(type, "i64")) {
+        return strpprintf(0, "%s cell is not an exact integer in its range", type);
     }
-    if ((zend_string_equals_literal(type, "i32") && (value < INT32_MIN || value > INT32_MAX)) ||
-        (zend_string_equals_literal(type, "i16") && (value < INT16_MIN || value > INT16_MAX))) {
-        zend_string *message = strpprintf(0, "group column %s exceeds %s range", ZSTR_VAL(name), ZSTR_VAL(type));
-        read_throw("CODEC_DECODE", ZSTR_VAL(message)); zend_string_release(message); RETURN_THROWS();
+    if (!strcmp(type, "f64")) return zend_string_init(ZEND_STRL("f64 cell is not a finite number"), 0);
+    if (!strcmp(type, "bool")) return zend_string_init(ZEND_STRL("bool cell is not boolean"), 0);
+    if (!strcmp(type, "decimal")) return zend_string_init(ZEND_STRL("decimal cell is not a decimal of its precision and scale"), 0);
+    if (!strcmp(type, "date") || !strcmp(type, "datetime") || !strcmp(type, "time")) {
+        return strpprintf(0, "%s cell is not a %s", type, type);
     }
-    RETURN_LONG(value);
+    if (!strcmp(type, "bytes")) return zend_string_init(ZEND_STRL("bytes cell is not bytes"), 0);
+    return strpprintf(0, "%s cell is not text", type);
 }
 
-ZEND_METHOD(Polyspec_Orm_Model, groupFloat)
+/* The CODEC_DECODE of a read cell, <entity>.<column>: <message> (COD-1, COD-41), made with previous as its previous, which it
+ * takes over; false when it cannot be made. */
+static bool cell_refusal(zend_string *entity, zend_string *name, zend_string *message, zend_object *previous, zval *out)
 {
-    static const char *const scalar_types[] = {NULL, "string"};
-    if (!model_reject_null_scalar_args(execute_data, scalar_types, 2)) RETURN_THROWS();
-    zval *raw;
-    zend_string *name;
-    ZEND_PARSE_PARAMETERS_START(2, 2) Z_PARAM_ZVAL(raw) Z_PARAM_STR(name) ZEND_PARSE_PARAMETERS_END();
-    double value;
-    int status = exact_number(raw, &value);
-    if (status == 0 || status == 2) {
-        zend_string *message = strpprintf(0, "group column %s is %s", ZSTR_VAL(name), status == 0 ? "not a number" : "not finite");
-        read_throw("CODEC_DECODE", ZSTR_VAL(message)); zend_string_release(message); RETURN_THROWS();
+    zend_string *text = strpprintf(0, "%s.%s: %s", ZSTR_VAL(entity), ZSTR_VAL(name), ZSTR_VAL(message));
+    bool ok = orm_exception_object(NULL, "CODEC_DECODE", text, out);
+    zend_string_release(text);
+    if (!ok) {
+        if (previous != NULL) OBJ_RELEASE(previous);
+        return false;
     }
-    RETURN_DOUBLE(value);
+    if (previous != NULL) zend_exception_set_previous(Z_OBJ_P(out), previous);
+    return true;
+}
+
+/* Throws the refusal of a read cell of a column type; it returns false. */
+static bool cell_refuse(zend_string *entity, zend_string *name, const char *type, zend_object *previous)
+{
+    zend_string *message = cell_message(type);
+    zval exception;
+    if (cell_refusal(entity, name, message, previous, &exception)) zend_throw_exception_object(&exception);
+    zend_string_release(message);
+    return false;
+}
+
+static bool cell_digits(const char *s, size_t n)
+{
+    for (size_t i = 0; i < n; i++) if (s[i] < '0' || s[i] > '9') return false;
+    return true;
+}
+
+static int cell_number(const char *s, size_t n)
+{
+    int v = 0;
+    for (size_t i = 0; i < n; i++) v = v * 10 + (s[i] - '0');
+    return v;
+}
+
+/* Whether a year, a month and a day name a day of the proleptic Gregorian calendar, the year 0000 included. */
+static bool cell_valid_date(int year, int month, int day)
+{
+    static const int days[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    if (month < 1 || month > 12 || day < 1) return false;
+    bool leap = (year % 4 == 0 && year % 100 != 0) || year % 400 == 0;
+    return day <= (month == 2 && leap ? 29 : days[month - 1]);
+}
+
+/* A date YYYY-MM-DD of a real day at s. */
+static bool cell_date_at(const char *s)
+{
+    return cell_digits(s, 4) && s[4] == '-' && cell_digits(s + 5, 2) && s[7] == '-' && cell_digits(s + 8, 2)
+        && cell_valid_date(cell_number(s, 4), cell_number(s + 5, 2), cell_number(s + 8, 2));
+}
+
+/* A time HH:MM:SS of a real time of day at s. */
+static bool cell_clock_at(const char *s)
+{
+    return cell_digits(s, 2) && s[2] == ':' && cell_digits(s + 3, 2) && s[5] == ':' && cell_digits(s + 6, 2)
+        && cell_number(s, 2) <= 23 && cell_number(s + 3, 2) <= 59 && cell_number(s + 6, 2) <= 59;
+}
+
+/* Reads an optional fraction of one to nine digits at s[*i]; false when the dot has no digit or more than nine follow. */
+static bool cell_fraction_at(const char *s, size_t n, size_t *i, const char **digits, size_t *count)
+{
+    *digits = s + *i;
+    *count = 0;
+    if (*i >= n || s[*i] != '.') return true;
+    size_t begin = ++*i;
+    while (*i < n && s[*i] >= '0' && s[*i] <= '9') (*i)++;
+    *digits = s + begin;
+    *count = *i - begin;
+    return *count >= 1 && *count <= 9;
+}
+
+/* Appends the fraction of a time text at its precision, as Model::fractionDigits; false when a digit beyond the precision is
+ * not zero. */
+static bool cell_fraction(const char *digits, size_t count, zend_long precision, smart_str *out)
+{
+    for (size_t i = (size_t)precision; i < count; i++) if (digits[i] != '0') return false;
+    if (precision == 0) return true;
+    smart_str_appendc(out, '.');
+    for (zend_long i = 0; i < precision; i++) smart_str_appendc(out, (size_t)i < count ? digits[i] : '0');
+    return true;
+}
+
+/* The canonical text of a date, a time or a datetime cell, or NULL when the text is none, as Model::timeText: a date
+ * YYYY-MM-DD of a real day; a time HH:MM:SS with a fraction of up to nine digits, none beyond the precision but zeros; a
+ * datetime YYYY-MM-DD HH:MM:SS (or with T) of a real instant with such a fraction and an optional Z or offset, written with six
+ * fraction digits and its offset. */
+static zend_string *cell_time_text(const char *type, const char *s, size_t n, zend_long precision)
+{
+    smart_str out = {0};
+    const char *digits;
+    size_t count, i;
+    if (!strcmp(type, "date")) {
+        return n == 10 && cell_date_at(s) ? zend_string_init(s, n, 0) : NULL;
+    }
+    if (!strcmp(type, "time")) {
+        i = 8;
+        if (n < 8 || !cell_clock_at(s) || !cell_fraction_at(s, n, &i, &digits, &count) || i != n) return NULL;
+        smart_str_appendl(&out, s, 8);
+        if (!cell_fraction(digits, count, precision, &out)) { smart_str_free(&out); return NULL; }
+        return smart_str_extract(&out);
+    }
+    i = 19;
+    if (n < 19 || !cell_date_at(s) || (s[10] != ' ' && s[10] != 'T') || !cell_clock_at(s + 11)
+        || !cell_fraction_at(s, n, &i, &digits, &count)) {
+        return NULL;
+    }
+    while (i < n && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' || s[i] == '\v' || s[i] == '\f' || s[i] == '\r')) i++;
+    const char *offset = s + i;
+    size_t offset_length = 0;
+    if (i < n && s[i] == 'Z') {
+        i++;
+        offset = "+00:00";
+        offset_length = 6;
+    } else if (i < n && (s[i] == '+' || s[i] == '-')) {
+        if (i + 3 > n || !cell_digits(s + i + 1, 2)) return NULL;
+        size_t end = i + 3;
+        if (end < n && s[end] == ':') {
+            if (end + 3 > n || !cell_digits(s + end + 1, 2)) return NULL;
+            end += 3;
+        } else if (end + 2 <= n && cell_digits(s + end, 2)) {
+            end += 2;
+        }
+        offset_length = end - i;
+        i = end;
+    }
+    if (i != n) return NULL;
+    smart_str scratch = {0};
+    bool fraction_ok = cell_fraction(digits, count, precision, &scratch);
+    smart_str_free(&scratch);
+    if (!fraction_ok) return NULL;
+    smart_str_appendl(&out, s, 10);
+    smart_str_appendc(&out, ' ');
+    smart_str_appendl(&out, s + 11, 8);
+    smart_str_appendc(&out, '.');
+    for (size_t k = 0; k < 6; k++) smart_str_appendc(&out, k < count ? digits[k] : '0');
+    smart_str_appendl(&out, offset, offset_length);
+    return smart_str_extract(&out);
+}
+
+/* The value of a read cell of a column type, as Model::cellValue of the PHP library (COD-1): out is the value, or the
+ * refusal is thrown. */
+static bool cell_value(zend_string *entity, zend_string *name, zval *col, zval *raw, bool sqlite, bool integer_text, zval *zone,
+    zval *out)
+{
+    zval *type_value = read_array(col, "type");
+    if (type_value == NULL || Z_TYPE_P(type_value) != IS_STRING) return read_throw("INTERNAL", "cell column has no type");
+    const char *type = Z_STRVAL_P(type_value);
+    zval v;
+    ZVAL_COPY_DEREF(&v, raw);
+    if (Z_TYPE(v) == IS_RESOURCE) {
+        if (!read_convert_resource(&v)) { zval_ptr_dtor(&v); return false; }
+        if (Z_TYPE(v) != IS_STRING) { zval_ptr_dtor(&v); return cell_refuse(entity, name, type, NULL); }
+    }
+    if (!strcmp(type, "i16") || !strcmp(type, "i32") || !strcmp(type, "i64")) {
+        zend_long n = 0, low = ZEND_LONG_MIN, high = ZEND_LONG_MAX;
+        if (!strcmp(type, "i16")) { low = INT16_MIN; high = INT16_MAX; }
+        if (!strcmp(type, "i32")) { low = INT32_MIN; high = INT32_MAX; }
+        bool have = false;
+        if (Z_TYPE(v) == IS_LONG) {
+            n = Z_LVAL(v);
+            have = true;
+        } else if (Z_TYPE(v) == IS_DOUBLE) {
+            double d = Z_DVAL(v);
+            if (zend_finite(d) && floor(d) == d && d >= -9.2233720368547758E18 && d < 9.2233720368547758E18) {
+                n = (zend_long)d;
+                have = true;
+            }
+        } else if (Z_TYPE(v) == IS_STRING && integer_text) {
+            have = exact_integer(&v, &n);
+        }
+        zval_ptr_dtor(&v);
+        if (!have || n < low || n > high) return cell_refuse(entity, name, type, NULL);
+        ZVAL_LONG(out, n);
+        return true;
+    }
+    if (!strcmp(type, "f64")) {
+        double d;
+        int status = exact_number(&v, &d);
+        zval_ptr_dtor(&v);
+        if (status != 1) return cell_refuse(entity, name, type, NULL);
+        ZVAL_DOUBLE(out, d);
+        return true;
+    }
+    if (!strcmp(type, "bool")) {
+        bool truthy = Z_TYPE(v) == IS_TRUE || (Z_TYPE(v) == IS_LONG && Z_LVAL(v) == 1) ||
+            (Z_TYPE(v) == IS_STRING && (zend_string_equals_literal(Z_STR(v), "1") ||
+                zend_string_equals_literal(Z_STR(v), "t") || zend_string_equals_literal(Z_STR(v), "true")));
+        bool falsy = Z_TYPE(v) == IS_FALSE || (Z_TYPE(v) == IS_LONG && Z_LVAL(v) == 0) ||
+            (Z_TYPE(v) == IS_STRING && (zend_string_equals_literal(Z_STR(v), "0") ||
+                zend_string_equals_literal(Z_STR(v), "f") || zend_string_equals_literal(Z_STR(v), "false")));
+        zval_ptr_dtor(&v);
+        if (!truthy && !falsy) return cell_refuse(entity, name, type, NULL);
+        ZVAL_BOOL(out, truthy);
+        return true;
+    }
+    if (!strcmp(type, "decimal")) {
+        zval *precision = read_array(col, "precision"), *scale = read_array(col, "scale");
+        zend_class_entry *decimal = read_lookup_class("Polyspec\\Orm\\Decimal");
+        if (precision == NULL || scale == NULL || Z_TYPE_P(precision) != IS_LONG || Z_TYPE_P(scale) != IS_LONG || decimal == NULL) {
+            zval_ptr_dtor(&v);
+            return read_throw("INTERNAL", "decimal column has no precision or scale");
+        }
+        zval args[3];
+        ZVAL_COPY_VALUE(&args[0], &v);
+        ZVAL_LONG(&args[1], Z_LVAL_P(precision));
+        ZVAL_LONG(&args[2], Z_LVAL_P(scale));
+        bool ok = read_static_call(decimal, sqlite ? "fromScaled" : "decode", out, 3, args);
+        zval_ptr_dtor(&v);
+        if (ok) return true;
+        zend_object *previous = EG(exception);
+        if (previous == NULL) return false;
+        GC_ADDREF(previous);
+        zend_clear_exception();
+        return cell_refuse(entity, name, type, previous);
+    }
+    if (!strcmp(type, "date") || !strcmp(type, "datetime") || !strcmp(type, "time")) {
+        zval *precision_value = read_array(col, "precision");
+        zend_long precision = !strcmp(type, "date") ? 0
+            : (precision_value != NULL && Z_TYPE_P(precision_value) == IS_LONG ? Z_LVAL_P(precision_value) : -1);
+        if (precision < 0 || precision > 9) { zval_ptr_dtor(&v); return read_throw("INTERNAL", "time column has no precision"); }
+        if (strcmp(type, "time") && Z_TYPE(v) == IS_OBJECT && instanceof_function(Z_OBJCE(v), php_date_get_interface_ce())) {
+            /* A time that the driver read; a datetime has no fraction digit beyond its precision. */
+            bool whole = true;
+            if (!strcmp(type, "datetime")) {
+                zval format, micro;
+                ZVAL_STRING(&format, "u");
+                bool ok = read_call(&v, "format", &micro, 1, &format);
+                zval_ptr_dtor(&format);
+                if (!ok) { zval_ptr_dtor(&v); return false; }
+                zend_long units = 1;
+                for (zend_long k = precision; k < 6; k++) units *= 10;
+                whole = Z_TYPE(micro) == IS_STRING && ZEND_STRTOL(Z_STRVAL(micro), NULL, 10) % units == 0;
+                zval_ptr_dtor(&micro);
+            }
+            if (!whole) { zval_ptr_dtor(&v); return cell_refuse(entity, name, type, NULL); }
+            bool ok = model_time_value_in_zone(&v, zone, out);
+            zval_ptr_dtor(&v);
+            return ok;
+        }
+        zend_string *text = Z_TYPE(v) == IS_STRING ? cell_time_text(type, Z_STRVAL(v), Z_STRLEN(v), precision) : NULL;
+        zval_ptr_dtor(&v);
+        if (text == NULL) return cell_refuse(entity, name, type, NULL);
+        if (!strcmp(type, "time")) {
+            ZVAL_STR(out, text);
+            return true;
+        }
+        /* The text is checked now; the getter parses it in the connection's zone when it is first read (T189). */
+        object_init_ex(out, polyspec_pending_time_ce);
+        if (EG(exception) != NULL) { zend_string_release(text); return false; }
+        zval args[2], rv;
+        ZVAL_STR(&args[0], text);
+        ZVAL_COPY(&args[1], zone);
+        zend_call_method(Z_OBJ_P(out), polyspec_pending_time_ce, NULL, "__construct", sizeof("__construct") - 1, &rv, 2, &args[0],
+            &args[1]);
+        zval_ptr_dtor(&args[0]);
+        zval_ptr_dtor(&args[1]);
+        if (!Z_ISUNDEF(rv)) zval_ptr_dtor(&rv);
+        if (EG(exception) != NULL) { zval_ptr_dtor(out); ZVAL_UNDEF(out); return false; }
+        return true;
+    }
+    if (Z_TYPE(v) != IS_STRING) { zval_ptr_dtor(&v); return cell_refuse(entity, name, type, NULL); }
+    /* COD-69: a text cell that is not valid UTF-8 is refused, never returned as its bytes. */
+    if (strcmp(type, "bytes") && !codec_valid_utf8(Z_STRVAL(v), Z_STRLEN(v))) {
+        zval_ptr_dtor(&v);
+        zend_string *message = zend_string_init(ZEND_STRL("text is not valid UTF-8"), 0);
+        zval exception;
+        if (cell_refusal(entity, name, message, NULL, &exception)) zend_throw_exception_object(&exception);
+        zend_string_release(message);
+        return false;
+    }
+    ZVAL_COPY_VALUE(out, &v);
+    return true;
+}
+
+ZEND_METHOD(Polyspec_Orm_Model, cellMessage)
+{
+    zend_string *type;
+    ZEND_PARSE_PARAMETERS_START(1, 1) Z_PARAM_STR(type) ZEND_PARSE_PARAMETERS_END();
+    RETURN_STR(cell_message(ZSTR_VAL(type)));
+}
+
+ZEND_METHOD(Polyspec_Orm_Model, cellRefusal)
+{
+    zend_string *entity, *name, *message;
+    zend_object *previous = NULL;
+    ZEND_PARSE_PARAMETERS_START(3, 4)
+        Z_PARAM_STR(entity)
+        Z_PARAM_STR(name)
+        Z_PARAM_STR(message)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_OBJ_OF_CLASS_OR_NULL(previous, zend_ce_throwable)
+    ZEND_PARSE_PARAMETERS_END();
+    if (previous != NULL) GC_ADDREF(previous);
+    if (!cell_refusal(entity, name, message, previous, return_value)) RETURN_THROWS();
+}
+
+ZEND_METHOD(Polyspec_Orm_Model, cellValue)
+{
+    zend_string *entity, *name;
+    zval *col, *v, *zone;
+    bool sqlite, integer_text;
+    ZEND_PARSE_PARAMETERS_START(7, 7)
+        Z_PARAM_STR(entity)
+        Z_PARAM_STR(name)
+        Z_PARAM_ARRAY(col)
+        Z_PARAM_ZVAL(v)
+        Z_PARAM_BOOL(sqlite)
+        Z_PARAM_BOOL(integer_text)
+        Z_PARAM_OBJECT_OF_CLASS(zone, php_date_get_timezone_ce())
+    ZEND_PARSE_PARAMETERS_END();
+    if (!cell_value(entity, name, col, v, sqlite, integer_text, zone, return_value)) RETURN_THROWS();
+}
+
+ZEND_METHOD(Polyspec_Orm_Model, timeText)
+{
+    zend_string *type, *text;
+    zend_long precision;
+    ZEND_PARSE_PARAMETERS_START(3, 3) Z_PARAM_STR(type) Z_PARAM_STR(text) Z_PARAM_LONG(precision) ZEND_PARSE_PARAMETERS_END();
+    if (precision < 0 || precision > 9) RETURN_NULL();
+    zend_string *result = cell_time_text(ZSTR_VAL(type), ZSTR_VAL(text), ZSTR_LEN(text), precision);
+    if (result == NULL) RETURN_NULL();
+    RETURN_STR(result);
+}
+
+ZEND_METHOD(Polyspec_Orm_Model, validDate)
+{
+    zend_long year, month, day;
+    ZEND_PARSE_PARAMETERS_START(3, 3) Z_PARAM_LONG(year) Z_PARAM_LONG(month) Z_PARAM_LONG(day) ZEND_PARSE_PARAMETERS_END();
+    RETURN_BOOL(month >= 1 && month <= 12 && day >= 1 && day <= 31 && cell_valid_date((int)year, (int)month, (int)day));
+}
+
+ZEND_METHOD(Polyspec_Orm_Model, fractionDigits)
+{
+    zend_string *digits;
+    zend_long precision;
+    ZEND_PARSE_PARAMETERS_START(2, 2) Z_PARAM_STR(digits) Z_PARAM_LONG(precision) ZEND_PARSE_PARAMETERS_END();
+    if (precision < 0) RETURN_NULL();
+    smart_str out = {0};
+    if (!cell_fraction(ZSTR_VAL(digits), ZSTR_LEN(digits), precision, &out)) { smart_str_free(&out); RETURN_NULL(); }
+    RETURN_STR(out.s != NULL ? smart_str_extract(&out) : ZSTR_EMPTY_ALLOC());
 }
 
 ZEND_METHOD(Polyspec_Orm_Model, aggregateNumber)

@@ -38,22 +38,28 @@ final class AesKeyring
     }
 
     /**
-     * The key version that a stored row holds: a positive 32-bit integer, as an int or as its decimal text. Any other
-     * value is CODEC_DECODE; it is never coerced.
+     * The key version that a stored row holds: a positive 32-bit integer, as an int, a float with no fraction or its
+     * decimal digits, leading zeros allowed. Any other value is CODEC_DECODE, whose message names no value (COD-44,
+     * INT-163); it is never coerced.
      * @internal Codec and the rotation of this class read the version column with it; it is not a public API.
      */
     public static function storedVersion(mixed $value): int
     {
-        if (is_string($value) && preg_match('/^[0-9]+$/', $value) === 1) {
-            $value = (int) $value;
+        $version = null;
+        if (is_int($value)) {
+            $version = $value;
+        } elseif (
+            is_float($value) && is_finite($value) && floor($value) === $value && $value >= 1.0 && $value <= 2147483647.0
+        ) {
+            $version = (int) $value;
+        } elseif (is_string($value) && preg_match('/^[0-9]+$/D', $value) === 1) {
+            $digits = ltrim($value, '0');
+            $version = strlen($digits) <= 10 ? (int) $digits : null;
         }
-        if (!is_int($value) || $value < 1 || $value > 2147483647) {
-            throw new OrmException(
-                Code::CODEC_DECODE,
-                'aes version ' . var_export($value, true) . ' is not a positive 32-bit integer'
-            );
+        if ($version === null || $version < 1 || $version > 2147483647) {
+            throw new OrmException(Code::CODEC_DECODE, 'aes version is not a positive 32-bit integer');
         }
-        return $value;
+        return $version;
     }
 
     /**

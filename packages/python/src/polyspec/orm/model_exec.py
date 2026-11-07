@@ -116,12 +116,11 @@ class _Assembler:
                 cell = row[col["index"]]
                 # The AES version cell is read as a stored version (COD-53): a text of digits is its number, and any
                 # other value is CODEC_DECODE.
-                if (
+                version_at = (
                     schema.aes_version != ""
                     and col["name"] == schema.aes_version
                     and cell is not None
-                ):
-                    cell = _stored_version(cell)
+                )
                 kind = column_type(declared)
                 if kind in ("varchar", "text") and not _valid_text(cell):
                     raise OrmError(
@@ -131,11 +130,21 @@ class _Assembler:
                 core.values[col["name"]] = _column_value(
                     schema.name,
                     col["name"],
-                    lambda: convert(kind, cell, self.db.zone, declared),
+                    lambda: convert(
+                        kind,
+                        _stored_version(cell) if version_at else cell,
+                        self.db.zone,
+                        declared,
+                    ),
                 )
             else:
-                row_state.extra[col["name"]] = _added_column_value(
-                    col["type"], row[col["index"]], self.db.zone
+                # An added column is refused as a model column is, by its entity and its name (COD-1, COD-41).
+                row_state.extra[col["name"]] = _column_value(
+                    schema.name,
+                    col["name"],
+                    lambda: _added_column_value(
+                        col["type"], row[col["index"]], self.db.zone
+                    ),
                 )
         for key in asm["key"]:
             name = next(
@@ -1024,74 +1033,16 @@ def _group_value(db, column: dict, raw, schema: Entity):
                 codes.CODEC_DECODE, f"group column {column['name']} is not StyledValue"
             )
         return raw
-    if type_ == "bool":
-        if raw is True or (type(raw) is int and raw == 1) or raw in ("1", "t", "true"):
-            return True
-        if (
-            raw is False
-            or (type(raw) is int and raw == 0)
-            or raw in ("0", "f", "false")
-        ):
-            return False
-        raise OrmError(
-            codes.CODEC_DECODE, f"group column {column['name']} is not boolean"
-        )
-    if type_ in ("i16", "i32", "i64"):
-        if isinstance(raw, bool):
-            raise OrmError(
-                codes.CODEC_DECODE,
-                f"group column {column['name']} is not an exact integer",
-            )
-        if isinstance(raw, str) and re.fullmatch(r"-?(0|[1-9][0-9]*)", raw):
-            value = int(raw)
-        elif isinstance(raw, int):
-            value = raw
-        else:
-            raise OrmError(
-                codes.CODEC_DECODE,
-                f"group column {column['name']} is not an exact integer",
-            )
-        low, high = _INTEGER_RANGES[type_]
-        if not low <= value <= high:
-            raise OrmError(
-                codes.CODEC_DECODE,
-                f"group column {column['name']} is outside its exact integer range",
-            )
-        return value
-    if type_ == "f64":
-        if isinstance(raw, (int, float)) and not isinstance(raw, bool):
-            value = float(raw)
-        elif isinstance(raw, str) and re.fullmatch(
-            r"-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?", raw
-        ):
-            value = float(raw)
-        else:
-            raise OrmError(
-                codes.CODEC_DECODE, f"group column {column['name']} is not numeric"
-            )
-        if value != value or value in (float("inf"), float("-inf")):
-            raise OrmError(
-                codes.CODEC_DECODE, f"group column {column['name']} is not finite"
-            )
-        return value
-    if type_ == "decimal":
-        return convert(type_, raw, db.zone, declared)
-    if type_ in ("date", "time", "datetime"):
-        return convert(type_, raw, db.zone, declared)
-    if type_ == "bytes":
-        if not isinstance(raw, bytes):
-            raise OrmError(
-                codes.CODEC_DECODE, f"group column {column['name']} is not bytes"
-            )
-        return raw
-    if type_ in ("string", "varchar", "text", "uuid"):
-        if isinstance(raw, str):
-            return raw
-        if isinstance(raw, bytes):
-            return raw.decode("utf-8")
-        raise OrmError(codes.CODEC_DECODE, f"group column {column['name']} is not text")
-    raise OrmError(
-        codes.INTERNAL, f"group column {column['name']} has unsupported type {type_}"
+    # A group column is refused as a model column is, by its entity and its name, and reads an integer from its exact
+    # digits on every database, as an added column does (COD-1, INT-160).
+    return _column_value(
+        schema.name,
+        column["name"],
+        lambda: (
+            _added_column_value(type_, raw, db.zone)
+            if type_ in ("i16", "i32", "i64")
+            else convert("text" if type_ == "string" else type_, raw, db.zone, declared)
+        ),
     )
 
 

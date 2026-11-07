@@ -3,6 +3,7 @@
 #include "dbspec.h"
 #include "codec.h"
 #include "orm_exception_object.h"
+#include <math.h>
 #include <string.h>
 
 static zend_class_entry *aes_keyring_ce;
@@ -35,25 +36,38 @@ static int aes_key_bucket_compare(Bucket *left, Bucket *right)
     return dbs_compare_values(&left->val, &right->val);
 }
 
-static zend_long parse_stored_version(zval *value, bool *valid)
+/* COD-44: the key version that a stored row holds is a positive 32-bit integer, as an int, a float with no fraction or its decimal
+ * digits, leading zeros allowed; any other value is no version and is never coerced. */
+bool aes_stored_version(zval *value, zend_long *out)
 {
-    *valid = false;
-    if (Z_TYPE_P(value) == IS_LONG) {
-        zend_long version = Z_LVAL_P(value);
-        *valid = version > 0 && version <= 2147483647;
-        return version;
-    }
-    if (Z_TYPE_P(value) != IS_STRING || Z_STRLEN_P(value) == 0) return 0;
+    ZVAL_DEREF(value);
     zend_long version = 0;
-    for (size_t i = 0; i < Z_STRLEN_P(value); i++) {
-        unsigned char ch = (unsigned char)Z_STRVAL_P(value)[i];
-        if (ch < '0' || ch > '9') return 0;
-        unsigned digit = ch - '0';
-        if (version > (2147483647 - digit) / 10) return 0;
-        version = version * 10 + digit;
+    if (Z_TYPE_P(value) == IS_LONG) {
+        version = Z_LVAL_P(value);
+    } else if (Z_TYPE_P(value) == IS_DOUBLE) {
+        double d = Z_DVAL_P(value);
+        if (!zend_finite(d) || floor(d) != d || d < 1.0 || d > 2147483647.0) return false;
+        version = (zend_long)d;
+    } else if (Z_TYPE_P(value) == IS_STRING && Z_STRLEN_P(value) != 0) {
+        for (size_t i = 0; i < Z_STRLEN_P(value); i++) {
+            unsigned char ch = (unsigned char)Z_STRVAL_P(value)[i];
+            if (ch < '0' || ch > '9') return false;
+            unsigned digit = ch - '0';
+            if (version > (2147483647 - digit) / 10) return false;
+            version = version * 10 + digit;
+        }
+    } else {
+        return false;
     }
-    *valid = version > 0;
-    return version;
+    if (version < 1 || version > 2147483647) return false;
+    *out = version;
+    return true;
+}
+
+/* The CODEC_DECODE of a stored version that is none, whose message names no value (COD-44, INT-163). */
+bool aes_stored_version_refused(void)
+{
+    return aes_fail("CODEC_DECODE", zend_string_init(ZEND_STRL("aes version is not a positive 32-bit integer"), 0));
 }
 
 ZEND_METHOD(Polyspec_Orm_AesKeyring, __construct)
@@ -130,13 +144,9 @@ ZEND_METHOD(Polyspec_Orm_AesKeyring, storedVersion)
     ZEND_PARSE_PARAMETERS_START(1, 1)
         Z_PARAM_ZVAL(value)
     ZEND_PARSE_PARAMETERS_END();
-    bool valid;
-    zend_long version = parse_stored_version(value, &valid);
-    if (!valid) {
-        zend_string *shown = zval_get_string(value);
-        zend_string *message = strpprintf(0, "aes version %s is not a positive 32-bit integer", ZSTR_VAL(shown));
-        zend_string_release(shown);
-        aes_fail("CODEC_DECODE", message);
+    zend_long version;
+    if (!aes_stored_version(value, &version)) {
+        aes_stored_version_refused();
         RETURN_THROWS();
     }
     RETURN_LONG(version);
@@ -188,14 +198,10 @@ ZEND_METHOD(Polyspec_Orm_AesKeyring, rotateRow)
         }
         if (Z_TYPE_P(cell) == IS_NULL) continue;
         if (old_key == NULL) {
-            bool valid;
-            zend_long old_version = parse_stored_version(stored, &valid);
-            if (!valid) {
+            zend_long old_version;
+            if (!aes_stored_version(stored, &old_version)) {
                 discard_result(return_value);
-                zend_string *shown = zval_get_string(stored);
-                zend_string *message = strpprintf(0, "aes version %s is not a positive 32-bit integer", ZSTR_VAL(shown));
-                zend_string_release(shown);
-                aes_fail("CODEC_DECODE", message);
+                aes_stored_version_refused();
                 RETURN_THROWS();
             }
             zval *old_secret = zend_hash_index_find(Z_ARRVAL_P(keys), (zend_ulong)old_version);

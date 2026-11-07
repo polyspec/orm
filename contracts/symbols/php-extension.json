@@ -3699,6 +3699,18 @@
     "exported": false,
     "signature": "private function by(array $keys, array $args): static"
   },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::cellMessage": {
+    "exported": false,
+    "signature": "private static function cellMessage(string $type): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::cellRefusal": {
+    "exported": false,
+    "signature": "private static function cellRefusal(string $entity, string $name, string $message, ?Throwable $previous=null): Polyspec\\Orm\\OrmException"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::cellValue": {
+    "exported": false,
+    "signature": "private static function cellValue(string $entity, string $name, array $col, mixed $v, bool $sqlite, bool $integerText, DateTimeZone $zone): mixed"
+  },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::collectionKey": {
     "exported": false,
     "signature": "private function collectionKey(Polyspec\\Orm\\Model $m, array $asm, array $vals): Polyspec\\Orm\\Bytes|DateTimeInterface|string|int|bool"
@@ -3795,6 +3807,10 @@
     "exported": true,
     "signature": "public function forUpdateNoWait(): static"
   },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::fractionDigits": {
+    "exported": false,
+    "signature": "private static function fractionDigits(string $digits, int $precision): ?string"
+  },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::get": {
     "exported": true,
     "signature": "public function get(): ?static"
@@ -3830,14 +3846,6 @@
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::getsPage": {
     "exported": true,
     "signature": "public function getsPage(int $page, int $perPage): Polyspec\\Orm\\Page"
-  },
-  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::groupFloat": {
-    "exported": false,
-    "signature": "private static function groupFloat(mixed $raw, string $name): float"
-  },
-  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::groupInteger": {
-    "exported": false,
-    "signature": "private static function groupInteger(mixed $raw, string $type, string $name): int"
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::groupIr": {
     "exported": false,
@@ -4035,6 +4043,10 @@
     "exported": false,
     "signature": "private function subqueryIr(Polyspec\\Orm\\Request $r, Polyspec\\Orm\\Model $outer, bool $scalar): array"
   },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::timeText": {
+    "exported": false,
+    "signature": "private static function timeText(string $type, string $text, int $precision): ?string"
+  },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::timeValue": {
     "exported": false,
     "signature": "private static function timeValue(mixed $v, DateTimeZone $zone): DateTimeImmutable"
@@ -4050,6 +4062,10 @@
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::update": {
     "exported": true,
     "signature": "public function update(bool $optimistic=false): static"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::validDate": {
+    "exported": false,
+    "signature": "private static function validDate(int $year, int $month, int $day): bool"
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::value": {
     "exported": false,

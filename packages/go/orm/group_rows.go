@@ -181,7 +181,7 @@ func (r *GroupRows) All() func(yield func(GroupRow) bool) {
 	}
 }
 
-func groupColumnValue(c *Core, db *DB, column plan.OutCol, declared *runtimemodel.Field, raw any) (any, error) {
+func groupColumnValue(c *Core, db *DB, entity string, column plan.OutCol, declared *runtimemodel.Field, raw any) (any, error) {
 	if raw == nil {
 		if declared != nil && !declared.Null {
 			return nil, codecErr(CodeCodecDecode, "group column %s is SQL NULL", column.Name)
@@ -199,6 +199,16 @@ func groupColumnValue(c *Core, db *DB, column plan.OutCol, declared *runtimemode
 	if column.Column == "" && column.Name != "row_count" {
 		return raw, nil
 	}
+	value, err := groupCell(c, db, column, declared, raw)
+	if err != nil {
+		// A group column is refused as a model column is, by its entity and its name (COD-1).
+		return nil, columnDecodeErr(entity, column.Name, err)
+	}
+	return value, nil
+}
+
+// groupCell converts a group cell by the type of its column, as the generated model converts a model cell.
+func groupCell(c *Core, db *DB, column plan.OutCol, declared *runtimemodel.Field, raw any) (any, error) {
 	switch column.Type {
 	case "i64":
 		return AsInt64(raw)

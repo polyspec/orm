@@ -39,8 +39,8 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:e3effaf006e92860360c8f5d70f6c8253e6c10694f803a64ecbf55b1237449a1",
-    "php": "sha256:149bd2a7aac427cd636d4e3e34b1b01bef6314fb0f08029b77f965ad0d801140",
+    "go": "sha256:0fb958e5968adf6dd6fcae36d6c1274bec0a93ca005c9f4204fb27c4c89cab89",
+    "php": "sha256:2e09fe0795ab288e0c83a2376a8e32743d82f260cb8d12e1b4c1f35b89f202a7",
     "rust": "sha256:84332b0cabc2b59beda7e1294ccb3bf741a4f532b48c10ab3f9cc8927685ec9c",
     "typescript": "sha256:144973fe26087d8381894f3050549e3bf3bda4a40b18ce9d8227672bc5e1ef76",
     "python": "sha256:6489b78c64a79a84ce760c77ff3e295ad1472a4357e18f286fe1b0299242fa1a"
@@ -208,7 +208,7 @@
         "packages/php-ext/src"
       ],
       "symbols": "contracts/symbols/php-extension.json",
-      "symbol_hash": "sha256:161b44d7c9c5d0adc6268c9ee7b6c97c189fcec88124f578f8e87bc0c4bd630b",
+      "symbol_hash": "sha256:a17be497d7dfbbe76d2be6e942dbaf5845fd370982a017cf792b81c3bcd4f2f8",
       "rules": [
         "Model.connect",
         "Model.and",

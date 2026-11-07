@@ -235,7 +235,8 @@ func (a *assembler) model(b *Core, asm *plan.Assemble, row []any) (*Core, error)
 		}
 		added, err := addedColumnValue(col.Type, v)
 		if err != nil {
-			return nil, codecErr(CodeCodecDecode, "added column %s: %v", col.Name, err)
+			// An added column is refused as a model column is, by its entity and its name (COD-1, COD-41).
+			return nil, columnDecodeErr(b.ent.Name, col.Name, err)
 		}
 		st.extra[col.Name] = added
 		if col.Type == "date" {
@@ -722,9 +723,9 @@ func GetsCount(c *Core) (*GroupRows, error) {
 			if column.Column != "" {
 				declared = entity.Field(column.Column)
 			}
-			value, err := groupColumnValue(c, ex.base(), column, declared, rawRow[column.Index])
+			value, err := groupColumnValue(c, ex.base(), entity.Name, column, declared, rawRow[column.Index])
 			if err != nil {
-				return nil, fmt.Errorf("group column %s: %w", column.Name, err)
+				return nil, err
 			}
 			values = append(values, groupValue{name: column.Name, value: value})
 		}

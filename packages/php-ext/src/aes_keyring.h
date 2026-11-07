@@ -5,5 +5,7 @@
 
 void aes_keyring_set_class(zend_class_entry *ce);
 void aes_rotation_status_set_class(zend_class_entry *ce);
+bool aes_stored_version(zval *value, zend_long *out);
+bool aes_stored_version_refused(void);
 
 #endif

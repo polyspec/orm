@@ -544,6 +544,197 @@ abstract class Model implements \JsonSerializable, ModelMetadata
         throw new OrmException(Code::CODEC_DECODE, "invalid date value $s");
     }
 
+    /** The message of a cell that its column type refuses: one text per type, no value, no host type (COD-1). */
+    private static function cellMessage(string $type): string
+    {
+        return match ($type) {
+            'i16', 'i32', 'i64' => "$type cell is not an exact integer in its range",
+            'f64' => 'f64 cell is not a finite number',
+            'bool' => 'bool cell is not boolean',
+            'decimal' => 'decimal cell is not a decimal of its precision and scale',
+            'date', 'datetime', 'time' => "$type cell is not a $type",
+            'bytes' => 'bytes cell is not bytes',
+            default => "$type cell is not text",
+        };
+    }
+
+    /** The refusal of a read cell: CODEC_DECODE: <entity>.<column>: <message> (COD-1, COD-41). */
+    private static function cellRefusal(
+        string $entity,
+        string $name,
+        string $message,
+        ?\Throwable $previous = null,
+    ): OrmException {
+        return new OrmException(Code::CODEC_DECODE, "$entity.$name: $message", $previous);
+    }
+
+    /**
+     * The value of a read cell of a column type, the cells of TypeScript in every client (COD-1). An integer is an
+     * int, a float with no fraction, or, when $integerText holds, its exact digits as text: a model column reads them
+     * where a driver sends an integer as text, which is not SQLite, whose text is a stored text, and a group or an
+     * added column reads them on every database (INT-160). An f64 is a number or the decimal text of one; a text is a
+     * string that is valid UTF-8; a date, a datetime and a time are their text forms, a datetime and a time with no
+     * fraction digit beyond the precision. Any other cell is refused, never coerced.
+     * @param array<string, mixed> $col
+     */
+    private static function cellValue(
+        string $entity,
+        string $name,
+        array $col,
+        mixed $v,
+        bool $sqlite,
+        bool $integerText,
+        \DateTimeZone $zone,
+    ): mixed {
+        $type = $col['type'];
+        if (is_resource($v)) {
+            $v = stream_get_contents($v);
+            if ($v === false) {
+                throw self::cellRefusal($entity, $name, self::cellMessage($type));
+            }
+        }
+        switch ($type) {
+            case 'i16':
+            case 'i32':
+            case 'i64':
+                [$low, $high] = match ($type) {
+                    'i16' => [-32768, 32767],
+                    'i32' => [-2147483648, 2147483647],
+                    default => [PHP_INT_MIN, PHP_INT_MAX],
+                };
+                if (is_int($v)) {
+                    $n = $v;
+                } elseif (
+                    is_float($v) && is_finite($v) && floor($v) === $v
+                    && $v >= -9.2233720368547758E18 && $v < 9.2233720368547758E18
+                ) {
+                    $n = (int) $v;
+                } elseif ($integerText && is_string($v) && preg_match('/^-?(?:0|[1-9][0-9]*)$/D', $v) === 1) {
+                    $n = filter_var($v, FILTER_VALIDATE_INT);
+                } else {
+                    $n = false;
+                }
+                if ($n === false || $n < $low || $n > $high) {
+                    throw self::cellRefusal($entity, $name, self::cellMessage($type));
+                }
+                return $n;
+            case 'f64':
+                $number = is_string($v)
+                    && preg_match('/^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$/D', $v) === 1;
+                $f = is_int($v) || is_float($v) || $number ? (float) $v : NAN;
+                if (!is_finite($f)) {
+                    throw self::cellRefusal($entity, $name, self::cellMessage($type));
+                }
+                return $f;
+            case 'bool':
+                return match ($v) {
+                    true, 1, '1', 't', 'true' => true,
+                    false, 0, '0', 'f', 'false' => false,
+                    default => throw self::cellRefusal($entity, $name, self::cellMessage($type)),
+                };
+            case 'decimal':
+                try {
+                    return $sqlite
+                        ? Decimal::fromScaled($v, $col['precision'], $col['scale'])
+                        : Decimal::decode($v, $col['precision'], $col['scale']);
+                } catch (OrmException $error) {
+                    throw self::cellRefusal($entity, $name, self::cellMessage($type), $error);
+                }
+            case 'date':
+            case 'datetime':
+                if ($v instanceof \DateTimeInterface) {
+                    // A time that the driver read; a datetime has no fraction digit beyond its precision.
+                    if ($type === 'date' || (int) $v->format('u') % (10 ** (6 - $col['precision'])) === 0) {
+                        return \DateTimeImmutable::createFromInterface($v)->setTimezone($zone);
+                    }
+                    throw self::cellRefusal($entity, $name, self::cellMessage($type));
+                }
+                $text = is_string($v) ? self::timeText($type, $v, $type === 'date' ? 0 : $col['precision']) : null;
+                if ($text === null) {
+                    throw self::cellRefusal($entity, $name, self::cellMessage($type));
+                }
+                // The text is checked now; the getter parses it in the connection's zone when it is first read (T189).
+                return new PendingTime($text, $zone);
+            case 'time':
+                $text = is_string($v) ? self::timeText($type, $v, $col['precision']) : null;
+                if ($text === null) {
+                    throw self::cellRefusal($entity, $name, self::cellMessage($type));
+                }
+                return $text;
+            case 'bytes':
+                if (!is_string($v)) {
+                    throw self::cellRefusal($entity, $name, self::cellMessage($type));
+                }
+                return $v;
+        }
+        if (!is_string($v)) {
+            throw self::cellRefusal($entity, $name, self::cellMessage($type));
+        }
+        // COD-69: a text cell that is not valid UTF-8 is refused, never returned as its bytes.
+        if (preg_match('//u', $v) !== 1) {
+            throw self::cellRefusal($entity, $name, 'text is not valid UTF-8');
+        }
+        return $v;
+    }
+
+    /**
+     * The canonical text of a date, a time or a datetime cell, or null when the text is none: a date YYYY-MM-DD of a
+     * real day; a time HH:MM:SS with a fraction of up to nine digits, none beyond the precision but zeros; a datetime
+     * YYYY-MM-DD HH:MM:SS (or with T) of a real instant with such a fraction and an optional Z or offset. A datetime is
+     * written with six fraction digits and its offset, the forms that timeValue reads.
+     */
+    private static function timeText(string $type, string $text, int $precision): ?string
+    {
+        if ($type === 'date') {
+            return preg_match('/^(\d{4})-(\d{2})-(\d{2})$/D', $text, $m) === 1
+                && self::validDate((int) $m[1], (int) $m[2], (int) $m[3]) ? $text : null;
+        }
+        if ($type === 'time') {
+            if (
+                preg_match('/^(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?$/D', $text, $m) !== 1
+                || $m[1] > '23' || $m[2] > '59' || $m[3] > '59'
+            ) {
+                return null;
+            }
+            $fraction = self::fractionDigits($m[4] ?? '', $precision);
+            return $fraction === null ? null : "$m[1]:$m[2]:$m[3]$fraction";
+        }
+        if (
+            preg_match(
+                '/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?\s*(Z|[+-]\d{2}(?::?\d{2})?)?$/D',
+                $text,
+                $m,
+            ) !== 1
+            || !self::validDate((int) $m[1], (int) $m[2], (int) $m[3]) || $m[4] > '23' || $m[5] > '59' || $m[6] > '59'
+            || self::fractionDigits($m[7] ?? '', $precision) === null
+        ) {
+            return null;
+        }
+        $micro = substr(str_pad($m[7] ?? '', 6, '0'), 0, 6);
+        $offset = ($m[8] ?? '') === 'Z' ? '+00:00' : ($m[8] ?? '');
+        return "$m[1]-$m[2]-$m[3] $m[4]:$m[5]:$m[6].$micro$offset";
+    }
+
+    /** Whether a year, a month and a day name a day of the proleptic Gregorian calendar, the year 0000 included. */
+    private static function validDate(int $year, int $month, int $day): bool
+    {
+        if ($month < 1 || $month > 12 || $day < 1) {
+            return false;
+        }
+        $leap = ($year % 4 === 0 && $year % 100 !== 0) || $year % 400 === 0;
+        return $day <= ($month === 2 ? ($leap ? 29 : 28) : [31, 0, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][$month - 1]);
+    }
+
+    /** The fraction of a time text at its precision, or null when a digit beyond the precision is not zero. */
+    private static function fractionDigits(string $digits, int $precision): ?string
+    {
+        $all = str_pad($digits, $precision, '0');
+        if (trim(substr($all, $precision), '0') !== '') {
+            return null;
+        }
+        return $precision === 0 ? '' : '.' . substr($all, 0, $precision);
+    }
+
     // ---- names resolved at call time ----
 
     public function __call(string $name, array $args): mixed
@@ -1319,48 +1510,25 @@ abstract class Model implements \JsonSerializable, ModelMetadata
         $st = $shape['row'];
         $values = [];
         $meta = static::meta();
-        foreach ($shape['int'] as [$index, $name]) {
-            $v = $vals[$index];
-            // COD-53: a stored version written as text is its digits, leading zeros included.
-            if ($name === $meta['aes_version'] && is_string($v)) {
-                $v = preg_replace('/^0+(?=[0-9])/', '', $v);
+        $entity = $meta['entity'];
+        $sqlite = $a->db->dialect() === 'sqlite';
+        foreach (['int', 'float', 'decimal', 'bool', 'date', 'string'] as $group) {
+            foreach ($shape[$group] as [$index, $name]) {
+                $v = $vals[$index];
+                if ($v === null) {
+                    $values[$name] = null;
+                } elseif ($name === $meta['aes_version']) {
+                    // COD-44, COD-53: the key version column holds a stored version, its digits read as its number.
+                    try {
+                        $values[$name] = AesKeyring::storedVersion($v);
+                    } catch (OrmException $error) {
+                        throw self::cellRefusal($entity, $name, 'aes version is not a positive 32-bit integer', $error);
+                    }
+                } else {
+                    $col = $meta['columns'][$name];
+                    $values[$name] = self::cellValue($entity, $name, $col, $v, $sqlite, !$sqlite, $zone);
+                }
             }
-            $values[$name] = $v === null ? null
-                : self::groupInteger($v, $meta['columns'][$name]['type'], $name);
-        }
-        foreach ($shape['float'] as [$index, $name]) {
-            $v = $vals[$index];
-            $values[$name] = $v === null ? null : self::groupFloat($v, $name);
-        }
-        foreach ($shape['decimal'] as [$index, $name]) {
-            $v = $vals[$index];
-            $col = static::meta()['columns'][$name];
-            $values[$name] = $v === null ? null : ($a->db->dialect() === 'sqlite'
-                ? Decimal::fromScaled($v, $col['precision'], $col['scale'])
-                : Decimal::decode($v, $col['precision'], $col['scale']));
-        }
-        foreach ($shape['bool'] as [$index, $name]) {
-            $v = $vals[$index];
-            $values[$name] = $v === null ? null : match ($v) {
-                true, 1, '1', 't', 'true' => true,
-                false, 0, '0', 'f', 'false' => false,
-                default => throw new OrmException(Code::CODEC_DECODE, "column $name is not boolean"),
-            };
-        }
-        foreach ($shape['date'] as [$index, $name]) {
-            $v = $vals[$index];
-            $values[$name] = $v === null ? null
-                : (is_string($v) ? new PendingTime($v, $zone) : self::timeValue($v, $zone));
-        }
-        foreach ($shape['string'] as [$index, $name, $kind]) {
-            $v = $vals[$index];
-            $v = $v === null || is_string($v) ? $v
-                : (is_resource($v) ? stream_get_contents($v) : (string) $v);
-            // COD-69: a text cell that is not valid UTF-8 is refused, never returned as its bytes.
-            if (is_string($v) && ($kind === 'varchar' || $kind === 'text') && preg_match('//u', $v) !== 1) {
-                throw new OrmException(Code::CODEC_DECODE, "{$meta['entity']}.$name: text is not valid UTF-8");
-            }
-            $values[$name] = $v;
         }
         foreach ($shape['codec'] as [$index, $name]) {
             $values[$name] = $vals[$index];
@@ -1371,14 +1539,18 @@ abstract class Model implements \JsonSerializable, ModelMetadata
             if (is_resource($v)) {
                 $v = stream_get_contents($v);
             }
+            // INT-160: an added column is decoded by the type of its plan column; an integer may be its exact digits as
+            // text, and a datetime has the precision 6 of an expression.
             $st['extra'][$name] = $v === null ? null : match ($kind) {
-                // INT-160: an added column is decoded by the type of its plan column.
-                'i16', 'i32', 'i64', 'f64', 'bool' => $m->groupValue(
-                    $a->db,
-                    ['name' => $name, 'column' => '', 'type' => $kind],
+                'i16', 'i32', 'i64', 'f64', 'bool', 'date', 'datetime' => self::resolved(self::cellValue(
+                    $entity,
+                    $name,
+                    ['type' => $kind, 'precision' => 6],
                     $v,
-                ),
-                'date', 'datetime' => self::timeValue($v, $zone),
+                    $sqlite,
+                    true,
+                    $zone,
+                )),
                 default => $v,
             };
             if ($kind === 'date') {
@@ -1721,12 +1893,6 @@ abstract class Model implements \JsonSerializable, ModelMetadata
             }
             return null;
         }
-        if (is_resource($raw)) {
-            $raw = stream_get_contents($raw);
-            if ($raw === false) {
-                throw new OrmException(Code::CODEC_DECODE, "group column $name could not be read");
-            }
-        }
         $type = $declared['type'] ?? $column['type'];
         if ($declared !== null && RuntimeModel::styled($declared)) {
             if (!$raw instanceof StyledValue) {
@@ -1734,64 +1900,22 @@ abstract class Model implements \JsonSerializable, ModelMetadata
             }
             return $raw;
         }
-        return match ($type) {
-            'i16', 'i32', 'i64' => self::groupInteger($raw, $type, $name),
-            'bool' => match ($raw) {
-                true, 1, '1', 't', 'true' => true,
-                false, 0, '0', 'f', 'false' => false,
-                default => throw new OrmException(Code::CODEC_DECODE, "group column $name is not boolean"),
-            },
-            'f64' => self::groupFloat($raw, $name),
-            'decimal' => $declared === null
-                ? throw new OrmException(Code::INTERNAL, "decimal group column $name has no declaration")
-                : ($db->dialect() === 'sqlite'
-                    ? Decimal::fromScaled($raw, $declared['precision'], $declared['scale'])
-                    : Decimal::decode($raw, $declared['precision'], $declared['scale'])),
-            'date', 'datetime' => self::timeValue($raw, $db->zone()),
-            // A bytes column without a codec stage holds its bytes as a Bytes, as the array form of a model (COD-27).
-            'bytes' => is_string($raw)
-                ? (($declared['codec'] ?? []) === [] ? new Bytes($raw) : $raw)
-                : throw new OrmException(Code::CODEC_DECODE, "group column $name is not text or bytes"),
-            'varchar', 'text', 'time', 'uuid' => is_string($raw)
-                ? $raw : throw new OrmException(Code::CODEC_DECODE, "group column $name is not text or bytes"),
-            default => throw new OrmException(Code::INTERNAL, "group column $name has unsupported type $type"),
-        };
-    }
-
-    private static function groupInteger(mixed $raw, string $type, string $name): int
-    {
-        if (is_int($raw)) {
-            $value = $raw;
-        } elseif (
-            is_string($raw) && preg_match('/^-?(0|[1-9][0-9]*)$/D', $raw) === 1 &&
-            filter_var($raw, FILTER_VALIDATE_INT) !== false
-        ) {
-            $value = (int) $raw;
-        } else {
-            throw new OrmException(Code::CODEC_DECODE, "group column $name is not an exact integer");
+        if ($type === 'decimal' && $declared === null) {
+            throw new OrmException(Code::INTERNAL, "decimal group column $name has no declaration");
         }
-        if ($type === 'i32' && ($value < -2147483648 || $value > 2147483647)) {
-            throw new OrmException(Code::CODEC_DECODE, "group column $name exceeds i32 range");
-        }
-        if ($type === 'i16' && ($value < -32768 || $value > 32767)) {
-            throw new OrmException(Code::CODEC_DECODE, "group column $name exceeds i16 range");
-        }
-        return $value;
-    }
-
-    private static function groupFloat(mixed $raw, string $name): float
-    {
-        if (
-            !is_int($raw) && !is_float($raw) &&
-            !(is_string($raw) && preg_match('/^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$/D', $raw) === 1)
-        ) {
-            throw new OrmException(Code::CODEC_DECODE, "group column $name is not a number");
-        }
-        $value = (float) $raw;
-        if (!is_finite($value)) {
-            throw new OrmException(Code::CODEC_DECODE, "group column $name is not finite");
-        }
-        return $value;
+        // A group column is refused as a model column is, by its entity and name (COD-1), and reads an integer from its
+        // exact digits on every database; a datetime of an expression has the precision 6.
+        $value = self::resolved(self::cellValue(
+            static::meta()['entity'],
+            $name,
+            $declared ?? ['type' => $type, 'precision' => 6],
+            $raw,
+            $db->dialect() === 'sqlite',
+            true,
+            $db->zone(),
+        ));
+        // A bytes column without a codec stage holds its bytes as a Bytes, as the array form of a model (COD-27).
+        return $type === 'bytes' && ($declared['codec'] ?? []) === [] ? new Bytes($value) : $value;
     }
 
     public function getCount(): int
