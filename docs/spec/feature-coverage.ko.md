@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: a22cfc0e3ec4b3a12129bc3bff13a87a8caa6a3197f4a67a8933a2bbea2c083e -->
+<!-- source-sha256: 904f6fba41b7452236153680a18c41bd5f4cd902a68622f1c826915fa9cea93a -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 테스트 명령을 선언한다. 그 명령은 자기 recipe의 entry(FCV-12)이거나 FCV-2의 네이티브 테스트다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-unit-check`가 실패한다.
@@ -466,3 +466,21 @@ recipe `contracts/fixtures/catalog_connection/catalog_connection.json`은 여섯
 - **recipe에서 제외.** TypeScript의 `precisionCase`는 recipe case `declared_temporal_cells`가 다루므로 네이티브 테스트가 없다.
 - **PHP cause 형태(INT-109).** recipe case `descriptor_column_name`은 잘못된 열 이름을 가진 descriptor의 코드와 메시지를 모든 runtime에서 확인한다. 그 실패의 `previous` 예외는 PHP와 PHP 확장만 가진 형태이므로 `CatalogPageValidationTest`와 `CatalogConnectionSurfaceTest`가 확인한다. 라이브러리 `Catalog`가 PHP 클래스인지도 같은 surface이며 `CatalogPageValidationTest`가 확인한다.
 - **codec.** 어떤 recipe case도 빈 `ordered_json` 텍스트를 decode하지 않으므로, codec recipe case가 이를 검사할 때까지 네이티브 검사를 남긴다.
+
+## Rust process 환경 fixture {#rust-process-environment-fixtures}
+
+`config/parity.json`의 Rust implementation `env`가 native 시험 process의 환경을
+선언한다. 현재 `process_zone`을 지정하는 message case는 `America/New_York`를
+요구하며 Rust 선언은 case 실행 전에 그 값으로 `TZ`를 제공한다. Case를 실행하는 동안
+환경값은 고정된다. Message step은 필요한 값을 확인하며 fixture가 없거나 다르면 실제
+값과 해당 make target을 함께 보고한다.
+
+`scripts/check/implementation-environment.mts`는 parity와 같은 참조 규칙으로 이 선언을
+해석한다. Client database·pooler command, Cargo test helper, feature coverage의
+process 준비가 이 선언을 사용한다. Native parity는 표준 harness의 implementation
+환경으로 이 값을 받는다. Fixture에 선언한 값은 호출자 값을 대체하며 호출자 자신의
+환경을 변경하지 않는다.
+
+Cargo helper의 dry run은 참조를 해석하지 않은 fixture 환경 선언을 포함한다. Client 미리보기는 실제 실행과
+같은 선언으로 선택한 Rust native 계획에 그 값을 보여준다. Fixture와 case selector는 native runner의
+입력으로 유지하며 case ID와 기대 결과를 보존한다.

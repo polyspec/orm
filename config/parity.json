@@ -1270,6 +1270,12 @@
           "glob": "packages/rust/orm/src/engine/mod.rs",
           "reason": "test: unit tests of the crate-private compile of the engine, reached through super; the statements of a default now column on each database are the case now_defaults of the recipe conformance_verification (K313)"
         }
+      ],
+      "env": [
+        {
+          "name": "TZ",
+          "value": "America/New_York"
+        }
       ]
     }
   ],

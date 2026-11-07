@@ -2123,9 +2123,14 @@ const SEND_COLUMNS: &[&str] = &[
 /// connection to a listener that records the first message it receives, and its expect is compared with that message, or with
 /// the code of the error that the call returned before it sent one.
 fn markdown_send(step: &Value) -> Result<(), String> {
-    // The process zone is the TZ environment variable of the process, restored when the step ends (even on a panic). The
-    // Rust connection zone is fixed at UTC, so the bound value does not depend on it.
-    let _zone = crate::recipe_reads::read(step, "process_zone")["process_zone"].as_str().map(ProcessZone::set);
+    if let Some(zone) = crate::recipe_reads::read(step, "process_zone")["process_zone"].as_str() {
+        let actual = std::env::var("TZ");
+        if actual.as_deref().ok() != Some(zone) {
+            return Err(format!(
+                "markdown.send requires process TZ={zone}, actual {actual:?}; run make bind-check/rust, which supplies the fixture before execution"
+            ));
+        }
+    }
     let send = SendStep::parse(step)?;
     send_and_check(step, Call::Send(send), "markdown.send")
 }
@@ -2241,28 +2246,6 @@ fn same_message(got: &Value, want: &Value) -> bool {
             },
         },
         _ => got == want,
-    }
-}
-
-/// The TZ environment variable as the process zone of one markdown.send step; the previous value is restored on drop.
-struct ProcessZone {
-    previous: Option<std::ffi::OsString>,
-}
-
-impl ProcessZone {
-    fn set(zone: &str) -> Self {
-        let previous = std::env::var_os("TZ");
-        std::env::set_var("TZ", zone);
-        Self { previous }
-    }
-}
-
-impl Drop for ProcessZone {
-    fn drop(&mut self) {
-        match self.previous.take() {
-            Some(value) => std::env::set_var("TZ", value),
-            None => std::env::remove_var("TZ"),
-        }
     }
 }
 

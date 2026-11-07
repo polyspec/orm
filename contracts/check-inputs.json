@@ -59,7 +59,8 @@
         "tests/errors.mts",
         "scripts/client-db-test.test.mts",
         "packages/go/models.txt",
-        "contracts/fixtures/conformance_verification/conformance_verification.json"
+        "contracts/fixtures/conformance_verification/conformance_verification.json",
+        "config/parity.json"
       ]
     },
     "scripts-typecheck": {

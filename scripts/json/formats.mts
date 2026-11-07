@@ -40,6 +40,7 @@ export type ParityConfig = {
     roots: string[];
     tests?: string[];
     support?: string[];
+    env?: { name: string; value: string }[];
     errors?: { file?: string; pattern?: string };
     internal?: { glob: string; reason: string }[];
   }[];

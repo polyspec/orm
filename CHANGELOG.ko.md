@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 290ae6439bca7aad077942a467dac2f4097d3cfd1ab85645df1d1504cdd40080 -->
+<!-- source-sha256: f1651eeb8ea86dec9f17a67f99b4b1817944241f3a8688af989c911a0175cd38 -->
 # 변경 이력
 
 ## Unreleased
+
+- CI: native 실행 전에 Rust 시험 시간대를 선언하고 client·Cargo·coverage runner가 그 환경을 공유하며 message recipe에서 process TZ를 동시에 변경하던 코드를 제거한다 (T388).
 
 - CI: SHOW CREATE 입력 fixture를 중복 parity suite에서 제거하고 별도 reader-text 시험과 native 실행 경로를 보존하며 공개 결과와 parser 원문 관찰을 구분한다 (T388).
 

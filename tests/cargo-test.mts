@@ -22,8 +22,9 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:
 import { basename, dirname, join, resolve } from 'node:path';
 import { runLong, stepLines, type Step } from './testcase.mts';
 import { cloneFile } from '../scripts/clone-file.mts';
-import { parseCargoMessage } from '../scripts/json/formats.mts';
+import { parseCargoMessage, readParityConfig } from '../scripts/json/formats.mts';
 import { readJsonFile } from '../scripts/json/schema.mts';
+import { declaredImplementationEnvironment, implementationEnvironment } from '../scripts/check/implementation-environment.mts';
 
 /** binaries.json of a --copy run: the copied test binaries and the copied package programs by name. */
 export type Binaries = { tests: { executable: string; manifestDir: string; target: string; copy: string }[]; programs: Record<string, string> };
@@ -173,10 +174,13 @@ async function main() {
   if (separator !== 1) throw new Error('usage: node tests/cargo-test.mts <name> -- cargo [+<toolchain>] test ...');
   const name = args[0] ?? '';
   const selection = split(args.slice(2));
+  const repository = resolve(new URL('..', import.meta.url).pathname);
+  const config = readParityConfig(join(repository, 'config/parity.json'));
   if (dryRun) {
-    console.log(JSON.stringify(cargoDryRun(args.slice(2)), null, 2));
+    console.log(JSON.stringify({ ...cargoDryRun(args.slice(2)), environment: declaredImplementationEnvironment(config, 'rust') }, null, 2));
     return;
   }
+  const environment = { ...process.env, ...implementationEnvironment(config, 'rust', process.env, repository) };
   const { options, filters, binaryArgs } = selection;
   const { LEASE: lease, CARGO_LEASES: leases } = process.env;
   if (!lease || !leases) throw new Error('LEASE and CARGO_LEASES are unset; run this through make, which exports them');
@@ -190,7 +194,7 @@ async function main() {
     let built = false;
     const passed = await runLong(`rust-build/${name}`, async ({ step }) => {
       const result = await run(lease, ['run', leases, 'exclusive', '--wait', '--', process.execPath, new URL(import.meta.url).pathname, '--copy', runDir, '--',
-        ...cargoBuildCommand(selection)], {}, step);
+        ...cargoBuildCommand(selection)], { env: environment }, step);
       if (result.code !== 0) throw new Error(`cargo test --no-run exited with ${result.code}`);
       step('exit 0');
       built = true;
@@ -205,7 +209,7 @@ async function main() {
     // would end every binary with 0 without running anything, so it fails without running.
     let selected = 0;
     for (const binary of binaries) {
-      const listed = spawnSync(binary.copy, ['--list', ...filters, ...binaryArgs], { cwd: binary.manifestDir, encoding: 'utf8', env: { ...process.env, ...programEnvironment(programCopies), CARGO_MANIFEST_DIR: binary.manifestDir } });
+      const listed = spawnSync(binary.copy, ['--list', ...filters, ...binaryArgs], { cwd: binary.manifestDir, encoding: 'utf8', env: { ...environment, ...programEnvironment(programCopies), CARGO_MANIFEST_DIR: binary.manifestDir } });
       if (listed.status !== 0) throw new Error(`${binary.copy} --list exited with ${listed.status ?? listed.signal}: ${listed.stderr || listed.stdout}`);
       selected += listed.stdout.split('\n').filter(line => line.endsWith(': test')).length;
     }
@@ -219,7 +223,7 @@ async function main() {
     const failed: { target: string; code: number; signal: NodeJS.Signals | null }[] = [];
     for (const binary of binaries) {
       console.log(`cargo-test: running ${binary.target} (${binary.copy})`);
-      const result = await run(binary.copy, [...filters, ...binaryArgs], { cwd: binary.manifestDir, env: { ...process.env, ...programEnvironment(programCopies), CARGO_MANIFEST_DIR: binary.manifestDir } });
+      const result = await run(binary.copy, [...filters, ...binaryArgs], { cwd: binary.manifestDir, env: { ...environment, ...programEnvironment(programCopies), CARGO_MANIFEST_DIR: binary.manifestDir } });
       if (result.code !== 0) {
         console.log(`cargo-test: ${binary.target} exited with ${result.signal ?? result.code}`);
         failed.push({ target: binary.target, code: result.code, signal: result.signal });

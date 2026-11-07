@@ -21,6 +21,7 @@ import { fileURLToPath } from 'node:url';
 import { keepAll, render, run, runLanes, variable, type Command, type Word } from './check/commands.mts';
 import { goDryRun } from '../tests/go-test.mts';
 import { cargoDryRun } from '../tests/cargo-test.mts';
+import { declaredImplementationEnvironment } from './check/implementation-environment.mts';
 import { COMMANDS as TYPESCRIPT_COMMANDS, sqliteTest } from './typescript/sqlite-test.mts';
 import { implementationLanguages } from './features/languages.mts';
 import { parseRecipeCases, readParityConfig } from './json/formats.mts';
@@ -225,7 +226,7 @@ export function clientDryRun(selected: readonly string[], parallel: boolean) {
       if (steps === undefined) throw new Error(`client-db-test: no declared commands for lane ${name}`);
       return { name, order: 'serial', commands: steps,
         ...(name === 'go' ? { native: GO.map(command => goDryRun(command.args.slice(1).map(symbolic))) } : {}),
-        ...(name === 'rust' ? { native: [cargoDryRun(RUST_TESTS.args.slice(rustSeparator + 1).map(symbolic))] } : {}),
+        ...(name === 'rust' ? { native: [{ ...cargoDryRun(RUST_TESTS.args.slice(rustSeparator + 1).map(symbolic)), environment: declaredImplementationEnvironment(readParityConfig(join(root, 'config/parity.json')), 'rust') }] } : {}),
         ...(name === 'php-extension' ? { cleanup: { removeDirectory: relative(root, PHP_EXTENSION_RUN) } } : {}) };
     }),
   };

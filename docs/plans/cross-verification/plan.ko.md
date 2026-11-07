@@ -1,5 +1,5 @@
 <!-- doc-id: plan-cross-verification -->
-<!-- source-sha256: a37b61705d01d99546ff4079f39c9df7733638dc0c2693803d5b0e8c0c77aac6 -->
+<!-- source-sha256: fef1b03403b3e16f3cf69ad72539accd4f1ec11121a9d4e6fc6efb35ab6ee032 -->
 # corpus SQLite 연결의 여섯 runtime과 네 database 교차 검증
 
 [English](plan.md)
@@ -359,3 +359,26 @@ Nextest의 [JUnit 출력](https://nexte.st/docs/machine-readable/junit/)은 각 
 [libtest JSON 출력](https://nexte.st/docs/machine-readable/libtest-json/)은 experimental로
 명시되어 있다. 기존 parser에 맞추려고 그 experimental 형식을 선택하지 않는다.
 이번 source 조사에서 native build, nextest 설치, recipe 병합, concurrency 변경은 하지 않았다.
+
+### 변경하지 않는 Rust 시간대 fixture
+
+선택한 수정은 config/parity.json의 기존 implementation 환경을 사용한다. Process-zone
+message case 세 개가 모두 America/New_York를 요구하므로 Rust implementation이 native
+process 시작 전에 그 TZ를 선언한다. 공통 환경 해석 함수는 parity와 같은 참조 규칙을
+사용하며 client command, Cargo helper, coverage process factory가 사용한다. 기존
+ProcessZone의 변경·복원 코드를 제거하고 step이 fixture를 확인하여 기대값과 실제값을
+진단한다. Case ID와 기대 message는 변경하지 않는다.
+
+Red client fixture 시험은 선언된 TZ가 없음을 찾았고 가짜 native binary는 호출자가 UTC를
+주었을 때 목록 조회에서 실패했다. 수정 뒤 선언·runner 회귀 시험 299개, Cargo helper
+부분 시험 7개가 통과한다. 유효한 환경 변수 이름 회귀를 추가한 뒤 환경·coverage process
+대상 시험 5개도 통과하며 TypeScript type 검사도 통과한다. Native Rust compile과 실제
+message case는 CI 증거가 필요하다. Local에서 native compiler, database, nextest 설치,
+실제 전체 suite를 실행하지 않았다.
+
+Nextest setup script도 공식 문서로 확인했다. 아직
+[experimental](https://nexte.st/docs/configuration/setup-scripts/)이므로 제안했던 fixture
+방식은 채택하지 않았다. 이번 수정에는 기존 환경 선언으로 충분하다. Nextest는 검토한
+runner 후보이며 시간대 수정의 필수 도구가 아니다. 기존 Cargo helper의 artifact 처리와
+전체 native build 설계는 별도로 검토할 작업으로 남는다. Fixture를 적용한 것으로 그 작업을
+완료로 판단하지 않는다.

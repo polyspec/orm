@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- CI: declare the Rust test timezone before native execution, share its environment across client, Cargo and coverage runners, and remove concurrent mutation of process TZ from message recipes (T388).
+
 - CI: remove the SHOW CREATE input fixture as a duplicate parity suite, preserve the separate reader-text tests and their native execution paths, and distinguish public results from raw parser observations (T388).
 
 - CI: preview job and setup declarations, expand the Go and Rust test helpers without execution, scope API catalog reads to the selected runtime while retaining common declaration checks and TypeScript schema preparation, and place cross-runtime Go checks in the cross-runtime job (T388).

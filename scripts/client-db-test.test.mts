@@ -16,9 +16,25 @@ import { makeTargets } from './repo/testcases.mts';
 import { COMMANDS as PERF_COMMANDS } from './perf-test.mts';
 import { readFeatures, type CoverageOwner, type Language, type NativeCommand } from './features/manifest.mts';
 import { matchesAny } from '@polyspec/kit/glob';
+import { implementationEnvironment } from './check/implementation-environment.mts';
+import { readJsonFile } from './json/schema.mts';
 
 const root = resolve(import.meta.dirname, '..');
 const repeatedMemberCase = 'ordered_json_keeps_a_repeated_member_name';
+
+caseTest('Rust message zone cases use the declared immutable process fixture', COMPUTE, () => {
+  const config = readParityConfig(resolve(root, 'config/parity.json'));
+  const environment = implementationEnvironment(config, 'rust', { TZ: 'UTC' }, root);
+  const recipe = readJsonFile<{ cases: { id: string; steps: { process_zone?: string }[] }[] }>(resolve(root, 'tests/bind/messages.json'), resolve(root, 'scripts/features/schema/recipe.schema.json'));
+  let zones = 0;
+  for (const item of recipe.cases) for (const step of item.steps) if (step.process_zone !== undefined) {
+    assert.equal(environment.TZ, step.process_zone, `${item.id}: the fixture exists before case execution`);
+    zones++;
+  }
+  assert.ok(zones > 0, 'the process-zone regression cases remain registered');
+  const source = readFileSync(resolve(root, 'packages/rust/tests/src/recipe.rs'), 'utf8');
+  assert.doesNotMatch(source, /std::env::(?:set_var|remove_var)\s*\(/, 'the shared helper never mutates the running process environment');
+});
 
 caseTest('the pooler lane caps the Rust test threads at the backend count per pool', COMPUTE, () => {
   assert.deepEqual(rustPoolerThreadArguments(4, 4), ['--test-threads=1']);
@@ -212,6 +228,11 @@ caseTest('client database dry-run shows all six lanes without executing a comman
       assert.ok(typeof entry === 'object' && entry !== null && 'name' in entry);
       return entry.name;
     }), ['go', 'php', 'php-extension', 'typescript', 'python', 'rust']);
+    const rust: unknown = plan.lanes.find((entry: unknown) => typeof entry === 'object' && entry !== null && 'name' in entry && entry.name === 'rust');
+    assert.ok(typeof rust === 'object' && rust !== null && 'native' in rust && Array.isArray(rust.native));
+    const native: unknown = rust.native[0];
+    assert.ok(typeof native === 'object' && native !== null && 'environment' in native);
+    assert.deepEqual(native.environment, { TZ: 'America/New_York' });
     assert.match(result.stdout, /tests\/go-test\.mts/);
     assert.match(result.stdout, /tests\/cargo-test\.mts/);
     assert.match(result.stdout, /php-ext-build/);

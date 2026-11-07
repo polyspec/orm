@@ -375,3 +375,26 @@ case and supports retaining successful output and reporting skipped cases. Its
 [libtest JSON output](https://nexte.st/docs/machine-readable/libtest-json/) is explicitly experimental.
 Do not select that experimental format merely to fit an existing parser. No native build, nextest
 installation, recipe grouping or concurrency change was performed for this source audit.
+
+### Immutable Rust timezone fixture
+
+The selected correction uses the existing implementation environment in config/parity.json.
+All three process-zone message cases require America/New_York, so the Rust implementation
+declares that TZ before its native processes start. The shared environment projection resolves
+the same references as parity and is used by the client command, Cargo helper and coverage
+process factory. The old ProcessZone mutation and restoration code is removed; the step checks
+its fixture and diagnoses the expected and actual values. No case ID or expected message changes.
+
+The red client fixture test found the absent declared TZ, and the fake native binary failed at
+listing when the caller supplied UTC. After the correction, the declaration and runner regression
+passes 299 cases, the Cargo helper subset passes seven, and the focused environment and coverage
+process tests pass five, including valid environment names and unresolved preview references. TypeScript type
+checking passes. The native Rust compilation and actual message cases still require CI evidence.
+No native compiler, database, nextest installation or real full suite ran locally.
+
+Nextest setup scripts were also checked against the official documentation: they remain
+[experimental](https://nexte.st/docs/configuration/setup-scripts/), so that proposed fixture
+mechanism was not adopted. The existing environment declaration suffices for this correction.
+Nextest remains an evaluated runner candidate rather than a requirement of the timezone fix.
+The old Cargo helper's artifact handling and the broader native build design remain separate
+work to assess; applying a fixture does not complete that work.

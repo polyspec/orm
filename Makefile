@@ -400,7 +400,7 @@ client-pooler-rust-check: orm-codes-typescript lease-tool flowmark-check
 # runner-check checks the check runner (scripts/check/run.mts) and its run record (scripts/check/record.mts) with a temporary git checkout and stub steps.
 # It does not run the actual targets or databases.
 runner-check:
-	$(NODE) --test scripts/client-db-test.test.mts scripts/check/ci-plan.test.mts scripts/check/run.test.mts scripts/check/continue.test.mts scripts/check/step.test.mts scripts/check/downloads.test.mts scripts/check/parity-context.test.mts scripts/json/schema.test.mts
+	$(NODE) --test scripts/client-db-test.test.mts scripts/check/implementation-environment.test.mts scripts/check/ci-plan.test.mts scripts/check/run.test.mts scripts/check/continue.test.mts scripts/check/step.test.mts scripts/check/downloads.test.mts scripts/check/parity-context.test.mts scripts/json/schema.test.mts
 
 # dbspec-rust-check runs twice each the shared dbspec vectors, the Rust rule cases, the plan and Mermaid cases, and the apply cleanup errors injected through a wrapped SQLite
 # connection.
@@ -1303,7 +1303,7 @@ feature-unit-check: feature-unit-check/docs feature-unit-check/coverage feature-
 feature-unit-check/docs:
 	$(NODE) scripts/features/build.mts --check
 feature-unit-check/coverage:
-	$(RUN_TESTS) node -- scripts/features/coverage.test.mts scripts/features/languages.test.mts scripts/features/performance-reference.test.mts scripts/features/recipes.test.mts
+	$(RUN_TESTS) node -- scripts/features/coverage.test.mts scripts/features/coverage-environment.test.mts scripts/features/languages.test.mts scripts/features/performance-reference.test.mts scripts/features/recipes.test.mts
 feature-unit-check/owners:
 	$(RUN_TESTS) node -- scripts/features/owners.test.mts scripts/features/manifest.test.mts
 feature-unit-check/select: lease-tool

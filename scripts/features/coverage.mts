@@ -10,7 +10,8 @@ import { errorCode } from '../../tests/errors.mts';
 import { GO_TEST_TAGS } from '../../tests/go-test.mts';
 import { readFeatures } from './manifest.mts';
 import { implementationLanguages, featureLanguages } from './languages.mts';
-import { parseRecipeCases, type ParityConfig } from '../json/formats.mts';
+import { parseRecipeCases, readParityConfig, type ParityConfig } from '../json/formats.mts';
+import { implementationEnvironment } from '../check/implementation-environment.mts';
 import { programEnvironment, readBinaries } from '../../tests/cargo-test.mts';
 
 // cargoTestScript is the script that builds the test binary under the lease and copies it.
@@ -649,7 +650,7 @@ async function buildCargo(plans: Plans, directory: string, builds: Builds, build
 // declared test file runs in turn (--test-threads=1), since the tests of one entry can write the same row.
 // The Rust test binary receives the crate's package directory as CARGO_MANIFEST_DIR, as cargo test does:
 // the test gets the fixture path from the value at run time (polyspec_orm_testcase::manifest_dir).
-function prepared(spec: Spec, builds: Builds, root: string): Prepared[] {
+export function prepared(spec: Spec, builds: Builds, root: string, parityConfig: ParityConfig | undefined): Prepared[] {
   if (spec.format === 'process')
     return [{ program: spec.program, args: spec.args, cwd: root, ...(spec.env ? { env: spec.env } : {}) }];
   if (spec.format === 'go') {
@@ -661,8 +662,9 @@ function prepared(spec: Spec, builds: Builds, root: string): Prepared[] {
   if (!crate || crate.error !== undefined) throw new Error(`cargo test build failed: ${crate?.error ?? 'it was not built'}`);
   const executables = crate.files.get(spec.testPath) ?? [];
   if (executables.length === 0) throw new Error(`no test binary compiles ${spec.testPath}`);
+  const environment = implementationEnvironment(parityConfig ?? readParityConfig(join(root, 'config/parity.json')), 'rust', process.env, root);
   return executables.map((executable: string) => ({ program: executable, args: ['--test-threads=1'], cwd: spec.cwd,
-    env: { ...crate.programs, CARGO_MANIFEST_DIR: spec.cwd } }));
+    env: { ...environment, ...crate.programs, CARGO_MANIFEST_DIR: spec.cwd } }));
 }
 
 // usesCargo is whether the run uses the cargo test binary (the Rust build of buildNative).
@@ -744,7 +746,7 @@ export async function executeCoverage(
       const executions: Report[] = [];
       reports[key] = executions;
       let processes: Prepared[][];
-      try { processes = native.map(spec => prepared(spec, shared, root)); }
+      try { processes = native.map(spec => prepared(spec, shared, root, parityConfig)); }
       catch (error) { errors.push(`${key}: ${error instanceof Error ? error.message : String(error)}`); continue; }
       // The deadline of a run is the sum of those of its processes. A process runs the cases of its entry, each with its own
       // deadline, so it holds one deadline per case.

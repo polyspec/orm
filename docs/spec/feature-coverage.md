@@ -469,3 +469,21 @@ The recipe `contracts/fixtures/catalog_connection/catalog_connection.json` cover
 - **Excluded from the recipe.** The TypeScript `precisionCase` is covered by the recipe case `declared_temporal_cells`, so it has no native test.
 - **PHP cause form (INT-109).** The recipe case `descriptor_column_name` holds the code and the message of a descriptor with an invalid column name in every runtime. The `previous` exception of that failure is a form that PHP and the PHP extension alone have, so `CatalogPageValidationTest` and `CatalogConnectionSurfaceTest` assert it. Whether the library `Catalog` is a PHP class is the same surface, and `CatalogPageValidationTest` asserts it.
 - **Codec.** No recipe case decodes empty `ordered_json` text, so its native check stays until a codec recipe case asserts it.
+
+## Rust process environment fixtures {#rust-process-environment-fixtures}
+
+The Rust implementation's `env` in `config/parity.json` declares its native test process
+environment. The current message cases that name `process_zone` require `America/New_York`;
+the Rust declaration supplies `TZ` with that value before case execution. Environment values
+remain fixed while cases run. The message step checks the required value and reports the actual
+value and the owning make target when the fixture is missing or different.
+
+`scripts/check/implementation-environment.mts` resolves this declaration with the same reference
+rules that parity uses. The client database and pooler command, the Cargo test helper, and the
+feature coverage process preparation use that declaration. Native parity receives it through the
+implementation environment of its standard harness. Values declared for the fixture override
+the caller's values without changing the caller's own environment.
+
+The Cargo helper's dry run includes the declared fixture environment with references unresolved. The client preview shows
+it in the selected Rust native plan using the same declaration as execution. The fixture and its case selectors remain
+inputs to the native runner; the case IDs and expected results remain unchanged.

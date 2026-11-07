@@ -94,6 +94,18 @@ caseTest('cargo-test runs every test binary after a failed one and names the fai
   }
 });
 
+caseTest('cargo-test supplies the declared process fixture before listing and executing a native case', PROCESS, () => {
+  const base = realpathSync(mkdtempSync(join(tmpdir(), 'cargo-fixture-')));
+  try {
+    const log = join(base, 'fixture.log');
+    stubCargo(base, ['fixture'], () => `#!/bin/sh\n[ "$TZ" = America/New_York ] || { echo 'missing declared TZ fixture' >&2; exit 9; }\nif [ "$1" = --list ]; then echo 'fixture_case: test'; exit 0; fi\necho "$TZ" > ${log}\n`);
+    const result = spawnSync(process.execPath, [fileURLToPath(new URL('../../tests/cargo-test.mts', import.meta.url)), 'fixture', '--', 'cargo', 'test'],
+      { encoding: 'utf8', env: isolatedEnvironment({ PATH: `${join(base, 'bin')}:${process.env.PATH}`, TZ: 'UTC', LEASE: join(base, 'lease'), CARGO_LEASES: join(base, 'leases') }) });
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    assert.equal(readFileSync(log, 'utf8').trim(), 'America/New_York');
+  } finally { rmSync(base, { recursive: true, force: true }); }
+});
+
 // The shared-target case (G5.46) shows with real cargo that cargo judges an artifact's freshness only by the source mtime, and does not record which checkout
 // built it: when checkout b is built into a target that a built, and b's sources have older mtimes than a's,
 // cargo sees a's binary as fresh and runs a's code ("from a") in b too. When b builds into its own target
