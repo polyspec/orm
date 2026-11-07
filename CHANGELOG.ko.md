@@ -1,12 +1,14 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 95d2a303327d432f57d0a5d7a27a5b701a3e4347afbbd01267f50f0311ae66e0 -->
+<!-- source-sha256: 78eb5293466ceeb7ee0d9f322272fdbb77cf2adf8f4907641678abb3cc650894 -->
 # 변경 이력
 
 ## Unreleased
 
-- orm은 json-schema fork를 branch polyspec-origin-2.6.0 대신 release 2.6.0-p2로 require하고, repository check는 branch를 가리키는 Composer 요구나 lock 항목을 실패로 판정하며, orm은 kit 0.0.95를 채택한다. kit 0.0.95의 PRINCIPLES는 fork 규칙을 각 fork의 FORK.md와 각 root의 manifest와 lock에 맡긴다 (T386).
-
 ## 0.0.22
+
+- Tests: parity context 단위시험은 각 binding 단계의 native 준비를 요구하고 전체 interface 검사는 API와 전체 parity 단계에서 요구하여 독립 CI job의 의존관계와 일치시킨다 (T387).
+
+- orm은 json-schema fork를 branch polyspec-origin-2.6.0 대신 release 2.6.0-p2로 require하고, repository check는 branch를 가리키는 Composer 요구나 lock 항목을 실패로 판정하며, orm은 kit 0.0.95를 채택한다. kit 0.0.95의 PRINCIPLES는 fork 규칙을 각 fork의 FORK.md와 각 root의 manifest와 lock에 맡긴다 (T386).
 
 - CI: kit 0.0.94에서 독립 제품 job은 kit과 함께 시작하고 마지막 결과가 모든 job을 요구한다. Pooler 검사는 연결 제한을 유지한 채 runtime별 독립 서버를 가진 여섯 job에서 실행한다. Binding 단계는 API 단계의 interface 검사를 반복하지 않으며 release는 전체 CI를 다시 실행하지 않고 검증한 candidate에 tag를 붙인다 (XV27).
 

@@ -223,7 +223,9 @@ caseTest('Kit parity jobs declare the context and setup targets that own their n
   assert.match(makefile, /^parity-prepare: parity-prepare-php-extension parity-prepare-rust$/m);
   // A parity gate builds only the native outputs its bindings load: the extension for php-extension, the conformance
   // program for rust, both for the full parity-check; the API phase and the other implementations build neither (CR39).
-  assert.match(makefile, /^\$\(PARITY_GATE_TARGETS\): parity-bench-env-check flowmark-check interface-check$/m);
+  assert.match(makefile, /^\$\(PARITY_GATE_TARGETS\): parity-bench-env-check flowmark-check php-vendor-check lease-tool typescript-current interface-typescript-check python-venv-check$/m);
+  assert.match(makefile, /^parity-check parity-api-check: interface-check$/m);
+  assert.doesNotMatch(makefile, /^\$\(PARITY_GATE_TARGETS\):.*\binterface-check\b/m);
   assert.match(makefile, /^parity-check: parity-prepare$/m);
   assert.match(makefile, /^parity-bindings-php-extension-check: parity-prepare-php-extension$/m);
   assert.match(makefile, /^parity-bindings-rust-check: parity-prepare-rust$/m);
