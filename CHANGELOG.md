@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- CI: declare tools and setup for each parity binding, retain shared database fixture dependencies without foreign runtime installs, and build only the TypeScript client when fixture consumers need current output (T388).
+
 - CI: select Rust coverage recipe entries through their existing explicit suite bindings and reject missing, ambiguous or overlapping declared selectors before execution (T388).
 
 - CI: declare the Rust test timezone before native execution, share its environment across client, Cargo and coverage runners, and remove concurrent mutation of process TZ from message recipes (T388).

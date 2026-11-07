@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 42a58e28ee8faaed49309bed794a9b70a12411c7cb5326e7779bd59abeda9c17 -->
+<!-- source-sha256: 8557348e93d602a9c6d1f00a683d617078d0a571a5a56699744689c305108cab -->
 # 변경 이력
 
 ## Unreleased
+
+- CI: parity binding마다 tool과 setup을 선언하고 다른 runtime 설치 없이 공통 database fixture 의존성을 유지하며 fixture 소비자가 최신 출력을 요구할 때 TypeScript client만 build한다 (T388).
 
 - CI: 기존의 명시적 suite binding으로 Rust coverage recipe 진입점을 선택하고 누락·모호·충돌하는 선언 selector는 실행 전에 거절한다 (T388).
 

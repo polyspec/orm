@@ -6,6 +6,7 @@ import { dirname, join, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
+import { render } from '../check/commands.mts';
 import { errorCode } from '../../tests/errors.mts';
 import { main as startServers, paths as serverPaths, SERVER_VARIABLES, TestServerError } from '../test-servers.mts';
 import { AFTER_GROUP_CHECK, CI_PASSED_STEPS, CI_RUN_EXCEPTIONS, ciPassedErrors, ciGroups, jobOverlapErrors, jobTargets, lockedCacheErrors, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, kitGates, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors } from './ci.mts';
@@ -2837,4 +2838,36 @@ caseTest('Python general units and dedicated targets partition the discovered mo
   assert.equal(new Set(general).size, general.length);
   const unit = rules.find(rule => rule.target === 'python-unit-check' && rule.commands.length > 0);
   assert.ok(unit?.commands.some(command => command.includes('$(PYTHON_TESTS) -- $(PYTHON_UNIT_MODULES)')));
+});
+
+
+caseTest('a stale TypeScript client selects only the client build and a current client starts no build', PROCESS, () => {
+  const base = mkdtempSync(join(tmpdir(), 'orm-client-build-scope-'));
+  try {
+    const log = join(base, 'calls.jsonl');
+    const tool = join(base, 'tool.mjs');
+    writeFileSync(tool, `import { appendFileSync } from 'node:fs';\nconst [mode, ...args] = process.argv.slice(2);\nappendFileSync(${JSON.stringify(log)}, JSON.stringify({mode, args})+'\\n');\nprocess.exit(mode === 'current' ? Number(process.env.CURRENT_TEST_STATUS) : 0);\n`);
+    const rules = makeTargets(text('Makefile')).filter(rule => rule.target === 'typescript-current');
+    assert.equal(rules.length, 1);
+    const commands = rules.flatMap(rule => rule.commands);
+    writeFileSync(join(base, 'Makefile'), [
+      `NODE := ${render({ program: process.execPath, args: [tool, 'current'] })}`,
+      `LEASE := ${render({ program: process.execPath, args: [tool, 'lease'] })}`,
+      'RUN_LONG := long-operation', 'NPM := pinned-npm', 'TYPESCRIPT_LEASES := fixture-leases',
+      'typescript-current:', ...commands.map(command => `\t${command}`), '',
+    ].join('\n'));
+    const run = (status: string) => {
+      writeFileSync(log, '');
+      const result = spawnSync('make', ['--no-print-directory', 'typescript-current'], {
+        cwd: base, encoding: 'utf8', env: isolatedEnvironment({ CURRENT_TEST_STATUS: status }),
+      });
+      assert.equal(result.status, 0, result.stdout + result.stderr);
+      return readFileSync(log, 'utf8').trim().split('\n').map(line => JSON.parse(line) as { mode: string; args: string[] });
+    };
+    const stale = run('1');
+    assert.deepEqual(stale.map(call => call.mode), ['current', 'lease']);
+    const selected = stale[1]?.args ?? [];
+    assert.deepEqual(selected.slice(selected.lastIndexOf('--') + 1), ['pinned-npm', '--prefix', 'packages/ts', 'run', 'build']);
+    assert.deepEqual(run('0').map(call => call.mode), ['current']);
+  } finally { rmSync(base, { recursive: true, force: true }); }
 });

@@ -281,6 +281,9 @@ vendors; this file states only the rules of orm.
 - Own: Keep English and Korean documentation aligned. Records describe this repository's behavior and contain no external origin history.
   Enforced by: `make docs-check`
 
+- Own: Each parity binding job declares its tools and setup in config/ci.json parityBindings. Shared database fixtures require the Go helpers, flowmark, database servers and TypeScript client; each job adds only its own runtime installation. Binding setup builds no editor package and installs no interface extractor. API checks keep their complete preparation.
+  Enforced by: `make runner-check`, `make repo-check`
+
 - Own: CI keeps a complete execution inventory of shared recipes and native checks. A native check remains native when its observation requires a compiler, host type, memory property or implementation access that the shared recipe cannot express. A shared requirement still needs its declared client coverage; a native implementation detail is no exemption. The repository owns build units, case selection, fixtures and justified serialization. Kit executes those declarations and reports results; consolidating the inventory does not require converting native tests to recipe operations or moving artifact management into kit.
   Enforced by: none, the observation and ownership require design review
 

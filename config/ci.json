@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "comment": "Kit gates install each runtime from its pinned lock, then prepare parity's database servers and run-owned fixtures in an isolated job context. The provider runs API and binding phases separately.",
+  "comment": "Kit API checks keep complete preparation. Each binding job declares only its runtime tools and setup, including shared database fixtures; repository Make targets own all build and install dependencies.",
   "parityMode": "phases",
   "setup": {
     "shared": [
@@ -61,5 +61,62 @@
       "cleanup": "php-extension-context-cleanup"
     }
   },
-  "runner": "ubuntu-26.04-arm"
+  "runner": "ubuntu-26.04-arm",
+  "parityBindings": {
+    "go": {
+      "setup": [
+        "orm-install-parity-go"
+      ],
+      "tools": [
+        "go"
+      ]
+    },
+    "php": {
+      "setup": [
+        "orm-install-parity-php"
+      ],
+      "tools": [
+        "go",
+        "php",
+        "composer"
+      ]
+    },
+    "php-extension": {
+      "setup": [
+        "orm-install-parity-php-extension"
+      ],
+      "tools": [
+        "go",
+        "php",
+        "composer"
+      ]
+    },
+    "typescript": {
+      "setup": [
+        "orm-install-parity-common"
+      ],
+      "tools": [
+        "go"
+      ]
+    },
+    "python": {
+      "setup": [
+        "orm-install-parity-python"
+      ],
+      "tools": [
+        "go",
+        "python",
+        "uv"
+      ]
+    },
+    "rust": {
+      "setup": [
+        "orm-install-parity-rust"
+      ],
+      "tools": [
+        "go",
+        "rust"
+      ]
+    }
+  }
 }

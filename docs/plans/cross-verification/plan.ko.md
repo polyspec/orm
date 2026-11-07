@@ -1,5 +1,5 @@
 <!-- doc-id: plan-cross-verification -->
-<!-- source-sha256: e97c76445e2bc17761313c3a701de511b2a927d26c4dc4dd8347db6cebbfd7fe -->
+<!-- source-sha256: d5d998a15cec1cdd17bc252d8bf64f915a46d7426f4f4ecf8481195b1c1cc567 -->
 # corpus SQLite 연결의 여섯 runtime과 네 database 교차 검증
 
 [English](plan.md)
@@ -394,3 +394,13 @@ Source에서 Rust testcase::run과 run_in_order 진입점을 확인했다. 후�
 이력을 확인하니 commit 38aa74fa2가 정확한 native symbol 선택을 전체 진입점 실행으로 바꾸면서 단일 thread 실행을 유지했다. 진입점 binary를 공유하기 전에 coverage는 이제 command의 recipe path를 보존하고 기존 Rust suite binding을 native filter로 해석한다. Binding이 없거나 모호하면 실패하며 같은 test file에서 invalid_none과 dbspec_plan_invalid_none처럼 선언된 부분 문자열이 충돌해도 실패한다. Native 전용 경로와 현재 직렬화는 별도 fixture 조사가 끝날 때까지 유지한다.
 
 새 process 시험은 자식 argv에 selector가 없어 먼저 실패했고 잘못된 binding 시험은 준비가 거절하지 않아 먼저 실패했다. 수정 후 두 시험과 기존 환경 시험이 통과했다(세 case). 대역 process는 argument 전달을 검증하며 Rust filter 실행을 검증하지 않는다. 같은 process factory를 이용한 읽기 전용 조사는 현재 Rust recipe coverage command 66개를 선언 충돌 없이 해석한다. var/ci-plans/rust-coverage-selectors.json은 이를 declaration-audit와 execution not-run으로 기록한다. 실제 Rust 실행과 소요 시간은 CI 증거가 필요하다.
+
+### Binding 설치와 client build 범위
+
+Kit issue #24는 명시적 binding setup을 거절된 artifact 관리 작업과 분리한다. 0.0.96 후보 e5bd51d1be30353e24a3c07df4e510e6636f2782는 CI 42359978457에서 실행 중이며 배포와 고정된 ORM 채택은 아직 끝나지 않았다. Binding matrix는 전체 runtime installer나 symbol extractor를 추가하지 않고 repository가 선언한 tool selector와 setup target을 전달한다. Kit setup·workflow 단위 시험 40개가 통과했다.
+
+ORM은 여섯 binding 항목을 모두 선언하고 Make setup target을 소유한다. 공통 준비는 database server·flowmark·생성 code와 lease의 Go module·databases-create가 사용하는 TypeScript client를 유지한다. PHP·Python·Rust 설치는 자신의 binding 항목에서만 실행하며 PHP extension은 PHP library fixture도 요구한다. API job은 완전한 setup을 유지한다. 선언 회귀 시험은 binding 대응이 없어 먼저 실패했고 이제 모든 implementation을 포함하면서 관계없는 runtime setup을 호출하지 않아 통과한다.
+
+추가 조사에서 typescript-current의 client 전용 주석이 command와 다름을 발견했다. 출력이 오래되면 editor package도 build하는 root typescript:build script를 호출했다. 이력상 fa21c8c0e가 client 전용 target을 도입하면서 이 command를 유지했다. 회귀 시험은 compiler를 시작하지 않고 최신 출력 검사와 lease dispatcher를 대역으로 제공하는 sandbox에서 실제 recipe가 선택한 build command를 관찰한다. 먼저 npm run typescript:build를 관찰하여 실패했고 이제 고정된 npm의 --prefix packages/ts run build를 관찰한다. 출력이 최신이면 build를 시작하지 않는다. 전체 client·editor build와 editor CI 검사는 유지한다. Native build·설치·소요 시간 개선은 여전히 CI 증거가 필요하다.
+
+Repository·parity context·CI preview 회귀 단위 시험 170개가 통과했다. TypeScript 검사·docs-check(56 pair, checklist 네 개)·docs-rules-check(영문 55개, 한국어 55개)가 통과했다. Kit 후보의 checks job은 setup 수정이 추가한 금지된 non-null assertion 네 곳을 보고했고 다른 job은 아직 실행 중이다. 대체 push를 하지 않았으며 수정된 Kit 배포본을 고정하기 전에 새 선언으로 ORM CI를 dispatch하면 안 된다.

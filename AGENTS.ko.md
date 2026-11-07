@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: f0718741c106fd61692262401c5a1e365c361c756d3e6d1be890b7808cfbe19c -->
+<!-- source-sha256: cfcce454e33241ce4a6346131e3259f9fc6500e2c82da9a7df254d65ef203c27 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -246,6 +246,9 @@ orm 자신의 규칙만 적는다.
   Enforced by: `make conformance-check`
 - Own: 영문과 국문 문서를 동등하게 유지한다. 기록은 이 저장소의 동작을 설명하며 외부 출처의 이력을 담지 않는다.
   Enforced by: `make docs-check`
+
+- Own: 각 parity binding job은 config/ci.json의 parityBindings에 tool과 setup을 선언한다. 공통 database fixture는 Go helper·flowmark·database server·TypeScript client를 요구하며 각 job은 자신의 runtime 설치만 추가한다. Binding setup은 editor package를 build하거나 interface extractor를 설치하지 않는다. API 검사는 완전한 준비를 유지한다.
+  Enforced by: `make runner-check`, `make repo-check`
 
 - Own: CI는 shared recipe와 native check의 완전한 실행 목록을 관리한다. Compiler, host type, memory 특성 또는 내부 구현 접근이 필요하여 shared recipe로 관찰할 수 없는 검사는 native로 유지한다. Shared requirement에는 여전히 선언한 client coverage가 필요하며 native 구현 상세는 면제 사유가 아니다. Build unit, case 선택, fixture와 근거 있는 직렬화는 repository의 책임이다. Kit은 그 선언을 실행하고 결과를 보고한다. 실행 목록을 합친다는 이유로 native 시험을 recipe operation으로 바꾸거나 artifact 관리를 kit으로 옮기지 않는다.
   Enforced by: none, 관찰 대상과 책임은 설계 검토가 필요하다

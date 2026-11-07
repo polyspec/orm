@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { caseTest, COMPUTE } from '../../tests/testcase.mts';
+import { makeTargets } from '../repo/testcases.mts';
 import { cleanupContext, prepareContext, type ContextCommand, type ContextCommandResult } from './parity-context.mts';
 
 const repo = resolve(import.meta.dirname, '../..');
@@ -242,4 +243,47 @@ caseTest('Kit parity jobs declare the context and setup targets that own their n
   assert.match(makefile, /^PARITY_GATE_TARGETS = parity-check parity-api-check \$\(KIT_PARITY_BINDING_TARGETS\)$/m);
   assert.match(makefile, /^orm-install-php-extension-runtime:/m);
   assert.match(makefile, /^orm-install-typescript-runtime: orm-install-go-lease orm-install-codes-typescript\n\t\$\(MAKE\) --no-print-directory build-ts$/m);
+});
+
+
+caseTest('binding setup covers every implementation with only its runtime and shared fixture dependencies', COMPUTE, () => {
+  const config: unknown = JSON.parse(readFileSync(join(repo, 'config/ci.json'), 'utf8'));
+  const parity: { implementations: { name: string }[] } = JSON.parse(readFileSync(join(repo, 'config/parity.json'), 'utf8'));
+  assert.ok(isRecord(config) && isRecord(config.parityBindings));
+  const bindings = config.parityBindings;
+  assert.deepEqual(Object.keys(bindings).sort(), parity.implementations.map(item => item.name).sort());
+  const rules = makeTargets(readFileSync(join(repo, 'Makefile'), 'utf8'));
+  const reached = (target: string, seen = new Set<string>()): Set<string> => {
+    if (seen.has(target)) return seen;
+    seen.add(target);
+    const own = rules.filter(rule => rule.target === target);
+    assert.ok(own.length, `setup target ${target} must be declared`);
+    for (const rule of own) {
+      const children = [...rule.prerequisites, ...rule.commands.flatMap(command =>
+        [...command.matchAll(/\$\(MAKE\)\s+(?:--no-print-directory\s+)?([a-z][\w/-]*)/g)].map(match => match[1] ?? ''))];
+      for (const child of children) if (rules.some(rule => rule.target === child)) reached(child, seen);
+    }
+    return seen;
+  };
+  const runtimeInstalls = ['orm-install-go', 'orm-install-php', 'orm-install-php-extension-runtime', 'orm-install-python', 'orm-install-rust-crates'];
+  const requirements: Record<string, { tools: string[]; own: string[] }> = {
+    go: { tools: ['go'], own: ['orm-install-go'] },
+    php: { tools: ['go', 'php', 'composer'], own: ['orm-install-php'] },
+    'php-extension': { tools: ['go', 'php', 'composer'], own: ['orm-install-php-extension-runtime', 'orm-install-php'] },
+    python: { tools: ['go', 'python', 'uv'], own: ['orm-install-python'] },
+    rust: { tools: ['go', 'rust'], own: ['orm-install-rust-crates'] },
+    typescript: { tools: ['go'], own: [] },
+  };
+  for (const [implementation, required] of Object.entries(requirements)) {
+    const binding = bindings[implementation];
+    assert.ok(isRecord(binding) && Array.isArray(binding.setup));
+    assert.deepEqual(binding.tools, required.tools, `${implementation} tools`);
+    const targets = new Set(binding.setup.flatMap(target => { assert.equal(typeof target, 'string'); return [...reached(String(target))]; }));
+    for (const needed of ['orm-install-server-programs', 'orm-install-flowmark', 'typescript-current', ...required.own])
+      assert.ok(targets.has(needed), `${implementation} setup needs ${needed}`);
+    for (const other of runtimeInstalls.filter(target => !required.own.includes(target)))
+      assert.ok(!targets.has(other), `${implementation} must not install ${other}`);
+    assert.ok(!targets.has('orm-install-interfaces-typescript'), `${implementation} bindings do not extract interface symbols`);
+    assert.ok(!targets.has('typescript-build'), `${implementation} fixtures need the client, not editor builds`);
+  }
 });

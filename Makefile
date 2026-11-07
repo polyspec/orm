@@ -1404,7 +1404,7 @@ feature-performance-check: feature-check/build php-vendor-check php-models php-e
 typescript-read: typescript-current
 	$(READ_TYPESCRIPT)
 typescript-current: lease-tool orm-codes-typescript
-	$(NODE) scripts/typescript/build.mts --current || $(LEASE) run $(TYPESCRIPT_LEASES) exclusive --wait -- $(RUN_LONG) typescript-build -- npm run typescript:build
+	$(NODE) scripts/typescript/build.mts --current || $(LEASE) run $(TYPESCRIPT_LEASES) exclusive --wait -- $(RUN_LONG) typescript-build -- $(NPM) --prefix packages/ts run build
 # feature-coverage-of/<id> runs the coverage of one feature on every runtime and database (FCV-6), the Verification of a row of that feature.
 # The Python owners run on the client's venv (ORM_PYTHON) with the slot models generated into the run directory (ORM_PYTHON_BIND_MODELS), and the php-extension owners on a PHP that loads the extension built into its run directory.
 feature-coverage-of/%: RUN_DIR = $(abspath .runtime/run)/feature-coverage-of-$$PPID
@@ -3176,6 +3176,17 @@ orm-install-php-extension-runtime:
 	$(MAKE) --no-print-directory orm-install-php-extension-tools
 orm-install-typescript-runtime: orm-install-go-lease orm-install-codes-typescript
 	$(MAKE) --no-print-directory build-ts
+
+# The parity context creates its run databases through the TypeScript client. Binding setup installs that fixture
+# dependency without editor builds, interface extractors or an unrelated client runtime.
+.PHONY: orm-install-parity-common orm-install-parity-go orm-install-parity-php orm-install-parity-php-extension orm-install-parity-python orm-install-parity-rust
+orm-install-parity-common: orm-install-server-programs orm-install-flowmark orm-install-go-lease orm-install-codes-typescript
+	+$(MAKE) --no-print-directory typescript-current
+orm-install-parity-go: orm-install-parity-common orm-install-go
+orm-install-parity-php: orm-install-parity-common orm-install-php
+orm-install-parity-php-extension: orm-install-parity-common orm-install-php-extension-runtime
+orm-install-parity-python: orm-install-parity-common orm-install-python
+orm-install-parity-rust: orm-install-parity-common orm-install-rust-crates
 
 # All setup steps of CI run make targets (make repo-check). ci-php-min-version records the lowest
 # PHP release of make php-min-check as the input of setup-php (version=x.y). Each client refuses SQLite below 3.46 when it connects.
