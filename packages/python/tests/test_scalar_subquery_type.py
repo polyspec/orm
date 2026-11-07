@@ -7,7 +7,6 @@ from polyspec.orm.engine.dialect import dialect_of
 from polyspec.orm.engine.planner import Planner
 from polyspec.orm.engine.validate import validate
 from polyspec.orm.errors import OrmError
-from polyspec.orm.markdown import MdNode
 
 from .coverage_case import REPOSITORY_ROOT
 
@@ -34,16 +33,6 @@ class ScalarSubqueryTypeTest(unittest.TestCase):
         request = dict(case["input"], manifest_hash=model.manifest_hash)
         validate(model, request)
         request["columns"]["sub"]["first_author"]["column"] = "missing_column"
-        with self.subTest(caller="markdown answer assembly"):
-            try:
-                MdNode(model, request, False).out_col("first_author", 0)
-            except OrmError as error:
-                self.assertEqual(error.code, "INTERNAL")
-                self.assertIn("author.missing_column", str(error))
-            else:
-                self.fail(
-                    "markdown answer assembly accepted a missing post-validation scalar column"
-                )
         for dialect in ("mysql", "postgres", "sqlite"):
             with self.subTest(dialect=dialect):
                 caught = None

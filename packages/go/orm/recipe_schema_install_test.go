@@ -33,3 +33,9 @@ func TestRecipeSchemaInstallSqlite(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, schemaInstallRecipe, "sqlite")
 }
+
+// TestRecipeSchemaInstallMarkdown runs the recipe on flowmark, each case on a corpus of its own (FCV-3).
+func TestRecipeSchemaInstallMarkdown(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, schemaInstallRecipe, "markdown")
+}

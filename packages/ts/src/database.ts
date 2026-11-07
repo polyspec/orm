@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { bindSlotType, checkAssign, checkParam, transformParam } from './bind_check.js';
-import { blindIndex, decode, hostDecode, hostEncode } from './codec.js';
+import { CodecError, blindIndex, decode, hostDecode, hostEncode } from './codec.js';
 import type { Assemble, BindSlot, Group, KeyReference, Plan, PlanStep, Request, RequestQuery } from './ir.js';
 import { driverValue, isolationSql, openDriver, parseDsn, sqliteBusy, zoneOffset, type DriverName, type DriverPool, type DriverResult, type DriverSession, type DriverValue, type Isolation, type PoolStats, type StatementDone } from './driver.js';
 import { Subscription, checkChannel } from './listen.js';
@@ -17,7 +17,7 @@ import { decimalScaled, normalizeDecimal } from './decimal.js';
 import { CORE, type Core } from './core.js';
 import { Model } from './model.js';
 import { fieldOf, type Entity } from './engine/model.js';
-import { MarkdownPool, MarkdownSession, beginLine, endLine, markdownRead, markdownScalar, markdownWrite, savepointLine } from './markdown.js';
+import { openMarkdown } from './markdown.js';
 import * as codes from './codes.js';
 
 export interface ConnectOptions {
@@ -192,23 +192,12 @@ export class TxFrame {
   /** @internal The identity keys of the generated single inserts that the transaction succeeded in, by entity (INT-52); a savepoint that does not release restores it. */
   public inserted = new Map<string, Set<number>>();
   /**
-   * The number is this transaction's number on the connection; the event of that statement carries it. The connection is held
-   * until the transaction ends: it is the driver session of an SQL connection or the flowmark session of a markdown connection.
+   * The number is this transaction's number on the connection; the event of that statement carries it. The session is the
+   * driver session held until the transaction ends.
    *
    * @internal
    */
-  public constructor(/** @internal */ public readonly db: Db, private readonly connection: DriverSession | MarkdownSession, /** @internal */ public readonly number: number, /** @internal */ public readonly options: BeginOptions) {}
-
-  /** @internal The driver session of a SQL transaction. A markdown transaction sends no statement and has none. */
-  public get session(): DriverSession {
-    if (this.connection instanceof MarkdownSession) throw new OrmError(codes.INTERNAL, 'a markdown transaction has no SQL session');
-    return this.connection;
-  }
-
-  /** @internal The flowmark session of a markdown transaction. It is undefined in an SQL transaction, where the session itself is the place. */
-  public get md(): MarkdownSession | undefined {
-    return this.connection instanceof MarkdownSession ? this.connection : undefined;
-  }
+  public constructor(/** @internal */ public readonly db: Db, /** @internal */ public readonly session: DriverSession, /** @internal */ public readonly number: number, /** @internal */ public readonly options: BeginOptions) {}
 
   /**
    * Runs one statement of kind `kind` that touches `tables` (empty when none) and publishes its statement event (INT-77). It
@@ -375,8 +364,6 @@ export interface Result {
   main: unknown[][];
   steps: Map<number, { step: PlanStep; data: unknown[][]; byKey: Map<string, number[]> }>;
   params: readonly unknown[];
-  /** Marks the result of a markdown answer: the last cell of each row is that row's join and relation rows (MarkdownLinks). */
-  markdown: boolean;
 }
 
 export function scalarKey(value: unknown): string {
@@ -541,8 +528,6 @@ export class Db {
   private readonly auditSource: (() => Record<string, unknown>) | undefined;
   private readonly plans = new Map<string, Cached>();
   private readonly engines = new Map<string, Engine>();
-  // A markdown connection is not planned (docs/spec/protocol.md §5), so it keeps only the models of the registered set, with no dialect engine.
-  private readonly markdownModels = new Map<string, RuntimeModel>();
   public readonly aesKey: string;
   public readonly blindIndexKey: string;
   public readonly aesVersion: number;
@@ -550,9 +535,10 @@ export class Db {
   private readonly planCacheSize: number;
 
   /**
-   * connection is the pool of the connection: the driver pool of a SQL database or the flowmark session pool of a markdown:// connection.
+   * pool is the driver pool of the connection. corpus says that it reaches a flowmark server, which answers SQL in SQLite's
+   * dialect on a corpus (DIA-185), so its pool is a SQLite pool.
    */
-  private constructor(private readonly connection: DriverPool | MarkdownPool, public readonly zone: string, options: ConnectOptions, aes: AesConfig) {
+  private constructor(/** @internal */ public readonly pool: DriverPool, public readonly zone: string, options: ConnectOptions, aes: AesConfig, private readonly corpus = false) {
     this.blindIndexKey = options.blindIndexKey ?? '';
     this.aesVersion = aes.version;
     this.aesKey = aes.key;
@@ -571,9 +557,6 @@ export class Db {
   public static async connect(dsn: string, options: ConnectOptions = {}): Promise<Db> {
     if (options === null || typeof options !== 'object' || Array.isArray(options)) throw new OrmError(codes.CONFIG, 'connect takes the DSN and an options object');
     const parsed = parseDsn(dsn);
-    if (parsed.driver === 'markdown' && (options.statementTimeoutMs ?? 0) > 0) {
-      throw new OrmError(codes.CAPABILITY_UNSUPPORTED, 'statement timeout is not supported by the markdown IR executor');
-    }
     const statementCacheSize = options.statementCacheSize ?? 256;
     if (!Number.isSafeInteger(statementCacheSize) || statementCacheSize < 1) throw new OrmError(codes.CONFIG, 'statement cache size must be a positive integer');
     if ((options.poolSize ?? 0) < 0) throw new OrmError(codes.CONFIG, 'pool size must not be negative');
@@ -585,16 +568,11 @@ export class Db {
     if ((options.poolLifetimeMs ?? 0) < 0) throw new OrmError(codes.CONFIG, 'pool lifetime must not be negative');
     const bounds = { size, idleSize: idleSize || size, lifetimeMs: options.poolLifetimeMs ?? 0 };
     const aes = aesConfig(options);
-    if (parsed.driver === 'markdown') {
-      // Opens one session to check that the server accepts the corpus and token, and keeps it in the pool.
-      const md = new MarkdownPool(parsed.markdown, bounds);
-      const db = new Db(md, parsed.zone, options, aes);
-      md.release(await md.acquire(undefined));
-      return db;
-    }
-    const pool = openDriver(dsn, parsed, bounds, statementCacheSize, options.statementTimeoutMs ?? 0);
-    const db = new Db(pool, parsed.zone, options, aes);
-    // Opens one connection and returns it to the pool. It does not send a statement to check the connection.
+    // A flowmark server runs SQL in SQLite's dialect (DIA-185): a markdown connection is a SQLite connection whose statements it answers.
+    const pool = parsed.driver === 'markdown' ? openMarkdown(parsed.markdown, bounds) : openDriver(dsn, parsed, bounds, statementCacheSize, options.statementTimeoutMs ?? 0);
+    const db = new Db(pool, parsed.zone, options, aes, parsed.driver === 'markdown');
+    // Opens one connection and returns it to the pool. It does not send a statement to check the connection; a markdown session
+    // checks that the server accepts the corpus and token.
     try { (await pool.reserve()).release(false); } catch (error) { await pool.close(); throw error; }
     return db;
   }
@@ -613,60 +591,19 @@ export class Db {
   }
 
   public [REGISTER](model: RuntimeModel): void {
-    // A markdown connection is not planned (docs/spec/protocol.md §5), so it registers only the set, with no dialect engine.
-    if (this.md !== undefined) {
-      if (!this.markdownModels.has(model.manifestHash)) this.markdownModels.set(model.manifestHash, model);
-      return;
-    }
-    if (!this.engines.has(model.manifestHash)) this.engines.set(model.manifestHash, new Engine(model, this.pool.name));
-  }
-
-  /**
-   * The runtime model of the set registered on this connection. A manifest that is not registered is SCHEMA_HASH_MISMATCH, as with a SQL connection.
-   *
-   * @internal
-   */
-  public markdownModel(manifestHash: string): RuntimeModel {
-    if (this.closed) throw new OrmError(codes.CONFIG, 'database is closed');
-    const model = this.markdownModels.get(manifestHash);
-    if (model === undefined) {
-      throw new OrmError(codes.SCHEMA_HASH_MISMATCH, `manifest ${manifestHash} is not registered on this connection: connect through its generated models or register it`);
-    }
-    return model;
+    // A corpus assigns the key_prefix keys and the order positions that an insert leaves out.
+    if (!this.engines.has(model.manifestHash)) this.engines.set(model.manifestHash, new Engine(model, this.pool.name, this.corpus));
   }
 
   /** The database of the connection: mysql, postgres, sqlite, or markdown, a corpus that a flowmark server serves. */
-  public get driver(): DriverName | 'markdown' { return this.md !== undefined ? 'markdown' : this.pool.name; }
+  public get driver(): DriverName | 'markdown' { return this.corpus ? 'markdown' : this.pool.name; }
 
   /**
-   * The driver pool of a SQL connection. A markdown connection sends no statement and has none; every SQL path
-   * refuses a markdown connection before it.
+   * The dialect of the statements the connection sends: mysql, postgres or sqlite, which a markdown connection is.
    *
    * @internal
    */
-  public get pool(): DriverPool {
-    if (this.connection instanceof MarkdownPool) throw new OrmError(codes.INTERNAL, 'a markdown connection has no SQL pool');
-    return this.connection;
-  }
-
-  /**
-   * flowmark session pool of a markdown:// connection. It is undefined for a SQL connection, where the pool takes its place.
-   *
-   * @internal
-   */
-  public get md(): MarkdownPool | undefined {
-    return this.connection instanceof MarkdownPool ? this.connection : undefined;
-  }
-
-  /**
-   * Throws CAPABILITY_UNSUPPORTED, which a SQL-only surface receives on a markdown connection (docs/spec/dialects.md "Markdown IR
-   * executor"). On other connections it does nothing.
-   *
-   * @internal
-   */
-  public unsupportedOnMarkdown(surface: string): void {
-    if (this.md !== undefined) throw new OrmError(codes.CAPABILITY_UNSUPPORTED, `${surface} is not supported by the markdown IR executor`);
-  }
+  public get dialect(): DriverName { return this.pool.name; }
 
   public get closed(): boolean { return this.shared.closed; }
 
@@ -713,16 +650,14 @@ export class Db {
     if (this.closed) return;
     this.shared.closed = true;
     this.plans.clear();
-    const md = this.md;
-    if (md !== undefined) md.close();
-    else await this.pool.close();
+    await this.pool.close();
   }
 
   public utils(): Utils { return new Utils(this); }
 
   /**
    * Sends a notification with pg_notify (DIA-193): inside a transaction it is delivered with the commit of that transaction,
-   * and outside one at the commit of its own statement. MySQL, SQLite and the markdown executor refuse it (DIA-196).
+   * and outside one at the commit of its own statement. MySQL, SQLite and a markdown connection refuse it (DIA-196).
    */
   public async notify(channel: string, payload: string): Promise<void> {
     this.listenable('notify');
@@ -759,7 +694,7 @@ export class Db {
 
   /** The error of a LISTEN or NOTIFY operation on a database without it (DIA-196). */
   private listenable(surface: string): void {
-    if (this.md !== undefined || this.pool.name !== 'postgres') throw new OrmError(codes.CAPABILITY_UNSUPPORTED, `${surface} is supported on PostgreSQL only`);
+    if (this.pool.name !== 'postgres') throw new OrmError(codes.CAPABILITY_UNSUPPORTED, `${surface} is supported on PostgreSQL only`);
   }
 
   /**
@@ -767,11 +702,9 @@ export class Db {
    * and every handle derived from it send (docs/operations/usage.md "Statement events").
    * Subscribers run synchronously in registration order after the statement
    * ends and before the operation continues; one that throws fails the
-   * operation with SUBSCRIBER. The returned function removes the subscription. A markdown connection sends no
-   * statement, so it refuses a subscriber with CAPABILITY_UNSUPPORTED.
+   * operation with SUBSCRIBER. The returned function removes the subscription.
    */
   public subscribe(subscriber: (event: StatementEvent) => void): () => void {
-    this.unsupportedOnMarkdown('statement events');
     return this.shared.events.subscribe(subscriber);
   }
 
@@ -830,7 +763,7 @@ export class Db {
     try { return await fn(session); } finally { session.release(false); }
   }
 
-  public stats(): PoolStats { return (this.md ?? this.pool).stats(); }
+  public stats(): PoolStats { return this.pool.stats(); }
 
   /**
    * Runs callback in one transaction. An exception rolls back; otherwise the
@@ -844,7 +777,6 @@ export class Db {
     const timeoutMs = options.timeoutMs ?? 0;
     if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 0) throw new OrmError(codes.CONFIG, 'transaction timeoutMs must not be negative');
     const outer = activeFor(this);
-    if (options.audit !== undefined) this.unsupportedOnMarkdown('a transaction with audit values');
     // The audit record is checked before the transaction starts, and is inserted right before the first write of an audited table on each attempt.
     const record = options.audit !== undefined && outer === undefined ? this.auditRecord(options.audit) : undefined;
     if (outer) {
@@ -1008,8 +940,7 @@ export class Db {
    * do not reach the next user; if it fails after BEGIN, the transaction is rolled back.
    */
   private async begin(options: BeginOptions): Promise<TxFrame> {
-    if (options.timeoutMs > 0 && this.driver !== 'postgres') throw new OrmError(codes.CAPABILITY_UNSUPPORTED, 'transaction timeoutMs is supported only by postgres');
-    if (this.md !== undefined) return this.beginMarkdown(this.md, options);
+    if (options.timeoutMs > 0 && this.dialect !== 'postgres') throw new OrmError(codes.CAPABILITY_UNSUPPORTED, 'transaction timeoutMs is supported only by postgres');
     const driver = this.pool.name;
     const level = options.isolation === undefined ? '' : isolationSql(options.isolation);
     if (driver === 'sqlite') await this.rowLockTable();
@@ -1061,10 +992,9 @@ export class Db {
    */
   private async finish(frame: TxFrame, commit: boolean): Promise<void> {
     if (frame.finished) return;
-    if (frame.md !== undefined) return this.endMarkdown(frame, frame.md, commit ? 'commit' : 'rollback');
     frame.finished = true;
     const session = frame.session;
-    if (!commit && this.driver !== 'sqlite' && frame.db.signal?.aborted === true) {
+    if (!commit && this.dialect !== 'sqlite' && frame.db.signal?.aborted === true) {
       session.release(true);
       return;
     }
@@ -1078,7 +1008,7 @@ export class Db {
           return await frame.control('utility', [], sql, params);
         } catch (error) { errors.push(error); return undefined; }
       };
-      if (this.driver === 'sqlite') {
+      if (this.dialect === 'sqlite') {
         if (frame.options.readOnly) await attempt('PRAGMA query_only = 0');
         if (frame.options.isolation === 'read_uncommitted') await attempt('PRAGMA read_uncommitted = 0');
       }
@@ -1087,7 +1017,7 @@ export class Db {
         // If it is not 1, this connection did not hold the lock.
         if (released !== undefined && Number(released.rows[0]?.[0]) !== 1) errors.push(new OrmError(codes.CONFIG, `lock ${key} was not held at transaction end`));
       }
-      if (this.driver === 'mysql') {
+      if (this.dialect === 'mysql') {
         // Statements that clear values are sent in key order.
         for (const key of [...frame.locals.keys()].sort()) await attempt(`SET @\`orm.${key}\` = NULL`);
       }
@@ -1102,17 +1032,19 @@ export class Db {
         } catch (error) {
           // A COMMIT whose subscriber failed has been committed.
           if (subscriberError(error)) throw error;
-          // A failed COMMIT may already have ended the transaction. SQLite rolls back only when it is open, so
-          // the database closes a session whose state is unknown.
-          if (session.inTransaction?.() === true) {
+          // A failed COMMIT may already have ended the transaction. A session that reports its transaction open rolls it
+          // back; one that reports none, as SQLite's driver does, is clean; any other session, such as a markdown session
+          // whose server rolls back the transaction of a closed connection (PRT-71), has an unknown state and is closed.
+          const open = session.inTransaction?.();
+          if (open === true) {
             try { await frame.control('rollback', [], codes.ROLLBACK); } catch (rollback) { throw rollbackFailed(error, rollback); }
-          } else if (this.driver !== 'sqlite') discard = true;
+          } else if (open === undefined || this.dialect !== 'sqlite') discard = true;
           throw error;
         }
       }
       try {
         // SQLite may have rolled the transaction back by itself after an error (INT-155); then there is nothing to roll back.
-        if (this.driver !== 'sqlite' || session.inTransaction?.() !== false) await frame.control('rollback', [], codes.ROLLBACK);
+        if (this.dialect !== 'sqlite' || session.inTransaction?.() !== false) await frame.control('rollback', [], codes.ROLLBACK);
       } catch (rollback) {
         if (!subscriberError(rollback)) discard = true;
         if (commit) throw rollbackFailed(failure, rollback);
@@ -1124,51 +1056,10 @@ export class Db {
     }
   }
 
-  /**
-   * Opens a markdown transaction: holds one session of the pool until the transaction ends and sends begin. A read-only
-   * transaction sends read_only.
-   */
-  private async beginMarkdown(md: MarkdownPool, options: BeginOptions): Promise<TxFrame> {
-    if (options.isolation !== undefined) this.unsupportedOnMarkdown('the transaction isolation option');
-    const session = await md.acquire(this.signal);
-    try {
-      await session.call(beginLine(options.readOnly === true), this.signal);
-    } catch (error) {
-      md.release(session);
-      throw error;
-    }
-    return new TxFrame(this, session, this.nextTransaction(), options);
-  }
-
-  /**
-   * Ends a markdown transaction with commit or rollback and returns the session to the pool. If the signal was cancelled,
-   * it disconnects without sending a message: the server rolls back the transaction of the disconnected connection.
-   */
-  private async endMarkdown(frame: TxFrame, session: MarkdownSession, op: 'commit' | 'rollback'): Promise<void> {
-    frame.finished = true;
-    try {
-      if (frame.db.signal?.aborted === true) {
-        session.close();
-        if (op === 'commit') throw new OrmError(codes.CANCELED, 'the transaction was cancelled before its commit');
-        return;
-      }
-      await session.call(endLine(op), frame.db.signal);
-    } finally {
-      present(this.md, 'the flowmark pool of a markdown connection').release(session);
-    }
-  }
-
-  /**
-   * Sends one step of a savepoint name: savepoint, release, or rollback_to. An SQL connection sends that statement, and a markdown
-   * connection sends a control message of the same name.
-   */
+  /** Sends one step of a savepoint name: savepoint, release, or rollback_to. */
   private async savepointStep(frame: TxFrame, kind: 'savepoint' | 'release' | 'rollback_to', name: string): Promise<void> {
-    if (frame.md !== undefined) {
-      await frame.md.call(savepointLine(kind, name), frame.db.signal);
-      return;
-    }
     // A transaction that SQLite rolled back by itself took its savepoints with it (INT-155).
-    if (kind !== 'savepoint' && this.driver === 'sqlite' && frame.session.inTransaction?.() === false) return;
+    if (kind !== 'savepoint' && this.dialect === 'sqlite' && frame.session.inTransaction?.() === false) return;
     const statement = kind === 'savepoint' ? `SAVEPOINT ${name}` : kind === 'release' ? `RELEASE SAVEPOINT ${name}` : `ROLLBACK TO SAVEPOINT ${name}`;
     await frame.run(kind, [], statement);
   }
@@ -1214,7 +1105,7 @@ export class Db {
    * @internal
    */
   public async rowLock(frame: TxFrame, mode: string): Promise<void> {
-    if (this.driver !== 'sqlite' || mode === '') return;
+    if (this.dialect !== 'sqlite' || mode === '') return;
     const noWait = mode.endsWith('_nowait');
     const previous = noWait ? Number((await frame.run('utility', [], 'PRAGMA busy_timeout')).rows[0]?.[0]) : 0;
     let failure: unknown;
@@ -1294,12 +1185,16 @@ export class Db {
           // which hostEncode checks.
           checkAssign(slot.param, value, bindSlotType(slot));
           if (!slot.transform && slot.host_styles.length === 0) checkParam(slot.param, value, bindSlotType(slot), this.zone);
+          // A text in a bytes slot binds as its UTF-8 bytes, a blob, so SQLite stores a blob as MySQL and PostgreSQL do (PRT-67).
+          if (!slot.transform && slot.host_styles.length === 0 && slot.col_type === 'bytes' && typeof value === 'string') {
+            value = Buffer.from(value, 'utf8');
+          }
           if ((slot.col_type === 'datetime' || slot.col_type === 'date' || slot.col_type === 'time') && value !== null) {
             value = timeValue(value, slot.col_type, this.zone, slot.precision ?? 0);
           }
           if (slot.col_type === 'decimal' && value !== null) {
             if (typeof value !== 'string') throw new OrmError(codes.CODEC_ENCODE, 'decimal bind requires exact text');
-            value = this.driver === 'sqlite'
+            value = this.dialect === 'sqlite'
               ? decimalScaled(value, slot.precision ?? 0, slot.scale ?? 0)
               : normalizeDecimal(value, slot.precision ?? 0, slot.scale ?? 0);
           }
@@ -1441,22 +1336,25 @@ function hooked(ex: Executor, request: Request, params: readonly unknown[], afte
   }
   // The hook has run and the planner has not yet renumbered the parameters: a caller reads the request as the hook left it here.
   afterHook?.(planned);
-  // A SQL connection plans the canonical form (T169-3): the IN lists pad to their buckets and the parameters are renumbered.
-  if (ex.db.md !== undefined) return planned;
+  // A connection plans the canonical form (T169-3): the IN lists pad to their buckets and the parameters are renumbered.
   const canon = canonicalize(planned.request, planned.params);
   return { request: canon.request, params: canon.params };
+}
+
+/** The plan of a read and the parts of its split IN list (splitReadPlan), once its lock passed checkLock. */
+async function readParts(ex: Executor, request: Request, params: readonly unknown[]): Promise<{ db: Db; cached: Cached; parts: Request[] }> {
+  checkLock(ex, request);
+  const db = ex.db;
+  const { cached, slots } = await splitReadPlan(db, request, params);
+  return { db, cached, parts: rootInParts(request, slots, db.dialect, params) };
 }
 
 export async function query(ex: Executor, given: Request, givenParams: readonly unknown[]): Promise<Result> {
   const { request, params } = hooked(ex, given, givenParams);
   return guarded(ex, async () => {
-    checkLock(ex, request);
-    const db = ex.db;
-    if (db.md !== undefined) return (await markdownRead(ex, request, params)).result;
-    const { cached, slots } = await splitReadPlan(db, request, params);
+    const { db, cached, parts } = await readParts(ex, request, params);
     const lock = requestLock(request);
     if (lock !== '') await db.rowLock(present(ex.frame, 'the transaction of a locking read'), lock);
-    const parts = rootInParts(request, slots, db.driver, params);
     let main: unknown[][];
     // A split request runs only its parts: cached is then the plan of its first value (splitReadPlan).
     if (parts.length > 0) {
@@ -1476,14 +1374,14 @@ export async function query(ex: Executor, given: Request, givenParams: readonly 
 }
 
 async function relations(ex: Executor, cached: Cached, params: readonly unknown[], main: unknown[][]): Promise<Result> {
-  const out: Result = { plan: cached.plan, main, steps: new Map(), params, markdown: false };
+  const out: Result = { plan: cached.plan, main, steps: new Map(), params };
   for (const step of cached.plan.steps.slice(1)) {
     if (step.role !== 'relation') continue;
     const parents = parentOf(step).step === 0 ? main : out.steps.get(parentOf(step).step)?.data ?? [];
     const values = parentValues(step, parents, params);
     const data: unknown[][] = [];
     if (values.length > 0) {
-      for (const chunk of relationChunks(step, values, ex.db.driver)) data.push(...await select(ex, cached, step, params, chunk));
+      for (const chunk of relationChunks(step, values, ex.db.dialect)) data.push(...await select(ex, cached, step, params, chunk));
     }
     const keys = childKeys(cached.plan, step.id);
     const byKey = new Map<string, number[]>();
@@ -1531,22 +1429,32 @@ export function decodeAssembly(row: unknown[], assemble: Assemble, db: Db): void
     // The version is read only for a non-NULL value. With a keyring, a version it does not declare is CONFIG; the single key is used only without a keyring (COD-8).
     if (value !== null && host.length > 0) {
       const key = host.includes('aes') && db.aesKeyring !== undefined ? db.aesKeyring.key(storedVersion(versionCell)) : db.aesKey;
-      value = hostDecode(cellBytes(value, column.index), host, key);
+      const cell = cellBytes(value, column.index);
+      value = decodedCell(assemble, column.name, () => hostDecode(cell, host, key));
     }
-    if (client.length > 0) value = decode(client, value === null ? null : cellBytes(value, column.index));
+    if (client.length > 0) {
+      const cell = value === null ? null : cellBytes(value, column.index);
+      value = decodedCell(assemble, column.name, () => decode(client, cell));
+    }
     row[column.index] = value;
   }
   for (const child of assemble.children) if (child.kind === 'join' && child.assemble) decodeAssembly(row, child.assemble, db);
 }
 
+/** A CODEC_DECODE of a read cell names its entity and column: `CODEC_DECODE: <entity>.<column>: <message>` (COD-41). */
+function decodedCell<T>(assemble: Assemble, column: string, decodeCell: () => T): T {
+  try {
+    return decodeCell();
+  } catch (error) {
+    if (!(error instanceof CodecError) || error.code !== codes.CODEC_DECODE) throw error;
+    throw new CodecError(error.code, `${assemble.entity}.${column}: ${error.message.slice(error.code.length + 2)}`, { cause: error });
+  }
+}
+
 export async function scalar(ex: Executor, given: Request, givenParams: readonly unknown[]): Promise<unknown> {
   const { request, params } = hooked(ex, given, givenParams);
   return guarded(ex, async () => {
-    checkLock(ex, request);
-    const db = ex.db;
-    if (db.md !== undefined) return markdownScalar(ex, request, params);
-    const { cached, slots } = await splitReadPlan(db, request, params);
-    const parts = rootInParts(request, slots, db.driver, params);
+    const { db, cached, parts } = await readParts(ex, request, params);
     if (parts.length === 1) {
       const step = mainStep((await db.plan(present(parts[0], 'the one part of a split request'))).plan);
       return (await db.runStep(ex, step.sql, step, params)).rows[0]?.[0] ?? null;
@@ -1570,7 +1478,6 @@ export async function paginate(ex: Executor, given: Request, givenParams: readon
   return guarded(ex, async () => {
     checkLock(ex, request);
     const db = ex.db;
-    if (db.md !== undefined) return markdownRead(ex, request, params);
     const cached = await db.plan(request);
     const main = await select(ex, cached, mainStep(cached.plan), params);
     const step = cached.plan.steps.find(s => s.role === 'count');
@@ -1586,18 +1493,14 @@ export interface Written extends Hooked { key: number | string | null; affected:
 
 /**
  * Runs an insert, update, delete, or restore and returns the key of the inserted row and the affected row count:
- * the generated identity on a SQL database, the first key the markdown executor answers. It also returns the
+ * the generated identity, or the key_prefix key that a corpus allocated on a markdown connection. It also returns the
  * request it ran, as the request hook left it.
  */
 export async function write(ex: Executor, given: Request, givenParams: readonly unknown[], afterHook?: (hooked: Hooked) => void): Promise<Written> {
   const { request, params } = hooked(ex, given, givenParams, afterHook);
   const db = ex.db;
-  let step: PlanStep | undefined;
-  let settle = async (_affected: number, _failed: boolean, _error?: unknown): Promise<void> => {};
-  if (db.md === undefined) {
-    step = mainStep((await db.plan(request)).plan);
-    settle = await db.auditFor(ex, step, request.kind !== 'insert');
-  }
+  const step = mainStep((await db.plan(request)).plan);
+  const settle = await db.auditFor(ex, step, request.kind !== 'insert');
   let written: { key: number | string | null; affected: number };
   try {
     written = await writeStep(ex, request, params, step);
@@ -1628,17 +1531,16 @@ function recordInserted(ex: Executor, request: Request, key: number | string | n
   frame.inserted.set(request.entity, keys);
 }
 
-/** Runs the write of request in ex: step is its main plan step on a SQL database, undefined on markdown. */
-async function writeStep(ex: Executor, request: Request, params: readonly unknown[], planned: PlanStep | undefined): Promise<{ key: number | string | null; affected: number }> {
+/** Runs the write of request in ex: step is its main plan step. */
+async function writeStep(ex: Executor, request: Request, params: readonly unknown[], step: PlanStep): Promise<{ key: number | string | null; affected: number }> {
   return guarded(ex, async (): Promise<{ key: number | string | null; affected: number }> => {
     const db = ex.db;
-    if (db.md !== undefined || planned === undefined) {
-      const { keys, affected } = await markdownWrite(ex, request, params);
-      return { key: keys[0] ?? null, affected };
-    }
-    const step = planned;
     const result = await db.runStep(ex, step.sql, step, params);
-    if (request.kind === 'insert' && / RETURNING /.test(step.sql)) return { key: Number(result.rows[0]?.[0]), affected: 1 };
+    if (request.kind === 'insert' && / RETURNING /.test(step.sql)) {
+      // The returned key is the identity, an integer, or the key_prefix key that a corpus allocated, a text.
+      const returned = result.rows[0]?.[0];
+      return { key: typeof returned === 'string' ? returned : Number(returned), affected: 1 };
+    }
     if (request.kind === 'update' && request.optimistic && result.affected === 0) throw new OrmError(codes.OPTIMISTIC_LOCK, 'the row changed after it was read');
     const key = request.kind === 'insert' && !request.rows && result.insertId !== null ? Number(result.insertId) : null;
     // An upsert writes one row: MySQL counts 2 for the one that updates, PostgreSQL and SQLite 1.
@@ -1652,7 +1554,6 @@ export interface QueryPlanStep { role: string; tables: string[]; sql: string; }
 
 /** Returns the steps of the plan of a page request, from the plan call that paginate runs. */
 export async function pagePlanSteps(ex: Executor, given: Request, givenParams: readonly unknown[]): Promise<QueryPlanStep[]> {
-  ex.db.unsupportedOnMarkdown('getPagePlanSteps');
   const { request } = hooked(ex, given, givenParams);
   checkLock(ex, request);
   const cached = await ex.db.plan(request);
@@ -1661,7 +1562,6 @@ export async function pagePlanSteps(ex: Executor, given: Request, givenParams: r
 
 /** Returns the statement of a select request without executing it. */
 export async function statement(ex: Executor, given: Request, givenParams: readonly unknown[]): Promise<{ sql: string; binds: unknown[] }> {
-  ex.db.unsupportedOnMarkdown('getQuery');
   const { request, params } = hooked(ex, given, givenParams);
   const cached = await ex.db.plan(request);
   const step = mainStep(cached.plan);
@@ -1772,7 +1672,7 @@ function itemConn(item: Group['items'][number]): string | undefined {
  * no plan holds a bind slot per value of the list; rootInParts plans the parts, each within the bind limit.
  */
 async function splitReadPlan(db: Db, request: Request, params: readonly unknown[]): Promise<{ cached: Cached; slots: number }> {
-  const target = params.length > driverLimit(db.driver) ? rootInTarget(request) : -1;
+  const target = params.length > driverLimit(db.dialect) ? rootInTarget(request) : -1;
   if (target < 0) {
     const cached = await db.plan(request);
     return { cached, slots: mainStep(cached.plan).bind_slots.length };
@@ -1780,7 +1680,7 @@ async function splitReadPlan(db: Db, request: Request, params: readonly unknown[
   const ps = present(request.where?.items[target]?.pred?.ps, 'the IN list that is split');
   const cached = await db.plan(withRootInList(request, target, ps.slice(0, 1)));
   let slots = mainStep(cached.plan).bind_slots.length - 1 + ps.length;
-  if (slots <= driverLimit(db.driver)) {
+  if (slots <= driverLimit(db.dialect)) {
     const full = await db.plan(request);
     slots = mainStep(full.plan).bind_slots.length;
     return { cached: full, slots };

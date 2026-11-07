@@ -155,7 +155,6 @@ export class Utils {
 
   /** Takes a named lock that is released when the transaction ends. */
   public async lock(key: string): Promise<void> {
-    this.db.unsupportedOnMarkdown('lock');
     const frame = this.active('lock');
     if (!validKey(key)) throw config(`lock key ${key} is invalid`);
     switch (this.db.driver) {
@@ -179,7 +178,6 @@ export class Utils {
    * session setting, a value of the transaction that only local() reads.
    */
   public async setLocal(key: string, value: string): Promise<void> {
-    this.db.unsupportedOnMarkdown('setLocal');
     const frame = this.active('setLocal');
     if (!validKey(key)) throw config(`local key ${key} is invalid`);
     switch (this.db.driver) {
@@ -195,7 +193,6 @@ export class Utils {
 
   /** Returns a value set with setLocal; NO_ROWS when it is missing. */
   public async local(key: string): Promise<string> {
-    this.db.unsupportedOnMarkdown('local');
     const frame = this.active('local');
     const value = frame.locals.get(key);
     if (value === undefined) throw new OrmError(codes.NO_ROWS, `local value ${key} is not set`);
@@ -214,7 +211,6 @@ export class Utils {
    * a statement; a markdown connection is CAPABILITY_UNSUPPORTED.
    */
   public async backendWaitingForLock(): Promise<boolean> {
-    this.db.unsupportedOnMarkdown('backendWaitingForLock');
     if (this.db.driver !== 'postgres') return false;
     // The statement runs on a connection of the pool, as Go does: pg_stat_activity is a snapshot per transaction, so a read inside the
     // transaction of the caller would not see a backend that starts to wait after the transaction has read it.
@@ -236,7 +232,6 @@ export class SchemaUtils {
   public constructor(private readonly u: Utils) {}
 
   private async check(sql: string, params: readonly DriverValue[] = []): Promise<boolean> {
-    this.u.db.unsupportedOnMarkdown('schema inspection');
     const value = (await this.u.read('schema', [], sql, params))[0]?.[0];
     return value === true || Number(value) === 1;
   }
@@ -264,7 +259,6 @@ export class SchemaUtils {
    * and is CONFIG inside one.
    */
   public async install(schema: Schema): Promise<void> {
-    this.u.db.unsupportedOnMarkdown('schema install (flowmark install creates a corpus)');
     const model = schemaModel(schema);
     const driver = this.u.db.pool.name;
     const rendered = renderDbspecStatements(model.documents, driver);
@@ -307,7 +301,6 @@ export class SchemaUtils {
    * table name and column order.
    */
   public async addTablesAndColumns(schema: Schema): Promise<string[]> {
-    this.u.db.unsupportedOnMarkdown('addTablesAndColumns (schema evolution follows the flowmark migration rules)');
     const model = schemaModel(schema);
     const target = schemaTarget(model);
     const driver = this.u.db.pool.name;
@@ -412,7 +405,6 @@ export class AesUtils {
   public constructor(private readonly u: Utils) {}
 
   private spec(model: unknown): AesSpec {
-    this.u.db.unsupportedOnMarkdown('aes rotation');
     if (!isModel(model)) throw config('aes requires a model');
     const schema = model[CORE].ent.entity;
     const columns = schema.fields

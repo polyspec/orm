@@ -1,0 +1,53 @@
+<!-- doc-id: plan-cross-verification -->
+<!-- source-sha256: d586919c6e9e48f3d808c10e9237515f701b50ba95072ca74faadefc9f111fae -->
+# corpus SQLite 연결의 여섯 runtime과 네 database 교차 검증
+
+[English](plan.md)
+
+## 목표
+corpus에 대한 SQLite 연결(DIA-154, DIA-185)의 모든 공통 동작은 여섯 runtime(Go, TypeScript, Python, PHP, PHP extension,
+Rust)에서 네 database(MySQL, PostgreSQL, SQLite, flowmark)로 검증한다. 어떤 database도 만들 수 없는 동작은 여섯 runtime
+모두에서 스크립트된 listener로 실행하고, 그 동작에 database가 없는 이유는 feature coverage 문서에 적는다.
+
+## 발견
+- F1. 연결의 두 동작을 runtime 하나씩만, database 없이 시험하며, 그 시험은 requirement를 인용하지 않는다:
+  - `packages/rust/orm/tests/unit/markdown_rows.rs`: 행을 거부한 읽기는 남은 행을 close로 끝내고 자기 오류를 유지하며,
+    거부된 close 뒤에도 연결을 쓸 수 있다(PRT-66);
+  - `packages/go/orm/markdown_wire_internal_test.go`: 바인딩 값과 cell의 wire 형식(PRT-67, PRT-69).
+  - PHP는 `packages/php/tests/MarkdownTest.php`에 자기 조각을 가진다: 버려진 문은 자기 행을 닫고, 거부는 code를 한 번만
+    적는다.
+- F2. parity unit `connection_pool-markdown`은 DIA-154를 인용하지 않는다. parity의 owner 규칙은 pool을 가진 네
+  runtime(CFG-5a)을 이름 붙이는 requirement를 요구하는데, docs/spec/dialects.md의 markdown 절에는 pool 규칙이 없다.
+- F3. `MdServerError::sqlite_result`는 Rust 시험의 apply fault recipe만 쓰는 public 생성자이며, 그 Display 분기도 그것을
+  위해 있다.
+- F4. case `sqlite_read_only_file_rejects_a_write`(CFG-24)의 read-only corpus는 폴더의 읽기 전용 속성으로 만드는데,
+  Windows는 이 속성을 폴더에 적용하지 않는다. orm CI에는 Windows runner가 없다.
+- F5. PRT-66은 close의 답이 `{"ok": true}`라고만 하고 거부된 close를 말하지 않으므로, 클라이언트에 공통 규칙이 없다.
+
+## 사실
+- flowmark 문은 한 batch에 최대 1000행 또는 1 MiB를 돌려준다(polyspec/flowmark `packages/go/statement/statement.go`,
+  `batchRows`와 `batchBytes`).
+- 클라이언트는 모든 database에서 codec 단계를 적용한다(PRT-68). codec이 거부하는 저장 값은 네 database 모두에서
+  CODEC_DECODE이다.
+- op `markdown.session`(FCV-4)은 여섯 runtime helper 모두에서, `replies`로 답하고 정확한 `messages`를 확인하는
+  listener 위에서 실행된다.
+- PRT-67 message case는 그것을 담는 runtime별로 나뉜다: `tests/bind/messages.json`(여섯 runtime)과 더 적은 runtime이
+  실행하는 파일들.
+
+## 결정
+- D1. database가 만들 수 있는 동작은 그 동작을 소유한 database recipe의 case이며 `only`가 없어서 여섯 runtime에서 네
+  database로 실행한다. 값을 담을 수 없는 database는 자기 거부를 자기 expect로 적는다.
+- D2. 어떤 database도 드러내지 않는 wire의 message와 거부된 close만 `markdown.session`의 listener에서, 여섯 runtime
+  모두로 실행한다.
+- D3. UTF-8이 아닌 text는 Go, PHP, PHP extension의 host 문자열만 담는다. 그 case는 이 runtime들이 실행하는 PRT-67의 분할
+  파일에 넣고, database case는 이를 저장하는 SQLite와 flowmark에서 실행한다.
+- D4. SQLite driver 오류의 시험 대역은 fault module `polyspec_orm::testing`(feature `test-faults`)에서 만든다. 시험을
+  위한 public API는 없고, workspace에서 `sqlx::error::DatabaseError`의 구현체는 하나다.
+- D5. markdown 연결의 pool 설정에는 네 runtime을 이름 붙이는 markdown dialect 규칙(DIA-199)을 둔다. 그러면 pool unit이
+  DIA-154를 인용하면서 owner 규칙을 만족한다.
+- D6. 이 저장소의 어떤 runner도 검증할 수 없는 것은 원인과 재시도를 적은 보류 행이며, 한계 선언으로 남기지 않는다.
+
+## 순서
+각 행은 Red, 변경, Green, 검사, commit 순서로 진행한다. Red는 변경 전에 재현하고, 행의 Verification은 그 트리에서
+Green이며, 건드린 runtime의 static과 runtime 검사가 통과하고, `make commit` 하나가 그 행을 담는다. 행은 checklist 순서대로
+진행하며, 0.0.22 release는 모든 행과 push한 head의 green CI를 기다린다.

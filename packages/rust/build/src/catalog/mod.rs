@@ -65,7 +65,8 @@ pub struct CatalogConnection {
 impl CatalogConnection {
     pub async fn connect(raw: &str) -> Result<Self, String> {
         let parsed = polyspec_orm::db::parse_dsn(raw).map_err(|e| e.to_string())?;
-        let dialect = parsed.driver().to_owned();
+        // A flowmark server runs SQL in SQLite's dialect on the corpus, so the catalog of a corpus is a SQLite catalog (DIA-185).
+        let dialect = parsed.sql_driver().to_owned();
         let pool = match parsed.options {
             ConnectOptions::MySql(options) => {
                 Pool::MySql(sqlx::mysql::MySqlPoolOptions::new().max_connections(4).connect_with(options).await.map_err(catalog_write_error)?)
@@ -86,9 +87,7 @@ impl CatalogConnection {
                         .map_err(catalog_write_error)?,
                 )
             }
-            ConnectOptions::Markdown(_) => {
-                return Err("CATALOG_DSN: a markdown corpus has no database catalog; give a mysql, postgres or sqlite DSN".into());
-            }
+            ConnectOptions::Markdown(dsn) => Pool::Markdown(polyspec_orm::markdown::MarkdownPool::connect(dsn, 4).await.map_err(catalog_write_error)?),
         };
         let mut connection = Some(Conn::acquire(&pool).await.map_err(connect_error)?);
         let mut reopen_until = std::time::Instant::now();
@@ -254,13 +253,7 @@ impl CatalogConnection {
     pub async fn close(self) {
         let Self { connection, pool, .. } = self;
         drop(connection);
-        match pool {
-            Pool::MySql(pool) => pool.close().await,
-            Pool::Postgres(pool) => pool.close().await,
-            Pool::Sqlite(pool) => pool.close().await,
-            // connect rejects a markdown DSN, so the catalog connection has no markdown pool.
-            Pool::Markdown(_) => unreachable!("a catalog connection holds a SQL pool"),
-        }
+        pool.close().await;
     }
 }
 /// Opens the transaction of a session. On PostgreSQL the session then releases the named statements of its server connection: a

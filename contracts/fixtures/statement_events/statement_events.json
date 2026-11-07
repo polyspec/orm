@@ -9,7 +9,9 @@
     "DBS-120",
     "INT-96",
     "SCH-7",
-    "SCH-11"
+    "SCH-11",
+    "DIA-154",
+    "DIA-185"
   ],
   "fixture": "contracts/fixtures/statement_events/dbspec-set.json",
   "cases": [
@@ -7298,6 +7300,22 @@
       "server_transactions_postgres"
     ],
     "sqlite": [
+      "model_statements",
+      "transaction_reads_its_own_write",
+      "transaction_savepoint",
+      "transaction_rollback",
+      "savepoint_rollback",
+      "failed_statement",
+      "subscriber_error",
+      "subscriber_orm_error",
+      "unsubscribe",
+      "install",
+      "schema_set_several_fixture_first",
+      "schema_set_several_other_first",
+      "schema_set_unregistered",
+      "schema_set_edited_manifest"
+    ],
+    "markdown": [
       "model_statements",
       "transaction_reads_its_own_write",
       "transaction_savepoint",

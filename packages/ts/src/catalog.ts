@@ -7,6 +7,7 @@ import { createHash } from 'node:crypto';
 import { lstatSync } from 'node:fs';
 import * as codes from './codes.js';
 import { driverError, openDriver, parseDsn, sqlitePath, type DriverColumn, type DriverName, type DriverPool, type DriverResult, type DriverSession, type DriverValue } from './driver.js';
+import { openMarkdown } from './markdown.js';
 import { OrmError } from './runtime_error.js';
 
 /** Budgets of the catalog connection (docs/spec/interfaces.md). A result over its budget is refused, never truncated. */
@@ -1733,10 +1734,22 @@ function checkCurrent(current: readonly CatalogValue[][], original: readonly Cat
   if (row === undefined || !sameRow(row, original)) throw err(CODE_CONFLICT, 'original values changed');
 }
 
-/** Connects to the database that a mysql, postgres or sqlite DSN selects. A markdown DSN is refused, and a SQLite file must exist. */
+/**
+ * Connects to the database that a mysql, postgres, sqlite or markdown DSN selects. A SQLite file must exist. A flowmark server runs SQL
+ * in SQLite's dialect on the corpus, so the catalog of a corpus is a SQLite catalog (DIA-185).
+ */
 export async function connectCatalog(dsn: string): Promise<CatalogConnection> {
   const parsed = parseDsn(dsn);
-  if (parsed.driver === 'markdown') throw err(codes.CONFIG, 'CATALOG_DSN: a markdown corpus has no database catalog; give a mysql, postgres or sqlite DSN');
+  if (parsed.driver === 'markdown') {
+    const pool = openMarkdown(parsed.markdown, { size: 10, idleSize: 10, lifetimeMs: 0 });
+    try {
+      (await pool.reserve()).release(false);
+    } catch (error) {
+      await pool.close();
+      throw error;
+    }
+    return new CatalogConnection('sqlite', pool);
+  }
   if (parsed.driver === 'sqlite') {
     let regular: boolean;
     try {

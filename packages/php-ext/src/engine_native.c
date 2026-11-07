@@ -77,7 +77,8 @@ static zval *engine_prop(zval *self, const char *name)
 
 /* ---- Assemble ---- */
 
-/* Assemble::cells: the styled cells of one indexed node, without its joined nodes, for Codec::decodeRows. */
+/* Assemble::cells: the styled cells of one indexed node, without its joined nodes, for Codec::decodeRows; the last field of a cell is
+ * the <entity>.<column> that a CODEC_DECODE of the cell names (COD-41). */
 static bool assemble_cells(HashTable *node, zval *model, zval *out)
 {
     zval *entities = zend_read_property(Z_OBJCE_P(model), Z_OBJ_P(model), "entities", sizeof("entities") - 1, 1,
@@ -123,7 +124,9 @@ static bool assemble_cells(HashTable *node, zval *model, zval *out)
         zval *index = zend_hash_str_find(Z_ARRVAL_P(column), "index", sizeof("index") - 1);
         zval *host = zend_hash_str_find(Z_ARRVAL_P(column), "host", sizeof("host") - 1);
         zval *codec = zend_hash_str_find(Z_ARRVAL_P(column), "codec", sizeof("codec") - 1);
-        if (index == NULL || host == NULL || Z_TYPE_P(host) != IS_ARRAY || codec == NULL) {
+        zval *column_name = zend_hash_str_find(Z_ARRVAL_P(column), "name", sizeof("name") - 1);
+        if (index == NULL || host == NULL || Z_TYPE_P(host) != IS_ARRAY || codec == NULL || column_name == NULL
+            || Z_TYPE_P(column_name) != IS_STRING) {
             zval_ptr_dtor(&version);
             zval_ptr_dtor(out);
             zend_throw_error(NULL, "Polyspec\\Orm\\Assemble::cells(): a styled column is not indexed");
@@ -138,7 +141,7 @@ static bool assemble_cells(HashTable *node, zval *model, zval *out)
             }
         } ZEND_HASH_FOREACH_END();
         zval cell;
-        array_init_size(&cell, 5);
+        array_init_size(&cell, 6);
         Z_TRY_ADDREF_P(index);
         add_next_index_zval(&cell, index);
         Z_TRY_ADDREF_P(host);
@@ -148,6 +151,8 @@ static bool assemble_cells(HashTable *node, zval *model, zval *out)
         add_next_index_bool(&cell, aes);
         Z_TRY_ADDREF(version);
         add_next_index_zval(&cell, &version);
+        /* The <entity>.<column> that a CODEC_DECODE of the cell names (COD-41). */
+        add_next_index_str(&cell, zend_strpprintf(0, "%s.%s", Z_STRVAL_P(entity_name), Z_STRVAL_P(column_name)));
         add_next_index_zval(out, &cell);
     } ZEND_HASH_FOREACH_END();
     zval_ptr_dtor(&version);
@@ -347,8 +352,9 @@ ZEND_METHOD(Polyspec_Orm_Assemble, cells)
 
 /* ---- Engine ---- */
 
-/* new Engine($model, $dialect, $cacheSize): a Validator of the model and a Planner of the model and the Dialect. */
-static bool engine_construct(zval *self, zval *model, zend_string *dialect, zend_long cache_size)
+/* new Engine($model, $dialect, $cacheSize, $assigns): a Validator of the model and a Planner of the model, the Dialect and
+ * whether the database assigns the key_prefix keys and the order positions that an insert leaves out (PRT-73). */
+static bool engine_construct(zval *self, zval *model, zend_string *dialect, zend_long cache_size, bool assigns)
 {
     zval validator, planner, dialect_object, name;
     if (!engine_new("Polyspec\\Orm\\Validator", &validator, 1, model)) {
@@ -361,10 +367,11 @@ static bool engine_construct(zval *self, zval *model, zend_string *dialect, zend
         zval_ptr_dtor(&validator);
         return false;
     }
-    zval pargs[2];
+    zval pargs[3];
     ZVAL_COPY_VALUE(&pargs[0], model);
     ZVAL_COPY_VALUE(&pargs[1], &dialect_object);
-    ok = engine_new("Polyspec\\Orm\\Planner", &planner, 2, pargs);
+    ZVAL_BOOL(&pargs[2], assigns);
+    ok = engine_new("Polyspec\\Orm\\Planner", &planner, 3, pargs);
     zval_ptr_dtor(&dialect_object);
     if (!ok) {
         zval_ptr_dtor(&validator);
@@ -386,25 +393,32 @@ ZEND_METHOD(Polyspec_Orm_Engine, __construct)
     zval *model;
     zend_string *dialect;
     zend_long cache_size;
-    ZEND_PARSE_PARAMETERS_START(3, 3)
+    bool assigns = false;
+    ZEND_PARSE_PARAMETERS_START(3, 4)
         Z_PARAM_OBJECT_OF_CLASS(model, polyspec_runtime_model_ce)
         Z_PARAM_STR(dialect)
         Z_PARAM_LONG(cache_size)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_BOOL(assigns)
     ZEND_PARSE_PARAMETERS_END();
-    if (!engine_construct(ZEND_THIS, model, dialect, cache_size)) {
+    if (!engine_construct(ZEND_THIS, model, dialect, cache_size, assigns)) {
         RETURN_THROWS();
     }
 }
 
-/* Engine::for: the engine shared by the generated model of a manifest hash and by the dialect. */
+/* Engine::for: the engine shared by the generated model of a manifest hash, by the dialect and by whether the database
+ * assigns keys. */
 ZEND_METHOD(Polyspec_Orm_Engine, for)
 {
     zend_string *hash, *dialect;
     zend_long cache_size;
-    ZEND_PARSE_PARAMETERS_START(3, 3)
+    bool assigns = false;
+    ZEND_PARSE_PARAMETERS_START(3, 4)
         Z_PARAM_STR(hash)
         Z_PARAM_STR(dialect)
         Z_PARAM_LONG(cache_size)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_BOOL(assigns)
     ZEND_PARSE_PARAMETERS_END();
     zval *engines = zend_read_static_property(polyspec_engine_ce, "engines", sizeof("engines") - 1, 0);
     if (engines == NULL || Z_TYPE_P(engines) != IS_ARRAY) {
@@ -415,6 +429,8 @@ ZEND_METHOD(Polyspec_Orm_Engine, for)
     smart_str_append(&key, hash);
     smart_str_appendc(&key, '\0');
     smart_str_append(&key, dialect);
+    smart_str_appendc(&key, '\0');
+    if (assigns) smart_str_appends(&key, "assigns");
     zend_string *k = smart_str_extract(&key);
     zval *found = zend_symtable_find(Z_ARRVAL_P(engines), k);
     if (found != NULL) {
@@ -434,7 +450,7 @@ ZEND_METHOD(Polyspec_Orm_Engine, for)
         RETURN_THROWS();
     }
     object_init_ex(&engine, polyspec_engine_ce);
-    if (!engine_construct(&engine, &model, dialect, cache_size)) {
+    if (!engine_construct(&engine, &model, dialect, cache_size, assigns)) {
         zval_ptr_dtor(&engine);
         zval_ptr_dtor(&model);
         zend_string_release(k);

@@ -21,10 +21,18 @@ func watchRollback(conn *sql.Conn) (*rollbackWatch, error) {
 	if hook == nil {
 		return w, nil
 	}
-	if err := conn.Raw(func(driverConn any) error { return hook(driverConn, func() { w.rolled.Store(true) }) }); err != nil {
+	markdown := false
+	err := conn.Raw(func(driverConn any) error {
+		// A flowmark session keeps its transaction open after a failed statement, so it has no rollback to learn of.
+		if _, markdown = driverConn.(*mdConn); markdown {
+			return nil
+		}
+		return hook(driverConn, func() { w.rolled.Store(true) })
+	})
+	if err != nil {
 		return w, mapDriverErr(err)
 	}
-	w.set = true
+	w.set = !markdown
 	return w, nil
 }
 

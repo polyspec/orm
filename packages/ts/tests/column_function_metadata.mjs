@@ -2,14 +2,11 @@ import assert from 'node:assert/strict';
 import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { parse } from '@polyspec/ordered-json';
 import { Engine, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
-import { markdownRead } from '../dist/markdown.js';
 import { paramUses } from '../dist/engine/params.js';
 import { validate } from '../dist/engine/validate.js';
 import { repositoryRoot } from './coverage_case.mjs';
 import { isInternalColumnError } from './internal-column-error.mjs';
-import { markdownReadDatabase } from './markdown-read-db.mjs';
 
 const plannerRecipe = JSON.parse(await readFile(join(repositoryRoot, 'tests/planner/compile.json'), 'utf8'));
 const predicateCaseRecipe = plannerRecipe.cases.find(({ id }) => id === 'planner_column_function_date');
@@ -57,18 +54,4 @@ caseTest('planner output projection rejects missing post-validation function fie
   assert.equal(plan.steps[0].assemble.columns.find(({ name }) => name === 'selected_year')?.type, 'i64');
   valid.columns.fn.selected_year.column = 'missing_column';
   assert.throws(() => new Engine(model, 'sqlite').planner.compile(valid), error => isInternalColumnError(error, 'author', 'missing_column'));
-});
-
-caseTest('markdown output assembly rejects missing post-validation function field', COMPUTE, async () => {
-  const request = selectedRequest();
-  const db = markdownReadDatabase(model, {
-    call: async () => {
-      request.columns.fn.selected_year.column = 'missing_column';
-      return parse('{"rows":[{"seq":1,"selected_year":2026}]}');
-    },
-  });
-  await assert.rejects(
-    markdownRead({ db, frame: undefined }, request, []),
-    error => isInternalColumnError(error, 'author', 'missing_column'),
-  );
 });

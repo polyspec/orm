@@ -5115,10 +5115,6 @@
     "exported": true,
     "signature": "public array"
   },
-  "packages/php/src/Assembly.php::Polyspec\\Orm\\Assembly::$markdown": {
-    "exported": false,
-    "signature": "private readonly bool"
-  },
   "packages/php/src/Assembly.php::Polyspec\\Orm\\Assembly::$result": {
     "exported": false,
     "signature": "private readonly array"
@@ -6135,6 +6131,10 @@
     "exported": false,
     "signature": "private static function jsonText(mixed $value): string"
   },
+  "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::namedDecodeFailure": {
+    "exported": false,
+    "signature": "private static function namedDecodeFailure(Polyspec\\Orm\\OrmException $e, string $name): Polyspec\\Orm\\OrmException"
+  },
   "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::normalize": {
     "exported": false,
     "signature": "private static function normalize(mixed $v): mixed"
@@ -6351,6 +6351,10 @@
     "exported": false,
     "signature": "private readonly Polyspec\\Orm\\Config"
   },
+  "packages/php/src/Db.php::Polyspec\\Orm\\Db::$corpus": {
+    "exported": false,
+    "signature": "private readonly bool"
+  },
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::$driver": {
     "exported": false,
     "signature": "private readonly string"
@@ -6362,10 +6366,6 @@
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::$masks": {
     "exported": false,
     "signature": "private array"
-  },
-  "packages/php/src/Db.php::Polyspec\\Orm\\Db::$md": {
-    "exported": false,
-    "signature": "private readonly ?Polyspec\\Orm\\MarkdownSession"
   },
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::$requestHook": {
     "exported": false,
@@ -6385,7 +6385,7 @@
   },
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::__construct": {
     "exported": true,
-    "signature": "public function __construct(?PDO $pdo, string $driver, Polyspec\\Orm\\Config $config, DateTimeZone $zone, ?Polyspec\\Orm\\MarkdownSession $md=null): "
+    "signature": "public function __construct(PDO $pdo, string $driver, Polyspec\\Orm\\Config $config, DateTimeZone $zone, bool $corpus=false): "
   },
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::acquireSQLiteRowLock": {
     "exported": true,
@@ -6410,10 +6410,6 @@
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::begin": {
     "exported": false,
     "signature": "private function begin(string $isolation, bool $readOnly, int $timeoutMs): Polyspec\\Orm\\TxFrame"
-  },
-  "packages/php/src/Db.php::Polyspec\\Orm\\Db::beginMarkdown": {
-    "exported": false,
-    "signature": "private function beginMarkdown(string $isolation, bool $readOnly): Polyspec\\Orm\\TxFrame"
   },
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::bindLimit": {
     "exported": true,
@@ -6462,6 +6458,10 @@
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::control": {
     "exported": false,
     "signature": "private function control(string $kind, ?int $transaction, string $sql): void"
+  },
+  "packages/php/src/Db.php::Polyspec\\Orm\\Db::dialect": {
+    "exported": true,
+    "signature": "public function dialect(): string"
   },
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::driver": {
     "exported": true,
@@ -6542,10 +6542,6 @@
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::listener": {
     "exported": true,
     "signature": "public function listener(): ?Closure"
-  },
-  "packages/php/src/Db.php::Polyspec\\Orm\\Db::markdownSession": {
-    "exported": true,
-    "signature": "public function markdownSession(): Polyspec\\Orm\\MarkdownSession"
   },
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::modelDone": {
     "exported": false,
@@ -6707,6 +6703,10 @@
     "exported": false,
     "signature": "private static function splitRowSlot(array $row, array $refs): string"
   },
+  "packages/php/src/Db.php::Polyspec\\Orm\\Db::sqliteArgs": {
+    "exported": false,
+    "signature": "private function sqliteArgs(array $args): array"
+  },
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::statement": {
     "exported": true,
     "signature": "public function statement(Polyspec\\Orm\\Request $r): array"
@@ -6746,10 +6746,6 @@
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::transactionNumber": {
     "exported": true,
     "signature": "public function transactionNumber(): ?int"
-  },
-  "packages/php/src/Db.php::Polyspec\\Orm\\Db::unsupportedOnMarkdown": {
-    "exported": true,
-    "signature": "public function unsupportedOnMarkdown(string $surface): void"
   },
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::utils": {
     "exported": true,
@@ -10765,7 +10761,7 @@
   },
   "packages/php/src/Engine.php::Polyspec\\Orm\\Engine::__construct": {
     "exported": true,
-    "signature": "public function __construct(Polyspec\\Orm\\RuntimeModel $model, string $dialect, int $cacheSize): "
+    "signature": "public function __construct(Polyspec\\Orm\\RuntimeModel $model, string $dialect, int $cacheSize, bool $assigns=false): "
   },
   "packages/php/src/Engine.php::Polyspec\\Orm\\Engine::compile": {
     "exported": true,
@@ -10773,7 +10769,7 @@
   },
   "packages/php/src/Engine.php::Polyspec\\Orm\\Engine::for": {
     "exported": true,
-    "signature": "public static function for(string $manifestHash, string $dialect, int $cacheSize): Polyspec\\Orm\\Engine"
+    "signature": "public static function for(string $manifestHash, string $dialect, int $cacheSize, bool $assigns=false): Polyspec\\Orm\\Engine"
   },
   "packages/php/src/Engine.php::Polyspec\\Orm\\Engine::plan": {
     "exported": true,
@@ -11087,6 +11083,290 @@
     "exported": true,
     "signature": "public function fetchAll(int $mode=0, mixed ...$args): array"
   },
+  "packages/php/src/Internal/MarkdownError.php::Polyspec\\Orm\\Internal\\MarkdownError": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Internal\\MarkdownError extends PDOException implements Stringable,Throwable uses "
+  },
+  "packages/php/src/Internal/MarkdownError.php::Polyspec\\Orm\\Internal\\MarkdownError::$ormCode": {
+    "exported": true,
+    "signature": "public readonly string"
+  },
+  "packages/php/src/Internal/MarkdownError.php::Polyspec\\Orm\\Internal\\MarkdownError::__construct": {
+    "exported": true,
+    "signature": "public function __construct(string $ormCode, string $message, ?int $resultCode, ?Throwable $previous): "
+  },
+  "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Internal\\MarkdownPdoAdapter extends PDO implements  uses Polyspec\\Orm\\Internal\\QueriesByPrepare"
+  },
+  "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter::$active": {
+    "exported": false,
+    "signature": "private ?WeakReference"
+  },
+  "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter::$dial": {
+    "exported": false,
+    "signature": "private readonly Closure"
+  },
+  "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter::$errorInfoValue": {
+    "exported": false,
+    "signature": "private array"
+  },
+  "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter::$lastInsertId": {
+    "exported": false,
+    "signature": "private int"
+  },
+  "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter::$session": {
+    "exported": false,
+    "signature": "private Polyspec\\Orm\\MarkdownSession"
+  },
+  "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter::$transaction": {
+    "exported": false,
+    "signature": "private bool"
+  },
+  "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter::__construct": {
+    "exported": true,
+    "signature": "public function __construct(Polyspec\\Orm\\MarkdownSession $session, Closure $dial): "
+  },
+  "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter::abandon": {
+    "exported": true,
+    "signature": "public function abandon(): void"
+  },
+  "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter::beginTransaction": {
+    "exported": true,
+    "signature": "public function beginTransaction(): bool"
+  },
+  "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter::call": {
+    "exported": false,
+    "signature": "private function call(Closure $call): mixed"
+  },
+  "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter::close": {
+    "exported": true,
+    "signature": "public function close(): void"
+  },
+  "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter::closeRows": {
+    "exported": true,
+    "signature": "public function closeRows(Polyspec\\Orm\\Internal\\MarkdownStatementAdapter $statement): void"
+  },
+  "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter::commit": {
+    "exported": true,
+    "signature": "public function commit(): bool"
+  },
+  "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter::control": {
+    "exported": false,
+    "signature": "private static function control(string $sql): string"
+  },
+  "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter::endRows": {
+    "exported": false,
+    "signature": "private function endRows(): void"
+  },
+  "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter::errorCode": {
+    "exported": true,
+    "signature": "public function errorCode(): ?string"
+  },
+  "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter::errorInfo": {
+    "exported": true,
+    "signature": "public function errorInfo(): array"
+  },
+  "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter::exec": {
+    "exported": true,
+    "signature": "public function exec(string $statement): int|false"
+  },
+  "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter::fetchRows": {
+    "exported": true,
+    "signature": "public function fetchRows(Polyspec\\Orm\\Internal\\MarkdownStatementAdapter $statement): array"
+  },
+  "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter::getAttribute": {
+    "exported": true,
+    "signature": "public function getAttribute(int $attribute): mixed"
+  },
+  "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter::inTransaction": {
+    "exported": true,
+    "signature": "public function inTransaction(): bool"
+  },
+  "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter::lastInsertId": {
+    "exported": true,
+    "signature": "public function lastInsertId(?string $name=null): string|false"
+  },
+  "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter::prepare": {
+    "exported": true,
+    "signature": "public function prepare(string $query, array $options=[]): PDOStatement|false"
+  },
+  "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter::query": {
+    "exported": true,
+    "signature": "public function query(string $query, ?int $fetchMode=null, mixed ...$fetchModeArgs): PDOStatement|false"
+  },
+  "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter::quote": {
+    "exported": true,
+    "signature": "public function quote(string $string, int $type=2): string|false"
+  },
+  "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter::rollBack": {
+    "exported": true,
+    "signature": "public function rollBack(): bool"
+  },
+  "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter::run": {
+    "exported": true,
+    "signature": "public function run(string $sql, array $params, ?Polyspec\\Orm\\Internal\\MarkdownStatementAdapter $statement=null): array"
+  },
+  "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter::setAttribute": {
+    "exported": true,
+    "signature": "public function setAttribute(int $attribute, mixed $value): bool"
+  },
+  "packages/php/src/Internal/MarkdownPdoAdapter.php::Polyspec\\Orm\\Internal\\MarkdownPdoAdapter::shutdown": {
+    "exported": true,
+    "signature": "public function shutdown(): void"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Internal\\MarkdownStatementAdapter extends PDOStatement implements IteratorAggregate,Traversable uses Polyspec\\Orm\\Internal\\FetchesAllRows,Polyspec\\Orm\\Internal\\StatementState"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::$affected": {
+    "exported": false,
+    "signature": "private int"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::$bindings": {
+    "exported": false,
+    "signature": "private array"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::$columns": {
+    "exported": false,
+    "signature": "private array"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::$errorInfoValue": {
+    "exported": false,
+    "signature": "private array"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::$fetchMode": {
+    "exported": false,
+    "signature": "private array"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::$kinds": {
+    "exported": false,
+    "signature": "private array"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::$more": {
+    "exported": false,
+    "signature": "private bool"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::$next": {
+    "exported": false,
+    "signature": "private int"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::$pdo": {
+    "exported": false,
+    "signature": "private readonly Polyspec\\Orm\\Internal\\MarkdownPdoAdapter"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::$rows": {
+    "exported": false,
+    "signature": "private array"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::$sourceSql": {
+    "exported": false,
+    "signature": "private readonly string"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::__construct": {
+    "exported": true,
+    "signature": "public function __construct(Polyspec\\Orm\\Internal\\MarkdownPdoAdapter $pdo, string $sourceSql): "
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::base64": {
+    "exported": false,
+    "signature": "private static function base64(string $text): string"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::bindValue": {
+    "exported": true,
+    "signature": "public function bindValue(string|int $param, mixed $value, int $type=2): bool"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::cell": {
+    "exported": false,
+    "signature": "private function cell(mixed $raw, string $declared): mixed"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::closeCursor": {
+    "exported": true,
+    "signature": "public function closeCursor(): bool"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::columnCount": {
+    "exported": true,
+    "signature": "public function columnCount(): int"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::drain": {
+    "exported": true,
+    "signature": "public function drain(): void"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::errorCode": {
+    "exported": true,
+    "signature": "public function errorCode(): ?string"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::errorInfo": {
+    "exported": true,
+    "signature": "public function errorInfo(): array"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::execute": {
+    "exported": true,
+    "signature": "public function execute(?array $params=null): bool"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::executeSlots": {
+    "exported": false,
+    "signature": "private static function executeSlots(array $params): array"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::fetch": {
+    "exported": true,
+    "signature": "public function fetch(int $mode=0, int $cursorOrientation=0, int $cursorOffset=0): mixed"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::fetchAll": {
+    "exported": true,
+    "signature": "public function fetchAll(int $mode=0, mixed ...$args): array"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::fetchColumn": {
+    "exported": true,
+    "signature": "public function fetchColumn(int $column=0): mixed"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::getColumnMeta": {
+    "exported": true,
+    "signature": "public function getColumnMeta(int $column): array|false"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::getIterator": {
+    "exported": true,
+    "signature": "public function getIterator(): Iterator"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::nextRow": {
+    "exported": false,
+    "signature": "private function nextRow(): array|false"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::nextRowset": {
+    "exported": true,
+    "signature": "public function nextRowset(): bool"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::param": {
+    "exported": false,
+    "signature": "private static function param(mixed $value, int $type): mixed"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::positional": {
+    "exported": false,
+    "signature": "private static function positional(string $sql): array"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::realAffinity": {
+    "exported": false,
+    "signature": "private static function realAffinity(string $declared): bool"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::reset": {
+    "exported": false,
+    "signature": "private function reset(): void"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::rowCount": {
+    "exported": true,
+    "signature": "public function rowCount(): int"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::rowKinds": {
+    "exported": false,
+    "signature": "private function rowKinds(array $raw): array"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::setFetchMode": {
+    "exported": true,
+    "signature": "public function setFetchMode(int $mode, mixed ...$args): true"
+  },
+  "packages/php/src/Internal/MarkdownStatementAdapter.php::Polyspec\\Orm\\Internal\\MarkdownStatementAdapter::slotOf": {
+    "exported": false,
+    "signature": "private static function slotOf(string|int $param): string|int"
+  },
   "packages/php/src/Internal/PgsqlLargeObjectStream.php::Polyspec\\Orm\\Internal\\PgsqlLargeObjectStream": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Internal\\PgsqlLargeObjectStream extends  implements  uses "
@@ -11173,7 +11453,7 @@
   },
   "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter": {
     "exported": true,
-    "signature": "final class Polyspec\\Orm\\Internal\\PgsqlPdoAdapter extends Pdo\\Pgsql implements  uses "
+    "signature": "final class Polyspec\\Orm\\Internal\\PgsqlPdoAdapter extends Pdo\\Pgsql implements  uses Polyspec\\Orm\\Internal\\QueriesByPrepare"
   },
   "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::$activeStatement": {
     "exported": false,
@@ -11413,7 +11693,7 @@
   },
   "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter": {
     "exported": true,
-    "signature": "final class Polyspec\\Orm\\Internal\\PgsqlStatementAdapter extends PDOStatement implements IteratorAggregate,Traversable uses Polyspec\\Orm\\Internal\\FetchesAllRows"
+    "signature": "final class Polyspec\\Orm\\Internal\\PgsqlStatementAdapter extends PDOStatement implements IteratorAggregate,Traversable uses Polyspec\\Orm\\Internal\\FetchesAllRows,Polyspec\\Orm\\Internal\\StatementState"
   },
   "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::$affected": {
     "exported": false,
@@ -11515,6 +11795,10 @@
     "exported": true,
     "signature": "public function execute(?array $params=null): bool"
   },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::executeSlots": {
+    "exported": false,
+    "signature": "private static function executeSlots(array $params): array"
+  },
   "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::fetch": {
     "exported": true,
     "signature": "public function fetch(int $mode=0, int $cursorOrientation=0, int $cursorOffset=0): mixed"
@@ -11543,10 +11827,6 @@
     "exported": true,
     "signature": "public function getIterator(): Iterator"
   },
-  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::index": {
-    "exported": false,
-    "signature": "private function index(string|int $param): string|int"
-  },
   "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::namedRow": {
     "exported": false,
     "signature": "private function namedRow(array $names, array $values): array"
@@ -11570,6 +11850,10 @@
   "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::setFetchMode": {
     "exported": true,
     "signature": "public function setFetchMode(int $mode, mixed ...$args): true"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::slotOf": {
+    "exported": false,
+    "signature": "private static function slotOf(string|int $param): string|int"
   },
   "packages/php/src/Internal/PgsqlStatementIterator.php::Polyspec\\Orm\\Internal\\PgsqlStatementIterator": {
     "exported": true,
@@ -11611,6 +11895,14 @@
     "exported": true,
     "signature": "public function valid(): bool"
   },
+  "packages/php/src/Internal/QueriesByPrepare.php::Polyspec\\Orm\\Internal\\QueriesByPrepare": {
+    "exported": true,
+    "signature": " trait Polyspec\\Orm\\Internal\\QueriesByPrepare extends  implements  uses "
+  },
+  "packages/php/src/Internal/QueriesByPrepare.php::Polyspec\\Orm\\Internal\\QueriesByPrepare::query": {
+    "exported": true,
+    "signature": "public function query(string $query, ?int $fetchMode=null, mixed ...$fetchModeArgs): PDOStatement|false"
+  },
   "packages/php/src/Internal/StatementRows.php::Polyspec\\Orm\\Internal\\StatementRows": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Internal\\StatementRows extends  implements  uses "
@@ -11618,6 +11910,42 @@
   "packages/php/src/Internal/StatementRows.php::Polyspec\\Orm\\Internal\\StatementRows::fetchAll": {
     "exported": true,
     "signature": "public static function fetchAll(callable $fetch, int $mode=0): array"
+  },
+  "packages/php/src/Internal/StatementState.php::Polyspec\\Orm\\Internal\\StatementState": {
+    "exported": true,
+    "signature": " trait Polyspec\\Orm\\Internal\\StatementState extends  implements  uses "
+  },
+  "packages/php/src/Internal/StatementState.php::Polyspec\\Orm\\Internal\\StatementState::$errorInfoValue": {
+    "exported": false,
+    "signature": "private array"
+  },
+  "packages/php/src/Internal/StatementState.php::Polyspec\\Orm\\Internal\\StatementState::$fetchMode": {
+    "exported": false,
+    "signature": "private array"
+  },
+  "packages/php/src/Internal/StatementState.php::Polyspec\\Orm\\Internal\\StatementState::errorCode": {
+    "exported": true,
+    "signature": "public function errorCode(): ?string"
+  },
+  "packages/php/src/Internal/StatementState.php::Polyspec\\Orm\\Internal\\StatementState::errorInfo": {
+    "exported": true,
+    "signature": "public function errorInfo(): array"
+  },
+  "packages/php/src/Internal/StatementState.php::Polyspec\\Orm\\Internal\\StatementState::executeSlots": {
+    "exported": false,
+    "signature": "private static function executeSlots(array $params): array"
+  },
+  "packages/php/src/Internal/StatementState.php::Polyspec\\Orm\\Internal\\StatementState::fetchColumn": {
+    "exported": true,
+    "signature": "public function fetchColumn(int $column=0): mixed"
+  },
+  "packages/php/src/Internal/StatementState.php::Polyspec\\Orm\\Internal\\StatementState::setFetchMode": {
+    "exported": true,
+    "signature": "public function setFetchMode(int $mode, mixed ...$args): true"
+  },
+  "packages/php/src/Internal/StatementState.php::Polyspec\\Orm\\Internal\\StatementState::slotOf": {
+    "exported": false,
+    "signature": "private static function slotOf(string|int $param): string|int"
   },
   "packages/php/src/Listen.php::Polyspec\\Orm\\Listen": {
     "exported": true,
@@ -11635,86 +11963,6 @@
     "exported": false,
     "signature": "private static function requirePostgres(Polyspec\\Orm\\Db $db, string $surface): void"
   },
-  "packages/php/src/Markdown.php::Polyspec\\Orm\\Markdown": {
-    "exported": true,
-    "signature": "final class Polyspec\\Orm\\Markdown extends  implements  uses "
-  },
-  "packages/php/src/Markdown.php::Polyspec\\Orm\\Markdown::aggregateValue": {
-    "exported": false,
-    "signature": "private static function aggregateValue(mixed $v): string|int|float|null"
-  },
-  "packages/php/src/Markdown.php::Polyspec\\Orm\\Markdown::answerError": {
-    "exported": false,
-    "signature": "private static function answerError(string $message): Polyspec\\Orm\\OrmException"
-  },
-  "packages/php/src/Markdown.php::Polyspec\\Orm\\Markdown::answerValue": {
-    "exported": false,
-    "signature": "private static function answerValue(string $type, mixed $v, string $where): mixed"
-  },
-  "packages/php/src/Markdown.php::Polyspec\\Orm\\Markdown::beginMessage": {
-    "exported": true,
-    "signature": "public static function beginMessage(bool $readOnly): array"
-  },
-  "packages/php/src/Markdown.php::Polyspec\\Orm\\Markdown::call": {
-    "exported": false,
-    "signature": "private static function call(Polyspec\\Orm\\Db $db, Polyspec\\Orm\\Request $r): array"
-  },
-  "packages/php/src/Markdown.php::Polyspec\\Orm\\Markdown::isObject": {
-    "exported": false,
-    "signature": "private static function isObject(mixed $v): bool"
-  },
-  "packages/php/src/Markdown.php::Polyspec\\Orm\\Markdown::layout": {
-    "exported": false,
-    "signature": "private static function layout(Polyspec\\Orm\\RuntimeModel $m, array $q, bool $groups, array $rows): array"
-  },
-  "packages/php/src/Markdown.php::Polyspec\\Orm\\Markdown::links": {
-    "exported": true,
-    "signature": "public static function links(array $row): Polyspec\\Orm\\MarkdownLinks"
-  },
-  "packages/php/src/Markdown.php::Polyspec\\Orm\\Markdown::outCol": {
-    "exported": false,
-    "signature": "private static function outCol(Polyspec\\Orm\\RuntimeModel $m, array $q, array $ent, bool $groups, string $name, int $index): array"
-  },
-  "packages/php/src/Markdown.php::Polyspec\\Orm\\Markdown::param": {
-    "exported": false,
-    "signature": "private static function param(Polyspec\\Orm\\Db $db, int $i, mixed $v, array $uses): mixed"
-  },
-  "packages/php/src/Markdown.php::Polyspec\\Orm\\Markdown::read": {
-    "exported": true,
-    "signature": "public static function read(Polyspec\\Orm\\Db $db, Polyspec\\Orm\\Request $r): array"
-  },
-  "packages/php/src/Markdown.php::Polyspec\\Orm\\Markdown::relationItems": {
-    "exported": false,
-    "signature": "private static function relationItems(mixed $value, array $q, string $rel): array"
-  },
-  "packages/php/src/Markdown.php::Polyspec\\Orm\\Markdown::rows": {
-    "exported": false,
-    "signature": "private static function rows(Polyspec\\Orm\\Config $config, Polyspec\\Orm\\RuntimeModel $m, array $q, array $asm, array $rows): array"
-  },
-  "packages/php/src/Markdown.php::Polyspec\\Orm\\Markdown::scalar": {
-    "exported": true,
-    "signature": "public static function scalar(Polyspec\\Orm\\Db $db, Polyspec\\Orm\\Request $r): mixed"
-  },
-  "packages/php/src/Markdown.php::Polyspec\\Orm\\Markdown::unsupported": {
-    "exported": true,
-    "signature": "public static function unsupported(string $surface): Polyspec\\Orm\\OrmException"
-  },
-  "packages/php/src/Markdown.php::Polyspec\\Orm\\Markdown::write": {
-    "exported": true,
-    "signature": "public static function write(Polyspec\\Orm\\Db $db, Polyspec\\Orm\\Request $r): array"
-  },
-  "packages/php/src/MarkdownLinks.php::Polyspec\\Orm\\MarkdownLinks": {
-    "exported": true,
-    "signature": "final class Polyspec\\Orm\\MarkdownLinks extends  implements  uses "
-  },
-  "packages/php/src/MarkdownLinks.php::Polyspec\\Orm\\MarkdownLinks::$joins": {
-    "exported": true,
-    "signature": "public array"
-  },
-  "packages/php/src/MarkdownLinks.php::Polyspec\\Orm\\MarkdownLinks::$rels": {
-    "exported": true,
-    "signature": "public array"
-  },
   "packages/php/src/MarkdownSession.php::Polyspec\\Orm\\MarkdownSession": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\MarkdownSession extends  implements  uses "
@@ -11727,17 +11975,41 @@
     "exported": false,
     "signature": "private function __construct( $conn): "
   },
+  "packages/php/src/MarkdownSession.php::Polyspec\\Orm\\MarkdownSession::answer": {
+    "exported": false,
+    "signature": "private static function answer(string $what, array $a): array"
+  },
+  "packages/php/src/MarkdownSession.php::Polyspec\\Orm\\MarkdownSession::broken": {
+    "exported": true,
+    "signature": "public function broken(): bool"
+  },
   "packages/php/src/MarkdownSession.php::Polyspec\\Orm\\MarkdownSession::call": {
     "exported": true,
-    "signature": "public function call(array $message): array"
+    "signature": "public function call(array $message, ?int \u0026$resultCode=null): array"
   },
   "packages/php/src/MarkdownSession.php::Polyspec\\Orm\\MarkdownSession::close": {
     "exported": true,
     "signature": "public function close(): void"
   },
+  "packages/php/src/MarkdownSession.php::Polyspec\\Orm\\MarkdownSession::closeRows": {
+    "exported": true,
+    "signature": "public function closeRows(?int \u0026$resultCode=null): void"
+  },
   "packages/php/src/MarkdownSession.php::Polyspec\\Orm\\MarkdownSession::dial": {
     "exported": true,
     "signature": "public static function dial(string $address, string $corpus, string $token): Polyspec\\Orm\\MarkdownSession"
+  },
+  "packages/php/src/MarkdownSession.php::Polyspec\\Orm\\MarkdownSession::fetch": {
+    "exported": true,
+    "signature": "public function fetch(?int \u0026$resultCode=null): array"
+  },
+  "packages/php/src/MarkdownSession.php::Polyspec\\Orm\\MarkdownSession::shutdown": {
+    "exported": true,
+    "signature": "public function shutdown(): void"
+  },
+  "packages/php/src/MarkdownSession.php::Polyspec\\Orm\\MarkdownSession::statement": {
+    "exported": true,
+    "signature": "public function statement(string $sql, array $params, ?int \u0026$resultCode=null): array"
   },
   "packages/php/src/Model.php::Polyspec\\Orm\\Model": {
     "exported": true,
@@ -12903,6 +13175,10 @@
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Planner extends  implements  uses "
   },
+  "packages/php/src/Planner.php::Polyspec\\Orm\\Planner::$assigns": {
+    "exported": false,
+    "signature": "private readonly bool"
+  },
   "packages/php/src/Planner.php::Polyspec\\Orm\\Planner::$d": {
     "exported": false,
     "signature": "private readonly Polyspec\\Orm\\Dialect"
@@ -12913,7 +13189,7 @@
   },
   "packages/php/src/Planner.php::Polyspec\\Orm\\Planner::__construct": {
     "exported": true,
-    "signature": "public function __construct(Polyspec\\Orm\\RuntimeModel $m, Polyspec\\Orm\\Dialect $d): "
+    "signature": "public function __construct(Polyspec\\Orm\\RuntimeModel $m, Polyspec\\Orm\\Dialect $d, bool $assigns=false): "
   },
   "packages/php/src/Planner.php::Polyspec\\Orm\\Planner::assigned": {
     "exported": false,
@@ -12945,7 +13221,7 @@
   },
   "packages/php/src/Planner.php::Polyspec\\Orm\\Planner::checkRequiredAssignments": {
     "exported": false,
-    "signature": "private static function checkRequiredAssignments(array $ent, array $set): void"
+    "signature": "private function checkRequiredAssignments(array $ent, array $set): void"
   },
   "packages/php/src/Planner.php::Polyspec\\Orm\\Planner::clientStyles": {
     "exported": false,
@@ -13279,6 +13555,10 @@
     "exported": true,
     "signature": "final class Polyspec\\Orm\\RuntimeModel extends  implements  uses "
   },
+  "packages/php/src/RuntimeModel.php::Polyspec\\Orm\\RuntimeModel::$assigned": {
+    "exported": false,
+    "signature": "private ?array"
+  },
   "packages/php/src/RuntimeModel.php::Polyspec\\Orm\\RuntimeModel::$entities": {
     "exported": true,
     "signature": "public readonly array"
@@ -13298,6 +13578,10 @@
   "packages/php/src/RuntimeModel.php::Polyspec\\Orm\\RuntimeModel::__construct": {
     "exported": true,
     "signature": "public function __construct(string $manifestHash, string $manifestText, array $entities, string $externalText=\"\"): "
+  },
+  "packages/php/src/RuntimeModel.php::Polyspec\\Orm\\RuntimeModel::assignedColumns": {
+    "exported": true,
+    "signature": "public function assignedColumns(string $name): array"
   },
   "packages/php/src/RuntimeModel.php::Polyspec\\Orm\\RuntimeModel::build": {
     "exported": true,

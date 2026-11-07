@@ -1,0 +1,94 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "PRT-66"
+  ],
+  "cases": [
+    {
+      "id": "refused_row_sends_close",
+      "requirements": [
+        "PRT-66"
+      ],
+      "steps": [
+        {
+          "op": "markdown.session",
+          "call": "read",
+          "corpus": "slots",
+          "token": "0123456789abcdef0123456789abcdef",
+          "replies": [
+            "{\"ok\":true}",
+            "{\"columns\":[{\"name\":\"a__seq\",\"type\":\"INTEGER\"}],\"rows\":[[{\"blob\":\"AA==\"}]],\"affected\":0,\"last_insert_id\":0,\"more\":true}",
+            "{\"ok\":true}"
+          ],
+          "messages": [
+            "{\"op\":\"connect\",\"corpus\":\"slots\",\"token\":\"0123456789abcdef0123456789abcdef\"}",
+            "{\"op\":\"statement\",\"sql\":\"SELECT \\\"a\\\".\\\"seq\\\" AS \\\"a__seq\\\", \\\"a\\\".\\\"i16_value\\\" AS \\\"a__i16_value\\\", \\\"a\\\".\\\"i32_value\\\" AS \\\"a__i32_value\\\", \\\"a\\\".\\\"i64_value\\\" AS \\\"a__i64_value\\\", \\\"a\\\".\\\"f64_value\\\" AS \\\"a__f64_value\\\", \\\"a\\\".\\\"bool_value\\\" AS \\\"a__bool_value\\\", \\\"a\\\".\\\"decimal_value\\\" AS \\\"a__decimal_value\\\", \\\"a\\\".\\\"varchar_value\\\" AS \\\"a__varchar_value\\\", \\\"a\\\".\\\"varchar_null_value\\\" AS \\\"a__varchar_null_value\\\", \\\"a\\\".\\\"varchar_long_value\\\" AS \\\"a__varchar_long_value\\\", \\\"a\\\".\\\"text_value\\\" AS \\\"a__text_value\\\", \\\"a\\\".\\\"bytes_value\\\" AS \\\"a__bytes_value\\\", \\\"a\\\".\\\"uuid_value\\\" AS \\\"a__uuid_value\\\", \\\"a\\\".\\\"date_value\\\" AS \\\"a__date_value\\\", \\\"a\\\".\\\"time0_value\\\" AS \\\"a__time0_value\\\", \\\"a\\\".\\\"time1_value\\\" AS \\\"a__time1_value\\\", \\\"a\\\".\\\"time2_value\\\" AS \\\"a__time2_value\\\", \\\"a\\\".\\\"time3_value\\\" AS \\\"a__time3_value\\\", \\\"a\\\".\\\"time4_value\\\" AS \\\"a__time4_value\\\", \\\"a\\\".\\\"time5_value\\\" AS \\\"a__time5_value\\\", \\\"a\\\".\\\"time6_value\\\" AS \\\"a__time6_value\\\", \\\"a\\\".\\\"datetime0_value\\\" AS \\\"a__datetime0_value\\\", \\\"a\\\".\\\"datetime1_value\\\" AS \\\"a__datetime1_value\\\", \\\"a\\\".\\\"datetime2_value\\\" AS \\\"a__datetime2_value\\\", \\\"a\\\".\\\"datetime3_value\\\" AS \\\"a__datetime3_value\\\", \\\"a\\\".\\\"datetime4_value\\\" AS \\\"a__datetime4_value\\\", \\\"a\\\".\\\"datetime5_value\\\" AS \\\"a__datetime5_value\\\", \\\"a\\\".\\\"datetime6_value\\\" AS \\\"a__datetime6_value\\\" FROM \\\"slots\\\" AS \\\"a\\\"\",\"params\":[]}",
+            "{\"op\":\"close\"}"
+          ],
+          "expect": {
+            "none": {
+              "error": "INTERNAL",
+              "message_holds": "{\"blob\":\"AA==\"}"
+            }
+          }
+        },
+        {
+          "op": "markdown.session",
+          "call": "read_twice",
+          "corpus": "slots",
+          "token": "0123456789abcdef0123456789abcdef",
+          "replies": [
+            "{\"ok\":true}",
+            "{\"columns\":[{\"name\":\"a__seq\",\"type\":\"INTEGER\"}],\"rows\":[[{\"blob\":\"AA==\"}]],\"affected\":0,\"last_insert_id\":0,\"more\":true}",
+            "{\"ok\":true}",
+            "{\"columns\":[],\"rows\":[],\"affected\":0,\"last_insert_id\":0}"
+          ],
+          "messages": [
+            "{\"op\":\"connect\",\"corpus\":\"slots\",\"token\":\"0123456789abcdef0123456789abcdef\"}",
+            "{\"op\":\"statement\",\"sql\":\"SELECT \\\"a\\\".\\\"seq\\\" AS \\\"a__seq\\\", \\\"a\\\".\\\"i16_value\\\" AS \\\"a__i16_value\\\", \\\"a\\\".\\\"i32_value\\\" AS \\\"a__i32_value\\\", \\\"a\\\".\\\"i64_value\\\" AS \\\"a__i64_value\\\", \\\"a\\\".\\\"f64_value\\\" AS \\\"a__f64_value\\\", \\\"a\\\".\\\"bool_value\\\" AS \\\"a__bool_value\\\", \\\"a\\\".\\\"decimal_value\\\" AS \\\"a__decimal_value\\\", \\\"a\\\".\\\"varchar_value\\\" AS \\\"a__varchar_value\\\", \\\"a\\\".\\\"varchar_null_value\\\" AS \\\"a__varchar_null_value\\\", \\\"a\\\".\\\"varchar_long_value\\\" AS \\\"a__varchar_long_value\\\", \\\"a\\\".\\\"text_value\\\" AS \\\"a__text_value\\\", \\\"a\\\".\\\"bytes_value\\\" AS \\\"a__bytes_value\\\", \\\"a\\\".\\\"uuid_value\\\" AS \\\"a__uuid_value\\\", \\\"a\\\".\\\"date_value\\\" AS \\\"a__date_value\\\", \\\"a\\\".\\\"time0_value\\\" AS \\\"a__time0_value\\\", \\\"a\\\".\\\"time1_value\\\" AS \\\"a__time1_value\\\", \\\"a\\\".\\\"time2_value\\\" AS \\\"a__time2_value\\\", \\\"a\\\".\\\"time3_value\\\" AS \\\"a__time3_value\\\", \\\"a\\\".\\\"time4_value\\\" AS \\\"a__time4_value\\\", \\\"a\\\".\\\"time5_value\\\" AS \\\"a__time5_value\\\", \\\"a\\\".\\\"time6_value\\\" AS \\\"a__time6_value\\\", \\\"a\\\".\\\"datetime0_value\\\" AS \\\"a__datetime0_value\\\", \\\"a\\\".\\\"datetime1_value\\\" AS \\\"a__datetime1_value\\\", \\\"a\\\".\\\"datetime2_value\\\" AS \\\"a__datetime2_value\\\", \\\"a\\\".\\\"datetime3_value\\\" AS \\\"a__datetime3_value\\\", \\\"a\\\".\\\"datetime4_value\\\" AS \\\"a__datetime4_value\\\", \\\"a\\\".\\\"datetime5_value\\\" AS \\\"a__datetime5_value\\\", \\\"a\\\".\\\"datetime6_value\\\" AS \\\"a__datetime6_value\\\" FROM \\\"slots\\\" AS \\\"a\\\"\",\"params\":[]}",
+            "{\"op\":\"close\"}",
+            "{\"op\":\"statement\",\"sql\":\"SELECT \\\"a\\\".\\\"seq\\\" AS \\\"a__seq\\\", \\\"a\\\".\\\"i16_value\\\" AS \\\"a__i16_value\\\", \\\"a\\\".\\\"i32_value\\\" AS \\\"a__i32_value\\\", \\\"a\\\".\\\"i64_value\\\" AS \\\"a__i64_value\\\", \\\"a\\\".\\\"f64_value\\\" AS \\\"a__f64_value\\\", \\\"a\\\".\\\"bool_value\\\" AS \\\"a__bool_value\\\", \\\"a\\\".\\\"decimal_value\\\" AS \\\"a__decimal_value\\\", \\\"a\\\".\\\"varchar_value\\\" AS \\\"a__varchar_value\\\", \\\"a\\\".\\\"varchar_null_value\\\" AS \\\"a__varchar_null_value\\\", \\\"a\\\".\\\"varchar_long_value\\\" AS \\\"a__varchar_long_value\\\", \\\"a\\\".\\\"text_value\\\" AS \\\"a__text_value\\\", \\\"a\\\".\\\"bytes_value\\\" AS \\\"a__bytes_value\\\", \\\"a\\\".\\\"uuid_value\\\" AS \\\"a__uuid_value\\\", \\\"a\\\".\\\"date_value\\\" AS \\\"a__date_value\\\", \\\"a\\\".\\\"time0_value\\\" AS \\\"a__time0_value\\\", \\\"a\\\".\\\"time1_value\\\" AS \\\"a__time1_value\\\", \\\"a\\\".\\\"time2_value\\\" AS \\\"a__time2_value\\\", \\\"a\\\".\\\"time3_value\\\" AS \\\"a__time3_value\\\", \\\"a\\\".\\\"time4_value\\\" AS \\\"a__time4_value\\\", \\\"a\\\".\\\"time5_value\\\" AS \\\"a__time5_value\\\", \\\"a\\\".\\\"time6_value\\\" AS \\\"a__time6_value\\\", \\\"a\\\".\\\"datetime0_value\\\" AS \\\"a__datetime0_value\\\", \\\"a\\\".\\\"datetime1_value\\\" AS \\\"a__datetime1_value\\\", \\\"a\\\".\\\"datetime2_value\\\" AS \\\"a__datetime2_value\\\", \\\"a\\\".\\\"datetime3_value\\\" AS \\\"a__datetime3_value\\\", \\\"a\\\".\\\"datetime4_value\\\" AS \\\"a__datetime4_value\\\", \\\"a\\\".\\\"datetime5_value\\\" AS \\\"a__datetime5_value\\\", \\\"a\\\".\\\"datetime6_value\\\" AS \\\"a__datetime6_value\\\" FROM \\\"slots\\\" AS \\\"a\\\"\",\"params\":[]}"
+          ],
+          "expect": {
+            "none": {
+              "error": "INTERNAL",
+              "message_holds": "{\"blob\":\"AA==\"}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "refused_close_keeps_the_row_error",
+      "requirements": [
+        "PRT-66"
+      ],
+      "steps": [
+        {
+          "op": "markdown.session",
+          "call": "read_twice",
+          "corpus": "slots",
+          "token": "0123456789abcdef0123456789abcdef",
+          "replies": [
+            "{\"ok\":true}",
+            "{\"columns\":[{\"name\":\"a__seq\",\"type\":\"INTEGER\"}],\"rows\":[[{\"blob\":\"AA==\"}]],\"affected\":0,\"last_insert_id\":0,\"more\":true}",
+            "{\"error\":{\"code\":\"INTERNAL\",\"message\":\"close refused\"}}",
+            "{\"columns\":[],\"rows\":[],\"affected\":0,\"last_insert_id\":0}"
+          ],
+          "messages": [
+            "{\"op\":\"connect\",\"corpus\":\"slots\",\"token\":\"0123456789abcdef0123456789abcdef\"}",
+            "{\"op\":\"statement\",\"sql\":\"SELECT \\\"a\\\".\\\"seq\\\" AS \\\"a__seq\\\", \\\"a\\\".\\\"i16_value\\\" AS \\\"a__i16_value\\\", \\\"a\\\".\\\"i32_value\\\" AS \\\"a__i32_value\\\", \\\"a\\\".\\\"i64_value\\\" AS \\\"a__i64_value\\\", \\\"a\\\".\\\"f64_value\\\" AS \\\"a__f64_value\\\", \\\"a\\\".\\\"bool_value\\\" AS \\\"a__bool_value\\\", \\\"a\\\".\\\"decimal_value\\\" AS \\\"a__decimal_value\\\", \\\"a\\\".\\\"varchar_value\\\" AS \\\"a__varchar_value\\\", \\\"a\\\".\\\"varchar_null_value\\\" AS \\\"a__varchar_null_value\\\", \\\"a\\\".\\\"varchar_long_value\\\" AS \\\"a__varchar_long_value\\\", \\\"a\\\".\\\"text_value\\\" AS \\\"a__text_value\\\", \\\"a\\\".\\\"bytes_value\\\" AS \\\"a__bytes_value\\\", \\\"a\\\".\\\"uuid_value\\\" AS \\\"a__uuid_value\\\", \\\"a\\\".\\\"date_value\\\" AS \\\"a__date_value\\\", \\\"a\\\".\\\"time0_value\\\" AS \\\"a__time0_value\\\", \\\"a\\\".\\\"time1_value\\\" AS \\\"a__time1_value\\\", \\\"a\\\".\\\"time2_value\\\" AS \\\"a__time2_value\\\", \\\"a\\\".\\\"time3_value\\\" AS \\\"a__time3_value\\\", \\\"a\\\".\\\"time4_value\\\" AS \\\"a__time4_value\\\", \\\"a\\\".\\\"time5_value\\\" AS \\\"a__time5_value\\\", \\\"a\\\".\\\"time6_value\\\" AS \\\"a__time6_value\\\", \\\"a\\\".\\\"datetime0_value\\\" AS \\\"a__datetime0_value\\\", \\\"a\\\".\\\"datetime1_value\\\" AS \\\"a__datetime1_value\\\", \\\"a\\\".\\\"datetime2_value\\\" AS \\\"a__datetime2_value\\\", \\\"a\\\".\\\"datetime3_value\\\" AS \\\"a__datetime3_value\\\", \\\"a\\\".\\\"datetime4_value\\\" AS \\\"a__datetime4_value\\\", \\\"a\\\".\\\"datetime5_value\\\" AS \\\"a__datetime5_value\\\", \\\"a\\\".\\\"datetime6_value\\\" AS \\\"a__datetime6_value\\\" FROM \\\"slots\\\" AS \\\"a\\\"\",\"params\":[]}",
+            "{\"op\":\"close\"}",
+            "{\"op\":\"statement\",\"sql\":\"SELECT \\\"a\\\".\\\"seq\\\" AS \\\"a__seq\\\", \\\"a\\\".\\\"i16_value\\\" AS \\\"a__i16_value\\\", \\\"a\\\".\\\"i32_value\\\" AS \\\"a__i32_value\\\", \\\"a\\\".\\\"i64_value\\\" AS \\\"a__i64_value\\\", \\\"a\\\".\\\"f64_value\\\" AS \\\"a__f64_value\\\", \\\"a\\\".\\\"bool_value\\\" AS \\\"a__bool_value\\\", \\\"a\\\".\\\"decimal_value\\\" AS \\\"a__decimal_value\\\", \\\"a\\\".\\\"varchar_value\\\" AS \\\"a__varchar_value\\\", \\\"a\\\".\\\"varchar_null_value\\\" AS \\\"a__varchar_null_value\\\", \\\"a\\\".\\\"varchar_long_value\\\" AS \\\"a__varchar_long_value\\\", \\\"a\\\".\\\"text_value\\\" AS \\\"a__text_value\\\", \\\"a\\\".\\\"bytes_value\\\" AS \\\"a__bytes_value\\\", \\\"a\\\".\\\"uuid_value\\\" AS \\\"a__uuid_value\\\", \\\"a\\\".\\\"date_value\\\" AS \\\"a__date_value\\\", \\\"a\\\".\\\"time0_value\\\" AS \\\"a__time0_value\\\", \\\"a\\\".\\\"time1_value\\\" AS \\\"a__time1_value\\\", \\\"a\\\".\\\"time2_value\\\" AS \\\"a__time2_value\\\", \\\"a\\\".\\\"time3_value\\\" AS \\\"a__time3_value\\\", \\\"a\\\".\\\"time4_value\\\" AS \\\"a__time4_value\\\", \\\"a\\\".\\\"time5_value\\\" AS \\\"a__time5_value\\\", \\\"a\\\".\\\"time6_value\\\" AS \\\"a__time6_value\\\", \\\"a\\\".\\\"datetime0_value\\\" AS \\\"a__datetime0_value\\\", \\\"a\\\".\\\"datetime1_value\\\" AS \\\"a__datetime1_value\\\", \\\"a\\\".\\\"datetime2_value\\\" AS \\\"a__datetime2_value\\\", \\\"a\\\".\\\"datetime3_value\\\" AS \\\"a__datetime3_value\\\", \\\"a\\\".\\\"datetime4_value\\\" AS \\\"a__datetime4_value\\\", \\\"a\\\".\\\"datetime5_value\\\" AS \\\"a__datetime5_value\\\", \\\"a\\\".\\\"datetime6_value\\\" AS \\\"a__datetime6_value\\\" FROM \\\"slots\\\" AS \\\"a\\\"\",\"params\":[]}"
+          ],
+          "expect": {
+            "none": {
+              "error": "INTERNAL",
+              "message_holds": "{\"blob\":\"AA==\"}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

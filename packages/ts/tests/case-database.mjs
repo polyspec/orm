@@ -4,11 +4,14 @@
 // orm-case-<pid>-<counter>.sqlite. The case drops that database when it ends, and also after a failure.
 // PostgreSQL also takes a database rather than a schema: schema().empty() counts the non-public schemas
 // by their content, so an empty database cannot be verified with a schema inside a shared database.
-import { rm, writeFile } from 'node:fs/promises';
+import { execFile, spawn } from 'node:child_process';
+import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
+import { promisify } from 'node:util';
 
+const execute = promisify(execFile);
 const require = createRequire(new URL('../package.json', import.meta.url));
 let counter = 0;
 
@@ -108,6 +111,8 @@ export async function createCaseDatabase(dialect, step) {
  * fails, the case fails. If body and the drop both fail, the error carries both reasons.
  */
 export async function withCaseDatabase(dialect, step, body) {
+  // The case database of a markdown connection is a corpus of no table.
+  if (dialect === 'markdown') return withCaseCorpus(null, step, body);
   const database = await createCaseDatabase(dialect, step);
   let failure = null;
   let result;
@@ -122,4 +127,54 @@ export async function withCaseDatabase(dialect, step, body) {
   }
   if (failure !== null) throw failure;
   return result;
+}
+
+const FLOWMARK_LISTENING = /^\[serve\] listening on 127\.0\.0\.1:([0-9]+) for the corpus (.+)$/;
+const CORPUS = 'recipe';
+
+/**
+ * Runs body on a new corpus of the dbspec set at setPath, or on a corpus of no table when setPath is null (a recipe of no fixture,
+ * or a case whose steps install it), served by the flowmark of FLOWMARK (FCV-3). body takes { name, dsn, dir }. The server stops and
+ * the corpus is removed when body ends.
+ */
+export async function withCaseCorpus(setPath, step, body) {
+  const bin = process.env.FLOWMARK;
+  if (bin === undefined || bin === '') throw new Error('FLOWMARK is required; make orm-install-flowmark builds the version that tests/markdown/flowmark.version pins');
+  const parent = await mkdtemp(join(tmpdir(), 'orm-corpus-'));
+  const dir = join(parent, CORPUS);
+  let server;
+  try {
+    await mkdir(join(dir, 'dbspec'), { recursive: true });
+    if (setPath !== null) {
+      const set = JSON.parse(await readFile(setPath, 'utf8'));
+      await copyFile(setPath, join(dir, 'dbspec', basename(setPath)));
+      for (const document of [...set.documents, ...(set.external ?? [])]) await copyFile(join(dirname(setPath), document), join(dir, 'dbspec', document));
+    }
+    await execute(bin, ['install', dir]);
+    step(`corpus ${dir} installed`);
+    // A corpus of a test is disposable, as a test database server is: a commit does not wait for the disk.
+    server = spawn(bin, ['serve', dir, '--port', '0', '--synchronous', 'off', '--tx-idle-ms', '600000'], { stdio: ['ignore', 'pipe', 'inherit'] });
+    const line = await new Promise((done, fail) => {
+      let text = '';
+      server.stdout.on('data', chunk => {
+        text += chunk;
+        const end = text.indexOf('\n');
+        if (end >= 0) done(text.slice(0, end));
+      });
+      server.once('error', fail);
+      server.once('exit', code => fail(new Error(`flowmark serve ended with ${code}`)));
+    });
+    const m = FLOWMARK_LISTENING.exec(line);
+    if (m === null || m[2] !== CORPUS) throw new Error(`flowmark serve printed ${JSON.stringify(line)}, not its listening line`);
+    const { token } = JSON.parse(await readFile(join(dir, '.flowmark', 'server.json'), 'utf8'));
+    return await body({ name: CORPUS, dir, dsn: `markdown://127.0.0.1:${m[1]}/${CORPUS}?token=${token}` });
+  } finally {
+    if (server !== undefined) {
+      server.removeAllListeners('exit');
+      const ended = new Promise(done => { server.once('exit', done); });
+      server.kill('SIGINT');
+      await ended;
+    }
+    await rm(parent, { recursive: true, force: true });
+  }
 }

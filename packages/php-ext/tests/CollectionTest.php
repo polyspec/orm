@@ -327,7 +327,7 @@ final class CollectionTest extends TestCase
     public function testConnectAndInvokeReachEachModelAndReturnTheCollection(): void
     {
         [$collection, $first, $second] = self::collectionWithTwoModels();
-        $db = new Db(null, 'mysql', new Config(), new DateTimeZone('UTC'));
+        $db = new Db(new \PDO('sqlite::memory:'), 'mysql', new Config(), new DateTimeZone('UTC'));
 
         self::assertSame($collection, $collection->connect($db));
         self::assertSame($db, $first->connectedTo);

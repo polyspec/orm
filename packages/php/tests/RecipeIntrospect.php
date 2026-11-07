@@ -32,7 +32,10 @@ final class RecipeIntrospect
      */
     public static function step(RecipeStep $step, array $context): array
     {
-        $database = $context['database'];
+        // A corpus runs SQL in SQLite's dialect (DIA-185): its native session is its flowmark server's, and its SQL is
+        // SQLite's.
+        $markdown = $context['database'] === 'markdown';
+        $database = $markdown ? 'sqlite' : $context['database'];
         if (isset($step['catalog_of'])) {
             return self::catalogQueryFailure($step['catalog_of'], $context['dsn']);
         }
@@ -45,8 +48,12 @@ final class RecipeIntrospect
         // tests/dbspec/ddl.json holds the rendered statements of each dialect as an object; only a list runs.
         $extra = $vector['statements'] ?? [];
         $extra = array_is_list($extra) ? $extra : [];
-        [, $pdoDsn, $user, $password] = Orm::parseDsn($context['dsn']);
-        $pdo = new CountingPdo($pdoDsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        if ($markdown) {
+            $pdo = CountingPdo::over(markdown_session_pdo($context['dsn']));
+        } else {
+            [, $pdoDsn, $user, $password] = Orm::parseDsn($context['dsn']);
+            $pdo = new CountingPdo($pdoDsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        }
         $schema = match ($database) {
             'mysql' => ltrim((string) parse_url($context['dsn'], PHP_URL_PATH), '/'),
             'postgres' => 'public',
@@ -106,7 +113,8 @@ final class RecipeIntrospect
      */
     public static function planPhysical(RecipeStep $step, array $context): array
     {
-        $database = $context['database'];
+        // A corpus runs SQL in SQLite's dialect (DIA-185): its native session is its flowmark server's (case_admin).
+        $database = $context['database'] === 'markdown' ? 'sqlite' : $context['database'];
         $id = $step['case'];
         $matching = array_values(array_filter(
             plan_vectors_at($context['dir'] . '/' . $step['vectors'])['cases'],
@@ -267,8 +275,7 @@ final class RecipeIntrospect
      */
     private static function catalogQueryFailure(string $dialect, string $dsn): array
     {
-        [, $pdoDsn, $user, $password] = Orm::parseDsn($dsn);
-        $pdo = new PDO($pdoDsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $pdo = case_admin($dsn);
         try {
             Dbspec::introspect($pdo, $dialect, 'introspected');
         } catch (RuntimeException) {

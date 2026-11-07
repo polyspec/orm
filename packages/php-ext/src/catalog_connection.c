@@ -4512,23 +4512,26 @@ ZEND_METHOD(Polyspec_Orm_Catalog, connect)
     ZEND_PARSE_PARAMETERS_START(1, 1)
         Z_PARAM_STR(dsn)
     ZEND_PARSE_PARAMETERS_END();
-    if (strncasecmp(ZSTR_VAL(dsn), "markdown://", 11) == 0) {
-        db_throw_orm("CONFIG", "CATALOG_DSN: a markdown corpus has no database catalog; give a mysql, postgres or sqlite DSN");
-        return;
-    }
     zval dsn_arg, parsed, connect_args[2], db, config;
     ZVAL_STR_COPY(&dsn_arg, dsn);
-    if (!scall("Polyspec\\Orm\\Orm::parseDsn", &parsed, 1, &dsn_arg)) {
+    if (strncasecmp(ZSTR_VAL(dsn), "markdown://", 11) == 0) {
+        /* A flowmark server runs SQL in SQLite's dialect on the corpus, so the catalog of a corpus is a SQLite catalog
+         * (DIA-185); Orm::connect reads the DSN. */
+        array_init(&parsed);
+        add_next_index_string(&parsed, "sqlite");
+        add_next_index_string(&parsed, "");
+    } else if (!scall("Polyspec\\Orm\\Orm::parseDsn", &parsed, 1, &dsn_arg)) {
         zval_ptr_dtor(&dsn_arg);
         return;
     }
+    bool corpus = strncasecmp(ZSTR_VAL(dsn), "markdown://", 11) == 0;
     zval *driver = zend_hash_index_find(Z_ARRVAL(parsed), 0);
     zval *pdo_dsn = zend_hash_index_find(Z_ARRVAL(parsed), 1);
     if (Z_TYPE_P(driver) != IS_STRING || Z_TYPE_P(pdo_dsn) != IS_STRING) {
         db_throw_orm("IR_INVALID", "the DSN parse of the PHP library has no driver and PDO DSN");
         goto out_parsed;
     }
-    if (strcmp(Z_STRVAL_P(driver), "sqlite") == 0) {
+    if (!corpus && strcmp(Z_STRVAL_P(driver), "sqlite") == 0) {
         /* A symbolic link is not a regular file: the file must exist, and the connection never creates one. */
         zval path, link_r, file_r;
         ZVAL_STRINGL(&path, Z_STRVAL_P(pdo_dsn) + strlen("sqlite:"), Z_STRLEN_P(pdo_dsn) - strlen("sqlite:"));

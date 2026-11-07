@@ -1890,11 +1890,14 @@ ZEND_METHOD(Polyspec_Orm_Validator, conflictKey)
 ZEND_METHOD(Polyspec_Orm_Planner, __construct)
 {
     zval *model, *dialect;
-    ZEND_PARSE_PARAMETERS_START(2, 2)
+    bool assigns = false;
+    ZEND_PARSE_PARAMETERS_START(2, 3)
         Z_PARAM_OBJECT(model)
         Z_PARAM_OBJECT(dialect)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_BOOL(assigns)
     ZEND_PARSE_PARAMETERS_END();
-    planner_construct(ZEND_THIS, model, dialect);
+    planner_construct(ZEND_THIS, model, dialect, assigns);
 }
 
 ZEND_METHOD(Polyspec_Orm_Planner, compile)
@@ -2732,6 +2735,9 @@ static PHP_MINIT_FUNCTION(polyspec_orm)
     zend_class_entry *pgsql_adapter_ce = register_class_Polyspec_Orm_Internal_PgsqlPdoAdapter(pdo_pgsql_ce);
     zend_class_entry *pgsql_statement_ce = register_class_Polyspec_Orm_Internal_PgsqlStatementAdapter(pdo_statement_ce);
     pgsql_adapter_native_register(pgsql_adapter_ce, pgsql_statement_ce);
+    zend_class_entry *pdo_ce = zend_hash_str_find_ptr(CG(class_table), "pdo", sizeof("pdo") - 1);
+    markdown_pdo_register(register_class_Polyspec_Orm_Internal_MarkdownPdoAdapter(pdo_ce),
+        register_class_Polyspec_Orm_Internal_MarkdownStatementAdapter(pdo_statement_ce));
     zend_class_entry *pgsql_statement_iterator_ce = register_class_Polyspec_Orm_Internal_PgsqlStatementIterator(zend_ce_iterator);
     orm_pgsql_statement_iterator_init(pgsql_statement_iterator_ce);
     aes_keyring_set_class(register_class_Polyspec_Orm_AesKeyring());
@@ -2802,8 +2808,6 @@ static PHP_MINIT_FUNCTION(polyspec_orm)
     polyspec_page_ce->ce_flags |= ZEND_ACC_NO_DYNAMIC_PROPERTIES;
     polyspec_func_ce->ce_flags |= ZEND_ACC_NO_DYNAMIC_PROPERTIES;
     register_class_Polyspec_Orm_MarkdownSession();
-    zend_class_entry *markdown_links_ce = register_class_Polyspec_Orm_MarkdownLinks();
-    polyspec_markdown_register(register_class_Polyspec_Orm_Markdown(), markdown_links_ce);
     /* Db::DRIVERS, the array constant gen_stub cannot write (db.c implements the class). */
     static const char *const drivers[] = {"mysql", "postgres", "sqlite"};
     array_constant(register_class_Polyspec_Orm_Db(), "DRIVERS", drivers, NULL, COUNT(drivers));

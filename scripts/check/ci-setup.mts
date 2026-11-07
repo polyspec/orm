@@ -109,11 +109,12 @@ export const stepCondition = (id: string): string => STEP_OUTPUT[id]
 // SETUP_NEEDS maps each need the runner's setup phase prepares to the needs that phase itself requires. databases (the setup phase
 // servers and databases/create (scripts/check/databases.mts) prepare: a server is started by make orm-test-servers from server-programs,
 // and is managed by the Go lease runner, whose sole external dependency is installed by go-lease, and databases.mts sets up the bench database (scripts/bench-db.mts) and
-// the decimal database through the TypeScript client, which make databases-create builds. So a target that needs databases
-// also needs this need (expandNeeds).
+// the decimal database through the TypeScript client, which make databases-create builds. A case runs on MySQL, PostgreSQL,
+// SQLite and flowmark, and WITH_TEST_ENV hands every target FLOWMARK, so databases installs flowmark too. So a target that
+// needs databases also needs these needs (expandNeeds).
 // php-min reads that release through scripts/php/php-min.mts, and that script reads composer.json as its schema, so it needs node_modules.
 export const SETUP_NEEDS: Record<string, string[]> = {
-  databases: ['go-lease', 'node-modules', 'server-programs'],
+  databases: ['go-lease', 'node-modules', 'server-programs', 'flowmark'],
   'mysql-privilege-server': ['databases'],
   'php-min': ['node-modules'],
   'php-extension-tools': ['php', 'composer', 'node-modules'],

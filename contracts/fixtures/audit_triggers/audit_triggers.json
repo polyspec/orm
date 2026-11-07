@@ -11,12 +11,14 @@
     "DBS-93",
     "DBS-94",
     "DBS-96",
+    "DIA-154",
     "DIA-161",
     "DSL-118",
     "DSL-119",
     "DSL-126",
     "INT-38",
-    "INT-44"
+    "INT-44",
+    "DIA-183"
   ],
   "fixture": "contracts/fixtures/audit_triggers/dbspec-set.json",
   "cases": [

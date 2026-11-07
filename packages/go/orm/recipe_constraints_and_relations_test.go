@@ -32,3 +32,9 @@ func TestRecipeConstraintsAndRelationsSqlite(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, constraintsAndRelationsRecipe, "sqlite")
 }
+
+// TestRecipeConstraintsAndRelationsMarkdown runs the recipe on flowmark, each case on a corpus of its own (FCV-3).
+func TestRecipeConstraintsAndRelationsMarkdown(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, constraintsAndRelationsRecipe, "markdown")
+}

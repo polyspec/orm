@@ -33,6 +33,7 @@ from polyspec.orm.database import (
     parse_dsn,
 )
 from polyspec.orm.errors import OrmError
+from polyspec.orm.markdown import MarkdownConnection
 from polyspec.orm.placeholders import for_mysql, for_postgres
 
 T = TypeVar("T")
@@ -1574,12 +1575,13 @@ class _Session:
 
 
 class CatalogConnection:
-    """A catalog connection to a MySQL, PostgreSQL or SQLite database selected by its DSN. Each operation runs in its own
-    session: a fresh driver connection that ends with the operation's transaction."""
+    """A catalog connection to a MySQL, PostgreSQL or SQLite database, or a markdown corpus, selected by its DSN. Each
+    operation runs in its own session: a fresh driver connection that ends with the operation's transaction. A flowmark
+    server runs SQL in SQLite's dialect on the corpus, so the catalog of a corpus is a SQLite catalog (DIA-185)."""
 
     def __init__(self, parsed: ParsedDsn):
         self._parsed = parsed
-        self._dialect = parsed.driver
+        self._dialect = "sqlite" if parsed.driver == "markdown" else parsed.driver
         self._closed = False
         # Until when a refused connect is a socket of this catalog still on the server (CFG-35).
         self._reopen_until = 0.0
@@ -1598,7 +1600,9 @@ class CatalogConnection:
 
     def _open(self) -> _Session:
         self._ensure_open()
-        if self._dialect == "sqlite":
+        if self._parsed.driver == "markdown":
+            wrapper = MarkdownConnection(self._parsed.markdown)
+        elif self._dialect == "sqlite":
             wrapper = _SqliteConnection(self._parsed)
         elif self._dialect == "mysql":
             # A socket that this catalog closed holds its place in max_user_connections until the server ends that thread.
@@ -2213,14 +2217,9 @@ class CatalogConnection:
 
 
 def connect_catalog(dsn: str) -> CatalogConnection:
-    """Opens the catalog connection of a mysql, postgres or sqlite DSN. A markdown DSN is refused. A SQLite DSN must name an
-    existing regular file, and the connection never creates one."""
+    """Opens the catalog connection of a mysql, postgres, sqlite or markdown DSN. A SQLite DSN must name an existing
+    regular file, and the connection never creates one."""
     parsed = parse_dsn(dsn)
-    if parsed.driver == "markdown":
-        raise _error(
-            codes.CONFIG,
-            "CATALOG_DSN: a markdown corpus has no database catalog; give a mysql, postgres or sqlite DSN",
-        )
     if parsed.driver == "sqlite":
         path = _sqlite_path(parsed.url)
         try:

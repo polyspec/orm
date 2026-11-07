@@ -2,6 +2,7 @@
   "$schema": "../../scripts/features/schema/recipe.schema.json",
   "requirements": [
     "DBS-108",
+    "DIA-154",
     "SCH-7"
   ],
   "fixture": "contracts/fixtures/dbspec-set.json",

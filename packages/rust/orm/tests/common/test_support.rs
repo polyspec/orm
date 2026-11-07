@@ -79,9 +79,3 @@ impl sqlx::error::DatabaseError for DatabaseErrorStub {
         sqlx::error::ErrorKind::Other
     }
 }
-
-pub(crate) fn manifest(source: &str) -> crate::schema::Manifest {
-    let document = crate::dbspec::parse(source, &Default::default()).unwrap().document;
-    let set = crate::dbspec::manifest(&[&document]).unwrap();
-    crate::schema::Manifest::load(&set.manifest_text, &set.manifest_hash).unwrap()
-}

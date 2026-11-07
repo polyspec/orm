@@ -10,6 +10,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
+	"math"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -22,6 +24,7 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/polyspec/orm/packages/go/engine/dbspec"
 	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
@@ -38,10 +41,11 @@ import (
 const schemaPath = "scripts/features/schema/recipe.schema.json"
 
 type databaseFile struct {
-	Schema  string         `json:"$schema"`
-	Fixture string         `json:"fixture"`
-	Seed    *seed          `json:"seed"`
-	Cases   []databaseCase `json:"cases"`
+	Schema  string `json:"$schema"`
+	Fixture string `json:"fixture"`
+	// The set that flowmark installs for a case of the markdown suite (FCV-3).
+	Seed  *seed          `json:"seed"`
+	Cases []databaseCase `json:"cases"`
 }
 
 type seed struct {
@@ -82,6 +86,7 @@ type databaseStep struct {
 	Offset         int64           `json:"offset"`
 	Columns        []string        `json:"columns"`
 	Text           string          `json:"text"`
+	File           string          `json:"file"`
 	Mode           string          `json:"mode"`
 	SQL            json.RawMessage `json:"sql"`
 	Refused        bool            `json:"refused"`
@@ -259,6 +264,8 @@ type databaseContext struct {
 	waitStart time.Time
 	// closers close the connections that model.connect opened, when the case ends.
 	closers []func() error
+	// corpusDir is the directory of the corpus of a case of the markdown suite.
+	corpusDir string
 	// applyStep is the step of the apply event whose handler runs nested steps; {step} of dbspec.exec is this number.
 	applyStep int
 	// records are the requests that a record action of the installed hook saw (hook.records).
@@ -268,7 +275,7 @@ type databaseContext struct {
 // runDatabase runs every case of the recipe at path on database, each as a subtest on a case database of its own (FCV-3).
 func runDatabase(t *testing.T, path, database string) {
 	t.Helper()
-	if database != "mysql" && database != "postgres" && database != "sqlite" {
+	if database != "mysql" && database != "postgres" && database != "sqlite" && database != "markdown" {
 		t.Fatalf("recipe %s: unknown database %s", path, database)
 	}
 	f := readRecipe[databaseFile](t, path)
@@ -296,7 +303,7 @@ func runDatabase(t *testing.T, path, database string) {
 		if c.NotThroughPooler != "" && os.Getenv("ORM_CLIENT_DB_POOLER") == "1" {
 			continue
 		}
-		if len(c.Only) > 0 && !slices.Contains(c.Only, database) {
+		if !onDatabase(c.Only, database) {
 			continue
 		}
 		t.Run(c.ID, func(t *testing.T) {
@@ -496,14 +503,34 @@ func fixtureSchema(setPath string) (*orm.Schema, []*orm.Schema, error) {
 func runCase(t *testing.T, path string, f databaseFile, c databaseCase, database string, schema *orm.Schema, external []*orm.Schema) {
 	step := testcase.Of(t)
 	ctx := step.Context()
-	dsn := testdb.New(t, database)
-	db, err := orm.Connect(dsn, orm.Config{})
+	markdown := database == "markdown"
+	var dsn, corpusDir string
+	if markdown {
+		// flowmark install creates the corpus from the set (DIA-189), so the case has no install and no catalog connection.
+		relative, _ := strings.CutSuffix(f.Schema, schemaPath)
+		setPath := ""
+		if f.Fixture != "none" && (c.Install == nil || *c.Install) {
+			setPath = filepath.Join(filepath.Dir(path), relative, f.Fixture)
+		}
+		dsn, corpusDir = testdb.NewCorpusDir(t, setPath)
+	} else {
+		dsn = testdb.New(t, database)
+	}
+	var db *orm.DB
+	var err error
+	db, err = orm.Connect(dsn, orm.Config{})
 	if err != nil {
 		t.Fatalf("recipe %s case %s on %s: connect: %v", path, c.ID, database, err)
 	}
 	defer testcase.Close(t, db)
 	// A case with install: false gets no fixture here; its steps install it (FCV-4, schema.install).
-	if schema != nil && (c.Install == nil || *c.Install) {
+	if markdown && schema != nil && (c.Install == nil || *c.Install) {
+		// flowmark install made the corpus from the set; the connection takes the set as an install registers it.
+		if err := db.Utils().Schema().Register(schema); err != nil {
+			t.Fatalf("recipe %s case %s on %s: register: %v", path, c.ID, database, err)
+		}
+	}
+	if !markdown && schema != nil && (c.Install == nil || *c.Install) {
 		for _, shared := range append(external, schema) {
 			if err := db.Utils().Schema().Install(shared); err != nil {
 				t.Fatalf("recipe %s case %s on %s: install: %v", path, c.ID, database, err)
@@ -511,20 +538,25 @@ func runCase(t *testing.T, path string, f databaseFile, c databaseCase, database
 		}
 		step.Step("schema installed")
 	}
-	catalog, err := orm.ConnectCatalog(dsn)
+	var catalog *orm.CatalogConnection
+	var namespace string
+	catalog, err = orm.ConnectCatalog(dsn)
 	if err != nil {
 		t.Fatalf("recipe %s case %s on %s: catalog: %v", path, c.ID, database, err)
 	}
-	namespace, err := catalog.CurrentNamespace(ctx)
+	namespace, err = catalog.CurrentNamespace(ctx)
 	if err != nil {
 		t.Fatalf("recipe %s case %s on %s: current namespace: %v", path, c.ID, database, err)
 	}
-	name := testdb.DatabaseOf(t, dsn)
-	if database == "sqlite" {
-		name = strings.TrimSuffix(filepath.Base(strings.TrimPrefix(dsn, "sqlite://")), ".sqlite")
+	name := "recipe"
+	if !markdown {
+		name = testdb.DatabaseOf(t, dsn)
+		if database == "sqlite" {
+			name = strings.TrimSuffix(filepath.Base(strings.TrimPrefix(dsn, "sqlite://")), ".sqlite")
+		}
 	}
 	state := &databaseContext{
-		t: t, ctx: ctx, db: db, dir: filepath.Dir(path), catalog: catalog, namespace: namespace, database: database, dsn: dsn, schema: schema, tablePath: f.Fixture != generatedFixture,
+		t: t, ctx: ctx, db: db, dir: filepath.Dir(path), catalog: catalog, namespace: namespace, database: database, dsn: dsn, corpusDir: corpusDir, schema: schema, tablePath: f.Fixture != generatedFixture,
 		bound: map[string]bound{"database": {value: map[string]any{"text": name}}},
 	}
 	defer func() {
@@ -626,14 +658,20 @@ func runDatabaseStep(s databaseStep, c *databaseContext) error {
 	return runStepWith(s, c, databaseOp)
 }
 
+// onDatabase reports whether a case or step with the list only runs on database. A corpus speaks SQLite's dialect, so
+// what names sqlite names it too.
+func onDatabase(only []string, database string) bool {
+	return len(only) == 0 || slices.Contains(only, database) || (database == "markdown" && slices.Contains(only, "sqlite"))
+}
+
 // runStepWith runs a step through op and compares the fields that its expect names.
 func runStepWith(s databaseStep, c *databaseContext, op func(databaseStep, *databaseContext) (outcome, error)) error {
 	// A step with only runs on the databases it names, and its expect names exactly those (scripts/features/recipes.test.mts).
-	if len(s.k("only").Only) > 0 && !slices.Contains(s.k("only").Only, c.database) {
+	if !onDatabase(s.k("only").Only, c.database) {
 		return nil
 	}
 	var expected map[string]any
-	if raw, ok := s.k("expect").Expect[c.database]; ok {
+	if raw, ok := s.k("expect").Expect[dialectKey(c.database, s.k("expect").Expect)]; ok {
 		var parsed any
 		if err := json.Unmarshal(raw, &parsed); err != nil {
 			return err
@@ -827,7 +865,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		for _, row := range page.Result.Rows {
 			cells := make([]any, len(indexes))
 			for i, at := range indexes {
-				cell, err := plain(row[at], page.Result.Columns[at].NativeType, c.database)
+				cell, err := plain(row[at], page.Result.Columns[at].NativeType, c.dialect())
 				if err != nil {
 					return outcome{}, err
 				}
@@ -847,7 +885,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		if err != nil {
 			return outcome{}, err
 		}
-		rows, err := cellRows(result.Rows, func(value any) (any, error) { return plain(value, "", c.database) })
+		rows, err := cellRows(result.Rows, func(value any) (any, error) { return plain(value, "", c.dialect()) })
 		if err != nil {
 			return outcome{}, err
 		}
@@ -932,7 +970,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		keys := snapshot.Keys()
 		keyCells := make([]any, len(keys))
 		for i, key := range keys {
-			cell, err := plain(key, "", c.database)
+			cell, err := plain(key, "", c.dialect())
 			if err != nil {
 				return outcome{}, err
 			}
@@ -966,7 +1004,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		captured := snapshot.snapshot.CapturedCells()
 		cells := make([]any, len(captured))
 		for i, cell := range captured {
-			cells[i], err = plain(cell, snapshot.metadata.Columns[i].NativeType, c.database)
+			cells[i], err = plain(cell, snapshot.metadata.Columns[i].NativeType, c.dialect())
 			if err != nil {
 				return outcome{}, err
 			}
@@ -997,7 +1035,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		var want struct {
 			FileCreated bool `json:"file_created"`
 		}
-		if raw, ok := s.k("expect").Expect[c.database]; ok {
+		if raw, ok := s.k("expect").Expect[dialectKey(c.database, s.k("expect").Expect)]; ok {
 			if err := json.Unmarshal(raw, &want); err != nil {
 				return outcome{}, closeFirst(err, closeErr)
 			}
@@ -1101,7 +1139,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		if err != nil {
 			return outcome{}, err
 		}
-		return mutation(metadata, result, c.database)
+		return mutation(metadata, result, c.dialect())
 	case "catalog.update_row":
 		original, err := boundAPI[snapshotOf](s.k("snapshot").Snapshot, c)
 		if err != nil {
@@ -1115,7 +1153,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		if err != nil {
 			return outcome{}, err
 		}
-		return mutation(original.metadata, result, c.database)
+		return mutation(original.metadata, result, c.dialect())
 	case "catalog.delete_row":
 		original, err := boundAPI[snapshotOf](s.k("snapshot").Snapshot, c)
 		if err != nil {
@@ -1289,6 +1327,17 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		return outcome{fields: map[string]any{}}, nil
 	case "database.read_only":
 		// The file of the case database becomes one that the process may only read (CFG-24).
+		if c.database == "markdown" {
+			if err := chmodCorpus(c.corpusDir, true); err != nil {
+				return outcome{}, err
+			}
+			c.t.Cleanup(func() {
+				if err := chmodCorpus(c.corpusDir, false); err != nil {
+					c.t.Errorf("restoring the modes of the corpus %s: %v", c.corpusDir, err)
+				}
+			})
+			return outcome{fields: map[string]any{}}, nil
+		}
 		path, _, _ := strings.Cut(strings.TrimPrefix(c.dsn, "sqlite://"), "?")
 		if err := os.Chmod(path, 0o444); err != nil {
 			return outcome{}, err
@@ -1825,7 +1874,7 @@ func databaseText(raw json.RawMessage, c *databaseContext) (string, error) {
 	if err := json.Unmarshal(raw, &entries); err != nil {
 		return "", fmt.Errorf("a SQL field is a string or an object of the databases: %s", raw)
 	}
-	text, ok := entries[c.database]
+	text, ok := entries[dialectKey(c.database, entries)]
 	if !ok {
 		return "", fmt.Errorf("the SQL field has no entry for %s", c.database)
 	}
@@ -1843,8 +1892,27 @@ func sqlExecText(raw json.RawMessage, c *databaseContext) (string, bool, error) 
 	if err := json.Unmarshal(raw, &entries); err != nil {
 		return "", false, fmt.Errorf("a SQL field is a string or an object of the databases: %s", raw)
 	}
-	text, present := entries[c.database]
+	text, present := entries[dialectKey(c.database, entries)]
 	return text, present, nil
+}
+
+// dialect is the SQL dialect of the case database: a corpus runs SQL in SQLite's (DIA-185).
+func (c *databaseContext) dialect() string {
+	if c.database == "markdown" {
+		return "sqlite"
+	}
+	return c.database
+}
+
+// dialectKey is the key of a value that names its text by database: a corpus runs SQL in SQLite's dialect (DIA-185), so
+// it reads the SQLite entry unless the value states its own.
+func dialectKey[V any](database string, entries map[string]V) string {
+	if database == "markdown" {
+		if _, own := entries[database]; !own {
+			return "sqlite"
+		}
+	}
+	return database
 }
 
 // refName is the name of a {"ref": ...} field, or "" for another field.
@@ -2077,8 +2145,8 @@ func assignmentValue(raw json.RawMessage, c *databaseContext) (any, error) {
 	if err := json.Unmarshal(raw, &entries); err != nil {
 		return nil, err
 	}
-	if len(entries) == 3 && entries["mysql"] != nil && entries["postgres"] != nil && entries["sqlite"] != nil {
-		raw = entries[c.database]
+	if entries["mysql"] != nil && entries["postgres"] != nil && entries["sqlite"] != nil {
+		raw = entries[dialectKey(c.database, entries)]
 	}
 	n, err := wrapper(raw)
 	if err != nil {
@@ -2099,8 +2167,14 @@ func nativeArgument(n node) (any, error) {
 		return n.text, nil
 	case "bytes_hex":
 		return hex.DecodeString(n.text)
+	case "text_hex":
+		// A Go string holds any bytes, so a text that is not UTF-8 is the string of its bytes (FCV-4).
+		b, err := hex.DecodeString(n.text)
+		return string(b), err
 	case "bool":
 		return n.text == "true", nil
+	case "float", "f64":
+		return toGo(n)
 	case "null":
 		return nil, nil
 	case "array":
@@ -2131,12 +2205,25 @@ func plain(value any, nativeType, database string) (any, error) {
 	case bool:
 		return map[string]any{"bool": v}, nil
 	case float64:
+		// A non-finite float is the f64 wrapper, which names it as JSON cannot.
+		switch {
+		case math.IsInf(v, 1):
+			return map[string]any{"f64": "Infinity"}, nil
+		case math.IsInf(v, -1):
+			return map[string]any{"f64": "-Infinity"}, nil
+		case math.IsNaN(v):
+			return map[string]any{"f64": "NaN"}, nil
+		}
 		// The shortest text that reads back as the same float, as the TypeScript runner writes a number.
 		return map[string]any{"float": strconv.FormatFloat(v, 'g', -1, 64)}, nil
 	case []byte:
 		return map[string]any{"bytes_hex": hex.EncodeToString(v)}, nil
 	case string:
 		kind := temporalKind(nativeType)
+		if kind == "" && !utf8.ValidString(v) {
+			// A Go string holds any bytes: a value that is not text is its bytes, as the PHP helper writes it (INT-153).
+			return map[string]any{"bytes_hex": hex.EncodeToString([]byte(v))}, nil
+		}
 		if kind == "" {
 			kind = "text"
 		}
@@ -2312,11 +2399,28 @@ func inspectedSchema(raw json.RawMessage, c *databaseContext) (string, error) {
 		if err := json.Unmarshal(raw, &names); err != nil {
 			return "", err
 		}
-		name = names[c.database]
+		name = names[dialectKey(c.database, names)]
 	}
 	if name != "$database" {
 		return name, nil
 	}
 	path, _, _ := strings.Cut(c.dsn, "?")
 	return path[strings.LastIndex(path, "/")+1:], nil
+}
+
+// chmodCorpus makes the directories of a corpus ones the process may only read, or writable again.
+func chmodCorpus(root string, readOnly bool) error {
+	mode := os.FileMode(0o755)
+	if readOnly {
+		mode = 0o555
+	}
+	return filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			return os.Chmod(path, mode)
+		}
+		return nil
+	})
 }

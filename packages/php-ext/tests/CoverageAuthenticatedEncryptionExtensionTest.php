@@ -35,7 +35,7 @@ final class CoverageAuthenticatedEncryptionExtensionTest extends TestCase
         $config = new Config('', '', 2, [1 => 'old-key', 2 => 'new-key']);
         $rows = [[Codec::hostEncode('value', ['aes', 'hex'], 'old-key')]];
         try {
-            Codec::decodeRows($rows, [[0, ['aes', 'hex'], [], true, 1]], $config);
+            Codec::decodeRows($rows, [[0, ['aes', 'hex'], [], true, 1, 'user.aes_hex_email']], $config);
             self::fail('an AES row missing its selected version cell was accepted');
         } catch (OrmException $error) {
             Assert::assertSame('INTERNAL', $error->code_);

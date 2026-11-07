@@ -142,6 +142,11 @@ fn mysql_code(number: u16) -> Option<&'static str> {
 impl From<sqlx::Error> for Error {
     fn from(e: sqlx::Error) -> Self {
         use sqlx::error::DatabaseError as _;
+        if let Some(m) = e.as_database_error().and_then(|d| d.try_downcast_ref::<markdown::MarkdownServerError>()) {
+            // A flowmark server answers the code of the error catalog with its message (docs/spec/protocol.md PRT-71).
+            let (code, msg) = (m.code().to_owned(), sqlx::error::DatabaseError::message(m).to_owned());
+            return Error::Driver { code, msg, source: e };
+        }
         if let sqlx::Error::Database(d) = &e {
             // (shared code, the driver's message — with the SQLSTATE on PostgreSQL, whose
             // message text is localized, the way pgx renders it)
@@ -263,6 +268,10 @@ fn sqlite_extended_code(n: i64, message: &str) -> &'static str {
 
 pub(crate) fn sqlite_busy(e: &sqlx::Error) -> Result<bool> {
     use sqlx::error::DatabaseError as _;
+    // A flowmark server states SQLite's result code of a statement (docs/spec/protocol.md PRT-71).
+    if let Some(m) = e.as_database_error().and_then(|d| d.try_downcast_ref::<markdown::MarkdownServerError>()) {
+        return Ok(m.result_code().is_some_and(|n| n & 0xff == 5));
+    }
     // An error that is not a SQLite database error has no code, so it is not busy.
     let Some(text) = e.as_database_error().and_then(|d| d.try_downcast_ref::<sqlx::sqlite::SqliteError>()).and_then(|s| s.code()) else {
         return Ok(false);

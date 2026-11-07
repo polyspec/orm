@@ -1094,7 +1094,7 @@ func searchOp(s databaseStep, c *databaseContext) (outcome, error) {
 	if c.schema == nil {
 		return outcome{}, fmt.Errorf("query.search needs the schema of the case")
 	}
-	e, err := engine.Load(c.schema.Text, c.schema.External, c.database)
+	e, err := engine.Load(c.schema.Text, c.schema.External, c.dialect())
 	if err != nil {
 		return outcome{}, err
 	}

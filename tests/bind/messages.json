@@ -2,12 +2,7 @@
   "$schema": "../../scripts/features/schema/recipe.schema.json",
   "requirements": [
     "PRT-67",
-    "PRT-64",
-    "DIA-183",
-    "DIA-184",
-    "DIA-185",
-    "DIA-188",
-    "DIA-189"
+    "PRT-64"
   ],
   "cases": [
     {
@@ -23,7 +18,9 @@
           },
           "expect": {
             "message": {
-              "op": "begin"
+              "op": "statement",
+              "sql": "BEGIN IMMEDIATE",
+              "params": []
             }
           }
         }
@@ -42,8 +39,9 @@
           },
           "expect": {
             "message": {
-              "op": "begin",
-              "read_only": true
+              "op": "statement",
+              "sql": "BEGIN",
+              "params": []
             }
           }
         }
@@ -65,7 +63,7 @@
             }
           ],
           "expect": {
-            "message": "10:00:00.000000"
+            "message": "10:00:00"
           }
         }
       ]
@@ -86,7 +84,7 @@
             }
           ],
           "expect": {
-            "message": "10:00:00.123000"
+            "message": "10:00:00.123"
           }
         }
       ]
@@ -107,7 +105,7 @@
             }
           ],
           "expect": {
-            "message": "10:00:00.000000"
+            "message": "10:00:00.000"
           }
         }
       ]
@@ -149,7 +147,7 @@
             }
           ],
           "expect": {
-            "message": "2024-01-02 03:04:05.000000"
+            "message": "2024-01-02 03:04:05"
           }
         }
       ]
@@ -170,7 +168,7 @@
             }
           ],
           "expect": {
-            "message": "2024-01-02 03:04:05.500000"
+            "message": "2024-01-02 03:04:05.500"
           }
         }
       ]
@@ -583,7 +581,7 @@
             }
           ],
           "expect": {
-            "message": true
+            "message": 1
           }
         }
       ]
@@ -605,7 +603,7 @@
             }
           ],
           "expect": {
-            "message": "123.45"
+            "message": 12345
           }
         }
       ]
@@ -627,7 +625,7 @@
             }
           ],
           "expect": {
-            "message": "-1.5"
+            "message": -150
           }
         }
       ]
@@ -713,7 +711,7 @@
             "text": "abc"
           },
           "expect": {
-            "message": "abc"
+            "error": "IR_INVALID"
           }
         }
       ]
@@ -955,7 +953,9 @@
             }
           ],
           "expect": {
-            "message": "AAE="
+            "message": {
+              "bytes": "AAE="
+            }
           }
         }
       ]
@@ -977,7 +977,7 @@
             }
           ],
           "expect": {
-            "message": "a%"
+            "message": "%a\\%%"
           }
         }
       ]
@@ -999,7 +999,7 @@
             }
           ],
           "expect": {
-            "message": "a_b\\"
+            "message": "%a\\_b\\\\%"
           }
         }
       ]
@@ -1219,7 +1219,7 @@
             }
           ],
           "expect": {
-            "message": "10:00:00.000000"
+            "message": "10:00:00"
           }
         }
       ]
@@ -1241,7 +1241,7 @@
             }
           ],
           "expect": {
-            "message": "10:00:00.000000"
+            "message": "10:00:00"
           }
         }
       ]
@@ -1285,7 +1285,7 @@
             }
           ],
           "expect": {
-            "message": "10:00:00.500000"
+            "message": "10:00:00.5"
           }
         }
       ]
@@ -1307,7 +1307,7 @@
             }
           ],
           "expect": {
-            "message": "10:00:00.500000"
+            "message": "10:00:00.5"
           }
         }
       ]
@@ -1351,7 +1351,7 @@
             }
           ],
           "expect": {
-            "message": "10:00:00.120000"
+            "message": "10:00:00.12"
           }
         }
       ]
@@ -1373,7 +1373,7 @@
             }
           ],
           "expect": {
-            "message": "10:00:00.120000"
+            "message": "10:00:00.12"
           }
         }
       ]
@@ -1417,7 +1417,7 @@
             }
           ],
           "expect": {
-            "message": "10:00:00.123000"
+            "message": "10:00:00.123"
           }
         }
       ]
@@ -1483,7 +1483,7 @@
             }
           ],
           "expect": {
-            "message": "2024-01-02 03:04:05.000000"
+            "message": "2024-01-02 03:04:05"
           }
         }
       ]
@@ -1505,7 +1505,7 @@
             }
           ],
           "expect": {
-            "message": "2024-01-02 03:04:05.000000"
+            "message": "2024-01-02 03:04:05"
           }
         }
       ]
@@ -1549,7 +1549,7 @@
             }
           ],
           "expect": {
-            "message": "2024-01-02 03:04:05.500000"
+            "message": "2024-01-02 03:04:05.5"
           }
         }
       ]
@@ -1571,7 +1571,7 @@
             }
           ],
           "expect": {
-            "message": "2024-01-02 03:04:05.500000"
+            "message": "2024-01-02 03:04:05.5"
           }
         }
       ]
@@ -1615,7 +1615,7 @@
             }
           ],
           "expect": {
-            "message": "2024-01-02 03:04:05.120000"
+            "message": "2024-01-02 03:04:05.12"
           }
         }
       ]
@@ -1637,7 +1637,7 @@
             }
           ],
           "expect": {
-            "message": "2024-01-02 03:04:05.120000"
+            "message": "2024-01-02 03:04:05.12"
           }
         }
       ]
@@ -1703,7 +1703,7 @@
             }
           ],
           "expect": {
-            "message": "0001-01-01 00:00:00.000000"
+            "message": "0001-01-01 00:00:00"
           }
         }
       ]
@@ -1760,275 +1760,37 @@
       "steps": [
         {
           "op": "markdown.session",
+          "call": "transactions",
           "corpus": "tracker",
           "token": "0123456789abcdef0123456789abcdef",
           "replies": [
             "{\"ok\":true}",
-            "{\"ok\":true}",
-            "{\"ok\":true}",
-            "{\"ok\":true}",
-            "{\"ok\":true}",
-            "{\"ok\":true}",
+            "{\"columns\":[],\"rows\":[],\"affected\":0,\"last_insert_id\":0}",
+            "{\"columns\":[],\"rows\":[],\"affected\":0,\"last_insert_id\":0}",
+            "{\"columns\":[],\"rows\":[],\"affected\":0,\"last_insert_id\":0}",
+            "{\"columns\":[],\"rows\":[],\"affected\":0,\"last_insert_id\":0}",
+            "{\"columns\":[],\"rows\":[],\"affected\":0,\"last_insert_id\":0}",
+            "{\"columns\":[],\"rows\":[],\"affected\":0,\"last_insert_id\":0}",
+            "{\"columns\":[],\"rows\":[],\"affected\":0,\"last_insert_id\":0}",
+            "{\"columns\":[],\"rows\":[],\"affected\":0,\"last_insert_id\":0}",
             "{\"error\":{\"code\":\"WRITE_CONFLICT\",\"message\":\"people.flowmark.md:3 changed since it was read\"}}"
           ],
           "messages": [
             "{\"op\":\"connect\",\"corpus\":\"tracker\",\"token\":\"0123456789abcdef0123456789abcdef\"}",
-            "{\"op\":\"begin\",\"read_only\":true}",
-            "{\"op\":\"savepoint\",\"name\":\"orm_sp_1\"}",
-            "{\"op\":\"release\",\"name\":\"orm_sp_1\"}",
-            "{\"op\":\"commit\"}",
-            "{\"op\":\"begin\"}",
-            "{\"op\":\"commit\"}"
+            "{\"op\":\"statement\",\"sql\":\"CREATE TABLE IF NOT EXISTS \\\"orm__row_lock\\\" (\\\"id\\\" INTEGER PRIMARY KEY CHECK (\\\"id\\\" = 1))\",\"params\":[]}",
+            "{\"op\":\"statement\",\"sql\":\"BEGIN\",\"params\":[]}",
+            "{\"op\":\"statement\",\"sql\":\"PRAGMA query_only = 1\",\"params\":[]}",
+            "{\"op\":\"statement\",\"sql\":\"SAVEPOINT orm_sp_1\",\"params\":[]}",
+            "{\"op\":\"statement\",\"sql\":\"RELEASE SAVEPOINT orm_sp_1\",\"params\":[]}",
+            "{\"op\":\"statement\",\"sql\":\"PRAGMA query_only = 0\",\"params\":[]}",
+            "{\"op\":\"statement\",\"sql\":\"COMMIT\",\"params\":[]}",
+            "{\"op\":\"statement\",\"sql\":\"BEGIN IMMEDIATE\",\"params\":[]}",
+            "{\"op\":\"statement\",\"sql\":\"COMMIT\",\"params\":[]}"
           ],
           "expect": {
             "none": {
               "error": "WRITE_CONFLICT",
               "message_holds": "WRITE_CONFLICT: people.flowmark.md:3 changed since it was read"
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "markdown_refuses_audit",
-      "requirements": [
-        "DIA-183"
-      ],
-      "steps": [
-        {
-          "op": "markdown.send",
-          "surface": "audit",
-          "expect": {
-            "error": "CAPABILITY_UNSUPPORTED"
-          }
-        }
-      ]
-    },
-    {
-      "id": "markdown_refuses_isolation",
-      "requirements": [
-        "DIA-184"
-      ],
-      "steps": [
-        {
-          "op": "markdown.send",
-          "surface": "isolation",
-          "expect": {
-            "error": "CAPABILITY_UNSUPPORTED"
-          }
-        }
-      ]
-    },
-    {
-      "id": "markdown_refuses_timeout_ms",
-      "requirements": [
-        "DIA-184"
-      ],
-      "steps": [
-        {
-          "op": "markdown.send",
-          "surface": "timeout_ms",
-          "expect": {
-            "error": "CAPABILITY_UNSUPPORTED"
-          }
-        }
-      ]
-    },
-    {
-      "id": "markdown_refuses_get_query",
-      "requirements": [
-        "DIA-185"
-      ],
-      "steps": [
-        {
-          "op": "markdown.send",
-          "surface": "get_query",
-          "expect": {
-            "error": "CAPABILITY_UNSUPPORTED"
-          }
-        }
-      ]
-    },
-    {
-      "id": "markdown_refuses_subscribe",
-      "requirements": [
-        "DIA-185"
-      ],
-      "steps": [
-        {
-          "op": "markdown.send",
-          "surface": "subscribe",
-          "expect": {
-            "error": "CAPABILITY_UNSUPPORTED"
-          }
-        }
-      ]
-    },
-    {
-      "id": "markdown_refuses_lock",
-      "requirements": [
-        "DIA-188"
-      ],
-      "steps": [
-        {
-          "op": "markdown.send",
-          "surface": "lock",
-          "expect": {
-            "error": "CAPABILITY_UNSUPPORTED"
-          }
-        }
-      ]
-    },
-    {
-      "id": "markdown_refuses_set_local",
-      "requirements": [
-        "DIA-188"
-      ],
-      "steps": [
-        {
-          "op": "markdown.send",
-          "surface": "set_local",
-          "expect": {
-            "error": "CAPABILITY_UNSUPPORTED"
-          }
-        }
-      ]
-    },
-    {
-      "id": "markdown_refuses_local",
-      "requirements": [
-        "DIA-188"
-      ],
-      "steps": [
-        {
-          "op": "markdown.send",
-          "surface": "local",
-          "expect": {
-            "error": "CAPABILITY_UNSUPPORTED"
-          }
-        }
-      ]
-    },
-    {
-      "id": "markdown_refuses_backend_waiting_for_lock",
-      "requirements": [
-        "DIA-188"
-      ],
-      "steps": [
-        {
-          "op": "markdown.send",
-          "surface": "backend_waiting_for_lock",
-          "expect": {
-            "error": "CAPABILITY_UNSUPPORTED"
-          }
-        }
-      ]
-    },
-    {
-      "id": "markdown_refuses_privileges",
-      "requirements": [
-        "DIA-188"
-      ],
-      "steps": [
-        {
-          "op": "markdown.send",
-          "surface": "privileges",
-          "expect": {
-            "error": "CAPABILITY_UNSUPPORTED"
-          }
-        }
-      ]
-    },
-    {
-      "id": "markdown_refuses_aes_status",
-      "requirements": [
-        "DIA-188"
-      ],
-      "steps": [
-        {
-          "op": "markdown.send",
-          "surface": "aes_status",
-          "expect": {
-            "error": "CAPABILITY_UNSUPPORTED"
-          }
-        }
-      ]
-    },
-    {
-      "id": "markdown_refuses_aes_rotate",
-      "requirements": [
-        "DIA-188"
-      ],
-      "steps": [
-        {
-          "op": "markdown.send",
-          "surface": "aes_rotate",
-          "expect": {
-            "error": "CAPABILITY_UNSUPPORTED"
-          }
-        }
-      ]
-    },
-    {
-      "id": "markdown_refuses_schema_install",
-      "requirements": [
-        "DIA-189"
-      ],
-      "steps": [
-        {
-          "op": "markdown.send",
-          "surface": "schema_install",
-          "expect": {
-            "error": "CAPABILITY_UNSUPPORTED"
-          }
-        }
-      ]
-    },
-    {
-      "id": "markdown_refuses_schema_evolution",
-      "requirements": [
-        "DIA-189"
-      ],
-      "steps": [
-        {
-          "op": "markdown.send",
-          "surface": "schema_evolution",
-          "expect": {
-            "error": "CAPABILITY_UNSUPPORTED"
-          }
-        }
-      ]
-    },
-    {
-      "id": "markdown_refuses_schema_exists",
-      "requirements": [
-        "DIA-189"
-      ],
-      "steps": [
-        {
-          "op": "markdown.send",
-          "surface": "schema_exists",
-          "expect": {
-            "error": "CAPABILITY_UNSUPPORTED"
-          }
-        }
-      ]
-    },
-    {
-      "id": "markdown_refuses_statement_timeout",
-      "requirements": [
-        "DIA-184"
-      ],
-      "steps": [
-        {
-          "op": "dsn.connect",
-          "dsn": "markdown://127.0.0.1:1/tracker?token=0123456789abcdef0123456789abcdef",
-          "config": {
-            "statement_timeout_ms": 100
-          },
-          "expect": {
-            "none": {
-              "error": "CAPABILITY_UNSUPPORTED"
             }
           }
         }

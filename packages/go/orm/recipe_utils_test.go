@@ -31,3 +31,9 @@ func TestRecipeUtilsSqlite(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, utilsRecipe, "sqlite")
 }
+
+// TestRecipeUtilsMarkdown runs the recipe on flowmark, each case on a corpus of its own (FCV-3).
+func TestRecipeUtilsMarkdown(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, utilsRecipe, "markdown")
+}

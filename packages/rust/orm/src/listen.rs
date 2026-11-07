@@ -31,7 +31,7 @@ pub struct Subscription {
 
 impl Db {
     /// Sends `payload` to `channel` with pg_notify (DIA-193). Inside a transaction of this handle it runs on that transaction's
-    /// connection; outside one it runs on its own statement. MySQL, SQLite and the markdown executor refuse it (DIA-196).
+    /// connection; outside one it runs on its own statement. MySQL, SQLite and a markdown connection refuse it (DIA-196).
     pub async fn notify(&self, channel: &str, payload: &str) -> Result<()> {
         self.listenable("notify")?;
         check_channel(channel)?;
@@ -55,7 +55,7 @@ impl Db {
         Ok(())
     }
 
-    /// Opens a LISTEN subscription on `channel` (DIA-194) on a connection of its own. MySQL, SQLite and the markdown executor refuse it
+    /// Opens a LISTEN subscription on `channel` (DIA-194) on a connection of its own. MySQL, SQLite and a markdown connection refuse it
     /// with CAPABILITY_UNSUPPORTED (DIA-196).
     pub async fn listen(&self, channel: &str) -> Result<Subscription> {
         self.listenable("listen")?;

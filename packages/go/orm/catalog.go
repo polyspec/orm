@@ -62,7 +62,7 @@ type CatalogConnection struct {
 	reopenUntil atomic.Int64
 }
 
-// ConnectCatalog opens the catalog connection of a mysql, postgres or sqlite DSN. A markdown DSN is refused. A SQLite
+// ConnectCatalog opens the catalog connection of a mysql, postgres, sqlite or markdown DSN. A SQLite
 // DSN must name an existing regular file, and the connection never creates one.
 func ConnectCatalog(dsn string) (*CatalogConnection, error) {
 	parsed, err := parseDSN(dsn, 0)
@@ -71,7 +71,12 @@ func ConnectCatalog(dsn string) (*CatalogConnection, error) {
 	}
 	switch parsed.driver {
 	case "markdown":
-		return nil, configErr("CATALOG_DSN: a markdown corpus has no database catalog; give a mysql, postgres or sqlite DSN")
+		// A flowmark server runs SQL in SQLite's dialect on the corpus, so the catalog of a corpus is a SQLite catalog (DIA-185).
+		db, err := open(context.Background(), parsed, Config{})
+		if err != nil {
+			return nil, err
+		}
+		return &CatalogConnection{db: db, dialect: "sqlite"}, nil
 	case "sqlite":
 		u, err := url.Parse(dsn)
 		if err != nil {

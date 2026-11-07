@@ -5,6 +5,7 @@
 // a top-level node:test test under that ID.
 import { createRequire } from 'node:module';
 import { caseTest } from '../../../tests/testcase.mts';
+import { markdownSqlite } from './markdown_sqlite.mjs';
 
 const require = createRequire(new URL('../package.json', import.meta.url));
 
@@ -55,6 +56,11 @@ async function runItems(items, file, cases, timeoutMs, suite) {
  */
 export async function nativeSession(driver, dsn) {
   const url = new URL(dsn);
+  if (driver === 'markdown') {
+    // A corpus has no native driver but its flowmark server, which states SQL in SQLite's dialect (DIA-185).
+    const corpus = await markdownSqlite(dsn);
+    return { connection: corpus, query: sql => corpus.query(sql), close: () => corpus.close() };
+  }
   if (driver === 'sqlite') {
     const { DatabaseSync } = await import('node:sqlite');
     const db = new DatabaseSync(decodeURIComponent(url.pathname));

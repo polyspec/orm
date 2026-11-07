@@ -1,6 +1,7 @@
 {
   "$schema": "../../../scripts/features/schema/recipe.schema.json",
   "requirements": [
+    "DIA-154",
     "PERF-1"
   ],
   "fixture": "contracts/fixtures/bench/dbspec-set.json",

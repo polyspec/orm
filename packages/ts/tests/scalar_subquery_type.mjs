@@ -1,13 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { parse } from '@polyspec/ordered-json';
 import { Engine, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
-import { markdownRead } from '../dist/markdown.js';
 import { validate } from '../dist/engine/validate.js';
 import { repositoryRoot } from './coverage_case.mjs';
 import { isInternalColumnError } from './internal-column-error.mjs';
-import { markdownReadDatabase } from './markdown-read-db.mjs';
 
 const plannerRecipe = JSON.parse(await readFile(join(repositoryRoot, 'tests/planner/compile.json'), 'utf8'));
 const scalarCase = plannerRecipe.cases.find(({ id }) => id === 'planner_scalar_column_subquery');
@@ -25,14 +22,3 @@ for (const dialect of ['mysql', 'postgres', 'sqlite']) {
   assert.throws(() => engine.planner.compile(request), error => isInternalColumnError(error, 'author', 'missing_column'));
 }
 
-const markdownRequest = { ...structuredClone(scalar.input), manifest_hash: manifest.manifestHash };
-const db = markdownReadDatabase(model, {
-  call: async () => {
-    markdownRequest.columns.sub.first_author.column = 'missing_column';
-    return parse('{"rows":[{"seq":1,"name":"u","first_author":"author"}]}');
-  },
-});
-await assert.rejects(
-  markdownRead({ db, frame: undefined }, markdownRequest, []),
-  error => isInternalColumnError(error, 'author', 'missing_column'),
-);

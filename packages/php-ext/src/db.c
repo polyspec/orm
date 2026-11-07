@@ -12,6 +12,7 @@
  * is active.
  */
 #include "engine_native.h"
+#include "markdown_native.h"
 #include "parent_slot_sql.h"
 #include "php.h"
 #include "ext/pdo/php_pdo_driver.h"
@@ -265,6 +266,12 @@ static bool as_bool(zval *v)
     return v != NULL && zend_is_true(v);
 }
 
+/* A markdown connection is a corpus that a flowmark server serves; its statements are SQLite's (DIA-185). */
+static bool is_corpus(zval *self)
+{
+    return as_bool(rd(self, "corpus"));
+}
+
 static bool is_str(zval *v, const char *s)
 {
     return v != NULL && Z_TYPE_P(v) == IS_STRING && strcmp(Z_STRVAL_P(v), s) == 0;
@@ -309,24 +316,13 @@ static void str_zv(zval *v, const char *s)
 
 /* ---- the connection ---- */
 
-/* Db::handle(): the PDO handle of the connection. CONFIG when closed, CAPABILITY_UNSUPPORTED on a markdown connection. The
- * handle is returned as a copy the caller releases. */
+/* Db::handle(): the PDO handle of the connection. CONFIG when closed. The handle is returned as a copy the caller
+ * releases. */
 static bool handle_pdo(zval *self, zval *out)
 {
     zval *state = rd(self, "state");
     if (as_bool(rd(state, "closed"))) {
         db_throw_orm("CONFIG", "database is closed");
-        return false;
-    }
-    zval *md = rd(self, "md");
-    if (md != NULL && Z_TYPE_P(md) == IS_OBJECT) {
-        zval arg, e;
-        str_zv(&arg, "a SQL statement");
-        bool ok = scall("Polyspec\\Orm\\Markdown::unsupported", &e, 1, &arg);
-        zval_ptr_dtor(&arg);
-        if (ok) {
-            put_exception(&e);
-        }
         return false;
     }
     zval *pdo = rd(state, "pdo");
@@ -336,23 +332,6 @@ static bool handle_pdo(zval *self, zval *out)
     }
     ZVAL_COPY(out, pdo);
     return true;
-}
-
-/* Db::unsupportedOnMarkdown(surface): throws Markdown::unsupported(surface) on a markdown connection. */
-static bool unsupported_on_markdown(zval *self, const char *surface)
-{
-    zval *md = rd(self, "md");
-    if (md == NULL || Z_TYPE_P(md) != IS_OBJECT) {
-        return true;
-    }
-    zval arg, e;
-    str_zv(&arg, surface);
-    bool ok = scall("Polyspec\\Orm\\Markdown::unsupported", &e, 1, &arg);
-    zval_ptr_dtor(&arg);
-    if (ok) {
-        put_exception(&e);
-    }
-    return false;
 }
 
 static zend_long now_hr(void)
@@ -563,7 +542,8 @@ static bool cancellation_begin_statement(zval *db, bool control, zval *signal, b
     if (!ok) return false;
     zval_ptr_dtor(&result);
     *started = true;
-    if (is_str(rd(db, "driver"), "sqlite") && !cancellation_attach_sqlite(db, signal)) return false;
+    /* A markdown connection ends a cancelled statement by shutting its session down (PRT-71), not in SQLite. */
+    if (is_str(rd(db, "driver"), "sqlite") && !is_corpus(db) && !cancellation_attach_sqlite(db, signal)) return false;
     return true;
 }
 
@@ -778,7 +758,22 @@ static bool send_op(zval *self, bool control, op_fn op, void *ctx, done_fn done,
             if (Z_TYPE(signal) != IS_UNDEF) zval_ptr_dtor(&signal);
             return false;
         }
-        if (cancelled && !is_str(&driver, "sqlite")) {
+        if (cancelled && is_corpus(self)) {
+            /* The cancellation shut the session down: the server rolls back its transaction (PRT-71), so the transaction
+             * is over, and the next statement runs on a new session. */
+            cancellation_clear_statements(rd(self, "state"));
+            zval *frame = active_for(self);
+            if (frame != NULL) {
+                zval yes;
+                ZVAL_TRUE(&yes);
+                wr(frame, "cancelled", &yes);
+                wr(frame, "finished", &yes);
+            }
+            if (markdown_pdo_is_adapter(&pdo)) {
+                zval ignored;
+                if (mcall(&pdo, "abandon", &ignored, 0, NULL)) zval_ptr_dtor(&ignored);
+            }
+        } else if (cancelled && !is_str(&driver, "sqlite")) {
             cancellation_clear_statements(rd(self, "state"));
             if (is_str(&driver, "postgres")) {
                 zval *frame = active_for(self);
@@ -1079,12 +1074,14 @@ static bool stmt_of(zval *self, zval *sql, zval *args, zval *out)
 /* Db::exec: binds the arguments with their types where the driver needs them, and executes the statement. MySQL binds each
  * argument: the emulated prepare quotes every value that execute() receives, and MySQL refuses a quoted LIMIT or OFFSET (the root
  * page parameters, PRT-78), so an int or a bool binds as PDO::PARAM_INT, which it writes as a number. */
-static bool exec_stmt(zval *self, zval *st, zval *args)
+static bool exec_stmt_args(zval *self, zval *st, zval *args)
 {
     zval r;
     zval *drv = rd(self, "driver");
     bool mysql = is_str(drv, "mysql");
-    if (!mysql && !as_bool(rd(self, "typed"))) {
+    /* A markdown connection binds each argument in its type, which its statement message writes (PRT-67). */
+    bool corpus = is_corpus(self);
+    if (!mysql && !as_bool(rd(self, "typed")) && !corpus) {
         if (!mcall(st, "execute", &r, 1, args)) {
             return false;
         }
@@ -1103,7 +1100,7 @@ static bool exec_stmt(zval *self, zval *st, zval *args)
         ZVAL_NULL(&argv[2]);
         uint32_t argc = 2;
         if (Z_TYPE_P(v) == IS_TRUE || Z_TYPE_P(v) == IS_FALSE) {
-            if (pg) {
+            if (pg || corpus) {
                 ZVAL_BOOL(&argv[1], Z_TYPE_P(v) == IS_TRUE);
                 ZVAL_LONG(&argv[2], PARAM_BOOL);
             } else {
@@ -1125,6 +1122,8 @@ static bool exec_stmt(zval *self, zval *st, zval *args)
             ZVAL_COPY(&argv[1], v);
             ZVAL_LONG(&argv[2], PARAM_INT);
             argc = 3;
+        } else if (corpus && Z_TYPE_P(v) == IS_DOUBLE) {
+            ZVAL_COPY(&argv[1], v);
         } else {
             ZVAL_STR(&argv[1], zval_get_string(v));
         }
@@ -1143,6 +1142,48 @@ static bool exec_stmt(zval *self, zval *st, zval *args)
     }
     zval_ptr_dtor(&r);
     return true;
+}
+
+/* sqlite_args writes into mapped the arguments as SQLite reads them and returns true, or returns false when args need no
+ * change. PDO binds a float as its text, and SQLite takes a text as a number only in a numeric form, which INF is not, so
+ * on SQLite an infinity binds as 9.0e+999, the form of an infinity that SQLite itself writes (quote()). Db::exec and
+ * Db::fetch both bind through it, so a model write and a statement of Utils::run store the same value. */
+static bool sqlite_args(zval *self, zval *args, zval *mapped)
+{
+    if (!is_str(rd(self, "driver"), "sqlite") || is_corpus(self)) return false;
+    bool infinite = false;
+    zval *item;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(args), item)
+    {
+        ZVAL_DEREF(item);
+        if (Z_TYPE_P(item) == IS_DOUBLE && zend_isinf(Z_DVAL_P(item))) infinite = true;
+    }
+    ZEND_HASH_FOREACH_END();
+    if (!infinite) return false;
+    array_init_size(mapped, zend_hash_num_elements(Z_ARRVAL_P(args)));
+    zend_ulong idx;
+    ZEND_HASH_FOREACH_NUM_KEY_VAL(Z_ARRVAL_P(args), idx, item)
+    {
+        ZVAL_DEREF(item);
+        if (Z_TYPE_P(item) == IS_DOUBLE && zend_isinf(Z_DVAL_P(item))) {
+            add_index_string(mapped, idx, Z_DVAL_P(item) > 0 ? "9.0e+999" : "-9.0e+999");
+        } else {
+            Z_TRY_ADDREF_P(item);
+            add_index_zval(mapped, idx, item);
+        }
+    }
+    ZEND_HASH_FOREACH_END();
+    return true;
+}
+
+/* exec_stmt runs exec_stmt_args with the arguments of sqlite_args. */
+static bool exec_stmt(zval *self, zval *st, zval *args)
+{
+    zval mapped;
+    if (!sqlite_args(self, args, &mapped)) return exec_stmt_args(self, st, args);
+    bool ok = exec_stmt_args(self, st, &mapped);
+    zval_ptr_dtor(&mapped);
+    return ok;
 }
 
 /* Db::exec; a failed driver statement closes its cursor before the cached statement is released. */
@@ -1987,6 +2028,18 @@ static bool args_of(zval *self, zval *step, zval *params, zval *parents, zval *f
                         zval_ptr_dtor(&slot);
                         zval_ptr_dtor(&v);
                         goto fail;
+                    }
+                    /* PHP holds bytes as a string, so a string in a bytes slot binds as a blob, which SQLite stores as a
+                     * blob as MySQL and PostgreSQL do (PRT-67). */
+                    if (is_str(aget(b, "col_type"), "bytes") && Z_TYPE(v) == IS_STRING) {
+                        zval bv;
+                        bool bok = newobj(BYTES_CLASS, &bv, 1, &v);
+                        zval_ptr_dtor(&v);
+                        if (!bok) {
+                            zval_ptr_dtor(&slot);
+                            goto fail;
+                        }
+                        ZVAL_COPY_VALUE(&v, &bv);
                     }
                 }
                 zval_ptr_dtor(&slot);
@@ -2835,12 +2888,14 @@ static bool plan_of(zval *self, zval *r, zval *out)
         return false;
     }
     zval_ptr_dtor(&model);
-    zval eargs[3], engine, rr, shape;
+    zval eargs[4], engine, rr, shape;
     ZVAL_COPY(&eargs[0], hash);
     ZVAL_COPY(&eargs[1], rd(self, "driver"));
     ZVAL_LONG(&eargs[2], as_long(rd(rd(self, "config"), "planCacheSize")));
-    bool ok = scall("Polyspec\\Orm\\Engine::for", &engine, 3, eargs);
-    for (int i = 0; i < 3; i++) {
+    /* A corpus assigns the key_prefix keys and the order positions that an insert leaves out (PRT-73). */
+    ZVAL_BOOL(&eargs[3], is_corpus(self));
+    bool ok = scall("Polyspec\\Orm\\Engine::for", &engine, 4, eargs);
+    for (int i = 0; i < 4; i++) {
         zval_ptr_dtor(&eargs[i]);
     }
     if (!ok) {
@@ -2875,6 +2930,16 @@ static bool plan_of(zval *self, zval *r, zval *out)
     zval_ptr_dtor(&shape);
     zval_ptr_dtor(&engine);
     return ok;
+}
+
+/* The plan of a request and its first step, the statement that a write and getQuery run; the caller releases both. */
+static bool main_step_of(zval *self, zval *r, zval *plan, zval *step)
+{
+    if (!plan_of(self, r, plan)) {
+        return false;
+    }
+    ZVAL_COPY(step, aidx(aget(plan, "steps"), 0));
+    return true;
 }
 
 /* Db::splitReadPlan: the plan of a read whose root IN list may be split (PRT-76), and in nbind the number of bind slots its
@@ -2984,6 +3049,11 @@ static bool op_fetch_rows(zval *self, void *ctx, zval *ret)
     if (!ok) {
         zval_ptr_dtor(&bound);
         return false;
+    }
+    zval mapped;
+    if (sqlite_args(self, &bound, &mapped)) {
+        zval_ptr_dtor(&bound);
+        ZVAL_COPY_VALUE(&bound, &mapped);
     }
     ok = mcall(&st, "execute", &r, 1, &bound);
     zval_ptr_dtor(&bound);
@@ -3242,38 +3312,14 @@ static bool acquire_row_lock(zval *self, zval *mode, zval *frame)
 
 /* ---- the entry points of the statement path (Db::select, scalarOf, paginate, writeOf, statement) ---- */
 
-/* Calls the Markdown object's method m with self and r when self holds one: 1 or 0 for its result, or -1 when self holds
-no Markdown object, so the caller runs the statement itself. */
-static int md_call(zval *self, zval *r, const char *m, zval *out)
-{
-    zval *md = rd(self, "md");
-    if (md == NULL || Z_TYPE_P(md) != IS_OBJECT) {
-        return -1;
-    }
-    zval args[2];
-    ZVAL_COPY(&args[0], self);
-    ZVAL_COPY(&args[1], r);
-    char name[64];
-    snprintf(name, sizeof name, "Polyspec\\Orm\\Markdown::%s", m);
-    bool ok = scall(name, out, 2, args);
-    zval_ptr_dtor(&args[0]);
-    zval_ptr_dtor(&args[1]);
-    return ok ? 1 : 0;
-}
-
-/* Returns 1 when Markdown handled the read, 0 when a native plan is ready, and -1 on failure. */
-/* With nbind, the read may split its root IN list and is planned by split_read_plan; without it, by plan_of. */
-static int prepare_read(zval *self, zval *frame, zval *r, const char *method, zval *out, zval *plan, zend_long *nbind)
+/* Plans a read into plan: false on failure. With nbind, the read may split its root IN list and is planned by
+ * split_read_plan; without it, by plan_of. */
+static bool prepare_read(zval *self, zval *frame, zval *r, zval *plan, zend_long *nbind)
 {
     if (!apply_hook(self, r) || !enter(self, frame, rd(r, "ir"))) {
-        return -1;
+        return false;
     }
-    int handled = md_call(self, r, method, out);
-    if (handled >= 0) {
-        return handled == 1 ? 1 : -1;
-    }
-    bool ok = nbind != NULL ? split_read_plan(self, r, plan, nbind) : plan_of(self, r, plan);
-    return ok ? 0 : -1;
+    return nbind != NULL ? split_read_plan(self, r, plan, nbind) : plan_of(self, r, plan);
 }
 
 typedef bool (*read_plan_operation)(zval *self, zval *frame, zval *r, zval *out, zval *plan);
@@ -3282,12 +3328,8 @@ typedef bool (*read_plan_operation)(zval *self, zval *frame, zval *r, zval *out,
 static bool with_read_plan(zval *self, zval *frame, zval *r, zval *out, read_plan_operation operation)
 {
     zval plan;
-    int prepared = prepare_read(self, frame, r, "read", out, &plan, NULL);
-    if (prepared < 0) {
+    if (!prepare_read(self, frame, r, &plan, NULL)) {
         return false;
-    }
-    if (prepared > 0) {
-        return true;
     }
     bool ok = operation(self, frame, r, out, &plan);
     zval_ptr_dtor(&plan);
@@ -3380,12 +3422,8 @@ static bool select_impl(zval *self, zval *frame, zval *r, zval *out)
 {
     zval plan;
     zend_long nbind = 0;
-    int prepared = prepare_read(self, frame, r, "read", out, &plan, &nbind);
-    if (prepared < 0) {
+    if (!prepare_read(self, frame, r, &plan, &nbind)) {
         return false;
-    }
-    if (prepared > 0) {
-        return true;
     }
     bool ok = select_plan(self, frame, r, out, &plan, nbind);
     zval_ptr_dtor(&plan);
@@ -3396,12 +3434,8 @@ static bool scalar_of_impl(zval *self, zval *frame, zval *r, zval *out)
 {
     zval plan;
     zend_long nbind = 0;
-    int prepared = prepare_read(self, frame, r, "scalar", out, &plan, &nbind);
-    if (prepared < 0) {
+    if (!prepare_read(self, frame, r, &plan, &nbind)) {
         return false;
-    }
-    if (prepared > 0) {
-        return true;
     }
     zval *step0 = aidx(aget(&plan, "steps"), 0);
     zval parts;
@@ -3564,49 +3598,10 @@ static bool write_of_impl(zval *self, zval *frame, zval *r, zval *after, zval *o
     if (!enter(self, frame, ir)) {
         return false;
     }
-    zval *md = rd(self, "md");
-    if (md != NULL && Z_TYPE_P(md) == IS_OBJECT) {
-        zval args[2], res;
-        ZVAL_COPY(&args[0], self);
-        ZVAL_COPY(&args[1], r);
-        bool ok = scall("Polyspec\\Orm\\Markdown::write", &res, 2, args);
-        zval_ptr_dtor(&args[0]);
-        zval_ptr_dtor(&args[1]);
-        if (!ok) {
-            return false;
-        }
-        zval *keys = aidx(&res, 0);
-        zval *affected = aidx(&res, 1);
-        zend_long n = as_long(affected);
-        zval first;
-        zval *first_key = keys != NULL && Z_TYPE_P(keys) == IS_ARRAY ? aidx(keys, 0) : NULL;
-        if (first_key != NULL) {
-            ZVAL_COPY(&first, first_key);
-        } else {
-            ZVAL_NULL(&first);
-        }
-        zval_ptr_dtor(&res);
-        if (aget(ir, "optimistic") != NULL && n == 0) {
-            zval_ptr_dtor(&first);
-            db_throw_orm("OPTIMISTIC_LOCK", "the row changed after it was read");
-            return false;
-        }
-        if (!record_inserted(frame, r, &first)) {
-            zval_ptr_dtor(&first);
-            return false;
-        }
-        set_last_affected(self, n);
-        array_init(out);
-        zend_hash_next_index_insert(Z_ARRVAL_P(out), &first);
-        set_long(out, n);
-        return true;
-    }
-    zval plan;
-    if (!plan_of(self, r, &plan)) {
+    zval plan, step;
+    if (!main_step_of(self, r, &plan, &step)) {
         return false;
     }
-    zval step;
-    ZVAL_COPY(&step, aidx(aget(&plan, "steps"), 0));
     bool has_frame = frame != NULL && Z_TYPE_P(frame) == IS_OBJECT;
     bool settle_needed = false;
     if (has_frame && binds_audit(&step)) {
@@ -3686,8 +3681,14 @@ static bool op_write(zval *self, void *ctx, zval *ret)
         return false;
     }
     if (insert && strstr(Z_STRVAL_P(sql), " RETURNING ") != NULL) {
-        zval id, r;
+        zval id, r, count;
+        ZVAL_LONG(&count, 1);
         bool ok = mcall(&st, "fetchColumn", &id, 0, NULL);
+        if (ok && Z_TYPE(id) == IS_FALSE) {
+            /* No row answered the insert, so it wrote none: no key, and the count of the statement (INT-151). */
+            ZVAL_NULL(&id);
+            ok = mcall(&st, "rowCount", &count, 0, NULL);
+        }
         if (ok) {
             ok = mcall(&st, "closeCursor", &r, 0, NULL);
             zval_ptr_dtor(&r);
@@ -3699,7 +3700,7 @@ static bool op_write(zval *self, void *ctx, zval *ret)
         }
         array_init(ret);
         zend_hash_next_index_insert(Z_ARRVAL_P(ret), &id);
-        set_long(ret, 1);
+        set_long(ret, zval_get_long(&count));
         return true;
     }
     /* Registry::model(hash)->entity(entity)['identity']: a model without an identity column has no generated key. */
@@ -3767,18 +3768,13 @@ static bool send_write(zval *self, zval *step, zval *args, zval *r, zval *id, zv
 /* Db::statement: the SQL and the binds of a request, with the masks of the secret and the clock, for getQuery. */
 static bool statement_impl(zval *self, zval *r, zval *out)
 {
-    if (!unsupported_on_markdown(self, "getQuery")) {
-        return false;
-    }
     if (!apply_hook(self, r)) {
         return false;
     }
-    zval plan;
-    if (!plan_of(self, r, &plan)) {
+    zval plan, step;
+    if (!main_step_of(self, r, &plan, &step)) {
         return false;
     }
-    zval step;
-    ZVAL_COPY(&step, aidx(aget(&plan, "steps"), 0));
     zval args;
     bool ok = args_of(self, &step, rd(r, "params"), NULL, NULL, &args);
     if (ok) {
@@ -3819,11 +3815,8 @@ static bool statement_impl(zval *self, zval *r, zval *out)
 /* Db::pagePlanSteps: the steps of the plan of a page request, from the prepare_read that Db::paginate runs. */
 static bool page_plan_steps_impl(zval *self, zval *frame, zval *r, zval *out)
 {
-    if (!unsupported_on_markdown(self, "getPagePlanSteps")) {
-        return false;
-    }
     zval plan;
-    if (prepare_read(self, frame, r, "read", out, &plan, NULL) != 0) {
+    if (!prepare_read(self, frame, r, &plan, NULL)) {
         return false;
     }
     array_init(out);
@@ -3858,9 +3851,6 @@ ZEND_NAMED_FUNCTION(db_unsubscribe)
 
 static bool subscribe_impl(zval *self, zval *subscriber, zval *out)
 {
-    if (!unsupported_on_markdown(self, "statement events")) {
-        return false;
-    }
     zval *state = rd(self, "state");
     zend_long id = as_long(rd(state, "subscriberSeq"));
     zval next;
@@ -3900,15 +3890,16 @@ static zend_long insert_parts_batch(zend_long rows, zend_long batch, zval *out)
 
 ZEND_METHOD(Polyspec_Orm_Db, __construct)
 {
-    zval *pdo, *config, *zone, *md = NULL;
+    zval *pdo, *config, *zone;
     zend_string *driver;
+    bool corpus = false;
     ZEND_PARSE_PARAMETERS_START(4, 5)
-        Z_PARAM_OBJECT_OR_NULL(pdo)
+        Z_PARAM_OBJECT_OF_CLASS(pdo, cls("PDO"))
         Z_PARAM_STR(driver)
         Z_PARAM_OBJECT_OF_CLASS(config, cls("Polyspec\\Orm\\Config"))
         Z_PARAM_OBJECT_OF_CLASS(zone, cls("DateTimeZone"))
         Z_PARAM_OPTIONAL
-        Z_PARAM_OBJECT_OR_NULL(md)
+        Z_PARAM_BOOL(corpus)
     ZEND_PARSE_PARAMETERS_END();
     zval *self = ZEND_THIS;
     zval drv, nul, state, empty, fl;
@@ -3917,12 +3908,8 @@ ZEND_METHOD(Polyspec_Orm_Db, __construct)
     zval_ptr_dtor(&drv);
     wr(self, "config", config);
     wr(self, "zone", zone);
-    if (md != NULL) {
-        wr(self, "md", md);
-    } else {
-        ZVAL_NULL(&nul);
-        wr(self, "md", &nul);
-    }
+    ZVAL_BOOL(&fl, corpus);
+    wr(self, "corpus", &fl);
     if (!newobj(DB_STATE, &state, 0, NULL)) {
         return;
     }
@@ -3935,9 +3922,6 @@ ZEND_METHOD(Polyspec_Orm_Db, __construct)
     ZVAL_NULL(&nul);
     wr(self, "requestHook", &nul);
     zval_ptr_dtor(&state);
-    if (pdo == NULL || Z_TYPE_P(pdo) == IS_NULL) {
-        return;
-    }
     zval args[2], r;
     ZVAL_LONG(&args[0], constant_long("PDO::ATTR_ERRMODE"));
     ZVAL_LONG(&args[1], constant_long("PDO::ERRMODE_EXCEPTION"));
@@ -3985,31 +3969,18 @@ ZEND_METHOD(Polyspec_Orm_Db, registerSet)
 ZEND_METHOD(Polyspec_Orm_Db, driver)
 {
     ZEND_PARSE_PARAMETERS_NONE();
+    if (is_corpus(ZEND_THIS)) {
+        RETURN_STRING("markdown");
+    }
     RETURN_COPY(rd(ZEND_THIS, "driver"));
 }
 
-ZEND_METHOD(Polyspec_Orm_Db, markdownSession)
+ZEND_METHOD(Polyspec_Orm_Db, dialect)
 {
     ZEND_PARSE_PARAMETERS_NONE();
-    zval *state = rd(ZEND_THIS, "state");
-    zval *md = rd(ZEND_THIS, "md");
-    if (as_bool(rd(state, "closed")) || md == NULL) {
-        db_throw_orm("CONFIG", "database is closed");
-        RETURN_THROWS();
-    }
-    RETURN_COPY(md);
+    RETURN_COPY(rd(ZEND_THIS, "driver"));
 }
 
-ZEND_METHOD(Polyspec_Orm_Db, unsupportedOnMarkdown)
-{
-    zend_string *surface;
-    ZEND_PARSE_PARAMETERS_START(1, 1)
-        Z_PARAM_STR(surface)
-    ZEND_PARSE_PARAMETERS_END();
-    if (!unsupported_on_markdown(ZEND_THIS, ZSTR_VAL(surface))) {
-        RETURN_THROWS();
-    }
-}
 
 ZEND_METHOD(Polyspec_Orm_Db, registeredModel)
 {
@@ -4102,19 +4073,6 @@ ZEND_METHOD(Polyspec_Orm_Db, close)
     if (frame != NULL && !as_bool(rd(frame, "finished")) && !finish_tx(self, frame, false)) {
         take_exception(&cleanup);
     }
-    zval *md = rd(self, "md");
-    if (md != NULL && Z_TYPE_P(md) == IS_OBJECT) {
-        zval t, r;
-        ZVAL_TRUE(&t);
-        wr(state, "closed", &t);
-        if (mcall(md, "close", &r, 0, NULL)) {
-            zval_ptr_dtor(&r);
-        }
-        if (Z_TYPE(cleanup) != IS_UNDEF) {
-            put_exception(&cleanup);
-        }
-        return;
-    }
     zval *stmts = rd(state, "stmts");
     zval *st;
     zval err;
@@ -4159,6 +4117,14 @@ ZEND_METHOD(Polyspec_Orm_Db, close)
     zval retained;
     ZVAL_LONG(&retained, 0);
     wr(state, "stmtRetained", &retained);
+    zval *closing = rd(state, "pdo");
+    if (markdown_pdo_is_adapter(closing)) {
+        /* The session of a markdown connection ends with it. */
+        zval r;
+        if (mcall(closing, "close", &r, 0, NULL)) {
+            zval_ptr_dtor(&r);
+        }
+    }
     ZVAL_NULL(&nul);
     wr(state, "pdo", &nul);
     if (Z_TYPE(err) != IS_UNDEF && Z_TYPE(cleanup) != IS_UNDEF) {
@@ -4191,9 +4157,6 @@ ZEND_METHOD(Polyspec_Orm_Db, withCancellation)
     ZEND_PARSE_PARAMETERS_START(1, 1)
         Z_PARAM_OBJECT_OF_CLASS(cancellation, cls("Polyspec\\Orm\\Cancellation"))
     ZEND_PARSE_PARAMETERS_END();
-    if (!unsupported_on_markdown(ZEND_THIS, "statement cancellation")) {
-        RETURN_THROWS();
-    }
     zval *state = rd(ZEND_THIS, "state");
     zval key_args[1], key, arguments[2], slot;
     ZVAL_COPY(&key_args[0], state);
@@ -5030,32 +4993,13 @@ static void rollback_release_savepoint(zval *self, zval *frame, const char *name
 
 static void savepoint_control(zval *self, zval *frame, const char *kind, const char *name, bool *ok)
 {
-    const char *op = "savepoint";
     char statement[128];
     if (strcmp(kind, "savepoint") == 0) {
         snprintf(statement, sizeof(statement), "SAVEPOINT %s", name);
     } else if (strcmp(kind, "release") == 0) {
-        op = "release";
         snprintf(statement, sizeof(statement), "RELEASE SAVEPOINT %s", name);
     } else {
-        op = "rollback_to";
         snprintf(statement, sizeof(statement), "ROLLBACK TO SAVEPOINT %s", name);
-    }
-    zval *md = rd(self, "md");
-    if (md != NULL && Z_TYPE_P(md) == IS_OBJECT) {
-        zval msg, r;
-        array_init(&msg);
-        zval v;
-        str_zv(&v, op);
-        setk(&msg, "op", &v);
-        zval_ptr_dtor(&v);
-        str_zv(&v, name);
-        setk(&msg, "name", &v);
-        zval_ptr_dtor(&v);
-        *ok = mcall(md, "call", &r, 1, &msg);
-        zval_ptr_dtor(&msg);
-        zval_ptr_dtor(&r);
-        return;
     }
     /* A transaction that SQLite rolled back by itself took its savepoints with it (INT-155). */
     if (strcmp(kind, "savepoint") != 0 && is_str(rd(self, "driver"), "sqlite")) {
@@ -5216,19 +5160,6 @@ static bool finish_tx(zval *self, zval *frame, bool commit)
     zval t;
     ZVAL_TRUE(&t);
     wr(frame, "finished", &t);
-    zval *md = rd(self, "md");
-    if (md != NULL && Z_TYPE_P(md) == IS_OBJECT) {
-        zval msg, r;
-        array_init(&msg);
-        zval op;
-        str_zv(&op, commit ? "commit" : "rollback");
-        setk(&msg, "op", &op);
-        zval_ptr_dtor(&op);
-        bool ok = mcall(md, "call", &r, 1, &msg);
-        zval_ptr_dtor(&msg);
-        zval_ptr_dtor(&r);
-        return ok;
-    }
     zval fnum;
     frame_number(frame, &fnum);
     zval errors, failure_z;
@@ -5441,28 +5372,6 @@ static bool begin_tx(zval *self, const char *isolation, bool read_only, zend_lon
     if (timeout > 0 && !is_str(rd(self, "driver"), "postgres")) {
         db_throw_orm("CAPABILITY_UNSUPPORTED", "transaction timeoutMs is supported only by postgres");
         return false;
-    }
-    zval *md = rd(self, "md");
-    if (md != NULL && Z_TYPE_P(md) == IS_OBJECT) {
-        if (isolation[0] != '\0') {
-            zval arg, e;
-            str_zv(&arg, "the transaction isolation option");
-            if (scall("Polyspec\\Orm\\Markdown::unsupported", &e, 1, &arg)) {
-                put_exception(&e);
-            }
-            zval_ptr_dtor(&arg);
-            return false;
-        }
-        if (!make_tx_frame(self, state, out, read_only, isolation)) {
-            return false;
-        }
-        zval ro, bm, r;
-        ZVAL_BOOL(&ro, read_only);
-        bool sent = scall("Polyspec\\Orm\\Markdown::beginMessage", &bm, 1, &ro)
-            && mcall(md, "call", &r, 1, &bm);
-        zval_ptr_dtor(&bm);
-        zval_ptr_dtor(&r);
-        return sent;
     }
     /* The upper-case level of the isolation: underscores become spaces. */
     char level[32] = "";
@@ -6073,11 +5982,6 @@ static bool transaction_impl(zval *self, zval *fn, dbs_transaction_callback call
     if (!known) {
         db_throw_orm("CONFIG", "unsupported transaction isolation %s", isolation);
         return false;
-    }
-    if (audit != NULL && Z_TYPE_P(audit) != IS_NULL) {
-        if (!unsupported_on_markdown(self, "a transaction with audit values")) {
-            return false;
-        }
     }
     zval *outer = active_for(self);
     if (EG(exception) != NULL) {

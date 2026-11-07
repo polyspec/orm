@@ -322,6 +322,11 @@ ZEND_METHOD(Polyspec_Orm_Transform, param)
         db_throw_orm("CODEC_ENCODE", "%s requires a string value", ZSTR_VAL(kind));
         RETURN_THROWS();
     }
+    str text = {Z_STRVAL_P(value), Z_STRLEN_P(value)};
+    if (utf8_valid_prefix(text) != text.n) {
+        db_throw_orm("CODEC_ENCODE", "%s requires a UTF-8 text", ZSTR_VAL(kind));
+        RETURN_THROWS();
+    }
     if (zend_string_equals_literal(kind, "fulltext_boolean")) {
         zend_string *term = transform_fulltext_boolean(Z_STR_P(value));
         if (term == NULL) RETURN_THROWS();

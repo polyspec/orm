@@ -275,7 +275,7 @@ func (c *databaseContext) installHook(s databaseStep) (outcome, error) {
 					if assignment.Column != a.column || assignment.P == nil {
 						continue
 					}
-					w, err := plain(params[*assignment.P], "", c.database)
+					w, err := plain(params[*assignment.P], "", c.dialect())
 					if err != nil {
 						return err
 					}

@@ -38,8 +38,8 @@ final class Assemble
     }
 
     /**
-     * The styled cells of one indexed node, without its joined nodes, for Codec::decodeRows. The
-     * markdown executor answers each node in rows of its own and decodes them node by node.
+     * The styled cells of one indexed node, without its joined nodes, for Codec::decodeRows; the last field of a cell
+     * is the <entity>.<column> that a CODEC_DECODE of the cell names (COD-41).
      */
     public static function cells(array $a, RuntimeModel $model): array
     {
@@ -55,7 +55,10 @@ final class Assemble
         $out = [];
         foreach ($a['columns'] as $c) {
             if (!empty($c['styles'])) {
-                $out[] = [$c['index'], $c['host'], $c['codec'], in_array('aes', $c['host'], true), $version];
+                $out[] = [
+                    $c['index'], $c['host'], $c['codec'], in_array('aes', $c['host'], true), $version,
+                    $a['entity'] . '.' . $c['name'],
+                ];
             }
         }
         return $out;

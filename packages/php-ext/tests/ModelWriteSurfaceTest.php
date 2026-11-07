@@ -97,8 +97,11 @@ final class ModelWriteSurfaceTest extends TestCase
         $manifestHash = \Polyspec\Orm\Tests\MarkdownModel\People::meta()['manifest_hash'];
         foreach (
             [
-            ['{"affected":1,"keys":["P1","P2"]}', ['P1', 1]],
-            ['{"affected":0,"keys":[]}', [null, 0]],
+            // The insert of a key_prefix key returns the key that the corpus allocated (PRT-73).
+            ['{"columns":[{"name":"id","type":"TEXT"}],"rows":[["P1"],["P2"]],"affected":1,"last_insert_id":1,'
+                . '"more":false}', ['P1', 1]],
+            ['{"columns":[{"name":"id","type":"TEXT"}],"rows":[],"affected":0,"last_insert_id":0,"more":false}',
+                [null, 0]],
             ] as [$answer, $expected]
         ) {
             $server = \Polyspec\Orm\Tests\start_markdown_test_server(['{"ok":true}', $answer]);
@@ -124,7 +127,8 @@ final class ModelWriteSurfaceTest extends TestCase
             $messages = \Polyspec\Orm\Tests\markdown_test_server_received_messages($server);
             self::assertCount(2, $messages);
             self::assertSame(\Polyspec\Orm\Tests\MARKDOWN_CONNECT_LINE, $messages[0]);
-            self::assertStringContainsString('"request"', $messages[1]);
+            self::assertStringContainsString('"op":"statement"', $messages[1]);
+            self::assertStringContainsString('RETURNING \\"id\\"', $messages[1]);
         }
     }
 

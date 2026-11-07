@@ -45,3 +45,9 @@ func TestRecipeCatalogConnectionSqlite(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, catalogConnectionRecipe, "sqlite")
 }
+
+// TestRecipeCatalogConnectionMarkdown runs the recipe on flowmark, each case on a corpus of its own (FCV-3).
+func TestRecipeCatalogConnectionMarkdown(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, catalogConnectionRecipe, "markdown")
+}

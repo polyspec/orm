@@ -49,6 +49,7 @@ typedef struct pctx {
     zval *dialect;        /* $this->d */
     zval *model;          /* $this->m */
     HashTable *entities;  /* $this->m->entities, borrowed */
+    bool assigns;         /* $this->assigns: the database assigns key_prefix keys and order positions (PRT-73) */
     vtemp *temps;         /* values kept until the public call returns */
     mem *mems;            /* the planner's C structs, freed with the values */
 } pctx;
@@ -350,6 +351,31 @@ static zval *lib_static(pctx *c, const char *cls, const char *method, uint32_t a
     add_next_index_string(&cb, cls);
     add_next_index_string(&cb, method);
     return invoke_kept(c, &cb, argc, argv);
+}
+
+/* The key and the order column of the entity ent that the database assigns when an insert leaves them out
+ * (RuntimeModel::assignedColumns), or the empty strings when it assigns none; false with an exception. */
+static bool assigned_columns(pctx *c, HashTable *ent, zend_string **key, zend_string **order)
+{
+    *key = ZSTR_EMPTY_ALLOC();
+    *order = ZSTR_EMPTY_ALLOC();
+    if (!c->assigns) {
+        return true;
+    }
+    zval cb, name;
+    array_init(&cb);
+    Z_TRY_ADDREF_P(c->model);
+    add_next_index_zval(&cb, c->model);
+    add_next_index_string(&cb, "assignedColumns");
+    ZVAL_STR_COPY(&name, gs(c, ent, "entity"));
+    zval *got = invoke_kept(c, &cb, 1, &name);
+    zval_ptr_dtor(&name);
+    if (got == NULL || Z_TYPE_P(got) != IS_ARRAY) {
+        return false;
+    }
+    *key = gs(c, Z_ARRVAL_P(got), "key");
+    *order = gs(c, Z_ARRVAL_P(got), "order");
+    return true;
 }
 
 /* Calls a public method of the Dialect object $this->d: the result is kept, or NULL with an exception. */
@@ -2640,11 +2666,17 @@ static bool check_aes_assignments(pctx *c, HashTable *ent, HashTable *set, bool 
     return true;
 }
 
-/* An insert specifies every required column (Planner::checkRequiredAssignments). */
+/* An insert specifies every required column (Planner::checkRequiredAssignments): NOT NULL columns with no default that are
+ * not identity, the AES key version the planner writes, or the audit columns the executor writes, nor, on a database that
+ * assigns them, the key_prefix key and the order position. */
 static bool check_required_assignments(pctx *c, HashTable *ent, HashTable *set)
 {
     bool hasa = false;
     if (!has_aes(c, ent, &hasa)) {
+        return false;
+    }
+    zend_string *assigned_key, *assigned_order;
+    if (!assigned_columns(c, ent, &assigned_key, &assigned_order)) {
         return false;
     }
     zend_string *version = hasa ? gs(c, ent, "aes_version") : ZSTR_EMPTY_ALLOC();
@@ -2656,7 +2688,9 @@ static bool check_required_assignments(pctx *c, HashTable *ent, HashTable *set)
         HashTable *ch = Z_ARRVAL_P(col);
         zend_string *name = gs(c, ch, "name");
         bool skip = gt(ch, "nullable") || gt(ch, "default") || zend_string_equals(name, identity)
-            || zend_string_equals(name, version) || zend_string_equals(name, audit) || assigned(c, set, name);
+            || zend_string_equals(name, version) || zend_string_equals(name, audit) || assigned(c, set, name)
+            || (ZSTR_LEN(assigned_key) > 0 && zend_string_equals(name, assigned_key))
+            || (ZSTR_LEN(assigned_order) > 0 && zend_string_equals(name, assigned_order));
         if (!skip) {
             fail("IR_INVALID", "required column %s.%s is not set", ZSTR_VAL(gs(c, ent, "entity")), ZSTR_VAL(name));
             return false;
@@ -3093,6 +3127,17 @@ static pstep *insert_step(pctx *c, HashTable *r)
         zend_string *qi = quote(c, identity);
         OKP(qi);
         sql = fmt(c, "%s RETURNING %s", ZSTR_VAL(sql), ZSTR_VAL(qi));
+    } else if (c->assigns) {
+        zend_string *assigned_key, *assigned_order;
+        if (!assigned_columns(c, ent, &assigned_key, &assigned_order)) {
+            return NULL;
+        }
+        if (ZSTR_LEN(assigned_key) > 0) {
+            /* The key that the database allocated, or the key of the row an upsert met. */
+            zend_string *qk = quote(c, assigned_key);
+            OKP(qk);
+            sql = fmt(c, "%s RETURNING %s", ZSTR_VAL(sql), ZSTR_VAL(qk));
+        }
     }
     return main_step(c, b, sql);
 }
@@ -3357,7 +3402,7 @@ static zend_class_entry *lib_class(const char *name)
     return ce;
 }
 
-bool planner_construct(zval *self, zval *model, zval *dialect)
+bool planner_construct(zval *self, zval *model, zval *dialect, bool assigns)
 {
     zend_class_entry *mce = lib_class(RUNTIME_MODEL);
     if (mce == NULL || Z_TYPE_P(model) != IS_OBJECT || !instanceof_function(Z_OBJCE_P(model), mce)) {
@@ -3373,7 +3418,10 @@ bool planner_construct(zval *self, zval *model, zval *dialect)
     }
     zend_update_property(Z_OBJCE_P(self), Z_OBJ_P(self), "m", 1, model);
     zend_update_property(Z_OBJCE_P(self), Z_OBJ_P(self), "d", 1, dialect);
-    return true;
+    zval flag;
+    ZVAL_BOOL(&flag, assigns);
+    zend_update_property(Z_OBJCE_P(self), Z_OBJ_P(self), "assigns", sizeof("assigns") - 1, &flag);
+    return EG(exception) == NULL;
 }
 
 /* Polyspec\Orm\Planner::compile(array $r): array. */
@@ -3387,6 +3435,9 @@ bool planner_compile(zval *self, HashTable *r, zval *ret)
     c.dialect = zend_read_property(Z_OBJCE_P(self), Z_OBJ_P(self), "d", 1, true, &rv_d);
     zval *ents = zend_read_property(Z_OBJCE_P(c.model), Z_OBJ_P(c.model), "entities", sizeof("entities") - 1, true, &rv_e);
     c.entities = Z_ARRVAL_P(ents);
+    zval rv_a;
+    zval *assigns = zend_read_property(Z_OBJCE_P(self), Z_OBJ_P(self), "assigns", sizeof("assigns") - 1, true, &rv_a);
+    c.assigns = assigns != NULL && Z_TYPE_P(assigns) == IS_TRUE;
     bool ok = compile_body(&c, r, ret);
     release(&c);
     return ok;

@@ -30,3 +30,9 @@ func TestRecipeDsnConnectionSqlite(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, dsnConnectionRecipe, "sqlite")
 }
+
+// TestRecipeDsnConnectionMarkdown runs the recipe on flowmark, each case on a corpus of its own (FCV-3).
+func TestRecipeDsnConnectionMarkdown(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, dsnConnectionRecipe, "markdown")
+}

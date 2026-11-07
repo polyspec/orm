@@ -129,10 +129,8 @@ impl Db {
     /// order after each statement ends and before the operation continues. A
     /// subscriber must not fail: an error it returns stops the remaining
     /// subscribers and fails the operation with SUBSCRIBER, whose source is
-    /// that error; the statement keeps its effect. A markdown connection sends
-    /// no statement, so it refuses a subscriber with CAPABILITY_UNSUPPORTED.
+    /// that error; the statement keeps its effect.
     pub fn subscribe<F: StatementSubscriber>(&self, subscriber: F) -> Result<Subscription> {
-        self.unsupported_on_markdown("statement events")?;
         let id = self.inner.subscribers.add(Arc::new(subscriber));
         Ok(Subscription { db: Arc::downgrade(&self.inner), id })
     }
@@ -204,34 +202,35 @@ pub(crate) fn statement_kind(sql: &str) -> &'static str {
 
 /// Runs one statement on `executor` without a bind and publishes its event. Transaction control and
 /// configuration statements use it. A test statement fault does not block this path.
-pub(crate) async fn raw<'c, E, DB>(db: &Db, executor: E, s: Sent<'_>) -> Result<()>
-where
-    E: sqlx::Executor<'c, Database = DB>,
-    DB: sqlx::Database,
-{
+pub(crate) async fn raw<'c, E: RawStatement<'c>>(db: &Db, executor: E, s: Sent<'_>) -> Result<()> {
     let start = Instant::now();
-    let result = send_raw(executor, s.sql).await;
+    let result = executor.send_raw(s.sql.to_owned()).await;
     db.statement_done(s, start, result)
 }
 
 /// Runs one schema statement on `executor` without a bind. If a statement fault is configured,
 /// it is not sent and ends with that error.
-pub(crate) async fn raw_schema<'c, E, DB>(db: &Db, executor: E, s: Sent<'_>) -> Result<()>
-where
-    E: sqlx::Executor<'c, Database = DB>,
-    DB: sqlx::Database,
-{
-    guarded(db, s, send_raw(executor, s.sql)).await
+pub(crate) async fn raw_schema<'c, E: RawStatement<'c>>(db: &Db, executor: E, s: Sent<'_>) -> Result<()> {
+    guarded(db, s, executor.send_raw(s.sql.to_owned())).await
 }
 
-/// Runs `sql` on `executor` without a bind.
-async fn send_raw<'c, E, DB>(executor: E, sql: &str) -> Result<()>
-where
-    E: sqlx::Executor<'c, Database = DB>,
-    DB: sqlx::Database,
-{
-    let statement = sqlx::SqlSafeStr::into_sql_str(sqlx::AssertSqlSafe(sql.to_owned()));
-    sqlx::raw_sql(statement).execute(executor).await.map(drop).map_err(Error::from)
+/// Where a statement without a bind runs: a sqlx executor, or a session of a markdown connection.
+pub(crate) trait RawStatement<'c> {
+    /// Runs `sql` without a bind.
+    fn send_raw(self, sql: String) -> futures_util::future::BoxFuture<'c, Result<()>>;
+}
+
+impl<'c, E: sqlx::Executor<'c> + 'c> RawStatement<'c> for E {
+    fn send_raw(self, sql: String) -> futures_util::future::BoxFuture<'c, Result<()>> {
+        let statement = sqlx::SqlSafeStr::into_sql_str(sqlx::AssertSqlSafe(sql));
+        Box::pin(async move { sqlx::raw_sql(statement).execute(self).await.map(drop).map_err(Error::from) })
+    }
+}
+
+impl<'c> RawStatement<'c> for &'c mut crate::markdown::MarkdownLease {
+    fn send_raw(self, sql: String) -> futures_util::future::BoxFuture<'c, Result<()>> {
+        Box::pin(async move { self.raw(&sql).await.map_err(Error::from) })
+    }
 }
 
 /// Publishes the result of one schema statement as an event. `send` sends the statement, and if a

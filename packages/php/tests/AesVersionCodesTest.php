@@ -34,7 +34,7 @@ class AesVersionCodesTest extends TestCase
         $config = new Config('', '', 2, [1 => 'old-key', 2 => 'new-key']);
         $rows = [[Codec::hostEncode('value', ['aes', 'hex'], 'old-key')]];
         $got = $this->codeOf(function () use (&$rows, $config): void {
-            Codec::decodeRows($rows, [[0, ['aes', 'hex'], [], true, 1]], $config);
+            Codec::decodeRows($rows, [[0, ['aes', 'hex'], [], true, 1, 'user.aes_hex_email']], $config);
         });
         $this->assertSame('INTERNAL', $got);
     }
@@ -45,7 +45,7 @@ class AesVersionCodesTest extends TestCase
         $config = new Config('', '', 2, [1 => 'old-key', 2 => 'new-key']);
         $rows = [[Codec::hostEncode('value', ['aes', 'hex'], 'old-key'), 1]];
         $got = $this->codeOf(function () use (&$rows, $config): void {
-            Codec::decodeRows($rows, [[0, ['aes', 'hex'], [], true, null]], $config);
+            Codec::decodeRows($rows, [[0, ['aes', 'hex'], [], true, null, 'user.aes_hex_email']], $config);
         });
         $this->assertSame('INTERNAL', $got);
     }

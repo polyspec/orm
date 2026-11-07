@@ -51,9 +51,6 @@ type txConn struct {
 	// conn is the pool connection held until the transaction ends. It checks whether the driver closed the connection when rollback
 	// fails.
 	conn *sql.Conn
-	// md is the flowmark session held until the markdown connection's transaction ends.
-	// On SQL connections it is nil, and conn takes its place.
-	md *mdSession
 	// number is this transaction's number on the connection. A statement event carries it.
 	number     int64
 	ctx        context.Context
@@ -365,6 +362,17 @@ type auditInsert struct {
 	values map[string]any
 }
 
+// registeredModels is the runtime model of each set registered on the connection, by its manifest hash.
+func (d *DB) registeredModels() map[string]*runtimemodel.Model {
+	d.m.engineMu.RLock()
+	defer d.m.engineMu.RUnlock()
+	models := map[string]*runtimemodel.Model{}
+	for hash, eng := range d.m.engines {
+		models[hash] = eng.M
+	}
+	return models
+}
+
 // auditRecord is the audit record that adds the transaction's values to the audit source's values.
 // For the same column, the transaction's value wins. The record table is the one table named by the references
 // audit setting of the set registered on the connection, and the set that has that table as an entity
@@ -375,11 +383,12 @@ func (d *DB) auditRecord(values map[string]any) (*auditInsert, error) {
 	if d.cfg.AuditSource == nil {
 		return nil, configErr("the transaction has audit values but the connection has no audit source: set Config.AuditSource")
 	}
+	models := d.registeredModels()
 	d.m.engineMu.RLock()
 	var tables []string
-	for _, eng := range d.m.engines {
-		for _, name := range eng.M.Order {
-			if a := eng.M.Entities[name].Audit; a != nil && !slices.Contains(tables, a.Record) {
+	for _, m := range models {
+		for _, name := range m.Order {
+			if a := m.Entities[name].Audit; a != nil && !slices.Contains(tables, a.Record) {
 				tables = append(tables, a.Record)
 			}
 		}
@@ -387,9 +396,9 @@ func (d *DB) auditRecord(values map[string]any) (*auditInsert, error) {
 	slices.Sort(tables)
 	var target *auditInsert
 	if len(tables) == 1 {
-		for hash, eng := range d.m.engines {
-			for _, name := range eng.M.Order {
-				if e := eng.M.Entities[name]; e.Table == tables[0] && !e.External {
+		for hash, m := range models {
+			for _, name := range m.Order {
+				if e := m.Entities[name]; e.Table == tables[0] && !e.External {
 					target = &auditInsert{schema: d.m.schemas[hash], ent: e}
 				}
 			}
@@ -475,11 +484,6 @@ func (d *DB) Transaction(fn func() error, options ...TransactionOption) error {
 	}
 	if o.timeoutMs < 0 {
 		return configErr("transaction timeoutMs must not be negative")
-	}
-	if o.auditSet {
-		if err := d.unsupportedOnMarkdown("a transaction with audit values"); err != nil {
-			return err
-		}
 	}
 	outer, outerErr := activeFor(d)
 	if outerErr != nil {
@@ -597,9 +601,6 @@ func (d *DB) begin(o txOptions) (*txConn, error) {
 	if o.timeoutMs > 0 && d.driver != "postgres" {
 		return nil, &ir.Error{Code: CodeCapabilityUnsupported, Msg: "transaction timeoutMs is supported only by postgres"}
 	}
-	if d.md != nil {
-		return d.beginMarkdown(o)
-	}
 	level := ""
 	switch o.isolation {
 	case "":
@@ -703,9 +704,6 @@ func (t *txConn) rollback() error {
 	if t.finished.Load() {
 		return nil
 	}
-	if t.md != nil {
-		return t.endMarkdown("rollback")
-	}
 	if t.ctx.Err() != nil {
 		if t.db.driver != "sqlite" {
 			t.finished.Store(true)
@@ -775,9 +773,6 @@ func (t *txConn) commit() error {
 	if err := t.ctx.Err(); err != nil {
 		return t.rollbackAfter(&ir.Error{Code: CodeCanceled, Msg: err.Error()})
 	}
-	if t.md != nil {
-		return t.endMarkdown("commit")
-	}
 	if err := t.finishSQLiteMode(); err != nil {
 		t.unclean = true
 		return t.rollbackAfter(err)
@@ -819,11 +814,7 @@ func (t *txConn) savepoint(fn func() error) (err error) {
 	t.savepoints++
 	name := fmt.Sprintf("orm_sp_%d", t.savepoints)
 	defer func() { t.savepoints-- }()
-	if t.md != nil {
-		if err := t.savepointMarkdown("savepoint", name); err != nil {
-			return err
-		}
-	} else if _, err := t.run().exec(t.ctx, KindSavepoint, nil, "SAVEPOINT "+name); err != nil {
+	if _, err := t.run().exec(t.ctx, KindSavepoint, nil, "SAVEPOINT "+name); err != nil {
 		return err
 	}
 	if pushErr := pushFrame(t); pushErr != nil {
@@ -898,11 +889,7 @@ func (t *txConn) auditFor(guard bool) (func(affected int64, err error) error, er
 		return none, nil
 	}
 	const name = "orm_audit"
-	if t.md != nil {
-		if err := t.savepointMarkdown("savepoint", name); err != nil {
-			return nil, err
-		}
-	} else if _, err := t.run().exec(t.ctx, KindSavepoint, nil, "SAVEPOINT "+name); err != nil {
+	if _, err := t.run().exec(t.ctx, KindSavepoint, nil, "SAVEPOINT "+name); err != nil {
 		return nil, err
 	}
 	if err := t.insertPendingAudit(); err != nil {
@@ -927,25 +914,18 @@ func (t *txConn) rollbackSavepoint(name string) error {
 }
 
 // endSavepoint ends the savepoint name: it releases it if kind is KindRelease, and if kind is KindRollbackTo,
-// it undoes the work after it. A SQL connection sends that statement; a markdown connection sends a control
-// message of the same name. If the transaction's context is canceled, database/sql (for markdown,
-// the server of the closed connection) rolled back the whole transaction, so the savepoint also ended and this is not a failure. Other
-// failures are reported.
+// it undoes the work after it. If the transaction's context is canceled, database/sql rolled back the whole
+// transaction, so the savepoint also ended and this is not a failure. Other failures are reported.
 func (t *txConn) endSavepoint(kind, name string) error {
 	// A transaction that SQLite rolled back by itself took its savepoints with it (INT-155).
 	if !t.rollbacks.open() {
 		return nil
 	}
-	var err error
-	if t.md != nil {
-		err = t.savepointMarkdown(kind, name)
-	} else {
-		statement := "RELEASE SAVEPOINT " + name
-		if kind == KindRollbackTo {
-			statement = "ROLLBACK TO SAVEPOINT " + name
-		}
-		_, err = t.run().exec(t.ctx, kind, nil, statement)
+	statement := "RELEASE SAVEPOINT " + name
+	if kind == KindRollbackTo {
+		statement = "ROLLBACK TO SAVEPOINT " + name
 	}
+	_, err := t.run().exec(t.ctx, kind, nil, statement)
 	if err == nil || t.ctx.Err() != nil && ErrorCode(err) != CodeSubscriber {
 		return nil
 	}

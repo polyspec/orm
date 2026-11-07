@@ -2,7 +2,7 @@
 # Bind vectors
 
 The cases of the bind paths are recipes: `messages.json` runs in every runtime, `messages-dynamic.json` in the runtimes without a
-compile-time type, and `messages-untyped-null.json` and `messages-python-null.json` in the runtimes they name
+compile-time type, and `messages-untyped-null.json`, `messages-python-null.json` and `messages-raw-text.json` (a text that is not UTF-8, in Go, PHP and the PHP extension) in the runtimes they name
 (docs/spec/feature-coverage.md FCV-2 and FCV-4, `markdown.send` and `model.assign`).
 
 `vectors.json` holds what no recipe holds, run from a test in each package against the internal check of a parameter

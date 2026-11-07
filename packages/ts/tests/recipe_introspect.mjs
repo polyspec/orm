@@ -95,15 +95,18 @@ async function catalogQueryFailure(dialect, database, dsn) {
 // the emitted document and the unsupported objects; any other requires none unsupported and the schema text of the source.
 // Its result is the number of catalog queries, which the expect of the database compares (DIA-133, DIA-198).
 export async function introspectStep(step, context) {
-  const { database, dsn, dir } = context;
-  if (step.catalog_of !== undefined) return catalogQueryFailure(step.catalog_of, database, dsn);
+  const { dsn, dir } = context;
+  // A corpus runs SQL in SQLite's dialect (DIA-185): its native session is its flowmark server's, and its SQL is SQLite's.
+  const native = context.database;
+  const database = native === 'markdown' ? 'sqlite' : native;
+  if (step.catalog_of !== undefined) return catalogQueryFailure(step.catalog_of, native, dsn);
   const { texts, vector } = sourceOf(step, dir);
   const documents = parseSet(texts);
   const rendered = renderDbspec(documents, database);
   if (rendered.diagnostics.length > 0) throw new Error(`render: ${JSON.stringify(rendered.diagnostics)}`);
   // tests/dbspec/ddl.json holds the rendered statements of each dialect as an object; only a list runs.
   const extra = Array.isArray(vector.statements) ? vector.statements : [];
-  const session = await nativeSession(database, dsn);
+  const session = await nativeSession(native, dsn);
   let result;
   let counter;
   try {
@@ -155,7 +158,10 @@ const documentText = lines => `${lines.join('\n')}\n`;
 // step, the rollback statements return to the source and the steps run again; then the after steps and the finalize steps
 // run, the target is read again and no table or column named dbspec$ remains.
 export async function planPhysicalStep(step, context) {
-  const { database, dsn, dir } = context;
+  const { dsn, dir } = context;
+  // A corpus runs SQL in SQLite's dialect (DIA-185): its native session is its flowmark server's, and its SQL is SQLite's.
+  const native = context.database;
+  const database = native === 'markdown' ? 'sqlite' : native;
   const id = step.case;
   const vector = readPlanCases(resolve(dir, step.vectors)).find(candidate => candidate.id === id);
   if (vector === undefined) throw new Error(`the vectors have no case ${id}`);
@@ -179,7 +185,7 @@ export async function planPhysicalStep(step, context) {
   const steps = planned.steps;
   const reversible = steps.every(s => s.finalize || s.rollback !== '');
   const sqlite = database === 'sqlite';
-  const session = await nativeSession(database, dsn);
+  const session = await nativeSession(native, dsn);
   try {
     const value = async query => {
       const rows = await session.query(query);

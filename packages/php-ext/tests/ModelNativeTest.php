@@ -979,10 +979,16 @@ final class ModelNativeTest extends TestCase
         self::assertSame([], $child['hidden']);
         self::assertSame($node['node'] + 1, $child['node']);
         self::assertSame(
-            [[1, ['hex'], ['base64'], false, null], [2, ['aes'], [], true, null]],
+            [
+                [1, ['hex'], ['base64'], false, null, 'zone_event.start_dt'],
+                [2, ['aes'], [], true, null, 'zone_event.start_dt'],
+            ],
             $plan['steps'][1]['decode'],
         );
-        self::assertSame([[2, ['aes'], [], true, null]], \Polyspec\Orm\Assemble::cells($child, $model));
+        self::assertSame(
+            [[2, ['aes'], [], true, null, 'zone_event.start_dt']],
+            \Polyspec\Orm\Assemble::cells($child, $model)
+        );
     }
 
     public function testPublicValueClassesAreNative(): void

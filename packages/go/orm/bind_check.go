@@ -7,7 +7,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/polyspec/orm/packages/go/engine/ir"
 	"github.com/polyspec/orm/packages/go/engine/plan"
 )
 
@@ -27,20 +26,6 @@ func bindSlotType(b *plan.BindSlot) paramSlot {
 	return paramSlot{Type: b.ColType, Precision: b.Precision, Scale: b.Scale, Length: b.Length, NotNull: b.NotNull, Column: b.Column}
 }
 
-// useSlotType is the logical type of a parameter use of ir.ParamUses: a use of its column's
-// type takes the column's precision, scale and length; a datetime or time of a function takes
-// six digits.
-func useSlotType(u ir.ParamUse) paramSlot {
-	if f := u.Column; f != nil && f.Type == u.Type {
-		return paramSlot{Type: u.Type, Precision: f.Precision, Scale: f.Scale, Length: f.Length, NotNull: u.Assign && !f.Null, Column: f.Name}
-	}
-	s := paramSlot{Type: u.Type}
-	if u.Type == "datetime" || u.Type == "time" {
-		s.Precision = 6
-	}
-	return s
-}
-
 var canonicalUUID = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
 // integerRanges are the ranges of the integer types.
@@ -48,6 +33,14 @@ var integerRanges = map[string][2]int64{
 	"i16": {math.MinInt16, math.MaxInt16},
 	"i32": {math.MinInt32, math.MaxInt32},
 	"i64": {math.MinInt64, math.MaxInt64},
+}
+
+// finiteF64 refuses the non-finite f64 f of parameter i, whose host value is v, with CODEC_ENCODE.
+func finiteF64(i int, v any, f float64) error {
+	if math.IsNaN(f) || math.IsInf(f, 0) {
+		return codecErr(CodeCodecEncode, "parameter %d (%v) is not a finite f64", i, v)
+	}
+	return nil
 }
 
 // checkParam checks the value v of parameter i against the logical type s of a slot it fills,
@@ -96,8 +89,8 @@ func (d *DB) checkParam(i int, v any, s paramSlot) error {
 				return codecErr(CodeCodecEncode, "parameter %d (%v): %v", i, v, err)
 			}
 		}
-		if math.IsNaN(f) || math.IsInf(f, 0) {
-			return codecErr(CodeCodecEncode, "parameter %d (%v) is not a finite f64", i, v)
+		if err := finiteF64(i, v, f); err != nil {
+			return err
 		}
 	case "bool":
 		if _, ok := v.(bool); !ok {

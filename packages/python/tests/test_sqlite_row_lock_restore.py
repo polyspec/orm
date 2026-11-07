@@ -37,6 +37,7 @@ class SqliteRowLockRestoreTest(unittest.TestCase):
     def test_production_row_lock_preserves_primary_and_restore_outcomes(self):
         db = Db.__new__(Db)
         db.driver = "sqlite"
+        db.sql_driver = "sqlite"
         busy_cause = type(
             "Busy",
             (),
@@ -97,6 +98,7 @@ class SqliteRowLockRestoreTest(unittest.TestCase):
     def test_production_row_lock_restores_after_base_exception(self):
         db = Db.__new__(Db)
         db.driver = "sqlite"
+        db.sql_driver = "sqlite"
         stop = Stop("interrupt")
         frame = Frame(set_zero=stop)
         with self.assertRaises(Stop) as caught:

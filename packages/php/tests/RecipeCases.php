@@ -39,6 +39,12 @@ trait RecipeCases
         return Recipe::casesOn(static::recipe(), 'sqlite');
     }
 
+    /** @return array<string, array{0: string}> the cases of the recipe on flowmark, as a data provider (FCV-3) */
+    public static function casesOnMarkdown(): array
+    {
+        return Recipe::casesOn(static::recipe(), 'markdown');
+    }
+
     /** Sets the memory limit that the recipe of the test class declares it needs. */
     private static function requireMemoryLimit(string $limit): void
     {

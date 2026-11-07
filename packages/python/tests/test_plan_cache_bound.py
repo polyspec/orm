@@ -43,6 +43,7 @@ def handle(driver: str = "sqlite") -> Db:
     db.plan_cache_size = 1024
     db.request_hook = None
     db.driver = driver
+    db.sql_driver = driver
     return db
 
 

@@ -2,8 +2,15 @@
 # gives the TypeScript tests. MySQL and PostgreSQL need ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN (TEST_ENV); a
 # missing variable fails the case.
 import contextlib
+import json
 import os
+import re
+import shutil
+import signal
+import subprocess
+import tempfile
 import uuid
+from pathlib import Path
 
 from .server_database import server_database
 from .statement_fault import required_dsn
@@ -11,8 +18,12 @@ from .statement_fault import required_dsn
 
 @contextlib.contextmanager
 def case_database(dialect: str, directory: str, prefix: str):
-    """The DSN of a new empty database named by prefix and a random part: a SQLite file in directory, or a MySQL or
-    PostgreSQL database on the test server."""
+    """The DSN of a new empty database named by prefix and a random part: a SQLite file in directory, a MySQL or
+    PostgreSQL database on the test server, or a corpus of no table that a flowmark server serves."""
+    if dialect == "markdown":
+        with case_corpus(None) as (dsn, _):
+            yield dsn
+        return
     if dialect == "sqlite":
         yield f"sqlite://{os.path.join(directory, f'{prefix}_{uuid.uuid4().hex}.sqlite3')}"
         return
@@ -20,3 +31,73 @@ def case_database(dialect: str, directory: str, prefix: str):
     name = f"{prefix}_{uuid.uuid4().hex[:12]}"
     with server_database(dialect, dsn, name) as case_dsn:
         yield case_dsn
+
+
+CORPUS = "recipe"
+LISTENING = re.compile(
+    r"^\[serve\] listening on 127\.0\.0\.1:([0-9]+) for the corpus (.+)$"
+)
+
+
+@contextlib.contextmanager
+def case_corpus(set_path: Path | None):
+    """The markdown DSN and the directory of a new corpus of the dbspec set at set_path, or of a corpus of no table when
+    set_path is None (a recipe of no fixture, or a case whose steps install it), served by the flowmark of FLOWMARK
+    (FCV-3). The server stops and the corpus is removed when the block ends."""
+    binary = os.environ.get("FLOWMARK", "")
+    if not binary:
+        raise AssertionError(
+            "FLOWMARK is required; make orm-install-flowmark builds the version that tests/markdown/flowmark.version pins"
+        )
+    with tempfile.TemporaryDirectory(prefix="orm-corpus-") as parent:
+        directory = Path(parent) / CORPUS
+        dbspec = directory / "dbspec"
+        dbspec.mkdir(parents=True)
+        if set_path is not None:
+            shutil.copyfile(set_path, dbspec / set_path.name)
+            listed = json.loads(set_path.read_text(encoding="utf-8"))
+            for document in [*listed["documents"], *listed.get("external", [])]:
+                shutil.copyfile(set_path.parent / document, dbspec / document)
+        subprocess.run(
+            [binary, "install", str(directory)], check=True, capture_output=True
+        )
+        # A corpus of a test is disposable, as a test database server is: a commit does not wait for the disk. The events
+        # that serve writes to its stderr go to a file beside the corpus, so they do not split the result line of a
+        # test, and an assertion of this block states them.
+        stderr = open(Path(parent) / "serve.stderr", "w+", encoding="utf-8")
+        server = subprocess.Popen(
+            [
+                binary,
+                "serve",
+                str(directory),
+                "--port",
+                "0",
+                "--synchronous",
+                "off",
+                "--tx-idle-ms",
+                "600000",
+            ],
+            stdout=subprocess.PIPE,
+            stderr=stderr,
+            text=True,
+        )
+        try:
+            line = server.stdout.readline().rstrip("\n")
+            match = LISTENING.match(line)
+            if match is None or match.group(2) != CORPUS:
+                stderr.seek(0)
+                raise AssertionError(
+                    f"flowmark serve printed {line!r}, not its listening line; stderr:\n{stderr.read()}"
+                )
+            token = json.loads(
+                (directory / ".flowmark" / "server.json").read_text(encoding="utf-8")
+            )["token"]
+            yield (
+                f"markdown://127.0.0.1:{match.group(1)}/{CORPUS}?token={token}",
+                directory,
+            )
+        finally:
+            server.send_signal(signal.SIGINT)
+            server.wait()
+            server.stdout.close()
+            stderr.close()

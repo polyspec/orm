@@ -66,12 +66,8 @@ type subscribers struct {
 
 // Subscribe registers fn for the statement events of the connection and of
 // every handle derived from it. Subscribers run in registration order. The
-// returned function removes the subscription. A markdown connection sends no
-// statement, so it refuses a subscriber with CAPABILITY_UNSUPPORTED.
+// returned function removes the subscription.
 func (d *DB) Subscribe(fn Subscriber) (unsubscribe func(), err error) {
-	if err := d.unsupportedOnMarkdown("statement events"); err != nil {
-		return nil, err
-	}
 	s := &subscription{fn: fn}
 	d.m.subs.mu.Lock()
 	var list []*subscription

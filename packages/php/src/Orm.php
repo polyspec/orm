@@ -24,7 +24,7 @@ final class Orm
     ];
 
     /**
-     * Opens the database that the DSN URI (mysql://, postgres://, sqlite://) selects, and
+     * Opens the database that the DSN URI (mysql://, postgres://, sqlite://, markdown://) selects, and
      * registers the generated schema's set on that connection, as utils()->schema()->register does. Called
      * by the generated code's connect helper. If the text does not hash to the declared hash, it is CONFIG
      * before the connection is opened. Registration does not read the database; install and
@@ -39,7 +39,7 @@ final class Orm
     }
 
     /**
-     * Opens the database that the DSN URI (mysql://, postgres://, sqlite://) selects. The connection
+     * Opens the database that the DSN URI (mysql://, postgres://, sqlite://, markdown://) selects. The connection
      * has no registered set, so a model request gives SCHEMA_HASH_MISMATCH until install registers that set.
      * All connections read and write datetime as UTC (docs/spec/dialects.md): the time zone of MySQL and
      * PostgreSQL sessions is UTC. A connection is one per Db and ends with the Db. The PHP client has no
@@ -192,24 +192,33 @@ final class Orm
 
     /**
      * Connects to the flowmark server that markdown://127.0.0.1:<port>/<corpus>?token=<token> points at
-     * (docs/spec/protocol.md §5). Opens one connection and sends the corpus and token in a connect message:
-     * if the server rejects the corpus or token, it is CONFIG. The markdown executor does not accept a
-     * statement timeout.
+     * (docs/spec/protocol.md §5). A flowmark server runs SQL in SQLite's dialect on the corpus (docs/spec/dialects.md
+     * DIA-154, DIA-185), so the connection is a SQLite connection whose statements its session answers: it opens one
+     * session, which sends the corpus and token in a connect message and states the _pragma values of the DSN; a server
+     * that rejects the corpus or token answers CONFIG.
      */
     private static function connectMarkdown(string $dsn, Config $config): Db
     {
-        [$address, $corpus, $token] = self::parseMarkdownDsn($dsn);
+        [$address, $corpus, $token, $pragmas] = self::parseMarkdownDsn($dsn);
         self::checkConnectionConfig($config);
-        if ($config->statementTimeoutMs > 0) {
-            throw Markdown::unsupported('statement timeout');
-        }
-        return new Db(
-            null,
-            'markdown',
-            $config,
-            new \DateTimeZone('UTC'),
-            MarkdownSession::dial($address, $corpus, $token)
-        );
+        $dial = static function () use ($address, $corpus, $token, $pragmas): MarkdownSession {
+            $session = MarkdownSession::dial($address, $corpus, $token);
+            try {
+                foreach ($pragmas as [$name, $value]) {
+                    $session->statement("PRAGMA $name = $value", []);
+                }
+            } catch (OrmException $e) {
+                $session->close();
+                throw $e;
+            }
+            return $session;
+        };
+        $pdo = new Internal\MarkdownPdoAdapter($dial(), $dial);
+        $db = new Db($pdo, 'sqlite', $config, new \DateTimeZone('UTC'), true);
+        $db->setCancelConnection(static function () use ($pdo): void {
+            $pdo->shutdown();
+        });
+        return $db;
     }
 
     /** The scheme of the DSN URI, in lowercase. If it is not a URI, it is CONFIG. */
@@ -227,10 +236,11 @@ final class Orm
     /**
      * Reads markdown://127.0.0.1:<port>/<corpus>?token=<token>. The flowmark server listens only on
      * 127.0.0.1, and the token travels in plain text, so the host is only 127.0.0.1. Another host, a
-     * missing port, a path that is not one name,
-     * a missing token, and any other parameter are CONFIG.
+     * missing port, a path that is not one name, a missing token, and any parameter but token, timezone (UTC only, the
+     * rule of every scheme) and _pragma, a setting of each session as on a SQLite DSN, are CONFIG (PRT-63).
      *
-     * @return array{0: string, 1: string, 2: string} the server address, the corpus name and the token
+     * @return array{0: string, 1: string, 2: string, 3: list<array{0: string, 1: string}>} the server address, the
+     *     corpus name, the token and the `_pragma=name(value)` parameters
      */
     public static function parseMarkdownDsn(string $dsn): array
     {
@@ -263,16 +273,36 @@ final class Orm
             );
         }
         $tokens = [];
+        $pragmas = [];
         foreach (explode('&', (string) ($parts['query'] ?? '')) as $pair) {
             if ($pair === '') {
                 continue;
             }
             [$key, $value] = array_pad(explode('=', $pair, 2), 2, '');
             $key = urldecode($key);
-            if ($key !== 'token') {
-                throw new OrmException(Code::CONFIG, "$form; it does not accept $key");
+            $value = urldecode($value);
+            switch ($key) {
+                case 'token':
+                    $tokens[] = $value;
+                    break;
+                case 'timezone':
+                    if (!in_array($value, ['+00:00', 'UTC'], true)) {
+                        throw new OrmException(Code::CONFIG, "dsn timezone $value: every connection reads and writes "
+                            . 'datetime values in UTC');
+                    }
+                    break;
+                case '_pragma':
+                    if (
+                        preg_match('/^([a-z_]+)\(([A-Za-z0-9_]+)\)$/', $value, $pragma) !== 1
+                        || ($pragma[1] === 'busy_timeout' && !ctype_digit($pragma[2]))
+                    ) {
+                        throw new OrmException(Code::CONFIG, "$form; _pragma $value is invalid");
+                    }
+                    $pragmas[] = [$pragma[1], $pragma[2]];
+                    break;
+                default:
+                    throw new OrmException(Code::CONFIG, "$form; it does not accept $key");
             }
-            $tokens[] = urldecode($value);
         }
         if (count($tokens) !== 1 || $tokens[0] === '') {
             throw new OrmException(
@@ -280,7 +310,7 @@ final class Orm
                 "$form; give one token, the token of .flowmark/server.json of the corpus"
             );
         }
-        return ["127.0.0.1:$port", $corpus, $tokens[0]];
+        return ["127.0.0.1:$port", $corpus, $tokens[0], $pragmas];
     }
 
     /**
@@ -297,7 +327,7 @@ final class Orm
         if ($driver === 'markdown') {
             throw new OrmException(
                 Code::CONFIG,
-                'a markdown DSN selects the markdown IR executor and has no PDO DSN; read it with parseMarkdownDsn'
+                'a markdown DSN reaches a flowmark server and has no PDO DSN; read it with parseMarkdownDsn'
             );
         }
         if (!in_array($driver, Db::DRIVERS, true)) {

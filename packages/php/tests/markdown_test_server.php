@@ -3,22 +3,22 @@
 declare(strict_types=1);
 
 /*
- * The server MarkdownTest.php uses instead of the flowmark server. It accepts one connection on an empty port on
+ * The server the recipe listeners use instead of the flowmark server. It accepts one connection on an empty port on
  * 127.0.0.1 and writes the chosen answers in turn for each message line it receives. When it starts listening, it
  * writes the port on one line; when the connection ends or the answers run out, it closes the connection, writes the
  * lines it received as one line of a JSON array, and ends.
  *
  *   php markdown_test_server.php <answer>...
  *
- * With --keyed and a JSON object, it answers connect with {"ok":true} and every later message with the member of the
- * object named by the op of a control message or the kind of a request, until the connection ends; a message without
- * a member is answered IR_INVALID.
+ * With --send and an answer, it answers connect with {"ok":true}, a setup statement of orm's SQLite dialect (a
+ * CREATE TABLE IF NOT EXISTS of an orm__ table, such as the row lock table that a transaction needs) as done without
+ * recording it, and every other message with the answer, until the connection ends.
  *
- *   php markdown_test_server.php --keyed <answers object>
+ *   php markdown_test_server.php --send <answer>
  */
 
 $answers = array_slice($argv, 1);
-$keyed = ($answers[0] ?? '') === '--keyed' ? json_decode($answers[1] ?? '{}', true, 512, JSON_THROW_ON_ERROR) : null;
+$send = ($answers[0] ?? '') === '--send' ? ($answers[1] ?? '') : null;
 $server = stream_socket_server('tcp://127.0.0.1:0', $errno, $errstr);
 if ($server === false) {
     fwrite(STDERR, "listen: $errstr\n");
@@ -29,21 +29,19 @@ fwrite(STDOUT, substr($name, strrpos($name, ':') + 1) . "\n");
 fflush(STDOUT);
 $receivedMessages = [];
 $conn = stream_socket_accept($server, -1);
-if ($conn !== false && $keyed !== null) {
+if ($conn !== false && $send !== null) {
     while (($line = fgets($conn)) !== false) {
-        $receivedMessages[] = rtrim($line, "\n");
-        if (count($receivedMessages) === 1) {
-            $answer = '{"ok":true}';
-        } else {
-            $message = json_decode($line, true);
-            $key = is_array($message) ? ($message['op'] ?? $message['request']['kind'] ?? 'unreadable') : 'unreadable';
-            $answer = array_key_exists($key, $keyed)
-                ? json_encode(
-                    $keyed[$key],
-                    JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION
-                )
-                : json_encode(['error' => ['code' => 'IR_INVALID', 'message' => "the case has no answer for $key"]]);
+        $message = json_decode($line, true);
+        $setup = is_array($message) && ($message['op'] ?? null) === 'statement' && is_string($message['sql'] ?? null)
+            && str_starts_with($message['sql'], 'CREATE TABLE IF NOT EXISTS "orm__');
+        if (!$setup) {
+            $receivedMessages[] = rtrim($line, "\n");
         }
+        $answer = match (true) {
+            $setup => '{"columns":[],"rows":[],"affected":0,"last_insert_id":0}',
+            count($receivedMessages) === 1 => '{"ok":true}',
+            default => $send,
+        };
         if (fwrite($conn, $answer . "\n") === false) {
             break;
         }

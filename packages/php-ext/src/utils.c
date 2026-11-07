@@ -138,17 +138,7 @@ static bool utils_valid_key(zend_string *key)
 
 static bool utils_driver(zval *db, zval *driver)
 {
-    return utils_call(db, "driver", driver, 0, NULL) && Z_TYPE_P(driver) == IS_STRING;
-}
-
-static bool utils_unsupported(zval *db, const char *surface)
-{
-    zval argument, ignored;
-    ZVAL_STRING(&argument, surface);
-    bool ok = utils_call(db, "unsupportedOnMarkdown", &ignored, 1, &argument);
-    zval_ptr_dtor(&argument);
-    if (!Z_ISUNDEF(ignored)) zval_ptr_dtor(&ignored);
-    return ok;
+    return utils_call(db, "dialect", driver, 0, NULL) && Z_TYPE_P(driver) == IS_STRING;
 }
 
 static bool utils_key_or_throw(zend_string *key, const char *kind)
@@ -316,7 +306,6 @@ ZEND_METHOD(Polyspec_Orm_Utils, lock)
         Z_PARAM_STR(key)
     ZEND_PARSE_PARAMETERS_END();
     zval *db = utils_db(ZEND_THIS);
-    if (!utils_unsupported(db, "lock")) RETURN_THROWS();
     zval frame;
     ZVAL_UNDEF(&frame);
     if (!utils_get_frame(db, "lock", &frame)) {
@@ -396,7 +385,6 @@ ZEND_METHOD(Polyspec_Orm_Utils, setLocal)
         Z_PARAM_STR(value)
     ZEND_PARSE_PARAMETERS_END();
     zval *db = utils_db(ZEND_THIS);
-    if (!utils_unsupported(db, "setLocal")) RETURN_THROWS();
     zval frame;
     ZVAL_UNDEF(&frame);
     if (!utils_get_frame(db, "setLocal", &frame)) {
@@ -465,7 +453,6 @@ ZEND_METHOD(Polyspec_Orm_Utils, local)
         Z_PARAM_STR(key)
     ZEND_PARSE_PARAMETERS_END();
     zval *db = utils_db(ZEND_THIS);
-    if (!utils_unsupported(db, "local")) RETURN_THROWS();
     zval frame;
     ZVAL_UNDEF(&frame);
     if (!utils_get_frame(db, "local", &frame)) {
@@ -521,7 +508,6 @@ ZEND_METHOD(Polyspec_Orm_Utils, backendWaitingForLock)
 {
     ZEND_PARSE_PARAMETERS_NONE();
     zval *db = utils_db(ZEND_THIS);
-    if (!utils_unsupported(db, "backendWaitingForLock")) RETURN_THROWS();
     zval driver;
     ZVAL_UNDEF(&driver);
     if (!utils_driver(db, &driver)) RETURN_THROWS();

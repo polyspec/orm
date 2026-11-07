@@ -7,7 +7,8 @@
     "FCV-2",
     "FCV-3",
     "FCV-4",
-    "CFG-22a"
+    "CFG-22a",
+    "DIA-199"
   ],
   "fixture": "contracts/fixtures/statement_events/dbspec-set.json",
   "cases": [
@@ -301,7 +302,7 @@
       "steps": [
         {
           "op": "dsn.connect",
-          "dsn": "mysql://orm@127.0.0.1:1/orm",
+          "dsn": "case",
           "config": {
             "pool_size": 3,
             "pool_idle_size": 4
@@ -743,7 +744,7 @@
       "steps": [
         {
           "op": "dsn.connect",
-          "dsn": "mysql://orm@127.0.0.1:1/orm",
+          "dsn": "case",
           "config": {
             "pool_idle_size": 11
           },
@@ -879,6 +880,10 @@
       "each_connection_counts_its_own_pool"
     ],
     "sqlite": [
+      "an_idle_size_above_the_pool_size_is_refused",
+      "an_idle_size_above_the_default_pool_size_is_refused"
+    ],
+    "markdown": [
       "an_idle_size_above_the_pool_size_is_refused",
       "an_idle_size_above_the_default_pool_size_is_refused"
     ]

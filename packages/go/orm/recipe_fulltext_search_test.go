@@ -32,3 +32,9 @@ func TestRecipeFulltextSearchSqlite(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, fulltextSearchRecipe, "sqlite")
 }
+
+// TestRecipeFulltextSearchMarkdown runs the recipe on flowmark, each case on a corpus of its own (FCV-3).
+func TestRecipeFulltextSearchMarkdown(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, fulltextSearchRecipe, "markdown")
+}

@@ -33,3 +33,9 @@ func TestRecipeAesRotationSqlite(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, aesRotationRecipe, "sqlite")
 }
+
+// TestRecipeAesRotationMarkdown runs the recipe on flowmark, each case on a corpus of its own (FCV-3).
+func TestRecipeAesRotationMarkdown(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, aesRotationRecipe, "markdown")
+}

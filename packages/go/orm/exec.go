@@ -2,6 +2,7 @@ package orm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"slices"
@@ -9,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/polyspec/orm/packages/go/engine/ir"
 	"github.com/polyspec/orm/packages/go/engine/plan"
@@ -58,6 +60,8 @@ type styledScanCol struct {
 	name  string
 	codec []string
 	host  []string
+	// asm is the assembly of the node that owns the column: its entity and its version column.
+	asm *plan.Assemble
 }
 
 func newCached(key uint64, p *plan.Plan) *cached {
@@ -282,7 +286,7 @@ func paramValue(b *plan.BindSlot, r *request) (any, error) {
 }
 
 // transformParam applies the value transform kind to a parameter: SQL NULL binds NULL, so
-// `col LIKE NULL` matches no row, and a value other than text is CODEC_ENCODE.
+// `col LIKE NULL` matches no row, and a value other than text, or a text that is not UTF-8, is CODEC_ENCODE.
 func transformParam(kind string, v any) (any, error) {
 	if v == nil {
 		return nil, nil
@@ -290,6 +294,9 @@ func transformParam(kind string, v any) (any, error) {
 	s, ok := v.(string)
 	if !ok {
 		return nil, codecErr(CodeCodecEncode, "%s requires a string value", kind)
+	}
+	if !utf8.ValidString(s) {
+		return nil, codecErr(CodeCodecEncode, "%s requires a UTF-8 text", kind)
 	}
 	if kind == "fulltext_boolean" {
 		out := plan.FulltextBoolean(s)
@@ -320,9 +327,6 @@ type Statement struct {
 
 func getQuery(ex executor, r *request) (*Statement, error) {
 	d := ex.base()
-	if err := d.unsupportedOnMarkdown("getQuery"); err != nil {
-		return nil, err
-	}
 	if err := applyRequestHook(ex, r); err != nil {
 		return nil, err
 	}
@@ -351,9 +355,6 @@ type QueryPlanStep struct {
 // pagePlanSteps is the steps of the plan of a page request, from the plan call that paginate runs.
 func pagePlanSteps(ex executor, r *request) ([]QueryPlanStep, error) {
 	d := ex.base()
-	if err := d.unsupportedOnMarkdown("getPagePlanSteps"); err != nil {
-		return nil, err
-	}
 	if err := preparePage(ex, r); err != nil {
 		return nil, err
 	}
@@ -450,9 +451,6 @@ type result struct {
 	main   [][]any
 	steps  map[int]*stepRows
 	params []any
-	// markdown means the result is a markdown answer: the last cell of each row holds that row's join and
-	// relation rows (mdLinks).
-	markdown bool
 }
 
 type stepRows struct {
@@ -560,10 +558,6 @@ func query(ex executor, r *request) (*result, error) {
 		return nil, err
 	}
 	defer done()
-	if d.md != nil {
-		res, _, err := markdownRead(ex, r)
-		return res, err
-	}
 	c, slots, err := d.splitReadPlan(r)
 	if err != nil {
 		return nil, err
@@ -944,9 +938,11 @@ func runSelect(ctx context.Context, ex executor, c *cached, st *plan.Step, r *re
 }
 
 func decodeSelectedRow(vals []any, si *scanInfo, st *plan.Step, keyring AESKeyring) error {
-	if st.Assemble.AESVersion == nil && slices.ContainsFunc(si.styled, func(sc styledScanCol) bool { return slices.Contains(sc.host, "aes") }) {
-		// The planner selects the version column of every AES column, so a plan without one is broken: no version is assumed.
-		return codecErr(CodeInternal, "%s has an AES column and no version column", st.Assemble.Entity)
+	for _, sc := range si.styled {
+		if sc.asm.AESVersion == nil && slices.Contains(sc.host, "aes") {
+			// The planner selects the version column of every AES column, so a plan without one is broken: no version is assumed.
+			return codecErr(CodeInternal, "%s has an AES column and no version column", sc.asm.Entity)
+		}
 	}
 	for _, sc := range si.styled {
 		v := vals[sc.index]
@@ -960,8 +956,9 @@ func decodeSelectedRow(vals []any, si *scanInfo, st *plan.Step, keyring AESKeyri
 		// A host stage without aes (hex, ip) is decoded without a key.
 		switch {
 		case slices.Contains(sc.host, "aes"):
-			// The version is read only for a non-NULL AES cell: a NULL cell with a NULL version stays NULL.
-			version, verr := selectedRowVersion(vals, st.Assemble)
+			// The version is read only for a non-NULL AES cell: a NULL cell with a NULL version stays NULL. Each node
+			// reads the version of its own row, so a joined row decrypts with the key that wrote it (COD-6).
+			version, verr := selectedRowVersion(vals, sc.asm)
 			if verr != nil {
 				return verr
 			}
@@ -970,11 +967,11 @@ func decodeSelectedRow(vals []any, si *scanInfo, st *plan.Step, keyring AESKeyri
 			v, err = HostDecode(v, sc.host, "")
 		}
 		if err != nil {
-			return fmt.Errorf("%s.%s: %w", st.Assemble.Entity, sc.name, err)
+			return columnDecodeErr(sc.asm.Entity, sc.name, err)
 		}
 		if len(sc.codec) > 0 {
 			if v, err = Decode(sc.codec, v); err != nil {
-				return fmt.Errorf("%s.%s: %w", st.Assemble.Entity, sc.name, err)
+				return columnDecodeErr(sc.asm.Entity, sc.name, err)
 			}
 		}
 		vals[sc.index] = v
@@ -1007,7 +1004,7 @@ func validateRuntimeScalars(vals []any, asm *plan.Assemble) error {
 			_, err = AsBool(vals[col.Index])
 		}
 		if err != nil {
-			return fmt.Errorf("%s.%s: %w", asm.Entity, col.Name, err)
+			return columnDecodeErr(asm.Entity, col.Name, err)
 		}
 	}
 	for _, child := range asm.Children {
@@ -1028,9 +1025,19 @@ func selectedRowVersion(vals []any, asm *plan.Assemble) (int32, error) {
 	}
 	version, err := rowVersion(vals[col.Index])
 	if err != nil {
-		return 0, fmt.Errorf("%s.%s: %w", asm.Entity, col.Name, err)
+		return 0, columnDecodeErr(asm.Entity, col.Name, err)
 	}
 	return version, nil
+}
+
+// columnDecodeErr names the entity and the column of a CODEC_DECODE of a read cell, as every client states it:
+// "CODEC_DECODE: <entity>.<column>: <message>" (COD-41). An error of another code is returned as it is.
+func columnDecodeErr(entity, column string, err error) error {
+	var coded *ir.Error
+	if !errors.As(err, &coded) || coded.Code != CodeCodecDecode {
+		return err
+	}
+	return &ir.Error{Code: coded.Code, Msg: entity + "." + column + ": " + coded.Msg, Cause: coded.Cause}
 }
 
 func restoreByteColumns(vals []any, asm *plan.Assemble) error {
@@ -1070,7 +1077,7 @@ func styledScanCols(a *plan.Assemble) []styledScanCol {
 			continue
 		}
 		codec, host := splitHost(c.Styles)
-		out = append(out, styledScanCol{index: c.Index, name: c.Name, codec: codec, host: host})
+		out = append(out, styledScanCol{index: c.Index, name: c.Name, codec: codec, host: host, asm: a})
 	}
 	for _, ch := range a.Children {
 		if ch.Kind == "join" {
@@ -1114,9 +1121,6 @@ func scalar(ex executor, r *request) (any, error) {
 		return nil, err
 	}
 	defer done()
-	if d.md != nil {
-		return markdownScalar(ex, r)
-	}
 	_, slots, err := d.splitReadPlan(r)
 	if err != nil {
 		return nil, err
@@ -1204,9 +1208,6 @@ func paginate(ex executor, r *request) (*result, int64, error) {
 		return nil, 0, err
 	}
 	d, ctx := ex.base(), ex.context()
-	if d.md != nil {
-		return markdownRead(ex, r)
-	}
 	c, err := d.plan(r)
 	if err != nil {
 		return nil, 0, err
@@ -1242,7 +1243,7 @@ func paginate(ex executor, r *request) (*result, int64, error) {
 
 // write runs an insert, update, delete, or restore and returns the key of the
 // inserted row and the affected row count: the generated identity on a SQL
-// database, the first key the markdown executor answers.
+// database, the key_prefix key that a corpus allocated on a markdown connection.
 func write(ex executor, r *request) (key any, affected int64, err error) {
 	return writeAfterHook(ex, r, nil)
 }
@@ -1269,13 +1270,6 @@ func writeAfterHook(ex executor, r *request, after func(*request) error) (key an
 		}
 	}
 	d, ctx := ex.base(), ex.context()
-	if d.md != nil {
-		keys, affected, err := markdownWrite(ex, r)
-		if err != nil || len(keys) == 0 {
-			return nil, affected, err
-		}
-		return keys[0], affected, nil
-	}
 	var lastID int64
 	c, err := d.plan(r)
 	if err != nil {
@@ -1309,12 +1303,20 @@ func writeAfterHook(ex executor, r *request, after func(*request) error) (key an
 		return nil, 0, d.modelDone(ex, st, st.SQL, args, masks, start, err)
 	}
 	if r.ir.Kind == "insert" && strings.Contains(st.SQL, " RETURNING ") {
-		err = stmt.QueryRowContext(ctx, args...).Scan(&lastID)
-		err = mapDriverErrContext(d.scanAgain(ctx, ex.transaction() == nil, st.SQL, args, err, &lastID), ctx)
+		// The returned key is the identity, an integer, or the key_prefix key that a corpus allocated, a text.
+		var returned any
+		err = stmt.QueryRowContext(ctx, args...).Scan(&returned)
+		err = mapDriverErrContext(d.scanAgain(ctx, ex.transaction() == nil, st.SQL, args, err, &returned), ctx)
 		if err := d.modelDone(ex, st, st.SQL, args, masks, start, err); err != nil {
 			return nil, 0, err
 		}
-		return lastID, 1, nil
+		switch v := returned.(type) {
+		case int32:
+			return int64(v), 1, nil
+		case []byte:
+			return string(v), 1, nil
+		}
+		return returned, 1, nil
 	}
 	res, err := stmt.ExecContext(ctx, args...)
 	res, err = d.execAgain(ctx, ex.transaction() == nil, st.SQL, args, res, err)

@@ -20,8 +20,8 @@ type ParamUse struct {
 // parameter index: the compared or assigned column; a column function's result;
 // i32, or f64 for seconds, for the interval of a relative time function; text
 // for contains and contains_binary; the parent column for if_parent; the column
-// for optimistic. An IR executor message writes each parameter in the form of
-// its slot's type (docs/spec/protocol.md §5), so the client reads the type here.
+// for optimistic. Every client checks each parameter against its slot's type
+// before any statement (docs/spec/protocol.md §5 "Parameters").
 func ParamUses(m *runtimemodel.Model, r *Request) ([][]ParamUse, error) {
 	u := &paramUses{m: m, out: make([][]ParamUse, r.NParams)}
 	ent := m.Entities[r.Entity]

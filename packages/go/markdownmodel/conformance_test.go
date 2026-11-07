@@ -4,7 +4,6 @@
 package markdownmodel_test
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -21,6 +20,7 @@ import (
 
 	"debug/buildinfo"
 
+	"github.com/polyspec/orm/packages/go/internal/testdb"
 	"github.com/polyspec/orm/packages/go/markdownmodel"
 	"github.com/polyspec/orm/packages/go/orm"
 	"github.com/polyspec/orm/packages/go/testcase"
@@ -175,8 +175,6 @@ func pinnedFlowmarkBuild(info *buildinfo.BuildInfo, pin string) bool {
 	return len(revision) == 12 && strings.HasPrefix(settings["vcs.revision"], revision) && settings["vcs.modified"] == "false"
 }
 
-var listening = regexp.MustCompile(`^\[serve\] listening on 127\.0\.0\.1:([0-9]+) for the corpus (.+)$`)
-
 // serve installs corpus/ as a new corpus, starts its server, and connects to it. When the test ends,
 // it closes the connection, stops the server, and waits for it to finish.
 func serve(t *testing.T, bin string) *served {
@@ -206,54 +204,18 @@ func serve(t *testing.T, bin string) *served {
 		t.Fatalf("flowmark install: %v\n%s", err, out)
 	}
 	c.Step("flowmark serve %s --port 0", s.dir)
-	cmd := exec.Command(bin, "serve", s.dir, "--port", "0")
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := cmd.Start(); err != nil {
-		t.Fatal(err)
-	}
+	server := testdb.StartFlowmark(t, bin, s.dir, s.corpus)
+	s.port = server.Port
+	s.token = server.Token
+	// Registered after the server's cleanup, so the connection closes before the server stops.
 	t.Cleanup(func() {
 		if s.db != nil {
 			testcase.Close(t, s.db)
 		}
-		if err := cmd.Process.Signal(os.Interrupt); err != nil && !errors.Is(err, os.ErrProcessDone) {
-			if err := cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
-				t.Errorf("kill flowmark serve: %v", err)
-			}
-		}
-		// The interrupted server ends with an exit status, which is the expected end of it; Wait reports
-		// only an error that is not an exit status, such as a failure of the wait itself.
-		if err := cmd.Wait(); err != nil {
-			var exit *exec.ExitError
-			if !errors.As(err, &exit) {
-				t.Errorf("wait for flowmark serve: %v", err)
-			}
-		}
 	})
-	line, err := bufio.NewReader(stdout).ReadString('\n')
-	m := listening.FindStringSubmatch(strings.TrimSuffix(line, "\n"))
-	if err != nil || m == nil || m[2] != s.corpus {
-		t.Fatalf("flowmark serve printed %q (%v), not its listening line; stderr:\n%s", line, err, stderr.String())
-	}
-	s.port = m[1]
-	var file struct {
-		Token string `json:"token"`
-	}
-	b, err := os.ReadFile(filepath.Join(s.dir, ".flowmark", "server.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := json.Unmarshal(b, &file); err != nil {
-		t.Fatalf("server.json: %v", err)
-	}
-	s.token = file.Token
 	db, err := markdownmodel.Connect(s.dsn(s.corpus, s.token), orm.Config{})
 	if err != nil {
-		t.Fatalf("connect: %v; stderr:\n%s", err, stderr.String())
+		t.Fatalf("connect: %v; stderr:\n%s", err, server.Stderr.String())
 	}
 	s.db = db
 	return s
@@ -657,8 +619,13 @@ func conformanceCases() map[string]caseFunc {
 				return err
 			})
 		},
+		// get_query is the statement of a read, the same text as on SQLite: {"sql", "binds"}.
 		"get_query": func(s *served) (any, error) {
-			return markdownmodel.People().Connect(s.db).GetQuery()
+			q, err := markdownmodel.People().Connect(s.db).GetQuery()
+			if err != nil {
+				return nil, err
+			}
+			return map[string]any{"sql": q.SQL, "binds": q.Binds}, nil
 		},
 		"isolation": func(s *served) (any, error) {
 			return nil, s.db.Transaction(func() error { return nil }, orm.Isolation(orm.Serializable))
@@ -695,7 +662,7 @@ func conformanceCases() map[string]caseFunc {
 		},
 		// transaction_retry_commit runs a transaction that reads P1 and writes its own name back, with retry options,
 		// and answers the commit's code (null when it commits) and how many times the callback ran: a commit that is
-		// WRITE_CONFLICT is never retried, a DEADLOCK is (tests/ir/answers.json).
+		// WRITE_CONFLICT is never retried, a DEADLOCK is (PRT-71).
 		"transaction_retry_commit": func(s *served) (any, error) {
 			runs := 0
 			err := s.db.Transaction(func() error {
@@ -776,13 +743,12 @@ func conformanceCases() map[string]caseFunc {
 			return keys, nil
 		},
 		// primary_key_case inserts the key t3, which equals T3 without regard to case: a plain insert is
-		// DUPLICATE_KEY, and an on_duplicate insert meets T3, which keeps its key (DIA-164).
+		// DUPLICATE_KEY, and so is an on_duplicate insert, whose conflict meets a key byte for byte, as on SQLite; T3
+		// keeps its row (DIA-164).
 		"primary_key_case": func(s *served) (any, error) {
 			_, dup := markdownmodel.Tasks().Connect(s.db).SetId("t3").SetOwner("P2").SetTitle("dup").SetPoints(1).Create()
-			if _, err := markdownmodel.Tasks().Connect(s.db).SetId("t3").SetOwner("P2").SetTitle("ship it").SetPoints(8).
-				Duplication(markdownmodel.Tasks().SetTitle("ship it")).Create(); err != nil {
-				return nil, err
-			}
+			_, upsert := markdownmodel.Tasks().Connect(s.db).SetId("t3").SetOwner("P2").SetTitle("ship it").SetPoints(8).
+				Duplication(markdownmodel.Tasks().SetTitle("ship it")).Create()
 			met, err := markdownmodel.Tasks().Connect(s.db).RemoveAllColumns().AddColumnTitle().Id("T3").Get()
 			if err != nil {
 				return nil, err
@@ -791,7 +757,7 @@ func conformanceCases() map[string]caseFunc {
 			if err != nil {
 				return nil, err
 			}
-			return map[string]any{"duplicate": orm.ErrorCode(dup), "met": met.ToArray(), "count": n}, nil
+			return map[string]any{"duplicate": orm.ErrorCode(dup), "upsert": orm.ErrorCode(upsert), "met": met.ToArray(), "count": n}, nil
 		},
 		// tuple_in compares two columns with a list of value groups, IN and NOT IN (DIA-168).
 		"tuple_in": func(s *served) (any, error) {
@@ -929,7 +895,7 @@ func conformanceCases() map[string]caseFunc {
 			}
 			return rows.ToArray(), nil
 		},
-		// force_index names an index, which the corpus does not name: CAPABILITY_UNSUPPORTED (DIA-186).
+		// force_index reads through the index it names, as SQLite does (DIA-186).
 		"force_index": func(s *served) (any, error) {
 			return markdownmodel.Tasks().Connect(s.db).ForceIndexIxTasksOwner().Owner("P1").Gets()
 		},
@@ -1032,13 +998,13 @@ func conformanceCases() map[string]caseFunc {
 			}
 			return value.Kind(), nil
 		},
-		// install_refuses_aes installs a catalog with an aes column, a schema error on a corpus (DIA-178).
-		"install_refuses_aes": func(s *served) (any, error) {
-			return refusedInstall(s, "aes")
+		// install_aes installs a catalog with an aes column and its key version column (DIA-178).
+		"install_aes": func(s *served) (any, error) {
+			return installCatalog(s, "aes")
 		},
-		// install_refuses_audit installs a catalog with an audit setting, a schema error on a corpus (DIA-179).
-		"install_refuses_audit": func(s *served) (any, error) {
-			return refusedInstall(s, "audit")
+		// install_audit installs a catalog with an audit setting, its record table and its history table (DIA-179).
+		"install_audit": func(s *served) (any, error) {
+			return installCatalog(s, "audit")
 		},
 	}
 }
@@ -1046,14 +1012,14 @@ func conformanceCases() map[string]caseFunc {
 // installRefusal is the code that flowmark install prints when it refuses a catalog: "flowmark install: <CODE>: ...".
 var installRefusal = regexp.MustCompile(`^flowmark install: ([A-Z_]+):`)
 
-// refusedInstall installs tests/markdown/refused/<name>.dbs as the catalog of a new corpus and answers the code of
-// its refusal, {"error": code}; an install that succeeds answers {"error": null}.
-func refusedInstall(s *served, name string) (answer any, err error) {
-	catalog, err := os.ReadFile(filepath.Join(conformanceDir, "refused", name+".dbs"))
+// installCatalog installs tests/markdown/catalogs/<name>.dbs as the one document of the set of a new corpus and answers
+// {"error": null}, or the code of its refusal, {"error": code}.
+func installCatalog(s *served, name string) (answer any, err error) {
+	catalog, err := os.ReadFile(filepath.Join(conformanceDir, "catalogs", name+".dbs"))
 	if err != nil {
 		return nil, err
 	}
-	root, err := os.MkdirTemp("", "orm-markdown-refused-")
+	root, err := os.MkdirTemp("", "orm-markdown-catalog-")
 	if err != nil {
 		return nil, err
 	}
@@ -1067,6 +1033,10 @@ func refusedInstall(s *served, name string) (answer any, err error) {
 		return nil, err
 	}
 	if err := os.WriteFile(filepath.Join(dir, "dbspec", name+".dbs"), catalog, 0o644); err != nil {
+		return nil, err
+	}
+	set := fmt.Sprintf(`{"schema": 1, "documents": [%q]}`, name+".dbs")
+	if err := os.WriteFile(filepath.Join(dir, "dbspec", "dbspec-set.json"), []byte(set), 0o644); err != nil {
 		return nil, err
 	}
 	out, err := exec.Command(s.bin, "install", dir).CombinedOutput()

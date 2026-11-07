@@ -695,19 +695,26 @@ pub fn hex_upper(b: &[u8]) -> String {
     s
 }
 
+/// The message of a refused `hex` cell, the same text in every client (COD-39).
+const HEX_REFUSED: &str = "hex: odd length or non-hex input";
+
 /// Reads the upper-case hex text that `hex_upper` writes. The
 /// text is decoded exactly: a lower-case letter, white space or any other byte
 /// outside the upper-case hex digits is `CODEC_DECODE` (docs/spec/codec.md).
 pub fn hex_decode(s: &str) -> Result<Vec<u8>> {
-    let s = s.as_bytes();
+    hex_bytes(s.as_bytes())
+}
+
+/// The bytes of upper-case hex text; every refusal states the one text of COD-39.
+fn hex_bytes(s: &[u8]) -> Result<Vec<u8>> {
     if !s.len().is_multiple_of(2) {
-        return Err(err(CODEC_DECODE, "hex: odd length"));
+        return Err(err(CODEC_DECODE, HEX_REFUSED));
     }
     let nibble = |c: u8| -> Result<u8> {
         match c {
             b'0'..=b'9' => Ok(c - b'0'),
             b'A'..=b'F' => Ok(c - b'A' + 10),
-            _ => Err(err(CODEC_DECODE, format!("hex: invalid byte {c:#x}"))),
+            _ => Err(err(CODEC_DECODE, HEX_REFUSED)),
         }
     };
     s.as_chunks::<2>().0.iter().map(|p| Ok(nibble(p[0])? << 4 | nibble(p[1])?)).collect()
@@ -779,7 +786,8 @@ pub fn host_decode(raw: &Val, styles: &[String], aes_key: &str) -> Result<Val> {
     };
     for st in styles.iter().rev() {
         cur = match st.as_str() {
-            "hex" => hex_decode(std::str::from_utf8(&cur).map_err(|error| err(CODEC_DECODE, format!("hex input is not UTF-8: {error}")))?)?,
+            // A byte that is not ASCII is no hex digit, so bytes that are not UTF-8 are refused with the same text.
+            "hex" => hex_bytes(&cur)?,
             "aes" => {
                 if aes_key.is_empty() {
                     return Err(Error::Config("secret aes not configured".into()));

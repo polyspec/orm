@@ -6,6 +6,7 @@ import pg from 'pg';
 import { DbspecApplyError, applyPlans, dbspecManifest, finalizePlans, introspectDbspec, parsePlan, recoverPlans, rollbackPlans } from '../dist/dbspec/index.js';
 import { relatedDsn, withCaseDatabase } from './case-database.mjs';
 import { mysqlTestOptions } from './mysql-test-options.mjs';
+import { markdownSqlite } from './markdown_sqlite.mjs';
 
 // The fixed clock of the commands in microseconds, 2023-11-14T22:13:20Z.
 const NOW = () => 1_700_000_000_000_000;
@@ -22,8 +23,24 @@ function required(name) {
   return value;
 }
 
+/** The SQL dialect of a case database: a corpus runs SQL in SQLite's (DIA-185). */
+const dialectOf = database => (database === 'markdown' ? 'sqlite' : database);
+
 /** A driver connection with the form of statement each driver has: run returns the rows as arrays, close ends it. */
 async function open(database, target) {
+  if (database === 'markdown') {
+    // A corpus is reached through one session of its flowmark server, which answers SQLite's statements (DIA-185).
+    const corpus = await markdownSqlite(target.dsn);
+    return {
+      connection: corpus,
+      close: () => corpus.close(),
+      run: async text => {
+        const statement = corpus.prepare(text);
+        statement.setReturnArrays(true);
+        return statement.all();
+      },
+    };
+  }
   if (database === 'sqlite') {
     const db = new DatabaseSync(target.path);
     return {
@@ -64,7 +81,7 @@ async function openPostgres(dsn) {
 /** Opens a session on the target, runs the rules of a direct connection and closes it with the case. */
 async function direct(context, target) {
   const session = await open(context.database, target);
-  for (const rule of CONNECTION_RULES[context.database]) await session.run(rule);
+  for (const rule of CONNECTION_RULES[dialectOf(context.database)]) await session.run(rule);
   return session;
 }
 
@@ -101,7 +118,7 @@ async function command(s, context, runStep) {
   const started = Date.now();
   let code = 'ok';
   try {
-    await COMMANDS[s.op](session.connection, context.database, plans, NOW, handler);
+    await COMMANDS[s.op](session.connection, dialectOf(context.database), plans, NOW, handler);
   } catch (error) {
     const failure = error instanceof AggregateError ? error.errors[0] : error;
     if (failure === STOP) code = 'stopped';
@@ -131,7 +148,7 @@ export function applyOps({ sql, runStep }) {
       return { bind: plan };
     },
     'dbspec.connect': async (s, context) => {
-      const target = { name: context.caseName, path: context.casePath };
+      const target = { name: context.caseName, path: context.casePath, dsn: context.dsn };
       let session;
       if (s.through === 'pooler') session = await openPostgres(relatedDsn(required('ORM_TEST_PGBOUNCER_DSN'), target.name));
       else session = await direct(context, target);
@@ -144,12 +161,12 @@ export function applyOps({ sql, runStep }) {
       return { value: { array: rows.map(row => ({ array: Array.from(row, cell) })) } };
     },
     'dbspec.schema': async (s, context) => {
-      const { document, unsupported } = await introspectDbspec(sessionOf(s, context).connection, context.database, 'x');
+      const { document, unsupported } = await introspectDbspec(sessionOf(s, context).connection, dialectOf(context.database), 'x');
       if (unsupported.length > 0) throw new Error(`dbspec.schema: unsupported ${JSON.stringify(unsupported)}`);
       return { value: { text: document.tables.length > 0 ? dbspecManifest([document]).manifest.schemaText : '' } };
     },
     'dbspec.other_database': (s, context) => withCaseDatabase(context.database, context.step, async other => {
-      const session = await direct(context, { name: other.name, path: other.path });
+      const session = await direct(context, { name: other.name, path: other.path, dsn: other.dsn });
       try {
         context.bound.set(s.as, session);
         for (const nested of s.steps) await runStep(nested, context);

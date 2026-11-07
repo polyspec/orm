@@ -174,9 +174,7 @@ const markdownServerContracts = [
   { path: 'packages/php/tests/MarkdownTest.php', required: ['function start_markdown_test_server(', 'function markdown_test_server_received_messages('], forbidden: ['markdown_fake_server(', 'markdown_received('] },
   { path: 'packages/php/tests/Recipe.php', required: ['start_markdown_test_server(', 'markdown_test_server_received_messages('], forbidden: ['markdown_fake_server(', 'markdown_received('] },
   { path: 'packages/php-ext/tests/ModelWriteSurfaceTest.php', required: ['start_markdown_test_server(', 'markdown_test_server_received_messages('], forbidden: ['markdown_fake_server(', 'markdown_received('] },
-  { path: 'packages/go/markdownmodel/ir_answers_test.go', required: ['startMarkdownTestServerWithKeyedAnswers(', 'startMarkdownTestServerWithAnswer(', 'listenMarkdownTestServer(', 'serveMarkdownTestConnection('], forbidden: ['keyedServer(', 'answeringServer(', 'listenLocal(', 'serveListener('] },
-  { path: 'packages/python/tests/chain_answer.py', required: ['start_markdown_test_server_with_keyed_answers(', 'start_markdown_test_server_with_answer(', 'listen_markdown_test_server(', 'accept_markdown_test_connection('], forbidden: ['keyed_server(', 'answering_server(', 'listen_once(', 'accept_once('] },
-  { path: 'packages/ts/tests/recipe.mjs', required: ['startMarkdownTestServerWithKeyedAnswers(', 'startMarkdownTestServerWithAnswer(', 'listenMarkdownTestServer('], forbidden: ['keyedServer(', 'answeringServer(', 'listenMarkdownServer('] },
+  { path: 'packages/ts/tests/recipe.mjs', required: ['listenMarkdownTestServer('], forbidden: ['keyedServer(', 'answeringServer(', 'listenMarkdownServer('] },
   { path: 'packages/ts/tests/markdown_test_listener.mjs', required: ['listenMarkdownTestServer('], forbidden: ['listenMarkdownServer('] },
   { path: 'packages/ts/tests/markdown_test_listener.test.mjs', required: ['listenMarkdownTestServer('], forbidden: ['listenMarkdownServer('] },
 ] as const;

@@ -626,9 +626,10 @@ final class Codec
      * Decodes the styled cells of positional rows in place: the host stages first, then the codec
      * stages. $cells is a step's 'decode' list from Assemble::index (joined columns included):
      * [index, host stages, codec stages, whether the host stages include aes, the index of the
-     * node's aes_key_version column or null].
+     * node's aes_key_version column or null, the <entity>.<column> of the cell]. A CODEC_DECODE of a
+     * cell names its entity and column: "CODEC_DECODE: <entity>.<column>: <message>" (COD-41).
      * @param list<list<mixed>> $rows
-     * @param list<array{0: int, 1: list<string>, 2: list<string>, 3: bool, 4: ?int}> $cells
+     * @param list<array{0: int, 1: list<string>, 2: list<string>, 3: bool, 4: ?int, 5: string}> $cells
      */
     public static function decodeRows(array &$rows, array $cells, Config $config): void
     {
@@ -640,7 +641,7 @@ final class Codec
             }
         }
         foreach ($rows as &$vals) {
-            foreach ($cells as [$index, $host, $codec, $aes, $versionIndex]) {
+            foreach ($cells as [$index, $host, $codec, $aes, $versionIndex, $name]) {
                 $v = $vals[$index];
                 if ($host !== []) {
                     if ($aes && $versionIndex === null) {
@@ -652,17 +653,38 @@ final class Codec
                     // (COD-44).
                     if ($v !== null) {
                         $key = !$aes ? $config->aesKey : $keyring->key(self::rowVersion($vals, $versionIndex));
-                        $v = self::hostDecode($v, $host, $key);
+                        try {
+                            $v = self::hostDecode($v, $host, $key);
+                        } catch (OrmException $e) {
+                            throw self::namedDecodeFailure($e, $name);
+                        }
                     }
                 }
                 if ($codec !== []) {
-                    $v = self::decode($codec, $v);
+                    try {
+                        $v = self::decode($codec, $v);
+                    } catch (OrmException $e) {
+                        throw self::namedDecodeFailure($e, $name);
+                    }
                 } elseif (is_resource($v)) {
                     $v = stream_get_contents($v);
                 }
                 $vals[$index] = $v;
             }
         }
+    }
+
+    /** A CODEC_DECODE of a read cell with its <entity>.<column> before its message (COD-41); another code is kept. */
+    private static function namedDecodeFailure(OrmException $e, string $name): OrmException
+    {
+        if ($e->code_ !== Code::CODEC_DECODE) {
+            return $e;
+        }
+        return new OrmException(
+            Code::CODEC_DECODE,
+            $name . ': ' . substr($e->getMessage(), strlen(Code::CODEC_DECODE . ': ')),
+            $e
+        );
     }
 
     /**

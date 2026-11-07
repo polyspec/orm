@@ -45,9 +45,8 @@ final class SchemaUtils
      */
     public function install(Schema $schema): void
     {
-        $this->db->unsupportedOnMarkdown('schema install (flowmark install creates a corpus)');
         $schema->verify();
-        $driver = $this->db->driver();
+        $driver = $this->db->dialect();
         $documents = $schema->documents();
         [, $diagnostics] = DocumentSet::check($documents);
         if ($diagnostics !== []) {
@@ -131,9 +130,8 @@ final class SchemaUtils
      */
     public function addTablesAndColumns(Schema $schema): array
     {
-        $this->db->unsupportedOnMarkdown('addTablesAndColumns (schema evolution follows the flowmark migration rules)');
         $schema->verify();
-        $driver = $this->db->driver();
+        $driver = $this->db->dialect();
         $documents = $schema->documents();
         $document = self::target($documents);
         $db = $this->db;
@@ -344,7 +342,6 @@ final class SchemaUtils
 
     private function bool(string $sql, array $args): bool
     {
-        $this->db->unsupportedOnMarkdown('schema inspection');
         return (bool) $this->u->read(StatementEvent::SCHEMA, [], $sql, $args);
     }
 
@@ -359,7 +356,7 @@ final class SchemaUtils
     public function exists(string $schema): bool
     {
         $schema = self::name($schema);
-        return match ($this->db->driver()) {
+        return match ($this->db->dialect()) {
             'postgres' => $this->bool('SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = $1)', [$schema]),
             'mysql' => $this->bool(
                 'SELECT EXISTS(SELECT 1 FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?)',
@@ -377,7 +374,7 @@ final class SchemaUtils
     {
         $schema = self::name($schema);
         $table = self::name($table);
-        return match ($this->db->driver()) {
+        return match ($this->db->dialect()) {
             'postgres' => $this->bool('SELECT to_regclass($1) IS NOT NULL', [$schema . '.' . $table]),
             'mysql' => $this->bool(
                 'SELECT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND '
@@ -402,7 +399,7 @@ final class SchemaUtils
      */
     public function empty(): bool
     {
-        return match ($this->db->driver()) {
+        return match ($this->db->dialect()) {
             'postgres' => $this->bool("SELECT NOT EXISTS (SELECT 1 FROM pg_namespace n WHERE n.nspname NOT LIKE "
                 . "'pg\\_%' AND n.nspname <> 'information_schema' AND (n.nspname <> 'public' OR EXISTS (SELECT 1 FROM "
                     . "pg_class c WHERE c.relnamespace = n.oid AND c.relkind IN ('r', 'p', 'v', 'm', 'f'))))", []),

@@ -162,9 +162,6 @@ func validKey(key string) bool {
 
 // Lock takes a named lock that is released when the transaction ends.
 func (u *Utils) Lock(key string) error {
-	if err := u.db.unsupportedOnMarkdown("lock"); err != nil {
-		return err
-	}
 	t, err := u.active("lock")
 	if err != nil {
 		return err
@@ -216,9 +213,6 @@ func (t *txConn) releaseLocks() error {
 // SetLocal sets a transaction-local value. PostgreSQL uses set_config, and MySQL
 // writes a user variable, and SQLite keeps it only inside the transaction.
 func (u *Utils) SetLocal(key, value string) error {
-	if err := u.db.unsupportedOnMarkdown("setLocal"); err != nil {
-		return err
-	}
 	t, err := u.active("setLocal")
 	if err != nil {
 		return err
@@ -265,9 +259,6 @@ func (t *txConn) clearLocals() error {
 
 // Local returns a value set with SetLocal; NO_ROWS when it is missing.
 func (u *Utils) Local(key string) (string, error) {
-	if err := u.db.unsupportedOnMarkdown("local"); err != nil {
-		return "", err
-	}
 	t, err := u.active("local")
 	if err != nil {
 		return "", err
@@ -301,11 +292,6 @@ func (u *Utils) WasInserted(entity string, key int64) (bool, error) {
 // backend view and return false without exposing driver SQL to callers.
 func (u *Utils) BackendWaitingForLock(ctx context.Context) (bool, error) {
 	d := u.db
-	if d != nil {
-		if err := d.unsupportedOnMarkdown("backendWaitingForLock"); err != nil {
-			return false, err
-		}
-	}
 	if d == nil || d.sql == nil {
 		return false, configErr("database connection is required")
 	}
@@ -351,9 +337,6 @@ func (s *SchemaUtils) Register(schema *Schema) error {
 // outside a transaction, and it is CONFIG inside one.
 func (s *SchemaUtils) Install(schema *Schema) error {
 	d := s.u.db
-	if err := d.unsupportedOnMarkdown("schema install (flowmark install creates a corpus)"); err != nil {
-		return err
-	}
 	m, err := schema.registered()
 	if err != nil {
 		return err
@@ -420,7 +403,10 @@ func (s *SchemaUtils) Install(schema *Schema) error {
 	if err != nil {
 		return err
 	}
-	return d.register(schema)
+	if err := d.register(schema); err != nil {
+		return err
+	}
+	return nil
 }
 
 // AddTablesAndColumns upgrades an installed document set to a new version of the generated schema,
@@ -439,9 +425,6 @@ func (s *SchemaUtils) Install(schema *Schema) error {
 // "table.column", in table name and column order.
 func (s *SchemaUtils) AddTablesAndColumns(schema *Schema) ([]string, error) {
 	d := s.u.db
-	if err := d.unsupportedOnMarkdown("addTablesAndColumns (schema evolution follows the flowmark migration rules)"); err != nil {
-		return nil, err
-	}
 	m, err := schema.registered()
 	if err != nil {
 		return nil, err
@@ -610,9 +593,6 @@ func sqliteWithoutForeignKeys(d *DB, fn func(ctx context.Context, r runner) erro
 }
 
 func (s *SchemaUtils) exists(query string, args ...any) (bool, error) {
-	if err := s.u.db.unsupportedOnMarkdown("schema inspection"); err != nil {
-		return false, err
-	}
 	var found bool
 	err := s.u.read(func(ctx context.Context, r runner) error {
 		return r.scan(ctx, KindSchema, nil, query, args, &found)
@@ -785,9 +765,6 @@ type aesColumn struct {
 }
 
 func (a *AESUtils) spec(m Model) (*aesSpec, error) {
-	if err := a.u.db.unsupportedOnMarkdown("aes rotation"); err != nil {
-		return nil, err
-	}
 	if m == nil {
 		return nil, configErr("aes requires a model")
 	}

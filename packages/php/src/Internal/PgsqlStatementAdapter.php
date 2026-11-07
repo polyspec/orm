@@ -17,6 +17,7 @@ use PgSql\Result;
 final class PgsqlStatementAdapter extends PDOStatement
 {
     use FetchesAllRows;
+    use StatementState;
 
     private array $bindings = [];
     private array $bindingTypes = [];
@@ -24,8 +25,6 @@ final class PgsqlStatementAdapter extends PDOStatement
     private array $boundRefTypes = [];
     private array $boundColumns = [];
     private ?Result $result = null;
-    private array $errorInfoValue = ['00000', null, null];
-    private array $fetchMode = [];
     private int $row = 0;
     private int $affected = 0;
     private array $columns = [];
@@ -36,7 +35,7 @@ final class PgsqlStatementAdapter extends PDOStatement
 
     public function bindValue(string|int $param, mixed $value, int $type = PDO::PARAM_STR): bool
     {
-        $index = $this->index($param);
+        $index = self::slotOf($param);
         $this->bindings[$index] = $value;
         $this->bindingTypes[$index] = $type;
         return true;
@@ -49,7 +48,7 @@ final class PgsqlStatementAdapter extends PDOStatement
         int $maxLength = 0,
         mixed $driverOptions = null
     ): bool {
-        $index = $this->index($param);
+        $index = self::slotOf($param);
         $this->boundRefs[$index] =& $var;
         $this->boundRefTypes[$index] = $type;
         return true;
@@ -69,11 +68,7 @@ final class PgsqlStatementAdapter extends PDOStatement
     public function execute(?array $params = null): bool
     {
         if ($params !== null) {
-            $this->bindings = [];
-            foreach ($params as $key => $value) {
-                $slot = is_int($key) ? $key : $this->index((string) $key);
-                $this->bindings[$slot] = $value;
-            }
+            $this->bindings = self::executeSlots($params);
             $this->bindingTypes = [];
         }
         foreach ($this->boundRefs as $index => &$value) {
@@ -160,12 +155,6 @@ final class PgsqlStatementAdapter extends PDOStatement
         };
     }
 
-    public function fetchColumn(int $column = 0): mixed
-    {
-        $row = $this->fetch(PDO::FETCH_NUM);
-        return $row === false ? false : ($row[$column] ?? false);
-    }
-
     public function fetchObject(?string $class = 'stdClass', array $constructorArgs = []): object|false
     {
         $row = $this->fetch(PDO::FETCH_ASSOC);
@@ -219,22 +208,6 @@ final class PgsqlStatementAdapter extends PDOStatement
             'flags' => [],
             'pgsql:oid' => $meta['oid'],
         ];
-    }
-
-    public function setFetchMode(int $mode, mixed ...$args): true
-    {
-        $this->fetchMode = [$mode, ...$args];
-        return true;
-    }
-
-    public function errorCode(): ?string
-    {
-        return $this->errorInfoValue[0];
-    }
-
-    public function errorInfo(): array
-    {
-        return $this->errorInfoValue;
     }
 
     public function getAttribute(int $name): mixed
@@ -300,14 +273,6 @@ final class PgsqlStatementAdapter extends PDOStatement
             }
         }
         return $row;
-    }
-
-    private function index(string|int $param): int|string
-    {
-        if (is_int($param)) {
-            return $param - 1;
-        }
-        return str_starts_with($param, ':') ? substr($param, 1) : $param;
     }
 
     private function convert(?string $value, int $column): mixed

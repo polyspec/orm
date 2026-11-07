@@ -674,22 +674,38 @@ static bool model_create(zval *model, zval *result_model)
 
     zval *identity = array_key(&meta, "identity");
     zend_string *assigned_key = identity != NULL && Z_TYPE_P(identity) == IS_STRING ? Z_STR_P(identity) : NULL;
+    /* The column that takes the key it is given: the identity, or the key_prefix key that a corpus allocated to a primary
+     * key the request did not supply (docs/spec/protocol.md PRT-73). */
     if (assigned_key == NULL || ZSTR_LEN(assigned_key) == 0) {
-        zval driver;
-        if (!dynamic_call(&db, "driver", &driver, 0, NULL)) {
-            zval_ptr_dtor(&row);
-            call_result_dtor(&driver);
-            goto failed;
-        }
         zval *pk = array_key(&meta, "pk");
-        if (Z_TYPE(driver) == IS_STRING && zend_string_equals_literal(Z_STR(driver), "markdown") && pk != NULL &&
-            Z_TYPE_P(pk) == IS_ARRAY && zend_hash_num_elements(Z_ARRVAL_P(pk)) == 1 && id != NULL &&
-            Z_TYPE_P(id) != IS_NULL) {
-            zval *pk_name = zend_hash_index_find(Z_ARRVAL_P(pk), 0);
-            if (pk_name != NULL && Z_TYPE_P(pk_name) == IS_STRING && !array_has_key(sets, Z_STR_P(pk_name)))
+        zval *pk_name = pk != NULL && Z_TYPE_P(pk) == IS_ARRAY && zend_hash_num_elements(Z_ARRVAL_P(pk)) == 1
+            ? zend_hash_index_find(Z_ARRVAL_P(pk), 0) : NULL;
+        if (id != NULL && Z_TYPE_P(id) == IS_STRING && pk_name != NULL && Z_TYPE_P(pk_name) == IS_STRING
+            && !array_has_key(sets, Z_STR_P(pk_name))) {
+            zval *hash = array_key(&meta, "manifest_hash"), *entity = array_key(&meta, "entity");
+            zval hash_arg, model, columns;
+            ZVAL_COPY(&hash_arg, hash);
+            bool found = named_call("Polyspec\\Orm\\Registry::model", &model, 1, &hash_arg);
+            zval_ptr_dtor(&hash_arg);
+            if (!found) {
+                zval_ptr_dtor(&row);
+                goto failed;
+            }
+            zval entity_arg;
+            ZVAL_COPY(&entity_arg, entity);
+            bool read = dynamic_call(&model, "assignedColumns", &columns, 1, &entity_arg);
+            zval_ptr_dtor(&entity_arg);
+            zval_ptr_dtor(&model);
+            if (!read) {
+                zval_ptr_dtor(&row);
+                goto failed;
+            }
+            zval *key = Z_TYPE(columns) == IS_ARRAY ? array_key(&columns, "key") : NULL;
+            if (key != NULL && Z_TYPE_P(key) == IS_STRING && zend_string_equals(Z_STR_P(key), Z_STR_P(pk_name))) {
                 assigned_key = Z_STR_P(pk_name);
+            }
+            zval_ptr_dtor(&columns);
         }
-        zval_ptr_dtor(&driver);
     }
     if (assigned_key != NULL && ZSTR_LEN(assigned_key) != 0) {
         zval *names_array = array_key(&row, "names");
@@ -1410,7 +1426,7 @@ ZEND_METHOD(Polyspec_Orm_Model, creates)
     } ZEND_HASH_FOREACH_END();
     if (!dbs_model_meta(ZEND_THIS, &meta)) { zval_ptr_dtor(&columns); call_result_dtor(&db); call_result_dtor(&frame); call_result_dtor(&meta); RETURN_THROWS(); }
     zval driver, limit_arg, limit, parts_args[2], parts;
-    if (!dynamic_call(&db, "driver", &driver, 0, NULL)) { zval_ptr_dtor(&columns); call_result_dtor(&db); call_result_dtor(&frame); call_result_dtor(&meta); call_result_dtor(&driver); RETURN_THROWS(); }
+    if (!dynamic_call(&db, "dialect", &driver, 0, NULL)) { zval_ptr_dtor(&columns); call_result_dtor(&db); call_result_dtor(&frame); call_result_dtor(&meta); call_result_dtor(&driver); RETURN_THROWS(); }
     ZVAL_COPY(&limit_arg, &driver);
     if (!named_call("Polyspec\\Orm\\Db::bindLimit", &limit, 1, &limit_arg)) { zval_ptr_dtor(&limit_arg); zval_ptr_dtor(&driver); zval_ptr_dtor(&columns); call_result_dtor(&db); call_result_dtor(&frame); call_result_dtor(&meta); call_result_dtor(&limit); RETURN_THROWS(); }
     zval_ptr_dtor(&limit_arg);

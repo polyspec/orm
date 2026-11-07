@@ -137,7 +137,7 @@ commit-msg-check:
 # WITH_TEST_ENV sets, through TEST_TZ, the time zone of the process that runs the database client last: it exports TZ and,
 # for PHP, which does not read TZ, adds tests/timezone/date.ini (which sets date.timezone to ${TZ}) to the front of PHP_INI_SCAN_DIR
 # after the separator (PHP's default scan directory is still read).
-WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make orm-test-servers" >&2; exit 1; }; . $(abspath $(TEST_ENV)) && ( $(LEASE_READY) ) && "$(LEASE)" hold "$${ORM_TEST_SERVERS_LEASES:?$(abspath $(TEST_ENV)) names no lease directory; run make orm-test-servers to rewrite it}" shared --pid $$$$ && export TZ=$(TEST_TZ) PHP_INI_SCAN_DIR=:$(abspath tests/timezone) &&
+WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make orm-test-servers" >&2; exit 1; }; . $(abspath $(TEST_ENV)) && ( $(LEASE_READY) ) && "$(LEASE)" hold "$${ORM_TEST_SERVERS_LEASES:?$(abspath $(TEST_ENV)) names no lease directory; run make orm-test-servers to rewrite it}" shared --pid $$$$ && export TZ=$(TEST_TZ) PHP_INI_SCAN_DIR=:$(abspath tests/timezone) FLOWMARK=$(FLOWMARK) &&
 # TEST_TZ is the process time zone of the checks that run database clients. It must be a non-UTC zone so that a defect where a client reads a database's
 # zone-less datetime as the process's local time shows up even on a UTC CI runner. Every client reads and writes with the
 # time zone of the connection (+00:00), so the results must not depend on this value (docs/spec/dialects.md).
@@ -227,7 +227,7 @@ TSC_BUILD = $(RUN_LONG) typescript-build -- node scripts/typescript/build.mts >&
 # dbspec-rust-check, dbspec-ts-check, and dbspec-compare-check run once inside feature-verify-rust or feature-verify-other, so they are not listed again.
 # contracts/check-inputs.json declares a scope for each target: owner targets
 # are also selected by make owner-check, and suite targets run only in the whole suite.
-CHECK_TARGETS = connection-sqlite-several-processes-python-check styled-column-states-unit-check recipe-runners-check group-count-boolean-unit-check runner-check typescript-build-unit-check scripts-typecheck docs-check docs-parse-check docs-site-check docs-site-parse-check release-coverage kit-check owner-validate comment-language-check testcase-check repo-check orm-test-servers-check docs-rules-check docs-implementation-count-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check orm-install-cli-check docs-verify-idempotent go-model-check go-sqlite-version-check php-model-check client-unit-check php-gen-unit-check phpstan-test-runner-helper-check dbspec-sqlite-literal-rows-helper-check php-test-assertions-helper-check dbspec-php-interface-program-helper-check generator-consumer-check php-min-check ts-check ts-aes-auth-check ts-codec-errors-check sqlite-version-ts-check sqlite-version-rust-check relation-parent-bind-rust-check collection-composite-key-check interface-typescript-extractor-check ts-min-check rust-check rust-build-environment-check rust-build-outdir-check rust-duplicate-catalog-check rust-time-precision-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-go-check client-db-php-check client-db-php-extension-check client-db-typescript-check client-db-python-check client-db-rust-check codec-check ir-validate-check recipe-unknown-key-check conformance-refusal-check bind-check ir-answers-check bind-models-check fuzz-check client-pooler-check case-database-check dialect-facts-check conformance-check markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/php-extension markdown-conformance-check/typescript markdown-conformance-check/python markdown-conformance-check/rust package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-python-check dbspec-introspect-compare-check ts-model-check dbspec-language-check dbspec-plan-php-check dbspec-go-check/engine dbspec-php-check/set dbspec-php-check/render perf-check dbspec-php-extension-check dbspec-apply-pairs-check dbspec-verify-errors-check collection-php-extension-check model-types-php-extension-check model-native-php-extension-check feature-unit-check feature-verify-rust feature-verify-other feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check go-test-check python-check python-native-host-api-check parity-declarations-check parity-check generated-lint-check kit-inject-check layout-check rules-check rebuild-check language-check test-markers-check duplication-check link-check bypass-check suppression-check divergence-check lint-ts lint-php lint-python lint-go lint-rust lint-php-ext test-php-ext collection-get-phpstan-check dbspec-lock-go-check dbspec-lock-php-check dbspec-lock-php-extension-check dbspec-lock-python-check dbspec-lock-rust-check dbspec-lock-ts-check php-codec-causes-check scalar-subquery-column-check nowait-restore-check mermaid-error-ts-check mermaid-error-python-check mermaid-error-php-check mermaid-error-php-extension-check php-extension-build-logs-check php-catalog-bounds-check column-function-metadata-check paged-read-rust-check page-cache-unit-check rust-compiler-fixtures-check native-error-cause-check request-hook-php-extension-check rust-causes-check go-catalog-session-error-check catalog-php-extension-surface-check transaction-failure-php-extension-check transaction-failure-go-check transaction-failure-php-check php-query-cancellation-check php-query-cancellation-extension-check transaction-failure-typescript-check transaction-failure-python-check transaction-failure-rust-check connection-timeout-php-extension-check mysql-tls-php-extension-check mysql-session-php-extension-check go-package-entry-check native-arginfo-php-extension-check request-hook-audit-native-binding-check native-api-equivalence-check php-package-entry-check php-extension-package-entry-check rust-package-entry-check typescript-package-entry-check python-package-entry-check interface-api-binding-unit-check catalog-mutation-helper-ts-check catalog-mutation-helper-python-check model-chunk-composite-native-php-extension-check model-query-write-php-extension-unit-check php-lifecycle-extension-native-check connection-pool-resource-bounds-typescript-check connection-utc-php-extension-check complex-query-typescript-unit-check python-complex-query-check complex-query-typescript-request-check makefile-pinned-node-recipes-check audit-native-method-assertions-helper-check rust-closed-executor-check typescript-internal-column-error-helper-check typescript-dbspec-plan-fixture-check physical-command-case-helper-check typescript-capture-error-helper-check typescript-check-state-helper-check typescript-performance-gate-unit-check mysql-test-options-helper-check database-case-tests-helper-check typescript-conditional-entry-helper-check typescript-database-case-fixture-helper-check php-plan-cache-memory-check split-read-plan-check typescript-test-exact-keys-check pgsql-pdo-adapter-php-check pgsql-pdo-adapter-php-extension-check parent-slot-expansion-php-extension-check feature-performance-check php-go-text-check catalog-connection-check/go catalog-connection-check/rust catalog-connection-check/typescript catalog-connection-check/python catalog-connection-check/php catalog-connection-check/php-extension dsn-connection-check/go dsn-connection-check/rust dsn-connection-check/typescript dsn-connection-check/python dsn-connection-check/php dsn-connection-check/php-extension catalog-value-rust-check statement-events-check/go statement-events-check/rust statement-events-check/typescript statement-events-check/python statement-events-check/php statement-events-check/php-extension catalog-tool-errors-rust-check request-hook-check/go request-hook-check/typescript request-hook-check/python request-hook-check/php request-hook-check/php-extension request-hook-check/rust conformance-verification-check/go complex-query-check/go conformance-verification-check/typescript complex-query-check/typescript conformance-verification-check/python complex-query-check/python conformance-verification-check/php complex-query-check/php conformance-verification-check/php-extension complex-query-check/php-extension conformance-verification-check/rust complex-query-check/rust parameter-chunking-check/go aes-rotation-check/go parameter-chunking-check/rust aes-rotation-check/rust parameter-chunking-check/typescript aes-rotation-check/typescript parameter-chunking-check/python aes-rotation-check/python parameter-chunking-check/php aes-rotation-check/php parameter-chunking-check/php-extension aes-rotation-check/php-extension php-ext-memory-check audit-triggers-check/go audit-triggers-check/rust audit-triggers-check/typescript audit-triggers-check/python audit-triggers-check/php audit-triggers-check/php-extension collection-recipe-check  conformance-generated-methods-check/go conformance-fixed-clock-check/go conformance-generated-methods-check/typescript conformance-fixed-clock-check/typescript conformance-generated-methods-check/python conformance-fixed-clock-check/python conformance-generated-methods-check/php conformance-fixed-clock-check/php conformance-generated-methods-check/php-extension conformance-fixed-clock-check/php-extension conformance-generated-methods-check/rust conformance-fixed-clock-check/rust
+CHECK_TARGETS = connection-sqlite-several-processes-python-check styled-column-states-unit-check recipe-runners-check group-count-boolean-unit-check runner-check typescript-build-unit-check scripts-typecheck docs-check docs-parse-check docs-site-check docs-site-parse-check release-coverage kit-check owner-validate comment-language-check testcase-check repo-check orm-test-servers-check docs-rules-check docs-implementation-count-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check orm-install-cli-check docs-verify-idempotent go-model-check go-sqlite-version-check php-model-check client-unit-check php-gen-unit-check phpstan-test-runner-helper-check dbspec-sqlite-literal-rows-helper-check php-test-assertions-helper-check dbspec-php-interface-program-helper-check generator-consumer-check php-min-check ts-check ts-aes-auth-check ts-codec-errors-check sqlite-version-ts-check sqlite-version-rust-check relation-parent-bind-rust-check collection-composite-key-check interface-typescript-extractor-check ts-min-check rust-check rust-build-environment-check rust-build-outdir-check rust-duplicate-catalog-check rust-time-precision-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-go-check client-db-php-check client-db-php-extension-check client-db-typescript-check client-db-python-check client-db-rust-check codec-check ir-validate-check recipe-unknown-key-check conformance-refusal-check bind-check bind-models-check fuzz-check client-pooler-check case-database-check dialect-facts-check conformance-check markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/php-extension markdown-conformance-check/typescript markdown-conformance-check/python markdown-conformance-check/rust package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-python-check dbspec-introspect-compare-check ts-model-check dbspec-language-check dbspec-plan-php-check dbspec-go-check/engine dbspec-php-check/set dbspec-php-check/render perf-check dbspec-php-extension-check dbspec-apply-pairs-check dbspec-verify-errors-check collection-php-extension-check model-types-php-extension-check model-native-php-extension-check feature-unit-check feature-verify-rust feature-verify-other feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check go-test-check python-check python-native-host-api-check parity-declarations-check parity-check generated-lint-check kit-inject-check layout-check rules-check rebuild-check language-check test-markers-check duplication-check link-check bypass-check suppression-check divergence-check lint-ts lint-php lint-python lint-go lint-rust lint-php-ext test-php-ext collection-get-phpstan-check dbspec-lock-go-check dbspec-lock-php-check dbspec-lock-php-extension-check dbspec-lock-python-check dbspec-lock-rust-check dbspec-lock-ts-check php-codec-causes-check scalar-subquery-column-check nowait-restore-check mermaid-error-ts-check mermaid-error-python-check mermaid-error-php-check mermaid-error-php-extension-check php-extension-build-logs-check php-catalog-bounds-check column-function-metadata-check paged-read-rust-check page-cache-unit-check rust-compiler-fixtures-check native-error-cause-check request-hook-php-extension-check rust-causes-check go-catalog-session-error-check catalog-php-extension-surface-check transaction-failure-php-extension-check transaction-failure-go-check transaction-failure-php-check php-query-cancellation-check php-query-cancellation-extension-check transaction-failure-typescript-check transaction-failure-python-check transaction-failure-rust-check connection-timeout-php-extension-check mysql-tls-php-extension-check mysql-session-php-extension-check go-package-entry-check native-arginfo-php-extension-check request-hook-audit-native-binding-check native-api-equivalence-check php-package-entry-check php-extension-package-entry-check rust-package-entry-check typescript-package-entry-check python-package-entry-check interface-api-binding-unit-check catalog-mutation-helper-ts-check catalog-mutation-helper-python-check model-chunk-composite-native-php-extension-check model-query-write-php-extension-unit-check php-lifecycle-extension-native-check connection-pool-resource-bounds-typescript-check connection-utc-php-extension-check complex-query-typescript-unit-check python-complex-query-check complex-query-typescript-request-check makefile-pinned-node-recipes-check audit-native-method-assertions-helper-check rust-closed-executor-check typescript-internal-column-error-helper-check typescript-dbspec-plan-fixture-check physical-command-case-helper-check typescript-capture-error-helper-check typescript-check-state-helper-check typescript-performance-gate-unit-check mysql-test-options-helper-check database-case-tests-helper-check typescript-conditional-entry-helper-check typescript-database-case-fixture-helper-check php-plan-cache-memory-check split-read-plan-check typescript-test-exact-keys-check pgsql-pdo-adapter-php-check pgsql-pdo-adapter-php-extension-check parent-slot-expansion-php-extension-check feature-performance-check php-go-text-check catalog-connection-check/go catalog-connection-check/rust catalog-connection-check/typescript catalog-connection-check/python catalog-connection-check/php catalog-connection-check/php-extension dsn-connection-check/go dsn-connection-check/rust dsn-connection-check/typescript dsn-connection-check/python dsn-connection-check/php dsn-connection-check/php-extension connection-pool-check/go connection-pool-check/rust connection-pool-check/typescript connection-pool-check/python raw-text-check/go raw-text-check/php raw-text-check/php-extension catalog-value-rust-check statement-events-check/go statement-events-check/rust statement-events-check/typescript statement-events-check/python statement-events-check/php statement-events-check/php-extension catalog-tool-errors-rust-check request-hook-check/go request-hook-check/typescript request-hook-check/python request-hook-check/php request-hook-check/php-extension request-hook-check/rust conformance-verification-check/go complex-query-check/go conformance-verification-check/typescript complex-query-check/typescript conformance-verification-check/python complex-query-check/python conformance-verification-check/php complex-query-check/php conformance-verification-check/php-extension complex-query-check/php-extension conformance-verification-check/rust complex-query-check/rust parameter-chunking-check/go aes-rotation-check/go parameter-chunking-check/rust aes-rotation-check/rust parameter-chunking-check/typescript aes-rotation-check/typescript parameter-chunking-check/python aes-rotation-check/python parameter-chunking-check/php aes-rotation-check/php parameter-chunking-check/php-extension aes-rotation-check/php-extension php-ext-memory-check audit-triggers-check/go audit-triggers-check/rust audit-triggers-check/typescript audit-triggers-check/python audit-triggers-check/php audit-triggers-check/php-extension collection-recipe-check  conformance-generated-methods-check/go conformance-fixed-clock-check/go conformance-generated-methods-check/typescript conformance-fixed-clock-check/typescript conformance-generated-methods-check/python conformance-fixed-clock-check/python conformance-generated-methods-check/php conformance-fixed-clock-check/php conformance-generated-methods-check/php-extension conformance-fixed-clock-check/php-extension conformance-generated-methods-check/rust conformance-fixed-clock-check/rust
 # CI splits make orm-check into one job per CI group and runs them at the same time (the job test, matrix group in .github/workflows/ci.yml).
 # Each job runs `make check-run GROUP=<group>`, which runs CI_TARGETS_<group>; together the groups run every target of CHECK_TARGETS
 # once each, without the gates of kit, CI_KIT_GATES (make repo-check verifies it). The gates of kit are the prerequisites of
@@ -251,15 +251,15 @@ CHECK_TARGETS = connection-sqlite-several-processes-python-check styled-column-s
 #   stress_pg_sqlite: bench of the stress document and PostgreSQL and SQLite application (feature-stress-pg-sqlite-check)
 CI_KIT_GATES = kit-check kit-inject-check layout-check docs-check rules-check owner-validate rebuild-check language-check test-markers-check duplication-check parity-declarations-check parity-check bypass-check suppression-check divergence-check lint-ts lint-php lint-python lint-go lint-rust lint-php-ext test-php-ext
 CI_GROUPS = static clients_db performance client_db_go client_db_php client_db_php_extension client_db_typescript client_db_python client_db_rust clients_pooler conformance dbspec dbspec_apply dbspec_go dbspec_php dbspec_php_extension dbspec_typescript dbspec_python dbspec_rust markdown_go markdown_php markdown_php_extension markdown_typescript markdown_python markdown_rust feature_performance feature_verify_rust feature_verify_other feature_helpers stress_mysql stress_pg_sqlite python
-CI_TARGETS_static = connection-sqlite-several-processes-python-check styled-column-states-unit-check recipe-runners-check group-count-boolean-unit-check runner-check typescript-build-unit-check docs-parse-check release-coverage comment-language-check testcase-check repo-check orm-test-servers-check docs-rules-check docs-implementation-count-check docs-dbs-check dbspec-codemirror-check dbspec-lsp-check orm-install-cli-check go-model-check go-sqlite-version-check php-model-check client-unit-check php-gen-unit-check phpstan-test-runner-helper-check php-test-assertions-helper-check dbspec-sqlite-literal-rows-helper-check php-min-check rust-check go-fmt-check go-vet-check rust-fmt-check codec-check ir-validate-check recipe-unknown-key-check conformance-refusal-check bind-check ir-answers-check bind-models-check fuzz-check package-check ts-model-check ts-aes-auth-check ts-codec-errors-check sqlite-version-ts-check sqlite-version-rust-check relation-parent-bind-rust-check collection-composite-key-check interface-typescript-extractor-check collection-php-extension-check model-types-php-extension-check model-native-php-extension-check model-chunk-composite-native-php-extension-check feature-unit-check generated-lint-check link-check collection-get-phpstan-check rust-build-environment-check rust-build-outdir-check rust-duplicate-catalog-check php-catalog-bounds-check rust-time-precision-check php-codec-causes-check scalar-subquery-column-check nowait-restore-check dbspec-language-check rust-150-check dbspec-verify-errors-check php-extension-build-logs-check column-function-metadata-check paged-read-rust-check page-cache-unit-check rust-compiler-fixtures-check native-error-cause-check request-hook-php-extension-check rust-causes-check go-catalog-session-error-check catalog-php-extension-surface-check go-package-entry-check native-arginfo-php-extension-check request-hook-audit-native-binding-check transaction-failure-php-extension-check transaction-failure-go-check transaction-failure-php-check transaction-failure-typescript-check transaction-failure-python-check transaction-failure-rust-check php-package-entry-check php-extension-package-entry-check rust-package-entry-check typescript-package-entry-check python-package-entry-check interface-api-binding-unit-check native-api-equivalence-check model-query-write-php-extension-unit-check php-lifecycle-extension-native-check complex-query-typescript-unit-check python-complex-query-check complex-query-typescript-request-check makefile-pinned-node-recipes-check audit-native-method-assertions-helper-check rust-closed-executor-check physical-command-case-helper-check typescript-conditional-entry-helper-check typescript-database-case-fixture-helper-check php-plan-cache-memory-check split-read-plan-check typescript-performance-gate-unit-check typescript-test-exact-keys-check php-go-text-check catalog-value-rust-check catalog-tool-errors-rust-check collection-recipe-check 
+CI_TARGETS_static = connection-sqlite-several-processes-python-check styled-column-states-unit-check recipe-runners-check group-count-boolean-unit-check runner-check typescript-build-unit-check docs-parse-check release-coverage comment-language-check testcase-check repo-check orm-test-servers-check docs-rules-check docs-implementation-count-check docs-dbs-check dbspec-codemirror-check dbspec-lsp-check orm-install-cli-check go-model-check go-sqlite-version-check php-model-check client-unit-check php-gen-unit-check phpstan-test-runner-helper-check php-test-assertions-helper-check dbspec-sqlite-literal-rows-helper-check php-min-check rust-check go-fmt-check go-vet-check rust-fmt-check codec-check ir-validate-check recipe-unknown-key-check conformance-refusal-check bind-check bind-models-check fuzz-check package-check ts-model-check ts-aes-auth-check ts-codec-errors-check sqlite-version-ts-check sqlite-version-rust-check relation-parent-bind-rust-check collection-composite-key-check interface-typescript-extractor-check collection-php-extension-check model-types-php-extension-check model-native-php-extension-check model-chunk-composite-native-php-extension-check feature-unit-check generated-lint-check link-check collection-get-phpstan-check rust-build-environment-check rust-build-outdir-check rust-duplicate-catalog-check php-catalog-bounds-check rust-time-precision-check php-codec-causes-check scalar-subquery-column-check nowait-restore-check dbspec-language-check rust-150-check dbspec-verify-errors-check php-extension-build-logs-check column-function-metadata-check paged-read-rust-check page-cache-unit-check rust-compiler-fixtures-check native-error-cause-check request-hook-php-extension-check rust-causes-check go-catalog-session-error-check catalog-php-extension-surface-check go-package-entry-check native-arginfo-php-extension-check request-hook-audit-native-binding-check transaction-failure-php-extension-check transaction-failure-go-check transaction-failure-php-check transaction-failure-typescript-check transaction-failure-python-check transaction-failure-rust-check php-package-entry-check php-extension-package-entry-check rust-package-entry-check typescript-package-entry-check python-package-entry-check interface-api-binding-unit-check native-api-equivalence-check model-query-write-php-extension-unit-check php-lifecycle-extension-native-check complex-query-typescript-unit-check python-complex-query-check complex-query-typescript-request-check makefile-pinned-node-recipes-check audit-native-method-assertions-helper-check rust-closed-executor-check physical-command-case-helper-check typescript-conditional-entry-helper-check typescript-database-case-fixture-helper-check php-plan-cache-memory-check split-read-plan-check typescript-performance-gate-unit-check typescript-test-exact-keys-check php-go-text-check catalog-value-rust-check catalog-tool-errors-rust-check collection-recipe-check 
 CI_TARGETS_clients_db = example-check
 CI_TARGETS_performance = perf-check
-CI_TARGETS_client_db_go = client-db-go-check dialect-facts-check go-test-check catalog-connection-check/go dsn-connection-check/go statement-events-check/go model-queries-check/go constraints-and-relations-check/go request-hook-check/go parameter-chunking-check/go aes-rotation-check/go audit-triggers-check/go conformance-verification-check/go complex-query-check/go conformance-generated-methods-check/go conformance-fixed-clock-check/go
-CI_TARGETS_client_db_php = client-db-php-check php-query-cancellation-check pgsql-pdo-adapter-php-check catalog-connection-check/php dsn-connection-check/php statement-events-check/php model-queries-check/php constraints-and-relations-check/php request-hook-check/php parameter-chunking-check/php aes-rotation-check/php audit-triggers-check/php conformance-verification-check/php complex-query-check/php conformance-generated-methods-check/php conformance-fixed-clock-check/php
-CI_TARGETS_client_db_php_extension = client-db-php-extension-check mysql-tls-php-extension-check mysql-session-php-extension-check php-query-cancellation-extension-check connection-utc-php-extension-check connection-timeout-php-extension-check pgsql-pdo-adapter-php-extension-check catalog-connection-check/php-extension dsn-connection-check/php-extension statement-events-check/php-extension model-queries-check/php-extension constraints-and-relations-check/php-extension php-ext-memory-check request-hook-check/php-extension parameter-chunking-check/php-extension aes-rotation-check/php-extension audit-triggers-check/php-extension conformance-verification-check/php-extension complex-query-check/php-extension conformance-generated-methods-check/php-extension conformance-fixed-clock-check/php-extension
-CI_TARGETS_client_db_typescript = client-db-typescript-check connection-pool-resource-bounds-typescript-check catalog-connection-check/typescript dsn-connection-check/typescript statement-events-check/typescript model-queries-check/typescript constraints-and-relations-check/typescript request-hook-check/typescript parameter-chunking-check/typescript aes-rotation-check/typescript audit-triggers-check/typescript conformance-verification-check/typescript complex-query-check/typescript conformance-generated-methods-check/typescript conformance-fixed-clock-check/typescript
-CI_TARGETS_client_db_python = client-db-python-check catalog-connection-check/python dsn-connection-check/python statement-events-check/python model-queries-check/python constraints-and-relations-check/python request-hook-check/python parameter-chunking-check/python aes-rotation-check/python audit-triggers-check/python conformance-verification-check/python complex-query-check/python conformance-generated-methods-check/python conformance-fixed-clock-check/python
-CI_TARGETS_client_db_rust = client-db-rust-check rust-driver-check catalog-connection-check/rust dsn-connection-check/rust statement-events-check/rust model-queries-check/rust constraints-and-relations-check/rust request-hook-check/rust parameter-chunking-check/rust aes-rotation-check/rust audit-triggers-check/rust conformance-verification-check/rust complex-query-check/rust conformance-generated-methods-check/rust conformance-fixed-clock-check/rust
+CI_TARGETS_client_db_go = client-db-go-check dialect-facts-check go-test-check catalog-connection-check/go dsn-connection-check/go connection-pool-check/go statement-events-check/go model-queries-check/go constraints-and-relations-check/go request-hook-check/go parameter-chunking-check/go aes-rotation-check/go audit-triggers-check/go conformance-verification-check/go complex-query-check/go conformance-generated-methods-check/go conformance-fixed-clock-check/go raw-text-check/go
+CI_TARGETS_client_db_php = client-db-php-check php-query-cancellation-check pgsql-pdo-adapter-php-check catalog-connection-check/php dsn-connection-check/php statement-events-check/php model-queries-check/php constraints-and-relations-check/php request-hook-check/php parameter-chunking-check/php aes-rotation-check/php audit-triggers-check/php conformance-verification-check/php complex-query-check/php conformance-generated-methods-check/php conformance-fixed-clock-check/php raw-text-check/php
+CI_TARGETS_client_db_php_extension = client-db-php-extension-check mysql-tls-php-extension-check mysql-session-php-extension-check php-query-cancellation-extension-check connection-utc-php-extension-check connection-timeout-php-extension-check pgsql-pdo-adapter-php-extension-check catalog-connection-check/php-extension dsn-connection-check/php-extension statement-events-check/php-extension model-queries-check/php-extension constraints-and-relations-check/php-extension php-ext-memory-check request-hook-check/php-extension parameter-chunking-check/php-extension aes-rotation-check/php-extension audit-triggers-check/php-extension conformance-verification-check/php-extension complex-query-check/php-extension conformance-generated-methods-check/php-extension conformance-fixed-clock-check/php-extension raw-text-check/php-extension
+CI_TARGETS_client_db_typescript = client-db-typescript-check connection-pool-resource-bounds-typescript-check catalog-connection-check/typescript dsn-connection-check/typescript connection-pool-check/typescript statement-events-check/typescript model-queries-check/typescript constraints-and-relations-check/typescript request-hook-check/typescript parameter-chunking-check/typescript aes-rotation-check/typescript audit-triggers-check/typescript conformance-verification-check/typescript complex-query-check/typescript conformance-generated-methods-check/typescript conformance-fixed-clock-check/typescript
+CI_TARGETS_client_db_python = client-db-python-check catalog-connection-check/python dsn-connection-check/python connection-pool-check/python statement-events-check/python model-queries-check/python constraints-and-relations-check/python request-hook-check/python parameter-chunking-check/python aes-rotation-check/python audit-triggers-check/python conformance-verification-check/python complex-query-check/python conformance-generated-methods-check/python conformance-fixed-clock-check/python
+CI_TARGETS_client_db_rust = client-db-rust-check rust-driver-check catalog-connection-check/rust dsn-connection-check/rust connection-pool-check/rust statement-events-check/rust model-queries-check/rust constraints-and-relations-check/rust request-hook-check/rust parameter-chunking-check/rust aes-rotation-check/rust audit-triggers-check/rust conformance-verification-check/rust complex-query-check/rust conformance-generated-methods-check/rust conformance-fixed-clock-check/rust
 CI_TARGETS_clients_pooler = client-pooler-check
 CI_TARGETS_conformance = ts-check scripts-typecheck ts-min-check conformance-check mermaid-error-ts-check catalog-mutation-helper-ts-check typescript-internal-column-error-helper-check typescript-capture-error-helper-check typescript-check-state-helper-check mysql-test-options-helper-check database-case-tests-helper-check
 CI_TARGETS_feature_helpers = feature-helper-check
@@ -343,7 +343,7 @@ GO_TEST_CHECK_PACKAGES = $$(go list ./packages/go/cmd/... ./packages/go/proceven
 # introspect compare, dialect facts) need the runner binaries, the PHP extension, the Python runtime, the stress document and the
 # MySQL privilege fixture, which go-test-check builds or declares and exports (T334-3-6-3); without them those tests fail.
 go-test-check: RUN_DIR = $(abspath .runtime/run)/go-test-check-$$PPID
-go-test-check: lease-tool python-venv-check php-vendor-check orm-codes-typescript go-test-check/cross-runtime
+go-test-check: lease-tool python-venv-check php-vendor-check orm-codes-typescript flowmark-check go-test-check/cross-runtime
 	$(WITH_TEST_ENV) DBSPEC_APPLY_RUST=$(RUN_TARGET)/debug/examples/dbspec_apply POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python DBSPEC_STRESS_DOCUMENT=$(DBSPEC_INTROSPECT_DOCUMENT) DBSPEC_INTROSPECT_RUST=$(RUN_TARGET)/$(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect DBSPEC_INTROSPECT_PYTHON=$(PYTHON_VENV)/bin/python $(GO_TEST) $(GO_TEST_CHECK_PACKAGES)
 	rm -rf $(RUN_DIR)
 
@@ -413,14 +413,14 @@ dbspec-introspect-check:
 # dbspec-introspect-ts-check builds the TypeScript client and runs the recipe of dbspec-introspect-check on MySQL, PostgreSQL and
 # SQLite.
 .PHONY: dbspec-introspect-ts-check
-dbspec-introspect-ts-check: typescript-current
+dbspec-introspect-ts-check: typescript-current flowmark-check
 	$(READ_TYPESCRIPT)
-	$(WITH_TEST_ENV) node --test --conditions=orm-test packages/ts/tests/dbspec_introspect-mysql.test.mjs packages/ts/tests/dbspec_introspect-postgres.test.mjs packages/ts/tests/dbspec_introspect-sqlite.test.mjs
+	$(WITH_TEST_ENV) node --test --conditions=orm-test packages/ts/tests/dbspec_introspect-mysql.test.mjs packages/ts/tests/dbspec_introspect-postgres.test.mjs packages/ts/tests/dbspec_introspect-sqlite.test.mjs packages/ts/tests/dbspec_introspect-markdown.test.mjs
 
 # dbspec-introspect-php-check runs the recipe and the failing query in PDO's silent error mode with the PHP client's
 # Polyspec\Orm\Dbspec\Dbspec::introspect.
 .PHONY: dbspec-introspect-php-check
-dbspec-introspect-php-check: php-vendor-check php-models
+dbspec-introspect-php-check: php-vendor-check php-models flowmark-check
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecIntrospectRecipeTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecIntrospectTest.php packages/php/tests/DbspecCatalogChecksTest.php
 
@@ -428,7 +428,7 @@ dbspec-introspect-php-check: php-vendor-check php-models
 # extension polyspec_orm loaded, whose Polyspec\Orm\Dbspec\Dbspec::introspect takes the place of the client's. The extension is built in
 # this run's directory.
 .PHONY: dbspec-introspect-php-extension-check
-dbspec-introspect-php-extension-check: php-vendor-check
+dbspec-introspect-php-extension-check: php-vendor-check flowmark-check
 	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
 	$(WITH_TEST_ENV) $(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecIntrospectRecipeTestExtensionTest.php
 	$(WITH_TEST_ENV) $(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecIntrospectExtensionTest.php
@@ -437,8 +437,8 @@ dbspec-introspect-php-extension-check: php-vendor-check
 
 # dbspec-introspect-rust-check runs the recipe with the Rust client's polyspec_orm::dbspec::introspect.
 .PHONY: dbspec-introspect-rust-check
-dbspec-introspect-rust-check:
-	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) dbspec-introspect-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_introspect_mysql --test dbspec_introspect_postgres --test dbspec_introspect_sqlite -- --nocapture
+dbspec-introspect-rust-check: flowmark-check
+	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) dbspec-introspect-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_introspect_mysql --test dbspec_introspect_postgres --test dbspec_introspect_sqlite --test dbspec_introspect_markdown -- --nocapture
 
 .PHONY: dbspec-sqlite-literal-rows-helper-check
 dbspec-sqlite-literal-rows-helper-check: php-vendor-check php-models
@@ -447,21 +447,22 @@ dbspec-sqlite-literal-rows-helper-check: php-vendor-check php-models
 
 # dbspec-introspect-python-check runs the recipe with the Python client's polyspec.orm.dbspec.introspect.introspect_dbspec.
 .PHONY: dbspec-introspect-python-check
-dbspec-introspect-python-check: python-venv-check
+dbspec-introspect-python-check: python-venv-check flowmark-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_dbspec_introspect_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_dbspec_introspect_postgres
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_dbspec_introspect_sqlite
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_dbspec_introspect_markdown
 
 
 catalog-mutation-helper-python-check: python-venv-check
-	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_catalog_mutation_helper
-	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_catalog_described_temporal
+	$(PYTHON_TESTS) -- packages.python.tests.test_catalog_mutation_helper
+	$(PYTHON_TESTS) -- packages.python.tests.test_catalog_described_temporal
 
 catalog-mutation-helper-ts-check: typescript-read
 	$(RUN_TESTS) node -- --test packages/ts/tests/catalog-mutation-helper.test.mjs
 
 typescript-internal-column-error-helper-check:
-	$(RUN_TESTS) node -- --test packages/ts/tests/internal-column-error.test.mjs packages/ts/tests/markdown-read-db.test.mjs
+	$(RUN_TESTS) node -- --test packages/ts/tests/internal-column-error.test.mjs
 
 typescript-dbspec-plan-fixture-check: typescript-read
 	$(RUN_TESTS) node -- --test packages/ts/tests/dbspec-plan-fixture.test.mjs
@@ -502,7 +503,7 @@ dbspec-lock-php-extension-check: php-vendor-check php-models orm-install-php-ext
 	@set -eu; run_dir="$(abspath .runtime/run)/dbspec-lock-php-extension-check-$$$$"; trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; $(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecSqliteLockTest.php; env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecSqliteLockNativeTest.php
 
 dbspec-lock-python-check: python-venv-check
-	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_dbspec_sqlite_lock
+	$(PYTHON_TESTS) -- packages.python.tests.test_dbspec_sqlite_lock
 
 dbspec-lock-rust-check:
 	cd packages/rust && $(CARGO_TEST) dbspec-lock-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --lib sqlite_lock_result_tests -- --nocapture
@@ -620,21 +621,21 @@ php-vendor-check: orm-codes-php
 # These DB-free units pin the Python wall-clock source, native SQL dialect hooks and test-fault entrypoints.
 .PHONY: python-native-host-api-check
 python-native-host-api-check: python-venv-check
-	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_clock_source.WallMicrosTest.test_estimate_inside_wall_millisecond_is_used packages.python.tests.test_clock_source.WallMicrosTest.test_estimate_below_wall_clamps_and_reanchors packages.python.tests.test_clock_source.WallMicrosTest.test_estimate_above_wall_millisecond_clamps_and_reanchors packages.python.tests.test_clock_source.NativeDialectHookTest.test_python_dialect_hooks_keep_their_native_forms packages.python.tests.test_rollback_fault.NativeFaultEntryUnitTest.test_test_fault_facade_sets_only_the_requested_connection_state
+	$(PYTHON_TESTS) -- packages.python.tests.test_clock_source.WallMicrosTest.test_estimate_inside_wall_millisecond_is_used packages.python.tests.test_clock_source.WallMicrosTest.test_estimate_below_wall_clamps_and_reanchors packages.python.tests.test_clock_source.WallMicrosTest.test_estimate_above_wall_millisecond_clamps_and_reanchors packages.python.tests.test_clock_source.NativeDialectHookTest.test_python_dialect_hooks_keep_their_native_forms packages.python.tests.test_rollback_fault.NativeFaultEntryUnitTest.test_test_fault_facade_sets_only_the_requested_connection_state
 
 python-check: python-unit-check python-interface-unit-check python-model-check conformance-result-check/python
 # tests/bind/messages.json imports the slot models that ORM_PYTHON_BIND_MODELS names, as its other runs do.
 python-unit-check: export ORM_PYTHON_BIND_MODELS = $(BIND_PY_MODELS)
 python-unit-check: python-venv-check bind-python-models
-	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- discover -s packages/python/tests -t . -p 'test_*.py'
+	$(PYTHON_TESTS) -- discover -s packages/python/tests -t . -p 'test_*.py'
 
 # The DB-free complex query cases cover Python's fluent full-text chains and paginate statement order.
 .PHONY: python-complex-query-check
 python-complex-query-check: python-venv-check
-	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_complex_query.ComplexQueryTest.test_public_fulltext_boolean_chain_builds_typed_ir
+	$(PYTHON_TESTS) -- packages.python.tests.test_complex_query.ComplexQueryTest.test_public_fulltext_boolean_chain_builds_typed_ir
 
 python-interface-unit-check: python-venv-check
-	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_python_extractor packages.python.tests.test_python_natives
+	$(PYTHON_TESTS) -- packages.python.tests.test_python_extractor packages.python.tests.test_python_natives
 # python-coverage-case-check is the check of the helper coverage-runner-python (contracts/features.json): the unit test of
 # the case runner that the Python coverage tests share.
 .PHONY: python-coverage-case-check
@@ -644,16 +645,18 @@ python-coverage-case-check: python-venv-check
 # vectors of tests/dbspec (the recipe files, ddl.json, plan-cases.json and its SQLite apply chain, mermaid.json, show-create.json and
 # set-files.json), the hashes and sets recipes, and the unit tests of syntax analysis, formatting and the set reader.
 .PHONY: dbspec-python-check
-dbspec-python-check: python-venv-check
+dbspec-python-check: python-venv-check flowmark-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_dbspec_render_statements_none
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_apply
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_render_physical_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_render_physical_postgres
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_render_physical_sqlite
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_render_physical_markdown
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_set_decimal_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_set_decimal_postgres
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_set_decimal_sqlite
-	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s packages/python/tests -t . -p 'test_dbspec_*.py'
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_set_decimal_markdown
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s packages/python/tests -t . -p 'test_dbspec_*.py'
 dbspec-compare-check/prepare: typescript-current python-venv-check php-vendor-check
 	$(READ_TYPESCRIPT)
 	mkdir -p $(dir $(DBSPEC_COMPARE_DOCUMENT))
@@ -717,8 +720,8 @@ dbspec-rust-check/set/unit:
 dbspec-rust-check/unicode:
 	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-schema --lib dbspec::unicode_word -- --nocapture
 dbspec-rust-check/apply-cleanup:
-dbspec-rust-check/render-physical:
-	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-tests --test dbspec_render_physical_mysql --test dbspec_render_physical_postgres --test dbspec_render_physical_sqlite --test dbspec_set_decimal_mysql --test dbspec_set_decimal_postgres --test dbspec_set_decimal_sqlite
+dbspec-rust-check/render-physical: flowmark-check
+	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-tests --test dbspec_render_physical_mysql --test dbspec_render_physical_postgres --test dbspec_render_physical_sqlite --test dbspec_render_physical_markdown --test dbspec_set_decimal_mysql --test dbspec_set_decimal_postgres --test dbspec_set_decimal_sqlite --test dbspec_set_decimal_markdown
 
 .PHONY: dbspec-verify-errors-rust-check
 dbspec-verify-errors-rust-check: lease-tool
@@ -730,7 +733,7 @@ dbspec-verify-errors-check: dbspec-verify-errors-rust-check dbspec-verify-errors
 	$(READ_TYPESCRIPT)
 	$(GO_TEST) ./packages/go/orm -run '^TestRecipeDbspecApplyVerificationErrorsNone$$' -count=1
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecApplyVerificationErrorsRecipeTest.php
-	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_dbspec_apply_verification_errors_none
+	$(PYTHON_TESTS) -- packages.python.tests.test_dbspec_apply_verification_errors_none
 	$(NODE) --test packages/ts/tests/dbspec_apply_verification_errors-none.test.mjs
 dbspec-verify-errors-php-extension-check: php-models orm-install-php-extension-tools
 	@set -eu; run_dir="$(abspath .runtime/run)/dbspec-verify-errors-php-extension-check-$$$$"; trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; $(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecReleaseHooksTest.php; env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecApplyVerificationErrorsRecipeTestExtensionTest.php
@@ -781,7 +784,7 @@ dbspec-php-check/rules: php-vendor-check php-models
 dbspec-php-check/manifest: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/HashesRecipeTest.php
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/SetsRecipeTest.php
-dbspec-php-check/render: php-vendor-check php-models
+dbspec-php-check/render: php-vendor-check php-models flowmark-check
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRenderStatementsRecipeTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRenderPhysicalRecipeTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecSetDecimalRecipeTest.php
@@ -992,7 +995,7 @@ dbspec-php-extension-check/sets: php-vendor-check dbspec-php-extension-check/pre
 	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/HashesRecipeTestExtensionTest.php
 	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/SetsRecipeTestExtensionTest.php
 # dbspec-php-extension-check/render runs the rendered statements recipe with the extension: the statements of tests/dbspec/ddl.json.
-dbspec-php-extension-check/render: php-vendor-check dbspec-php-extension-check/prepare
+dbspec-php-extension-check/render: php-vendor-check dbspec-php-extension-check/prepare flowmark-check
 	$(WITH_TEST_ENV) $(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecRenderStatementsRecipeTestExtensionTest.php
 	$(WITH_TEST_ENV) $(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecRenderPhysicalRecipeTestExtensionTest.php
 	$(WITH_TEST_ENV) $(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecSetDecimalRecipeTestExtensionTest.php
@@ -1082,10 +1085,9 @@ dbspec-php-extension-check/aes: php-vendor-check dbspec-php-extension-check/prep
 dbspec-php-extension-check/set-parse: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecSetParseRecipeTestExtensionTest.php
 # dbspec-php-extension-check/planner runs the planner suites with the extension: PlannerCompileTestExtensionTest
-# (the compile recipe tests/planner/compile.json), InsertPartsTest (contracts/fixtures/insert_parts.json) and IrAnswersTest
-# (the recipe tests/ir/answers.json).
+# (the compile recipe tests/planner/compile.json) and InsertPartsTest (contracts/fixtures/insert_parts.json).
 # It first checks that the extension registers Polyspec\Orm\Planner: its class is internal, so the planner the suites run is C.
-dbspec-php-extension-check/planner: dbspec-php-extension-check/planner/compile dbspec-php-extension-check/planner/insert-parts dbspec-php-extension-check/planner/ir-answers
+dbspec-php-extension-check/planner: dbspec-php-extension-check/planner/compile dbspec-php-extension-check/planner/insert-parts
 
 # The planner parts are independent: each runs as its own target after the class check, so make -j runs them together.
 dbspec-php-extension-check/planner/internal: php-vendor-check dbspec-php-extension-check/prepare
@@ -1094,8 +1096,6 @@ dbspec-php-extension-check/planner/compile: php-vendor-check dbspec-php-extensio
 	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/PlannerCompileTestExtensionTest.php
 dbspec-php-extension-check/planner/insert-parts: php-vendor-check dbspec-php-extension-check/planner/internal
 	$(PHP_EXTENSION_TESTS) packages/php/tests/InsertPartsTest.php
-dbspec-php-extension-check/planner/ir-answers: php-vendor-check dbspec-php-extension-check/planner/internal
-	$(PHP_EXTENSION_TESTS) packages/php/tests/IrAnswersTest.php
 
 # Runs only the native PHP extension TLS handshake and rejection cases on the configured MySQL TLS server.
 mysql-tls-php-extension-check: RUN_DIR = $(abspath .runtime/run)/mysql-tls-php-extension-check-$$PPID
@@ -1261,7 +1261,7 @@ recipe-unknown-key-check/go: recipe-keys-check
 recipe-unknown-key-check/typescript: recipe-keys-check
 	$(RUN_TESTS) node -- packages/ts/tests/recipe_keys.test.mjs
 recipe-unknown-key-check/python: recipe-keys-check python-venv-check
-	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_recipe_keys
+	$(PYTHON_TESTS) -- packages.python.tests.test_recipe_keys
 recipe-unknown-key-check/php: recipe-keys-check php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/RecipeKeysTest.php
 recipe-unknown-key-check/rust: recipe-keys-check lease-tool
@@ -1395,6 +1395,10 @@ fuzz-check/clients-go-orm:
 PHP = php
 # RUN_TESTS is kit's run-tests: it runs a unit tool with its reader and fails when no test ran (kit package, ./run-tests).
 RUN_TESTS = $(NODE) $(KIT)/run-tests.$(KIT_EXT)
+# PYTHON_TESTS runs Python tests through the harness of packages/python/tests/testcase.py, which keeps the deadline of each
+# case by its class and ends the process GRACE after it. run-tests gives every case of a --module harness one timeout, so
+# PYTHON_TESTS gives it the longest class, PROCESS (300 s), with GRACE (5 s), and the class of a case decides when it fails.
+PYTHON_TESTS = $(RUN_TESTS) python --timeout 305 --venv $(PYTHON_VENV) --module packages.python.tests.testcase
 client-unit-check: client-unit-check/dsn client-unit-check/markdown client-unit-check/relation-keys client-unit-check/code-catalog client-unit-check/insert-parts client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/orm-gen-python client-unit-check/orm-gen-typescript client-unit-check/model-methods client-unit-check/client-generics client-unit-check/perf-extensions client-unit-check/dbspec-runners
 client-unit-check/dbspec-runners: php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRunnerTest.php
@@ -1422,7 +1426,7 @@ nowait-restore-check: lease-tool typescript-read php-vendor-check php-models pyt
 	$(GO_TEST) ./packages/go/orm -run '^TestAcquireSQLiteRowLock' -count=1 || status=1; \
 	$(RUN_TESTS) node --conditions=orm-test --test packages/ts/tests/sqlite-row-lock-restore.mjs || status=1; \
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/SqliteRowLockRestoreTest.php || status=1; \
-	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_sqlite_row_lock_restore || status=1; \
+	$(PYTHON_TESTS) -- packages.python.tests.test_sqlite_row_lock_restore || status=1; \
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib db::sqlite_row_lock_restore_tests || status=1; \
 	run_dir="$(abspath .runtime/run)/nowait-restore-$$$$"; trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; \
 	if $(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); then \
@@ -1432,7 +1436,7 @@ nowait-restore-check: lease-tool typescript-read php-vendor-check php-models pyt
 client-unit-check/runtime-model: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/RuntimeModelTest.php
 client-unit-check/orm-gen-python: python-venv-check
-	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_orm_gen.WriteTextIfChangedTest
+	$(PYTHON_TESTS) -- packages.python.tests.test_orm_gen.WriteTextIfChangedTest
 
 client-unit-check/orm-gen-typescript: typescript-current
 	$(READ_TYPESCRIPT)
@@ -1469,8 +1473,8 @@ generator-consumer-check/typescript: typescript-current
 	$(NODE) --test packages/ts/tests/generate.mjs
 	$(NODE) --test --test-name-pattern='generate-scan/model_calls' packages/ts/tests/generate-scan.mjs
 generator-consumer-check/python: python-venv-check
-	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_orm_gen.OrmGenTest.test_generated_typed_getter_is_the_public_column_api
-	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_orm_gen.OrmGenTest.test_chain_conditions packages.python.tests.test_query_methods.QueryMethodsTest.test_a_declared_method_builds_the_query_of_its_chain
+	$(PYTHON_TESTS) -- packages.python.tests.test_orm_gen.OrmGenTest.test_generated_typed_getter_is_the_public_column_api
+	$(PYTHON_TESTS) -- packages.python.tests.test_orm_gen.OrmGenTest.test_chain_conditions packages.python.tests.test_query_methods.QueryMethodsTest.test_a_declared_method_builds_the_query_of_its_chain
 generator-consumer-check/rust-field-types: generator-consumer-check/rust-field-types/generated-field-types generator-consumer-check/rust-field-types/fixed-method-list
 generator-consumer-check/rust-field-types/generated-field-types: lease-tool
 	cd packages/rust && $(CARGO_TEST) generator-consumer-rust-field-types -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-build --lib generate::field_type_tests::generated_field_types_follow_the_runtime_model -- --test-threads=1 --exact
@@ -1692,9 +1696,16 @@ bind-models-check: go-model-check php-model-check bind-python-models typescript-
 
 # bind-message-check runs the markdown message and control recipe, tests/bind/messages.json, in each runtime (FCV-3, FCV-4): each part
 # runs the entry of its runtime that calls the recipe helper, without a database. Each markdown.send step runs one public call on a
-# listener that records the first message it receives (docs/spec/feature-coverage.md).
-.PHONY: bind-message-check bind-message-check/go bind-message-check/rust bind-message-check/typescript bind-message-check/python bind-message-check/php bind-message-check/php-extension
-bind-message-check: bind-message-check/go bind-message-check/rust bind-message-check/typescript bind-message-check/python bind-message-check/php bind-message-check/php-extension
+# listener that answers the setup statements of the SQLite dialect and records the first other message (docs/spec/feature-coverage.md).
+# Its raw-text parts run tests/bind/messages-raw-text.json, the text that is not UTF-8, in the runtimes whose host string holds it (PRT-67).
+.PHONY: bind-message-check bind-message-check/go bind-message-check/rust bind-message-check/typescript bind-message-check/python bind-message-check/php bind-message-check/php-extension bind-message-check/raw-text-go bind-message-check/raw-text-php bind-message-check/raw-text-php-extension
+bind-message-check: bind-message-check/go bind-message-check/rust bind-message-check/typescript bind-message-check/python bind-message-check/php bind-message-check/php-extension bind-message-check/raw-text-go bind-message-check/raw-text-php bind-message-check/raw-text-php-extension
+bind-message-check/raw-text-go:
+	$(GO_TEST) ./packages/go/bindmessages -run '^TestRecipeBindMessagesRawTextNone$$' -count=1
+bind-message-check/raw-text-php: php-vendor-check php-models
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/BindMessagesRawTextRecipeTest.php
+bind-message-check/raw-text-php-extension: php-vendor-check php-models build-php-ext
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/BindMessagesRawTextRecipeTestExtensionTest.php
 bind-message-check/go:
 	$(GO_TEST) ./packages/go/bindmessages -run '^TestRecipeBindMessagesNone$$' -count=1
 bind-message-check/rust: lease-tool
@@ -1708,6 +1719,38 @@ bind-message-check/php-extension: php-vendor-check php-models build-php-ext
 bind-message-check/typescript: typescript-current
 	$(READ_TYPESCRIPT)
 	$(NODE) --conditions=orm-test packages/ts/tests/bind_messages.mjs
+
+# markdown-session-check runs the session recipe, tests/markdown/session.json, in each runtime (FCV-3, FCV-4): each part runs the
+# entry of its runtime that calls the recipe helper, without a database. Each markdown.session step runs reads of the bind fixture
+# model on a listener that answers from its replies and checks the messages it received (PRT-66), which no database shows.
+.PHONY: markdown-session-check markdown-session-check/go markdown-session-check/rust markdown-session-check/typescript markdown-session-check/python markdown-session-check/php markdown-session-check/php-extension
+markdown-session-check: markdown-session-check/go markdown-session-check/rust markdown-session-check/typescript markdown-session-check/python markdown-session-check/php markdown-session-check/php-extension
+markdown-session-check/go:
+	$(GO_TEST) ./packages/go/bindmessages -run '^TestRecipeMarkdownSessionNone$$' -count=1
+markdown-session-check/rust: lease-tool
+	cd packages/rust && $(CARGO_TEST) markdown-session-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test markdown_session
+markdown-session-check/python: python-venv-check bind-python-models
+	ORM_PYTHON_BIND_MODELS=$(BIND_PY_MODELS) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_markdown_session_none
+markdown-session-check/php: php-vendor-check php-models
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/MarkdownSessionRecipeTest.php
+markdown-session-check/php-extension: php-vendor-check php-models build-php-ext
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/MarkdownSessionRecipeTestExtensionTest.php
+markdown-session-check/typescript: typescript-current
+	$(READ_TYPESCRIPT)
+	$(NODE) --conditions=orm-test packages/ts/tests/markdown_session.mjs
+
+CHECK_TARGETS += markdown-session-check/go
+CI_TARGETS_markdown_go += markdown-session-check/go
+CHECK_TARGETS += markdown-session-check/rust
+CI_TARGETS_markdown_rust += markdown-session-check/rust
+CHECK_TARGETS += markdown-session-check/typescript
+CI_TARGETS_markdown_typescript += markdown-session-check/typescript
+CHECK_TARGETS += markdown-session-check/python
+CI_TARGETS_markdown_python += markdown-session-check/python
+CHECK_TARGETS += markdown-session-check/php
+CI_TARGETS_markdown_php += markdown-session-check/php
+CHECK_TARGETS += markdown-session-check/php-extension
+CI_TARGETS_markdown_php_extension += markdown-session-check/php-extension
 
 # BIND_PY_MODELS is the model directory of the slot fixture tests/bind/dbspec-set.json that the Python recipe helper imports (FCV-4,
 # markdown.send). The venv orm-gen writes it into a temporary directory and renames it into place, as conformance-python-models does.
@@ -1733,6 +1776,13 @@ conformance-check: conformance-result-check conformance-generated-methods-check 
 # orm-install-flowmark installs it here. The test fails unless the version matches what the build information pins, so a flowmark checkout
 # built at the pinned revision can be given as FLOWMARK=<that path>.
 FLOWMARK ?= $(abspath .runtime/bin/flowmark)
+# The native tests of the extension and the Python tests that python-unit-check discovers hold markdown units, which run on the
+# flowmark server of FLOWMARK. The export follows the definition of FLOWMARK, since a simple assignment takes the value that
+# FLOWMARK has where make reads it.
+test-php-ext: export FLOWMARK := $(FLOWMARK)
+test-php-ext: flowmark-check
+python-unit-check: export FLOWMARK := $(FLOWMARK)
+python-unit-check: flowmark-check
 .PHONY: markdown-conformance-check markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/php-extension markdown-conformance-check/python markdown-conformance-check/rust markdown-conformance-check/typescript orm-install-flowmark
 # parity-prepare builds what the bindings of config/parity.json load before a Kit parity gate runs them, into the
 # directory of this make run: the PHP extension that the php-extension implementation loads
@@ -1795,7 +1845,7 @@ parity-bench-env-check:
 # flowmark-check names the flowmark binary that the markdown conformance units read (FLOWMARK) before parity-check runs them;
 # orm-install-flowmark builds it from the version pinned in tests/markdown/flowmark.version.
 flowmark-check:
-	test -x $(FLOWMARK) || { echo "flowmark-check: $(FLOWMARK) is missing; run make orm-install-flowmark, which builds the version pinned in tests/markdown/flowmark.version"; exit 1; }
+	test -n "$(FLOWMARK)" && test -x "$(FLOWMARK)" || { echo "flowmark-check: $(FLOWMARK) is missing; run make orm-install-flowmark, which builds the version pinned in tests/markdown/flowmark.version"; exit 1; }
 
 # Every provider parity phase has the same fixtures and runtime paths as the original full parity target. A phase builds only
 # the native outputs its bindings load: the php-extension bindings load the extension (ORM_PARITY_PHP_EXTENSION) and the rust
@@ -1995,7 +2045,7 @@ column-function-metadata-check/typescript: typescript-current
 column-function-metadata-check/php: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CoveragePlannerTest.php --filter 'ColumnFunction.*MissingPostValidationFieldIsInternal'
 column-function-metadata-check/python: python-venv-check
-	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_column_function_internal
+	$(PYTHON_TESTS) -- packages.python.tests.test_column_function_internal
 column-function-metadata-check/php-extension: php-vendor-check php-models orm-install-php-extension-tools
 	@set -eu; run_dir="$(RUN_DIR)"; trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
@@ -2024,7 +2074,7 @@ scalar-subquery-column-check/typescript: typescript-current
 scalar-subquery-column-check/php: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CoveragePlannerTest.php --filter ScalarSubquery
 scalar-subquery-column-check/python: python-venv-check
-	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_scalar_subquery_type
+	$(PYTHON_TESTS) -- packages.python.tests.test_scalar_subquery_type
 scalar-subquery-column-check/php-extension: php-vendor-check php-models orm-install-php-extension-tools
 	@set -eu; run_dir="$(RUN_DIR)"; trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
@@ -2051,7 +2101,7 @@ page-cache-unit-check/typescript: typescript-current
 	$(READ_TYPESCRIPT)
 	$(NODE) --test packages/ts/tests/plan-cache-in.mjs
 page-cache-unit-check/python: python-venv-check
-	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_plan_cache_bound
+	$(PYTHON_TESTS) -- packages.python.tests.test_plan_cache_bound
 page-cache-unit-check/rust:
 	cd packages/rust && $(CARGO_TEST) page-cache-unit-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --lib paged_ -- --test-threads=1 --nocapture
 
@@ -2075,7 +2125,7 @@ split-read-plan-check/ts: typescript-current
 	$(NODE) --test packages/ts/tests/split-plan.test.mjs
 
 split-read-plan-check/python: python-venv-check python-models
-	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_split_plan
+	$(PYTHON_TESTS) -- packages.python.tests.test_split_plan
 
 split-read-plan-check/rust:
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib model::split_plan_tests::split_root_in_count_plans_no_statement_over_the_bind_limit
@@ -2090,7 +2140,7 @@ collection-composite-key-check: typescript-read php-vendor-check python-venv-che
 	$(RUN_TESTS) node --test --test-name-pattern='collection-key/(composite-typed-components|nullable-composite-row-has-no-key)' packages/ts/tests/collection_identity.mjs || status=1; \
 	$(GO_TEST) ./packages/go/orm -run '^(TestCompositeCollectionKeyTypedComponentsFromFixture|TestNullableCompositeRowHasNoCollectionKey)$$' -count=1 || status=1; \
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CollectionIdentityTest.php --filter 'testCompositeComponentsPreserveTypedIdentityAndSharedEncoding|testNullCompositeRowHasNoCollectionKey' || status=1; \
-	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_collection_identity.CollectionIdentityTest.test_a_key_outside_the_python_key_type_is_refused packages.python.tests.test_collection_identity.CollectionIdentityTest.test_composite_components_preserve_typed_identity_and_shared_encoding packages.python.tests.test_collection_identity.CollectionIdentityTest.test_a_null_composite_row_has_no_collection_key || status=1; \
+	$(PYTHON_TESTS) -- packages.python.tests.test_collection_identity.CollectionIdentityTest.test_a_key_outside_the_python_key_type_is_refused packages.python.tests.test_collection_identity.CollectionIdentityTest.test_composite_components_preserve_typed_identity_and_shared_encoding packages.python.tests.test_collection_identity.CollectionIdentityTest.test_a_null_composite_row_has_no_collection_key || status=1; \
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --test collection_identity composite || status=1; \
 	if $(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); then \
 	  env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelAssemblyTest.php packages/php-ext/tests/CollectionTest.php --filter 'testTypedIdentityOrderedReplacementAndArrayViews|testCompositeComponentsPreserveTypedIdentityAndSharedEncoding|testNullCompositeRowHasNoCollectionKey' || status=1; \
@@ -2114,10 +2164,10 @@ ts-min-check: lease-tool orm-codes-typescript
 # vectors, apply cleanup errors, the rules they do not yet cover, and the check that the Unicode word table matches its ranges at every code point.
 # The stress document is run by make bench.
 .PHONY: dbspec-ts-check
-dbspec-ts-check: typescript-current
+dbspec-ts-check: typescript-current flowmark-check
 	$(READ_TYPESCRIPT)
 	$(NODE) --test packages/ts/tests/browser-entry.mjs packages/ts/tests/recipe_canonical.mjs packages/ts/tests/recipe_normalize.mjs packages/ts/tests/recipe_positions.mjs packages/ts/tests/recipe_invalid.mjs packages/ts/tests/recipe_files.mjs packages/ts/tests/dbspec_read_set-none.test.mjs packages/ts/tests/dbspec-set-edges.mjs packages/ts/tests/recipe_set_parse.mjs packages/ts/tests/recipe_hashes.mjs packages/ts/tests/recipe_sets.mjs packages/ts/tests/dbspec_show_create_introspect-none.test.mjs packages/ts/tests/dbspec-rules.mjs packages/ts/tests/dbspec_render_statements-none.test.mjs packages/ts/tests/dbspec_dialect_refusal-none.test.mjs packages/ts/tests/dbspec-plan-cases.mjs packages/ts/tests/dbspec-plan-invalid.mjs packages/ts/tests/dbspec-plan-chains.mjs packages/ts/tests/dbspec-plan-parse.mjs packages/ts/tests/dbspec-plan-comparisons.mjs packages/ts/tests/dbspec-add-tables-steps.mjs packages/ts/tests/dbspec-mermaid-none.test.mjs packages/ts/tests/dbspec-unicode.mjs packages/ts/tests/dbspec-show-create.mjs
-	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/dbspec_render_physical-mysql.test.mjs packages/ts/tests/dbspec_render_physical-postgres.test.mjs packages/ts/tests/dbspec_render_physical-sqlite.test.mjs packages/ts/tests/dbspec_set_decimal-mysql.test.mjs packages/ts/tests/dbspec_set_decimal-postgres.test.mjs packages/ts/tests/dbspec_set_decimal-sqlite.test.mjs
+	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/dbspec_render_physical-mysql.test.mjs packages/ts/tests/dbspec_render_physical-postgres.test.mjs packages/ts/tests/dbspec_render_physical-sqlite.test.mjs packages/ts/tests/dbspec_render_physical-markdown.test.mjs packages/ts/tests/dbspec_set_decimal-mysql.test.mjs packages/ts/tests/dbspec_set_decimal-postgres.test.mjs packages/ts/tests/dbspec_set_decimal-sqlite.test.mjs packages/ts/tests/dbspec_set_decimal-markdown.test.mjs
 
 # dbspec-language-check builds the TypeScript client and @polyspec/dbspec-language, and checks that the language service's module graph does not reach
 # node modules, Node globals, or drivers, the format and hash of shared vectors, tokens and UTF-16 ranges, and the tests/editor
@@ -2209,7 +2259,7 @@ dbspec-go-check/engine:
 	$(RUN_TESTS) go --cwd packages/go -- ./engine/dbspec -count=1
 # dbspec-go-check/render-physical runs the rendered statements of tests/dbspec/ddl.json with their behavior steps on MySQL, PostgreSQL and
 # SQLite, through the recipe tests/dbspec/render-physical.json; an unset ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN fails it by name.
-dbspec-go-check/render-physical:
+dbspec-go-check/render-physical: flowmark-check
 	$(WITH_TEST_ENV) $(RUN_TESTS) go --cwd packages/go -- ./orm -run '^TestRecipeDbspec(RenderPhysical|SetDecimal)' -count=1
 # dbspec-go-check/unicode checks that the three table files written by the generator of tests/dbspec/unicode match the current Go tables, and that the C extension and the Python module
 # give the same classification as Go at every code point.
@@ -2340,42 +2390,45 @@ ir-validate-check/php-extension: php-vendor-check build-php-ext
 # so one that fails names its client while the others still run (make -k).
 .PHONY: catalog-connection-check catalog-connection-check/go catalog-connection-check/rust catalog-connection-check/typescript catalog-connection-check/python catalog-connection-check/php catalog-connection-check/php-extension
 catalog-connection-check: catalog-connection-check/go catalog-connection-check/rust catalog-connection-check/typescript catalog-connection-check/python catalog-connection-check/php catalog-connection-check/php-extension
-catalog-connection-check/go: lease-tool
-	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeCatalogConnection(Mysql|Postgres|Sqlite|SqliteOnly)$$' -count=1
-catalog-connection-check/rust: lease-tool
-	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) catalog-connection-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test catalog_connection_mysql --test catalog_connection_postgres --test catalog_connection_sqlite --test catalog_connection_sqlite_only
+catalog-connection-check/go: lease-tool flowmark-check
+	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeCatalogConnection(Mysql|Postgres|Sqlite|Markdown|SqliteOnly|SqliteOnlyMarkdown)$$' -count=1
+catalog-connection-check/rust: lease-tool flowmark-check
+	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) catalog-connection-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test catalog_connection_mysql --test catalog_connection_postgres --test catalog_connection_sqlite --test catalog_connection_markdown --test catalog_connection_sqlite_only --test catalog_connection_sqlite_only_markdown
 # statement-events-check runs the recipe contracts/fixtures/statement_events/statement_events.json on the three databases
 # in the six clients (docs/spec/feature-coverage.md FCV-3), as catalog-connection-check does. Each part runs its client's
 # three entries on the servers of TEST_ENV, so one that fails names its client while the others still run (make -k).
 .PHONY: statement-events-check statement-events-check/go statement-events-check/rust statement-events-check/typescript statement-events-check/python statement-events-check/php statement-events-check/php-extension
 statement-events-check: statement-events-check/go statement-events-check/rust statement-events-check/typescript statement-events-check/python statement-events-check/php statement-events-check/php-extension
-statement-events-check/go: lease-tool
-	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeStatementEvents(Mysql|Postgres|Sqlite)$$' -count=1
-statement-events-check/rust: lease-tool
-	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) statement-events-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test statement_events_mysql --test statement_events_postgres --test statement_events_sqlite
-statement-events-check/typescript: typescript-current
+statement-events-check/go: lease-tool flowmark-check
+	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeStatementEvents(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
+statement-events-check/rust: lease-tool flowmark-check
+	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) statement-events-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test statement_events_mysql --test statement_events_postgres --test statement_events_sqlite --test statement_events_markdown
+statement-events-check/typescript: typescript-current flowmark-check
 	$(READ_TYPESCRIPT)
-	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/statement_events-mysql.test.mjs packages/ts/tests/statement_events-postgres.test.mjs packages/ts/tests/statement_events-sqlite.test.mjs
-statement-events-check/python: lease-tool python-venv-check
+	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/statement_events-mysql.test.mjs packages/ts/tests/statement_events-postgres.test.mjs packages/ts/tests/statement_events-sqlite.test.mjs packages/ts/tests/statement_events-markdown.test.mjs
+statement-events-check/python: lease-tool python-venv-check flowmark-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_statement_events_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_statement_events_postgres
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_statement_events_sqlite
-statement-events-check/php: lease-tool php-vendor-check php-models
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_statement_events_markdown
+statement-events-check/php: lease-tool php-vendor-check php-models flowmark-check
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/StatementEventsRecipeTest.php
-statement-events-check/php-extension: lease-tool php-vendor-check build-php-ext
+statement-events-check/php-extension: lease-tool php-vendor-check build-php-ext flowmark-check
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php
-catalog-connection-check/typescript: typescript-current
+catalog-connection-check/typescript: typescript-current flowmark-check
 	$(READ_TYPESCRIPT)
-	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/catalog_connection-mysql.test.mjs packages/ts/tests/catalog_connection-postgres.test.mjs packages/ts/tests/catalog_connection-sqlite.test.mjs packages/ts/tests/catalog_connection-sqlite-only.test.mjs
-catalog-connection-check/python: lease-tool python-venv-check
+	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/catalog_connection-mysql.test.mjs packages/ts/tests/catalog_connection-postgres.test.mjs packages/ts/tests/catalog_connection-sqlite.test.mjs packages/ts/tests/catalog_connection-markdown.test.mjs packages/ts/tests/catalog_connection-sqlite-only.test.mjs packages/ts/tests/catalog_connection-sqlite-only-markdown.test.mjs
+catalog-connection-check/python: lease-tool python-venv-check flowmark-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_catalog_connection_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_catalog_connection_postgres
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_catalog_connection_sqlite
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_catalog_connection_markdown
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_catalog_connection_sqlite_only
-catalog-connection-check/php: lease-tool php-vendor-check php-models
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_catalog_connection_sqlite_only_markdown
+catalog-connection-check/php: lease-tool php-vendor-check php-models flowmark-check
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CatalogConnectionRecipeTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CatalogConnectionSqliteOnlyRecipeTest.php
-catalog-connection-check/php-extension: lease-tool php-vendor-check build-php-ext
+catalog-connection-check/php-extension: lease-tool php-vendor-check build-php-ext flowmark-check
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CatalogConnectionSqliteOnlyRecipeTestExtensionTest.php
 
@@ -2383,21 +2436,22 @@ catalog-connection-check/php-extension: lease-tool php-vendor-check build-php-ex
 # clients (docs/spec/feature-coverage.md FCV-3): each part runs its client's three entries on the servers of TEST_ENV.
 .PHONY: schema-install-check schema-install-check/go schema-install-check/typescript schema-install-check/python schema-install-check/php schema-install-check/php-extension schema-install-check/rust
 schema-install-check: schema-install-check/go schema-install-check/typescript schema-install-check/python schema-install-check/php schema-install-check/php-extension schema-install-check/rust
-schema-install-check/go: lease-tool
-	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeSchemaInstall(Mysql|Postgres|Sqlite)$$' -count=1
-schema-install-check/typescript: typescript-current
+schema-install-check/go: lease-tool flowmark-check
+	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeSchemaInstall(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
+schema-install-check/typescript: typescript-current flowmark-check
 	$(READ_TYPESCRIPT)
-	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/schema_install-mysql.test.mjs packages/ts/tests/schema_install-postgres.test.mjs packages/ts/tests/schema_install-sqlite.test.mjs
-schema-install-check/python: python-venv-check
+	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/schema_install-mysql.test.mjs packages/ts/tests/schema_install-postgres.test.mjs packages/ts/tests/schema_install-sqlite.test.mjs packages/ts/tests/schema_install-markdown.test.mjs
+schema-install-check/python: python-venv-check flowmark-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_schema_install_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_schema_install_postgres
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_schema_install_sqlite
-schema-install-check/php: lease-tool php-vendor-check php-models
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_schema_install_markdown
+schema-install-check/php: lease-tool php-vendor-check php-models flowmark-check
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/SchemaInstallRecipeTest.php
-schema-install-check/php-extension: lease-tool php-vendor-check build-php-ext
+schema-install-check/php-extension: lease-tool php-vendor-check build-php-ext flowmark-check
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/SchemaInstallRecipeTestExtensionTest.php
-schema-install-check/rust: lease-tool
-	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) schema-install-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test schema_install_mysql --test schema_install_postgres --test schema_install_sqlite
+schema-install-check/rust: lease-tool flowmark-check
+	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) schema-install-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test schema_install_mysql --test schema_install_postgres --test schema_install_sqlite --test schema_install_markdown
 
 CHECK_TARGETS += schema-install-check/go
 CI_TARGETS_client_db_go += schema-install-check/go
@@ -2416,42 +2470,71 @@ CI_TARGETS_client_db_rust += schema-install-check/rust
 # six clients (docs/spec/feature-coverage.md FCV-3), each part on the servers of TEST_ENV, as catalog-connection-check does.
 .PHONY: dsn-connection-check dsn-connection-check/go dsn-connection-check/rust dsn-connection-check/typescript dsn-connection-check/python dsn-connection-check/php dsn-connection-check/php-extension
 dsn-connection-check: dsn-connection-check/go dsn-connection-check/rust dsn-connection-check/typescript dsn-connection-check/python dsn-connection-check/php dsn-connection-check/php-extension
-dsn-connection-check/go: lease-tool
-	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeDsnConnection(Mysql|Postgres|Sqlite)$$' -count=1
-dsn-connection-check/rust: lease-tool
-	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) dsn-connection-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dsn_connection_mysql --test dsn_connection_postgres --test dsn_connection_sqlite
-dsn-connection-check/typescript: typescript-current
+dsn-connection-check/go: lease-tool flowmark-check
+	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeDsnConnection(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
+dsn-connection-check/rust: lease-tool flowmark-check
+	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) dsn-connection-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dsn_connection_mysql --test dsn_connection_postgres --test dsn_connection_sqlite --test dsn_connection_markdown
+dsn-connection-check/typescript: typescript-current flowmark-check
 	$(READ_TYPESCRIPT)
-	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/dsn_connection-mysql.test.mjs packages/ts/tests/dsn_connection-postgres.test.mjs packages/ts/tests/dsn_connection-sqlite.test.mjs
-dsn-connection-check/python: lease-tool python-venv-check
+	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/dsn_connection-mysql.test.mjs packages/ts/tests/dsn_connection-postgres.test.mjs packages/ts/tests/dsn_connection-sqlite.test.mjs packages/ts/tests/dsn_connection-markdown.test.mjs
+dsn-connection-check/python: lease-tool python-venv-check flowmark-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_dsn_connection_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_dsn_connection_postgres
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_dsn_connection_sqlite
-dsn-connection-check/php: lease-tool php-vendor-check php-models
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_dsn_connection_markdown
+dsn-connection-check/php: lease-tool php-vendor-check php-models flowmark-check
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DsnConnectionRecipeTest.php
-dsn-connection-check/php-extension: lease-tool php-vendor-check build-php-ext
+dsn-connection-check/php-extension: lease-tool php-vendor-check build-php-ext flowmark-check
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php
+# raw-text-check runs the recipe contracts/fixtures/raw_text/raw_text.json on the four databases in the three clients whose host
+# string holds a text that is not UTF-8 (PRT-67); a TypeScript, Python or Rust string holds only Unicode text.
+.PHONY: raw-text-check raw-text-check/go raw-text-check/php raw-text-check/php-extension
+raw-text-check: raw-text-check/go raw-text-check/php raw-text-check/php-extension
+raw-text-check/go: lease-tool flowmark-check
+	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeRawText(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
+raw-text-check/php: lease-tool php-vendor-check php-models flowmark-check
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/RawTextRecipeTest.php
+raw-text-check/php-extension: lease-tool php-vendor-check build-php-ext flowmark-check
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/RawTextRecipeTestExtensionTest.php
+# connection-pool-check runs the recipe contracts/fixtures/connection_pool/connection_pool.json on the four databases in the four
+# clients that keep a pool (CFG-4, CFG-5, DIA-199); PHP and the PHP extension keep none.
+.PHONY: connection-pool-check connection-pool-check/go connection-pool-check/rust connection-pool-check/typescript connection-pool-check/python
+connection-pool-check: connection-pool-check/go connection-pool-check/rust connection-pool-check/typescript connection-pool-check/python
+connection-pool-check/go: lease-tool flowmark-check
+	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeConnectionPool(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
+connection-pool-check/rust: lease-tool flowmark-check
+	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) connection-pool-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test connection_pool_mysql --test connection_pool_postgres --test connection_pool_sqlite --test connection_pool_markdown
+connection-pool-check/typescript: typescript-current flowmark-check
+	$(READ_TYPESCRIPT)
+	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/connection_pool-mysql.test.mjs packages/ts/tests/connection_pool-postgres.test.mjs packages/ts/tests/connection_pool-sqlite.test.mjs packages/ts/tests/connection_pool-markdown.test.mjs
+connection-pool-check/python: lease-tool python-venv-check flowmark-check
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_connection_pool_mysql
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_connection_pool_postgres
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_connection_pool_sqlite
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_connection_pool_markdown
 # model-queries-check runs the recipe contracts/fixtures/model_queries/model_queries.json on the three databases in the six
 # clients (docs/spec/feature-coverage.md FCV-3), with the same split and the same servers as catalog-connection-check.
 .PHONY: model-queries-check model-queries-check/go model-queries-check/rust model-queries-check/typescript model-queries-check/python model-queries-check/php model-queries-check/php-extension
 model-queries-check: model-queries-check/go model-queries-check/rust model-queries-check/typescript model-queries-check/python model-queries-check/php model-queries-check/php-extension
-model-queries-check/go: lease-tool
-	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeModelQueries(Chain)?(Mysql|Postgres|Sqlite)$$' -count=1
-model-queries-check/rust: lease-tool
-	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) model-queries-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test model_queries_mysql --test model_queries_postgres --test model_queries_sqlite --test model_queries_chain_mysql --test model_queries_chain_postgres --test model_queries_chain_sqlite
-model-queries-check/typescript: typescript-current
+model-queries-check/go: lease-tool flowmark-check
+	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeModelQueries(Chain)?(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
+model-queries-check/rust: lease-tool flowmark-check
+	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) model-queries-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test model_queries_mysql --test model_queries_postgres --test model_queries_sqlite --test model_queries_markdown --test model_queries_chain_mysql --test model_queries_chain_postgres --test model_queries_chain_sqlite --test model_queries_chain_markdown
+model-queries-check/typescript: typescript-current flowmark-check
 	$(READ_TYPESCRIPT)
-	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/model_queries-mysql.test.mjs packages/ts/tests/model_queries-postgres.test.mjs packages/ts/tests/model_queries-sqlite.test.mjs packages/ts/tests/model_queries_chain-mysql.test.mjs packages/ts/tests/model_queries_chain-postgres.test.mjs packages/ts/tests/model_queries_chain-sqlite.test.mjs
-model-queries-check/python: lease-tool python-venv-check
+	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/model_queries-mysql.test.mjs packages/ts/tests/model_queries-postgres.test.mjs packages/ts/tests/model_queries-sqlite.test.mjs packages/ts/tests/model_queries-markdown.test.mjs packages/ts/tests/model_queries_chain-mysql.test.mjs packages/ts/tests/model_queries_chain-postgres.test.mjs packages/ts/tests/model_queries_chain-sqlite.test.mjs packages/ts/tests/model_queries_chain-markdown.test.mjs
+model-queries-check/python: lease-tool python-venv-check flowmark-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_model_queries_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_model_queries_postgres
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_model_queries_sqlite
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_model_queries_markdown
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_model_queries_chain_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_model_queries_chain_postgres
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_model_queries_chain_sqlite
-model-queries-check/php: lease-tool php-vendor-check php-models
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_model_queries_chain_markdown
+model-queries-check/php: lease-tool php-vendor-check php-models flowmark-check
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelQueriesRecipeTest.php packages/php/tests/ModelQueriesChainRecipeTest.php
-model-queries-check/php-extension: lease-tool php-vendor-check build-php-ext
+model-queries-check/php-extension: lease-tool php-vendor-check build-php-ext flowmark-check
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelQueriesRecipeTestExtensionTest.php packages/php-ext/tests/ModelQueriesChainRecipeTestExtensionTest.php
 CHECK_TARGETS += model-queries-check/go model-queries-check/rust model-queries-check/typescript model-queries-check/python model-queries-check/php model-queries-check/php-extension
 
@@ -2459,24 +2542,26 @@ CHECK_TARGETS += model-queries-check/go model-queries-check/rust model-queries-c
 # clients (docs/spec/feature-coverage.md FCV-3), with the same split and the same servers as catalog-connection-check.
 .PHONY: constraints-and-relations-check constraints-and-relations-check/go constraints-and-relations-check/rust constraints-and-relations-check/typescript constraints-and-relations-check/python constraints-and-relations-check/php constraints-and-relations-check/php-extension
 constraints-and-relations-check: constraints-and-relations-check/go constraints-and-relations-check/rust constraints-and-relations-check/typescript constraints-and-relations-check/python constraints-and-relations-check/php constraints-and-relations-check/php-extension
-constraints-and-relations-check/go: lease-tool
-	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipe(ConstraintsAndRelations|ImmutableWrite)(Mysql|Postgres|Sqlite)$$' -count=1
-constraints-and-relations-check/rust: lease-tool
-	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) constraints-and-relations-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test constraints_and_relations_mysql --test constraints_and_relations_postgres --test constraints_and_relations_sqlite --test immutable_write_mysql --test immutable_write_postgres --test immutable_write_sqlite
-constraints-and-relations-check/typescript: typescript-current
+constraints-and-relations-check/go: lease-tool flowmark-check
+	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipe(ConstraintsAndRelations|ImmutableWrite)(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
+constraints-and-relations-check/rust: lease-tool flowmark-check
+	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) constraints-and-relations-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test constraints_and_relations_mysql --test constraints_and_relations_postgres --test constraints_and_relations_sqlite --test constraints_and_relations_markdown --test immutable_write_mysql --test immutable_write_postgres --test immutable_write_sqlite --test immutable_write_markdown
+constraints-and-relations-check/typescript: typescript-current flowmark-check
 	$(READ_TYPESCRIPT)
-	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/constraints_and_relations-mysql.test.mjs packages/ts/tests/constraints_and_relations-postgres.test.mjs packages/ts/tests/constraints_and_relations-sqlite.test.mjs packages/ts/tests/immutable_write-mysql.test.mjs packages/ts/tests/immutable_write-postgres.test.mjs packages/ts/tests/immutable_write-sqlite.test.mjs
-constraints-and-relations-check/python: lease-tool python-venv-check
+	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/constraints_and_relations-mysql.test.mjs packages/ts/tests/constraints_and_relations-postgres.test.mjs packages/ts/tests/constraints_and_relations-sqlite.test.mjs packages/ts/tests/constraints_and_relations-markdown.test.mjs packages/ts/tests/immutable_write-mysql.test.mjs packages/ts/tests/immutable_write-postgres.test.mjs packages/ts/tests/immutable_write-sqlite.test.mjs packages/ts/tests/immutable_write-markdown.test.mjs
+constraints-and-relations-check/python: lease-tool python-venv-check flowmark-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_constraints_and_relations_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_constraints_and_relations_postgres
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_constraints_and_relations_sqlite
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_constraints_and_relations_markdown
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_immutable_write_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_immutable_write_postgres
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_immutable_write_sqlite
-constraints-and-relations-check/php: lease-tool php-vendor-check php-models
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_immutable_write_markdown
+constraints-and-relations-check/php: lease-tool php-vendor-check php-models flowmark-check
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ConstraintsAndRelationsRecipeTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ImmutableWriteRecipeTest.php
-constraints-and-relations-check/php-extension: lease-tool php-vendor-check build-php-ext
+constraints-and-relations-check/php-extension: lease-tool php-vendor-check build-php-ext flowmark-check
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ConstraintsAndRelationsRecipeTestExtensionTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ImmutableWriteRecipeTestExtensionTest.php
 CHECK_TARGETS += constraints-and-relations-check/go constraints-and-relations-check/rust constraints-and-relations-check/typescript constraints-and-relations-check/python constraints-and-relations-check/php constraints-and-relations-check/php-extension
@@ -2485,97 +2570,101 @@ CHECK_TARGETS += constraints-and-relations-check/go constraints-and-relations-ch
 # parameter-chunking-check/go runs the recipe contracts/fixtures/parameter_chunking/parameter_chunking.json on the three
 # databases in Go (docs/spec/feature-coverage.md FCV-3 and FCV-4): the entries TestRecipeParameterChunking<Db> of packages/go/orm.
 .PHONY: parameter-chunking-check/go
-parameter-chunking-check/go: lease-tool
-	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeParameterChunking(Mysql|Postgres|Sqlite)$$' -count=1
+parameter-chunking-check/go: lease-tool flowmark-check
+	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeParameterChunking(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
 
 # aes-rotation-check/go runs the recipe contracts/fixtures/aes_rotation/aes_rotation.json on the three databases in Go
 # (docs/spec/feature-coverage.md FCV-3 and FCV-4): the entries TestRecipeAesRotation<Db> of packages/go/orm.
 .PHONY: aes-rotation-check/go
-aes-rotation-check/go: lease-tool
-	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeAesRotation(Mysql|Postgres|Sqlite)$$' -count=1
+aes-rotation-check/go: lease-tool flowmark-check
+	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeAesRotation(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
 
 # aes-rotation-check/typescript runs the recipe contracts/fixtures/aes_rotation/aes_rotation.json on the three databases in
 # TypeScript (docs/spec/feature-coverage.md FCV-3 and FCV-4): the entries aes_rotation-<database>.test.mjs.
 .PHONY: aes-rotation-check/typescript
-aes-rotation-check/typescript: typescript-current
+aes-rotation-check/typescript: typescript-current flowmark-check
 	$(READ_TYPESCRIPT)
-	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/aes_rotation-mysql.test.mjs packages/ts/tests/aes_rotation-postgres.test.mjs packages/ts/tests/aes_rotation-sqlite.test.mjs
+	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/aes_rotation-mysql.test.mjs packages/ts/tests/aes_rotation-postgres.test.mjs packages/ts/tests/aes_rotation-sqlite.test.mjs packages/ts/tests/aes_rotation-markdown.test.mjs
 
 # aes-rotation-check/python runs the recipe contracts/fixtures/aes_rotation/aes_rotation.json on the three databases in Python
 # (docs/spec/feature-coverage.md FCV-3 and FCV-4): the entries test_aes_rotation_<database>.py of packages/python/tests.
 .PHONY: aes-rotation-check/python
-aes-rotation-check/python: lease-tool python-venv-check
+aes-rotation-check/python: lease-tool python-venv-check flowmark-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_aes_rotation_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_aes_rotation_postgres
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_aes_rotation_sqlite
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_aes_rotation_markdown
 
 # audit-triggers-check runs the recipes contracts/fixtures/audit_triggers/audit_triggers.json and contracts/fixtures/external_audit/external_audit.json on the three databases in the six
 # clients (docs/spec/feature-coverage.md FCV-3 and FCV-4), as request-hook-check does.
 .PHONY: audit-triggers-check/go audit-triggers-check/rust audit-triggers-check/typescript audit-triggers-check/python audit-triggers-check/php audit-triggers-check/php-extension
-audit-triggers-check/go: lease-tool
-	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipe(AuditTriggers|ExternalAudit)(Mysql|Postgres|Sqlite)$$' -count=1
-audit-triggers-check/rust: lease-tool
-	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) audit-triggers-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --no-fail-fast --test audit_triggers_mysql --test audit_triggers_postgres --test audit_triggers_sqlite --test external_audit_mysql --test external_audit_postgres --test external_audit_sqlite
-audit-triggers-check/typescript: typescript-current
+audit-triggers-check/go: lease-tool flowmark-check
+	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipe(AuditTriggers|ExternalAudit)(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
+audit-triggers-check/rust: lease-tool flowmark-check
+	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) audit-triggers-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --no-fail-fast --test audit_triggers_mysql --test audit_triggers_postgres --test audit_triggers_sqlite --test audit_triggers_markdown --test external_audit_mysql --test external_audit_postgres --test external_audit_sqlite --test external_audit_markdown
+audit-triggers-check/typescript: typescript-current flowmark-check
 	$(READ_TYPESCRIPT)
-	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/audit_triggers-mysql.test.mjs packages/ts/tests/audit_triggers-postgres.test.mjs packages/ts/tests/audit_triggers-sqlite.test.mjs packages/ts/tests/external_audit-mysql.test.mjs packages/ts/tests/external_audit-postgres.test.mjs packages/ts/tests/external_audit-sqlite.test.mjs
-audit-triggers-check/python: lease-tool python-venv-check
+	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/audit_triggers-mysql.test.mjs packages/ts/tests/audit_triggers-postgres.test.mjs packages/ts/tests/audit_triggers-sqlite.test.mjs packages/ts/tests/audit_triggers-markdown.test.mjs packages/ts/tests/external_audit-mysql.test.mjs packages/ts/tests/external_audit-postgres.test.mjs packages/ts/tests/external_audit-sqlite.test.mjs packages/ts/tests/external_audit-markdown.test.mjs
+audit-triggers-check/python: lease-tool python-venv-check flowmark-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_audit_triggers_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_audit_triggers_postgres
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_audit_triggers_sqlite
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_audit_triggers_markdown
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_external_audit_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_external_audit_postgres
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_external_audit_sqlite
-audit-triggers-check/php: lease-tool php-vendor-check php-models
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_external_audit_markdown
+audit-triggers-check/php: lease-tool php-vendor-check php-models flowmark-check
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/AuditTriggersRecipeTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ExternalAuditRecipeTest.php
-audit-triggers-check/php-extension: lease-tool php-vendor-check build-php-ext
+audit-triggers-check/php-extension: lease-tool php-vendor-check build-php-ext flowmark-check
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/AuditTriggersRecipeTestExtensionTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ExternalAuditRecipeTestExtensionTest.php
 
 # request-hook-check/go runs the recipe contracts/fixtures/request_hook/request_hook.json on the three databases in Go
 # (docs/spec/feature-coverage.md FCV-3 and FCV-4): the entries TestRecipeRequestHook<Db> of packages/go/orm.
 .PHONY: request-hook-check/go
-request-hook-check/go: lease-tool
-	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeRequestHook(Mysql|Postgres|Sqlite)$$' -count=1
+request-hook-check/go: lease-tool flowmark-check
+	$(WITH_TEST_ENV) FLOWMARK=$(FLOWMARK) $(GO_TEST) ./packages/go/orm -run '^TestRecipeRequestHook(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
 
 # parameter-chunking-check/rust runs the recipe contracts/fixtures/parameter_chunking/parameter_chunking.json on the three
 # databases in Rust (docs/spec/feature-coverage.md FCV-3 and FCV-4), each database as one test target of packages/rust/tests.
 .PHONY: parameter-chunking-check/rust
-parameter-chunking-check/rust: lease-tool
-	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) parameter-chunking-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --no-fail-fast --test parameter_chunking_mysql --test parameter_chunking_postgres --test parameter_chunking_sqlite
+parameter-chunking-check/rust: lease-tool flowmark-check
+	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) parameter-chunking-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --no-fail-fast --test parameter_chunking_mysql --test parameter_chunking_postgres --test parameter_chunking_sqlite --test parameter_chunking_markdown
 
 # aes-rotation-check/rust runs the recipe contracts/fixtures/aes_rotation/aes_rotation.json on the three databases in Rust
 # (docs/spec/feature-coverage.md FCV-3 and FCV-4), each database as one test target of packages/rust/tests.
 .PHONY: aes-rotation-check/rust
-aes-rotation-check/rust: lease-tool
-	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) aes-rotation-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --no-fail-fast --test aes_rotation_mysql --test aes_rotation_postgres --test aes_rotation_sqlite
+aes-rotation-check/rust: lease-tool flowmark-check
+	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) aes-rotation-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --no-fail-fast --test aes_rotation_mysql --test aes_rotation_postgres --test aes_rotation_sqlite --test aes_rotation_markdown
 
 # request-hook-check/rust runs the recipe contracts/fixtures/request_hook/request_hook.json on the three databases in Rust
 # (docs/spec/feature-coverage.md FCV-3 and FCV-4), each database as one test target of packages/rust/tests.
 .PHONY: request-hook-check/rust
-request-hook-check/rust: lease-tool
-	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) request-hook-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test request_hook_mysql --test request_hook_postgres --test request_hook_sqlite
+request-hook-check/rust: lease-tool flowmark-check
+	$(WITH_TEST_ENV) cd packages/rust && FLOWMARK=$(FLOWMARK) $(CARGO_TEST) request-hook-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test request_hook_markdown --test request_hook_mysql --test request_hook_postgres --test request_hook_sqlite
 
 # request-hook-check/typescript runs the recipe contracts/fixtures/request_hook/request_hook.json on the three databases in
 # TypeScript (docs/spec/feature-coverage.md FCV-3 and FCV-4), with the native cases that a declarative step cannot observe.
 .PHONY: request-hook-check/typescript
-request-hook-check/typescript: typescript-current
+request-hook-check/typescript: typescript-current flowmark-check
 	$(READ_TYPESCRIPT)
-	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/request_hook-mysql.test.mjs packages/ts/tests/request_hook-postgres.test.mjs packages/ts/tests/request_hook-sqlite.test.mjs
+	$(WITH_TEST_ENV) FLOWMARK=$(FLOWMARK) $(NODE) --test packages/ts/tests/request_hook-markdown.test.mjs packages/ts/tests/request_hook-mysql.test.mjs packages/ts/tests/request_hook-postgres.test.mjs packages/ts/tests/request_hook-sqlite.test.mjs
 
 # parameter-chunking-check/typescript runs the recipe contracts/fixtures/parameter_chunking/parameter_chunking.json on the
 # three databases in TypeScript (docs/spec/feature-coverage.md FCV-3 and FCV-4).
 .PHONY: parameter-chunking-check/typescript
-parameter-chunking-check/typescript: typescript-current
+parameter-chunking-check/typescript: typescript-current flowmark-check
 	$(READ_TYPESCRIPT)
-	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/parameter_chunking-mysql.test.mjs packages/ts/tests/parameter_chunking-postgres.test.mjs packages/ts/tests/parameter_chunking-sqlite.test.mjs
+	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/parameter_chunking-mysql.test.mjs packages/ts/tests/parameter_chunking-postgres.test.mjs packages/ts/tests/parameter_chunking-sqlite.test.mjs packages/ts/tests/parameter_chunking-markdown.test.mjs
 
 # request-hook-check/python runs the recipe contracts/fixtures/request_hook/request_hook.json on the three databases in Python
 # (docs/spec/feature-coverage.md FCV-3 and FCV-4), with the native cases that a declarative step cannot observe in
 # test_request_hook.py (a native owner, not this check).
 .PHONY: request-hook-check/python
-request-hook-check/python: lease-tool python-venv-check
+request-hook-check/python: lease-tool python-venv-check flowmark-check
+	FLOWMARK=$(FLOWMARK) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_request_hook_markdown
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_request_hook_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_request_hook_postgres
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_request_hook_sqlite
@@ -2583,16 +2672,18 @@ request-hook-check/python: lease-tool python-venv-check
 # parameter-chunking-check/python runs the recipe contracts/fixtures/parameter_chunking/parameter_chunking.json on the three
 # databases in Python (docs/spec/feature-coverage.md FCV-3 and FCV-4).
 .PHONY: parameter-chunking-check/python
-parameter-chunking-check/python: lease-tool python-venv-check
+parameter-chunking-check/python: lease-tool python-venv-check flowmark-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_parameter_chunking_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_parameter_chunking_postgres
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_parameter_chunking_sqlite
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_parameter_chunking_markdown
 
 # request-hook-check/php runs the recipe contracts/fixtures/request_hook/request_hook.json on the three databases in PHP
 # (docs/spec/feature-coverage.md FCV-3 and FCV-4), one entry per database, with the native cases that a declarative step
 # cannot observe in request_hook_cases.php (feature coverage, not this check).
 .PHONY: request-hook-check/php
-request-hook-check/php: lease-tool php-vendor-check php-models
+request-hook-check/php: lease-tool php-vendor-check php-models flowmark-check
+	FLOWMARK=$(FLOWMARK) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/RequestHookMarkdownRecipeTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/RequestHookMysqlRecipeTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/RequestHookPostgresRecipeTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/RequestHookSqliteRecipeTest.php
@@ -2600,40 +2691,45 @@ request-hook-check/php: lease-tool php-vendor-check php-models
 # parameter-chunking-check/php runs the recipe contracts/fixtures/parameter_chunking/parameter_chunking.json on the three
 # databases in PHP (docs/spec/feature-coverage.md FCV-3 and FCV-4), one entry per database.
 .PHONY: parameter-chunking-check/php
-parameter-chunking-check/php: lease-tool php-vendor-check php-models
+parameter-chunking-check/php: lease-tool php-vendor-check php-models flowmark-check
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ParameterChunkingMysqlTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ParameterChunkingPostgresTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ParameterChunkingSqliteTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ParameterChunkingMarkdownTest.php
 
 # parameter-chunking-check/php-extension runs the recipe contracts/fixtures/parameter_chunking/parameter_chunking.json on the
 # three databases in the PHP extension (docs/spec/feature-coverage.md FCV-3 and FCV-4), one entry per database.
 .PHONY: parameter-chunking-check/php-extension
-parameter-chunking-check/php-extension: lease-tool php-vendor-check build-php-ext
+parameter-chunking-check/php-extension: lease-tool php-vendor-check build-php-ext flowmark-check
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ParameterChunkingMysqlRecipeExtensionTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ParameterChunkingPostgresRecipeExtensionTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ParameterChunkingSqliteRecipeExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ParameterChunkingMarkdownRecipeExtensionTest.php
 
 # aes-rotation-check/php runs the recipe contracts/fixtures/aes_rotation/aes_rotation.json on the three databases in PHP
 # (docs/spec/feature-coverage.md FCV-3 and FCV-4), one entry per database.
 .PHONY: aes-rotation-check/php
-aes-rotation-check/php: lease-tool php-vendor-check php-models
+aes-rotation-check/php: lease-tool php-vendor-check php-models flowmark-check
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/AesRotationMysqlTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/AesRotationPostgresTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/AesRotationSqliteTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/AesRotationMarkdownTest.php
 
 # aes-rotation-check/php-extension runs the recipe contracts/fixtures/aes_rotation/aes_rotation.json on the three databases in
 # the PHP extension (docs/spec/feature-coverage.md FCV-3 and FCV-4), one entry per database.
 .PHONY: aes-rotation-check/php-extension
-aes-rotation-check/php-extension: lease-tool php-vendor-check build-php-ext
+aes-rotation-check/php-extension: lease-tool php-vendor-check build-php-ext flowmark-check
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/AesRotationMysqlRecipeExtensionTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/AesRotationPostgresRecipeExtensionTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/AesRotationSqliteRecipeExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/AesRotationMarkdownRecipeExtensionTest.php
 
 # request-hook-check/php-extension runs the recipe contracts/fixtures/request_hook/request_hook.json on the three databases in
 # the PHP extension (docs/spec/feature-coverage.md FCV-3 and FCV-4), one entry per database, with the native cases that a
 # declarative step cannot observe in RequestHookTestExtensionTest.php (not this check).
 .PHONY: request-hook-check/php-extension
-request-hook-check/php-extension: lease-tool php-vendor-check build-php-ext
+request-hook-check/php-extension: lease-tool php-vendor-check build-php-ext flowmark-check
+	FLOWMARK=$(FLOWMARK) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/RequestHookMarkdownRecipeTestExtensionTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/RequestHookMysqlRecipeTestExtensionTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/RequestHookPostgresRecipeTestExtensionTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php
@@ -2641,88 +2737,100 @@ request-hook-check/php-extension: lease-tool php-vendor-check build-php-ext
 # conformance-verification-check/go runs the recipe contracts/fixtures/conformance_verification/conformance_verification.json on the three
 # databases (docs/spec/feature-coverage.md FCV-3 and FCV-4).
 .PHONY: conformance-verification-check/go
-conformance-verification-check/go: lease-tool
-	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeConformanceVerification(Mysql|Postgres|Sqlite)$$' -count=1
+conformance-verification-check/go: lease-tool flowmark-check
+	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeConformanceVerification(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
 
 # conformance-verification-check/rust runs the recipe contracts/fixtures/conformance_verification/conformance_verification.json on the three
 # databases (docs/spec/feature-coverage.md FCV-3 and FCV-4).
 .PHONY: conformance-verification-check/rust
-conformance-verification-check/rust: lease-tool
-	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) conformance-verification-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test conformance_verification_mysql --test conformance_verification_postgres --test conformance_verification_sqlite
+conformance-verification-check/rust: lease-tool flowmark-check
+	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) conformance-verification-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test conformance_verification_mysql --test conformance_verification_postgres --test conformance_verification_sqlite --test conformance_verification_markdown
 
 # conformance-verification-check/typescript runs the recipe contracts/fixtures/conformance_verification/conformance_verification.json on the three
-# databases (docs/spec/feature-coverage.md FCV-3 and FCV-4).
+# databases (docs/spec/feature-coverage.md FCV-3 and FCV-4), and conformance_verification_dynamic.json, which Go and Rust type at compile time.
 .PHONY: conformance-verification-check/typescript
-conformance-verification-check/typescript: typescript-current
+conformance-verification-check/typescript: typescript-current flowmark-check
 	$(READ_TYPESCRIPT)
-	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/conformance_verification-mysql.test.mjs packages/ts/tests/conformance_verification-postgres.test.mjs packages/ts/tests/conformance_verification-sqlite.test.mjs
+	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/conformance_verification-mysql.test.mjs packages/ts/tests/conformance_verification-postgres.test.mjs packages/ts/tests/conformance_verification-sqlite.test.mjs packages/ts/tests/conformance_verification-markdown.test.mjs packages/ts/tests/conformance_verification_dynamic-mysql.test.mjs packages/ts/tests/conformance_verification_dynamic-postgres.test.mjs packages/ts/tests/conformance_verification_dynamic-sqlite.test.mjs packages/ts/tests/conformance_verification_dynamic-markdown.test.mjs
 
 # conformance-verification-check/python runs the recipe contracts/fixtures/conformance_verification/conformance_verification.json on the three
-# databases (docs/spec/feature-coverage.md FCV-3 and FCV-4).
+# databases (docs/spec/feature-coverage.md FCV-3 and FCV-4), and conformance_verification_dynamic.json, which Go and Rust type at compile time.
 .PHONY: conformance-verification-check/python
-conformance-verification-check/python: lease-tool python-venv-check
+conformance-verification-check/python: lease-tool python-venv-check flowmark-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_conformance_verification_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_conformance_verification_postgres
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_conformance_verification_sqlite
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_conformance_verification_markdown
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_conformance_verification_dynamic_mysql
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_conformance_verification_dynamic_postgres
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_conformance_verification_dynamic_sqlite
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_conformance_verification_dynamic_markdown
 
 # conformance-verification-check/php runs the recipe contracts/fixtures/conformance_verification/conformance_verification.json on the three
-# databases (docs/spec/feature-coverage.md FCV-3 and FCV-4).
+# databases (docs/spec/feature-coverage.md FCV-3 and FCV-4), and conformance_verification_dynamic.json, which Go and Rust type at compile time.
 .PHONY: conformance-verification-check/php
-conformance-verification-check/php: lease-tool php-vendor-check php-models
+conformance-verification-check/php: lease-tool php-vendor-check php-models flowmark-check
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ConformanceVerificationMysqlRecipeTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ConformanceVerificationPostgresRecipeTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ConformanceVerificationSqliteRecipeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ConformanceVerificationMarkdownRecipeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ConformanceVerificationDynamicRecipeTest.php
 
 # conformance-verification-check/php-extension runs the recipe contracts/fixtures/conformance_verification/conformance_verification.json on the three
-# databases (docs/spec/feature-coverage.md FCV-3 and FCV-4).
+# databases (docs/spec/feature-coverage.md FCV-3 and FCV-4), and conformance_verification_dynamic.json, which Go and Rust type at compile time.
 .PHONY: conformance-verification-check/php-extension
-conformance-verification-check/php-extension: lease-tool php-vendor-check build-php-ext
+conformance-verification-check/php-extension: lease-tool php-vendor-check build-php-ext flowmark-check
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ConformanceVerificationMarkdownRecipeTestExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ConformanceVerificationDynamicRecipeTestExtensionTest.php
 
 # complex-query-check/go runs the recipe contracts/fixtures/complex_query/complex_query.json on the three
 # databases (docs/spec/feature-coverage.md FCV-3 and FCV-4).
 .PHONY: complex-query-check/go
-complex-query-check/go: lease-tool
-	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeComplexQuery(Mysql|Postgres|Sqlite)$$' -count=1
+complex-query-check/go: lease-tool flowmark-check
+	$(WITH_TEST_ENV) $(GO_TEST) ./packages/go/orm -run '^TestRecipeComplexQuery(Mysql|Postgres|Sqlite|Markdown)$$' -count=1
 
 # complex-query-check/rust runs the recipe contracts/fixtures/complex_query/complex_query.json on the three
 # databases (docs/spec/feature-coverage.md FCV-3 and FCV-4).
 .PHONY: complex-query-check/rust
-complex-query-check/rust: lease-tool
-	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) complex-query-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test complex_query_mysql --test complex_query_postgres --test complex_query_sqlite
+complex-query-check/rust: lease-tool flowmark-check
+	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) complex-query-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test complex_query_mysql --test complex_query_postgres --test complex_query_sqlite --test complex_query_markdown
 
 # complex-query-check/typescript runs the recipe contracts/fixtures/complex_query/complex_query.json on the three
 # databases (docs/spec/feature-coverage.md FCV-3 and FCV-4).
 .PHONY: complex-query-check/typescript
-complex-query-check/typescript: typescript-current
+complex-query-check/typescript: typescript-current flowmark-check
 	$(READ_TYPESCRIPT)
-	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/complex_query-mysql.test.mjs packages/ts/tests/complex_query-postgres.test.mjs packages/ts/tests/complex_query-sqlite.test.mjs
+	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/complex_query-mysql.test.mjs packages/ts/tests/complex_query-postgres.test.mjs packages/ts/tests/complex_query-sqlite.test.mjs packages/ts/tests/complex_query-markdown.test.mjs
 
 # complex-query-check/python runs the recipe contracts/fixtures/complex_query/complex_query.json on the three
 # databases (docs/spec/feature-coverage.md FCV-3 and FCV-4).
 .PHONY: complex-query-check/python
-complex-query-check/python: lease-tool python-venv-check
+complex-query-check/python: lease-tool python-venv-check flowmark-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_complex_query_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_complex_query_postgres
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_complex_query_sqlite
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_complex_query_markdown
 
 # complex-query-check/php runs the recipe contracts/fixtures/complex_query/complex_query.json on the three
 # databases (docs/spec/feature-coverage.md FCV-3 and FCV-4).
 .PHONY: complex-query-check/php
-complex-query-check/php: lease-tool php-vendor-check php-models
+complex-query-check/php: lease-tool php-vendor-check php-models flowmark-check
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ComplexQueryMysqlRecipeTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ComplexQueryPostgresRecipeTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ComplexQuerySqliteRecipeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ComplexQueryMarkdownRecipeTest.php
 
 # complex-query-check/php-extension runs the recipe contracts/fixtures/complex_query/complex_query.json on the three
 # databases (docs/spec/feature-coverage.md FCV-3 and FCV-4).
 .PHONY: complex-query-check/php-extension
-complex-query-check/php-extension: lease-tool php-vendor-check build-php-ext
+complex-query-check/php-extension: lease-tool php-vendor-check build-php-ext flowmark-check
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ComplexQueryMysqlRecipeTestExtensionTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ComplexQueryPostgresRecipeTestExtensionTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ComplexQuerySqliteRecipeTestExtensionTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ComplexQueryMarkdownRecipeTestExtensionTest.php
 
 # complex-query-check runs the recipe of the complex product search in all six runtimes (docs/spec/complex-query.md CPX-1 and CPX-2).
 .PHONY: complex-query-check
@@ -2745,28 +2853,9 @@ bind-check/python: python-venv-check
 bind-check/php: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter 'testBindVectors' packages/php/tests/MarkdownTest.php
 
-# ir-answers-check runs the read answer recipe, tests/ir/answers.json, in each runtime (FCV-3, FCV-4): each part runs the entry of
-# its runtime that calls the recipe helper, without a database; the ir.answer steps run each chain on a listener that answers with
-# the case's answer (docs/spec/protocol.md section 5, Read). No flowmark server runs.
-.PHONY: ir-answers-check ir-answers-check/go ir-answers-check/rust ir-answers-check/typescript ir-answers-check/python ir-answers-check/php ir-answers-check/php-extension
-ir-answers-check: ir-answers-check/go ir-answers-check/rust ir-answers-check/typescript ir-answers-check/python ir-answers-check/php ir-answers-check/php-extension
-ir-answers-check/go:
-	$(GO_TEST) ./packages/go/markdownmodel -run '^TestRecipeIRAnswersNone$$' -count=1
-ir-answers-check/rust: lease-tool
-	cd packages/rust && $(CARGO_TEST) ir-answers-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test ir_answers
-ir-answers-check/typescript: typescript-current
-	$(READ_TYPESCRIPT)
-	$(NODE) --conditions=orm-test packages/ts/tests/ir_answers.mjs
-ir-answers-check/python: python-venv-check
-	$(PYTHON_VENV)/bin/python -m packages.python.tests.ir_answers
-ir-answers-check/php: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/IrAnswersTest.php
-ir-answers-check/php-extension: php-vendor-check build-php-ext
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/IrAnswersTestExtensionTest.php
-
 # collection-recipe-check runs the collection recipe, tests/collection/collection.json, in each runtime (FCV-3, FCV-4): each part runs the entry of
-# its runtime that calls the recipe helper, without a database; the ir.answer steps run each chain on a listener that answers with
-# the case's answer (docs/spec/protocol.md section 5, Read). No flowmark server runs.
+# its runtime that calls the recipe helper, without a database: its collection.key steps take each key through the public key of a
+# collection (INT-11, INT-63, PRT-35).
 .PHONY: collection-recipe-check collection-recipe-check/go collection-recipe-check/rust collection-recipe-check/typescript collection-recipe-check/python collection-recipe-check/php collection-recipe-check/php-extension
 collection-recipe-check: collection-recipe-check/go collection-recipe-check/rust collection-recipe-check/typescript collection-recipe-check/python collection-recipe-check/php collection-recipe-check/php-extension
 collection-recipe-check/go:
@@ -3110,7 +3199,7 @@ mermaid-error-ts-check: typescript-current
 	$(READ_TYPESCRIPT)
 	$(NODE) --test packages/ts/tests/dbspec-mermaid-errors.mjs
 mermaid-error-python-check: python-venv-check
-	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.mermaid_error_boundary
+	$(PYTHON_TESTS) -- packages.python.tests.mermaid_error_boundary
 mermaid-error-php-check: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecMermaidErrorBoundaryTest.php
 mermaid-error-php-extension-check: php-vendor-check php-models orm-install-php-extension-tools
@@ -3161,7 +3250,7 @@ request-hook-relation-scope-check: RUN_DIR = $(abspath .runtime/run)/request-hoo
 request-hook-relation-scope-check: php-vendor-check php-models python-venv-check lease-tool typescript-read
 	$(NODE) tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestRecipeRequestHookSqlite$$/^relation_scope$$' -count=1
 	$(NODE) --test --test-name-pattern='relation_scope' packages/ts/tests/request_hook-sqlite.test.mjs
-	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_request_hook_sqlite
+	$(PYTHON_TESTS) -- packages.python.tests.test_request_hook_sqlite
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter relation_scope packages/php/tests/RequestHookSqliteRecipeTest.php
 	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
 	$(PHP_EXTENSION_TESTS) --filter relation_scope packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php; status=$$?; rm -rf $(RUN_DIR); exit $$status
@@ -3276,7 +3365,7 @@ transaction-failure-typescript-check: typescript-read
 # The assignment expansion regression is a pure planner unit, separate from the Go database suite.
 
 transaction-failure-python-check: python-venv-check
-	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- \
+	$(PYTHON_TESTS) -- \
 		$(if $(TRANSACTION_FAILURE_PYTHON_TEST_FILTER),$(TRANSACTION_FAILURE_PYTHON_TEST_FILTER),packages.python.tests.test_rollback_fault.RollbackFaultTest.test_a_failed_rollback_reports_the_callback_error_and_the_rollback_error packages.python.tests.test_rollback_fault.RollbackFaultTest.test_a_failed_savepoint_rollback_and_transaction_rollback_report_both packages.python.tests.test_rollback_fault.RollbackFaultTest.test_lost_rollback_connection_is_closed_before_the_next_transaction packages.python.tests.test_rollback_fault.HandleDisposalTest.test_close_during_transaction_rolls_back_and_closes_connection packages.python.tests.test_rollback_fault.RollbackFaultTest.test_a_failed_begin_closes_its_connection packages.python.tests.test_rollback_fault.RollbackFaultTest.test_a_failed_start_step_after_begin_rolls_back_and_gives_the_connection_back)
 
 # Runs the Rust transaction and savepoint failure cases that use only local SQLite and its authorizer.

@@ -92,3 +92,27 @@ pub(super) fn sqlite<'q>(mut q: Query<'q, Sqlite, SqliteArguments>, values: &[P]
     }
     Ok(q)
 }
+
+/// The wire values of a statement on a markdown connection, the values that [`sqlite`] binds (docs/spec/protocol.md PRT-67): a
+/// boolean as 1 or 0, the dbspec text of a temporal value as is.
+pub(super) fn markdown(values: &[P]) -> Result<Vec<serde_json::Value>, sqlx::Error> {
+    use polyspec_orm::markdown::{wire_bytes, wire_float};
+    use serde_json::Value;
+    values
+        .iter()
+        .map(|value| {
+            Ok(match value {
+                P::S(v) | P::Date(v) | P::Time(v) | P::DateTime(v) => Value::String(v.clone()),
+                P::I(v) => Value::from(*v),
+                P::Float64(v) => wire_float(f64::from_bits(*v))?,
+                P::Boolean(v) => Value::from(i64::from(*v)),
+                P::Binary(v) => wire_bytes(v),
+                P::Unsigned(_) | P::Float32(_) | P::Decimal(_) => return Err(params::invalid()),
+                P::Null(kind) => match kind {
+                    ParamType::Unsigned | ParamType::Float32 | ParamType::Decimal => return Err(params::invalid()),
+                    _ => Value::Null,
+                },
+            })
+        })
+        .collect()
+}

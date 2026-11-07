@@ -219,7 +219,8 @@
       "needs": [
         "php",
         "rust",
-        "databases"
+        "databases",
+        "flowmark"
       ]
     },
     "owner-validate": {
@@ -1031,14 +1032,15 @@
         "packages/rust/orm/src/markdown.rs",
         "packages/rust/orm/tests/unit/coverage_planner.rs",
         "packages/rust/tests/tests/planner_compile_none.rs",
-        "packages/rust/orm/tests/unit/markdown_column_function.rs",
         "packages/ts/src/engine/params.ts",
         "packages/ts/src/engine/planner.ts",
         "packages/ts/src/markdown.ts",
         "packages/ts/tests/column_function_metadata.mjs",
         "packages/php/src/Validator.php",
         "packages/php/src/Planner.php",
-        "packages/php/src/Markdown.php",
+        "packages/php/src/MarkdownSession.php",
+        "packages/php/src/Internal/MarkdownPdoAdapter.php",
+        "packages/php/src/Internal/MarkdownStatementAdapter.php",
         "packages/php/tests/ColumnFunctionMetadataAssertions.php",
         "packages/php/tests/CoveragePlannerTest.php",
         "packages/php-ext/tests/ColumnFunctionMetadataTest.php",
@@ -1100,7 +1102,6 @@
         "packages/rust/orm/src/markdown.rs",
         "packages/rust/orm/tests/unit/coverage_planner.rs",
         "packages/rust/tests/tests/planner_compile_none.rs",
-        "packages/rust/orm/tests/unit/markdown_scalar_subquery.rs",
         "packages/ts/src/engine/planner.ts",
         "packages/ts/src/markdown.ts",
         "packages/ts/tests/scalar_subquery_type.mjs",
@@ -1140,8 +1141,7 @@
         "packages/rust/orm/src/engine/validate.rs",
         "packages/rust/orm/src/ir.rs",
         "packages/rust/orm/src/request.rs",
-        "packages/rust/orm/src/testing/ir_request.rs",
-        "packages/rust/orm/tests/unit/markdown_scalar_subquery.rs"
+        "packages/rust/orm/src/testing/ir_request.rs"
       ]
     },
     "php-plan-cache-memory-check": {
@@ -1206,7 +1206,6 @@
         "packages/rust/orm/tests/unit/coverage_planner.rs",
         "packages/rust/tests/tests/planner_compile_none.rs",
         "packages/rust/orm/src/testing/ir_request.rs",
-        "packages/rust/orm/tests/unit/markdown_scalar_subquery.rs",
         "packages/ts/src/engine/*.ts",
         "packages/ts/src/ir.ts",
         "packages/ts/tests/plan-cache-in.mjs",
@@ -1352,7 +1351,8 @@
       "scope": "owner",
       "needs": [
         "go",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/schema_install/**",
@@ -1368,7 +1368,8 @@
       "scope": "owner",
       "needs": [
         "node-modules",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/schema_install/**",
@@ -1377,6 +1378,7 @@
         "packages/ts/tests/schema_install-mysql.test.mjs",
         "packages/ts/tests/schema_install-postgres.test.mjs",
         "packages/ts/tests/schema_install-sqlite.test.mjs",
+        "packages/ts/tests/schema_install-markdown.test.mjs",
         "packages/ts/tests/recipe.mjs",
         "packages/ts/src/catalog.ts"
       ]
@@ -1385,7 +1387,8 @@
       "scope": "owner",
       "needs": [
         "python",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/schema_install/**",
@@ -1394,6 +1397,7 @@
         "packages/python/tests/test_schema_install_mysql.py",
         "packages/python/tests/test_schema_install_postgres.py",
         "packages/python/tests/test_schema_install_sqlite.py",
+        "packages/python/tests/test_schema_install_markdown.py",
         "packages/python/tests/recipe.py",
         "packages/python/src/polyspec/orm/database.py"
       ]
@@ -1401,6 +1405,7 @@
     "schema-install-check/php": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "php",
         "composer",
         "databases"
@@ -1420,6 +1425,7 @@
     "schema-install-check/php-extension": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "php",
         "composer",
         "php-extension-tools",
@@ -1441,7 +1447,8 @@
       "scope": "owner",
       "needs": [
         "rust",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/schema_install/**",
@@ -1450,6 +1457,7 @@
         "packages/rust/tests/tests/schema_install_mysql.rs",
         "packages/rust/tests/tests/schema_install_postgres.rs",
         "packages/rust/tests/tests/schema_install_sqlite.rs",
+        "packages/rust/tests/tests/schema_install_markdown.rs",
         "packages/rust/tests/src/recipe.rs",
         "packages/rust/tests/Cargo.toml"
       ]
@@ -1458,7 +1466,8 @@
       "scope": "owner",
       "needs": [
         "go",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/catalog_connection/**",
@@ -1473,14 +1482,17 @@
       "scope": "owner",
       "needs": [
         "rust",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/catalog_connection/**",
         "packages/rust/tests/tests/catalog_connection_sqlite_only.rs",
+        "packages/rust/tests/tests/catalog_connection_sqlite_only_markdown.rs",
         "packages/rust/tests/tests/catalog_connection_mysql.rs",
         "packages/rust/tests/tests/catalog_connection_postgres.rs",
         "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+        "packages/rust/tests/tests/catalog_connection_markdown.rs",
         "packages/rust/tests/src/recipe.rs",
         "packages/rust/tests/Cargo.toml",
         "packages/rust/build/src/catalog/**",
@@ -1492,13 +1504,15 @@
       "scope": "owner",
       "needs": [
         "rust",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/statement_events/**",
         "packages/rust/tests/tests/statement_events_mysql.rs",
         "packages/rust/tests/tests/statement_events_postgres.rs",
         "packages/rust/tests/tests/statement_events_sqlite.rs",
+        "packages/rust/tests/tests/statement_events_markdown.rs",
         "packages/rust/tests/src/recipe.rs",
         "packages/rust/tests/Cargo.toml",
         "packages/rust/build/src/catalog/**",
@@ -1510,7 +1524,8 @@
       "scope": "owner",
       "needs": [
         "go",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/statement_events/**",
@@ -1524,13 +1539,15 @@
       "scope": "owner",
       "needs": [
         "node-modules",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/statement_events/**",
         "packages/ts/tests/statement_events-mysql.test.mjs",
         "packages/ts/tests/statement_events-postgres.test.mjs",
         "packages/ts/tests/statement_events-sqlite.test.mjs",
+        "packages/ts/tests/statement_events-markdown.test.mjs",
         "packages/ts/tests/recipe.mjs"
       ]
     },
@@ -1538,19 +1555,22 @@
       "scope": "owner",
       "needs": [
         "python",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/statement_events/**",
         "packages/python/tests/test_statement_events_mysql.py",
         "packages/python/tests/test_statement_events_postgres.py",
         "packages/python/tests/test_statement_events_sqlite.py",
+        "packages/python/tests/test_statement_events_markdown.py",
         "packages/python/tests/recipe.py"
       ]
     },
     "statement-events-check/php": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "php",
         "composer",
         "databases"
@@ -1566,6 +1586,7 @@
     "statement-events-check/php-extension": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "php",
         "composer",
         "php-extension-tools",
@@ -1584,14 +1605,17 @@
       "scope": "owner",
       "needs": [
         "node-modules",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/catalog_connection/**",
         "packages/ts/tests/catalog_connection-sqlite-only.test.mjs",
+        "packages/ts/tests/catalog_connection-sqlite-only-markdown.test.mjs",
         "packages/ts/tests/catalog_connection-mysql.test.mjs",
         "packages/ts/tests/catalog_connection-postgres.test.mjs",
         "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+        "packages/ts/tests/catalog_connection-markdown.test.mjs",
         "packages/ts/tests/recipe.mjs",
         "packages/ts/src/catalog.ts"
       ]
@@ -1600,14 +1624,17 @@
       "scope": "owner",
       "needs": [
         "python",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/catalog_connection/**",
         "packages/python/tests/test_catalog_connection_sqlite_only.py",
+        "packages/python/tests/test_catalog_connection_sqlite_only_markdown.py",
         "packages/python/tests/test_catalog_connection_mysql.py",
         "packages/python/tests/test_catalog_connection_postgres.py",
         "packages/python/tests/test_catalog_connection_sqlite.py",
+        "packages/python/tests/test_catalog_connection_markdown.py",
         "packages/python/tests/recipe.py",
         "packages/python/src/polyspec/orm/catalog.py"
       ]
@@ -1615,6 +1642,7 @@
     "catalog-connection-check/php": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "php",
         "composer",
         "databases"
@@ -1632,6 +1660,7 @@
     "catalog-connection-check/php-extension": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "php",
         "composer",
         "php-extension-tools",
@@ -1652,7 +1681,8 @@
       "scope": "owner",
       "needs": [
         "go",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/dsn_connection/**",
@@ -1666,13 +1696,15 @@
       "scope": "owner",
       "needs": [
         "rust",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/dsn_connection/**",
         "packages/rust/tests/tests/dsn_connection_mysql.rs",
         "packages/rust/tests/tests/dsn_connection_postgres.rs",
         "packages/rust/tests/tests/dsn_connection_sqlite.rs",
+        "packages/rust/tests/tests/dsn_connection_markdown.rs",
         "packages/rust/tests/src/recipe.rs",
         "packages/rust/tests/Cargo.toml"
       ]
@@ -1681,13 +1713,15 @@
       "scope": "owner",
       "needs": [
         "node-modules",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/dsn_connection/**",
         "packages/ts/tests/dsn_connection-mysql.test.mjs",
         "packages/ts/tests/dsn_connection-postgres.test.mjs",
         "packages/ts/tests/dsn_connection-sqlite.test.mjs",
+        "packages/ts/tests/dsn_connection-markdown.test.mjs",
         "packages/ts/tests/recipe.mjs"
       ]
     },
@@ -1695,19 +1729,22 @@
       "scope": "owner",
       "needs": [
         "python",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/dsn_connection/**",
         "packages/python/tests/test_dsn_connection_mysql.py",
         "packages/python/tests/test_dsn_connection_postgres.py",
         "packages/python/tests/test_dsn_connection_sqlite.py",
+        "packages/python/tests/test_dsn_connection_markdown.py",
         "packages/python/tests/recipe.py"
       ]
     },
     "dsn-connection-check/php": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "php",
         "composer",
         "databases"
@@ -1724,6 +1761,7 @@
     "dsn-connection-check/php-extension": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "php",
         "composer",
         "php-extension-tools",
@@ -1736,6 +1774,165 @@
         "packages/php/tests/DsnConnectionRecipeTest.php",
         "packages/php/tests/Recipe.php",
         "packages/php/tests/RecipeCases.php"
+      ]
+    },
+    "markdown-session-check/go": {
+      "scope": "owner",
+      "needs": [
+        "go"
+      ],
+      "inputs": [
+        "tests/markdown/session.json",
+        "tests/bind/dbspec-set.json",
+        "tests/bind/slots.dbs",
+        "packages/go/bindmessages/markdown_session_test.go",
+        "packages/go/internal/recipe/recipe.go",
+        "packages/go/orm/markdown.go",
+        "packages/go/orm/markdown_sql.go"
+      ]
+    },
+    "markdown-session-check/rust": {
+      "scope": "owner",
+      "needs": [
+        "rust"
+      ],
+      "inputs": [
+        "tests/markdown/session.json",
+        "tests/bind/dbspec-set.json",
+        "tests/bind/slots.dbs",
+        "packages/rust/tests/tests/markdown_session.rs",
+        "packages/rust/tests/src/recipe.rs",
+        "packages/rust/tests/Cargo.toml",
+        "packages/rust/orm/src/markdown.rs"
+      ]
+    },
+    "markdown-session-check/typescript": {
+      "scope": "owner",
+      "needs": [
+        "node-modules"
+      ],
+      "inputs": [
+        "tests/markdown/session.json",
+        "tests/bind/dbspec-set.json",
+        "tests/bind/slots.dbs",
+        "packages/ts/tests/markdown_session.mjs",
+        "packages/ts/tests/recipe.mjs",
+        "packages/ts/src/markdown.ts"
+      ]
+    },
+    "markdown-session-check/python": {
+      "scope": "owner",
+      "needs": [
+        "python"
+      ],
+      "inputs": [
+        "tests/markdown/session.json",
+        "tests/bind/dbspec-set.json",
+        "tests/bind/slots.dbs",
+        "packages/python/tests/test_markdown_session_none.py",
+        "packages/python/tests/recipe.py",
+        "packages/python/src/polyspec/orm/markdown.py"
+      ]
+    },
+    "markdown-session-check/php": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer"
+      ],
+      "inputs": [
+        "tests/markdown/session.json",
+        "tests/bind/dbspec-set.json",
+        "tests/bind/slots.dbs",
+        "packages/php/tests/MarkdownSessionRecipeTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php/tests/RecipeCases.php",
+        "packages/php/tests/markdown_test_server.php",
+        "packages/php/src/Internal/MarkdownPdoAdapter.php",
+        "packages/php/src/Internal/MarkdownStatementAdapter.php"
+      ]
+    },
+    "markdown-session-check/php-extension": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "tests/markdown/session.json",
+        "tests/bind/dbspec-set.json",
+        "tests/bind/slots.dbs",
+        "packages/php-ext/tests/MarkdownSessionRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/bootstrap.php",
+        "packages/php/tests/MarkdownSessionRecipeTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php/tests/RecipeCases.php",
+        "packages/php-ext/src/markdown_native.c"
+      ]
+    },
+    "connection-pool-check/go": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "databases",
+        "flowmark"
+      ],
+      "inputs": [
+        "contracts/fixtures/connection_pool/**",
+        "packages/go/orm/recipe_connection_pool_test.go",
+        "packages/go/internal/recipe/recipe.go",
+        "packages/go/internal/recipe/database.go",
+        "packages/go/orm/dsn.go"
+      ]
+    },
+    "connection-pool-check/rust": {
+      "scope": "owner",
+      "needs": [
+        "rust",
+        "databases",
+        "flowmark"
+      ],
+      "inputs": [
+        "contracts/fixtures/connection_pool/**",
+        "packages/rust/tests/tests/connection_pool_mysql.rs",
+        "packages/rust/tests/tests/connection_pool_postgres.rs",
+        "packages/rust/tests/tests/connection_pool_sqlite.rs",
+        "packages/rust/tests/tests/connection_pool_markdown.rs",
+        "packages/rust/tests/src/recipe.rs",
+        "packages/rust/tests/Cargo.toml"
+      ]
+    },
+    "connection-pool-check/typescript": {
+      "scope": "owner",
+      "needs": [
+        "node-modules",
+        "databases",
+        "flowmark"
+      ],
+      "inputs": [
+        "contracts/fixtures/connection_pool/**",
+        "packages/ts/tests/connection_pool-mysql.test.mjs",
+        "packages/ts/tests/connection_pool-postgres.test.mjs",
+        "packages/ts/tests/connection_pool-sqlite.test.mjs",
+        "packages/ts/tests/connection_pool-markdown.test.mjs",
+        "packages/ts/tests/recipe.mjs"
+      ]
+    },
+    "connection-pool-check/python": {
+      "scope": "owner",
+      "needs": [
+        "python",
+        "databases",
+        "flowmark"
+      ],
+      "inputs": [
+        "contracts/fixtures/connection_pool/**",
+        "packages/python/tests/test_connection_pool_mysql.py",
+        "packages/python/tests/test_connection_pool_postgres.py",
+        "packages/python/tests/test_connection_pool_sqlite.py",
+        "packages/python/tests/test_connection_pool_markdown.py",
+        "packages/python/tests/recipe.py"
       ]
     },
     "php-codec-causes-check": {
@@ -1816,38 +2013,7 @@
         "packages/php/tests/MarkdownTest.php",
         "packages/ts/tests/markdown.mjs",
         "packages/python/tests/test_markdown.py",
-        "packages/rust/orm/tests/unit/bind_vectors.rs",
-        "packages/rust/orm/tests/unit/bind_message.rs"
-      ]
-    },
-    "ir-answers-check": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "rust",
-        "php",
-        "composer",
-        "python",
-        "node-modules",
-        "php-extension-tools"
-      ],
-      "inputs": [
-        "tests/ir/answers.json",
-        "scripts/features/schema/recipe.schema.json",
-        "packages/go/markdownmodel/ir_answers_test.go",
-        "packages/go/internal/recipe/recipe.go",
-        "packages/php/tests/IrAnswersTest.php",
-        "packages/php/tests/Recipe.php",
-        "packages/php/tests/RecipeCases.php",
-        "packages/php-ext/tests/IrAnswersTestExtensionTest.php",
-        "packages/python/tests/ir_answers.py",
-        "packages/python/tests/recipe.py",
-        "packages/python/tests/chain_answer.py",
-        "packages/rust/tests/tests/ir_answers.rs",
-        "packages/rust/tests/src/recipe.rs",
-        "packages/ts/tests/ir_answers.mjs",
-        "packages/ts/tests/recipe.mjs",
-        "packages/ts/tests/markdown_cases.mjs"
+        "packages/rust/orm/tests/unit/bind_vectors.rs"
       ]
     },
     "collection-recipe-check": {
@@ -1872,7 +2038,6 @@
         "packages/php-ext/tests/CollectionRecipeTestExtensionTest.php",
         "packages/python/tests/test_collection_none.py",
         "packages/python/tests/recipe.py",
-        "packages/python/tests/chain_answer.py",
         "packages/rust/tests/tests/collection_none.rs",
         "packages/rust/tests/src/recipe.rs",
         "packages/ts/tests/collection-none.test.mjs",
@@ -2053,12 +2218,14 @@
       "needs": [
         "go",
         "node-modules",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "packages/ts/tests/dbspec_introspect-mysql.test.mjs",
         "packages/ts/tests/dbspec_introspect-postgres.test.mjs",
         "packages/ts/tests/dbspec_introspect-sqlite.test.mjs",
+        "packages/ts/tests/dbspec_introspect-markdown.test.mjs",
         "packages/ts/tests/recipe_introspect.mjs",
         "packages/ts/src/dbspec/introspect.ts",
         "packages/ts/src/dbspec/introspect_sqlite.ts",
@@ -2070,6 +2237,7 @@
     "dbspec-introspect-php-check": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "go",
         "php",
         "composer",
@@ -2091,6 +2259,7 @@
     "dbspec-introspect-php-extension-check": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "go",
         "php",
         "composer",
@@ -2129,12 +2298,14 @@
       "needs": [
         "go",
         "rust",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "packages/rust/tests/tests/dbspec_introspect_mysql.rs",
         "packages/rust/tests/tests/dbspec_introspect_postgres.rs",
         "packages/rust/tests/tests/dbspec_introspect_sqlite.rs",
+        "packages/rust/tests/tests/dbspec_introspect_markdown.rs",
         "packages/rust/orm/src/dbspec.rs",
         "contracts/fixtures/dbspec_introspect/**",
         "tests/dbspec/introspect.json",
@@ -2145,12 +2316,14 @@
       "scope": "owner",
       "needs": [
         "python",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "packages/python/tests/test_dbspec_introspect_mysql.py",
         "packages/python/tests/test_dbspec_introspect_postgres.py",
         "packages/python/tests/test_dbspec_introspect_sqlite.py",
+        "packages/python/tests/test_dbspec_introspect_markdown.py",
         "packages/python/tests/recipe_introspect.py",
         "packages/python/tests/dbspec_introspect_runner.py",
         "packages/python/tests/test_dbspec_introspect_messages_none.py",
@@ -2208,9 +2381,7 @@
       "inputs": [
         "Makefile",
         "packages/ts/tests/internal-column-error.mjs",
-        "packages/ts/tests/internal-column-error.test.mjs",
-        "packages/ts/tests/markdown-read-db.mjs",
-        "packages/ts/tests/markdown-read-db.test.mjs"
+        "packages/ts/tests/internal-column-error.test.mjs"
       ]
     },
     "typescript-dbspec-plan-fixture-check": {
@@ -2342,6 +2513,7 @@
     "dbspec-introspect-compare-check": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "mysql-privilege-server",
         "go",
         "rust",
@@ -2531,6 +2703,7 @@
     "dbspec-php-check/render": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "php",
         "composer",
         "databases"
@@ -2544,6 +2717,7 @@
     "dbspec-php-extension-check": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "go",
         "php",
         "composer",
@@ -2910,6 +3084,7 @@
     "dbspec-apply-pairs-check": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "go",
         "rust",
         "php",
@@ -3070,14 +3245,16 @@
         "node-modules",
         "php-extension-tools",
         "python",
-        "mysql-privilege-server"
+        "mysql-privilege-server",
+        "flowmark"
       ]
     },
     "python-check": {
       "scope": "owner",
       "needs": [
         "python",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "mise.toml",
@@ -3284,7 +3461,6 @@
         "Makefile",
         "packages/rust/orm/src/codec.rs",
         "packages/rust/orm/src/driver.rs",
-        "packages/rust/orm/tests/unit/bind_message.rs",
         "packages/rust/orm/tests/unit/driver_cause.rs",
         "packages/rust/build/src/catalog/temporal.rs",
         "packages/rust/build/src/catalog/row_snapshot.rs",
@@ -3927,7 +4103,7 @@
       "inputs": [
         "tests/markdown/cases.json",
         "tests/markdown/corpus/**",
-        "tests/markdown/refused/**",
+        "tests/markdown/catalogs/**",
         "tests/markdown/flowmark.version",
         "packages/go/markdownmodel/conformance_test.go"
       ]
@@ -3943,7 +4119,7 @@
       "inputs": [
         "tests/markdown/cases.json",
         "tests/markdown/corpus/**",
-        "tests/markdown/refused/**",
+        "tests/markdown/catalogs/**",
         "tests/markdown/flowmark.version",
         "packages/php/tests/MarkdownConformanceTest.php",
         "packages/php/tests/OrmGenTestSupport.php"
@@ -3961,7 +4137,7 @@
       "inputs": [
         "tests/markdown/cases.json",
         "tests/markdown/corpus/**",
-        "tests/markdown/refused/**",
+        "tests/markdown/catalogs/**",
         "tests/markdown/flowmark.version",
         "packages/php-ext/tests/MarkdownConformanceNativeTest.php"
       ]
@@ -3976,7 +4152,7 @@
       "inputs": [
         "tests/markdown/cases.json",
         "tests/markdown/corpus/**",
-        "tests/markdown/refused/**",
+        "tests/markdown/catalogs/**",
         "tests/markdown/flowmark.version",
         "packages/python/tests/markdown_conformance.py",
         "packages/python/tests/testcase.py",
@@ -3993,7 +4169,7 @@
       "inputs": [
         "tests/markdown/cases.json",
         "tests/markdown/corpus/**",
-        "tests/markdown/refused/**",
+        "tests/markdown/catalogs/**",
         "tests/markdown/flowmark.version",
         "packages/rust/tests/tests/markdown_conformance.rs"
       ]
@@ -4007,7 +4183,7 @@
       "inputs": [
         "tests/markdown/cases.json",
         "tests/markdown/corpus/**",
-        "tests/markdown/refused/**",
+        "tests/markdown/catalogs/**",
         "tests/markdown/flowmark.version",
         "packages/ts/tests/markdown_conformance.mjs",
         "packages/ts/tests/markdown_cases.mjs"
@@ -4069,7 +4245,8 @@
       "scope": "owner",
       "needs": [
         "go",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/model_queries/**",
@@ -4085,7 +4262,8 @@
       "scope": "owner",
       "needs": [
         "rust",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/model_queries/**",
@@ -4094,18 +4272,21 @@
         "packages/rust/tests/tests/model_queries_mysql.rs",
         "packages/rust/tests/tests/model_queries_postgres.rs",
         "packages/rust/tests/tests/model_queries_sqlite.rs",
+        "packages/rust/tests/tests/model_queries_markdown.rs",
         "packages/rust/tests/src/recipe.rs",
         "packages/rust/tests/Cargo.toml",
         "packages/rust/tests/tests/model_queries_chain_mysql.rs",
         "packages/rust/tests/tests/model_queries_chain_postgres.rs",
-        "packages/rust/tests/tests/model_queries_chain_sqlite.rs"
+        "packages/rust/tests/tests/model_queries_chain_sqlite.rs",
+        "packages/rust/tests/tests/model_queries_chain_markdown.rs"
       ]
     },
     "model-queries-check/typescript": {
       "scope": "owner",
       "needs": [
         "node-modules",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/model_queries/**",
@@ -4114,17 +4295,20 @@
         "packages/ts/tests/model_queries-mysql.test.mjs",
         "packages/ts/tests/model_queries-postgres.test.mjs",
         "packages/ts/tests/model_queries-sqlite.test.mjs",
+        "packages/ts/tests/model_queries-markdown.test.mjs",
         "packages/ts/tests/recipe.mjs",
         "packages/ts/tests/model_queries_chain-mysql.test.mjs",
         "packages/ts/tests/model_queries_chain-postgres.test.mjs",
-        "packages/ts/tests/model_queries_chain-sqlite.test.mjs"
+        "packages/ts/tests/model_queries_chain-sqlite.test.mjs",
+        "packages/ts/tests/model_queries_chain-markdown.test.mjs"
       ]
     },
     "model-queries-check/python": {
       "scope": "owner",
       "needs": [
         "python",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/model_queries/**",
@@ -4133,15 +4317,18 @@
         "packages/python/tests/test_model_queries_mysql.py",
         "packages/python/tests/test_model_queries_postgres.py",
         "packages/python/tests/test_model_queries_sqlite.py",
+        "packages/python/tests/test_model_queries_markdown.py",
         "packages/python/tests/recipe.py",
         "packages/python/tests/test_model_queries_chain_mysql.py",
         "packages/python/tests/test_model_queries_chain_postgres.py",
-        "packages/python/tests/test_model_queries_chain_sqlite.py"
+        "packages/python/tests/test_model_queries_chain_sqlite.py",
+        "packages/python/tests/test_model_queries_chain_markdown.py"
       ]
     },
     "model-queries-check/php": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "php",
         "composer",
         "databases"
@@ -4160,6 +4347,7 @@
     "model-queries-check/php-extension": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "php",
         "composer",
         "php-extension-tools",
@@ -4182,7 +4370,8 @@
       "scope": "owner",
       "needs": [
         "go",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/constraints_and_relations/**",
@@ -4197,7 +4386,8 @@
       "scope": "owner",
       "needs": [
         "rust",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/constraints_and_relations/**",
@@ -4205,9 +4395,11 @@
         "packages/rust/tests/tests/constraints_and_relations_mysql.rs",
         "packages/rust/tests/tests/constraints_and_relations_postgres.rs",
         "packages/rust/tests/tests/constraints_and_relations_sqlite.rs",
+        "packages/rust/tests/tests/constraints_and_relations_markdown.rs",
         "packages/rust/tests/tests/immutable_write_mysql.rs",
         "packages/rust/tests/tests/immutable_write_postgres.rs",
         "packages/rust/tests/tests/immutable_write_sqlite.rs",
+        "packages/rust/tests/tests/immutable_write_markdown.rs",
         "packages/rust/tests/src/recipe.rs",
         "packages/rust/tests/Cargo.toml"
       ]
@@ -4216,7 +4408,8 @@
       "scope": "owner",
       "needs": [
         "node-modules",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/constraints_and_relations/**",
@@ -4224,9 +4417,11 @@
         "packages/ts/tests/constraints_and_relations-mysql.test.mjs",
         "packages/ts/tests/constraints_and_relations-postgres.test.mjs",
         "packages/ts/tests/constraints_and_relations-sqlite.test.mjs",
+        "packages/ts/tests/constraints_and_relations-markdown.test.mjs",
         "packages/ts/tests/immutable_write-mysql.test.mjs",
         "packages/ts/tests/immutable_write-postgres.test.mjs",
         "packages/ts/tests/immutable_write-sqlite.test.mjs",
+        "packages/ts/tests/immutable_write-markdown.test.mjs",
         "packages/ts/tests/recipe.mjs"
       ]
     },
@@ -4234,7 +4429,8 @@
       "scope": "owner",
       "needs": [
         "python",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/constraints_and_relations/**",
@@ -4242,15 +4438,18 @@
         "packages/python/tests/test_constraints_and_relations_mysql.py",
         "packages/python/tests/test_constraints_and_relations_postgres.py",
         "packages/python/tests/test_constraints_and_relations_sqlite.py",
+        "packages/python/tests/test_constraints_and_relations_markdown.py",
         "packages/python/tests/test_immutable_write_mysql.py",
         "packages/python/tests/test_immutable_write_postgres.py",
         "packages/python/tests/test_immutable_write_sqlite.py",
+        "packages/python/tests/test_immutable_write_markdown.py",
         "packages/python/tests/recipe.py"
       ]
     },
     "constraints-and-relations-check/php": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "php",
         "composer",
         "databases"
@@ -4268,6 +4467,7 @@
     "constraints-and-relations-check/php-extension": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "php",
         "composer",
         "php-extension-tools",
@@ -4288,6 +4488,7 @@
     "php-ext-memory-check": {
       "scope": "suite",
       "needs": [
+        "flowmark",
         "php",
         "composer",
         "php-extension-tools",
@@ -4298,7 +4499,8 @@
       "scope": "owner",
       "needs": [
         "rust",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/request_hook/**",
@@ -4316,7 +4518,8 @@
       "scope": "owner",
       "needs": [
         "rust",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/audit_triggers/**",
@@ -4325,9 +4528,11 @@
         "packages/rust/tests/tests/external_audit_mysql.rs",
         "packages/rust/tests/tests/external_audit_postgres.rs",
         "packages/rust/tests/tests/external_audit_sqlite.rs",
+        "packages/rust/tests/tests/external_audit_markdown.rs",
         "packages/rust/tests/tests/audit_triggers_mysql.rs",
         "packages/rust/tests/tests/audit_triggers_postgres.rs",
         "packages/rust/tests/tests/audit_triggers_sqlite.rs",
+        "packages/rust/tests/tests/audit_triggers_markdown.rs",
         "packages/rust/tests/src/recipe.rs",
         "packages/rust/tests/Cargo.toml",
         "packages/rust/orm/src/db.rs",
@@ -4339,13 +4544,15 @@
       "scope": "owner",
       "needs": [
         "rust",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/parameter_chunking/**",
         "packages/rust/tests/tests/parameter_chunking_mysql.rs",
         "packages/rust/tests/tests/parameter_chunking_postgres.rs",
         "packages/rust/tests/tests/parameter_chunking_sqlite.rs",
+        "packages/rust/tests/tests/parameter_chunking_markdown.rs",
         "packages/rust/tests/src/recipe.rs",
         "packages/rust/tests/Cargo.toml",
         "packages/rust/orm/src/db.rs",
@@ -4357,13 +4564,15 @@
       "scope": "owner",
       "needs": [
         "rust",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/aes_rotation/**",
         "packages/rust/tests/tests/aes_rotation_mysql.rs",
         "packages/rust/tests/tests/aes_rotation_postgres.rs",
         "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+        "packages/rust/tests/tests/aes_rotation_markdown.rs",
         "packages/rust/tests/src/recipe.rs",
         "packages/rust/tests/Cargo.toml",
         "packages/rust/orm/src/db.rs",
@@ -4376,7 +4585,8 @@
       "scope": "owner",
       "needs": [
         "node-modules",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/request_hook/**",
@@ -4392,7 +4602,8 @@
       "scope": "owner",
       "needs": [
         "node-modules",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/audit_triggers/**",
@@ -4401,9 +4612,11 @@
         "packages/ts/tests/external_audit-mysql.test.mjs",
         "packages/ts/tests/external_audit-postgres.test.mjs",
         "packages/ts/tests/external_audit-sqlite.test.mjs",
+        "packages/ts/tests/external_audit-markdown.test.mjs",
         "packages/ts/tests/audit_triggers-mysql.test.mjs",
         "packages/ts/tests/audit_triggers-postgres.test.mjs",
         "packages/ts/tests/audit_triggers-sqlite.test.mjs",
+        "packages/ts/tests/audit_triggers-markdown.test.mjs",
         "packages/ts/tests/recipe.mjs",
         "packages/ts/src/database.ts",
         "packages/ts/src/model.ts"
@@ -4413,13 +4626,15 @@
       "scope": "owner",
       "needs": [
         "node-modules",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/parameter_chunking/**",
         "packages/ts/tests/parameter_chunking-mysql.test.mjs",
         "packages/ts/tests/parameter_chunking-postgres.test.mjs",
         "packages/ts/tests/parameter_chunking-sqlite.test.mjs",
+        "packages/ts/tests/parameter_chunking-markdown.test.mjs",
         "packages/ts/tests/recipe.mjs",
         "packages/ts/src/database.ts",
         "packages/ts/src/model.ts"
@@ -4429,13 +4644,15 @@
       "scope": "owner",
       "needs": [
         "node-modules",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/aes_rotation/**",
         "packages/ts/tests/aes_rotation-mysql.test.mjs",
         "packages/ts/tests/aes_rotation-postgres.test.mjs",
         "packages/ts/tests/aes_rotation-sqlite.test.mjs",
+        "packages/ts/tests/aes_rotation-markdown.test.mjs",
         "packages/ts/tests/recipe.mjs",
         "packages/ts/src/database.ts",
         "packages/ts/src/model.ts",
@@ -4447,7 +4664,8 @@
       "scope": "owner",
       "needs": [
         "python",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/request_hook/**",
@@ -4463,7 +4681,8 @@
       "scope": "owner",
       "needs": [
         "python",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/audit_triggers/**",
@@ -4472,9 +4691,11 @@
         "packages/python/tests/test_external_audit_mysql.py",
         "packages/python/tests/test_external_audit_postgres.py",
         "packages/python/tests/test_external_audit_sqlite.py",
+        "packages/python/tests/test_external_audit_markdown.py",
         "packages/python/tests/test_audit_triggers_mysql.py",
         "packages/python/tests/test_audit_triggers_postgres.py",
         "packages/python/tests/test_audit_triggers_sqlite.py",
+        "packages/python/tests/test_audit_triggers_markdown.py",
         "packages/python/tests/recipe.py",
         "packages/python/src/polyspec/orm/database.py",
         "packages/python/src/polyspec/orm/model.py"
@@ -4484,13 +4705,15 @@
       "scope": "owner",
       "needs": [
         "python",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/parameter_chunking/**",
         "packages/python/tests/test_parameter_chunking_mysql.py",
         "packages/python/tests/test_parameter_chunking_postgres.py",
         "packages/python/tests/test_parameter_chunking_sqlite.py",
+        "packages/python/tests/test_parameter_chunking_markdown.py",
         "packages/python/tests/recipe.py",
         "packages/python/src/polyspec/orm/database.py",
         "packages/python/src/polyspec/orm/model.py"
@@ -4500,13 +4723,15 @@
       "scope": "owner",
       "needs": [
         "python",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/aes_rotation/**",
         "packages/python/tests/test_aes_rotation_mysql.py",
         "packages/python/tests/test_aes_rotation_postgres.py",
         "packages/python/tests/test_aes_rotation_sqlite.py",
+        "packages/python/tests/test_aes_rotation_markdown.py",
         "packages/python/tests/recipe.py",
         "packages/python/src/polyspec/orm/database.py",
         "packages/python/src/polyspec/orm/model.py"
@@ -4517,7 +4742,8 @@
       "needs": [
         "php",
         "composer",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/request_hook/**",
@@ -4535,6 +4761,7 @@
     "audit-triggers-check/php": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "php",
         "composer",
         "databases"
@@ -4558,13 +4785,15 @@
       "needs": [
         "php",
         "composer",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/parameter_chunking/**",
         "packages/php/tests/ParameterChunkingMysqlTest.php",
         "packages/php/tests/ParameterChunkingPostgresTest.php",
         "packages/php/tests/ParameterChunkingSqliteTest.php",
+        "packages/php/tests/ParameterChunkingMarkdownTest.php",
         "packages/php/tests/Recipe.php",
         "packages/php/tests/RecipeCases.php",
         "packages/php/tests/generated_classes.php",
@@ -4578,13 +4807,15 @@
       "needs": [
         "php",
         "composer",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/aes_rotation/**",
         "packages/php/tests/AesRotationMysqlTest.php",
         "packages/php/tests/AesRotationPostgresTest.php",
         "packages/php/tests/AesRotationSqliteTest.php",
+        "packages/php/tests/AesRotationMarkdownTest.php",
         "packages/php/tests/Recipe.php",
         "packages/php/tests/RecipeCases.php",
         "packages/php/tests/generated_classes.php",
@@ -4599,7 +4830,8 @@
         "php",
         "composer",
         "php-extension-tools",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/request_hook/**",
@@ -4620,6 +4852,7 @@
     "audit-triggers-check/php-extension": {
       "scope": "owner",
       "needs": [
+        "flowmark",
         "php",
         "composer",
         "php-extension-tools",
@@ -4646,17 +4879,20 @@
         "php",
         "composer",
         "php-extension-tools",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/parameter_chunking/**",
         "packages/php-ext/tests/ParameterChunkingMysqlRecipeExtensionTest.php",
         "packages/php-ext/tests/ParameterChunkingPostgresRecipeExtensionTest.php",
         "packages/php-ext/tests/ParameterChunkingSqliteRecipeExtensionTest.php",
+        "packages/php-ext/tests/ParameterChunkingMarkdownRecipeExtensionTest.php",
         "packages/php-ext/tests/bootstrap.php",
         "packages/php/tests/ParameterChunkingMysqlTest.php",
         "packages/php/tests/ParameterChunkingPostgresTest.php",
         "packages/php/tests/ParameterChunkingSqliteTest.php",
+        "packages/php/tests/ParameterChunkingMarkdownTest.php",
         "packages/php/tests/Recipe.php",
         "packages/php/tests/RecipeCases.php",
         "packages/php-ext/src/db.c",
@@ -4669,17 +4905,20 @@
         "php",
         "composer",
         "php-extension-tools",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/aes_rotation/**",
         "packages/php-ext/tests/AesRotationMysqlRecipeExtensionTest.php",
         "packages/php-ext/tests/AesRotationPostgresRecipeExtensionTest.php",
         "packages/php-ext/tests/AesRotationSqliteRecipeExtensionTest.php",
+        "packages/php-ext/tests/AesRotationMarkdownRecipeExtensionTest.php",
         "packages/php-ext/tests/bootstrap.php",
         "packages/php/tests/AesRotationMysqlTest.php",
         "packages/php/tests/AesRotationPostgresTest.php",
         "packages/php/tests/AesRotationSqliteTest.php",
+        "packages/php/tests/AesRotationMarkdownTest.php",
         "packages/php/tests/Recipe.php",
         "packages/php/tests/RecipeCases.php",
         "packages/php-ext/src/db.c",
@@ -4690,7 +4929,8 @@
       "scope": "owner",
       "needs": [
         "go",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/request_hook/**",
@@ -4704,7 +4944,8 @@
       "scope": "owner",
       "needs": [
         "go",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/conformance_verification/**",
@@ -4718,13 +4959,15 @@
       "scope": "owner",
       "needs": [
         "rust",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/conformance_verification/**",
         "packages/rust/tests/tests/conformance_verification_mysql.rs",
         "packages/rust/tests/tests/conformance_verification_postgres.rs",
         "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+        "packages/rust/tests/tests/conformance_verification_markdown.rs",
         "packages/rust/tests/src/recipe.rs"
       ]
     },
@@ -4732,13 +4975,15 @@
       "scope": "owner",
       "needs": [
         "node-modules",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/conformance_verification/**",
         "packages/ts/tests/conformance_verification-mysql.test.mjs",
         "packages/ts/tests/conformance_verification-postgres.test.mjs",
         "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+        "packages/ts/tests/conformance_verification-markdown.test.mjs",
         "packages/ts/tests/recipe.mjs",
         "packages/ts/tests/recipe_model.mjs"
       ]
@@ -4747,13 +4992,15 @@
       "scope": "owner",
       "needs": [
         "python",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/conformance_verification/**",
         "packages/python/tests/test_conformance_verification_mysql.py",
         "packages/python/tests/test_conformance_verification_postgres.py",
         "packages/python/tests/test_conformance_verification_sqlite.py",
+        "packages/python/tests/test_conformance_verification_markdown.py",
         "packages/python/tests/recipe.py",
         "packages/python/tests/recipe_model.py"
       ]
@@ -4763,13 +5010,15 @@
       "needs": [
         "php",
         "composer",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/conformance_verification/**",
         "packages/php/tests/ConformanceVerificationMysqlRecipeTest.php",
         "packages/php/tests/ConformanceVerificationPostgresRecipeTest.php",
         "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+        "packages/php/tests/ConformanceVerificationMarkdownRecipeTest.php",
         "packages/php/tests/Recipe.php",
         "packages/php/tests/RecipeModel.php"
       ]
@@ -4780,22 +5029,78 @@
         "php",
         "composer",
         "php-extension-tools",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/conformance_verification/**",
         "packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php",
         "packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php",
         "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/ConformanceVerificationMarkdownRecipeTestExtensionTest.php",
         "packages/php/tests/Recipe.php",
         "packages/php/tests/RecipeModel.php"
+      ]
+    },
+    "raw-text-check/go": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "databases",
+        "flowmark"
+      ],
+      "inputs": [
+        "contracts/fixtures/raw_text/**",
+        "contracts/fixtures/conformance_verification/*.dbs",
+        "contracts/fixtures/conformance_verification/dbspec-set.json",
+        "packages/go/orm/recipe_raw_text_test.go",
+        "packages/go/internal/recipe/recipe.go",
+        "packages/go/internal/recipe/database.go",
+        "packages/go/orm/bind_check.go"
+      ]
+    },
+    "raw-text-check/php": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "databases",
+        "flowmark"
+      ],
+      "inputs": [
+        "contracts/fixtures/raw_text/**",
+        "contracts/fixtures/conformance_verification/*.dbs",
+        "contracts/fixtures/conformance_verification/dbspec-set.json",
+        "packages/php/tests/RawTextRecipeTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php/src/ParamCheck.php"
+      ]
+    },
+    "raw-text-check/php-extension": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools",
+        "databases",
+        "flowmark"
+      ],
+      "inputs": [
+        "contracts/fixtures/raw_text/**",
+        "contracts/fixtures/conformance_verification/*.dbs",
+        "contracts/fixtures/conformance_verification/dbspec-set.json",
+        "packages/php-ext/tests/RawTextRecipeTestExtensionTest.php",
+        "packages/php/tests/RawTextRecipeTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php-ext/src/param_check_native.c"
       ]
     },
     "audit-triggers-check/go": {
       "scope": "owner",
       "needs": [
         "go",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/audit_triggers/**",
@@ -4812,7 +5117,8 @@
       "scope": "owner",
       "needs": [
         "go",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/parameter_chunking/**",
@@ -4826,7 +5132,8 @@
       "scope": "owner",
       "needs": [
         "go",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/aes_rotation/**",
@@ -4841,7 +5148,8 @@
       "scope": "owner",
       "needs": [
         "go",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/complex_query/**",
@@ -4855,13 +5163,15 @@
       "scope": "owner",
       "needs": [
         "node-modules",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/complex_query/**",
         "packages/ts/tests/complex_query-mysql.test.mjs",
         "packages/ts/tests/complex_query-postgres.test.mjs",
         "packages/ts/tests/complex_query-sqlite.test.mjs",
+        "packages/ts/tests/complex_query-markdown.test.mjs",
         "packages/ts/tests/recipe.mjs",
         "packages/ts/tests/recipe_model.mjs"
       ]
@@ -4870,13 +5180,15 @@
       "scope": "owner",
       "needs": [
         "python",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/complex_query/**",
         "packages/python/tests/test_complex_query_mysql.py",
         "packages/python/tests/test_complex_query_postgres.py",
         "packages/python/tests/test_complex_query_sqlite.py",
+        "packages/python/tests/test_complex_query_markdown.py",
         "packages/python/tests/recipe.py",
         "packages/python/tests/recipe_model.py"
       ]
@@ -4886,13 +5198,15 @@
       "needs": [
         "php",
         "composer",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/complex_query/**",
         "packages/php/tests/ComplexQueryMysqlRecipeTest.php",
         "packages/php/tests/ComplexQueryPostgresRecipeTest.php",
         "packages/php/tests/ComplexQuerySqliteRecipeTest.php",
+        "packages/php/tests/ComplexQueryMarkdownRecipeTest.php",
         "packages/php/tests/Recipe.php",
         "packages/php/tests/RecipeModel.php"
       ]
@@ -4903,13 +5217,15 @@
         "php",
         "composer",
         "php-extension-tools",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/complex_query/**",
         "packages/php-ext/tests/ComplexQueryMysqlRecipeTestExtensionTest.php",
         "packages/php-ext/tests/ComplexQueryPostgresRecipeTestExtensionTest.php",
         "packages/php-ext/tests/ComplexQuerySqliteRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/ComplexQueryMarkdownRecipeTestExtensionTest.php",
         "packages/php/tests/Recipe.php",
         "packages/php/tests/RecipeModel.php"
       ]
@@ -4918,13 +5234,15 @@
       "scope": "owner",
       "needs": [
         "rust",
-        "databases"
+        "databases",
+        "flowmark"
       ],
       "inputs": [
         "contracts/fixtures/complex_query/**",
         "packages/rust/tests/tests/complex_query_mysql.rs",
         "packages/rust/tests/tests/complex_query_postgres.rs",
         "packages/rust/tests/tests/complex_query_sqlite.rs",
+        "packages/rust/tests/tests/complex_query_markdown.rs",
         "packages/rust/tests/src/recipe.rs"
       ]
     },

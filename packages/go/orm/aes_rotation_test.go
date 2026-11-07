@@ -73,7 +73,7 @@ func assertAESRowDecodeIsInternal(t *testing.T, step *plan.Step, si *scanInfo, w
 func TestAESReadWithoutVersionColumnIsInternal(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	step := &plan.Step{Assemble: &plan.Assemble{Entity: "user", Columns: []plan.OutCol{{Index: 0, Name: "aes_hex_email", Type: "string"}}}}
-	si := &scanInfo{styled: []styledScanCol{{index: 0, name: "aes_hex_email", host: []string{"aes", "hex"}}}}
+	si := &scanInfo{styled: []styledScanCol{{index: 0, name: "aes_hex_email", host: []string{"aes", "hex"}, asm: step.Assemble}}}
 	assertAESRowDecodeIsInternal(t, step, si, "plan without a version column")
 }
 
@@ -92,7 +92,7 @@ func aesReadStep() (*plan.Step, *scanInfo) {
 		{Index: 0, Name: "aes_hex_email", Type: "string"},
 		{Index: 1, Name: "aes_key_version", Type: "int"},
 	}}}
-	si := &scanInfo{styled: []styledScanCol{{index: 0, name: "aes_hex_email", host: []string{"aes", "hex"}}}}
+	si := &scanInfo{styled: []styledScanCol{{index: 0, name: "aes_hex_email", host: []string{"aes", "hex"}, asm: step.Assemble}}}
 	return step, si
 }
 

@@ -73,12 +73,11 @@ final class Utils
     /** Takes a named lock that is released when the transaction ends. */
     public function lock(string $key): void
     {
-        $this->db->unsupportedOnMarkdown('lock');
         $frame = $this->active('lock');
         if (!self::validKey($key)) {
             throw new OrmException(Code::CONFIG, "lock key $key is invalid");
         }
-        switch ($this->db->driver()) {
+        switch ($this->db->dialect()) {
             case 'mysql':
                 $got = $this->db->fetch(
                     StatementEvent::UTILITY,
@@ -112,12 +111,11 @@ final class Utils
      */
     public function setLocal(string $key, string $value): void
     {
-        $this->db->unsupportedOnMarkdown('setLocal');
         $frame = $this->active('setLocal');
         if (!self::validKey($key)) {
             throw new OrmException(Code::CONFIG, "local key $key is invalid");
         }
-        switch ($this->db->driver()) {
+        switch ($this->db->dialect()) {
             case 'postgres':
                 $this->db->fetch(
                     StatementEvent::UTILITY,
@@ -137,7 +135,6 @@ final class Utils
     /** A value set with setLocal(); NO_ROWS when it is missing. */
     public function local(string $key): string
     {
-        $this->db->unsupportedOnMarkdown('local');
         $frame = $this->active('local');
         return $frame->locals[$key] ?? throw new OrmException(Code::NO_ROWS, "local value $key is not set");
     }
@@ -161,7 +158,6 @@ final class Utils
      */
     public function backendWaitingForLock(): bool
     {
-        $this->db->unsupportedOnMarkdown('backendWaitingForLock');
         if ($this->db->driver() !== 'postgres') {
             return false;
         }

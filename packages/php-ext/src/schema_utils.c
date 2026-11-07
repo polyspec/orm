@@ -26,14 +26,9 @@ static bool schema_utils_call(zval *object, const char *method, zval *result, ui
     return dbs_call_method(object, method, result, argc, argv);
 }
 
-static bool schema_utils_preflight(zval *db, zval *schema, const char *surface_text)
+static bool schema_utils_preflight(zval *schema)
 {
-    zval surface, ignored;
-    ZVAL_STRING(&surface, surface_text);
-    bool ok = schema_utils_call(db, "unsupportedOnMarkdown", &ignored, 1, &surface);
-    zval_ptr_dtor(&surface);
-    if (!Z_ISUNDEF(ignored)) zval_ptr_dtor(&ignored);
-    if (!ok) return false;
+    zval ignored;
     if (!schema_utils_call(schema, "verify", &ignored, 0, NULL)) return false;
     if (!Z_ISUNDEF(ignored)) zval_ptr_dtor(&ignored);
     return true;
@@ -553,12 +548,6 @@ finish:
 
 static bool schema_utils_bool(zval *db, zend_string *sql, zval *args, zval *result)
 {
-    zval surface, ignored;
-    ZVAL_STRING(&surface, "schema inspection");
-    bool supported = schema_utils_call(db, "unsupportedOnMarkdown", &ignored, 1, &surface);
-    zval_ptr_dtor(&surface);
-    if (!Z_ISUNDEF(ignored)) zval_ptr_dtor(&ignored);
-    if (!supported) return false;
     zval kind, tables, transaction, call_args[5], rows;
     ZVAL_STRING(&kind, "schema");
     array_init(&tables);
@@ -623,7 +612,7 @@ ZEND_METHOD(Polyspec_Orm_SchemaUtils, install)
     ZEND_PARSE_PARAMETERS_END();
     if (!schema_utils_require_schema(schema, "install")) RETURN_THROWS();
     zval *db = schema_utils_db(ZEND_THIS);
-    if (!schema_utils_preflight(db, schema, "schema install (flowmark install creates a corpus)")) RETURN_THROWS();
+    if (!schema_utils_preflight(schema)) RETURN_THROWS();
     bool ok;
 
     zval driver, documents, render, target, pdo, statements;
@@ -633,7 +622,7 @@ ZEND_METHOD(Polyspec_Orm_SchemaUtils, install)
     ZVAL_UNDEF(&target);
     ZVAL_UNDEF(&pdo);
     ZVAL_UNDEF(&statements);
-    if (!schema_utils_call(db, "driver", &driver, 0, NULL)
+    if (!schema_utils_call(db, "dialect", &driver, 0, NULL)
         || !schema_utils_call(schema, "documents", &documents, 0, NULL)) goto failed;
     zval render_args[2];
     ZVAL_COPY(&render_args[0], &documents);
@@ -700,7 +689,7 @@ ZEND_METHOD(Polyspec_Orm_SchemaUtils, addTablesAndColumns)
     ZEND_PARSE_PARAMETERS_END();
     if (!schema_utils_require_schema(schema, "addTablesAndColumns")) RETURN_THROWS();
     zval *db = schema_utils_db(ZEND_THIS);
-    if (!schema_utils_preflight(db, schema, "addTablesAndColumns (schema evolution follows the flowmark migration rules)")) RETURN_THROWS();
+    if (!schema_utils_preflight(schema)) RETURN_THROWS();
     bool ok;
 
     zval driver, documents, target, pdo;
@@ -708,7 +697,7 @@ ZEND_METHOD(Polyspec_Orm_SchemaUtils, addTablesAndColumns)
     ZVAL_UNDEF(&documents);
     ZVAL_UNDEF(&target);
     ZVAL_UNDEF(&pdo);
-    if (!schema_utils_call(db, "driver", &driver, 0, NULL)
+    if (!schema_utils_call(db, "dialect", &driver, 0, NULL)
         || !schema_utils_call(schema, "documents", &documents, 0, NULL)
         || !schema_utils_target(&documents, &target)
         || !schema_utils_call(db, "pdo", &pdo, 0, NULL)) goto add_failed;
@@ -807,7 +796,7 @@ static bool schema_utils_catalog_lookup(zval *object, zend_string *schema, zend_
                                         schema_utils_catalog_lookup_kind lookup, zval *result)
 {
     zval driver;
-    if (!schema_utils_call(schema_utils_db(object), "driver", &driver, 0, NULL)) return false;
+    if (!schema_utils_call(schema_utils_db(object), "dialect", &driver, 0, NULL)) return false;
     zval args;
     array_init(&args);
     zend_string *sql = schema_utils_catalog_lookup_sql(Z_STR(driver), schema, table, lookup, &args);
@@ -848,7 +837,7 @@ ZEND_METHOD(Polyspec_Orm_SchemaUtils, empty)
 {
     ZEND_PARSE_PARAMETERS_NONE();
     zval driver, args;
-    if (!schema_utils_call(schema_utils_db(ZEND_THIS), "driver", &driver, 0, NULL)) RETURN_THROWS();
+    if (!schema_utils_call(schema_utils_db(ZEND_THIS), "dialect", &driver, 0, NULL)) RETURN_THROWS();
     array_init(&args);
     zend_string *sql;
     if (zend_string_equals_literal(Z_STR(driver), "postgres")) {

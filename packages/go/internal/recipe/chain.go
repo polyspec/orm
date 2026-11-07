@@ -122,6 +122,7 @@ type chainRelation struct {
 // chainStep is a model op of the table path.
 type chainStep struct {
 	chainQuery
+	Only            []string                   `json:"only"`
 	Op              string                     `json:"op"`
 	Connection      string                     `json:"connection"`
 	As              string                     `json:"as"`
@@ -1187,7 +1188,7 @@ func chainGets(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
 // wantsRows reports whether the expect of the database of the case compares rows of wrappers.
 func wantsRows(s chainStep, c *databaseContext) bool {
 	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(s.k("expect").Expect[c.database], &fields); err != nil {
+	if err := json.Unmarshal(s.k("expect").Expect[dialectKey(c.database, s.k("expect").Expect)], &fields); err != nil {
 		return false
 	}
 	_, ok := fields["rows"]

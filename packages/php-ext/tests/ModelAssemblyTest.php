@@ -15,7 +15,6 @@ use Polyspec\Orm\Collection;
 use Polyspec\Orm\Frame;
 use Polyspec\Orm\GroupRow;
 use Polyspec\Orm\GroupRows;
-use Polyspec\Orm\MarkdownLinks;
 use Polyspec\Orm\Model;
 use Polyspec\Orm\OrmException;
 use Polyspec\Orm\Tests\CollectionIdentityCases;
@@ -177,9 +176,9 @@ final class ModelAssemblyTest extends TestCase
         self::assertNull($weakIterator->get());
     }
 
-    public function testAssemblyRoutesSqlAndMarkdownRowsWithTypedKeys(): void
+    public function testAssemblyRoutesSqlRowsWithTypedKeys(): void
     {
-        $db = new Db(null, 'sqlite', new Config(), new DateTimeZone('UTC'));
+        $db = new Db(new \PDO('sqlite::memory:'), 'sqlite', new Config(), new DateTimeZone('UTC'));
         $rowA = ['value' => 'A'];
         $rowB = ['value' => 'B'];
         $parent = [7, null];
@@ -195,20 +194,13 @@ final class ModelAssemblyTest extends TestCase
             ]],
         ];
         $assembly = new Assembly($db, null, $result);
-        $child = ['step' => 2, 'parent_keys' => $refs, 'assemble' => ['node' => 'markdown-child'], 'rel' => 'child'];
+        $child = ['step' => 2, 'parent_keys' => $refs, 'rel' => 'child'];
 
         self::assertSame(['node' => 'child'], $assembly->relationAssemble($child));
         self::assertSame([$rowA, $rowB], $assembly->related($child, $parent));
         self::assertSame($parent, $assembly->joinRow(['assemble' => ['columns' => [['index' => 0]]]], $parent));
         self::assertNull($assembly->joinRow(['assemble' => ['columns' => [['index' => 1]]]], $parent));
 
-        $links = new MarkdownLinks();
-        $links->joins['child'] = [4];
-        $links->rels['child'] = [[5]];
-        $markdown = new Assembly($db, null, ['markdown' => true]);
-        self::assertSame(['node' => 'markdown-child'], $markdown->relationAssemble($child));
-        self::assertSame([4], $markdown->joinRow($child, [$links]));
-        self::assertSame([[5]], $markdown->related($child, [$links]));
         self::assertSame('UTC', $assembly->zone->getName());
     }
 }

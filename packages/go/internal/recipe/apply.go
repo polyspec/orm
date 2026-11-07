@@ -70,12 +70,12 @@ func openApplyConnection(c *databaseContext, dsn string) (*sql.Conn, func() erro
 
 // applyDirectDSN is the DSN of the direct connections to the case database name, or a failure when its variable is missing.
 func applyDirectDSN(c *databaseContext, dsn string) (string, error) {
-	if c.database == "sqlite" {
+	if c.dialect() == "sqlite" {
 		return dsn, nil
 	}
-	server := os.Getenv(applyServerEnv[c.database])
+	server := os.Getenv(applyServerEnv[c.dialect()])
 	if server == "" {
-		return "", fmt.Errorf("%s is required; run make orm-test-servers, which starts the databases and writes it", applyServerEnv[c.database])
+		return "", fmt.Errorf("%s is required; run make orm-test-servers, which starts the databases and writes it", applyServerEnv[c.dialect()])
 	}
 	return testdb.Retarget(c.t, server, testdb.DatabaseOf(c.t, dsn)), nil
 }
@@ -120,7 +120,7 @@ func applyOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		c.closers = append(c.closers, closeConn)
 		if s.k("through").Through == "" {
-			for _, rule := range applyRules[c.database] {
+			for _, rule := range applyRules[c.dialect()] {
 				if _, err := conn.ExecContext(c.ctx, rule); err != nil {
 					return outcome{}, err
 				}
@@ -146,7 +146,7 @@ func applyOp(s databaseStep, c *databaseContext) (outcome, error) {
 				c.t.Errorf("close the other database: %v", err)
 			}
 		}()
-		for _, rule := range applyRules[c.database] {
+		for _, rule := range applyRules[c.dialect()] {
 			if _, err := conn.ExecContext(c.ctx, rule); err != nil {
 				return outcome{}, err
 			}
@@ -176,7 +176,7 @@ func applySchema(s databaseStep, c *databaseContext) (outcome, error) {
 	if err != nil {
 		return outcome{}, err
 	}
-	document, unsupported, err := dbspec.Introspect(c.ctx, conn, applyDialects[c.database], "x")
+	document, unsupported, err := dbspec.Introspect(c.ctx, conn, applyDialects[c.dialect()], "x")
 	if err != nil {
 		return outcome{}, err
 	}
@@ -279,7 +279,7 @@ func applyCommand(s databaseStep, c *databaseContext) (outcome, error) {
 		return nil
 	}
 	started := time.Now()
-	dialect := applyDialects[c.database]
+	dialect := applyDialects[c.dialect()]
 	switch s.k("op").Op {
 	case "dbspec.apply":
 		var res dbspec.ApplyResult

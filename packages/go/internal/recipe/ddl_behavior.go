@@ -53,7 +53,7 @@ func ddlBehavior(s databaseStep, c *databaseContext) error {
 	if err != nil {
 		return err
 	}
-	statements, ok := vector.Statements[c.database]
+	statements, ok := vector.Statements[c.dialect()]
 	if !ok {
 		return fmt.Errorf("the case %s has no statements for %s", s.k("case").Case, c.database)
 	}
@@ -61,13 +61,13 @@ func ddlBehavior(s databaseStep, c *databaseContext) error {
 	defer testcase.Close(c.t, raw)
 	// One connection, so that the connection rules hold for every statement after them.
 	raw.SetMaxOpenConns(1)
-	for _, statement := range append([]string{ddlConnectionRules[c.database]}, statements...) {
+	for _, statement := range append([]string{ddlConnectionRules[c.dialect()]}, statements...) {
 		if _, err := raw.ExecContext(c.ctx, statement); err != nil {
 			return fmt.Errorf("%s: %w", statement, err)
 		}
 	}
 	for _, step := range vector.Behavior {
-		if len(step.Dialects) > 0 && !slices.Contains(step.Dialects, c.database) {
+		if len(step.Dialects) > 0 && !slices.Contains(step.Dialects, c.dialect()) {
 			continue
 		}
 		if step.SQL != "" {

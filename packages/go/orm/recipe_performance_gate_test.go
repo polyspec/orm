@@ -30,3 +30,9 @@ func TestRecipePerformanceGateSqlite(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, performanceGateRecipe, "sqlite")
 }
+
+// TestRecipePerformanceGateMarkdown runs the recipe on flowmark, each case on a corpus of its own (FCV-3).
+func TestRecipePerformanceGateMarkdown(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, performanceGateRecipe, "markdown")
+}

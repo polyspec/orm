@@ -48,13 +48,6 @@ static bool aes_utils_contains(zval *values, const char *name)
 
 static bool aes_utils_spec(zval *db, zval *model, zval *spec)
 {
-    zval unsupported, operation;
-    ZVAL_STRING(&operation, "aes rotation");
-    bool supported = aes_utils_method(db, "unsupportedOnMarkdown", &unsupported, 1, &operation);
-    zval_ptr_dtor(&operation);
-    if (!supported) return false;
-    zval_ptr_dtor(&unsupported);
-
     zval meta;
     ZVAL_UNDEF(&meta);
     if (!dbs_model_meta(model, &meta)) {
@@ -140,7 +133,7 @@ static void aes_utils_quote_append(smart_str *sql, zend_string *identifier, bool
 static bool aes_utils_driver(zval *db, bool *mysql, bool *postgres)
 {
     zval driver;
-    if (!aes_utils_method(db, "driver", &driver, 0, NULL)) return false;
+    if (!aes_utils_method(db, "dialect", &driver, 0, NULL)) return false;
     *mysql = Z_TYPE(driver) == IS_STRING && zend_string_equals_literal(Z_STR(driver), "mysql");
     *postgres = Z_TYPE(driver) == IS_STRING && zend_string_equals_literal(Z_STR(driver), "postgres");
     zval_ptr_dtor(&driver);

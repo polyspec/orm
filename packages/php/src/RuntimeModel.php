@@ -43,12 +43,49 @@ final class RuntimeModel
      *     external documents; a set
      *     with no external documents has empty text. A used table of an external document is an external entity.
      */
+    /** @var array<string, array{key: string, order: string}>|null the columns of each entity that a corpus assigns */
+    private ?array $assigned = null;
+
     public function __construct(
         public readonly string $manifestHash,
         public readonly string $manifestText,
         public readonly array $entities,
         public readonly string $externalText = '',
     ) {
+    }
+
+    /**
+     * The columns of entity $name that a database which assigns keys and positions, as a flowmark corpus does, fills in
+     * when an insert leaves them out (docs/spec/protocol.md PRT-73): `key`, the primary key column of a key_prefix
+     * setting over one primary key column, and `order`, the column of an order setting; '' when there is none. They are
+     * read from the manifest text, so the entity arrays, which generated models hold, stay as they are.
+     *
+     * @internal
+     * @return array{key: string, order: string}
+     */
+    public function assignedColumns(string $name): array
+    {
+        if ($this->assigned === null) {
+            $this->assigned = [];
+            foreach (self::loadSet($this->manifestText, $this->externalText) as $document) {
+                if ($document->external) {
+                    continue;
+                }
+                foreach ($document->tables as $table) {
+                    $settings = [];
+                    foreach ($table->settings?->settings ?? [] as $setting) {
+                        $settings[$setting->kind] = $setting->arguments;
+                    }
+                    $pk = $table->primaryKey->columns;
+                    $entity = ($settings['entity'][0] ?? '') !== '' ? $settings['entity'][0] : $table->name;
+                    $this->assigned[$entity] = [
+                        'key' => isset($settings['key_prefix']) && count($pk) === 1 ? $pk[0] : '',
+                        'order' => $settings['order'][0] ?? '',
+                    ];
+                }
+            }
+        }
+        return $this->assigned[$name] ?? ['key' => '', 'order' => ''];
     }
 
     /**

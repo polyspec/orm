@@ -5717,7 +5717,11 @@
   },
   "packages/go/engine/planner/planner.go::Planner": {
     "exported": true,
-    "signature": "type Planner struct { M *runtimemodel.Model D dialect.Dialect }"
+    "signature": "type Planner struct { M *runtimemodel.Model D dialect.Dialect Assigns bool }"
+  },
+  "packages/go/engine/planner/planner.go::Planner#field.Assigns": {
+    "exported": true,
+    "signature": "bool"
   },
   "packages/go/engine/planner/planner.go::Planner#field.D": {
     "exported": true,
@@ -6113,7 +6117,7 @@
   },
   "packages/go/engine/planner/planner.go::validateRequiredAssignments": {
     "exported": false,
-    "signature": "func(ent *runtimemodel.Entity, set []ir.Assign) error"
+    "signature": "func(ent *runtimemodel.Entity, set []ir.Assign, assigns bool) error"
   },
   "packages/go/engine/runtimemodel/runtimemodel.go::Audit": {
     "exported": true,
@@ -6141,7 +6145,7 @@
   },
   "packages/go/engine/runtimemodel/runtimemodel.go::Entity": {
     "exported": true,
-    "signature": "type Entity struct { Name string Table string PK []string Identity string Fields []*Field Uniques []Key Indexes map[string][]string Updated string SoftDelete string AESVersion string Audit *Audit External bool fields map[string]*Field }"
+    "signature": "type Entity struct { Name string Table string PK []string Identity string Fields []*Field Uniques []Key Indexes map[string][]string Updated string SoftDelete string AESVersion string KeyPrefix string Order string Audit *Audit External bool fields map[string]*Field }"
   },
   "packages/go/engine/runtimemodel/runtimemodel.go::Entity#field.AESVersion": {
     "exported": true,
@@ -6167,7 +6171,15 @@
     "exported": true,
     "signature": "map[string][]string"
   },
+  "packages/go/engine/runtimemodel/runtimemodel.go::Entity#field.KeyPrefix": {
+    "exported": true,
+    "signature": "string"
+  },
   "packages/go/engine/runtimemodel/runtimemodel.go::Entity#field.Name": {
+    "exported": true,
+    "signature": "string"
+  },
+  "packages/go/engine/runtimemodel/runtimemodel.go::Entity#field.Order": {
     "exported": true,
     "signature": "string"
   },
@@ -17275,6 +17287,10 @@
     "exported": false,
     "signature": "func(i int, v any, s paramSlot) error"
   },
+  "packages/go/orm/bind_check.go::finiteF64": {
+    "exported": false,
+    "signature": "func(i int, v any, f float64) error"
+  },
   "packages/go/orm/bind_check.go::integerValue": {
     "exported": false,
     "signature": "func(v any) (n int64, ok bool, err error)"
@@ -17310,10 +17326,6 @@
   "packages/go/orm/bind_check.go::uintValue": {
     "exported": false,
     "signature": "func(x uint64) (int64, bool, error)"
-  },
-  "packages/go/orm/bind_check.go::useSlotType": {
-    "exported": false,
-    "signature": "func(u ir.ParamUse) paramSlot"
   },
   "packages/go/orm/build.go::Core.build": {
     "exported": false,
@@ -19317,11 +19329,15 @@
   },
   "packages/go/orm/db.go::DB": {
     "exported": true,
-    "signature": "type DB struct { sql *sql.DB md *mdPool ctx context.Context root *DB hook RequestHook m *dbMutable cfg Config driver string location *time.Location plans map[uint64]*cached stmts map[string]*sql.Stmt }"
+    "signature": "type DB struct { sql *sql.DB corpus bool ctx context.Context root *DB hook RequestHook m *dbMutable cfg Config driver string location *time.Location plans map[uint64]*cached stmts map[string]*sql.Stmt }"
   },
   "packages/go/orm/db.go::DB#field.cfg": {
     "exported": false,
     "signature": "Config"
+  },
+  "packages/go/orm/db.go::DB#field.corpus": {
+    "exported": false,
+    "signature": "bool"
   },
   "packages/go/orm/db.go::DB#field.ctx": {
     "exported": false,
@@ -19342,10 +19358,6 @@
   "packages/go/orm/db.go::DB#field.m": {
     "exported": false,
     "signature": "*dbMutable"
-  },
-  "packages/go/orm/db.go::DB#field.md": {
-    "exported": false,
-    "signature": "*mdPool"
   },
   "packages/go/orm/db.go::DB#field.plans": {
     "exported": false,
@@ -19915,6 +19927,10 @@
     "exported": false,
     "signature": "func(t time.Time, precision int) string"
   },
+  "packages/go/orm/exec.go::columnDecodeErr": {
+    "exported": false,
+    "signature": "func(entity, column string, err error) error"
+  },
   "packages/go/orm/exec.go::countCols": {
     "exported": false,
     "signature": "func(a *plan.Assemble) int"
@@ -19977,7 +19993,7 @@
   },
   "packages/go/orm/exec.go::result": {
     "exported": false,
-    "signature": "type result struct { cache *cached plan *plan.Plan main [][]any steps map[int]*stepRows params []any markdown bool }"
+    "signature": "type result struct { cache *cached plan *plan.Plan main [][]any steps map[int]*stepRows params []any }"
   },
   "packages/go/orm/exec.go::result#field.cache": {
     "exported": false,
@@ -19986,10 +20002,6 @@
   "packages/go/orm/exec.go::result#field.main": {
     "exported": false,
     "signature": "[][]any"
-  },
-  "packages/go/orm/exec.go::result#field.markdown": {
-    "exported": false,
-    "signature": "bool"
   },
   "packages/go/orm/exec.go::result#field.params": {
     "exported": false,
@@ -20089,7 +20101,11 @@
   },
   "packages/go/orm/exec.go::styledScanCol": {
     "exported": false,
-    "signature": "type styledScanCol struct { index int name string codec []string host []string }"
+    "signature": "type styledScanCol struct { index int name string codec []string host []string asm *plan.Assemble }"
+  },
+  "packages/go/orm/exec.go::styledScanCol#field.asm": {
+    "exported": false,
+    "signature": "*plan.Assemble"
   },
   "packages/go/orm/exec.go::styledScanCol#field.codec": {
     "exported": false,
@@ -20359,49 +20375,13 @@
     "exported": false,
     "signature": "func(name string) string"
   },
-  "packages/go/orm/markdown.go::DB.beginMarkdown": {
-    "exported": false,
-    "signature": "receiver=*DB func(o txOptions) (*txConn, error)"
-  },
-  "packages/go/orm/markdown.go::DB.markdownModel": {
-    "exported": false,
-    "signature": "receiver=*DB func(s *Schema) (*runtimemodel.Model, error)"
-  },
-  "packages/go/orm/markdown.go::DB.markdownParam": {
-    "exported": false,
-    "signature": "receiver=*DB func(i int, v any, uses []ir.ParamUse) (json.RawMessage, error)"
-  },
-  "packages/go/orm/markdown.go::DB.unsupportedOnMarkdown": {
-    "exported": false,
-    "signature": "receiver=*DB func(surface string) error"
-  },
-  "packages/go/orm/markdown.go::aggregateValue": {
-    "exported": false,
-    "signature": "func(raw json.RawMessage) (any, error)"
-  },
-  "packages/go/orm/markdown.go::answerErr": {
-    "exported": false,
-    "signature": "func(format string, a ...any) error"
-  },
-  "packages/go/orm/markdown.go::answerValue": {
-    "exported": false,
-    "signature": "func(typ string, raw json.RawMessage) (any, error)"
-  },
-  "packages/go/orm/markdown.go::beginMessage": {
-    "exported": false,
-    "signature": "func(readOnly bool) mdControl"
-  },
   "packages/go/orm/markdown.go::dialMarkdown": {
     "exported": false,
     "signature": "func(ctx context.Context, dsn markdownDSN) (*mdSession, error)"
   },
-  "packages/go/orm/markdown.go::markdownCall": {
-    "exported": false,
-    "signature": "func(ex executor, r *request) (json.RawMessage, *runtimemodel.Model, error)"
-  },
   "packages/go/orm/markdown.go::markdownDSN": {
     "exported": false,
-    "signature": "type markdownDSN struct { address string corpus string token string }"
+    "signature": "type markdownDSN struct { address string corpus string token string pragmas []string }"
   },
   "packages/go/orm/markdown.go::markdownDSN#field.address": {
     "exported": false,
@@ -20411,25 +20391,13 @@
     "exported": false,
     "signature": "string"
   },
+  "packages/go/orm/markdown.go::markdownDSN#field.pragmas": {
+    "exported": false,
+    "signature": "[]string"
+  },
   "packages/go/orm/markdown.go::markdownDSN#field.token": {
     "exported": false,
     "signature": "string"
-  },
-  "packages/go/orm/markdown.go::markdownLinks": {
-    "exported": false,
-    "signature": "func(row []any) (*mdLinks, error)"
-  },
-  "packages/go/orm/markdown.go::markdownRead": {
-    "exported": false,
-    "signature": "func(ex executor, r *request) (*result, int64, error)"
-  },
-  "packages/go/orm/markdown.go::markdownScalar": {
-    "exported": false,
-    "signature": "func(ex executor, r *request) (any, error)"
-  },
-  "packages/go/orm/markdown.go::markdownWrite": {
-    "exported": false,
-    "signature": "func(ex executor, r *request) ([]any, int64, error)"
   },
   "packages/go/orm/markdown.go::marshalPlain": {
     "exported": false,
@@ -20455,205 +20423,29 @@
     "exported": false,
     "signature": "{\"corpus\":\"text\",\"op\":\"text\",\"token\":\"text\"}"
   },
-  "packages/go/orm/markdown.go::mdControl": {
+  "packages/go/orm/markdown.go::mdServerError": {
     "exported": false,
-    "signature": "type mdControl struct { Op string `json:\"op\"` ReadOnly bool `json:\"read_only,omitempty\"` Name string `json:\"name,omitempty\"` }"
+    "signature": "type mdServerError struct { code string message string result int }"
   },
-  "packages/go/orm/markdown.go::mdControl#field.Name": {
-    "exported": false,
-    "signature": "string"
-  },
-  "packages/go/orm/markdown.go::mdControl#field.Op": {
+  "packages/go/orm/markdown.go::mdServerError#field.code": {
     "exported": false,
     "signature": "string"
   },
-  "packages/go/orm/markdown.go::mdControl#field.ReadOnly": {
-    "exported": false,
-    "signature": "bool"
-  },
-  "packages/go/orm/markdown.go::mdControl#wire": {
-    "exported": false,
-    "signature": "{\"name\":\"text\",\"op\":\"text\",\"read_only\":\"bool\"}"
-  },
-  "packages/go/orm/markdown.go::mdLinks": {
-    "exported": false,
-    "signature": "type mdLinks struct { joins map[string][]any rels map[string][][]any }"
-  },
-  "packages/go/orm/markdown.go::mdLinks#field.joins": {
-    "exported": false,
-    "signature": "map[string][]any"
-  },
-  "packages/go/orm/markdown.go::mdLinks#field.rels": {
-    "exported": false,
-    "signature": "map[string][][]any"
-  },
-  "packages/go/orm/markdown.go::mdMember": {
-    "exported": false,
-    "signature": "type mdMember struct { name string value json.RawMessage }"
-  },
-  "packages/go/orm/markdown.go::mdMember#field.name": {
+  "packages/go/orm/markdown.go::mdServerError#field.message": {
     "exported": false,
     "signature": "string"
   },
-  "packages/go/orm/markdown.go::mdMember#field.value": {
-    "exported": false,
-    "signature": "json.RawMessage"
-  },
-  "packages/go/orm/markdown.go::mdNode": {
-    "exported": false,
-    "signature": "type mdNode struct { q *ir.Query ent *runtimemodel.Entity m *runtimemodel.Model groups bool asm *plan.Assemble flat *plan.Step scan *scanInfo built bool joins map[string]*mdNode rels map[string]*mdNode }"
-  },
-  "packages/go/orm/markdown.go::mdNode#field.asm": {
-    "exported": false,
-    "signature": "*plan.Assemble"
-  },
-  "packages/go/orm/markdown.go::mdNode#field.built": {
-    "exported": false,
-    "signature": "bool"
-  },
-  "packages/go/orm/markdown.go::mdNode#field.ent": {
-    "exported": false,
-    "signature": "*runtimemodel.Entity"
-  },
-  "packages/go/orm/markdown.go::mdNode#field.flat": {
-    "exported": false,
-    "signature": "*plan.Step"
-  },
-  "packages/go/orm/markdown.go::mdNode#field.groups": {
-    "exported": false,
-    "signature": "bool"
-  },
-  "packages/go/orm/markdown.go::mdNode#field.joins": {
-    "exported": false,
-    "signature": "map[string]*mdNode"
-  },
-  "packages/go/orm/markdown.go::mdNode#field.m": {
-    "exported": false,
-    "signature": "*runtimemodel.Model"
-  },
-  "packages/go/orm/markdown.go::mdNode#field.q": {
-    "exported": false,
-    "signature": "*ir.Query"
-  },
-  "packages/go/orm/markdown.go::mdNode#field.rels": {
-    "exported": false,
-    "signature": "map[string]*mdNode"
-  },
-  "packages/go/orm/markdown.go::mdNode#field.scan": {
-    "exported": false,
-    "signature": "*scanInfo"
-  },
-  "packages/go/orm/markdown.go::mdNode.build": {
-    "exported": false,
-    "signature": "receiver=*mdNode func(outputs []string) error"
-  },
-  "packages/go/orm/markdown.go::mdNode.outCol": {
-    "exported": false,
-    "signature": "receiver=*mdNode func(name string, index int) (plan.OutCol, error)"
-  },
-  "packages/go/orm/markdown.go::mdNode.relationRows": {
-    "exported": false,
-    "signature": "receiver=*mdNode func(raw json.RawMessage) ([][]any, error)"
-  },
-  "packages/go/orm/markdown.go::mdNode.row": {
-    "exported": false,
-    "signature": "receiver=*mdNode func(raw json.RawMessage) ([]any, error)"
-  },
-  "packages/go/orm/markdown.go::mdNode.rows": {
-    "exported": false,
-    "signature": "receiver=*mdNode func(items []json.RawMessage) ([][]any, error)"
-  },
-  "packages/go/orm/markdown.go::mdPool": {
-    "exported": false,
-    "signature": "type mdPool struct { dsn markdownDSN idleSize int lifetime time.Duration slots chan struct{} mu sync.Mutex idle []*mdSession open int inUse int closed bool closeErr error }"
-  },
-  "packages/go/orm/markdown.go::mdPool#field.closeErr": {
-    "exported": false,
-    "signature": "error"
-  },
-  "packages/go/orm/markdown.go::mdPool#field.closed": {
-    "exported": false,
-    "signature": "bool"
-  },
-  "packages/go/orm/markdown.go::mdPool#field.dsn": {
-    "exported": false,
-    "signature": "markdownDSN"
-  },
-  "packages/go/orm/markdown.go::mdPool#field.idle": {
-    "exported": false,
-    "signature": "[]*mdSession"
-  },
-  "packages/go/orm/markdown.go::mdPool#field.idleSize": {
+  "packages/go/orm/markdown.go::mdServerError#field.result": {
     "exported": false,
     "signature": "int"
   },
-  "packages/go/orm/markdown.go::mdPool#field.inUse": {
+  "packages/go/orm/markdown.go::mdServerError.Code": {
     "exported": false,
-    "signature": "int"
+    "signature": "receiver=*mdServerError func() int"
   },
-  "packages/go/orm/markdown.go::mdPool#field.lifetime": {
+  "packages/go/orm/markdown.go::mdServerError.Error": {
     "exported": false,
-    "signature": "time.Duration"
-  },
-  "packages/go/orm/markdown.go::mdPool#field.mu": {
-    "exported": false,
-    "signature": "sync.Mutex"
-  },
-  "packages/go/orm/markdown.go::mdPool#field.open": {
-    "exported": false,
-    "signature": "int"
-  },
-  "packages/go/orm/markdown.go::mdPool#field.slots": {
-    "exported": false,
-    "signature": "chan struct{}"
-  },
-  "packages/go/orm/markdown.go::mdPool.acquire": {
-    "exported": false,
-    "signature": "receiver=*mdPool func(ctx context.Context) (*mdSession, error)"
-  },
-  "packages/go/orm/markdown.go::mdPool.close": {
-    "exported": false,
-    "signature": "receiver=*mdPool func() error"
-  },
-  "packages/go/orm/markdown.go::mdPool.discard": {
-    "exported": false,
-    "signature": "receiver=*mdPool func(s *mdSession)"
-  },
-  "packages/go/orm/markdown.go::mdPool.release": {
-    "exported": false,
-    "signature": "receiver=*mdPool func(s *mdSession)"
-  },
-  "packages/go/orm/markdown.go::mdPool.stats": {
-    "exported": false,
-    "signature": "receiver=*mdPool func() DBStats"
-  },
-  "packages/go/orm/markdown.go::mdRequest": {
-    "exported": false,
-    "signature": "type mdRequest struct { IRVersion int `json:\"ir_version\"` ManifestHash string `json:\"manifest_hash\"` Request *ir.Request `json:\"request\"` Params []json.RawMessage `json:\"params\"` Now string `json:\"now\"` }"
-  },
-  "packages/go/orm/markdown.go::mdRequest#field.IRVersion": {
-    "exported": false,
-    "signature": "int"
-  },
-  "packages/go/orm/markdown.go::mdRequest#field.ManifestHash": {
-    "exported": false,
-    "signature": "string"
-  },
-  "packages/go/orm/markdown.go::mdRequest#field.Now": {
-    "exported": false,
-    "signature": "string"
-  },
-  "packages/go/orm/markdown.go::mdRequest#field.Params": {
-    "exported": false,
-    "signature": "[]json.RawMessage"
-  },
-  "packages/go/orm/markdown.go::mdRequest#field.Request": {
-    "exported": false,
-    "signature": "*ir.Request"
-  },
-  "packages/go/orm/markdown.go::mdRequest#wire": {
-    "exported": false,
-    "signature": "{\"ir_version\":\"integer\",\"manifest_hash\":\"text\",\"now\":\"text\",\"params\":\"list\\u003cunsupported-*ast.SelectorExpr\\u003e\",\"request\":\"unsupported-*ast.SelectorExpr\"}"
+    "signature": "receiver=*mdServerError func() string"
   },
   "packages/go/orm/markdown.go::mdSession": {
     "exported": false,
@@ -20695,18 +20487,6 @@
     "exported": false,
     "signature": "receiver=*mdSession func(line []byte) ([]byte, error)"
   },
-  "packages/go/orm/markdown.go::members": {
-    "exported": false,
-    "signature": "func(raw json.RawMessage) ([]mdMember, error)"
-  },
-  "packages/go/orm/markdown.go::newMarkdownNode": {
-    "exported": false,
-    "signature": "func(m *runtimemodel.Model, q *ir.Query, groups bool) *mdNode"
-  },
-  "packages/go/orm/markdown.go::newMarkdownPool": {
-    "exported": false,
-    "signature": "func(dsn markdownDSN, cfg Config) *mdPool"
-  },
   "packages/go/orm/markdown.go::openMarkdown": {
     "exported": false,
     "signature": "func(ctx context.Context, dsn parsedDSN, cfg Config) (*DB, error)"
@@ -20715,17 +20495,253 @@
     "exported": false,
     "signature": "func(u *url.URL, q url.Values) (markdownDSN, error)"
   },
-  "packages/go/orm/markdown.go::subType": {
+  "packages/go/orm/markdown_sql.go::init": {
     "exported": false,
-    "signature": "func(m *runtimemodel.Model, sub *ir.Sub) string"
+    "signature": "func()"
   },
-  "packages/go/orm/markdown.go::txConn.endMarkdown": {
+  "packages/go/orm/markdown_sql.go::markdownStatementPool": {
     "exported": false,
-    "signature": "receiver=*txConn func(op string) error"
+    "signature": "func(dsn markdownDSN) *sql.DB"
   },
-  "packages/go/orm/markdown.go::txConn.savepointMarkdown": {
+  "packages/go/orm/markdown_sql.go::mdConn": {
     "exported": false,
-    "signature": "receiver=*txConn func(op, name string) error"
+    "signature": "type mdConn struct { s *mdSession }"
+  },
+  "packages/go/orm/markdown_sql.go::mdConn#field.s": {
+    "exported": false,
+    "signature": "*mdSession"
+  },
+  "packages/go/orm/markdown_sql.go::mdConn.Begin": {
+    "exported": false,
+    "signature": "receiver=*mdConn func() (driver.Tx, error)"
+  },
+  "packages/go/orm/markdown_sql.go::mdConn.BeginTx": {
+    "exported": false,
+    "signature": "receiver=*mdConn func(ctx context.Context, o driver.TxOptions) (driver.Tx, error)"
+  },
+  "packages/go/orm/markdown_sql.go::mdConn.Close": {
+    "exported": false,
+    "signature": "receiver=*mdConn func() error"
+  },
+  "packages/go/orm/markdown_sql.go::mdConn.ExecContext": {
+    "exported": false,
+    "signature": "receiver=*mdConn func(ctx context.Context, text string, args []driver.NamedValue) (driver.Result, error)"
+  },
+  "packages/go/orm/markdown_sql.go::mdConn.IsValid": {
+    "exported": false,
+    "signature": "receiver=*mdConn func() bool"
+  },
+  "packages/go/orm/markdown_sql.go::mdConn.Prepare": {
+    "exported": false,
+    "signature": "receiver=*mdConn func(text string) (driver.Stmt, error)"
+  },
+  "packages/go/orm/markdown_sql.go::mdConn.QueryContext": {
+    "exported": false,
+    "signature": "receiver=*mdConn func(ctx context.Context, text string, args []driver.NamedValue) (driver.Rows, error)"
+  },
+  "packages/go/orm/markdown_sql.go::mdConn.exec": {
+    "exported": false,
+    "signature": "receiver=*mdConn func(ctx context.Context, text string, args []any) (driver.Result, error)"
+  },
+  "packages/go/orm/markdown_sql.go::mdConnector": {
+    "exported": false,
+    "signature": "type mdConnector struct{ dsn markdownDSN }"
+  },
+  "packages/go/orm/markdown_sql.go::mdConnector#field.dsn": {
+    "exported": false,
+    "signature": "markdownDSN"
+  },
+  "packages/go/orm/markdown_sql.go::mdConnector.Connect": {
+    "exported": false,
+    "signature": "receiver=mdConnector func(ctx context.Context) (driver.Conn, error)"
+  },
+  "packages/go/orm/markdown_sql.go::mdConnector.Driver": {
+    "exported": false,
+    "signature": "receiver=mdConnector func() driver.Driver"
+  },
+  "packages/go/orm/markdown_sql.go::mdDriver": {
+    "exported": false,
+    "signature": "type mdDriver struct{}"
+  },
+  "packages/go/orm/markdown_sql.go::mdDriver.Open": {
+    "exported": false,
+    "signature": "receiver=mdDriver func(name string) (driver.Conn, error)"
+  },
+  "packages/go/orm/markdown_sql.go::mdResult": {
+    "exported": false,
+    "signature": "type mdResult struct{ a *mdStatementAnswer }"
+  },
+  "packages/go/orm/markdown_sql.go::mdResult#field.a": {
+    "exported": false,
+    "signature": "*mdStatementAnswer"
+  },
+  "packages/go/orm/markdown_sql.go::mdResult.LastInsertId": {
+    "exported": false,
+    "signature": "receiver=mdResult func() (int64, error)"
+  },
+  "packages/go/orm/markdown_sql.go::mdResult.RowsAffected": {
+    "exported": false,
+    "signature": "receiver=mdResult func() (int64, error)"
+  },
+  "packages/go/orm/markdown_sql.go::mdRows": {
+    "exported": false,
+    "signature": "type mdRows struct { a *mdStatementAnswer next int s *mdSession ctx context.Context }"
+  },
+  "packages/go/orm/markdown_sql.go::mdRows#field.a": {
+    "exported": false,
+    "signature": "*mdStatementAnswer"
+  },
+  "packages/go/orm/markdown_sql.go::mdRows#field.ctx": {
+    "exported": false,
+    "signature": "context.Context"
+  },
+  "packages/go/orm/markdown_sql.go::mdRows#field.next": {
+    "exported": false,
+    "signature": "int"
+  },
+  "packages/go/orm/markdown_sql.go::mdRows#field.s": {
+    "exported": false,
+    "signature": "*mdSession"
+  },
+  "packages/go/orm/markdown_sql.go::mdRows.Close": {
+    "exported": false,
+    "signature": "receiver=*mdRows func() error"
+  },
+  "packages/go/orm/markdown_sql.go::mdRows.ColumnTypeDatabaseTypeName": {
+    "exported": false,
+    "signature": "receiver=*mdRows func(i int) string"
+  },
+  "packages/go/orm/markdown_sql.go::mdRows.Columns": {
+    "exported": false,
+    "signature": "receiver=*mdRows func() []string"
+  },
+  "packages/go/orm/markdown_sql.go::mdRows.Next": {
+    "exported": false,
+    "signature": "receiver=*mdRows func(dest []driver.Value) error"
+  },
+  "packages/go/orm/markdown_sql.go::mdSession.statement": {
+    "exported": false,
+    "signature": "receiver=*mdSession func(ctx context.Context, text string, args []any) (*mdStatementAnswer, error)"
+  },
+  "packages/go/orm/markdown_sql.go::mdStatement": {
+    "exported": false,
+    "signature": "type mdStatement struct { Op string `json:\"op\"` SQL string `json:\"sql\"` Params []json.RawMessage `json:\"params\"` }"
+  },
+  "packages/go/orm/markdown_sql.go::mdStatement#field.Op": {
+    "exported": false,
+    "signature": "string"
+  },
+  "packages/go/orm/markdown_sql.go::mdStatement#field.Params": {
+    "exported": false,
+    "signature": "[]json.RawMessage"
+  },
+  "packages/go/orm/markdown_sql.go::mdStatement#field.SQL": {
+    "exported": false,
+    "signature": "string"
+  },
+  "packages/go/orm/markdown_sql.go::mdStatement#wire": {
+    "exported": false,
+    "signature": "{\"op\":\"text\",\"params\":\"list\\u003cunsupported-*ast.SelectorExpr\\u003e\",\"sql\":\"text\"}"
+  },
+  "packages/go/orm/markdown_sql.go::mdStatementAnswer": {
+    "exported": false,
+    "signature": "type mdStatementAnswer struct { Columns []struct { Name string `json:\"name\"` Type string `json:\"type\"` } `json:\"columns\"` Rows [][]json.RawMessage `json:\"rows\"` Affected int64 `json:\"affected\"` LastInsertID int64 `json:\"last_insert_id\"` More bool `json:\"more\"` }"
+  },
+  "packages/go/orm/markdown_sql.go::mdStatementAnswer#field.Affected": {
+    "exported": false,
+    "signature": "int64"
+  },
+  "packages/go/orm/markdown_sql.go::mdStatementAnswer#field.Columns": {
+    "exported": false,
+    "signature": "[]struct { Name string `json:\"name\"` Type string `json:\"type\"` }"
+  },
+  "packages/go/orm/markdown_sql.go::mdStatementAnswer#field.LastInsertID": {
+    "exported": false,
+    "signature": "int64"
+  },
+  "packages/go/orm/markdown_sql.go::mdStatementAnswer#field.More": {
+    "exported": false,
+    "signature": "bool"
+  },
+  "packages/go/orm/markdown_sql.go::mdStatementAnswer#field.Rows": {
+    "exported": false,
+    "signature": "[][]json.RawMessage"
+  },
+  "packages/go/orm/markdown_sql.go::mdStatementAnswer#wire": {
+    "exported": false,
+    "signature": "{\"affected\":\"integer\",\"columns\":\"list\\u003cunsupported-*ast.StructType\\u003e\",\"last_insert_id\":\"integer\",\"more\":\"bool\",\"rows\":\"list\\u003clist\\u003cunsupported-*ast.SelectorExpr\\u003e\\u003e\"}"
+  },
+  "packages/go/orm/markdown_sql.go::mdStmt": {
+    "exported": false,
+    "signature": "type mdStmt struct { c *mdConn text string }"
+  },
+  "packages/go/orm/markdown_sql.go::mdStmt#field.c": {
+    "exported": false,
+    "signature": "*mdConn"
+  },
+  "packages/go/orm/markdown_sql.go::mdStmt#field.text": {
+    "exported": false,
+    "signature": "string"
+  },
+  "packages/go/orm/markdown_sql.go::mdStmt.Close": {
+    "exported": false,
+    "signature": "receiver=*mdStmt func() error"
+  },
+  "packages/go/orm/markdown_sql.go::mdStmt.Exec": {
+    "exported": false,
+    "signature": "receiver=*mdStmt func(args []driver.Value) (driver.Result, error)"
+  },
+  "packages/go/orm/markdown_sql.go::mdStmt.ExecContext": {
+    "exported": false,
+    "signature": "receiver=*mdStmt func(ctx context.Context, args []driver.NamedValue) (driver.Result, error)"
+  },
+  "packages/go/orm/markdown_sql.go::mdStmt.NumInput": {
+    "exported": false,
+    "signature": "receiver=*mdStmt func() int"
+  },
+  "packages/go/orm/markdown_sql.go::mdStmt.Query": {
+    "exported": false,
+    "signature": "receiver=*mdStmt func(args []driver.Value) (driver.Rows, error)"
+  },
+  "packages/go/orm/markdown_sql.go::mdStmt.QueryContext": {
+    "exported": false,
+    "signature": "receiver=*mdStmt func(ctx context.Context, args []driver.NamedValue) (driver.Rows, error)"
+  },
+  "packages/go/orm/markdown_sql.go::mdTx": {
+    "exported": false,
+    "signature": "type mdTx struct{ c *mdConn }"
+  },
+  "packages/go/orm/markdown_sql.go::mdTx#field.c": {
+    "exported": false,
+    "signature": "*mdConn"
+  },
+  "packages/go/orm/markdown_sql.go::mdTx.Commit": {
+    "exported": false,
+    "signature": "receiver=mdTx func() error"
+  },
+  "packages/go/orm/markdown_sql.go::mdTx.Rollback": {
+    "exported": false,
+    "signature": "receiver=mdTx func() error"
+  },
+  "packages/go/orm/markdown_sql.go::namedValues": {
+    "exported": false,
+    "signature": "func(args []driver.NamedValue) []any"
+  },
+  "packages/go/orm/markdown_sql.go::plainValues": {
+    "exported": false,
+    "signature": "func(args []driver.Value) []any"
+  },
+  "packages/go/orm/markdown_sql.go::statementCell": {
+    "exported": false,
+    "signature": "func(raw json.RawMessage) (any, error)"
+  },
+  "packages/go/orm/markdown_sql.go::statementParam": {
+    "exported": false,
+    "signature": "func(v any) (json.RawMessage, error)"
+  },
+  "packages/go/orm/markdown_sql.go::statementTime": {
+    "exported": false,
+    "signature": "func(declared string, v any) any"
   },
   "packages/go/orm/model.go::CollectOf": {
     "exported": true,
@@ -21647,6 +21663,10 @@
     "exported": false,
     "signature": "receiver=*DB func(ex executor, a *auditInsert) (*auditRecord, error)"
   },
+  "packages/go/orm/tx.go::DB.registeredModels": {
+    "exported": false,
+    "signature": "receiver=*DB func() map[string]*runtimemodel.Model"
+  },
   "packages/go/orm/tx.go::DB.requestHook": {
     "exported": false,
     "signature": "receiver=*DB func() RequestHook"
@@ -21765,7 +21785,7 @@
   },
   "packages/go/orm/tx.go::txConn": {
     "exported": false,
-    "signature": "type txConn struct { db *DB conn *sql.Conn md *mdSession number int64 ctx context.Context cancel context.CancelFunc busy atomic.Bool finished atomic.Bool savepoints int stmMu sync.Mutex stmts map[string]*sql.Stmt locals map[string]string locks []string unclean bool readOnly bool isolation IsolationLevel sqliteMode bool rollbacks *rollbackWatch audit *auditRecord pendingAudit *auditInsert inserted map[string]map[int64]struct{} }"
+    "signature": "type txConn struct { db *DB conn *sql.Conn number int64 ctx context.Context cancel context.CancelFunc busy atomic.Bool finished atomic.Bool savepoints int stmMu sync.Mutex stmts map[string]*sql.Stmt locals map[string]string locks []string unclean bool readOnly bool isolation IsolationLevel sqliteMode bool rollbacks *rollbackWatch audit *auditRecord pendingAudit *auditInsert inserted map[string]map[int64]struct{} }"
   },
   "packages/go/orm/tx.go::txConn#field.audit": {
     "exported": false,
@@ -21810,10 +21830,6 @@
   "packages/go/orm/tx.go::txConn#field.locks": {
     "exported": false,
     "signature": "[]string"
-  },
-  "packages/go/orm/tx.go::txConn#field.md": {
-    "exported": false,
-    "signature": "*mdSession"
   },
   "packages/go/orm/tx.go::txConn#field.number": {
     "exported": false,

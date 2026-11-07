@@ -86,11 +86,10 @@ func (s *Schema) Model() (*runtimemodel.Model, error) {
 // every copy shares one connection through dbMutable.
 type DB struct {
 	sql *sql.DB
-	// md is the flowmark session pool of a markdown:// connection. On SQL connections it is nil, and sql takes that
-	// place.
-	md   *mdPool
-	ctx  context.Context
-	root *DB
+	// corpus is a connection to a flowmark server, which answers SQL in SQLite dialect.
+	corpus bool
+	ctx    context.Context
+	root   *DB
 	// hook is the request hook of this handle. If nil, the request is planned as is.
 	hook     RequestHook
 	m        *dbMutable
@@ -171,13 +170,9 @@ func (d *DB) engineFor(s *Schema) (*engine.Engine, error) {
 	return eng, nil
 }
 
-// registeredModel is the runtime model of the schema registered on this connection. An SQL connection uses the engine's
-// model, and a markdown connection, which does not plan, uses the model of the set it registered. If it is not registered,
-// it is SCHEMA_HASH_MISMATCH.
+// registeredModel is the runtime model of the schema registered on this connection. It is the engine's model. If the set is not registered, it is
+// SCHEMA_HASH_MISMATCH.
 func (d *DB) registeredModel(s *Schema) (*runtimemodel.Model, error) {
-	if d.md != nil {
-		return d.markdownModel(s)
-	}
 	eng, err := d.engineFor(s)
 	if err != nil {
 		return nil, err
@@ -210,15 +205,12 @@ func (d *DB) register(s *Schema) error {
 	if d.m.schemas[s.Hash] != nil {
 		return nil
 	}
-	// A markdown connection does not plan (docs/spec/protocol.md §5), so it registers only the set, without a dialect engine.
-	if d.md != nil {
-		d.m.schemas[s.Hash] = s
-		return nil
-	}
 	eng, err := engine.New(m, d.driver)
 	if err != nil {
 		return err
 	}
+	// A corpus assigns the key_prefix keys and the order positions that an insert leaves out.
+	eng.P.Assigns = d.corpus
 	d.m.engines[s.Hash] = eng
 	d.m.schemas[s.Hash] = s
 	return nil
@@ -450,12 +442,6 @@ func (d *DB) Close() error {
 		d.stmts = map[string]*sql.Stmt{}
 		d.m.stmtOrder = nil
 		d.m.stmMu.Unlock()
-		if d.md != nil {
-			if err := d.md.close(); err != nil && d.m.closeErr == nil {
-				d.m.closeErr = err
-			}
-			return
-		}
 		if err := d.sql.Close(); err != nil && d.m.closeErr == nil {
 			d.m.closeErr = err
 		}
@@ -465,16 +451,18 @@ func (d *DB) Close() error {
 
 // Stats returns the connection pool state.
 func (d *DB) Stats() DBStats {
-	if d.md != nil {
-		return d.md.stats()
-	}
 	stats := d.sql.Stats()
 	return DBStats{MaxOpenConnections: stats.MaxOpenConnections, OpenConnections: stats.OpenConnections, InUse: stats.InUse, Idle: stats.Idle}
 }
 
 // Driver is the database of the connection: mysql, postgres, sqlite, or
 // markdown, a corpus that a flowmark server serves.
-func (d *DB) Driver() string { return d.driver }
+func (d *DB) Driver() string {
+	if d.corpus {
+		return "markdown"
+	}
+	return d.driver
+}
 
 // Drivers other than MySQL live in their own packages so a MySQL-only program
 // does not link PostgreSQL and SQLite; import the driver package for its side

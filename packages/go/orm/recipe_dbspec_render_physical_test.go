@@ -31,3 +31,9 @@ func TestRecipeDbspecRenderPhysicalSqlite(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, dbspecRenderPhysicalRecipe, "sqlite")
 }
+
+// TestRecipeDbspecRenderPhysicalMarkdown runs the recipe on flowmark, each case on a corpus of its own (FCV-3).
+func TestRecipeDbspecRenderPhysicalMarkdown(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, dbspecRenderPhysicalRecipe, "markdown")
+}

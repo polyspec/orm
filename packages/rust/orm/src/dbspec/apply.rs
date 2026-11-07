@@ -12,8 +12,8 @@ use sqlx::{AssertSqlSafe, MySqlConnection, PgConnection, SqliteConnection};
 use std::future::Future;
 
 /// The connection that the commands run on: it runs statements and reads
-/// the catalog. The sqlx MySQL, PostgreSQL and SQLite connections implement
-/// it; the commands use their lock and session settings only on this
+/// the catalog. The sqlx MySQL, PostgreSQL and SQLite connections and a markdown
+/// session implement it; the commands use their lock and session settings only on this
 /// connection.
 pub trait ApplyConnection: CatalogQuerier {
     /// Runs one statement without bound values.
@@ -1199,6 +1199,34 @@ macro_rules! impl_apply_connection {
 impl_apply_connection!(MySqlConnection, sqlx::MySql, super::mysql_value);
 impl_apply_connection!(PgConnection, sqlx::Postgres, super::postgres_value);
 impl_apply_connection!(SqliteConnection, sqlx::Sqlite, super::sqlite_value);
+
+/// The wire parameters of catalog values on a markdown session: a boolean binds as the integer 1 or 0, as SQLite binds it (PRT-67).
+fn markdown_args(args: &[CatalogValue]) -> Vec<serde_json::Value> {
+    args.iter()
+        .map(|arg| match arg {
+            CatalogValue::Null => serde_json::Value::Null,
+            CatalogValue::Text(s) => serde_json::Value::String(s.clone()),
+            CatalogValue::Int(n) => serde_json::Value::from(*n),
+            CatalogValue::Bool(b) => serde_json::Value::from(i64::from(*b)),
+        })
+        .collect()
+}
+
+/// A markdown session applies a plan as a SQLite connection does: its statements are in SQLite's dialect (DIA-185).
+impl ApplyConnection for crate::markdown::MarkdownLease {
+    async fn execute(&mut self, statement: &str) -> Result<(), sqlx::Error> {
+        self.raw(statement).await
+    }
+
+    async fn execute_bound(&mut self, statement: &str, args: &[CatalogValue]) -> Result<(), sqlx::Error> {
+        self.statement(statement, &markdown_args(args)).await.map(drop)
+    }
+
+    async fn query_bound(&mut self, query: &str, args: &[CatalogValue]) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
+        let rows = self.statement(query, &markdown_args(args)).await?.rows;
+        <crate::markdown::MarkdownLease as super::CatalogFetch>::values(&rows)
+    }
+}
 
 #[cfg(test)]
 mod sqlite_lock_result_tests {

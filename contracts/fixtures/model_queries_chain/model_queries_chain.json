@@ -14,7 +14,8 @@
   "INT-87",
   "PRT-35",
   "INT-11",
-  "PRT-40"
+  "PRT-40",
+  "DIA-154"
  ],
  "fixture": "contracts/fixtures/model_chain/dbspec-set.json",
  "seed": {

@@ -73,8 +73,8 @@ const CASES: &[&str] = &[
     "codec_update",
     "select_explicit_insert_omitted",
     "select_explicit_read_null",
-    "install_refuses_aes",
-    "install_refuses_audit",
+    "install_aes",
+    "install_audit",
 ];
 
 /// The flowmark server that the cases share, on the runtime that runs them. A later case reads the corpus state that the
@@ -124,7 +124,6 @@ fn markdown_conformance_case(id: &str, expect: &Value) {
 }
 
 /// Each case of tests/markdown/cases.json is the trial `markdown_conformance::<id>`, in the order of the file.
-/// The read answer chains of tests/ir/answers.json are the recipe's trials (ir_answers, which needs no flowmark server).
 fn main() {
     let trials = load_cases()
         .into_iter()

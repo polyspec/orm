@@ -20,7 +20,8 @@
       "php-ext": [
         "orm-install-php-extension-runtime",
         "orm-install-server-programs",
-        "orm-install-go-lease"
+        "orm-install-go-lease",
+        "orm-install-flowmark"
       ],
       "python": [
         "orm-install-python"

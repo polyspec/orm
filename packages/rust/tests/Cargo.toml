@@ -26,21 +26,21 @@ path = "../../../examples/complex/rust/main.rs"
 name = "demo"
 path = "../../../examples/thin-slice/rust/main.rs"
 
-# Each case of the read answer recipe, tests/ir/answers.json, is the trial ir_answers::<case id> (FCV-3).
 [[test]]
 name = "collection_none"
 path = "tests/collection_none.rs"
-harness = false
-
-[[test]]
-name = "ir_answers"
-path = "tests/ir_answers.rs"
 harness = false
 
 # Each case of the markdown message recipe, tests/bind/messages.json, is the trial bind_messages::<case id> (FCV-3, FCV-4).
 [[test]]
 name = "bind_messages"
 path = "tests/bind_messages.rs"
+harness = false
+
+# Each case of the session recipe, tests/markdown/session.json, is the trial markdown_session::<case id> (FCV-3, FCV-4).
+[[test]]
+name = "markdown_session"
+path = "tests/markdown_session.rs"
 harness = false
 
 # Each case of the codec recipe, tests/codec/codec.json, is the trial codec_none::<case id> (FCV-3).
@@ -119,6 +119,11 @@ name = "catalog_connection_sqlite"
 path = "tests/catalog_connection_sqlite.rs"
 harness = false
 
+[[test]]
+name = "catalog_connection_markdown"
+path = "tests/catalog_connection_markdown.rs"
+harness = false
+
 # Each case of the dbspec_apply recipe, contracts/fixtures/dbspec_apply/dbspec_apply.json, is the trial dbspec_apply_<database>::<case id>
 # on a case database of its own (FCV-3, FCV-4).
 [[test]]
@@ -134,6 +139,11 @@ harness = false
 [[test]]
 name = "dbspec_apply_sqlite"
 path = "tests/dbspec_apply_sqlite.rs"
+harness = false
+
+[[test]]
+name = "dbspec_apply_markdown"
+path = "tests/dbspec_apply_markdown.rs"
 harness = false
 
 # Each case of the connection_pool recipe is a trial of its program (FCV-3).
@@ -152,6 +162,11 @@ name = "connection_pool_sqlite"
 path = "tests/connection_pool_sqlite.rs"
 harness = false
 
+[[test]]
+name = "connection_pool_markdown"
+path = "tests/connection_pool_markdown.rs"
+harness = false
+
 # Each case of the utils recipe, contracts/fixtures/utils/utils.json, is the trial utils_recipe_<database>::<case id> on a
 # case database of its own (FCV-3, FCV-4).
 [[test]]
@@ -167,6 +182,11 @@ harness = false
 [[test]]
 name = "utils_recipe_sqlite"
 path = "tests/utils_recipe_sqlite.rs"
+harness = false
+
+[[test]]
+name = "utils_recipe_markdown"
+path = "tests/utils_recipe_markdown.rs"
 harness = false
 
 # Each case of the statement_runner recipe, contracts/fixtures/statement_runner/statement_runner.json, is the trial
@@ -188,6 +208,11 @@ harness = false
 [[test]]
 name = "statement_runner_sqlite"
 path = "tests/statement_runner_sqlite.rs"
+harness = false
+
+[[test]]
+name = "statement_runner_markdown"
+path = "tests/statement_runner_markdown.rs"
 harness = false
 
 # Each case of the recipe tests/dbspec/set-files.json without a database, as dbspec_read_set_none::<case id> (FCV-3, FCV-4).
@@ -220,6 +245,11 @@ name = "dbspec_render_physical_sqlite"
 path = "tests/dbspec_render_physical_sqlite.rs"
 harness = false
 
+[[test]]
+name = "dbspec_render_physical_markdown"
+path = "tests/dbspec_render_physical_markdown.rs"
+harness = false
+
 # Each case of the recipe tests/dbspec/set-decimal.json on mysql, as dbspec_set_decimal_mysql::<case id> (FCV-3, FCV-4).
 [[test]]
 name = "dbspec_set_decimal_mysql"
@@ -236,6 +266,11 @@ harness = false
 [[test]]
 name = "dbspec_set_decimal_sqlite"
 path = "tests/dbspec_set_decimal_sqlite.rs"
+harness = false
+
+[[test]]
+name = "dbspec_set_decimal_markdown"
+path = "tests/dbspec_set_decimal_markdown.rs"
 harness = false
 
 # Each case of the recipe tests/dbspec/apply-verification-errors.json, as dbspec_apply_verification_errors_none::<case id> (FCV-3, FCV-4).
@@ -265,6 +300,11 @@ name = "statement_events_sqlite"
 path = "tests/statement_events_sqlite.rs"
 harness = false
 
+[[test]]
+name = "statement_events_markdown"
+path = "tests/statement_events_markdown.rs"
+harness = false
+
 # Each case of the performance_gate recipe, contracts/fixtures/performance_gate/performance_gate.json, is the trial
 # performance_gate_<database>::<case id> on a case database of its own (FCV-3, FCV-4 model.connect and model.query).
 [[test]]
@@ -280,6 +320,11 @@ harness = false
 [[test]]
 name = "performance_gate_sqlite"
 path = "tests/performance_gate_sqlite.rs"
+harness = false
+
+[[test]]
+name = "performance_gate_markdown"
+path = "tests/performance_gate_markdown.rs"
 harness = false
 
 # Each case of the model_queries recipe, contracts/fixtures/model_queries/model_queries.json, is the trial
@@ -301,6 +346,11 @@ harness = false
 [[test]]
 name = "model_queries_sqlite"
 path = "tests/model_queries_sqlite.rs"
+harness = false
+
+[[test]]
+name = "model_queries_markdown"
+path = "tests/model_queries_markdown.rs"
 harness = false
 
 # Each case of the constraints_and_relations recipe, contracts/fixtures/constraints_and_relations/constraints_and_relations.json, is
@@ -325,8 +375,18 @@ path = "tests/constraints_and_relations_sqlite.rs"
 harness = false
 
 [[test]]
+name = "constraints_and_relations_markdown"
+path = "tests/constraints_and_relations_markdown.rs"
+harness = false
+
+[[test]]
 name = "catalog_connection_sqlite_only"
 path = "tests/catalog_connection_sqlite_only.rs"
+harness = false
+
+[[test]]
+name = "catalog_connection_sqlite_only_markdown"
+path = "tests/catalog_connection_sqlite_only_markdown.rs"
 harness = false
 
 
@@ -351,8 +411,18 @@ name = "conformance_verification_sqlite"
 path = "tests/conformance_verification_sqlite.rs"
 harness = false
 
+[[test]]
+name = "conformance_verification_markdown"
+path = "tests/conformance_verification_markdown.rs"
+harness = false
+
 # Each case of the request_hook recipe, contracts/fixtures/request_hook/request_hook.json, is the trial request_hook_mysql::<case id>
 # on a case database of its own (FCV-3 and FCV-4).
+[[test]]
+name = "request_hook_markdown"
+path = "tests/request_hook_markdown.rs"
+harness = false
+
 [[test]]
 name = "request_hook_mysql"
 path = "tests/request_hook_mysql.rs"
@@ -437,6 +507,11 @@ name = "dbspec_introspect_sqlite"
 path = "tests/dbspec_introspect_sqlite.rs"
 harness = false
 
+[[test]]
+name = "dbspec_introspect_markdown"
+path = "tests/dbspec_introspect_markdown.rs"
+harness = false
+
 # Each case of the schema_install recipe, contracts/fixtures/schema_install/schema_install.json, is the trial
 # schema_install_<database>::<case id> on a case database of its own (FCV-3).
 [[test]]
@@ -452,6 +527,11 @@ harness = false
 [[test]]
 name = "schema_install_sqlite"
 path = "tests/schema_install_sqlite.rs"
+harness = false
+
+[[test]]
+name = "schema_install_markdown"
+path = "tests/schema_install_markdown.rs"
 harness = false
 
 # Each case of the dsn_connection recipe, contracts/fixtures/dsn_connection/dsn_connection.json, is the trial
@@ -471,6 +551,11 @@ name = "dsn_connection_sqlite"
 path = "tests/dsn_connection_sqlite.rs"
 harness = false
 
+[[test]]
+name = "dsn_connection_markdown"
+path = "tests/dsn_connection_markdown.rs"
+harness = false
+
 # Each case of the model_writes recipe, contracts/fixtures/model_writes/model_writes.json, is the trial
 # model_writes_<database>::<case id> on a case database of its own (FCV-3, FCV-4).
 [[test]]
@@ -486,6 +571,11 @@ harness = false
 [[test]]
 name = "model_writes_sqlite"
 path = "tests/model_writes_sqlite.rs"
+harness = false
+
+[[test]]
+name = "model_writes_markdown"
+path = "tests/model_writes_markdown.rs"
 harness = false
 
 # Each case of the public interface recipe, contracts/fixtures/public_interface/public_interface.json, is the trial
@@ -518,6 +608,11 @@ name = "immutable_write_sqlite"
 path = "tests/immutable_write_sqlite.rs"
 harness = false
 
+[[test]]
+name = "immutable_write_markdown"
+path = "tests/immutable_write_markdown.rs"
+harness = false
+
 # Each case of the external_audit recipe, contracts/fixtures/external_audit/external_audit.json, is the trial
 # external_audit_<database>::<case id> on a case database of its own (FCV-3, FCV-4).
 [[test]]
@@ -533,6 +628,11 @@ harness = false
 [[test]]
 name = "external_audit_sqlite"
 path = "tests/external_audit_sqlite.rs"
+harness = false
+
+[[test]]
+name = "external_audit_markdown"
+path = "tests/external_audit_markdown.rs"
 harness = false
 
 # Each case of the audit_triggers recipe, contracts/fixtures/audit_triggers/audit_triggers.json, is the trial
@@ -552,6 +652,11 @@ name = "audit_triggers_sqlite"
 path = "tests/audit_triggers_sqlite.rs"
 harness = false
 
+[[test]]
+name = "audit_triggers_markdown"
+path = "tests/audit_triggers_markdown.rs"
+harness = false
+
 # Each case of the transactions recipe, contracts/fixtures/transactions/transactions.json, is the trial
 # transactions_<database>::<case id> on a case database of its own (FCV-3, FCV-4).
 [[test]]
@@ -569,6 +674,11 @@ name = "transactions_sqlite"
 path = "tests/transactions_sqlite.rs"
 harness = false
 
+[[test]]
+name = "transactions_markdown"
+path = "tests/transactions_markdown.rs"
+harness = false
+
 # Each case of the composite_keys recipe, contracts/fixtures/composite_keys/composite_keys.json, is the trial
 # composite_keys_<database>::<case id> on a case database of its own (FCV-3, FCV-4).
 [[test]]
@@ -584,6 +694,11 @@ harness = false
 [[test]]
 name = "composite_keys_sqlite"
 path = "tests/composite_keys_sqlite.rs"
+harness = false
+
+[[test]]
+name = "composite_keys_markdown"
+path = "tests/composite_keys_markdown.rs"
 harness = false
 
 # Each case of the generator scan recipe, contracts/fixtures/generator_scan/generator_scan.json, is the trial generator_scan_none::<case id> (FCV-3).
@@ -663,6 +778,11 @@ name = "fulltext_search_recipe_sqlite"
 path = "tests/fulltext_search_recipe_sqlite.rs"
 harness = false
 
+[[test]]
+name = "fulltext_search_recipe_markdown"
+path = "tests/fulltext_search_recipe_markdown.rs"
+harness = false
+
 
 # Each case of the parameter_chunking recipe, contracts/fixtures/parameter_chunking/parameter_chunking.json, is the trial
 # parameter_chunking_mysql::<case id> on a case database of its own (FCV-3 and FCV-4).
@@ -683,6 +803,11 @@ name = "parameter_chunking_sqlite"
 path = "tests/parameter_chunking_sqlite.rs"
 harness = false
 
+[[test]]
+name = "parameter_chunking_markdown"
+path = "tests/parameter_chunking_markdown.rs"
+harness = false
+
 # Each case of the aes_rotation recipe, contracts/fixtures/aes_rotation/aes_rotation.json, is the trial aes_rotation_mysql::<case id>
 # on a case database of its own (FCV-3 and FCV-4).
 [[test]]
@@ -700,6 +825,11 @@ harness = false
 [[test]]
 name = "aes_rotation_sqlite"
 path = "tests/aes_rotation_sqlite.rs"
+harness = false
+
+[[test]]
+name = "aes_rotation_markdown"
+path = "tests/aes_rotation_markdown.rs"
 harness = false
 
 # Each case of the model_socket recipe, contracts/fixtures/model_socket/model_socket.json, is the trial
@@ -782,6 +912,11 @@ name = "model_queries_chain_sqlite"
 path = "tests/model_queries_chain_sqlite.rs"
 harness = false
 
+[[test]]
+name = "model_queries_chain_markdown"
+path = "tests/model_queries_chain_markdown.rs"
+harness = false
+
 # Each case of the model_writes_chain recipe, contracts/fixtures/model_writes_chain/model_writes_chain.json, is the trial
 # model_writes_chain_mysql::<case id> on a case database of its own (FCV-3, FCV-4).
 [[test]]
@@ -803,6 +938,11 @@ name = "model_writes_chain_sqlite"
 path = "tests/model_writes_chain_sqlite.rs"
 harness = false
 
+[[test]]
+name = "model_writes_chain_markdown"
+path = "tests/model_writes_chain_markdown.rs"
+harness = false
+
 # Each case of the complex_query recipe, contracts/fixtures/complex_query/complex_query.json, is the trial complex_query_mysql::<case id>
 # (docs/spec/feature-coverage.md FCV-3).
 [[test]]
@@ -822,4 +962,9 @@ harness = false
 [[test]]
 name = "complex_query_sqlite"
 path = "tests/complex_query_sqlite.rs"
+harness = false
+
+[[test]]
+name = "complex_query_markdown"
+path = "tests/complex_query_markdown.rs"
 harness = false

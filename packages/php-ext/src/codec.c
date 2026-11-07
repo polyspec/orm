@@ -1995,19 +1995,21 @@ static bool stored_version(zval *v, zend_long *out)
     return true;
 }
 
-/* One entry of decodeRows' $cells: [index, host stages, codec stages, whether the host stages include aes, aes_key_version index or null]. */
+/* One entry of decodeRows' $cells: [index, host stages, codec stages, whether the host stages include aes, aes_key_version index or null,
+ * the <entity>.<column> of the cell]. */
 typedef struct {
     zend_long index;
     HashTable *host;
     HashTable *codec;
     bool aes;
     zval *version;
+    zend_string *name;
 } styled_cell;
 
 static bool cell_parse(zval *c, styled_cell *sc)
 {
     ZVAL_DEREF(c);
-    zval *index = NULL, *host = NULL, *codec = NULL, *aes = NULL, *version = NULL;
+    zval *index = NULL, *host = NULL, *codec = NULL, *aes = NULL, *version = NULL, *name = NULL;
     if (Z_TYPE_P(c) == IS_ARRAY) {
         HashTable *t = Z_ARRVAL_P(c);
         index = zend_hash_index_find(t, 0);
@@ -2015,9 +2017,10 @@ static bool cell_parse(zval *c, styled_cell *sc)
         codec = zend_hash_index_find(t, 2);
         aes = zend_hash_index_find(t, 3);
         version = zend_hash_index_find(t, 4);
+        name = zend_hash_index_find(t, 5);
     }
-    if (index == NULL || host == NULL || codec == NULL || aes == NULL || version == NULL) {
-        zend_type_error("Codec::decodeRows(): a cell is not [index, host stages, codec stages, aes, version index]");
+    if (index == NULL || host == NULL || codec == NULL || aes == NULL || version == NULL || name == NULL) {
+        zend_type_error("Codec::decodeRows(): a cell is not [index, host stages, codec stages, aes, version index, entity.column]");
         return false;
     }
     ZVAL_DEREF(index);
@@ -2025,7 +2028,9 @@ static bool cell_parse(zval *c, styled_cell *sc)
     ZVAL_DEREF(codec);
     ZVAL_DEREF(aes);
     ZVAL_DEREF(version);
-    if (Z_TYPE_P(index) != IS_LONG || Z_TYPE_P(host) != IS_ARRAY || Z_TYPE_P(codec) != IS_ARRAY || (Z_TYPE_P(version) != IS_LONG && Z_TYPE_P(version) != IS_NULL)) {
+    ZVAL_DEREF(name);
+    if (Z_TYPE_P(index) != IS_LONG || Z_TYPE_P(host) != IS_ARRAY || Z_TYPE_P(codec) != IS_ARRAY || (Z_TYPE_P(version) != IS_LONG && Z_TYPE_P(version) != IS_NULL)
+        || Z_TYPE_P(name) != IS_STRING) {
         zend_type_error("Codec::decodeRows(): a cell has a field of the wrong type");
         return false;
     }
@@ -2034,7 +2039,29 @@ static bool cell_parse(zval *c, styled_cell *sc)
     sc->codec = Z_ARRVAL_P(codec);
     sc->aes = zend_is_true(aes);
     sc->version = version;
+    sc->name = Z_STR_P(name);
     return true;
+}
+
+/* A pending CODEC_DECODE OrmException of a read cell is thrown again with the <entity>.<column> of the cell before its message, with
+ * the first as its previous: "CODEC_DECODE: <entity>.<column>: <message>" (COD-41). An exception of another code is left pending. */
+static void name_decode_failure(zend_string *name)
+{
+    zend_class_entry *ce = EG(exception) != NULL ? class_named("Polyspec\\Orm\\OrmException") : NULL;
+    if (ce == NULL || !instanceof_function(EG(exception)->ce, ce)) {
+        return;
+    }
+    zval rv;
+    zval *code = zend_read_property(ce, EG(exception), "code_", sizeof("code_") - 1, true, &rv);
+    if (code == NULL || Z_TYPE_P(code) != IS_STRING || !zend_string_equals_literal(Z_STR_P(code), "CODEC_DECODE")) {
+        return;
+    }
+    zend_object *previous = take_exception();
+    zend_string *message = exception_message(previous);
+    const size_t prefix = sizeof("CODEC_DECODE: ") - 1;
+    zend_string *named = zend_strpprintf(0, "%s: %s", ZSTR_VAL(name), ZSTR_LEN(message) >= prefix ? ZSTR_VAL(message) + prefix : "");
+    zend_string_release(message);
+    (void)orm_fail_previous("CODEC_DECODE", named, previous);
 }
 
 /*
@@ -2140,6 +2167,7 @@ bool codec_decode_rows(HashTable *rows, HashTable *cells, zval *config)
                 zend_string_release(key);
                 zval_ptr_dtor(&v);
                 if (!hd) {
+                    name_decode_failure(sc.name);
                     ok = false;
                     break;
                 }
@@ -2150,6 +2178,7 @@ bool codec_decode_rows(HashTable *rows, HashTable *cells, zval *config)
                 bool cd = codec_decode(sc.codec, &v, &decoded);
                 zval_ptr_dtor(&v);
                 if (!cd) {
+                    name_decode_failure(sc.name);
                     ok = false;
                     break;
                 }

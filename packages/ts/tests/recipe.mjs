@@ -18,7 +18,6 @@ import { AesKeyring, BindCell, CORE, Collection, transactionConflict, Db, OrmErr
 import { analyzeDbspec, formatDbspec, parseDbspecSet as parseDbspecSetBrowser, readDbspecBytes } from '../dist/dbspec/entry.js';
 import { buildSetTree } from '../../../tests/dbspec/set-tree.mjs';
 import { DbspecApplyError, addTablesAndColumnsSteps, applyPlans, exportMermaid, importMermaid, introspectDbspec, rollbackPlans } from '../dist/dbspec/index.js';
-import { connect } from '../dist/models/markdown_fixture/models.js';
 import { Slots, connect as connectSlots } from '../dist/models/bind_fixture/models.js';
 import { modelOfDocuments, parseDocumentSet } from '../dist/engine/model.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
@@ -26,7 +25,8 @@ import { paramUses } from '../dist/engine/params.js';
 import { Engine, Service, connect as connectBench } from '../dist/index.js';
 import { spawn } from 'node:child_process';
 import { styledField } from '../dist/core.js';
-import { relatedDsn, withCaseDatabase } from './case-database.mjs';
+import { relatedDsn, withCaseCorpus, withCaseDatabase } from './case-database.mjs';
+import { chmod, readdir } from 'node:fs/promises';
 import { checkKeys } from './recipe_keys.mjs';
 import { checkGeneratedFiles, checkRefusedGeneration, checkGenerator } from './recipe_generator.mjs';
 import { connectDsn, modelOps } from './recipe_model.mjs';
@@ -35,7 +35,6 @@ import { introspectStep, planPhysicalStep } from './recipe_introspect.mjs';
 import { classesFromModel } from './registered_models.mjs';
 import { nativeQuery, nativeSession, within } from './coverage_case.mjs';
 import { readStep } from './recipe_reads.mjs';
-import { conformanceCases, normalize } from './markdown_cases.mjs';
 import { listenMarkdownTestServer } from './markdown_test_listener.mjs';
 import { caseTest, COMPUTE, DATABASE, PROCESS } from '../../../tests/testcase.mts';
 
@@ -85,7 +84,6 @@ export function runRecipe(path, database) {
           else if (step.op === 'ir.param_uses') checkParamUses(step, dirname(path), database);
           else if (step.op === 'planner.columns') checkPlannerColumns(step, dirname(path), database);
           else if (dbspecOps.includes(step.op)) checkDbspec(step, bound, database);
-          else if (step.op === 'ir.answer') await checkAnswer(step, database, answerText(literal, caseIndex, index));
           else if (step.op === 'collection.key') checkCollectionKey(step, database);
           else if (step.op === 'dsn.connect') await checkDsnConnect(step, database);
           else if (step.op === 'markdown.connect') await checkMarkdownConnect(step, database);
@@ -165,7 +163,7 @@ async function checkMarkdownConnect(step, database) {
     });
     socket.on('error', () => {});
   }));
-  const expect = step.expect[database];
+  const expect = step.expect[dialectKey(database, step.expect)];
   let failure;
   try {
     await connectDriver(`markdown://127.0.0.1:${new URL(server.dsn).port}/${step.corpus}?token=${step.token}`);
@@ -177,9 +175,13 @@ async function checkMarkdownConnect(step, database) {
   checkMarkdownFailure(received, [step.received], failure, expect);
 }
 
-// checkMarkdownSession runs the markdown.session op (FCV-4, PRT-64): on a listener that answers each line with the next of the replies
-// of the step, a read-only transaction that holds a nested one, then a transaction, whose error is compared with the expect.
+// checkMarkdownSession runs the markdown.session op (FCV-4, PRT-64, PRT-66): on a listener that answers each line with the next of the
+// replies of the step, the calls of the step on one connection, whose error is compared with the expect. transactions runs a read-only
+// transaction that holds a nested one, then a transaction, and compares the error of the last one; read runs one read of the bind
+// fixture model, and read_twice runs two on the same connection, the second of which must succeed, and both compare the error of the
+// first read.
 async function checkMarkdownSession(step, database) {
+  if (!['transactions', 'read', 'read_twice'].includes(step.call)) throw new Error(`markdown.session has no call ${step.call}`);
   const received = [];
   const server = await listenMarkdownTestServer(createServer(socket => {
     createInterface({ input: socket }).on('line', line => {
@@ -188,14 +190,29 @@ async function checkMarkdownSession(step, database) {
     });
     socket.on('error', () => {});
   }));
-  const expect = step.expect[database];
-  const db = await Db.connect(`markdown://127.0.0.1:${new URL(server.dsn).port}/${step.corpus}?token=${step.token}`);
+  const expect = step.expect[dialectKey(database, step.expect)];
+  const dsn = `markdown://127.0.0.1:${new URL(server.dsn).port}/${step.corpus}?token=${step.token}`;
   let failure;
   try {
-    await db.transaction(() => db.transaction(() => undefined), { readOnly: true });
-    await db.transaction(() => undefined).catch(error => { failure = error; });
+    if (step.call === 'transactions') {
+      const db = await Db.connect(dsn);
+      try {
+        await db.transaction(() => db.transaction(() => undefined), { readOnly: true });
+        await db.transaction(() => undefined).catch(error => { failure = error; });
+      } finally {
+        await db.close();
+      }
+    } else {
+      // One pooled connection, so the second read runs on the session of the first.
+      const db = await connectSlots(dsn, { poolSize: 1 });
+      try {
+        await new Slots().connect(db).gets().catch(error => { failure = error; });
+        if (step.call === 'read_twice') await new Slots().connect(db).gets();
+      } finally {
+        await db.close();
+      }
+    }
   } finally {
-    await db.close();
     await server.close();
   }
   checkMarkdownFailure(received, step.messages, failure, expect);
@@ -203,7 +220,7 @@ async function checkMarkdownSession(step, database) {
 
 // checkDsnConnect runs the dsn.connect op (FCV-4) on the DSN text of the step, and checks the refusal code or the driver of its expect.
 async function checkDsnConnect(step, database) {
-  const expect = step.expect?.[database];
+  const expect = step.expect?.[dialectKey(database, step.expect)];
   let driver;
   let code = '';
   let message = '';
@@ -258,7 +275,7 @@ function run(step, bound, database) {
       throw new Error(`OP_UNKNOWN ${step.op}`);
   }
   if (step.as !== undefined) bound.set(step.as, result);
-  const expect = step.expect?.[database];
+  const expect = step.expect?.[dialectKey(database, step.expect)];
   if (expect === undefined) {
     if (result.error !== undefined) throw new Error(`unexpected error ${result.error}`);
     return;
@@ -363,7 +380,7 @@ function mermaidSkeleton(document) {
 
 // checkMermaid compares the keys of the expect of database that step names with the plain result, as JSON values.
 function checkMermaid(step, got, database) {
-  const expect = step.expect?.[database];
+  const expect = step.expect?.[dialectKey(database, step.expect)];
   if (expect === undefined) throw new Error(`${step.op} has no expect for ${database}`);
   const actual = JSON.parse(JSON.stringify(got));
   for (const [key, want] of Object.entries(expect.value)) {
@@ -489,7 +506,33 @@ function equal(got, want, ordered) {
 
 // The database path (FCV-3 and FCV-4): each case runs on a case database of its own through the public catalog API.
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
-const DATABASES = new Set(['mysql', 'postgres', 'sqlite']);
+const DATABASES = new Set(['mysql', 'postgres', 'sqlite', 'markdown']);
+
+/** Whether a case or step with the list only runs on database: a corpus speaks SQLite's dialect, so what names sqlite names it too (FCV-3). */
+function onDatabase(only, database) {
+  return only === undefined || only.includes(database) || (database === 'markdown' && only.includes('sqlite'));
+}
+
+/**
+ * The key of a value that names its text by database: a corpus runs SQL in SQLite's dialect (DIA-185), so it reads the SQLite
+ * entry unless the value states its own.
+ */
+function dialectKey(database, entries) {
+  return database === 'markdown' && !Object.hasOwn(entries ?? {}, 'markdown') ? 'sqlite' : database;
+}
+
+/** The SQL dialect of the case database: a corpus runs SQL in SQLite's (DIA-185). */
+function dialectOf(context) {
+  return context.database === 'markdown' ? 'sqlite' : context.database;
+}
+
+/** Makes the directories of the corpus at root ones the process may only read, or writable again. */
+async function chmodCorpus(root, readOnly) {
+  await chmod(root, readOnly ? 0o555 : 0o755);
+  for (const entry of await readdir(root, { withFileTypes: true })) {
+    if (entry.isDirectory()) await chmodCorpus(join(root, entry.name), readOnly);
+  }
+}
 
 // databaseRecipe registers one test per case of the recipe at path on the database (FCV-3).
 async function databaseRecipe(path, database) {
@@ -499,13 +542,22 @@ async function databaseRecipe(path, database) {
   const recipe = JSON.parse(text);
   const name = path;
   if (recipe.fixture === undefined) throw new Error(`recipe ${name}: no fixture, so it has no database`);
+  const markdown = database === 'markdown';
+  const fixture = recipe.fixture;
   // A fixture of none runs every case on an empty case database; the helper never infers it (FCV-3).
-  const { schema, installFirst } = recipe.fixture === NONE_FIXTURE
+  const { schema, installFirst } = fixture === NONE_FIXTURE
     ? { schema: undefined, installFirst: [] }
-    : await fixtureSchema(resolve(root, recipe.fixture));
+    : await fixtureSchema(resolve(root, fixture));
   for (const recipeCase of recipe.cases) {
-    if (recipeCase.only !== undefined && !recipeCase.only.includes(database)) continue;
+    if (!onDatabase(recipeCase.only, database)) continue;
     if (recipeCase.not_through_pooler !== undefined && process.env.ORM_CLIENT_DB_POOLER === '1') continue;
+    if (markdown) {
+      // flowmark install creates the corpus from the set (DIA-189); a case with install: false starts on a corpus of no table.
+      const setPath = fixture !== NONE_FIXTURE && recipeCase.install !== false ? resolve(root, fixture) : null;
+      registerRecipeCase(recipeCase, database, DATABASE, ({ step }) =>
+        withCaseCorpus(setPath, step, caseDatabase => runCase({ name, recipe, recipeCase, database, schema, installFirst, caseDatabase, step })));
+      continue;
+    }
     registerRecipeCase(recipeCase, database, DATABASE, ({ step }) =>
       withCaseDatabase(database, step, caseDatabase => runCase({ name, recipe, recipeCase, database, schema, installFirst, caseDatabase, step })));
   }
@@ -569,13 +621,30 @@ async function runCase({ name, recipe, recipeCase, database, schema, installFirs
   const db = await Db.connect(caseDatabase.dsn);
   try {
     // A case with install: false gets no fixture here; its steps install it (FCV-4, schema.install).
-    if (schema !== undefined && recipeCase.install !== false) {
+    if (schema !== undefined && recipeCase.install !== false && database === 'markdown') {
+      // flowmark install made the corpus from the set; the connection takes the set as an install registers it.
+      db.utils().schema().register(schema);
+      step('schema registered');
+    } else if (schema !== undefined && recipeCase.install !== false) {
       for (const shared of [...installFirst, schema]) await db.utils().schema().install(shared);
       step('schema installed');
     }
     await runCaseOn({ name, recipe, recipeCase, database, schema, caseDatabase, step, db });
   } finally {
     await db.close();
+  }
+}
+
+/** The steps of a case in their order; a failure names the recipe, the case, the index of the step and the database. */
+async function runCaseSteps({ name, recipeCase, database, context, step }) {
+  for (const [index, current] of recipeCase.steps.entries()) {
+    const where = `recipe ${name}, case ${recipeCase.id}, step ${index} (${current.op}), database ${database}`;
+    try {
+      await runStep(current, context);
+    } catch (error) {
+      throw new Error(`${where}: ${error.message}`, { cause: error });
+    }
+    step(`step ${index} ${current.op}`);
   }
 }
 
@@ -587,7 +656,7 @@ async function runCaseOn({ name, recipe, recipeCase, database, schema, caseDatab
     const namespace = await catalog.currentNamespace();
     const bound = new Map([['database', { text: caseDatabase.name }]]);
     const classes = schema === undefined ? {} : classesFromModel(registerModel(schema.manifestText, schema.manifestHash, schema.externalText));
-    context = { catalog, namespace, database, caseOnly: recipeCase.only, dsn: caseDatabase.dsn, bound, tablePath: recipe.fixture !== GENERATED_FIXTURE, db, schema, classes, dir: dirname(resolve(root, name)), closers, closed: false, records: [], hookBases: new Map(), fields: new Map(), step, caseName: caseDatabase.name, casePath: caseDatabase.path };
+    context = { catalog, namespace, database, caseOnly: recipeCase.only, dsn: caseDatabase.dsn, corpusDir: caseDatabase.dir, bound, tablePath: recipe.fixture !== GENERATED_FIXTURE, db, schema, classes, dir: dirname(resolve(root, name)), closers, closed: false, records: [], hookBases: new Map(), fields: new Map(), step, caseName: caseDatabase.name, casePath: caseDatabase.path };
     for (const rows of [recipe.seed?.rows, recipeCase.seed?.rows]) {
       for (const [table, values] of Object.entries(rows ?? {})) {
         const metadata = await catalog.describeTable({ namespace, name: table });
@@ -598,15 +667,7 @@ async function runCaseOn({ name, recipe, recipeCase, database, schema, caseDatab
       if (after !== undefined) await runStep(after, context);
     }
     step('seed rows inserted');
-    for (const [index, current] of recipeCase.steps.entries()) {
-      const where = `recipe ${name}, case ${recipeCase.id}, step ${index} (${current.op}), database ${database}`;
-      try {
-        await runStep(current, context);
-      } catch (error) {
-        throw new Error(`${where}: ${error.message}`, { cause: error });
-      }
-      step(`step ${index} ${current.op}`);
-    }
+    await runCaseSteps({ name, recipeCase, database, context, step });
   } finally {
     for (const close of closers) await close();
     if (context === undefined) await catalog.close();
@@ -894,8 +955,13 @@ const OPS = {
     if (row.waited === null || Number(row.waited) < 0) throw new Error(`the replica did not reach ${status.File}:${status.Position}`);
     return {};
   },
-  // The file of the case database becomes one that the process may only read (CFG-24).
-  'database.read_only'(s, context) {
+  // The file of the case database becomes one that the process may only read (CFG-24); a corpus, its directories.
+  async 'database.read_only'(s, context) {
+    if (context.database === 'markdown') {
+      await chmodCorpus(context.corpusDir, true);
+      context.closers.push(() => chmodCorpus(context.corpusDir, false));
+      return {};
+    }
     chmodSync(context.dsn.slice('sqlite://'.length).split('?')[0], 0o444);
     return {};
   },
@@ -960,9 +1026,9 @@ const OPS = {
     const vectors = JSON.parse(readFileSync(resolve(context.dir, s.vectors), 'utf8'));
     const vector = vectors.cases.find(candidate => candidate.id === s.case);
     if (vector === undefined) throw new Error(`the vectors have no case ${s.case}`);
-    const { database } = context;
+    const database = dialectOf(context);
     const rule = { mysql: "SET time_zone = '+00:00'", postgres: "SET TimeZone = 'UTC'", sqlite: 'PRAGMA foreign_keys = ON' }[database];
-    const session = await nativeSession(database, context.dsn);
+    const session = await nativeSession(context.database, context.dsn);
     try {
       for (const statement of [rule, ...vector.statements[database]]) await session.query(statement);
       for (const step of vector.behavior) {
@@ -990,7 +1056,7 @@ const OPS = {
   },
   async 'sql.exec'(s, context) {
     // An object form runs only on the databases whose key it holds (FCV-4): an absent key runs nothing.
-    const statement = typeof s.sql === 'string' ? s.sql : s.sql[context.database];
+    const statement = typeof s.sql === 'string' ? s.sql : s.sql[dialectKey(context.database, s.sql)];
     if (statement === undefined) return {};
     if (!s.refused) {
       await nativeQuery(context.database, context.dsn, [statement]);
@@ -1036,18 +1102,20 @@ const APPLY_OPS = applyOps({ sql: (field, context) => sql(field, context), runSt
 const OP_DEADLINE_MS = 20000;
 
 async function runStep(rawStep, context) {
-  const reads = readStep(rawStep, context.database);
+  const reads = readStep(rawStep, dialectKey(context.database, rawStep.expect));
   const s = reads.step;
   const op = OPS[s.op] ?? MODEL_OPS[s.op] ?? APPLY_OPS[s.op];
   if (op === undefined) throw new Error(`OP_UNKNOWN ${s.op}`);
-  // A step runs on the databases of its only, else of the only of its case, else on every database, and its expect names exactly those.
-  if (s.only !== undefined && !s.only.includes(context.database)) return;
+  // A step runs on the databases of its only, else of the only of its case, else on every database, and its expect names exactly the
+  // three servers of those; a markdown connection reads the sqlite entry, and an entry of its own is named only where its result differs.
+  if (!onDatabase(s.only, context.database)) return;
   if (s.expect !== undefined) {
-    const named = Object.keys(s.expect).sort().join(',');
-    const want = (s.only ?? context.caseOnly ?? ['mysql', 'postgres', 'sqlite']).slice().sort().join(',');
-    if (named !== want) throw new Error(`the expect of ${s.op} names ${named}, want ${want}`);
+    const only = s.only ?? context.caseOnly ?? ['mysql', 'postgres', 'sqlite'];
+    const servers = names => names.filter(each => each !== 'markdown').sort().join(',');
+    const named = Object.keys(s.expect);
+    if (servers(named) !== servers(only) || (named.includes('markdown') && !only.includes('sqlite'))) throw new Error(`the expect of ${s.op} names ${named.sort().join(',')}, want ${servers(only)}`);
   }
-  const expected = rawStep.expect === undefined ? undefined : reads.outcome(resolveRefs(rawStep.expect[context.database], context));
+  const expected = rawStep.expect === undefined ? undefined : reads.outcome(resolveRefs(rawStep.expect[dialectKey(context.database, rawStep.expect)], context));
   let actual;
   try {
     actual = await within(Promise.resolve().then(() => op(s, context)), APPLY_OPS[s.op] === undefined ? OP_DEADLINE_MS : DATABASE, `${s.op} on ${context.database}`);
@@ -1085,7 +1153,10 @@ async function runStep(rawStep, context) {
 
 /** A field that holds SQL or a database-decided value: the string itself, or the entry of the database. */
 function sql(field, { database }) {
-  return typeof field === 'string' ? field : field[database];
+  if (typeof field === 'string') return field;
+  const text = field[dialectKey(database, field)];
+  if (text === undefined) throw new Error(`the SQL field has no entry for ${database}`);
+  return text;
 }
 
 /** The keyring of a recipe (FCV-4 aesKeyring), by the public constructor. */
@@ -1147,7 +1218,7 @@ function assignments(values, context) {
 }
 
 function databaseValue(value, { database }) {
-  if (value !== null && typeof value === 'object' && 'mysql' in value && 'postgres' in value && 'sqlite' in value) return value[database];
+  if (value !== null && typeof value === 'object' && 'mysql' in value && 'postgres' in value && 'sqlite' in value) return value[dialectKey(database, value)];
   return value;
 }
 
@@ -1162,6 +1233,8 @@ function native(wrapper) {
     case 'text': case 'date': case 'time': case 'datetime': case 'decimal': return value;
     case 'bytes_hex': return Uint8Array.from(Buffer.from(value, 'hex'));
     case 'bool': return value;
+    // Number reads NaN, Infinity and -Infinity, the three non-finite values of the f64 wrapper.
+    case 'float': case 'f64': return Number(value);
     case 'null': case 'nil': return null;
     // An array is a list of values (an IN list of where); a sequence item adds its integers in place (FCV-4).
     case 'array': return value.flatMap(item => ('sequence' in item ? sequenceValues(item.sequence) : [native(item)]));
@@ -1182,6 +1255,8 @@ function plain(value, nativeType) {
   if (typeof value === 'boolean') return { bool: value };
   if (value instanceof Uint8Array) return { bytes_hex: Buffer.from(value).toString('hex') };
   if (typeof value === 'string') return { [temporalKind(nativeType) ?? 'text']: value };
+  // A non-finite number is the f64 wrapper, which names it as JSON cannot.
+  if (typeof value === 'number' && !Number.isFinite(value)) return { f64: String(value) };
   if (typeof value === 'number') return { float: String(value) };
   throw new Error(`no recipe wrapper for the plain value ${String(value)}`);
 }
@@ -1260,15 +1335,8 @@ function checkCollectionKey(step, database) {
     if (!(error instanceof OrmError)) throw error;
     got = { error: error.code, message: error.message };
   }
-  const want = step.expect[database];
+  const want = step.expect[dialectKey(database, step.expect)];
   if (!isDeepStrictEqual(got, want)) throw new Error(`got ${JSON.stringify(got)}, want ${JSON.stringify(want)}`);
-}
-
-// answerText is the answer of an ir.answer step as its recipe writes it, so that a number keeps its form on the wire: JSON.parse
-// would make 3.0 the 3 of an integer. A step of answers has none.
-function answerText(literal, caseIndex, stepIndex) {
-  const answer = literal.get('cases').items[caseIndex].get('steps').items[stepIndex].get('answer');
-  return answer === undefined ? undefined : stringifyJson(answer);
 }
 
 function requestText(literal, caseIndex, stepIndex) {
@@ -1289,7 +1357,7 @@ function checkValidate(step, text, schema, database) {
   } catch (error) {
     got = error.code ?? String(error);
   }
-  const outcome = step.expect[database];
+  const outcome = step.expect[dialectKey(database, step.expect)];
   if (outcome === undefined) throw new Error(`ir.validate has no expect for ${database}`);
   if (outcome.error !== undefined) {
     if (got !== outcome.error) throw new Error(`got ${got ?? 'valid'}, want ${outcome.error}`);
@@ -1322,7 +1390,7 @@ function checkParamUses(step, recipeDir, database) {
   const uses = paramUses(model, request).map(list => list.map(use => use.column === undefined
     ? { type: use.type }
     : { type: use.type, ...(use.assign === true ? { assign: true } : {}), column: use.column.name, length: use.column.length, null: use.column.nullable, precision: use.column.precision, scale: use.column.scale }));
-  if (!isDeepStrictEqual({ uses }, step.expect[database].value)) throw new Error(`ir.param_uses: got ${JSON.stringify(uses)}, want ${JSON.stringify(step.expect[database].value)}`);
+  if (!isDeepStrictEqual({ uses }, step.expect[dialectKey(database, step.expect)].value)) throw new Error(`ir.param_uses: got ${JSON.stringify(uses)}, want ${JSON.stringify(step.expect[dialectKey(database, step.expect)].value)}`);
 }
 
 // checkPlannerColumns states the output columns that the names of the step select from the first statement of the plan of each
@@ -1335,7 +1403,7 @@ function checkPlannerColumns(step, recipeDir, database) {
     const got = step.names.flatMap(name => assemble.columns.flatMap(column => column.name === name
       ? [{ name, type: column.type, hidden: column.hidden === true }]
       : []));
-    if (!isDeepStrictEqual(got, step.expect[database].value)) throw new Error(`planner.columns ${dialect}: got ${JSON.stringify(got)}, want ${JSON.stringify(step.expect[database].value)}`);
+    if (!isDeepStrictEqual(got, step.expect[dialectKey(database, step.expect)].value)) throw new Error(`planner.columns ${dialect}: got ${JSON.stringify(got)}, want ${JSON.stringify(step.expect[dialectKey(database, step.expect)].value)}`);
   }
 }
 
@@ -1347,7 +1415,7 @@ function checkPlanner(step, recipeDir, database) {
   if (typeof step.schema !== 'string') throw new Error('planner.compile needs a schema');
   const { model, hash } = validationModel(resolve(root, recipeDir, step.schema));
   const request = { ...structuredClone(step.input), manifest_hash: hash };
-  const outcome = step.expect[database];
+  const outcome = step.expect[dialectKey(database, step.expect)];
   if (outcome === undefined) throw new Error(`planner.compile has no expect for ${database}`);
   if (outcome.error !== undefined) {
     for (const dialect of plannerDialects) {
@@ -1381,7 +1449,7 @@ const dbspecOps = ['dbspec.parse', 'dbspec.parse_plan', 'dbspec.emit_plan', 'dbs
 // what the call returned, as JSON, with the expect of database. A null source is the empty schema of diffPlan.
 function checkDbspec(step, bound, database) {
   if (database !== NONE) throw new Error(`${step.op} runs without a database`);
-  const want = step.expect?.[database];
+  const want = step.expect?.[dialectKey(database, step.expect)];
   if (want === undefined) throw new Error(`${step.op} has no expect for ${database}`);
   let got;
   switch (step.op) {
@@ -1510,88 +1578,6 @@ function dbspecPlan(raw, bound) {
   return value;
 }
 
-// startMarkdownTestServerWithKeyedAnswers is a listener that answers connect with {"ok":true} and every later message with the answer of answers keyed
-// by the op of a control message or the kind of a request; a message without an answer is IR_INVALID.
-async function startMarkdownTestServerWithKeyedAnswers(answers) {
-  const server = createServer(socket => {
-    let first = true;
-    createInterface({ input: socket }).on('line', line => {
-      if (first) {
-        first = false;
-        socket.write('{"ok":true}\n');
-        return;
-      }
-      let key = 'unreadable';
-      try {
-        const message = JSON.parse(line);
-        key = message.op ?? message.request?.kind ?? key;
-      } catch (error) {
-        // An unreadable line keeps the key 'unreadable'; any other error is a defect and is thrown.
-        if (!(error instanceof SyntaxError)) throw error;
-      }
-      const answer = Object.hasOwn(answers, key) ? answers[key] : { error: { code: 'IR_INVALID', message: `the case has no answer for ${key}` } };
-      socket.write(`${JSON.stringify(answer)}\n`);
-    });
-    socket.on('error', () => {});
-  });
-  return listenMarkdownTestServer(server);
-}
-
-// startMarkdownTestServerWithAnswer is a listener that answers connect with {"ok":true} and the one later request with answer.
-// The request line is added to sent (PRT-66), so that a params expect reads the request the chain sends.
-async function startMarkdownTestServerWithAnswer(answer, sent) {
-  const server = createServer(socket => {
-    const replies = ['{"ok":true}', answer];
-    createInterface({ input: socket }).on('line', line => {
-      if (replies.length === 1) sent.push(line);
-      if (replies.length > 0) socket.write(`${replies.shift()}\n`);
-    });
-    socket.on('error', () => {});
-  });
-  return listenMarkdownTestServer(server);
-}
-
-// requestParams returns the params of the request message that a listener received, in the JSON form of PRT-67 (PRT-66).
-function requestParams(sent) {
-  for (const line of sent) {
-    const message = JSON.parse(line);
-    if (message.request !== undefined) return message.params ?? [];
-  }
-  throw new Error('the listener received no request message');
-}
-
-// checkAnswer runs the chain of an ir.answer step on a connection to a listener that answers with the answer or answers of the step,
-// normalizes its result, and compares it with the value of the expect of database. An OrmError from the chain is {error: CODE}.
-// An expect of {params} compares the params of the request that the listener received instead (PRT-66).
-async function checkAnswer(step, database, answer) {
-  const expect = step.expect?.[database];
-  if (expect === undefined) throw new Error(`ir.answer has no expect for ${database}`);
-  if (expect.value === undefined && expect.params === undefined) throw new Error(`ir.answer expect for ${database} has neither value nor params`);
-  const chain = conformanceCases[step.chain];
-  if (chain === undefined) throw new Error(`chain ${step.chain} is no markdown conformance case`);
-  // The answer goes on the wire as its recipe writes it, from answerText.
-  if (step.answer === undefined && step.answers === undefined) throw new Error('ir.answer has no answer');
-  if (expect.params !== undefined && step.answers !== undefined) throw new Error('a params expect needs one answer, not answers');
-  const sent = [];
-  const server = step.answers !== undefined ? await startMarkdownTestServerWithKeyedAnswers(step.answers) : await startMarkdownTestServerWithAnswer(answer, sent);
-  const db = await connect(server.dsn);
-  let got;
-  let failed = false;
-  try {
-    got = normalize(await chain({ db }));
-  } catch (error) {
-    if (!(error instanceof OrmError)) throw new Error(`${step.chain} failed without an orm code: ${error?.stack ?? error}`, { cause: error });
-    got = { error: error.code };
-    failed = true;
-  } finally {
-    await db.close();
-    await server.close();
-  }
-  if (expect.params !== undefined && !failed) got = requestParams(sent);
-  const want = expect.params ?? expect.value;
-  if (!isDeepStrictEqual(got, want)) throw new Error(`got ${JSON.stringify(got)}, want ${JSON.stringify(want)}`);
-}
-
 // Schema installation (FCV-4). A schema argument is the document set of its files, read from the recipe's directory, parsed
 // with its external documents through the public dbspec API and built into a manifest; manifest_replace changes the manifest
 // text after building and keeps its hash, so that the text no longer hashes to it.
@@ -1614,7 +1600,7 @@ const okValue = { value: { bool: true } };
 
 // inspectedSchema is the schema argument of schema.exists and schema.installed: the name, or that of the database, where $database is the name of the case database.
 function inspectedSchema(value, context) {
-  const name = typeof value === 'string' ? value : value[context.database];
+  const name = typeof value === 'string' ? value : value[dialectKey(context.database, value)];
   return name === '$database' ? new URL(context.dsn).pathname.slice(1) : name;
 }
 
@@ -1963,7 +1949,7 @@ function rowJson(row, pick) {
 }
 
 /** The expect of the database of the case compares rows of wrappers. */
-const wantsRows = (s, { database }) => s.expect?.[database]?.rows !== undefined;
+const wantsRows = (s, { database }) => s.expect?.[dialectKey(database, s.expect)]?.rows !== undefined;
 
 /** The rows of wrappers of the columns of a step, each followed by the columns of each related row of its relation. */
 function chainCells(parents, s) {
@@ -2417,7 +2403,7 @@ Object.assign(OPS, {
     const records = s.compare === 'tables' ? subscription.records.filter(r => r.tables.length > 0) : subscription.records;
     const events = records.map(eventObject);
     // A mask replaces a bind that no recipe can fix (FCV-4 events.captured).
-    for (const mask of s.masks?.[context.database] ?? []) {
+    for (const mask of s.masks?.[dialectOf(context)] ?? []) {
       const binds = events[mask.event]?.object[1][1].array;
       if (binds === undefined || mask.bind >= binds.length) throw new Error(`mask ${JSON.stringify(mask)} names no captured bind`);
       binds[mask.bind] = { text: mask.value };
@@ -2587,7 +2573,7 @@ const dbspecFileOps = ['dbspec.introspect_refusal', 'dbspec.runtime_model', 'dbs
 // checkDbspecFiles runs one dbspec op of a step through the public dbspec API and checks the result against the expect of database.
 // dir is the directory of the recipe: the paths of a step are relative to it (FCV-4).
 async function checkDbspecFiles(step, dir, database) {
-  const expect = step.expect?.[database];
+  const expect = step.expect?.[dialectKey(database, step.expect)];
   if (expect === undefined) throw new Error(`${step.op} has no expect for ${database}`);
   switch (step.op) {
     case 'dbspec.parse_emit': {
@@ -2781,39 +2767,14 @@ async function withProcessZone(zone, work) {
   }
 }
 
-// refusedSurface runs the public call of a markdown.send surface, one that has no form on a markdown connection (DIA-183 to DIA-189).
-function refusedSurface(surface, db) {
-  const empty = () => undefined;
-  const calls = {
-    audit: () => db.transaction(empty, { audit: { actor: 'tester' } }),
-    isolation: () => db.transaction(empty, { isolation: 'serializable' }),
-    timeout_ms: () => db.transaction(empty, { timeoutMs: 100 }),
-    get_query: () => new Slots().connect(db).getQuery(),
-    subscribe: async () => db.subscribe(empty),
-    lock: () => db.utils().lock('k'),
-    set_local: () => db.utils().setLocal('k', 'v'),
-    local: () => db.utils().local('k'),
-    backend_waiting_for_lock: () => db.utils().backendWaitingForLock(),
-    privileges: () => db.utils().privileges().inspectTable('public.items'),
-    aes_status: () => db.utils().aes().status(null, null),
-    aes_rotate: () => db.utils().aes().rotate(null, null),
-    schema_install: () => db.utils().schema().install(null),
-    schema_evolution: () => db.utils().schema().addTablesAndColumns(null),
-    schema_exists: () => db.utils().schema().exists('orm'),
-  };
-  if (calls[surface] === undefined) throw new Error(`markdown.send surface ${surface} has no call in the TypeScript cases`);
-  return calls[surface]();
-}
-
 // checkSend runs a markdown.send step: a transaction begin, or the typed filter of a slot column with the value of its wrapper, on a
 // listener that records the first message it receives. The expect is not per database: {message: json} is compared with the message
 // (messageValue) and {error: code} with the OrmError code of a call that sent no message (FCV-4).
 async function checkSend(step, wrappedExpect) {
   await checkFirst(async db => {
-    if (step.surface !== undefined) await refusedSurface(step.surface, db);
-    else if (step.begin !== undefined) await db.transaction(() => {}, { readOnly: step.begin.read_only === true });
+    if (step.begin !== undefined) await db.transaction(() => {}, { readOnly: step.begin.read_only === true });
     else await queryColumn(step, db);
-  }, step, wrappedExpect);
+  }, step, wrappedExpect, step.begin !== undefined);
 }
 
 // shownCatalogRows answers one catalog query of the MySQL introspection from a case of the vectors of dbspec.introspect_shown.
@@ -2835,7 +2796,7 @@ function shownCatalogRows(sql, catalog, vector) {
 // after applied_first and sql, with the fail_catalog_read-th read of the SQLite master query in the call failing. An injected
 // failure must reach the apply error as its cause (PLN-92, PLN-93, PLN-96).
 async function checkApplyFault(step, bound, database) {
-  const expect = step.expect[database];
+  const expect = step.expect[dialectKey(database, step.expect)];
   const plans = [dbspecPlan(step.plan, bound)];
   const now = () => Date.UTC(2026, 9, 1) * 1000;
   const db = new DatabaseSync(':memory:');
@@ -2898,7 +2859,7 @@ async function checkApplyFault(step, bound, database) {
 // checkReadSet runs a dbspec.read_set step: it writes the tree under an empty temporary directory, reads the set with the public
 // readDbspecSet, and compares the paths and the bytes of the files or the rule and path of each error (FCV-4, DBS-11).
 function checkReadSet(step, database) {
-  const expect = step.expect[database];
+  const expect = step.expect[dialectKey(database, step.expect)];
   const tree = step.tree;
   const root = buildSetTree(tree, 'orm-ts-set-');
   try {
@@ -2956,7 +2917,7 @@ async function checkIntrospectShown(step, dir, database) {
   const vector = vectors.cases.find(c => c.id === step.case);
   if (vector === undefined) throw new Error(`${step.vectors} has no case ${step.case}`);
   const connection = { query: async ({ sql }) => [shownCatalogRows(sql, vectors.catalog, vector)] };
-  const expect = step.expect[database];
+  const expect = step.expect[dialectKey(database, step.expect)];
   if (expect.error !== undefined) {
     await assert.rejects(introspectDbspec(connection, 'mysql', 'introspected'), error => error.message === expect.error);
     return;
@@ -2976,7 +2937,7 @@ async function checkIntrospectSqlite(step, database) {
     for (const statement of step.sql) connection.exec(statement);
     const result = await introspectDbspec(connection, 'sqlite', 'introspected');
     const got = result.unsupported.map(({ kind, table, name, reason }) => ({ kind, table, name, reason }));
-    assert.deepEqual(got, step.expect[database].unsupported);
+    assert.deepEqual(got, step.expect[dialectKey(database, step.expect)].unsupported);
   } finally {
     connection.close();
   }
@@ -2996,7 +2957,7 @@ async function checkInterfaceSymbols() {
 // checkKeyring runs a keyring.versions step: the public constructor of the keyring, then its current version and its versions (INT-74,
 // INT-130).
 function checkKeyring(step, database) {
-  const expect = step.expect[database];
+  const expect = step.expect[dialectKey(database, step.expect)];
   let keyring;
   try {
     keyring = aesKeyring(step.keyring);
@@ -3034,15 +2995,15 @@ async function checkBuilder(step, database) {
     await server.close();
   }
   if (received.length > 0) throw new Error(`the terminal sent ${received[0]} before its error`);
-  const expect = step.expect[database];
+  const expect = step.expect[dialectKey(database, step.expect)];
   if (!(callError instanceof OrmError) || callError.code !== expect.error || callError.message !== expect.message) {
     throw new Error(`the terminal returned ${callError}, want ${expect.error} ${expect.message}`, { cause: callError });
   }
 }
 
 // checkFirst runs call on a connection to the markdown.send listener and compares the first message it records, or the OrmError code of a
-// call that sent none, with the expect of step.
-async function checkFirst(call, step, wrappedExpect) {
+// call that sent none, with the expect of step. A whole step compares the whole message, as the statement that begins a transaction is.
+async function checkFirst(call, step, wrappedExpect, whole = false) {
   const received = [];
   const server = await startMarkdownSendListener(received);
   let db;
@@ -3057,7 +3018,7 @@ async function checkFirst(call, step, wrappedExpect) {
     await server.close();
   }
   let got;
-  if (received.length > 0) got = { message: messageValue(received[0]) };
+  if (received.length > 0) got = { message: whole ? fromJson(parseJson(received[0])) : messageValue(received[0]) };
   else if (callError instanceof OrmError) got = { code: callError.code };
   else throw new Error(`the call returned ${callError ?? 'no error'} and sent no message`, { cause: callError });
   if (step.expect.error !== undefined) {
@@ -3084,11 +3045,10 @@ function member(wrapper, name) {
   return wrapper?.object?.find(([key]) => key === name)?.[1];
 }
 
-// messageValue is the message that an expect compares, as a wrapper: the whole message of a begin, or the one parameter of a statement.
-// The message is read with its number text, so an integer is compared by its digits.
+// messageValue is the message that an expect compares, as a wrapper: the one parameter of a statement. The message is read with its
+// number text, so an integer is compared by its digits.
 function messageValue(text) {
   const message = fromJson(parseJson(text));
-  if (member(message, 'op')?.text === 'begin') return message;
   const params = member(message, 'params');
   // A statement with no parameter (a nil compared with eq is IS NULL, DSL-48) has the empty list as its message.
   if (params?.array?.length === 0) return params;
@@ -3166,8 +3126,9 @@ function temporalValue(wrapper) {
   return hostValue(wrapper);
 }
 
-// startMarkdownSendListener answers connect with {"ok":true}, records the first message after it in received, and answers that message
-// and every later one with an error so the call ends.
+// startMarkdownSendListener answers connect with {"ok":true}, answers the setup statements of orm's SQLite dialect, such as the row
+// lock table that a transaction needs, as done, records the first other message in received, and answers that message and every
+// later one with an error so the call ends.
 async function startMarkdownSendListener(received) {
   const server = createServer(socket => {
     let lines = 0;
@@ -3177,7 +3138,12 @@ async function startMarkdownSendListener(received) {
         socket.write('{"ok":true}\n');
         return;
       }
-      if (lines === 2) received.push(line);
+      const message = JSON.parse(line);
+      if (message.op === 'statement' && message.sql.startsWith('CREATE TABLE IF NOT EXISTS "orm__')) {
+        socket.write('{"columns":[],"rows":[],"affected":0,"last_insert_id":0}\n');
+        return;
+      }
+      if (received.length === 0) received.push(line);
       socket.write('{"error":{"code":"IR_INVALID","message":"recorded by the markdown.send listener"}}\n');
     });
     socket.on('error', () => {});

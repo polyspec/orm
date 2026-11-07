@@ -49,7 +49,7 @@ pub const REVISION_CHANGED: &str = "REVISION_CHANGED";
 pub const COLUMN_UNSELECTED: &str = "COLUMN_UNSELECTED";
 /// executor: updateOptimistic matched no row (updated_ts changed)
 pub const OPTIMISTIC_LOCK: &str = "OPTIMISTIC_LOCK";
-/// executor: a target changed since it was read, or a change since the read makes the transaction's writes other writes; names the file and line; the client never retries it
+/// executor: a COMMIT on a markdown connection found a file changed outside the engine since the transaction read it; names the file and line; the client never retries it
 pub const WRITE_CONFLICT: &str = "WRITE_CONFLICT";
 /// executor: styled column bytes could not be decoded (docs/spec/codec.md)
 pub const CODEC_DECODE: &str = "CODEC_DECODE";
@@ -63,7 +63,7 @@ pub const CONFIG: &str = "CONFIG";
 pub const GENERATOR_SCAN_PARSE: &str = "GENERATOR_SCAN_PARSE";
 /// generator: a scanned getter call that no alias, new or addColumn call attaches (docs/spec/dsl.md, DSL-44)
 pub const GENERATOR_SCAN_UNATTACHED: &str = "GENERATOR_SCAN_UNATTACHED";
-/// executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout); a lock wait of the markdown executor that ends is CANCELED too, and so is a MySQL lock wait timeout (1205, innodb_lock_wait_timeout), and so is a MySQL lock wait timeout (1205, innodb_lock_wait_timeout)
+/// executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout); a lock wait of a markdown connection that ends is CANCELED too, and so is a MySQL lock wait timeout (1205, innodb_lock_wait_timeout), and so is a MySQL lock wait timeout (1205, innodb_lock_wait_timeout)
 pub const CANCELED: &str = "CANCELED";
 /// executor: a transaction or savepoint callback failed and its rollback failed too; the error keeps both errors
 pub const ROLLBACK: &str = "ROLLBACK";

@@ -537,8 +537,8 @@ class MarkdownConformanceTest extends TestCase
                 return ['error' => $code, 'name' => $read->getName()];
             },
             // A transaction that reads P1 and writes its own name back, with retry options: the commit's code (null
-            // when it commits) and how many times the callback ran. WRITE_CONFLICT is never retried, DEADLOCK is
-            // (tests/ir/answers.json).
+            // when it commits) and how many times the callback ran. A commit that is WRITE_CONFLICT is never retried,
+            // a DEADLOCK is (PRT-71).
             'transaction_retry_commit' => static function (Served $s): mixed {
                 $runs = 0;
                 $code = null;
@@ -587,8 +587,8 @@ class MarkdownConformanceTest extends TestCase
                 sort($keys, SORT_STRING);
                 return $keys;
             },
-            // The key t3 equals T3 without regard to case: a plain insert is DUPLICATE_KEY, and an on_duplicate insert
-            // meets T3, which keeps its key (DIA-164).
+            // The key t3 equals T3 without regard to case: a plain insert is DUPLICATE_KEY, and so is an on_duplicate
+            // insert, whose conflict meets a key byte for byte, as on SQLite; T3 keeps its row (DIA-164).
             'primary_key_case' => static function (Served $s): mixed {
                 $duplicate = self::codeOf(
                     static fn () => (new Tasks())->connect($s->db)
@@ -598,11 +598,14 @@ class MarkdownConformanceTest extends TestCase
                         ->setPoints(1)
                         ->create()
                 );
-                (new Tasks())->connect($s->db)->setId('t3')->setOwner('P2')->setTitle('ship it')->setPoints(8)
-                    ->duplication((new Tasks())->setTitle('ship it'))->create();
+                $upsert = self::codeOf(
+                    static fn () => (new Tasks())->connect($s->db)->setId('t3')->setOwner('P2')->setTitle('ship it')
+                        ->setPoints(8)->duplication((new Tasks())->setTitle('ship it'))->create()
+                );
                 $met = (new Tasks())->connect($s->db)->removeAllColumns()->addColumnTitle()->id('T3')->get()->toArray();
                 return [
                     'duplicate' => $duplicate,
+                    'upsert' => $upsert,
                     'met' => $met,
                     'count' => (new Tasks())->connect($s->db)->getCount()
                 ];
@@ -732,7 +735,7 @@ class MarkdownConformanceTest extends TestCase
             'index_read' => static function (Served $s): mixed {
                 return (new Tasks())->connect($s->db)->removeAllColumns()->owner('P2')->gets()->toArray();
             },
-            // An index hint, which the corpus does not name: CAPABILITY_UNSUPPORTED (DIA-186).
+            // force_index reads through the index it names, as SQLite does (DIA-186).
             'force_index' => static function (Served $s): mixed {
                 return (new Tasks())->connect($s->db)->forceIndexIxTasksOwner()->owner('P1')->gets()->toArray();
             },
@@ -792,13 +795,13 @@ class MarkdownConformanceTest extends TestCase
                 return (new CodecRows())->connect($s->db)->removeAllColumns()->addColumnPayload()
                     ->id('C2')->get()->getPayload()->kind;
             },
-            // A catalog with an aes column is a schema error on a corpus (DIA-178).
-            'install_refuses_aes' => static function (Served $s): mixed {
-                return self::refusedInstall($s, 'aes');
+            // install_aes installs a catalog with an aes column and its key version column (DIA-178).
+            'install_aes' => static function (Served $s): mixed {
+                return self::installCatalog($s, 'aes');
             },
-            // A catalog with an audit setting is a schema error on a corpus (DIA-179).
-            'install_refuses_audit' => static function (Served $s): mixed {
-                return self::refusedInstall($s, 'audit');
+            // install_audit installs a catalog with an audit setting, its record table and its history table (DIA-179).
+            'install_audit' => static function (Served $s): mixed {
+                return self::installCatalog($s, 'audit');
             },
         ];
     }
@@ -815,23 +818,27 @@ class MarkdownConformanceTest extends TestCase
     }
 
     /**
-     * The code that flowmark install prints when it refuses tests/markdown/refused/<name>.dbs, ['error' => code]; an
-     * install that succeeds is ['error' => null].
+     * Installs tests/markdown/catalogs/<name>.dbs as the one document of the set of a new corpus and answers
+     * ['error' => null], or the code of its refusal, ['error' => code].
      *
      * @return array{error: ?string}
      */
-    private static function refusedInstall(Served $s, string $name): array
+    private static function installCatalog(Served $s, string $name): array
     {
-        $root = sys_get_temp_dir() . '/markdown-refused-' . getmypid() . '-' . bin2hex(random_bytes(4));
+        $root = sys_get_temp_dir() . '/markdown-catalog-' . getmypid() . '-' . bin2hex(random_bytes(4));
         $dir = "$root/$name";
         try {
             if (
                 !mkdir("$dir/dbspec", 0o755, true) || !copy(
-                    self::MARKDOWN_CONFORMANCE_DIR . "/refused/$name.dbs",
+                    self::MARKDOWN_CONFORMANCE_DIR . "/catalogs/$name.dbs",
                     "$dir/dbspec/$name.dbs"
                 )
             ) {
                 throw new RuntimeException("cannot write the catalog $dir/dbspec/$name.dbs");
+            }
+            $set = json_encode(['schema' => 1, 'documents' => ["$name.dbs"]], JSON_THROW_ON_ERROR);
+            if (file_put_contents("$dir/dbspec/dbspec-set.json", $set) === false) {
+                throw new RuntimeException("cannot write the set $dir/dbspec/dbspec-set.json");
             }
             $process = proc_open([$s->bin, 'install', $dir], [1 => ['pipe', 'w'], 2 => ['redirect', 1]], $pipes);
             if (!is_resource($process)) {
@@ -847,14 +854,8 @@ class MarkdownConformanceTest extends TestCase
             }
             return ['error' => $m[1]];
         } finally {
-            if (is_file("$dir/dbspec/$name.dbs")) {
-                unlink("$dir/dbspec/$name.dbs");
-            }
-            foreach (["$dir/dbspec", $dir, $root] as $d) {
-                if (is_dir($d)) {
-                    rmdir($d);
-                }
-            }
+            // The install writes the corpus beside the set.
+            self::removeTree($root);
         }
     }
 

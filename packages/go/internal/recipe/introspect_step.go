@@ -133,7 +133,7 @@ func introspectStep(s databaseStep, c *databaseContext) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	rendered, diagnostics := dbspec.Render(documents, dbspec.Dialect(c.database))
+	rendered, diagnostics := dbspec.Render(documents, dbspec.Dialect(c.dialect()))
 	if len(diagnostics) > 0 {
 		return 0, fmt.Errorf("render: %v", diagnostics)
 	}
@@ -151,13 +151,13 @@ func introspectStep(s databaseStep, c *databaseContext) (int, error) {
 	raw := testdb.Open(c.t, c.database, c.dsn)
 	defer testcase.Close(c.t, raw)
 	raw.SetMaxOpenConns(1)
-	for _, statement := range slices.Concat(introspectConnectionRules[c.database], rendered, extra) {
+	for _, statement := range slices.Concat(introspectConnectionRules[c.dialect()], rendered, extra) {
 		if _, err := raw.ExecContext(c.ctx, strings.ReplaceAll(statement, "{schema}", schema)); err != nil {
 			return 0, fmt.Errorf("%s: %w", statement, err)
 		}
 	}
 	counter := &countingCatalog{querier: raw}
-	document, unsupported, err := dbspec.Introspect(c.ctx, counter, dbspec.Dialect(c.database), "introspected")
+	document, unsupported, err := dbspec.Introspect(c.ctx, counter, dbspec.Dialect(c.dialect()), "introspected")
 	if err != nil {
 		return 0, err
 	}

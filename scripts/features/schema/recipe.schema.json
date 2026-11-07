@@ -39,6 +39,7 @@
       "additionalProperties": false,
       "required": ["mysql", "postgres", "sqlite"],
       "properties": {
+        "markdown": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
         "mysql": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
         "postgres": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
         "sqlite": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
@@ -339,6 +340,20 @@
         {
           "type": "object",
           "required": [
+            "text_hex"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "text_hex": {
+              "description": "A host string of these bytes that need not be UTF-8, two lowercase hex digits per byte (FCV-4); only the runtimes whose host string holds any bytes run it.",
+              "type": "string",
+              "pattern": "^([0-9a-f]{2})*$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
             "bool"
           ],
           "additionalProperties": false,
@@ -608,6 +623,9 @@
           ],
           "additionalProperties": false,
           "properties": {
+            "markdown": {
+              "$ref": "#/$defs/value"
+            },
             "mysql": {
               "$ref": "#/$defs/value"
             },
@@ -656,6 +674,10 @@
           ],
           "additionalProperties": false,
           "properties": {
+            "markdown": {
+              "type": "string",
+              "minLength": 1
+            },
             "mysql": {
               "type": "string",
               "minLength": 1
@@ -780,6 +802,9 @@
           "minProperties": 1,
           "additionalProperties": false,
           "properties": {
+            "markdown": {
+              "$ref": "#/$defs/outcome"
+            },
             "mysql": {
               "$ref": "#/$defs/outcome"
             },
@@ -853,7 +878,6 @@
             "ir.validate",
             "ir.param_uses",
             "planner.columns",
-            "ir.answer",
             "markdown.send",
             "model.assign",
             "catalog.current_namespace",
@@ -1088,9 +1112,6 @@
         },
         {
           "$ref": "#/$defs/ops/planner.columns"
-        },
-        {
-          "$ref": "#/$defs/ops/ir.answer"
         },
         {
           "$ref": "#/$defs/ops/markdown.send"
@@ -1581,6 +1602,9 @@
                 ],
                 "additionalProperties": false,
                 "properties": {
+                  "markdown": {
+                    "type": "string"
+                  },
                   "mysql": {
                     "type": "string"
                   },
@@ -1630,6 +1654,9 @@
                 ],
                 "additionalProperties": false,
                 "properties": {
+                  "markdown": {
+                    "type": "string"
+                  },
                   "mysql": {
                     "type": "string"
                   },
@@ -1847,6 +1874,9 @@
             "minProperties": 1,
             "additionalProperties": false,
             "properties": {
+              "markdown": {
+                "$ref": "#/$defs/outcomes/deadlock"
+              },
               "mysql": {
                 "$ref": "#/$defs/outcomes/deadlock"
               },
@@ -1862,15 +1892,16 @@
       },
       "markdown.session": {
         "type": "object",
-        "required": ["op", "corpus", "token", "replies", "messages", "expect"],
+        "required": ["op", "call", "corpus", "token", "replies", "messages", "expect"],
         "additionalProperties": false,
         "properties": {
           "op": { "const": "markdown.session" },
+          "call": { "enum": ["transactions", "read", "read_twice"], "description": "The public calls on one connection: transactions, a read-only transaction that holds a nested one and then a transaction; read, one read of the bind fixture model; read_twice, two such reads, the second of which must succeed." },
           "corpus": { "type": "string", "description": "The corpus of the markdown DSN." },
           "token": { "type": "string", "description": "The token of the markdown DSN." },
           "replies": { "type": "array", "items": { "type": "string" }, "description": "The lines that the listener answers, in order, one for each line it receives." },
           "messages": { "type": "array", "items": { "type": "string" }, "description": "The lines that the listener must have received when the connection closes." },
-          "expect": { "$ref": "#/$defs/expect" }
+          "expect": { "$ref": "#/$defs/expect", "description": "The outcome of the last transaction (transactions) or of the first read (read, read_twice)." }
         }
       },
       "markdown.connect": {
@@ -2872,6 +2903,9 @@
                         ],
                         "additionalProperties": false,
                         "properties": {
+                          "markdown": {
+                            "type": "array"
+                          },
                           "mysql": {
                             "type": "array"
                           },
@@ -3484,90 +3518,6 @@
           }
         }
       },
-      "ir.answer": {
-        "type": "object",
-        "required": [
-          "op",
-          "chain",
-          "expect"
-        ],
-        "oneOf": [
-          {
-            "required": [
-              "answer"
-            ],
-            "properties": {
-              "answer": {}
-            }
-          },
-          {
-            "required": [
-              "answers"
-            ],
-            "properties": {
-              "answers": {}
-            }
-          }
-        ],
-        "additionalProperties": false,
-        "properties": {
-          "op": {
-            "const": "ir.answer"
-          },
-          "chain": {
-            "type": "string",
-            "pattern": "^[a-z_][a-z0-9_]*$",
-            "description": "The case of tests/markdown/cases.json that the chain runs (tests/markdown/README.md)."
-          },
-          "answer": {
-            "description": "The answer of the chain's one request, as the case gives it (docs/spec/protocol.md section 5, Read)."
-          },
-          "answers": {
-            "type": "object",
-            "description": "The answers of a transaction chain keyed by the op of each control message and the kind of each request."
-          },
-          "expect": {
-            "type": "object",
-            "required": [
-              "none"
-            ],
-            "additionalProperties": false,
-            "properties": {
-              "none": {
-                "type": "object",
-                "oneOf": [
-                  {
-                    "required": [
-                      "value"
-                    ],
-                    "properties": {
-                      "value": true
-                    }
-                  },
-                  {
-                    "required": [
-                      "params"
-                    ],
-                    "properties": {
-                      "params": true
-                    }
-                  }
-                ],
-                "additionalProperties": false,
-                "properties": {
-                  "value": {
-                    "description": "The result of the chain in the plain JSON form of tests/markdown/README.md, a row, a list, a count, a value or {error, runs}."
-                  },
-                  "params": {
-                    "type": "array",
-                    "description": "The params of the one request that the listener received (PRT-66, PRT-67), in the JSON form of PRT-67; the now of the message is not compared."
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
       "markdown.send": {
         "type": "object",
         "required": [
@@ -3595,23 +3545,11 @@
             "properties": {
               "begin": true
             }
-          },
-          {
-            "required": [
-              "surface"
-            ],
-            "properties": {
-              "surface": true
-            }
           }
         ],
         "properties": {
           "op": {
             "const": "markdown.send"
-          },
-          "surface": {
-            "enum": ["audit", "isolation", "timeout_ms", "get_query", "subscribe", "lock", "set_local", "local", "backend_waiting_for_lock", "privileges", "aes_status", "aes_rotate", "schema_install", "schema_evolution", "schema_exists"],
-            "description": "A public call that has no form on a markdown connection (DIA-183 to DIA-189), run in place of a statement."
           },
           "column": {
             "type": "string",
@@ -5645,6 +5583,9 @@
             "minProperties": 1,
             "additionalProperties": false,
             "properties": {
+              "markdown": {
+                "$ref": "#/$defs/outcomes/serverTransactions"
+              },
               "mysql": {
                 "$ref": "#/$defs/outcomes/serverTransactions"
               },
@@ -5832,6 +5773,7 @@
             "type": "object",
             "propertyNames": {
               "enum": [
+                "markdown",
                 "mysql",
                 "postgres",
                 "sqlite"
@@ -6088,6 +6030,13 @@
                     ],
                     "additionalProperties": false,
                     "properties": {
+                      "markdown": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                          "type": "string"
+                        }
+                      },
                       "mysql": {
                         "type": "array",
                         "minItems": 1,
@@ -9550,12 +9499,14 @@
                         "minProperties": 1,
                         "propertyNames": {
                           "enum": [
+                            "markdown",
                             "mysql",
                             "postgres",
                             "sqlite"
                           ]
                         },
                         "properties": {
+                          "markdown": true,
                           "mysql": true,
                           "postgres": true,
                           "sqlite": true

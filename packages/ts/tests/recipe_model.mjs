@@ -300,7 +300,7 @@ export function modelOps({ native, databaseValue, stepArgument, auditSourceOf })
       const author = new Author().connect(db);
       author[CORE].whereChain('', [{ conn: '', op: 'fulltext_boolean', column: '', columns: s.columns, compare: '' }], [s.text]);
       const built = author[CORE].build('count');
-      const plan = new Engine(Author.entity.model, context.database).compile(built.finish());
+      const plan = new Engine(Author.entity.model, context.database === 'markdown' ? 'sqlite' : context.database).compile(built.finish());
       // The value is the one the statement binds: the transform that the plan declares for its slot (DIA-6 declares
       // fulltext_boolean on MySQL only; PostgreSQL binds the text as it is).
       const boolean = plan.steps[0].bind_slots[0]?.transform === 'fulltext_boolean';

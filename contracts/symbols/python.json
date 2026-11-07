@@ -2567,7 +2567,15 @@
     "exported": true,
     "signature": "tuple"
   },
+  "packages/python/src/polyspec/orm/engine/model.py::Entity#field.key_prefix": {
+    "exported": true,
+    "signature": "str"
+  },
   "packages/python/src/polyspec/orm/engine/model.py::Entity#field.name": {
+    "exported": true,
+    "signature": "str"
+  },
+  "packages/python/src/polyspec/orm/engine/model.py::Entity#field.order": {
     "exported": true,
     "signature": "str"
   },
@@ -3347,6 +3355,62 @@
     "exported": true,
     "signature": "def scalar_key(value) -\u003e str"
   },
+  "packages/python/src/polyspec/orm/markdown.py::MarkdownConnection": {
+    "exported": true,
+    "signature": "class MarkdownConnection"
+  },
+  "packages/python/src/polyspec/orm/markdown.py::MarkdownConnection.cancel_query": {
+    "exported": true,
+    "signature": "def cancel_query(self) -\u003e None"
+  },
+  "packages/python/src/polyspec/orm/markdown.py::MarkdownConnection.close": {
+    "exported": true,
+    "signature": "def close(self) -\u003e None"
+  },
+  "packages/python/src/polyspec/orm/markdown.py::MarkdownConnection.execute": {
+    "exported": true,
+    "signature": "def execute(self, sql: str, values)"
+  },
+  "packages/python/src/polyspec/orm/markdown.py::MarkdownConnection.in_transaction": {
+    "exported": true,
+    "signature": "def in_transaction(self) -\u003e bool | None"
+  },
+  "packages/python/src/polyspec/orm/markdown.py::MarkdownConnection.is_alive": {
+    "exported": true,
+    "signature": "def is_alive(self) -\u003e bool"
+  },
+  "packages/python/src/polyspec/orm/markdown.py::MarkdownCursor": {
+    "exported": true,
+    "signature": "class MarkdownCursor"
+  },
+  "packages/python/src/polyspec/orm/markdown.py::MarkdownCursor.close": {
+    "exported": true,
+    "signature": "def close(self) -\u003e None"
+  },
+  "packages/python/src/polyspec/orm/markdown.py::MarkdownCursor.execute": {
+    "exported": true,
+    "signature": "def execute(self, sql: str, args=())"
+  },
+  "packages/python/src/polyspec/orm/markdown.py::MarkdownCursor.fetchall": {
+    "exported": true,
+    "signature": "def fetchall(self) -\u003e list"
+  },
+  "packages/python/src/polyspec/orm/markdown.py::MarkdownCursor.fetchone": {
+    "exported": true,
+    "signature": "def fetchone(self)"
+  },
+  "packages/python/src/polyspec/orm/markdown.py::MarkdownDbapi": {
+    "exported": true,
+    "signature": "class MarkdownDbapi"
+  },
+  "packages/python/src/polyspec/orm/markdown.py::MarkdownDbapi.cursor": {
+    "exported": true,
+    "signature": "def cursor(self) -\u003e MarkdownCursor"
+  },
+  "packages/python/src/polyspec/orm/markdown.py::MarkdownDbapi.track": {
+    "exported": true,
+    "signature": "def track(self, sql: str) -\u003e None"
+  },
   "packages/python/src/polyspec/orm/markdown.py::MarkdownDsn": {
     "exported": true,
     "signature": "class MarkdownDsn"
@@ -3359,121 +3423,61 @@
     "exported": true,
     "signature": "str"
   },
+  "packages/python/src/polyspec/orm/markdown.py::MarkdownDsn#field.pragmas": {
+    "exported": true,
+    "signature": "tuple"
+  },
   "packages/python/src/polyspec/orm/markdown.py::MarkdownDsn#field.token": {
     "exported": true,
     "signature": "str"
   },
-  "packages/python/src/polyspec/orm/markdown.py::MdLinks": {
+  "packages/python/src/polyspec/orm/markdown.py::MarkdownServerError": {
     "exported": true,
-    "signature": "class MdLinks"
+    "signature": "class MarkdownServerError(Exception)"
   },
-  "packages/python/src/polyspec/orm/markdown.py::MdNode": {
+  "packages/python/src/polyspec/orm/markdown.py::MarkdownSession": {
     "exported": true,
-    "signature": "class MdNode"
+    "signature": "class MarkdownSession"
   },
-  "packages/python/src/polyspec/orm/markdown.py::MdNode.build": {
-    "exported": true,
-    "signature": "def build(self, outputs: list[str]) -\u003e None"
-  },
-  "packages/python/src/polyspec/orm/markdown.py::MdNode.out_col": {
-    "exported": true,
-    "signature": "def out_col(self, name: str, index: int) -\u003e dict"
-  },
-  "packages/python/src/polyspec/orm/markdown.py::MdNode.relation_rows": {
-    "exported": true,
-    "signature": "def relation_rows(self, raw, db) -\u003e list"
-  },
-  "packages/python/src/polyspec/orm/markdown.py::MdNode.row": {
-    "exported": true,
-    "signature": "def row(self, raw, db) -\u003e list"
-  },
-  "packages/python/src/polyspec/orm/markdown.py::MdNode.rows": {
-    "exported": true,
-    "signature": "def rows(self, items: list, db) -\u003e list"
-  },
-  "packages/python/src/polyspec/orm/markdown.py::MdSession": {
-    "exported": true,
-    "signature": "class MdSession"
-  },
-  "packages/python/src/polyspec/orm/markdown.py::MdSession.call": {
+  "packages/python/src/polyspec/orm/markdown.py::MarkdownSession.call": {
     "exported": true,
     "signature": "def call(self, msg: dict) -\u003e dict"
   },
-  "packages/python/src/polyspec/orm/markdown.py::MdSession.close": {
+  "packages/python/src/polyspec/orm/markdown.py::MarkdownSession.close": {
     "exported": true,
     "signature": "def close(self) -\u003e None"
   },
-  "packages/python/src/polyspec/orm/markdown.py::MdSession.exchange": {
+  "packages/python/src/polyspec/orm/markdown.py::MarkdownSession.close_rows": {
+    "exported": true,
+    "signature": "def close_rows(self) -\u003e None"
+  },
+  "packages/python/src/polyspec/orm/markdown.py::MarkdownSession.exchange": {
     "exported": true,
     "signature": "def exchange(self, line: bytes) -\u003e bytes"
   },
-  "packages/python/src/polyspec/orm/markdown.py::aggregate_value": {
+  "packages/python/src/polyspec/orm/markdown.py::MarkdownSession.fetch": {
     "exported": true,
-    "signature": "def aggregate_value(raw)"
+    "signature": "def fetch(self, columns: list, text=None) -\u003e dict"
   },
-  "packages/python/src/polyspec/orm/markdown.py::answer_value": {
+  "packages/python/src/polyspec/orm/markdown.py::MarkdownSession.statement": {
     "exported": true,
-    "signature": "def answer_value(type_: str, raw, where: str)"
-  },
-  "packages/python/src/polyspec/orm/markdown.py::begin_markdown": {
-    "exported": true,
-    "signature": "def begin_markdown(db, frame, options: dict) -\u003e None"
-  },
-  "packages/python/src/polyspec/orm/markdown.py::begin_message": {
-    "exported": true,
-    "signature": "def begin_message(read_only: bool) -\u003e dict"
+    "signature": "def statement(self, sql: str, values, text=None) -\u003e dict"
   },
   "packages/python/src/polyspec/orm/markdown.py::dial_markdown": {
     "exported": true,
-    "signature": "def dial_markdown(dsn: MarkdownDsn) -\u003e MdSession"
-  },
-  "packages/python/src/polyspec/orm/markdown.py::end_markdown": {
-    "exported": true,
-    "signature": "def end_markdown(frame, op: str) -\u003e None"
-  },
-  "packages/python/src/polyspec/orm/markdown.py::markdown_call": {
-    "exported": true,
-    "signature": "def markdown_call(ex, request: dict, params) -\u003e tuple[dict, RuntimeModel]"
-  },
-  "packages/python/src/polyspec/orm/markdown.py::markdown_links": {
-    "exported": true,
-    "signature": "def markdown_links(row: list) -\u003e MdLinks"
-  },
-  "packages/python/src/polyspec/orm/markdown.py::markdown_model": {
-    "exported": true,
-    "signature": "def markdown_model(db, manifest_hash: str) -\u003e RuntimeModel"
-  },
-  "packages/python/src/polyspec/orm/markdown.py::markdown_param": {
-    "exported": true,
-    "signature": "def markdown_param(db, i: int, value, uses: list[ParamUse])"
-  },
-  "packages/python/src/polyspec/orm/markdown.py::markdown_read": {
-    "exported": true,
-    "signature": "def markdown_read(ex, request: dict, params) -\u003e tuple[dict, int]"
-  },
-  "packages/python/src/polyspec/orm/markdown.py::markdown_scalar": {
-    "exported": true,
-    "signature": "def markdown_scalar(ex, request: dict, params)"
-  },
-  "packages/python/src/polyspec/orm/markdown.py::markdown_write": {
-    "exported": true,
-    "signature": "def markdown_write(ex, request: dict, params) -\u003e tuple[list, int]"
+    "signature": "def dial_markdown(dsn: MarkdownDsn) -\u003e MarkdownSession"
   },
   "packages/python/src/polyspec/orm/markdown.py::parse_markdown_dsn": {
     "exported": true,
     "signature": "def parse_markdown_dsn(url) -\u003e MarkdownDsn"
   },
-  "packages/python/src/polyspec/orm/markdown.py::savepoint_markdown": {
+  "packages/python/src/polyspec/orm/markdown.py::statement_cell": {
     "exported": true,
-    "signature": "def savepoint_markdown(frame, op: str, name: str) -\u003e None"
+    "signature": "def statement_cell(raw, what: str='statement', text=None)"
   },
-  "packages/python/src/polyspec/orm/markdown.py::sub_type": {
+  "packages/python/src/polyspec/orm/markdown.py::statement_param": {
     "exported": true,
-    "signature": "def sub_type(m: RuntimeModel, sub: dict) -\u003e str"
-  },
-  "packages/python/src/polyspec/orm/markdown.py::unsupported_on_markdown": {
-    "exported": true,
-    "signature": "def unsupported_on_markdown(db, surface: str) -\u003e None"
+    "signature": "def statement_param(value)"
   },
   "packages/python/src/polyspec/orm/meet.py::meet_kind": {
     "exported": true,

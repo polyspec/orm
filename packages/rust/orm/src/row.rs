@@ -22,6 +22,8 @@ pub enum DriverRow {
     MySql(MySqlRow),
     Postgres(PgRow),
     Sqlite(SqliteRow),
+    /// A row of a statement on a markdown connection, read as the SQLite driver reads it (docs/spec/protocol.md PRT-69).
+    Markdown(crate::markdown::MarkdownRow),
 }
 
 impl DriverRow {
@@ -30,6 +32,7 @@ impl DriverRow {
             DriverRow::MySql(r) => r.len(),
             DriverRow::Postgres(r) => r.len(),
             DriverRow::Sqlite(r) => r.len(),
+            DriverRow::Markdown(r) => r.len(),
         }
     }
 
@@ -43,6 +46,7 @@ impl DriverRow {
             DriverRow::MySql(r) => r.column(i).name(),
             DriverRow::Postgres(r) => r.column(i).name(),
             DriverRow::Sqlite(r) => r.column(i).name(),
+            DriverRow::Markdown(r) => r.column_name(i),
         }
     }
 
@@ -291,6 +295,7 @@ pub fn read_cell(row: &DriverRow, i: usize, zone: Zone) -> Result<Val> {
         DriverRow::MySql(r) => read_cell_mysql(r, i),
         DriverRow::Postgres(r) => read_cell_pg(r, i, zone),
         DriverRow::Sqlite(r) => read_cell_sqlite(r, i),
+        DriverRow::Markdown(r) => Ok(r.cell(i)?.val()),
     }
 }
 
@@ -315,45 +320,80 @@ pub fn read_frame_row(row: &DriverRow, zone: Zone) -> Result<Vec<Val>> {
 
 /// Decodes styled cells of every positional row of a step in place: the host stages a
 /// dialect left to the executor (aes/hex/ip, with the AES secret) first, then the codec
-/// stages (docs/spec/codec.md).
+/// stages (docs/spec/codec.md). Each node, the root and each joined child, reads the key
+/// version of its own row (COD-6).
 pub fn decode_styled(asm: &crate::plan::Assemble, data: &mut [Vec<Val>], aes_keys: &std::collections::BTreeMap<i32, String>) -> Result<()> {
-    let styled = crate::codec::styled_cols(asm);
-    if styled.is_empty() {
+    let mut nodes = Vec::new();
+    styled_nodes(asm, &mut nodes)?;
+    if nodes.is_empty() {
         return Ok(());
     }
-    let has_aes = styled.iter().any(|c| c.host.iter().any(|style| style == "aes"));
-    let version_index = if has_aes {
-        // COD-44: the planner selects the version column of every AES column, so a plan without one is broken: no version is assumed.
-        let column = asm.aes_version.map(|at| &asm.columns[at]).ok_or_else(|| Error::Engine {
-            code: crate::codes::INTERNAL.into(),
-            msg: format!("{}: the plan reads an AES column without its key version column", asm.entity),
-        })?;
-        Some(column.index)
-    } else {
-        None
-    };
     for row in data.iter_mut() {
-        for sc in &styled {
-            let mut v = std::mem::take(&mut row[sc.index]);
-            // A NULL value stays NULL: its version is not read, so a NULL version with a NULL value is not an error (COD-44).
-            if !sc.host.is_empty() && !matches!(v, Val::Null) {
-                let key = if sc.host.iter().any(|style| style == "aes") {
-                    let index = version_index.ok_or_else(|| Error::Engine {
-                        code: crate::codes::INTERNAL.into(),
-                        msg: format!("{}: the AES version column is not selected", asm.entity),
-                    })?;
-                    let version = aes_row_version(row, index)?;
-                    aes_keys.get(&version).map(String::as_str).ok_or_else(|| Error::Config(format!("AES version {version} is not declared")))?
-                } else {
-                    // Non-AES host stages do not consume an AES key.
-                    ""
-                };
-                v = crate::codec::host_decode(&v, &sc.host, key)?;
+        for node in &nodes {
+            for (sc, name) in node.styled.iter().zip(&node.names) {
+                let mut v = std::mem::take(&mut row[sc.index]);
+                // A NULL value stays NULL: its version is not read, so a NULL version with a NULL value is not an error (COD-44).
+                if !sc.host.is_empty() && !matches!(v, Val::Null) {
+                    let key = if sc.host.iter().any(|style| style == "aes") {
+                        let index = node.version_index.ok_or_else(|| Error::Engine {
+                            code: crate::codes::INTERNAL.into(),
+                            msg: format!("{}: the AES version column is not selected", node.entity),
+                        })?;
+                        let version = aes_row_version(row, index)?;
+                        aes_keys.get(&version).map(String::as_str).ok_or_else(|| Error::Config(format!("AES version {version} is not declared")))?
+                    } else {
+                        // Non-AES host stages do not consume an AES key.
+                        ""
+                    };
+                    v = crate::codec::host_decode(&v, &sc.host, key).map_err(|error| crate::model::column_decode_error(node.entity, name, error))?;
+                }
+                if !sc.codec.is_empty() {
+                    v = crate::codec::decode(&sc.codec, &v).map_err(|error| crate::model::column_decode_error(node.entity, name, error))?;
+                }
+                row[sc.index] = v;
             }
-            if !sc.codec.is_empty() {
-                v = crate::codec::decode(&sc.codec, &v)?;
-            }
-            row[sc.index] = v;
+        }
+    }
+    Ok(())
+}
+
+/// The styled columns of one node of an assembly with the cell of its own key version; names holds the column of
+/// each styled cell, which a decode error names with the entity (COD-41).
+struct StyledNode<'a> {
+    entity: &'a str,
+    styled: Vec<crate::codec::StyledCol>,
+    names: Vec<&'a str>,
+    version_index: Option<usize>,
+}
+
+/// Collects the nodes with styled columns, the root first, then each joined child in plan order.
+fn styled_nodes<'a>(asm: &'a crate::plan::Assemble, out: &mut Vec<StyledNode<'a>>) -> Result<()> {
+    let (styled, names): (Vec<crate::codec::StyledCol>, Vec<&str>) = asm
+        .columns
+        .iter()
+        .filter(|c| !c.styles.is_empty())
+        .map(|c| {
+            let (codec, host) = crate::codec::split_host(&c.styles);
+            (crate::codec::StyledCol { index: c.index, codec, host }, c.name.as_str())
+        })
+        .unzip();
+    if !styled.is_empty() {
+        let has_aes = styled.iter().any(|c| c.host.iter().any(|style| style == "aes"));
+        let version_index = if has_aes {
+            // COD-44: the planner selects the version column of every AES column, so a plan without one is broken: no version is assumed.
+            let column = asm.aes_version.map(|at| &asm.columns[at]).ok_or_else(|| Error::Engine {
+                code: crate::codes::INTERNAL.into(),
+                msg: format!("{}: the plan reads an AES column without its key version column", asm.entity),
+            })?;
+            Some(column.index)
+        } else {
+            None
+        };
+        out.push(StyledNode { entity: &asm.entity, styled, names, version_index });
+    }
+    for child in &asm.children {
+        if let Some(assemble) = &child.assemble {
+            styled_nodes(assemble, out)?;
         }
     }
     Ok(())

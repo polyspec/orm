@@ -5,7 +5,8 @@
     "INT-87",
     "PRT-12",
     "PRT-40",
-    "CPX-4"
+    "CPX-4",
+    "DIA-154"
   ],
   "fixture": "contracts/fixtures/bench/dbspec-set.json",
   "cases": [

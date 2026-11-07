@@ -128,7 +128,7 @@ final class Recipe
         if (!isset(self::$caseIds[$path])) {
             $recipe = RecipeKeys::decoded($path, (string) file_get_contents(dirname(__DIR__, 3) . '/' . $path));
             self::$caseIds[$path] = [];
-            self::$databaseCaseIds[$path] = ['mysql' => [], 'postgres' => [], 'sqlite' => []];
+            self::$databaseCaseIds[$path] = ['mysql' => [], 'postgres' => [], 'sqlite' => [], 'markdown' => []];
             foreach ($recipe['cases'] as $case) {
                 self::$caseIds[$path][$case['id']] = [$case['id']];
                 foreach (array_keys(self::$databaseCaseIds[$path]) as $database) {
@@ -199,14 +199,14 @@ final class Recipe
     }
 
     /**
-     * A case with `only` runs on the databases that it names, and a case with `not_through_pooler` outside the pooler
-     * lane.
+     * A case with `only` runs on the databases that it names, a markdown connection on what names sqlite too, and a
+     * case with `not_through_pooler` outside the pooler lane.
      *
      * @param array<string, mixed> $case
      */
     private static function caseRuns(array $case, string $database): bool
     {
-        if (isset($case['only']) && !in_array($database, $case['only'], true)) {
+        if (!self::onDatabase($case['only'] ?? null, $database)) {
             return false;
         }
         return !isset($case['not_through_pooler']) || getenv('ORM_CLIENT_DB_POOLER') !== '1';
@@ -241,10 +241,6 @@ final class Recipe
     {
         if ($step['op'] === 'ir.validate') {
             self::validateStep($step, $path, $database);
-            return;
-        }
-        if ($step['op'] === 'ir.answer') {
-            self::answerStep($step);
             return;
         }
         if ($step['op'] === 'collection.key') {
@@ -658,7 +654,7 @@ final class Recipe
     /** The schema argument of schema.exists and schema.installed: the name, or that of the database, where $database is the name of the case database. */
     private static function inspectedSchema(mixed $value, array $context): string
     {
-        $name = is_string($value) ? $value : $value[$context['database']];
+        $name = is_string($value) ? $value : $value[self::dialectKey($context['database'], $value)];
         return $name === '$database' ? ltrim((string) parse_url($context['dsn'], PHP_URL_PATH), '/') : $name;
     }
 
@@ -745,56 +741,6 @@ final class Recipe
     }
 
     /**
-     * Runs the chain of an ir.answer step (a case of MarkdownConformanceTest::conformanceCases) on a connection whose
-     * listener answers connect with {"ok":true} and then the one request with answer. A step with answers instead
-     * gets the keyed listener (--keyed), which answers each control message by its op and each request by its
-     * request.kind. The normalized result of the chain must equal the normalized expect.none.value. An OrmException
-     * of the chain is the result {error: CODE}; any other exception fails the case.
-     */
-    private static function answerStep(RecipeStep $step): void
-    {
-        $outcome = $step['expect']['none'] ?? new RecipeStep([]);
-        $params = $outcome->has('params');
-        if (!$outcome->has('value') && !$params) {
-            Assert::fail('ir.answer has neither expect.none.value nor params');
-        }
-        if ($params && $step->has('answers')) {
-            Assert::fail('a params expect needs one answer, not answers');
-        }
-        $want = $params ? $outcome['params'] : $outcome['value'];
-        $chain = MarkdownConformanceTest::conformanceCases()[$step['chain']] ?? null;
-        if ($chain === null) {
-            Assert::fail("chain {$step['chain']} is no markdown conformance case");
-        }
-        $flags = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION | JSON_THROW_ON_ERROR;
-        $server = $step->has('answers')
-            ? start_markdown_test_server(['--keyed', json_encode($step['answers'], $flags)])
-            : start_markdown_test_server(['{"ok":true}', json_encode($step['answer'], $flags)]);
-        $served = new Served();
-        $served->db = \Polyspec\Orm\Tests\MarkdownModel\connect($server[2], new Config());
-        $failed = false;
-        try {
-            $got = $chain($served);
-        } catch (OrmException $error) {
-            $got = ['error' => $error->code_];
-            $failed = true;
-        } finally {
-            $served->db->close();
-            $received = markdown_test_server_received_messages($server);
-        }
-        if ($params && !$failed) {
-            $got = self::requestParams($received);
-        }
-        $actual = MarkdownConformanceTest::normalize($got);
-        $expect = MarkdownConformanceTest::normalize($want);
-        Assert::assertSame(
-            $expect,
-            $actual,
-            'got ' . MarkdownConformanceTest::jsonText($actual) . ', want ' . MarkdownConformanceTest::jsonText($expect)
-        );
-    }
-
-    /**
      * Runs a collection.key step: each value through the public Collection::keyOf and Collection::identityOf. Its
      * groups are, for each key, the index of the first key equal to it, and its types the native type that keyOf keeps
      * (INT-11, INT-63, PRT-35).
@@ -828,18 +774,6 @@ final class Recipe
             $got = ['error' => $error->code_, 'message' => $error->getMessage()];
         }
         Assert::assertSame($step['expect'][$database]->all(), $got);
-    }
-
-    /** The params of the request message that a server received, in the JSON form of PRT-67 (PRT-66). */
-    private static function requestParams(array $received): array
-    {
-        foreach ($received as $line) {
-            $message = json_decode($line, true, 512, JSON_THROW_ON_ERROR);
-            if (array_key_exists('request', $message)) {
-                return $message['params'] ?? [];
-            }
-        }
-        throw new \RuntimeException('the listener received no request message');
     }
 
     /**
@@ -952,27 +886,48 @@ final class Recipe
     }
 
     /**
-     * The markdown.session op (FCV-4, PRT-64): on a listener that answers each line with the next of the replies of the
-     * step, a read-only transaction that holds a nested one, then a transaction, whose error is compared with the
-     * expect.
+     * The markdown.session op (FCV-4, PRT-64, PRT-66): on a listener that answers each line with the next of the
+     * replies of the step, the calls of the step on one connection, whose error is compared with the expect.
+     * transactions runs a read-only transaction that holds a nested one, then a transaction, and compares the error of
+     * the last one; read runs one read of the bind fixture model, and read_twice runs two on the same connection, the
+     * second of which must succeed, and both compare the error of the first read.
      */
     private static function markdownSessionStep(RecipeStep $step, string $database): void
     {
+        $call = $step['call'];
+        if (!in_array($call, ['transactions', 'read', 'read_twice'], true)) {
+            Assert::fail("markdown.session has no call $call");
+        }
         $server = \Polyspec\Orm\Tests\start_markdown_test_server($step['replies']);
         $port = parse_url($server[2], PHP_URL_PORT);
-        $db = Orm::connect("markdown://127.0.0.1:$port/{$step['corpus']}?token={$step['token']}", new Config());
+        $dsn = "markdown://127.0.0.1:$port/{$step['corpus']}?token={$step['token']}";
         $code = null;
         $message = '';
-        $empty = static function (): void {
-        };
-        $db->transaction(static function () use ($db, $empty): void {
-            $db->transaction($empty);
-        }, readOnly: true);
-        try {
-            $db->transaction($empty);
-        } catch (OrmException $error) {
-            $code = $error->code_;
-            $message = $error->getMessage();
+        if ($call === 'transactions') {
+            $db = Orm::connect($dsn, new Config());
+            $empty = static function (): void {
+            };
+            $db->transaction(static function () use ($db, $empty): void {
+                $db->transaction($empty);
+            }, readOnly: true);
+            try {
+                $db->transaction($empty);
+            } catch (OrmException $error) {
+                $code = $error->code_;
+                $message = $error->getMessage();
+            }
+        } else {
+            self::loadBindModels();
+            $db = \Polyspec\Orm\Tests\BindModel\connect($dsn, new Config());
+            try {
+                (new \Polyspec\Orm\Tests\BindModel\Slots())->connect($db)->gets();
+            } catch (OrmException $error) {
+                $code = $error->code_;
+                $message = $error->getMessage();
+            }
+            if ($call === 'read_twice') {
+                (new \Polyspec\Orm\Tests\BindModel\Slots())->connect($db)->gets();
+            }
         }
         $db->close();
         Assert::assertSame(
@@ -982,33 +937,6 @@ final class Recipe
         );
         Assert::assertSame($step['expect'][$database]['error'], $code);
         Assert::assertStringContainsString($step['expect'][$database]['message_holds'] ?? '', $message);
-    }
-
-    /** The public call of a markdown.send surface, one that has no form on a markdown connection (DIA-183 to DIA-189). */
-    private static function refusedSurface(string $surface, mixed $db): void
-    {
-        $empty = static function (): void {
-        };
-        $model = new \Polyspec\Orm\Tests\BindModel\Slots();
-        $keyring = new \Polyspec\Orm\AesKeyring([1 => 'key'], 1);
-        $schema = new \Polyspec\Orm\Schema('', '');
-        match ($surface) {
-            'audit' => $db->transaction($empty, audit: ['actor' => 'tester']),
-            'isolation' => $db->transaction($empty, isolation: 'serializable'),
-            'timeout_ms' => $db->transaction($empty, timeoutMs: 100),
-            'get_query' => $model->connect($db)->getQuery(),
-            'subscribe' => $db->subscribe($empty),
-            'lock' => $db->utils()->lock('k'),
-            'set_local' => $db->utils()->setLocal('k', 'v'),
-            'local' => $db->utils()->local('k'),
-            'backend_waiting_for_lock' => $db->utils()->backendWaitingForLock(),
-            'privileges' => $db->utils()->privileges()->inspectTable('public.items'),
-            'aes_status' => $db->utils()->aes()->status($model, $keyring),
-            'aes_rotate' => $db->utils()->aes()->rotate($model, $keyring),
-            'schema_install' => $db->utils()->schema()->install($schema),
-            'schema_evolution' => $db->utils()->schema()->addTablesAndColumns($schema),
-            'schema_exists' => $db->utils()->schema()->exists('orm'),
-        };
     }
 
     /** The dsn.connect op (FCV-4): the DSN text of the step, checked against the outcome of the expect of database. */
@@ -1786,26 +1714,22 @@ final class Recipe
 
     /**
      * Runs one markdown.send step (FCV-4) on a listener that answers connect with {"ok":true}, records the first
-     * message after
-     * it and answers that message with SEND_ERROR so the call ends. The expect is {"message": JSON}, compared with the
-     * whole
-     * message of a begin or the one parameter of a statement, or {"error": CODE}, compared with the code of the orm
-     * error that
-     * the call raises before it sends a message.
+     * message after it and answers that message with SEND_ERROR so the call ends. The expect is {"message": JSON},
+     * compared with the whole statement that begins a transaction or the one parameter of a statement, or
+     * {"error": CODE}, compared with the code of the orm error that the call raises before it sends a message.
      */
     private static function sendStep(RecipeStep $step): void
     {
         self::loadBindModels();
-        [$message, $code] = self::sendFirst(static function (mixed $db) use ($step): void {
-            if ($step->has('surface')) {
-                self::refusedSurface($step['surface'], $db);
-            } elseif ($step->has('begin')) {
+        $begin = $step->has('begin');
+        [$message, $code] = self::sendFirst(static function (mixed $db) use ($step, $begin): void {
+            if ($begin) {
                 $db->transaction(static fn(): null => null, '', $step['begin']['read_only'] === true);
             } else {
                 self::sendQuery($step, $db);
             }
         });
-        self::checkMessage($step['expect'], $message, $code);
+        self::checkMessage($step['expect'], $message, $code, $begin);
     }
 
     /**
@@ -2223,16 +2147,17 @@ final class Recipe
     }
 
     /**
-     * Runs call with a connection to a markdown listener that answers connect with {"ok":true}, records the first
-     * message after it and answers that message with SEND_ERROR so the call ends. Returns the first message, or null,
-     * and the code of the orm error that call raises before it sends a message.
+     * Runs call with a connection to a markdown listener that answers connect with {"ok":true}, answers the setup
+     * statements of orm's SQLite dialect, such as the row lock table that a transaction needs, as done, records the
+     * first other message and answers it and every later one with SEND_ERROR so the call ends. Returns the first
+     * other message, or null, and the code of the orm error that call raises before it sends a message.
      *
      * @param callable(mixed): void $call
      * @return array{0: ?string, 1: string}
      */
     private static function sendFirst(callable $call): array
     {
-        $server = start_markdown_test_server(['{"ok":true}', self::SEND_ERROR]);
+        $server = start_markdown_test_server(['--send', self::SEND_ERROR]);
         $code = '';
         $db = null;
         try {
@@ -2244,14 +2169,16 @@ final class Recipe
             $db?->close();
             $received = markdown_test_server_received_messages($server);
         }
-        // The first line is connect; the second is the first message after it.
+        // The first line is connect; the second is the first message after it that is not a setup statement, which
+        // the listener does not record.
         return [$received[1] ?? null, $code];
     }
 
     /**
      * Checks the message or the error code of a listener step against its expect, {"message": JSON} or {"error": CODE}.
+     * A whole step compares the whole message, as the statement that begins a transaction is.
      */
-    private static function checkMessage(array $expect, ?string $message, string $code): void
+    private static function checkMessage(array $expect, ?string $message, string $code, bool $whole = false): void
     {
         if (isset($expect['error'])) {
             Assert::assertSame($expect['error'], $message === null ? $code : '', 'the error code of the call');
@@ -2260,7 +2187,7 @@ final class Recipe
         if ($message === null) {
             Assert::fail("the call returned error $code before a message, want " . json_encode($expect['message']));
         }
-        $got = self::messageValue($message);
+        $got = $whole ? json_decode($message, true, 512, JSON_THROW_ON_ERROR) : self::messageValue($message);
         if (is_array($expect['message'])) {
             Assert::assertEqualsCanonicalizing($expect['message'], $got, "message $message");
             return;
@@ -2268,13 +2195,10 @@ final class Recipe
         Assert::assertSame($expect['message'], $got, "message $message");
     }
 
-    /** The message that an expect compares: the whole message of a begin, or the one parameter of a statement. */
+    /** The message that an expect compares: the one parameter of a statement. */
     private static function messageValue(string $text): mixed
     {
         $message = json_decode($text, true, 512, JSON_THROW_ON_ERROR);
-        if (($message['op'] ?? null) === 'begin') {
-            return $message;
-        }
         $params = $message['params'] ?? null;
         // A statement with no parameter (a nil compared with eq is IS NULL, DSL-48) has the empty list as its message.
         if (is_array($params) && $params === []) {
@@ -2556,6 +2480,9 @@ final class Recipe
                 };
             case 'text':
                 return $w['text'];
+            case 'text_hex':
+                // A PHP string holds any bytes, so a text that is not UTF-8 is the string of its bytes (FCV-4).
+                return hex2bin($w['text_hex']);
             case 'bytes_hex':
                 return new Bytes(hex2bin($w['bytes_hex']));
             case 'array':
@@ -2651,7 +2578,36 @@ final class Recipe
     // The database path (FCV-3 and FCV-4): each case runs on a case database of its own through the public catalog API.
 
     /** The databases of a recipe with a fixture (FCV-3). */
-    private const DATABASES = ['mysql', 'postgres', 'sqlite'];
+    private const DATABASES = ['mysql', 'postgres', 'sqlite', 'markdown'];
+
+    /**
+     * Whether a case or step with the list $only runs on database: a corpus speaks SQLite's dialect, so what names
+     * sqlite names it too (FCV-3).
+     *
+     * @param list<string>|null $only
+     */
+    private static function onDatabase(?array $only, string $database): bool
+    {
+        return $only === null || in_array($database, $only, true)
+            || ($database === 'markdown' && in_array('sqlite', $only, true));
+    }
+
+    /**
+     * The key of a value that names its text by database: a corpus runs SQL in SQLite's dialect (DIA-185), so it reads
+     * the SQLite entry unless the value states its own.
+     */
+    private static function dialectKey(string $database, mixed $entries): string
+    {
+        return $database === 'markdown' && !(is_array($entries) && array_key_exists('markdown', $entries))
+            ? 'sqlite'
+            : $database;
+    }
+
+    /** The SQL dialect of the case database: a corpus runs SQL in SQLite's (DIA-185). */
+    private static function dialectOf(array $context): string
+    {
+        return $context['database'] === 'markdown' ? 'sqlite' : $context['database'];
+    }
 
     /** @var array<string, array{0: Schema, 1: list<Schema>}> the Schema and the external Schemas of each fixture set, built once per process */
     private static array $schemas = [];
@@ -2675,6 +2631,17 @@ final class Recipe
             ? [null, []]
             : (self::$schemas[$recipe['fixture']] ??= self::fixtureSchema($root . '/' . $recipe['fixture']));
         $caseArgs = [$path, $recipe, $case, $database, $schema, $installFirst];
+        if ($database === 'markdown') {
+            // flowmark install creates the corpus from the set (DIA-189); a case with install: false starts on a corpus
+            // of no table.
+            $setPath = $recipe['fixture'] !== 'none' && ($case['install'] ?? true) !== false
+                ? $root . '/' . $recipe['fixture']
+                : null;
+            CaseCorpus::with($setPath, static function (string $dsn, string $dir) use ($caseArgs): void {
+                self::runDatabaseCase(...array_merge($caseArgs, [$dsn, CaseCorpus::NAME, $dir]));
+            });
+            return;
+        }
         with_case_database(
             $database,
             static function (string $step): void {
@@ -2731,7 +2698,8 @@ final class Recipe
 
     /**
      * Installs the Schema on the case database, connects the catalog, binds `database` to the name of the case
-     * database, inserts the seed rows of the recipe and then of the case, runs the steps and closes the catalog.
+     * database, inserts the seed rows of the recipe and then of the case, runs the steps and closes the catalog. On a
+     * corpus, at $corpusDir, flowmark install made the tables of the set, and the connection registers it.
      */
     private static function runDatabaseCase(
         string $path,
@@ -2742,12 +2710,17 @@ final class Recipe
         array $installFirst,
         string $dsn,
         string $name,
+        ?string $corpusDir = null,
     ): void {
         $db = Orm::connect($dsn, new Config());
         try {
             // A case with install: false installs nothing before its steps; its steps install the
             // schema themselves (FCV-4).
-            if ($schema !== null && ($case['install'] ?? true) !== false) {
+            if ($schema !== null && ($case['install'] ?? true) !== false && $database === 'markdown') {
+                // flowmark install made the corpus from the set; the connection takes the set as an install
+                // registers it.
+                $db->utils()->schema()->register($schema);
+            } elseif ($schema !== null && ($case['install'] ?? true) !== false) {
                 foreach ([...$installFirst, $schema] as $shared) {
                     $db->utils()->schema()->install($shared);
                 }
@@ -2758,6 +2731,7 @@ final class Recipe
                 'namespace' => '',
                 'database' => $database,
                 'dsn' => $dsn,
+                'corpusDir' => $corpusDir,
                 'schema' => $schema,
                 'fixture' => dirname(__DIR__, 3) . '/' . $recipe['fixture'],
                 'tablePath' => $recipe['fixture'] !== self::GENERATED_FIXTURE,
@@ -2781,13 +2755,14 @@ final class Recipe
                     }
                 }
                 foreach ([$recipe['seed']['after'] ?? null, $case['seed']['after'] ?? null] as $after) {
-                    if ($after !== null && (!isset($after['only']) || in_array($database, $after['only'], true))) {
+                    if ($after !== null && self::onDatabase($after['only'] ?? null, $database)) {
                         self::databaseStep($after, $context);
                     }
                 }
                 foreach ($case['steps'] as $index => $step) {
-                    // A step with `only` runs on the databases that it names, and no other.
-                    if (isset($step['only']) && !in_array($database, $step['only'], true)) {
+                    // A step with `only` runs on the databases that it names, and no other; a markdown connection runs
+                    // what names sqlite.
+                    if (!self::onDatabase($step['only'] ?? null, $database)) {
                         continue;
                     }
                     try {
@@ -2854,8 +2829,10 @@ final class Recipe
             $raw['expect'] = $raw['expect_unnamed'];
         }
         $step = new RecipeStep($raw);
-        $expected = isset($step['expect'][$context['database']])
-            ? self::resolveRefs($step['expect'][$context['database']], $context)
+        // A markdown connection reads the sqlite entry of an expect that names no result of its own (DIA-185).
+        $key = self::dialectKey($context['database'], $raw['expect'] ?? null);
+        $expected = isset($step['expect'][$key])
+            ? self::resolveRefs($step['expect'][$key], $context)
             : null;
         try {
             $actual = self::databaseOp($step, $context);
@@ -3336,7 +3313,7 @@ final class Recipe
                         foreach ($s['statements'] as $statement) {
                             $text = is_string($statement['sql'])
                                 ? $statement['sql']
-                                : $statement['sql'][$context['database']];
+                                : $statement['sql'][self::dialectKey($context['database'], $statement['sql'])];
                             $last = $frame->run(
                                 $statement['kind'],
                                 $statement['tables'],
@@ -3364,7 +3341,7 @@ final class Recipe
                 }
                 $events = self::capturedEvents($subscription->recording->events, $s['compare'] ?? '');
                 // A mask replaces a bind that no recipe can fix (FCV-4 events.captured).
-                foreach ($s['masks'][$context['database']] ?? [] as $mask) {
+                foreach ($s['masks'][self::dialectOf($context)] ?? [] as $mask) {
                     if (!isset($events[$mask['event']]['object'][1][1]['array'][$mask['bind']])) {
                         Assert::fail('mask ' . json_encode($mask) . ' names no captured bind');
                     }
@@ -3516,7 +3493,12 @@ final class Recipe
                 );
                 return [];
             case 'database.read_only':
-                // The file of the case database becomes one that the process may only read (CFG-24).
+                // The file of the case database becomes one that the process may only read (CFG-24); a corpus, its
+                // directories, which CaseCorpus makes writable again when the case ends.
+                if ($context['database'] === 'markdown') {
+                    CaseCorpus::chmodTree((string) $context['corpusDir'], true);
+                    return [];
+                }
                 Assert::assertTrue(chmod(explode('?', substr($context['dsn'], strlen('sqlite://')))[0], 0o444));
                 return [];
             // The ops of a LISTEN subscription (FCV-4, DIA-194, DIA-195).
@@ -3600,7 +3582,7 @@ final class Recipe
                 if ($matching === []) {
                     throw new \RuntimeException("the vectors have no case {$s['case']}");
                 }
-                $database = $context['database'];
+                $database = self::dialectOf($context);
                 $pdo = case_admin($context['dsn']);
                 $rule = [
                     'mysql' => "SET time_zone = '+00:00'",
@@ -3655,7 +3637,9 @@ final class Recipe
                 return [];
             case 'sql.exec':
                 // An object form runs only on the databases whose key it holds (FCV-4): an absent key runs nothing.
-                $statement = is_string($s['sql']) ? $s['sql'] : ($s['sql'][$context['database']] ?? null);
+                $statement = is_string($s['sql'])
+                    ? $s['sql']
+                    : ($s['sql'][self::dialectKey($context['database'], $s['sql'])] ?? null);
                 if ($statement !== null) {
                     // The native driver of PHP is PDO, opened on the case database.
                     $pdo = case_admin($context['dsn']);
@@ -3665,7 +3649,7 @@ final class Recipe
                     }
                     // A native SQLite connection starts with foreign keys off; the runners of the other clients open it
                     // with them on.
-                    if ($context['database'] === 'sqlite') {
+                    if (self::dialectOf($context) === 'sqlite') {
                         $pdo->exec('PRAGMA foreign_keys = ON');
                     }
                     try {
@@ -3710,7 +3694,7 @@ final class Recipe
         if (in_array($s['op'], RecipeApply::OPS, true)) {
             return RecipeApply::op($s, $context, static function (array $nested) use (&$context): void {
                 // A nested step with only runs on the databases it names, as a step of the case does.
-                if (!isset($nested['only']) || in_array($context['database'], $nested['only'], true)) {
+                if (self::onDatabase($nested['only'] ?? null, $context['database'])) {
                     self::databaseStep($nested, $context);
                 }
             });
@@ -3724,7 +3708,7 @@ final class Recipe
      */
     private static function connectOp(RecipeStep $s, array &$context): array
     {
-        $expected = $s['expect'][$context['database']] ?? [];
+        $expected = $s['expect'][self::dialectKey($context['database'], $s['expect'])] ?? [];
         $dsn = $s['dsn'];
         if (isset($dsn['url'])) {
             $target = $dsn['url'];
@@ -4020,7 +4004,14 @@ final class Recipe
     /** A field that holds SQL or a database-decided value: the string itself, or the entry of the database. */
     private static function sqlField(string|array $field, array $context): string
     {
-        return is_string($field) ? $field : $field[$context['database']];
+        if (is_string($field)) {
+            return $field;
+        }
+        $key = self::dialectKey($context['database'], $field);
+        if (!array_key_exists($key, $field)) {
+            Assert::fail("the SQL field has no entry for {$context['database']}");
+        }
+        return $field[$key];
     }
 
     /**
@@ -4628,7 +4619,7 @@ final class Recipe
     /** The expect of the database of the case compares rows of wrappers. */
     private static function chainWantsRows(RecipeStep $s, array $context): bool
     {
-        return isset($s['expect'][$context['database']]['rows']);
+        return isset($s['expect'][self::dialectKey($context['database'], $s['expect'] ?? [])]['rows']);
     }
 
     /** The rows of wrappers of the columns of a step, each followed by the columns of each related row of its relation. */
@@ -5093,7 +5084,7 @@ final class Recipe
             is_array($value) && array_key_exists('mysql', $value) && array_key_exists('postgres', $value)
             && array_key_exists('sqlite', $value)
         ) {
-            return $value[$context['database']];
+            return $value[self::dialectKey($context['database'], $value)];
         }
         return $value;
     }
@@ -5116,9 +5107,14 @@ final class Recipe
             case 'decimal':
                 return $w[$kind];
             case 'bytes_hex':
-                return hex2bin($w['bytes_hex']);
+            case 'text_hex':
+                // A text_hex wrapper is a string of its bytes, which need not be UTF-8 (FCV-4).
+                return hex2bin($w[$kind]);
             case 'bool':
                 return $w['bool'];
+            case 'float':
+            case 'f64':
+                return self::toValue($w);
             case 'null':
                 return null;
             // An array is a list of values (an IN list of where); a sequence item adds its integers in place (FCV-4).
@@ -5173,6 +5169,10 @@ final class Recipe
         }
         if (is_string($value)) {
             return [self::temporalKind($nativeType) ?? 'text' => $value];
+        }
+        if (is_float($value) && $nativeType === null && !is_finite($value)) {
+            // A non-finite float with no column type is the f64 wrapper, which names it as JSON cannot.
+            return ['f64' => is_nan($value) ? 'NaN' : ($value > 0 ? 'Infinity' : '-Infinity')];
         }
         if (is_float($value) && $nativeType === null) {
             // A plain value with no column type is compared by its shortest round-trip decimal.

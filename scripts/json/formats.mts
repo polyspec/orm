@@ -59,7 +59,7 @@ export type GoTestEvent = {
 export const parseGoTestEvent = (line: string, source: string): GoTestEvent => parseJson<GoTestEvent>(line, schema('go-test-event'), source);
 
 /** The fields of a recipe that the scripts read to list its cases. */
-export type RecipeCases = { cases: { id: string; only?: string[] }[] };
+export type RecipeCases = { fixture?: string; cases: { id: string; only?: string[] }[] };
 /** parseRecipeCases reads the text of a recipe; source names it in the errors. */
 export const parseRecipeCases = (text: string, source: string): RecipeCases => parseJson<RecipeCases>(text, schema('recipe-cases'), source);
 

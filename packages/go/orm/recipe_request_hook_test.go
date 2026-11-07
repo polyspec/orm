@@ -33,3 +33,10 @@ func TestRecipeRequestHookSqlite(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, requestHookRecipe, "sqlite")
 }
+
+// TestRecipeRequestHookMarkdown runs the request_hook recipe on flowmark, each case on a corpus of its own (FCV-3).
+// Requirements: PRT-65, INT-78.
+func TestRecipeRequestHookMarkdown(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, requestHookRecipe, "markdown")
+}

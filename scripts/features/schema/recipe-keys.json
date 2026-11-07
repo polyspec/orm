@@ -45,6 +45,7 @@
       "token"
     ],
     "markdown.session": [
+      "call",
       "corpus",
       "expect",
       "messages",
@@ -267,13 +268,6 @@
       "op",
       "schema"
     ],
-    "ir.answer": [
-      "answer",
-      "answers",
-      "chain",
-      "expect",
-      "op"
-    ],
     "markdown.send": [
       "begin",
       "column",
@@ -281,8 +275,7 @@
       "op",
       "operator",
       "params",
-      "process_zone",
-      "surface"
+      "process_zone"
     ],
     "model.assign": [
       "column",

@@ -36,20 +36,18 @@ final class Db
     private int $cancellationSlot = 0;
 
     /**
-     * @internal Orm::connect creates connections. A SQL connection has its PDO handle; a markdown
-     * connection has no PDO handle and its flowmark session $md instead (docs/spec/protocol.md §5).
+     * @internal Orm::connect creates connections. $driver is the dialect of the statements the PDO handle runs: mysql,
+     * postgres or sqlite. $corpus says that the handle reaches a flowmark server, which answers SQL in SQLite's
+     * dialect on a corpus (docs/spec/dialects.md DIA-154, DIA-185), so its dialect is sqlite.
      */
     public function __construct(
-        ?\PDO $pdo,
+        \PDO $pdo,
         private readonly string $driver,
         private readonly Config $config,
         private readonly \DateTimeZone $zone,
-        private readonly ?MarkdownSession $md = null,
+        private readonly bool $corpus = false,
     ) {
         $this->state = new DbState();
-        if ($pdo === null) {
-            return;
-        }
         self::configurePdo($pdo, $driver);
         $this->state->pdo = $pdo;
     }
@@ -71,27 +69,16 @@ final class Db
      */
     public function driver(): string
     {
-        return $this->driver;
-    }
-
-    /** @internal the flowmark session of a markdown connection; CONFIG once the connection is closed */
-    public function markdownSession(): MarkdownSession
-    {
-        if ($this->state->closed || $this->md === null) {
-            throw new OrmException(Code::CONFIG, 'database is closed');
-        }
-        return $this->md;
+        return $this->corpus ? 'markdown' : $this->driver;
     }
 
     /**
-     * @internal On a markdown connection, rejects the SQL-only surface $surface with CAPABILITY_UNSUPPORTED
-     * (docs/spec/dialects.md "Markdown IR executor"). On other connections it does nothing.
+     * @internal The dialect of the statements the connection sends: mysql, postgres or sqlite, which a markdown
+     * connection is.
      */
-    public function unsupportedOnMarkdown(string $surface): void
+    public function dialect(): string
     {
-        if ($this->md !== null) {
-            throw Markdown::unsupported($surface);
-        }
+        return $this->driver;
     }
 
     /**
@@ -126,16 +113,12 @@ final class Db
         return $this->handle();
     }
 
-    /**
-     * The PDO handle of the connection. A closed connection is CONFIG. A markdown connection sends no SQL statement, so
-     * it is CAPABILITY_UNSUPPORTED.
-     */
+    /** The PDO handle of the connection. A closed connection is CONFIG. */
     private function handle(): \PDO
     {
         if ($this->state->closed) {
             throw new OrmException(Code::CONFIG, 'database is closed');
         }
-        $this->unsupportedOnMarkdown('a SQL statement');
         if ($this->state->pdo === null) {
             if ($this->state->reconnect !== null) {
                 $this->state->pdo = ($this->state->reconnect)();
@@ -234,21 +217,6 @@ final class Db
                 $transactionFailure = $error;
             }
         }
-        if ($this->md !== null) {
-            $this->state->closed = true;
-            try {
-                $this->md->close();
-            } catch (\Throwable $error) {
-                if ($transactionFailure !== null) {
-                    throw OrmException::withCleanup($transactionFailure, $error);
-                }
-                throw $error;
-            }
-            if ($transactionFailure !== null) {
-                throw $transactionFailure;
-            }
-            return;
-        }
         $closeFailure = null;
         try {
             foreach ($this->state->stmts as $st) {
@@ -260,6 +228,10 @@ final class Db
             $closeFailure = $error;
         } finally {
             $this->state->closed = true;
+            if ($this->state->pdo instanceof Internal\MarkdownPdoAdapter) {
+                // The session of a markdown connection ends with it.
+                $this->state->pdo->close();
+            }
             $this->state->stmts = [];
             $this->state->stmtOrder = [];
             $this->state->stmtPlaceholders = [];
@@ -300,11 +272,11 @@ final class Db
     /** Returns a handle on this connection whose statements use the shared $cancellation signal. */
     public function withCancellation(Cancellation $cancellation): Db
     {
-        $this->unsupportedOnMarkdown('statement cancellation');
         $handle = clone $this;
         $handle->cancellation = $cancellation;
         $cancelQuery = null;
-        if ($this->driver === 'mysql' || $this->driver === 'postgres') {
+        // A markdown connection ends a cancelled statement by shutting its session down (PRT-71).
+        if ($this->driver === 'mysql' || $this->driver === 'postgres' || $this->corpus) {
             if ($this->state->cancelQuery === null) {
                 $state = $this->state;
                 $this->state->cancelQuery = static function () use ($state): void {
@@ -345,15 +317,13 @@ final class Db
      * continues. A subscriber must not throw: an exception fails the
      * operation with SUBSCRIBER, whose previous exception it is, and the
      * statement keeps its effect. The returned closure removes the
-     * subscription. A markdown connection sends no statement, so it refuses
-     * a subscriber with CAPABILITY_UNSUPPORTED.
+     * subscription.
      *
      * @param \Closure(StatementEvent): void $subscriber
      * @return \Closure(): void
      */
     public function subscribe(\Closure $subscriber): \Closure
     {
-        $this->unsupportedOnMarkdown('statement events');
         $id = $this->state->subscriberSeq++;
         $this->state->subscribers[$id] = $subscriber;
         return function () use ($id): void {
@@ -488,7 +458,7 @@ final class Db
         $cancellation = !$control ? $this->cancellation : null;
         try {
             $cancellation?->begin($this->cancellationSlot);
-            if ($cancellation !== null && $this->driver === 'sqlite') {
+            if ($cancellation !== null && $this->driver === 'sqlite' && !$this->corpus) {
                 SqliteCancellation::attach($this->handle(), $cancellation->statePath(), $this->cancellationSlot);
             }
             $result = $send();
@@ -501,7 +471,18 @@ final class Db
                 $this->state->stmtOrder = [];
                 $this->state->stmtPlaceholders = [];
                 $this->state->stmtRetained = 0;
-                if ($this->driver !== 'sqlite') {
+                if ($this->corpus) {
+                    // The cancellation shut the session down: the server rolls back its transaction (PRT-71), so the
+                    // transaction is over, and the next statement runs on a new session.
+                    $frame = self::activeFor($this);
+                    if ($frame !== null) {
+                        $frame->cancelled = true;
+                        $frame->finished = true;
+                    }
+                    if ($this->state->pdo instanceof Internal\MarkdownPdoAdapter) {
+                        $this->state->pdo->abandon();
+                    }
+                } elseif ($this->driver !== 'sqlite') {
                     $frame = self::activeFor($this);
                     if ($frame !== null) {
                         $frame->cancelled = true;
@@ -587,7 +568,7 @@ final class Db
             $control,
             function () use ($sql, $args): array {
                 $text = $sql;
-                $bound = $args;
+                $bound = $this->sqliteArgs($args);
                 if ($this->driver === 'postgres') {
                     // If the same $n appears several times, that value is bound again for each ?.
                     $bound = [];
@@ -760,9 +741,6 @@ final class Db
         ) {
             throw new OrmException(Code::CONFIG, "unsupported transaction isolation $isolation");
         }
-        if ($audit !== null) {
-            $this->unsupportedOnMarkdown('a transaction with audit values');
-        }
         $outer = self::activeFor($this);
         if ($audit !== null && $outer === null) {
             $record = $this->auditRecord($audit);
@@ -931,9 +909,6 @@ final class Db
         if ($timeoutMs > 0 && $this->driver !== 'postgres') {
             throw new OrmException(Code::CAPABILITY_UNSUPPORTED, 'transaction timeoutMs is supported only by postgres');
         }
-        if ($this->md !== null) {
-            return $this->beginMarkdown($isolation, $readOnly);
-        }
         $level = strtoupper(str_replace('_', ' ', $isolation));
         if ($this->driver === 'sqlite') {
             // The SQLite row lock table is created once, outside a transaction, before the connection's first
@@ -992,20 +967,6 @@ final class Db
         return $frame;
     }
 
-    /**
-     * Opens a markdown transaction: sends begin on the connection's session. A read-only transaction
-     * sends read_only. The isolation option is not accepted by the executor.
-     */
-    private function beginMarkdown(string $isolation, bool $readOnly): TxFrame
-    {
-        if ($isolation !== '') {
-            throw Markdown::unsupported('the transaction isolation option');
-        }
-        $frame = new TxFrame($this, $readOnly, $isolation, $this->nextTransaction());
-        $this->markdownSession()->call(Markdown::beginMessage($readOnly));
-        return $frame;
-    }
-
     /** Creates the SQLite connection's row lock table from the connection the first time. */
     private function ensureRowLockTable(): void
     {
@@ -1034,12 +995,6 @@ final class Db
             return;
         }
         $frame->finished = true;
-        if ($this->md !== null) {
-            // A markdown transaction leaves no state on the session: a single commit or rollback message
-            // ends it. A failed commit does not send a rollback, since the server has already ended the transaction.
-            $this->markdownSession()->call(['op' => $commit ? 'commit' : 'rollback']);
-            return;
-        }
         $failure = self::joined($this->cleanup($frame));
         if ($commit && $failure === null) {
             try {
@@ -1054,7 +1009,8 @@ final class Db
             // A failed COMMIT may have ended the transaction on the server, so only the remaining transaction is
             // rolled back. A transaction whose work failed is always rolled back, and a rollback that fails
             // because the driver or server already ended the transaction or connection is reported too.
-            // SQLite may also have rolled the transaction back by itself after an error (INT-155).
+            // SQLite may also have rolled the transaction back by itself after an error (INT-155), and a markdown
+            // session closed after a failed COMMIT holds no transaction (Internal\MarkdownPdoAdapter).
             if ((!$commit && $this->driver !== 'sqlite') || $this->handle()->inTransaction()) {
                 $this->control(StatementEvent::ROLLBACK, $frame->number, 'ROLLBACK');
             }
@@ -1218,19 +1174,14 @@ final class Db
 
     /**
      * Creates the savepoint name (SAVEPOINT), releases it (RELEASE), or undoes the work after it (ROLLBACK_TO).
-     * The SQL connection sends that statement; the markdown connection sends a control message with the same name.
      */
     private function savepointControl(TxFrame $frame, string $kind, string $name): void
     {
-        [$op, $statement] = match ($kind) {
-            StatementEvent::SAVEPOINT => ['savepoint', "SAVEPOINT $name"],
-            StatementEvent::RELEASE => ['release', "RELEASE SAVEPOINT $name"],
-            StatementEvent::ROLLBACK_TO => ['rollback_to', "ROLLBACK TO SAVEPOINT $name"],
+        $statement = match ($kind) {
+            StatementEvent::SAVEPOINT => "SAVEPOINT $name",
+            StatementEvent::RELEASE => "RELEASE SAVEPOINT $name",
+            StatementEvent::ROLLBACK_TO => "ROLLBACK TO SAVEPOINT $name",
         };
-        if ($this->md !== null) {
-            $this->markdownSession()->call(['op' => $op, 'name' => $name]);
-            return;
-        }
         // A transaction that SQLite rolled back by itself took its savepoints with it (INT-155).
         if ($kind !== StatementEvent::SAVEPOINT && $this->driver === 'sqlite' && !$this->handle()->inTransaction()) {
             return;
@@ -1279,7 +1230,8 @@ final class Db
         // The connection plans only the sets registered to it.
         $hash = $r->ir['manifest_hash'];
         $this->registeredModel($hash);
-        $engine = Engine::for($hash, $this->driver, $this->config->planCacheSize);
+        // A corpus assigns the key_prefix keys and the order positions that an insert leaves out (PRT-73).
+        $engine = Engine::for($hash, $this->driver, $this->config->planCacheSize, $this->corpus);
         $r->canonicalize();
         $shape = $r->shape();
         if (count($r->params) <= self::bindLimit($this->driver)) {
@@ -1298,10 +1250,6 @@ final class Db
     {
         $this->hook($r);
         $this->enter($frame, $r->ir);
-        if ($this->md !== null) {
-            [$plan, $result] = Markdown::read($this, $r);
-            return [$plan, $result];
-        }
         [$plan, $slots] = $this->splitReadPlan($r);
         $this->acquireSQLiteRowLock(self::requestLock($r->ir));
         $parts = $this->rootInParts($r, $slots);
@@ -1329,9 +1277,6 @@ final class Db
     {
         $this->hook($r);
         $this->enter($frame, $r->ir);
-        if ($this->md !== null) {
-            return Markdown::scalar($this, $r);
-        }
         [$plan, $slots] = $this->splitReadPlan($r);
         $parts = $this->rootInParts($r, $slots);
         if ($parts !== []) {
@@ -1351,9 +1296,6 @@ final class Db
     public function paginate(?TxFrame $frame, Request $r): array
     {
         $this->preparePage($frame, $r);
-        if ($this->md !== null) {
-            return Markdown::read($this, $r);
-        }
         $plan = $this->plan($r);
         $main = $this->query($plan['steps'][0], $r->params);
         $total = null;
@@ -1372,8 +1314,8 @@ final class Db
 
     /**
      * @internal @return array{0: int|float|string|null, 1: int} the key of the inserted row and the
-     *     affected rows: the generated identity on a SQL database, the first key the markdown executor
-     *     answers
+     *     affected rows: the generated identity, or the key_prefix key that a corpus allocated on a markdown
+     *     connection, which the insert reads with RETURNING (PRT-73)
      */
     public function writeOf(?TxFrame $frame, Request $r, ?\Closure $afterHook = null): array
     {
@@ -1384,15 +1326,6 @@ final class Db
             $afterHook($r);
         }
         $this->enter($frame, $r->ir);
-        if ($this->md !== null) {
-            [$keys, $affected] = Markdown::write($this, $r);
-            if (isset($r->ir['optimistic']) && $affected === 0) {
-                throw new OrmException(Code::OPTIMISTIC_LOCK, 'the row changed after it was read');
-            }
-            TxFrame::recordInserted($frame, $r, $keys[0] ?? null);
-            $this->state->lastAffected = $affected;
-            return [$keys[0] ?? null, $affected];
-        }
         $step = $this->plan($r)['steps'][0];
         $settle = $frame !== null && self::bindsAudit($step)
             ? $this->auditFor($frame, $r->ir['kind'] !== 'insert') : null;
@@ -1546,7 +1479,6 @@ final class Db
      */
     public function pagePlanSteps(?TxFrame $frame, Request $r): array
     {
-        $this->unsupportedOnMarkdown('getPagePlanSteps');
         $this->preparePage($frame, $r);
         return array_map(static fn(array $step): array => [
             'role' => $step['role'],
@@ -1558,7 +1490,6 @@ final class Db
     /** @internal @return array{sql: string, binds: list<mixed>} */
     public function statement(Request $r): array
     {
-        $this->unsupportedOnMarkdown('getQuery');
         $this->hook($r);
         $step = $this->plan($r)['steps'][0];
         $args = $this->args($step, $r->params);
@@ -1615,8 +1546,7 @@ final class Db
 
     /**
      * Writes date, time, and datetime values as text with no offset (bindTimeValue). A time is `HH:MM:SS`
-     * followed by fractional digits of the precision. The IR executor message writes precision 6
-     * (docs/spec/protocol.md §5).
+     * followed by fractional digits of the precision.
      *
      * @internal
      */
@@ -1714,6 +1644,11 @@ final class Db
                     ParamCheck::checkAssign($b['param'], $v, ParamCheck::bindSlotType($b));
                     if (($b['transform'] ?? '') === '' && empty($b['host_styles'])) {
                         ParamCheck::check($b['param'], $v, ParamCheck::bindSlotType($b), $this->zone);
+                        // PHP holds bytes as a string, so a string in a bytes slot binds as a blob, which SQLite
+                        // stores as a blob as MySQL and PostgreSQL do (PRT-67).
+                        if (($b['col_type'] ?? '') === 'bytes' && is_string($v)) {
+                            $v = new Bytes($v);
+                        }
                     }
                     $colType = $b['col_type'] ?? '';
                     if (($colType === 'datetime' || $colType === 'date' || $colType === 'time') && $v !== null) {
@@ -1773,6 +1708,26 @@ final class Db
     }
 
     /**
+     * The arguments of a statement as SQLite reads them: PDO binds a float as its text, and SQLite takes a text as a
+     * number only in a numeric form, which INF is not, so an infinity binds as 9.0e+999, the form of an infinity that
+     * SQLite itself writes (quote()). Db::exec and Db::fetch both bind through it, so a model write and a statement of
+     * Utils::run store the same value.
+     *
+     * @param list<mixed> $args
+     * @return list<mixed>
+     */
+    private function sqliteArgs(array $args): array
+    {
+        if ($this->driver !== 'sqlite' || $this->corpus) {
+            return $args;
+        }
+        return array_map(
+            static fn(mixed $v): mixed => is_float($v) && is_infinite($v) ? ($v > 0 ? '9.0e+999' : '-9.0e+999') : $v,
+            $args
+        );
+    }
+
+    /**
      * Binds with types where the driver needs them: MySQL ints and bools as integers,
      * PostgreSQL bools and binary values, SQLite ints, bools, blobs, and nulls.
      */
@@ -1781,14 +1736,18 @@ final class Db
         // MySQL binds each argument: the emulated prepare quotes every value that execute() receives, and MySQL
         // refuses a quoted LIMIT or OFFSET (the root page parameters, PRT-78), so an int binds as PDO::PARAM_INT.
         $mysql = $this->driver === 'mysql';
-        if (!$mysql && !$this->typed) {
+        $args = $this->sqliteArgs($args);
+        // A markdown connection binds each argument in its type, which its statement message writes (PRT-67).
+        if (!$mysql && !$this->typed && !$this->corpus) {
             $st->execute($args);
             return;
         }
         $pg = $this->driver === 'postgres';
         foreach ($args as $i => $v) {
             if (is_bool($v)) {
-                $pg ? $st->bindValue($i + 1, $v, \PDO::PARAM_BOOL) : $st->bindValue($i + 1, (int) $v, \PDO::PARAM_INT);
+                $pg || $this->corpus
+                    ? $st->bindValue($i + 1, $v, \PDO::PARAM_BOOL)
+                    : $st->bindValue($i + 1, (int) $v, \PDO::PARAM_INT);
             } elseif ($v instanceof Bytes) {
                 $mysql ? $st->bindValue($i + 1, $v->bytes) : $st->bindValue($i + 1, $v->bytes, \PDO::PARAM_LOB);
             } elseif ($v === null) {
@@ -1796,7 +1755,7 @@ final class Db
             } elseif (is_int($v) && !$pg) {
                 $st->bindValue($i + 1, $v, \PDO::PARAM_INT);
             } else {
-                $st->bindValue($i + 1, is_string($v) ? $v : (string) $v);
+                $st->bindValue($i + 1, is_string($v) || ($this->corpus && is_float($v)) ? $v : (string) $v);
             }
         }
         $st->execute();

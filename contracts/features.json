@@ -58,6 +58,7 @@
         "connection_pool-mysql",
         "connection_pool-postgres",
         "connection_pool-sqlite",
+        "connection_pool-markdown",
         "coverage-dsn-connection",
         "model-construction-connection-rust",
         "model-construction-connection-typescript",
@@ -127,7 +128,6 @@
         "packages/php-ext/src/polyspec_orm.c",
         "packages/ts/tests/markdown.mjs",
         "packages/go/orm/bind_check_test.go",
-        "packages/rust/orm/tests/unit/bind_message.rs",
         "packages/rust/orm/tests/unit/bind_vectors.rs",
         "packages/python/tests/test_markdown.py",
         "tests/bind/vectors.json",
@@ -193,12 +193,15 @@
         "packages/ts/tests/connection_pool-mysql.test.mjs",
         "packages/ts/tests/connection_pool-postgres.test.mjs",
         "packages/ts/tests/connection_pool-sqlite.test.mjs",
+        "packages/ts/tests/connection_pool-markdown.test.mjs",
         "packages/python/tests/test_connection_pool_mysql.py",
         "packages/python/tests/test_connection_pool_postgres.py",
         "packages/python/tests/test_connection_pool_sqlite.py",
+        "packages/python/tests/test_connection_pool_markdown.py",
         "packages/rust/tests/tests/connection_pool_mysql.rs",
         "packages/rust/tests/tests/connection_pool_postgres.rs",
         "packages/rust/tests/tests/connection_pool_sqlite.rs",
+        "packages/rust/tests/tests/connection_pool_markdown.rs",
         "packages/go/orm/sqlite_crashed_holder_test.go",
         "packages/go/bindmessages/bind_messages_test.go",
         "packages/go/orm/recipe_model_socket_test.go",
@@ -216,8 +219,17 @@
         "packages/python/tests/test_model_socket_mysql.py",
         "packages/rust/orm/tests/coverage_dsn.rs",
         "packages/rust/tests/tests/bind_messages.rs",
+        "packages/go/bindmessages/markdown_session_test.go",
+        "packages/php/tests/MarkdownSessionRecipeTest.php",
+        "packages/php-ext/tests/MarkdownSessionRecipeTestExtensionTest.php",
+        "packages/ts/tests/markdown_session.mjs",
+        "packages/python/tests/test_markdown_session_none.py",
+        "packages/rust/tests/tests/markdown_session.rs",
         "packages/rust/tests/tests/dsn_reject_none.rs",
-        "packages/rust/tests/tests/model_socket_mysql.rs"
+        "packages/rust/tests/tests/model_socket_mysql.rs",
+        "packages/ts/tests/dsn_connection-markdown.test.mjs",
+        "packages/python/tests/test_dsn_connection_markdown.py",
+        "packages/rust/tests/tests/dsn_connection_markdown.rs"
       ],
       "docs": [
         "docs/spec/config.md",
@@ -233,17 +245,9 @@
           "inputs": [
             "packages/php/tests/MarkdownTest.php",
             "packages/php/tests/markdown_test_server.php",
-            "packages/php/src/Markdown.php"
-          ]
-        },
-        {
-          "id": "bind-message-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts bind-message-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib markdown::bind_message_tests",
-          "shard": "rust",
-          "inputs": [
-            "packages/rust/orm/tests/unit/bind_message.rs",
-            "packages/rust/orm/src/markdown.rs",
-            "tests/bind/vectors.json"
+            "packages/php/src/MarkdownSession.php",
+            "packages/php/src/Internal/MarkdownPdoAdapter.php",
+            "packages/php/src/Internal/MarkdownStatementAdapter.php"
           ]
         },
         {
@@ -1042,7 +1046,13 @@
         "packages/python/tests/test_dsl_none.py",
         "packages/python/tests/test_plan_cache_composite.py",
         "packages/rust/orm/src/canonical.rs",
-        "packages/rust/tests/tests/dsl_none.rs"
+        "packages/rust/tests/tests/dsl_none.rs",
+        "packages/ts/tests/model_queries-markdown.test.mjs",
+        "packages/ts/tests/model_queries_chain-markdown.test.mjs",
+        "packages/python/tests/test_model_queries_chain_markdown.py",
+        "packages/python/tests/test_model_queries_markdown.py",
+        "packages/rust/tests/tests/model_queries_chain_markdown.rs",
+        "packages/rust/tests/tests/model_queries_markdown.rs"
       ],
       "docs": [
         "docs/spec/dsl.md",
@@ -1765,6 +1775,10 @@
         "markdown-message-dynamic-vectors",
         "markdown-message-untyped-null-vectors",
         "markdown-message-python-null-vectors",
+        "raw_text-mysql",
+        "raw_text-postgres",
+        "raw_text-sqlite",
+        "raw_text-markdown",
         "model_writes_chain-mysql",
         "model_writes_chain-postgres",
         "model_writes_chain-sqlite"
@@ -1782,6 +1796,7 @@
         "contracts/fixtures/bench/bench.dbs",
         "contracts/fixtures/model_writes/model_writes.json",
         "contracts/fixtures/model_writes_chain/model_writes_chain.json",
+        "contracts/fixtures/raw_text/raw_text.json",
         "contracts/fixtures/model_chain/dbspec-set.json",
         "contracts/fixtures/model_chain/model_chain.dbs"
       ],
@@ -1790,6 +1805,11 @@
         "packages/php/tests/BindMessagesUntypedNullRecipeTest.php",
         "packages/php-ext/tests/BindMessagesDynamicRecipeTestExtensionTest.php",
         "packages/php-ext/tests/BindMessagesUntypedNullRecipeTestExtensionTest.php",
+        "packages/php/tests/BindMessagesRawTextRecipeTest.php",
+        "packages/php-ext/tests/BindMessagesRawTextRecipeTestExtensionTest.php",
+        "packages/go/orm/recipe_raw_text_test.go",
+        "packages/php/tests/RawTextRecipeTest.php",
+        "packages/php-ext/tests/RawTextRecipeTestExtensionTest.php",
         "packages/ts/tests/bind_messages_dynamic.mjs",
         "packages/python/tests/test_bind_messages_dynamic_none.py",
         "packages/python/tests/test_bind_messages_untyped_null_none.py",
@@ -1864,7 +1884,13 @@
         "packages/python/tests/test_model_writes_chain_mysql.py",
         "packages/python/tests/test_model_writes_chain_postgres.py",
         "packages/python/tests/test_model_writes_chain_sqlite.py",
-        "packages/php-ext/tests/ModelWritesChainRecipeTestExtensionTest.php"
+        "packages/php-ext/tests/ModelWritesChainRecipeTestExtensionTest.php",
+        "packages/ts/tests/model_writes-markdown.test.mjs",
+        "packages/ts/tests/model_writes_chain-markdown.test.mjs",
+        "packages/python/tests/test_model_writes_chain_markdown.py",
+        "packages/python/tests/test_model_writes_markdown.py",
+        "packages/rust/tests/tests/model_writes_chain_markdown.rs",
+        "packages/rust/tests/tests/model_writes_markdown.rs"
       ],
       "docs": [
         "docs/spec/dsl.md",
@@ -2511,7 +2537,13 @@
         "packages/python/tests/test_utils_recipe_sqlite.py",
         "packages/rust/tests/tests/utils_recipe_mysql.rs",
         "packages/rust/tests/tests/utils_recipe_postgres.rs",
-        "packages/rust/tests/tests/utils_recipe_sqlite.rs"
+        "packages/rust/tests/tests/utils_recipe_sqlite.rs",
+        "packages/ts/tests/transactions-markdown.test.mjs",
+        "packages/ts/tests/utils_recipe-markdown.test.mjs",
+        "packages/python/tests/test_transactions_markdown.py",
+        "packages/python/tests/test_utils_recipe_markdown.py",
+        "packages/rust/tests/tests/transactions_markdown.rs",
+        "packages/rust/tests/tests/utils_recipe_markdown.rs"
       ],
       "docs": [
         "docs/spec/config.md",
@@ -3162,7 +3194,10 @@
         "packages/rust/tests/tests/statement_events_sqlite.rs",
         "packages/go/orm/recipe_statement_events_test.go",
         "packages/php/tests/StatementEventsRecipeTest.php",
-        "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php"
+        "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
+        "packages/ts/tests/statement_events-markdown.test.mjs",
+        "packages/python/tests/test_statement_events_markdown.py",
+        "packages/rust/tests/tests/statement_events_markdown.rs"
       ],
       "docs": [
         "docs/operations/usage.md",
@@ -4158,7 +4193,16 @@
         "packages/rust/tests/tests/files_none.rs",
         "packages/rust/tests/tests/invalid_none.rs",
         "packages/rust/tests/tests/normalize_none.rs",
-        "packages/rust/tests/tests/positions_none.rs"
+        "packages/rust/tests/tests/positions_none.rs",
+        "packages/ts/tests/dbspec_apply-markdown.test.mjs",
+        "packages/ts/tests/dbspec_introspect-markdown.test.mjs",
+        "packages/ts/tests/dbspec_render_physical-markdown.test.mjs",
+        "packages/python/tests/test_dbspec_apply_markdown.py",
+        "packages/python/tests/test_dbspec_introspect_markdown.py",
+        "packages/python/tests/test_render_physical_markdown.py",
+        "packages/rust/tests/tests/dbspec_apply_markdown.rs",
+        "packages/rust/tests/tests/dbspec_introspect_markdown.rs",
+        "packages/rust/tests/tests/dbspec_render_physical_markdown.rs"
       ],
       "docs": [
         "docs/spec/dbspec.md",
@@ -4735,7 +4779,13 @@
         "packages/go/model/coverage_schema_install_test.go",
         "packages/php/tests/AuditExternalSetsTest.php",
         "packages/ts/tests/engine_features.mjs",
-        "packages/php-ext/tests/PrivilegeUtilsNativeTest.php"
+        "packages/php-ext/tests/PrivilegeUtilsNativeTest.php",
+        "packages/ts/tests/dbspec_set_decimal-markdown.test.mjs",
+        "packages/ts/tests/schema_install-markdown.test.mjs",
+        "packages/python/tests/test_schema_install_markdown.py",
+        "packages/python/tests/test_set_decimal_markdown.py",
+        "packages/rust/tests/tests/dbspec_set_decimal_markdown.rs",
+        "packages/rust/tests/tests/schema_install_markdown.rs"
       ],
       "docs": [
         "docs/spec/schema.md",
@@ -5169,7 +5219,6 @@
         "packages/python/tests/test_column_function_internal.py",
         "packages/python/tests/test_scalar_subquery_type.py",
         "packages/go/engine/planner/scalar_subquery_type_test.go",
-        "packages/rust/orm/tests/unit/markdown_scalar_subquery.rs",
         "packages/go/orm/values_test.go",
         "packages/php-ext/tests/ColumnFunctionMetadataTest.php",
         "packages/rust/schema/src/dbspec/mod.rs"
@@ -5472,7 +5521,10 @@
         "packages/ts/tests/model.mjs",
         "packages/python/tests/test_key_prefix.py",
         "packages/php-ext/tests/CompositeKeysRecipeTestExtensionTest.php",
-        "packages/php-ext/tests/ModelTestExtensionTest.php"
+        "packages/php-ext/tests/ModelTestExtensionTest.php",
+        "packages/ts/tests/composite_keys-markdown.test.mjs",
+        "packages/python/tests/test_composite_keys_markdown.py",
+        "packages/rust/tests/tests/composite_keys_markdown.rs"
       ],
       "docs": [
         "docs/spec/schema.md",
@@ -5818,7 +5870,12 @@
         "packages/python/tests/test_aes_rotation_sqlite.py",
         "packages/rust/tests/tests/aes_rotation_mysql.rs",
         "packages/rust/tests/tests/aes_rotation_postgres.rs",
-        "packages/rust/tests/tests/aes_rotation_sqlite.rs"
+        "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+        "packages/php/tests/AesRotationMarkdownTest.php",
+        "packages/php-ext/tests/AesRotationMarkdownRecipeExtensionTest.php",
+        "packages/ts/tests/aes_rotation-markdown.test.mjs",
+        "packages/python/tests/test_aes_rotation_markdown.py",
+        "packages/rust/tests/tests/aes_rotation_markdown.rs"
       ],
       "docs": [
         "docs/spec/codec.md",
@@ -6109,7 +6166,12 @@
         "packages/python/tests/test_parameter_chunking_sqlite.py",
         "packages/rust/tests/tests/parameter_chunking_sqlite.rs",
         "packages/php/tests/ParameterChunkingSqliteTest.php",
-        "packages/php-ext/tests/ParameterChunkingSqliteRecipeExtensionTest.php"
+        "packages/php-ext/tests/ParameterChunkingSqliteRecipeExtensionTest.php",
+        "packages/php/tests/ParameterChunkingMarkdownTest.php",
+        "packages/php-ext/tests/ParameterChunkingMarkdownRecipeExtensionTest.php",
+        "packages/ts/tests/parameter_chunking-markdown.test.mjs",
+        "packages/python/tests/test_parameter_chunking_markdown.py",
+        "packages/rust/tests/tests/parameter_chunking_markdown.rs"
       ],
       "docs": [
         "docs/spec/protocol.md",
@@ -6440,7 +6502,13 @@
         "packages/rust/tests/tests/constraints_and_relations_sqlite.rs",
         "packages/rust/tests/tests/immutable_write_mysql.rs",
         "packages/rust/tests/tests/immutable_write_postgres.rs",
-        "packages/rust/tests/tests/immutable_write_sqlite.rs"
+        "packages/rust/tests/tests/immutable_write_sqlite.rs",
+        "packages/ts/tests/constraints_and_relations-markdown.test.mjs",
+        "packages/ts/tests/immutable_write-markdown.test.mjs",
+        "packages/python/tests/test_constraints_and_relations_markdown.py",
+        "packages/python/tests/test_immutable_write_markdown.py",
+        "packages/rust/tests/tests/constraints_and_relations_markdown.rs",
+        "packages/rust/tests/tests/immutable_write_markdown.rs"
       ],
       "docs": [
         "docs/spec/schema.md",
@@ -6932,7 +7000,13 @@
         "packages/ts/tests/external_audit-sqlite.test.mjs",
         "packages/python/tests/test_external_audit_mysql.py",
         "packages/python/tests/test_external_audit_postgres.py",
-        "packages/python/tests/test_external_audit_sqlite.py"
+        "packages/python/tests/test_external_audit_sqlite.py",
+        "packages/ts/tests/audit_triggers-markdown.test.mjs",
+        "packages/ts/tests/external_audit-markdown.test.mjs",
+        "packages/python/tests/test_audit_triggers_markdown.py",
+        "packages/python/tests/test_external_audit_markdown.py",
+        "packages/rust/tests/tests/audit_triggers_markdown.rs",
+        "packages/rust/tests/tests/external_audit_markdown.rs"
       ],
       "docs": [
         "docs/spec/dbspec.md",
@@ -7329,7 +7403,8 @@
         "python-native-test-fault-state",
         "php-go-text-serialization-native-contract",
         "php-extension-go-text-serialization-native-contract",
-        "recipe-unknown-keys"
+        "recipe-unknown-keys",
+        "markdown-message-raw-text-vectors"
       ],
       "fixtures": [
         "contracts/interfaces.json",
@@ -7343,6 +7418,8 @@
         "packages/rust/testing/interfaces/src/main.rs",
         "packages/ts/testing/interfaces/typescript.mts",
         "packages/go/bindmessages/bind_messages_test.go",
+        "packages/php/tests/BindMessagesRawTextRecipeTest.php",
+        "packages/php-ext/tests/BindMessagesRawTextRecipeTestExtensionTest.php",
         "packages/go/orm/recipe_public_interface_signed_test.go",
         "packages/php/tests/PublicInterfaceSignedRecipeTest.php",
         "packages/ts/tests/public_interface_signed-none.test.mjs",
@@ -7809,7 +7886,10 @@
         "packages/python/tests/test_performance_gate_sqlite.py",
         "packages/rust/tests/tests/performance_gate_mysql.rs",
         "packages/rust/tests/tests/performance_gate_postgres.rs",
-        "packages/rust/tests/tests/performance_gate_sqlite.rs"
+        "packages/rust/tests/tests/performance_gate_sqlite.rs",
+        "packages/ts/tests/performance_gate-markdown.test.mjs",
+        "packages/python/tests/test_performance_gate_markdown.py",
+        "packages/rust/tests/tests/performance_gate_markdown.rs"
       ],
       "docs": [
         "docs/operations/perf.md"
@@ -8092,6 +8172,10 @@
         "conformance_verification-mysql",
         "conformance_verification-postgres",
         "conformance_verification-sqlite",
+        "conformance_verification_dynamic-mysql",
+        "conformance_verification_dynamic-postgres",
+        "conformance_verification_dynamic-sqlite",
+        "conformance_verification_dynamic-markdown",
         "coverage-conformance-verification-conformance-vector",
         "markdown-conformance",
         "conformance-errors-refusal"
@@ -8113,12 +8197,6 @@
         "packages/rust/tests/tests/markdown_conformance.rs",
         "packages/ts/tests/markdown_conformance.mjs",
         "packages/ts/tests/markdown_cases.mjs",
-        "packages/ts/tests/ir_answers.mjs",
-        "packages/go/markdownmodel/ir_answers_test.go",
-        "packages/php/tests/IrAnswersTest.php",
-        "packages/python/tests/ir_answers.py",
-        "packages/rust/tests/tests/ir_answers.rs",
-        "tests/ir/answers.json",
         "packages/go/internal/conformance/main.go",
         "packages/go/internal/conformance/main_test.go",
         "packages/php/testing/conformance/runner.php",
@@ -8131,7 +8209,6 @@
         "packages/python/tests/conformance_result.py",
         "packages/php-ext/tests/MarkdownConformanceNativeTest.php",
         "packages/rust/orm/src/value.rs",
-        "packages/php-ext/tests/IrAnswersTestExtensionTest.php",
         "packages/ts/tests/conformance_verification-mysql.test.mjs",
         "packages/ts/tests/conformance_verification-postgres.test.mjs",
         "packages/ts/tests/conformance_verification-sqlite.test.mjs",
@@ -8144,12 +8221,27 @@
         "packages/rust/tests/tests/conformance_verification_mysql.rs",
         "packages/rust/tests/tests/conformance_verification_postgres.rs",
         "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+        "packages/php/tests/ConformanceVerificationDynamicRecipeTest.php",
+        "packages/php-ext/tests/ConformanceVerificationDynamicRecipeTestExtensionTest.php",
+        "packages/ts/tests/conformance_verification_dynamic-mysql.test.mjs",
+        "packages/ts/tests/conformance_verification_dynamic-postgres.test.mjs",
+        "packages/ts/tests/conformance_verification_dynamic-sqlite.test.mjs",
+        "packages/ts/tests/conformance_verification_dynamic-markdown.test.mjs",
+        "packages/python/tests/test_conformance_verification_dynamic_mysql.py",
+        "packages/python/tests/test_conformance_verification_dynamic_postgres.py",
+        "packages/python/tests/test_conformance_verification_dynamic_sqlite.py",
+        "packages/python/tests/test_conformance_verification_dynamic_markdown.py",
         "tests/conformance/check/recipe_vectors.mts",
         "tests/conformance/check/recipe_vectors.test.mts",
         "tests/conformance/check/state.mts",
         "tests/conformance/check/state.test.mts",
         "packages/go/model/refusal_test.go",
-        "packages/ts/tests/refusal-before-request.mjs"
+        "packages/ts/tests/refusal-before-request.mjs",
+        "packages/php/tests/ConformanceVerificationMarkdownRecipeTest.php",
+        "packages/php-ext/tests/ConformanceVerificationMarkdownRecipeTestExtensionTest.php",
+        "packages/ts/tests/conformance_verification-markdown.test.mjs",
+        "packages/python/tests/test_conformance_verification_markdown.py",
+        "packages/rust/tests/tests/conformance_verification_markdown.rs"
       ],
       "docs": [
         "tests/conformance/README.md",
@@ -8157,60 +8249,6 @@
         "docs/spec/protocol.md"
       ],
       "verification": [
-        {
-          "id": "ir-answers-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/markdownmodel -run '^TestRecipeIRAnswersNone$' -count=1",
-          "shard": "other",
-          "inputs": [
-            "packages/go/markdownmodel/ir_answers_test.go",
-            "packages/go/internal/recipe/recipe.go",
-            "tests/ir/answers.json"
-          ]
-        },
-        {
-          "id": "ir-answers-php",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/IrAnswersTest.php",
-          "shard": "other",
-          "inputs": [
-            "packages/php/tests/IrAnswersTest.php",
-            "packages/php/tests/Recipe.php",
-            "packages/php/src/Markdown.php",
-            "tests/ir/answers.json"
-          ]
-        },
-        {
-          "id": "ir-answers-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.ir_answers",
-          "shard": "other",
-          "inputs": [
-            "packages/python/tests/ir_answers.py",
-            "packages/python/tests/recipe.py",
-            "packages/python/tests/chain_answer.py",
-            "packages/python/src/polyspec/orm/markdown.py",
-            "tests/ir/answers.json"
-          ]
-        },
-        {
-          "id": "ir-answers-typescript",
-          "command": "node --conditions=orm-test packages/ts/tests/ir_answers.mjs",
-          "shard": "other",
-          "inputs": [
-            "packages/ts/tests/recipe.mjs",
-            "packages/ts/tests/ir_answers.mjs",
-            "packages/ts/tests/markdown_cases.mjs",
-            "tests/ir/answers.json"
-          ]
-        },
-        {
-          "id": "ir-answers-rust",
-          "command": "node tests/cargo-test.mts ir-answers-check -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --test ir_answers",
-          "shard": "rust",
-          "inputs": [
-            "packages/rust/tests/tests/ir_answers.rs",
-            "packages/rust/tests/src/recipe.rs",
-            "tests/ir/answers.json"
-          ]
-        },
         {
           "id": "conformance-build",
           "command": "node tests/run-long.mts go-vet/conformance -- go vet -tags ormtest ./packages/go/internal/conformance",
@@ -8309,7 +8347,8 @@
             "tests": [
               "packages/php/tests/ConformanceVerificationMysqlRecipeTest.php",
               "packages/php/tests/ConformanceVerificationPostgresRecipeTest.php",
-              "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php"
+              "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+              "packages/php/tests/ConformanceVerificationDynamicRecipeTest.php"
             ],
             "commands": {
               "mysql": [
@@ -8317,6 +8356,12 @@
                   "runner": "php",
                   "test": "packages/php/tests/ConformanceVerificationMysqlRecipeTest.php",
                   "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json",
+                  "symbol": "testMysql"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/ConformanceVerificationDynamicRecipeTest.php",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json",
                   "symbol": "testMysql"
                 }
               ],
@@ -8326,6 +8371,12 @@
                   "test": "packages/php/tests/ConformanceVerificationPostgresRecipeTest.php",
                   "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json",
                   "symbol": "testPostgres"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/ConformanceVerificationDynamicRecipeTest.php",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json",
+                  "symbol": "testPostgres"
                 }
               ],
               "sqlite": [
@@ -8333,6 +8384,12 @@
                   "runner": "php",
                   "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
                   "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json",
+                  "symbol": "testSqlite"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/ConformanceVerificationDynamicRecipeTest.php",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json",
                   "symbol": "testSqlite"
                 }
               ]
@@ -8343,7 +8400,8 @@
             "tests": [
               "packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php",
               "packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php",
-              "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php"
+              "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+              "packages/php-ext/tests/ConformanceVerificationDynamicRecipeTestExtensionTest.php"
             ],
             "commands": {
               "mysql": [
@@ -8351,6 +8409,12 @@
                   "runner": "php",
                   "test": "packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php",
                   "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json",
+                  "symbol": "testMysql"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/ConformanceVerificationDynamicRecipeTestExtensionTest.php",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json",
                   "symbol": "testMysql"
                 }
               ],
@@ -8360,6 +8424,12 @@
                   "test": "packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php",
                   "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json",
                   "symbol": "testPostgres"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/ConformanceVerificationDynamicRecipeTestExtensionTest.php",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json",
+                  "symbol": "testPostgres"
                 }
               ],
               "sqlite": [
@@ -8368,13 +8438,20 @@
                   "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
                   "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json",
                   "symbol": "testSqlite"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/ConformanceVerificationDynamicRecipeTestExtensionTest.php",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json",
+                  "symbol": "testSqlite"
                 }
               ]
             },
             "inputs": [
               "packages/php/tests/ConformanceVerificationMysqlRecipeTest.php",
               "packages/php/tests/ConformanceVerificationPostgresRecipeTest.php",
-              "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php"
+              "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+              "packages/php/tests/ConformanceVerificationDynamicRecipeTest.php"
             ]
           },
           "rust": {
@@ -8413,7 +8490,10 @@
             "tests": [
               "packages/ts/tests/conformance_verification-mysql.test.mjs",
               "packages/ts/tests/conformance_verification-postgres.test.mjs",
-              "packages/ts/tests/conformance_verification-sqlite.test.mjs"
+              "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+              "packages/ts/tests/conformance_verification_dynamic-mysql.test.mjs",
+              "packages/ts/tests/conformance_verification_dynamic-postgres.test.mjs",
+              "packages/ts/tests/conformance_verification_dynamic-sqlite.test.mjs"
             ],
             "commands": {
               "mysql": [
@@ -8421,6 +8501,11 @@
                   "runner": "node",
                   "test": "packages/ts/tests/conformance_verification-mysql.test.mjs",
                   "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/conformance_verification_dynamic-mysql.test.mjs",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json"
                 }
               ],
               "postgres": [
@@ -8428,6 +8513,11 @@
                   "runner": "node",
                   "test": "packages/ts/tests/conformance_verification-postgres.test.mjs",
                   "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/conformance_verification_dynamic-postgres.test.mjs",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json"
                 }
               ],
               "sqlite": [
@@ -8435,6 +8525,11 @@
                   "runner": "node",
                   "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
                   "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/conformance_verification_dynamic-sqlite.test.mjs",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json"
                 }
               ]
             }
@@ -8444,7 +8539,10 @@
             "tests": [
               "packages/python/tests/test_conformance_verification_mysql.py",
               "packages/python/tests/test_conformance_verification_postgres.py",
-              "packages/python/tests/test_conformance_verification_sqlite.py"
+              "packages/python/tests/test_conformance_verification_sqlite.py",
+              "packages/python/tests/test_conformance_verification_dynamic_mysql.py",
+              "packages/python/tests/test_conformance_verification_dynamic_postgres.py",
+              "packages/python/tests/test_conformance_verification_dynamic_sqlite.py"
             ],
             "commands": {
               "mysql": [
@@ -8452,6 +8550,11 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_conformance_verification_mysql.py",
                   "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/test_conformance_verification_dynamic_mysql.py",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json"
                 }
               ],
               "postgres": [
@@ -8459,6 +8562,11 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_conformance_verification_postgres.py",
                   "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/test_conformance_verification_dynamic_postgres.py",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json"
                 }
               ],
               "sqlite": [
@@ -8466,6 +8574,11 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_conformance_verification_sqlite.py",
                   "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/test_conformance_verification_dynamic_sqlite.py",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json"
                 }
               ]
             }
@@ -8516,6 +8629,7 @@
         "catalog_connection-postgres",
         "catalog_connection-sqlite",
         "catalog_connection-sqlite-only",
+        "catalog_connection-sqlite-only-markdown",
         "catalog-temporal-native-default-precision",
         "catalog-row-baseline-compares-exact-values",
         "catalog-table-page-prepared-columns-differ-from-the-descriptor",
@@ -8580,10 +8694,16 @@
         "packages/php/tests/CatalogConnectionSqliteOnlyRecipeTest.php",
         "packages/php-ext/tests/CatalogConnectionSqliteOnlyRecipeTestExtensionTest.php",
         "packages/ts/tests/catalog_connection-sqlite-only.test.mjs",
+        "packages/ts/tests/catalog_connection-sqlite-only-markdown.test.mjs",
         "packages/python/tests/test_catalog_connection_sqlite_only.py",
+        "packages/python/tests/test_catalog_connection_sqlite_only_markdown.py",
         "packages/rust/tests/tests/catalog_connection_sqlite_only.rs",
+        "packages/rust/tests/tests/catalog_connection_sqlite_only_markdown.rs",
         "packages/php/tests/CatalogOneConnectionTest.php",
-        "packages/php-ext/tests/CatalogOneConnectionTestExtensionTest.php"
+        "packages/php-ext/tests/CatalogOneConnectionTestExtensionTest.php",
+        "packages/ts/tests/catalog_connection-markdown.test.mjs",
+        "packages/python/tests/test_catalog_connection_markdown.py",
+        "packages/rust/tests/tests/catalog_connection_markdown.rs"
       ],
       "docs": [
         "docs/spec/schema.md",
@@ -8985,7 +9105,12 @@
         "packages/python/tests/test_request_hook_mysql.py",
         "packages/python/tests/test_request_hook_postgres.py",
         "packages/python/tests/test_request_hook_sqlite.py",
-        "packages/php-ext/tests/RequestHookTestExtensionTest.php"
+        "packages/php-ext/tests/RequestHookTestExtensionTest.php",
+        "packages/php/tests/RequestHookMarkdownRecipeTest.php",
+        "packages/php-ext/tests/RequestHookMarkdownRecipeTestExtensionTest.php",
+        "packages/ts/tests/request_hook-markdown.test.mjs",
+        "packages/python/tests/test_request_hook_markdown.py",
+        "packages/rust/tests/tests/request_hook_markdown.rs"
       ],
       "docs": [
         "docs/operations/usage.md",
@@ -9343,7 +9468,15 @@
         "packages/rust/tests/tests/fulltext_search_recipe_postgres.rs",
         "packages/rust/tests/tests/fulltext_search_recipe_sqlite.rs",
         "packages/rust/orm/src/request.rs",
-        "packages/python/tests/test_complex_query.py"
+        "packages/python/tests/test_complex_query.py",
+        "packages/php/tests/ComplexQueryMarkdownRecipeTest.php",
+        "packages/php-ext/tests/ComplexQueryMarkdownRecipeTestExtensionTest.php",
+        "packages/ts/tests/complex_query-markdown.test.mjs",
+        "packages/ts/tests/fulltext-search-recipe-markdown.test.mjs",
+        "packages/python/tests/test_complex_query_markdown.py",
+        "packages/python/tests/test_fulltext_search_recipe_markdown.py",
+        "packages/rust/tests/tests/complex_query_markdown.rs",
+        "packages/rust/tests/tests/fulltext_search_recipe_markdown.rs"
       ],
       "docs": [
         "docs/spec/complex-query.md",
@@ -9670,7 +9803,10 @@
         "packages/php/tests/StatementRunnerCases.php",
         "packages/python/tests/test_statement_runner.py",
         "packages/php-ext/tests/StatementRunnerExtensionTest.php",
-        "packages/ts/tests/statement-runner-run.mjs"
+        "packages/ts/tests/statement-runner-run.mjs",
+        "packages/ts/tests/statement_runner-markdown.test.mjs",
+        "packages/python/tests/test_statement_runner_markdown.py",
+        "packages/rust/tests/tests/statement_runner_markdown.rs"
       ],
       "docs": [
         "docs/spec/interfaces.md"
@@ -9999,12 +10135,10 @@
     {
       "id": "typescript-internal-column-error",
       "paths": [
-        "packages/ts/tests/internal-column-error.mjs",
-        "packages/ts/tests/markdown-read-db.mjs"
+        "packages/ts/tests/internal-column-error.mjs"
       ],
       "tests": [
-        "packages/ts/tests/internal-column-error.test.mjs",
-        "packages/ts/tests/markdown-read-db.test.mjs"
+        "packages/ts/tests/internal-column-error.test.mjs"
       ],
       "command": "make --no-print-directory typescript-internal-column-error-helper-check"
     },

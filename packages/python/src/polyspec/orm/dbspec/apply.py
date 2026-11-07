@@ -874,10 +874,19 @@ def apply_plans(
 
 
 def _sqlite_lock_result(error) -> bool:
-    code = getattr(error, "sqlite_errorcode", None)
-    if not isinstance(code, int):
-        return False
-    return code & 0xFF in (5, 6)
+    code = _sqlite_result_code(error)
+    return code is not None and code & 0xFF in (5, 6)
+
+
+def _sqlite_result_code(error) -> int | None:
+    """The SQLite result code of a failed statement: the sqlite_errorcode of a sqlite3 error, or that of its cause,
+    which an OrmError of a SQLite connection holds, as one of a session of a flowmark server does (docs/spec/
+    protocol.md PRT-71)."""
+    for holder in (error, error.__cause__):
+        code = getattr(holder, "sqlite_errorcode", None)
+        if isinstance(code, int) and not isinstance(code, bool):
+            return code
+    return None
 
 
 def recover_plans(

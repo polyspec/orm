@@ -469,6 +469,42 @@ caseTest('every PHPUnit run of the Makefile goes through run-tests', COMPUTE, ()
   assert.deepEqual(text('Makefile').split('\n').filter(line => direct.test(line)), []);
 });
 
+// run-tests gives one timeout to every case of a --module harness, and packages/python/tests/testcase.py keeps the deadline
+// of each case by its class (COMPUTE, DATABASE, PROCESS) and ends the process GRACE after it. So the timeout of run-tests is
+// the longest class with its grace, and the class of a case decides when it fails.
+caseTest('every Python run of run-tests gives the cases the deadlines of their testcase classes', COMPUTE, () => {
+  const makefile = text('Makefile');
+  const harness = text('packages/python/tests/testcase.py');
+  const seconds = (name: string) => Number(new RegExp(`^${name} = ([0-9.]+)$`, 'm').exec(harness)?.[1]);
+  assert.equal(Number.isFinite(seconds('PROCESS')) && Number.isFinite(seconds('GRACE')), true, 'testcase.py states PROCESS and GRACE');
+  const timeout = /^PYTHON_TESTS = \$\(RUN_TESTS\) python --timeout (\d+) --venv \$\(PYTHON_VENV\) --module packages\.python\.tests\.testcase$/m.exec(makefile)?.[1];
+  assert.equal(Number(timeout), seconds('PROCESS') + seconds('GRACE'), 'PYTHON_TESTS gives run-tests the longest deadline class with its grace');
+  assert.deepEqual(makefile.split('\n').filter(line => /\$\(RUN_TESTS\) python\b/.test(line) && !line.startsWith('PYTHON_TESTS = ')), [],
+    'every Python run of run-tests goes through PYTHON_TESTS');
+});
+
+caseTest('a whole suite that holds markdown units gets the pinned flowmark, and flowmark-check refuses a missing one', COMPUTE, () => {
+  // test-php-ext runs the native tests of the extension and python-unit-check discovers every Python test; both hold markdown
+  // units and run without WITH_TEST_ENV, so each exports FLOWMARK itself. A simple assignment takes the value FLOWMARK has
+  // where make reads it, so the export must follow the definition of FLOWMARK; the database of make (-p) holds the value that
+  // the target exports.
+  const lines = text('Makefile').split('\n');
+  for (const target of ['test-php-ext', 'python-unit-check']) {
+    const exportLine = lines.indexOf(`${target}: export FLOWMARK := $(FLOWMARK)`) + 1;
+    assert.ok(exportLine > 0, `${target} exports FLOWMARK`);
+    assert.ok(lines.includes(`${target}: flowmark-check`), `${target} runs flowmark-check first`);
+    const database = spawnSync('make', ['-pn', target], { cwd: repository.pathname, encoding: 'utf8', env: isolatedEnvironment(), maxBuffer: 1 << 28 });
+    assert.equal(database.status, 0, database.stderr);
+    // GNU make 3.81 prints a target variable as `# FLOWMARK := value` and GNU make 4 as `<target>: FLOWMARK := value`.
+    const exported = new RegExp(`line ${exportLine}\\)\\n(?:# |${target}: )FLOWMARK := (.*)$`, 'm').exec(database.stdout)?.[1];
+    assert.equal(exported, join(repository.pathname, '.runtime/bin/flowmark'), `${target} exports the pinned flowmark`);
+  }
+  const check = (flowmark: string) => spawnSync('make', ['-s', 'flowmark-check', `FLOWMARK=${flowmark}`], { cwd: repository.pathname, encoding: 'utf8', env: isolatedEnvironment() }).status;
+  assert.notEqual(check(''), 0, 'an empty FLOWMARK is refused');
+  assert.notEqual(check(join(repository.pathname, '.runtime/bin/no-flowmark')), 0, 'a missing FLOWMARK is refused');
+  assert.equal(check(process.execPath), 0, 'an executable FLOWMARK passes');
+});
+
 caseTest('the PHP extension suite and its profiled native cases use their owning inputs', COMPUTE, () => {
   const makefile = text('Makefile');
   const filterText = /^PHP_EXTENSION_NATIVE_CASES = (.+)$/m.exec(makefile)?.[1];
@@ -642,8 +678,8 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   }
   for (const runtime of ['go', 'php', 'php-extension', 'typescript', 'python', 'rust']) {
     const groupRuntime = runtime.replaceAll('-', '_');
-    const markdown = `markdown-conformance-check/${runtime}`;
-    assert.deepEqual(targets[`markdown_${groupRuntime}`], [markdown], `${markdown} is the only target in its native runtime cell`);
+    const markdown = [`markdown-conformance-check/${runtime}`, `markdown-session-check/${runtime}`];
+    assert.deepEqual(targets[`markdown_${groupRuntime}`], markdown, `${markdown.join(' and ')} are the only targets in their native runtime cell`);
   }
   assert.deepEqual(targets.feature_performance, ['feature-performance-check'], 'the performance measurement has its own CI job');
   assert.equal(targets.parity, undefined, 'the parity gate runs in the gates workflow of kit, not in a CI group (KSTD-5-115)');
@@ -822,10 +858,11 @@ caseTest('every CI group uploads the report directory that the runner writes', C
 
 // The group setup case (G5.127) checks, for every group in CI_GROUPS, whether the group runs the target's need and the setup step of that need's setup stage requires,
 // using the repository's Makefile and contracts/check-inputs.json. databases/create starts the server as a server-programs
-// program, so a group of a target that declares only databases also needs the server-programs output. The output is checked in the control case,
-// where the target does not look at databases: stress-db skips the server-programs setup step.
+// program, and a case runs on flowmark too, so a group of a target that declares only databases also needs the server-programs and the
+// flowmark outputs. The output is checked in the control case, where the target does not look at databases: stress-db skips the
+// server-programs and the flowmark setup steps.
 caseTest('every CI group runs the setup steps of its needs and of the setup step databases/create', COMPUTE, () => {
-  assert.deepEqual(expandNeeds(['databases']), ['databases', 'go-lease', 'node-modules', 'server-programs']);
+  assert.deepEqual(expandNeeds(['databases']), ['databases', 'go-lease', 'node-modules', 'server-programs', 'flowmark']);
   assert.deepEqual(expandNeeds(['php-extension-tools']), ['php-extension-tools', 'php', 'composer', 'node-modules']);
   assert.deepEqual(expandNeeds(['interfaces-typescript']), ['interfaces-typescript', 'node-modules']);
   assert.deepEqual(expandNeeds(['parity-symbols']), ['parity-symbols', 'node-modules', 'go', 'php', 'composer']);
@@ -843,12 +880,15 @@ caseTest('every CI group runs the setup steps of its needs and of the setup step
   assert.equal(outputs('static')['parity-symbols'], false, 'the static group does not install API parity extractors');
   for (const need of ['go', 'rust', 'php', 'php-extension-tools', 'python', 'databases', 'node-modules'])
     assert.equal(outputs('conformance')[need], true, `the cross-runtime comparison group installs ${need}`);
+  // A case runs on MySQL, PostgreSQL, SQLite and flowmark, and WITH_TEST_ENV hands FLOWMARK to every target, so each group that
+  // prepares the databases installs flowmark (feature_verify_other runs the markdown entries of its verifications).
+  for (const group of groups) if (outputs(group).databases) assert.equal(outputs(group).flowmark, true, `${group} prepares the databases and installs flowmark`);
   const declaredOnly = (names: readonly string[], declared: Record<string, string[]>) => {
     const wanted = new Set(names.flatMap(name => declared[name] ?? []));
     return Object.fromEntries(Object.entries(GROUP_OUTPUTS).map(([output, from]) => [output, from.filter(need => output !== 'server-programs' || need !== 'databases').some(need => wanted.has(need))]));
   };
   assert.deepEqual(groupSetupErrors({ 'stress-db': ['stress-only'] }, { 'stress-only': ['go', 'databases'] }, declaredOnly).map(line => line.replace(/ which installs.*/, '')),
-    ['CI group stress-db skips the setup step server-programs,']);
+    ['CI group stress-db skips the setup step server-programs,', 'CI group stress-db skips the setup step flowmark,']);
   assert.deepEqual(groupSetupErrors({ 'stress-db': ['stress-only'] }, { 'stress-only': ['go', 'databases'] }), []);
 });
 
@@ -872,9 +912,9 @@ caseTest('a CI group job runs each setup step under its declared condition and r
   assert.equal(stepCondition('composer'), "${{ !cancelled() && steps.group-needs.outputs.php == 'true' }}");
   assert.equal(stepCondition('servers'), "${{ !cancelled() && steps.group-needs.outputs.databases == 'true' }}");
   assert.deepEqual(groupOutputs(['a', 'b'], { a: ['go', 'composer'], b: ['databases'] }),
-    { 'node-modules': true, 'interfaces-typescript': false, 'parity-symbols': false, go: true, rust: false, php: true, 'php-extension-tools': false, 'server-programs': true, databases: true, python: false, flowmark: false });
+    { 'node-modules': true, 'interfaces-typescript': false, 'parity-symbols': false, go: true, rust: false, php: true, 'php-extension-tools': false, 'server-programs': true, databases: true, python: false, flowmark: true });
   assert.deepEqual(groupOutputs(['b'], { b: ['databases'] }),
-    { 'node-modules': true, 'interfaces-typescript': false, 'parity-symbols': false, go: false, rust: false, php: false, 'php-extension-tools': false, 'server-programs': true, databases: true, python: false, flowmark: false });
+    { 'node-modules': true, 'interfaces-typescript': false, 'parity-symbols': false, go: false, rust: false, php: false, 'php-extension-tools': false, 'server-programs': true, databases: true, python: false, flowmark: true });
   assert.deepEqual(groupOutputs(['c'], { c: ['go', 'flowmark'] }),
     { 'node-modules': false, 'interfaces-typescript': false, 'parity-symbols': false, go: true, rust: false, php: false, 'php-extension-tools': false, 'server-programs': false, databases: false, python: false, flowmark: true });
   assert.deepEqual(groupOutputs(['php-library'], { 'php-library': ['php'] }),

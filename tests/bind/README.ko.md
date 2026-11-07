@@ -1,9 +1,9 @@
 <!-- doc-id: tests-bind-readme -->
-<!-- source-sha256: e44017f2fc910674e73bdabb147b5599be482579114c1b2f33d3b2d5dd6af0b2 -->
+<!-- source-sha256: 2be1447b430a501f0dac58a1d8a6c2ada158a0314046be88d8fb577233c0fb6c -->
 # Bind vector
 
 bind 경로의 case는 recipe다: `messages.json`은 모든 runtime에서, `messages-dynamic.json`은 compile 시점 type이 없는 runtime에서,
-`messages-untyped-null.json`과 `messages-python-null.json`은 그 파일이 이름한 runtime에서 실행한다
+`messages-untyped-null.json`, `messages-python-null.json`, `messages-raw-text.json`(UTF-8이 아닌 text, Go, PHP, PHP extension)은 그 파일이 이름한 runtime에서 실행한다
 (docs/spec/feature-coverage.md FCV-2와 FCV-4, `markdown.send`와 `model.assign`).
 
 `vectors.json`은 recipe가 담지 못하는 것을 담으며, 각 package의 test가 parameter의 내부 검사에 대해 실행한다

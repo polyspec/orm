@@ -17,16 +17,20 @@ export interface DbspecPostgresConnection {
   query(config: { text: string; values?: unknown[]; rowMode?: 'array' }): Promise<{ rows: unknown[] }>;
 }
 
-/** A prepared node:sqlite statement: the methods that dbspec calls. */
+/**
+ * A prepared statement of a SQLite connection: the methods that dbspec calls. A node:sqlite statement answers at once; the statement
+ * of a connection that answers asynchronously, such as a session of a flowmark server (docs/spec/dialects.md DIA-185), answers with a
+ * promise, which dbspec awaits.
+ */
 export interface DbspecSqliteStatement {
   setReturnArrays(enabled: boolean): void;
-  all(...parameters: (string | number)[]): unknown[];
+  all(...parameters: (string | number)[]): unknown[] | Promise<unknown[]>;
   run(...parameters: (string | number)[]): unknown;
 }
 
-/** A node:sqlite database: the methods that dbspec calls. */
+/** A SQLite connection, a node:sqlite database or one that answers asynchronously: the methods that dbspec calls. */
 export interface DbspecSqliteConnection {
-  exec(sql: string): void;
+  exec(sql: string): void | Promise<void>;
   prepare(sql: string): DbspecSqliteStatement;
 }
 

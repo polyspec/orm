@@ -19,7 +19,9 @@
     "SCH-8",
     "SCH-9",
     "INT-57",
-    "INT-58"
+    "INT-58",
+    "DIA-154",
+    "DIA-189"
   ],
   "fixture": "none",
   "cases": [

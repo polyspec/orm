@@ -17,6 +17,8 @@ use PgSql\Result;
  */
 final class PgsqlPdoAdapter extends \Pdo\Pgsql
 {
+    use QueriesByPrepare;
+
     private array $errorInfoValue = ['00000', null, null];
     private int $errmode = PDO::ERRMODE_EXCEPTION;
 
@@ -169,18 +171,6 @@ final class PgsqlPdoAdapter extends \Pdo\Pgsql
     public function prepare(string $query, array $options = []): PDOStatement|false
     {
         return new PgsqlStatementAdapter($this, $query);
-    }
-
-    public function query(string $query, ?int $fetchMode = null, mixed ...$fetchModeArgs): PDOStatement|false
-    {
-        $statement = $this->prepare($query);
-        if ($statement === false || !$statement->execute()) {
-            return false;
-        }
-        if ($fetchMode !== null) {
-            $statement->setFetchMode($fetchMode, ...$fetchModeArgs);
-        }
-        return $statement;
     }
 
     public function quote(string $string, int $type = PDO::PARAM_STR): string|false

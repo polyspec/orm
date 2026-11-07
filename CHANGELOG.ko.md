@@ -1,11 +1,35 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 816ed00724a23d3df67791446864cb1925d6ebaab5bc25403c33e231ad8993a9 -->
+<!-- source-sha256: 3b69199830538f3d70fc144ff6f2d941974d275256f691cdf899f6510bb2c7c3 -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.22
 
+- 호환 깨짐(Rust): markdown 연결의 pool은 0.0.21의 `MdPool`에서 바뀐 `polyspec_orm::markdown::MarkdownPool`이므로 `Pool::Markdown`은 `Arc<MarkdownPool>`을 가진다. markdown 연결의 모든 type은 TypeScript처럼 Rust와 Python에서도 접두어 `Markdown`을 가진다(XV14).
+- 여섯 runtime 모두에서 markdown corpus는 SQLite 연결이다(DIA-154, DIA-185). flowmark 서버가 SQLite dialect의 문에 답하므로 각 클라이언트는 요청을 SQLite에서처럼 계획하고 각 문을 op statement로 보내며, 이어지는 행은 fetch와 close로 읽는다(PRT-66). 매개변수는 PRT-67의 형식을 따르고 boolean은 1 또는 0이다. IR executor 클라이언트와 그 답 조립, tests/ir/answers.json, recipe op ir.answer는 제거했다. recipe의 모든 database case는 MySQL, PostgreSQL, SQLite와 함께 flowmark에서도 실행되며, tests/markdown은 flowmark release v0.0.5를 고정한다 (T384).
+- 시험: `polyspec_orm::testing::sqlite_result_error`(feature `test-faults`)는 result code를 가진 실패한 SQLite 문의 오류를 만들며, Rust 시험의 apply fault recipe가 이를 주입한다(XV1).
+- markdown 연결의 pool 설정은 DIA-199이며 Go, Rust, TypeScript, Python에서 SQLite와 같다. recipe `connection_pool`은 네 database 각각의 DSN으로 pool 크기를 넘는 idle 크기를 거부하고, `make connection-pool-check`가 이를 실행한다(XV2).
+- 수정: PHP extension의 native 시험은 test-php-ext가 빈 값으로 export하던 FLOWMARK의 flowmark server를 읽고, flowmark-check는 빈 FLOWMARK를 거부한다. extension의 runtime lane은 고정된 flowmark를 설치한다(XV12).
+- markdown 연결의 모든 public symbol, Go, TypeScript, Rust entity의 key prefix와 order, Go planner 설정 `Assigns`는 형제 symbol의 API unit에 속하며, `wire_param`은 Rust crate 안으로 감춘다(XV13).
+- 시험: Rust recipe helper의 model query 단계는 `where`가 없으면 모든 행을 읽으므로, `model_queries`의 case `a_refused_row_ends_the_read_and_keeps_the_connection`이 MySQL, PostgreSQL, SQLite, flowmark에서 여섯 runtime으로 실행된다. codec이 값을 거부하는 행은 flowmark의 첫 batch를 넘어서도 `CODEC_DECODE`로 읽기를 끝내고, 같은 연결의 다음 count는 모든 행이다(XV4).
+- PRT-66은 일찍 멈추는 읽기를 정한다: 뒤따르는 row를 close로 끝내고 close의 답과 무관하게 자신의 결과를 지키며, 거부된 close는 그 row를 다음 문에 맡기고 연결은 계속 쓸 수 있다(XV3).
+- 수정: model로 쓴 유한하지 않은 f64는 다른 runtime처럼 Go에서도 `CODEC_ENCODE`이다(전에는 create가 그 값을 다시 읽어 `CODEC_DECODE`였다). Rust의 `utils().run` 문은 parameter를 database가 받는 그대로 bind하므로 그 오류는 database의 오류다(INT-150). PHP와 PHP extension은 SQLite에서 무한대를 SQLite가 수로 읽는 `9.0e+999`로 bind하고, extension은 library처럼 PostgreSQL의 float `NaN`, `Infinity`, `-Infinity`를 수로 읽는다. `conformance_verification`의 case `slot_value_forms_roundtrip`은 정수, 분수, text, null, blob, 두 무한대, 소수부가 있는 datetime을 여섯 runtime과 네 database에서 쓰고 다시 읽는다(XV6).
+- 시험: markdown 연결의 시험은 거부에서 code를 한 번만 적는 flowmark v0.0.6에서 실행되고, `constraints_and_relations`의 case `constraint_errors`는 flowmark 거부의 전체 text를 확인하므로, code를 두 번 적는 client나 server는 모든 runtime에서 실패한다(XV5).
+- 수정: 행을 거부하는 markdown 연결의 읽기는 Go와 Rust처럼 TypeScript, Python, PHP에서도 뒤따르는 행을 close로 끝내고 close의 답과 무관하게 자기 오류를 돌려주며(PRT-66), PHP extension은 행이 거부될 때 `fetchAll`의 결과를 두 번 해제하지 않는다. op `markdown.session`은 `call`(`transactions`, `read`, `read_twice`)을 받고, `make markdown-session-check`가 여섯 runtime에서 실행하는 `tests/markdown/session.json`이 거부된 행과 거부된 close의 메시지를 확인한다(XV7).
+- 시험: UTF-8이 아닌 text는 recipe wrapper `text_hex`다(FCV-4). Go, PHP, PHP extension이 실행하는 `tests/bind/messages-raw-text.json`과 recipe `raw_text`는 typed slot이 그 값을 `CODEC_ENCODE`로 거부하는지, 그리고 `utils().run`이 그 값을 SQLite와 flowmark에 저장하고 그 byte를 다시 읽는지 확인하며, MySQL과 PostgreSQL은 그 값을 거부한다(PRT-67, XV8).
+- 수정 (Go, PHP, PHP extension): `contains` filter는 equality filter처럼 UTF-8이 아닌 text를 어떤 문장보다 먼저 `CODEC_ENCODE` "like_contains requires a UTF-8 text"로 거부한다(PRT-32, XV16).
+- 수정: 읽은 cell의 `CODEC_DECODE`는 모든 runtime에서 `CODEC_DECODE: <entity>.<column>: <message>`이고, 잘못된 hex text는 모든 runtime에서 `hex: odd length or non-hex input`이다(COD-39, COD-41, XV15).
+- 수정 (TypeScript, Python, PHP, PHP extension): `bytes` slot의 text나 PHP string은 그 byte, 곧 blob으로 bind되므로 SQLite와 flowmark도 MySQL과 PostgreSQL처럼 blob을 저장한다. 전에는 PHP가 model의 모든 bytes 값을 SQLite와 flowmark에 TEXT로 저장했다. case `bind_bytes_text`는 다시 `{"bytes": "YWI="}`를 보내고, recipe `conformance_verification_dynamic`이 네 database에서 저장된 type을 확인한다(PRT-67, XV11).
+- 시험: markdown 연결의 거부된 row와 wire 형식을 한 runtime에서만 확인하던 시험을 지운다. model_queries recipe, tests/markdown/session.json과 bind message vector가 그 모든 행을 모든 runtime에서 확인한다. PHP의 버린 PDO statement는 native 시험으로 남는다(PRT-66, PRT-67, PRT-69, XV9).
+- 수정 (Go, Rust): join된 model은 AES column을 자기 row의 key version으로 복호화한다. TypeScript, Python, PHP와 같다. 전에는 Go와 Rust가 모든 node에 root row의 version을 써서, 다른 key version으로 쓴 join row를 틀린 key로 복호화했다. aes_rotation의 case 하나가 네 database에서 그런 row를 join한다(COD-6, XV18).
+- 시험: CI 그룹이 여섯 runtime의 markdown 시험을 실행한다. 각 시험은 contracts/features.json에서 SQLite 짝의 feature에 들어가고, T384가 지운 파일은 feature와 check input에서 빠지며, flowmark가 필요한 target 21개가 그것을 선언해 그 그룹이 flowmark를 설치한다(XV21).
+- 시험: SQLite 전용 catalog recipe가 unit catalog_connection-sqlite-only-markdown으로 여섯 runtime에서 flowmark 위에서 실행되고, 어떤 recipe도 쓰지 않던 recipe op corpus.write와 지워진 markdown 결과 조립의 TypeScript·Rust 시험이 빠진다(XV22).
+- 시험: python-unit-check가 markdown unit에 필요한 고정 flowmark를 Python suite에 넘긴다(XV23).
+- 시험: run-tests의 모든 Python 실행이 각 사례에 testcase class의 마감을 주어, flowmark의 database 사례가 30초에 멈추지 않고 suite의 나머지가 실행된다(XV24).
+- 시험: recipe runner 검사가 두 PHP recipe base를 이름 짓고, flowmark export의 저장소 시험이 GNU make 3.81과 4의 출력을 읽는다(XV25).
+- 시험: database를 준비하는 모든 CI group이 사례의 네 번째 database인 flowmark를 설치하고, dbspec-go-check/render-physical은 markdown 항목 전에 flowmark를 확인한다(XV26).
+- corpus에 대한 SQLite 연결의 수정 (T384): PHP 거부는 code를 한 번만 말한다. 호출자가 버린 PHP 문의 행은 다음 문이 끝까지 읽지 않고 닫는다. 행이 거부된 Rust 읽기는 close의 답과 관계없이 자기 오류를 유지한다. dbspec.apply의 Python lock 결과는 OrmError의 cause에서 SQLite result code를 읽고, Python schema install은 savepoint 대신 열린 트랜잭션에 합류한다.
 - 수정: Go catalog가 멈춘 읽기와 닫기 실패를 보고하고, Go PostgreSQL driver가 panic하던 곳에서 오류를 돌려준다.
 - recipe case가 그 동작을 가진 모든 runtime에서 CFG-22를 증명한다: 세션 설정과 prepared statement는 자기 연결에만 남고(`utils`), 각 연결은 자기 pool만 집계한다(`connection_pool`).
 - 같은 행을 쓰는 두 연결 사이의 SQLite 잠금 대기는 busy timeout 뒤 `CANCELED`로 끝나고 재시도하지 않는다. SQLite는 행 잠금 교착을 보고하지 않기 때문이다: SQLITE_LOCKED(6, 262)는 모든 runtime에서 `DRIVER`이고, transaction_deadlock_retry는 여섯 runtime 모두에서 sqlite case를 실행한다(PLN-24, CFG-12) (T343-3)

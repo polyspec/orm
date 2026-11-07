@@ -158,7 +158,10 @@ fn filter_author(db: &Db, where_: &Value) -> Result<Author, String> {
         other => Err(format!("Author column {other} has no recipe filter")),
     };
     let mut conditions = Vec::new();
-    for (column, value) in columns(where_)? {
+    // A step with no where reads every row.
+    let every_row = serde_json::Map::new();
+    let equalities = if where_.is_null() { &every_row } else { columns(where_)? };
+    for (column, value) in equalities {
         conditions.push((rank(column)?, column.as_str(), int(value)?));
     }
     conditions.sort_by_key(|(rank, _, _)| *rank);

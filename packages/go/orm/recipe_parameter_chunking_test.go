@@ -32,3 +32,9 @@ func TestRecipeParameterChunkingSqlite(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, parameterChunkingRecipe, "sqlite")
 }
+
+// TestRecipeParameterChunkingMarkdown runs the recipe on flowmark, each case on a corpus of its own (FCV-3).
+func TestRecipeParameterChunkingMarkdown(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, parameterChunkingRecipe, "markdown")
+}

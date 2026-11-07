@@ -12,9 +12,12 @@ from polyspec.orm.dbspec import (
     render_dbspec,
 )
 from polyspec.orm.catalog import _driver_errors
+from polyspec.orm.database import parse_dsn
+from polyspec.orm.errors import OrmError
 from polyspec.orm.dbspec.introspect import introspect_dbspec
 from polyspec.orm.dbspec.plan import parse_plan
 from polyspec.orm.dbspec.plan_steps import plan_steps
+from polyspec.orm.markdown import MarkdownConnection
 
 from .dbspec_introspect_runner import connect
 from .dbspec_plans import plan_cases
@@ -37,6 +40,33 @@ class _CountingAdapter:
     def execute(self, sql, values=()):
         self.count += 1
         return self.inner.execute(sql, values)
+
+
+class _Native:
+    """One native connection of the case database: a corpus has no native driver but a session of its flowmark
+    server, which states SQL in SQLite's dialect (DIA-185); any other database is its driver connection."""
+
+    def __init__(self, database: str, dsn: str):
+        if database == "markdown":
+            self._corpus = MarkdownConnection(parse_dsn(dsn).markdown)
+            self.adapter = Adapter(self._corpus.connection)
+            self._close = self._corpus.close
+            self.errors = (OrmError,)
+            return
+        connection = connect(database, dsn)
+        if database == "sqlite":
+            connection.isolation_level = None
+        self.adapter = Adapter(connection)
+        self._close = connection.close
+        self.errors = _driver_errors(database)
+
+    def close(self) -> None:
+        self._close()
+
+
+def _sql_dialect(database: str) -> str:
+    """The SQL dialect of a case database: a corpus runs SQL in SQLite's (DIA-185)."""
+    return "sqlite" if database == "markdown" else database
 
 
 def _texts(step: dict, directory: Path) -> tuple[dict[str, str], dict]:
@@ -86,13 +116,13 @@ def _schema_name(database: str, dsn: str) -> str:
 def _catalog_query_failure(dialect: str, database: str, dsn: str) -> dict:
     """The empty case database with the catalog queries of another dialect: their failure is the error of the call
     (DIA-133)."""
-    connection = connect(database, dsn)
+    native = _Native(database, dsn)
     try:
-        introspect_dbspec(Adapter(connection), dialect, "introspected")
-    except _driver_errors(database):
+        introspect_dbspec(native.adapter, dialect, "introspected")
+    except native.errors:
         return {"failed": True}
     finally:
-        connection.close()
+        native.close()
     raise AssertionError(f"the {dialect} catalog queries did not fail on {database}")
 
 
@@ -101,9 +131,10 @@ def _op_dbspec_introspect(step: dict, context: dict) -> dict:
     documents and the statements of the vector, then the public introspect_dbspec. A vector with a document compares
     the emitted document and the unsupported objects; any other requires none unsupported and the schema text of the
     source. The catalog queries are the expect of the database (DIA-133, DIA-198)."""
-    database, dsn = context["database"], context["dsn"]
+    native, dsn = context["database"], context["dsn"]
+    database = _sql_dialect(native)
     if "catalog_of" in step:
-        return _catalog_query_failure(step["catalog_of"], database, dsn)
+        return _catalog_query_failure(step["catalog_of"], native, dsn)
     texts, vector = _texts(step, context["dir"])
     documents = _parse_set(texts)
     rendered = render_dbspec(documents, database)
@@ -112,11 +143,9 @@ def _op_dbspec_introspect(step: dict, context: dict) -> dict:
     # tests/dbspec/ddl.json holds the rendered statements of each dialect as an object; only a list runs.
     extra = vector.get("statements", [])
     extra = extra if isinstance(extra, list) else []
-    connection = connect(database, dsn)
+    connection = _Native(native, dsn)
     try:
-        if database == "sqlite":
-            connection.isolation_level = None
-        adapter = Adapter(connection)
+        adapter = connection.adapter
         schema = _schema_name(database, dsn)
         for sql in [
             *CONNECTION_RULES[database],
@@ -188,7 +217,8 @@ def _op_dbspec_plan_physical(step: dict, context: dict) -> dict:
     foreign_key_check, and the public introspect_dbspec reads the target with nothing unsupported; without an
     irreversible step, the rollback statements return to the source and the steps run again; then the after steps and
     the finalize steps run, the target is read again and no table or column named dbspec$ remains."""
-    database, dsn = context["database"], context["dsn"]
+    native, dsn = context["database"], context["dsn"]
+    database = _sql_dialect(native)
     case_id = step["case"]
     vector = next(
         (c for c in plan_cases(context["dir"] / step["vectors"]) if c["id"] == case_id),
@@ -218,11 +248,9 @@ def _op_dbspec_plan_physical(step: dict, context: dict) -> dict:
     steps = planned["steps"]
     reversible = all(s["finalize"] or s["rollback"] != "" for s in steps)
     sqlite = database == "sqlite"
-    connection = connect(database, dsn)
+    connection = _Native(native, dsn)
     try:
-        if sqlite:
-            connection.isolation_level = None
-        session = Adapter(connection)
+        session = connection.adapter
 
         def value(query: str) -> str:
             rows = session.execute(query)["rows"]

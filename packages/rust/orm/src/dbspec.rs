@@ -181,4 +181,27 @@ macro_rules! impl_catalog_querier {
     };
 }
 
-impl_catalog_querier!(MySqlConnection, PgConnection, SqliteConnection);
+impl CatalogFetch for crate::markdown::MarkdownLease {
+    type Row = Vec<crate::markdown::MarkdownCell>;
+    async fn fetch(&mut self, query: &str) -> Result<Vec<Self::Row>, sqlx::Error> {
+        Ok(self.statement(query, &[]).await?.rows)
+    }
+    fn values(rows: &[Self::Row]) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
+        rows.iter().map(|row| row.iter().enumerate().map(|(i, cell)| markdown_value(cell, i)).collect()).collect()
+    }
+}
+
+/// Chooses the CatalogValue of a value of a markdown connection by its SQLite storage class, as [`sqlite_value`] does.
+fn markdown_value(cell: &crate::markdown::MarkdownCell, i: usize) -> Result<CatalogValue, sqlx::Error> {
+    use crate::markdown::MarkdownCell;
+    Ok(match cell {
+        MarkdownCell::Null => CatalogValue::Null,
+        MarkdownCell::Integer(n) => CatalogValue::Int(*n),
+        MarkdownCell::Text(text) => CatalogValue::Text(text.clone()),
+        MarkdownCell::Real(_) => return Err(decode_error(format!("catalog value {i} has the SQLite type REAL"))),
+        MarkdownCell::TextBytes(_) => return Err(decode_error(format!("catalog value {i} is a TEXT that is not UTF-8"))),
+        MarkdownCell::Blob(_) => return Err(decode_error(format!("catalog value {i} has the SQLite type BLOB"))),
+    })
+}
+
+impl_catalog_querier!(MySqlConnection, PgConnection, SqliteConnection, crate::markdown::MarkdownLease);

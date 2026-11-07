@@ -1,33 +1,25 @@
-//! The markdown IR executor connection (docs/spec/protocol.md §5 "IR executors", docs/spec/dialects.md
-//! "Markdown IR executor"): the DSN `markdown://127.0.0.1:<port>/<corpus>?token=<token>` selects a
-//! flowmark server instead of a database. The client validates each request, sends it as one IR
-//! executor message and assembles the answer rows into models; it plans no SQL.
+//! The markdown connection (docs/spec/protocol.md §5 "Markdown connections"): the DSN
+//! `markdown://127.0.0.1:<port>/<corpus>?token=<token>` selects a flowmark server instead of a database. The server runs SQL
+//! in SQLite's dialect on the corpus (DIA-185), so the connection plans every request as a SQLite connection does and sends
+//! each statement over a session of the server: `{"op": "statement", "sql", "params"}`, answered with its columns, rows,
+//! `affected`, `last_insert_id` and `more`.
 
-use std::collections::{BTreeMap, HashMap};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use base64::Engine as _;
 use serde::{Deserialize, Serialize};
-use serde_json::value::RawValue;
 use serde_json::Value;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 
-use crate::db::{Db, DbStats, Executor, Pool};
-use crate::driver::TxInner;
-use crate::engine::{self, ParamUse};
-use crate::ir;
-use crate::plan::{Assemble, Child, KeyRef, OutCol, Plan, Step};
-use crate::request::Req;
-use crate::schema::{Manifest, Schema};
+use crate::db::{Db, DbStats, Pool};
 use crate::value::{Param, Val};
 use crate::{codes, Error, Result};
-use polyspec_orm_schema::dbspec::Entity;
 
-/// The flowmark server address, the corpus name and the token of a `markdown://` DSN.
+/// The flowmark server address, the corpus name, the token and the `_pragma` settings of a `markdown://` DSN.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MarkdownDsn {
     /// `127.0.0.1:<port>`, the address that `flowmark serve` listens on.
@@ -36,14 +28,16 @@ pub struct MarkdownDsn {
     pub corpus: String,
     /// The token of `.flowmark/server.json` of the corpus.
     pub token: String,
+    /// The `_pragma` values of the DSN, `name(value)`, which each session states first, as on a SQLite DSN.
+    pub pragmas: Vec<String>,
 }
 
 const DSN_FORM: &str = "markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>";
 
 /// Reads markdown://127.0.0.1:<port>/<corpus>?token=<token>. The flowmark server listens only on 127.0.0.1, and
-/// since the token travels in plain text, the host is only 127.0.0.1. `corpus` is the percent-decoded path, and `pairs` are
-/// the query parameters without `timezone`.
-pub(crate) fn parse_markdown_dsn(url: &url::Url, corpus: &str, pairs: &[(String, String)]) -> Result<MarkdownDsn> {
+/// since the token travels in plain text, the host is only 127.0.0.1. `corpus` is the percent-decoded path, `pairs` are
+/// the query parameters without `timezone` and `_pragma`, and `pragmas` are the `_pragma` values.
+pub(crate) fn parse_markdown_dsn(url: &url::Url, corpus: &str, pairs: &[(String, String)], pragmas: &[String]) -> Result<MarkdownDsn> {
     let bad = |reason: String| Error::Config(format!("{DSN_FORM}; {reason}"));
     if !url.username().is_empty() || url.password().is_some() {
         return Err(bad("it takes no user".into()));
@@ -67,52 +61,123 @@ pub(crate) fn parse_markdown_dsn(url: &url::Url, corpus: &str, pairs: &[(String,
         }
         tokens.push(value.clone());
     }
-    match tokens.as_slice() {
-        [token] if !token.is_empty() => Ok(MarkdownDsn { address: format!("127.0.0.1:{port}"), corpus: corpus.to_owned(), token: token.clone() }),
-        _ => Err(bad("give one token, the token of .flowmark/server.json of the corpus".into())),
+    let token = match tokens.as_slice() {
+        [token] if !token.is_empty() => token.clone(),
+        _ => return Err(bad("give one token, the token of .flowmark/server.json of the corpus".into())),
+    };
+    if let Some(pragma) = pragmas.iter().find(|pragma| !valid_pragma(pragma)) {
+        return Err(bad(format!("_pragma {pragma} is invalid")));
+    }
+    Ok(MarkdownDsn { address: format!("127.0.0.1:{port}"), corpus: corpus.to_owned(), token, pragmas: pragmas.to_vec() })
+}
+
+/// A `_pragma` value is `name(value)`: a name of lower-case letters and `_`, and a value of letters, digits and `_`; the value
+/// of `busy_timeout` is digits.
+fn valid_pragma(pragma: &str) -> bool {
+    let Some((name, value)) = pragma.strip_suffix(')').and_then(|text| text.split_once('(')) else { return false };
+    !name.is_empty()
+        && name.bytes().all(|b| b.is_ascii_lowercase() || b == b'_')
+        && !value.is_empty()
+        && value.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_')
+        && (name != "busy_timeout" || value.bytes().all(|b| b.is_ascii_digit()))
+}
+
+/// The refusal that the flowmark server answered, or the failure of a session, as the database error of a driver. `code`
+/// is the code of the error catalog that the client returns (PRT-71), and `result` is the SQLite result code the server states,
+/// since the statements of a flowmark connection are in SQLite's dialect.
+#[derive(Debug)]
+pub struct MarkdownServerError {
+    pub(crate) code: String,
+    pub(crate) message: String,
+    pub(crate) result: Option<i64>,
+}
+
+impl MarkdownServerError {
+    fn new(code: &str, message: impl Into<String>) -> MarkdownServerError {
+        MarkdownServerError { code: code.to_owned(), message: message.into(), result: None }
+    }
+
+    /// The code of the error catalog.
+    pub fn code(&self) -> &str {
+        &self.code
+    }
+
+    /// The SQLite result code, when the failure has one.
+    pub fn result_code(&self) -> Option<i64> {
+        self.result
     }
 }
 
-fn connection_lost(msg: impl Into<String>) -> Error {
-    Error::Engine { code: codes::CONNECTION_LOST.into(), msg: msg.into() }
+impl std::fmt::Display for MarkdownServerError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", self.code, self.message)
+    }
 }
 
-fn answer_err(msg: impl std::fmt::Display) -> Error {
-    Error::internal(format!("the flowmark answer: {msg}"))
+impl std::error::Error for MarkdownServerError {}
+
+impl sqlx::error::DatabaseError for MarkdownServerError {
+    fn message(&self) -> &str {
+        &self.message
+    }
+
+    /// The SQLite result code as text, as the SQLite driver reports its extended result code.
+    fn code(&self) -> Option<std::borrow::Cow<'_, str>> {
+        self.result.map(|n| std::borrow::Cow::Owned(n.to_string()))
+    }
+
+    fn as_error(&self) -> &(dyn std::error::Error + Send + Sync + 'static) {
+        self
+    }
+
+    fn as_error_mut(&mut self) -> &mut (dyn std::error::Error + Send + Sync + 'static) {
+        self
+    }
+
+    fn into_error(self: Box<Self>) -> Box<dyn std::error::Error + Send + Sync + 'static> {
+        self
+    }
+
+    fn kind(&self) -> sqlx::error::ErrorKind {
+        use sqlx::error::ErrorKind;
+        match self.result {
+            Some(2067 | 1555) => ErrorKind::UniqueViolation,
+            Some(787) => ErrorKind::ForeignKeyViolation,
+            Some(1299) => ErrorKind::NotNullViolation,
+            Some(275) => ErrorKind::CheckViolation,
+            // A refusal of the engine states its code and no result code, as a deferred foreign key at the commit does.
+            _ => match self.code.as_str() {
+                codes::DUPLICATE_KEY => ErrorKind::UniqueViolation,
+                codes::FOREIGN_KEY => ErrorKind::ForeignKeyViolation,
+                codes::CONSTRAINT => ErrorKind::CheckViolation,
+                _ => ErrorKind::Other,
+            },
+        }
+    }
+}
+
+fn session_error(code: &str, message: impl Into<String>) -> sqlx::Error {
+    sqlx::Error::Database(Box::new(MarkdownServerError::new(code, message)))
+}
+
+fn connection_lost(message: impl Into<String>) -> sqlx::Error {
+    session_error(codes::CONNECTION_LOST, message)
+}
+
+fn answer_error(message: impl std::fmt::Display) -> sqlx::Error {
+    session_error(codes::INTERNAL, format!("the flowmark answer: {message}"))
 }
 
 impl Db {
-    /// The error a SQL-only surface gets on a markdown connection (docs/spec/dialects.md "Markdown IR executor"). On other
-    /// connections it is Ok.
-    pub(crate) fn unsupported_on_markdown(&self, surface: &str) -> Result<()> {
-        if self.is_markdown() {
-            return Err(Error::Engine { code: codes::CAPABILITY_UNSUPPORTED.into(), msg: format!("{surface} is not supported by the markdown IR executor") });
-        }
-        Ok(())
-    }
-
     /// The connection is the flowmark server's corpus.
     pub(crate) fn is_markdown(&self) -> bool {
         matches!(self.inner.pool, Pool::Markdown(_))
-    }
-
-    /// The runtime model of the schema registered on this connection. An unregistered manifest, as on a SQL connection,
-    /// is SCHEMA_HASH_MISMATCH.
-    fn markdown_model(&self, schema: &Schema) -> Result<Arc<Manifest>> {
-        let manifest = schema.manifest()?;
-        if !self.inner.sets.read().unwrap().contains(schema.hash()) {
-            return Err(Error::Engine {
-                code: codes::SCHEMA_HASH_MISMATCH.into(),
-                msg: format!("manifest {} is not registered on this connection: connect through its generated models or register it", schema.hash()),
-            });
-        }
-        Ok(manifest)
     }
 }
 
 /// One connection to the flowmark server, that is, one server session. One task uses it at a time: when the pool hands it out or
 /// a transaction holds it.
-pub(crate) struct MdSession {
+struct MarkdownSession {
     read: BufReader<OwnedReadHalf>,
     write: OwnedWriteHalf,
     created: Instant,
@@ -122,68 +187,236 @@ pub(crate) struct MdSession {
 }
 
 #[derive(Serialize)]
-struct MdConnect<'a> {
+struct MarkdownConnect<'a> {
     op: &'static str,
     corpus: &'a str,
     token: &'a str,
 }
 
-/// One control message: a begin, commit, rollback, or savepoint message.
 #[derive(Serialize)]
-pub(crate) struct MdControl<'a> {
-    pub(crate) op: &'static str,
-    #[serde(skip_serializing_if = "std::ops::Not::not")]
-    pub(crate) read_only: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) name: Option<&'a str>,
+struct MarkdownStatement<'a> {
+    op: &'static str,
+    sql: &'a str,
+    params: &'a [Value],
 }
 
-/// The begin control message of a transaction: a read-only transaction sends `read_only` true, any other leaves the
-/// member out (docs/spec/protocol.md §5 Session, the control cases of tests/bind/vectors.json).
-pub(crate) fn begin_message(read_only: bool) -> MdControl<'static> {
-    MdControl { op: "begin", read_only, name: None }
+#[derive(Serialize)]
+struct MarkdownOp {
+    op: &'static str,
 }
 
-impl MdSession {
-    /// Connects to the server and sends the corpus and token in the first message, connect.
-    async fn dial(dsn: &MarkdownDsn) -> Result<MdSession> {
-        let stream = TcpStream::connect(&dsn.address).await.map_err(|e| Error::Engine {
-            code: codes::DRIVER.into(),
-            msg: format!("connecting to the flowmark server {}: {e}; start flowmark serve for the corpus", dsn.address),
+/// A list that the answer gives as null, as a fetch gives its columns (PRT-66), is the empty list.
+fn null_as_empty<'de, D: serde::Deserializer<'de>, T: Deserialize<'de>>(deserializer: D) -> std::result::Result<Vec<T>, D::Error> {
+    Ok(Option::<Vec<T>>::deserialize(deserializer)?.unwrap_or_default())
+}
+
+#[derive(Deserialize)]
+struct MarkdownAnswer {
+    #[serde(default, deserialize_with = "null_as_empty")]
+    columns: Vec<MarkdownColumn>,
+    #[serde(default, deserialize_with = "null_as_empty")]
+    rows: Vec<Vec<Value>>,
+    #[serde(default)]
+    affected: u64,
+    #[serde(default)]
+    last_insert_id: i64,
+    #[serde(default)]
+    more: bool,
+}
+
+/// A column of an answer: its name and its declared type, empty for an expression.
+#[derive(Debug, Clone, Deserialize)]
+pub struct MarkdownColumn {
+    pub name: String,
+    #[serde(default, rename = "type")]
+    pub declared: String,
+}
+
+/// One value of a row as a SQLite connection reads it: its storage class and its value.
+#[derive(Debug, Clone, PartialEq)]
+pub enum MarkdownCell {
+    Null,
+    Integer(i64),
+    Real(f64),
+    Text(String),
+    /// A TEXT value whose stored bytes are not UTF-8, which the answer writes as `{"text": base64}` (PRT-67).
+    TextBytes(Vec<u8>),
+    Blob(Vec<u8>),
+}
+
+impl MarkdownCell {
+    /// The value as the SQLite driver reads it.
+    pub fn val(&self) -> Val {
+        match self {
+            MarkdownCell::Null => Val::Null,
+            MarkdownCell::Integer(n) => Val::I64(*n),
+            MarkdownCell::Real(x) => Val::F64(*x),
+            MarkdownCell::Text(s) => Val::Str(s.clone()),
+            MarkdownCell::TextBytes(b) | MarkdownCell::Blob(b) => Val::Bytes(b.clone()),
+        }
+    }
+}
+
+/// The columns of a statement, SQLite's `changes()` and `last_insert_rowid()`, which its first answer states.
+#[derive(Debug, Clone)]
+pub struct MarkdownHead {
+    pub columns: Arc<[MarkdownColumn]>,
+    pub affected: u64,
+    pub last_insert_id: i64,
+}
+
+/// The result of one statement: the columns, every row of its batches, SQLite's `changes()` and `last_insert_rowid()`.
+#[derive(Debug, Clone)]
+pub struct MarkdownResult {
+    pub columns: Arc<[MarkdownColumn]>,
+    pub rows: Vec<Vec<MarkdownCell>>,
+    pub affected: u64,
+    pub last_insert_id: i64,
+}
+
+impl MarkdownResult {
+    /// The rows as driver rows, which share the columns.
+    pub(crate) fn into_rows(self) -> Vec<MarkdownRow> {
+        let columns = self.columns;
+        self.rows.into_iter().map(|cells| MarkdownRow { columns: columns.clone(), cells }).collect()
+    }
+}
+
+/// One row of a statement on a markdown connection.
+#[derive(Debug, Clone)]
+pub struct MarkdownRow {
+    columns: Arc<[MarkdownColumn]>,
+    cells: Vec<MarkdownCell>,
+}
+
+impl MarkdownRow {
+    pub fn len(&self) -> usize {
+        self.cells.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.cells.is_empty()
+    }
+
+    /// The name of column `i`.
+    pub fn column_name(&self, i: usize) -> &str {
+        self.columns.get(i).map_or("", |c| c.name.as_str())
+    }
+
+    /// Cell `i`; past the row it is a decode error, as a driver reports an index out of range.
+    pub fn cell(&self, i: usize) -> Result<&MarkdownCell> {
+        self.cells.get(i).ok_or_else(|| Error::internal(format!("column {i} is past the {} columns of the row", self.cells.len())))
+    }
+}
+
+/// The wire form of a bound value (PRT-67): a JSON value; a boolean binds as 1 or 0 as on SQLite, a datetime and a date as the text
+/// that the SQLite driver binds, `{"bytes": base64}` for bytes and `{"float": "+Inf"}` or `{"float": "-Inf"}` for an infinity. A NaN
+/// has no form, as SQLite holds none.
+pub(crate) fn wire_param(value: &Param) -> std::result::Result<Value, sqlx::Error> {
+    Ok(match value {
+        Param::Null => Value::Null,
+        Param::Bool(b) => Value::from(i64::from(*b)),
+        Param::I64(n) => Value::from(*n),
+        Param::F64(x) => wire_float(*x)?,
+        Param::Str(s) => Value::String(s.clone()),
+        Param::Bytes(b) => wire_bytes(b),
+        Param::DateTime(t) => Value::String(t.format("%F %T%.f").to_string()),
+        Param::Date(d) => Value::String(d.format("%F").to_string()),
+    })
+}
+
+/// The wire form of a float: a number, or `{"float": "+Inf"}` and `{"float": "-Inf"}`.
+pub fn wire_float(x: f64) -> std::result::Result<Value, sqlx::Error> {
+    if x == f64::INFINITY {
+        return Ok(serde_json::json!({ "float": "+Inf" }));
+    }
+    if x == f64::NEG_INFINITY {
+        return Ok(serde_json::json!({ "float": "-Inf" }));
+    }
+    serde_json::Number::from_f64(x).map(Value::Number).ok_or_else(|| session_error(codes::CONFIG, format!("the statement parameter {x} has no wire form")))
+}
+
+/// The wire form of bytes: `{"bytes": base64}`.
+pub fn wire_bytes(bytes: &[u8]) -> Value {
+    serde_json::json!({ "bytes": base64::engine::general_purpose::STANDARD.encode(bytes) })
+}
+
+/// Reads one cell of an answer: an integer, a float, a text, NULL or bytes, as a SQLite connection reads them.
+fn wire_cell(value: Value) -> std::result::Result<MarkdownCell, sqlx::Error> {
+    let base64 = |text: &str| base64::engine::general_purpose::STANDARD.decode(text).map_err(|e| answer_error(format!("the cell {text:?}: {e}")));
+    Ok(match value {
+        Value::Null => MarkdownCell::Null,
+        Value::Bool(b) => MarkdownCell::Integer(i64::from(b)),
+        Value::Number(n) => match n.as_i64() {
+            Some(i) => MarkdownCell::Integer(i),
+            None => MarkdownCell::Real(n.as_f64().ok_or_else(|| answer_error(format!("the number {n} is no float")))?),
+        },
+        Value::String(s) => MarkdownCell::Text(s),
+        Value::Object(map) => match (map.get("float"), map.get("text"), map.get("bytes")) {
+            (Some(Value::String(f)), _, _) => MarkdownCell::Real(match f.as_str() {
+                "+Inf" | "Inf" => f64::INFINITY,
+                "-Inf" => f64::NEG_INFINITY,
+                other => other.parse().map_err(|e| answer_error(format!("the float {other:?}: {e}")))?,
+            }),
+            (_, Some(Value::String(t)), _) => {
+                let bytes = base64(t)?;
+                String::from_utf8(bytes).map_or_else(|error| MarkdownCell::TextBytes(error.into_bytes()), MarkdownCell::Text)
+            }
+            (_, _, Some(Value::String(b))) => MarkdownCell::Blob(base64(b)?),
+            _ => return Err(answer_error(format!("the cell {} has no form", Value::Object(map)))),
+        },
+        Value::Array(_) => return Err(answer_error(format!("the cell {value} has no form"))),
+    })
+}
+
+impl MarkdownSession {
+    /// Connects to the server, sends the corpus and token in the first message, connect, and states the `_pragma` settings of the
+    /// DSN.
+    async fn dial(dsn: &MarkdownDsn) -> std::result::Result<MarkdownSession, sqlx::Error> {
+        let stream = TcpStream::connect(&dsn.address).await.map_err(|e| {
+            session_error(codes::DRIVER, format!("connecting to the flowmark server {}: {e}; start flowmark serve for the corpus", dsn.address))
         })?;
         let (read, write) = stream.into_split();
-        let mut session = MdSession { read: BufReader::new(read), write, created: Instant::now(), broken: false };
-        session.call(&MdConnect { op: "connect", corpus: &dsn.corpus, token: &dsn.token }).await?;
+        let mut session = MarkdownSession { read: BufReader::new(read), write, created: Instant::now(), broken: false };
+        session.call(&MarkdownConnect { op: "connect", corpus: &dsn.corpus, token: &dsn.token }).await?;
+        for pragma in &dsn.pragmas {
+            let (name, value) = pragma.strip_suffix(')').and_then(|text| text.split_once('(')).unwrap_or((pragma, ""));
+            session.statement(&format!("PRAGMA {name} = {value}"), &[]).await?;
+        }
         Ok(session)
     }
 
-    /// Sends one message as one line and reads one reply line. If the reply is {"error": {code, message}}, that code's
-    /// error. If the future is dropped before the reply is read, the session stays marked as broken and the pool closes that connection:
-    /// the server rolls back the broken connection's transaction and releases its locks.
-    pub(crate) async fn call(&mut self, msg: &impl Serialize) -> Result<Vec<u8>> {
+    /// Sends one message as one line and reads one reply line. If the reply is {"error": {code, message, result_code}}, that
+    /// code's error. If the future is dropped before the reply is read, the session stays marked as broken and the pool closes that
+    /// connection: the server rolls back the broken connection's transaction and releases its locks.
+    async fn call(&mut self, msg: &impl Serialize) -> std::result::Result<Vec<u8>, sqlx::Error> {
         if self.broken {
             return Err(connection_lost("the flowmark session has ended"));
         }
-        let mut line = serde_json::to_vec(msg).map_err(|e| Error::internal(format!("writing the message: {e}")))?;
+        let mut line = serde_json::to_vec(msg).map_err(|e| session_error(codes::INTERNAL, format!("writing the message: {e}")))?;
         line.push(b'\n');
         self.broken = true;
         let answer = self.exchange(&line).await.map_err(|e| connection_lost(format!("the flowmark server connection broke: {e}")))?;
         self.broken = false;
         let Ok(object) = serde_json::from_slice::<serde_json::Map<String, Value>>(&answer) else {
             self.broken = true;
-            return Err(answer_err(format!("{:?} is not a JSON object", String::from_utf8_lossy(&answer))));
+            return Err(answer_error(format!("{:?} is not a JSON object", String::from_utf8_lossy(&answer))));
         };
         let Some(error) = object.get("error") else { return Ok(answer) };
         let code = error.get("code").and_then(Value::as_str).unwrap_or_default();
         if code.is_empty() {
             self.broken = true;
-            return Err(answer_err(format!("the error {error} has no code")));
+            return Err(answer_error(format!("the error {error} has no code")));
         }
         // The server writes CONNECTION_LOST and then closes the connection (idle transaction).
         if code == codes::CONNECTION_LOST {
             self.broken = true;
         }
-        Err(Error::Engine { code: code.to_owned(), msg: error.get("message").and_then(Value::as_str).unwrap_or_default().to_owned() })
+        Err(sqlx::Error::Database(Box::new(MarkdownServerError {
+            code: code.to_owned(),
+            message: error.get("message").and_then(Value::as_str).unwrap_or_default().to_owned(),
+            result: error.get("result_code").and_then(Value::as_i64),
+        })))
     }
 
     async fn exchange(&mut self, line: &[u8]) -> std::io::Result<Vec<u8>> {
@@ -195,42 +428,126 @@ impl MdSession {
         }
         Ok(answer)
     }
+
+    fn answer(raw: &[u8], of: &str) -> std::result::Result<MarkdownAnswer, sqlx::Error> {
+        serde_json::from_slice(raw).map_err(|e| answer_error(format!("the answer of a {of} {:?}: {e}", String::from_utf8_lossy(raw))))
+    }
+
+    /// Runs one statement and reads every batch of its rows (PRT-66).
+    async fn statement(&mut self, sql: &str, params: &[Value]) -> std::result::Result<MarkdownResult, sqlx::Error> {
+        let mut rows = Vec::new();
+        let head = self
+            .statement_rows(sql, params, |row| {
+                rows.push(row);
+                Ok(())
+            })
+            .await?;
+        Ok(MarkdownResult { columns: head.columns, rows, affected: head.affected, last_insert_id: head.last_insert_id })
+    }
+
+    /// Runs one statement and hands each row to `row` as its batch arrives (PRT-66). A row that `row` refuses ends the rows
+    /// with close, so the server stops the statement, and its error is the result, whatever the close answers.
+    async fn statement_rows(
+        &mut self,
+        sql: &str,
+        params: &[Value],
+        mut row: impl FnMut(Vec<MarkdownCell>) -> std::result::Result<(), sqlx::Error>,
+    ) -> std::result::Result<MarkdownHead, sqlx::Error> {
+        let raw = self.call(&MarkdownStatement { op: "statement", sql, params }).await?;
+        let first = Self::answer(&raw, "statement")?;
+        let head = MarkdownHead { columns: first.columns.into(), affected: first.affected, last_insert_id: first.last_insert_id };
+        let mut more = first.more;
+        let mut batch = first.rows;
+        loop {
+            let taken = batch.into_iter().try_for_each(|cells| row(cells.into_iter().map(wire_cell).collect::<std::result::Result<Vec<_>, _>>()?));
+            if let Err(error) = taken {
+                // The error of the refused row is the result. A close that the server refuses leaves the rows to the next
+                // statement, which ends them (PRT-66); a close whose connection broke has marked the session broken in call.
+                if more {
+                    let _close_answer: std::result::Result<Vec<u8>, sqlx::Error> = self.call(&MarkdownOp { op: "close" }).await;
+                }
+                return Err(error);
+            }
+            if !more {
+                return Ok(head);
+            }
+            let raw = self.call(&MarkdownOp { op: "fetch" }).await?;
+            let next = Self::answer(&raw, "fetch")?;
+            more = next.more;
+            batch = next.rows;
+        }
+    }
 }
 
 /// The session pool of a markdown connection. Open sessions do not exceed the pool size, and idle sessions are kept, up to the idle size.
 /// Sessions past their lifetime are closed while idle or when they come back.
-pub struct MdPool {
+pub struct MarkdownPool {
     dsn: MarkdownDsn,
     size: u32,
     idle_size: usize,
     lifetime: Duration,
     slots: Arc<Semaphore>,
-    state: Mutex<MdPoolState>,
+    state: Mutex<MarkdownPoolState>,
 }
 
 #[derive(Default)]
-struct MdPoolState {
-    idle: Vec<MdSession>,
+struct MarkdownPoolState {
+    idle: Vec<MarkdownSession>,
     open: u32,
     closed: bool,
 }
 
 /// A session the pool handed out. Dropping it returns it to the pool.
-pub(crate) struct MdLease {
-    session: Option<MdSession>,
-    pool: Arc<MdPool>,
+pub struct MarkdownLease {
+    session: Option<MarkdownSession>,
+    pool: Arc<MarkdownPool>,
+    /// Set by discard: the session stays usable until the lease drops, and then closes instead of returning to the pool.
+    discarded: bool,
     _slot: OwnedSemaphorePermit,
 }
 
-impl MdLease {
-    pub(crate) async fn call(&mut self, msg: &impl Serialize) -> Result<Vec<u8>> {
-        self.session.as_mut().expect("a lease holds its session").call(msg).await
+impl MarkdownLease {
+    fn session(&mut self) -> &mut MarkdownSession {
+        self.session.as_mut().expect("a lease holds its session")
+    }
+
+    /// Runs one statement with its wire parameters and reads all its rows.
+    pub async fn statement(&mut self, sql: &str, params: &[Value]) -> std::result::Result<MarkdownResult, sqlx::Error> {
+        self.session().statement(sql, params).await
+    }
+
+    /// Runs one statement and hands each row to `row` as it arrives; a row that `row` refuses stops the statement on the server.
+    pub async fn statement_rows(
+        &mut self,
+        sql: &str,
+        params: &[Value],
+        row: impl FnMut(Vec<MarkdownCell>) -> std::result::Result<(), sqlx::Error>,
+    ) -> std::result::Result<MarkdownHead, sqlx::Error> {
+        self.session().statement_rows(sql, params, row).await
+    }
+
+    /// Runs one statement with the values a SQLite connection binds.
+    pub async fn bound(&mut self, sql: &str, args: &[Param]) -> std::result::Result<MarkdownResult, sqlx::Error> {
+        let params = args.iter().map(wire_param).collect::<std::result::Result<Vec<_>, _>>()?;
+        self.statement(sql, &params).await
+    }
+
+    /// Runs one statement without a bind.
+    pub async fn raw(&mut self, sql: &str) -> std::result::Result<(), sqlx::Error> {
+        self.statement(sql, &[]).await.map(drop)
+    }
+
+    /// Closes the session when the lease drops instead of returning it to the pool: its state is unknown, or the caller will
+    /// not hand it on.
+    pub fn discard(&mut self) {
+        self.discarded = true;
     }
 }
 
-impl Drop for MdLease {
+impl Drop for MarkdownLease {
     fn drop(&mut self) {
-        if let Some(session) = self.session.take() {
+        if let Some(mut session) = self.session.take() {
+            session.broken |= self.discarded;
             self.pool.release(session);
         }
     }
@@ -238,7 +555,7 @@ impl Drop for MdLease {
 
 /// The slot for a session being opened. If the connection fails or its future is dropped, the open count is reverted.
 struct Opening<'a> {
-    pool: &'a MdPool,
+    pool: &'a MarkdownPool,
     done: bool,
 }
 
@@ -253,46 +570,59 @@ impl Drop for Opening<'_> {
 /// The session lifetime when `pool_lifetime_ms` is 0: 30 minutes, the same as the SQL connection pool (docs/spec/config.md).
 const DEFAULT_LIFETIME: Duration = Duration::from_secs(30 * 60);
 
-impl MdPool {
+impl MarkdownPool {
     /// A pool that opens up to `size` sessions. Idle sessions are kept up to `idle`, for `lifetime_ms` (30 minutes if 0).
-    pub(crate) fn new(dsn: MarkdownDsn, size: u32, idle: u32, lifetime_ms: u32) -> Arc<MdPool> {
+    pub(crate) fn new(dsn: MarkdownDsn, size: u32, idle: u32, lifetime_ms: u32) -> Arc<MarkdownPool> {
         let lifetime = if lifetime_ms == 0 { DEFAULT_LIFETIME } else { Duration::from_millis(lifetime_ms.into()) };
-        Arc::new(MdPool {
+        Arc::new(MarkdownPool {
             dsn,
             size,
             idle_size: idle as usize,
             lifetime,
             slots: Arc::new(Semaphore::new(size as usize)),
-            state: Mutex::new(MdPoolState::default()),
+            state: Mutex::new(MarkdownPoolState::default()),
         })
     }
 
     /// Hands out an idle session or connects a new one. If open sessions equal the pool size, it waits until one returns.
-    pub(crate) async fn acquire(self: &Arc<Self>) -> Result<MdLease> {
-        let closed = |error: &dyn std::fmt::Display| Error::Config(format!("database is closed: {error}"));
-        let slot = self.slots.clone().acquire_owned().await.map_err(|error| closed(&error))?;
+    pub async fn acquire(self: &Arc<Self>) -> std::result::Result<MarkdownLease, sqlx::Error> {
+        // The semaphore of the slots fails only once the pool is closed.
+        let Ok(slot) = self.slots.clone().acquire_owned().await else { return Err(sqlx::Error::PoolClosed) };
         {
             let mut state = self.state.lock().unwrap();
             if state.closed {
-                return Err(Error::Config("database is closed".into()));
+                return Err(sqlx::Error::PoolClosed);
             }
             while let Some(session) = state.idle.pop() {
                 if session.created.elapsed() >= self.lifetime {
                     state.open -= 1;
                     continue;
                 }
-                return Ok(MdLease { session: Some(session), pool: self.clone(), _slot: slot });
+                return Ok(MarkdownLease { session: Some(session), pool: self.clone(), discarded: false, _slot: slot });
             }
             state.open += 1;
         }
         let mut opening = Opening { pool: self, done: false };
-        let session = MdSession::dial(&self.dsn).await?;
+        let session = MarkdownSession::dial(&self.dsn).await?;
         opening.done = true;
-        Ok(MdLease { session: Some(session), pool: self.clone(), _slot: slot })
+        Ok(MarkdownLease { session: Some(session), pool: self.clone(), discarded: false, _slot: slot })
+    }
+
+    /// A pool of up to `size` sessions of the DSN, which keeps them idle for 30 minutes. It connects one session to check that the
+    /// server accepts the corpus and token.
+    pub async fn connect(dsn: MarkdownDsn, size: u32) -> std::result::Result<Arc<MarkdownPool>, sqlx::Error> {
+        let pool = MarkdownPool::new(dsn, size, size, 0);
+        drop(pool.acquire().await?);
+        Ok(pool)
+    }
+
+    /// Runs one statement on a session of the pool, which returns to the pool after it.
+    pub(crate) async fn bound(self: &Arc<Self>, sql: &str, args: &[Param]) -> std::result::Result<MarkdownResult, sqlx::Error> {
+        self.acquire().await?.bound(sql, args).await
     }
 
     /// Returns a session to the pool. Broken sessions, sessions past their lifetime, and sessions of a closed pool are closed.
-    fn release(&self, session: MdSession) {
+    fn release(&self, session: MarkdownSession) {
         let mut state = self.state.lock().unwrap();
         if session.broken || state.closed || state.idle.len() >= self.idle_size || session.created.elapsed() >= self.lifetime {
             state.open -= 1;
@@ -302,7 +632,7 @@ impl MdPool {
     }
 
     /// Closes the pool: idle sessions are closed now, and sessions in use are closed when they return.
-    pub(crate) fn close(&self) {
+    pub fn close(&self) {
         let mut state = self.state.lock().unwrap();
         state.closed = true;
         let idle = std::mem::take(&mut state.idle);
@@ -318,420 +648,9 @@ impl MdPool {
 }
 
 /// Opens the pool of a markdown connection. Connects one session to check that the server accepts the corpus and token, and
-/// puts it in the pool. A statement timeout is CAPABILITY_UNSUPPORTED.
-pub(crate) async fn open_markdown(dsn: MarkdownDsn, size: u32, idle: u32, cfg: &crate::Config) -> Result<Arc<MdPool>> {
-    if cfg.statement_timeout_ms > 0 {
-        return Err(Error::Engine { code: codes::CAPABILITY_UNSUPPORTED.into(), msg: "statement timeout is not supported by the markdown IR executor".into() });
-    }
-    let pool = MdPool::new(dsn, size, idle, cfg.pool_lifetime_ms);
+/// puts it in the pool. A statement timeout leaves the statements as it leaves them on SQLite, whose bound is the busy timeout.
+pub(crate) async fn open_markdown(dsn: MarkdownDsn, size: u32, idle: u32, cfg: &crate::Config) -> Result<Arc<MarkdownPool>> {
+    let pool = MarkdownPool::new(dsn, size, idle, cfg.pool_lifetime_ms);
     drop(pool.acquire().await?);
     Ok(pool)
 }
-
-/// One request message: {ir_version, manifest_hash, request, params, now}.
-#[derive(Serialize)]
-struct MdRequest<'a> {
-    ir_version: u32,
-    manifest_hash: &'a str,
-    request: &'a ir::Request,
-    params: Vec<Value>,
-    now: String,
-}
-
-/// Validates req, runs that request message in ex's session, and returns the reply and runtime model.
-/// Outside a transaction, it uses one session from the pool for the duration of that request.
-async fn markdown_call(ex: &Executor, req: &mut Req) -> Result<(Vec<u8>, Arc<Manifest>)> {
-    if let Some(error) = req.error() {
-        return Err(error);
-    }
-    let db = ex.db();
-    let manifest = db.markdown_model(req.schema)?;
-    req.ir.n_params = req.params.len();
-    engine::validate(&manifest, &req.ir)?;
-    let uses = engine::param_uses(&manifest, &req.ir)?;
-    for (i, value) in req.params.iter().enumerate() {
-        for u in &uses[i] {
-            crate::bind_check::check_assign(i, value, &crate::bind_check::use_slot_type(u))?;
-            if u.column.is_some_and(|c| c.codec.iter().any(|s| matches!(s.as_str(), "aes" | "hex" | "ip"))) {
-                continue;
-            }
-            crate::bind_check::check_param(i, value, &crate::bind_check::use_slot_type(u), &db.inner.zone)?;
-        }
-    }
-    let mut params = Vec::with_capacity(req.params.len());
-    for (i, value) in req.params.iter().enumerate() {
-        params.push(markdown_param(i, value, uses[i].first(), &db.inner.cfg.aes_key, &db.inner.zone)?);
-    }
-    let now = db.now_text();
-    let msg = MdRequest { ir_version: req.ir.ir_version, manifest_hash: &req.ir.manifest_hash, request: &req.ir, params, now };
-    let answer = match ex {
-        Executor::Tx(t) => {
-            let mut guard = t.enter()?;
-            match guard.as_mut() {
-                Some(TxInner::Markdown(lease)) => lease.call(&msg).await?,
-                Some(_) => return Err(Error::internal("a markdown transaction holds another connection")),
-                None => return Err(Error::Config("transaction already finished".into())),
-            }
-        }
-        Executor::Db(d) => {
-            if d.inner.closed.load(std::sync::atomic::Ordering::Acquire) {
-                return Err(Error::Config("database is closed".into()));
-            }
-            let Pool::Markdown(pool) = &d.inner.pool else { return Err(Error::internal("a markdown request on another connection")) };
-            pool.acquire().await?.call(&msg).await?
-        }
-    };
-    Ok((answer, manifest))
-}
-
-/// The runtime value model JSON of parameter i: decimal is a string, bytes is base64, datetime is UTC
-/// `YYYY-MM-DD HH:MM:SS.ffffff`, date is `YYYY-MM-DD`, and time is `HH:MM:SS.ffffff` (digits after p are 0; string values are the same). Which form it is depends on the parameter
-/// fills: the type of the slot it fills decides. For hex and ip style columns, the client encodes the value and sends it, as on SQL connections.
-fn markdown_param(i: usize, value: &Param, slot: Option<&ParamUse<'_>>, aes_key: &str, zone: &crate::db::Zone) -> Result<Value> {
-    let ty = slot.map(|u| u.ty.as_str()).unwrap_or("");
-    let mut value = value.clone();
-    if let Some(column) = slot.and_then(|u| u.column) {
-        let host: Vec<String> = column.codec.iter().filter(|s| matches!(s.as_str(), "aes" | "hex" | "ip")).cloned().collect();
-        if !host.is_empty() && !matches!(value, Param::Null) {
-            value = crate::codec::host_encode(&value, &host, aes_key)?;
-        }
-    }
-    let base64 = |bytes: &[u8]| Value::String(base64::engine::general_purpose::STANDARD.encode(bytes));
-    let time = |t: chrono::NaiveDateTime| {
-        Value::String(match ty {
-            "date" => t.format("%Y-%m-%d").to_string(),
-            "time" => t.format("%H:%M:%S%.6f").to_string(),
-            _ => t.format("%Y-%m-%d %H:%M:%S%.6f").to_string(),
-        })
-    };
-    Ok(match value {
-        Param::Null => Value::Null,
-        Param::Bool(b) => Value::Bool(b),
-        Param::I64(n) => Value::from(n),
-        Param::F64(x) => serde_json::Number::from_f64(x)
-            .map(Value::Number)
-            .ok_or_else(|| Error::Engine { code: codes::CODEC_ENCODE.into(), msg: format!("parameter {i} ({x}) has no JSON form") })?,
-        Param::Str(s) if ty == "bytes" => base64(s.as_bytes()),
-        Param::Str(s) if matches!(ty, "date" | "time" | "datetime") => Value::String(crate::db::message_time_text(&s, ty, zone)?),
-        Param::Str(s) => Value::String(s),
-        Param::Bytes(b) => base64(&b),
-        Param::DateTime(t) => time(t),
-        Param::Date(d) => time(d.and_time(chrono::NaiveTime::MIN)),
-    })
-}
-
-/// One row of a markdown reply: the node's output values, and the rows of joins and relations.
-pub(crate) struct MdRow {
-    pub(crate) vals: Vec<Val>,
-    /// The row for each join name; None if there is no matching row for a left join.
-    pub(crate) joins: HashMap<String, Option<MdRow>>,
-    /// The rows for each relation name.
-    pub(crate) rels: HashMap<String, Vec<MdRow>>,
-}
-
-/// The reply to a row read (one, all, group_count, paginate): a plan with one batch for the root node, the rows, and
-/// for paginate, the total row count.
-pub(crate) struct MdRead {
-    pub(crate) plan: Arc<Plan>,
-    pub(crate) rows: Vec<MdRow>,
-    pub(crate) count: Option<i64>,
-}
-
-/// Reads the members of a JSON object in order.
-struct Members(Vec<(String, Box<RawValue>)>);
-
-impl<'de> Deserialize<'de> for Members {
-    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> std::result::Result<Self, D::Error> {
-        struct Visitor;
-        impl<'de> serde::de::Visitor<'de> for Visitor {
-            type Value = Members;
-            fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                f.write_str("a JSON object")
-            }
-            fn visit_map<A: serde::de::MapAccess<'de>>(self, mut map: A) -> std::result::Result<Members, A::Error> {
-                let mut out = Vec::new();
-                while let Some(entry) = map.next_entry::<String, Box<RawValue>>()? {
-                    out.push(entry);
-                }
-                Ok(Members(out))
-            }
-        }
-        deserializer.deserialize_map(Visitor)
-    }
-}
-
-fn members(raw: &RawValue) -> Result<Vec<(String, Box<RawValue>)>> {
-    serde_json::from_str::<Members>(raw.get()).map(|m| m.0).map_err(|e| answer_err(format!("{} is not a JSON object: {e}", raw.get())))
-}
-
-/// One node of the reply: exactly one each of root, join, and relation. The first row sets the node's columns, and later rows
-/// must have the outputs in the same order.
-struct MdNode<'m> {
-    q: &'m ir::Query,
-    ent: &'m Entity,
-    m: &'m Manifest,
-    groups: bool,
-    /// A batch with only the node's own columns. The decode of styled columns reads it. None before the first row.
-    flat: Option<Assemble>,
-    joins: Vec<(String, MdNode<'m>)>,
-    rels: Vec<MdRel<'m>>,
-}
-
-struct MdRel<'m> {
-    rel: String,
-    kind: String,
-    flatten: bool,
-    cascade: bool,
-    node: MdNode<'m>,
-}
-
-impl<'m> MdNode<'m> {
-    fn new(m: &'m Manifest, q: &'m ir::Query, groups: bool) -> Result<MdNode<'m>> {
-        let ent = m.entity(&q.entity)?;
-        let mut joins = Vec::new();
-        for j in &q.joins {
-            joins.push((j.rel.clone(), MdNode::new(m, &j.query, false)?));
-        }
-        let mut rels = Vec::new();
-        for rel in &q.relations {
-            let target = m.entity(&rel.query.entity)?;
-            let parent_keys: Vec<&String> = rel.keys.iter().map(|k| &k.left).collect();
-            let child_keys: Vec<&String> = rel.keys.iter().map(|k| &k.right).collect();
-            // If this row is the row that a relation row's foreign key points to, those rows belong to this row (as in the planner).
-            let cascade = !rel.query.no_cascade_delete
-                && parent_keys.iter().copied().eq(ent.primary_key.iter())
-                && !child_keys.iter().copied().eq(target.primary_key.iter());
-            rels.push(MdRel { rel: rel.rel.clone(), kind: rel.kind.clone(), flatten: rel.query.flatten, cascade, node: MdNode::new(m, &rel.query, false)? });
-        }
-        Ok(MdNode { q, ent, m, groups, flat: None, joins, rels })
-    }
-
-    /// The batch for an output name: group count's row_count, a subquery, a column function, or otherwise the node entity's column.
-    /// The markdown executor leaves all codec stages to the client, so it is the style the column's whole codec decodes.
-    fn out_col(&self, name: &str, index: usize) -> Result<OutCol> {
-        if self.groups && name == "row_count" {
-            return Ok(OutCol { index, name: name.into(), typ: "i64".into(), ..Default::default() });
-        }
-        if let (Some(c), false) = (&self.q.columns, self.groups) {
-            if let Some(sub) = c.sub.get(name) {
-                return Ok(OutCol { index, name: name.into(), typ: self.sub_type(sub)?, ..Default::default() });
-            }
-            if let Some(cf) = c.r#fn.get(name) {
-                let typ = engine::function_type(&cf.r#fn.name, self.ent.field(&cf.column), &self.ent.name, &cf.column)?;
-                return Ok(OutCol { index, name: name.into(), column: cf.column.clone(), typ, ..Default::default() });
-            }
-        }
-        let field = self.ent.field(name).ok_or_else(|| answer_err(format!("{} answers {name}, which is no output of the request", self.ent.name)))?;
-        Ok(OutCol { index, name: name.into(), column: name.into(), typ: field.ty.name().into(), styles: field.codec.clone(), ..Default::default() })
-    }
-
-    /// The type of a scalar subquery column.
-    fn sub_type(&self, sub: &ir::Sub) -> Result<String> {
-        match sub.agg.as_str() {
-            "count" => Ok("i64".into()),
-            "avg" => Ok("f64".into()),
-            _ => {
-                let entity = self
-                    .m
-                    .model
-                    .entity(&sub.query.entity)
-                    .ok_or_else(|| engine::err(codes::INTERNAL, format!("scalar subquery entity {} is missing", sub.query.entity)))?;
-                let field = entity
-                    .field(&sub.column)
-                    .ok_or_else(|| engine::err(codes::INTERNAL, format!("{}.{} is missing from a validated scalar subquery", entity.name, sub.column)))?;
-                // INT-160: a sum leaves the range of its column.
-                let name = field.ty.name();
-                Ok(if sub.agg == "sum" && (name == "i16" || name == "i32") { "i64".to_owned() } else { name.to_owned() })
-            }
-        }
-    }
-
-    /// Sets the columns and key from the output of the node's first row.
-    fn build(&mut self, outputs: &[&str]) -> Result<()> {
-        let mut columns = Vec::with_capacity(outputs.len());
-        for (i, name) in outputs.iter().enumerate() {
-            columns.push(self.out_col(name, i)?);
-        }
-        let keys = if self.groups { &self.q.group_by } else { &self.ent.primary_key };
-        let mut key = Vec::with_capacity(keys.len());
-        for column in keys {
-            let index =
-                outputs.iter().position(|o| o == column).ok_or_else(|| answer_err(format!("{} answers no {column}, a key of its rows", self.ent.name)))?;
-            key.push(KeyRef { column: column.clone(), index });
-        }
-        self.flat = Some(Assemble { entity: self.ent.name.clone(), columns, key, ..Default::default() });
-        Ok(())
-    }
-
-    /// Reads one row of the reply: reads output values as column types and decodes styled columns.
-    fn row(&mut self, raw: &RawValue) -> Result<MdRow> {
-        let ms = members(raw)?;
-        let nested = |name: &str| self.joins.iter().any(|(rel, _)| rel == name) || self.rels.iter().any(|r| r.rel == name);
-        let outputs: Vec<&str> = ms.iter().map(|(name, _)| name.as_str()).filter(|name| !nested(name)).collect();
-        if self.flat.is_none() {
-            self.build(&outputs)?;
-        }
-        let flat = self.flat.as_ref().expect("a built node has its columns");
-        let first: Vec<&str> = flat.columns.iter().map(|c| c.name.as_str()).collect();
-        if outputs != first {
-            return Err(answer_err(format!("a row of {} answers {outputs:?} where its first row answers {first:?}", self.ent.name)));
-        }
-        let mut row = MdRow { vals: Vec::with_capacity(outputs.len()), joins: HashMap::new(), rels: HashMap::new() };
-        for (name, value) in &ms {
-            if let Some((_, child)) = self.joins.iter_mut().find(|(rel, _)| rel == name) {
-                let joined = if value.get().trim() == "null" { None } else { Some(child.row(value)?) };
-                row.joins.insert(name.clone(), joined);
-                continue;
-            }
-            if let Some(rel) = self.rels.iter_mut().find(|r| &r.rel == name) {
-                let rows = rel.node.relation_rows(value)?;
-                row.rels.insert(name.clone(), rows);
-                continue;
-            }
-            let column = &self.flat.as_ref().expect("a built node has its columns").columns[row.vals.len()];
-            let value = answer_value(&column.typ, value).map_err(|error| match error {
-                Error::Engine { code, msg } => Error::Engine { code, msg: format!("{}.{}: {msg}", self.ent.name, column.name) },
-                other => other,
-            })?;
-            row.vals.push(value);
-        }
-        // The corpus catalog rejects aes columns, so there is no keyring (docs/spec/dialects.md).
-        crate::row::decode_styled(self.flat.as_ref().expect("a built node has its columns"), std::slice::from_mut(&mut row.vals), &BTreeMap::new())?;
-        Ok(row)
-    }
-
-    /// Reads a relation value as a list of rows: a one relation is an object or null, a many relation is an array, and with key_by
-    /// the relation is an object grouped by key.
-    fn relation_rows(&mut self, raw: &RawValue) -> Result<Vec<MdRow>> {
-        let text = raw.get().trim();
-        if text == "null" {
-            return Ok(Vec::new());
-        }
-        if text.starts_with('[') {
-            let items: Vec<Box<RawValue>> = serde_json::from_str(text).map_err(|e| answer_err(format!("relation rows of {}: {e}", self.ent.name)))?;
-            return items.iter().map(|item| self.row(item)).collect();
-        }
-        if !self.q.key_by.is_empty() {
-            return members(raw)?.iter().map(|(_, item)| self.row(item)).collect();
-        }
-        Ok(vec![self.row(raw)?])
-    }
-
-    /// The batch of a node and its joins and relations. A node that had no rows has no columns.
-    fn assemble(&self) -> Assemble {
-        let mut out = self.flat.clone().unwrap_or_else(|| Assemble { entity: self.ent.name.clone(), ..Default::default() });
-        for (rel, child) in &self.joins {
-            out.children.push(Child { rel: rel.clone(), kind: "join".into(), assemble: Some(Arc::new(child.assemble())), ..Default::default() });
-        }
-        for rel in &self.rels {
-            out.children.push(Child {
-                rel: rel.rel.clone(),
-                kind: rel.kind.clone(),
-                flatten: rel.flatten,
-                cascade: rel.cascade,
-                assemble: Some(Arc::new(rel.node.assemble())),
-                ..Default::default()
-            });
-        }
-        out
-    }
-}
-
-/// Reads one value of the reply as a value of the column type. The value uses the same runtime value model as parameters.
-fn answer_value(typ: &str, raw: &RawValue) -> Result<Val> {
-    let bad = || Error::Engine { code: codes::CODEC_DECODE.into(), msg: format!("the answer value {} is not a {typ} value", raw.get()) };
-    let bad_with = |error: &dyn std::fmt::Display| Error::Engine {
-        code: codes::CODEC_DECODE.into(),
-        msg: format!("the answer value {} is not a {typ} value: {error}", raw.get()),
-    };
-    let value: Value = serde_json::from_str(raw.get()).map_err(|error| bad_with(&error))?;
-    Ok(match (typ, value) {
-        (_, Value::Null) => Val::Null,
-        ("i16" | "i32" | "i64", Value::Number(n)) => Val::I64(n.as_i64().ok_or_else(bad)?),
-        ("f64", Value::Number(n)) => Val::F64(n.as_f64().ok_or_else(bad)?),
-        ("bool", Value::Bool(b)) => Val::Bool(b),
-        ("bytes", Value::String(s)) => Val::Bytes(base64::engine::general_purpose::STANDARD.decode(s).map_err(|error| bad_with(&error))?),
-        ("i16" | "i32" | "i64" | "f64" | "bool" | "bytes", _) => return Err(bad()),
-        (_, Value::String(s)) => Val::Str(s),
-        _ => return Err(bad()),
-    })
-}
-
-/// The value of sum and avg replies, and the key of an inserted row: an integer, a decimal number, or a decimal string; Null if absent.
-fn aggregate_value(raw: &RawValue) -> Result<Val> {
-    let value: Value = serde_json::from_str(raw.get()).map_err(|e| answer_err(format!("the value {}: {e}", raw.get())))?;
-    Ok(match value {
-        Value::Null => Val::Null,
-        Value::Number(n) => match n.as_i64() {
-            Some(i) => Val::I64(i),
-            None => Val::F64(n.as_f64().ok_or_else(|| answer_err(format!("the number {n} is no f64")))?),
-        },
-        Value::String(s) => Val::Str(s),
-        other => return Err(answer_err(format!("the value {other} is no number"))),
-    })
-}
-
-/// Reads the reply to a row read (one, all, group_count, paginate). The plan is one batch of the root node.
-pub(crate) async fn markdown_read(ex: &Executor, req: &mut Req) -> Result<MdRead> {
-    let (answer, m) = markdown_call(ex, req).await?;
-    #[derive(Deserialize)]
-    struct ReadAnswer {
-        rows: Option<Vec<Box<RawValue>>>,
-        count: Option<i64>,
-    }
-    let text = || String::from_utf8_lossy(&answer).into_owned();
-    let a: ReadAnswer = serde_json::from_slice(&answer).map_err(|e| answer_err(format!("{}: {e}", text())))?;
-    let kind = req.ir.kind.as_str();
-    let Some(raws) = a.rows else { return Err(answer_err(format!("a {kind} answer {} has no rows", text()))) };
-    if kind == "paginate" && a.count.is_none() {
-        return Err(answer_err(format!("a paginate answer {} has no count", text())));
-    }
-    let mut root = MdNode::new(&m, &req.ir.query, kind == "group_count")?;
-    let rows = raws.iter().map(|raw| root.row(raw)).collect::<Result<Vec<_>>>()?;
-    let step = Step { role: "main".into(), assemble: Some(Arc::new(root.assemble())), ..Default::default() };
-    let plan = Plan { manifest_hash: req.ir.manifest_hash.clone(), kind: kind.into(), steps: vec![step] };
-    Ok(MdRead { plan: Arc::new(plan), rows, count: a.count })
-}
-
-/// The reply of count, sum, and avg.
-pub(crate) async fn markdown_scalar(ex: &Executor, req: &mut Req) -> Result<Val> {
-    let (answer, _) = markdown_call(ex, req).await?;
-    let text = || String::from_utf8_lossy(&answer).into_owned();
-    let mut a: HashMap<String, Box<RawValue>> = serde_json::from_slice(&answer).map_err(|e| answer_err(format!("{}: {e}", text())))?;
-    if req.ir.kind == "count" {
-        let raw = a.get("count").ok_or_else(|| answer_err(format!("a count answer {} has no count", text())))?;
-        let count = serde_json::from_str::<i64>(raw.get()).map_err(|error| answer_err(format!("a count answer {} is not a count: {error}", text())))?;
-        return Ok(Val::I64(count));
-    }
-    let raw = a.remove("value").ok_or_else(|| answer_err(format!("a {} answer {} has no value", req.ir.kind, text())))?;
-    aggregate_value(&raw)
-}
-
-/// The reply {affected, keys} of a write. keys holds the primary keys of inserted rows in insert order: for an identity,
-/// an integer; for a key_prefix key, text.
-pub(crate) async fn markdown_write(ex: &Executor, req: &mut Req) -> Result<(Vec<Val>, u64)> {
-    let (answer, _) = markdown_call(ex, req).await?;
-    #[derive(Deserialize)]
-    struct WriteAnswer {
-        affected: Option<u64>,
-        #[serde(default)]
-        keys: Vec<Box<RawValue>>,
-    }
-    let text = || String::from_utf8_lossy(&answer).into_owned();
-    let a: WriteAnswer = serde_json::from_slice(&answer).map_err(|e| answer_err(format!("{}: {e}", text())))?;
-    let affected = a.affected.ok_or_else(|| answer_err(format!("a {} answer {} has no affected", req.ir.kind, text())))?;
-    let keys = a.keys.iter().map(|raw| aggregate_value(raw)).collect::<Result<Vec<_>>>()?;
-    Ok((keys, affected))
-}
-
-#[cfg(test)]
-#[path = "../tests/unit/bind_message.rs"]
-mod bind_message_tests;
-
-#[cfg(test)]
-#[path = "../tests/unit/markdown_scalar_subquery.rs"]
-mod markdown_scalar_subquery_tests;
-
-#[cfg(test)]
-#[path = "../tests/unit/markdown_column_function.rs"]
-mod markdown_column_function_tests;

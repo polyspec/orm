@@ -16,6 +16,8 @@ use InvalidArgumentException;
 use PDO;
 use RuntimeException;
 use Throwable;
+use Polyspec\Orm\Internal\MarkdownPdoAdapter;
+use Polyspec\Orm\MarkdownSession;
 use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
 
@@ -84,11 +86,26 @@ final class CaseDatabase
     }
 }
 
-/** The PDO connection of the admin DSN. */
+/**
+ * The PDO connection of the admin DSN. A corpus has no native driver but its flowmark server, which states SQL in
+ * SQLite's dialect (DIA-185): its connection is one session of the server, as a native SQLite connection is one of
+ * the file.
+ */
 function case_admin(string $dsn): PDO
 {
+    if (str_starts_with($dsn, 'markdown://')) {
+        return markdown_session_pdo($dsn);
+    }
     [, $pdoDsn, $user, $password] = Orm::parseDsn($dsn);
     return new PDO($pdoDsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+}
+
+/** One session of the corpus of the markdown DSN $dsn, as the PDO handle of a SQLite connection. */
+function markdown_session_pdo(string $dsn): PDO
+{
+    [$address, $corpus, $token] = Orm::parseMarkdownDsn($dsn);
+    $dial = static fn(): MarkdownSession => MarkdownSession::dial($address, $corpus, $token);
+    return new MarkdownPdoAdapter($dial(), $dial);
 }
 
 /**
@@ -139,6 +156,14 @@ function case_database(string $driver, callable $step): CaseDatabase
  */
 function with_case_database(string $driver, callable $step, callable $body): mixed
 {
+    if ($driver === 'markdown') {
+        // The case database of a markdown connection is a corpus of no table.
+        $result = null;
+        CaseCorpus::with(null, static function (string $dsn) use ($body, &$result): void {
+            $result = $body($dsn, null);
+        });
+        return $result;
+    }
     $database = case_database($driver, $step);
     try {
         $result = $body($database->dsn, $database);

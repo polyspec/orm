@@ -1104,6 +1104,94 @@ final class PgsqlStatementIterator implements \Iterator
     public function valid(): bool {}
 }
 
+/**
+ * @internal The PDO connection of a markdown connection: a SQLite connection whose statements a flowmark server answers
+ * over one session (DIA-185, docs/spec/protocol.md PRT-65 to PRT-71). Each statement is one statement message, and its
+ * answer the rows that its statement adapter reads.
+ */
+final class MarkdownPdoAdapter extends \PDO
+{
+    private \Polyspec\Orm\MarkdownSession $session;
+    /** Opens a session of the DSN, with its _pragma statements stated, for a statement after the session closed. */
+    private readonly \Closure $dial;
+    private bool $transaction;
+    private int $lastInsertIdValue;
+    private array $errorInfoValue;
+    /**
+     * The statement whose rows the session holds, which fetch answers, as a WeakReference: the rows of a statement that
+     * its caller dropped are closed, not read.
+     */
+    private ?\WeakReference $active;
+    /** $dial opens a session of the DSN, with its _pragma statements stated. */
+    public function __construct(\Polyspec\Orm\MarkdownSession $session, \Closure $dial) {}
+    public function beginTransaction(): bool {}
+    public function commit(): bool {}
+    public function rollBack(): bool {}
+    public function inTransaction(): bool {}
+    public function exec(string $statement): int|false {}
+    public function prepare(string $query, array $options = []): \PDOStatement|false {}
+    public function query(string $query, ?int $fetchMode = null, mixed ...$fetchModeArgs): \PDOStatement|false {}
+    public function quote(string $string, int $type = \PDO::PARAM_STR): string|false {}
+    public function lastInsertId(?string $name = null): string|false {}
+    public function getAttribute(int $attribute): mixed {}
+    public function setAttribute(int $attribute, mixed $value): bool {}
+    public function errorCode(): ?string {}
+    public function errorInfo(): array {}
+    /** Ends the session; the next statement outside a transaction opens a new one. */
+    public function close(): void {}
+    /** Shuts the session down, so a statement that waits for its answer ends now; a cancellation runs it. */
+    public function shutdown(): void {}
+    /**
+     * Ends the transaction of a session that the client gave up, as a cancelled call does: the session is closed, and
+     * the server rolls back the transaction of a closed connection (PRT-71).
+     */
+    public function abandon(): void {}
+    /**
+     * Runs one statement with its parameters in their wire form (PRT-67) and returns its answer: columns, rows,
+     * affected, last_insert_id and more. The rows that another statement has not read yet are read first, since a new
+     * statement on the session ends them (PRT-66). A refusal is a PDOException whose errorInfo holds the SQLite result
+     * code of the answer and whose previous throwable is the OrmException of the server's code and message.
+     */
+    public function run(string $sql, array $params, ?MarkdownStatementAdapter $statement = null): array {}
+    /** The next batch of the rows of $statement, which the session holds. */
+    public function fetchRows(MarkdownStatementAdapter $statement): array {}
+    /** Ends the rows of $statement that the session still holds. */
+    public function closeRows(MarkdownStatementAdapter $statement): void {}
+}
+
+/** @internal The prepared statement of MarkdownPdoAdapter: a statement message runs its text each time it executes. */
+final class MarkdownStatementAdapter extends \PDOStatement
+{
+    private readonly MarkdownPdoAdapter $pdo;
+    private readonly string $sourceSql;
+    private array $bindings;
+    private array $columns;
+    private array $rows;
+    private int $next;
+    private bool $more;
+    private int $affected;
+    /** The cells of the row the last fetch read, in their wire form, which getColumnMeta describes. */
+    private ?array $current;
+    private array $fetchMode;
+    private array $errorInfoValue;
+    public function __construct(MarkdownPdoAdapter $pdo, string $sourceSql) {}
+    public function bindValue(string|int $param, mixed $value, int $type = \PDO::PARAM_STR): bool {}
+    public function execute(?array $params = null): bool {}
+    public function fetch(int $mode = \PDO::FETCH_DEFAULT, int $cursorOrientation = \PDO::FETCH_ORI_NEXT, int $cursorOffset = 0): mixed {}
+    public function fetchAll(int $mode = \PDO::FETCH_DEFAULT, mixed ...$args): array {}
+    public function fetchColumn(int $column = 0): mixed {}
+    public function closeCursor(): bool {}
+    public function columnCount(): int {}
+    public function rowCount(): int {}
+    public function getColumnMeta(int $column): array|false {}
+    public function setFetchMode(int $mode, mixed ...$args): true {}
+    public function errorCode(): ?string {}
+    public function errorInfo(): array {}
+    public function nextRowset(): bool {}
+    /** Reads the rows that the session still holds for this statement, before another statement ends them (PRT-66). */
+    public function drain(): void {}
+}
+
 namespace Polyspec\Orm;
 
 /** Opens a database selected by a DSN and constructs SQL function values. */
@@ -1189,7 +1277,7 @@ final class Code
     public const string COLUMN_UNSELECTED = 'COLUMN_UNSELECTED';
     /** executor: updateOptimistic matched no row (updated_ts changed) */
     public const string OPTIMISTIC_LOCK = 'OPTIMISTIC_LOCK';
-    /** executor: a target changed since it was read, or a change since the read makes the transaction's writes other writes; names the file and line; the client never retries it */
+    /** executor: a COMMIT on a markdown connection found a file changed outside the engine since the transaction read it; names the file and line; the client never retries it */
     public const string WRITE_CONFLICT = 'WRITE_CONFLICT';
     /** executor: styled column bytes could not be decoded (docs/spec/codec.md) */
     public const string CODEC_DECODE = 'CODEC_DECODE';
@@ -1203,7 +1291,7 @@ final class Code
     public const string GENERATOR_SCAN_PARSE = 'GENERATOR_SCAN_PARSE';
     /** generator: a scanned getter call that no alias, new or addColumn call attaches (docs/spec/dsl.md, DSL-44) */
     public const string GENERATOR_SCAN_UNATTACHED = 'GENERATOR_SCAN_UNATTACHED';
-    /** executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout); a lock wait of the markdown executor that ends is CANCELED too, and so is a MySQL lock wait timeout (1205, innodb_lock_wait_timeout), and so is a MySQL lock wait timeout (1205, innodb_lock_wait_timeout) */
+    /** executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout); a lock wait of a markdown connection that ends is CANCELED too, and so is a MySQL lock wait timeout (1205, innodb_lock_wait_timeout), and so is a MySQL lock wait timeout (1205, innodb_lock_wait_timeout) */
     public const string CANCELED = 'CANCELED';
     /** executor: a transaction or savepoint callback failed and its rollback failed too; the error keeps both errors */
     public const string ROLLBACK = 'ROLLBACK';
@@ -1446,13 +1534,17 @@ final class Engine
     public readonly RuntimeModel $model;
     private readonly int $cacheSize;
 
-    public function __construct(RuntimeModel $model, string $dialect, int $cacheSize) {}
+    /**
+     * assigns plans for a database that assigns the key_prefix keys and the order positions that an insert leaves out,
+     * as a flowmark corpus does.
+     */
+    public function __construct(RuntimeModel $model, string $dialect, int $cacheSize, bool $assigns = false) {}
 
     /**
-     * The engine shared by the generated model of a manifest hash and by the dialect. The hash
+     * The engine shared by the generated model of a manifest hash, by the dialect and by assigns. The hash
      * of a generated model that has not registered it gives SCHEMA_HASH_MISMATCH.
      */
-    public static function for(string $manifestHash, string $dialect, int $cacheSize): Engine {}
+    public static function for(string $manifestHash, string $dialect, int $cacheSize, bool $assigns = false): Engine {}
 
     /** The plan of a value-free request (docs/spec/protocol.md). */
     public function plan(array $ir): array {}
@@ -1478,7 +1570,12 @@ final class Planner
 {
     private readonly RuntimeModel $m;
     private readonly Dialect $d;
-    public function __construct(RuntimeModel $m, Dialect $d) {}
+    private readonly bool $assigns;
+    /**
+     * assigns says that the database assigns the key_prefix key and the order position of a row that an insert leaves
+     * them out of, as a flowmark corpus does.
+     */
+    public function __construct(RuntimeModel $m, Dialect $d, bool $assigns = false) {}
     /** @return array{manifest_hash: string, kind: string, steps: list<array>} */
     public function compile(array $r): array {}
 }
@@ -1502,40 +1599,34 @@ final class MarkdownSession
 
     public static function dial(string $address, string $corpus, string $token): MarkdownSession {}
 
+    /** Whether the session can no longer be used: it was closed, a read or write failed, or the server ended it. */
+    public function broken(): bool {}
+
     public function close(): void {}
 
     /**
+     * Shuts the connection down without closing it, so a call that waits for its answer ends now; the server rolls back
+     * the transaction of a closed connection (PRT-71). A cancellation runs it.
+     */
+    public function shutdown(): void {}
+
+    /**
+     * Sends one message and reads one answer; a refusal is the OrmException of its code and message, and $resultCode
+     * the SQLite result code it states, or null (PRT-71).
+     *
      * @param array $message
      * @return array
      */
-    public function call(array $message): array {}
-}
+    public function call(array $message, ?int &$resultCode = null): array {}
 
-/** @internal The join and relation rows of one markdown answer row. */
-final class MarkdownLinks
-{
-    /** @var array<string, list<mixed>|null> */
-    public array $joins = [];
+    /** Runs one statement (PRT-65) with its parameters in their wire form (PRT-67). */
+    public function statement(string $sql, array $params, ?int &$resultCode = null): array {}
 
-    /** @var array<string, list<list<mixed>>> */
-    public array $rels = [];
-}
+    /** The next batch of the rows of the last statement (PRT-66). */
+    public function fetch(?int &$resultCode = null): array {}
 
-/** @internal The markdown IR executor client. It plans nothing and sends no SQL. */
-final class Markdown
-{
-    public static function beginMessage(bool $readOnly): array {}
-
-    public static function unsupported(string $surface): OrmException {}
-
-    /** @return array{0: array, 1: array, 2: int} */
-    public static function read(Db $db, Request $r): array {}
-
-    public static function scalar(Db $db, Request $r): mixed {}
-
-    public static function write(Db $db, Request $r): array {}
-
-    public static function links(array $row): MarkdownLinks {}
+    /** Ends the rows of the last statement that have not been fetched (PRT-66). */
+    public function closeRows(?int &$resultCode = null): void {}
 }
 
 /**
@@ -1552,20 +1643,24 @@ final class Db
     private ?\Closure $requestHook;
     private ?Cancellation $cancellation;
     private int $cancellationSlot = 0;
+    /** The dialect of the statements: mysql, postgres or sqlite, which a markdown connection is (DIA-185). */
     private readonly string $driver;
     private readonly Config $config;
     private readonly \DateTimeZone $zone;
-    private readonly ?MarkdownSession $md;
+    /** Whether the connection is a corpus that a flowmark server serves (markdown://), whose statements are SQLite's. */
+    private readonly bool $corpus;
 
     /** @internal Orm::connect creates connections. */
-    public function __construct(?\PDO $pdo, string $driver, Config $config, \DateTimeZone $zone, ?MarkdownSession $md = null) {}
+    public function __construct(\PDO $pdo, string $driver, Config $config, \DateTimeZone $zone, bool $corpus = false) {}
     /** @internal */
     public function registerSet(Schema $schema): void {}
+    /** The database of the connection: mysql, postgres, sqlite, or markdown, a corpus that a flowmark server serves. */
     public function driver(): string {}
-    /** @internal */
-    public function markdownSession(): MarkdownSession {}
-    /** @internal */
-    public function unsupportedOnMarkdown(string $surface): void {}
+    /**
+     * @internal The dialect of the statements the connection sends: mysql, postgres or sqlite, which a markdown
+     * connection is.
+     */
+    public function dialect(): string {}
     /** @internal */
     public function registeredModel(string $hash): RuntimeModel {}
     /** @internal */
@@ -2042,8 +2137,17 @@ final class RuntimeModel
     public readonly string $manifestText;
     public readonly array $entities;
     public readonly string $externalText;
+    /** @var array<string, array{key: string, order: string}>|null the columns of each entity that a corpus assigns */
+    private ?array $assigned = null;
 
     public function __construct(string $manifestHash, string $manifestText, array $entities, string $externalText = '') {}
+
+    /**
+     * @internal The columns of entity $name that a database which assigns keys and positions, as a flowmark corpus does,
+     * fills in when an insert leaves them out (docs/spec/protocol.md PRT-73): key and order, '' when there is none.
+     * @return array{key: string, order: string}
+     */
+    public function assignedColumns(string $name): array {}
 
     /**
      * @param array $texts
@@ -2316,7 +2420,6 @@ final class Assembly
 {
     public array $made = [];
     public readonly \DateTimeZone $zone;
-    private readonly bool $markdown;
     public readonly Db $db;
     public readonly ?Db $conn;
     private readonly array $result;

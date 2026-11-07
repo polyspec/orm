@@ -29,3 +29,9 @@ func TestRecipeExternalAuditSqlite(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, externalAuditRecipe, "sqlite")
 }
+
+// TestRecipeExternalAuditMarkdown runs the recipe on flowmark, each case on a corpus of its own (FCV-3).
+func TestRecipeExternalAuditMarkdown(t *testing.T) {
+	testcase.Group(t)
+	recipe.Run(t, externalAuditRecipe, "markdown")
+}

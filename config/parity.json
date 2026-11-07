@@ -322,6 +322,7 @@
         "packages/php/tests/CallbackFailed.php",
         "packages/php/tests/CannedCatalogPdo.php",
         "packages/php/tests/CatalogAnswerPdo.php",
+        "packages/php/tests/CaseCorpus.php",
         "packages/php/tests/CatalogAnswerStatement.php",
         "packages/php/tests/CodecYamlProbe.php",
         "packages/php/tests/CollectionIdentityCases.php",
@@ -398,6 +399,7 @@
         "packages/php/tests/StatementRunnerCases.php",
         "packages/php/tests/Recipe.php",
         "packages/php/tests/RecipeCases.php",
+        "packages/php/tests/SqliteRecipeTestCase.php",
         "packages/php/tests/DatabaseRecipeTestCase.php",
         "packages/php/tests/PlanCacheCompositeCases.php",
         "packages/php/tests/RecipeRecording.php",
@@ -664,7 +666,7 @@
         },
         {
           "glob": "packages/php-ext/tests/MarkdownNativeTest.php",
-          "reason": "ecosystem: checks native Markdown executor class and method registration/ABI ownership, not Markdown execution results"
+          "reason": "ecosystem: checks that the markdown session, its PDO adapter and its statement adapter are native classes of the extension, not the results of a markdown connection"
         },
         {
           "glob": "packages/php-ext/tests/PlanCacheMemoryNativeTest.php",
@@ -716,6 +718,7 @@
         "packages/ts/tests/codec_case.mjs",
         "packages/ts/tests/coverage_case.mjs",
         "packages/ts/tests/markdown_cases.mjs",
+        "packages/ts/tests/markdown_sqlite.mjs",
         "packages/ts/tests/plan_case.mjs",
         "packages/ts/tests/request_hook_run.mjs",
         "packages/ts/tests/statement-runner-run.mjs",
@@ -729,7 +732,6 @@
         "packages/ts/tests/generated_model_output.mjs",
         "packages/ts/tests/schema_of.mjs",
         "packages/ts/tests/generator_scan.mjs",
-        "packages/ts/tests/markdown-read-db.mjs",
         "packages/ts/tests/recipe.mjs",
         "packages/ts/tests/recipe_model.mjs",
         "packages/ts/tests/sqlite_writer_child.mjs",
@@ -877,10 +879,6 @@
           "reason": "generated: exhaustively checks the private generated Unicode range table against its own membership predicate; shared syntax vectors cover parser behavior"
         },
         {
-          "glob": "packages/ts/tests/markdown-read-db.test.mjs",
-          "reason": "harness: checks the shape of an injected fake Markdown database adapter; it does not execute a public Markdown read"
-        },
-        {
           "glob": "packages/ts/tests/dbspec-stress.mjs",
           "reason": "test: the measurement of dbspec-stress-bench that docs/spec/dbspec.md Verification requires, parse time against the reference work; the canonical round trip of the document is the case stress-canonical-roundtrip of dbspec-limits"
         },
@@ -898,10 +896,6 @@
       "name": "python",
       "runner": "python",
       "internal": [
-        {
-          "glob": "packages/python/tests/chain_answer.py",
-          "reason": "harness: the chain runner and the answer listener of the markdown conformance chains that the ir.answer op of tests/ir/answers.json (FCV-4) runs; the cases are bound by the suite unit ir-answers, and the module holds no test of its own"
-        },
         {
           "glob": "packages/python/tests/test_catalog_mutation_helper.py",
           "reason": "test: calls private _lock_original_row with FakeSession to verify helper call ordering and schema-change refusal without a real SQL session"
@@ -1122,7 +1116,7 @@
         },
         {
           "glob": "packages/rust/tests/src/markdown.rs",
-          "reason": "harness: the chain runner and the answer listener of the markdown conformance chains that the ir.answer op of tests/ir/answers.json (FCV-4) runs; the cases are bound by the suite unit ir-answers, and the module holds no test of its own"
+          "reason": "harness: the corpus helpers of the markdown recipe units (the corpus of a case, its file modes and its hand-written files); the cases are bound by the markdown suite units, and the module holds no test of its own"
         },
         {
           "glob": "packages/rust/tests/src/conformance.rs",
@@ -1135,10 +1129,6 @@
         {
           "glob": "packages/rust/build/tests/lock_probe_order.rs",
           "reason": "harness: an internal test of the Rust package that checks the test harness of the owner, not a behaviour of the contract (K313)"
-        },
-        {
-          "glob": "packages/rust/orm/tests/unit/markdown_column_function.rs",
-          "reason": "test: asserts that Markdown output assembly detects a deliberately mutated, impossible post-validation column reference as INTERNAL; it is a defensive invariant check, not a valid public request or cross-client behavior (K313)"
         },
         {
           "glob": "packages/rust/orm/tests/unit/temporal_args.rs",
@@ -1249,20 +1239,12 @@
           "reason": "test: tests the private mapping of an unsupported tool cell to CATALOG_VALUE and the catalog codes of the tool errors; its owner is catalog-value-rust-check, while the shared behavior is covered by the catalog_connection recipe"
         },
         {
-          "glob": "packages/rust/orm/tests/unit/bind_message.rs",
-          "reason": "test: an internal test of the rust crate that tests a helper of the owner (answer_value's base64 cause), not a behaviour of the contract (K313)"
-        },
-        {
           "glob": "packages/rust/schema/tests/dbspec_model.rs",
           "reason": "test: edits the public Rust structs of a parsed document, a surface the other runtimes do not type this way; parse and emit are covered by dbspec-canonical"
         },
         {
           "glob": "packages/rust/orm/tests/unit/codec_tests.rs",
           "reason": "test: the private helpers of the Rust codec, whose faults a public call cannot reach."
-        },
-        {
-          "glob": "packages/rust/orm/tests/unit/markdown_scalar_subquery.rs",
-          "reason": "test: a column that the planner finds missing after validation is INTERNAL; a request cannot reach it, so no recipe can state it."
         },
         {
           "glob": "packages/rust/schema/src/dbspec/mod.rs",
@@ -1301,7 +1283,8 @@
     "tests/markdown/*.json",
     "tests/bind/messages.json",
     "tests/bind/messages-dynamic.json",
-    "tests/bind/messages-untyped-null.json"
+    "tests/bind/messages-untyped-null.json",
+    "tests/bind/messages-raw-text.json"
   ],
   "comparators": [
     "tests/conformance",
@@ -3214,6 +3197,60 @@
       ]
     },
     {
+      "id": "aes_rotation-markdown",
+      "kind": "suite",
+      "requirements": [
+        "COD-44",
+        "COD-47",
+        "COD-49",
+        "COD-50",
+        "COD-51",
+        "COD-52",
+        "COD-53",
+        "COD-54",
+        "COD-57",
+        "COD-58",
+        "COD-59",
+        "COD-60",
+        "CFG-28",
+        "INT-75",
+        "DIA-154",
+        "DIA-188"
+      ],
+      "file": "contracts/fixtures/aes_rotation/aes_rotation.json",
+      "cases": "$.cases_on.markdown[*]",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "symbol": "TestRecipeAesRotationMarkdown"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AesRotationMarkdownTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\AesRotationMarkdownTest::testMarkdown"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AesRotationMarkdownRecipeExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\AesRotationMarkdownRecipeExtensionTest::testMarkdown"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/aes_rotation-markdown.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_aes_rotation_markdown.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_markdown.rs",
+          "symbol": "aes_rotation_markdown"
+        }
+      ]
+    },
+    {
       "id": "sqlite-text-in-numeric-column",
       "kind": "feature",
       "requirements": [
@@ -3564,6 +3601,46 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/dbspec_render_physical_sqlite.rs",
           "symbol": "dbspec_render_physical_sqlite"
+        }
+      ]
+    },
+    {
+      "id": "dbspec-render-physical-markdown",
+      "kind": "suite",
+      "requirements": [
+        "DIA-113",
+        "DIA-154"
+      ],
+      "file": "tests/dbspec/render-physical.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_render_physical_test.go",
+          "symbol": "TestRecipeDbspecRenderPhysicalMarkdown"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecRenderPhysicalRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecRenderPhysicalRecipeTest::testMarkdown"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecRenderPhysicalRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecRenderPhysicalRecipeTestExtensionTest::testMarkdown"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_render_physical-markdown.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_render_physical_markdown.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_render_physical_markdown.rs",
+          "symbol": "dbspec_render_physical_markdown"
         }
       ]
     },
@@ -5884,7 +5961,7 @@
         "FCV-14"
       ],
       "file": "contracts/fixtures/request_hook/request_hook.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.mysql[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -5942,7 +6019,7 @@
         "FCV-14"
       ],
       "file": "contracts/fixtures/request_hook/request_hook.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.postgres[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -6000,7 +6077,7 @@
         "FCV-14"
       ],
       "file": "contracts/fixtures/request_hook/request_hook.json",
-      "cases": "$.cases[*].id",
+      "cases": "$.cases_on.sqlite[*]",
       "bindings": [
         {
           "implementation": "go",
@@ -6029,6 +6106,64 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
           "symbol": "request_hook_sqlite"
+        }
+      ]
+    },
+    {
+      "id": "request_hook-markdown",
+      "kind": "suite",
+      "requirements": [
+        "INT-78",
+        "PRT-2",
+        "PRT-4",
+        "PRT-5",
+        "PRT-6",
+        "PRT-41",
+        "CFG-21",
+        "INT-36",
+        "INT-37",
+        "PLN-16",
+        "DIA-161",
+        "INT-38",
+        "PRT-65",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14"
+      ],
+      "file": "contracts/fixtures/request_hook/request_hook.json",
+      "cases": "$.cases_on.markdown[*]",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_request_hook_test.go",
+          "symbol": "TestRecipeRequestHookMarkdown"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RequestHookMarkdownRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\RequestHookMarkdownRecipeTest::testMarkdown"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RequestHookMarkdownRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\RequestHookMarkdownRecipeTestExtensionTest::testMarkdown"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/request_hook-markdown.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_request_hook_markdown.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/request_hook_markdown.rs",
+          "symbol": "request_hook_markdown"
         }
       ]
     },
@@ -8061,6 +8196,57 @@
       ]
     },
     {
+      "id": "dsn_connection-markdown",
+      "kind": "suite",
+      "requirements": [
+        "CFG-1",
+        "CFG-16",
+        "CFG-2",
+        "CFG-19",
+        "CFG-26",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14",
+        "DIA-154"
+      ],
+      "file": "contracts/fixtures/dsn_connection/dsn_connection.json",
+      "cases": "$.cases_on.markdown[*]",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "symbol": "TestRecipeDsnConnectionMarkdown"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DsnConnectionRecipeTest::testMarkdown"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DsnConnectionRecipeTestExtensionTest::testMarkdown"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_connection-markdown.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_connection_markdown.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_connection_markdown.rs",
+          "symbol": "dsn_connection_markdown"
+        }
+      ]
+    },
+    {
       "id": "catalog_connection-mysql",
       "kind": "suite",
       "requirements": [
@@ -8266,6 +8452,74 @@
       ]
     },
     {
+      "id": "catalog_connection-markdown",
+      "kind": "suite",
+      "requirements": [
+        "INT-8",
+        "INT-4",
+        "COD-31",
+        "DBS-113",
+        "INT-101",
+        "INT-102",
+        "INT-103",
+        "INT-104",
+        "INT-106",
+        "INT-108",
+        "INT-109",
+        "INT-110",
+        "INT-111",
+        "INT-112",
+        "INT-113",
+        "INT-114",
+        "INT-115",
+        "INT-117",
+        "INT-123",
+        "INT-136",
+        "INT-34",
+        "SCH-3",
+        "SCH-5",
+        "INT-153",
+        "INT-154",
+        "INT-155",
+        "SCH-6a",
+        "CFG-34",
+        "CFG-35",
+        "DIA-154"
+      ],
+      "file": "contracts/fixtures/catalog_connection/catalog_connection.json",
+      "cases": "$.cases_on.markdown[*]",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_catalog_connection_test.go",
+          "symbol": "TestRecipeCatalogConnectionMarkdown"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testMarkdown"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testMarkdown"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-markdown.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_markdown.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_markdown.rs",
+          "symbol": "catalog_connection_markdown"
+        }
+      ]
+    },
+    {
       "id": "php-catalog-mysql-holds-one-connection",
       "kind": "feature",
       "requirements": [
@@ -8417,6 +8671,46 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/performance_gate_sqlite.rs",
           "symbol": "performance_gate_sqlite"
+        }
+      ]
+    },
+    {
+      "id": "performance_gate-markdown",
+      "kind": "suite",
+      "requirements": [
+        "PERF-1",
+        "DIA-154"
+      ],
+      "file": "contracts/fixtures/performance_gate/performance_gate.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_performance_gate_test.go",
+          "symbol": "TestRecipePerformanceGateMarkdown"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/PerformanceGateRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\PerformanceGateRecipeTest::testMarkdown"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/PerformanceGateRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\PerformanceGateRecipeTestExtensionTest::testMarkdown"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/performance_gate-markdown.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_performance_gate_markdown.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/performance_gate_markdown.rs",
+          "symbol": "performance_gate_markdown"
         }
       ]
     },
@@ -8585,6 +8879,62 @@
       ]
     },
     {
+      "id": "statement_events-markdown",
+      "kind": "suite",
+      "requirements": [
+        "DBS-108",
+        "DBS-119",
+        "DBS-120",
+        "INT-55",
+        "INT-77",
+        "INT-91",
+        "INT-96",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14",
+        "SCH-11",
+        "SCH-7",
+        "DIA-154",
+        "DIA-185"
+      ],
+      "file": "contracts/fixtures/statement_events/statement_events.json",
+      "cases": "$.cases_on.markdown[*]",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "symbol": "TestRecipeStatementEventsMarkdown"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementEventsRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\StatementEventsRecipeTest::testMarkdown"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\StatementEventsRecipeTestExtensionTest::testMarkdown"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/statement_events-markdown.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_events_markdown.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/statement_events_markdown.rs",
+          "symbol": "statement_events_markdown"
+        }
+      ]
+    },
+    {
       "id": "dbspec_apply-mysql",
       "kind": "suite",
       "requirements": [
@@ -8729,6 +9079,56 @@
       ]
     },
     {
+      "id": "dbspec_apply-markdown",
+      "kind": "suite",
+      "requirements": [
+        "PLN-89",
+        "PLN-90",
+        "PLN-91",
+        "PLN-92",
+        "PLN-93",
+        "PLN-94",
+        "PLN-95",
+        "PLN-96",
+        "PLN-104",
+        "PLN-105",
+        "DIA-154",
+        "DIA-189"
+      ],
+      "file": "contracts/fixtures/dbspec_apply/dbspec_apply.json",
+      "cases": "$.cases_on.markdown[*]",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_apply_test.go",
+          "symbol": "TestRecipeDbspecApplyMarkdown"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecApplyRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecApplyRecipeTest::testMarkdown"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecApplyRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecApplyRecipeTestExtensionTest::testMarkdown"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_apply-markdown.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_apply_markdown.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_apply_markdown.rs",
+          "symbol": "dbspec_apply_markdown"
+        }
+      ]
+    },
+    {
       "id": "utils-mysql",
       "kind": "suite",
       "requirements": [
@@ -8866,6 +9266,55 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/utils_recipe_sqlite.rs",
           "symbol": "utils_recipe_sqlite"
+        }
+      ]
+    },
+    {
+      "id": "utils-markdown",
+      "kind": "suite",
+      "requirements": [
+        "CFG-22",
+        "INT-134",
+        "INT-51",
+        "INT-52",
+        "INT-53",
+        "INT-61",
+        "INT-72",
+        "INT-73",
+        "INT-59",
+        "DIA-154",
+        "DIA-188"
+      ],
+      "file": "contracts/fixtures/utils/utils.json",
+      "cases": "$.cases_on.markdown[*]",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_utils_test.go",
+          "symbol": "TestRecipeUtilsMarkdown"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/UtilsRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\UtilsRecipeTest::testMarkdown"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/UtilsRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\UtilsRecipeTestExtensionTest::testMarkdown"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/utils_recipe-markdown.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_utils_recipe_markdown.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/utils_recipe_markdown.rs",
+          "symbol": "utils_recipe_markdown"
         }
       ]
     },
@@ -9036,6 +9485,55 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/statement_runner_sqlite.rs",
           "symbol": "statement_runner_sqlite"
+        }
+      ]
+    },
+    {
+      "id": "statement_runner-markdown",
+      "kind": "suite",
+      "requirements": [
+        "INT-150",
+        "INT-77",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14",
+        "DIA-154",
+        "DIA-185"
+      ],
+      "file": "contracts/fixtures/statement_runner/statement_runner.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_runner_test.go",
+          "symbol": "TestRecipeStatementRunnerMarkdown"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementRunnerRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\StatementRunnerRecipeTest::testMarkdown"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementRunnerRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\StatementRunnerRecipeTestExtensionTest::testMarkdown"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/statement_runner-markdown.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_runner_markdown.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/statement_runner_markdown.rs",
+          "symbol": "statement_runner_markdown"
         }
       ]
     },
@@ -9272,6 +9770,53 @@
       ]
     },
     {
+      "id": "complex_query-markdown",
+      "kind": "suite",
+      "requirements": [
+        "CPX-5",
+        "DSL-128",
+        "FCV-2",
+        "FCV-3",
+        "FCV-4",
+        "CPX-1",
+        "CPX-2",
+        "DSL-159",
+        "DIA-154"
+      ],
+      "file": "contracts/fixtures/complex_query/complex_query.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_complex_query_test.go",
+          "symbol": "TestRecipeComplexQueryMarkdown"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ComplexQueryMarkdownRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ComplexQueryMarkdownRecipeTest::testMarkdown"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ComplexQueryMarkdownRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ComplexQueryMarkdownRecipeTestExtensionTest::testMarkdown"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/complex_query-markdown.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_complex_query_markdown.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/complex_query_markdown.rs",
+          "symbol": "complex_query_markdown"
+        }
+      ]
+    },
+    {
       "id": "connection_pool-mysql",
       "kind": "suite",
       "requirements": [
@@ -9387,6 +9932,45 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/connection_pool_sqlite.rs",
           "symbol": "connection_pool_sqlite"
+        }
+      ]
+    },
+    {
+      "id": "connection_pool-markdown",
+      "kind": "suite",
+      "requirements": [
+        "DIA-199"
+      ],
+      "file": "contracts/fixtures/connection_pool/connection_pool.json",
+      "cases": "$.cases_on.markdown[*]",
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "dsn_connection",
+        "parts": [
+          "owner/go",
+          "owner/rust",
+          "owner/typescript",
+          "owner/python"
+        ]
+      },
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_connection_pool_test.go",
+          "symbol": "TestRecipeConnectionPoolMarkdown"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/connection_pool-markdown.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_connection_pool_markdown.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/connection_pool_markdown.rs",
+          "symbol": "connection_pool_markdown"
         }
       ]
     },
@@ -10149,6 +10733,416 @@
       ]
     },
     {
+      "id": "conformance_verification-markdown",
+      "kind": "suite",
+      "requirements": [
+        "INT-5",
+        "PRT-69",
+        "INT-98",
+        "DSL-137",
+        "DIA-11",
+        "DIA-14",
+        "FCV-2",
+        "FCV-3",
+        "FCV-4",
+        "DSL-11",
+        "DSL-12",
+        "DSL-13",
+        "DSL-14",
+        "DSL-18",
+        "DSL-15",
+        "DSL-16",
+        "DSL-20",
+        "DSL-21",
+        "DSL-22",
+        "DSL-90",
+        "DSL-91",
+        "DSL-92",
+        "DSL-93",
+        "DSL-94",
+        "DSL-95",
+        "DSL-97",
+        "DSL-79",
+        "DSL-80",
+        "DSL-81",
+        "DSL-82",
+        "DSL-83",
+        "DSL-84",
+        "DSL-85",
+        "DSL-86",
+        "DSL-88",
+        "DSL-89",
+        "DSL-65",
+        "DSL-68",
+        "DSL-100",
+        "DSL-102",
+        "DSL-103",
+        "DSL-106",
+        "DSL-107",
+        "DSL-110",
+        "DSL-112",
+        "DSL-10",
+        "DSL-118",
+        "DSL-119",
+        "DSL-123",
+        "DSL-29",
+        "DSL-30",
+        "DSL-31",
+        "DSL-45",
+        "DSL-46",
+        "DSL-48",
+        "DSL-55",
+        "DSL-36",
+        "DSL-58",
+        "DSL-59",
+        "DSL-60",
+        "DSL-57",
+        "DSL-69",
+        "DSL-23",
+        "DSL-72",
+        "DSL-73",
+        "DSL-75",
+        "DSL-76",
+        "DSL-70",
+        "DSL-53",
+        "DSL-74",
+        "DSL-61",
+        "DSL-62",
+        "DSL-63",
+        "DSL-64",
+        "DSL-67",
+        "DSL-56",
+        "DSL-54",
+        "DSL-131",
+        "DSL-132",
+        "DSL-133",
+        "DSL-134",
+        "DSL-135",
+        "DSL-139",
+        "DSL-140",
+        "DSL-144",
+        "DSL-145",
+        "DSL-146",
+        "COD-6",
+        "COD-15",
+        "DSL-143",
+        "COD-41",
+        "COD-42",
+        "DSL-99",
+        "INT-160",
+        "DBS-110",
+        "DBS-85",
+        "DSL-104",
+        "DSL-109",
+        "INT-38",
+        "INT-39",
+        "COD-3",
+        "DIA-24",
+        "DIA-27",
+        "DSL-105",
+        "INT-101",
+        "PRT-6",
+        "PRT-67",
+        "DSL-115",
+        "DSL-155",
+        "CPX-5",
+        "DSL-128",
+        "CPX-4",
+        "PRT-2",
+        "PRT-34",
+        "PRT-33",
+        "PRT-25",
+        "DSL-111",
+        "PRT-8",
+        "DSL-108",
+        "DSL-114",
+        "PRT-20",
+        "PRT-22",
+        "INT-60",
+        "INT-75",
+        "DSL-87",
+        "INT-99",
+        "COD-20",
+        "DIA-25",
+        "COD-2",
+        "INT-91",
+        "PRT-78",
+        "PLN-10",
+        "PLN-41",
+        "PLN-42",
+        "PLN-43",
+        "DBS-118",
+        "PLN-35",
+        "INT-85",
+        "PLN-6",
+        "INT-37",
+        "PRT-68",
+        "INT-20",
+        "INT-21",
+        "INT-22",
+        "INT-23",
+        "INT-24",
+        "INT-25",
+        "INT-26",
+        "DSL-1",
+        "DSL-2",
+        "DSL-3",
+        "DSL-4",
+        "DSL-5",
+        "DSL-6",
+        "DSL-7",
+        "DSL-17",
+        "DSL-19",
+        "DSL-24",
+        "DSL-25",
+        "DSL-26",
+        "DSL-27",
+        "DSL-28",
+        "DSL-34",
+        "DSL-35",
+        "DSL-47",
+        "DSL-51",
+        "DSL-71",
+        "DSL-77",
+        "DSL-96",
+        "DSL-98",
+        "DSL-101",
+        "DSL-136",
+        "DIA-1",
+        "DIA-2",
+        "DIA-3",
+        "DIA-4",
+        "DIA-5",
+        "DIA-8",
+        "DIA-9",
+        "DIA-10",
+        "DIA-13",
+        "DIA-15",
+        "DIA-16",
+        "DIA-18",
+        "DIA-19",
+        "DIA-22",
+        "DIA-23",
+        "DIA-26",
+        "DIA-29",
+        "DIA-35",
+        "DIA-36",
+        "DIA-37",
+        "DIA-41",
+        "DIA-43",
+        "DIA-46",
+        "DIA-48",
+        "DIA-54",
+        "PRT-5",
+        "PRT-9",
+        "PRT-11",
+        "PRT-15",
+        "PRT-19",
+        "PRT-36",
+        "PRT-38",
+        "PRT-39",
+        "PRT-40",
+        "PRT-42",
+        "PRT-70",
+        "DIA-108",
+        "DBS-59",
+        "DBS-87",
+        "DBS-113",
+        "DBS-117",
+        "CPX-3",
+        "DBS-115",
+        "DIA-154"
+      ],
+      "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
+      "cases": "$.cases_on.markdown[*]",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "symbol": "TestRecipeConformanceVerificationMarkdown"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationMarkdownRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ConformanceVerificationMarkdownRecipeTest::testMarkdown"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationMarkdownRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ConformanceVerificationMarkdownRecipeTestExtensionTest::testMarkdown"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification-markdown.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_markdown.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_markdown.rs",
+          "symbol": "conformance_verification_markdown"
+        }
+      ]
+    },
+    {
+      "id": "conformance_verification_dynamic-mysql",
+      "kind": "suite",
+      "requirements": [
+        "PRT-67"
+      ],
+      "file": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json",
+      "cases": "$.cases[*].id",
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "conformance_verification",
+        "parts": [
+          "owner/php",
+          "owner/php-extension",
+          "owner/typescript",
+          "owner/python"
+        ]
+      },
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationDynamicRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ConformanceVerificationDynamicRecipeTest::testMysql"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationDynamicRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ConformanceVerificationDynamicRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification_dynamic-mysql.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_dynamic_mysql.py"
+        }
+      ]
+    },
+    {
+      "id": "conformance_verification_dynamic-postgres",
+      "kind": "suite",
+      "requirements": [
+        "PRT-67"
+      ],
+      "file": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json",
+      "cases": "$.cases[*].id",
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "conformance_verification",
+        "parts": [
+          "owner/php",
+          "owner/php-extension",
+          "owner/typescript",
+          "owner/python"
+        ]
+      },
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationDynamicRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ConformanceVerificationDynamicRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationDynamicRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ConformanceVerificationDynamicRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification_dynamic-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_dynamic_postgres.py"
+        }
+      ]
+    },
+    {
+      "id": "conformance_verification_dynamic-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "PRT-67"
+      ],
+      "file": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json",
+      "cases": "$.cases[*].id",
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "conformance_verification",
+        "parts": [
+          "owner/php",
+          "owner/php-extension",
+          "owner/typescript",
+          "owner/python"
+        ]
+      },
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationDynamicRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ConformanceVerificationDynamicRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationDynamicRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ConformanceVerificationDynamicRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification_dynamic-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_dynamic_sqlite.py"
+        }
+      ]
+    },
+    {
+      "id": "conformance_verification_dynamic-markdown",
+      "kind": "suite",
+      "requirements": [
+        "PRT-67"
+      ],
+      "file": "contracts/fixtures/conformance_verification/conformance_verification_dynamic.json",
+      "cases": "$.cases[*].id",
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "conformance_verification",
+        "parts": [
+          "owner/php",
+          "owner/php-extension",
+          "owner/typescript",
+          "owner/python"
+        ]
+      },
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationDynamicRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ConformanceVerificationDynamicRecipeTest::testMarkdown"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationDynamicRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ConformanceVerificationDynamicRecipeTestExtensionTest::testMarkdown"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification_dynamic-markdown.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_dynamic_markdown.py"
+        }
+      ]
+    },
+    {
       "id": "fulltext-search-recipe-mysql",
       "kind": "suite",
       "requirements": [
@@ -10283,6 +11277,53 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/fulltext_search_recipe_sqlite.rs",
           "symbol": "fulltext_search_recipe_sqlite"
+        }
+      ]
+    },
+    {
+      "id": "fulltext-search-recipe-markdown",
+      "kind": "suite",
+      "requirements": [
+        "DSL-32",
+        "DSL-33",
+        "DIA-6",
+        "DIA-187",
+        "PRT-75",
+        "FCV-4",
+        "FCV-9",
+        "FCV-10",
+        "DIA-154"
+      ],
+      "file": "contracts/fixtures/fulltext_search/fulltext_search.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_fulltext_search_test.go",
+          "symbol": "TestRecipeFulltextSearchMarkdown"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/FulltextSearchRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\FulltextSearchRecipeTest::testMarkdown"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/FulltextSearchRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\FulltextSearchRecipeTestExtensionTest::testMarkdown"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/fulltext-search-recipe-markdown.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_fulltext_search_recipe_markdown.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/fulltext_search_recipe_markdown.rs",
+          "symbol": "fulltext_search_recipe_markdown"
         }
       ]
     },
@@ -10445,6 +11486,61 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/model_writes_sqlite.rs",
           "symbol": "model_writes_sqlite"
+        }
+      ]
+    },
+    {
+      "id": "model_writes-markdown",
+      "kind": "suite",
+      "requirements": [
+        "DSL-56",
+        "DSL-57",
+        "DSL-58",
+        "DSL-60",
+        "DSL-103",
+        "DSL-104",
+        "DSL-105",
+        "DSL-106",
+        "DSL-109",
+        "DSL-110",
+        "PLN-26",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-13",
+        "FCV-14",
+        "DIA-154"
+      ],
+      "file": "contracts/fixtures/model_writes/model_writes.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_model_writes_test.go",
+          "symbol": "TestRecipeModelWritesMarkdown"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelWritesRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ModelWritesRecipeTest::testMarkdown"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelWritesRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ModelWritesRecipeTestExtensionTest::testMarkdown"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model_writes-markdown.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_writes_markdown.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/model_writes_markdown.rs",
+          "symbol": "model_writes_markdown"
         }
       ]
     },
@@ -10613,6 +11709,63 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/model_writes_chain_sqlite.rs",
           "symbol": "model_writes_chain_sqlite"
+        }
+      ]
+    },
+    {
+      "id": "model_writes_chain-markdown",
+      "kind": "suite",
+      "requirements": [
+        "COD-11",
+        "COD-12",
+        "COD-15",
+        "COD-16",
+        "COD-26",
+        "COD-38",
+        "DIA-26",
+        "DSL-104",
+        "DSL-107",
+        "INT-35",
+        "PRT-41",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14",
+        "DIA-154"
+      ],
+      "file": "contracts/fixtures/model_writes_chain/model_writes_chain.json",
+      "cases": "$.cases_on.markdown[*]",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_model_writes_chain_test.go",
+          "symbol": "TestRecipeModelWritesChainMarkdown"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelWritesChainRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ModelWritesChainRecipeTest::testMarkdown"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelWritesChainRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ModelWritesChainRecipeTestExtensionTest::testMarkdown"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model_writes_chain-markdown.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_writes_chain_markdown.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/model_writes_chain_markdown.rs",
+          "symbol": "model_writes_chain_markdown"
         }
       ]
     },
@@ -12205,7 +13358,23 @@
         "DIA-179",
         "DIA-182",
         "DIA-186",
-        "DIA-190"
+        "DIA-190",
+        "INT-1",
+        "INT-62",
+        "INT-68",
+        "INT-69",
+        "INT-70",
+        "INT-71",
+        "INT-80",
+        "INT-81",
+        "INT-82",
+        "INT-83",
+        "INT-84",
+        "INT-86",
+        "PRT-36",
+        "PRT-69",
+        "PRT-71",
+        "PRT-72"
       ],
       "file": "tests/markdown/cases.json",
       "cases": "$.cases[*].id",
@@ -17613,47 +18782,6 @@
       }
     },
     {
-      "id": "ir-answers",
-      "kind": "suite",
-      "requirements": [
-        "PRT-69",
-        "PRT-71",
-        "PRT-72"
-      ],
-      "file": "tests/ir/answers.json",
-      "cases": "$.cases[*].id",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/markdownmodel/ir_answers_test.go",
-          "symbol": "TestRecipeIRAnswersNone"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/IrAnswersTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\IrAnswersTest::testNone"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/IrAnswersTestExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\IrAnswersTestExtensionTest::testNone"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/ir_answers.mjs"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/ir_answers.py"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/ir_answers.rs",
-          "symbol": "ir_answers"
-        }
-      ]
-    },
-    {
       "id": "dbspec-set-decimal-mysql",
       "kind": "suite",
       "requirements": [
@@ -17770,6 +18898,47 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/dbspec_set_decimal_sqlite.rs",
           "symbol": "dbspec_set_decimal_sqlite"
+        }
+      ]
+    },
+    {
+      "id": "dbspec-set-decimal-markdown",
+      "kind": "suite",
+      "requirements": [
+        "DBS-108",
+        "SCH-7",
+        "DIA-154"
+      ],
+      "file": "tests/dbspec/set-decimal.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_set_decimal_test.go",
+          "symbol": "TestRecipeDbspecSetDecimalMarkdown"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecSetDecimalRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecSetDecimalRecipeTest::testMarkdown"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecSetDecimalRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecSetDecimalRecipeTestExtensionTest::testMarkdown"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_set_decimal-markdown.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_set_decimal_markdown.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_set_decimal_markdown.rs",
+          "symbol": "dbspec_set_decimal_markdown"
         }
       ]
     },
@@ -20787,6 +21956,7 @@
             "polyspec_orm::db::ParsedDsn",
             "polyspec_orm::db::ParsedDsn::driver",
             "polyspec_orm::db::ParsedDsn::options",
+            "polyspec_orm::db::ParsedDsn::sql_driver",
             "polyspec_orm::db::ParsedDsn::zone",
             "polyspec_orm::db::Zone",
             "polyspec_orm::db::Zone::at",
@@ -20798,6 +21968,7 @@
             "polyspec_orm::markdown::MarkdownDsn",
             "polyspec_orm::markdown::MarkdownDsn::address",
             "polyspec_orm::markdown::MarkdownDsn::corpus",
+            "polyspec_orm::markdown::MarkdownDsn::pragmas",
             "polyspec_orm::markdown::MarkdownDsn::token"
           ]
         },
@@ -22275,16 +23446,45 @@
             "polyspec_orm::Db",
             "polyspec_orm::Db::driver",
             "polyspec_orm::Db::pool",
+            "polyspec_orm::Db::sql_driver",
             "polyspec_orm::db",
             "polyspec_orm::db::Db",
             "polyspec_orm::db::Db::driver",
             "polyspec_orm::db::Db::pool",
+            "polyspec_orm::db::Db::sql_driver",
             "polyspec_orm::db::Pool",
             "polyspec_orm::db::Pool::Markdown",
             "polyspec_orm::db::Pool::MySql",
             "polyspec_orm::db::Pool::Postgres",
             "polyspec_orm::db::Pool::Sqlite",
-            "polyspec_orm::markdown::MdPool"
+            "polyspec_orm::db::Pool::close",
+            "polyspec_orm::markdown::MarkdownColumn",
+            "polyspec_orm::markdown::MarkdownColumn::declared",
+            "polyspec_orm::markdown::MarkdownColumn::name",
+            "polyspec_orm::markdown::MarkdownHead",
+            "polyspec_orm::markdown::MarkdownHead::affected",
+            "polyspec_orm::markdown::MarkdownHead::columns",
+            "polyspec_orm::markdown::MarkdownHead::last_insert_id",
+            "polyspec_orm::markdown::MarkdownLease",
+            "polyspec_orm::markdown::MarkdownLease::bound",
+            "polyspec_orm::markdown::MarkdownLease::discard",
+            "polyspec_orm::markdown::MarkdownLease::raw",
+            "polyspec_orm::markdown::MarkdownLease::statement",
+            "polyspec_orm::markdown::MarkdownLease::statement_rows",
+            "polyspec_orm::markdown::MarkdownPool",
+            "polyspec_orm::markdown::MarkdownPool::acquire",
+            "polyspec_orm::markdown::MarkdownPool::close",
+            "polyspec_orm::markdown::MarkdownPool::connect",
+            "polyspec_orm::markdown::MarkdownResult",
+            "polyspec_orm::markdown::MarkdownResult::affected",
+            "polyspec_orm::markdown::MarkdownResult::columns",
+            "polyspec_orm::markdown::MarkdownResult::last_insert_id",
+            "polyspec_orm::markdown::MarkdownResult::rows",
+            "polyspec_orm::markdown::MarkdownServerError",
+            "polyspec_orm::markdown::MarkdownServerError::code",
+            "polyspec_orm::markdown::MarkdownServerError::result_code",
+            "polyspec_orm::markdown::wire_bytes",
+            "polyspec_orm::markdown::wire_float"
           ]
         },
         {
@@ -25561,6 +26761,49 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/parameter_chunking_sqlite.rs",
           "symbol": "parameter_chunking_sqlite"
+        }
+      ]
+    },
+    {
+      "id": "parameter_chunking-markdown",
+      "kind": "suite",
+      "requirements": [
+        "PLN-44",
+        "PRT-35",
+        "PRT-76",
+        "CFG-28",
+        "DIA-154"
+      ],
+      "file": "contracts/fixtures/parameter_chunking/parameter_chunking.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_parameter_chunking_test.go",
+          "symbol": "TestRecipeParameterChunkingMarkdown"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ParameterChunkingMarkdownTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ParameterChunkingMarkdownTest::testMarkdown"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ParameterChunkingMarkdownRecipeExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ParameterChunkingMarkdownRecipeExtensionTest::testMarkdown"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/parameter_chunking-markdown.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_parameter_chunking_markdown.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/parameter_chunking_markdown.rs",
+          "symbol": "parameter_chunking_markdown"
         }
       ]
     },
@@ -29473,12 +30716,7 @@
       "kind": "suite",
       "requirements": [
         "PRT-67",
-        "PRT-64",
-        "DIA-183",
-        "DIA-184",
-        "DIA-185",
-        "DIA-188",
-        "DIA-189"
+        "PRT-64"
       ],
       "file": "tests/bind/messages.json",
       "cases": "$.cases[*].id",
@@ -29510,6 +30748,45 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/bind_messages.rs",
           "symbol": "bind_messages"
+        }
+      ]
+    },
+    {
+      "id": "markdown-session",
+      "kind": "suite",
+      "requirements": [
+        "PRT-66"
+      ],
+      "file": "tests/markdown/session.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/bindmessages/markdown_session_test.go",
+          "symbol": "TestRecipeMarkdownSessionNone"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/MarkdownSessionRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\MarkdownSessionRecipeTest::testNone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/MarkdownSessionRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\MarkdownSessionRecipeTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/markdown_session.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_markdown_session_none.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/markdown_session.rs",
+          "symbol": "markdown_session"
         }
       ]
     },
@@ -29605,6 +30882,181 @@
         "feature": "model_writes",
         "part": "owner/python"
       }
+    },
+    {
+      "id": "markdown-message-raw-text-vectors",
+      "kind": "suite",
+      "requirements": [
+        "PRT-67"
+      ],
+      "file": "tests/bind/messages-raw-text.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/bindmessages/bind_messages_test.go",
+          "symbol": "TestRecipeBindMessagesRawTextNone"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/BindMessagesRawTextRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\BindMessagesRawTextRecipeTest::testNone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/BindMessagesRawTextRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\BindMessagesRawTextRecipeTestExtensionTest::testNone"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "interface_contract",
+        "parts": [
+          "owner/go",
+          "owner/php",
+          "owner/php-extension"
+        ]
+      }
+    },
+    {
+      "id": "raw_text-mysql",
+      "kind": "suite",
+      "requirements": [
+        "PRT-67"
+      ],
+      "file": "contracts/fixtures/raw_text/raw_text.json",
+      "cases": "$.cases[*].id",
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "model_writes",
+        "parts": [
+          "owner/go",
+          "owner/php",
+          "owner/php-extension"
+        ]
+      },
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_raw_text_test.go",
+          "symbol": "TestRecipeRawTextMysql"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RawTextRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\RawTextRecipeTest::testMysql"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RawTextRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\RawTextRecipeTestExtensionTest::testMysql"
+        }
+      ]
+    },
+    {
+      "id": "raw_text-postgres",
+      "kind": "suite",
+      "requirements": [
+        "PRT-67"
+      ],
+      "file": "contracts/fixtures/raw_text/raw_text.json",
+      "cases": "$.cases[*].id",
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "model_writes",
+        "parts": [
+          "owner/go",
+          "owner/php",
+          "owner/php-extension"
+        ]
+      },
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_raw_text_test.go",
+          "symbol": "TestRecipeRawTextPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RawTextRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\RawTextRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RawTextRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\RawTextRecipeTestExtensionTest::testPostgres"
+        }
+      ]
+    },
+    {
+      "id": "raw_text-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "PRT-67"
+      ],
+      "file": "contracts/fixtures/raw_text/raw_text.json",
+      "cases": "$.cases[*].id",
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "model_writes",
+        "parts": [
+          "owner/go",
+          "owner/php",
+          "owner/php-extension"
+        ]
+      },
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_raw_text_test.go",
+          "symbol": "TestRecipeRawTextSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RawTextRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\RawTextRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RawTextRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\RawTextRecipeTestExtensionTest::testSqlite"
+        }
+      ]
+    },
+    {
+      "id": "raw_text-markdown",
+      "kind": "suite",
+      "requirements": [
+        "PRT-67"
+      ],
+      "file": "contracts/fixtures/raw_text/raw_text.json",
+      "cases": "$.cases[*].id",
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "model_writes",
+        "parts": [
+          "owner/go",
+          "owner/php",
+          "owner/php-extension"
+        ]
+      },
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_raw_text_test.go",
+          "symbol": "TestRecipeRawTextMarkdown"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RawTextRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\RawTextRecipeTest::testMarkdown"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RawTextRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\RawTextRecipeTestExtensionTest::testMarkdown"
+        }
+      ]
     },
     {
       "id": "statement-subscriber-failure-preserves-error",
@@ -30710,6 +32162,7 @@
             "polyspec_orm_schema::sql",
             "polyspec_orm_schema::sql::split_sql",
             "polyspec_orm_build::tool_db::Conn::rollback",
+            "polyspec_orm_build::tool_db::Conn::Markdown",
             "polyspec_orm_build::tool_db::Val::Unsigned",
             "polyspec_orm_build::tool_db::Val::Binary",
             "polyspec_orm::db::stale_plan",
@@ -34153,6 +35606,8 @@
             "github.com/polyspec/orm/packages/go/engine/runtimemodel.Entity.Table",
             "github.com/polyspec/orm/packages/go/engine/runtimemodel.Entity.Uniques",
             "github.com/polyspec/orm/packages/go/engine/runtimemodel.Entity.Updated",
+            "github.com/polyspec/orm/packages/go/engine/runtimemodel.Entity.KeyPrefix",
+            "github.com/polyspec/orm/packages/go/engine/runtimemodel.Entity.Order",
             "github.com/polyspec/orm/packages/go/engine/runtimemodel.Field",
             "github.com/polyspec/orm/packages/go/engine/runtimemodel.Field.BlindIndex",
             "github.com/polyspec/orm/packages/go/engine/runtimemodel.Field.Codec",
@@ -34327,6 +35782,8 @@
             "polyspec_orm_schema::dbspec::Entity::table",
             "polyspec_orm_schema::dbspec::Entity::uniques",
             "polyspec_orm_schema::dbspec::Entity::updated",
+            "polyspec_orm_schema::dbspec::Entity::key_prefix",
+            "polyspec_orm_schema::dbspec::Entity::order",
             "polyspec_orm_schema::dbspec::Field::aes",
             "polyspec_orm_schema::dbspec::Field::blind_index",
             "polyspec_orm_schema::dbspec::Field::codec",
@@ -34364,7 +35821,9 @@
             "@polyspec/orm!Entity#identity:member",
             "@polyspec/orm!Entity#indexColumns:member",
             "@polyspec/orm!Entity#indexes:member",
+            "@polyspec/orm!Entity#keyPrefix:member",
             "@polyspec/orm!Entity#name:member",
+            "@polyspec/orm!Entity#order:member",
             "@polyspec/orm!Entity#primaryKey:member",
             "@polyspec/orm!Entity#softDelete:member",
             "@polyspec/orm!Entity#table:member",
@@ -36263,6 +37722,7 @@
             "github.com/polyspec/orm/packages/go/engine/planner.Planner.Compile",
             "github.com/polyspec/orm/packages/go/engine/planner.Planner.D",
             "github.com/polyspec/orm/packages/go/engine/planner.Planner.M",
+            "github.com/polyspec/orm/packages/go/engine/planner.Planner.Assigns",
             "github.com/polyspec/orm/packages/go/engine/dialect.ColumnFunctionArity",
             "github.com/polyspec/orm/packages/go/engine/dialect.ColumnFunctionTypes",
             "github.com/polyspec/orm/packages/go/engine/dialect.Dialect",
@@ -39319,6 +40779,7 @@
             "polyspec_orm::row::DriverRow::into_mysql",
             "polyspec_orm::row::DriverRow::is_empty",
             "polyspec_orm::row::DriverRow::len",
+            "polyspec_orm::row::DriverRow::Markdown",
             "polyspec_orm::row::Src",
             "polyspec_orm::row::Src::bool",
             "polyspec_orm::row::Src::date",
@@ -39335,7 +40796,20 @@
             "polyspec_orm::row::read_cell_pg",
             "polyspec_orm::row::read_cell_sqlite",
             "polyspec_orm::row::read_row",
-            "polyspec_orm::row::read_frame_row"
+            "polyspec_orm::row::read_frame_row",
+            "polyspec_orm::markdown::MarkdownCell",
+            "polyspec_orm::markdown::MarkdownCell::Null",
+            "polyspec_orm::markdown::MarkdownCell::Integer",
+            "polyspec_orm::markdown::MarkdownCell::Real",
+            "polyspec_orm::markdown::MarkdownCell::Text",
+            "polyspec_orm::markdown::MarkdownCell::TextBytes",
+            "polyspec_orm::markdown::MarkdownCell::Blob",
+            "polyspec_orm::markdown::MarkdownCell::val",
+            "polyspec_orm::markdown::MarkdownRow",
+            "polyspec_orm::markdown::MarkdownRow::len",
+            "polyspec_orm::markdown::MarkdownRow::is_empty",
+            "polyspec_orm::markdown::MarkdownRow::column_name",
+            "polyspec_orm::markdown::MarkdownRow::cell"
           ]
         }
       ]
@@ -40397,6 +41871,81 @@
       ]
     },
     {
+      "id": "dbspec_introspect-markdown",
+      "kind": "suite",
+      "requirements": [
+        "PLN-102",
+        "DBS-42",
+        "DBS-84",
+        "DBS-94",
+        "DIA-110",
+        "DIA-111",
+        "DIA-112",
+        "DIA-133",
+        "DIA-134",
+        "DIA-135",
+        "DIA-136",
+        "DIA-137",
+        "DIA-138",
+        "DIA-139",
+        "DIA-140",
+        "DIA-141",
+        "DIA-142",
+        "DIA-143",
+        "DIA-144",
+        "DIA-145",
+        "DIA-146",
+        "DIA-147",
+        "DIA-148",
+        "DIA-149",
+        "DIA-150",
+        "DIA-151",
+        "DIA-152",
+        "DIA-153",
+        "DIA-198",
+        "DIA-39",
+        "DIA-44",
+        "DIA-49",
+        "DIA-50",
+        "DIA-59",
+        "DIA-71",
+        "FCV-2",
+        "DIA-154"
+      ],
+      "file": "contracts/fixtures/dbspec_introspect/dbspec_introspect.json",
+      "cases": "$.cases_on.markdown[*]",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_introspect_test.go",
+          "symbol": "TestRecipeDbspecIntrospectMarkdown"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecIntrospectRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecIntrospectRecipeTest::testMarkdown"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecIntrospectRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecIntrospectRecipeTestExtensionTest::testMarkdown"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_introspect-markdown.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_introspect_markdown.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_introspect_markdown.rs",
+          "symbol": "dbspec_introspect_markdown"
+        }
+      ]
+    },
+    {
       "id": "php-dbspec-apply-drift-error-fields",
       "kind": "feature",
       "requirements": [
@@ -40689,6 +42238,72 @@
       ]
     },
     {
+      "id": "schema_install-markdown",
+      "kind": "suite",
+      "requirements": [
+        "DBS-104",
+        "DBS-107",
+        "DBS-108",
+        "DBS-119",
+        "DBS-120",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14",
+        "FCV-8",
+        "FCV-9",
+        "INT-132",
+        "INT-133",
+        "INT-54",
+        "INT-55",
+        "INT-56",
+        "INT-57",
+        "INT-58",
+        "PLN-44",
+        "SCH-10",
+        "SCH-11",
+        "SCH-13",
+        "SCH-7",
+        "SCH-8",
+        "SCH-9",
+        "DIA-154",
+        "DIA-189"
+      ],
+      "file": "contracts/fixtures/schema_install/schema_install.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_schema_install_test.go",
+          "symbol": "TestRecipeSchemaInstallMarkdown"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/SchemaInstallRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\SchemaInstallRecipeTest::testMarkdown"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/SchemaInstallRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\SchemaInstallRecipeTestExtensionTest::testMarkdown"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/schema_install-markdown.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_schema_install_markdown.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/schema_install_markdown.rs",
+          "symbol": "schema_install_markdown"
+        }
+      ]
+    },
+    {
       "id": "coverage-schema-install-bench",
       "kind": "feature",
       "requirements": [
@@ -40757,6 +42372,8 @@
         "PLN-11",
         "PLN-25",
         "PRT-35",
+        "COD-41",
+        "PRT-68",
         "FCV-8",
         "FCV-9",
         "FCV-10",
@@ -40821,6 +42438,8 @@
         "PLN-11",
         "PLN-25",
         "PRT-35",
+        "COD-41",
+        "PRT-68",
         "FCV-8",
         "FCV-9",
         "FCV-10",
@@ -40885,6 +42504,8 @@
         "PLN-11",
         "PLN-25",
         "PRT-35",
+        "COD-41",
+        "PRT-68",
         "FCV-8",
         "FCV-9",
         "FCV-10",
@@ -40923,6 +42544,74 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/model_queries_sqlite.rs",
           "symbol": "model_queries_sqlite"
+        }
+      ]
+    },
+    {
+      "id": "model_queries-markdown",
+      "kind": "suite",
+      "requirements": [
+        "DSL-57",
+        "DSL-58",
+        "DSL-60",
+        "DSL-62",
+        "DSL-73",
+        "DSL-74",
+        "DSL-76",
+        "DSL-80",
+        "DSL-82",
+        "DSL-99",
+        "INT-16",
+        "INT-29",
+        "INT-30",
+        "INT-31",
+        "INT-32",
+        "INT-33",
+        "PLN-11",
+        "PLN-25",
+        "PRT-35",
+        "COD-41",
+        "PRT-66",
+        "PRT-68",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14",
+        "DIA-154"
+      ],
+      "file": "contracts/fixtures/model_queries/model_queries.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_model_queries_test.go",
+          "symbol": "TestRecipeModelQueriesMarkdown"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelQueriesRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ModelQueriesRecipeTest::testMarkdown"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelQueriesRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ModelQueriesRecipeTestExtensionTest::testMarkdown"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model_queries-markdown.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_queries_markdown.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/model_queries_markdown.rs",
+          "symbol": "model_queries_markdown"
         }
       ]
     },
@@ -41130,6 +42819,76 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/model_queries_chain_sqlite.rs",
           "symbol": "model_queries_chain_sqlite"
+        }
+      ]
+    },
+    {
+      "id": "model_queries_chain-markdown",
+      "kind": "suite",
+      "requirements": [
+        "PRT-40",
+        "INT-11",
+        "DSL-57",
+        "DSL-58",
+        "DSL-60",
+        "DSL-62",
+        "DSL-73",
+        "DSL-74",
+        "DSL-76",
+        "DSL-80",
+        "DSL-82",
+        "DSL-90",
+        "DSL-99",
+        "INT-16",
+        "INT-29",
+        "INT-30",
+        "INT-31",
+        "INT-32",
+        "INT-33",
+        "INT-36",
+        "INT-87",
+        "PLN-11",
+        "PLN-25",
+        "PRT-35",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14",
+        "DIA-154"
+      ],
+      "file": "contracts/fixtures/model_queries_chain/model_queries_chain.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_model_queries_chain_test.go",
+          "symbol": "TestRecipeModelQueriesChainMarkdown"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelQueriesChainRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ModelQueriesChainRecipeTest::testMarkdown"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelQueriesChainRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ModelQueriesChainRecipeTestExtensionTest::testMarkdown"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model_queries_chain-markdown.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_queries_chain_markdown.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/model_queries_chain_markdown.rs",
+          "symbol": "model_queries_chain_markdown"
         }
       ]
     },
@@ -41355,6 +43114,54 @@
       ]
     },
     {
+      "id": "constraints_and_relations-markdown",
+      "kind": "suite",
+      "requirements": [
+        "CFG-33",
+        "INT-87",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14",
+        "DIA-154"
+      ],
+      "file": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json",
+      "cases": "$.cases_on.markdown[*]",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_constraints_and_relations_test.go",
+          "symbol": "TestRecipeConstraintsAndRelationsMarkdown"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConstraintsAndRelationsRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ConstraintsAndRelationsRecipeTest::testMarkdown"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConstraintsAndRelationsRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ConstraintsAndRelationsRecipeTestExtensionTest::testMarkdown"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/constraints_and_relations-markdown.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_constraints_and_relations_markdown.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/constraints_and_relations_markdown.rs",
+          "symbol": "constraints_and_relations_markdown"
+        }
+      ]
+    },
+    {
       "id": "immutable_write-sqlite",
       "kind": "suite",
       "requirements": [
@@ -41391,6 +43198,47 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/immutable_write_sqlite.rs",
           "symbol": "immutable_write_sqlite"
+        }
+      ]
+    },
+    {
+      "id": "immutable_write-markdown",
+      "kind": "suite",
+      "requirements": [
+        "PRT-79",
+        "DBS-84",
+        "DIA-154"
+      ],
+      "file": "contracts/fixtures/immutable_write/immutable_write.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_immutable_write_test.go",
+          "symbol": "TestRecipeImmutableWriteMarkdown"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ImmutableWriteRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ImmutableWriteRecipeTest::testMarkdown"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ImmutableWriteRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ImmutableWriteRecipeTestExtensionTest::testMarkdown"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/immutable_write-markdown.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_immutable_write_markdown.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/immutable_write_markdown.rs",
+          "symbol": "immutable_write_markdown"
         }
       ]
     },
@@ -41515,6 +43363,48 @@
       ]
     },
     {
+      "id": "external_audit-markdown",
+      "kind": "suite",
+      "requirements": [
+        "SCH-14",
+        "DBS-110",
+        "DIA-154",
+        "DIA-183"
+      ],
+      "file": "contracts/fixtures/external_audit/external_audit.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_external_audit_test.go",
+          "symbol": "TestRecipeExternalAuditMarkdown"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ExternalAuditRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ExternalAuditRecipeTest::testMarkdown"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ExternalAuditRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ExternalAuditRecipeTestExtensionTest::testMarkdown"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/external_audit-markdown.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_external_audit_markdown.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/external_audit_markdown.rs",
+          "symbol": "external_audit_markdown"
+        }
+      ]
+    },
+    {
       "id": "catalog_connection-sqlite-only",
       "kind": "suite",
       "requirements": [
@@ -41550,6 +43440,45 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/catalog_connection_sqlite_only.rs",
           "symbol": "catalog_connection_sqlite_only"
+        }
+      ]
+    },
+    {
+      "id": "catalog_connection-sqlite-only-markdown",
+      "kind": "suite",
+      "requirements": [
+        "INT-103"
+      ],
+      "file": "contracts/fixtures/catalog_connection/catalog_connection-sqlite-only.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_catalog_connection_sqlite_only_test.go",
+          "symbol": "TestRecipeCatalogConnectionSqliteOnlyMarkdown"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CatalogConnectionSqliteOnlyRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\CatalogConnectionSqliteOnlyRecipeTest::testMarkdown"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CatalogConnectionSqliteOnlyRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionSqliteOnlyRecipeTestExtensionTest::testMarkdown"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite-only-markdown.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_sqlite_only_markdown.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite_only_markdown.rs",
+          "symbol": "catalog_connection_sqlite_only_markdown"
         }
       ]
     },
@@ -41737,6 +43666,69 @@
       ]
     },
     {
+      "id": "transactions-markdown",
+      "kind": "suite",
+      "requirements": [
+        "CFG-6",
+        "CFG-24",
+        "DSL-118",
+        "DSL-119",
+        "DSL-123",
+        "DSL-125",
+        "DSL-126",
+        "INT-40",
+        "INT-41",
+        "INT-42",
+        "INT-43",
+        "INT-45",
+        "INT-46",
+        "INT-48",
+        "INT-49",
+        "INT-72",
+        "PLN-13",
+        "PLN-16",
+        "PLN-17",
+        "PLN-20",
+        "PLN-21",
+        "PLN-24",
+        "PLN-44",
+        "DIA-154",
+        "DIA-184"
+      ],
+      "file": "contracts/fixtures/transactions/transactions.json",
+      "cases": "$.cases_on.markdown[*]",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_transactions_test.go",
+          "symbol": "TestRecipeTransactionsMarkdown"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/TransactionsRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\TransactionsRecipeTest::testMarkdown"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\TransactionsRecipeTestExtensionTest::testMarkdown"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/transactions-markdown.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_transactions_markdown.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/transactions_markdown.rs",
+          "symbol": "transactions_markdown"
+        }
+      ]
+    },
+    {
       "id": "audit_triggers-mysql",
       "kind": "suite",
       "requirements": [
@@ -41895,6 +43887,62 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/audit_triggers_sqlite.rs",
           "symbol": "audit_triggers_sqlite"
+        }
+      ]
+    },
+    {
+      "id": "audit_triggers-markdown",
+      "kind": "suite",
+      "requirements": [
+        "CFG-8",
+        "DBS-117",
+        "DBS-67",
+        "DBS-85",
+        "DBS-87",
+        "DBS-88",
+        "DBS-89",
+        "DBS-93",
+        "DBS-94",
+        "DBS-96",
+        "DIA-161",
+        "DSL-118",
+        "DSL-119",
+        "DSL-126",
+        "INT-38",
+        "INT-44",
+        "DIA-154",
+        "DIA-183"
+      ],
+      "file": "contracts/fixtures/audit_triggers/audit_triggers.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_audit_triggers_test.go",
+          "symbol": "TestRecipeAuditTriggersMarkdown"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AuditTriggersRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\AuditTriggersRecipeTest::testMarkdown"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AuditTriggersRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\AuditTriggersRecipeTestExtensionTest::testMarkdown"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/audit_triggers-markdown.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_audit_triggers_markdown.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/audit_triggers_markdown.rs",
+          "symbol": "audit_triggers_markdown"
         }
       ]
     },
@@ -42341,6 +44389,50 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/composite_keys_sqlite.rs",
           "symbol": "composite_keys_sqlite"
+        }
+      ]
+    },
+    {
+      "id": "composite_keys-markdown",
+      "kind": "suite",
+      "requirements": [
+        "DSL-82",
+        "INT-87",
+        "PRT-12",
+        "PRT-40",
+        "CPX-4",
+        "DIA-154"
+      ],
+      "file": "contracts/fixtures/composite_keys/composite_keys.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_composite_keys_test.go",
+          "symbol": "TestRecipeCompositeKeysMarkdown"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CompositeKeysRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\CompositeKeysRecipeTest::testMarkdown"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CompositeKeysRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CompositeKeysRecipeTestExtensionTest::testMarkdown"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/composite_keys-markdown.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_composite_keys_markdown.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/composite_keys_markdown.rs",
+          "symbol": "composite_keys_markdown"
         }
       ]
     },
@@ -42926,24 +45018,9 @@
       "id": "collection-recipe",
       "kind": "suite",
       "requirements": [
-        "INT-1",
         "INT-11",
-        "INT-62",
         "INT-63",
-        "INT-68",
-        "INT-69",
-        "INT-70",
-        "INT-71",
-        "INT-80",
-        "INT-81",
-        "INT-84",
-        "INT-86",
-        "INT-90",
-        "PRT-36",
-        "PRT-35",
-        "PRT-69",
-        "INT-82",
-        "INT-83"
+        "PRT-35"
       ],
       "file": "tests/collection/collection.json",
       "cases": "$.cases[*].id",

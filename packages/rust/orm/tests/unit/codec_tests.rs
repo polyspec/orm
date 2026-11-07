@@ -25,7 +25,7 @@ fn malformed_serialize_preserves_parser_cause_message() {
     let error = decode(&["base64".into()], &Val::Bytes(vec![0xff])).expect_err("invalid UTF-8 bytes must fail");
     assert!(error.to_string().contains("base64 input is not UTF-8: "), "{error}");
     let error = host_decode(&Val::Bytes(vec![0xff]), &["hex".into()], "").expect_err("invalid hex input must fail");
-    assert!(error.to_string().contains("hex input is not UTF-8: "), "{error}");
+    assert_eq!(error.to_string(), "CODEC_DECODE: hex: odd length or non-hex input");
 
     let error = host_decode(&Val::Bytes(b"not-an-aes-envelope".to_vec()), &["aes".into()], "key").expect_err("malformed AES envelope must fail");
     assert!(error.to_string().contains("aes: "), "{error}");
