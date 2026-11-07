@@ -4,7 +4,8 @@
   "comment": "Kit gates install each runtime from its pinned lock; the php-ext job prepares its database servers and run-owned fixtures in an isolated job context.",
   "setup": {
     "shared": [
-      "orm-install-go-lease"
+      "orm-install-go-lease",
+      "orm-install-go-codes"
     ],
     "runtimes": {
       "go": [

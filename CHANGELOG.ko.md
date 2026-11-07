@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e7c9daaec4a7318d5d74eefcf7eac782f9797d0dac8b87740aa47efa231be33d -->
+<!-- source-sha256: c482571343328e364082ea2722704281fb4fc923d5e2ba3aab84eae8dc3825de -->
 # 변경 이력
 
 ## Unreleased
 
+- CI: 독립 native 검사와 setup을 runtime group에 배치하고 전용 target이 실행하는 native case를 전체 실행에서 제외하며 여러 group이 호출하는 검사를 탐지하고 generator module을 각 검사 대신 설치 단계에서 준비한다 (T388).
 - orm은 parity를 지우는 kit 0.0.101을 채택한다(T400): contracts/implementations.json은 여섯 구현을 root, test glob, support 파일, internal 시험과 함께 선언하고, 그 inventory의 모든 test 파일은 자기 runtime의 target에서 실행된다. PHP, TypeScript, Python 파일은 각자 CI group을 가진 새 suite-php-check, suite-typescript-check, suite-python-check에서, Go, Rust, PHP extension은 예전처럼 client target에서 실행된다. config/parity.json, parity job과 gate, divergence-check, test-markers-check, recipe의 key cases_on을 지우고, recipe schema는 ir.param_uses와 planner.columns의 expect를 적는다. feature unit 없는 FCV-2 native 규칙의 검사는 보류된 row T400-1이다.
 - orm은 0.0.98의 동작을 유지한 채 kit 0.0.99를 채택한다(T399): 각 recipe는 0.0.98이 기본으로 정하던 값을 넘기고, kit-check은 gate에서 빠지며, config/duplication.json과 config/generated.json은 0.0.98이 고정한 값을 선언한다. build-go, build-ts, build-rust는 run-long 아래에서 실행되고 build-rust는 공유 Rust target 폴더에 그 lease 아래에서 빌드한다. 전에는 0.0.98이 둘 다 없이 runtime-targets 안에서 실행했다.
 - Go, Rust, TypeScript, Python, PHP, PHP 확장에서 lookahead 페이지는 자기 끝 너머의 행 하나를 더 읽고 아무것도 세지 않는다(INT-164, T394). `getsLookaheadPage(page, perPage)`는 model의 `LookaheadPage`를, `groupBy` 체인의 `getsCountLookaheadPage(page, perPage)`는 `group_count` group 행의 `GroupLookaheadPage`를 반환하며, 각각 `items`, `page`, `perPage`, `hasNext`를 가지고 total은 없다. 각각 요청 kind `lookahead_paginate` 또는 `group_lookahead_paginate`, 곧 `LIMIT perPage + 1`을 가진 문장 하나를 실행한다. 추가 행은 `hasNext`만 정하고, relation 단계는 그것을 뺀 페이지의 부모를 읽으며, 끝을 지난 페이지는 비어 있고 `hasNext`가 false이고, 순서가 없는 체인은 primary key나 `group_by` 컬럼의 오름차순으로 정렬한다. `getsPage`와 group 체인에 대한 그 거부는 바뀌지 않는다.
