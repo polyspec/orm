@@ -1277,7 +1277,7 @@
     "contracts/fixtures/**/!(dbspec-set).json",
     "tests/codec/*.json",
     "tests/collection/collection.json",
-    "tests/dbspec/!(introspect|ddl|plans-physical).json",
+    "tests/dbspec/!(introspect|ddl|plans-physical|show-create).json",
     "tests/dsn/sqlite-paths.json",
     "tests/ir/*.json",
     "tests/markdown/*.json",
@@ -12661,45 +12661,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/dbspec_render_statements_none.rs",
           "symbol": "dbspec_render_statements_none"
-        }
-      ]
-    },
-    {
-      "id": "dbspec-show-create",
-      "kind": "suite",
-      "requirements": [
-        "DIA-84"
-      ],
-      "file": "tests/dbspec/show-create.json",
-      "cases": "$.cases[*].id",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/dbspec/show_create_test.go",
-          "symbol": "TestMySQLShownCheckVectors"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecShowCreateTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\DbspecShowCreateTest::testShowCreate"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecShowCreateIntrospectTestExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecShowCreateIntrospectTestExtensionTest::testNone"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create.mjs"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_show_create.py"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_show_create_introspect_none.rs",
-          "symbol": "dbspec_show_create_introspect_none"
         }
       ]
     },

@@ -15,6 +15,7 @@ import { declaredNeeds } from './check/inputs.mts';
 import { makeTargets } from './repo/testcases.mts';
 import { COMMANDS as PERF_COMMANDS } from './perf-test.mts';
 import { readFeatures, type CoverageOwner, type Language, type NativeCommand } from './features/manifest.mts';
+import { matchesAny } from '@polyspec/kit/glob';
 
 const root = resolve(import.meta.dirname, '..');
 const repeatedMemberCase = 'ordered_json_keeps_a_repeated_member_name';
@@ -262,4 +263,51 @@ caseTest('the Go client job does not install PHP or Python for cross-runtime che
   const outputs = groupOutputs(groups.client_db_go ?? [], declaredNeeds(root));
   for (const runtime of ['php', 'python', 'rust', 'php-extension-tools']) assert.equal(outputs[runtime], false, runtime);
   assert.equal(outputs.go, true);
+});
+
+caseTest('SHOW CREATE parity observes public results while private parser checks keep their native owners', COMPUTE, () => {
+  const parity = readParityConfig(resolve(root, 'config/parity.json'));
+  assert.equal(parity.units.some(unit => unit.id === 'dbspec-show-create'), false,
+    'a private parser observation must not be declared as a shared public recipe run');
+  assert.equal(matchesAny(parity.suites ?? [], 'tests/dbspec/show-create.json'), false, 'the raw vector input is not another public suite');
+  const reader = parity.units.find(unit => unit.id === 'dbspec-show-create-reader-text');
+  assert.ok(reader, 'the separately restored reader-text evidence remains declared');
+  assert.ok(reader.requirements?.includes('DIA-84'));
+  const publicSuite = parity.units.find(unit => unit.id === 'dbspec-show-create-check-body');
+  assert.ok(publicSuite);
+  assert.deepEqual(publicSuite.bindings?.map(binding => binding.implementation), parity.implementations.map(implementation => implementation.name));
+  const privateFiles: Record<string, string> = {
+    go: 'packages/go/engine/dbspec/show_create_test.go',
+    php: 'packages/php/tests/DbspecShowCreateTest.php',
+    typescript: 'packages/ts/tests/dbspec-show-create.mjs',
+    python: 'packages/python/tests/test_dbspec_show_create.py',
+    rust: 'packages/rust/schema/src/dbspec/introspect/mysql.rs',
+  };
+  for (const [runtime, file] of Object.entries(privateFiles)) {
+    assert.ok(reader.bindings?.some(binding => binding.implementation === runtime && binding.test === file), `${runtime}: its specification-backed parser test stays bound`);
+    assert.ok(existsSync(resolve(root, file)), `${runtime}: its native test is preserved`);
+  }
+  const makefile = readFileSync(resolve(root, 'Makefile'), 'utf8');
+  const targets = makeTargets(makefile);
+  const runs = (target: string, selected: string) => assert.ok(targets.find(entry => entry.target === target)?.commands.some(command => command.includes(selected)), `${target} runs ${selected}`);
+  assert.ok(GO_LANE_PACKAGES.includes('./packages/go/engine/dbspec'));
+  assert.equal(new RegExp(goLaneSkip(false)).test('TestMySQLShownCheckVectors'), false);
+  runs('dbspec-php-check/show-create', privateFiles.php ?? '');
+  runs('dbspec-ts-check', privateFiles.typescript ?? '');
+  runs('dbspec-rust-check/show-create/unit', '-p polyspec-orm-schema --lib show_create_tests');
+  runs('python-unit-check', '$(PYTHON_UNIT_MODULES)');
+  const dedicated = /^PYTHON_DEDICATED_MODULES = (.*)$/m.exec(makefile)?.[1]?.split(/\s+/) ?? [];
+  assert.equal(dedicated.includes('packages.python.tests.test_dbspec_show_create'), false);
+  const scheduled = Object.values(ciGroups(makefile).targets).flat();
+  const features = readFeatures(root).features;
+  const reaches = (target: string, wanted: string, seen = new Set<string>()): boolean => {
+    if (target === wanted) return true;
+    if (seen.has(target)) return false;
+    seen.add(target);
+    return targets.filter(entry => entry.target === target).flatMap(entry => entry.prerequisites).some(child => reaches(child, wanted, seen));
+  };
+  for (const target of ['client-db-go-check', 'dbspec-php-check', 'dbspec-ts-check', 'dbspec-rust-check', 'python-unit-check']) {
+    const verified = features.some(feature => feature.verification.some(command => command.command === `make ${target}` && scheduled.includes(`feature-verify-${command.shard}`)));
+    assert.ok(scheduled.some(parent => reaches(parent, target)) || verified, `${target} runs in a CI group or its feature verification`);
+  }
 });

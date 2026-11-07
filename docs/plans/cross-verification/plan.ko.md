@@ -1,5 +1,5 @@
 <!-- doc-id: plan-cross-verification -->
-<!-- source-sha256: efc495aa3adf106ee0839f91dabe79ca507e821919c98e24b0c8235697da822b -->
+<!-- source-sha256: 51d7504d3175c065afe24e1fce434d60b3f37c47b2788f97871e67b62c664549 -->
 # corpus SQLite 연결의 여섯 runtime과 네 database 교차 검증
 
 [English](plan.md)
@@ -296,3 +296,25 @@ f62673f12 (CR15-F)에서 들어왔다.
 찾지 못했다. 이 비교는 feature와 suite unit 사이의 중복이나 서로 다른 command가 같은
 case를 실행하는 경우를 검출하지 않는다. Local 상세 결과는
 var/ci-plans/parity-shared-suite-bindings.json이다.
+
+### SHOW CREATE 선언 수정
+
+오래된 dbspec-show-create suite를 제거하고 show-create.json을 별도 suite가 아닌 입력
+데이터로 분류한다. DIA-84 요구사항과 native binding을 가진 dbspec-show-create-reader-text는
+유지한다. Private 시험을 implementation.internal로 옮기거나 요구사항 annotation을
+삭제하지 않는다. Native 실행 경로도 유지한다. Go client package 실행, PHP show-create
+검사, TypeScript dbspec 검사, Python의 발견한 general module, Rust schema의
+show_create_tests 검사다. PHP, TypeScript, Rust는 scheduled shard에 선언된 feature
+verification command로도 이 검사에 도달한다.
+
+회귀 시험은 이 실행 경로와 공개 recipe의 여섯 implementation binding을 확인한다.
+Client-runner 단위 case 16개와 native 선언 checker 단위 case 10개가 통과한다.
+Kit의 정적 readDeclaration은 오류가 없고 저장소의 실제 native-bound 검사와
+unbound-native-test 검사도 오류가 없다. TypeScript type 검사도 통과한다.
+Local에서 native 시험은 실행하지 않았다.
+
+남은 PHP-extension reader-text feature binding은 여전히 공개 recipe를 선택한다.
+이번 수정은 중복 suite 하나를 제거한 것이며 별도 PHP-extension 원문 관찰 결과를
+입증하지 않는다. 시험의 적용 대상과 필요한 공통 관찰을 선언으로 해결한 뒤
+SHOW CREATE 조사를 완료로 판단해야 한다. 남은 문제를 조사하는 동안 native 시험
+source와 요구사항의 연결을 보존한다.

@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a3cd6e4b061e99140e6f66d5fc45741ed1acee21bde5c06c1f80b125a10b7be7 -->
+<!-- source-sha256: 290ae6439bca7aad077942a467dac2f4097d3cfd1ab85645df1d1504cdd40080 -->
 # 변경 이력
 
 ## Unreleased
+
+- CI: SHOW CREATE 입력 fixture를 중복 parity suite에서 제거하고 별도 reader-text 시험과 native 실행 경로를 보존하며 공개 결과와 parser 원문 관찰을 구분한다 (T388).
 
 - CI: job·setup 선언을 미리 보고 Go·Rust 시험 helper를 실행 없이 펼치며 공통 선언 검사와 TypeScript schema 준비를 유지하면서 API catalog 읽기를 선택한 runtime으로 제한하고 cross-runtime Go 검사를 cross-runtime job에 배치한다 (T388).
 

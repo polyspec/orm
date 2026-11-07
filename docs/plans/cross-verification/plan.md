@@ -313,3 +313,24 @@ this SHOW CREATE pair in Rust and in the PHP extension. No identical suite-bindi
 found in Go, PHP, TypeScript or Python. This comparison does not detect overlap between feature
 and suite units or different commands that execute the same cases. The local detail is
 var/ci-plans/parity-shared-suite-bindings.json.
+
+### SHOW CREATE declaration correction
+
+Remove the obsolete dbspec-show-create suite and classify show-create.json as input data, not
+a second suite. Keep dbspec-show-create-reader-text with its DIA-84 requirement and its native
+bindings. The private tests are not moved to implementation.internal and no requirement annotation
+is removed. Their native execution paths remain: the Go client package run, the PHP show-create
+check, the TypeScript dbspec check, Python's discovered general modules, and Rust's schema
+show_create_tests check. PHP, TypeScript and Rust also reach these checks through declared
+feature verification commands in their scheduled shards.
+
+The regression verifies these paths and the public recipe's bindings for all six implementations.
+The 16 client-runner unit cases and 10 native-declaration checker unit cases pass. Kit's static
+readDeclaration reports no errors; the repository's actual native-bound and unbound-native-test
+checks report no errors. TypeScript type checking passes. No native tests were executed locally.
+
+The remaining PHP-extension reader-text feature binding still selects the public recipe. This
+correction removes one redundant suite; it does not establish a distinct PHP-extension raw-text
+observation. Test applicability and the required shared observations must be resolved declaratively
+before claiming the SHOW CREATE audit complete. The native test source and the requirement
+connection are preserved while that remaining issue is investigated.
