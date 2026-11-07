@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 8557348e93d602a9c6d1f00a683d617078d0a571a5a56699744689c305108cab -->
+<!-- source-sha256: bb0807ca176dc29a2db39dec150d394605a3e02dbab9c253580dd2a6fa396e5a -->
 # 변경 이력
 
 ## Unreleased
+
+- CI: 공개된 Kit 0.0.96 archive와 integrity를 고정하고 독립 계획·binding별 setup workflow를 동기화한다 (T388).
 
 - CI: parity binding마다 tool과 setup을 선언하고 다른 runtime 설치 없이 공통 database fixture 의존성을 유지하며 fixture 소비자가 최신 출력을 요구할 때 TypeScript client만 build한다 (T388).
 

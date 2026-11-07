@@ -432,3 +432,9 @@ A read-only audit through the installed Kit command planner finds 569 Go native 
 The next compiled-test work must prepare compatible outputs in repository-owned native build steps, preserve each native selector and fixture, and execute those outputs without asking Kit to manage artifacts or replaying saved results. Combining native binaries or converting compiler/host observations into recipe operations is not required to build compatible targets together. Actual build counts, complete case coverage and elapsed time still need CI evidence.
 
 The corrected Kit candidate a00e04e08c57ea6dc46175a22efbad9a37a647fb is running CI 42361318294. It includes K1028 removing the lint assertions and K1029 separating planning from independent checks; 42 setup/workflow unit cases pass. Publication, the pinned ORM update and consumer CI remain pending.
+
+### Published Kit adoption
+
+Kit CI 42362321849 succeeded at a89540d36243995d2f9530f3dd514b3d7ea157da. Release workflow 42362755002 published v0.0.96; the annotated tag resolves to that exact commit. The public polyspec-kit-0.0.96.tgz is 521,534 bytes, with SHA-256 b7fc69c9136de29b964e57f8abd701f38ed6c9c22befa837b99d494803d0a4c8. The downloaded archive's digest, package version and shipped workflow/bootstrap sources were checked before adoption.
+
+The native npm install updates only the Kit URL/version/integrity entries in package.json and package-lock.json; Kit sync updates only .github/workflows/ci-pipeline.yml. The lock's SHA-512 is checked against the downloaded archive. Native npm requires --allow-remote=root for this explicit root asset dependency, the same option as the locked CI bootstrap; no global fetch policy changes. ORM remains 0.0.22, with no ORM release or CI dispatch yet.

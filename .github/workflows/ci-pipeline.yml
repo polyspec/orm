@@ -1,8 +1,8 @@
 # The CI pipeline of kit in a repository that adopts it (K270, K910). kit-sync copies this file from the installed package
 # @polyspec/kit to .github/workflows/ci-pipeline.yml, and kit-check fails when the checkout differs from it; a repository never
 # edits it. The repository's own .github/workflows/ci.yml holds the triggers and the concurrency and calls it as a job
-# (`uses: ./.github/workflows/ci-pipeline.yml`), so one push runs one workflow: shared first, then the parity and runtime jobs in
-# parallel, then required. Each job installs only its own locked prerequisites, declared in config/ci.json or selected from the
+# (`uses: ./.github/workflows/ci-pipeline.yml`), so one push runs one workflow: plan first, then independent shared, parity and
+# runtime checks, then required. Each job installs only its own locked prerequisites, declared in config/ci.json or selected from the
 # repository's deps-<runtime> targets (K859), and runs kit's gate of its group with the targets that config/ci.json declares for
 # that group (targets.shared, targets.parity, targets.runtimes.<runtime>) through make ci-targets, inside its context window.
 name: ci-pipeline
@@ -14,10 +14,12 @@ permissions:
   contents: read
 
 jobs:
-  # The shared job writes the plan that names the runner of the other jobs (config/ci.json runner), so it runs on the default runner.
-  shared:
+  # Only plan data is shared between jobs; checks use their own checkout, setup and context.
+  plan:
     runs-on: ubuntu-24.04
     outputs:
+      common_tools: ${{ steps.plan.outputs.common_tools }}
+      shared_targets: ${{ steps.plan.outputs.shared_targets }}
       runtimes: ${{ steps.plan.outputs.runtimes }}
       runner: ${{ steps.plan.outputs.runner }}
       parity_mode: ${{ steps.plan.outputs.parity_mode }}
@@ -34,22 +36,31 @@ jobs:
       - uses: ./.github/actions/kit-bootstrap
       - id: plan
         run: make kit-ci-plan
+
+  shared:
+    needs: [plan]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/kit-bootstrap
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
-        if: ${{ contains(steps.plan.outputs.common_tools, 'php') }}
+        if: ${{ contains(needs.plan.outputs.common_tools, 'php') }}
         with:
           php-version-file: .php-version
           tools: none
           coverage: none
       - name: install common gate tools
-        if: ${{ steps.plan.outputs.common_tools != '[]' }}
-        run: make install-tools TOOLS="${{ join(fromJSON(steps.plan.outputs.common_tools), ' ') }}"
+        if: ${{ needs.plan.outputs.common_tools != '[]' }}
+        run: make install-tools TOOLS="${{ join(fromJSON(needs.plan.outputs.common_tools), ' ') }}"
       - name: install shared prerequisites
         run: make kit-ci-setup GROUP=shared
       - id: context_prepare
         name: prepare shared CI context
         run: make kit-ci-context-prepare GROUP=shared
       - name: shared gates
-        run: make ci-targets TARGETS="kit-gates-static ${{ join(fromJSON(steps.plan.outputs.shared_targets), ' ') }}"
+        run: make ci-targets TARGETS="kit-gates-static ${{ join(fromJSON(needs.plan.outputs.shared_targets), ' ') }}"
       - name: cleanup shared CI context
         if: ${{ always() && steps.context_prepare.outcome != 'skipped' }}
         run: make kit-ci-context-cleanup GROUP=shared
@@ -63,15 +74,15 @@ jobs:
           if-no-files-found: ignore
 
   parity:
-    needs: shared
-    if: ${{ needs.shared.outputs.parity_mode == 'full' }}
-    runs-on: ${{ needs.shared.outputs.runner }}
+    needs: [plan]
+    if: ${{ needs.plan.outputs.parity_mode == 'full' }}
+    runs-on: ${{ needs.plan.outputs.runner }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
-        if: ${{ contains(needs.shared.outputs.parity_tools, 'php') }}
+        if: ${{ contains(needs.plan.outputs.parity_tools, 'php') }}
         with:
           php-version-file: .php-version
           tools: none
@@ -79,18 +90,18 @@ jobs:
       # The bootstrap of kit (K992): the Node.js of mise.toml, the locked kit package, the npm of var/tools and the packages.
       - uses: ./.github/actions/kit-bootstrap
       - name: install parity toolchains
-        if: ${{ needs.shared.outputs.parity_tools != '[]' }}
-        run: make install-tools TOOLS="${{ join(fromJSON(needs.shared.outputs.parity_tools), ' ') }}"
+        if: ${{ needs.plan.outputs.parity_tools != '[]' }}
+        run: make install-tools TOOLS="${{ join(fromJSON(needs.plan.outputs.parity_tools), ' ') }}"
       - name: install symbol extractors
-        if: ${{ needs.shared.outputs.extractors != '[]' }}
-        run: make kit-install-symbols EXTRACTORS="${{ join(fromJSON(needs.shared.outputs.extractors), ' ') }}"
+        if: ${{ needs.plan.outputs.extractors != '[]' }}
+        run: make kit-install-symbols EXTRACTORS="${{ join(fromJSON(needs.plan.outputs.extractors), ' ') }}"
       - name: install parity prerequisites
         run: make kit-ci-setup GROUP=parity
       - id: context_prepare
         name: prepare parity CI context
         run: make kit-ci-context-prepare GROUP=parity
       - name: parity gate
-        run: make ci-targets TARGETS="kit-gates-parity ${{ join(fromJSON(needs.shared.outputs.parity_targets), ' ') }}"
+        run: make ci-targets TARGETS="kit-gates-parity ${{ join(fromJSON(needs.plan.outputs.parity_targets), ' ') }}"
       - name: cleanup parity CI context
         if: ${{ always() && steps.context_prepare.outcome != 'skipped' }}
         run: make kit-ci-context-cleanup GROUP=parity
@@ -104,15 +115,15 @@ jobs:
           if-no-files-found: ignore
 
   parity-api:
-    needs: shared
-    if: ${{ needs.shared.outputs.parity_mode == 'phases' }}
-    runs-on: ${{ needs.shared.outputs.runner }}
+    needs: [plan]
+    if: ${{ needs.plan.outputs.parity_mode == 'phases' }}
+    runs-on: ${{ needs.plan.outputs.runner }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
-        if: ${{ contains(needs.shared.outputs.parity_tools, 'php') }}
+        if: ${{ contains(needs.plan.outputs.parity_tools, 'php') }}
         with:
           php-version-file: .php-version
           tools: none
@@ -120,18 +131,18 @@ jobs:
       # The bootstrap of kit (K992): the Node.js of mise.toml, the locked kit package, the npm of var/tools and the packages.
       - uses: ./.github/actions/kit-bootstrap
       - name: install parity toolchains
-        if: ${{ needs.shared.outputs.parity_tools != '[]' }}
-        run: make install-tools TOOLS="${{ join(fromJSON(needs.shared.outputs.parity_tools), ' ') }}"
+        if: ${{ needs.plan.outputs.parity_tools != '[]' }}
+        run: make install-tools TOOLS="${{ join(fromJSON(needs.plan.outputs.parity_tools), ' ') }}"
       - name: install symbol extractors
-        if: ${{ needs.shared.outputs.extractors != '[]' }}
-        run: make kit-install-symbols EXTRACTORS="${{ join(fromJSON(needs.shared.outputs.extractors), ' ') }}"
+        if: ${{ needs.plan.outputs.extractors != '[]' }}
+        run: make kit-install-symbols EXTRACTORS="${{ join(fromJSON(needs.plan.outputs.extractors), ' ') }}"
       - name: install parity prerequisites
         run: make kit-ci-setup GROUP=parity
       - id: context_prepare
         name: prepare parity CI context
         run: make kit-ci-context-prepare GROUP=parity
       - name: API phase
-        run: make ci-targets TARGETS="parity-api-check ${{ join(fromJSON(needs.shared.outputs.parity_targets), ' ') }}"
+        run: make ci-targets TARGETS="parity-api-check ${{ join(fromJSON(needs.plan.outputs.parity_targets), ' ') }}"
       - name: cleanup parity CI context
         if: ${{ always() && steps.context_prepare.outcome != 'skipped' }}
         run: make kit-ci-context-cleanup GROUP=parity
@@ -145,19 +156,19 @@ jobs:
           if-no-files-found: ignore
 
   parity-bindings:
-    needs: shared
-    if: ${{ needs.shared.outputs.parity_mode == 'phases' }}
+    needs: [plan]
+    if: ${{ needs.plan.outputs.parity_mode == 'phases' }}
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(needs.shared.outputs.parity_matrix) }}
-    runs-on: ${{ needs.shared.outputs.runner }}
+        include: ${{ fromJSON(needs.plan.outputs.parity_matrix) }}
+    runs-on: ${{ needs.plan.outputs.runner }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
-        if: ${{ contains(needs.shared.outputs.parity_tools, 'php') }}
+        if: ${{ contains(matrix.installTools, 'php') }}
         with:
           php-version-file: .php-version
           tools: none
@@ -165,13 +176,10 @@ jobs:
       # The bootstrap of kit (K992): the Node.js of mise.toml, the locked kit package, the npm of var/tools and the packages.
       - uses: ./.github/actions/kit-bootstrap
       - name: install parity toolchains
-        if: ${{ needs.shared.outputs.parity_tools != '[]' }}
-        run: make install-tools TOOLS="${{ join(fromJSON(needs.shared.outputs.parity_tools), ' ') }}"
-      - name: install symbol extractors
-        if: ${{ needs.shared.outputs.extractors != '[]' }}
-        run: make kit-install-symbols EXTRACTORS="${{ join(fromJSON(needs.shared.outputs.extractors), ' ') }}"
+        if: ${{ join(matrix.installTools, ' ') != '' }}
+        run: make install-tools TOOLS="${{ join(matrix.installTools, ' ') }}"
       - name: install parity prerequisites
-        run: make kit-ci-setup GROUP=parity
+        run: make kit-ci-setup GROUP=parity-binding IMPLEMENTATION=${{ matrix.implementation }}
       - id: context_prepare
         name: prepare parity CI context
         run: make kit-ci-context-prepare GROUP=parity
@@ -190,13 +198,13 @@ jobs:
           if-no-files-found: ignore
 
   runtime:
-    needs: shared
-    if: ${{ needs.shared.outputs.has_runtimes == 'true' }}
+    needs: [plan]
+    if: ${{ needs.plan.outputs.has_runtimes == 'true' }}
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(needs.shared.outputs.runtimes) }}
-    runs-on: ${{ needs.shared.outputs.runner }}
+        include: ${{ fromJSON(needs.plan.outputs.runtimes) }}
+    runs-on: ${{ needs.plan.outputs.runner }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
@@ -232,22 +240,24 @@ jobs:
   # The closing common part: it fails when a job that the plan selected does not succeed. The plan selects shared, the parity job
   # of parity_mode full, the parity-api and parity-bindings jobs of phases, and runtime when the repository has one (K950). A job
   # the plan did not select is skipped and is not a result; a selected job that is skipped fails the pipeline. It runs on the
-  # default runner, since the runner output of shared is empty when shared fails before the plan.
+  # default runner even when planning fails before it can publish a runner.
   required:
     if: ${{ always() }}
-    needs: [shared, parity, parity-api, parity-bindings, runtime]
+    needs: [plan, shared, parity, parity-api, parity-bindings, runtime]
     runs-on: ubuntu-24.04
     env:
+      PLAN_RESULT: ${{ needs.plan.result }}
       SHARED_RESULT: ${{ needs.shared.result }}
       PARITY_RESULT: ${{ needs.parity.result }}
       PARITY_API_RESULT: ${{ needs.parity-api.result }}
       PARITY_BINDINGS_RESULT: ${{ needs.parity-bindings.result }}
       RUNTIME_RESULT: ${{ needs.runtime.result }}
+      PLAN_SELECTED: 'true'
       SHARED_SELECTED: 'true'
-      PARITY_SELECTED: ${{ needs.shared.outputs.parity_mode == 'full' }}
-      PARITY_API_SELECTED: ${{ needs.shared.outputs.parity_mode == 'phases' }}
-      PARITY_BINDINGS_SELECTED: ${{ needs.shared.outputs.parity_mode == 'phases' }}
-      RUNTIME_SELECTED: ${{ needs.shared.outputs.has_runtimes == 'true' }}
+      PARITY_SELECTED: ${{ needs.plan.outputs.parity_mode == 'full' }}
+      PARITY_API_SELECTED: ${{ needs.plan.outputs.parity_mode == 'phases' }}
+      PARITY_BINDINGS_SELECTED: ${{ needs.plan.outputs.parity_mode == 'phases' }}
+      RUNTIME_SELECTED: ${{ needs.plan.outputs.has_runtimes == 'true' }}
     steps:
       - name: require every job that the plan selected
         run: |
@@ -263,6 +273,7 @@ jobs:
               failed=1
             fi
           }
+          judge plan "$PLAN_RESULT" "$PLAN_SELECTED"
           judge shared "$SHARED_RESULT" "$SHARED_SELECTED"
           judge parity "$PARITY_RESULT" "$PARITY_SELECTED"
           judge parity-api "$PARITY_API_RESULT" "$PARITY_API_SELECTED"

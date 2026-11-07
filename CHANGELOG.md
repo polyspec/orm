@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- CI: pin the published Kit 0.0.96 archive and integrity and synchronize its independent planning and per-binding setup workflow (T388).
+
 - CI: declare tools and setup for each parity binding, retain shared database fixture dependencies without foreign runtime installs, and build only the TypeScript client when fixture consumers need current output (T388).
 
 - CI: select Rust coverage recipe entries through their existing explicit suite bindings and reject missing, ambiguous or overlapping declared selectors before execution (T388).

@@ -1,5 +1,5 @@
 <!-- doc-id: plan-cross-verification -->
-<!-- source-sha256: e8f51dd2c662973caa13517b75c7e6b33fd73d0ff54459fc39a41e350fca68df -->
+<!-- source-sha256: 9eeaada503e399a6af02e450e3b2f8bedc154fe2dca8c3b4ee865435c0dac25c -->
 # corpus SQLite 연결의 여섯 runtime과 네 database 교차 검증
 
 [English](plan.md)
@@ -416,3 +416,9 @@ Repository·parity context·CI preview 회귀 단위 시험 170개가 통과했�
 다음 compiled-test 작업은 repository가 소유하는 native build 단계에서 호환되는 출력을 준비하고 native selector와 fixture를 보존하며 Kit에 artifact 관리를 맡기거나 저장된 결과를 재사용하지 않고 그 출력을 실행해야 한다. 호환 target을 함께 build하려고 native binary를 합치거나 compiler·host 관찰을 recipe operation으로 바꿀 필요는 없다. 실제 build 횟수·전체 case coverage·소요 시간은 여전히 CI 증거가 필요하다.
 
 수정된 Kit 후보 a00e04e08c57ea6dc46175a22efbad9a37a647fb는 CI 42361318294에서 실행 중이다. K1028의 lint assertion 제거와 K1029의 계획·독립 검사 분리를 포함하며 setup·workflow 단위 시험 42개가 통과했다. 배포·고정된 ORM 갱신·소비 CI는 아직 끝나지 않았다.
+
+### 공개 Kit 채택
+
+Kit CI 42362321849가 a89540d36243995d2f9530f3dd514b3d7ea157da에서 성공했다. Release workflow 42362755002가 v0.0.96을 공개했고 annotated tag의 commit도 그 값과 일치한다. 공개 polyspec-kit-0.0.96.tgz는 521,534 byte이며 SHA-256은 b7fc69c9136de29b964e57f8abd701f38ed6c9c22befa837b99d494803d0a4c8이다. 채택 전에 내려받은 archive의 digest·package version·workflow/bootstrap source를 확인했다.
+
+Native npm install은 package.json과 package-lock.json에서 Kit URL·version·integrity 항목만 갱신하며 Kit sync는 .github/workflows/ci-pipeline.yml만 갱신한다. Lock의 SHA-512를 내려받은 archive와 비교한다. Native npm은 이 명시적 root asset 의존성에 locked CI bootstrap과 같은 --allow-remote=root option을 요구하며 전체 fetch 정책을 바꾸지 않는다. ORM은 0.0.22를 유지하고 ORM release나 CI dispatch는 아직 하지 않았다.
