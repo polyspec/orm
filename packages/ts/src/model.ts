@@ -1075,6 +1075,7 @@ function jsonText(value: unknown): string {
   if (value instanceof OrderedJsonValue) return orderedJsonStringify(value);
   if (isModel(value)) return rowText(value[CORE]);
   if (value instanceof Collection) return value.toJSONText();
+  if (value instanceof Uint8Array) return JSON.stringify(bytesBase64(value));
   return JSON.stringify(exactIntegers(arrayValue(value)) ?? null);
 }
 
@@ -1089,7 +1090,13 @@ function jsonValue(value: unknown): unknown {
   if (value instanceof OrderedJsonValue) return orderedJsonOutput(value);
   if (isModel(value)) return toJson(value[CORE]);
   if (value instanceof Collection) return value.toJSON();
+  if (value instanceof Uint8Array) return bytesBase64(value);
   return exactIntegers(arrayValue(value));
+}
+
+/** A bytes value in JSON output: the standard base64 of its bytes, whatever they are (COD-26). */
+function bytesBase64(value: Uint8Array): string {
+  return Buffer.from(value.buffer, value.byteOffset, value.byteLength).toString('base64');
 }
 
 /** Resolves a method named by the chain grammar. */

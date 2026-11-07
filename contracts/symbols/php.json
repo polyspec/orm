@@ -12473,7 +12473,7 @@
   },
   "packages/php/src/Model.php::Polyspec\\Orm\\Model::pairs": {
     "exported": false,
-    "signature": "private function pairs(): array"
+    "signature": "private function pairs(bool $json=false): array"
   },
   "packages/php/src/Model.php::Polyspec\\Orm\\Model::parentNode": {
     "exported": true,

@@ -79203,7 +79203,8 @@
    "id": "driver_bytes_cells_are_exact",
    "requirements": [
     "PRT-69",
-    "INT-5"
+    "INT-5",
+    "COD-26"
    ],
    "steps": [
     {
@@ -79250,6 +79251,32 @@
         "007f80ff41",
         "ff00417f80"
        ]
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "ByteCell",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": [
+      "seq",
+      "body"
+     ],
+     "json_output": true,
+     "expect": {
+      "mysql": {
+       "json": "{\"seq\":1,\"body\":\"AH+A/0E=\"}"
+      },
+      "postgres": {
+       "json": "{\"seq\":1,\"body\":\"AH+A/0E=\"}"
+      },
+      "sqlite": {
+       "json": "{\"seq\":1,\"body\":\"AH+A/0E=\"}"
       }
      }
     }

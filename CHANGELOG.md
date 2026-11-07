@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- Breaking: the model JSON output writes a bytes column as the standard base64 of its bytes in every runtime (COD-26); Rust and PHP wrote its UTF-8 text and refused other bytes, TypeScript wrote an object of its byte values, and Python refused it (XV20).
+
 ## 0.0.22
 
 - Tests: parity context units require native setup for each binding phase and reserve the complete interface check for the API and full parity phases, matching the independent CI jobs (T387).

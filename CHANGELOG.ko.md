@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- 호환 깨짐: 모든 runtime에서 모델 JSON 출력은 bytes 컬럼을 그 바이트의 표준 base64로 쓴다(COD-26). Rust와 PHP는 UTF-8 텍스트로 쓰고 다른 바이트는 거부했고, TypeScript는 바이트 값의 객체로 썼으며, Python은 거부했다(XV20).
+
 ## 0.0.22
 
 - Tests: parity context 단위시험은 각 binding 단계의 native 준비를 요구하고 전체 interface 검사는 API와 전체 parity 단계에서 요구하여 독립 CI job의 의존관계와 일치시킨다 (T387).
