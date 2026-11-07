@@ -2359,8 +2359,13 @@ abstract class Model implements \JsonSerializable, ModelMetadata
 
     // ---- output ----
 
-    /** @return list<array{0: string, 1: mixed}> */
-    private function pairs(): array
+    /**
+     * The row values in row order. For JSON output ($json), a bytes column without a codec stage is the standard
+     * base64 of its bytes, whatever they are (docs/spec/codec.md COD-26); the array form keeps the bytes (COD-27).
+     *
+     * @return list<array{0: string, 1: mixed}>
+     */
+    private function pairs(bool $json = false): array
     {
         $out = [];
         $seen = [];
@@ -2379,7 +2384,12 @@ abstract class Model implements \JsonSerializable, ModelMetadata
                 continue;
             }
             if (isset($meta['columns'][$name])) {
-                $add($name, self::columnArrayValue($meta['columns'][$name]['type'] ?? '', $this->value($name)));
+                $column = $meta['columns'][$name];
+                $type = $column['type'] ?? '';
+                $v = self::columnArrayValue($type, $this->value($name));
+                // A codec stage decodes the stored bytes into its own value, which is not bytes (COD-26).
+                $bytes = $json && $type === 'bytes' && ($column['codec'] ?? []) === [] && is_string($v);
+                $add($name, $bytes ? base64_encode($v) : $v);
             } else {
                 $add($name, isset($st['extra_date'][$name])
                     ? self::columnArrayValue('date', $st['extra'][$name] ?? null)
@@ -2395,7 +2405,7 @@ abstract class Model implements \JsonSerializable, ModelMetadata
         foreach ($st['flat'] ?? [] as $name) {
             $v = $st['related'][$name] ?? null;
             if ($v instanceof Model) {
-                foreach ($v->pairs() as [$k, $cv]) {
+                foreach ($v->pairs($json) as [$k, $cv]) {
                     $add($k, $cv);
                 }
             }
@@ -2465,7 +2475,7 @@ abstract class Model implements \JsonSerializable, ModelMetadata
     public function toJson(): string
     {
         $parts = [];
-        foreach ($this->pairs() as [$name, $v]) {
+        foreach ($this->pairs(true) as [$name, $v]) {
             $parts[] = self::jsonText($name) . ':' . self::jsonText($v);
         }
         return '{' . implode(',', $parts) . '}';
@@ -2520,7 +2530,7 @@ abstract class Model implements \JsonSerializable, ModelMetadata
     public function jsonSerialize(): mixed
     {
         $out = [];
-        foreach ($this->pairs() as [$name, $v]) {
+        foreach ($this->pairs(true) as [$name, $v]) {
             if (
                 $v instanceof \Polyspec\OrderedJson\Value
                 || ($v instanceof StyledValue && $v->kind === 'value'

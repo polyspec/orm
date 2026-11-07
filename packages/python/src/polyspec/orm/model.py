@@ -3,6 +3,7 @@
 # (docs/spec/dsl.md).
 from __future__ import annotations
 
+import base64
 import decimal
 import json
 import math
@@ -293,6 +294,9 @@ def _json_text(value) -> str:
         return _number_text(value)
     if isinstance(value, str):
         return _string_text(value)
+    if isinstance(value, (bytes, bytearray, memoryview)):
+        # A bytes value is the standard base64 of its bytes, whatever they are (COD-26).
+        return _string_text(base64.b64encode(bytes(value)).decode("ascii"))
     if isinstance(value, (list, tuple)):
         return "[" + ",".join(_json_text(item) for item in value) + "]"
     if isinstance(value, dict):

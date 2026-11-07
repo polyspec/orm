@@ -10563,6 +10563,10 @@
     "exported": false,
     "signature": "function batchFits(driver: string, parts: readonly number[], columns: number): void"
   },
+  "packages/ts/src/model.ts::bytesBase64": {
+    "exported": false,
+    "signature": "function bytesBase64(value: Uint8Array): string"
+  },
   "packages/ts/src/model.ts::cellText": {
     "exported": false,
     "signature": "function cellText(value: unknown): string"

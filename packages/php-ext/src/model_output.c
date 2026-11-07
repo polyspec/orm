@@ -6,6 +6,7 @@
 #include "Zend/zend_interfaces.h"
 #include "Zend/zend_smart_str.h"
 #include "ext/json/php_json.h"
+#include "ext/standard/base64.h"
 #include "orm_exception_object.h"
 
 static zend_class_entry *output_class(const char *name)
@@ -104,10 +105,16 @@ static void output_append(zval *out, HashTable *seen, zend_string *name, zval *v
     zend_hash_update(Z_ARRVAL_P(out), name, value);
 }
 
-static void output_append_converted(zval *out, HashTable *seen, zend_string *name, zval *value)
+static void model_output_values(zend_object *object, zval *out, bool pairs, bool json);
+
+/* The value of a related row: its array form, or for JSON output (json) the row itself, which output_json_text writes by
+   its toJson and json_encode by its jsonSerialize, as Model::pairs(true) keeps it. */
+static void output_append_converted(zval *out, HashTable *seen, zend_string *name, zval *value, bool json)
 {
     zval converted;
-    if (output_instance(value, "Polyspec\\Orm\\Model") || output_instance(value, "Polyspec\\Orm\\Collection")) {
+    if (json && (output_instance(value, "Polyspec\\Orm\\Model") || output_instance(value, "Polyspec\\Orm\\Collection"))) {
+        ZVAL_COPY(&converted, value);
+    } else if (output_instance(value, "Polyspec\\Orm\\Model") || output_instance(value, "Polyspec\\Orm\\Collection")) {
         output_call(value, "toArray", &converted, 0, NULL);
     } else if (output_instance(value, "Polyspec\\Orm\\StyledValue")) {
         output_call(value, "jsonSerialize", &converted, 0, NULL);
@@ -118,10 +125,12 @@ static void output_append_converted(zval *out, HashTable *seen, zend_string *nam
     else if (Z_TYPE(converted) != IS_UNDEF) zval_ptr_dtor(&converted);
 }
 
-static void output_merge_child(zval *out, HashTable *seen, zval *child)
+static void output_merge_child(zval *out, HashTable *seen, zval *child, bool json)
 {
     zval values;
-    output_call(child, "toArray", &values, 0, NULL);
+    ZVAL_UNDEF(&values);
+    if (json) model_output_values(Z_OBJ_P(child), &values, false, true);
+    else output_call(child, "toArray", &values, 0, NULL);
     if (EG(exception) != NULL || Z_TYPE(values) != IS_ARRAY) {
         if (Z_TYPE(values) != IS_UNDEF) zval_ptr_dtor(&values);
         return;
@@ -150,14 +159,14 @@ static void output_pair_append(zval *out, HashTable *seen, zend_string *name, zv
 }
 
 static void output_append_keyed_values(zval *out, HashTable *seen, zval *values,
-    bool pairs, bool copy_pair_values)
+    bool pairs, bool copy_pair_values, bool json)
 {
     if (values == NULL || Z_TYPE_P(values) != IS_ARRAY) return;
     zend_string *name; zend_ulong index; zval *value;
     ZEND_HASH_FOREACH_KEY_VAL(Z_ARRVAL_P(values), index, name, value) {
         zend_string *key = name != NULL ? zend_string_copy(name) : zend_long_to_str(index);
         if (!pairs) {
-            output_append_converted(out, seen, key, value);
+            output_append_converted(out, seen, key, value, json);
         } else {
             zval converted;
             if (copy_pair_values) ZVAL_COPY(&converted, value);
@@ -171,7 +180,7 @@ static void output_append_keyed_values(zval *out, HashTable *seen, zval *values,
 }
 
 static void output_model_column(zend_object *object, zval *out, HashTable *seen,
-    zend_string *key, zval *column, bool pairs)
+    zend_string *key, zval *column, bool pairs, bool json)
 {
     zval argument, value, converted;
     ZVAL_UNDEF(&value);
@@ -185,6 +194,17 @@ static void output_model_column(zend_object *object, zval *out, HashTable *seen,
         } else {
             output_column_value(column, &value, &converted);
         }
+        /* COD-26: the JSON output writes a bytes column without a codec stage as the standard base64 of its bytes, whatever
+           they are; a codec stage decodes the stored bytes into its own value, which is not bytes. */
+        zval *type = json ? output_assoc(column, "type") : NULL;
+        zval *stages = json ? output_assoc(column, "codec") : NULL;
+        bool no_stage = stages == NULL || Z_TYPE_P(stages) != IS_ARRAY || zend_hash_num_elements(Z_ARRVAL_P(stages)) == 0;
+        if (EG(exception) == NULL && type != NULL && Z_TYPE_P(type) == IS_STRING && zend_string_equals_literal(Z_STR_P(type), "bytes")
+            && no_stage && Z_TYPE(converted) == IS_STRING) {
+            zend_string *encoded = php_base64_encode((const unsigned char *) Z_STRVAL(converted), Z_STRLEN(converted));
+            zval_ptr_dtor(&converted);
+            ZVAL_STR(&converted, encoded);
+        }
         if (EG(exception) != NULL) {
             if (Z_TYPE(converted) != IS_UNDEF) zval_ptr_dtor(&converted);
             zval_ptr_dtor(&value);
@@ -197,7 +217,7 @@ static void output_model_column(zend_object *object, zval *out, HashTable *seen,
 }
 
 static void output_model_fields(zend_object *object, zval *out, HashTable *seen,
-    zval *columns, zval *names, zval *sets, zval *hidden, zval *extra, zval *extra_date, bool pairs)
+    zval *columns, zval *names, zval *sets, zval *hidden, zval *extra, zval *extra_date, bool pairs, bool json)
 {
     if (names == NULL && sets != NULL && Z_TYPE_P(sets) == IS_ARRAY) {
         zend_string *name; zend_ulong index;
@@ -205,7 +225,7 @@ static void output_model_fields(zend_object *object, zval *out, HashTable *seen,
             zend_string *key = name != NULL ? zend_string_copy(name) : zend_long_to_str(index);
             zval *column = columns != NULL && Z_TYPE_P(columns) == IS_ARRAY
                 ? zend_hash_find(Z_ARRVAL_P(columns), key) : NULL;
-            if (column != NULL) output_model_column(object, out, seen, key, column, pairs);
+            if (column != NULL) output_model_column(object, out, seen, key, column, pairs, json);
             zend_string_release(key);
             if (EG(exception) != NULL) break;
         } ZEND_HASH_FOREACH_END();
@@ -222,7 +242,7 @@ static void output_model_fields(zend_object *object, zval *out, HashTable *seen,
         zval *column = columns != NULL && Z_TYPE_P(columns) == IS_ARRAY
             ? zend_hash_find(Z_ARRVAL_P(columns), key) : NULL;
         if (column != NULL) {
-            output_model_column(object, out, seen, key, column, pairs);
+            output_model_column(object, out, seen, key, column, pairs, json);
         } else {
             zval *value = extra != NULL && Z_TYPE_P(extra) == IS_ARRAY
                 ? zend_hash_find(Z_ARRVAL_P(extra), key) : NULL;
@@ -237,8 +257,8 @@ static void output_model_fields(zend_object *object, zval *out, HashTable *seen,
             if (!pairs) {
                 if (value == NULL) {
                     zval null_value; ZVAL_NULL(&null_value);
-                    output_append_converted(out, seen, key, &null_value);
-                } else output_append_converted(out, seen, key, value);
+                    output_append_converted(out, seen, key, &null_value, json);
+                } else output_append_converted(out, seen, key, value, json);
             } else {
                 zval converted;
                 if (value == NULL) ZVAL_NULL(&converted); else output_array_value(value, &converted);
@@ -270,7 +290,7 @@ static void output_merge_child_pairs(zval *out, HashTable *seen, zval *child)
 }
 
 static void output_merge_flat_children(zval *out, HashTable *seen,
-    zval *flat, zval *related, bool pairs)
+    zval *flat, zval *related, bool pairs, bool json)
 {
     if (flat == NULL || Z_TYPE_P(flat) != IS_ARRAY || related == NULL || Z_TYPE_P(related) != IS_ARRAY) return;
     zval *flat_name;
@@ -279,25 +299,25 @@ static void output_merge_flat_children(zval *out, HashTable *seen,
         zval *child = zend_hash_find(Z_ARRVAL_P(related), Z_STR_P(flat_name));
         if (child != NULL && output_instance(child, "Polyspec\\Orm\\Model")) {
             if (pairs) output_merge_child_pairs(out, seen, child);
-            else output_merge_child(out, seen, child);
+            else output_merge_child(out, seen, child, json);
         }
         if (EG(exception) != NULL) break;
     } ZEND_HASH_FOREACH_END();
 }
 
-static void output_state_extras(zval *out, HashTable *seen, model_state *state, zval *row, bool pairs)
+static void output_state_extras(zval *out, HashTable *seen, model_state *state, zval *row, bool pairs, bool json)
 {
     if (EG(exception) != NULL) return;
-    output_append_keyed_values(out, seen, model_state_property(state, "news"), pairs, false);
+    output_append_keyed_values(out, seen, model_state_property(state, "news"), pairs, false, json);
     if (EG(exception) != NULL) return;
     zval *related = row != NULL && Z_TYPE_P(row) == IS_ARRAY ? output_assoc(row, "related") : NULL;
-    output_append_keyed_values(out, seen, related, pairs, true);
+    output_append_keyed_values(out, seen, related, pairs, true, json);
     if (EG(exception) != NULL) return;
     zval *flat = row != NULL && Z_TYPE_P(row) == IS_ARRAY ? output_assoc(row, "flat") : NULL;
-    output_merge_flat_children(out, seen, flat, related, pairs);
+    output_merge_flat_children(out, seen, flat, related, pairs, json);
 }
 
-static void model_output_values(zend_object *object, zval *out, bool pairs)
+static void model_output_values(zend_object *object, zval *out, bool pairs, bool json)
 {
     array_init(out);
     HashTable seen;
@@ -314,8 +334,8 @@ static void model_output_values(zend_object *object, zval *out, bool pairs)
     zval *hidden = row != NULL && Z_TYPE_P(row) == IS_ARRAY ? output_assoc(row, "hidden") : NULL;
     zval *extra = row != NULL && Z_TYPE_P(row) == IS_ARRAY ? output_assoc(row, "extra") : NULL;
     zval *extra_date = row != NULL && Z_TYPE_P(row) == IS_ARRAY ? output_assoc(row, "extra_date") : NULL;
-    output_model_fields(object, out, &seen, columns, names, sets, hidden, extra, extra_date, pairs);
-    output_state_extras(out, &seen, state, row, pairs);
+    output_model_fields(object, out, &seen, columns, names, sets, hidden, extra, extra_date, pairs, json);
+    output_state_extras(out, &seen, state, row, pairs, json);
 done:
     if (Z_TYPE(meta) != IS_UNDEF) zval_ptr_dtor(&meta);
     zend_hash_destroy(&seen);
@@ -323,7 +343,7 @@ done:
 
 static void model_output_array(zend_object *object, zval *out)
 {
-    model_output_values(object, out, false);
+    model_output_values(object, out, false, false);
 }
 
 ZEND_METHOD(Polyspec_Orm_Model, toArray)
@@ -446,7 +466,7 @@ ZEND_METHOD(Polyspec_Orm_Model, toJson)
 {
     ZEND_PARSE_PARAMETERS_NONE();
     zval values;
-    model_output_array(Z_OBJ_P(ZEND_THIS), &values);
+    model_output_values(Z_OBJ_P(ZEND_THIS), &values, false, true);
     if (EG(exception) != NULL) { zval_ptr_dtor(&values); RETURN_THROWS(); }
     smart_str out = {0}; smart_str_appendc(&out, '{'); bool first = true;
     zend_string *name; zval *value;
@@ -467,7 +487,7 @@ ZEND_METHOD(Polyspec_Orm_Model, jsonSerialize)
 {
     ZEND_PARSE_PARAMETERS_NONE();
     zval values;
-    model_output_array(Z_OBJ_P(ZEND_THIS), &values);
+    model_output_values(Z_OBJ_P(ZEND_THIS), &values, false, true);
     if (EG(exception) != NULL) { zval_ptr_dtor(&values); RETURN_THROWS(); }
     zend_string *name; zval *value;
     ZEND_HASH_FOREACH_STR_KEY_VAL(Z_ARRVAL(values), name, value) {
@@ -487,7 +507,7 @@ ZEND_METHOD(Polyspec_Orm_Model, jsonSerialize)
 
 static void model_output_pairs(zend_object *object, zval *out)
 {
-    model_output_values(object, out, true);
+    model_output_values(object, out, true, false);
 }
 
 ZEND_METHOD(Polyspec_Orm_Model, pairs)
