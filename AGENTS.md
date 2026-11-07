@@ -10,9 +10,8 @@ vendors; this file states only the rules of orm.
   as the push rule below allows.
   Enforced by: none, a judgement at review
 - Own: The 0.x workflow has no pull request, merge queue or ruleset. Work locally item by item: an item
-  becomes `[v]` when it is committed and its declared unit tests pass, which permits the push. `main`
-  receives one push, when no item is `[~]` and the work of the push is complete. The item becomes `[o]`
-  by `make item-state` after the run of `.github/workflows/ci.yml` for that push concludes with success,
+  becomes `[o]` when its declared unit tests pass on the committed tree. `main` receives one push,
+  when no item is `[~]` and the work of the push is complete. The CI of that candidate must succeed
   before the tag. The release version and all CI improvements are included before that push; a release does not
   require another full CI run. Only the maintainer starts a release, by a dispatch of the
   release workflow with the id of a `ci.yml` run whose conclusion is success, which tags its commit; a

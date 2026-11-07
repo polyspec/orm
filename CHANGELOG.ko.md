@@ -1,12 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 887089d127719352f6a99be538e902c2df0ff2583c345518f3f8a99c2a7604ef -->
+<!-- source-sha256: 43fd35040d0fdde9b086613727ed9c03e8713ea927825b59357975d674b74dd8 -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.22
 
-- CI: 독립 제품 job은 kit과 함께 시작하고 마지막 결과가 모든 job을 요구한다. Pooler 검사는 연결 제한을 유지한 채 runtime별 독립 서버를 가진 여섯 job에서 실행한다. Binding 단계는 API 단계의 interface 검사를 반복하지 않으며 release는 전체 CI를 다시 실행하지 않고 검증한 candidate에 tag를 붙인다 (XV27).
+- CI: kit 0.0.94에서 독립 제품 job은 kit과 함께 시작하고 마지막 결과가 모든 job을 요구한다. Pooler 검사는 연결 제한을 유지한 채 runtime별 독립 서버를 가진 여섯 job에서 실행한다. Binding 단계는 API 단계의 interface 검사를 반복하지 않으며 release는 전체 CI를 다시 실행하지 않고 검증한 candidate에 tag를 붙인다 (XV27).
 
 - 호환 깨짐(Rust): markdown 연결의 pool은 0.0.21의 `MdPool`에서 바뀐 `polyspec_orm::markdown::MarkdownPool`이므로 `Pool::Markdown`은 `Arc<MarkdownPool>`을 가진다. markdown 연결의 모든 type은 TypeScript처럼 Rust와 Python에서도 접두어 `Markdown`을 가진다(XV14).
 - 여섯 runtime 모두에서 markdown corpus는 SQLite 연결이다(DIA-154, DIA-185). flowmark 서버가 SQLite dialect의 문에 답하므로 각 클라이언트는 요청을 SQLite에서처럼 계획하고 각 문을 op statement로 보내며, 이어지는 행은 fetch와 close로 읽는다(PRT-66). 매개변수는 PRT-67의 형식을 따르고 boolean은 1 또는 0이다. IR executor 클라이언트와 그 답 조립, tests/ir/answers.json, recipe op ir.answer는 제거했다. recipe의 모든 database case는 MySQL, PostgreSQL, SQLite와 함께 flowmark에서도 실행되며, tests/markdown은 flowmark release v0.0.5를 고정한다 (T384).

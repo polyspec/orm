@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: c1a47d7ca04dd72c229b224794534f37db9ba49cad5fbce2c09db352d4025afe -->
+<!-- source-sha256: 7b4ba1189194e3e97622aa839a7964dd144d24c5628aecd2985d2cc186757264 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -10,9 +10,8 @@ orm 자신의 규칙만 적는다.
 - Own: 사용자 지시가 우선이다. 로컬에서 개발하고, GitHub 원격 저장소에는 아래 push 규칙이 허용할 때만 push한다.
   Enforced by: none, review에서의 판단이다
 - Own: 0.x workflow에는 pull request, merge queue, ruleset이 없다. 항목마다 로컬에서 작업한다: 항목은 commit한 tree에서 그
-  unit test가 통과하면 `[v]`가 된다: commit되고 선언된 unit test가 통과한 항목은 push를 허락한다. `main`에는 `[~]`인 항목이 없고
-  그 push의 작업이 끝났을 때 한 번 push한다. 그 push의 `.github/workflows/ci.yml` run이 success로 끝난 뒤 `make item-state`가
-  항목을 `[o]`로 옮기며, 이는 tag보다 앞선다. release version과 CI 개선은 그 push 전에 함께 담으며 release를 위해 전체 CI를 다시 실행하지 않는다. release를 시작하는 것은 maintainer뿐이며, conclusion이
+  unit test가 통과하면 `[o]`가 된다. `main`에는 `[~]`인 항목이 없고
+  그 push의 작업이 끝났을 때 한 번 push한다. 그 candidate의 CI가 성공해야 tag를 만든다. release version과 CI 개선은 그 push 전에 함께 담으며 release를 위해 전체 CI를 다시 실행하지 않는다. release를 시작하는 것은 maintainer뿐이며, conclusion이
   success인 `ci.yml` run의 id로 release workflow를 dispatch하면 그 workflow가 run의 commit에 tag를
   만든다. push한 tag는 run을 시작하지 않는다. release
   asset의 이름은 packer가 붙인 이름이다(P39, 예: `@polyspec/orm`의 `polyspec-orm-X.Y.Z.tgz`). Python wheel은 PEP 427 이름

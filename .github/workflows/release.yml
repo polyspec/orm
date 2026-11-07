@@ -12,7 +12,7 @@
 #   bootstrap package installs the locked kit with the npm that devEngines.packageManager names for consumers, without scripts
 #   install-tools TOOLS=npm installs the mise, the node and the npm of mise.toml with the copied installer of scripts/kit/bootstrap
 #   install-packages installs package-lock.json with that npm, @polyspec/kit included, whose kit.mk has the targets below
-#   release-tag      with the kit of main: requires a completed successful push or dispatch run RUN of ci.yml on main whose
+#   release-tag      with the kit of main: requires a completed successful push or dispatch run RUN of ci.yml whose
 #                    commit is on origin/main, reads X.Y.Z from the change log of that commit, creates and pushes the annotated
 #                    tag vX.Y.Z and the tag of every Go module at that commit, or passes for a tag there already (K269), and
 #                    appends TAG and VERSION to GITHUB_ENV; a tag pushed with the token of the run starts no run
@@ -34,7 +34,7 @@ on:
   workflow_dispatch:
     inputs:
       run:
-        description: The id of the successful CI run of main whose commit is released
+        description: The id of the successful CI run whose exact commit is released
         required: true
         type: string
 
