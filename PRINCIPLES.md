@@ -280,10 +280,10 @@ tool lands, a standard binds the work as written here.
   and CI links nothing (K824); the K761 link test of kit finds no npm link, composer update or editable install in the tool log
 - S12 A repository's CI is one pipeline: its own ci.yml calls the workflow that kit gives it (`ci-pipeline.yml`) as its
   job `kit`, which runs the prerequisites of `make kit-gates` once with the targets of config/ci.json (`targets.shared`,
-  `targets.parity`, `targets.runtimes`), and a repository job of the same ci.yml follows with `needs: kit`. No other workflow
+  `targets.parity`, `targets.runtimes`), and independent repository jobs run concurrently. The final `ci-passed` job requires every other job; dependencies order only work that consumes preceding results. No other workflow
   of the repository, and no input that ci-targets or ci-setup reads, names a prerequisite of kit-gates again. kit's own ci.yml,
   which tests kit itself, is no consumer CI (K870, K910).
-  Enforced by: `make kit-check`, which names a ci.yml without the job kit, a job of it without needs: kit, and a line of a workflow
+  Enforced by: `make kit-check`, which names a ci.yml without the job kit, a missing final ci-passed job or a job missing from its needs, and a line of a workflow
   of the repository that names a gate of kit-gates again, checks out another repository or to a path, or clones one, and an input
   of config/ci.json that names a gate of kit-gates again (K998)
 - S13 The rules that every repository shares are injected identically: each copy of `kit.copies` of the installed kit (this

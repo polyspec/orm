@@ -1,5 +1,5 @@
 <!-- doc-id: principles -->
-<!-- source-sha256: 145aaff71707e4d90c95ea34f0ef619172c227f94a7764fbc01074b01c7111f6 -->
+<!-- source-sha256: fc2e67c6377960d3ce52033f4a2f4684a5b3b3e00186932c3a7d058233b3035c -->
 # 원칙
 
 [English](PRINCIPLES.md)
@@ -250,10 +250,10 @@ owner가 2026-10-13에 이 기준을 승인했습니다. 각 기준은 위반 �
   kit의 K761 link test는 tool log에 npm link, composer update, editable 설치가 없음을 확인합니다
 - S12 저장소의 CI는 파이프라인 하나입니다. 저장소 자신의 ci.yml이 kit이 주는 workflow(`ci-pipeline.yml`)를 job `kit`으로
   호출하고, 그 job은 `make kit-gates`의 prerequisite를 config/ci.json의 targets(`targets.shared`, `targets.parity`,
-  `targets.runtimes`)와 함께 한 번 실행하며, 같은 ci.yml의 저장소 job은 `needs: kit`으로 그 뒤를 잇습니다. 저장소의 다른 workflow도,
+  `targets.runtimes`)와 함께 한 번 실행하며, 독립적인 저장소 job은 병렬로 실행합니다. 마지막 `ci-passed` job은 다른 모든 job을 needs로 요구하며, 앞선 결과를 사용하는 작업만 순서대로 실행합니다. 저장소의 다른 workflow도,
   ci-targets나 ci-setup이 읽는 입력도 kit-gates의 prerequisite를 다시 지정하지 않습니다. kit 자신을 시험하는 kit의 ci.yml은 소비자
   CI가 아닙니다(K870, K910).
-  Enforced by: `make kit-check`가 job kit이 없는 ci.yml, needs: kit이 없는 그 job, 그리고 kit-gates의 gate를 다시 적거나 다른
+  Enforced by: `make kit-check`가 job kit이 없는 ci.yml, 마지막 ci-passed job의 누락이나 그 needs에서 빠진 job, 그리고 kit-gates의 gate를 다시 적거나 다른
   저장소나 경로를 checkout하거나 clone하는 저장소 workflow의 줄과, kit-gates의 gate를 다시 적는 config/ci.json의 입력을
   적는다(K998)
 - S13 모든 저장소가 공유하는 규칙은 똑같이 주입됩니다. 설치된 kit의 `kit.copies`에 있는 각 사본(이 파일, ci-pipeline.yml,
