@@ -24403,7 +24403,8 @@
         "INT-69",
         "INT-70",
         "INT-71",
-        "INT-90"
+        "INT-90",
+        "INT-162"
       ],
       "symbols": [
         {
@@ -24434,7 +24435,10 @@
         },
         {
           "implementation": "python",
-          "symbol": "polyspec.orm.group_rows.GroupRow"
+          "symbols": [
+            "polyspec.orm.group_rows.GroupRow",
+            "polyspec.orm.group_rows.GroupRow.to_json_text"
+          ]
         },
         {
           "implementation": "rust",
@@ -24464,7 +24468,8 @@
       "id": "collection-group-rows",
       "kind": "api",
       "requirements": [
-        "INT-31"
+        "INT-31",
+        "INT-162"
       ],
       "symbols": [
         {
@@ -24499,6 +24504,7 @@
           "implementation": "python",
           "symbols": [
             "polyspec.orm.group_rows.GroupRows",
+            "polyspec.orm.group_rows.GroupRows.to_json_text",
             "polyspec.orm.group_rows.GroupRows.values"
           ]
         },
@@ -35180,7 +35186,9 @@
       "id": "client-model-row-serialization",
       "kind": "api",
       "requirements": [
-        "DSL-115"
+        "DSL-115",
+        "COD-26",
+        "COD-27"
       ],
       "symbols": [
         {
@@ -35271,6 +35279,22 @@
         {
           "implementation": "rust",
           "symbols": [
+            "polyspec_orm::ArrayValue",
+            "polyspec_orm::ArrayValue::Null",
+            "polyspec_orm::ArrayValue::Bool",
+            "polyspec_orm::ArrayValue::Int",
+            "polyspec_orm::ArrayValue::Float",
+            "polyspec_orm::ArrayValue::Text",
+            "polyspec_orm::ArrayValue::Bytes",
+            "polyspec_orm::ArrayValue::Json",
+            "polyspec_orm::ArrayValue::Ordered",
+            "polyspec_orm::ArrayValue::Map",
+            "polyspec_orm::ArrayValue::List",
+            "polyspec_orm::ArrayValue::get",
+            "polyspec_orm::ArrayValue::as_str",
+            "polyspec_orm::ArrayValue::as_bytes",
+            "polyspec_orm::ArrayValue::as_map",
+            "polyspec_orm::ArrayValue::as_list",
             "polyspec_orm::model::raw_json",
             "polyspec_orm::model::to_array",
             "polyspec_orm::model::to_json",

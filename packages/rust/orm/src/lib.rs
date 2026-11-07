@@ -3,7 +3,7 @@
 //! the statements with sqlx, and assembles models.
 
 pub mod args;
-pub mod array;
+mod array;
 mod bind_check;
 mod canonical;
 pub mod codec;
