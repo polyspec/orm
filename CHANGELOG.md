@@ -5,7 +5,7 @@
 
 ## 0.0.22
 
-- CI: independent product jobs start alongside kit and the final result requires every job; pooler checks run in six runtime jobs with separate servers and unchanged connection limits; binding phases no longer repeat the API phase’s interface checks, and the release tags the verified candidate without another full CI run (XV27).
+- CI: kit 0.0.94 permits independent product jobs to start alongside kit and the final result requires every job; pooler checks run in six runtime jobs with separate servers and unchanged connection limits; binding phases no longer repeat the API phase’s interface checks, and the release tags the verified candidate without another full CI run (XV27).
 
 - Breaking (Rust): the pool of a markdown connection is `polyspec_orm::markdown::MarkdownPool`, which was `MdPool` in 0.0.21, so `Pool::Markdown` holds an `Arc<MarkdownPool>`; every type of a markdown connection carries the prefix `Markdown` in Rust and Python, as in TypeScript (XV14).
 - A markdown corpus is a SQLite connection in all six runtimes (DIA-154, DIA-185): the flowmark server answers the statements of the SQLite dialect, so each client plans a request as on SQLite and sends each statement as op statement, reading the rows that go on with fetch and close (PRT-66), with its parameters in the forms of PRT-67, a boolean as 1 or 0. The IR executor clients, their answer assembly, tests/ir/answers.json and the ir.answer recipe op are removed. Every database case of the recipes runs on flowmark beside MySQL, PostgreSQL and SQLite, and tests/markdown pins the flowmark release v0.0.5 (T384).
