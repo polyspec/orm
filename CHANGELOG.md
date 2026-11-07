@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- CI: select Rust coverage recipe entries through their existing explicit suite bindings and reject missing, ambiguous or overlapping declared selectors before execution (T388).
+
 - CI: declare the Rust test timezone before native execution, share its environment across client, Cargo and coverage runners, and remove concurrent mutation of process TZ from message recipes (T388).
 
 - CI: remove the SHOW CREATE input fixture as a duplicate parity suite, preserve the separate reader-text tests and their native execution paths, and distinguish public results from raw parser observations (T388).

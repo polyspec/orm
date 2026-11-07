@@ -1,5 +1,5 @@
 <!-- doc-id: plan-cross-verification -->
-<!-- source-sha256: a110d5bfe08def5b80417468cc599fc9aba81e5ac7e7396582d5076d8f010665 -->
+<!-- source-sha256: e97c76445e2bc17761313c3a701de511b2a927d26c4dc4dd8347db6cebbfd7fe -->
 # corpus SQLite 연결의 여섯 runtime과 네 database 교차 검증
 
 [English](plan.md)
@@ -388,3 +388,9 @@ runner 후보이며 시간대 수정의 필수 도구가 아니다. 기존 Cargo
 실행 목록 통합 제안은 실행 대상의 집계에 한정하며 모든 native 관찰을 JSON operation으로 바꾸는 것이 아니다. Feature coverage 명세와 AGENTS의 두 언어 문서는 이 구분과 build unit·selector·fixture·직렬화의 repository 책임을 명시한다.
 
 Source에서 Rust testcase::run과 run_in_order 진입점을 확인했다. 후자는 공유 자원 때문에 기본 thread 수를 하나로 정한다. Recipe의 database trial은 case마다 CaseDatabase를 만든다. 그러나 feature coverage는 현재 모든 Rust binary에 --test-threads=1을 전달한다. 이 일괄 제한을 제거하기 전에 fixture 조사가 필요하며 소요 시간 영향은 아직 측정하지 않았다. Table recipe 진입점은 OnceLock으로 CURRENT를 설정하며 하나의 binary에서 두 번째 schema 등록을 거절한다. Fixture 책임을 재설계하기 전에 이 진입점을 합치면 CI 개선 대신 실패를 만든다. 이번 기준 확정으로 동시 실행 설정이나 native 진입점을 바꾸지 않았다.
+
+### Rust coverage 진입점 선택
+
+이력을 확인하니 commit 38aa74fa2가 정확한 native symbol 선택을 전체 진입점 실행으로 바꾸면서 단일 thread 실행을 유지했다. 진입점 binary를 공유하기 전에 coverage는 이제 command의 recipe path를 보존하고 기존 Rust suite binding을 native filter로 해석한다. Binding이 없거나 모호하면 실패하며 같은 test file에서 invalid_none과 dbspec_plan_invalid_none처럼 선언된 부분 문자열이 충돌해도 실패한다. Native 전용 경로와 현재 직렬화는 별도 fixture 조사가 끝날 때까지 유지한다.
+
+새 process 시험은 자식 argv에 selector가 없어 먼저 실패했고 잘못된 binding 시험은 준비가 거절하지 않아 먼저 실패했다. 수정 후 두 시험과 기존 환경 시험이 통과했다(세 case). 대역 process는 argument 전달을 검증하며 Rust filter 실행을 검증하지 않는다. 같은 process factory를 이용한 읽기 전용 조사는 현재 Rust recipe coverage command 66개를 선언 충돌 없이 해석한다. var/ci-plans/rust-coverage-selectors.json은 이를 declaration-audit와 execution not-run으로 기록한다. 실제 Rust 실행과 소요 시간은 CI 증거가 필요하다.

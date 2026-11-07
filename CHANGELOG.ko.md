@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f1651eeb8ea86dec9f17a67f99b4b1817944241f3a8688af989c911a0175cd38 -->
+<!-- source-sha256: 42a58e28ee8faaed49309bed794a9b70a12411c7cb5326e7779bd59abeda9c17 -->
 # 변경 이력
 
 ## Unreleased
+
+- CI: 기존의 명시적 suite binding으로 Rust coverage recipe 진입점을 선택하고 누락·모호·충돌하는 선언 selector는 실행 전에 거절한다 (T388).
 
 - CI: native 실행 전에 Rust 시험 시간대를 선언하고 client·Cargo·coverage runner가 그 환경을 공유하며 message recipe에서 process TZ를 동시에 변경하던 코드를 제거한다 (T388).
 

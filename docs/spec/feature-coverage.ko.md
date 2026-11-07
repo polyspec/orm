@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: 7ff6fe1c1f11733b489edcc499aaed4ee60fbd4addd3a58a5718acb6cc438dd8 -->
+<!-- source-sha256: c983292b86c360e1af068084e593b5e3cacda9aa868f3fd4ab178728b173aaee -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 테스트 명령을 선언한다. 그 명령은 자기 recipe의 entry(FCV-12)이거나 FCV-2의 네이티브 테스트다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-unit-check`가 실패한다.
@@ -492,3 +492,5 @@ CI의 하나의 실행 목록은 shared recipe와 native check를 모두 포함�
 Build unit, selector, fixture와 필요한 직렬화는 repository가 선언한다. 변경 가능한 상태를 공유하는 시험은 그 상태와 동시 실행이 불가능한 이유를 명시해야 한다. 독립 case는 다른 suite가 필요로 한다는 이유만으로 직렬화를 적용받지 않는다. Kit은 선언된 harness를 실행하고 관찰한 결과를 보고한다. Product 시험의 동등성을 판단하거나 repository build artifact를 관리하지 않는다. 실행 목록을 합친다는 이유로 모든 native check를 일반 command operation으로 바꾸지 않는다.
 
 Native 진입점을 합치기 전에 fixture 격리, native selector 의미, 정확한 case 식별과 결과 귀속을 검증한다. 합친 binary는 이 특성과 모든 필수 검사를 보존할 때만 허용한다. Build 성공만으로는 이를 증명할 수 없다.
+
+Rust recipe coverage는 process 준비까지 recipe path를 보존하고 그 recipe·Rust implementation·선언한 test file에 대한 `config/parity.json`의 유일한 suite binding에서 진입점을 선택한다. Native filter는 binding의 명시적 symbol 뒤에 `::`를 붙이며 file 이름에서 symbol을 추론하지 않는다. Binding이 없거나 비어 있거나 모호하면 준비가 실패한다. [libtest-mimic filter](https://docs.rs/libtest-mimic/0.8.2/libtest_mimic/struct.Arguments.html#structfield.filter)는 부분 문자열을 비교하므로 같은 test file의 다른 선언된 suite 진입점까지 선택되면 준비가 거절한다. Recipe가 없는 독립 native check는 자체 native 진입점 선택을 유지한다. 기존의 정확한 result-case 비교는 추가·누락·중복 case 결과를 계속 거절하며 선언 검사만으로 실제 native 실행을 증명하지 않는다.

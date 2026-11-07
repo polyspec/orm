@@ -38,7 +38,7 @@ type StepWriter = (text: string) => void;
 /** The outcome of run: an error message, or the collected output. */
 type RunResult = { error?: string | null | undefined; value?: string | undefined; stdout: string; pid?: number | undefined };
 /** A test entry planned for one execution: `cases` are the ids that must pass, read on `database` from its results file. */
-type Spec = ({ format: 'process'; program: string; args: string[]; env?: Record<string, string> } | { format: 'go'; cwd: string; symbol: string } | { format: 'cargo'; cwd: string; testPath: string }) & { cases: string[]; database: string };
+type Spec = ({ format: 'process'; program: string; args: string[]; env?: Record<string, string> } | { format: 'go'; cwd: string; symbol: string } | { format: 'cargo'; cwd: string; testPath: string; recipe?: string }) & { cases: string[]; database: string };
 type CargoSpec = Extract<Spec, { format: 'cargo' }>;
 /** A build of buildNative: its binary or its error. */
 type Built = { binary: string; error?: undefined } | { error: string; binary?: undefined };
@@ -354,7 +354,7 @@ async function entryTest(item: Item, command: NativeCommand, root: string): Prom
     if (!new RegExp(`\\bfunc\\s+${symbol}\\s*\\(`).test(await readFile(testPath, 'utf8'))) throw new Error(`test symbol ${symbol} is absent from declared test file`);
     return { format: 'go', cwd: dirname(testPath), symbol, cases, database };
   }
-  return { format: 'cargo', cwd: await owningCrate(testPath, resolve(root, item.part)), testPath, cases, database };
+  return { format: 'cargo', cwd: await owningCrate(testPath, resolve(root, item.part)), testPath, cases, database, ...(recipe === undefined ? {} : { recipe }) };
 }
 
 // owningCrate is the directory of the Cargo manifest of a Rust test file, within the part of its owner.
@@ -646,6 +646,25 @@ async function buildCargo(plans: Plans, directory: string, builds: Builds, build
   }
 }
 
+// A recipe entry is selected by its existing parity binding, never by the source file's name.
+// libtest's positive filter is a substring: reject declared entries that the same filter would also select.
+function cargoRecipeArguments(spec: CargoSpec, config: ParityConfig, root: string): string[] {
+  if (spec.recipe === undefined) return [];
+  const test = relative(root, spec.testPath).split(sep).join('/');
+  const entries = config.units.flatMap(unit => unit.kind === 'suite' ? (unit.bindings ?? [])
+    .filter(binding => binding.implementation === 'rust' && binding.test === test)
+    .map(binding => ({ unit: unit.id, recipe: unit.file, symbol: binding.symbol })) : []);
+  const matches = entries.filter(entry => entry.recipe === spec.recipe);
+  const selected = matches[0];
+  if (matches.length !== 1 || !selected?.symbol)
+    throw new Error(`Rust recipe ${spec.recipe}: no unique entry binding for ${test}; declare one suite binding with its Rust symbol in config/parity.json`);
+  const selector = `${selected.symbol}::`;
+  const overlaps = entries.filter(entry => entry !== selected && `${entry.symbol ?? ''}::`.includes(selector));
+  if (overlaps.length > 0)
+    throw new Error(`Rust recipe ${spec.recipe}: selector ${selector} also selects ${overlaps.map(entry => entry.unit).join(', ')}; use separate native targets or declare distinct entry scopes before combining them`);
+  return [selector];
+}
+
 // prepared turns one spec into the list of processes that run the built binary. For Rust, each test binary compiled from the
 // declared test file runs in turn (--test-threads=1), since the tests of one entry can write the same row.
 // The Rust test binary receives the crate's package directory as CARGO_MANIFEST_DIR, as cargo test does:
@@ -662,8 +681,10 @@ export function prepared(spec: Spec, builds: Builds, root: string, parityConfig:
   if (!crate || crate.error !== undefined) throw new Error(`cargo test build failed: ${crate?.error ?? 'it was not built'}`);
   const executables = crate.files.get(spec.testPath) ?? [];
   if (executables.length === 0) throw new Error(`no test binary compiles ${spec.testPath}`);
-  const environment = implementationEnvironment(parityConfig ?? readParityConfig(join(root, 'config/parity.json')), 'rust', process.env, root);
-  return executables.map((executable: string) => ({ program: executable, args: ['--test-threads=1'], cwd: spec.cwd,
+  const config = parityConfig ?? readParityConfig(join(root, 'config/parity.json'));
+  const environment = implementationEnvironment(config, 'rust', process.env, root);
+  const selectors = cargoRecipeArguments(spec, config, root);
+  return executables.map((executable: string) => ({ program: executable, args: ['--test-threads=1', ...selectors], cwd: spec.cwd,
     env: { ...environment, ...crate.programs, CARGO_MANIFEST_DIR: spec.cwd } }));
 }
 
