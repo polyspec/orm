@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: 78529b105c5b8fd78bf08500a9ea473f75bba4e86a7ce84851d02277340904ee -->
+<!-- source-sha256: e028392f1bf69995f9432977ba33800a3fc21475fc37030e0dd4ff93156c2481 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -236,6 +236,10 @@ orm 자신의 규칙만 적는다.
   Enforced by: none, 이름은 검토의 판단이며 언어 사이의 이름을 비교하는 검사가 없다
 - Refines P11: code 주석과 commit message는 영어다. tracked code 파일의 주석에는 한글이 없으며, `make comment-language-check`(T131)가 한글 주석을 파일과 줄을 대며 실패시킨다. commit message에도 한글을 쓰지 않는다. 새로 쓰거나 바꾸는 주석은 영어다(PRINCIPLES.md).
   Enforced by: `make comment-language-check`
+- Own: Go 시험 helper는 실행이 소유한 출력에 `go test -c`로 컴파일하고 `go tool test2json`으로 실행한다.
+  컴파일은 TestMain을 실행하지 않는다. 호환 package는 native build를 공유하며 build 실패를 유지하면서
+  독립적으로 생성된 바이너리는 계속 실행한다. Native compiler 호환성 검사의 준비는 제한 시간이 있는 case 밖에서 수행한다.
+  Enforced by: `make testcase-check`
 - Own: Go 값 변환, host 인코딩, 생성 모델 대입은 잘못된 값에 오류를 반환한다. 행을 쓰기 전에 insert 필드 대입을 검증하고 행 조립 오류를 호출자에게 전파한다.
   Enforced by: `make go-test-check`
 - Own: Go collection 식별자와 scalar 비교는 지원하는 값의 타입을 보존한다. 지원하지 않거나 손실되는 key는 실패하고 collection, relation, 분할 질의 호출자는 오류를 전파한다.

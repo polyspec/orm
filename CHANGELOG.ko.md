@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 4b87438d6501d03d0b2ee6a01f7cf481a321e8dce75d2d67207b10c0828e1c2f -->
+<!-- source-sha256: 37a867b516f7533c6b5fb493c1b67666fc4fd5242be12a2845f7afce637a29b3 -->
 # 변경 이력
 
 ## Unreleased
+
+- CI: 호환 Go package를 go test -c로 컴파일하고 소유한 바이너리를 test2json으로 실행하며 일부 build·시험 실패를 보존한다 (T388).
 
 - CI: 동일 main commit의 성공한 전체 수동 CI만 재사용하고 출처를 다시 검증하며 실행된 모든 실패를 보존한다 (T388).
 

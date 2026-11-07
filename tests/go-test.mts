@@ -1,21 +1,12 @@
-// go test is split into build and run steps. go test compiles the package and test binary before running tests, and that
-// compile does not report cases. So first, with the same package, build tags, and build flags, run
-// `go test -run '^$' -count=1`, which runs no tests, as the long task `go-build/<packages>`
-// without a deadline (runLong: compiler output and exit code as STEP lines) to fill the build cache, then run `go test`
-// with the received arguments, whose tags are merged with GO_TEST_TAGS. Test cases in the run step get their own deadlines via packages/go/testcase.
-// The run step runs `go test -json` (test2json) and passes the Output of its events through as human-readable output.
-// A run that selects tests with `-run` fails if no test was run (no `"Action":"run"` event): a misspelled
-// pattern runs nothing and still exits 0, so unless treated as failure, it passes without testing anything. The count
-// is taken from test2json events, not from human-readable output. A run that says it selects no tests (`-run '^$'`) is not counted.
-//
-// Usage: node tests/go-test.mts <go test arguments...>
+// Compile repository Go test binaries once, then execute those outputs through Go's native event converter.
+// The build never runs TestMain. Package and case failures do not suppress independent packages.
+// Usage: node tests/go-test.mts [--dry-run] <repository go test arguments...>
 import { spawn } from 'node:child_process';
+import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { resolve, join } from 'node:path';
 import { runLong, stepLines, type Step } from './testcase.mts';
 import { parseGoTestEvent } from '../scripts/json/formats.mts';
-
-// Flags that only set the run are removed from the build step. A flag that takes a separate value also removes the next argument.
-const runFlags = new Set(['-v', '-run', '-count', '-timeout', '-fuzz', '-fuzztime', '-bench', '-benchtime', '-json', '-failfast', '-short', '-shuffle', '-parallel', '-cpu']);
-const valued = new Set(['-run', '-count', '-timeout', '-fuzz', '-fuzztime', '-bench', '-benchtime', '-shuffle', '-parallel', '-cpu']);
+import { goBatches, goCompileArguments, goDiscoveryArguments, goExecuteArguments, goInvocation, goPackages } from './go-native.mts';
 
 // GO_TEST_TAGS are the build tags of every go test of the repository: ormtest builds the test entry point (protocol §3) and
 // the tests that arm it, which a run without the tag would leave out unseen. Each run takes them here, so no target repeats them.
@@ -37,21 +28,6 @@ export function withTestTags(args: string[]): string[] {
   return out;
 }
 
-// buildArguments are the build step's arguments: the go test arguments with the run flags removed.
-export function buildArguments(args: string[]): string[] {
-  const out: string[] = [];
-  for (let index = 0; index < args.length; index++) {
-    const arg = args[index] ?? '';
-    const flag = arg.split('=')[0] ?? '';
-    if (runFlags.has(flag)) {
-      if (valued.has(flag) && !arg.includes('=')) index++;
-      continue;
-    }
-    out.push(arg);
-  }
-  return [...out, '-run', '^$', '-count=1'];
-}
-
 // packages are the package patterns among the arguments (starting with ./). They become the build case's name.
 export function packages(args: string[]): string {
   return args.filter(arg => arg.startsWith('./')).map(arg => arg.slice(2)).join(',') || '.';
@@ -66,44 +42,51 @@ export function selection(args: string[]): string | undefined {
   return undefined;
 }
 
-// go runs `go test <args>` and returns the exit code (or its signal name if it ended by signal). If there is a step (build step), it emits output
-// lines as STEP. If not (run step), it adds `-json`, passes the Output of test2json events through to standard
-// output, passes through non-JSON lines (such as build errors) too, and returns the count of `"Action":"run"` events as runs.
-// The command stays in this process's process group, so terminal interrupts reach it too.
-/** The end of one go test: its exit code or the signal that ended it, and the number of tests that ran. */
-type GoResult = { code: number | NodeJS.Signals | null; runs: number };
-
-/** The native arguments shared by execution and its preview. */
-export const goArguments = (args: string[], build: boolean): string[] => ['test', ...(build ? [] : ['-json']), ...args];
-
-/** Preview compilation and case execution without starting Go. */
+/** Preview the same native phases without discovering packages or starting Go. */
 export function goDryRun(given: string[]) {
-  const args = withTestTags(given);
+  const plan = goInvocation(withTestTags(given));
   return { mode: 'dry-run', execution: 'not-run', commands: [
-    { phase: 'build', program: 'go', args: goArguments(buildArguments(args), true) },
-    { phase: 'test', program: 'go', args: goArguments(args, false), requires: 'build succeeded' },
-  ] };
+    { phase: 'discover', program: 'go', args: goDiscoveryArguments(plan) },
+    { phase: 'build', program: 'go', args: ['test', '-c', ...plan.build, '-o', '<owned build directory>', '<discovered compatible packages>'], requires: 'package discovery succeeded' },
+    { phase: 'test', program: 'go', args: ['tool', 'test2json', '-t', '-p', '<discovered package>', '<owned binary>', ...plan.native], requires: 'this package build succeeded', cwd: '<discovered package directory>' },
+  ], cleanup: 'remove the owned run directory after execution' };
 }
 
-function go(args: string[], step?: Step): Promise<GoResult> {
-  return new Promise<GoResult>((resolve, reject) => {
-    const child = spawn('go', goArguments(args, step !== undefined), { stdio: step ? ['ignore', 'pipe', 'pipe'] : ['inherit', 'pipe', 'inherit'] });
-    const lines = step ? stepLines(step) : null;
-    // -json in the test arguments asks for the raw test2json stream on standard output (the parity reader of kit reads it).
-    const events = step ? null : testEvents(undefined, args.includes('-json'));
-    child.stdout?.on('data', (chunk: Buffer) => (lines ?? events)?.write(String(chunk)));
-    child.stderr?.on('data', (chunk: Buffer) => lines?.write(String(chunk)));
+function go(args: string[], options: { cwd?: string; raw?: boolean; step?: Step; capture?: boolean } = {}): Promise<{ code: number; runs: number; stdout: string }> {
+  return new Promise((resolve, reject) => {
+    const child = spawn('go', args, { ...(options.cwd ? { cwd: options.cwd } : {}), stdio: ['inherit', 'pipe', 'pipe'] });
+    const lines = options.step ? stepLines(options.step) : null;
+    const events = options.step ? null : testEvents(undefined, options.raw);
+    let stdout = '';
+    let readError: string | undefined;
+    const read = (work: () => void) => {
+      if (readError) return;
+      try { work(); }
+      catch (error) {
+        readError = error instanceof Error ? error.message : String(error);
+        console.error(`go-test: invalid native event stream: ${readError}; inspect go tool test2json output`);
+      }
+    };
+    child.stdout.on('data', (chunk: Buffer) => {
+      if (options.capture) stdout += String(chunk);
+      read(() => (lines ?? events)?.write(String(chunk)));
+    });
+    child.stderr.on('data', (chunk: Buffer) => {
+      if (lines) lines.write(String(chunk));
+      else process.stderr.write(chunk);
+    });
     child.on('error', reject);
     child.on('close', (code, signal) => {
       lines?.flush();
-      events?.flush();
-      resolve({ code: code ?? signal, runs: events?.runs() ?? 0 });
+      read(() => events?.flush());
+      if (signal) console.error(`go-test: go ${args.join(' ')} ended by ${signal}; inspect the runner process report`);
+      resolve({ code: readError ? 1 : code ?? 1, runs: events?.runs() ?? 0, stdout });
     });
   });
 }
 
 // testEvents reads test2json output line by line. Event Output (test output and build output) goes to standard output, and non-JSON lines
-// are passed through, and `run` events with a Test are counted.
+// are passed through, and completed pass/fail events with a Test are counted.
 export function testEvents(write: (text: string) => unknown = (text: string) => process.stdout.write(text), raw = false): { write(chunk: string): void; flush(): void; runs: () => number } {
   let partial = '';
   let runs = 0;
@@ -137,31 +120,70 @@ export function testEvents(write: (text: string) => unknown = (text: string) => 
   };
 }
 
-if (process.argv[1] && new URL(import.meta.url).pathname === process.argv[1]) {
+async function main(): Promise<void> {
   const raw = process.argv.slice(2);
   const dryRun = raw[0] === '--dry-run';
   const given = dryRun ? raw.slice(1) : raw;
-  if (given.length === 0) {
-    console.error('usage: node tests/go-test.mts [--dry-run] <go test arguments...>');
-    process.exit(2);
-  }
-  if (dryRun) {
-    const text = JSON.stringify(goDryRun(given), null, 2) + '\n';
-    await new Promise<void>((done, fail) => process.stdout.write(text, error => error ? fail(error) : done()));
-    process.exit(0);
-  }
+  if (given.length === 0) throw new Error('usage: node tests/go-test.mts [--dry-run] <repository go test arguments...>');
+  if (dryRun) { console.log(JSON.stringify(goDryRun(given), null, 2)); return; }
   const args = withTestTags(given);
+  const plan = goInvocation(args);
   const pattern = selection(args);
-  const built = await runLong(`go-build/${packages(args)}`, async ({ step }) => {
-    const { code } = await go(buildArguments(args), step);
-    if (code !== 0) throw new Error(`go test build exited with ${code}`);
-    step('exit 0');
-  });
-  if (!built) process.exit(1);
-  const { code, runs } = await go(args);
-  if (code === 0 && pattern !== undefined && pattern !== '^$' && runs === 0) {
-    console.error(`go-test: -run ${pattern} selected no test in ${packages(args)}`);
-    process.exit(1);
-  }
-  process.exit(typeof code === 'number' ? code : 1);
+  const parent = resolve(new URL('..', import.meta.url).pathname, '.runtime/run');
+  mkdirSync(parent, { recursive: true });
+  const directory = mkdtempSync(join(parent, `go-test-${process.env.ORM_STEP ?? 'direct'}-${process.pid}-`));
+  let failed = false;
+  let runs = 0;
+  try {
+    let output = '';
+    const discovered = await runLong(`go-packages/${packages(args)}`, async ({ step }) => {
+      const command = goDiscoveryArguments(plan);
+      step(JSON.stringify(['go', ...command]));
+      const result = await go(command, { step, capture: true });
+      if (result.code !== 0) throw new Error(`go list exited with ${result.code}`);
+      output = result.stdout;
+    });
+    if (!discovered) { process.exitCode = 1; return; }
+    const discoveredPackages = goPackages(output);
+    const ready: { pkg: typeof discoveredPackages[number]; binary: string }[] = [];
+    for (const batch of goBatches(discoveredPackages, directory)) {
+      mkdirSync(batch.directory);
+      const built = await runLong(`go-build/${batch.entries.map(entry => entry.pkg.path).join(',')}`, async ({ step }) => {
+        const command = goCompileArguments(plan, batch.entries.map(entry => entry.pkg), batch.directory);
+        step(JSON.stringify(['go', ...command]));
+        const result = await go(command, { step });
+        if (result.code !== 0) throw new Error(`go test -c exited with ${result.code}; inspect each package's compiler output`);
+        step('exit 0');
+      });
+      if (!built) failed = true;
+      for (const { pkg, binary } of batch.entries) {
+        if (!pkg.directory) {
+          console.error(`go-test: go list provided no directory for ${pkg.path}; provide a package in the checkout`);
+          failed = true;
+        } else if (pkg.hasTests && existsSync(binary)) ready.push({ pkg, binary });
+        else if (pkg.hasTests) {
+          console.error(`go-test: no compiled test binary for ${pkg.path}; inspect its compiler output`);
+          failed = true;
+        } else console.log(`? ${pkg.path} [no test files]`);
+      }
+    }
+    for (const { pkg, binary } of ready) {
+      const command = goExecuteArguments(plan, pkg, binary);
+      console.log(`[go-test] run ${JSON.stringify({ program: 'go', args: command, cwd: pkg.directory })}`);
+      const result = await go(command, { cwd: pkg.directory, raw: plan.raw });
+      console.log(`[go-test] ${pkg.path}: exit ${result.code}, ${result.runs} completed cases`);
+      if (result.code !== 0) failed = true;
+      runs += result.runs;
+    }
+    if (!failed && pattern !== undefined && pattern !== '^$' && runs === 0) {
+      console.error(`go-test: -run ${pattern} selected no test in ${plan.packages.join(',')}`);
+      failed = true;
+    }
+    process.exitCode = failed ? 1 : 0;
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+}
+
+if (import.meta.main) {
+  try { await main(); }
+  catch (error) { console.error(error instanceof Error ? error.message : String(error)); process.exitCode = 1; }
 }

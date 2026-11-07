@@ -143,8 +143,8 @@ WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV))
 # time zone of the connection (+00:00), so the results must not depend on this value (docs/spec/dialects.md).
 TEST_TZ = Asia/Seoul
 
-# GO_TEST runs Go tests so that each case is reported. tests/go-test.mts first runs the build of the same package and build
-# tag as a long-running task with no deadline, `go-build/<packages>`, and then runs go test. -v shows the RUN, STEP, PASS, and FAIL lines that each
+# GO_TEST discovers packages and compiles each test binary with go test -c as a long operation with no deadline,
+# then runs each owned binary through go tool test2json from its package directory. -v shows the RUN, STEP, PASS, and FAIL lines that each
 # case emits in packages/go/testcase during the run, and each case has its own deadline,
 # so -timeout 0 turns off the deadline of the whole test binary (default 10 minutes).
 # GO_TEST_FLAGS adds flags to every Go test of the repo (empty by default). A parity binding names GO_TEST_FLAGS=-json to read the
@@ -363,7 +363,7 @@ testcase-check/go:
 testcase-check/node:
 	$(NODE) --test scripts/harness/testcase.test.mts scripts/harness/debug-mode.test.mts
 testcase-check/runners:
-	$(NODE) --test scripts/harness/go-test.test.mts scripts/harness/cargo-test.test.mts
+	$(NODE) --test scripts/harness/go-test.test.mts scripts/harness/go-native.test.mts scripts/harness/go-native-compile.test.mts scripts/harness/cargo-test.test.mts
 testcase-check/rust:
 	cd packages/rust && $(CARGO_TEST) testcase-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-testcase
 

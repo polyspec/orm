@@ -1,5 +1,5 @@
 <!-- doc-id: plan-cross-verification -->
-<!-- source-sha256: 3882f52aa6c99e6c80eb2731176984b8eae10d2c41368ff2bb7fb09fe765549e -->
+<!-- source-sha256: b1bb65f3e5117b1a7d103897e25f85c9cf503f8f8eb0f028df11a55929919d58 -->
 # corpus SQLite 연결의 여섯 runtime과 네 database 교차 검증
 
 [English](plan.md)
@@ -428,3 +428,9 @@ Native npm install은 package.json과 package-lock.json에서 Kit URL·version·
 저장소는 검사 의존성을 설치하기 전에 main push의 전체 실행 여부를 결정한다. 수동 실행은 항상 전체 시험을 실행한다. 동일 SHA와 저장소의 ci.yml 수동 실행이 완료·성공하고 ci-passed job 하나가 성공했을 때만 그 증거를 사용한다. 마지막 조회에서 출처를 다시 검증한다. 의도적인 생략만 인정하며 실행된 성공·실패·취소는 Kit의 일반 판정기로 그대로 전달한다. API 오류는 명시적으로 실패한다. Fast-forward 반영은 시험한 SHA를 보존하며 다른 commit은 전체 CI가 필요하다.
 
 단위 증거: ci-evidence.test.mts 18개가 통과했다. 잘못된 응답, 다른 commit·저장소·workflow, 없거나 실패한 최종 job, 수동 실행의 독립성, workflow 의존성과 실제 CLI에서 Kit으로의 성공·실패 전달을 검사했다. 저장소·CI 미리보기 회귀 시험 158개와 TypeScript no-emit 및 문서 검사도 통과했다. 로컬 단위 증거이며 branch CI, main 반영과 native build 횟수 개선은 아직 검증하지 않았다. ORM release는 요청하지 않는다.
+
+### Go helper의 컴파일과 실행
+
+Go helper는 빈 selector로 go test를 실행하여 build cache를 채우던 경로를 제거했다. 그 경로는 준비 중 TestMain을 실행할 수 있다. 이제 go list로 package를 확인하고 호환 package를 go test -c 하나에서 소유한 directory로 컴파일한 뒤 package별 directory에서 go tool test2json으로 해당 출력을 실행한다. Native 출력 이름이 충돌하면 컴파일 전에 나누며 재시도나 별도 실행 경로 없이 실행한다. Batch 실패를 유지하면서 정상 생성된 바이너리와 이후 batch는 계속 실행한다. 컴파일·시험 실패는 모두 최종 종료 상태에 반영하고 소유한 출력을 제거한다.
+
+기존 실제 Go 호환성 case는 제한 시간이 있는 case 안에서 컴파일했다. 이를 별도 CI 시험 파일로 옮겨 native 준비를 제한 시간이 있는 case 밖의 긴 작업으로 실행하며 짧은 assertion이 native 빈 선택, TestMain 실행 횟수와 컴파일 오류 뒤 정상 package 실행을 확인한다. 로컬에서는 실행하지 않는다. 로컬 단위 증거는 정확한 단계 인자, native package 식별자, 이름 충돌, 일부 build·시험 실패, 정리, dry-run과 client·저장소 회귀를 포함하며 181개가 통과했다. TypeScript no-emit과 type-aware lint도 통과했다. 실제 Go CLI 호환성과 시간 측정은 CI에서 확인해야 한다. 저장소 helper의 변경이며 Kit parity binding의 반복 준비는 아직 남아 있다.

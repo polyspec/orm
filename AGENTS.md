@@ -270,6 +270,10 @@ vendors; this file states only the rules of orm.
   Enforced by: none, a name is a judgement of review; no check compares names across clients
 - Refines P11: Code comments and commit messages are English. A comment of a tracked code file holds no Hangul; `make comment-language-check` (T131) fails on one and names its file and line. A commit message holds no Hangul either. A new or changed comment is English (PRINCIPLES.md).
   Enforced by: `make comment-language-check`
+- Own: Go test helpers compile with `go test -c` into run-owned outputs and execute them through `go tool test2json`;
+  compilation never executes TestMain. Compatible packages share a native build; a failed build remains a failure
+  while independent produced binaries still run. Native compiler compatibility checks prepare outside timed test cases.
+  Enforced by: `make testcase-check`
 - Own: Go value conversion, host encoding, and generated model assignment return errors for invalid values. Validate insert field assignment before writing a row, and propagate row assembly errors to the caller.
   Enforced by: `make go-test-check`
 - Own: Go collection identities and scalar comparisons preserve supported value types; unsupported or lossy keys fail, and collection, relation, and split-query callers propagate the error.

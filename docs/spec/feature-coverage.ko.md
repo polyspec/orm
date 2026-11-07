@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: 2b562fa8eff22fc626e860205a1a2dbd0170b4634c7c187b58324c079c188c1d -->
+<!-- source-sha256: 1a52b49f807eb4699684c35b2f94b37712cc8d840b75e631fa2b136a7d4695ed -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 테스트 명령을 선언한다. 그 명령은 자기 recipe의 entry(FCV-12)이거나 FCV-2의 네이티브 테스트다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-unit-check`가 실패한다.
@@ -506,3 +506,9 @@ Phase로 나눈 parity는 config/ci.json의 `parityBindings`에 각 implementati
 수동 ci.yml 실행은 항상 전체 suite를 실행한다. Main push는 같은 repository의 ci.yml에서 정확히 같은 commit SHA로 완료한 성공한 수동 실행과 그 ci-passed job의 성공만 재사용할 수 있다. 다른 commit·다른 workflow·실패하거나 미완료인 실행·이미 증거를 재사용한 push 실행은 재사용하지 않는다. 해당 실행이 없는 main push는 전체 suite를 실행한다. API 오류나 잘못된 증거는 명확히 실패하며 성공 판정으로 바뀌지 않는다.
 
 이 선택 정책은 repository가 소유한다. 작은 evidence job이 full 또는 reuse mode와 source run 식별을 기록하고 검사 job은 그 결정에 의존하여 full mode에서 실행한다. 마지막 job은 여전히 모든 선행 job을 판정한다. Reuse mode의 의도된 건너뜀을 허용하기 전에 source를 다시 확인하고 실제로 실행한 모든 결과를 Kit의 일반 ci-passed 판정에 전달하며 실패나 취소를 보존한다. Job summary는 source run과 검증한 SHA를 기록한다. 저장된 native 결과를 다시 출력하거나 건너뛴 case를 새로 실행했다고 보고하지 않는다. Main 반영은 fast-forward로 검증한 commit을 보존한다.
+
+## Go 컴파일과 native 실행 {#go-compilation-and-native-execution}
+
+저장소의 Go 시험 helper는 `go test -c`로 시험 바이너리를 컴파일하며 그 과정에서 TestMain이나 case를 실행하지 않는다. [Go의 컴파일·출력 directory 문서](https://pkg.go.dev/cmd/go#hdr-Test_packages)와 [test2json 문서](https://pkg.go.dev/cmd/test2json)를 따른다. 동일한 build 설정으로 `go list`에서 package 식별자와 directory를 확인하고 선택한 package마다 소유한 실행 directory에 출력 하나를 준비한다. 호환 package는 native build 명령 하나에서 컴파일하므로 Go가 공통 컴파일을 배치한다. Native 바이너리 이름이 같으면 build 전에 별도 출력 directory로 나눈다. 이후 각 출력을 해당 package directory에서 표준 `go tool test2json`으로 실행하여 native selector와 case event를 보존한다. 준비한 바이너리를 실행하려고 go test를 다시 호출하지 않으며 실행이 끝나면 출력을 제거한다. 실행 사이에 출력을 재사용하지 않는다.
+
+Package build 실패는 전체 실행의 실패로 남는다. 다른 package의 build나 정상 package 바이너리의 실행을 막지 않으며 시험 바이너리가 생성된 package만 실행한다. Batch가 실패해도 정상 생성된 바이너리는 실행하며 전체 실패 상태는 유지한다. 최종 상태에는 build와 시험 실패가 모두 반영되고 명시한 비어 있지 않은 selector가 case를 하나도 실행하지 않으면 실패한다. 컴파일은 진행 로그를 남기며 시간 제한 없이 실행한다. 각 native case는 자체 보고와 제한을 유지한다. Helper는 이 저장소가 사용하는 build·test flag를 지원하며 지원하지 않는 flag는 오류로 처리한다. go test로 다시 실행하는 별도 경로를 만들지 않는다.

@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- CI: Compile compatible Go packages with go test -c and execute owned binaries through test2json, retaining partial build and test failures (T388).
+
 - CI: Reuse successful full manual CI only for the identical main commit, revalidate its source, and preserve every executed failure (T388).
 
 - CI: pin the published Kit 0.0.96 archive and integrity and synchronize its independent planning and per-binding setup workflow (T388).
