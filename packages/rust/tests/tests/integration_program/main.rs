@@ -6,6 +6,7 @@
 //! Each section is one test that runs its case on every driver, in case databases of its own, so the sections run in parallel.
 //! The workspace cargo test of the rust lane of scripts/client-db-test.mts runs them, scripts/case-database-check.mts runs the
 //! target, and a parity binding runs one section through make feature-rust-unit.
+use polyspec_orm_tests::plain::Plain;
 use polyspec_orm_testcase::OrPanic;
 
 #[path = "../common/result_code.rs"]
@@ -359,7 +360,7 @@ async fn writes_case(t: &Target) {
     b.update(false).await.unwrap();
     let item = Account::new().connect(db).set_name("acc").new_label("shown").create().await.unwrap();
     assert_eq!(item.get_label().unwrap(), Some(serde_json::json!("shown")), "new value");
-    assert_eq!(item.to_array().unwrap()["label"], "shown", "new value output");
+    assert_eq!(item.to_array().unwrap().plain().unwrap()["label"], "shown", "new value output");
     let saved = Account::new().connect(db).set_seq(item.get_seq().unwrap()).set_name("saved").save().await.unwrap();
     assert_eq!(saved.get_name().unwrap(), "saved", "save result");
     let stored = Account::new().connect(db).get_by_seq(item.get_seq().unwrap()).await.unwrap().expect("a row");
@@ -518,7 +519,7 @@ async fn json_values_case(t: &Target) {
     let got = Author::new().connect(db).add_all_columns().get_by_seq(seq).await.unwrap().expect("a row");
     expect_ordered(got.get_json_setting().unwrap(), text);
     expect_ordered(got.get_jsons_tags().unwrap(), tags);
-    assert_eq!(got.to_array().unwrap()["json_setting"], serde_json::json!({"kind":"value","value":{"a": [], "b": 1, "c": {}, "n": 1.5}}), "array form");
+    assert_eq!(got.to_array().unwrap().plain().unwrap()["json_setting"], serde_json::json!({"kind":"value","value":{"a": [], "b": 1, "c": {}, "n": 1.5}}), "array form");
     let out = got.to_json().unwrap();
     assert!(
         out.contains(&format!(r#""json_setting":{{"kind":"value","value":{text}}}"#))
@@ -553,18 +554,18 @@ async fn json_values_case(t: &Target) {
     let got = Author::new().connect(db).add_all_columns().get_by_seq(created.get_seq().unwrap()).await.unwrap().expect("a row");
     expect_ordered(got.get_json_setting().unwrap(), "[]");
     expect_ordered(got.get_jsons_tags().unwrap(), "null");
-    assert_eq!(got.to_array().unwrap()["jsons_tags"], serde_json::json!({"kind":"value","value":null}), "JSON literal null output");
+    assert_eq!(got.to_array().unwrap().plain().unwrap()["jsons_tags"], serde_json::json!({"kind":"value","value":null}), "JSON literal null output");
     let mut got = got.set_jsons_tags(polyspec_orm::StyledValue::SqlNull).unwrap();
     got.update(false).await.unwrap();
     let sql_null = Author::new().connect(db).add_all_columns().get_by_seq(created.get_seq().unwrap()).await.unwrap().expect("a row");
     assert!(matches!(sql_null.get_jsons_tags().unwrap(), polyspec_orm::StyledValue::SqlNull), "SQL NULL remains explicit");
-    assert_eq!(sql_null.to_array().unwrap()["jsons_tags"], serde_json::json!({"kind":"sql-null"}), "SQL NULL output");
+    assert_eq!(sql_null.to_array().unwrap().plain().unwrap()["jsons_tags"], serde_json::json!({"kind":"sql-null"}), "SQL NULL output");
     assert!(sql_null.to_json().unwrap().contains(r#""jsons_tags":{"kind":"sql-null"}"#), "SQL NULL model JSON output");
     let mut object = sql_null.set_jsons_tags(polyspec_orm::StyledValue::Value(polyspec_orm::ordered_json::parse(r#"{"kind":"sql-null"}"#).unwrap())).unwrap();
     object.update(false).await.unwrap();
     let object = Author::new().connect(db).add_all_columns().get_by_seq(created.get_seq().unwrap()).await.unwrap().expect("a row");
     assert_eq!(
-        object.to_array().unwrap()["jsons_tags"],
+        object.to_array().unwrap().plain().unwrap()["jsons_tags"],
         serde_json::json!({"kind":"value","value":{"kind":"sql-null"}}),
         "document members cannot collide with the column tag"
     );

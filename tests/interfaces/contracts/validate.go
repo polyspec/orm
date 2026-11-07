@@ -51,7 +51,7 @@ var outputs = map[string]map[string]string{
 	"Success":      {"go": "error", "php": "void", "rust": "Result<()>", "typescript": "Promise<void>", "python": "None"},
 	// Registration reads and writes no database, so it is also a synchronous call in Rust and TypeScript.
 	"Registered":        {"go": "error", "php": "void", "rust": "Result<()>", "typescript": "void", "python": "None"},
-	"RowMap":            {"go": "map[string]any", "php": "array", "rust": "polyspec_orm::Result<polyspec_orm::serde_json::Value>", "typescript": "Record<string,unknown>", "python": "dict"},
+	"RowMap":            {"go": "map[string]any", "php": "array", "rust": "polyspec_orm::Result<polyspec_orm::ArrayValue>", "typescript": "Record<string,unknown>", "python": "dict"},
 	"Db":                {"go": "(*DB,error)", "php": "Polyspec\\Orm\\Db", "rust": "Result<Db>", "typescript": "Promise<Db>", "python": "Db"},
 	"TransactionResult": {"go": "error", "php": "mixed", "rust": "Transaction<'_,F>", "typescript": "Promise<T>", "python": "T"},
 	"Utils":             {"go": "*Utils", "php": "Polyspec\\Orm\\Utils", "rust": "Utils<'_>", "typescript": "Utils", "python": "Utils"},
@@ -95,7 +95,7 @@ var outputs = map[string]map[string]string{
 	"Optional<Model>": {"go": "T", "php": "?Polyspec\\Orm\\Model", "rust": "Option<&M>", "typescript": "T|undefined", "python": "Model|None"},
 	"Keys":            {"go": "[]Key", "php": "array", "rust": "&[Key]", "typescript": "Key[]", "python": "list[Key]"},
 	"CollectionChain": {"go": "*Collection[T]", "php": "Polyspec\\Orm\\Collection", "rust": "Self", "typescript": "this", "python": "Self"},
-	"RowMaps":         {"go": "[]map[string]any", "php": "array", "rust": "crate::Result<serde_json::Value>", "typescript": "Array<Record<string,unknown>>", "python": "list"},
+	"RowMaps":         {"go": "[]map[string]any", "php": "array", "rust": "crate::Result<ArrayValue>", "typescript": "Array<Record<string,unknown>>", "python": "list"},
 	// local reads the value that setLocal left in the transaction, not the database, so it is synchronous in Rust.
 	"LocalValue": {"go": "(string,error)", "php": "string", "rust": "Result<String>", "typescript": "Promise<string>", "python": "str"},
 	// Pool statistics are read from the client, not the database, so they are synchronous and cannot fail.

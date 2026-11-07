@@ -1924,23 +1924,30 @@ class ChainBuild {
   }
 }
 
-/** A value of toArray as plain JSON: a bigint is its number when it fits, and the text otherwise. */
+/** A JSON number as plain JSON: an integer past the safe range is its text, and a number with no binary64 form, such as 1e400, is refused,
+ * not read as Infinity. */
+function plainNumber(_, value, { source }) {
+  if (typeof value !== 'number') return value;
+  if (!Number.isFinite(value)) throw new Error(`the number ${source} has no binary64 form`);
+  return Number.isInteger(value) && !Number.isSafeInteger(value) ? source : value;
+}
+
+/** A value of toArray as plain JSON: a bigint is its number when it fits, and the text otherwise; bytes are their bytes_hex wrapper (FCV-4). */
 function plainJson(value) {
-  if (JSON.isRawJSON(value)) return JSON.parse(value.rawJSON);
+  if (JSON.isRawJSON(value)) return JSON.parse(value.rawJSON, plainNumber);
+  if (value instanceof JsonValue) return JSON.parse(stringifyJson(value), plainNumber);
   if (typeof value === 'bigint') return Number.isSafeInteger(Number(value)) ? Number(value) : value.toString();
   if (Array.isArray(value)) return value.map(plainJson);
   if (value instanceof Date) return value.toISOString();
-  if (value instanceof Uint8Array) return Buffer.from(value).toString();
+  if (value instanceof Uint8Array) return { bytes_hex: Buffer.from(value).toString('hex') };
   if (value !== null && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, plainJson(item)]));
   return value;
 }
 
-/** The JSON output of a row (COD-26), narrowed to pick when it is named; a missing row is null. An integer past the safe range is its text. */
+/** The array form of a row (COD-27) as plain JSON, narrowed to pick when it is named; a missing row is null (FCV-4). */
 function rowJson(row, pick) {
   if (row === null || row === undefined) return null;
-  const text = row.toJSONText();
-  assert.equal(JSON.stringify(row), text);
-  const values = JSON.parse(text, (_, value, { source }) => typeof value === 'number' && !Number.isSafeInteger(value) && Number.isInteger(value) ? source : value);
+  const values = plainJson(row.toArray());
   if (pick === undefined || pick.length === 0) return values;
   return Object.fromEntries(pick.map(name => {
     if (!(name in values)) throw new Error(`the row has no field ${name}`);
@@ -2078,6 +2085,11 @@ const TABLE_OPS = {
   async 'model.get_by'(s, context) {
     const row = await chainBuilt(s, context).get();
     if (s.json_output === true && row !== null) return { json: row.toJSONText() };
+    if (s.array_text !== undefined && row !== null) {
+      const tagged = row.toArray()[s.array_text];
+      if (!(tagged?.value instanceof JsonValue)) throw new Error(`array_text: the array form of ${s.array_text} holds ${JSON.stringify(tagged)}`);
+      return { json: stringifyJson(tagged.value) };
+    }
     if (s.ordered_text !== undefined && row !== null) return { json: row[CORE].values.get(s.ordered_text).payload().raw };
     return { bind: row ?? undefined, json: rowJson(row, s.pick) };
   },

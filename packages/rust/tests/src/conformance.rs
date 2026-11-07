@@ -13,6 +13,7 @@ polyspec_orm::models!();
 
 use model::{Author, ClockCell, HexCell, Service, ServiceMember, UpsertCell};
 use polyspec_orm::{Collection, Db, Model, Null, Param};
+use polyspec_orm_tests::plain::Plain;
 use serde_json::{json, Map, Value};
 
 use polyspec_orm_test_support::statement_record;
@@ -134,7 +135,7 @@ fn code_of<T>(r: polyspec_orm::Result<T>) -> Value {
 /// Keeps the named values of a row.
 fn pick<M: Model>(m: Option<&M>, names: &[&str]) -> Value {
     let Some(m) = m else { return Value::Null };
-    let all = polyspec_orm::model::to_array(m).expect("array form");
+    let all = polyspec_orm::model::to_array(m).and_then(|values| values.plain()).expect("array form");
     let mut out = Map::new();
     for n in names {
         out.insert((*n).to_owned(), all.get(*n).unwrap_or_else(|| panic!("missing selected field: {n}")).clone());
@@ -337,10 +338,10 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         let groups = author().seq(-1).group_by_is_close().gets_count().await?;
         let page = author().seq(-1).remove_all_columns().order_by_seq_asc().gets_page(1, 10).await?;
         Ok::<Value, polyspec_orm::Error>(json!({
-            "get": get.map(|m| m.to_array()).transpose()?,
-            "get_by": get_by.map(|m| m.to_array()).transpose()?,
+            "get": get.map(|m| m.to_array().and_then(|v| v.plain())).transpose()?,
+            "get_by": get_by.map(|m| m.to_array().and_then(|v| v.plain())).transpose()?,
             "gets": gets.len(),
-            "gets_count": groups.to_array()?,
+            "gets_count": groups.to_array()?.plain()?,
             "page": {"items": page.items.len(), "total_count": page.total_count, "total_pages": page.total_pages, "page": page.page, "per_page": page.per_page},
             "count": author().seq(-1).get_count().await?,
             "sum": author().seq(-1).sum_read_count().get_sum().await?,
@@ -354,7 +355,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         let row =
             author().remove_all_columns().add_column_aes_hex_email().add_column_aes_hex_phone().get_by_seq(42).await?.ok_or(polyspec_orm::Error::NoRows)?;
         let found = author().aes_hex_email("user42@example.com").get_count().await?;
-        Ok::<Value, polyspec_orm::Error>(json!({"row": row.to_array()?, "found": found}))
+        Ok::<Value, polyspec_orm::Error>(json!({"row": row.to_array()?.plain()?, "found": found}))
     });
 
     run!(

@@ -19,6 +19,7 @@ use std::process::{Child, Command, Stdio};
 
 use markdown_model::{CodecRows, Logs, People, Tasks};
 use polyspec_orm::{Config, Db, Error, Isolation, StyledValue};
+use crate::plain::Plain;
 use serde_json::{json, Value};
 
 /// The directory of the shared suite: cases.json, flowmark.version, corpus/.
@@ -315,12 +316,12 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             .get()
             .await?
             .ok_or(polyspec_orm::Error::NoRows)?
-            .to_array()?,
-        "one_no_rows" => People::new().connect(db).id("P9").get().await?.map(|m| m.to_array()).transpose()?.unwrap_or(Value::Null),
-        "all" => People::new().connect(db).remove_all_columns().add_column_name().add_column_age().order_by_name_desc().gets().await?.to_array()?,
+            .to_array()?.plain()?,
+        "one_no_rows" => People::new().connect(db).id("P9").get().await?.map(|m| m.to_array().and_then(|v| v.plain())).transpose()?.unwrap_or(Value::Null),
+        "all" => People::new().connect(db).remove_all_columns().add_column_name().add_column_age().order_by_name_desc().gets().await?.to_array()?.plain()?,
         "count" => json!(Tasks::new().connect(db).owner("P1").get_count().await?),
-        "group_count" => Tasks::new().connect(db).group_by_owner().order_by_owner_asc().gets_count().await?.to_array()?,
-        "group_count_no_rows" => Tasks::new().connect(db).owner("P9").group_by_owner().order_by_owner_asc().gets_count().await?.to_array()?,
+        "group_count" => Tasks::new().connect(db).group_by_owner().order_by_owner_asc().gets_count().await?.to_array()?.plain()?,
+        "group_count_no_rows" => Tasks::new().connect(db).owner("P9").group_by_owner().order_by_owner_asc().gets_count().await?.to_array()?.plain()?,
         "group_count_views" => {
             let rows = People::new().connect(db).group_by_active().group_by_age().order_by_age_desc().gets_count().await?;
             let first = match rows.iter().next() {
@@ -333,9 +334,9 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
                 None => Value::Null,
             };
             let counts: Vec<i64> = rows.iter().map(|row| row.count()).collect();
-            json!({ "length": rows.len(), "counts": counts, "rows": rows.to_array()?, "first": first })
+            json!({ "length": rows.len(), "counts": counts, "rows": rows.to_array()?.plain()?, "first": first })
         }
-        "group_count_i64" => Logs::new().connect(db).group_by_id().order_by_id_asc().gets_count().await?.to_array()?,
+        "group_count_i64" => Logs::new().connect(db).group_by_id().order_by_id_asc().gets_count().await?.to_array()?.plain()?,
         "collection_typed_key" => {
             let rows = Logs::new().connect(db).fetch_value(|row: &Logs| json!(row.get_note().unwrap())).gets().await?;
             let id = |row: Option<&Logs>| row.map(|row| row.get_id()).transpose();
@@ -362,7 +363,7 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
                 "fetched": rows.fetched_value(1),
                 "fetched_text": rows.fetched_value("1"),
                 "fetched_missing": rows.fetched_value(2),
-                "array": rows.to_array()?,
+                "array": rows.to_array()?.plain()?,
             })
         }
         "collection_key_name" => {
@@ -373,7 +374,7 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
         "avg" => json!(People::new().connect(db).avg_age().get_avg().await?),
         "paginate" => {
             let page = People::new().connect(db).remove_all_columns().add_column_name().order_by_name_asc().gets_page(2, 2).await?;
-            json!({ "items": page.items.to_array()?, "total_count": page.total_count, "total_pages": page.total_pages })
+            json!({ "items": page.items.to_array()?.plain()?, "total_count": page.total_count, "total_pages": page.total_pages })
         }
         "join" => Tasks::new()
             .connect(db)
@@ -383,7 +384,7 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             .order_by_title_asc()
             .gets()
             .await?
-            .to_array()?,
+            .to_array()?.plain()?,
         "relation_many" => People::new()
             .connect(db)
             .remove_all_columns()
@@ -393,7 +394,7 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             .get()
             .await?
             .ok_or(polyspec_orm::Error::NoRows)?
-            .to_array()?,
+            .to_array()?.plain()?,
         "relation_one" => Tasks::new()
             .connect(db)
             .remove_all_columns()
@@ -403,11 +404,11 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             .get()
             .await?
             .ok_or(polyspec_orm::Error::NoRows)?
-            .to_array()?,
+            .to_array()?.plain()?,
         "update" => {
             let mut m = People::new().connect(db).id("P2").get().await?.ok_or(polyspec_orm::Error::NoRows)?.set_age(Some(26));
             m.update(false).await?;
-            People::new().connect(db).remove_all_columns().add_column_age().id("P2").get().await?.ok_or(polyspec_orm::Error::NoRows)?.to_array()?
+            People::new().connect(db).remove_all_columns().add_column_age().id("P2").get().await?.ok_or(polyspec_orm::Error::NoRows)?.to_array()?.plain()?
         }
         "update_optimistic_conflict" => {
             let stale = People::new().connect(db).id("P2").get().await?.ok_or(polyspec_orm::Error::NoRows)?;
@@ -487,7 +488,7 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
         }
         "lock_update" => {
             db.transaction(async || {
-                People::new().connect(db).remove_all_columns().id("P1").for_update().get().await?.ok_or(polyspec_orm::Error::NoRows)?.to_array()
+                People::new().connect(db).remove_all_columns().id("P1").for_update().get().await?.ok_or(polyspec_orm::Error::NoRows)?.to_array()?.plain()
             })
             .await?
         }
@@ -549,8 +550,8 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
         }
         // NULL sorts before every value ascending and after every value descending.
         "order_nulls" => json!({
-            "asc": People::new().connect(db).remove_all_columns().add_column_age().order_by_age_asc().gets().await?.to_array()?,
-            "desc": People::new().connect(db).remove_all_columns().add_column_age().order_by_age_desc().gets().await?.to_array()?,
+            "asc": People::new().connect(db).remove_all_columns().add_column_age().order_by_age_asc().gets().await?.to_array()?.plain()?,
+            "desc": People::new().connect(db).remove_all_columns().add_column_age().order_by_age_desc().gets().await?.to_array()?.plain()?,
         }),
         // orderByRandom is supported and not seeded, so the case answers the keys sorted.
         "order_random" => {
@@ -574,15 +575,15 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
                     .create()
                     .await,
             );
-            let met = Tasks::new().connect(db).remove_all_columns().add_column_title().id("T3").get().await?.ok_or(polyspec_orm::Error::NoRows)?.to_array()?;
+            let met = Tasks::new().connect(db).remove_all_columns().add_column_title().id("T3").get().await?.ok_or(polyspec_orm::Error::NoRows)?.to_array()?.plain()?;
             json!({ "duplicate": duplicate, "upsert": upsert, "met": met, "count": Tasks::new().connect(db).get_count().await? })
         }
         // Two columns compared with a list of value groups, IN and NOT IN.
         "tuple_in" => {
             let pairs = || vec![("T1".to_owned(), "P1".to_owned()), ("T3".to_owned(), "P1".to_owned())];
             json!({
-                "in": Tasks::new().connect(db).remove_all_columns().tuple_id_with_owner(pairs()).order_by_id_asc().gets().await?.to_array()?,
-                "not_in": Tasks::new().connect(db).remove_all_columns().ne_tuple_id_with_owner(pairs()).order_by_id_asc().gets().await?.to_array()?,
+                "in": Tasks::new().connect(db).remove_all_columns().tuple_id_with_owner(pairs()).order_by_id_asc().gets().await?.to_array()?.plain()?,
+                "not_in": Tasks::new().connect(db).remove_all_columns().ne_tuple_id_with_owner(pairs()).order_by_id_asc().gets().await?.to_array()?.plain()?,
             })
         }
         // The sum of each person's task points as a scalar Sub aggregate, and the owners of a task through an IN subquery
@@ -599,7 +600,7 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             for m in rows.models() {
                 sums.push(json!([m.get_id()?, integer(m.get_task_points()?)]));
             }
-            let owners = People::new().connect(db).remove_all_columns().id(Tasks::new().add_column_owner()).order_by_id_asc().gets().await?.to_array()?;
+            let owners = People::new().connect(db).remove_all_columns().id(Tasks::new().add_column_owner()).order_by_id_asc().gets().await?.to_array()?.plain()?;
             json!({ "sums": sums, "owners": owners })
         }
         // The title of each person's first task, a column subquery with limit 1 and an order by the primary key; without
@@ -637,13 +638,13 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
         }
         // Lk: A-Z and a-z without regard to case, % literal.
         "contains" => json!({
-            "fold": People::new().connect(db).remove_all_columns().lk_name("ANN").order_by_id_asc().gets().await?.to_array()?,
-            "literal": People::new().connect(db).remove_all_columns().lk_name("%").order_by_id_asc().gets().await?.to_array()?,
+            "fold": People::new().connect(db).remove_all_columns().lk_name("ANN").order_by_id_asc().gets().await?.to_array()?.plain()?,
+            "literal": People::new().connect(db).remove_all_columns().lk_name("%").order_by_id_asc().gets().await?.to_array()?.plain()?,
         }),
         // Lb: compared by code point.
         "contains_binary" => json!({
-            "exact": People::new().connect(db).remove_all_columns().lb_name("Ann").order_by_id_asc().gets().await?.to_array()?,
-            "folded": People::new().connect(db).remove_all_columns().lb_name("ann").order_by_id_asc().gets().await?.to_array()?,
+            "exact": People::new().connect(db).remove_all_columns().lb_name("Ann").order_by_id_asc().gets().await?.to_array()?.plain()?,
+            "folded": People::new().connect(db).remove_all_columns().lb_name("ann").order_by_id_asc().gets().await?.to_array()?.plain()?,
         }),
         // The default now of joined, a datetime(0), holds no fraction, and a relative time function past 9999-12-31 is
         // NULL and matches no row.
@@ -657,9 +658,9 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             })
         }
         // A read through the column of the index ix_tasks_owner, which the corpus derives in memory.
-        "index_read" => Tasks::new().connect(db).remove_all_columns().owner("P2").gets().await?.to_array()?,
+        "index_read" => Tasks::new().connect(db).remove_all_columns().owner("P2").gets().await?.to_array()?.plain()?,
         // A read with an index hint, which the corpus derives in memory, so the read answers its rows.
-        "force_index" => Tasks::new().connect(db).force_index_ix_tasks_owner().owner("P1").gets().await?.to_array()?,
+        "force_index" => Tasks::new().connect(db).force_index_ix_tasks_owner().owner("P1").gets().await?.to_array()?.plain()?,
         // A heading of another table in tasks.flowmark.md is format.block: a read of tasks fails CONSTRAINT naming the
         // file, and reads again once the file is restored.
         "unavailable_table" => {

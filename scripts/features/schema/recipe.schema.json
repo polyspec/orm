@@ -4986,6 +4986,10 @@
                 "description": "The result is the text of the ordered-json value that the row holds in this column (DIA-26).",
                 "$ref": "#/$defs/name"
               },
+                            "array_text": {
+                "description": "The result is the compact text of the styled document of this column in the array form of the row, with its member order and number text (COD-27).",
+                "$ref": "#/$defs/name"
+              },
 "op": {
                 "const": "model.get_by"
               },
@@ -5037,6 +5041,10 @@
                 "description": "The result is the text of the ordered-json value that the row holds in this column (DIA-26).",
                 "$ref": "#/$defs/name"
               },
+                            "array_text": {
+                "description": "The result is the compact text of the styled document of this column in the array form of the row, with its member order and number text (COD-27).",
+                "$ref": "#/$defs/name"
+              },
 "op": {
                 "const": "model.get_by"
               },
@@ -5085,6 +5093,10 @@
                             },
                             "ordered_text": {
                 "description": "The result is the text of the ordered-json value that the row holds in this column (DIA-26).",
+                "$ref": "#/$defs/name"
+              },
+                            "array_text": {
+                "description": "The result is the compact text of the styled document of this column in the array form of the row, with its member order and number text (COD-27).",
                 "$ref": "#/$defs/name"
               },
 "op": {

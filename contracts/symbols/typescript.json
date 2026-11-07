@@ -10563,10 +10563,6 @@
     "exported": false,
     "signature": "function batchFits(driver: string, parts: readonly number[], columns: number): void"
   },
-  "packages/ts/src/model.ts::bytesBase64": {
-    "exported": false,
-    "signature": "function bytesBase64(value: Uint8Array): string"
-  },
   "packages/ts/src/model.ts::cellText": {
     "exported": false,
     "signature": "function cellText(value: unknown): string"
@@ -10650,6 +10646,10 @@
   "packages/ts/src/model.ts::joinChild": {
     "exported": false,
     "signature": "function joinChild(c: Core, name: string): Core"
+  },
+  "packages/ts/src/model.ts::jsonColumn": {
+    "exported": false,
+    "signature": "function jsonColumn(c: Core, name: string, value: unknown): unknown"
   },
   "packages/ts/src/model.ts::jsonText": {
     "exported": false,

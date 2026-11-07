@@ -1,10 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 78eb5293466ceeb7ee0d9f322272fdbb77cf2adf8f4907641678abb3cc650894 -->
+<!-- source-sha256: 65e5bae6c80c42cbc544efdacf7916a60cc1c7a03baac9a65f937d0d3dbe1d3b -->
 # 변경 이력
 
 ## Unreleased
 
-- 호환 깨짐: 모든 runtime에서 모델 JSON 출력은 bytes 컬럼을 그 바이트의 표준 base64로 쓴다(COD-26). Rust와 PHP는 UTF-8 텍스트로 쓰고 다른 바이트는 거부했고, TypeScript는 바이트 값의 객체로 썼으며, Python은 거부했다(XV20).
+- 호환 깨짐: 모든 runtime에서 모델 JSON 출력은 codec stage가 없는 bytes 컬럼을 같은 `CODEC_ENCODE: <entity>.<column>: JSON output cannot write bytes`로 거부한다(COD-26). Go는 base64로, Rust와 PHP는 UTF-8 텍스트로, TypeScript는 바이트 값의 객체로 썼고, Python은 다른 텍스트로 거부했다(XV20).
+- 호환 깨짐: 모델의 배열 형식은 모든 runtime에서 같은 값을 담는다(COD-27). 모델, collection, group row, group rows의 Rust `to_array()`는 bytes 컬럼의 바이트, 유한하지 않은 float, `1e400` 같은 문서 수를 담는 `ArrayValue`를 반환한다. 예전에는 serde_json 값을 반환해 바이트를 UTF-8 텍스트로 쓰고 나머지는 거부했다. PHP와 PHP 확장 `toArray()`는 codec stage가 없는 bytes 컬럼을 `Bytes`로 반환한다. 예전에는 text 컬럼과 같은 문자열로 반환했다(XV28).
+- recipe model step의 `json` 결과는 모든 runner에서 각 행의 배열 형식이며 바이트는 `bytes_hex` wrapper다. Go runner는 바이트를 base64로, TypeScript와 Python runner는 텍스트로 비교했고, TypeScript, Python, PHP runner는 JSON 출력으로 만들었으므로 bytes 행의 쓰기가 실패했다(XV29).
 
 ## 0.0.22
 

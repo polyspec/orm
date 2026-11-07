@@ -3,7 +3,9 @@
 
 ## Unreleased
 
-- Breaking: the model JSON output writes a bytes column as the standard base64 of its bytes in every runtime (COD-26); Rust and PHP wrote its UTF-8 text and refused other bytes, TypeScript wrote an object of its byte values, and Python refused it (XV20).
+- Breaking: the model JSON output refuses a bytes column without a codec stage with the same `CODEC_ENCODE: <entity>.<column>: JSON output cannot write bytes` in every runtime (COD-26); Go wrote its base64, Rust and PHP its UTF-8 text, TypeScript an object of its byte values, and Python refused it with another text (XV20).
+- Breaking: the array form of a model holds the same values in every runtime (COD-27): the Rust `to_array()` of a model, a collection, a group row and group rows returns an `ArrayValue`, which holds the bytes of a bytes column, a non-finite float and a document number such as `1e400`, where it returned a serde_json value that wrote bytes as their UTF-8 text and refused the rest; PHP and the PHP extension `toArray()` return a bytes column without a codec stage as a `Bytes`, where they returned the string that a text column also is (XV28).
+- The `json` result of a model step of a recipe is the array form of each row with bytes as their `bytes_hex` wrapper in every runner; the Go runner compared bytes as base64, the TypeScript and Python runners as text, and the TypeScript, Python and PHP runners formed it from the JSON output, so a write of a bytes row failed (XV29).
 
 ## 0.0.22
 

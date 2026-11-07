@@ -79204,7 +79204,8 @@
    "requirements": [
     "PRT-69",
     "INT-5",
-    "COD-26"
+    "COD-26",
+    "COD-27"
    ],
    "steps": [
     {
@@ -79270,13 +79271,101 @@
      "json_output": true,
      "expect": {
       "mysql": {
-       "json": "{\"seq\":1,\"body\":\"AH+A/0E=\"}"
+       "error": "CODEC_ENCODE",
+       "message": "CODEC_ENCODE: byte_cell.body: JSON output cannot write bytes"
       },
       "postgres": {
-       "json": "{\"seq\":1,\"body\":\"AH+A/0E=\"}"
+       "error": "CODEC_ENCODE",
+       "message": "CODEC_ENCODE: byte_cell.body: JSON output cannot write bytes"
       },
       "sqlite": {
-       "json": "{\"seq\":1,\"body\":\"AH+A/0E=\"}"
+       "error": "CODEC_ENCODE",
+       "message": "CODEC_ENCODE: byte_cell.body: JSON output cannot write bytes"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "ByteCell",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": [
+      "seq",
+      "body"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "seq": 1,
+        "body": {
+         "bytes_hex": "007f80ff41"
+        }
+       }
+      },
+      "postgres": {
+       "json": {
+        "seq": 1,
+        "body": {
+         "bytes_hex": "007f80ff41"
+        }
+       }
+      },
+      "sqlite": {
+       "json": {
+        "seq": 1,
+        "body": {
+         "bytes_hex": "007f80ff41"
+        }
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "array_form_keeps_a_document_number",
+   "requirements": [
+    "COD-16",
+    "COD-27"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a stored document whose number has no binary64 form and whose fraction text has a trailing zero, which the array form keeps as written",
+     "sql": "UPDATE author SET json_setting = '{\"n\":1e400,\"a\":1.50}' WHERE seq = 1"
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": [
+      "seq",
+      "json_setting"
+     ],
+     "array_text": "json_setting",
+     "expect": {
+      "mysql": {
+       "json": "{\"n\":1e400,\"a\":1.50}"
+      },
+      "postgres": {
+       "json": "{\"n\":1e400,\"a\":1.50}"
+      },
+      "sqlite": {
+       "json": "{\"n\":1e400,\"a\":1.50}"
       }
      }
     }
@@ -83701,6 +83790,7 @@
       "core_value_types",
       "invalid_stored_cells_mysql",
       "driver_bytes_cells_are_exact",
+      "array_form_keeps_a_document_number",
       "slot_value_forms_roundtrip",
       "core_styled_null",
       "core_decimal_values",
@@ -83794,6 +83884,7 @@
       "core_value_types",
       "invalid_stored_cells_postgres",
       "driver_bytes_cells_are_exact",
+      "array_form_keeps_a_document_number",
       "slot_value_forms_roundtrip",
       "core_styled_null",
       "core_decimal_values",
@@ -83887,6 +83978,7 @@
       "core_value_types",
       "invalid_stored_cells_sqlite",
       "driver_bytes_cells_are_exact",
+      "array_form_keeps_a_document_number",
       "slot_value_forms_roundtrip",
       "core_styled_null",
       "core_decimal_values",
@@ -83980,6 +84072,7 @@
       "core_value_types",
       "invalid_stored_cells_sqlite",
       "driver_bytes_cells_are_exact",
+      "array_form_keeps_a_document_number",
       "slot_value_forms_roundtrip",
       "core_styled_null",
       "core_decimal_values",

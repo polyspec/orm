@@ -1799,6 +1799,10 @@ func (c *Core) MarshalJSON() ([]byte, error) {
 		}
 		buf.Write(k)
 		buf.WriteByte(':')
+		// JSON has no bytes, so the JSON output refuses a bytes value and names its entity and column (COD-26).
+		if b, ok := kv.value.([]byte); ok && b != nil {
+			return nil, codecErr(CodeCodecEncode, "%s.%s: JSON output cannot write bytes", c.ent.Name, kv.name)
+		}
 		v, err := marshalValue(kv.value)
 		if err != nil {
 			return nil, err

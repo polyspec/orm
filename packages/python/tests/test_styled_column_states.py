@@ -10,7 +10,7 @@ from polyspec.orm import OrmError, StyledValue
 from polyspec.orm.codec import CodecError, decode, encode
 from polyspec.orm.core import Core
 from polyspec.orm.dbspec import dbspec_manifest, parse_dbspec
-from polyspec.orm.model import EntityDef, register_model
+from polyspec.orm.model import EntityDef, _json_text, register_model
 
 from . import testcase
 from .vector_case import VectorCase, vector_load_tests
@@ -64,7 +64,10 @@ def check_case(test: unittest.TestCase, case: dict) -> None:
         else:
             decoded = decode(styles, case["stored_text"])
             test.assertIsInstance(decoded, StyledValue)
-            test.assertEqual(decoded.to_json(), case["getter"], "decoded state")
+            # The getter is the JSON form of the state, as TypeScript compares JSON.stringify of it.
+            test.assertEqual(
+                json.loads(_json_text(decoded)), case["getter"], "decoded state"
+            )
     if "write_text" in case:
         ran = True
         test.assertEqual(
@@ -86,7 +89,9 @@ def check_case(test: unittest.TestCase, case: dict) -> None:
         row, column = probe(case["nullable"])
         row.set_value(column, state(case["input"]))
         test.assertEqual(
-            row.column(column).to_json(), case["getter"], "the getter after the setter"
+            json.loads(_json_text(row.column(column))),
+            case["getter"],
+            "the getter after the setter",
         )
     test.assertTrue(ran, "the case has no operation")
 

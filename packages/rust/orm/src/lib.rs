@@ -3,6 +3,7 @@
 //! the statements with sqlx, and assembles models.
 
 pub mod args;
+pub mod array;
 mod bind_check;
 mod canonical;
 pub mod codec;
@@ -38,6 +39,7 @@ pub use args::{
     date, day_of_week, days_ago, days_later, hours_ago, hours_later, minutes_ago, minutes_later, month, months_ago, months_later, now, seconds_ago,
     seconds_later, today, year, Func, GroupArg, IntoNullable, Null,
 };
+pub use array::ArrayValue;
 pub use chrono;
 pub use collection::{Collection, GroupRow, GroupRows, Key, Page};
 pub use core::Core;
