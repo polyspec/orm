@@ -252,7 +252,7 @@
     },
     "scripts/repo/kit-copies.mts": {
       "kind": "policy",
-      "reason": "the copies of @polyspec/kit from kit.copies of the installed package, so the rules of this repository skip them"
+      "reason": "the files that orm keeps in the form of kit, so the rules of this repository skip them"
     },
     "scripts/repo/messages.mts": {
       "kind": "policy",

@@ -1,11 +1,11 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: 7b4ba1189194e3e97622aa839a7964dd144d24c5628aecd2985d2cc186757264 -->
+<!-- source-sha256: bde58352e5b56fdd753a00ebc58f97d19d3584ddf03581938cf6be3a6f680967 -->
 # 개발 규칙
 
 [English](AGENTS.md)
 
-모든 polyspec 저장소의 작업 원칙과 standard는 kit이 vendor하는 [PRINCIPLES.ko.md](PRINCIPLES.ko.md)에 있다. 이 파일은
-orm 자신의 규칙만 적는다.
+모든 polyspec 저장소의 작업 원칙과 standard는 orm이 kit에서 가져와 자기 파일로 가지는 [PRINCIPLES.ko.md](PRINCIPLES.ko.md)에
+있다. 이 파일은 orm 자신의 규칙만 적는다.
 
 - Own: 사용자 지시가 우선이다. 로컬에서 개발하고, GitHub 원격 저장소에는 아래 push 규칙이 허용할 때만 push한다.
   Enforced by: none, review에서의 판단이다
@@ -18,17 +18,18 @@ orm 자신의 규칙만 적는다.
   `polyspec_orm-X.Y.Z-py3-none-any.whl`을 유지한다.
   Enforced by: `make release-tag`
 - Own: 공유 도구는 npm package `@polyspec/kit`이며, `package.json`의 devDependency로 그 release의 asset과 integrity에
-  고정한다. bootstrap source는 설치된 package다. Makefile은 `node_modules/@polyspec/kit/scripts/kit/kit-bootstrap.mk`를
-  include하며, 이 파일은 `package-lock.json`의 `npm ci`가 package와 함께 설치한다. CI는 `.github/actions/kit-bootstrap`으로
-  설치하고(K992), `make install-tools TOOLS=npm`이 packages 전에 고정한 npm을 설치한다(K938). 개발 checkout은 package를
-  kit checkout에 link하므로 형제 checkout 경로는 필요 없다(K761). Kit의
-  `kit.copies`는 alint가 이 저장소 안에서 읽어야 하는 설정 파일이며, `make kit-sync`가 사본을 쓰고 `make kit-check`가
-  비교한다. bootstrap source는 이 저장소의 사본이 아니다. 이 저장소는 `config/*.json`과 자체 product
-  code(`scripts/check`, `scripts/features`, `scripts/repo`, client, database server 검사)에서만 다른 저장소와 다르다.
-  kit에 없거나 잘못된 도구는 kit에 알리고, 여기서 복사하거나 고치지 않는다. 이 저장소의 규칙은 사본을 읽지 않는다.
+  고정하고 `.npmrc`가 그것을 허용한다(`allow-remote=root`). kit은 utility만 주고 recipe는 주지 않는다(kit
+  `docs/spec/utilities-and-recipes.md`). orm의 `Makefile`은 orm과 그 workflow와 문서가 부르는 모든 target을 정의하며,
+  각 target은 orm이 준 인자로 설치된 package의 utility 하나를 실행한다. CI는 `.github/actions/kit-bootstrap`으로 package를
+  설치하고(K992), `make install-tools TOOLS=npm`이 packages 전에 고정한 npm을 설치한다(K938). 도구의 설정은 그 도구의
+  파일에 있다: `.npmrc`, `mise.toml`의 `[settings]`와 `[env]`, 각 `Cargo.toml`의 `[workspace.lints]`,
+  `packages/python/pyproject.toml`의 `[tool.vulture]`, root의 lint 설정(`ruff.toml`, `phpcs.xml.dist`, `phpstan.dist.neon`,
+  `.golangci.yml`, `clippy.toml`, `.oxlintrc.json`, `knip.json`). orm이 kit의 예시에서 가져와 kit의 형태로 두는 파일은
+  `scripts/repo/kit-copies.mts`에 적으며, 이 저장소의 규칙은 그것을 읽지 않고, orm은 kit 예시의 변경을 자기 commit으로
+  받아들인다. kit에 없거나 잘못된 도구는 kit에 알리고, 여기서 복사하지 않는다.
   polyspec 버전이 0.0.x인 동안 개발 checkout은 kit `docs/plans/local-links.md`가 설명하는 대로 설치된 polyspec
   package를 그 source에 link하며, link는 commit하지 않는다.
-  Enforced by: `make kit-check`
+  Enforced by: `make repo-check`
 - Refines S5: client package는 `packages/<runtime>`이고 runtime은 `go`, `ts`(TypeScript client), `php`, `php-ext`(PHP 확장),
   `python`, `rust`다(PRINCIPLES.md의 S5): folder 이름은 저장소 prefix를 갖지 않고, 배포 이름(`@polyspec/orm`,
   `polyspec/orm`, `polyspec-orm`)은 그것을 유지한다. Go module은 `github.com/polyspec/orm/packages/go`
@@ -66,7 +67,7 @@ orm 자신의 규칙만 적는다.
 - Own: 저장소의 전체 테스트 묶음은 `main`으로의 push 뒤 GitHub CI에서 실행한다: 수동 실행에서도 실행한다.
   CI는 그것을 Makefile의 CI group(`CI_GROUPS`, `CI_TARGETS_<group>`)으로 나눈다: group마다 job
   하나가 모두 동시에, 그 target이 필요로 하는 setup step만 실행한 뒤 `make check-run GROUP=<group>`을 실행한다. group들은 함께
-  kit의 gate(`CI_KIT_GATES`, gates workflow가 자기 병렬 job에서 실행하는 `kit-gates`의 선행 target)를 뺀
+  gate(`CI_KIT_GATES`, `ci-pipeline.yml`이 자기 병렬 job에서 실행하는 `kit-gates`의 선행 target)를 뺀
   `CHECK_TARGETS`의 모든 target을 정확히 한 번 실행하고(`make repo-check`), 로컬 `make orm-check`는 guard를 거쳐 모든 target을 실행한다.
   CI 실행 한 번은 다음 CI 실행 전에
   그 실행이 찾은 모든 실패를 고칠 수 있을 만큼의 정보를 모아야 한다. 실행은 실패에서 멈추지 않는다: 필요한
@@ -247,7 +248,7 @@ orm 자신의 규칙만 적는다.
   Enforced by: `.githooks/pre-commit`
 - Own: 예외는 저장소가 의도적으로 필요로 하는 파일뿐이며 여기에 이름을 적는다. 커밋된 lock `.kit/kit.lock.json`과 `tests/*/fixtures/` 아래의 테스트 fixture다.
   Enforced by: `.githooks/pre-commit`
-- Own: 덮이는 각 경로에는 `.gitignore` 항목이 있다. kit의 pre-commit hook이 생성 경로의 staged 추가를 거절하며, 저장소는 자기 패턴과 명명된 예외를 `config/generated.json`에 선언한다.
+- Own: 덮이는 각 경로에는 `.gitignore` 항목이 있다. `.githooks`의 pre-commit hook이 생성 경로의 staged 추가를 거절하며, 저장소는 자기 패턴과 명명된 예외를 `config/generated.json`에 선언한다.
   Enforced by: `.githooks/pre-commit`
 
 ## Release

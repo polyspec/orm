@@ -32,8 +32,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # The gates of kit (kit S12): ci-pipeline.yml, which kit-sync copies, plans and runs the shared, parity and runtime
-  # gates. No job waits for it but ci-passed, which needs it: every other job installs what it runs itself.
+  # The gates of orm: ci-pipeline.yml, which orm took from kit and owns (T391), plans and runs the shared, parity and runtime
+  # gates with the targets of the Makefile. No job waits for it but ci-passed, which needs it: every other job installs what it runs itself.
   kit:
     uses: ./.github/workflows/ci-pipeline.yml
     permissions:

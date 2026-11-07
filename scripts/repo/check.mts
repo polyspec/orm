@@ -29,10 +29,10 @@ const log = sections();
 log.begin('repo', COMPUTE);
 
 const root = new URL('../../', import.meta.url).pathname;
-// The copies of @polyspec/kit are checked by make kit-check and never edited here, so the rules of this repository do not
-// read them.
-const copies = kitCopies(root);
-const kitOwned = kitOwnedPaths(root);
+// The files that orm keeps in the form of kit (scripts/repo/kit-copies.mts) follow kit's form, so the rules of this
+// repository do not read them.
+const copies = kitCopies();
+const kitOwned = kitOwnedPaths();
 const trackedAll = execFileSync('git', ['ls-files', '-z'], { cwd: root }).toString().split('\0').filter(Boolean);
 const tracked = trackedAll.filter(file => !Object.hasOwn(copies, file));
 const failures = [];

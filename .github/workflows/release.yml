@@ -1,5 +1,4 @@
-# Release workflow of a repository that adopts kit. kit-sync copies this file from the installed package @polyspec/kit to
-# .github/workflows/release.yml, and kit-check fails when the checkout differs from it; a repository never edits it.
+# The release workflow of orm, which orm took from the example of kit and owns (T391); every step runs a target of the Makefile.
 #
 # The workflow starts by itself when a push run of the CI workflow ci succeeds on main (K987): it checks out the head_sha of that
 # run, and release-tag with AUTO releases it only when it is the version commit of the top ## X.Y.Z of its change log, which is
@@ -8,11 +7,11 @@
 # A dispatch of the workflow with the id of a successful CI run releases the commit of that run (K911): it tags the commit with
 # the version of the newest section ## X.Y.Z of its change log (K924) and creates the GitHub Release of the tag as a draft with
 # its archives, and makes it public. The run is the evidence; the release runs no test again. The steps run in order and stop at
-# the first failure; each step runs one make target of kit with TAG, vX.Y.Z, from the environment, which release-tag writes:
-#   bootstrap package installs the locked kit with the npm that devEngines.packageManager names for consumers, without scripts
-#   install-tools TOOLS=npm installs the mise, the node and the npm of mise.toml with the copied installer of scripts/kit/bootstrap
-#   install-packages installs package-lock.json with that npm, @polyspec/kit included, whose kit.mk has the targets below
-#   release-tag      with the kit of main: requires a completed successful push or dispatch run RUN of ci.yml whose
+# the first failure; each step runs one make target of the Makefile with TAG, vX.Y.Z, from the environment, which release-tag writes:
+#   bootstrap package installs the locked kit with the npm that devEngines.packageManager names, without scripts
+#   install-tools TOOLS=npm installs the mise, the node and the npm of mise.toml with the bootstrap installer of the kit package
+#   install-packages installs package-lock.json with that npm, @polyspec/kit included, whose utilities the targets below run
+#   release-tag      with the Makefile of main: requires a completed successful push or dispatch run RUN of ci.yml whose
 #                    commit is on origin/main, reads X.Y.Z from the change log of that commit, creates and pushes the annotated
 #                    tag vX.Y.Z and the tag of every Go module at that commit, or passes for a tag there already (K269), and
 #                    appends TAG and VERSION to GITHUB_ENV; a tag pushed with the token of the run starts no run

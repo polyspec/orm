@@ -10,11 +10,18 @@ workspace = true
 
 [workspace]
 
+# The lints of make lint-rust (T391): every warning fails, and so does an error dropped by a must_use value (P8).
 [workspace.lints.rust]
+warnings = "deny"
 unsafe_code = "deny"
+unused_must_use = "deny"
 
 [workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
 allow_attributes_without_reason = "deny"
+let_underscore_must_use = "deny"
+let_underscore_untyped = "deny"
+map_err_ignore = "deny"
 
 [[bin]]
 name = "native"

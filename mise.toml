@@ -18,3 +18,16 @@ golangci-lint = "2.14.0"
 # composer.phar is one file, so its sha256 is declared here, from getcomposer.org/download/<version>/composer.phar.sha256sum,
 # and mise.lock records it.
 "http:composer" = { version = "2.10.3", url = "https://getcomposer.org/download/{{ version }}/composer.phar", checksum = "sha256:7a2d379d5b8ffdaa028580ef26494c36d2feef4b178d3dd1473a4dbc5e17c8d6", bin = "composer" }
+
+# The settings of mise and uv of orm (T391, kit docs/examples/native-settings): mise installs and runs only what mise.lock pins
+# and installs nothing on its own, and uv downloads no Python, takes the Python of PATH, where the shims of mise come first,
+# before a managed Python of the home, reads no uv.toml of the home (orm has none of its own) and keeps its cache under var/tools.
+[settings]
+locked = true
+auto_install = false
+
+[env]
+UV_PYTHON_DOWNLOADS = "never"
+UV_PYTHON_PREFERENCE = "only-system"
+UV_NO_CONFIG = "1"
+UV_CACHE_DIR = "{{config_root}}/var/tools/mise/cache/uv"

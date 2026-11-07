@@ -1,0 +1,20 @@
+# The PHPStan configuration of orm, taken from kit's own (kit docs/examples/native-settings, K1050). make lint-php runs PHPStan
+# on each Composer package with this root file when the package folder holds none, and with the autoloader of the package. It runs the disallowed calls of S2
+# only: customRulesetUsed loads no rule level, so the result depends on no level a package may later choose for itself.
+# phpstan/extension-installer loads spaze/phpstan-disallowed-calls and shipmonk/phpstan-rules (config/php-lint).
+# Only ShipMonk's caught-exception cause rule is enabled below.
+parameters:
+    customRulesetUsed: true
+    shipmonkRules:
+        enableAllRules: false
+        requirePreviousExceptionPass:
+            enabled: true
+            reportEvenIfExceptionIsNotAcceptableByRethrownOne: true
+    disallowedFunctionCalls:
+        -
+            function: 'spl_autoload_register()'
+            message: 'S2: classes load through the PSR-4 autoloader of Composer; never register an autoloader'
+    disallowedMethodCalls:
+        -
+            method: 'Composer\Autoload\ClassLoader::*()'
+            message: 'S2: classes load through the PSR-4 autoloader of Composer; never change a ClassLoader at run time'

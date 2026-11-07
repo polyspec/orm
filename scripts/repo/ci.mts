@@ -100,7 +100,7 @@ export function matrixGroups(job: WorkflowJob): string[] | null {
 }
 
 // kitGates is CI_KIT_GATES of the Makefile: the targets of CHECK_TARGETS that are gates of kit (the prerequisites of kit-gates),
-// which the gates workflow of kit runs in its own parallel jobs (KSTD-5-115).
+// which ci-pipeline.yml runs in its own parallel jobs (KSTD-5-115).
 export function kitGates(makefile: string): string[] {
   return /^CI_KIT_GATES = (.*)$/m.exec(makefile)?.[1]?.trim().split(/\s+/).filter(Boolean) ?? [];
 }
@@ -396,9 +396,9 @@ export function helperRunErrors(manifest: HelperManifest & Parameters<typeof sel
   return errors;
 }
 
-// ownWorkflows drops workflow paths owned by Kit, whether or not Kit generates those files as copies.
+// ownWorkflows drops the workflows that orm keeps in the form of kit (kitOwnedPaths of scripts/repo/kit-copies.mts).
 export function ownWorkflows(workflows: Record<string, string>, ownedPaths: string[] | null): Record<string, string> {
-  if (ownedPaths === null || !Array.isArray(ownedPaths)) throw new Error('no Kit-owned paths were given; read them with kitOwnedPaths of scripts/repo/kit-copies.mts');
+  if (ownedPaths === null || !Array.isArray(ownedPaths)) throw new Error('no Kit-owned paths were given; pass kitOwnedPaths() of scripts/repo/kit-copies.mts');
   const owned = new Set(ownedPaths);
   return Object.fromEntries(Object.entries(workflows).filter(([path]) => !owned.has(path) && !owned.has(`.github/workflows/${path}`)));
 }
@@ -406,7 +406,7 @@ export function ownWorkflows(workflows: Record<string, string>, ownedPaths: stri
 // runnerErrors returns one error for each place where a job of the workflow does not run on the single runner that .github/runner declares,
 // returning one error. declared is the content of .github/runner (one runner label and a line end), and workflows is {path: text}.
 // All jobs run on the same Linux runner. A job that calls a reusable workflow (uses) has no runs-on: GitHub refuses one there,
-// and the jobs of the called workflow run on the runners it declares; ci-pipeline.yml of kit is such a workflow, and kit owns it.
+// and the jobs of the called workflow run on the runners it declares; ci-pipeline.yml, in the form of kit, is such a workflow.
 export function runnerErrors(declared: string, workflows: Record<string, string>): string[] {
   const runner = declared.trim();
   if (!/^[a-z0-9][a-z0-9.-]*$/.test(runner) || declared !== `${runner}\n`)

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { spawn, spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
-import { dirname, join, posix } from 'node:path';
+import { join, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
@@ -32,10 +32,10 @@ import { callerEnvironmentErrors, generateRuns, scriptCommands, goRunErrors, lon
 // yamlSteps writes steps (the values of a workflow's steps) as the list under a job's steps:, six spaces deep.
 const yamlSteps = (steps: unknown[]) => stringify(steps).split('\n').map(line => line ? `      ${line}` : line).join('\n');
 
-// The copies of @polyspec/kit (kit.copies of its package.json) are checked by make kit-check and never edited here, so the
-// rules of this repository do not read them.
-const copies = kitCopies(new URL('../..', import.meta.url).pathname);
-const kitOwned = kitOwnedPaths(new URL('../..', import.meta.url).pathname);
+// The files that orm keeps in the form of kit (scripts/repo/kit-copies.mts) follow kit's form, so the rules of this
+// repository do not read them.
+const copies = kitCopies();
+const kitOwned = kitOwnedPaths();
 const notVendored = (path: string) => !Object.hasOwn(copies, path);
 const tracked = ['scripts/docs/rules.mts', 'packages/ts/package.json', 'scripts/typescript/sqlite-test.mts'];
 const repository = new URL('../../', import.meta.url);
@@ -99,34 +99,20 @@ caseTest('the TypeScript runtime build generates models before compiling their c
   assert.ok(generation < build, 'build-ts compiles consumers before refreshing generated models');
 });
 
-caseTest('the ORM Rust target export follows the Kit Makefile include', COMPUTE, () => {
+caseTest('the Makefile includes no recipe file of @polyspec/kit', COMPUTE, () => {
+  // kit 0.0.98 ships no recipes (kit docs/spec/utilities-and-recipes.md): the Makefile states its own targets, which run the
+  // utilities of the installed package, and exports its own CARGO_TARGET_DIR, which no include unexports.
   const makefile = text('Makefile');
-  const kit = makefile.indexOf('include node_modules/@polyspec/kit/scripts/kit/kit-bootstrap.mk');
-  const target = makefile.indexOf('export CARGO_TARGET_DIR := $(abspath packages/rust/target)', kit);
-  assert.ok(kit >= 0, 'the Makefile includes the Kit bootstrap');
-  assert.ok(target > kit, 'the ORM re-exports its canonical cargo target after Kit unexports it');
+  assert.deepEqual(makefile.split('\n').filter(line => /^\s*-?include\b.*@polyspec\/kit/.test(line)), []);
+  assert.match(makefile, /^export CARGO_TARGET_DIR := \$\(abspath packages\/rust\/target\)$/m);
 });
 
-caseTest('the Kit package path holds its lint configurations', COMPUTE, () => {
-  const root = new URL('../..', import.meta.url).pathname;
-  const directory = mkdtempSync(join(tmpdir(), 'orm-kit-package-path-'));
-  const target = join(directory, 'check-kit-package.mk');
-  try {
-    writeFileSync(target, [
-      'check-kit-package-config:',
-      '\t@test -f "$(KIT_PACKAGE)/ruff.toml" && test -f "$(KIT_PACKAGE)/phpcs.xml.dist" && test -f "$(KIT_PACKAGE)/phpstan.dist.neon" && test -f "$(KIT_PACKAGE)/.oxlintrc.json" && printf \'%s\\n\' "$(KIT_PACKAGE)"',
-      '',
-    ].join('\n'));
-    const result = spawnSync(
-      'make',
-      ['--no-print-directory', '-f', 'Makefile', '-f', target, 'check-kit-package-config'],
-      { cwd: root, encoding: 'utf8', env: isolatedEnvironment() },
-    );
-    assert.equal(result.status, 0, result.stdout + result.stderr);
-    assert.equal(result.stdout.trim(), dirname(fileURLToPath(import.meta.resolve('@polyspec/kit/package.json'))));
-  } finally {
-    rmSync(directory, { recursive: true, force: true });
+caseTest('the root holds the lint configurations that the lint tools read', COMPUTE, () => {
+  // The lint utilities of kit 0.0.98 run each tool with the configuration of the repository (kit K1050).
+  for (const file of ['ruff.toml', 'phpcs.xml.dist', 'phpstan.dist.neon', '.golangci.yml', 'clippy.toml', '.oxlintrc.json', 'knip.json']) {
+    assert.ok(trackedAll.has(file), `${file} is tracked`);
   }
+  assert.ok(!trackedAll.has('config/knip-entries.json'), 'the entries of knip live in knip.json');
 });
 
 caseTest('a script path must be a tracked file or directory', COMPUTE, () => {
@@ -709,7 +695,7 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   assert.ok(checkTargets(makefile).includes('parity-check') && kitGates(makefile).includes('parity-check'));
   for (const phase of ['parity-api-check', 'parity-bindings-go-check', 'parity-bindings-php-check', 'parity-bindings-php-extension-check', 'parity-bindings-typescript-check', 'parity-bindings-python-check', 'parity-bindings-rust-check'])
     assert.equal(checkTargets(makefile).includes(phase), false, `${phase} is not duplicated as a separate suite target`);
-  for (const gate of ['parity-check', 'kit-inject-check']) assert.ok(!groups.some(group => targets[group]?.includes(gate)), `${gate} runs in the gates workflow of kit`);
+  for (const gate of ['parity-check', 'layout-check']) assert.ok(!groups.some(group => targets[group]?.includes(gate)), `${gate} runs in the gates workflow of kit`);
   assert.equal(groupOutputs(targets.static ?? [], declaredNeeds(repository.pathname)).php, true,
     'the static group bootstraps the pinned PHP before the full tool inventory is installed');
   const workflowValue: unknown = parseYaml(workflow);
@@ -753,8 +739,9 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   for (const selected of [...selectedTools, ...pythonTools]) {
     assert.ok(declaredTools.has(selected), `CI selects ${selected} for Kit install-tools, but it is not declared by this checkout`);
   }
-  assert.doesNotMatch(makefile, /parity\.(?:mjs|mts).*--phase/,
-    'the canonical Kit parity target owns phase execution');
+  // orm owns the parity recipes (T391): the phase targets run the parity utility of kit, one phase each.
+  assert.match(makefile, /^parity-api-check:.*\n\t\$\(NODE\) \$\(KIT\)\/parity\.\$\(KIT_EXT\) --phase api$/m,
+    'parity-api-check runs the api phase of the parity utility of kit');
   assert.match(makefile, /^orm-install-python: orm-codes-python\n\t\$\(MAKE\) --no-print-directory install-tools TOOLS="python uv"$/m,
     'the Python installer does not widen a runtime-specific setup back to the full tool inventory');
   // The link of kit reads the uv project of orm, and a PHP job installs no uv, so only orm-install-python and make install link.
@@ -788,9 +775,6 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   assert.equal((matrixWorkflow.match(/id: go-lease-modules/g) ?? []).length, 1, 'every group installs the shared runner dependency in its own job');
   assert.match(workflow, /id: go-lease-modules\n        if: \$\{\{ !cancelled\(\) \}\}\n        run: make orm-install-go-lease/);
   assert.match(workflow, /id: go-modules\n        if: \$\{\{ !cancelled\(\) && steps\.group-needs\.outputs\.go == 'true' \}\}\n        run: make orm-install-go/);
-  // A phase target may gain prerequisites here (CR39 names the native outputs of one implementation), but never a recipe.
-  assert.doesNotMatch(makefile, /^parity-(?:api|bindings-[a-z-]+)-check:.*\n\t/m,
-    'the canonical Kit parity target owns phase execution; the ORM Makefile only supplies its prerequisites');
   assert.match(makefile, /^parity-check: parity-prepare$/m, 'the default full Kit parity target remains available');
   assert.ok(workflow.includes('        run: make check-run GROUP=${{ matrix.group }}\n'), 'ci.yml runs make check-run for the group of its matrix');
   assert.deepEqual(ciCheckTargetErrors(workflow, makefile), []);
@@ -1044,10 +1028,10 @@ caseTest('every variable a helper make command reads is exported by the Makefile
 });
 
 // The runner case checks the repository's .github/runner and workflow, and the minimal workflow.
-// A workflow owned by Kit is checked by Kit's layout target, so the workflow rules of this repository do not check it (T115).
+// A workflow in the form of kit follows kit's example, so the workflow rules of this repository do not check it (T115, T391).
 const kitWorkflowPaths = kitOwned.filter(path => path.startsWith('.github/workflows/'));
 
-caseTest('the workflow rules skip workflows owned by @polyspec/kit', COMPUTE, () => {
+caseTest('the workflow rules skip the workflows in the form of kit', COMPUTE, () => {
   assert.deepEqual(kitWorkflowPaths, ['.github/workflows/release.yml', '.github/workflows/ci-pipeline.yml']);
   const all = { '.github/workflows/ci.yml': 'a', '.github/workflows/release.yml': 'b', '.github/workflows/ci-pipeline.yml': 'c' };
   assert.deepEqual(ownWorkflows(all, kitWorkflowPaths), { '.github/workflows/ci.yml': 'a' });
@@ -1055,20 +1039,11 @@ caseTest('the workflow rules skip workflows owned by @polyspec/kit', COMPUTE, ()
   assert.throws(() => ownWorkflows(all, null), /no Kit-owned paths/);
 });
 
-caseTest('the copies and owners of @polyspec/kit are read from the installed package', COMPUTE, () => {
-  const root = mkdtempSync(join(tmpdir(), 'orm-kit-copies-'));
-  try {
-    writeFileSync(join(root, 'package.json'), '{"name":"x","private":true}');
-    assert.throws(() => kitCopies(root), /@polyspec\/kit is not installed .*; run make install-tools TOOLS=npm, then make install-packages/);
-    mkdirSync(join(root, 'node_modules', '@polyspec', 'kit'), { recursive: true });
-    writeFileSync(join(root, 'node_modules', '@polyspec', 'kit', 'package.json'), '{"name":"@polyspec/kit","kit":{"copies":{"ruff.toml":"ruff.toml"}}}');
-    assert.deepEqual(kitCopies(root), { 'ruff.toml': 'ruff.toml' });
-    assert.throws(() => kitOwnedPaths(root), /declares no kit.owners/);
-    writeFileSync(join(root, 'node_modules', '@polyspec', 'kit', 'package.json'), '{"name":"@polyspec/kit","kit":{"copies":{"ruff.toml":"ruff.toml"},"owners":[{"paths":[".github/workflows/release.yml"]}]}}');
-    assert.deepEqual(kitOwnedPaths(root), ['.github/workflows/release.yml']);
-  } finally {
-    rmSync(root, { recursive: true, force: true });
-  }
+caseTest('the files in the form of kit are tracked files of orm, read from no installed package', COMPUTE, () => {
+  // kit 0.0.98 writes no copy (kit docs/spec/utilities-and-recipes.md), so the list is orm's own and names only files it tracks.
+  const all = new Set(execFileSync('git', ['ls-files', '-z'], { cwd: repository }).toString().split('\0').filter(Boolean));
+  for (const file of [...Object.keys(copies), ...kitOwned]) assert.ok(all.has(file), `${file} is tracked`);
+  assert.ok(!Object.hasOwn(copies, '.claude/settings.json'), 'the Claude Code settings of the kit hook are gone');
 });
 
 caseTest('every workflow job runs on the runner of .github/runner', COMPUTE, () => {
@@ -1304,7 +1279,8 @@ caseTest('a target that only reads the TypeScript build output does not hold it 
   assert.deepEqual(typescriptExclusiveReaderErrors('c: tool\n\t$(HOLD_TYPESCRIPT)\n\t$(RUN_LONG) typescript-build -- npm run typescript:build\n\tenv A=1 $(RUN_TESTS) phpunit -- x\n'), [error('c')]);
   assert.deepEqual(typescriptExclusiveReaderErrors('d: typescript-build\n\t$(NODE) --test x.mjs\n'), ['Makefile d takes the exclusive lease of the TypeScript build output through typescript-build for the life of its make; name typescript-read']);
   assert.deepEqual(typescriptExclusiveReaderErrors('build-ts: typescript-build\n'), []);
-  assert.deepEqual(typescriptExclusiveReaderErrors('e: f g\nf:\n\t$(READ_TYPESCRIPT)\ng:\n\t$(HOLD_TYPESCRIPT)\n'), ['Makefile e reaches both the shared and the exclusive lease of the TypeScript build output in one make']);
+  assert.deepEqual(typescriptExclusiveReaderErrors('e: f g\nf:\n\t$(READ_TYPESCRIPT)\ng:\n\t$(HOLD_TYPESCRIPT)\n'), ['Makefile e takes the shared lease of the TypeScript build output before the exclusive one in one make; run the exclusive holder first']);
+  assert.deepEqual(typescriptExclusiveReaderErrors('e: g f\nf:\n\t$(READ_TYPESCRIPT)\ng:\n\t$(HOLD_TYPESCRIPT)\n'), []);
   // A recipe that kit owns reads the client through a prerequisite that holds the shared lease.
   const parity = makeTargets(text('Makefile')).filter(rule => rule.target === 'parity-declarations-check').flatMap(rule => rule.prerequisites);
   assert.ok(parity.includes('typescript-read') && !parity.includes('typescript-build'), parity.join(' '));
@@ -2172,6 +2148,8 @@ caseTest('a Makefile build output is published through a temporary file', COMPUT
     '\tnode packages/ts/node_modules/typescript/bin/tsc -p packages/ts/tsconfig.json --noEmit',
     '# go build -o $(LEASE) in a comment',
     '\tvendor-php/bin/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out packages/php/gen',
+    'test-x: ## Run the tests with CASES=<pattern>; offline',
+    '\t@for name in $(NAMES); do echo "$$name=$$(printenv $$name)"; done >> "$$GITHUB_ENV"',
   ].join('\n');
   assert.deepEqual(unpublishedOutputErrors(makefile).map(error => error.split(', so ')[0]), [
     'Makefile:1 writes a Go build output in place',

@@ -1,6 +1,6 @@
-# The common layout rules of kit (S5, S7, S9), vendored into every repository; make layout-check runs them through the
-# config/layout.yml of the repository, which extends this file and adds its map. This file lies in config/ because alint
-# reads an extends: target only from the folder of the config that names it. Change it in kit, never in a copy.
+# The common layout rules (S5, S7, S9), which orm took from the example of kit and owns (T391); make layout-check runs them
+# through config/layout.yml, which extends this file and adds the map of orm. This file lies in config/ because alint reads
+# an extends: target only from the folder of the config that names it.
 #
 # A repository overrides a rule by its id: a field it names replaces the field of this file, so an override of paths
 # repeats the list below and adds its own entries, each S9 exception with its reason in a comment right above it. The root
@@ -111,13 +111,13 @@ rules:
     paths: ["*", "!packages", "!contracts", "!docs", "!scripts", "!tests", "!examples", "!benchmarks", "!config", "!.github", "!.githooks", "!.kit", "!.mise", "!.claude"]
     message: "S5: the root holds only packages/, contracts/, docs/, scripts/, tests/, examples/, benchmarks/ and config/"
 
-  # K245: docs/ holds the spec, the operations, the plans, the rebuild records (S1) and features.md, and the files of a VitePress
+  # K245: docs/ holds the spec, the operations, the plans, the rebuild records (S1), the examples (K1046) and features.md, and the files of a VitePress
   # site where the repository builds one: its .vitepress/ and public/ folders and its index and 404 pages.
   - id: docs-folders
     kind: dir_absent
     level: error
-    paths: ["docs/*", "!docs/spec", "!docs/operations", "!docs/plans", "!docs/rebuild", "!docs/.vitepress", "!docs/public"]
-    message: "K245: docs/ holds spec/, operations/, plans/, rebuild/ and the .vitepress/ and public/ of a site"
+    paths: ["docs/*", "!docs/spec", "!docs/operations", "!docs/plans", "!docs/rebuild", "!docs/examples", "!docs/.vitepress", "!docs/public"]
+    message: "K245: docs/ holds spec/, operations/, plans/, rebuild/, examples/ and the .vitepress/ and public/ of a site"
   - id: docs-files
     kind: file_absent
     level: error
@@ -285,27 +285,3 @@ rules:
     paths: ["**/Cargo.toml", "!tests/kit/fixture/**"]
     schema_path: config/cargo.schema.json
     message: "a workspace denies unsafe_code and clippy::allow_attributes_without_reason, and a package says lints.workspace = true"
-
-  # The Python lint (make lint-python) runs ruff with the root ruff.toml. A nested ruff configuration would escape it in an
-  # editor or a plain ruff run, where the nearest configuration applies.
-  - id: lint-ruff-nested
-    kind: toml_path_absent
-    level: error
-    paths: ["**/pyproject.toml", "!tests/kit/fixture/**"]
-    path: "$.tool.ruff"
-    message: "S3: the ruff configuration is the root ruff.toml of kit; remove [tool.ruff] from this pyproject.toml"
-
-  - id: lint-ruff-files
-    kind: file_absent
-    level: error
-    paths: ["**/ruff.toml", "**/.ruff.toml", "!ruff.toml", "!tests/kit/fixture/**"]
-    message: "S3: the ruff configuration is the root ruff.toml of kit; remove this nested configuration"
-
-  # vulture runs with the confidence of kit; a package keeps code that only consumers use by an entry of its
-  # vulture_whitelist.py with the reason, and excludes generated code only (config/pyproject.schema.json).
-  - id: lint-vulture-config
-    kind: json_schema_passes
-    level: error
-    paths: ["**/pyproject.toml", "!tests/kit/fixture/**"]
-    schema_path: config/pyproject.schema.json
-    message: "[tool.vulture] of a package holds only exclude, the generated code with its reason; keep other code by an entry of vulture_whitelist.py"

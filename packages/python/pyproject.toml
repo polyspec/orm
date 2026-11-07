@@ -55,3 +55,8 @@ namespaces = true
 # venv; the client never imports it.
 # setuptools' package finder defines the release boundary read by the interface extractor.
 test = ["jsonschema-rs==0.60.3", "setuptools==84.2.1"]
+
+# make lint-python runs vulture in this folder (T391): it reports unused code of a confidence of 60 or more, the unused
+# functions and classes among them, as the lint of kit did before kit 0.0.98.
+[tool.vulture]
+min_confidence = 60

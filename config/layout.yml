@@ -32,11 +32,12 @@ rules:
       - "!packages/dbspec-codemirror"
       - "!packages/dbspec-vscode"
 
-  # S5: the root files of the repository besides those of kit (config/layout.kit.yml): VERSION, the one version of the
-  # repository that config/release.json names and the version-bump commit sets, and the community health files, which
-  # GitHub reads only from the root, .github/ or docs/, each with its Korean twin (K145).
+  # S5: the root files of the repository besides those of config/layout.kit.yml: VERSION, the one version of the
+  # repository that config/release.json names and the version-bump commit sets, the community health files, which
+  # GitHub reads only from the root, .github/ or docs/, each with its Korean twin (K145), and .npmrc, the setting of npm
+  # that allows the release URLs of package.json (T391), which npm reads only from the root of the project.
   - id: layout-root-files
-    vars: { root_files: "{VERSION,CODE_OF_CONDUCT.md,CODE_OF_CONDUCT.ko.md,CONTRIBUTING.md,CONTRIBUTING.ko.md,SECURITY.md,SECURITY.ko.md}" }
+    vars: { root_files: "{VERSION,CODE_OF_CONDUCT.md,CODE_OF_CONDUCT.ko.md,CONTRIBUTING.md,CONTRIBUTING.ko.md,SECURITY.md,SECURITY.ko.md,.npmrc}" }
 
   # S7: the root tests/ holds what every client runs or is compared by, and the tests of the repository's own tools.
   - id: layout-root-tests

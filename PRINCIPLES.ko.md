@@ -1,12 +1,12 @@
 <!-- doc-id: principles -->
-<!-- source-sha256: bdd8a2c14dd559b0d01c780565e06e0f966a39236d1f0a48b175c59be69e1dbd -->
+<!-- source-sha256: 32cbe646622c180d1e0b10a35fc9045488396ae52742487c9ded72bddd5c1156 -->
 # 원칙
 
 [English](PRINCIPLES.md)
 
-이것은 모든 polyspec repository의 작업 원칙입니다. kit은 자기 tool을 받는 각 repository에 이 파일을 byte 그대로
-vendor하므로, 모든 repository가 같은 text를 가지며 `make kit-inject-check`는 차이가 있으면 실패합니다. repository의 AGENTS.md는
-여기로 link하고 자기만의 규칙만 적습니다. 원칙은 owner에게서 옵니다; 원칙은 kit에서만, 근거와 함께 바꿉니다.
+이것은 모든 polyspec repository의 작업 원칙입니다. orm은 kit의 원칙에서 가져온 이 파일을 자기 파일로 가집니다. kit
+0.0.98부터 kit은 repository의 파일을 쓰지 않습니다(T391). orm은 kit 원칙의 변경을 여기서 받아들입니다. AGENTS.md는
+여기로 link하고 orm만의 규칙만 적습니다. 원칙은 owner에게서 옵니다; 원칙은 근거와 함께 바꿉니다.
 
 ## 책임
 
@@ -35,7 +35,7 @@ vendor하므로, 모든 repository가 같은 text를 가지며 `make kit-inject-
   Enforced by: `make test-markers-check`
 - P7 꼼수는 어떤 경우에도 허락하지 않습니다. 비정상적인 방법으로 이룬 목표는 이룬 것이 아닙니다. 요구를 꼼수로만 채울 수
   있다면 그렇게 하지 않고 그 사실을 정확히 적습니다.
-  Enforced by: `.claude/settings.json`
+  Enforced by: none, 방법이 꼼수인지는 검토의 판단입니다. kit 0.0.98에는 명령을 거부하는 hook이 없습니다
 - P8 오류는 숨기지 않습니다: 잘못된 입력을 그럴듯한 입력으로 바꾸는 fallback도, 입력이나 출력을 조용히 버리는 것도, 삼킨
   오류도 없습니다. fallback은 정말 필요한 곳에만 그 필요를 적고 둡니다.
   Enforced by: `make lint-ts`, `make lint-python`, `make lint-go`, `make lint-php`, `make lint-rust`, `make suppression-check`,
@@ -71,12 +71,12 @@ vendor하므로, 모든 repository가 같은 text를 가지며 `make kit-inject-
   Enforced by: none, 임시방편인지는 설계 판단입니다.
 - P17 복구, 적용, 변환은 멱등입니다; 변경은 polling으로 찾지 않고 event로 게시합니다; 경로는 선언된 root에서 선언적으로
   결정합니다; multi-platform은 필수 요구이며 platform 꼼수 없이 채웁니다.
-  Enforced by: `.claude/settings.json`(그 hook이 sleep하거나 loop로 polling하는 명령을 거부함, polling 조항의 기다림 쪽; 복구,
-  적용, 변환의 멱등, 변경의 event 게시, 경로의 선언성, platform 꼼수 없음은 모든 저장소가 가진 어떤 check도 닿지 않는 설계 판단)
+  Enforced by: none, 복구, 적용, 변환의 멱등, 변경의 event 게시, 경로의 선언성, platform 꼼수 없음은 모든 저장소가 가진 어떤
+  check도 닿지 않는 설계 판단입니다
 - P18 끝이 정해지지 않은 loop로 주기적으로 살피는 script는 쓰지 않습니다: sleep을 넣은 `until`이나 `while`, `gh run list`를
   감싼 loop, watchdog 모두 쓰지 않습니다. 기다림은 자기 일이 끝을 정하는 명령 하나입니다: `gh run watch <id> --exit-status`,
   완료가 알려지는 background 명령, 또는 그 일을 하는 세션의 메시지.
-  Enforced by: `.claude/settings.json`
+  Enforced by: none, 안내하는 규칙입니다: kit 0.0.98에는 명령을 거부하는 hook이 없고, 검토가 script를 읽습니다
 
 ## 검증
 
@@ -86,9 +86,8 @@ vendor하므로, 모든 repository가 같은 text를 가지며 `make kit-inject-
   `make text-absent FILE=<path> TEXT=<낡은 text>`인 하위 항목으로 두며, 낡은 text가 남아 있는 동안 실패합니다.
   Enforced by: `.githooks/commit-msg`는 done 행의 Red 줄과 fix의 test에 대해
 - P20 항목은 자기 단위 test의 red, 구현, green으로 완료합니다. 바뀐 것의 소유 검사만 돌리며, 전체 모음은 수정마다, 항목마다,
-  마지막에도 돌리지 않습니다. 전체 모음은 conductor의 명령으로만 돌며, 이는 `.claude/settings.json`의 Claude Code hook이
-  강제합니다.
-  Enforced by: `.claude/settings.json`
+  마지막에도 돌리지 않습니다. 전체 모음은 conductor의 명령으로만 돕니다.
+  Enforced by: none, 안내하는 규칙입니다: 세션이 어떤 test를 돌리는지는 그 세션의 일이며 어떤 도구도 보지 않습니다
 - P21 어려운 판단이나 새로운 추론은 한 round가 아무것도 찾지 못할 때까지 round마다 적대적으로 검증합니다. 검증의 범위는 첫
   round 전에 정하며, 그 옆의 질문은 자기 항목이 됩니다. 검증에는 반론뿐 아니라 해법도 요구하며, finding은 명제가 틀렸음을
   보이거나, 다른 문서와 모순됨을 보이거나, 명제가 다룬다고 주장하는 case가 빠졌음을 보일 때만 인정합니다.
@@ -122,7 +121,7 @@ vendor하므로, 모든 repository가 같은 text를 가지며 `make kit-inject-
   Enforced by: `make docs-check`
 - P26 열린 item은 Verification cell에 자기 unit test의 command를 명시한다. 어떤 item도 suite로 검증하지 않는다. Suite는 CI에서
   실행하거나 모든 checklist item이 종결된 뒤 명시적인 final verification으로 한 번 실행한다. `make item-test`가 그 command를 실행한다.
-  Enforced by: `make docs-check`, `.claude/settings.json`
+  Enforced by: `make docs-check`
 - P27 commit은 최대 한 item을 완료한다. state를 최대 하나 바꾸고, item을 done으로 옮기는 commit은 그것을 CHANGELOG.md와 그
   한국어 짝에 기록한다. commit되지 않은 작업은 최대 한 item이다.
   Enforced by: none, 안내하는 규칙이다: commit-msg hook은 AI footer와 identity, Red 줄, fix의 test만 검사한다 (K805)
@@ -131,7 +130,8 @@ vendor하므로, 모든 repository가 같은 text를 가지며 `make kit-inject-
   쓴다. AI 도구의 footer, 곧 그 co-author나 session trailer는 넣지 않는다. author와 committer는 사람이며 AI 도구가 아니다.
   Enforced by: `.githooks/commit-msg`는 AI footer와 identity에 대해
 - P29 작업의 make target은 고정된 이름을 가진다. `install`, `build`, `test`, `lint`, `docs-check`와 `packages/`의 runtime마다
-  `build-<runtime>`, `test-<runtime>`, `lint-<runtime>`이며, 모두 kit이 정의한다. 저장소는 `build: kit-build`처럼 자기
+  `build-<runtime>`, `test-<runtime>`, `lint-<runtime>`이며, 모두 kit의 utility를 실행하는 저장소의 Makefile이 정의한다.
+  저장소는 `build: kit-build`처럼 자기
   prerequisite로 작업에 합류하고, 작업 이름으로 시작하는 다른 target으로 합류하지 않는다 (K246).
   Enforced by: none, 안내하는 규칙이다: 저장소의 target 이름은 저장소의 것이다 (K810).
 - P30 0.0.x 개발 중 앱은 선언된 로컬 provider source를 native package manager의 방식으로 연결한다.
@@ -139,10 +139,10 @@ vendor하므로, 모든 repository가 같은 text를 가지며 `make kit-inject-
   저장소는 provider를 로컬 checkout에 `.links`와 `make link`로만 연결하고, 그것을 위한 자기 선언을 두지 않는다. 즉 package
   manager의 추적 manifest는 저장소 밖 경로를 적지 않는다(K997). Release 선언과 lock은 배포된 dependency의 기록으로 유지하고,
   kit은 link manifest, version alias, lock metadata를 합성하지 않으며 추적 lock을 통합 배치까지 기다리게 하지 않는다.
-  Enforced by: `make kit-check`가 저장소 밖 경로를 적은 추적 manifest를 각각 적는다(K773, K997, K998). link는 개발 환경에만 있고 거기서 make link-check가 link 선언 .links에 맞춰 검사한다(K869). CI는 아무것도 link하지 않는다 (K824)
+  Enforced by: `make link-check`가 개발 환경의 link를 link 선언 .links에 맞춰 검사한다(K869). CI는 아무것도 link하지 않는다 (K824)
 - P31 gate는 우회하지 않는다. test, script, Makefile은 workflow 밖에서 CI identity(`GITHUB_ACTIONS`, `CI`)를 설정하지 않고,
   `make -o`, `--old-file`, `--assume-old`에 kit-gates의 gate를 적지 않으며, `--no-verify`를 쓰지 않는다 (K308).
-  Enforced by: `make bypass-check`
+  Enforced by: none, 검토의 판단이다: kit 0.0.98에는 bypass-check가 없다 (K1051)
 - P32 범위: 공유 contract 동작은 모든 구현에 있고(S6, S10) test와 함께 구현한다. 언어나 runtime에 고유한 통합은 docs/spec에
   중립적인 규칙 하나로 쓰고, 적용되는 각 구현이 자기 고유한 형태를 거기에 묶는다. component나 artifact에만 해당하는 requirement는
   기존 coverage part나 release package에서 owner가 도출되는 feature unit만 test한다. scope가 없는 unit은 여전히 모든 구현에 적용한다.
@@ -245,27 +245,21 @@ owner가 2026-10-13에 이 기준을 승인했습니다. 각 기준은 위반 �
 - S11 로컬 링크: 개발 중 각 polyspec 패키지의 설치 폴더(node_modules, vendor, site-packages)는 checkout으로 가는 평범한
   디렉터리 심링크 하나입니다. 패키지 매니저의 링크 단계(npm link, Composer path repository, pip/uv editable)는 쓰지 않습니다
   (K591, K761, K765).
-  Enforced by: `make kit-check`가 package manager의 link 단계를 실행하는 추적 Makefile, *.mk, workflow의 각 줄을 적는다(K998).
-  link는 개발 환경에만 있고 거기서 make link-check가 link 선언 .links에 맞춰 검사하며(K869), CI는 아무것도 link하지 않는다 (K824).
-  kit의 K761 link test는 tool log에 npm link, composer update, editable 설치가 없음을 확인합니다
-- S12 저장소의 CI는 파이프라인 하나입니다. 저장소 자신의 ci.yml이 kit이 주는 workflow(`ci-pipeline.yml`)를 job `kit`으로
-  호출하고, 그 job은 `make kit-gates`의 prerequisite를 config/ci.json의 targets(`targets.shared`, `targets.parity`,
+  Enforced by: `make link-check`가 개발 환경의 link를 link 선언 .links에 맞춰 검사한다(K869). CI는 아무것도 link하지 않으며
+  (K824), recipe 안의 package manager link 단계는 검토에서 판단한다
+- S12 저장소의 CI는 파이프라인 하나입니다. 저장소 자신의 ci.yml이 자기 gate workflow(kit의 예시에서 가져온
+  `ci-pipeline.yml`)를 job `kit`으로 호출하고, 그 job은 `make kit-gates`의 prerequisite를 config/ci.json의 targets(`targets.shared`, `targets.parity`,
   `targets.runtimes`)와 함께 한 번 실행하며, 독립적인 저장소 job은 병렬로 실행합니다. 마지막 `ci-passed` job은 다른 모든 job을 needs로 요구하며, 앞선 결과를 사용하는 작업만 순서대로 실행합니다. 저장소의 다른 workflow도,
   ci-targets나 ci-setup이 읽는 입력도 kit-gates의 prerequisite를 다시 지정하지 않습니다. kit 자신을 시험하는 kit의 ci.yml은 소비자
   CI가 아닙니다(K870, K910).
-  Enforced by: `make kit-check`가 job kit이 없는 ci.yml, 마지막 ci-passed job의 누락이나 그 needs에서 빠진 job, 그리고 kit-gates의 gate를 다시 적거나 다른
-  저장소나 경로를 checkout하거나 clone하는 저장소 workflow의 줄과, kit-gates의 gate를 다시 적는 config/ci.json의 입력을
-  적는다(K998)
-- S13 모든 저장소가 공유하는 규칙은 똑같이 주입됩니다. 설치된 kit의 `kit.copies`에 있는 각 사본(이 파일, ci-pipeline.yml,
-  release.yml 등)은 package의 byte 그대로이며, `make kit-sync`가 쓰고 kit에서만 고칩니다. scripts/kit은 그 사본만 담습니다.
-  kit 자신은 사본의 원천이므로 사본을 갖지 않습니다(K851).
-  Enforced by: `make kit-inject-check`
+  Enforced by: `make repo-check`가 마지막 ci-passed job의 누락, 그 needs에서 빠진 job, kit-gates의 gate를 다시 실행하는 CI
+  group을 적는다
+- S13 kit은 저장소의 파일을 쓰지 않습니다(kit 0.0.98). 저장소가 kit의 예시에서 가져온 파일(이 파일, ci-pipeline.yml,
+  release.yml 등)은 저장소 자신의 것이며, 예시의 변경은 저장소 자신의 commit으로 받아들입니다.
+  Enforced by: none, kit 0.0.98에는 비교할 사본이 없습니다 (K1052)
 - S15 느슨한 결합: core, plugin, sidecar, kit, spec, contract는 인터페이스로만 서로를 아는 part입니다. part는 다른 part의 설치된
   manifest가 선언한 인터페이스(npm package라면 package.json의 `exports`)로만 그 part에 닿고, 설치가 놓은 package와 설치 때 기록된
   JSON으로 그 part를 찾습니다. 그 인터페이스 너머의 다른 part 파일을 import, include, 읽기, build, 실행하지 않으며, 다른 checkout의
   경로를 적지 않으므로 형제 checkout, `../<repository>`, 다른 저장소의 source 폴더를 적지 않습니다. part는 다른 part에 필요한 것을
   자기 package의 export나 자기 make target으로 제공합니다(K1002).
-  Enforced by: `make kit-check`, Node가 해석하는 package.json의 exports 너머로 설치된 npm package의 파일에 닿는 코드나 설정의
-  각 줄, kit이 export하지 않는 kit 파일을 실행하는 각 recipe, 저장소를 벗어나는 config/ 또는 .github/의 각 경로, 형제 checkout을
-  적는 각 make 변수·rule·include, 저장소를 벗어나는 각 module specifier를 적는다(K1002). 코드가 실행 중에 계산하는 경로와 다른
-  package manager의 인터페이스는 검토에서 판단한다
+  Enforced by: none, kit 0.0.98의 kit-check는 kit schema의 설정 파일만 검증하므로 검토에서 판단합니다 (K1051)

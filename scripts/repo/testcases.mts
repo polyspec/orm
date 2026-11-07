@@ -480,14 +480,18 @@ export function fixedPortErrors(files: Record<string, string>) {
 // a `go test -c -o` whose output is not @OUT@, a line that redirects standard output to a file (`> file`), and a line that runs tsc directly.
 // Such output leaves a half-written file when the build is cut off, and other runs or later steps read a file still being written. Output is
 // written to a temporary file and renamed by $(PUBLISH) (scripts/publish-output.mts), and the TypeScript client is built with scripts/typescript/build.mts.
-// Comment lines, quoted text, stderr redirects (>&2) and /dev/null are not checked.
+// Comment lines, help text, quoted text, stderr redirects (>&2), /dev/null and the step files of GitHub Actions are not checked.
 export function unpublishedOutputErrors(makefile: string): string[] {
   const errors: string[] = [];
   for (const [index, line] of makefile.split('\n').entries()) {
     if (/^\s*#/.test(line)) continue;
     // A quoted word is text, not a shell redirect: an angle bracket in a message such as "W=<path>" writes no file.
     // The command string of a shell (sh -c "...") is a command, so its quotes are kept and a redirect in it is found.
-    const unquoted = /\b(?:sh|bash|zsh) -c\b/.test(line) ? line : line.replace(/"(?:[^"\\]|\\.)*"|'[^']*'/g, '""');
+    // The help text after ` ## ` of a rule line is a comment, and a step file of GitHub Actions ($GITHUB_ENV, $GITHUB_PATH,
+    // $GITHUB_OUTPUT) is appended to by design, never read half-written as a build output.
+    const rule = line.startsWith('\t') ? line : line.replace(/\s##\s.*$/, '');
+    const appended = rule.replace(/>>\s*"?\$\$\{?GITHUB_(?:ENV|PATH|OUTPUT)\}?"?/g, '');
+    const unquoted = /\b(?:sh|bash|zsh) -c\b/.test(appended) ? appended : appended.replace(/"(?:[^"\\]|\\.)*"|'[^']*'/g, '""');
     const text = unquoted.replace(/\d?>&\d|>\s*\/dev\/null/g, '');
     // A generator run of the PHP client writes the directory it names (its --out, or the entry of the models file) in place, unless the line
     // names a temporary directory of its own (`<dir>.tmp`), which the target then swaps into place (php-models).
@@ -687,11 +691,14 @@ export function typescriptExclusiveReaderErrors(makefile: string): string[] {
     if (first === '$(HOLD_TYPESCRIPT)') holders.add(rule.target);
     if (first === '$(READ_TYPESCRIPT)') readers.add(rule.target);
   }
-  const reached = (target: string, seen = new Set<string>()): Set<string> => {
-    if (seen.has(target)) return seen;
+  // The targets that one serial make runs for `target`, in the order that it runs them: each prerequisite, left to right and
+  // depth first, before the target itself.
+  const reached = (target: string, seen = new Set<string>(), order: string[] = []): string[] => {
+    if (seen.has(target)) return order;
     seen.add(target);
-    for (const prerequisite of prerequisites.get(target) ?? []) reached(prerequisite, seen);
-    return seen;
+    for (const prerequisite of prerequisites.get(target) ?? []) reached(prerequisite, seen, order);
+    order.push(target);
+    return order;
   };
   const errors = rules
     .filter(rule => {
@@ -702,9 +709,12 @@ export function typescriptExclusiveReaderErrors(makefile: string): string[] {
   for (const rule of rules) {
     if (rule.target === '.PHONY') continue;
     if (rule.prerequisites.includes('typescript-build') && !writers.has(rule.target)) errors.push(`Makefile ${rule.target} takes the exclusive lease of the TypeScript build output through typescript-build for the life of its make; name typescript-read`);
-    const all = reached(rule.target);
-    // One make holds both for its whole life, so the exclusive holding would wait for its own shared one.
-    if ([...all].some(target => readers.has(target)) && [...all].some(target => holders.has(target))) errors.push(`Makefile ${rule.target} reaches both the shared and the exclusive lease of the TypeScript build output in one make`);
+    const order = reached(rule.target);
+    const firstReader = order.findIndex(target => readers.has(target));
+    const firstHolder = order.findIndex(target => holders.has(target));
+    // One make holds each lease for its whole life: an exclusive holding after its own shared one would wait for it, while a shared
+    // holding after its own exclusive one reuses that (tests/lease).
+    if (firstReader !== -1 && firstHolder !== -1 && firstReader < firstHolder) errors.push(`Makefile ${rule.target} takes the shared lease of the TypeScript build output before the exclusive one in one make; run the exclusive holder first`);
   }
   return errors;
 }

@@ -25,8 +25,8 @@ const relative = (file: string) => path.relative(root, file).split(path.sep).joi
 const allDocs = (await files(docs)).filter(file => file.endsWith('.md') && !file.includes(`${path.sep}.vitepress${path.sep}`));
 // The tracked Korean documents outside docs/ (AGENTS.ko.md, README.ko.md, CHANGELOG.ko.md, etc.) also receive the same
 // structural checks as their English originals.
-// Kit-owned documents are checked in kit, whether a checkout holds them as copies or as linked owner files (AGENTS.md).
-const kitDocuments = new Set([...Object.keys(kitCopies(root)), ...kitOwnedPaths(root)]);
+// The documents that orm keeps in the form of kit (scripts/repo/kit-copies.mts) follow kit's form, not these rules.
+const kitDocuments = new Set([...Object.keys(kitCopies()), ...kitOwnedPaths()]);
 const pairedOutside = execFileSync('git', ['ls-files', '-z', '*.ko.md'], { cwd: root }).toString().split('\0')
   .filter(file => file && !file.startsWith('docs/') && !kitDocuments.has(file)).map(file => path.join(root, file));
 const sources = [...allDocs.filter(file => !file.endsWith('.ko.md')),

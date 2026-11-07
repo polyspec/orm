@@ -3,8 +3,8 @@
 
 [Korean](AGENTS.ko.md)
 
-The working principles and standards of every polyspec repository are in [PRINCIPLES.md](PRINCIPLES.md), which kit
-vendors; this file states only the rules of orm.
+The working principles and standards of every polyspec repository are in [PRINCIPLES.md](PRINCIPLES.md), which orm took
+from kit and holds as its own; this file states only the rules of orm.
 
 - Own: The user's instructions take precedence. Develop locally; the GitHub remote receives a push only
   as the push rule below allows.
@@ -20,20 +20,20 @@ vendors; this file states only the rules of orm.
   `polyspec_orm-X.Y.Z-py3-none-any.whl`.
   Enforced by: `make release-tag`
 - Own: The shared tools are the npm package `@polyspec/kit`, a devDependency of `package.json` pinned to
-  the asset of its release with its integrity. The bootstrap source is the installed package: the Makefile
-  includes `node_modules/@polyspec/kit/scripts/kit/kit-bootstrap.mk`, which `npm ci` of `package-lock.json`
-  installs with the package. CI installs it through `.github/actions/kit-bootstrap` (K992), and
-  `make install-tools TOOLS=npm` installs the pinned npm before the packages (K938). A development checkout
-  links the package to its kit checkout, so no sibling checkout path is needed (K761). Kit's
-  `kit.copies` are the configuration files that alint must read inside this repository; `make kit-sync`
-  writes those copies and `make kit-check` compares them. Bootstrap sources are not copies here.
-  This repository differs from the other repositories only in `config/*.json`
-  and in its own product code (`scripts/check`, `scripts/features`, `scripts/repo`, the clients and
-  the checks of the database servers); a tool that kit lacks or gets wrong is reported to kit, never
-  copied or edited here. The rules of this repository do not read the copies.
+  the asset of its release with its integrity, which `.npmrc` allows (`allow-remote=root`). kit ships utilities
+  and no recipes (kit `docs/spec/utilities-and-recipes.md`): the `Makefile` of orm defines every target that orm,
+  its workflows and its documents call, and each runs one utility of the installed package with the arguments
+  that orm gives it. CI installs the package through `.github/actions/kit-bootstrap` (K992), and
+  `make install-tools TOOLS=npm` installs the pinned npm before the packages (K938). The settings of the tools
+  are in their own files: `.npmrc`, the `[settings]` and `[env]` of `mise.toml`, the `[workspace.lints]` of each
+  `Cargo.toml`, the `[tool.vulture]` of `packages/python/pyproject.toml` and the lint configurations of the root
+  (`ruff.toml`, `phpcs.xml.dist`, `phpstan.dist.neon`, `.golangci.yml`, `clippy.toml`, `.oxlintrc.json`,
+  `knip.json`). The files that orm took from the examples of kit and keeps in kit's form are listed in
+  `scripts/repo/kit-copies.mts`; the rules of this repository do not read them, and orm adopts a change of
+  kit's example in its own commit. A tool that kit lacks or gets wrong is reported to kit, never copied here.
   While polyspec versions are 0.0.x, development checkouts link installed polyspec packages to
   their source as kit `docs/plans/local-links.md` describes; links are never committed.
-  Enforced by: `make kit-check`
+  Enforced by: `make repo-check`
 - Refines S5: The client packages are `packages/<runtime>` with the runtime `go`, `ts` (the TypeScript client),
   `php`, `php-ext` (the PHP-extension), `python` and `rust` (S5 of PRINCIPLES.md): a folder name
   carries no repository prefix, and the distribution names (`@polyspec/orm`, `polyspec/orm`,
@@ -79,8 +79,8 @@ vendors; this file states only the rules of orm.
   CI splits it into the CI groups of the
   Makefile (`CI_GROUPS`, `CI_TARGETS_<group>`): one job per group, all at once, each running
   `make check-run GROUP=<group>` after only the setup steps that its targets need; the groups together
-  run every target of `CHECK_TARGETS` but the gates of kit (`CI_KIT_GATES`, the prerequisites of
-  `kit-gates`, which the gates workflow runs in its own parallel jobs) exactly once (`make repo-check`),
+  run every target of `CHECK_TARGETS` but the gates (`CI_KIT_GATES`, the prerequisites of
+  `kit-gates`, which `ci-pipeline.yml` runs in its own parallel jobs) exactly once (`make repo-check`),
   and a local `make orm-check` runs every target after its guard. One CI run must
   collect enough information to fix every failure it found before the next CI run. The run never
   stops at a failure: every target runs unless a setup step it needs failed, which records the
@@ -281,7 +281,7 @@ vendors; this file states only the rules of orm.
   Enforced by: `.githooks/pre-commit`
 - Own: The only exceptions are files the repository deliberately needs, and they are named here: the committed lock `.kit/kit.lock.json` and the test fixtures under `tests/*/fixtures/`.
   Enforced by: `.githooks/pre-commit`
-- Own: Each covered path has a `.gitignore` entry. The kit pre-commit hook refuses a staged generated path, and the repository declares its own patterns and named exceptions in `config/generated.json`.
+- Own: Each covered path has a `.gitignore` entry. The pre-commit hook of `.githooks` refuses a staged generated path, and the repository declares its own patterns and named exceptions in `config/generated.json`.
   Enforced by: `.githooks/pre-commit`
 
 ## Releases

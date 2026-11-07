@@ -3,10 +3,9 @@
 
 [한국어](PRINCIPLES.ko.md)
 
-These are the working principles of every polyspec repository. kit vendors this file byte for byte to each repository that
-takes its tools, so each repository holds the same text and `make kit-inject-check` fails on a difference. A repository's
-AGENTS.md links here and states only the rules of its own. The principles come from the owner; a principle is changed only
-in kit, with its grounding.
+These are the working principles of every polyspec repository. orm holds this file as its own, taken from the principles
+of kit, which writes no file of a repository since kit 0.0.98 (T391); orm adopts a change of kit's principles here. AGENTS.md
+links here and states only the rules of orm. The principles come from the owner; a principle is changed with its grounding.
 
 ## Responsibility
 
@@ -35,7 +34,7 @@ in kit, with its grounding.
   Enforced by: `make test-markers-check`
 - P7 No tricks, in any case. A goal reached by an abnormal method is not reached. When a requirement can be met only by a
   trick, that is stated exactly instead of done.
-  Enforced by: `.claude/settings.json`
+  Enforced by: none, whether a method is a trick is a judgement of review; kit 0.0.98 has no hook that refuses a command
 - P8 Errors are never hidden: no fallback that turns a wrong input into a plausible one, no silent drop of an input or an
   output, no swallowed error. A fallback stands only where it is truly needed, with that need stated.
   Enforced by: `make lint-ts`, `make lint-python`, `make lint-go`, `make lint-php`, `make lint-rust`, `make suppression-check`,
@@ -72,13 +71,12 @@ in kit, with its grounding.
   Enforced by: none, whether a measure is a stopgap is a design judgement.
 - P17 Recovery, apply and transformation are idempotent; a change is published as an event, never found by polling; paths are
   resolved declaratively from a declared root; and multi-platform is a hard requirement, met without platform tricks.
-  Enforced by: `.claude/settings.json` (its hook refuses a command that sleeps or polls in a loop, the waiting side of the
-  clause of polling; whether recovery, apply and transformation are idempotent, a change is published as an event, a path is
-  declarative and a platform trick-free is a design judgement that no check of every repository reaches)
+  Enforced by: none, whether recovery, apply and transformation are idempotent, a change is published as an event, a path is
+  declarative and a platform trick-free is a design judgement that no check of every repository reaches
 - P18 No script polls in a loop with no known end: no `until` or `while` with a sleep, no loop around `gh run list`, no
   watchdog. A wait is one command that its own work bounds, such as `gh run watch <id> --exit-status`, a background
   command whose completion is notified, or a message from the session that does the work.
-  Enforced by: `.claude/settings.json`
+  Enforced by: none, a guided rule: kit 0.0.98 has no hook that refuses a command, and review reads the scripts
 
 ## Verification
 
@@ -88,9 +86,8 @@ in kit, with its grounding.
   is a sub-item whose Verification is `make text-absent FILE=<path> TEXT=<stale text>`, which fails while the stale text is there.
   Enforced by: `.githooks/commit-msg` for the Red line of a done row and the test of a fix
 - P20 An item is completed by its own unit tests: red, implementation, green. Only the checks that own what changed run; the
-  full suite is not run, neither per fix, per item nor at the end. The full suite runs only on the order of the conductor,
-  which the Claude Code hook in `.claude/settings.json` enforces.
-  Enforced by: `.claude/settings.json`
+  full suite is not run, neither per fix, per item nor at the end. The full suite runs only on the order of the conductor.
+  Enforced by: none, a guided rule: which tests a session runs is its own work, which no tool sees
 - P21 A hard judgement or a new line of reasoning is verified adversarially, in rounds, until a round finds nothing. The scope
   of the review is fixed before the first round; a question beside it becomes its own item. The review is asked for
   solutions as well as objections, and a finding counts only when it shows a proposition wrong, shows it contradicted by
@@ -129,7 +126,7 @@ repository.
   Enforced by: `make docs-check`
 - P26 An open item names, in its Verification cell, the commands of its own unit tests; no item is verified by a suite. A suite runs in CI, or once as an explicit final verification after all checklist
   items are terminal. `make item-test` runs the commands.
-  Enforced by: `make docs-check`, `.claude/settings.json`
+  Enforced by: `make docs-check`
 - P27 A commit completes at most one item: it moves at most one state, and the commit that moves an item to done records it in
   CHANGELOG.md and its Korean twin. The uncommitted work is at most one item.
   Enforced by: none, a guided rule: the commit-msg hook checks only the AI footer and identity, the Red line and the test of a fix (K805)
@@ -139,7 +136,8 @@ repository.
   person, never an AI tool. `make commit` writes it.
   Enforced by: `.githooks/commit-msg` for the AI footer and identity
 - P29 The make targets of a task have fixed names: `install`, `build`, `test`, `lint`, `docs-check`, and `build-<runtime>`,
-  `test-<runtime>` and `lint-<runtime>` for each runtime of `packages/`, all defined by kit. A repository joins a task by a
+  `test-<runtime>` and `lint-<runtime>` for each runtime of `packages/`, all defined in the Makefile of the repository, which
+  runs the utilities of kit. A repository joins a task by a
   prerequisite of its own, such as `build: kit-build`, never by another target that starts with a task's name (K246).
   Enforced by: none, a guided rule: the names of the targets of a repository are its own (K810).
 - P30 During 0.0.x development, applications connect declared local provider sources through native package-manager
@@ -148,10 +146,10 @@ repository.
   `.links` and `make link`, and declares nothing of its own for that: no tracked manifest of a package manager names a path
   out of the repository (K997). Release declarations and locks remain records of released dependencies; kit does not
   synthesize link manifests, version aliases or lock metadata, and no tracked lock waits for a coordinated batch.
-  Enforced by: `make kit-check`, which names each tracked manifest path out of the repository (K773, K997, K998); the links exist only in development, where make link-check checks them against the link declaration .links (K869); CI links nothing (K824)
+  Enforced by: `make link-check`, which checks the links of development against the link declaration .links (K869); CI links nothing (K824)
 - P31 No gate is bypassed: a test, script or Makefile never sets the CI identity (`GITHUB_ACTIONS`, `CI`) outside a workflow, never
   names a gate of kit-gates in `make -o`, `--old-file` or `--assume-old`, and never uses `--no-verify` (K308).
-  Enforced by: `make bypass-check`
+  Enforced by: none, a judgement of review: kit 0.0.98 has no bypass-check (K1051)
 - P32 Scope: shared contract behaviour exists in every implementation (S6, S10), implemented with its tests. A language- or
   runtime-native integration is written once as a neutral rule in docs/spec, and each applicable implementation binds its native form
   to it. A component- or artifact-specific requirement is tested only by a feature unit whose owner resolves from an existing
@@ -275,29 +273,23 @@ tool lands, a standard binds the work as written here.
 - S11 Local links: during development each polyspec package's install folder (node_modules, vendor, site-packages) is one
   plain directory symlink to its checkout. No package-manager link step (npm link, Composer path repository, pip/uv editable)
   (K591, K761, K765).
-  Enforced by: `make kit-check`, which names each line of a tracked Makefile, *.mk or workflow that runs a link step of a package
-  manager (K998); the links exist only in development, where make link-check checks them against the link declaration .links (K869),
-  and CI links nothing (K824); the K761 link test of kit finds no npm link, composer update or editable install in the tool log
-- S12 A repository's CI is one pipeline: its own ci.yml calls the workflow that kit gives it (`ci-pipeline.yml`) as its
-  job `kit`, which runs the prerequisites of `make kit-gates` once with the targets of config/ci.json (`targets.shared`,
+  Enforced by: `make link-check`, which checks the links of development against the link declaration .links (K869); CI links
+  nothing (K824), and a link step of a package manager in a recipe is judged at review
+- S12 A repository's CI is one pipeline: its own ci.yml calls its gate workflow (`ci-pipeline.yml`, from the example of kit) as
+  its job `kit`, which runs the prerequisites of `make kit-gates` once with the targets of config/ci.json (`targets.shared`,
   `targets.parity`, `targets.runtimes`), and independent repository jobs run concurrently. The final `ci-passed` job requires every other job; dependencies order only work that consumes preceding results. No other workflow
   of the repository, and no input that ci-targets or ci-setup reads, names a prerequisite of kit-gates again. kit's own ci.yml,
   which tests kit itself, is no consumer CI (K870, K910).
-  Enforced by: `make kit-check`, which names a ci.yml without the job kit, a missing final ci-passed job or a job missing from its needs, and a line of a workflow
-  of the repository that names a gate of kit-gates again, checks out another repository or to a path, or clones one, and an input
-  of config/ci.json that names a gate of kit-gates again (K998)
-- S13 The rules that every repository shares are injected identically: each copy of `kit.copies` of the installed kit (this
-  file, ci-pipeline.yml, release.yml and the others) is the bytes of the package, written by `make kit-sync` and changed only in kit;
-  scripts/kit holds those copies only. kit itself is their source and holds no copies (K851).
-  Enforced by: `make kit-inject-check`
+  Enforced by: `make repo-check`, which names a missing final ci-passed job, a job missing from its needs and a CI group that runs a
+  gate of kit-gates again
+- S13 kit writes no file of a repository (kit 0.0.98): the files that a repository took from the examples of kit (this file,
+  ci-pipeline.yml, release.yml and the others) are its own, and it adopts a change of an example in its own commit.
+  Enforced by: none, kit 0.0.98 has no copies to compare (K1052)
 - S15 Loose coupling: core, plugins, sidecars, kit, specs and contracts are parts that know each other only through interfaces.
   A part reaches another part only through the interface that the installed manifest of that part declares (for an npm package,
   the `exports` of its package.json), and finds it through the package that installation puts in place and the JSON written at
   installation; it never imports, includes, reads, builds or runs a file of another part past that interface, and names no path to
   another checkout, so no sibling checkout, `../<repository>` or source folder of another repository. A part offers what others
   need as an export of its package or a make target of its own (K1002).
-  Enforced by: `make kit-check`, which names each line of code or configuration that reaches a file of an installed npm package
-  past the exports of its package.json as Node resolves them, each recipe that runs a file of kit that kit does not export, each
-  path of config/ or .github/ out of the repository, each make variable, rule or include that names a sibling checkout, and each
-  module specifier out of the repository (K1002); a path that code computes while it runs, and the interfaces of other package
-  managers, are judged at review
+  Enforced by: none, a judgement of review since kit-check of kit 0.0.98 validates only the configuration files of kit's
+  schemas (K1051)
