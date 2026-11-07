@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- orm requires the json-schema fork by its release 2.6.0-p2 in place of its branch polyspec-origin-2.6.0, the repository check fails a Composer requirement or lock entry that names a branch, and orm adopts kit 0.0.95, whose PRINCIPLES leave the rule of forks to the FORK.md of each fork and the manifest and lock of each root (T386).
+
 ## 0.0.22
 
 - CI: kit 0.0.94 permits independent product jobs to start alongside kit and the final result requires every job; pooler checks run in six runtime jobs with separate servers and unchanged connection limits; binding phases no longer repeat the API phase’s interface checks, and the release tags the verified candidate without another full CI run (XV27).

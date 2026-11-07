@@ -290,16 +290,6 @@ tool lands, a standard binds the work as written here.
   file, ci-pipeline.yml, release.yml and the others) is the bytes of the package, written by `make kit-sync` and changed only in kit;
   scripts/kit holds those copies only. kit itself is their source and holds no copies (K851).
   Enforced by: `make kit-inject-check`
-- S14 Forks: a maintained fork of a third-party package, whose fix waits for upstream, is a package of its own name
-  (`min-0-max/<name>`). Its fixes go on a branch whose name carries the upstream version it is based on (such as
-  polyspec-origin-2.6.0), which is the default branch of the fork, since Composer's VCS source names the package by its default
-  branch; master stays the line of upstream, and a rebase onto a newer upstream is a new branch that becomes the
-  default. During development its installed folder is linked to the development checkout through `.links` and `make link` (S11).
-  A polyspec package requires the name of the fork, and a root installs it through the VCS source of its package manager at that
-  branch (Composer: a `vcs` repository and a require of `dev-<branch>`); no public registry. The fork is retired when upstream
-  releases the fix (K1000).
-  Enforced by: none, links exist only in development, where make link-check names a declared fork that no installed folder links
-  (K999) and no CI reaches it, since CI links nothing (K824); which branch a root installs is the record of its lock (S4)
 - S15 Loose coupling: core, plugins, sidecars, kit, specs and contracts are parts that know each other only through interfaces.
   A part reaches another part only through the interface that the installed manifest of that part declares (for an npm package,
   the `exports` of its package.json), and finds it through the package that installation puts in place and the JSON written at

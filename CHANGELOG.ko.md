@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 43fd35040d0fdde9b086613727ed9c03e8713ea927825b59357975d674b74dd8 -->
+<!-- source-sha256: 95d2a303327d432f57d0a5d7a27a5b701a3e4347afbbd01267f50f0311ae66e0 -->
 # 변경 이력
 
 ## Unreleased
+
+- orm은 json-schema fork를 branch polyspec-origin-2.6.0 대신 release 2.6.0-p2로 require하고, repository check는 branch를 가리키는 Composer 요구나 lock 항목을 실패로 판정하며, orm은 kit 0.0.95를 채택한다. kit 0.0.95의 PRINCIPLES는 fork 규칙을 각 fork의 FORK.md와 각 root의 manifest와 lock에 맡긴다 (T386).
 
 ## 0.0.22
 
