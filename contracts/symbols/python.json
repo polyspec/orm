@@ -2831,6 +2831,10 @@
     "exported": true,
     "signature": "def to_array(self) -\u003e dict"
   },
+  "packages/python/src/polyspec/orm/group_rows.py::GroupRow.to_json_text": {
+    "exported": true,
+    "signature": "def to_json_text(self) -\u003e str"
+  },
   "packages/python/src/polyspec/orm/group_rows.py::GroupRow.value": {
     "exported": true,
     "signature": "def value(self, name: str)"
@@ -2846,6 +2850,10 @@
   "packages/python/src/polyspec/orm/group_rows.py::GroupRows.to_array": {
     "exported": true,
     "signature": "def to_array(self) -\u003e list"
+  },
+  "packages/python/src/polyspec/orm/group_rows.py::GroupRows.to_json_text": {
+    "exported": true,
+    "signature": "def to_json_text(self) -\u003e str"
   },
   "packages/python/src/polyspec/orm/group_rows.py::GroupRows.values": {
     "exported": true,

@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: ec73d77038dae9209ed9be08ed88d5caacf45d3f5931c8e7135543dfd8d79256 -->
+<!-- source-sha256: 3195704ecadf50a1d99f6d9d1743a92945a43a6cc8a4469a4b86c6f2f49505e2 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -154,6 +154,7 @@ recipe `conformance_verification`의 case `terminal_by`는 모든 runtime client
 - **INT-69** `GroupRow.toArray`(Go `GroupRow.ToArray`, PHP `GroupRow::toArray`, TypeScript `GroupRow#toArray`, Python `GroupRow.to_array`)는 선택한 값을 이름을 기준으로 가진 map 하나를 돌려준다. `row_count`는 검사한 정수 개수이고 SQL NULL은 null이다.
 - **INT-70** `GroupRows.length`(Go `Len`, PHP `count`, TypeScript `length`, Python `length`)는 그룹 행의 개수를 돌려주며, 행은 결과 순서로 순회한다.
 - **INT-71** `GroupRows.toArray`(Go `ToArray`, PHP `toArray`, TypeScript `toArray`, Python `to_array`)는 각 그룹 행의 `toArray` map을 결과 순서대로 돌려준다.
+- **INT-162** 그룹 행의 JSON 출력(Go `json.Marshal`, Rust `GroupRow::to_json`, PHP와 PHP 확장 `json_encode`, TypeScript `JSON.stringify`, Python `GroupRow.to_json_text`)은 선택한 값을 결과 순서대로 담은 JSON object 하나이고, 그룹 행들의 JSON 출력(Go `json.Marshal`, Rust `GroupRows::to_json`과 serde 직렬화, PHP와 PHP 확장 `json_encode`, TypeScript `JSON.stringify`, Python `GroupRows.to_json_text`)은 그 object들을 결과 순서대로 담은 JSON 배열이다. JSON에는 bytes가 없으므로 PHP 확장을 포함한 모든 runtime에서 bytes 값, 곧 codec stage가 없는 bytes column의 값을 같은 문장 `CODEC_ENCODE: group column <name>: JSON output cannot write bytes`로 거부한다. 예를 들면 `CODEC_ENCODE: group column body: JSON output cannot write bytes`이다. Go에서 `json.Marshal`은 이 오류를 `encoding/json`의 `*json.MarshalerError` 안에 담아 돌려주며, 그 `Unwrap`이 이 orm 오류이다. 그룹 행의 배열 형태는 bytes를 담는다(COD-27).
 - **INT-90** 음수 `row_count`를 가진 `GroupRow`는 `CODEC_DECODE`로 실패하며, 음이 아닌 정수가 아닌 모든 `row_count`(불리언, 손실, 안전 정수 범위 밖)도 같다. `row_count`가 없는 행은 `INTERNAL`이다. 행 개수는 데이터베이스의 `COUNT`이며 음수가 될 수 없으므로, 음수 값은 library 불변식의 깨짐이 아니라 개수로 디코드되지 않는 수신 값이다.
 
 ## 6. 연결·트랜잭션·유틸리티 — IF-13 ~ IF-17

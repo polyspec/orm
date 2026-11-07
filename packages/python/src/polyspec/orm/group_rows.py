@@ -69,6 +69,21 @@ class GroupRow:
     def to_array(self) -> dict:
         return dict(self._values)
 
+    def to_json_text(self) -> str:
+        """The selected values as one JSON object in result order; JSON has no bytes, so a bytes value is CODEC_ENCODE
+        (INT-162)."""
+        from polyspec.orm.model import _json_text, _string_text
+
+        parts = []
+        for name, value in self._values.items():
+            if isinstance(value, (bytes, bytearray, memoryview)):
+                raise OrmError(
+                    codes.CODEC_ENCODE,
+                    f"group column {name}: JSON output cannot write bytes",
+                )
+            parts.append(f"{_string_text(name)}:{_json_text(value)}")
+        return "{" + ",".join(parts) + "}"
+
 
 class GroupRows:
     """Group values in result order; there are no incomplete model rows."""
@@ -90,6 +105,10 @@ class GroupRows:
 
     def to_array(self) -> list:
         return [row.to_array() for row in self._rows]
+
+    def to_json_text(self) -> str:
+        """The JSON array of the rows in result order (INT-162)."""
+        return "[" + ",".join(row.to_json_text() for row in self._rows) + "]"
 
     def __len__(self):
         return len(self._rows)

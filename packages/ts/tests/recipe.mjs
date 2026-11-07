@@ -2062,6 +2062,7 @@ const TABLE_OPS = {
       if (row === undefined) throw new Error(`group_value ${s.group_value}: the aggregate has no group row`);
       return { json: plainJson(row.value(s.group_value)) };
     }
+    if (s.aggregate !== undefined && s.json_output === true) return { json: JSON.stringify(await m.getsCount()) };
     if (s.aggregate !== undefined) return { json: plainJson((await m.getsCount()).toArray()) };
     if (s.page === true || s.plan_page !== undefined) {
       const count = typeof s.limit === 'number' ? s.limit : s.limit?.count;

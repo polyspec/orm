@@ -79205,7 +79205,9 @@
     "PRT-69",
     "INT-5",
     "COD-26",
-    "COD-27"
+    "COD-27",
+    "INT-69",
+    "INT-162"
    ],
    "steps": [
     {
@@ -79321,6 +79323,134 @@
          "bytes_hex": "007f80ff41"
         }
        }
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "ByteCell",
+     "aggregate": {
+      "agg": "count",
+      "group_by": [
+       "body"
+      ]
+     },
+     "order": [
+      {
+       "column": "body",
+       "dir": "asc"
+      }
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "body": {
+          "bytes_hex": "007f80ff41"
+         },
+         "row_count": 1
+        },
+        {
+         "body": {
+          "bytes_hex": "ff00417f80"
+         },
+         "row_count": 1
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "body": {
+          "bytes_hex": "007f80ff41"
+         },
+         "row_count": 1
+        },
+        {
+         "body": {
+          "bytes_hex": "ff00417f80"
+         },
+         "row_count": 1
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "body": {
+          "bytes_hex": "007f80ff41"
+         },
+         "row_count": 1
+        },
+        {
+         "body": {
+          "bytes_hex": "ff00417f80"
+         },
+         "row_count": 1
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "ByteCell",
+     "aggregate": {
+      "agg": "count",
+      "group_by": [
+       "body"
+      ]
+     },
+     "order": [
+      {
+       "column": "body",
+       "dir": "asc"
+      }
+     ],
+     "json_output": true,
+     "expect": {
+      "mysql": {
+       "error": "CODEC_ENCODE",
+       "message": "CODEC_ENCODE: group column body: JSON output cannot write bytes"
+      },
+      "postgres": {
+       "error": "CODEC_ENCODE",
+       "message": "CODEC_ENCODE: group column body: JSON output cannot write bytes"
+      },
+      "sqlite": {
+       "error": "CODEC_ENCODE",
+       "message": "CODEC_ENCODE: group column body: JSON output cannot write bytes"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "ByteCell",
+     "aggregate": {
+      "agg": "count",
+      "group_by": [
+       "seq"
+      ]
+     },
+     "order": [
+      {
+       "column": "seq",
+       "dir": "asc"
+      }
+     ],
+     "json_output": true,
+     "expect": {
+      "mysql": {
+       "json": "[{\"seq\":1,\"row_count\":1},{\"seq\":2,\"row_count\":1}]"
+      },
+      "postgres": {
+       "json": "[{\"seq\":1,\"row_count\":1},{\"seq\":2,\"row_count\":1}]"
+      },
+      "sqlite": {
+       "json": "[{\"seq\":1,\"row_count\":1},{\"seq\":2,\"row_count\":1}]"
       }
      }
     }

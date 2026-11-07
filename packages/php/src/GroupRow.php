@@ -82,8 +82,18 @@ final readonly class GroupRow implements \JsonSerializable
         return $this->values;
     }
 
+    /**
+     * The selected values in result order; JSON has no bytes, so a bytes value is CODEC_ENCODE (INT-162).
+     *
+     * @return array<string, mixed>
+     */
     public function jsonSerialize(): array
     {
-        return $this->toArray();
+        foreach ($this->values as $name => $value) {
+            if ($value instanceof Bytes) {
+                throw new OrmException(Code::CODEC_ENCODE, "group column $name: JSON output cannot write bytes");
+            }
+        }
+        return $this->values;
     }
 }

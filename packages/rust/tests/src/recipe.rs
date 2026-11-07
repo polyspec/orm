@@ -6399,6 +6399,7 @@ mod tables {
                 return Ok(json!({ "json": match aggregate["agg"].as_str() {
                     Some("sum") => json!(get_sum(root.core()).await.map_err(orm)?),
                     Some("avg") => json!(get_avg(root.core()).await.map_err(orm)?),
+                    _ if crate::recipe_reads::read(step, "json_output")["json_output"] == json!(true) => json!(gets_count(&root).await.map_err(orm)?.to_json().map_err(orm)?),
                     _ => gets_count(&root).await.map_err(orm)?.to_array().map_err(orm)?.plain().map_err(orm)?,
                 } }));
             }

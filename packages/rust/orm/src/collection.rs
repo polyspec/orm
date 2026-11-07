@@ -347,10 +347,15 @@ impl GroupRow {
         Ok(ArrayValue::Map(self.values.iter().map(|(name, value)| (name.clone(), ArrayValue::of(value))).collect()))
     }
 
+    /// The selected values as one JSON object in result order; JSON has no bytes, so a bytes value is CODEC_ENCODE
+    /// (INT-162).
     pub fn to_json(&self) -> Result<String> {
         let mut parts = Vec::with_capacity(self.values.len());
         for (name, value) in &self.values {
             let text = match value {
+                Val::Bytes(_) => {
+                    return Err(Error::Engine { code: crate::codes::CODEC_ENCODE.into(), msg: format!("group column {name}: JSON output cannot write bytes") })
+                }
                 Val::Ordered(value) => value.compact(),
                 other => other.to_json()?.to_string(),
             };

@@ -1743,7 +1743,11 @@ abstract class Model implements \JsonSerializable, ModelMetadata
                     ? Decimal::fromScaled($raw, $declared['precision'], $declared['scale'])
                     : Decimal::decode($raw, $declared['precision'], $declared['scale'])),
             'date', 'datetime' => self::timeValue($raw, $db->zone()),
-            'varchar', 'text', 'time', 'uuid', 'bytes' => is_string($raw)
+            // A bytes column without a codec stage holds its bytes as a Bytes, as the array form of a model (COD-27).
+            'bytes' => is_string($raw)
+                ? (($declared['codec'] ?? []) === [] ? new Bytes($raw) : $raw)
+                : throw new OrmException(Code::CODEC_DECODE, "group column $name is not text or bytes"),
+            'varchar', 'text', 'time', 'uuid' => is_string($raw)
                 ? $raw : throw new OrmException(Code::CODEC_DECODE, "group column $name is not text or bytes"),
             default => throw new OrmException(Code::INTERNAL, "group column $name has unsupported type $type"),
         };

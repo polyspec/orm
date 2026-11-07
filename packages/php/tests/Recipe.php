@@ -4987,13 +4987,15 @@ final class Recipe
             if ($groups === []) {
                 Assert::fail("group_value {$s['group_value']}: the aggregate has no group row");
             }
-            return ['json' => $groups[0]->value($s['group_value'])];
+            return ['json' => self::plainArray($groups[0]->value($s['group_value']))];
         }
         if ($aggregate !== null) {
             return ['json' => match ($aggregate['agg']) {
                 'sum' => json_decode(json_encode($model->getSum())),
                 'avg' => json_decode(json_encode($model->getAvg())),
-                default => $model->getsCount()->toArray(),
+                default => ($s['json_output'] ?? false) === true
+                    ? json_encode($model->getsCount(), JSON_THROW_ON_ERROR)
+                    : self::plainArray($model->getsCount()->toArray()),
             }];
         }
         if (($s['page'] ?? false) === true || isset($s['plan_page'])) {

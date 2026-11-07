@@ -95,7 +95,29 @@ func (r GroupRow) ToArray() map[string]any {
 	return out
 }
 
-func (r GroupRow) MarshalJSON() ([]byte, error) { return json.Marshal(r.ToArray()) }
+// MarshalJSON writes the selected values as one JSON object in result order. JSON has no bytes, so a bytes value is
+// CODEC_ENCODE (INT-162).
+func (r GroupRow) MarshalJSON() ([]byte, error) {
+	out := []byte{'{'}
+	for index, item := range r.values {
+		if _, ok := item.value.([]byte); ok {
+			return nil, codecErr(CodeCodecEncode, "group column %s: JSON output cannot write bytes", item.name)
+		}
+		name, err := json.Marshal(item.name)
+		if err != nil {
+			return nil, err
+		}
+		value, err := json.Marshal(item.value)
+		if err != nil {
+			return nil, err
+		}
+		if index > 0 {
+			out = append(out, ',')
+		}
+		out = append(append(append(out, name...), ':'), value...)
+	}
+	return append(out, '}'), nil
+}
 
 // checkCountText refuses a driver cell of text that is not the canonical decimal of a nonnegative integer (INT-90).
 func checkCountText(value any) error {
@@ -131,7 +153,22 @@ func (r *GroupRows) ToArray() []map[string]any {
 	return out
 }
 
-func (r *GroupRows) MarshalJSON() ([]byte, error) { return json.Marshal(r.ToArray()) }
+// MarshalJSON writes the rows as a JSON array in result order. It calls each row itself, so the error of a row is the
+// orm error that the one MarshalerError of the caller holds (INT-162).
+func (r *GroupRows) MarshalJSON() ([]byte, error) {
+	out := []byte{'['}
+	for index, row := range r.rows {
+		text, err := row.MarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		if index > 0 {
+			out = append(out, ',')
+		}
+		out = append(out, text...)
+	}
+	return append(out, ']'), nil
+}
 
 // All visits grouped rows in result order.
 func (r *GroupRows) All() func(yield func(GroupRow) bool) {

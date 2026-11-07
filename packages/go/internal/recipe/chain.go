@@ -280,6 +280,20 @@ func orderedText(row *tableRow, column string) (string, error) {
 	return value.Raw(), nil
 }
 
+// jsonOutputOutcome is the JSON output of a value as its text. encoding/json wraps the error of MarshalJSON; the caller
+// reads the orm error inside it (COD-26, INT-162).
+func jsonOutputOutcome(value any) (outcome, error) {
+	text, err := json.Marshal(value)
+	var wrapped *json.MarshalerError
+	if errors.As(err, &wrapped) {
+		return outcome{}, wrapped.Unwrap()
+	}
+	if err != nil {
+		return outcome{}, err
+	}
+	return jsonOutcome(string(text)), nil
+}
+
 // arrayText is the compact text of the styled document of a column in the array form of the row (COD-27).
 func arrayText(row *tableRow, column string) (string, error) {
 	value, ok := row.m.ToArray()[column]
@@ -1035,16 +1049,7 @@ func chainOp(raw json.RawMessage, c *databaseContext, reads *stepReads) (outcome
 			return outcome{}, fmt.Errorf("model.get_by: the row is a %T", m)
 		}
 		if s.k("json_output").JSONOutput && row != nil {
-			text, err := json.Marshal(row.m)
-			// encoding/json wraps the error of MarshalJSON; the caller reads the orm error inside it (COD-26).
-			var wrapped *json.MarshalerError
-			if errors.As(err, &wrapped) {
-				return outcome{}, wrapped.Unwrap()
-			}
-			if err != nil {
-				return outcome{}, err
-			}
-			return jsonOutcome(string(text)), nil
+			return jsonOutputOutcome(row.m)
 		}
 		if s.k("array_text").ArrayText != "" && row != nil {
 			text, err := arrayText(row, s.k("array_text").ArrayText)
@@ -1198,6 +1203,9 @@ func chainGets(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
 				return jsonOutcome(value), nil
 			}
 			return outcome{}, fmt.Errorf("group_value %s: the aggregate has no group row", s.k("group_value").GroupValue)
+		}
+		if s.k("json_output").JSONOutput {
+			return jsonOutputOutcome(groups)
 		}
 		return jsonOutcome(groups.ToArray()), nil
 	case s.k("plan").Plan:

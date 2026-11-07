@@ -1,5 +1,6 @@
 /* Native result assembly and read terminals for Polyspec\Orm\Model. */
 #include "model_read.h"
+#include "model_output.h"
 #include "model_state.h"
 #include "php_function_call.h"
 #include "model_types.h"
@@ -853,7 +854,12 @@ ZEND_METHOD(Polyspec_Orm_Model, groupValue)
     if(read_string_is(type,"f64")){zval args[2],rv;ZVAL_COPY(&args[0],&value);ZVAL_COPY(&args[1],name);bool ok=read_model_static_call(ZEND_THIS,"groupFloat",&rv,2,args);zval_ptr_dtor(&args[0]);zval_ptr_dtor(&args[1]);zval_ptr_dtor(&value);zval_ptr_dtor(&meta);if(!ok)RETURN_THROWS();ZVAL_COPY_VALUE(return_value,&rv);return;}
     if(read_string_is(type,"decimal")){if(declared==NULL){zval_ptr_dtor(&value);zval_ptr_dtor(&meta);zend_string *message=strpprintf(0,"decimal group column %s has no declaration",Z_STRVAL_P(name));read_throw("INTERNAL",ZSTR_VAL(message));zend_string_release(message);RETURN_THROWS();}zval *precision=read_array(declared,"precision"),*scale=read_array(declared,"scale");zval driver;if(precision==NULL||scale==NULL||!read_call(db,"dialect",&driver,0,NULL)){zval_ptr_dtor(&value);zval_ptr_dtor(&meta);RETURN_THROWS();}bool sqlite=Z_TYPE(driver)==IS_STRING&&zend_string_equals_literal(Z_STR(driver),"sqlite");zval_ptr_dtor(&driver);zval args[3],rv;ZVAL_COPY(&args[0],&value);ZVAL_COPY(&args[1],precision);ZVAL_COPY(&args[2],scale);zend_class_entry *decimal=read_lookup_class("Polyspec\\Orm\\Decimal");bool ok=decimal!=NULL&&read_static_call(decimal,sqlite?"fromScaled":"decode",&rv,3,args);for(int i=0;i<3;i++)zval_ptr_dtor(&args[i]);zval_ptr_dtor(&value);zval_ptr_dtor(&meta);if(!ok)RETURN_THROWS();ZVAL_COPY_VALUE(return_value,&rv);return;}
     if(read_string_is(type,"date")||read_string_is(type,"datetime")){zval zone;if(!read_call(db,"zone",&zone,0,NULL)){zval_ptr_dtor(&value);zval_ptr_dtor(&meta);RETURN_THROWS();}bool ok=model_time_value_in_zone(&value,&zone,return_value);zval_ptr_dtor(&zone);zval_ptr_dtor(&value);zval_ptr_dtor(&meta);if(!ok)RETURN_THROWS();return;}
-    if(read_string_is(type,"varchar")||read_string_is(type,"text")||read_string_is(type,"time")||read_string_is(type,"uuid")||read_string_is(type,"bytes")){if(Z_TYPE(value)!=IS_STRING){zval_ptr_dtor(&value);zval_ptr_dtor(&meta);zend_string *message=strpprintf(0,"group column %s is not text or bytes",Z_STRVAL_P(name));read_throw("CODEC_DECODE",ZSTR_VAL(message));zend_string_release(message);RETURN_THROWS();}zval_ptr_dtor(&meta);ZVAL_COPY_VALUE(return_value,&value);return;}
+    if(read_string_is(type,"varchar")||read_string_is(type,"text")||read_string_is(type,"time")||read_string_is(type,"uuid")||read_string_is(type,"bytes")){if(Z_TYPE(value)!=IS_STRING){zval_ptr_dtor(&value);zval_ptr_dtor(&meta);zend_string *message=strpprintf(0,"group column %s is not text or bytes",Z_STRVAL_P(name));read_throw("CODEC_DECODE",ZSTR_VAL(message));zend_string_release(message);RETURN_THROWS();}zval_ptr_dtor(&meta);
+        /* A bytes column without a codec stage holds its bytes as a Bytes, as in the array form of a model (COD-27). */
+        zval *stages = declared != NULL ? read_array(declared, "codec") : NULL;
+        bool no_stage = stages == NULL || Z_TYPE_P(stages) != IS_ARRAY || zend_hash_num_elements(Z_ARRVAL_P(stages)) == 0;
+        if (read_string_is(type, "bytes") && no_stage && !model_output_bytes(&value)) RETURN_THROWS();
+        ZVAL_COPY_VALUE(return_value,&value);return;}
     zend_string *message=strpprintf(0,"group column %s has unsupported type %s",Z_STRVAL_P(name),Z_STRVAL_P(type));zval_ptr_dtor(&value);zval_ptr_dtor(&meta);read_throw("INTERNAL",ZSTR_VAL(message));zend_string_release(message);RETURN_THROWS();
 }
 

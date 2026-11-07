@@ -1,5 +1,6 @@
 /* Native runtime model and result assembly helpers. */
 #include "model_assembly.h"
+#include "model_output.h"
 #include "Zend/zend_interfaces.h"
 #include "Zend/zend_exceptions.h"
 #include "Zend/zend_smart_str.h"
@@ -391,10 +392,20 @@ ZEND_METHOD(Polyspec_Orm_GroupRow, toArray)
     RETURN_COPY(values);
 }
 
+/* The selected values in result order; JSON has no bytes, so a bytes value is CODEC_ENCODE (INT-162). */
 ZEND_METHOD(Polyspec_Orm_GroupRow, jsonSerialize)
 {
     ZEND_PARSE_PARAMETERS_NONE();
     zval *values = read_prop_scope(polyspec_group_row_ce, Z_OBJ_P(ZEND_THIS), "values");
+    zend_class_entry *bytes_ce = model_output_bytes_class();
+    zend_string *key; zend_ulong index; zval *value;
+    ZEND_HASH_FOREACH_KEY_VAL(Z_ARRVAL_P(values), index, key, value) {
+        if (bytes_ce != NULL && Z_TYPE_P(value) == IS_OBJECT && instanceof_function(Z_OBJCE_P(value), bytes_ce)) {
+            if (key != NULL) orm_failf("CODEC_ENCODE", "group column %s: JSON output cannot write bytes", ZSTR_VAL(key));
+            else orm_failf("CODEC_ENCODE", "group column " ZEND_ULONG_FMT ": JSON output cannot write bytes", index);
+            RETURN_THROWS();
+        }
+    } ZEND_HASH_FOREACH_END();
     RETURN_COPY(values);
 }
 
@@ -601,9 +612,12 @@ ZEND_METHOD(Polyspec_Orm_GroupRows, toArray)
     } ZEND_HASH_FOREACH_END();
 }
 
+/* The rows in result order; json_encode writes each by its jsonSerialize (INT-162). */
 ZEND_METHOD(Polyspec_Orm_GroupRows, jsonSerialize)
 {
-    if (!call_method(Z_OBJ_P(ZEND_THIS), "toArray", return_value, 0, NULL)) RETURN_THROWS();
+    ZEND_PARSE_PARAMETERS_NONE();
+    zval *rows = read_prop_scope(polyspec_group_rows_ce, Z_OBJ_P(ZEND_THIS), "rows");
+    RETURN_COPY(rows);
 }
 
 /* Assembly */

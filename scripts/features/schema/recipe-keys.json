@@ -529,6 +529,7 @@
       "group_value",
       "items",
       "joins",
+      "json_output",
       "key",
       "key_by",
       "limit",

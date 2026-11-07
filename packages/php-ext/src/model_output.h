@@ -10,4 +10,6 @@ ZEND_METHOD(Polyspec_Orm_Model, columnArrayValue);
 ZEND_METHOD(Polyspec_Orm_Model, sixFractionDigits);
 ZEND_METHOD(Polyspec_Orm_Model, arrayValue);
 ZEND_METHOD(Polyspec_Orm_Model, holdsOrderedJson);
+zend_class_entry *model_output_bytes_class(void);
+bool model_output_bytes(zval *value);
 #endif

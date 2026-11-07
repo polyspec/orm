@@ -3851,6 +3851,8 @@ def _table_model_query(step: dict, context: dict) -> dict:
                     f"group_value {step['group_value']}: the aggregate has no group row"
                 )
             return {"json": _plain_json(rows[0].value(step["group_value"]))}
+        if step.get("json_output") is True:
+            return {"json": model.gets_count().to_json_text()}
         return {"json": _plain_json(model.gets_count().to_array())}
     if step.get("page") is True or "plan_page" in step:
         limit = step.get("limit")

@@ -38,8 +38,9 @@ final readonly class GroupRows implements \Countable, \IteratorAggregate, \JsonS
         yield from $this->rows;
     }
 
+    /** @return list<GroupRow> the rows in result order; json_encode writes each by its jsonSerialize (INT-162) */
     public function jsonSerialize(): array
     {
-        return $this->toArray();
+        return $this->rows;
     }
 }

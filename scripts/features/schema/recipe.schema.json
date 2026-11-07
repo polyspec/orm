@@ -5433,6 +5433,10 @@
                 "description": "The result is Value of this name on the first group row of the count aggregate (INT-31).",
                 "$ref": "#/$defs/name"
               },
+              "json_output": {
+                "description": "The result is the JSON output text of the group rows of the count aggregate: each row a JSON object of its selected values in result order (INT-162).",
+                "const": true
+              },
               "order": {
                 "$ref": "#/$defs/orderList"
               },

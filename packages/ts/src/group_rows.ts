@@ -41,7 +41,13 @@ export class GroupRow {
   }
 
   public toArray(): Record<string, unknown> { return Object.fromEntries(this.values); }
-  public toJSON(): Record<string, unknown> { return this.toArray(); }
+  /** The selected values in result order; JSON has no bytes, so a bytes value is CODEC_ENCODE (INT-162). */
+  public toJSON(): Record<string, unknown> {
+    for (const [name, value] of this.values) {
+      if (value instanceof Uint8Array) throw new OrmError(codes.CODEC_ENCODE, `group column ${name}: JSON output cannot write bytes`);
+    }
+    return this.toArray();
+  }
 }
 
 /** Grouped values in result order, without partial model rows. */
@@ -54,6 +60,6 @@ export class GroupRows implements Iterable<GroupRow> {
   public get length(): number { return this.rows.length; }
   public values(): GroupRow[] { return [...this.rows]; }
   public toArray(): Array<Record<string, unknown>> { return this.rows.map(row => row.toArray()); }
-  public toJSON(): Array<Record<string, unknown>> { return this.toArray(); }
+  public toJSON(): Array<Record<string, unknown>> { return this.rows.map(row => row.toJSON()); }
   public [Symbol.iterator](): Iterator<GroupRow> { return this.rows[Symbol.iterator](); }
 }

@@ -179,6 +179,39 @@ static void output_append_keyed_values(zval *out, HashTable *seen, zval *values,
     } ZEND_HASH_FOREACH_END();
 }
 
+/* The class Polyspec\Orm\Bytes, which the extension registers. */
+zend_class_entry *model_output_bytes_class(void)
+{
+    zend_string *name = zend_string_init("Polyspec\\Orm\\Bytes", sizeof("Polyspec\\Orm\\Bytes") - 1, 0);
+    zend_class_entry *bytes_ce = zend_lookup_class(name);
+    zend_string_release(name);
+    return bytes_ce;
+}
+
+/* Replaces the string `value` with a Bytes of it, the array form of a bytes value without a codec stage (COD-27).
+   On a failure `value` is undefined and an exception is thrown. */
+bool model_output_bytes(zval *value)
+{
+    zend_class_entry *bytes_ce = model_output_bytes_class();
+    if (bytes_ce == NULL) {
+        zval_ptr_dtor(value);
+        ZVAL_UNDEF(value);
+        output_throw("CODEC_ENCODE", "the class Polyspec\\Orm\\Bytes is not loaded");
+        return false;
+    }
+    zval bytes;
+    object_init_ex(&bytes, bytes_ce);
+    zend_call_known_instance_method_with_1_params(bytes_ce->constructor, Z_OBJ(bytes), NULL, value);
+    zval_ptr_dtor(value);
+    if (EG(exception) != NULL) {
+        zval_ptr_dtor(&bytes);
+        ZVAL_UNDEF(value);
+        return false;
+    }
+    ZVAL_COPY_VALUE(value, &bytes);
+    return true;
+}
+
 static void output_model_column(zend_object *object, zval *out, HashTable *seen,
     zend_string *key, zval *column, bool pairs, bool json)
 {
@@ -216,18 +249,7 @@ static void output_model_column(zend_object *object, zval *out, HashTable *seen,
                 }
                 if (Z_TYPE(meta) != IS_UNDEF) zval_ptr_dtor(&meta);
             } else {
-                zend_string *name = zend_string_init("Polyspec\\Orm\\Bytes", sizeof("Polyspec\\Orm\\Bytes") - 1, 0);
-                zend_class_entry *bytes_ce = zend_lookup_class(name);
-                zend_string_release(name);
-                if (bytes_ce == NULL) {
-                    output_throw("CODEC_ENCODE", "the class Polyspec\\Orm\\Bytes is not loaded");
-                } else {
-                    zval bytes;
-                    object_init_ex(&bytes, bytes_ce);
-                    zend_call_known_instance_method_with_1_params(bytes_ce->constructor, Z_OBJ(bytes), NULL, &converted);
-                    zval_ptr_dtor(&converted);
-                    ZVAL_COPY_VALUE(&converted, &bytes);
-                }
+                model_output_bytes(&converted);
             }
         }
         if (EG(exception) != NULL) {
