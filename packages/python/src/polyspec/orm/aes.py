@@ -17,9 +17,12 @@ def _is_safe_integer(value: object) -> bool:
 
 
 def _stored_version(value) -> int:
-    """The key version a stored row holds: a positive 32-bit integer, as an int or as its decimal text. Any other
-    value is CODEC_DECODE; it is never coerced."""
+    """The key version a stored row holds: a positive 32-bit integer, as an int, a float with no fraction or its
+    decimal text. Any other value is CODEC_DECODE with one text in every client, which names no value; it is never
+    coerced (COD-44)."""
     if isinstance(value, str) and re.fullmatch(r"[0-9]+", value):
+        value = int(value)
+    elif isinstance(value, float) and value.is_integer():
         value = int(value)
     if (
         not isinstance(value, int)
@@ -28,7 +31,7 @@ def _stored_version(value) -> int:
     ):
         raise OrmError(
             codes.CODEC_DECODE,
-            f"aes version {value!r} is not a positive 32-bit integer",
+            "aes version is not a positive 32-bit integer",
         )
     return value
 

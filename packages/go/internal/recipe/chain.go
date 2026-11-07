@@ -1471,7 +1471,8 @@ func chainAssign(core *orm.Core, raw json.RawMessage, c *databaseContext) error 
 	return nil
 }
 
-// temporalColumn reports whether column of the model of core is a time or a datetime.
+// temporalColumn reports whether column of the model of core is a date, a time or a datetime, whose generated setter takes
+// its text and records a text the column does not hold.
 func temporalColumn(core *orm.Core, column string, c *databaseContext) bool {
 	if c.schema == nil {
 		return false
@@ -1485,7 +1486,7 @@ func temporalColumn(core *orm.Core, column string, c *databaseContext) bool {
 		return false
 	}
 	field := entity.Field(column)
-	return field != nil && (field.Type == "time" || field.Type == "datetime")
+	return field != nil && (field.Type == "date" || field.Type == "time" || field.Type == "datetime")
 }
 
 // chainWrite runs model.create, model.save, model.duplicate_create and model.restore: a model set from values, then its
@@ -1857,14 +1858,18 @@ func tableValue(s *orm.Schema, table string, row *tableRow, name string, v any) 
 		return row.m.DecodeDecimal(v, field.Precision, field.Scale)
 	case "f64":
 		return orm.AsFloat64(v)
-	case "date", "datetime":
-		// A temporal cell is the text of the value model (PRT-69), as the other runtimes read it.
-		t, err := orm.AsTime(v)
+	case "date":
+		// A temporal cell is the text of the value model (PRT-69), as the other runtimes read it; the generated model
+		// reads it with the same conversion.
+		t, err := orm.AsDate(v)
 		if err != nil {
 			return nil, err
 		}
-		if field.Type == "date" {
-			return t.Format(time.DateOnly), nil
+		return t.Format(time.DateOnly), nil
+	case "datetime":
+		t, err := orm.AsDateTime(v, field.Precision)
+		if err != nil {
+			return nil, err
 		}
 		return t.Format("2006-01-02 15:04:05.000000"), nil
 	case "time":

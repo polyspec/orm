@@ -12,6 +12,7 @@ import json
 import math
 import os
 import re
+from decimal import Decimal
 import sqlite3
 import threading
 import time
@@ -514,8 +515,13 @@ def _plan_id(key: str) -> str:
 _INTEGER_RANGES = {
     "i16": (-32768, 32767),
     "i32": (-2147483648, 2147483647),
-    "i64": (-9007199254740991, 9007199254740991),
+    "i64": (-9223372036854775808, 9223372036854775807),
 }
+
+# The decimal text of a number that an f64 cell may hold, as every client reads it (COD-1).
+_DECIMAL_NUMBER_TEXT = re.compile(
+    r"-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?"
+)
 
 
 def _text_or_bytes(value: bytes):
@@ -533,6 +539,9 @@ def convert(type_: str, value, zone: str, declared: Field | None = None):
         return None
     if type_ in ("i16", "i32", "i64"):
         low, high = _INTEGER_RANGES[type_]
+        # An integer, or a float with no fraction, as every client reads a stored integer (COD-1).
+        if isinstance(value, float) and math.isfinite(value) and value.is_integer():
+            value = int(value)
         if (
             isinstance(value, bool)
             or not isinstance(value, int)
@@ -543,16 +552,18 @@ def convert(type_: str, value, zone: str, declared: Field | None = None):
             )
         return value
     if type_ == "f64":
+        # A number, or the decimal text of one; a boolean or another text is no f64 (COD-1).
+        refused = OrmError(codes.CODEC_DECODE, "f64 cell is not a finite number")
         if isinstance(value, bool):
-            raise OrmError(codes.CODEC_DECODE, "f64 cell is not a finite number")
-        try:
-            number = value if isinstance(value, (int, float)) else float(value)
-            if not math.isfinite(number):
-                raise OrmError(codes.CODEC_DECODE, "f64 cell is not a finite number")
-        except (TypeError, ValueError, OverflowError) as cause:
-            raise OrmError(
-                codes.CODEC_DECODE, "f64 cell is not a finite number"
-            ) from cause
+            raise refused
+        if isinstance(value, (int, float, Decimal)):
+            number = float(value)
+        elif isinstance(value, str) and _DECIMAL_NUMBER_TEXT.fullmatch(value):
+            number = float(value)
+        else:
+            raise refused
+        if not math.isfinite(number):
+            raise refused
         return number
     if type_ == "decimal":
         from polyspec.orm.decimal import decimal_from_scaled

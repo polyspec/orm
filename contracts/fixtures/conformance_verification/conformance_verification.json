@@ -2,6 +2,8 @@
  "$schema": "../../../scripts/features/schema/recipe.schema.json",
  "requirements": [
   "PRT-69",
+  "COD-1",
+  "INT-163",
   "COD-69",
   "INT-5",
   "INT-98",
@@ -78969,7 +78971,9 @@
     "mysql"
    ],
    "requirements": [
-    "INT-98"
+    "INT-98",
+    "COD-1",
+    "INT-163"
    ],
    "steps": [
     {
@@ -79037,7 +79041,8 @@
      ],
      "expect": {
       "mysql": {
-       "error": "CODEC_DECODE"
+       "error": "CODEC_DECODE",
+       "message": "CODEC_DECODE: typed_value.wide: i64 cell is not an exact integer in its range"
       }
      }
     },
@@ -79070,7 +79075,8 @@
      ],
      "expect": {
       "mysql": {
-       "error": "CODEC_DECODE"
+       "error": "CODEC_DECODE",
+       "message": "CODEC_DECODE: typed_value.active: bool cell is not boolean"
       }
      }
     }
@@ -79082,7 +79088,9 @@
     "postgres"
    ],
    "requirements": [
-    "INT-98"
+    "INT-98",
+    "COD-1",
+    "INT-163"
    ],
    "steps": [
     {
@@ -79145,7 +79153,8 @@
      ],
      "expect": {
       "postgres": {
-       "error": "CODEC_DECODE"
+       "error": "CODEC_DECODE",
+       "message": "CODEC_DECODE: typed_value.ratio: f64 cell is not a finite number"
       }
      }
     }
@@ -79157,7 +79166,9 @@
     "sqlite"
    ],
    "requirements": [
-    "INT-98"
+    "INT-98",
+    "COD-1",
+    "INT-163"
    ],
    "steps": [
     {
@@ -79172,13 +79183,32 @@
     },
     {
      "op": "sql.exec",
-     "reason": "a column with no type affinity",
-     "sql": "CREATE TABLE typed_value (seq INTEGER PRIMARY KEY, wide)"
+     "reason": "columns with no type affinity, which hold a cell of any storage class",
+     "sql": "CREATE TABLE typed_value (seq INTEGER PRIMARY KEY, small, wide, ratio, active, ref, clock, day, label, note)"
     },
     {
      "op": "sql.exec",
-     "reason": "text in the integer column of the schema",
-     "sql": "INSERT INTO typed_value (seq, wide) VALUES (1, 'not-an-integer')"
+     "reason": "small: an integer beyond the i16 of the schema; wide: text in the integer column of the schema; ratio: text in the float column of the schema; active: a boolean cell neither 0 nor 1; ref: an integer in the uuid column of the schema; clock: a text that is no time; day: a text that is no date; label: a float in the varchar column of the schema; note: an integer in the text column of the schema",
+     "sql": "INSERT INTO typed_value (seq, small, wide, ratio, active, ref, clock, day, label, note) VALUES (1, 70000, 'not-an-integer', 'not-a-number', 2, 5, 'noon', 'tomorrow', 3.5, 1)"
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "TypedValue",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": [
+      "small"
+     ],
+     "expect": {
+      "sqlite": {
+       "error": "CODEC_DECODE",
+       "message": "CODEC_DECODE: typed_value.small: i16 cell is not an exact integer in its range"
+      }
+     }
     },
     {
      "op": "model.get_by",
@@ -79194,7 +79224,243 @@
      ],
      "expect": {
       "sqlite": {
-       "error": "CODEC_DECODE"
+       "error": "CODEC_DECODE",
+       "message": "CODEC_DECODE: typed_value.wide: i64 cell is not an exact integer in its range"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "TypedValue",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": [
+      "ratio"
+     ],
+     "expect": {
+      "sqlite": {
+       "error": "CODEC_DECODE",
+       "message": "CODEC_DECODE: typed_value.ratio: f64 cell is not a finite number"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "TypedValue",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": [
+      "active"
+     ],
+     "expect": {
+      "sqlite": {
+       "error": "CODEC_DECODE",
+       "message": "CODEC_DECODE: typed_value.active: bool cell is not boolean"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "TypedValue",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": [
+      "ref"
+     ],
+     "expect": {
+      "sqlite": {
+       "error": "CODEC_DECODE",
+       "message": "CODEC_DECODE: typed_value.ref: uuid cell is not text"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "TypedValue",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": [
+      "clock"
+     ],
+     "expect": {
+      "sqlite": {
+       "error": "CODEC_DECODE",
+       "message": "CODEC_DECODE: typed_value.clock: time cell is not a time"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "TypedValue",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": [
+      "day"
+     ],
+     "expect": {
+      "sqlite": {
+       "error": "CODEC_DECODE",
+       "message": "CODEC_DECODE: typed_value.day: date cell is not a date"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "TypedValue",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": [
+      "label"
+     ],
+     "expect": {
+      "sqlite": {
+       "error": "CODEC_DECODE",
+       "message": "CODEC_DECODE: typed_value.label: varchar cell is not text"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "TypedValue",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": [
+      "note"
+     ],
+     "expect": {
+      "sqlite": {
+       "error": "CODEC_DECODE",
+       "message": "CODEC_DECODE: typed_value.note: text cell is not text"
+      }
+     }
+    },
+    {
+     "op": "sql.exec",
+     "reason": "the table again without its declared check",
+     "sql": "DROP TABLE decimal_value"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a column with no type affinity",
+     "sql": "CREATE TABLE decimal_value (seq INTEGER PRIMARY KEY, amount)"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a text that is no decimal",
+     "sql": "INSERT INTO decimal_value (seq, amount) VALUES (1, 'not-a-decimal')"
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "DecimalValue",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": [
+      "amount"
+     ],
+     "expect": {
+      "sqlite": {
+       "error": "CODEC_DECODE",
+       "message": "CODEC_DECODE: decimal_value.amount: decimal cell is not a decimal of its precision and scale"
+      }
+     }
+    },
+    {
+     "op": "sql.exec",
+     "reason": "the table again without its declared check",
+     "sql": "DROP TABLE byte_cell"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a column with no type affinity",
+     "sql": "CREATE TABLE byte_cell (seq INTEGER PRIMARY KEY, body)"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "an integer in the bytes column of the schema",
+     "sql": "INSERT INTO byte_cell (seq, body) VALUES (1, 5)"
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "ByteCell",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": [
+      "body"
+     ],
+     "expect": {
+      "sqlite": {
+       "error": "CODEC_DECODE",
+       "message": "CODEC_DECODE: byte_cell.body: bytes cell is not bytes"
+      }
+     }
+    },
+    {
+     "op": "sql.exec",
+     "reason": "the table again without its declared check",
+     "sql": "DROP TABLE time_cell"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a column with no type affinity",
+     "sql": "CREATE TABLE time_cell (seq INTEGER PRIMARY KEY, at)"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a text that is no datetime",
+     "sql": "INSERT INTO time_cell (seq, at) VALUES (1, 'later')"
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "TimeCell",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": [
+      "at"
+     ],
+     "expect": {
+      "sqlite": {
+       "error": "CODEC_DECODE",
+       "message": "CODEC_DECODE: time_cell.at: datetime cell is not a datetime"
       }
      }
     }

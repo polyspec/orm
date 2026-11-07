@@ -3,6 +3,7 @@ package orm
 import (
 	"fmt"
 	"math"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -128,46 +129,47 @@ func quoteIdentifier(driver, value string) string {
 	return "\"" + value + "\""
 }
 
+// rowVersion reads the key version that a stored row holds: a positive 32-bit integer, as an integer, a float with no
+// fraction, or its decimal digits. Any other value is CODEC_DECODE with one text in every client, which names no value;
+// it is never coerced (COD-44).
 func rowVersion(value any) (int32, error) {
+	refused := codecErr(CodeCodecDecode, "aes version is not a positive 32-bit integer")
 	var version int64
 	switch v := value.(type) {
-	case int:
-		version = int64(v)
-	case int8:
-		version = int64(v)
-	case int16:
-		version = int64(v)
-	case int32:
-		version = int64(v)
 	case int64:
 		version = v
-	case uint:
-		if uint64(v) > math.MaxInt32 {
-			return 0, codecErr(CodeCodecDecode, "aes version %d is out of range", v)
-		}
+	case int32:
 		version = int64(v)
-	case uint8:
-		version = int64(v)
-	case uint16:
-		version = int64(v)
-	case uint32:
+	case int:
 		version = int64(v)
 	case uint64:
 		if v > math.MaxInt32 {
-			return 0, codecErr(CodeCodecDecode, "aes version %d is out of range", v)
+			return 0, refused
 		}
 		version = int64(v)
-	case string:
-		n, err := strconv.ParseInt(v, 10, 64)
+	case float64:
+		if math.Trunc(v) != v || v < 1 || v > math.MaxInt32 {
+			return 0, refused
+		}
+		version = int64(v)
+	case string, []byte:
+		text := cellString(v)
+		if !versionDigits.MatchString(text) {
+			return 0, refused
+		}
+		n, err := strconv.ParseInt(text, 10, 64)
 		if err != nil {
-			return 0, codecErr(CodeCodecDecode, "aes version %q is not an integer", v)
+			return 0, refused
 		}
 		version = n
 	default:
-		return 0, codecErr(CodeCodecDecode, "aes version has type %T", value)
+		return 0, refused
 	}
 	if version < 1 || version > math.MaxInt32 {
-		return 0, codecErr(CodeCodecDecode, "aes version %d is out of range", version)
+		return 0, refused
 	}
 	return int32(version), nil
 }
+
+// versionDigits is the decimal text of a stored key version.
+var versionDigits = regexp.MustCompile(`^[0-9]+$`)

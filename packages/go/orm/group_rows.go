@@ -220,14 +220,20 @@ func groupColumnValue(c *Core, db *DB, column plan.OutCol, declared *runtimemode
 		if t, ok := value.(time.Time); ok {
 			return t, nil
 		}
-		return AsTime(value)
+		if column.Type == "date" {
+			return AsDate(value)
+		}
+		if declared == nil {
+			return nil, codecErr(CodeInternal, "datetime group column %s has no declaration", column.Name)
+		}
+		return AsDateTime(value, declared.Precision)
 	case "time":
 		if declared == nil {
 			return nil, codecErr(CodeInternal, "time group column %s has no declaration", column.Name)
 		}
 		return AsTimeText(raw, declared.Precision)
 	case "varchar", "text", "uuid":
-		return AsString(raw)
+		return textCell(column.Type, raw)
 	case "bytes":
 		if declared != nil && len(declared.Codec) > 0 {
 			return AsString(raw)
@@ -244,27 +250,22 @@ func addedColumnValue(typ string, raw any) (any, error) {
 		return nil, nil
 	}
 	switch typ {
+	// A text is an integer only when it is exactly the digits of one (INT-160), which AsInt16, AsInt32 and AsInt64 take.
 	case "i64":
-		if err := exactIntegerText(raw); err != nil {
-			return nil, err
-		}
 		return AsInt64(raw)
 	case "i32":
-		if err := exactIntegerText(raw); err != nil {
-			return nil, err
-		}
 		return AsInt32(raw)
 	case "i16":
-		if err := exactIntegerText(raw); err != nil {
-			return nil, err
-		}
 		return AsInt16(raw)
 	case "bool":
 		return AsBool(raw)
 	case "f64":
 		return AsFloat64(raw)
-	case "date", "datetime":
-		return AsTime(raw)
+	case "date":
+		return AsDate(raw)
+	case "datetime":
+		// An added column states no precision, so it reads the six fraction digits of the value model, as every client.
+		return AsDateTime(raw, 6)
 	default:
 		return raw, nil
 	}
@@ -272,20 +273,3 @@ func addedColumnValue(typ string, raw any) (any, error) {
 
 // exactIntegerPattern is the text of an integer: its digits, no sign but a minus and no leading zero.
 var exactIntegerPattern = regexp.MustCompile(`^-?(?:0|[1-9][0-9]*)$`)
-
-// exactIntegerText refuses a text cell that is not exactly the digits of an integer (INT-160), which ParseInt would read.
-func exactIntegerText(raw any) error {
-	var text string
-	switch x := raw.(type) {
-	case string:
-		text = x
-	case []byte:
-		text = string(x)
-	default:
-		return nil
-	}
-	if !exactIntegerPattern.MatchString(text) {
-		return codecErr(CodeCodecDecode, "the text %q is not exactly an integer", text)
-	}
-	return nil
-}

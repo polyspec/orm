@@ -10195,7 +10195,8 @@
         "CPX-3",
         "CFG-10",
         "INT-162",
-        "COD-69"
+        "COD-69",
+        "INT-163"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases_on.mysql[*]",
@@ -10449,7 +10450,8 @@
         "DBS-117",
         "CPX-3",
         "INT-162",
-        "COD-69"
+        "COD-69",
+        "INT-163"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases_on.postgres[*]",
@@ -10704,7 +10706,8 @@
         "CPX-3",
         "DBS-115",
         "INT-162",
-        "COD-69"
+        "COD-69",
+        "INT-163"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases_on.sqlite[*]",
@@ -10960,7 +10963,8 @@
         "DBS-115",
         "DIA-154",
         "INT-162",
-        "COD-69"
+        "COD-69",
+        "INT-163"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases_on.markdown[*]",
@@ -36134,9 +36138,12 @@
             "github.com/polyspec/orm/packages/go/orm.AsInt32",
             "github.com/polyspec/orm/packages/go/orm.AsInt64",
             "github.com/polyspec/orm/packages/go/orm.AsString",
+            "github.com/polyspec/orm/packages/go/orm.AsDate",
+            "github.com/polyspec/orm/packages/go/orm.AsDateTime",
             "github.com/polyspec/orm/packages/go/orm.AsTime",
             "github.com/polyspec/orm/packages/go/orm.AsTimeText",
             "github.com/polyspec/orm/packages/go/orm.Core.SetTimeText",
+            "github.com/polyspec/orm/packages/go/orm.Core.TimeText",
             "github.com/polyspec/orm/packages/go/orm.Core.NewValue",
             "github.com/polyspec/orm/packages/go/orm.Core.Set",
             "github.com/polyspec/orm/packages/go/orm.Core.SetNull",

@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"math"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -367,65 +368,115 @@ type Page[T Model] struct {
 // ErrNullColumn reports SQL NULL in a non-null generated model field.
 var ErrNullColumn = codecErr(CodeCodecDecode, "non-null column received SQL NULL")
 
-// AsInt64 converts a database value to int64 without discarding a fraction or overflow.
-func AsInt64(v any) (int64, error) {
+// cellRefusal is the CODEC_DECODE of a cell that its column type does not hold (COD-1).
+func cellRefusal(columnType string) error {
+	return codecErr(CodeCodecDecode, "%s", cellMessage(columnType))
+}
+
+// cellMessage is the message of a cell that its column type does not hold, one per column type in every client
+// (COD-1): it names neither the host type nor the value.
+func cellMessage(columnType string) string {
+	switch columnType {
+	case "i16", "i32", "i64":
+		return columnType + " cell is not an exact integer in its range"
+	case "f64":
+		return "f64 cell is not a finite number"
+	case "bool":
+		return "bool cell is not boolean"
+	case "decimal":
+		return "decimal cell is not a decimal of its precision and scale"
+	case "date", "datetime", "time":
+		return columnType + " cell is not a " + columnType
+	case "bytes":
+		return "bytes cell is not bytes"
+	}
+	return columnType + " cell is not text"
+}
+
+// integerCell reads an integer cell in [low, high]: an integer, a float with no fraction, the exact digits of an
+// integer that a text protocol sends as bytes, and, when text is true, a stored text of those exact digits. A boolean
+// is no integer cell, as in every client (COD-1).
+func integerCell(v any, low, high int64, text bool) (int64, bool) {
+	var n int64
 	switch x := v.(type) {
 	case int64:
-		return x, nil
+		n = x
 	case int32:
-		return int64(x), nil
+		n = int64(x)
 	case int:
-		return int64(x), nil
+		n = int64(x)
 	case uint64:
-		if x <= math.MaxInt64 {
-			return int64(x), nil
+		if x > math.MaxInt64 {
+			return 0, false
 		}
+		n = int64(x)
 	case float64:
-		if !math.IsNaN(x) && !math.IsInf(x, 0) && math.Trunc(x) == x && x >= -0x1p63 && x < 0x1p63 {
-			return int64(x), nil
+		if math.IsNaN(x) || math.IsInf(x, 0) || math.Trunc(x) != x || x < -0x1p63 || x >= 0x1p63 {
+			return 0, false
 		}
-	case bool:
-		if x {
-			return 1, nil
-		}
-		return 0, nil
-	case string:
-		if n, err := strconv.ParseInt(x, 10, 64); err == nil {
-			return n, nil
-		}
+		n = int64(x)
 	case []byte:
-		if n, err := strconv.ParseInt(string(x), 10, 64); err == nil {
-			return n, nil
+		parsed, ok := integerText(string(x))
+		if !ok {
+			return 0, false
 		}
+		n = parsed
+	case string:
+		parsed, ok := integerText(x)
+		if !text || !ok {
+			return 0, false
+		}
+		n = parsed
+	default:
+		return 0, false
 	}
-	return 0, codecErr(CodeCodecDecode, "cannot convert %T value %v to int64", v, v)
+	return n, n >= low && n <= high
 }
 
-// AsInt32 converts a database value to int32 without overflow.
+// integerText reads the exact digits of an integer: no sign but a minus and no leading zero.
+func integerText(text string) (int64, bool) {
+	if !exactIntegerPattern.MatchString(text) {
+		return 0, false
+	}
+	n, err := strconv.ParseInt(text, 10, 64)
+	return n, err == nil
+}
+
+// declaredInteger checks the cell of a declared integer column of type columnType: a stored text is refused, as
+// every client refuses it (COD-1).
+func declaredInteger(columnType string, v any) error {
+	r := integerRanges[columnType]
+	if _, ok := integerCell(v, r[0], r[1], false); !ok {
+		return cellRefusal(columnType)
+	}
+	return nil
+}
+
+// AsInt64 converts an i64 cell, or the exact digits of one, to int64 without discarding a fraction or overflow.
+func AsInt64(v any) (int64, error) {
+	if n, ok := integerCell(v, math.MinInt64, math.MaxInt64, true); ok {
+		return n, nil
+	}
+	return 0, cellRefusal("i64")
+}
+
+// AsInt32 converts an i32 cell, or the exact digits of one, to int32 without overflow.
 func AsInt32(v any) (int32, error) {
-	n, err := AsInt64(v)
-	if err != nil {
-		return 0, err
+	if n, ok := integerCell(v, math.MinInt32, math.MaxInt32, true); ok {
+		return int32(n), nil
 	}
-	if n < math.MinInt32 || n > math.MaxInt32 {
-		return 0, codecErr(CodeCodecDecode, "integer %d overflows int32", n)
-	}
-	return int32(n), nil
+	return 0, cellRefusal("i32")
 }
 
-// AsInt16 converts a database value to int16 without overflow.
+// AsInt16 converts an i16 cell, or the exact digits of one, to int16 without overflow.
 func AsInt16(v any) (int16, error) {
-	n, err := AsInt64(v)
-	if err != nil {
-		return 0, err
+	if n, ok := integerCell(v, math.MinInt16, math.MaxInt16, true); ok {
+		return int16(n), nil
 	}
-	if n < math.MinInt16 || n > math.MaxInt16 {
-		return 0, codecErr(CodeCodecDecode, "integer %d overflows int16", n)
-	}
-	return int16(n), nil
+	return 0, cellRefusal("i16")
 }
 
-// AsTimeText converts a time(p) value to HH:MM:SS text with exactly p fractional digits.
+// AsTimeText converts a time(p) cell to HH:MM:SS text with exactly p fractional digits.
 // The time runs from 00:00:00 up to but not including 24:00:00, and a fraction longer than p loses value, so
 // it is CODEC_DECODE.
 func AsTimeText(v any, precision int) (string, error) {
@@ -438,36 +489,45 @@ func AsTimeText(v any, precision int) (string, error) {
 	case time.Time:
 		s = x.Format("15:04:05.999999999")
 	default:
-		return "", codecErr(CodeCodecDecode, "cannot convert %T to time", v)
+		return "", cellRefusal("time")
 	}
-	clock, fraction, hasFraction := strings.Cut(s, ".")
-	if len(clock) != 8 || clock[2] != ':' || clock[5] != ':' || hasFraction && fraction == "" {
-		return "", codecErr(CodeCodecDecode, "time %q is not HH:MM:SS with an optional fraction", s)
+	m := timeText.FindStringSubmatch(s)
+	if m == nil || m[1] > "23" || m[2] > "59" || m[3] > "59" {
+		return "", cellRefusal("time")
 	}
-	for i, c := range clock {
-		if i != 2 && i != 5 && (c < '0' || c > '9') {
-			return "", codecErr(CodeCodecDecode, "time %q is not HH:MM:SS with an optional fraction", s)
-		}
+	f, ok := fractionDigits(m[4], precision)
+	if !ok {
+		return "", cellRefusal("time")
 	}
-	if clock[0:2] > "23" || clock[3:5] > "59" || clock[6:8] > "59" {
-		return "", codecErr(CodeCodecDecode, "time %q is out of range", s)
-	}
-	for _, c := range fraction {
-		if c < '0' || c > '9' {
-			return "", codecErr(CodeCodecDecode, "time %q has a non-digit fraction", s)
-		}
-	}
-	trimmed := strings.TrimRight(fraction, "0")
-	if len(trimmed) > precision {
-		return "", codecErr(CodeCodecDecode, "time %q has more than %d fraction digits", s, precision)
-	}
-	if precision == 0 {
-		return clock, nil
-	}
-	return clock + "." + trimmed + strings.Repeat("0", precision-len(trimmed)), nil
+	return m[1] + ":" + m[2] + ":" + m[3] + f, nil
 }
 
-// AsFloat64 converts a database value to float64.
+var (
+	// The value forms of a stored date, time and datetime text, as every client reads them (dbspec "Runtime model").
+	dateText     = regexp.MustCompile(`^(\d{4})-(\d{2})-(\d{2})$`)
+	timeText     = regexp.MustCompile(`^(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?$`)
+	dateTimeText = regexp.MustCompile(`^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?\s*(Z|[+-]\d{2}(?::?\d{2})?)?$`)
+	// decimalNumberText is the decimal text of a number that an f64 cell may hold.
+	decimalNumberText = regexp.MustCompile(`^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$`)
+)
+
+// fractionDigits is the fraction of a time cut to p digits, with its point; false when a cut digit is not zero.
+func fractionDigits(digits string, precision int) (string, bool) {
+	all := digits
+	if len(all) < precision {
+		all += strings.Repeat("0", precision-len(all))
+	}
+	if strings.Trim(all[precision:], "0") != "" {
+		return "", false
+	}
+	if precision == 0 {
+		return "", true
+	}
+	return "." + all[:precision], true
+}
+
+// AsFloat64 converts an f64 cell to float64: a number, or the decimal text of one. A boolean, a non-finite number
+// and any other text are no f64 cell (COD-1).
 func AsFloat64(v any) (float64, error) {
 	var f float64
 	switch x := v.(type) {
@@ -483,40 +543,55 @@ func AsFloat64(v any) (float64, error) {
 		f = float64(x)
 	case uint64:
 		f = float64(x)
-	case string:
-		var err error
-		f, err = strconv.ParseFloat(x, 64)
-		if err != nil {
-			return 0, codecErr(CodeCodecDecode, "cannot convert %q to float64: %v", x, err)
+	case string, []byte:
+		text := cellString(x)
+		if !decimalNumberText.MatchString(text) {
+			return 0, cellRefusal("f64")
 		}
-	case []byte:
-		var err error
-		f, err = strconv.ParseFloat(string(x), 64)
+		parsed, err := strconv.ParseFloat(text, 64)
 		if err != nil {
-			return 0, codecErr(CodeCodecDecode, "cannot convert %q to float64: %v", x, err)
+			return 0, cellRefusal("f64")
 		}
+		f = parsed
 	default:
-		return 0, codecErr(CodeCodecDecode, "cannot convert %T to float64", v)
+		return 0, cellRefusal("f64")
 	}
 	if math.IsNaN(f) || math.IsInf(f, 0) {
-		return 0, codecErr(CodeCodecDecode, "non-finite float64 value")
+		return 0, cellRefusal("f64")
 	}
 	return f, nil
 }
 
-// AsString converts a database value to string.
+// cellString is the text of a string or bytes cell.
+func cellString(v any) string {
+	switch x := v.(type) {
+	case []byte:
+		return string(x)
+	case string:
+		return x
+	}
+	return ""
+}
+
+// AsString converts a text cell to string: a string, or bytes that are valid UTF-8 (COD-69).
 func AsString(v any) (string, error) {
+	return textCell("text", v)
+}
+
+// textCell reads a cell of the text column type columnType (varchar, text or uuid): a string, or bytes that are valid
+// UTF-8; any other cell is refused with the message of its type (COD-1, COD-69).
+func textCell(columnType string, v any) (string, error) {
 	var s string
 	switch x := v.(type) {
 	case string:
 		s = x
 	case []byte:
 		if x == nil {
-			return "", codecErr(CodeCodecDecode, "cannot convert SQL NULL to string")
+			return "", ErrNullColumn
 		}
 		s = string(x)
 	default:
-		return "", codecErr(CodeCodecDecode, "cannot convert %T to string", v)
+		return "", cellRefusal(columnType)
 	}
 	if !utf8.ValidString(s) {
 		return "", codecErr(CodeCodecDecode, "text is not valid UTF-8")
@@ -524,12 +599,12 @@ func AsString(v any) (string, error) {
 	return s, nil
 }
 
-// AsBytes converts a database value to an owned byte slice.
+// AsBytes converts a bytes cell to an owned byte slice; a stored text is its UTF-8 bytes, as in every client.
 func AsBytes(v any) ([]byte, error) {
 	switch x := v.(type) {
 	case []byte:
 		if x == nil {
-			return nil, codecErr(CodeCodecDecode, "cannot convert SQL NULL to bytes")
+			return nil, ErrNullColumn
 		}
 		out := make([]byte, len(x))
 		copy(out, x)
@@ -537,10 +612,10 @@ func AsBytes(v any) ([]byte, error) {
 	case string:
 		return []byte(x), nil
 	}
-	return nil, codecErr(CodeCodecDecode, "cannot convert %T to bytes", v)
+	return nil, cellRefusal("bytes")
 }
 
-// AsBool converts a database value to bool.
+// AsBool converts a bool cell to bool: a boolean, the integer 0 or 1, or the text 0, 1, f, t, false or true.
 func AsBool(v any) (bool, error) {
 	switch x := v.(type) {
 	case bool:
@@ -563,23 +638,60 @@ func AsBool(v any) (bool, error) {
 	case []byte:
 		return AsBool(string(x))
 	}
-	return false, codecErr(CodeCodecDecode, "cannot convert %T value %v to bool", v, v)
+	return false, cellRefusal("bool")
 }
 
-// AsTime converts a database value to time.Time.
 // SetTimeText sets a date or datetime column from its text form and returns the parsed time, which the typed field
 // keeps. A text that is not a time is recorded as the statement's error, which the statement returns, and the column
 // is not set (T189).
 func (c *Core) SetTimeText(column, text string) (time.Time, bool) {
-	t, err := AsTime(text)
+	var (
+		t   time.Time
+		err error
+	)
+	// A date takes YYYY-MM-DD and a datetime(p) its form with at most p fraction digits, as every client writes them;
+	// a text the column does not hold is the CODEC_ENCODE of a write, named by its column (COD-1).
+	field := c.columnField(column)
+	switch {
+	case field != nil && field.Type == "date":
+		t, err = AsDate(text)
+	case field != nil && field.Type == "datetime":
+		t, err = AsDateTime(text, field.Precision)
+	case field != nil && field.Type == "time":
+		// A time keeps its text with exactly p fraction digits, as the setter of a generated time column does.
+		value, err := c.TimeText(column, text, field.Precision)
+		if err != nil {
+			c.failErr(err)
+			return time.Time{}, false
+		}
+		c.Set(column, value)
+		return time.Time{}, true
+	default:
+		err = cellRefusal("datetime")
+	}
 	if err != nil {
-		c.failErr(codecErr(CodeCodecEncode, "column %s: %v", column, err))
+		if field == nil || c.ent == nil {
+			c.failErr(codecErr(CodeInternal, "column %s is not a date or datetime column of the model", column))
+			return time.Time{}, false
+		}
+		c.failErr(codecErr(CodeCodecEncode, "%s.%s: %s value is not a %s", c.ent.Name, column, field.Type, field.Type))
 		return time.Time{}, false
 	}
 	c.Set(column, text)
 	return t, true
 }
 
+// TimeText checks the text of a time(p) column that a setter takes and returns it with exactly p fraction digits. A text
+// that is no time is the CODEC_ENCODE of a write, named by its column (COD-1).
+func (c *Core) TimeText(column, text string, precision int) (string, error) {
+	value, err := AsTimeText(text, precision)
+	if err != nil {
+		return "", codecErr(CodeCodecEncode, "%s.%s: time value is not a time", c.ent.Name, column)
+	}
+	return value, nil
+}
+
+// AsTime converts a date or datetime value to time.Time in any of the layouts that a setter takes.
 func AsTime(v any) (time.Time, error) {
 	switch x := v.(type) {
 	case time.Time:
@@ -594,4 +706,70 @@ func AsTime(v any) (time.Time, error) {
 		return AsTime(string(x))
 	}
 	return time.Time{}, codecErr(CodeCodecDecode, "cannot convert %T value %v to time", v, v)
+}
+
+// AsDate converts a date cell to time.Time: a time that the driver read, or the text YYYY-MM-DD of a real day; any other
+// cell is refused (COD-1).
+func AsDate(v any) (time.Time, error) {
+	switch x := v.(type) {
+	case time.Time:
+		return x, nil
+	case string, []byte:
+		text := cellString(x)
+		if dateText.MatchString(text) {
+			if t, err := time.Parse("2006-01-02", text); err == nil {
+				return t, nil
+			}
+		}
+	}
+	return time.Time{}, cellRefusal("date")
+}
+
+// AsDateTime converts a datetime(p) cell to time.Time: a time that the driver read, or the text YYYY-MM-DD HH:MM:SS (or
+// with T) of a real instant with an optional fraction and offset. A fraction digit beyond p that is not zero loses
+// value, so the cell is refused, as is any other cell (COD-1).
+func AsDateTime(v any, precision int) (time.Time, error) {
+	switch x := v.(type) {
+	case time.Time:
+		if x.Nanosecond()%int(math.Pow10(9-precision)) == 0 {
+			return x, nil
+		}
+	case string, []byte:
+		if t, ok := dateTimeCell(cellString(x), precision); ok {
+			return t, nil
+		}
+	}
+	return time.Time{}, cellRefusal("datetime")
+}
+
+// dateTimeCell parses a datetime text in the form that dateTimeText states.
+func dateTimeCell(text string, precision int) (time.Time, bool) {
+	m := dateTimeText.FindStringSubmatch(text)
+	if m == nil {
+		return time.Time{}, false
+	}
+	if _, ok := fractionDigits(m[7], precision); !ok {
+		return time.Time{}, false
+	}
+	wall := m[1] + "-" + m[2] + "-" + m[3] + " " + m[4] + ":" + m[5] + ":" + m[6]
+	if m[7] != "" {
+		wall += "." + m[7]
+	}
+	t, err := time.Parse("2006-01-02 15:04:05.999999999", wall)
+	if err != nil {
+		return time.Time{}, false
+	}
+	if m[8] == "" || m[8] == "Z" {
+		return t, true
+	}
+	// The offset is two digits of hours and, optionally, two of minutes, as dateTimeText matched them.
+	digits := strings.ReplaceAll(m[8][1:], ":", "")
+	offset := int(digits[0]-'0')*36000 + int(digits[1]-'0')*3600
+	if len(digits) == 4 {
+		offset += int(digits[2]-'0')*600 + int(digits[3]-'0')*60
+	}
+	if m[8][0] == '-' {
+		offset = -offset
+	}
+	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), time.FixedZone("", offset)), true
 }

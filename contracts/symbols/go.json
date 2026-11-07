@@ -18407,6 +18407,14 @@
     "exported": true,
     "signature": "func(v any) ([]byte, error)"
   },
+  "packages/go/orm/collection.go::AsDate": {
+    "exported": true,
+    "signature": "func(v any) (time.Time, error)"
+  },
+  "packages/go/orm/collection.go::AsDateTime": {
+    "exported": true,
+    "signature": "func(v any, precision int) (time.Time, error)"
+  },
   "packages/go/orm/collection.go::AsFloat64": {
     "exported": true,
     "signature": "func(v any) (float64, error)"
@@ -18519,6 +18527,10 @@
     "exported": true,
     "signature": "receiver=*Core func(column, text string) (time.Time, bool)"
   },
+  "packages/go/orm/collection.go::Core.TimeText": {
+    "exported": true,
+    "signature": "receiver=*Core func(column, text string, precision int) (string, error)"
+  },
   "packages/go/orm/collection.go::Key": {
     "exported": true,
     "signature": "type Key struct { tag byte data string i int64 bits uint64 time time.Time }"
@@ -18587,9 +18599,41 @@
     "exported": true,
     "signature": "func(a, b any) (bool, error)"
   },
+  "packages/go/orm/collection.go::cellMessage": {
+    "exported": false,
+    "signature": "func(columnType string) string"
+  },
+  "packages/go/orm/collection.go::cellRefusal": {
+    "exported": false,
+    "signature": "func(columnType string) error"
+  },
+  "packages/go/orm/collection.go::cellString": {
+    "exported": false,
+    "signature": "func(v any) string"
+  },
+  "packages/go/orm/collection.go::dateTimeCell": {
+    "exported": false,
+    "signature": "func(text string, precision int) (time.Time, bool)"
+  },
+  "packages/go/orm/collection.go::declaredInteger": {
+    "exported": false,
+    "signature": "func(columnType string, v any) error"
+  },
+  "packages/go/orm/collection.go::fractionDigits": {
+    "exported": false,
+    "signature": "func(digits string, precision int) (string, bool)"
+  },
+  "packages/go/orm/collection.go::integerCell": {
+    "exported": false,
+    "signature": "func(v any, low, high int64, text bool) (int64, bool)"
+  },
   "packages/go/orm/collection.go::integerKey": {
     "exported": false,
     "signature": "func(value int64) Key"
+  },
+  "packages/go/orm/collection.go::integerText": {
+    "exported": false,
+    "signature": "func(text string) (int64, bool)"
   },
   "packages/go/orm/collection.go::keyCells": {
     "exported": false,
@@ -18602,6 +18646,10 @@
   "packages/go/orm/collection.go::keyFromValues": {
     "exported": false,
     "signature": "func(values []any) (Key, error)"
+  },
+  "packages/go/orm/collection.go::textCell": {
+    "exported": false,
+    "signature": "func(columnType string, v any) (string, error)"
   },
   "packages/go/orm/core.go::ChainKey": {
     "exported": true,
@@ -19687,6 +19735,10 @@
     "exported": true,
     "signature": "func(input string, precision, scale int) (string, error)"
   },
+  "packages/go/orm/decimal.go::decimalRefusal": {
+    "exported": false,
+    "signature": "func(cause error) error"
+  },
   "packages/go/orm/dsn.go::DriverFromDSN": {
     "exported": true,
     "signature": "func(raw string) (string, error)"
@@ -20139,10 +20191,6 @@
     "exported": false,
     "signature": "func(kind string, v any) (any, error)"
   },
-  "packages/go/orm/exec.go::validText": {
-    "exported": false,
-    "signature": "func(v any) error"
-  },
   "packages/go/orm/exec.go::validateRuntimeScalars": {
     "exported": false,
     "signature": "func(vals []any, asm *plan.Assemble) error"
@@ -20230,10 +20278,6 @@
   "packages/go/orm/group_rows.go::checkCountText": {
     "exported": false,
     "signature": "func(value any) error"
-  },
-  "packages/go/orm/group_rows.go::exactIntegerText": {
-    "exported": false,
-    "signature": "func(raw any) error"
   },
   "packages/go/orm/group_rows.go::groupColumnValue": {
     "exported": false,
@@ -20834,6 +20878,10 @@
   "packages/go/orm/model.go::Core.columnArrayValue": {
     "exported": false,
     "signature": "receiver=*Core func(name string, v any) any"
+  },
+  "packages/go/orm/model.go::Core.columnField": {
+    "exported": false,
+    "signature": "receiver=*Core func(name string) *runtimemodel.Field"
   },
   "packages/go/orm/model.go::Core.columnType": {
     "exported": false,

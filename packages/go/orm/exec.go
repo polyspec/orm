@@ -982,28 +982,36 @@ func decodeSelectedRow(vals []any, si *scanInfo, st *plan.Step, keyring AESKeyri
 	return restoreByteColumns(vals, st.Assemble)
 }
 
+// validateRuntimeScalars checks the cell of each declared column against its column type, with the message of that type
+// (COD-1). An added column follows INT-160, so it is not checked here, and the key version column holds the version
+// that COD-44 reads.
 func validateRuntimeScalars(vals []any, asm *plan.Assemble) error {
-	for _, col := range asm.Columns {
+	for i, col := range asm.Columns {
 		if col.Index < 0 || col.Index >= len(vals) {
 			return codecErr(CodeInternal, "column %q index %d is out of bounds", col.Name, col.Index)
 		}
-		if len(col.Styles) != 0 || vals[col.Index] == nil {
+		if len(col.Styles) != 0 || vals[col.Index] == nil || col.Column == "" {
+			continue
+		}
+		if asm.AESVersion != nil && *asm.AESVersion == i {
+			// The key version column holds a stored version (COD-44); the model reads the version it parses.
+			version, err := rowVersion(vals[col.Index])
+			if err != nil {
+				return columnDecodeErr(asm.Entity, col.Name, err)
+			}
+			vals[col.Index] = int64(version)
 			continue
 		}
 		var err error
 		switch col.Type {
-		case "i16":
-			_, err = AsInt16(vals[col.Index])
-		case "i32":
-			_, err = AsInt32(vals[col.Index])
-		case "i64":
-			_, err = AsInt64(vals[col.Index])
+		case "i16", "i32", "i64":
+			err = declaredInteger(col.Type, vals[col.Index])
 		case "f64":
 			_, err = AsFloat64(vals[col.Index])
 		case "bool":
 			_, err = AsBool(vals[col.Index])
-		case "varchar", "text":
-			err = validText(vals[col.Index])
+		case "varchar", "text", "uuid":
+			_, err = textCell(col.Type, vals[col.Index])
 		}
 		if err != nil {
 			return columnDecodeErr(asm.Entity, col.Name, err)
@@ -1014,21 +1022,6 @@ func validateRuntimeScalars(vals []any, asm *plan.Assemble) error {
 			if err := validateRuntimeScalars(vals, child.Assemble); err != nil {
 				return err
 			}
-		}
-	}
-	return nil
-}
-
-// validText refuses a text cell that is not valid UTF-8 (COD-69); a cell of another kind is left to the model conversion.
-func validText(v any) error {
-	switch x := v.(type) {
-	case string:
-		if !utf8.ValidString(x) {
-			return codecErr(CodeCodecDecode, "text is not valid UTF-8")
-		}
-	case []byte:
-		if !utf8.Valid(x) {
-			return codecErr(CodeCodecDecode, "text is not valid UTF-8")
 		}
 	}
 	return nil
@@ -1084,7 +1077,7 @@ func restoreByteColumns(vals []any, asm *plan.Assemble) error {
 		case []byte:
 			// The column is already represented as bytes.
 		default:
-			return codecErr(CodeCodecDecode, "byte column %q has invalid value %T", col.Name, value)
+			return columnDecodeErr(asm.Entity, col.Name, cellRefusal("bytes"))
 		}
 	}
 	for _, child := range asm.Children {

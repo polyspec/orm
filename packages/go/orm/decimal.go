@@ -84,7 +84,7 @@ func DecimalScaledInt(input string, precision, scale int) (int64, error) {
 func DecimalFromScaledInt(raw any, precision, scale int) (string, error) {
 	n, ok := raw.(int64)
 	if !ok {
-		return "", codecErr(CodeCodecDecode, "decimal scaled cell is %T, expected int64", raw)
+		return "", cellRefusal("decimal")
 	}
 	negative := n < 0
 	if negative {
@@ -102,7 +102,7 @@ func DecimalFromScaledInt(raw any, precision, scale int) (string, error) {
 	}
 	canonical, err := NormalizeDecimal(digits, precision, scale)
 	if err != nil {
-		return "", codecErr(CodeCodecDecode, "invalid scaled decimal cell %d: %v", raw, err)
+		return "", decimalRefusal(err)
 	}
 	return canonical, nil
 }
@@ -112,13 +112,22 @@ func (c *Core) DecodeDecimal(raw any, precision, scale int) (string, error) {
 	if _, ok := raw.(int64); ok {
 		return DecimalFromScaledInt(raw, precision, scale)
 	}
-	text, err := AsString(raw)
-	if err != nil {
-		return "", err
+	text, ok := raw.(string)
+	if b, isBytes := raw.([]byte); isBytes {
+		text, ok = string(b), true
+	}
+	if !ok {
+		return "", cellRefusal("decimal")
 	}
 	canonical, err := NormalizeDecimal(text, precision, scale)
 	if err != nil {
-		return "", codecErr(CodeCodecDecode, "invalid decimal cell %q: %v", text, err)
+		return "", decimalRefusal(err)
 	}
 	return canonical, nil
+}
+
+// decimalRefusal is the COD-1 refusal of a decimal cell that is not a decimal of its precision and scale, with the
+// refusal of its text as the cause.
+func decimalRefusal(cause error) error {
+	return &ir.Error{Code: CodeCodecDecode, Msg: cellMessage("decimal"), Cause: cause}
 }

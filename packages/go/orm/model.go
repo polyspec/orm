@@ -1709,21 +1709,26 @@ func (c *Core) pairs() []pair {
 // columnType returns the dbspec type of a column of the model, or "" when the
 // schema does not declare it.
 func (c *Core) columnType(name string) string {
-	if c.ent == nil || c.ent.Schema == nil {
-		return ""
-	}
-	m, err := c.ent.Schema.Model()
-	if err != nil || m == nil {
-		return ""
-	}
-	e := m.Entities[c.ent.Name]
-	if e == nil {
-		return ""
-	}
-	if f := e.Field(name); f != nil {
+	if f := c.columnField(name); f != nil {
 		return f.Type
 	}
 	return ""
+}
+
+// columnField returns the runtime model field of a column of the model, or nil when the schema does not declare it.
+func (c *Core) columnField(name string) *runtimemodel.Field {
+	if c.ent == nil || c.ent.Schema == nil {
+		return nil
+	}
+	m, err := c.ent.Schema.Model()
+	if err != nil || m == nil {
+		return nil
+	}
+	e := m.Entities[c.ent.Name]
+	if e == nil {
+		return nil
+	}
+	return e.Field(name)
 }
 
 // columnArrayValue writes a column value of the array form. A date, datetime

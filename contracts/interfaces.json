@@ -39,7 +39,7 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:9eb2a67ffb02c4613ccc6726eb0f36c2cf7f95aa43cb2f91729c3fd5119d6221",
+    "go": "sha256:e3effaf006e92860360c8f5d70f6c8253e6c10694f803a64ecbf55b1237449a1",
     "php": "sha256:149bd2a7aac427cd636d4e3e34b1b01bef6314fb0f08029b77f965ad0d801140",
     "rust": "sha256:bc43c36a646a6be0351c40ab5a2e095bf5680ab9004dcff818b290afa3a8c7e8",
     "typescript": "sha256:144973fe26087d8381894f3050549e3bf3bda4a40b18ce9d8227672bc5e1ef76",

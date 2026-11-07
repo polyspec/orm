@@ -499,6 +499,10 @@ func (g *goGen) writeModel(gm *goModel) error {
 				conversion = fmt.Sprintf("x.m.DecodeDecimal(v, %d, %d)", c.Precision, c.Scale)
 			case c.Type == "time":
 				conversion = fmt.Sprintf("orm.AsTimeText(v, %d)", c.Precision)
+			case c.Type == "date":
+				conversion = "orm.AsDate(v)"
+			case c.Type == "datetime":
+				conversion = fmt.Sprintf("orm.AsDateTime(v, %d)", c.Precision)
 			}
 			fmt.Fprintf(&b, "\t\tt, err := %s\n\t\tif err != nil { return true, err }\n", conversion)
 			if fieldType(c) != gt {
@@ -743,7 +747,7 @@ func (x *T) ForShareNoWait() *T { x.m.Lock("share_nowait"); return x }
 		} else if (c.Type == "decimal" || c.Type == "time") && len(c.Codec) == 0 {
 			normalize := fmt.Sprintf("orm.NormalizeDecimal(%%s, %d, %d)", c.Precision, c.Scale)
 			if c.Type == "time" {
-				normalize = fmt.Sprintf("orm.AsTimeText(%%s, %d)", c.Precision)
+				normalize = fmt.Sprintf("x.m.TimeText(%q, %%s, %d)", c.Name, c.Precision)
 			}
 			fmt.Fprintf(&b, "// Set%s sets %s after exact %s validation.\nfunc (x *%s) Set%s(v %s) (*%s, error) {\n", p, c.Name, c.Type, t, p, ft, t)
 			if ft != gt {
