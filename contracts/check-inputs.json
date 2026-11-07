@@ -2055,20 +2055,6 @@
         "packages/go/engine/ir/fuzz_test.go"
       ]
     },
-    "client-pooler-check": {
-      "scope": "suite",
-      "needs": [
-        "flowmark",
-        "go",
-        "rust",
-        "php",
-        "composer",
-        "php-extension-tools",
-        "node-modules",
-        "python",
-        "databases"
-      ]
-    },
     "case-database-check": {
       "scope": "suite",
       "needs": [
@@ -5254,6 +5240,57 @@
       "inputs": [
         "Makefile",
         "packages/python/tests/connection_pool.py"
+      ]
+    },
+    "client-pooler-go-check": {
+      "scope": "suite",
+      "needs": [
+        "go",
+        "databases",
+        "flowmark"
+      ]
+    },
+    "client-pooler-php-check": {
+      "scope": "suite",
+      "needs": [
+        "php",
+        "composer",
+        "databases",
+        "flowmark"
+      ]
+    },
+    "client-pooler-php-extension-check": {
+      "scope": "suite",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools",
+        "databases",
+        "flowmark"
+      ]
+    },
+    "client-pooler-typescript-check": {
+      "scope": "suite",
+      "needs": [
+        "node-modules",
+        "databases",
+        "flowmark"
+      ]
+    },
+    "client-pooler-python-check": {
+      "scope": "suite",
+      "needs": [
+        "python",
+        "databases",
+        "flowmark"
+      ]
+    },
+    "client-pooler-rust-check": {
+      "scope": "suite",
+      "needs": [
+        "rust",
+        "databases",
+        "flowmark"
       ]
     }
   },

@@ -13,7 +13,8 @@ vendors; this file states only the rules of orm.
   becomes `[v]` when it is committed and its declared unit tests pass, which permits the push. `main`
   receives one push, when no item is `[~]` and the work of the push is complete. The item becomes `[o]`
   by `make item-state` after the run of `.github/workflows/ci.yml` for that push concludes with success,
-  before the version-bump commit and the tag. Only the maintainer starts a release, by a dispatch of the
+  before the tag. The release version and all CI improvements are included before that push; a release does not
+  require another full CI run. Only the maintainer starts a release, by a dispatch of the
   release workflow with the id of a `ci.yml` run whose conclusion is success, which tags its commit; a
   pushed tag starts no run. A release asset keeps the file name its packer gives (P39), for example
   `polyspec-orm-X.Y.Z.tgz` for `@polyspec/orm`; the Python wheel keeps its PEP 427 name,
@@ -287,16 +288,16 @@ vendors; this file states only the rules of orm.
 ## Releases
 
 - Own: A release starts with a version-bump commit `chore(release): Release X.Y.Z (#<checklist ID>)` on
-  `main`, after the CI of the commit that carries the work succeeded: it sets VERSION and every
+  `main` together with the completed work and CI improvements, before its single release-candidate CI run: it sets VERSION and every
   package file that `config/release.json` names in `manifests` to X.Y.Z,
   re-locks each such composer.json that has a `composer.lock` (`packages/php-ext`) with
   `composer update --lock` in its directory, since the content-hash of the lock covers `version`,
   and renames `## Unreleased` to `## X.Y.Z` in CHANGELOG.md and CHANGELOG.ko.md, below a new empty
   `## Unreleased`.
   Enforced by: none, a judgement at review; no check reads the versions since kit K812
-- Own: After the push run of `.github/workflows/ci.yml` on that commit succeeded (`ci-passed`), the maintainer
-  dispatches the release with the id of that run: `gh workflow run release.yml -f run=<id> -f version=X.Y.Z`. Its
-  `make release-tag` requires that the run succeeded on `main` and that its commit is on `origin/main`, and creates
+- Own: After a push or manual run of `.github/workflows/ci.yml` on that commit succeeded (`ci-passed`), the maintainer
+  dispatches the release with the id of that run: `gh workflow run release.yml -f run=<id>`. Its
+  `make release-tag` requires that the run succeeded and that its exact commit is on `origin/main`, and creates
   and pushes the annotated tags `vX.Y.Z` and `packages/go/vX.Y.Z` at that commit, which releases the Go module
   `github.com/polyspec/orm/packages/go`; it refuses a tag that is elsewhere or lightweight. No one creates, moves or
   pushes a tag by hand.

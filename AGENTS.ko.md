@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: a93c85958a3bab503487d62573ef5951991b6e250f6cb406d57d6e2c3db4e29d -->
+<!-- source-sha256: c1a47d7ca04dd72c229b224794534f37db9ba49cad5fbce2c09db352d4025afe -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -12,7 +12,7 @@ orm 자신의 규칙만 적는다.
 - Own: 0.x workflow에는 pull request, merge queue, ruleset이 없다. 항목마다 로컬에서 작업한다: 항목은 commit한 tree에서 그
   unit test가 통과하면 `[v]`가 된다: commit되고 선언된 unit test가 통과한 항목은 push를 허락한다. `main`에는 `[~]`인 항목이 없고
   그 push의 작업이 끝났을 때 한 번 push한다. 그 push의 `.github/workflows/ci.yml` run이 success로 끝난 뒤 `make item-state`가
-  항목을 `[o]`로 옮기며, 이는 version을 올리는 commit과 tag보다 앞선다. release를 시작하는 것은 maintainer뿐이며, conclusion이
+  항목을 `[o]`로 옮기며, 이는 tag보다 앞선다. release version과 CI 개선은 그 push 전에 함께 담으며 release를 위해 전체 CI를 다시 실행하지 않는다. release를 시작하는 것은 maintainer뿐이며, conclusion이
   success인 `ci.yml` run의 id로 release workflow를 dispatch하면 그 workflow가 run의 commit에 tag를
   만든다. push한 tag는 run을 시작하지 않는다. release
   asset의 이름은 packer가 붙인 이름이다(P39, 예: `@polyspec/orm`의 `polyspec-orm-X.Y.Z.tgz`). Python wheel은 PEP 427 이름
@@ -254,14 +254,14 @@ orm 자신의 규칙만 적는다.
 ## Release
 
 - Own: release는 version을 올리는 commit `chore(release): Release X.Y.Z (#<체크리스트 ID>)`로 시작한다. 그 commit은 작업을 담은
-  commit의 CI가 성공한 뒤 `main`에 둔다: VERSION과 `config/release.json`의 `manifests`가 이름을 적은 모든 package file을
+  변경과 CI 개선을 함께 담아 한 번의 release candidate CI 전에 `main`에 둔다: VERSION과 `config/release.json`의 `manifests`가 이름을 적은 모든 package file을
   X.Y.Z로 바꾸고, 그중 `composer.lock`이 있는 composer.json(`packages/php-ext`)은 그 directory에서
   `composer update --lock`으로 다시 lock하며(lock의 content-hash가 `version`을 덮는다), CHANGELOG.md와 CHANGELOG.ko.md에서 `## Unreleased`를 새 빈 `## Unreleased`
   아래의 `## X.Y.Z`로 바꾼다.
   Enforced by: none, review의 판단이다. kit K812 이후 version을 읽는 검사가 없다
-- Own: 그 commit에서 `.github/workflows/ci.yml`의 push run이 성공한 뒤(`ci-passed`) maintainer가 그 run의 id로 release를
-  dispatch한다: `gh workflow run release.yml -f run=<id> -f version=X.Y.Z`. 그 `make release-tag`는 run이 `main`에서 성공했고
-  그 commit이 `origin/main`에 있기를 요구하며, 그 commit에 annotated tag `vX.Y.Z`와 `packages/go/vX.Y.Z`를 만들어 push한다. 그
+- Own: 그 commit에서 `.github/workflows/ci.yml`의 push 또는 manual run이 성공한 뒤(`ci-passed`) maintainer가 그 run의 id로 release를
+  dispatch한다: `gh workflow run release.yml -f run=<id>`. 그 `make release-tag`는 run이 성공했고
+  검증한 바로 그 commit이 `origin/main`에 있기를 요구하며, 그 commit에 annotated tag `vX.Y.Z`와 `packages/go/vX.Y.Z`를 만들어 push한다. 그
   tag가 Go module `github.com/polyspec/orm/packages/go`를 release한다. 다른 commit에 있거나 lightweight인 tag는 거절한다. 손으로
   tag를 만들고 옮기고 push하는 사람은 없다.
   Enforced by: `make release-tag`

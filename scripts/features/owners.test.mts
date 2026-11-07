@@ -229,7 +229,7 @@ caseTest('a change across the four clients selects no full-suite target', 5000, 
   for (const target of selectedTargets) assert.notEqual(inputs[target]?.scope, 'suite', `${target} is a full-suite target`);
   const runtimes = ['go', 'php', 'php-extension', 'typescript', 'python', 'rust'];
   const nativeTargets = runtimes.map(runtime => `client-db-${runtime}-check`);
-  for (const target of [...nativeTargets, 'client-pooler-check', 'case-database-check', 'conformance-check', 'feature-verify-rust', 'feature-verify-other', 'go-test-check'])
+  for (const target of [...nativeTargets, ...runtimes.map(runtime => `client-pooler-${runtime}-check`), 'case-database-check', 'conformance-check', 'feature-verify-rust', 'feature-verify-other', 'go-test-check'])
     assert.equal(inputs[target]?.scope, 'suite', `${target} is not a full-suite target`);
   // The sources recorded by contracts/interfaces.json and contracts/symbols/*.json are inputs to the interface check.
   const owners = await selectOwners(manifest, root, t42);

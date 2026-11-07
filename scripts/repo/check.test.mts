@@ -695,8 +695,8 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   assert.ok(typeof jobs === 'object' && jobs !== null && !Array.isArray(jobs) && 'test' in jobs, 'the CI test matrix exists');
   const testJob = jobs.test;
   assert.ok(typeof testJob === 'object' && testJob !== null && !Array.isArray(testJob), 'the test job has a mapping');
-  assert.equal('needs' in testJob ? testJob.needs : undefined, 'kit',
-    'runtime and comparison matrix jobs follow the job kit with needs: kit (S12) and install their own dependencies');
+  assert.equal('needs' in testJob ? testJob.needs : undefined, undefined,
+    'independent runtime and comparison jobs start alongside kit and install their own dependencies');
   assert.match(workflow, /- name: tools of mise\.toml\n        id: go\n        if: \$\{\{ !cancelled\(\) \}\}\n        env:\n          CI_GROUP_PHP: \$\{\{ steps\.group-needs\.outputs\.php \}\}\n          CI_GROUP_PYTHON: \$\{\{ steps\.group-needs\.outputs\.python \}\}\n        run: make ci-install-tools GROUP=\$\{\{ matrix\.group \}\}/,
     'CI passes the group setup needs to one Make target, not inline shell logic');
   const installTools = (group: string, php: string, python: string) => {
@@ -2558,4 +2558,15 @@ caseTest('a line of FCV-2 that names a test or a file that is not there is a fin
     ['docs/spec/feature-coverage.md FCV-2 keeps native tests of gone_test.go, and no binding of config/parity.json names that file; remove the line or bind the file']);
   assert.deepEqual(nativeTestLines(nativeSpec('  - In `f.go`, `TestA`, `TestB` and `TestC` stay as native tests: a reason.')), [{ file: 'f.go', names: ['TestA', 'TestB', 'TestC'], reason: 'a reason.' }]);
   assert.deepEqual(nativeExceptions(nativeSpec('  - In `f.go`, `testa-b` stays as a native test: a reason.')), []);
+});
+
+
+caseTest('parity bindings do not repeat the interface checker owned by the API phase', COMPUTE, () => {
+  const targets = makeTargets(text('Makefile'));
+  const prerequisites = (name: string) => targets.filter(entry => entry.target === name).flatMap(entry => entry.prerequisites);
+  assert.ok(prerequisites('parity-api-check').includes('interface-check'));
+  assert.ok(prerequisites('parity-check').includes('interface-check'));
+  assert.ok(!prerequisites('$(PARITY_GATE_TARGETS)').includes('interface-check'));
+  for (const runtime of ['go', 'php', 'php-extension', 'typescript', 'python', 'rust'])
+    assert.ok(!prerequisites(`parity-bindings-${runtime}-check`).includes('interface-check'));
 });
