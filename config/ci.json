@@ -4,7 +4,8 @@
   "parityMode": "phases",
   "setup": {
     "shared": [
-      "orm-install-go-lease"
+      "orm-install-go-lease",
+      "orm-install-go-codes"
     ],
     "parity": [
       "orm-install-flowmark",

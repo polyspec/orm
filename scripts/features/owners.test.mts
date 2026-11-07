@@ -229,7 +229,7 @@ caseTest('a change across the four clients selects no full-suite target', 5000, 
   for (const target of selectedTargets) assert.notEqual(inputs[target]?.scope, 'suite', `${target} is a full-suite target`);
   const runtimes = ['go', 'php', 'php-extension', 'typescript', 'python', 'rust'];
   const nativeTargets = runtimes.map(runtime => `client-db-${runtime}-check`);
-  for (const target of [...nativeTargets, ...runtimes.map(runtime => `client-pooler-${runtime}-check`), 'case-database-check', 'conformance-check', 'feature-verify-rust', 'feature-verify-other', 'go-test-check'])
+  for (const target of [...nativeTargets, ...runtimes.map(runtime => `client-pooler-${runtime}-check`), 'case-database-check', 'feature-verify-rust', 'feature-verify-other', 'go-test-check'])
     assert.equal(inputs[target]?.scope, 'suite', `${target} is not a full-suite target`);
   // The sources recorded by contracts/interfaces.json and contracts/symbols/*.json are inputs to the interface check.
   const owners = await selectOwners(manifest, root, t42);
@@ -274,7 +274,7 @@ caseTest('the schema of contracts/check-inputs.json refuses a target or path out
 // provides (scripts/check/ci-setup.mts).
 caseTest('every target declares the setup steps it needs', 5000, async () => {
   assert.deepEqual(checkInputErrors({ b: { scope: 'suite', needs: ['servers'] }, c: { scope: 'suite', needs: ['databases'] } }, ['b', 'c'], []), [
-    'contracts/check-inputs.json: b needs servers, which no setup step provides; the needs are databases, mysql-privilege-server, node-modules, go, go-lease, interfaces-typescript, parity-symbols, rust, php-min, php, composer, php-extension-tools, server-programs, python, flowmark',
+    'contracts/check-inputs.json: b needs servers, which no setup step provides; the needs are databases, mysql-privilege-server, node-modules, go, go-lease, go-codes, interfaces-typescript, parity-symbols, rust, php-min, php, composer, php-extension-tools, server-programs, python, flowmark',
   ]);
 });
 
@@ -329,7 +329,22 @@ caseTest('a path that only a lint selects is untested unless its scope is declar
 caseTest('a generator source selects the check that regenerates the models', 5000, () => {
   const { targets: declared } = readCheckInputs(root);
   const selected = selectTargets(declared, ['packages/go/generator/gen_go.go']).filter(({ tested }) => tested.length).map(({ target }) => target);
-  assert.deepEqual(selected, ['comment-language-check', 'go-model-check', 'generator-consumer-check', 'generated-lint-check', 'recipe-runners-check']);
+  assert.deepEqual(selected, ['comment-language-check', 'go-model-check', 'generator-consumer-check/go', 'generated-lint-check', 'recipe-runners-check']);
+});
+
+caseTest('generator consumers select their own runtime checks', 5000, () => {
+  const { targets } = readCheckInputs(root);
+  for (const [runtime, path] of [
+    ['go', 'packages/go/generator/gen_go_test.go'],
+    ['php', 'packages/php/tests/OrmGenTest.php'],
+    ['php-extension', 'packages/php-ext/tests/ModelNativeTest.php'],
+    ['typescript', 'packages/ts/tests/generate.mjs'],
+    ['python', 'packages/python/tests/test_orm_gen.py'],
+    ['rust', 'packages/rust/build/tests/generate.rs'],
+  ] as const) {
+    const selected = selectTargets(targets, [path]).filter(({ tested, target }) => tested.length && target.startsWith('generator-consumer-check')).map(({ target }) => target);
+    assert.deepEqual(selected, [`generator-consumer-check/${runtime}`]);
+  }
 });
 
 // The bootstrap tsconfig that the TypeScript build reads before the models exist is tracked, so it must declare its scope (KSTD-5-5-1).

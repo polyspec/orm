@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- CI: assign independent native checks and their setup to runtime groups, leave dedicated native cases out of broad runs, detect checks reached from multiple groups, and prepare generator modules during installation instead of each check (T388).
+
 ## 0.0.22
 
 - Tests: parity context units require native setup for each binding phase and reserve the complete interface check for the API and full parity phases, matching the independent CI jobs (T387).

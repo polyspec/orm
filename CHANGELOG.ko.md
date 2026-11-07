@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 78eb5293466ceeb7ee0d9f322272fdbb77cf2adf8f4907641678abb3cc650894 -->
+<!-- source-sha256: afaa394b3af2a89934dac9168ca03db4b5a41a0af3d607a2feb00c5899610611 -->
 # 변경 이력
 
 ## Unreleased
+
+- CI: 독립 native 검사와 setup을 runtime group에 배치하고 전용 target이 실행하는 native case를 전체 실행에서 제외하며 여러 group이 호출하는 검사를 탐지하고 generator module을 각 검사 대신 설치 단계에서 준비한다 (T388).
 
 ## 0.0.22
 

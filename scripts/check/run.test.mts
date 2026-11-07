@@ -105,13 +105,19 @@ caseTest('the canonical parity target declares every client and fixture setup ne
   assert.deepEqual([api.scope, api.needs], [parity.scope, parity.needs], 'parity-api-check declares the scope and needs of parity-check');
   for (const phase of ['parity-bindings-go-check', 'parity-bindings-php-check', 'parity-bindings-php-extension-check', 'parity-bindings-typescript-check', 'parity-bindings-python-check', 'parity-bindings-rust-check'])
     assert.equal(Object.hasOwn(inputs.targets, phase), false, `${phase} is not a second suite target`);
-  const comparison = inputs.targets['conformance-check'];
-  if (!isRecord(comparison) || !isStringArray(comparison.needs)) throw new Error('conformance-check has no needs list');
-  for (const need of ['go', 'rust', 'php', 'php-extension-tools', 'python', 'databases', 'node-modules'])
-    assert.ok(comparison.needs.includes(need), `the cross-runtime comparison independently declares ${need}`);
+  assert.equal(Object.hasOwn(inputs.targets, 'conformance-check'), false, 'the convenience aggregate is not another suite target');
+  for (const [runtime, required] of Object.entries({ go: ['go'], rust: ['rust'], php: ['php', 'composer'], 'php-extension': ['php', 'composer', 'php-extension-tools'], python: ['python'], typescript: [] })) {
+    for (const part of ['generated-methods', 'fixed-clock']) {
+      const target = `conformance-${part}-check/${runtime}`;
+      const comparison = inputs.targets[target];
+      if (!isRecord(comparison) || !isStringArray(comparison.needs)) throw new Error(`${target} has no needs list`);
+      for (const need of ['node-modules', 'databases', ...required])
+        assert.ok(comparison.needs.includes(need), `${target} independently declares ${need}`);
+    }
+  }
   const expanded = expandNeeds(parity.needs);
   assert.ok(expanded.includes('databases'));
-  assert.deepEqual(SETUP_NEEDS['databases'], ['go-lease', 'node-modules', 'server-programs', 'flowmark']);
+  assert.deepEqual(SETUP_NEEDS['databases'], ['go-lease', 'node-modules', 'server-programs', 'flowmark', 'go-codes']);
   // flowmark is the fourth database of a case, and WITH_TEST_ENV hands every target FLOWMARK, so databases installs it.
   assert.ok(expandNeeds(['databases']).includes('flowmark'));
   assert.ok(expandNeeds(['databases']).includes('go-lease'));

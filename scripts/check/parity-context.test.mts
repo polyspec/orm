@@ -206,7 +206,7 @@ caseTest('Kit parity jobs declare the context and setup targets that own their n
   assert.deepEqual(config.contexts['php-ext'], { prepare: 'php-extension-context-prepare', cleanup: 'php-extension-context-cleanup' });
   assert.ok(isRecord(config.setup));
   // The shared gates build tests/lease: parity-declarations-check needs typescript-build, which needs lease-tool (T261).
-  assert.deepEqual(config.setup.shared, ['orm-install-go-lease']);
+  assert.deepEqual(config.setup.shared, ['orm-install-go-lease', 'orm-install-go-codes']);
   assert.deepEqual(config.setup.parity, ['orm-install-flowmark', 'orm-install-interfaces-typescript']);
   assert.ok(isRecord(config.setup.runtimes));
   assert.deepEqual(config.setup.runtimes.go, ['orm-install-go']);
@@ -234,5 +234,5 @@ caseTest('Kit parity jobs declare the context and setup targets that own their n
   assert.match(makefile, /^php-extension-context-cleanup:$/m);
   assert.match(makefile, /^PARITY_GATE_TARGETS = parity-check parity-api-check \$\(KIT_PARITY_BINDING_TARGETS\)$/m);
   assert.match(makefile, /^orm-install-php-extension-runtime:/m);
-  assert.match(makefile, /^orm-install-typescript-runtime: orm-install-go-lease orm-codes-typescript build-ts$/m);
+  assert.match(makefile, /^orm-install-typescript-runtime: orm-install-go-lease orm-install-codes-typescript\n\t\$\(MAKE\) --no-print-directory build-ts$/m);
 });

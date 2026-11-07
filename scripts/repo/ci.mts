@@ -169,6 +169,50 @@ export function jobOverlapErrors(makefile: string): string[] {
   return [...owners].filter(([, runs]) => runs.length > 1).map(([target, runs]) => `${target} runs in ${runs.join(' and ')}; every target runs in one CI job`);
 }
 
+/** Checks declared targets reached through other targets, including recursive make recipes. */
+export function ciNestedTargetErrors(makefile: string): string[] {
+  const { groups, targets } = ciGroups(makefile);
+  const variables = makeVariables(makefile);
+  const expanded = (value: string) => expandFunctions(expand(value, variables));
+  const rules = new Map<string, { prerequisites: string[]; commands: string[] }>();
+  for (const entry of makeTargets(makefile)) {
+    for (const name of expanded(entry.target).split(/\s+/).filter(Boolean)) {
+      const rule = rules.get(name) ?? { prerequisites: [], commands: [] };
+      rule.prerequisites.push(...expanded(entry.prerequisites.join(' ')).split(/\s+/).filter(Boolean));
+      rule.commands.push(...entry.commands);
+      rules.set(name, rule);
+    }
+  }
+  const owners = new Map<string, Set<string>>();
+  for (const group of groups) {
+    const pending = [...(targets[group] ?? [])];
+    const seen = new Set<string>();
+    for (let name = pending.pop(); name !== undefined; name = pending.pop()) {
+      if (seen.has(name)) continue;
+      seen.add(name);
+      const jobs = owners.get(name) ?? new Set<string>();
+      jobs.add(group);
+      owners.set(name, jobs);
+      const rule = rules.get(name);
+      if (!rule) continue;
+      pending.push(...rule.prerequisites);
+      for (const recipe of rule.commands) {
+        if (!recipe.includes('$(MAKE)') && !recipe.includes('make ')) continue;
+        for (const command of commands(expanded(recipe.replaceAll('$(MAKE)', 'make')), 'make')) {
+          if (command.name === 'make') pending.push(...command.args.filter(argument => rules.has(argument) || checkTargets(makefile).includes(argument)));
+        }
+      }
+    }
+  }
+  return checkTargets(makefile).flatMap(target => {
+    const reached = [...(owners.get(target) ?? [])];
+    const direct = groups.filter(group => targets[group]?.includes(target));
+    return reached.length > 1 && direct.length <= 1
+      ? [`CI groups ${reached.join(', ')} reach ${target} through their target dependencies; assign each check to one group and remove the repeated invocation`]
+      : [];
+  });
+}
+
 // ciGroupErrors returns one error at each place where the CI groups do not split CHECK_TARGETS. For a job that runs GROUP_CHECK,
 // the matrix groups equal CI_GROUPS, each CI group has a CI_TARGETS_<group>, the targets of all groups together equal CHECK_TARGETS
 // without the gates of kit (CI_KIT_GATES), which the gates workflow runs, and no target is in two groups. So the two workflows
@@ -206,6 +250,7 @@ export function ciGroupErrors(workflow: string, makefile: string): string[] {
     else if (runs.length > 1) errors.push(`CI groups ${runs.join(', ')} each run ${target}; every target of CHECK_TARGETS runs in exactly one group`);
   }
   for (const [target, runs] of owners) if (!all.includes(target)) errors.push(`CI group ${runs.join(', ')} runs ${target}, which is not a target of CHECK_TARGETS`);
+  errors.push(...ciNestedTargetErrors(makefile));
   return errors;
 }
 
@@ -369,6 +414,17 @@ export function helperRunErrors(manifest: HelperManifest & Parameters<typeof sel
     reached.add(target);
     pending.push(...(rules.get(target) ?? []));
   }
+  // An aggregate with no recipe contributes no work beyond its prerequisites. All of them must run;
+  // a missing leaf, an unexecuted recipe, an empty aggregate or a cycle is not execution evidence.
+  const covered = (target: string, visiting = new Set<string>()): boolean => {
+    if (reached.has(target)) return true;
+    if (visiting.has(target)) return false;
+    const entries = makeTargets(makefile).filter(entry => entry.target === target);
+    if (entries.some(entry => entry.commands.length > 0)) return false;
+    const prerequisites = expandFunctions(expand(entries.flatMap(entry => entry.prerequisites).join(' '), variables)).split(/\s+/).filter(Boolean);
+    const next = new Set([...visiting, target]);
+    return prerequisites.length > 0 && prerequisites.every(name => covered(name, next));
+  };
   const places = new Map<string, string[]>((manifest.helpers ?? []).map((helper: { id: string }) => [helper.id, []]));
   for (const target of checkTargets(makefile)) {
     for (const line of recipe(makefile, target) ?? []) {
@@ -381,7 +437,7 @@ export function helperRunErrors(manifest: HelperManifest & Parameters<typeof sel
   for (const helper of manifest.helpers ?? []) {
     const make = /^make\s+(.*)$/.exec(helper.command.trim())?.[1];
     for (const word of make?.split(/\s+/) ?? [])
-      if (!word.startsWith('-') && !word.includes('=') && reached.has(word)) places.get(helper.id)?.push(`make ${word}, a target of make orm-check`);
+      if (!word.startsWith('-') && !word.includes('=') && covered(word)) places.get(helper.id)?.push(`make ${word}, a target of make orm-check`);
     // A helper that is a script (sh <file>.sh or node <file>.mts) is run by the setup step when that step runs the script.
     const script = /^(?:sh\s+(\S+\.sh)|node\s+(\S+\.mts))$/.exec(helper.command.trim())?.slice(1).find(Boolean);
     if (script && setupScript.includes(script)) places.get(helper.id)?.push(`the setup step databases/create of make orm-check (scripts/check/databases.mts runs ${script})`);

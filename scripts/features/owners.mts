@@ -329,7 +329,7 @@ export function isPhpExtensionPart(feature: OwnersFeature, part: string): boolea
 async function buildPhpExtension(root: string, directory: string, context: { step: Step }): Promise<string> {
   const library = resolve(directory, 'php-extension', 'polyspec_orm.so');
   mkdirSync(resolve(directory, 'php-extension'), { recursive: true });
-  await child(root, 'make', ['-s', 'php-vendor-check', 'php-models', 'orm-install-php-extension-tools', 'orm-codes'], context);
+  await child(root, 'make', ['-s', 'php-vendor-check', 'php-models', 'php-extension-tools-check', 'orm-codes'], context);
   await child(root, 'make', ['-s', 'php-ext-build', `PHP_EXT_OUT=${library}`, 'PHP_EXT_MODE=release'], context);
   return library;
 }

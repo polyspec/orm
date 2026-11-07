@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 import { keepAll, render, run, runLanes, variable, type Command } from './check/commands.mts';
 import { COMMANDS as TYPESCRIPT_COMMANDS, sqliteTest } from './typescript/sqlite-test.mts';
 import { implementationLanguages } from './features/languages.mts';
-import { readParityConfig } from './json/formats.mts';
+import { parseRecipeCases, readParityConfig } from './json/formats.mts';
 import { readJsonFile } from './json/schema.mts';
 import { PROXYSQL_BACKEND_CONNECTIONS } from './test-servers.mts';
 
@@ -60,7 +60,42 @@ export const GO_LANE_PACKAGES = [
 // TestMarkdownConformance needs the flowmark server that markdown-conformance-check/go passes. The measurements of PERF-1 belong to
 // perf-check and feature-performance-check, which read the bench DSNs and report the timing; they assert no client result.
 export const GO_LANE_SKIP = '^(TestMarkdownConformance|TestPerformanceMeasurement(Mysql|Postgres|SQLite))$';
-const GO: Command[] = [go('-skip', GO_LANE_SKIP, ...GO_LANE_PACKAGES)];
+/** Whole-test selections owned by dedicated direct targets. Pooler runs retain their own evidence. */
+export const GO_DIRECT_CHECKS: Record<string, string> = {
+  'dbspec-verify-errors-check/go': '^TestRecipeDbspecApplyVerificationErrorsNone$',
+  'group-count-boolean-unit-check/go': '^(TestGroupRowDriverCellForms)$',
+  'nowait-restore-check/go': '^TestAcquireSQLiteRowLock',
+  'styled-column-states-unit-check/go': '^TestStyledColumnStateFixture$',
+  'page-cache-unit-check/go': '^(TestPlanCachePagedReadBindsPageValues|TestCanonicalizeCompositeRequestParameterWalk)$',
+  'split-read-plan-check/go': '^TestSplitRootInCountPlansNoStatementOverTheBindLimit$',
+  'collection-composite-key-check/go': '^(TestCompositeCollectionKeyTypedComponentsFromFixture|TestNullableCompositeRowHasNoCollectionKey)$',
+  'codec-check/go': '^(TestRecipeCodecNone|TestRecipeCodecIntegerBeyondI64None|TestRecipeCodecBytesValueNone|TestOrderedJSONRefusesATextThatIsNotUnicode)$',
+  'catalog-connection-check/go': '^TestRecipeCatalogConnection(Mysql|Postgres|Sqlite|Markdown|SqliteOnly|SqliteOnlyMarkdown)$',
+  'statement-events-check/go': '^TestRecipeStatementEvents(Mysql|Postgres|Sqlite|Markdown)$',
+  'schema-install-check/go': '^TestRecipeSchemaInstall(Mysql|Postgres|Sqlite|Markdown)$',
+  'dsn-connection-check/go': '^TestRecipeDsnConnection(Mysql|Postgres|Sqlite|Markdown)$',
+  'raw-text-check/go': '^TestRecipeRawText(Mysql|Postgres|Sqlite|Markdown)$',
+  'connection-pool-check/go': '^TestRecipeConnectionPool(Mysql|Postgres|Sqlite|Markdown)$',
+  'model-queries-check/go': '^TestRecipeModelQueries(Chain)?(Mysql|Postgres|Sqlite|Markdown)$',
+  'constraints-and-relations-check/go': '^TestRecipe(ConstraintsAndRelations|ImmutableWrite)(Mysql|Postgres|Sqlite|Markdown)$',
+  'parameter-chunking-check/go': '^TestRecipeParameterChunking(Mysql|Postgres|Sqlite|Markdown)$',
+  'aes-rotation-check/go': '^TestRecipeAesRotation(Mysql|Postgres|Sqlite|Markdown)$',
+  'audit-triggers-check/go': '^TestRecipe(AuditTriggers|ExternalAudit)(Mysql|Postgres|Sqlite|Markdown)$',
+  'request-hook-check/go': '^TestRecipeRequestHook(Mysql|Postgres|Sqlite|Markdown)$',
+  'conformance-verification-check/go': '^TestRecipeConformanceVerification(Mysql|Postgres|Sqlite|Markdown)$',
+  'complex-query-check/go': '^TestRecipeComplexQuery(Mysql|Postgres|Sqlite|Markdown)$',
+  'bind-check/go': '^TestBindVectors$',
+  'go-catalog-session-error-check': '^(TestCatalogSessionEndPreservesPrimaryAndRollbackCauses|TestCatalogSessionEndReportsRollbackCauseWithoutPrimary)$',
+  'catalog-described-temporal-go-check': '^(TestCatalogWriteRefusesTimeValueForTemporalColumn|TestCatalogDescribedTemporalText|TestCatalogSameCellComparesWrittenTemporalTextExactly)$',
+  'go-sqlite-version-check': '^TestSQLiteMinimumVersionThroughConnect$',
+  'go-package-entry-check': '^TestExternalModuleCanImportClient$'
+};
+
+/** Leave dedicated direct tests to their scheduled targets without changing the pooler selection. */
+export function goLaneSkip(pooler: boolean): string {
+  return pooler ? GO_LANE_SKIP : [GO_LANE_SKIP, ...Object.values(GO_DIRECT_CHECKS)].join('|');
+}
+const GO: Command[] = [go('-skip', goLaneSkip(process.env['ORM_CLIENT_DB_POOLER'] === '1'), ...GO_LANE_PACKAGES)];
 const PHP_TESTS = ['ModelTest', 'RuntimeDbTest', 'AuditExternalSetsTest', 'SchemaSetTest', 
   'DriverErrorTest', 'RollbackTest', 'StatementFaultTest', 'RequestHookTest'];
 const PHP: Command[] = PHP_TESTS.map(test => ({ program: 'php', args: ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', `packages/php/tests/${test}.php`], cwd: root }));
@@ -141,13 +176,24 @@ export function rustOwnedElsewhereSkipArguments(repository: string): string[] {
   return [...markdown.cases.map(testCase => `markdown_conformance::${testCase.id}`).sort(), ...measurements].flatMap(symbol => ['--skip', symbol]);
 }
 
+/** The dedicated direct target executes these suites; pooler execution keeps every applicable case. */
+export function rustDirectRecipeSkipArguments(repository: string, pooler: boolean): string[] {
+  if (pooler) return [];
+  const file = resolve(repository, 'contracts/fixtures/conformance_verification/conformance_verification.json');
+  const recipe = parseRecipeCases(readFileSync(file, 'utf8'), file);
+  return ['mysql', 'postgres', 'sqlite', 'markdown'].flatMap(database => recipe.cases
+    // Markdown executes the SQLite cases too, as the native recipe runner specifies.
+    .filter(entry => entry.only === undefined || entry.only.includes(database) || (database === 'markdown' && entry.only.includes('sqlite')))
+    .flatMap(entry => ['--skip', `conformance_verification_${database}::${entry.id}`]));
+}
+
 // tests/cargo-test.mts builds the test binaries under the lease of the shared target directory as a long operation with no
 // deadline, copies them into the directory of one run and runs the copies.
 const RUST_TESTS: Command = {
   program: 'node',
   args: [
     '../../tests/cargo-test.mts', 'workspace-tests', '--', 'cargo', 'test', '--locked', '--workspace', '--features', variable('ORM_RUST_TEST_FEATURES'), '--',
-    ...rustOwnedElsewhereSkipArguments(root), '--exact',
+    ...rustOwnedElsewhereSkipArguments(root), ...rustDirectRecipeSkipArguments(root, process.env['ORM_CLIENT_DB_POOLER'] === '1'), '--exact',
     // The pooler lane keeps PROXYSQL_BACKEND_CONNECTIONS server connections, so its Rust tests run no more pools at once than that (T343-1).
     ...(process.env['ORM_CLIENT_DB_POOLER'] === '1' ? rustPoolerThreadArguments(PROXYSQL_BACKEND_CONNECTIONS, rustTargetPoolSize(root)) : []),
   ],
