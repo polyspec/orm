@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 34e8b2f37320ad6c5eb9202195a08675a66cc6818c42baa03f4634f75c751ecc -->
+<!-- source-sha256: 0888aa4aca3c90437ecac7f1aa4092a2bb79b68f3c3cd700515f1c6335d06f67 -->
 # 변경 이력
 
 ## Unreleased
 
+- packages/rust/orm과 packages/rust/schema의 doc 주석에 깨진 link도, 닫히지 않은 HTML tag도 없다. 그래서 rustdoc을 `-D warnings`로 실행하는 kit 0.0.98의 parity extractor가 그 symbol을 읽는다(KSTD-5-126).
 - 호환 깨짐: 모델의 `varchar` 또는 `text` 컬럼으로 읽은 저장 텍스트가 유효한 UTF-8이 아니면 모든 runtime에서 `CODEC_DECODE: <entity>.<column>: text is not valid UTF-8`이다(COD-69). PHP와 PHP 확장은 그 bytes를 돌려줬고, TypeScript는 U+FFFD로 바꿨고, Python과 Rust는 SQLite 읽기 전체를 실패시켰다(XV17).
 - 호환 깨짐: 모든 runtime에서 group row들의 JSON 출력은 각 행을 결과 순서로 쓰고, codec stage가 없는 bytes 컬럼의 bytes 값을 같은 `CODEC_ENCODE: group column <name>: JSON output cannot write bytes`로 거부하며, 배열 형식은 그 bytes를 담는다(INT-162, COD-27). Go는 정렬된 member 순서로 base64를 썼고, TypeScript는 `Uint8Array`를 index 객체로 썼고, PHP와 PHP 확장은 문자열을 담았고, Rust는 컬럼 이름을 적지 않았다. Python에 `GroupRow.to_json_text()`와 `GroupRows.to_json_text()`가 생기고, PHP와 PHP 확장은 `Bytes`를 담는다(XV30).
 - orm은 utility만 주고 recipe는 주지 않는 kit 0.0.98에 맞춰 자기 recipe를 소유한다(kit docs/spec/utilities-and-recipes.md). Makefile은 kit의 파일을 include하지 않고 orm과 그 workflow와 문서가 부르는 모든 target을 정의하며, 각 target은 명시한 인자로 kit utility를 실행한다. kit가 orm에 정하던 설정은 .npmrc, mise.toml의 [settings]와 [env], 각 Cargo.toml의 workspace lints, Python package의 [tool.vulture], root의 lint 설정 파일에 두고, config/knip-entries.json은 knip.json으로 옮겼다. kit-sync가 쓰던 파일은 orm 자신의 파일이 되고, kit hook의 Claude Code 설정은 지웠다(T391). repository check가 그 recipe를 읽게 되어, kit-gates는 lint-ts를 먼저 실행하여 한 make에서 TypeScript build output의 exclusive lease가 reader의 shared lease보다 먼저 오고, lease check는 그 순서를 비교한다. published-output check는 rule의 help text와 GitHub Actions의 step file을 건너뛴다. Red: Makefile이 @polyspec/kit의 recipe 파일을 include하지 않는다는 repository check가 kit-bootstrap.mk include에서 실패했다.

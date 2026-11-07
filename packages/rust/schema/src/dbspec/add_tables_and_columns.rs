@@ -11,7 +11,7 @@ pub struct AddTablesAndColumnsSteps {
     /// Tables to create come first in table name order as "table", then columns to add in column order as "table.column".
     pub added: Vec<String>,
     pub steps: Vec<PlanStep>,
-    /// A difference that is neither create_table nor add_column, as "<kind> <table>[.<name>]".
+    /// A difference that is neither create_table nor add_column, as `"<kind> <table>[.<name>]"`.
     pub differences: Vec<String>,
 }
 
@@ -35,7 +35,7 @@ fn schema_document(tables: Vec<Table>) -> Document {
 }
 
 /// is the table of the set in the database (source). If the set's table has an object that could not be read, that table
-/// cannot be said to equal the set, so that object is reported as "unsupported_<kind> <table>[.<name>]: <reason>"
+/// cannot be said to equal the set, so that object is reported as `"unsupported_<kind> <table>[.<name>]: <reason>"`
 /// and returned.
 fn set_source(live: &Document, unsupported: &[Unsupported], target: &Document) -> Result<Document, Vec<String>> {
     let declared: BTreeSet<&str> = target.tables.iter().map(|t| t.name.text.as_str()).collect();
@@ -53,8 +53,8 @@ fn set_source(live: &Document, unsupported: &[Unsupported], target: &Document) -
 /// Checks whether the database equals the document set (docs/spec/schema.md, "Schema installation"). `live`
 /// is the document introspected from the connection's database, `unsupported` is the objects introspection could not read,
 /// `target` is the schema text document of the document set. Tables of the database that are not in the set are not compared.
-/// If a set's table has an unreadable object, that object is reported as "unsupported_<kind> <table>[.<name>]: <reason>",
-/// otherwise every difference from the database's table of the set to the set is reported as "<kind> <table>[.<name>]"
+/// If a set's table has an unreadable object, that object is reported as `"unsupported_<kind> <table>[.<name>]: <reason>"`,
+/// otherwise every difference from the database's table of the set to the set is reported as `"<kind> <table>[.<name>]"`
 /// and returned. An empty list means equal.
 pub fn installed_differences(live: &Document, unsupported: &[Unsupported], target: &Document) -> Vec<String> {
     let source = match set_source(live, unsupported, target) {
@@ -74,7 +74,7 @@ pub fn installed_differences(live: &Document, unsupported: &[Unsupported], targe
 /// only, the plan step from the set's table in the database to the set (docs/spec/plans.md,
 /// "Steps"), with tables to create in table name order as "table" and columns to add in column order
 /// as "table.column", then indexes to add in index order as "table.index", and returns that list. Other
-/// differences are returned without a step as "<kind> <table>[.<name>]", and a missing unique key, which could fail on existing rows,
+/// differences are returned without a step as `"<kind> <table>[.<name>]"`, and a missing unique key, which could fail on existing rows,
 /// is returned with its reason.
 pub fn add_tables_and_columns_steps(live: &Document, unsupported: &[Unsupported], target: &Document, dialect: Dialect) -> AddTablesAndColumnsSteps {
     let declared: BTreeMap<&str, &Table> = target.tables.iter().map(|t| (t.name.text.as_str(), t)).collect();

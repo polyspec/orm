@@ -74,7 +74,7 @@ pub(crate) fn apply_request_hook(handle: &Db, req: &mut Req) -> Result<()> {
 /// The connection configuration: declared, never discovered.
 #[derive(Clone)]
 pub struct Config {
-    /// Key of aes_version for aes writes; empty takes aes_keys[aes_version]
+    /// Key of aes_version for aes writes; empty takes `aes_keys[aes_version]`
     /// when a key ring is configured.
     pub aes_key: String,
     pub blind_index_key: String,
