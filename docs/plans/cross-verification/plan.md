@@ -283,3 +283,33 @@ proposal to convert all native tests into shared recipes is not the implementati
 No new generic command runner, compiler wrapper language or build cache follows from this audit.
 The existing shell-based language selection checks also need evaluation against the final execution
 declaration, rather than treating a second inferred inventory as the final architecture.
+
+### Rust recipe entry and observation audit
+
+Cargo declares 156 integration test binaries. Strict source inspection identifies 37 that contain
+only an import and a main function calling recipe::trials with a literal recipe path and NONE.
+Those entries name 1,517 distinct recipe case IDs. These are source inventory counts, not passing
+execution results. The local audit artifact is var/ci-plans/rust-recipe-entrypoints.json. Consolidating
+these recipe entry binaries is different from replacing native compiler or implementation tests.
+Before consolidation, preserve every case ID and selector, validate process-global state and
+fixture isolation, and update all Cargo, parity, coverage and Make references together.
+
+The audit also found that dbspec-show-create and dbspec-show-create-check-body bind Rust to the
+same file and symbol, dbspec_show_create_introspect_none. Their ten case IDs agree, but their
+observations differ: tests/dbspec/show-create.json expects the private parser's CHECK_CLAUSE body,
+while tests/dbspec/show-create-introspect.json expects public introspection checks and unsupported
+objects. The current binding runs only the latter observation twice. The private Rust test still
+exists at packages/rust/schema/src/dbspec/introspect/mysql.rs in
+show_create_tests::every_show_create_case_reads_to_its_expected_body; its presence does not prove
+execution in this audit. The binding change entered in f62673f12 (CR15-F).
+
+The correction must preserve both observations and their required execution evidence. Sharing case
+names does not prove that two tests check the same result, and it is not grounds to reuse a saved
+pass or remove one observation. Resolve this declaration error before grouping those recipe binaries.
+
+The same binding comparison was extended to all 183 declared suite units and all six
+implementations. Exactly two groups have identical binding fields across different suite units:
+this SHOW CREATE pair in Rust and in the PHP extension. No identical suite-binding group was
+found in Go, PHP, TypeScript or Python. This comparison does not detect overlap between feature
+and suite units or different commands that execute the same cases. The local detail is
+var/ci-plans/parity-shared-suite-bindings.json.

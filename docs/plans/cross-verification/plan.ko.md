@@ -1,5 +1,5 @@
 <!-- doc-id: plan-cross-verification -->
-<!-- source-sha256: 2cdb57dfaf5effcecfdca6a3136db4cc43331c3f83d11f79dc6fbf21eb392282 -->
+<!-- source-sha256: efc495aa3adf106ee0839f91dabe79ca507e821919c98e24b0c8235697da822b -->
 # corpus SQLite 연결의 여섯 runtime과 네 database 교차 검증
 
 [English](plan.md)
@@ -265,3 +265,34 @@ native 시험을 전부 삭제할 근거는 없다. 모든 native 시험을 공�
 구현 목표가 아니다. 이 조사로 범용 command runner, compiler wrapper 언어, build cache를
 새로 만들지 않는다. 기존 shell 기반 언어 선택 검사도 최종 실행 선언과 대조하여 검토해야 하며,
 추론한 실행 목록을 하나 더 만드는 것을 최종 구조로 삼지 않는다.
+
+### Rust recipe 진입점과 관찰 결과 조사
+
+Cargo는 integration test binary 156개를 선언한다. Source를 엄격하게 검사하면 import와
+literal recipe path 및 NONE으로 recipe::trials를 호출하는 main 함수만 있는 것이 37개다.
+이 진입점의 recipe case ID는 1,517개이며 모두 고유하다. 이는 source 목록의 수이며 실행
+통과 결과가 아니다. Local 조사 산출물은 var/ci-plans/rust-recipe-entrypoints.json이다.
+이 recipe 진입 binary들을 합치는 것은 native compiler나 내부 구현 시험을 대체하는 것과
+다르다. 합치기 전에 모든 case ID와 selector를 보존하고 process 전역 상태와 fixture 격리를
+검증하며 Cargo, parity, coverage, Make 참조를 함께 고쳐야 한다.
+
+조사 중 dbspec-show-create와 dbspec-show-create-check-body가 Rust에서 같은 file과 symbol인
+dbspec_show_create_introspect_none에 연결된 것도 확인했다. 열 개의 case ID는 같지만 관찰할
+결과가 다르다. tests/dbspec/show-create.json은 내부 parser의 CHECK_CLAUSE body를 기대하고,
+tests/dbspec/show-create-introspect.json은 공개 introspection의 check와 unsupported
+객체를 기대한다. 현재 binding은 뒤의 관찰만 두 번 실행한다. 내부 Rust 시험은
+packages/rust/schema/src/dbspec/introspect/mysql.rs의
+show_create_tests::every_show_create_case_reads_to_its_expected_body에 남아 있다.
+시험의 존재가 이번 조사에서 실행됐다는 증거는 아니다. 이 binding 변경은
+f62673f12 (CR15-F)에서 들어왔다.
+
+수정은 두 관찰 결과와 필요한 실행 증거를 모두 보존해야 한다. Case 이름이 같다고 같은
+결과를 검사한다는 증거가 되지는 않으며 저장된 통과 결과를 재사용하거나 한쪽 관찰을 지울
+근거도 아니다. 이 선언 오류를 해결한 뒤 recipe binary의 실행 단위를 합친다.
+
+같은 binding 비교를 선언된 suite unit 183개와 여섯 implementation 전체로 확대했다.
+서로 다른 suite unit의 binding field가 같은 것은 정확히 두 group으로, Rust와 PHP extension의
+이 SHOW CREATE 쌍이다. Go, PHP, TypeScript, Python에서는 같은 suite binding group을
+찾지 못했다. 이 비교는 feature와 suite unit 사이의 중복이나 서로 다른 command가 같은
+case를 실행하는 경우를 검출하지 않는다. Local 상세 결과는
+var/ci-plans/parity-shared-suite-bindings.json이다.
