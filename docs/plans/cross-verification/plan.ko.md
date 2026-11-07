@@ -1,5 +1,5 @@
 <!-- doc-id: plan-cross-verification -->
-<!-- source-sha256: d5d998a15cec1cdd17bc252d8bf64f915a46d7426f4f4ecf8481195b1c1cc567 -->
+<!-- source-sha256: e8f51dd2c662973caa13517b75c7e6b33fd73d0ff54459fc39a41e350fca68df -->
 # corpus SQLite 연결의 여섯 runtime과 네 database 교차 검증
 
 [English](plan.md)
@@ -404,3 +404,15 @@ ORM은 여섯 binding 항목을 모두 선언하고 Make setup target을 소유�
 추가 조사에서 typescript-current의 client 전용 주석이 command와 다름을 발견했다. 출력이 오래되면 editor package도 build하는 root typescript:build script를 호출했다. 이력상 fa21c8c0e가 client 전용 target을 도입하면서 이 command를 유지했다. 회귀 시험은 compiler를 시작하지 않고 최신 출력 검사와 lease dispatcher를 대역으로 제공하는 sandbox에서 실제 recipe가 선택한 build command를 관찰한다. 먼저 npm run typescript:build를 관찰하여 실패했고 이제 고정된 npm의 --prefix packages/ts run build를 관찰한다. 출력이 최신이면 build를 시작하지 않는다. 전체 client·editor build와 editor CI 검사는 유지한다. Native build·설치·소요 시간 개선은 여전히 CI 증거가 필요하다.
 
 Repository·parity context·CI preview 회귀 단위 시험 170개가 통과했다. TypeScript 검사·docs-check(56 pair, checklist 네 개)·docs-rules-check(영문 55개, 한국어 55개)가 통과했다. Kit 후보의 checks job은 setup 수정이 추가한 금지된 non-null assertion 네 곳을 보고했고 다른 job은 아직 실행 중이다. 대체 push를 하지 않았으며 수정된 Kit 배포본을 고정하기 전에 새 선언으로 ORM CI를 dispatch하면 안 된다.
+
+### Scheduling과 native command 목록
+
+기준 CI 42335724777의 job 56개를 API에서 모두 읽었다. 실행 구간에서 관찰한 최대 동시 실행은 20개다. Organization API는 Free를 보고하며 GitHub는 이 plan의 기본 한도를 [표준 job 동시 실행 20개](https://docs.github.com/en/actions/reference/limits)로 문서화한다. 계정에 별도 한도 조정이 있는지까지 증명한 것은 아니다. Shared는 UTC 03:51:27부터 03:53:25까지 118초 실행했다. Rust parity는 03:53:26 생성되어 04:10:37 시작했고 1,031초 대기한 뒤 05:17:57 끝났다. Shared 검사 의존성을 제거해도 이 대기가 사라지거나 소요 시간이 줄었다고 증명하지 않는다.
+
+전체 job은 875.88 runner minute이며 20으로 나누면 수용량 하한은 43.79분이다. Rust parity 하나는 67.33분 실행했다. 이는 이전 tree의 하한과 관측이며 변경 tree의 예측이 아니다. Job 분리나 동시 실행 예산을 평가할 때 이를 구분한다. 전체 기록과 계산은 var/ci-plans/baseline-42335724777-jobs.json과 baseline-42335724777-scheduling.json에 보존했다.
+
+설치된 Kit command planner를 통한 읽기 전용 조사는 Go native binding 569개의 내장 build 호출 566개가 package build unit 12개에 대응하고 Rust native binding 592개의 내장 build 호출 581개가 native target·option unit 194개에 대응함을 확인했다. 나머지 Go 세 개와 Rust 열한 개는 명시적 command를 사용하여 별도 집계가 필요하다. Rust unit은 manifest 네 개에 속한다. Orm 21개·tests 159개·build 12개·schema 두 개다. var/ci-plans/native-binding-inventory.json은 command를 execution not-run으로 기록한다. 이 수치는 compiler 실행을 측정한 값이 아닌 command 선언이며 native 최신성 검사가 compile을 생략할 수 있다.
+
+다음 compiled-test 작업은 repository가 소유하는 native build 단계에서 호환되는 출력을 준비하고 native selector와 fixture를 보존하며 Kit에 artifact 관리를 맡기거나 저장된 결과를 재사용하지 않고 그 출력을 실행해야 한다. 호환 target을 함께 build하려고 native binary를 합치거나 compiler·host 관찰을 recipe operation으로 바꿀 필요는 없다. 실제 build 횟수·전체 case coverage·소요 시간은 여전히 CI 증거가 필요하다.
+
+수정된 Kit 후보 a00e04e08c57ea6dc46175a22efbad9a37a647fb는 CI 42361318294에서 실행 중이다. K1028의 lint assertion 제거와 K1029의 계획·독립 검사 분리를 포함하며 setup·workflow 단위 시험 42개가 통과했다. 배포·고정된 ORM 갱신·소비 CI는 아직 끝나지 않았다.
