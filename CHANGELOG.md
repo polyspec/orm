@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- CI: preview job and setup declarations, expand the Go and Rust test helpers without execution, scope API catalog reads to the selected runtime while retaining common declaration checks and TypeScript schema preparation, and place cross-runtime Go checks in the cross-runtime job (T388).
+
 - CI: preview all six client database and pooler lanes with `scripts/client-db-test.mts --dry-run`, using the execution command declarations without starting tools or databases (T388).
 
 - CI: scope parity preparation recipes to their owning runtime instead of preparing PHP, Python and TypeScript for every binding job (T388).

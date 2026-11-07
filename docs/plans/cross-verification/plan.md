@@ -228,3 +228,58 @@ the pooler recipe commands and filters. Commands inside each lane remain ordered
 extension cleanup path is shown. This previews the client lanes, not the entire workflow or the
 commands inside native helper programs. The client runner unit file passes 13 cases, including a
 CLI case whose stub tools record any attempted external execution; no tool was invoked.
+
+`node scripts/check/ci-plan.mts` previews job dependencies, the CI group target order, setup
+selection and Make recipe declarations. It reads the local reusable workflow and repository setup
+configuration without invoking Make. Its output identifies Make expressions, GitHub expressions
+and runner-selected commands that it did not evaluate. `--group <name>` limits the group list.
+This is a declaration preview, not proof that a workflow or its native cases passed.
+
+The client lane preview now expands the Go helper into its native build and test commands, and
+the Rust helper into compilation, case selection and execution. Execution and preview share their
+argument constructors. Rust executable paths are identified as Cargo compiler artifacts, since
+those paths do not exist before compilation. A large preview waits for stdout completion before
+exiting, so pipes receive complete JSON.
+
+The twelve direct and pooler client recipes no longer require the aggregate `orm-codes` target.
+Their runtime prerequisites generate their own catalogs. The interface recipe still reads its schema
+through the TypeScript client, so these recipes retain TypeScript code generation. The API checker
+validates every unit and implementation declaration in a scoped run, but reads catalog constants only
+for its selected implementation. The unscoped check continues to read every catalog. Unit tests prove
+that a missing foreign catalog is not opened by the scoped check, remains required by the full check,
+and does not hide missing symbol declarations or incorrect selected constants. The dependency checker
+recognizes literal client language selections and conservatively requires all catalogs for an unknown
+or unresolved selection; exporting a Python path alone does not execute Python. The cross-runtime Go package
+checks run in `clients_db` with the cross-runtime examples. The `client_db_go` setup declaration
+therefore no longer selects PHP or Python. Native behavior and elapsed time still need CI.
+The provider's parity setup still prepares all runtimes for every binding implementation; that
+remaining orchestration issue is not solved by narrowing the repository target prerequisites.
+
+The declaration and runner unit run passes 292 cases, and the scoped API unit run passes five cases.
+TypeScript type checking and the documentation wording check pass. An additional API and CI
+declaration test run passes 19 of 20 cases: the complete catalog comparison finds that the local
+generated PHP, Python and TypeScript files lack GENERATOR_SCAN_PARSE and GENERATOR_SCAN_UNATTACHED.
+Those codes were introduced by b46399d3f; this is generated checkout state, not evidence of a passing
+complete API check. Native generation and the complete improved CI run remain unverified.
+
+### Test responsibilities before execution changes
+
+The execution inventory and the behaviour vocabulary have different responsibilities. Every test
+needs declared execution conditions and observed case evidence. That does not require converting
+every compiler or internal implementation test into the shared behaviour recipe language.
+
+| Evidence inspected | Responsibility | Consequence for the design |
+| --- | --- | --- |
+| packages/ts/tests/generate.mjs, generated typed getter consumer compiler fixture | TypeScript accepts a typed consumer and rejects a raw assignment with TS2322 at the expected location | Keep the compiler as the authority; a shared runtime result cannot replace this evidence |
+| packages/go/orm/sqlite_lock_restore_test.go | A stand-in database driver records PRAGMA and INSERT calls and injects errors into the production cleanup path | Preserve the implementation-level seam test; a live SQLite success does not prove this error path |
+| recipe.schema.json, argument.text_hex and argument.datetime | Existing tagged data already represents invalid UTF-8 host strings and date values in the runtimes that support them | A claim that JSON cannot represent the input needs verification against the actual format; it is not an automatic native exception |
+| recipe.schema.json, fault.next_rollback | A shared test-entry operation already declares rollback fault behaviour | Review whether a proposed new operation describes shared behaviour rather than wrapping an arbitrary test command |
+| config/parity.json, native-public-package-entry | Existing bindings identify distinct language-owned package entry tests | Preserve native package resolution checks while making their execution conditions explicit |
+
+The current FCV-2 text contains 144 lines that state native exceptions. This is a count of
+document lines, not of tests or verified justifications. Each reason still needs review; neither
+keeping every exception nor deleting all native tests is justified by that count. The rejected
+proposal to convert all native tests into shared recipes is not the implementation objective.
+No new generic command runner, compiler wrapper language or build cache follows from this audit.
+The existing shell-based language selection checks also need evaluation against the final execution
+declaration, rather than treating a second inferred inventory as the final architecture.

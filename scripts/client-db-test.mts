@@ -18,7 +18,9 @@ import { readFileSync, rmSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { delimiter, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { keepAll, render, run, runLanes, variable, type Command } from './check/commands.mts';
+import { keepAll, render, run, runLanes, variable, type Command, type Word } from './check/commands.mts';
+import { goDryRun } from '../tests/go-test.mts';
+import { cargoDryRun } from '../tests/cargo-test.mts';
 import { COMMANDS as TYPESCRIPT_COMMANDS, sqliteTest } from './typescript/sqlite-test.mts';
 import { implementationLanguages } from './features/languages.mts';
 import { parseRecipeCases, readParityConfig } from './json/formats.mts';
@@ -206,6 +208,8 @@ export const COMMANDS = [...[...GO, ...PHP, PHP_EXTENSION_BUILD, ...PHP_EXTENSIO
 
 /** Render the same command values that the lanes execute, leaving environment references unresolved. */
 export function clientDryRun(selected: readonly string[], parallel: boolean) {
+  const symbolic = (word: Word): string => typeof word === 'string' ? word : `\${${word.variable}}`;
+  const rustSeparator = RUST_TESTS.args.indexOf('--');
   const commands: Record<string, string[]> = {
     go: GO.map(command => render(command, root)),
     php: [...PHP, ...poolerRecipes('php')].map(command => render(command, root)),
@@ -220,6 +224,8 @@ export function clientDryRun(selected: readonly string[], parallel: boolean) {
       const steps = commands[name];
       if (steps === undefined) throw new Error(`client-db-test: no declared commands for lane ${name}`);
       return { name, order: 'serial', commands: steps,
+        ...(name === 'go' ? { native: GO.map(command => goDryRun(command.args.slice(1).map(symbolic))) } : {}),
+        ...(name === 'rust' ? { native: [cargoDryRun(RUST_TESTS.args.slice(rustSeparator + 1).map(symbolic))] } : {}),
         ...(name === 'php-extension' ? { cleanup: { removeDirectory: relative(root, PHP_EXTENSION_RUN) } } : {}) };
     }),
   };
@@ -269,7 +275,8 @@ if (import.meta.main) {
     process.exit(2);
   }
   if (dryRun) {
-    console.log(JSON.stringify(clientDryRun(selected, process.env['ORM_CLIENT_DB_LANES'] === 'parallel'), null, 2));
+    const text = JSON.stringify(clientDryRun(selected, process.env['ORM_CLIENT_DB_LANES'] === 'parallel'), null, 2) + '\n';
+    await new Promise<void>((done, fail) => process.stdout.write(text, error => error ? fail(error) : done()));
     process.exit(0);
   }
   process.env['PATH'] = `${join(homedir(), '.cargo/bin')}${delimiter}${process.env['PATH'] ?? ''}`;

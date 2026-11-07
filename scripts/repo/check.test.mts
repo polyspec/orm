@@ -2574,6 +2574,11 @@ caseTest('a target that reads an error code file has the target that writes it a
     missing('checker-bare', 'python'),
   ];
   assert.deepEqual(generatedCodesErrors(kit + makefile), bare);
+  const client = (selection: string, prerequisite: string) => `${kit}typescript-build: orm-codes-typescript\nclient: ${prerequisite}\n\t${selection} ORM_PYTHON=$(PYTHON_VENV)/bin/python node scripts/client-db-test.mts\n`;
+  assert.deepEqual(generatedCodesErrors(client('ORM_CLIENT_DB_LANGS=go', 'orm-codes-typescript')), []);
+  assert.deepEqual(generatedCodesErrors(client('ORM_CLIENT_DB_LANGS=python', 'orm-codes-typescript')), [missing('client', 'python')]);
+  for (const selection of ['', 'ORM_CLIENT_DB_LANGS=$(LANGUAGES)', 'ORM_CLIENT_DB_LANGS=unknown'])
+    assert.deepEqual(generatedCodesErrors(client(selection, 'orm-codes-typescript')), [missing('client', 'php'), missing('client', 'python')]);
   // A kit target whose recipe kit.mk owns reads the files as well: the Makefile adds its prerequisite.
   assert.deepEqual(generatedCodesErrors(makefile), [
     ...bare,

@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join, posix } from 'node:path';
+import { implementationLanguages } from '../features/languages.mts';
 import { type Dialect, segments } from './shell.mts';
 
 /**
@@ -528,14 +529,14 @@ export function typescriptHolderErrors(makefile: string): string[] {
 const CODES_READERS: Record<string, RegExp> = {
   typescript: /\$\(TSC_BUILD\)|\$\(HOLD_TYPESCRIPT\)|typescript:(?:build|test|check)\b|docs:(?:build|check|verify-idempotent)\b/,
   php: /\bphpunit\b|\$\(PHP\)|vendor-php\/|POLYSPEC_ORM_EXTENSION=/,
-  python: /\$\(PYTHON_VENV\)|\$\(RUN_TESTS\) python\b/,
+  python: /(?:^|\s)\$\(PYTHON_VENV\)\/bin\/python\b|\$\(RUN_TESTS\) python\b/,
 };
 // KIT_CODES_READERS are the targets whose recipe kit.mk owns and that read error code files: the Makefile only adds their
 // prerequisites. The parity targets read the error files of every implementation of config/parity.json.
 // ALL_CODES_READERS start the interface checker tests/interfaces/check/main.mts, directly or through the recipe case interface_symbols
-// of each client that the feature, owner and client-db runners start; its API units read the error code
-// files of every implementation.
-const ALL_CODES_READERS = /tests\/interfaces\/check\/main\.mts|scripts\/features\/(?:coverage|owners)\.mts|scripts\/client-db-test\.mts/;
+// of each client that the feature and owner runners start; unscoped API units read every implementation catalog.
+// Client database commands select their native lane separately below.
+const ALL_CODES_READERS = /tests\/interfaces\/check\/main\.mts|scripts\/features\/(?:coverage|owners)\.mts/;
 const KIT_CODES_READERS: Record<string, string[]> = {
   'lint-ts': ['typescript'],
   'lint-php': ['php'],
@@ -553,6 +554,7 @@ const KIT_CODES_READERS: Record<string, string[]> = {
 // text, as a Go test that runs a client, is not seen.
 export function generatedCodesErrors(makefile: string): string[] {
   const targets = makeTargets(makefile);
+  const implementations = implementationLanguages();
   const prerequisites = new Map<string, string[]>();
   for (const rule of targets) prerequisites.set(rule.target, [...(prerequisites.get(rule.target) ?? []), ...rule.prerequisites]);
   // A completed prerequisite may generate code through an unconditional recursive make. Only a whole, unguarded command
@@ -579,6 +581,16 @@ export function generatedCodesErrors(makefile: string): string[] {
       if (rule.commands.some(command => reader.test(command))) readers.set(rule.target, (readers.get(rule.target) ?? new Set()).add(language));
   for (const rule of targets)
     if (rule.commands.some(command => ALL_CODES_READERS.test(command))) readers.set(rule.target, new Set([...(readers.get(rule.target) ?? []), ...Object.keys(CODES_READERS)]));
+  for (const rule of targets)
+    for (const command of rule.commands) {
+      if (!command.includes('scripts/client-db-test.mts')) continue;
+      const selection = /(?:^|\s)ORM_CLIENT_DB_LANGS=([a-z,-]+)(?=\s)/.exec(command)?.[1]?.split(',');
+      // Every interface recipe loads its schema through TypeScript. Catalog source checks follow the selected native lane.
+      const languages = selection !== undefined && selection.every(language => implementations.includes(language))
+        ? ['typescript', ...selection.filter(language => language === 'php' || language === 'python')]
+        : Object.keys(CODES_READERS);
+      readers.set(rule.target, new Set([...(readers.get(rule.target) ?? []), ...languages]));
+    }
   for (const [target, languages] of Object.entries(KIT_CODES_READERS)) readers.set(target, new Set([...(readers.get(target) ?? []), ...languages]));
   const errors: string[] = [];
   for (const [target, languages] of readers)

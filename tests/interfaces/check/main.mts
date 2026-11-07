@@ -241,7 +241,7 @@ async function main(argv: string[]): Promise<number> {
   if (!manifestPassed) return 1;
   // The API units of config/parity.json are read here, so that the check of each client runs against the same units.
   const apiPassed = await runCase('interfaces/api-units', MANIFEST, () => {
-    const problems = apiProblems(root, readParity(root), readErrorCatalog(root));
+    const problems = apiProblems(root, readParity(root), readErrorCatalog(root), undefined, language === '' ? undefined : [language]);
     if (problems.length > 0) throw new Error(problems.join('\n'));
   });
   const tools: Tools = {};

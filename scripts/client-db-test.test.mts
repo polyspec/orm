@@ -10,6 +10,8 @@ import { dirname, relative, resolve } from 'node:path';
 import { GO_LANE_PACKAGES, GO_LANE_SKIP, GO_DIRECT_CHECKS, goLaneSkip, poolerRecipeCommands, poolerRecipeUnits, rustOwnedElsewhereSkipArguments, rustDirectRecipeSkipArguments, rustPoolerThreadArguments, rustTargetPoolSize } from './client-db-test.mts';
 import { readParityConfig } from './json/formats.mts';
 import { ciGroups } from './repo/ci.mts';
+import { groupOutputs } from './check/ci-setup.mts';
+import { declaredNeeds } from './check/inputs.mts';
 import { makeTargets } from './repo/testcases.mts';
 import { COMMANDS as PERF_COMMANDS } from './perf-test.mts';
 import { readFeatures, type CoverageOwner, type Language, type NativeCommand } from './features/manifest.mts';
@@ -234,4 +236,30 @@ caseTest('client database dry-run shows all six lanes without executing a comman
     }
     assert.equal(existsSync(marker), false, 'no build, installation or test command runs');
   } finally { rmSync(tools, { recursive: true, force: true }); }
+});
+
+caseTest('each direct and pooler recipe prepares its own codes and the interface schema reader', COMPUTE, () => {
+  const targets = makeTargets(readFileSync(resolve(root, 'Makefile'), 'utf8'));
+  const owned: Record<string, string[]> = {
+    go: ['lease-tool'], rust: ['lease-tool'],
+    php: ['php-vendor-check', 'php-models'],
+    'php-extension': ['php-vendor-check', 'php-models', 'php-extension-tools-check'],
+    typescript: ['typescript-current'], python: ['python-venv-check'],
+  };
+  for (const [runtime, expected] of Object.entries(owned)) for (const prefix of ['client-db', 'client-pooler']) {
+    const name = `${prefix}-${runtime}-check`;
+    const target = targets.find(entry => entry.target === name);
+    assert.ok(target, name);
+    assert.equal(target.prerequisites.includes('orm-codes'), false, `${name} must not generate all other client codes`);
+    if (runtime !== 'typescript') assert.ok(target.prerequisites.includes('orm-codes-typescript'), `${name}: interface schema reader`);
+    for (const prerequisite of expected) assert.ok(target.prerequisites.includes(prerequisite), `${name}: ${prerequisite}`);
+  }
+});
+
+caseTest('the Go client job does not install PHP or Python for cross-runtime checks', COMPUTE, () => {
+  const groups = ciGroups(readFileSync(resolve(root, 'Makefile'), 'utf8')).targets;
+  assert.ok(groups.clients_db?.includes('go-test-check'), 'the cross-runtime dialect and generator checks have a cross-runtime job');
+  const outputs = groupOutputs(groups.client_db_go ?? [], declaredNeeds(root));
+  for (const runtime of ['php', 'python', 'rust', 'php-extension-tools']) assert.equal(outputs[runtime], false, runtime);
+  assert.equal(outputs.go, true);
 });

@@ -1,7 +1,7 @@
 // Tests the build-phase arguments of tests/go-test.mts. The run flag is removed from the build, and the package, build tag and
 // build flags remain.
 import assert from 'node:assert/strict';
-import { execFile } from 'node:child_process';
+import { execFile, spawnSync } from 'node:child_process';
 import { chmod, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -114,3 +114,21 @@ caseTest('the selected tests are counted from the run events of test2json', COMP
   assert.deepEqual(written, ['=== RUN   TestText\n', '# build line\n', 'x.go:1: undefined\n']);
 });
 
+
+caseTest('Go helper dry-run renders the native build and test flags without a Go toolchain', COMPUTE, async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'orm-go-plan-'));
+  try {
+    const result = spawnSync(process.execPath, [new URL('../../tests/go-test.mts', import.meta.url).pathname,
+      '--dry-run', '-v', './packages/go/orm', '-run', '^TestCase$', '-count=1'], {
+      env: isolatedEnvironment({ PATH: dir, HOME: dir }), encoding: 'utf8',
+    });
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    const plan: unknown = JSON.parse(result.stdout);
+    assert.ok(typeof plan === 'object' && plan !== null && 'execution' in plan && 'commands' in plan);
+    assert.equal(plan.execution, 'not-run');
+    assert.deepEqual(plan.commands, [
+      { phase: 'build', program: 'go', args: ['test', '-tags', 'ormtest', './packages/go/orm', '-run', '^$', '-count=1'] },
+      { phase: 'test', program: 'go', args: ['test', '-json', '-tags', 'ormtest', '-v', './packages/go/orm', '-run', '^TestCase$', '-count=1'], requires: 'build succeeded' },
+    ]);
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});

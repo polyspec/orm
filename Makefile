@@ -252,9 +252,9 @@ CHECK_TARGETS = connection-sqlite-several-processes-python-check styled-column-s
 CI_KIT_GATES = kit-check kit-inject-check layout-check docs-check rules-check owner-validate rebuild-check language-check test-markers-check duplication-check parity-declarations-check parity-check bypass-check suppression-check divergence-check lint-ts lint-php lint-python lint-go lint-rust lint-php-ext test-php-ext
 CI_GROUPS = static clients_db performance client_db_go client_db_php client_db_php_extension client_db_typescript client_db_python client_db_rust clients_pooler_go clients_pooler_php clients_pooler_php_extension clients_pooler_typescript clients_pooler_python clients_pooler_rust conformance dbspec dbspec_apply dbspec_go dbspec_php dbspec_php_extension dbspec_typescript dbspec_python dbspec_rust markdown_go markdown_php markdown_php_extension markdown_typescript markdown_python markdown_rust feature_performance feature_verify_rust feature_verify_other feature_helpers stress_mysql stress_pg_sqlite python
 CI_TARGETS_static = connection-sqlite-several-processes-python-check recipe-runners-check runner-check typescript-build-unit-check docs-parse-check release-coverage comment-language-check testcase-check repo-check orm-test-servers-check docs-rules-check docs-implementation-count-check docs-dbs-check dbspec-codemirror-check dbspec-lsp-check orm-install-cli-check go-model-check go-sqlite-version-check php-model-check client-unit-check php-gen-unit-check phpstan-test-runner-helper-check php-test-assertions-helper-check dbspec-sqlite-literal-rows-helper-check php-min-check rust-check go-fmt-check go-vet-check rust-fmt-check conformance-refusal-check bind-models-check fuzz-check package-check ts-model-check ts-aes-auth-check ts-codec-errors-check sqlite-version-ts-check sqlite-version-rust-check relation-parent-bind-rust-check interface-typescript-extractor-check collection-php-extension-check model-native-php-extension-check model-chunk-composite-native-php-extension-check feature-unit-check generated-lint-check link-check collection-get-phpstan-check rust-build-environment-check rust-build-outdir-check rust-duplicate-catalog-check php-catalog-bounds-check rust-time-precision-check php-codec-causes-check dbspec-language-check rust-150-check php-extension-build-logs-check rust-compiler-fixtures-check native-error-cause-check request-hook-php-extension-check rust-causes-check go-catalog-session-error-check catalog-php-extension-surface-check go-package-entry-check native-arginfo-php-extension-check request-hook-audit-native-binding-check transaction-failure-php-extension-check transaction-failure-go-check transaction-failure-php-check transaction-failure-typescript-check transaction-failure-python-check transaction-failure-rust-check php-package-entry-check php-extension-package-entry-check rust-package-entry-check typescript-package-entry-check python-package-entry-check interface-api-binding-unit-check native-api-equivalence-check model-query-write-php-extension-unit-check php-lifecycle-extension-native-check complex-query-typescript-unit-check python-complex-query-check complex-query-typescript-request-check makefile-pinned-node-recipes-check audit-native-method-assertions-helper-check rust-closed-executor-check physical-command-case-helper-check typescript-conditional-entry-helper-check typescript-database-case-fixture-helper-check php-plan-cache-memory-check typescript-performance-gate-unit-check typescript-test-exact-keys-check php-go-text-check catalog-value-rust-check catalog-tool-errors-rust-check conformance-recipe-vectors-unit recipe-keys-check
-CI_TARGETS_clients_db = example-check
+CI_TARGETS_clients_db = example-check go-test-check
 CI_TARGETS_performance = perf-check
-CI_TARGETS_client_db_go = client-db-go-check dialect-facts-check go-test-check catalog-connection-check/go dsn-connection-check/go connection-pool-check/go statement-events-check/go model-queries-check/go constraints-and-relations-check/go request-hook-check/go parameter-chunking-check/go aes-rotation-check/go audit-triggers-check/go conformance-verification-check/go complex-query-check/go conformance-generated-methods-check/go conformance-fixed-clock-check/go raw-text-check/go generator-consumer-check/go conformance-result-check/go codec-check/go ir-validate-check/go bind-check/go collection-recipe-check/go column-function-metadata-check/go scalar-subquery-column-check/go split-read-plan-check/go page-cache-unit-check/go recipe-unknown-key-check/go nowait-restore-check/go group-count-boolean-unit-check/go styled-column-states-unit-check/go collection-composite-key-check/go dbspec-verify-errors-check/go
+CI_TARGETS_client_db_go = client-db-go-check dialect-facts-check catalog-connection-check/go dsn-connection-check/go connection-pool-check/go statement-events-check/go model-queries-check/go constraints-and-relations-check/go request-hook-check/go parameter-chunking-check/go aes-rotation-check/go audit-triggers-check/go conformance-verification-check/go complex-query-check/go conformance-generated-methods-check/go conformance-fixed-clock-check/go raw-text-check/go generator-consumer-check/go conformance-result-check/go codec-check/go ir-validate-check/go bind-check/go collection-recipe-check/go column-function-metadata-check/go scalar-subquery-column-check/go split-read-plan-check/go page-cache-unit-check/go recipe-unknown-key-check/go nowait-restore-check/go group-count-boolean-unit-check/go styled-column-states-unit-check/go collection-composite-key-check/go dbspec-verify-errors-check/go
 CI_TARGETS_client_db_php = client-db-php-check php-query-cancellation-check pgsql-pdo-adapter-php-check catalog-connection-check/php dsn-connection-check/php statement-events-check/php model-queries-check/php constraints-and-relations-check/php request-hook-check/php parameter-chunking-check/php aes-rotation-check/php audit-triggers-check/php conformance-verification-check/php complex-query-check/php conformance-generated-methods-check/php conformance-fixed-clock-check/php raw-text-check/php generator-consumer-check/php conformance-result-check/php codec-check/php ir-validate-check/php bind-check/php collection-recipe-check/php column-function-metadata-check/php scalar-subquery-column-check/php page-cache-unit-check/php recipe-unknown-key-check/php nowait-restore-check/php group-count-boolean-unit-check/php styled-column-states-unit-check/php collection-composite-key-check/php dbspec-verify-errors-check/php
 CI_TARGETS_client_db_php_extension = client-db-php-extension-check mysql-tls-php-extension-check mysql-session-php-extension-check php-query-cancellation-extension-check connection-utc-php-extension-check connection-timeout-php-extension-check pgsql-pdo-adapter-php-extension-check catalog-connection-check/php-extension dsn-connection-check/php-extension statement-events-check/php-extension model-queries-check/php-extension constraints-and-relations-check/php-extension php-ext-memory-check request-hook-check/php-extension parameter-chunking-check/php-extension aes-rotation-check/php-extension audit-triggers-check/php-extension conformance-verification-check/php-extension complex-query-check/php-extension conformance-generated-methods-check/php-extension conformance-fixed-clock-check/php-extension raw-text-check/php-extension generator-consumer-check/php-extension codec-check/php-extension ir-validate-check/php-extension collection-recipe-check/php-extension column-function-metadata-check/php-extension scalar-subquery-column-check/php-extension model-types-php-extension-check recipe-unknown-key-check/php-extension nowait-restore-check/php-extension group-count-boolean-unit-check/php-extension styled-column-states-unit-check/php-extension collection-composite-key-check/php-extension dbspec-verify-errors-check/php-extension
 CI_TARGETS_client_db_typescript = client-db-typescript-check connection-pool-resource-bounds-typescript-check catalog-connection-check/typescript dsn-connection-check/typescript connection-pool-check/typescript statement-events-check/typescript model-queries-check/typescript constraints-and-relations-check/typescript request-hook-check/typescript parameter-chunking-check/typescript aes-rotation-check/typescript audit-triggers-check/typescript conformance-verification-check/typescript complex-query-check/typescript conformance-generated-methods-check/typescript conformance-fixed-clock-check/typescript generator-consumer-check/typescript codec-check/typescript ir-validate-check/typescript bind-check/typescript collection-recipe-check/typescript column-function-metadata-check/typescript scalar-subquery-column-check/typescript split-read-plan-check/ts page-cache-unit-check/typescript recipe-unknown-key-check/typescript nowait-restore-check/typescript group-count-boolean-unit-check/typescript styled-column-states-unit-check/typescript collection-composite-key-check/typescript dbspec-verify-errors-check/typescript
@@ -373,34 +373,34 @@ testcase-check/rust:
 client-pooler-check: client-pooler-go-check client-pooler-php-check client-pooler-php-extension-check client-pooler-typescript-check client-pooler-python-check client-pooler-rust-check
 
 .PHONY: client-pooler-go-check
-client-pooler-go-check: lease-tool orm-codes flowmark-check
+client-pooler-go-check: orm-codes-typescript lease-tool flowmark-check
 	$(WITH_TEST_ENV) ORM_CLIENT_DB_LANGS=go ORM_CLIENT_DB_POOLER=1 ORM_PYTHON=$(PYTHON_VENV)/bin/python FLOWMARK=$(FLOWMARK) ORM_TEST_POSTGRES_DSN="$$ORM_TEST_PGBOUNCER_DSN" ORM_TEST_MYSQL_DSN="$$ORM_TEST_PROXYSQL_DSN" node scripts/client-db-test.mts
 
 .PHONY: client-pooler-php-check
-client-pooler-php-check: php-vendor-check php-models orm-codes flowmark-check
+client-pooler-php-check: orm-codes-typescript php-vendor-check php-models flowmark-check
 	$(WITH_TEST_ENV) ORM_CLIENT_DB_LANGS=php ORM_CLIENT_DB_POOLER=1 ORM_PYTHON=$(PYTHON_VENV)/bin/python FLOWMARK=$(FLOWMARK) ORM_TEST_POSTGRES_DSN="$$ORM_TEST_PGBOUNCER_DSN" ORM_TEST_MYSQL_DSN="$$ORM_TEST_PROXYSQL_DSN" node scripts/client-db-test.mts
 
 .PHONY: client-pooler-php-extension-check
-client-pooler-php-extension-check: lease-tool php-vendor-check php-models php-extension-tools-check orm-codes flowmark-check
+client-pooler-php-extension-check: orm-codes-typescript lease-tool php-vendor-check php-models php-extension-tools-check flowmark-check
 	$(WITH_TEST_ENV) ORM_CLIENT_DB_LANGS=php-extension ORM_CLIENT_DB_POOLER=1 ORM_PYTHON=$(PYTHON_VENV)/bin/python FLOWMARK=$(FLOWMARK) ORM_TEST_POSTGRES_DSN="$$ORM_TEST_PGBOUNCER_DSN" ORM_TEST_MYSQL_DSN="$$ORM_TEST_PROXYSQL_DSN" node scripts/client-db-test.mts
 
 .PHONY: client-pooler-typescript-check
-client-pooler-typescript-check: typescript-current orm-codes flowmark-check
+client-pooler-typescript-check: typescript-current flowmark-check
 	$(READ_TYPESCRIPT)
 	$(WITH_TEST_ENV) ORM_CLIENT_DB_LANGS=typescript ORM_CLIENT_DB_POOLER=1 ORM_PYTHON=$(PYTHON_VENV)/bin/python FLOWMARK=$(FLOWMARK) ORM_TEST_POSTGRES_DSN="$$ORM_TEST_PGBOUNCER_DSN" ORM_TEST_MYSQL_DSN="$$ORM_TEST_PROXYSQL_DSN" node scripts/client-db-test.mts
 
 .PHONY: client-pooler-python-check
-client-pooler-python-check: python-venv-check orm-codes flowmark-check
+client-pooler-python-check: orm-codes-typescript python-venv-check flowmark-check
 	$(WITH_TEST_ENV) ORM_CLIENT_DB_LANGS=python ORM_CLIENT_DB_POOLER=1 ORM_PYTHON=$(PYTHON_VENV)/bin/python FLOWMARK=$(FLOWMARK) ORM_TEST_POSTGRES_DSN="$$ORM_TEST_PGBOUNCER_DSN" ORM_TEST_MYSQL_DSN="$$ORM_TEST_PROXYSQL_DSN" node scripts/client-db-test.mts
 
 .PHONY: client-pooler-rust-check
-client-pooler-rust-check: lease-tool orm-codes flowmark-check
+client-pooler-rust-check: orm-codes-typescript lease-tool flowmark-check
 	$(WITH_TEST_ENV) ORM_CLIENT_DB_LANGS=rust ORM_CLIENT_DB_POOLER=1 ORM_PYTHON=$(PYTHON_VENV)/bin/python FLOWMARK=$(FLOWMARK) ORM_TEST_POSTGRES_DSN="$$ORM_TEST_PGBOUNCER_DSN" ORM_TEST_MYSQL_DSN="$$ORM_TEST_PROXYSQL_DSN" node scripts/client-db-test.mts
 
 # runner-check checks the check runner (scripts/check/run.mts) and its run record (scripts/check/record.mts) with a temporary git checkout and stub steps.
 # It does not run the actual targets or databases.
 runner-check:
-	$(NODE) --test scripts/client-db-test.test.mts scripts/check/run.test.mts scripts/check/continue.test.mts scripts/check/step.test.mts scripts/check/downloads.test.mts scripts/check/parity-context.test.mts scripts/json/schema.test.mts
+	$(NODE) --test scripts/client-db-test.test.mts scripts/check/ci-plan.test.mts scripts/check/run.test.mts scripts/check/continue.test.mts scripts/check/step.test.mts scripts/check/downloads.test.mts scripts/check/parity-context.test.mts scripts/json/schema.test.mts
 
 # dbspec-rust-check runs twice each the shared dbspec vectors, the Rust rule cases, the plan and Mermaid cases, and the apply cleanup errors injected through a wrapped SQLite
 # connection.
@@ -1644,24 +1644,24 @@ php-without-mysql-check:
 
 client-db-check: client-db-go-check client-db-php-check client-db-php-extension-check client-db-typescript-check client-db-python-check client-db-rust-check
 
-client-db-go-check: lease-tool orm-codes
+client-db-go-check: orm-codes-typescript lease-tool
 	$(WITH_TEST_ENV) ORM_CLIENT_DB_LANGS=go node scripts/client-db-test.mts
 
-client-db-php-check: php-vendor-check php-models orm-codes
+client-db-php-check: orm-codes-typescript php-vendor-check php-models
 	$(WITH_TEST_ENV) ORM_CLIENT_DB_LANGS=php node scripts/client-db-test.mts
 
-client-db-php-extension-check: lease-tool php-vendor-check php-models php-extension-tools-check orm-codes
+client-db-php-extension-check: orm-codes-typescript lease-tool php-vendor-check php-models php-extension-tools-check
 	$(WITH_TEST_ENV) ORM_CLIENT_DB_LANGS=php-extension node scripts/client-db-test.mts
 
-client-db-typescript-check: typescript-current orm-codes
+client-db-typescript-check: typescript-current
 	$(READ_TYPESCRIPT)
 	$(WITH_TEST_ENV) ORM_CLIENT_DB_LANGS=typescript node scripts/client-db-test.mts
 
-client-db-python-check: python-venv-check orm-codes
+client-db-python-check: orm-codes-typescript python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_statement_fault_entry
 	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_CLIENT_DB_LANGS=python node scripts/client-db-test.mts
 
-client-db-rust-check: lease-tool orm-codes
+client-db-rust-check: orm-codes-typescript lease-tool
 	$(WITH_TEST_ENV) ORM_CLIENT_DB_LANGS=rust node scripts/client-db-test.mts
 
 # The php-ext unit tests that run before the AES rotation stress test, the stress test and root_in_chunking, in one process at the

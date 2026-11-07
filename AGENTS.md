@@ -98,6 +98,10 @@ vendors; this file states only the rules of orm.
   time and first failure lines, which CI publishes as the job summary and uploads with the report
   of that run id, and the job fails when a target failed or did not run.
   Enforced by: `make repo-check`
+- Own: This repository's test recipes declare native build units, case selection, setup dependencies and execution order. Kit invokes repository declarations; it does not discover or manage reusable build artifacts for them. Build reuse follows the native toolchain. A recipe dry run reads the same declarations as execution and reports selected checks, setup, order and unresolved outputs without starting commands. Removing an old execution path preserves its required cases and failure reporting; compatibility paths and alternate runners are not added. A dependency mismatch is resolved against the commands that actually run, never by installing an unrelated runtime to satisfy a checker. Verify coverage and responsibility before comparing elapsed time.
+  Enforced by: none, recipe architecture and complete evidence are reviewed
+- Own: Common recipes describe shared observable behaviour. Tests of a language's compiler, host API or internal implementation use that language's standard test tools. Both belong in the declared execution inventory and must report their actual cases; a native test is not an exemption from coverage. One execution inventory does not require one universal recipe operation model. Add a shared recipe operation for shared behaviour, never a command or script operation solely to wrap an existing native test. Whether JSON can hold an input is not, by itself, a reason to replace a native test or to exempt it from a recipe.
+  Enforced by: none, the test boundary is reviewed against executable cases
 - Own: A test step leaves nothing behind. The check runner and `make feature-owner-check` run each step with a
   temporary directory of its own (`TMPDIR`) and in a process group of its own; a passed step that
   leaves an entry in that directory, a run directory under `.runtime/run`, or a process in its

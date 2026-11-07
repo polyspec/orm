@@ -1,5 +1,5 @@
 <!-- doc-id: plan-cross-verification -->
-<!-- source-sha256: c316099f22247bfe268393b4e4ce9a7c8dc2900b56762de12c46cad023e76f6c -->
+<!-- source-sha256: 2cdb57dfaf5effcecfdca6a3136db4cc43331c3f83d11f79dc6fbf21eb392282 -->
 # corpus SQLite 연결의 여섯 runtime과 네 database 교차 검증
 
 [English](plan.md)
@@ -212,3 +212,56 @@ recipe command와 filter를 보여준다. Lane 내부 command는 순서를 유�
 PHP extension의 cleanup path를 보여준다. Client lane의 미리보기이며 전체 workflow나 native
 helper program 내부 command를 펼치지는 않는다. Client runner unit 파일의 case 13개가 통과했다.
 외부 실행 시 기록을 남기는 stub tool을 둔 CLI case에서도 도구를 호출하지 않았다.
+
+`node scripts/check/ci-plan.mts`는 job 의존 관계, CI group의 target 순서, setup 선택과 Make
+recipe 선언을 미리 보여준다. Make를 호출하지 않고 local reusable workflow와 저장소 setup
+설정을 읽는다. 평가하지 않은 Make expression, GitHub expression, runner가 고르는 command를
+출력에 명시한다. `--group <name>`은 group 목록을 제한한다. 선언의 미리보기이며 workflow나
+native case가 통과했다는 증거가 아니다.
+
+Client lane 미리보기는 Go helper의 native build·test command와 Rust helper의 compile·case
+선택·실행을 펼친다. 실행과 미리보기는 argument 생성 함수를 공유한다. Rust 실행 파일 path는
+compile 전에는 없으므로 Cargo compiler artifact로 명시한다. 큰 미리보기도 stdout 출력이
+끝난 뒤 종료하여 pipe에 완전한 JSON을 전달한다.
+
+열두 direct·pooler client recipe에서 전체 `orm-codes` target을 요구하지 않는다. Runtime
+prerequisite이 자기 catalog를 생성한다. Interface recipe는 아직 TypeScript client로 schema를
+읽으므로 TypeScript code 생성은 유지한다. API checker는 범위를 지정해도 모든 unit과
+implementation 선언을 검사하고, catalog 상수 파일은 선택한 implementation 것만 읽는다.
+범위를 지정하지 않은 검사는 모든 catalog를 읽는다. 단위 시험은 다른 언어의 catalog가 없어도
+선택 검사가 파일을 열지 않고, 전체 검사는 그 파일을 요구하며, 빠진 symbol 선언과 선택한
+catalog의 잘못된 상수를 놓치지 않음을 확인한다. 의존성 checker는 literal client 언어 선택을
+읽고 알 수 없거나 해석되지 않은 선택에는 모든 catalog를 요구한다. Python path를 환경에
+넣는 것만으로 Python을 실행한 것으로 판단하지 않는다. 다른 runtime도 사용하는 Go package 검사는
+cross-runtime example과 함께 `clients_db`에서 실행한다. 따라서 `client_db_go`의 setup 선언은
+PHP나 Python을 선택하지 않는다. Native 동작과 시간은 CI에서 확인해야 한다.
+Provider의 parity setup은 binding implementation마다 모든 runtime을 준비한다. 저장소 target의
+prerequisite을 좁히는 것만으로 이 남은 orchestration 문제가 해결되지는 않는다.
+
+선언·실행기 단위 실행은 292개, 범위를 지정한 API 단위 실행은 5개가 통과한다.
+TypeScript type 검사와 문서 표현 검사도 통과한다. 추가 API·CI 선언 시험은 20개 중 19개가
+통과한다. 전체 catalog 비교가 local 생성 PHP·Python·TypeScript 파일에
+GENERATOR_SCAN_PARSE와 GENERATOR_SCAN_UNATTACHED가 없음을 검출한다. 이 code는
+b46399d3f에서 추가됐다. 이는 checkout의 생성 파일 상태이며 전체 API 검사가 통과했다는
+증거가 아니다. Native 생성과 개선한 CI 전체 실행은 아직 검증하지 않았다.
+
+### 실행 변경에 앞서 정하는 시험의 책임
+
+실행 목록과 동작을 표현하는 연산의 책임은 다르다. 모든 시험은 실행 조건을 선언하고 실제
+case 증거를 보고해야 한다. 그렇다고 compiler나 내부 구현 시험을 모두 공통 동작 recipe의
+언어로 바꿀 필요는 없다.
+
+| 확인한 근거 | 책임 | 설계에 반영할 판단 |
+| --- | --- | --- |
+| packages/ts/tests/generate.mjs, generated typed getter consumer compiler fixture | TypeScript가 typed consumer를 허용하고 raw 대입을 지정 위치의 TS2322로 거부한다 | Compiler를 판단 주체로 유지한다. 공통 runtime 결과는 이 증거를 대신하지 못한다 |
+| packages/go/orm/sqlite_lock_restore_test.go | 가짜 database driver가 PRAGMA와 INSERT 호출을 기록하고 실제 cleanup 경로에 오류를 주입한다 | 내부 seam 시험을 보존한다. 실제 SQLite의 성공은 이 오류 경로를 입증하지 못한다 |
+| recipe.schema.json, argument.text_hex와 argument.datetime | 기존 tagged data가 지원 runtime에서 잘못된 UTF-8 host 문자열과 날짜 값을 표현한다 | JSON으로 입력을 표현할 수 없다는 주장은 실제 형식으로 확인해야 한다. 자동 native 예외 사유가 아니다 |
+| recipe.schema.json, fault.next_rollback | 공통 test-entry 연산이 이미 rollback 오류 동작을 선언한다 | 새 연산이 공통 동작인지 임의 시험 명령을 감싸는 것인지 검토한다 |
+| config/parity.json, native-public-package-entry | 기존 binding이 언어별 package entry 시험을 지목한다 | 언어의 package 해석 검사를 보존하고 실행 조건을 명시한다 |
+
+현재 FCV-2에는 native 예외를 서술하는 줄이 144개 있다. 이는 문서 줄의 수이며 시험 수나
+사유를 검증한 수가 아니다. 각 사유는 검토가 필요하다. 이 수만으로 모든 예외를 유지하거나
+native 시험을 전부 삭제할 근거는 없다. 모든 native 시험을 공통 recipe로 바꾸자는 안은
+구현 목표가 아니다. 이 조사로 범용 command runner, compiler wrapper 언어, build cache를
+새로 만들지 않는다. 기존 shell 기반 언어 선택 검사도 최종 실행 선언과 대조하여 검토해야 하며,
+추론한 실행 목록을 하나 더 만드는 것을 최종 구조로 삼지 않는다.

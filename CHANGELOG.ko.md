@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 558c573f7862501e2fd49e81b4ccd0aa48e5710113104bbc989f7fa70c25e307 -->
+<!-- source-sha256: a3cd6e4b061e99140e6f66d5fc45741ed1acee21bde5c06c1f80b125a10b7be7 -->
 # 변경 이력
 
 ## Unreleased
+
+- CI: job·setup 선언을 미리 보고 Go·Rust 시험 helper를 실행 없이 펼치며 공통 선언 검사와 TypeScript schema 준비를 유지하면서 API catalog 읽기를 선택한 runtime으로 제한하고 cross-runtime Go 검사를 cross-runtime job에 배치한다 (T388).
 
 - CI: `scripts/client-db-test.mts --dry-run`이 도구나 database를 시작하지 않고 실행 command 선언으로 여섯 client database·pooler lane을 미리 보여준다 (T388).
 

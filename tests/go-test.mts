@@ -73,9 +73,21 @@ export function selection(args: string[]): string | undefined {
 /** The end of one go test: its exit code or the signal that ended it, and the number of tests that ran. */
 type GoResult = { code: number | NodeJS.Signals | null; runs: number };
 
+/** The native arguments shared by execution and its preview. */
+export const goArguments = (args: string[], build: boolean): string[] => ['test', ...(build ? [] : ['-json']), ...args];
+
+/** Preview compilation and case execution without starting Go. */
+export function goDryRun(given: string[]) {
+  const args = withTestTags(given);
+  return { mode: 'dry-run', execution: 'not-run', commands: [
+    { phase: 'build', program: 'go', args: goArguments(buildArguments(args), true) },
+    { phase: 'test', program: 'go', args: goArguments(args, false), requires: 'build succeeded' },
+  ] };
+}
+
 function go(args: string[], step?: Step): Promise<GoResult> {
   return new Promise<GoResult>((resolve, reject) => {
-    const child = spawn('go', ['test', ...(step ? [] : ['-json']), ...args], { stdio: step ? ['ignore', 'pipe', 'pipe'] : ['inherit', 'pipe', 'inherit'] });
+    const child = spawn('go', goArguments(args, step !== undefined), { stdio: step ? ['ignore', 'pipe', 'pipe'] : ['inherit', 'pipe', 'inherit'] });
     const lines = step ? stepLines(step) : null;
     // -json in the test arguments asks for the raw test2json stream on standard output (the parity reader of kit reads it).
     const events = step ? null : testEvents(undefined, args.includes('-json'));
@@ -126,10 +138,17 @@ export function testEvents(write: (text: string) => unknown = (text: string) => 
 }
 
 if (process.argv[1] && new URL(import.meta.url).pathname === process.argv[1]) {
-  const given = process.argv.slice(2);
+  const raw = process.argv.slice(2);
+  const dryRun = raw[0] === '--dry-run';
+  const given = dryRun ? raw.slice(1) : raw;
   if (given.length === 0) {
-    console.error('usage: node tests/go-test.mts <go test arguments...>');
+    console.error('usage: node tests/go-test.mts [--dry-run] <go test arguments...>');
     process.exit(2);
+  }
+  if (dryRun) {
+    const text = JSON.stringify(goDryRun(given), null, 2) + '\n';
+    await new Promise<void>((done, fail) => process.stdout.write(text, error => error ? fail(error) : done()));
+    process.exit(0);
   }
   const args = withTestTags(given);
   const pattern = selection(args);

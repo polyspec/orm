@@ -430,6 +430,19 @@ caseTest('the API unit check accepts a unit that names each declared implementat
   assert.deepEqual(apiProblems(root, tinyParity(), new Set(['IR_INVALID']), sources()), []);
 });
 
+caseTest('a scoped API check reads only its selected catalog and retains declaration validation', COMPUTE, () => {
+  const parity = tinyParity();
+  const selected = new Map([...sources()].filter(([path]) => !path.endsWith('.py')));
+  assert.deepEqual(apiProblems(root, parity, new Set(['IR_INVALID']), selected, ['typescript']), []);
+  assert.throws(() => apiProblems(root, parity, new Set(['IR_INVALID']), selected), /ENOENT/);
+  const broken = new Map(selected);
+  broken.set('codes.ts', '');
+  assert.ok(apiProblems(root, parity, new Set(['IR_INVALID']), broken, ['typescript']).some(problem => problem.includes('codes.ts')));
+  parity.units?.[0]?.symbols?.splice(1, 1);
+  assert.ok(apiProblems(root, parity, new Set(['IR_INVALID']), selected, ['typescript']).some(problem => problem.includes('python')));
+  assert.ok(apiProblems(root, tinyParity(), new Set(['IR_INVALID']), sources(), ['unknown']).some(problem => problem.includes('unknown')));
+});
+
 caseTest('the API unit check refuses a unit whose client has no symbol', COMPUTE, () => {
   const parity = tinyParity();
   parity.units?.[0]?.symbols?.splice(1, 1);

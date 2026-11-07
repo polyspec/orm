@@ -163,3 +163,23 @@ caseTest('cargo-test fails when the name filters select no test in any test bina
   }
 });
 
+
+caseTest('Rust helper dry-run renders compilation, selection and execution without Cargo or leases', COMPUTE, () => {
+  const dir = mkdtempSync(join(tmpdir(), 'orm-rust-plan-'));
+  try {
+    const result = spawnSync(process.execPath, [new URL('../../tests/cargo-test.mts', import.meta.url).pathname,
+      '--dry-run', 'recipes', '--', 'cargo', '+fixture-channel', 'test', '--locked', '--test', 'codec_none', 'codec_none::', '--', '--test-threads=1'], {
+      env: isolatedEnvironment({ PATH: dir, HOME: dir }), encoding: 'utf8',
+    });
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    const plan: unknown = JSON.parse(result.stdout);
+    assert.ok(typeof plan === 'object' && plan !== null && 'execution' in plan && 'commands' in plan);
+    assert.equal(plan.execution, 'not-run');
+    assert.ok(Array.isArray(plan.commands));
+    assert.deepEqual(plan.commands[0], { phase: 'build', program: 'cargo',
+      args: ['+fixture-channel', 'test', '--no-run', '--message-format=json-render-diagnostics', '--locked', '--test', 'codec_none'] });
+    assert.match(result.stdout, /--list/);
+    assert.match(result.stdout, /codec_none::/);
+    assert.match(result.stdout, /--test-threads=1/);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});

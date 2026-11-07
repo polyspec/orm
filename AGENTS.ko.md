@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: 7b4ba1189194e3e97622aa839a7964dd144d24c5628aecd2985d2cc186757264 -->
+<!-- source-sha256: b7bb1f4a913d2eb9c506f959172fc492b2c98d4d14772842729786124a1650c9 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -82,6 +82,10 @@ orm 자신의 규칙만 적는다.
   줄을 담은 summary로 끝나고, CI는 그것을 job summary로 내고 그 실행 id의 보고서와 함께 올리며, target이
   실패하거나 실행되지 않으면 job은 실패한다.
   Enforced by: `make repo-check`
+- Own: 저장소의 test recipe가 native build 단위, case 선택, setup 의존성, 실행 순서를 선언한다. Kit은 저장소 선언을 호출하고, 그 build 산출물을 찾아 재사용을 관리하지 않는다. Build 재사용은 native toolchain을 따른다. Recipe dry run은 실제 실행과 같은 선언을 읽고 명령을 시작하지 않은 채 선택한 검사, setup, 순서, 아직 결정되지 않은 출력을 보고한다. 오래된 실행 경로를 제거할 때 필요한 case와 실패 보고를 보존하며 호환 경로나 다른 runner를 추가하지 않는다. 의존성 불일치는 실제 실행 명령을 근거로 해결하고 checker를 만족시키려고 관계없는 runtime을 설치하지 않는다. 실행 시간을 비교하기 전에 검사 범위와 책임을 검증한다.
+  Enforced by: none, recipe 구조와 완전한 증거는 검토로 확인한다
+- Own: 공통 recipe는 함께 관찰할 수 있는 동작을 기술한다. 언어의 compiler, host API, 내부 구현을 검사하는 시험은 해당 언어의 표준 시험 도구를 사용한다. 두 종류 모두 실행 목록에 선언하고 실제 case를 보고하며, native 시험이라는 이유로 검사 범위를 면제하지 않는다. 실행 목록이 하나라고 모든 시험을 표현하는 공통 recipe 연산까지 하나로 만들 필요는 없다. 공통 recipe 연산은 공통 동작을 위해 추가하고, 기존 native 시험을 감싸기 위한 command나 script 연산은 추가하지 않는다. JSON이 입력을 담을 수 있는지 여부만으로 native 시험을 대체하거나 recipe에서 면제하지 않는다.
+  Enforced by: none, 실행 가능한 case를 근거로 시험의 경계를 검토한다
 - Own: test 단계는 아무것도 남기지 않는다. check runner와 `make feature-owner-check`는 단계마다 자기 임시 directory(`TMPDIR`)와
   자기 process group에서 실행한다. 통과한 단계가 그 directory의 entry, `.runtime/run`의 실행 directory, group의
   process를 남기면 그 단계는 남긴 것을 적고 실패하며, 실패한 단계가 남긴 것은 보고서에 들어간다. 어느 쪽이든

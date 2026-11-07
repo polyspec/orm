@@ -37,11 +37,13 @@ function unitID(code: string): string {
  * apiProblems returns each way the error-catalog units of `parity` differ from the catalog `codes`: a code without its unit,
  * a unit that names no code, a declared implementation without its symbol, a symbol of an undeclared implementation, and a
  * symbol that is no constant of the client's catalog file carrying the code. `sources` gives the text of a catalog file by its
- * path in the declaration; without it the file is read from `root`.
+ * path in the declaration; without it the file is read from `root`. A selected implementation list limits catalog reads,
+ * while unit coverage and symbol declarations are still validated for every implementation. Without a selection all catalogs are checked.
  */
-export function apiProblems(root: string, parity: Parity, codes: Set<string>, sources?: Map<string, string>): string[] {
+export function apiProblems(root: string, parity: Parity, codes: Set<string>, sources?: Map<string, string>, selected?: readonly string[]): string[] {
   const problems: string[] = [];
   const members = (parity.implementations ?? []).map(entry => entry.name ?? '');
+  for (const member of selected ?? []) if (!members.includes(member)) problems.push(`selected implementation ${member} is not declared in parity.json`);
   const implementations = new Map((parity.implementations ?? []).map(entry => [entry.name ?? '', entry]));
   const units = (parity.units ?? []).filter(unit => (unit.id ?? '').startsWith(PREFIX));
   const byID = new Map<string, ApiUnit>();
@@ -77,6 +79,7 @@ export function apiProblems(root: string, parity: Parity, codes: Set<string>, so
         problems.push(`${implementation} declares no error catalog file, so ${symbols.join(', ') || '(no symbols)'} of ${id} has no constant to name`);
         continue;
       }
+      if (selected !== undefined && !selected.includes(implementation)) continue;
       const text = sources?.get(errors.file) ?? readFileSync(join(root, errors.file), 'utf8');
       const pattern = new RegExp(errors.pattern);
       const line = text.split('\n').find(candidate => pattern.exec(candidate)?.[1] === code);

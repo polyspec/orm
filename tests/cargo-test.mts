@@ -76,6 +76,22 @@ export function split(command: string[]): { cargo: string[]; options: string[]; 
   return { cargo: command.slice(0, testIndex), options, filters, binaryArgs };
 }
 
+/** The native build command shared by execution and its preview. */
+export function cargoBuildCommand({ cargo, options }: Pick<ReturnType<typeof split>, 'cargo' | 'options'>): string[] {
+  return [...cargo, 'test', '--no-run', '--message-format=json-render-diagnostics', ...options];
+}
+
+/** Artifact paths come from Cargo after compilation, so the preview names their source instead of inventing paths. */
+export function cargoDryRun(command: string[]) {
+  const selection = split(command);
+  const [program, ...args] = cargoBuildCommand(selection);
+  return { mode: 'dry-run', execution: 'not-run', commands: [
+    { phase: 'build', program, args },
+    { phase: 'select', executable: 'test binary from Cargo compiler artifacts', args: ['--list', ...selection.filters, ...selection.binaryArgs], requires: 'build succeeded' },
+    { phase: 'test', executable: 'test binary from Cargo compiler artifacts', args: [...selection.filters, ...selection.binaryArgs], requires: 'build succeeded and selection is nonempty' },
+  ], cleanup: 'remove the owned run directory after execution' };
+}
+
 // executables reads the test binary and its package directory from cargo's JSON messages.
 export function executables(stdout: string): { executable: string; manifestDir: string; target: string }[] {
   const out: { executable: string; manifestDir: string; target: string }[] = [];
@@ -120,7 +136,7 @@ function run(program: string, args: string[], options: { cwd?: string; env?: Nod
 }
 
 async function main() {
-  const args = process.argv.slice(2);
+  let args = process.argv.slice(2);
   if (args[0] === '--copy') {
     // --copy <run dir> -- <cargo build command>: builds under the lease and copies the test binary.
     const [, runDir, separator, program, ...build] = args;
@@ -151,10 +167,17 @@ async function main() {
     writeFileSync(join(runDir, 'binaries.json'), JSON.stringify({ tests: copies, programs: programCopies }, null, 1) + '\n');
     return;
   }
+  const dryRun = args[0] === '--dry-run';
+  if (dryRun) args = args.slice(1);
   const separator = args.indexOf('--');
   if (separator !== 1) throw new Error('usage: node tests/cargo-test.mts <name> -- cargo [+<toolchain>] test ...');
   const name = args[0] ?? '';
-  const { cargo, options, filters, binaryArgs } = split(args.slice(2));
+  const selection = split(args.slice(2));
+  if (dryRun) {
+    console.log(JSON.stringify(cargoDryRun(args.slice(2)), null, 2));
+    return;
+  }
+  const { options, filters, binaryArgs } = selection;
   const { LEASE: lease, CARGO_LEASES: leases } = process.env;
   if (!lease || !leases) throw new Error('LEASE and CARGO_LEASES are unset; run this through make, which exports them');
   // The run directory goes in the checkout's .runtime/run: test binary copies are large, and CI's /tmp is a memory-backed
@@ -167,7 +190,7 @@ async function main() {
     let built = false;
     const passed = await runLong(`rust-build/${name}`, async ({ step }) => {
       const result = await run(lease, ['run', leases, 'exclusive', '--wait', '--', process.execPath, new URL(import.meta.url).pathname, '--copy', runDir, '--',
-        ...cargo, 'test', '--no-run', '--message-format=json-render-diagnostics', ...options], {}, step);
+        ...cargoBuildCommand(selection)], {}, step);
       if (result.code !== 0) throw new Error(`cargo test --no-run exited with ${result.code}`);
       step('exit 0');
       built = true;
