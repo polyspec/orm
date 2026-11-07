@@ -239,7 +239,7 @@ impl T {
     }
 
     /// Returns the row values.
-    pub fn to_array(&self) -> polyspec_orm::Result<polyspec_orm::serde_json::Value> {
+    pub fn to_array(&self) -> polyspec_orm::Result<polyspec_orm::ArrayValue> {
         polyspec_orm::model::to_array(self)
     }
 

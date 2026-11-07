@@ -3,7 +3,6 @@
 # (docs/spec/dsl.md).
 from __future__ import annotations
 
-import base64
 import decimal
 import json
 import math
@@ -170,6 +169,16 @@ def _pascal_of(name: str) -> str:
     return "".join(part[:1].upper() + part[1:] for part in name.split("_"))
 
 
+def _json_column(core, name: str, value):
+    """JSON has no bytes, so the JSON output refuses a bytes value and names its entity and column (COD-26)."""
+    if isinstance(value, (bytes, bytearray, memoryview)):
+        raise OrmError(
+            codes.CODEC_ENCODE,
+            f"{core.ent.entity.name}.{name}: JSON output cannot write bytes",
+        )
+    return value
+
+
 def _column_type(core, name: str) -> str:
     """The dbspec type of a column of the core's entity, or "" when the name is no column."""
     entity = getattr(getattr(core, "ent", None), "entity", None)
@@ -294,9 +303,6 @@ def _json_text(value) -> str:
         return _number_text(value)
     if isinstance(value, str):
         return _string_text(value)
-    if isinstance(value, (bytes, bytearray, memoryview)):
-        # A bytes value is the standard base64 of its bytes, whatever they are (COD-26).
-        return _string_text(base64.b64encode(bytes(value)).decode("ascii"))
     if isinstance(value, (list, tuple)):
         return "[" + ",".join(_json_text(item) for item in value) + "]"
     if isinstance(value, dict):
@@ -565,7 +571,7 @@ class Model:
         return (
             "{"
             + ",".join(
-                f"{_string_text(name)}:{_json_text(_temporal_output(_column_type(self.core, name), value))}"
+                f"{_string_text(name)}:{_json_text(_temporal_output(_column_type(self.core, name), _json_column(self.core, name, value)))}"
                 for name, value in _pairs(self.core)
             )
             + "}"

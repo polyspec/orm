@@ -2360,8 +2360,8 @@ abstract class Model implements \JsonSerializable, ModelMetadata
     // ---- output ----
 
     /**
-     * The row values in row order. For JSON output ($json), a bytes column without a codec stage is the standard
-     * base64 of its bytes, whatever they are (docs/spec/codec.md COD-26); the array form keeps the bytes (COD-27).
+     * The row values in row order. The JSON output ($json) refuses a bytes column without a codec stage with
+     * CODEC_ENCODE (docs/spec/codec.md COD-26); the array form keeps the bytes (COD-27).
      *
      * @return list<array{0: string, 1: mixed}>
      */
@@ -2387,9 +2387,19 @@ abstract class Model implements \JsonSerializable, ModelMetadata
                 $column = $meta['columns'][$name];
                 $type = $column['type'] ?? '';
                 $v = self::columnArrayValue($type, $this->value($name));
-                // A codec stage decodes the stored bytes into its own value, which is not bytes (COD-26).
-                $bytes = $json && $type === 'bytes' && ($column['codec'] ?? []) === [] && is_string($v);
-                $add($name, $bytes ? base64_encode($v) : $v);
+                // A bytes column whose value is the stored bytes, with no codec stage that decodes them into a value of
+                // its own, is a Bytes in the array form, as bytes are in every runtime (COD-27); JSON has no bytes, so
+                // the JSON output refuses it (COD-26).
+                if ($type === 'bytes' && ($column['codec'] ?? []) === [] && is_string($v)) {
+                    if ($json) {
+                        throw new OrmException(
+                            Code::CODEC_ENCODE,
+                            "{$meta['entity']}.$name: JSON output cannot write bytes",
+                        );
+                    }
+                    $v = new Bytes($v);
+                }
+                $add($name, $v);
             } else {
                 $add($name, isset($st['extra_date'][$name])
                     ? self::columnArrayValue('date', $st['extra'][$name] ?? null)

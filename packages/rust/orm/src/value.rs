@@ -1,6 +1,5 @@
 //! Parameter and result values.
 
-use base64::Engine as _;
 use chrono::{NaiveDate, NaiveDateTime};
 
 #[cfg(test)]
@@ -373,7 +372,7 @@ impl Val {
     }
 
     /// The value in array form: datetimes as "YYYY-MM-DD HH:MM:SS.ffffff",
-    /// bytes as their standard base64 (COD-26), decoded styles as they are. An ordered-json value that
+    /// a bytes value as CODEC_ENCODE (COD-26), decoded styles as they are. An ordered-json value that
     /// serde_json cannot represent returns CODEC_ENCODE.
     pub fn to_json(&self) -> crate::Result<serde_json::Value> {
         Ok(match self {
@@ -382,8 +381,8 @@ impl Val {
             Val::F64(x) if x.is_finite() => serde_json::json!(x),
             Val::F64(_) => return Err(decode_value("non-finite f64 cannot be JSON")),
             Val::Str(s) => serde_json::json!(s),
-            // A bytes value is the standard base64 of its bytes, whatever they are (COD-26).
-            Val::Bytes(b) => serde_json::json!(base64::engine::general_purpose::STANDARD.encode(b)),
+            // JSON has no bytes, so the JSON output refuses a bytes value (COD-26).
+            Val::Bytes(_) => return Err(crate::Error::Engine { code: crate::codes::CODEC_ENCODE.into(), msg: "JSON output cannot write bytes".into() }),
             Val::DateTime(t) => serde_json::json!(t.format("%Y-%m-%d %H:%M:%S%.6f").to_string()),
             Val::Date(d) => serde_json::json!(d.to_string()),
             Val::Bool(b) => serde_json::json!(b),

@@ -3642,10 +3642,10 @@ class _ChainBuild:
 
 
 def _row_json(row, pick) -> Any:
-    """The JSON of a row, narrowed to pick when it is named; a missing row is None."""
+    """The array form of a row (COD-27) as plain JSON, narrowed to pick when it is named; a missing row is None (FCV-4)."""
     if row is None:
         return None
-    values = json.loads(row.to_json_text())
+    values = _plain_json(row.to_array())
     if not pick:
         return values
     missing = [name for name in pick if name not in values]
@@ -3908,6 +3908,14 @@ def _table_model_get_by(step: dict, context: dict) -> dict:
     row = _chain_built(step, context).get()
     if step.get("json_output") is True and row is not None:
         return {"json": row.to_json_text()}
+    if "array_text" in step and row is not None:
+        tagged = row.to_array()[step["array_text"]]
+        document = tagged.get("value") if isinstance(tagged, dict) else None
+        if not isinstance(document, OrderedJson):
+            raise AssertionError(
+                f"array_text: the array form of {step['array_text']} holds {tagged!r}"
+            )
+        return {"json": document.compact()}
     if "ordered_text" in step and row is not None:
         return {"json": row.core.values[step["ordered_text"]].payload().raw}
     fields = {"json": _row_json(row, step.get("pick"))}
@@ -3991,14 +3999,24 @@ def _key_json(key):
 
 
 def _plain_json(value) -> Any:
-    """A value of the API as plain JSON."""
+    """A value of the API as plain JSON; bytes are their bytes_hex wrapper (FCV-4)."""
     if isinstance(value, dict):
         return {key: _plain_json(item) for key, item in value.items()}
     if isinstance(value, (list, tuple)):
         return [_plain_json(item) for item in value]
     if isinstance(value, (bytes, bytearray, memoryview)):
-        return bytes(value).decode("utf-8", "surrogateescape")
+        return {"bytes_hex": bytes(value).hex()}
+    if isinstance(value, OrderedJson):
+        return json.loads(value.compact(), parse_float=_finite_float)
     return value
+
+
+def _finite_float(text: str) -> float:
+    """A JSON number as a binary64; a number that has none, such as 1e400, is refused, not read as inf."""
+    number = float(text)
+    if not math.isfinite(number):
+        raise AssertionError(f"the number {text} has no binary64 form")
+    return number
 
 
 def _utils_lock(step: dict, context: dict) -> dict:

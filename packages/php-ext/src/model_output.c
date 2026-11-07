@@ -6,7 +6,6 @@
 #include "Zend/zend_interfaces.h"
 #include "Zend/zend_smart_str.h"
 #include "ext/json/php_json.h"
-#include "ext/standard/base64.h"
 #include "orm_exception_object.h"
 
 static zend_class_entry *output_class(const char *name)
@@ -106,6 +105,7 @@ static void output_append(zval *out, HashTable *seen, zend_string *name, zval *v
 }
 
 static void model_output_values(zend_object *object, zval *out, bool pairs, bool json);
+static void output_throw(const char *code_name, const char *message);
 
 /* The value of a related row: its array form, or for JSON output (json) the row itself, which output_json_text writes by
    its toJson and json_encode by its jsonSerialize, as Model::pairs(true) keeps it. */
@@ -194,16 +194,41 @@ static void output_model_column(zend_object *object, zval *out, HashTable *seen,
         } else {
             output_column_value(column, &value, &converted);
         }
-        /* COD-26: the JSON output writes a bytes column without a codec stage as the standard base64 of its bytes, whatever
-           they are; a codec stage decodes the stored bytes into its own value, which is not bytes. */
-        zval *type = json ? output_assoc(column, "type") : NULL;
-        zval *stages = json ? output_assoc(column, "codec") : NULL;
+        /* A bytes column whose value is the stored bytes, with no codec stage that decodes them into a value of its own,
+           is a Bytes in the array form, as bytes are in every runtime (COD-27); JSON has no bytes, so the JSON output
+           refuses it and names its entity and column (COD-26). */
+        zval *type = output_assoc(column, "type");
+        zval *stages = output_assoc(column, "codec");
         bool no_stage = stages == NULL || Z_TYPE_P(stages) != IS_ARRAY || zend_hash_num_elements(Z_ARRVAL_P(stages)) == 0;
         if (EG(exception) == NULL && type != NULL && Z_TYPE_P(type) == IS_STRING && zend_string_equals_literal(Z_STR_P(type), "bytes")
             && no_stage && Z_TYPE(converted) == IS_STRING) {
-            zend_string *encoded = php_base64_encode((const unsigned char *) Z_STRVAL(converted), Z_STRLEN(converted));
-            zval_ptr_dtor(&converted);
-            ZVAL_STR(&converted, encoded);
+            if (json) {
+                zval meta; ZVAL_UNDEF(&meta);
+                zend_call_method_with_0_params(NULL, object->ce, NULL, "meta", &meta);
+                zval *entity = EG(exception) == NULL && Z_TYPE(meta) == IS_ARRAY ? output_assoc(&meta, "entity") : NULL;
+                if (EG(exception) == NULL) {
+                    smart_str message = {0};
+                    smart_str_append_printf(&message, "%s.%s: JSON output cannot write bytes",
+                        entity != NULL && Z_TYPE_P(entity) == IS_STRING ? Z_STRVAL_P(entity) : "", ZSTR_VAL(key));
+                    zend_string *text = smart_str_extract(&message);
+                    output_throw("CODEC_ENCODE", ZSTR_VAL(text));
+                    zend_string_release(text);
+                }
+                if (Z_TYPE(meta) != IS_UNDEF) zval_ptr_dtor(&meta);
+            } else {
+                zend_string *name = zend_string_init("Polyspec\\Orm\\Bytes", sizeof("Polyspec\\Orm\\Bytes") - 1, 0);
+                zend_class_entry *bytes_ce = zend_lookup_class(name);
+                zend_string_release(name);
+                if (bytes_ce == NULL) {
+                    output_throw("CODEC_ENCODE", "the class Polyspec\\Orm\\Bytes is not loaded");
+                } else {
+                    zval bytes;
+                    object_init_ex(&bytes, bytes_ce);
+                    zend_call_known_instance_method_with_1_params(bytes_ce->constructor, Z_OBJ(bytes), NULL, &converted);
+                    zval_ptr_dtor(&converted);
+                    ZVAL_COPY_VALUE(&converted, &bytes);
+                }
+            }
         }
         if (EG(exception) != NULL) {
             if (Z_TYPE(converted) != IS_UNDEF) zval_ptr_dtor(&converted);

@@ -4596,13 +4596,13 @@ final class Recipe
         return [implode('And', $names), $args];
     }
 
-    /** The JSON of a row, narrowed to pick when it is named; a missing row is null. */
+    /** The array form of a row (COD-27) as plain JSON, narrowed to pick when it is named; a missing row is null (FCV-4). */
     private static function chainRow(?Model $row, ?array $pick): mixed
     {
         if ($row === null) {
             return null;
         }
-        $values = json_decode($row->toJson(), true, 512, JSON_THROW_ON_ERROR);
+        $values = self::plainArray($row->toArray());
         if ($pick === null || $pick === []) {
             return $values;
         }
@@ -4614,6 +4614,38 @@ final class Recipe
             $out[$name] = $values[$name];
         }
         return $out;
+    }
+
+    /** A value of the array form as plain JSON: bytes are their bytes_hex wrapper (FCV-4), and every other value is its JSON. */
+    private static function plainArray(mixed $value): mixed
+    {
+        if ($value instanceof Bytes) {
+            return ['bytes_hex' => bin2hex($value->bytes)];
+        }
+        if ($value instanceof OrderedJson) {
+            $text = \Polyspec\OrderedJson\stringify($value);
+            return self::finiteNumbers(json_decode($text, true, 512, JSON_THROW_ON_ERROR));
+        }
+        if (is_array($value)) {
+            return array_map(self::plainArray(...), $value);
+        }
+        if (is_object($value)) {
+            $text = json_encode($value, JSON_THROW_ON_ERROR | JSON_PRESERVE_ZERO_FRACTION);
+            return json_decode($text, true, 512, JSON_THROW_ON_ERROR);
+        }
+        return $value;
+    }
+
+    /** A decoded JSON value whose numbers each have a binary64 form; a number such as 1e400 is refused, not read as INF. */
+    private static function finiteNumbers(mixed $value): mixed
+    {
+        if (is_float($value) && !is_finite($value)) {
+            Assert::fail('a number of the document has no binary64 form');
+        }
+        if (is_array($value)) {
+            array_map(self::finiteNumbers(...), $value);
+        }
+        return $value;
     }
 
     /** The expect of the database of the case compares rows of wrappers. */
@@ -4766,6 +4798,15 @@ final class Recipe
                 }
                 if (($s['json_output'] ?? false) === true && $row !== null) {
                     return ['json' => $row->toJson()];
+                }
+                if (isset($s['array_text']) && $row !== null) {
+                    $tagged = $row->toArray()[$s['array_text']] ?? null;
+                    $document = is_array($tagged) ? ($tagged['value'] ?? null) : null;
+                    if (!$document instanceof OrderedJson) {
+                        $held = get_debug_type($tagged);
+                        Assert::fail("array_text: the array form of {$s['array_text']} holds $held");
+                    }
+                    return ['json' => \Polyspec\OrderedJson\stringify($document)];
                 }
                 if (isset($s['ordered_text']) && $row !== null) {
                     return ['json' => $row->{'get' . self::pascal($s['ordered_text'])}()->payload()->raw()];

@@ -5509,6 +5509,7 @@ mod tables {
     use serde_json::{json, Map, Value};
 
     use super::{database_trials_written_order, ModelDispatcher, WRITTEN_ORDER};
+    use crate::plain::Plain;
     use crate::bench_models::{bench_config, CaseModels, Connections};
 
     /// The kinds of the read requests (the hook kinds reads and reads+restore).
@@ -6118,7 +6119,7 @@ mod tables {
 
     /// The toArray of a row, narrowed to pick when it is named.
     fn row_json(row: &TableRow, pick: &Value) -> Result<Value, String> {
-        let values = to_array(row).map_err(orm)?;
+        let values = to_array(row).and_then(|values| values.plain()).map_err(orm)?;
         let wanted = names(pick);
         if wanted.is_empty() {
             return Ok(values);
@@ -6392,13 +6393,13 @@ mod tables {
                 let groups = gets_count(&root).await.map_err(orm)?;
                 let row = groups.iter().next().ok_or_else(|| format!("group_value {name}: the aggregate has no group row"))?;
                 row.value(name).map_err(orm)?;
-                return Ok(json!({ "json": row.to_array().map_err(orm)?[name].clone() }));
+                return Ok(json!({ "json": row.to_array().map_err(orm)?[name].plain().map_err(orm)? }));
             }
             if let Some(aggregate) = crate::recipe_reads::read(step, "aggregate").get("aggregate") {
                 return Ok(json!({ "json": match aggregate["agg"].as_str() {
                     Some("sum") => json!(get_sum(root.core()).await.map_err(orm)?),
                     Some("avg") => json!(get_avg(root.core()).await.map_err(orm)?),
-                    _ => gets_count(&root).await.map_err(orm)?.to_array().map_err(orm)?,
+                    _ => gets_count(&root).await.map_err(orm)?.to_array().map_err(orm)?.plain().map_err(orm)?,
                 } }));
             }
             if crate::recipe_reads::read(step, "page")["page"].as_bool() == Some(true) || !crate::recipe_reads::read(step, "plan_page")["plan_page"].is_null() {
@@ -6861,6 +6862,13 @@ mod tables {
                     if crate::recipe_reads::read(step, "json_output")["json_output"] == json!(true) {
                         return Ok(json!({ "json": polyspec_orm::model::to_json(&row).map_err(orm)? }));
                     }
+                    if let Some(column) = crate::recipe_reads::read(step, "array_text")["array_text"].as_str() {
+                        let values = to_array(&row).map_err(orm)?;
+                        return match &values[column]["value"] {
+                            polyspec_orm::ArrayValue::Ordered(document) => Ok(json!({ "json": document.compact() })),
+                            other => Err(format!("array_text: the array form of {column} holds {other:?}")),
+                        };
+                    }
                     if let Some(column) = crate::recipe_reads::read(step, "ordered_text")["ordered_text"].as_str() {
                         return match row.value(column) {
                             Some(Val::Ordered(value)) => Ok(json!({ "json": value.raw() })),
@@ -6929,7 +6937,7 @@ mod tables {
             .map(|column| {
                 // A temporal cell is the text of the value model (PRT-69), as the other runtimes read it.
                 if entity.field(column).is_some_and(|field| matches!(field.ty, Type::Date | Type::Time(_) | Type::DateTime(_))) {
-                    if let Some(text) = to_array(row).map_err(orm)?.get(column).and_then(Value::as_str) {
+                    if let Some(text) = to_array(row).map_err(orm)?.get(column).and_then(polyspec_orm::ArrayValue::as_str) {
                         return Ok(json!({ "text": text }));
                     }
                 }

@@ -8,6 +8,7 @@ package recipe
 import (
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"slices"
@@ -130,6 +131,7 @@ type chainStep struct {
 	Pick            []string                   `json:"pick"`
 	KeyBy           string                     `json:"key_by"`
 	OrderedText     string                     `json:"ordered_text"`
+	ArrayText       string                     `json:"array_text"`
 	BytesHexOf      string                     `json:"bytes_hex_of"`
 	JSONOutput      bool                       `json:"json_output"`
 	GroupValue      string                     `json:"group_value"`
@@ -276,6 +278,24 @@ func orderedText(row *tableRow, column string) (string, error) {
 		return "", fmt.Errorf("ordered_text: the value of %s is a %T", column, data)
 	}
 	return value.Raw(), nil
+}
+
+// arrayText is the compact text of the styled document of a column in the array form of the row (COD-27).
+func arrayText(row *tableRow, column string) (string, error) {
+	value, ok := row.m.ToArray()[column]
+	if !ok {
+		return "", fmt.Errorf("array_text: the row has no field %s", column)
+	}
+	styled, ok := value.(orm.StyledValue)
+	if !ok {
+		return "", fmt.Errorf("array_text: the array form of %s is a %T", column, value)
+	}
+	data, _ := styled.Data()
+	document, ok := data.(*orderedjson.Value)
+	if !ok {
+		return "", fmt.Errorf("array_text: the styled value of %s is a %T", column, data)
+	}
+	return document.Compact()
 }
 
 // chainPlain is a member of a styled object: the native value of its wrapper, without the styled-value wrapping.
@@ -912,7 +932,38 @@ func chainRows(rows []*tableRow, pick []string) ([]any, error) {
 
 // jsonOutcome is the outcome of a step whose expect is {"json": <value>}.
 func jsonOutcome(value any) outcome {
-	return outcome{fields: map[string]any{"json": value}}
+	return outcome{fields: map[string]any{"json": plainBytes(value)}}
+}
+
+// plainBytes is a value of the array form with each bytes value as its bytes_hex wrapper (FCV-4), so a json result
+// compares bytes as bytes in every runtime and not as the base64 text of encoding/json.
+func plainBytes(value any) any {
+	switch v := value.(type) {
+	case []byte:
+		if v == nil {
+			return nil
+		}
+		return map[string]any{"bytes_hex": hex.EncodeToString(v)}
+	case map[string]any:
+		out := make(map[string]any, len(v))
+		for key, item := range v {
+			out[key] = plainBytes(item)
+		}
+		return out
+	case []map[string]any:
+		out := make([]any, len(v))
+		for i, item := range v {
+			out[i] = plainBytes(item)
+		}
+		return out
+	case []any:
+		out := make([]any, len(v))
+		for i, item := range v {
+			out[i] = plainBytes(item)
+		}
+		return out
+	}
+	return value
 }
 
 // chainOp runs a model op of the table path.
@@ -985,10 +1036,22 @@ func chainOp(raw json.RawMessage, c *databaseContext, reads *stepReads) (outcome
 		}
 		if s.k("json_output").JSONOutput && row != nil {
 			text, err := json.Marshal(row.m)
+			// encoding/json wraps the error of MarshalJSON; the caller reads the orm error inside it (COD-26).
+			var wrapped *json.MarshalerError
+			if errors.As(err, &wrapped) {
+				return outcome{}, wrapped.Unwrap()
+			}
 			if err != nil {
 				return outcome{}, err
 			}
 			return jsonOutcome(string(text)), nil
+		}
+		if s.k("array_text").ArrayText != "" && row != nil {
+			text, err := arrayText(row, s.k("array_text").ArrayText)
+			if err != nil {
+				return outcome{}, err
+			}
+			return jsonOutcome(text), nil
 		}
 		if s.k("ordered_text").OrderedText != "" && row != nil {
 			text, err := orderedText(row, s.k("ordered_text").OrderedText)

@@ -821,7 +821,7 @@
   },
   "packages/rust/build/src/fixed.rs.txt::T::to_array": {
     "exported": false,
-    "signature": "pub fn to_array (\u0026 self) -\u003e polyspec_orm :: Result \u003c polyspec_orm :: serde_json :: Value \u003e"
+    "signature": "pub fn to_array (\u0026 self) -\u003e polyspec_orm :: Result \u003c polyspec_orm :: ArrayValue \u003e"
   },
   "packages/rust/build/src/fixed.rs.txt::T::to_json": {
     "exported": false,
@@ -2267,6 +2267,54 @@
     "exported": true,
     "signature": "pub fn year () -\u003e Func"
   },
+  "packages/rust/orm/src/array.rs::ArrayValue": {
+    "exported": true,
+    "signature": "pub enum ArrayValue  { Null , Bool (bool) , Int (i64) , Float (f64) , Text (String) , Bytes (Vec \u003c u8 \u003e) , # [doc = \" A serde_json value: a styled value that a codec reads, or a value added to the row.\"] Json (serde_json :: Value) , # [doc = \" An ordered-json value, with its member order and number text as stored.\"] Ordered (ordered_json :: Value) , # [doc = \" A row: its values by name, in row order.\"] Map (IndexMap \u003c String , ArrayValue \u003e) , # [doc = \" The rows of a collection, in collection order.\"] List (Vec \u003c ArrayValue \u003e) }"
+  },
+  "packages/rust/orm/src/array.rs::ArrayValue as PartialEq::eq": {
+    "exported": true,
+    "signature": " fn eq (\u0026 self , other : \u0026 ArrayValue) -\u003e bool"
+  },
+  "packages/rust/orm/src/array.rs::ArrayValue as std :: ops :: Index \u003c \u0026 str \u003e::Output": {
+    "exported": true,
+    "signature": "type Output = ArrayValue ;"
+  },
+  "packages/rust/orm/src/array.rs::ArrayValue as std :: ops :: Index \u003c \u0026 str \u003e::index": {
+    "exported": true,
+    "signature": " fn index (\u0026 self , name : \u0026 str) -\u003e \u0026 ArrayValue"
+  },
+  "packages/rust/orm/src/array.rs::ArrayValue as std :: ops :: Index \u003c usize \u003e::Output": {
+    "exported": true,
+    "signature": "type Output = ArrayValue ;"
+  },
+  "packages/rust/orm/src/array.rs::ArrayValue as std :: ops :: Index \u003c usize \u003e::index": {
+    "exported": true,
+    "signature": " fn index (\u0026 self , i : usize) -\u003e \u0026 ArrayValue"
+  },
+  "packages/rust/orm/src/array.rs::ArrayValue::as_bytes": {
+    "exported": true,
+    "signature": "pub fn as_bytes (\u0026 self) -\u003e Option \u003c \u0026 [u8] \u003e"
+  },
+  "packages/rust/orm/src/array.rs::ArrayValue::as_list": {
+    "exported": true,
+    "signature": "pub fn as_list (\u0026 self) -\u003e Option \u003c \u0026 [ArrayValue] \u003e"
+  },
+  "packages/rust/orm/src/array.rs::ArrayValue::as_map": {
+    "exported": true,
+    "signature": "pub fn as_map (\u0026 self) -\u003e Option \u003c \u0026 IndexMap \u003c String , ArrayValue \u003e \u003e"
+  },
+  "packages/rust/orm/src/array.rs::ArrayValue::as_str": {
+    "exported": true,
+    "signature": "pub fn as_str (\u0026 self) -\u003e Option \u003c \u0026 str \u003e"
+  },
+  "packages/rust/orm/src/array.rs::ArrayValue::get": {
+    "exported": true,
+    "signature": "pub fn get (\u0026 self , name : \u0026 str) -\u003e Option \u003c \u0026 ArrayValue \u003e"
+  },
+  "packages/rust/orm/src/array.rs::ArrayValue::of": {
+    "exported": false,
+    "signature": "pub (crate) fn of (value : \u0026 Val) -\u003e ArrayValue"
+  },
   "packages/rust/orm/src/bind_check.rs::ParamSlot": {
     "exported": false,
     "signature": "pub (crate) struct ParamSlot \u003c 'a \u003e { pub (crate) ty : \u0026 'a str , pub (crate) precision : i64 , pub (crate) scale : i64 , pub (crate) length : i64 , # [doc = \" The assignment of the non-null column `column`.\"] pub (crate) not_null : bool , pub (crate) column : \u0026 'a str , }"
@@ -2649,7 +2697,7 @@
   },
   "packages/rust/orm/src/collection.rs::AnyCollection::to_array_dyn": {
     "exported": true,
-    "signature": "fn to_array_dyn (\u0026 self) -\u003e crate :: Result \u003c serde_json :: Value \u003e"
+    "signature": "fn to_array_dyn (\u0026 self) -\u003e crate :: Result \u003c ArrayValue \u003e"
   },
   "packages/rust/orm/src/collection.rs::AnyCollection::to_json_dyn": {
     "exported": true,
@@ -2669,7 +2717,7 @@
   },
   "packages/rust/orm/src/collection.rs::Collection \u003c M \u003e as AnyCollection::to_array_dyn": {
     "exported": true,
-    "signature": " fn to_array_dyn (\u0026 self) -\u003e crate :: Result \u003c serde_json :: Value \u003e"
+    "signature": " fn to_array_dyn (\u0026 self) -\u003e crate :: Result \u003c ArrayValue \u003e"
   },
   "packages/rust/orm/src/collection.rs::Collection \u003c M \u003e as AnyCollection::to_json_dyn": {
     "exported": true,
@@ -2737,7 +2785,7 @@
   },
   "packages/rust/orm/src/collection.rs::Collection \u003c M \u003e::to_array": {
     "exported": true,
-    "signature": "pub fn to_array (\u0026 self) -\u003e crate :: Result \u003c serde_json :: Value \u003e"
+    "signature": "pub fn to_array (\u0026 self) -\u003e crate :: Result \u003c ArrayValue \u003e"
   },
   "packages/rust/orm/src/collection.rs::Collection \u003c M \u003e::to_json": {
     "exported": true,
@@ -2785,7 +2833,7 @@
   },
   "packages/rust/orm/src/collection.rs::GroupRow::to_array": {
     "exported": true,
-    "signature": "pub fn to_array (\u0026 self) -\u003e Result \u003c serde_json :: Value \u003e"
+    "signature": "pub fn to_array (\u0026 self) -\u003e Result \u003c ArrayValue \u003e"
   },
   "packages/rust/orm/src/collection.rs::GroupRow::to_json": {
     "exported": true,
@@ -2829,7 +2877,7 @@
   },
   "packages/rust/orm/src/collection.rs::GroupRows::to_array": {
     "exported": true,
-    "signature": "pub fn to_array (\u0026 self) -\u003e Result \u003c serde_json :: Value \u003e"
+    "signature": "pub fn to_array (\u0026 self) -\u003e Result \u003c ArrayValue \u003e"
   },
   "packages/rust/orm/src/collection.rs::GroupRows::to_json": {
     "exported": true,
@@ -7467,6 +7515,10 @@
     "exported": false,
     "signature": "pub (crate) fn column_decode_error (entity : \u0026 str , column : \u0026 str , error : Error) -\u003e Error"
   },
+  "packages/rust/orm/src/model.rs::column_output_error": {
+    "exported": false,
+    "signature": " fn column_output_error (entity : \u0026 str , column : \u0026 str , value : \u0026 Val , error : Error) -\u003e Error"
+  },
   "packages/rust/orm/src/model.rs::create": {
     "exported": true,
     "signature": "pub async fn create \u003c M : Model \u003e (m : \u0026 mut M) -\u003e Result \u003c M \u003e"
@@ -7693,7 +7745,7 @@
   },
   "packages/rust/orm/src/model.rs::to_array": {
     "exported": true,
-    "signature": "pub fn to_array (m : \u0026 dyn AnyModel) -\u003e Result \u003c serde_json :: Value \u003e"
+    "signature": "pub fn to_array (m : \u0026 dyn AnyModel) -\u003e Result \u003c ArrayValue \u003e"
   },
   "packages/rust/orm/src/model.rs::to_json": {
     "exported": true,

@@ -41,8 +41,8 @@
   "symbol_hashes": {
     "go": "sha256:694bdabbd421e1a7cd1a7b2d7ddc64f6b0b4d3955a7c1d62b1c359c3abf4651e",
     "php": "sha256:149bd2a7aac427cd636d4e3e34b1b01bef6314fb0f08029b77f965ad0d801140",
-    "rust": "sha256:7585c04d349b3c28ceaad71d1b7b64c2bf83faae61f6e7458d5387fc92bac572",
-    "typescript": "sha256:469de1f12bd2b3b844580c305e7533a8ed385307f6b7dc54a83c254893d014c6",
+    "rust": "sha256:bc43c36a646a6be0351c40ab5a2e095bf5680ab9004dcff818b290afa3a8c7e8",
+    "typescript": "sha256:51e9c21724e01a35d6fbfa746169f4a6e5606ba39106fa9c43af9febf327d97d",
     "python": "sha256:36e79dabf4d4cfdbf736ff1248433421faeba77bdf48df8e586cb000b60f3623"
   },
   "native_surfaces": [
@@ -1631,7 +1631,7 @@
         },
         "rust": {
           "symbol": "packages/rust/build/src/fixed.rs.txt::T::to_array",
-          "signature": "pub fn to_array(&self) -> polyspec_orm::Result<polyspec_orm::serde_json::Value>"
+          "signature": "pub fn to_array(&self) -> polyspec_orm::Result<polyspec_orm::ArrayValue>"
         },
         "typescript": {
           "symbol": "packages/ts/src/model.ts::Model.toArray",
@@ -1846,7 +1846,7 @@
         },
         "rust": {
           "symbol": "packages/rust/orm/src/collection.rs::Collection < M >::to_array",
-          "signature": "pub fn to_array (& self) -> crate :: Result < serde_json :: Value >"
+          "signature": "pub fn to_array (& self) -> crate :: Result < ArrayValue >"
         },
         "typescript": {
           "symbol": "packages/ts/src/model.ts::Collection.toArray",

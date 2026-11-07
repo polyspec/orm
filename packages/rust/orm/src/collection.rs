@@ -5,6 +5,7 @@ use std::collections::HashMap;
 
 use chrono::{DateTime, NaiveDateTime, Utc};
 
+use crate::array::ArrayValue;
 use crate::model::{AnyModel, Model};
 use crate::value::{Param, Val};
 use crate::{Error, Result};
@@ -261,9 +262,9 @@ impl<M: Model> Collection<M> {
         Ok(format!("[{}]", self.models().map(|m| crate::model::to_json(m)).collect::<crate::Result<Vec<_>>>()?.join(",")))
     }
 
-    /// The models as arrays; CODEC_ENCODE when a value has no serde_json form.
-    pub fn to_array(&self) -> crate::Result<serde_json::Value> {
-        Ok(serde_json::Value::Array(self.models().map(|m| crate::model::to_array(m)).collect::<crate::Result<_>>()?))
+    /// The array form of each model, in collection order (COD-27).
+    pub fn to_array(&self) -> crate::Result<ArrayValue> {
+        Ok(ArrayValue::List(self.models().map(|m| crate::model::to_array(m)).collect::<crate::Result<_>>()?))
     }
 }
 
@@ -271,7 +272,7 @@ impl<M: Model> Collection<M> {
 pub trait AnyCollection: Any + Send + Sync {
     fn models_dyn(&self) -> Vec<&dyn AnyModel>;
     fn as_any(&self) -> &dyn Any;
-    fn to_array_dyn(&self) -> crate::Result<serde_json::Value>;
+    fn to_array_dyn(&self) -> crate::Result<ArrayValue>;
     fn to_json_dyn(&self) -> crate::Result<String>;
 }
 
@@ -284,7 +285,7 @@ impl<M: Model> AnyCollection for Collection<M> {
         self
     }
 
-    fn to_array_dyn(&self) -> crate::Result<serde_json::Value> {
+    fn to_array_dyn(&self) -> crate::Result<ArrayValue> {
         self.to_array()
     }
 
@@ -341,12 +342,9 @@ impl GroupRow {
             .ok_or_else(|| crate::Error::Engine { code: crate::codes::COLUMN_UNSELECTED.into(), msg: format!("group result has no selected column {name}") })
     }
 
-    pub fn to_array(&self) -> Result<serde_json::Value> {
-        let mut values = serde_json::Map::new();
-        for (name, value) in &self.values {
-            values.insert(name.clone(), value.to_json()?);
-        }
-        Ok(serde_json::Value::Object(values))
+    /// The selected values by name, with `row_count`, in the array form of every runtime (COD-27, INT-69).
+    pub fn to_array(&self) -> Result<ArrayValue> {
+        Ok(ArrayValue::Map(self.values.iter().map(|(name, value)| (name.clone(), ArrayValue::of(value))).collect()))
     }
 
     pub fn to_json(&self) -> Result<String> {
@@ -405,8 +403,9 @@ impl GroupRows {
         self.rows.iter()
     }
 
-    pub fn to_array(&self) -> Result<serde_json::Value> {
-        Ok(serde_json::Value::Array(self.rows.iter().map(GroupRow::to_array).collect::<Result<Vec<_>>>()?))
+    /// The array form of each group row, in result order (INT-71).
+    pub fn to_array(&self) -> Result<ArrayValue> {
+        Ok(ArrayValue::List(self.rows.iter().map(GroupRow::to_array).collect::<Result<Vec<_>>>()?))
     }
 
     pub fn to_json(&self) -> Result<String> {

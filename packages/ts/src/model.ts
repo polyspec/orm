@@ -1038,7 +1038,7 @@ function temporalOutput(columnType: string, value: unknown): unknown {
  * returns the same text.
  */
 function toJson(c: Core): Record<string, unknown> {
-  return Object.fromEntries(pairs(c).map(([k, v]) => [k, temporalOutput(fieldOf(c.ent.entity, k)?.type ?? '', jsonValue(v))]));
+  return Object.fromEntries(pairs(c).map(([k, v]) => [k, temporalOutput(fieldOf(c.ent.entity, k)?.type ?? '', jsonValue(jsonColumn(c, k, v)))]));
 }
 
 /** A value for JSON.stringify with each bigint, at any depth, as a raw JSON number of its exact digits (COD-26). */
@@ -1075,13 +1075,12 @@ function jsonText(value: unknown): string {
   if (value instanceof OrderedJsonValue) return orderedJsonStringify(value);
   if (isModel(value)) return rowText(value[CORE]);
   if (value instanceof Collection) return value.toJSONText();
-  if (value instanceof Uint8Array) return JSON.stringify(bytesBase64(value));
   return JSON.stringify(exactIntegers(arrayValue(value)) ?? null);
 }
 
 /** The JSON text of a row, members in row order. */
 function rowText(c: Core): string {
-  return `{${pairs(c).map(([k, v]) => `${JSON.stringify(k)}:${jsonText(temporalOutput(fieldOf(c.ent.entity, k)?.type ?? '', v))}`).join(',')}}`;
+  return `{${pairs(c).map(([k, v]) => `${JSON.stringify(k)}:${jsonText(temporalOutput(fieldOf(c.ent.entity, k)?.type ?? '', jsonColumn(c, k, v)))}`).join(',')}}`;
 }
 
 function jsonValue(value: unknown): unknown {
@@ -1090,13 +1089,13 @@ function jsonValue(value: unknown): unknown {
   if (value instanceof OrderedJsonValue) return orderedJsonOutput(value);
   if (isModel(value)) return toJson(value[CORE]);
   if (value instanceof Collection) return value.toJSON();
-  if (value instanceof Uint8Array) return bytesBase64(value);
   return exactIntegers(arrayValue(value));
 }
 
-/** A bytes value in JSON output: the standard base64 of its bytes, whatever they are (COD-26). */
-function bytesBase64(value: Uint8Array): string {
-  return Buffer.from(value.buffer, value.byteOffset, value.byteLength).toString('base64');
+/** JSON has no bytes, so the JSON output refuses a bytes value and names its entity and column (COD-26). */
+function jsonColumn(c: Core, name: string, value: unknown): unknown {
+  if (value instanceof Uint8Array) throw new OrmError(codes.CODEC_ENCODE, `${c.ent.entity.name}.${name}: JSON output cannot write bytes`);
+  return value;
 }
 
 /** Resolves a method named by the chain grammar. */

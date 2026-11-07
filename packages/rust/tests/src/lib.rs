@@ -2,6 +2,7 @@
 
 pub mod bench_models;
 pub mod markdown;
+pub mod plain;
 pub mod recipe;
 mod recipe_apply;
 mod recipe_generator;

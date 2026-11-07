@@ -8,6 +8,7 @@ use std::sync::Arc;
 
 use indexmap::IndexMap;
 
+use crate::array::ArrayValue;
 use crate::collection::{AnyCollection, Collection, GroupRow, GroupRows, Key, Page};
 use crate::core::{config, CondGroup, CondKind, CondNode, Core, PredSpec, PredValue, RelSpec, SetSpec, SetValue};
 use crate::db::{apply_request_hook, Db, Executor, QueryPlanStep, Statement};
@@ -615,6 +616,15 @@ fn exact_integer_text(value: &Val) -> Result<()> {
         return Err(Error::Engine { code: codes::CODEC_DECODE.into(), msg: format!("the text {text:?} is not exactly an integer") });
     }
     Ok(())
+}
+
+/// The refusal of a bytes value in the array and JSON output names its entity and column, as a read refusal does:
+/// `CODEC_ENCODE: <entity>.<column>: JSON output cannot write bytes` (COD-26).
+fn column_output_error(entity: &str, column: &str, value: &Val, error: Error) -> Error {
+    match (value, error) {
+        (Val::Bytes(_), Error::Engine { code, msg }) if code == codes::CODEC_ENCODE => Error::Engine { code, msg: format!("{entity}.{column}: {msg}") },
+        (_, other) => other,
+    }
 }
 
 /// A `CODEC_DECODE` of a read cell names its entity and column: `CODEC_DECODE: <entity>.<column>: <message>` (COD-41).
@@ -1671,38 +1681,37 @@ fn revision_checked(c: &Core, column: Option<&str>, affected: u64) -> Result<()>
 
 /// The row values: columns, added outputs, attached values, and relation
 /// results. Relations merged with parent_node add their columns where the row
-/// has no value of the same name. A value that serde_json cannot represent
-/// returns CODEC_ENCODE.
-pub fn to_array(m: &dyn AnyModel) -> Result<serde_json::Value> {
+/// has no value of the same name. Each value is the value of the array form of
+/// every runtime (COD-27), so a bytes column holds its bytes.
+pub fn to_array(m: &dyn AnyModel) -> Result<ArrayValue> {
     let c = m.core_dyn();
-    let mut out = serde_json::Map::new();
+    let mut out = IndexMap::new();
     let empty = RowState::default();
     let st = c.row.as_ref().unwrap_or(&empty);
     for (name, v) in row_values(m)? {
-        let value = v.to_json()?;
         // A time or datetime text from the database has the column precision; the array form has six digits.
         let temporal_text = c.ent.entity_schema()?.field(&name).is_some_and(|f| matches!(f.ty, dbspec::Type::Time(_) | dbspec::Type::DateTime(_)));
         let value = match &v {
-            Val::Str(text) if temporal_text => serde_json::json!(six_fraction_digits(text)),
-            _ => value,
+            Val::Str(text) if temporal_text => ArrayValue::Text(six_fraction_digits(text)),
+            other => ArrayValue::of(other),
         };
         let value = if styled_column(c, &name)? {
             if matches!(v, Val::Null) {
-                serde_json::json!({"kind": "sql-null"})
+                ArrayValue::Map(IndexMap::from([("kind".to_owned(), ArrayValue::Text("sql-null".into()))]))
             } else {
-                serde_json::json!({"kind": "value", "value": value})
+                ArrayValue::Map(IndexMap::from([("kind".to_owned(), ArrayValue::Text("value".into())), ("value".to_owned(), value)]))
             }
         } else {
             value
         };
-        out.insert(name, value);
+        out.entry(name).or_insert(value);
     }
     for (name, v) in &c.news {
-        out.entry(name.clone()).or_insert_with(|| v.clone());
+        out.entry(name.clone()).or_insert_with(|| ArrayValue::Json(v.clone()));
     }
     for (name, rel) in &st.related {
         let v = match &rel.value {
-            RelatedValue::One(None) => serde_json::Value::Null,
+            RelatedValue::One(None) => ArrayValue::Null,
             RelatedValue::One(Some(child)) => to_array(child.as_ref())?,
             RelatedValue::Many(coll) => coll.to_array_dyn()?,
         };
@@ -1710,14 +1719,14 @@ pub fn to_array(m: &dyn AnyModel) -> Result<serde_json::Value> {
     }
     for rel in st.related.values() {
         if let (true, RelatedValue::One(Some(child))) = (rel.flat, &rel.value) {
-            if let serde_json::Value::Object(fields) = to_array(child.as_ref())? {
+            if let ArrayValue::Map(fields) = to_array(child.as_ref())? {
                 for (k, v) in fields {
                     out.entry(k).or_insert(v);
                 }
             }
         }
     }
-    Ok(serde_json::Value::Object(out))
+    Ok(ArrayValue::Map(out))
 }
 
 /// The JSON text of the row: the members of `to_array` in row order, with an
@@ -1753,7 +1762,7 @@ fn json_members(m: &dyn AnyModel) -> Result<Vec<(String, String)>> {
         let document = match &v {
             Val::Ordered(o) => o.compact(),
             Val::Str(text) if temporal_text => serde_json::json!(six_fraction_digits(text)).to_string(),
-            other => other.to_json()?.to_string(),
+            other => other.to_json().map_err(|error| column_output_error(c.ent.name, &name, other, error))?.to_string(),
         };
         let text = if styled_column(c, &name)? {
             if matches!(v, Val::Null) {

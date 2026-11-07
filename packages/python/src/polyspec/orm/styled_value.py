@@ -83,35 +83,8 @@ class StyledValue:
         return self._stored
 
     def to_json(self) -> dict:
+        """The tagged value of the array form (COD-27): an ordered-json document stays the ordered-json value, with its
+        member order and number text, as in every runtime."""
         if self.kind == "sql-null":
             return {"kind": "sql-null"}
-        value = self.payload()
-        if not isinstance(value, OrderedJson):
-            return {"kind": "value", "value": value}
-        return {"kind": "value", "value": _ordered_json_output(value)}
-
-
-def _ordered_json_output(value: OrderedJson) -> Any:
-    # An ordered-json value as a Python value: if JSON.stringify cannot keep object keys, it is rejected.
-    if value.kind == "array":
-        return [_ordered_json_output(item) for item in value.items()]
-    if value.kind == "object":
-        members = value.members()
-        out = {}
-        for name, member in members.items():
-            out[name] = _ordered_json_output(member)
-        return out
-    import json
-
-    if value.kind == "string":
-        return value.string_value()
-    if value.kind == "number":
-        literal = value.number_literal()
-        try:
-            number = json.loads(literal)
-        except ValueError:
-            number = float(literal)
-        return number
-    if value.kind == "boolean":
-        return value.boolean_value()
-    return None
+        return {"kind": "value", "value": self.payload()}
