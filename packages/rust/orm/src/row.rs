@@ -282,7 +282,11 @@ pub fn read_cell_sqlite(row: &SqliteRow, i: usize) -> Result<Val> {
     Ok(match ty.name() {
         "INTEGER" => Val::I64(row.try_get::<i64, _>(i)?),
         "REAL" => Val::F64(row.try_get::<f64, _>(i)?),
-        "TEXT" => Val::Str(row.try_get::<String, _>(i)?),
+        // A text that is not UTF-8 is its bytes, as a markdown cell holds it, so a model column refuses it (COD-69).
+        "TEXT" => match String::from_utf8(row.try_get_unchecked::<Vec<u8>, _>(i)?) {
+            Ok(text) => Val::Str(text),
+            Err(error) => Val::Bytes(error.into_bytes()),
+        },
         "BLOB" => Val::Bytes(row.try_get::<Vec<u8>, _>(i)?),
         "BOOLEAN" => Val::Bool(row.try_get::<bool, _>(i)?),
         other => return Err(crate::Error::Config(format!("sqlite column {i} holds a {other} value"))),

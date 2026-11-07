@@ -1,3 +1,4 @@
+import { isUtf8 } from 'node:buffer';
 import { DatabaseSync } from 'node:sqlite';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -722,6 +723,27 @@ function sqliteColumns(statement: ReturnType<DatabaseSync['prepare']>): DriverCo
   return statement.columns().map(column => ({ name: column.name, type: column.type ?? '' }));
 }
 
+/**
+ * The read of a SQLite query that keeps the stored bytes of each text: for each column its storage class and its value,
+ * a text as a BLOB. node:sqlite has no raw read of a text column and decodes what is not UTF-8 with U+FFFD.
+ */
+export function sqliteStoredRead(query: string, width: number): string {
+  const names = Array.from({ length: width }, (_, index) => `c${String(index)}`);
+  const cells = names.map(name => `typeof(${name}),CASE typeof(${name}) WHEN 'text' THEN CAST(${name} AS BLOB) ELSE ${name} END`);
+  return `WITH q(${names.join(',')}) AS (${query}\n) SELECT ${cells.join(',')} FROM q`;
+}
+
+/** The cells of a row of sqliteStoredRead: a text is its text when it is valid UTF-8 and its bytes when not (INT-153, COD-69). */
+export function sqliteStoredCells(values: readonly unknown[]): unknown[] {
+  const cells: unknown[] = [];
+  for (let at = 0; at < values.length; at += 2) {
+    const value = values[at + 1];
+    const text = values[at] === 'text' && value instanceof Uint8Array;
+    cells.push(text && isUtf8(value) ? Buffer.from(value).toString('utf8') : value);
+  }
+  return cells;
+}
+
 function sqliteExecute(state: SqliteState, sql: string, params: readonly DriverValue[]): DriverResult {
   const statement = state.statement(sql);
   const values = sqliteValues(params);
@@ -729,6 +751,14 @@ function sqliteExecute(state: SqliteState, sql: string, params: readonly DriverV
     statement.setReturnArrays(true);
     const columns = sqliteColumns(statement);
     const rows = arrayRows(statement.all(...values));
+    if (/^\s*(?:SELECT|WITH)\b/i.test(sql) && !/\bRETURNING\b/i.test(sql) && rows.some(row => row.some(cell => typeof cell === 'string' && cell.includes('\uFFFD')))) {
+      // A text may have lost its bytes to U+FFFD: the whole answer comes from a read that keeps them, so no row of the two
+      // reads is mixed, and a text that is not UTF-8 is its bytes, which a model column refuses (COD-69).
+      const stored = state.statement(sqliteStoredRead(sql.replace(/[\s;]+$/, ''), columns.length));
+      stored.setReturnArrays(true);
+      const kept = arrayRows(stored.all(...values)).map(sqliteStoredCells);
+      return { rows: kept, affected: kept.length, insertId: insertIdOf(kept), columns };
+    }
     return { rows, affected: rows.length, insertId: insertIdOf(rows), columns };
   }
   const result = statement.run(...values);

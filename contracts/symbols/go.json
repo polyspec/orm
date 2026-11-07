@@ -20135,6 +20135,10 @@
     "exported": false,
     "signature": "func(kind string, v any) (any, error)"
   },
+  "packages/go/orm/exec.go::validText": {
+    "exported": false,
+    "signature": "func(v any) error"
+  },
   "packages/go/orm/exec.go::validateRuntimeScalars": {
     "exported": false,
     "signature": "func(vals []any, asm *plan.Assemble) error"

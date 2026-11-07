@@ -1352,10 +1352,15 @@ abstract class Model implements \JsonSerializable, ModelMetadata
             $values[$name] = $v === null ? null
                 : (is_string($v) ? new PendingTime($v, $zone) : self::timeValue($v, $zone));
         }
-        foreach ($shape['string'] as [$index, $name]) {
+        foreach ($shape['string'] as [$index, $name, $kind]) {
             $v = $vals[$index];
-            $values[$name] = $v === null || is_string($v) ? $v
+            $v = $v === null || is_string($v) ? $v
                 : (is_resource($v) ? stream_get_contents($v) : (string) $v);
+            // COD-69: a text cell that is not valid UTF-8 is refused, never returned as its bytes.
+            if (is_string($v) && ($kind === 'varchar' || $kind === 'text') && preg_match('//u', $v) !== 1) {
+                throw new OrmException(Code::CODEC_DECODE, "{$meta['entity']}.$name: text is not valid UTF-8");
+            }
+            $values[$name] = $v;
         }
         foreach ($shape['codec'] as [$index, $name]) {
             $values[$name] = $vals[$index];

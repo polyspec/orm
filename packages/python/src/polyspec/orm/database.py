@@ -522,6 +522,14 @@ _INTEGER_RANGES = {
 }
 
 
+def _text_or_bytes(value: bytes):
+    """A stored text, and its bytes when they are not valid UTF-8."""
+    try:
+        return value.decode()
+    except UnicodeDecodeError:
+        return value
+
+
 def convert(type_: str, value, zone: str, declared: Field | None = None):
     """Converts a cell to a value of its column type (docs/spec/dbspec.md "Runtime model")."""
 
@@ -771,6 +779,8 @@ class _SqliteConnection:
             )
         except sqlite3.Error as error:
             _raise_driver_error("sqlite", error)
+        # A text that is not UTF-8 is read as its bytes, which the model refuses (COD-69); sqlite3 would fail the whole read.
+        self.connection.text_factory = _text_or_bytes
         try:
             for statement in ["PRAGMA foreign_keys = ON", *pragmas]:
                 self.connection.execute(statement)

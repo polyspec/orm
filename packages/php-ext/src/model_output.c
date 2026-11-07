@@ -239,10 +239,11 @@ static void output_model_column(zend_object *object, zval *out, HashTable *seen,
                 zval meta; ZVAL_UNDEF(&meta);
                 zend_call_method_with_0_params(NULL, object->ce, NULL, "meta", &meta);
                 zval *entity = EG(exception) == NULL && Z_TYPE(meta) == IS_ARRAY ? output_assoc(&meta, "entity") : NULL;
-                if (EG(exception) == NULL) {
+                if (EG(exception) == NULL && (entity == NULL || Z_TYPE_P(entity) != IS_STRING)) {
+                    output_throw("INTERNAL", "the model metadata names no entity");
+                } else if (EG(exception) == NULL) {
                     smart_str message = {0};
-                    smart_str_append_printf(&message, "%s.%s: JSON output cannot write bytes",
-                        entity != NULL && Z_TYPE_P(entity) == IS_STRING ? Z_STRVAL_P(entity) : "", ZSTR_VAL(key));
+                    smart_str_append_printf(&message, "%s.%s: JSON output cannot write bytes", Z_STRVAL_P(entity), ZSTR_VAL(key));
                     zend_string *text = smart_str_extract(&message);
                     output_throw("CODEC_ENCODE", ZSTR_VAL(text));
                     zend_string_release(text);

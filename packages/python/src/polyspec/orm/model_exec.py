@@ -62,6 +62,17 @@ def _new_model(ent) -> Core:
     return core
 
 
+def _valid_text(cell) -> bool:
+    """Whether a text cell is valid UTF-8 (COD-69): a driver gives a text that is not as its bytes."""
+    if not isinstance(cell, bytes):
+        return True
+    try:
+        cell.decode("utf-8")
+    except UnicodeDecodeError:
+        return False
+    return True
+
+
 class _Assembler:
     """Assembles the result rows into models."""
 
@@ -100,9 +111,13 @@ class _Assembler:
                     and cell is not None
                 ):
                     cell = _stored_version(cell)
-                core.values[col["name"]] = convert(
-                    column_type(declared), cell, self.db.zone, declared
-                )
+                kind = column_type(declared)
+                if kind in ("varchar", "text") and not _valid_text(cell):
+                    raise OrmError(
+                        codes.CODEC_DECODE,
+                        f"{schema.name}.{col['name']}: text is not valid UTF-8",
+                    )
+                core.values[col["name"]] = convert(kind, cell, self.db.zone, declared)
             else:
                 row_state.extra[col["name"]] = _added_column_value(
                     col["type"], row[col["index"]], self.db.zone

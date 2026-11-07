@@ -2,6 +2,7 @@
  "$schema": "../../../scripts/features/schema/recipe.schema.json",
  "requirements": [
   "PRT-69",
+  "COD-69",
   "INT-5",
   "INT-98",
   "DSL-137",
@@ -83837,6 +83838,72 @@
      }
     }
    ]
+  },
+  {
+   "id": "text_not_utf8_refused",
+   "requirements": [
+    "COD-69"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "sql.exec",
+     "only": [
+      "mysql"
+     ],
+     "refused": true,
+     "refused_message": "incorrect string value",
+     "reason": "a utf8mb4 column refuses bytes that are not UTF-8 in strict mode, so MySQL stores no such text",
+     "sql": "INSERT INTO bind_cell (seq, label, body) VALUES (1, 'bytes', X'ff')"
+    },
+    {
+     "op": "sql.exec",
+     "only": [
+      "postgres"
+     ],
+     "refused": true,
+     "refused_message": "invalid byte sequence for encoding \"utf8\": 0xff",
+     "reason": "a UTF8 database refuses a text that is not UTF-8, so PostgreSQL stores no such text",
+     "sql": "INSERT INTO bind_cell (seq, label, body) VALUES (1, 'bytes', convert_from('\\xff'::bytea, 'UTF8'))"
+    },
+    {
+     "op": "sql.exec",
+     "only": [
+      "sqlite"
+     ],
+     "reason": "SQLite stores the bytes of a cast blob as text without checking them",
+     "sql": "INSERT INTO bind_cell (seq, label, body) VALUES (1, 'bytes', CAST(X'ff' AS TEXT))"
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "BindCell",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": [
+      "body"
+     ],
+     "expect": {
+      "mysql": {
+       "json": null
+      },
+      "postgres": {
+       "json": null
+      },
+      "sqlite": {
+       "error": "CODEC_DECODE",
+       "message": "CODEC_DECODE: bind_cell.body: text is not valid UTF-8"
+      }
+     }
+    }
+   ]
   }
  ],
   "cases_on": {
@@ -83932,7 +83999,8 @@
       "clock_now_condition",
       "temporal_stored_text",
       "time_text_refused",
-      "styled_sql_null_in_relation_and_join_rows"
+      "styled_sql_null_in_relation_and_join_rows",
+      "text_not_utf8_refused"
     ],
     "postgres": [
       "conditions_connectors",
@@ -84026,7 +84094,8 @@
       "clock_now_condition",
       "temporal_stored_text",
       "time_text_refused",
-      "styled_sql_null_in_relation_and_join_rows"
+      "styled_sql_null_in_relation_and_join_rows",
+      "text_not_utf8_refused"
     ],
     "sqlite": [
       "conditions_connectors",
@@ -84120,7 +84189,8 @@
       "clock_now_condition",
       "temporal_stored_text",
       "time_text_refused",
-      "styled_sql_null_in_relation_and_join_rows"
+      "styled_sql_null_in_relation_and_join_rows",
+      "text_not_utf8_refused"
     ],
     "markdown": [
       "conditions_connectors",
@@ -84214,7 +84284,8 @@
       "clock_now_condition",
       "temporal_stored_text",
       "time_text_refused",
-      "styled_sql_null_in_relation_and_join_rows"
+      "styled_sql_null_in_relation_and_join_rows",
+      "text_not_utf8_refused"
     ]
   }
 }

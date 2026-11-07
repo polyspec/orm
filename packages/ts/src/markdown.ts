@@ -2,6 +2,7 @@
 // docs/spec/dialects.md "Markdown"). A flowmark server runs a statement of SQL in SQLite's dialect on the corpus (DIA-185), so a
 // markdown connection is a SQLite connection whose statements the server answers: the driver below sends each statement in a
 // statement message and reads its answer as node:sqlite reads a row.
+import { isUtf8 } from 'node:buffer';
 import { connect as netConnect, type Socket } from 'node:net';
 import { parse as parseJson, ParseError, type Value } from '@polyspec/ordered-json';
 import { observed, type DriverColumn, type DriverPool, type DriverResult, type DriverSession, type DriverValue, type PoolBounds, type PoolStats, type RowSink, type StatementDone } from './driver.js';
@@ -309,8 +310,11 @@ function statementCell(raw: Value): unknown {
       const float = raw.get('float');
       if (float?.kind === 'string' && (float.stringValue() === '+Inf' || float.stringValue() === '-Inf')) return float.stringValue() === '+Inf' ? Infinity : -Infinity;
       const text = raw.get('text');
-      // A text that is not UTF-8 reads as node:sqlite reads it, each invalid sequence a replacement character.
-      if (text?.kind === 'string') return new TextDecoder().decode(base64(text.stringValue(), raw.raw));
+      // A text is its text when it is valid UTF-8 and its bytes when not, as a SQLite connection reads it (COD-69).
+      if (text?.kind === 'string') {
+        const stored = new Uint8Array(base64(text.stringValue(), raw.raw));
+        return isUtf8(stored) ? Buffer.from(stored).toString('utf8') : stored;
+      }
       const bytes = raw.get('bytes');
       if (bytes?.kind === 'string') return new Uint8Array(base64(bytes.stringValue(), raw.raw));
     }

@@ -346,7 +346,7 @@ impl Val {
             Val::Str(value) => Ok(value),
             Val::Bytes(bytes) => String::from_utf8(bytes).map_err(|e| {
                 *self = Val::Bytes(e.into_bytes());
-                decode_value("bytes are not UTF-8 text")
+                decode_value("text is not valid UTF-8")
             }),
             other => {
                 let message = format!("expected string, received {other:?}");

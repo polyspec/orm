@@ -751,13 +751,9 @@
     "exported": false,
     "signature": "function sqliteGridCell(value: unknown): CatalogGridCell"
   },
-  "packages/ts/src/catalog.ts::sqliteStoredCells": {
+  "packages/ts/src/catalog.ts::sqliteQueryText": {
     "exported": false,
-    "signature": "function sqliteStoredCells(values: readonly unknown[]): unknown[]"
-  },
-  "packages/ts/src/catalog.ts::sqliteStoredRead": {
-    "exported": false,
-    "signature": "function sqliteStoredRead(sql: string, width: number): string"
+    "signature": "function sqliteQueryText(sql: string): string"
   },
   "packages/ts/src/catalog.ts::sqliteTemporal": {
     "exported": false,
@@ -7266,6 +7262,14 @@
   "packages/ts/src/driver.ts::sqliteScan": {
     "exported": false,
     "signature": "function sqliteScan(state: SqliteState, sql: string, params: readonly DriverValue[], sink: RowSink): void"
+  },
+  "packages/ts/src/driver.ts::sqliteStoredCells": {
+    "exported": true,
+    "signature": "export function sqliteStoredCells(values: readonly unknown[]): unknown[]"
+  },
+  "packages/ts/src/driver.ts::sqliteStoredRead": {
+    "exported": true,
+    "signature": "export function sqliteStoredRead(query: string, width: number): string"
   },
   "packages/ts/src/driver.ts::sqliteValues": {
     "exported": false,

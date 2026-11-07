@@ -6,7 +6,7 @@ import { isUtf8 } from 'node:buffer';
 import { createHash } from 'node:crypto';
 import { lstatSync } from 'node:fs';
 import * as codes from './codes.js';
-import { driverError, openDriver, parseDsn, sqlitePath, type DriverColumn, type DriverName, type DriverPool, type DriverResult, type DriverSession, type DriverValue } from './driver.js';
+import { driverError, openDriver, parseDsn, sqlitePath, sqliteStoredCells, sqliteStoredRead, type DriverColumn, type DriverName, type DriverPool, type DriverResult, type DriverSession, type DriverValue } from './driver.js';
 import { openMarkdown } from './markdown.js';
 import { OrmError } from './runtime_error.js';
 
@@ -892,27 +892,11 @@ function queryWords(query: string, dialect: DriverName, semicolon?: (at: number)
   return words;
 }
 
-/**
- * The read of a SQLite statement that keeps the stored bytes of each text: for each column its storage class and its value,
- * a text as a BLOB. node:sqlite has no raw read of a text column and decodes what is not UTF-8 with U+FFFD.
- */
-function sqliteStoredRead(sql: string, width: number): string {
+/** The query of a SQLite statement without what ends it, the text that sqliteStoredRead reads again. */
+function sqliteQueryText(sql: string): string {
   let end = sql.length;
   queryWords(sql, 'sqlite', at => { end = at; });
-  const names = Array.from({ length: width }, (_, index) => `c${String(index)}`);
-  const cells = names.map(name => `typeof(${name}),CASE typeof(${name}) WHEN 'text' THEN CAST(${name} AS BLOB) ELSE ${name} END`);
-  return `WITH q(${names.join(',')}) AS (${sql.slice(0, end)}\n) SELECT ${cells.join(',')} FROM q`;
-}
-
-/** The cells of a row of sqliteStoredRead: a text is its text when it is valid UTF-8 and its bytes when not (INT-153). */
-function sqliteStoredCells(values: readonly unknown[]): unknown[] {
-  const cells: unknown[] = [];
-  for (let at = 0; at < values.length; at += 2) {
-    const value = values[at + 1];
-    const text = values[at] === 'text' && value instanceof Uint8Array;
-    cells.push(text && isUtf8(value) ? Buffer.from(value).toString('utf8') : value);
-  }
-  return cells;
+  return sql.slice(0, end);
 }
 
 function validateReadOnly(query: string, dialect: DriverName): void {
@@ -1027,7 +1011,7 @@ class Session {
       out.rows = [];
       out.past = false;
       bytes = 0;
-      await this.session.scan(sqliteStoredRead(sql, out.columns.length), bound, {
+      await this.session.scan(sqliteStoredRead(sqliteQueryText(sql), out.columns.length), bound, {
         columns: () => undefined,
         row: values => deliver(sqliteStoredCells(values)),
       }, noop);

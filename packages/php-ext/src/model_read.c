@@ -1,6 +1,7 @@
 /* Native result assembly and read terminals for Polyspec\Orm\Model. */
 #include "model_read.h"
 #include "model_output.h"
+#include "codec.h"
 #include "model_state.h"
 #include "php_function_call.h"
 #include "model_types.h"
@@ -374,10 +375,28 @@ static bool read_column_convert(zval *model, zval *db, zval *zone, zval *column,
         bool ok = model_time_value_in_zone(&value, zone, out); zval_ptr_dtor(&value); return ok;
     }
     if (!read_convert_resource(&value)) { zval_ptr_dtor(&value); return false; }
-    if (Z_TYPE(value) == IS_STRING) { ZVAL_COPY_VALUE(out, &value); return true; }
-    zend_string *text = zval_get_string(&value); zval_ptr_dtor(&value);
-    if (EG(exception) != NULL) return false;
-    ZVAL_STR(out, text); (void)model; return true;
+    if (Z_TYPE(value) != IS_STRING) {
+        zend_string *text = zval_get_string(&value); zval_ptr_dtor(&value);
+        if (EG(exception) != NULL) return false;
+        ZVAL_STR(&value, text);
+    }
+    /* COD-69: a text cell that is not valid UTF-8 is refused, never returned as its bytes. */
+    if ((read_string_is(type, "varchar") || read_string_is(type, "text")) && !codec_valid_utf8(Z_STRVAL(value), Z_STRLEN(value))) {
+        zval_ptr_dtor(&value);
+        zval meta;
+        if (!read_static_meta(model, &meta)) return false;
+        zval *entity = read_array(&meta, "entity");
+        if (entity == NULL || Z_TYPE_P(entity) != IS_STRING) {
+            zval_ptr_dtor(&meta);
+            read_throw("INTERNAL", "the model metadata names no entity");
+            return false;
+        }
+        zend_string *message = strpprintf(0, "%s.%s: text is not valid UTF-8", Z_STRVAL_P(entity), Z_STRVAL_P(column_name));
+        zval_ptr_dtor(&meta);
+        read_throw("CODEC_DECODE", ZSTR_VAL(message)); zend_string_release(message);
+        return false;
+    }
+    ZVAL_COPY_VALUE(out, &value); return true;
 }
 
 ZEND_METHOD(Polyspec_Orm_Model, joinChild)

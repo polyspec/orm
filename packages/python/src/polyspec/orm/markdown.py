@@ -441,11 +441,12 @@ class MarkdownConnection:
 
     def execute(self, sql: str, values):
         """Runs one statement and reads all its rows, fetching the batches that go on."""
-        answer = self.session.statement(sql, list(values))
+        # A text that is not UTF-8 is read as its bytes, as on a SQLite connection (COD-69).
+        answer = self.session.statement(sql, list(values), bytes)
         rows = answer["rows"]
         last = answer
         while last["more"]:
-            last = self.session.fetch(answer["columns"])
+            last = self.session.fetch(answer["columns"], bytes)
             rows.extend(last["rows"])
         return {
             "rows": rows,

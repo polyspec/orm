@@ -15,5 +15,7 @@ bool codec_host_decode(zval *raw, HashTable *styles, zend_string *aes_key, zval 
 bool codec_decode_rows(HashTable *rows, HashTable *cells, zval *config);
 bool codec_is_host_style(zend_string *style);
 bool codec_blind_index(zval *v, zend_string *key, zval *ret);
+/* Whether the bytes are valid UTF-8, the check of preg_match('//u'). */
+bool codec_valid_utf8(const char *s, size_t n);
 
 #endif

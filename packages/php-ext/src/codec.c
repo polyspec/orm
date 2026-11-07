@@ -389,6 +389,11 @@ static bool valid_utf8(const unsigned char *s, size_t n)
     return true;
 }
 
+bool codec_valid_utf8(const char *s, size_t n)
+{
+    return valid_utf8((const unsigned char *)s, n);
+}
+
 /* ---- YAML: the value model and the node model of purr, and its Dumper ---- */
 
 /* validateCommonValue: the error message of a value outside the common value model (COD-16), or true. */

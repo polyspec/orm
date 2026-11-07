@@ -10194,7 +10194,8 @@
         "DBS-117",
         "CPX-3",
         "CFG-10",
-        "INT-162"
+        "INT-162",
+        "COD-69"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases_on.mysql[*]",
@@ -10447,7 +10448,8 @@
         "DBS-113",
         "DBS-117",
         "CPX-3",
-        "INT-162"
+        "INT-162",
+        "COD-69"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases_on.postgres[*]",
@@ -10701,7 +10703,8 @@
         "DBS-117",
         "CPX-3",
         "DBS-115",
-        "INT-162"
+        "INT-162",
+        "COD-69"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases_on.sqlite[*]",
@@ -10956,7 +10959,8 @@
         "CPX-3",
         "DBS-115",
         "DIA-154",
-        "INT-162"
+        "INT-162",
+        "COD-69"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases_on.markdown[*]",

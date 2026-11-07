@@ -1002,6 +1002,8 @@ func validateRuntimeScalars(vals []any, asm *plan.Assemble) error {
 			_, err = AsFloat64(vals[col.Index])
 		case "bool":
 			_, err = AsBool(vals[col.Index])
+		case "varchar", "text":
+			err = validText(vals[col.Index])
 		}
 		if err != nil {
 			return columnDecodeErr(asm.Entity, col.Name, err)
@@ -1012,6 +1014,21 @@ func validateRuntimeScalars(vals []any, asm *plan.Assemble) error {
 			if err := validateRuntimeScalars(vals, child.Assemble); err != nil {
 				return err
 			}
+		}
+	}
+	return nil
+}
+
+// validText refuses a text cell that is not valid UTF-8 (COD-69); a cell of another kind is left to the model conversion.
+func validText(v any) error {
+	switch x := v.(type) {
+	case string:
+		if !utf8.ValidString(x) {
+			return codecErr(CodeCodecDecode, "text is not valid UTF-8")
+		}
+	case []byte:
+		if !utf8.Valid(x) {
+			return codecErr(CodeCodecDecode, "text is not valid UTF-8")
 		}
 	}
 	return nil

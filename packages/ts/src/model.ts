@@ -1,3 +1,4 @@
+import { isUtf8 } from 'node:buffer';
 import { CORE, Core, RowState, configError, integerRanges, isModel, styledField, type EntityDef, type ModelLike, type SetSpec } from './core.js';
 import { encodeStyled } from './codec.js';
 import { Value as OrderedJsonValue, stringify as orderedJsonStringify } from '@polyspec/ordered-json';
@@ -323,8 +324,16 @@ class Assembler {
       // The AES version cell is read as a stored version (COD-53): a text of digits is its number, and any other value is CODEC_DECODE.
       const versionAt = schema.aesVersion !== '' && col.name === schema.aesVersion && row[col.index] != null;
       const cell = versionAt ? storedVersion(row[col.index]) : row[col.index];
-      if (declared) m.values.set(col.name, convert(columnType(declared), cell, this.db.zone, declared));
-      else st.extra.set(col.name, addedColumnValue(col.type, row[col.index], this.db.zone));
+      if (declared) {
+        const kind = columnType(declared);
+        // COD-69: a text cell that is not valid UTF-8 is refused, never returned as its bytes or replaced.
+        if ((kind === 'varchar' || kind === 'text') && cell instanceof Uint8Array && !isUtf8(cell)) {
+          throw new OrmError(codes.CODEC_DECODE, `${schema.name}.${col.name}: text is not valid UTF-8`);
+        }
+        m.values.set(col.name, convert(kind, cell, this.db.zone, declared));
+      } else {
+        st.extra.set(col.name, addedColumnValue(col.type, row[col.index], this.db.zone));
+      }
     }
     for (const key of asm.key) {
       const name = present(asm.columns.find(col => col.index === key.index), `the key column at ${key.index}`).name;
