@@ -5509,8 +5509,8 @@ mod tables {
     use serde_json::{json, Map, Value};
 
     use super::{database_trials_written_order, ModelDispatcher, WRITTEN_ORDER};
-    use crate::plain::Plain;
     use crate::bench_models::{bench_config, CaseModels, Connections};
+    use crate::plain::Plain;
 
     /// The kinds of the read requests (the hook kinds reads and reads+restore).
     const READS: [&str; 7] = ["one", "all", "count", "group_count", "sum", "avg", "paginate"];
