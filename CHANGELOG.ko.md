@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: cc0c6cf0148b93f12b8c83fddfae33d910790e4de0349c5b4d1008c310a7770a -->
+<!-- source-sha256: 558c573f7862501e2fd49e81b4ccd0aa48e5710113104bbc989f7fa70c25e307 -->
 # 변경 이력
 
 ## Unreleased
+
+- CI: `scripts/client-db-test.mts --dry-run`이 도구나 database를 시작하지 않고 실행 command 선언으로 여섯 client database·pooler lane을 미리 보여준다 (T388).
 
 - CI: 모든 binding job에서 PHP, Python, TypeScript를 준비하는 대신 parity 준비 recipe를 해당 runtime에 배치한다 (T388).
 

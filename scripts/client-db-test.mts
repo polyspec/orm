@@ -13,9 +13,10 @@
 //
 // Rust builds and runs the workspace tests once with ORM_RUST_TEST_FEATURES (Makefile: test-faults and live-db); the
 // rollback fault cases and the live-db cases of orm-build are in that run.
+// --dry-run prints the selected lanes and their declared commands without starting setup, builds or tests.
 import { readFileSync, rmSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { delimiter, join, resolve } from 'node:path';
+import { delimiter, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { keepAll, render, run, runLanes, variable, type Command } from './check/commands.mts';
 import { COMMANDS as TYPESCRIPT_COMMANDS, sqliteTest } from './typescript/sqlite-test.mts';
@@ -203,6 +204,27 @@ const RUST_TESTS: Command = {
 /** The commands this script runs, for make repo-check. */
 export const COMMANDS = [...[...GO, ...PHP, PHP_EXTENSION_BUILD, ...PHP_EXTENSION, ...PYTHON, RUST_TESTS, ...(['php', 'php-extension', 'typescript', 'python'] as const).flatMap(lane => poolerRecipeCommands(lane, parityUnits()))].map(step => render(step, root)), ...TYPESCRIPT_COMMANDS];
 
+/** Render the same command values that the lanes execute, leaving environment references unresolved. */
+export function clientDryRun(selected: readonly string[], parallel: boolean) {
+  const commands: Record<string, string[]> = {
+    go: GO.map(command => render(command, root)),
+    php: [...PHP, ...poolerRecipes('php')].map(command => render(command, root)),
+    'php-extension': [PHP_EXTENSION_BUILD, ...PHP_EXTENSION, ...poolerRecipes('php-extension')].map(command => render(command, root)),
+    typescript: [...TYPESCRIPT_COMMANDS, ...poolerRecipes('typescript').map(command => render(command, root))],
+    python: [...PYTHON, ...poolerRecipes('python')].map(command => render(command, root)),
+    rust: [render(RUST_TESTS, root)],
+  };
+  return {
+    mode: 'dry-run', execution: 'not-run', order: parallel ? 'parallel' : 'serial',
+    lanes: selected.map(name => {
+      const steps = commands[name];
+      if (steps === undefined) throw new Error(`client-db-test: no declared commands for lane ${name}`);
+      return { name, order: 'serial', commands: steps,
+        ...(name === 'php-extension' ? { cleanup: { removeDirectory: relative(root, PHP_EXTENSION_RUN) } } : {}) };
+    }),
+  };
+}
+
 const lanes: Record<string, (write: (line: string) => void) => Promise<string[]>> = {
   go: write => keepAll(GO, write),
   php: write => keepAll([...PHP, ...poolerRecipes('php')], write),
@@ -223,11 +245,16 @@ const lanes: Record<string, (write: (line: string) => void) => Promise<string[]>
 };
 
 if (import.meta.main) {
-  if (!process.env['ORM_RUST_TEST_FEATURES']) {
+  const args = process.argv.slice(2);
+  const dryRun = args.length === 1 && args[0] === '--dry-run';
+  if (args.length && !dryRun) {
+    console.error('usage: node scripts/client-db-test.mts [--dry-run]; select lanes with ORM_CLIENT_DB_LANGS');
+    process.exit(2);
+  }
+  if (!dryRun && !process.env['ORM_RUST_TEST_FEATURES']) {
     console.error('ORM_RUST_TEST_FEATURES is required; run through make');
     process.exit(2);
   }
-  process.env['PATH'] = `${join(homedir(), '.cargo/bin')}${delimiter}${process.env['PATH'] ?? ''}`;
   // Every name of ORM_CLIENT_DB_LANGS is a lane, and it selects at least one: a misspelled name would end in success
   // without running its lane.
   const names = (process.env['ORM_CLIENT_DB_LANGS'] || LANES.join(',')).split(',').filter(name => name !== '');
@@ -241,6 +268,11 @@ if (import.meta.main) {
     console.error(`client-db-test: ORM_CLIENT_DB_LANGS=${env('ORM_CLIENT_DB_LANGS')} selects no lane; the lanes are ${LANES.join(', ')}`);
     process.exit(2);
   }
+  if (dryRun) {
+    console.log(JSON.stringify(clientDryRun(selected, process.env['ORM_CLIENT_DB_LANES'] === 'parallel'), null, 2));
+    process.exit(0);
+  }
+  process.env['PATH'] = `${join(homedir(), '.cargo/bin')}${delimiter}${process.env['PATH'] ?? ''}`;
   // A client of config/parity.json without a lane here is a failure, not a lane that silently does not run.
   const runs = Object.fromEntries(selected.map(lane => {
     const run = lanes[lane];

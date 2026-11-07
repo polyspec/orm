@@ -1,5 +1,5 @@
 <!-- doc-id: plan-cross-verification -->
-<!-- source-sha256: 9040cfdbc486e0f603c12e7b77aa485a9d0ea4b9484ee1186fc939167cf9fd90 -->
+<!-- source-sha256: c316099f22247bfe268393b4e4ce9a7c8dc2900b56762de12c46cad023e76f6c -->
 # corpus SQLite 연결의 여섯 runtime과 네 database 교차 검증
 
 [English](plan.md)
@@ -203,3 +203,12 @@ PHP dynamic-module probe를 평가하고, 전체 실행과 Python binding만 Pyt
 생성한다. API extraction은 전체 interface prerequisite을 유지한다. 기존 PHP-extension과 Rust
 준비 recipe는 각 binding에 배치한다. Parity-context unit case 11개가 통과했다. Native 실행과
 실행 시간 변화는 branch CI에서 확인해야 한다.
+
+`node scripts/client-db-test.mts --dry-run`은 setup, build, test를 실행하지 않고 여섯 client
+lane의 기존 command data를 출력한다. `ORM_CLIENT_DB_LANGS`는 실제 실행과 같은 lane을
+선택하고, `ORM_CLIENT_DB_LANES=parallel`은 병렬 lane을, `ORM_CLIENT_DB_POOLER=1`은 pooler
+recipe command와 filter를 보여준다. Lane 내부 command는 순서를 유지한다. JSON은
+`mode: dry-run`과 `execution: not-run`을 명시하고 environment reference를 그대로 유지하며
+PHP extension의 cleanup path를 보여준다. Client lane의 미리보기이며 전체 workflow나 native
+helper program 내부 command를 펼치지는 않는다. Client runner unit 파일의 case 13개가 통과했다.
+외부 실행 시 기록을 남기는 stub tool을 둔 CLI case에서도 도구를 호출하지 않았다.

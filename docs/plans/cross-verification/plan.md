@@ -219,3 +219,12 @@ only the full run and Python binding run generate the Python bind models. API ex
 its complete interface prerequisites. The existing PHP-extension and Rust preparation recipes
 remain assigned to their owning bindings. The 11 parity-context unit cases pass; native execution
 and the elapsed-time change still need branch CI.
+
+`node scripts/client-db-test.mts --dry-run` renders the existing command data of all six client
+lanes without running setup, builds or tests. `ORM_CLIENT_DB_LANGS` selects the same lanes as an
+execution, `ORM_CLIENT_DB_LANES=parallel` shows parallel lanes, and `ORM_CLIENT_DB_POOLER=1` shows
+the pooler recipe commands and filters. Commands inside each lane remain ordered. The JSON says
+`mode: dry-run` and `execution: not-run`; environment references remain references and the PHP
+extension cleanup path is shown. This previews the client lanes, not the entire workflow or the
+commands inside native helper programs. The client runner unit file passes 13 cases, including a
+CLI case whose stub tools record any attempted external execution; no tool was invoked.

@@ -1,8 +1,10 @@
 // The unit tests of the client database lanes: the Rust thread cap of the pooler lane (T343-1), the Go owner of the
 // repeated member name case of model_writes and its declaration on every owner (T343-2).
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { isolatedEnvironment } from '../tests/environment.mts';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { caseTest, COMPUTE } from '../tests/testcase.mts';
 import { dirname, relative, resolve } from 'node:path';
 import { GO_LANE_PACKAGES, GO_LANE_SKIP, GO_DIRECT_CHECKS, goLaneSkip, poolerRecipeCommands, poolerRecipeUnits, rustOwnedElsewhereSkipArguments, rustDirectRecipeSkipArguments, rustPoolerThreadArguments, rustTargetPoolSize } from './client-db-test.mts';
@@ -183,4 +185,53 @@ caseTest('each Go direct skip has a scheduled whole-test owner and cannot skip a
     }
   }
   assert.ok(selected > 4, 'more than the four conformance suites are assigned');
+});
+
+caseTest('client database dry-run shows all six lanes without executing a command or requiring live DSNs', COMPUTE, () => {
+  const tools = mkdtempSync(resolve(tmpdir(), 'orm-client-dry-run-'));
+  const marker = resolve(tools, 'executed');
+  try {
+    for (const name of ['go', 'cargo', 'make', 'php', 'python', 'python3', 'node', 'npm', 'composer']) {
+      const file = resolve(tools, name);
+      writeFileSync(file, `#!${process.execPath}\nrequire('node:fs').writeFileSync(${JSON.stringify(marker)}, 'executed'); process.exitCode=77;\n`);
+      chmodSync(file, 0o755);
+    }
+    const result = spawnSync(process.execPath, [resolve(root, 'scripts/client-db-test.mts'), '--dry-run'], {
+      cwd: root, env: isolatedEnvironment({ PATH: tools, HOME: tools }), encoding: 'utf8',
+    });
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    const plan: unknown = JSON.parse(result.stdout);
+    assert.ok(typeof plan === 'object' && plan !== null && 'mode' in plan && 'lanes' in plan && 'order' in plan);
+    assert.equal(plan.mode, 'dry-run');
+    assert.equal(plan.order, 'serial');
+    assert.ok(Array.isArray(plan.lanes));
+    assert.deepEqual(plan.lanes.map((entry: unknown) => {
+      assert.ok(typeof entry === 'object' && entry !== null && 'name' in entry);
+      return entry.name;
+    }), ['go', 'php', 'php-extension', 'typescript', 'python', 'rust']);
+    assert.match(result.stdout, /tests\/go-test\.mts/);
+    assert.match(result.stdout, /tests\/cargo-test\.mts/);
+    assert.match(result.stdout, /php-ext-build/);
+    const parallel = spawnSync(process.execPath, [resolve(root, 'scripts/client-db-test.mts'), '--dry-run'], {
+      cwd: root, env: isolatedEnvironment({ PATH: tools, HOME: tools, ORM_CLIENT_DB_LANGS: 'go,rust,php-extension',
+        ORM_CLIENT_DB_LANES: 'parallel', ORM_CLIENT_DB_POOLER: '1' }), encoding: 'utf8',
+    });
+    assert.equal(parallel.status, 0, parallel.stdout + parallel.stderr);
+    const selected: unknown = JSON.parse(parallel.stdout);
+    assert.ok(typeof selected === 'object' && selected !== null && 'order' in selected && 'lanes' in selected);
+    assert.equal(selected.order, 'parallel');
+    assert.ok(Array.isArray(selected.lanes));
+    assert.deepEqual(selected.lanes.map((entry: unknown) => {
+      assert.ok(typeof entry === 'object' && entry !== null && 'name' in entry);
+      return entry.name;
+    }), ['go', 'php-extension', 'rust']);
+    assert.equal(parallel.stdout.includes('TestAcquireSQLiteRowLock'), false, 'the pooler keeps cases excluded only from direct runs');
+    for (const args of [['--dry-run'], ['--dry-rnu']]) {
+      const invalid = spawnSync(process.execPath, [resolve(root, 'scripts/client-db-test.mts'), ...args], {
+        cwd: root, env: isolatedEnvironment({ PATH: tools, HOME: tools, ORM_CLIENT_DB_LANGS: 'not-a-client' }), encoding: 'utf8',
+      });
+      assert.equal(invalid.status, 2, invalid.stdout + invalid.stderr);
+    }
+    assert.equal(existsSync(marker), false, 'no build, installation or test command runs');
+  } finally { rmSync(tools, { recursive: true, force: true }); }
 });
