@@ -540,8 +540,6 @@ class Core:
                 raise OrmError(codes.CODEC_ENCODE, f"{column} requires StyledValue")
             if not field.nullable and value.kind == "sql-null":
                 raise OrmError(codes.CODEC_ENCODE, f"{column} does not accept SQL NULL")
-            if value.kind == "value":
-                value.payload()
         elif value is not None:
             if "ip" in field.stages:
                 try:
