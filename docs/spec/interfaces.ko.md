@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: b9ad3c8eed02f116e45f7756932664e9d97e6de99632a91599383c52f9ff1725 -->
+<!-- source-sha256: de72732bdf22d464998e3951e93adcc9464a583d2a66dc9e4cccbc2a1979d028 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -567,9 +567,10 @@ prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메
 - **INT-184** SQLite에서 어떤 변환도 컬럼이 선언한 타입 때문에 값을 거부하지 않는다(INT-152): `INT` 컬럼의 텍스트는 텍스트 셀이고 `FLOAT` 컬럼의 REAL은 float이며, `TIME(3)`처럼 정밀도를 붙여 선언한 컬럼은 dbspec 시간 컬럼이 아니므로, `TIMESTAMP` 컬럼의 것처럼 저장된 텍스트를 검사 없이 돌려준다(INT-103), 시간이 아닌 텍스트(`abc` 같은 것)는 텍스트 셀이다.
 - **INT-185** 네이티브 타입은 서버가 내놓는 그 값의 출력이 어떤 session 설정으로도 바뀌지 않는 표현일 때에만 그리드 셀을 가진다. 셀은 그 형태이며, 텍스트는 텍스트 셀로, binary는 bytes 셀로 담는다. 그 밖의 네이티브 타입은 INT-170으로 거부된다. catalog는 접속할 때 연결의 문자 집합을 고정하므로(MySQL은 `utf8mb4`, PostgreSQL은 `UTF8` `client_encoding`), encoding은 읽기의 설정이 아니다. 표의 규칙이 먼저다: MySQL `YEAR`와 `TIMESTAMP`, PostgreSQL `timestamptz`, `timetz`, 유한하지 않은 `numeric`은 자기 규칙을 따르고, 자기 셀 종류가 있는 타입(정수, float, decimal, boolean, 날짜, 시간, datetime, 텍스트, binary 타입)은 그 종류를 유지한다. domain은 base 타입의 규칙을 따른다. 아래 각 출력은 서버 문서가 정한 것이다:
   - MySQL `BIT`와 공간 타입(`GEOMETRY`, `POINT` 등)은 bytes 셀이다: 서버는 bit 값을 binary 문자열로, geometry를 SRID 4바이트 뒤에 WKB를 붙인 형태로 돌려준다. `JSON`, `ENUM`, `SET`은 텍스트 셀이다: 서버는 JSON 값을 어떤 session 변수로도 바뀌지 않는 정규화된 `utf8mb4` 형태로 쓰고, `ENUM`과 `SET`은 그 member의 텍스트로 쓴다.
-  - PostgreSQL `uuid`, `json`, `jsonb`, `xml`, `bit`, `bit varying`, enum 타입, `inet`, `cidr`, `macaddr`, `macaddr8`, `tsvector`, `tsquery`, `pg_lsn`은 텍스트 셀이다: 어떤 설정도 그 출력을 바꾸지 않으며, `xmloption`은 `xml`과 문자열 사이의 변환을 정할 뿐 출력을 정하지 않는다.
+  - PostgreSQL `uuid`, `json`, `jsonb`, `xml`, `bit`, `bit varying`, enum 타입, `inet`, `cidr`, `macaddr`, `macaddr8`, `tsvector`, `tsquery`, `pg_lsn`, `oid`는 텍스트 셀이다: 어떤 설정도 그 출력을 바꾸지 않으며, `xmloption`은 `xml`과 문자열 사이의 변환을 정할 뿐 출력을 정하지 않는다.
   - PostgreSQL `interval`은 `IntervalStyle`을, `money`는 `lc_monetary`를, 기하 타입(`point`, `line`, `lseg`, `box`, `path`, `polygon`, `circle`)은 `extra_float_digits`를 따르고, schema로 묶이는 OID alias 타입(`regclass`, `regtype`, `regproc`, `regprocedure`, `regoper`, `regoperator`, `regconfig`, `regdictionary`, `regcollation`)은 `search_path`에 따라 이름에 schema를 붙인다. 모두 INT-170으로 거부된다.
   - PostgreSQL array, range, multirange, composite는 각 원소나 field를 그 타입의 출력으로 쓰므로, 그 타입들 어느 것의 텍스트 출력도 설정으로 바뀌지 않으면 텍스트 셀이고(`integer[]`, `text[]`, `int4range`) 그렇지 않으면 INT-170으로 거부된다: float는 `extra_float_digits`를, 날짜와 시간은 `DateStyle`과 `TimeZone`을, `bytea`는 `bytea_output`을 따르고, 거부되는 타입은 그대로 거부된다(`date[]`, `double precision[]`, `bytea[]`).
+  - 이 절이 이름을 들지 않은 네이티브 타입, 곧 extension의 base 타입(`citext`)이나 사용자가 정의한 base 타입은 모든 runtime에서 INT-170으로 거부된다: catalog는 그 출력 함수가 어떤 설정에도 기대지 않음을 알 수 없다.
 
 ### Rust 네이티브 도구 규칙
 
