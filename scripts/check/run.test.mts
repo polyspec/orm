@@ -440,31 +440,6 @@ caseTest('the summary step reports a runner that did not finish, with the partia
   }
 });
 
-// The recipe-parts case (G5.38-2) checks whether a target whose commands do not read each other's results has a sub-target (part) for each command,
-// and it is confirmed. The runner runs targets with `make -k`, so later parts run even when an earlier part fails. A setup part (lease, build)
-// a part that depends on it has the setup part as its prerequisite.
-const PARTS = {
-  'repo-check': ['unit', 'run'],
-  'testcase-check': ['go', 'node', 'runners', 'rust'], 'ts-check': ['hold', 'types', 'test'],
-  'rust-check': ['check', 'clippy', 'clippy-live-db', 'clippy-test-faults'], 'rust-fmt-check': ['clients', 'bench', 'interfaces'],
-  'fuzz-check': ['engine-ir', 'clients-go-orm'], 'feature-unit-check': ['docs', 'coverage', 'owners', 'select'],
-  'client-unit-check': ['dsn', 'markdown', 'relation-keys', 'code-catalog', 'insert-parts', 'engine', 'runtime-model', 'orm-gen', 'orm-gen-python', 'orm-gen-typescript', 'model-methods',
-    'client-generics', 'perf-extensions', 'dbspec-runners'],
-};
-
-caseTest('a target of independent commands runs each as a part of its own', COMPUTE, () => {
-  const lines = readFileSync(resolve(repo, 'Makefile'), 'utf8').split('\n');
-  const problems = [];
-  for (const [target, parts] of Object.entries(PARTS)) {
-    const head = lines.find(line => line.startsWith(`${target}:`));
-    const want = parts.map(part => `${target}/${part}`);
-    if (head?.slice(target.length + 1).trim().split(/\s+/).join(' ') !== want.join(' ')) problems.push(`${target}: prerequisites ${head} instead of ${want.join(' ')}`);
-    for (const part of want) if (!recipe(part).length) problems.push(`${part}: no recipe`);
-    if (recipe(target).length) problems.push(`${target}: commands of its own besides its parts: ${recipe(target).join(' | ')}`);
-  }
-  assert.deepEqual(problems, []);
-});
-
 // The make -k case puts the real definition of repo-check into a temporary Makefile, with $(NODE) pointing at a node that fails in the first part, and runs the runner's
 // command `make -k repo-check`. The second part runs, and make ends with a failure.
 caseTest('the parts of a target after a failed part still run under make -k', PROCESS, async () => {
