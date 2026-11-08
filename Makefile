@@ -2026,7 +2026,7 @@ styled-column-states-unit-check: typescript-current php-vendor-check php-model-c
 	trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; \
 	run_case php-extension-build $(call php_ext_build,"$$extension",release); \
 	if [ "$$last_result" -eq 0 ]; then run_case php-extension env ORM_PHP_MODE=extension POLYSPEC_ORM_EXTENSION="$$extension" $(RUN_TESTS) phpunit --php-extension "$$extension" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelNativeTest.php --filter testStyledColumnDistinguishesUnselectedSqlNullAndEncodedNull; fi; \
-	run_case typescript $(NODE) --test --test-name-pattern='^(sql_null|json_null|json_object_with_kind|empty_text|serialize_sql_null|serialize_value_null|yaml_sql_null|yaml_value_null|unselected|nonnull_sql_null|jsons_sql_null|jsons_value_null|nonnull_value_null)$$' packages/ts/tests/styled-value.mjs; \
+	run_case typescript $(NODE) --test --test-name-pattern='^(sql_null|json_null|json_object_with_kind|empty_text|serialize_sql_null|serialize_value_null|yaml_sql_null|yaml_value_null|unselected|nonnull_sql_null|jsons_sql_null|jsons_value_null|nonnull_value_null|setter_json_nesting_beyond_256_levels|setter_serialize_nesting_beyond_256_levels|setter_yaml_nesting_beyond_256_levels|setter_json_nesting_of_256_levels)$$' packages/ts/tests/styled-value.mjs; \
 	run_case python $(PYTHON_VENV)/bin/python -m packages.python.tests.test_styled_column_states; \
 	run_case rust env PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) styled-column-states-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --manifest-path packages/rust/Cargo.toml --locked --offline -p polyspec-orm-tests --test all -- 'styled_column_states::styled_column_state_fixture::' --test-threads=1; \
 	exit "$$status"

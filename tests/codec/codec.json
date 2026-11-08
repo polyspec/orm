@@ -19303,6 +19303,126 @@
               "message": "CODEC_DECODE: yaml: map keys must be scalar strings"
             }
           }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "[.inf]: c\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: map keys must be scalar strings"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "? [.inf]\n: c\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: map keys must be scalar strings"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "{a: .inf}: c\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: map keys must be scalar strings"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "[9223372036854775808]: c\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: map keys must be scalar strings"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "[*y]: c\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: map keys must be scalar strings"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "[!t b]: c\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: map keys must be scalar strings"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "[&x b]: c\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: map keys must be scalar strings"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "!t [b]: c\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: explicit tags are not supported"
+            }
+          }
         }
       ]
     },
@@ -19438,6 +19558,501 @@
                     "a",
                     {
                       "int": "1"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "yaml_rules_before_an_undefined_alias",
+      "requirements": [
+        "COD-29",
+        "COD-70"
+      ],
+      "steps": [
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "a: !t x\nb: *y\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: explicit tags are not supported"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "a: !!str x\nb: *y\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: explicit tags are not supported"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "a: 1\na: 2\nb: *y\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: duplicate map key"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "a: 1\na: *y\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: duplicate map key"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "a: .inf\nb: *y\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: number is not finite"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "[.nan, *y]\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: number is not finite"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "a: 9223372036854775808\nb: *y\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: integer is outside the i64 range"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "a: &x 1\nb: *y\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: anchors are not supported"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "~: a\nb: *y\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: map keys must be strings or integers"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "[a]: 1\nb: *y\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: map keys must be scalar strings"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "- .inf\n--- *y\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: number is not finite"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "- 1\n--- *y\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: multiple documents are not supported"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "a: *y\nb: x\u0007\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: the stream holds a character that is not printable"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "- *y\n- !t x\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: aliases are not supported"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "a: *y\na: 1\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: aliases are not supported"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "serialize_repeated_array_key",
+      "requirements": [
+        "COD-16",
+        "COD-70"
+      ],
+      "steps": [
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "a:2:{s:1:\"a\";i:1;s:1:\"a\";i:2;}"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: duplicate array key"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "a:2:{i:0;N;i:0;N;}"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: duplicate array key"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "a:2:{i:1;N;s:1:\"1\";N;}"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: duplicate array key"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "a:2:{s:1:\"1\";N;i:1;N;}"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: duplicate array key"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "a:2:{i:0;N;i:-0;N;}"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: duplicate array key"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "a:2:{i:1;N;i:01;N;}"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: duplicate array key"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "a:3:{i:5;N;s:1:\"x\";N;i:5;N;}"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: duplicate array key"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "a:1:{s:1:\"k\";a:2:{s:1:\"a\";N;s:1:\"a\";N;}}"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: duplicate array key"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "a:2:{s:1:\"a\";i:1;s:1:\"a\";d:INF;}"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: duplicate array key"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "a:2:{s:1:\"a\";i:1;s:1:\"a\";"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: duplicate array key"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "a:2:{s:1:\"a\";d:INF;s:1:\"a\";i:1;}"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: non-finite float"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "a:2:{i:1;N;s:2:\"01\";N;}"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "object": [
+                  [
+                    "1",
+                    {
+                      "nil": true
+                    }
+                  ],
+                  [
+                    "01",
+                    {
+                      "nil": true
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "a:2:{i:0;N;s:2:\"-0\";N;}"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "object": [
+                  [
+                    "0",
+                    {
+                      "nil": true
+                    }
+                  ],
+                  [
+                    "-0",
+                    {
+                      "nil": true
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "a:2:{s:1:\"a\";N;s:1:\"A\";N;}"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "object": [
+                  [
+                    "a",
+                    {
+                      "nil": true
+                    }
+                  ],
+                  [
+                    "A",
+                    {
+                      "nil": true
                     }
                   ]
                 ]
