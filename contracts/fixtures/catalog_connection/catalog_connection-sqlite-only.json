@@ -1,7 +1,11 @@
 {
   "$schema": "../../../scripts/features/schema/recipe.schema.json",
   "requirements": [
-    "INT-103"
+    "INT-103",
+    "INT-165",
+    "INT-176",
+    "INT-177",
+    "INT-178"
   ],
   "fixture": "contracts/fixtures/catalog_connection/dbspec-set.json",
   "seed": {
@@ -73,7 +77,11 @@
     {
       "id": "sqlite_temporal_checks",
       "requirements": [
-        "INT-103"
+        "INT-103",
+        "INT-165",
+        "INT-176",
+        "INT-177",
+        "INT-178"
       ],
       "only": [
         "sqlite"
@@ -142,7 +150,8 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "GRID_TEMPORAL_VALUE"
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: the stored value is not a dbspec datetime"
             }
           }
         },
@@ -167,7 +176,8 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "GRID_TEMPORAL_VALUE"
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: the stored value is not a dbspec date"
             }
           }
         },
@@ -192,7 +202,8 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "GRID_TEMPORAL_VALUE"
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: the stored value is not a dbspec date"
             }
           }
         },
@@ -217,7 +228,8 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "GRID_TEMPORAL_VALUE"
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: the stored value is not a dbspec time"
             }
           }
         },
@@ -242,7 +254,8 @@
           ],
           "expect": {
             "sqlite": {
-              "error": "GRID_TEMPORAL_VALUE"
+              "error": "GRID_TEMPORAL_VALUE",
+              "message": "GRID_TEMPORAL_VALUE: the stored value is not a dbspec datetime"
             }
           }
         }

@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 666739e14c50167d09e98bc4d4bd5d175fbd18bbe14f5784d39a6e825064f058 -->
+<!-- source-sha256: 3812c320bbf283ac49b3fce535b43034e62b449bc8a6a6cadd2f2db6ab7f419f -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -538,6 +538,33 @@ prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메
 실패한다. 미지원 타입 오류를 보존하고 완료/실패 시 rollback한다. 독립 offset
 페이지는 데이터 변경 시 이동할 수 있으며 메타데이터는 원자적 스키마 revision이나
 행 변경 권한이 아니다.
+
+### Catalog 값 규칙
+
+- **INT-165** driver 값의 catalog 변환은 Go, TypeScript, Python, PHP, PHP 확장, Rust에서 각 데이터베이스마다 아래 표의 규칙을 검사한다: 읽기 전용 그리드 조회, 시간 값이 그 그리드 셀의 텍스트인 일반 읽기 전용 조회(INT-153), 기술된 테이블의 모든 읽기(테이블 페이지, 행 조회, insert와 update의 되읽기)에서다. 규칙마다 code 하나와 텍스트 하나가 있고, message는 모든 runtime에서 `<CODE>: <text>`이다. 텍스트는 호출자나 데이터베이스가 준 값(INT-163), host 타입, driver가 알리는 타입 이름을 쓰지 않는다. 컬럼도 쓰지 않는다: 그리드 컬럼의 label은 값을 담을 수 있는 query 텍스트이며(식 `YEAR('2020-01-02')` 같은 것), 규칙은 그리드 조회와 기술된 읽기에서 같은 텍스트다. 규칙은 그 입력이 생길 수 있는 모든 데이터베이스에서 성립한다. Reach 열은 데이터베이스나 driver가 그 입력을 보낼 수 없는 곳을 적으며, 그것이 규칙을 빼는 이유는 아니다. markdown corpus는 SQLite의 dialect로 SQL을 실행하므로(DIA-185), SQLite 행은 flowmark에서도 성립한다. 모든 규칙에서 NULL은 null 셀이다. SQLite 텍스트는 범위보다 형식(INT-176부터 INT-178)을 먼저 검사하고, INT-173이 INT-174보다 앞서므로 MySQL 영날짜는 범위 밖이다. driver나 library의 실패는 INT-172이며 그 실패를 cause로 남긴다. 그것은 `DRIVER` 오류가 아니며, 변환의 어떤 오류도 catalog code 없이 나가지 않는다.
+
+| ID | 데이터베이스 | 값 | 거부 조건 | Code | 텍스트 | Reach |
+| --- | --- | --- | --- | --- | --- | --- |
+| **INT-166** | MySQL | 그리드 조회와 기술된 읽기의 `YEAR` | 값이 NULL이 아니다 | `CATALOG_VALUE` | `MySQL YEAR has no grid cell` | 모든 runtime |
+| **INT-167** | MySQL | 그리드 조회와 기술된 읽기의 `TIMESTAMP` | 값이 NULL이 아니다 | `CATALOG_VALUE` | `MySQL TIMESTAMP follows a time zone` | 모든 runtime |
+| **INT-168** | PostgreSQL | 그리드 조회와 기술된 읽기의 `timestamptz`와 `timetz` | 값이 NULL이 아니다 | `CATALOG_VALUE` | `PostgreSQL timestamptz and timetz are unsupported` | 모든 runtime |
+| **INT-169** | PostgreSQL | 그리드 조회와 기술된 읽기의 `numeric` | 값이 `NaN`, `Infinity`, `-Infinity`이다 | `CATALOG_VALUE` | `PostgreSQL numeric is not finite` | 모든 runtime. MySQL `DECIMAL`은 그런 값을 담지 않고, SQLite에는 decimal 저장 클래스가 없다 |
+| **INT-170** | MySQL, PostgreSQL | catalog 그리드의 어떤 셀 종류도 받지 않는 컬럼 타입, 예를 들어 PostgreSQL `interval` | 값이 NULL이 아니다 | `CATALOG_VALUE` | `unsupported native type` | 모든 runtime. SQLite는 모든 값에 셀 종류인 저장 클래스를 준다 |
+| **INT-171** | 모든 데이터베이스 | 컬럼 타입의 값의 host 형태가 아닌 driver 값: 변환이 그 컬럼에 받지 않는 host 타입(다른 종류의 시간 객체, 문자열도 stream도 아닌 PHP 값), 컬럼 부호의 64비트 정수 숫자가 아닌 정수 텍스트, 수가 아닌 float 텍스트, 하루 중 시각을 가진 driver 날짜, 소수 여섯 자리 뒤에 숫자가 있는 driver 시간 | 항상 | `CATALOG_VALUE` | `unsupported driver value` | 어떤 데이터베이스도 보내지 않는다. 각 driver는 지원하는 타입의 값을 host 형태로 넘긴다. 모든 runtime은 host 값을 변환하는 곳에 이 검사를 두며, 이것에 닿는 recipe case는 없다 |
+| **INT-172** | 모든 데이터베이스 | driver나 library가 디코드하지 못한 값: Rust sqlx `try_get`이나 raw 읽기, 형식이나 길이가 그 타입의 것이 아닌 PostgreSQL binary 값, 읽을 수 없는 PHP `bytea` stream, driver 오류가 아닌 Python 디코드 오류 | 항상 | `CATALOG_VALUE` | `the driver could not decode the value` | 모든 runtime은 그 실패를 cause로 남긴다(Go `errors.Unwrap`, TypeScript `cause`, Python `__cause__`, PHP `getPrevious`, Rust `source`). 어떤 데이터베이스도 지원하는 타입에 그런 값을 보내지 않으므로, 이것에 닿는 recipe case는 없다 |
+| **INT-173** | MySQL, PostgreSQL, SQLite | 날짜, 또는 datetime의 날짜 | 연도가 1보다 앞서거나 9999보다 뒤다: `DATE`와 `DATETIME`의 MySQL 영날짜 `0000-00-00`, PostgreSQL BC 날짜나 9999를 넘는 연도, `date`와 `timestamp`의 PostgreSQL `infinity`와 `-infinity`, 연도 0의 SQLite 텍스트 | `GRID_TEMPORAL_VALUE` | `date outside 0001-01-01 to 9999-12-31` | 모든 runtime. SQLite에서는 기술된 읽기에서만이며, 그리드 조회는 저장된 텍스트를 둔다 |
+| **INT-174** | MySQL, SQLite | 날짜, 또는 datetime의 날짜 | 월이나 일이 달력의 것이 아니다. MySQL이 `ALLOW_INVALID_DATES`에서 저장하는 것(`2024-02-30`)이 그렇다 | `GRID_TEMPORAL_VALUE` | `date is not a calendar date` | 모든 runtime. PostgreSQL은 그런 날짜를 입력에서 거부한다 |
+| **INT-175** | MySQL, PostgreSQL, SQLite | 시각, 또는 datetime의 시각 | 00:00:00부터 23:59:59.999999 밖이다: 하루를 넘거나 시 숫자가 세 자리이거나 음수인 MySQL `TIME`, PostgreSQL `24:00:00`, `24:00:00` 같은 SQLite 텍스트 | `GRID_TEMPORAL_VALUE` | `time outside 00:00:00 to 23:59:59.999999` | 모든 runtime, 일반 읽기 전용 조회에서도 |
+| **INT-176** | SQLite | 기술된 `DATE` 컬럼의 저장된 값 | `YYYY-MM-DD` 형식의 텍스트가 아니다 | `GRID_TEMPORAL_VALUE` | `the stored value is not a dbspec date` | 모든 runtime. MySQL과 PostgreSQL은 자기 형식의 텍스트만 준다 |
+| **INT-177** | SQLite | 기술된 `TIME` 컬럼의 저장된 값 | 소수가 없거나 소수 한 자리부터 여섯 자리를 가진 `HH:MM:SS` 형식의 텍스트가 아니다 | `GRID_TEMPORAL_VALUE` | `the stored value is not a dbspec time` | 모든 runtime. MySQL과 PostgreSQL은 자기 형식의 텍스트만 준다 |
+| **INT-178** | SQLite | 기술된 `DATETIME` 컬럼의 저장된 값 | 소수가 없거나 소수 한 자리부터 여섯 자리를 가진 `YYYY-MM-DD HH:MM:SS` 형식의 텍스트가 아니다 | `GRID_TEMPORAL_VALUE` | `the stored value is not a dbspec datetime` | 모든 runtime. MySQL과 PostgreSQL은 자기 형식의 텍스트만 준다 |
+| **INT-179** | SQLite | 기술된 `TIME`이나 `DATETIME` 컬럼의 텍스트 | 소수가 컬럼의 dbspec CHECK가 정한 p 자리를 정확히 갖지 않는다. CHECK가 없으면 p는 0이므로, 0으로 된 소수도 거부된다 | `GRID_TEMPORAL_PRECISION` | `the fraction digits are not the count that its dbspec CHECK fixes` | 모든 runtime |
+| **INT-180** | MySQL, PostgreSQL | 기술된 컬럼의 시각이나 datetime | 선언된 정밀도 p 뒤에 0이 아닌 숫자가 있다 | `GRID_TEMPORAL_PRECISION` | `temporal value has more fraction digits than its precision` | 어떤 데이터베이스도 보내지 않는다. 데이터베이스는 값을 컬럼의 p로 반올림한다. 모든 runtime은 셀의 p 자리를 쓰는 곳에서 이것을 검사하여, 어떤 숫자도 모르게 버려지지 않게 한다 |
+| **INT-181** | MySQL, PostgreSQL | 기술된 시각이나 datetime 컬럼의 native 타입 | 정밀도가 6보다 크거나 수가 아니다 | `GRID_TEMPORAL_PRECISION` | `native type declares more than 6 fraction digits` | 어떤 데이터베이스도 선언하지 않는다. MySQL은 6보다 큰 정밀도를 거부하고(DIA-54), PostgreSQL은 6으로 줄인다. native 타입에서 p를 읽는 모든 runtime이 이것을 검사한다 |
+| **INT-182** | MySQL, PostgreSQL, SQLite | 기술된 boolean 컬럼: MySQL `tinyint(1)`, PostgreSQL과 SQLite `boolean` | 값이 boolean도 0이나 1도 아니다 | `CATALOG_VALUE` | `a boolean column holds a value that is not a boolean` | 모든 runtime. PostgreSQL boolean은 true와 false만 담는다 |
+
+- **INT-183** 부동소수 NaN, Infinity, -Infinity는 읽기의 float이며 거부가 아니다(INT-102): 그리드 셀은 그 비트를 두고, 기술된 테이블의 읽기와 일반 읽기 전용 조회는 그것을 runtime의 비유한 float로 돌려준다. PostgreSQL `real`과 `double precision`, 그리고 REAL이 무한대를 담는 SQLite에서다. MySQL은 비유한 float를 입력에서 거부한다.
+- **INT-184** SQLite에서 어떤 변환도 컬럼이 선언한 타입 때문에 값을 거부하지 않는다(INT-152): `INT` 컬럼의 텍스트는 텍스트 셀이고 `FLOAT` 컬럼의 REAL은 float이며, `TIME(3)`처럼 정밀도를 붙여 선언한 컬럼은 dbspec 시간 컬럼이 아니므로, `TIMESTAMP` 컬럼의 것처럼 저장된 텍스트를 검사 없이 돌려준다(INT-103).
 
 ### Rust 네이티브 도구 규칙
 
