@@ -6,9 +6,9 @@ use polyspec_orm_tests::recipe;
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
     recipe::table_trials(
-    "immutable_write_markdown",
-    "contracts/fixtures/immutable_write/immutable_write.json",
-    "contracts/fixtures/immutable_write/dbspec-set.json",
-    "markdown",
-)
+        "immutable_write_markdown",
+        "contracts/fixtures/immutable_write/immutable_write.json",
+        "contracts/fixtures/immutable_write/dbspec-set.json",
+        "markdown",
+    )
 }

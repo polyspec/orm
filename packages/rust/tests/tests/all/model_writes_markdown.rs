@@ -6,9 +6,9 @@ use polyspec_orm_tests::recipe;
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
     recipe::database_trials_with_models(
-    "model_writes_markdown",
-    "contracts/fixtures/model_writes/model_writes.json",
-    "markdown",
-    crate::model_writes_dispatch::models,
-)
+        "model_writes_markdown",
+        "contracts/fixtures/model_writes/model_writes.json",
+        "markdown",
+        crate::model_writes_dispatch::models,
+    )
 }

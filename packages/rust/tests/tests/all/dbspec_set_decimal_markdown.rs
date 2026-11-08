@@ -4,10 +4,5 @@
 use polyspec_orm_tests::recipe;
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
-    recipe::table_trials(
-    "dbspec_set_decimal_markdown",
-    "tests/dbspec/set-decimal.json",
-    "contracts/fixtures/dbspec-set.json",
-    "markdown",
-)
+    recipe::table_trials("dbspec_set_decimal_markdown", "tests/dbspec/set-decimal.json", "contracts/fixtures/dbspec-set.json", "markdown")
 }

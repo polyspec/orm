@@ -5,9 +5,9 @@ use polyspec_orm_tests::recipe;
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
     recipe::database_trials_with_models(
-    "composite_keys_markdown",
-    "contracts/fixtures/composite_keys/composite_keys.json",
-    "markdown",
-    crate::model_writes_dispatch::models,
-)
+        "composite_keys_markdown",
+        "contracts/fixtures/composite_keys/composite_keys.json",
+        "markdown",
+        crate::model_writes_dispatch::models,
+    )
 }

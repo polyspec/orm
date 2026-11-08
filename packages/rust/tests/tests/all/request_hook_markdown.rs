@@ -8,9 +8,9 @@ use polyspec_orm_tests::recipe;
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
     recipe::table_trials(
-    "request_hook_markdown",
-    "contracts/fixtures/request_hook/request_hook.json",
-    "contracts/fixtures/request_hook/dbspec-set.json",
-    "markdown",
-)
+        "request_hook_markdown",
+        "contracts/fixtures/request_hook/request_hook.json",
+        "contracts/fixtures/request_hook/dbspec-set.json",
+        "markdown",
+    )
 }

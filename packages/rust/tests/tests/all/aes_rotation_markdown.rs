@@ -8,9 +8,9 @@ use polyspec_orm_tests::recipe;
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
     recipe::table_trials(
-    "aes_rotation_markdown",
-    "contracts/fixtures/aes_rotation/aes_rotation.json",
-    "contracts/fixtures/aes_rotation/dbspec-set.json",
-    "markdown",
-)
+        "aes_rotation_markdown",
+        "contracts/fixtures/aes_rotation/aes_rotation.json",
+        "contracts/fixtures/aes_rotation/dbspec-set.json",
+        "markdown",
+    )
 }

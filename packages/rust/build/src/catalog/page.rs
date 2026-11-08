@@ -77,7 +77,7 @@ fn assemble(metadata: TableMetadata, result: GridQueryResult, has_more: bool, af
 use crate::catalog::TableColumnMetadata;
 
 #[cfg(test)]
-#[path = "../../tests/common/table_column.rs"]
+#[path = "../../tests/cases/common/table_column.rs"]
 mod table_column;
 
 #[cfg(test)]

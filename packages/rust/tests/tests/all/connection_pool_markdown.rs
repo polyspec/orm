@@ -5,9 +5,9 @@ use polyspec_orm_tests::recipe;
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
     recipe::table_trials(
-    "connection_pool_markdown",
-    "contracts/fixtures/connection_pool/connection_pool.json",
-    "contracts/fixtures/statement_events/dbspec-set.json",
-    "markdown",
-)
+        "connection_pool_markdown",
+        "contracts/fixtures/connection_pool/connection_pool.json",
+        "contracts/fixtures/statement_events/dbspec-set.json",
+        "markdown",
+    )
 }

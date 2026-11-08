@@ -6,9 +6,9 @@ use polyspec_orm_tests::recipe;
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
     recipe::table_trials(
-    "parameter_chunking_markdown",
-    "contracts/fixtures/parameter_chunking/parameter_chunking.json",
-    "contracts/fixtures/parameter_chunking/dbspec-set.json",
-    "markdown",
-)
+        "parameter_chunking_markdown",
+        "contracts/fixtures/parameter_chunking/parameter_chunking.json",
+        "contracts/fixtures/parameter_chunking/dbspec-set.json",
+        "markdown",
+    )
 }

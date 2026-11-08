@@ -6,9 +6,9 @@ use polyspec_orm_tests::recipe;
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
     recipe::table_trials(
-    "conformance_verification_markdown",
-    "contracts/fixtures/conformance_verification/conformance_verification.json",
-    "contracts/fixtures/conformance_verification/dbspec-set.json",
-    "markdown",
-)
+        "conformance_verification_markdown",
+        "contracts/fixtures/conformance_verification/conformance_verification.json",
+        "contracts/fixtures/conformance_verification/dbspec-set.json",
+        "markdown",
+    )
 }

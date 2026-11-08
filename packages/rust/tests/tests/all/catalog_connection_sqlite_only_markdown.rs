@@ -5,9 +5,5 @@
 use polyspec_orm_tests::recipe;
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
-    recipe::database_trials(
-    "catalog_connection_sqlite_only_markdown",
-    "contracts/fixtures/catalog_connection/catalog_connection-sqlite-only.json",
-    "markdown",
-)
+    recipe::database_trials("catalog_connection_sqlite_only_markdown", "contracts/fixtures/catalog_connection/catalog_connection-sqlite-only.json", "markdown")
 }

@@ -4,10 +4,7 @@
 use polyspec_orm_tests::recipe;
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
-    recipe::database_trials_with_models(
-    "fulltext_search_recipe_markdown",
-    "contracts/fixtures/fulltext_search/fulltext_search.json",
-    "markdown",
-    || crate::fulltext_dispatch::models(polyspec_orm::Dialect::Sqlite),
-)
+    recipe::database_trials_with_models("fulltext_search_recipe_markdown", "contracts/fixtures/fulltext_search/fulltext_search.json", "markdown", || {
+        crate::fulltext_dispatch::models(polyspec_orm::Dialect::Sqlite)
+    })
 }

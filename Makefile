@@ -3678,7 +3678,7 @@ transaction-failure-rust-check: transaction-failure-rust-check/lib transaction-f
 transaction-failure-rust-check/lib:
 	$(if $(TRANSACTION_FAILURE_RUST_FAULT_FILTER),:,cd packages/rust && $(CARGO_TEST) transaction-failure-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --lib end_failures_are_reported -- --nocapture)
 transaction-failure-rust-check/fault:
-	cd packages/rust && $(CARGO_TEST) transaction-failure-rust-fault -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test all -- $(if $(TRANSACTION_FAILURE_RUST_FAULT_FILTER),$(TRANSACTION_FAILURE_RUST_FAULT_FILTER),rollback::rollback_fault_sqlite) --nocapture
+	cd packages/rust && $(CARGO_TEST) transaction-failure-rust-fault -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test all -- $(if $(TRANSACTION_FAILURE_RUST_FAULT_FILTER),$(TRANSACTION_FAILURE_RUST_FAULT_FILTER),rollback::transaction_forms_rollback_fault_sqlite) --nocapture
 
 # The shared blind-index target regression runs only the Python client's pure planner tests.
 
