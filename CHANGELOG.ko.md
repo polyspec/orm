@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f1d572ed4a0f98f72d0697ac213ff5688aa8ef7ba8773c5f7086663ff4064e74 -->
+<!-- source-sha256: c1c88b90895cabdd11fd5a85a87be63785d5348b398137b5b57a1705939f2b1c -->
 # 변경 이력
 
 ## Unreleased
+
+## 0.0.26
 
 - orm은 모든 ecosystem에서 ordered-json 0.0.23을 고정하고, 각 lock은 자기 package manager가 새로 쓴다 (T413).
 
