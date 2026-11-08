@@ -5487,6 +5487,38 @@
     "tests/timezone/date.ini": {
       "scope": "suite",
       "reason": "WITH_TEST_ENV adds it to the PHP ini scan path of every target that runs database clients, so it sets the time zone of every PHP client the suite starts"
+    },
+    ".mise/locks/npm-npm/12.2.0/.gitignore": {
+      "scope": "suite",
+      "reason": "it keeps the packages that mise installs for the locked npm out of Git, so the install of make install-tools that every check runs on leaves a clean tree"
+    },
+    ".mise/locks/pypi-vulture/2.16/uv.lock": {
+      "scope": "suite",
+      "reason": "it pins the packages of the vulture that make install-tools installs and lint-python runs over the whole Python package"
+    },
+    "mise.lock": {
+      "scope": "suite",
+      "reason": "it pins the digest of every tool of mise.toml that make install-tools installs, so it changes the tools of every check, locally and in CI"
+    },
+    "config/toolchain.json": {
+      "scope": "suite",
+      "reason": "it declares the symbol extractors and toolchains that make install-tools and the install of the parity symbols put in place for every check and the parity gate"
+    },
+    "config/rebuild.json": {
+      "scope": "suite",
+      "reason": "it selects the tools whose class make rebuild-check checks over every tracked tool source"
+    },
+    "config/retained-branches.json": {
+      "scope": "suite",
+      "reason": "make land reads it after every merge to keep the branches it pins; no check reads it"
+    },
+    "config/cargo.schema.json": {
+      "scope": "suite",
+      "reason": "make layout-check validates every Cargo.toml of the repository against it"
+    },
+    "config/composer.schema.json": {
+      "scope": "suite",
+      "reason": "make layout-check validates every composer.json of the repository against it"
     }
   }
 }
