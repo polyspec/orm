@@ -755,6 +755,14 @@
     "exported": false,
     "signature": "pub async fn gets_count (\u0026 self) -\u003e polyspec_orm :: Result \u003c polyspec_orm :: GroupRows \u003e"
   },
+  "packages/rust/build/src/fixed.rs.txt::T::gets_count_lookahead_page": {
+    "exported": false,
+    "signature": "pub async fn gets_count_lookahead_page (\u0026 self , page : u32 , per_page : u32) -\u003e polyspec_orm :: Result \u003c polyspec_orm :: GroupLookaheadPage \u003e"
+  },
+  "packages/rust/build/src/fixed.rs.txt::T::gets_lookahead_page": {
+    "exported": false,
+    "signature": "pub async fn gets_lookahead_page (\u0026 self , page : u32 , per_page : u32) -\u003e polyspec_orm :: Result \u003c polyspec_orm :: LookaheadPage \u003c Self \u003e \u003e"
+  },
   "packages/rust/build/src/fixed.rs.txt::T::gets_page": {
     "exported": false,
     "signature": "pub async fn gets_page (\u0026 self , page : u32 , per_page : u32) -\u003e polyspec_orm :: Result \u003c polyspec_orm :: Page \u003c Self \u003e \u003e"
@@ -2947,6 +2955,30 @@
     "exported": true,
     "signature": "{\"fetched\":\"HashMap\",\"items\":\"HashMap\",\"keys\":\"list\u003cKey\u003e\"}"
   },
+  "packages/rust/orm/src/collection.rs::GroupLookaheadPage": {
+    "exported": true,
+    "signature": "pub struct GroupLookaheadPage  { pub items : GroupRows , pub page : u32 , pub per_page : u32 , pub has_next : bool , }"
+  },
+  "packages/rust/orm/src/collection.rs::GroupLookaheadPage#field.has_next": {
+    "exported": true,
+    "signature": "bool"
+  },
+  "packages/rust/orm/src/collection.rs::GroupLookaheadPage#field.items": {
+    "exported": true,
+    "signature": "GroupRows"
+  },
+  "packages/rust/orm/src/collection.rs::GroupLookaheadPage#field.page": {
+    "exported": true,
+    "signature": "u32"
+  },
+  "packages/rust/orm/src/collection.rs::GroupLookaheadPage#field.per_page": {
+    "exported": true,
+    "signature": "u32"
+  },
+  "packages/rust/orm/src/collection.rs::GroupLookaheadPage#wire": {
+    "exported": true,
+    "signature": "{\"has_next\":\"bool\",\"items\":\"GroupRows\",\"page\":\"integer\",\"per_page\":\"integer\"}"
+  },
   "packages/rust/orm/src/collection.rs::GroupRow": {
     "exported": true,
     "signature": "pub struct GroupRow  { values : Vec \u003c (String , Val) \u003e , count : i64 , }"
@@ -3066,6 +3098,30 @@
   "packages/rust/orm/src/collection.rs::Key::to_json": {
     "exported": true,
     "signature": "pub fn to_json (\u0026 self) -\u003e serde_json :: Value"
+  },
+  "packages/rust/orm/src/collection.rs::LookaheadPage": {
+    "exported": true,
+    "signature": "pub struct LookaheadPage \u003c M \u003e { pub items : Collection \u003c M \u003e , pub page : u32 , pub per_page : u32 , pub has_next : bool , }"
+  },
+  "packages/rust/orm/src/collection.rs::LookaheadPage#field.has_next": {
+    "exported": true,
+    "signature": "bool"
+  },
+  "packages/rust/orm/src/collection.rs::LookaheadPage#field.items": {
+    "exported": true,
+    "signature": "Collection \u003c M \u003e"
+  },
+  "packages/rust/orm/src/collection.rs::LookaheadPage#field.page": {
+    "exported": true,
+    "signature": "u32"
+  },
+  "packages/rust/orm/src/collection.rs::LookaheadPage#field.per_page": {
+    "exported": true,
+    "signature": "u32"
+  },
+  "packages/rust/orm/src/collection.rs::LookaheadPage#wire": {
+    "exported": true,
+    "signature": "{\"has_next\":\"bool\",\"items\":\"Collection\",\"page\":\"integer\",\"per_page\":\"integer\"}"
   },
   "packages/rust/orm/src/collection.rs::Page": {
     "exported": true,
@@ -5587,6 +5643,10 @@
     "exported": false,
     "signature": " fn limit (\u0026 self , b : \u0026 mut Builder , limit : \u0026 ir :: Limit) -\u003e Result \u003c String \u003e"
   },
+  "packages/rust/orm/src/engine/planner.rs::Planner \u003c 'm \u003e::lookahead_query": {
+    "exported": false,
+    "signature": " fn lookahead_query (\u0026 self , r : \u0026 ir :: Request) -\u003e Result \u003c ir :: Query \u003e"
+  },
   "packages/rust/orm/src/engine/planner.rs::Planner \u003c 'm \u003e::managed_insert_columns": {
     "exported": false,
     "signature": " fn managed_insert_columns \u003c 'e \u003e (\u0026 self , ent : \u0026 'e Entity , set : \u0026 [ir :: Assign]) -\u003e Result \u003c Vec \u003c Managed \u003c 'e \u003e \u003e \u003e"
@@ -7497,11 +7557,15 @@
   },
   "packages/rust/orm/src/model.rs::QueryResult": {
     "exported": false,
-    "signature": " struct QueryResult  { plan : Arc \u003c Plan \u003e , main : Vec \u003c Vec \u003c Val \u003e \u003e , steps : HashMap \u003c u32 , StepRows \u003e , params : Vec \u003c Param \u003e , # [doc = \" The total row count of a paginate request, read from its count step.\"] count : Option \u003c i64 \u003e , }"
+    "signature": " struct QueryResult  { plan : Arc \u003c Plan \u003e , main : Vec \u003c Vec \u003c Val \u003e \u003e , steps : HashMap \u003c u32 , StepRows \u003e , params : Vec \u003c Param \u003e , # [doc = \" The total row count of a paginate request, read from its count step.\"] count : Option \u003c i64 \u003e , # [doc = \" Whether a lookahead page read the row past its end, which is dropped before the relation steps (INT-164).\"] has_next : bool , }"
   },
   "packages/rust/orm/src/model.rs::QueryResult#field.count": {
     "exported": false,
     "signature": "Option \u003c i64 \u003e"
+  },
+  "packages/rust/orm/src/model.rs::QueryResult#field.has_next": {
+    "exported": false,
+    "signature": "bool"
   },
   "packages/rust/orm/src/model.rs::QueryResult#field.main": {
     "exported": false,
@@ -7521,7 +7585,7 @@
   },
   "packages/rust/orm/src/model.rs::QueryResult#wire": {
     "exported": false,
-    "signature": "{\"count\":\"integer\",\"main\":\"list\u003clist\u003cVal\u003e\u003e\",\"params\":\"list\u003cParam\u003e\",\"plan\":\"Plan\",\"steps\":\"HashMap\"}"
+    "signature": "{\"count\":\"integer\",\"has_next\":\"bool\",\"main\":\"list\u003clist\u003cVal\u003e\u003e\",\"params\":\"list\u003cParam\u003e\",\"plan\":\"Plan\",\"steps\":\"HashMap\"}"
   },
   "packages/rust/orm/src/model.rs::QueryResult::related": {
     "exported": false,
@@ -7743,9 +7807,21 @@
     "exported": true,
     "signature": "pub async fn gets_count \u003c M : Model \u003e (m : \u0026 M) -\u003e Result \u003c GroupRows \u003e"
   },
+  "packages/rust/orm/src/model.rs::gets_count_lookahead_page": {
+    "exported": true,
+    "signature": "pub async fn gets_count_lookahead_page \u003c M : Model \u003e (m : \u0026 M , page : u32 , per_page : u32) -\u003e Result \u003c GroupLookaheadPage \u003e"
+  },
+  "packages/rust/orm/src/model.rs::gets_lookahead_page": {
+    "exported": true,
+    "signature": "pub async fn gets_lookahead_page \u003c M : Model \u003e (m : \u0026 M , page : u32 , per_page : u32) -\u003e Result \u003c LookaheadPage \u003c M \u003e \u003e"
+  },
   "packages/rust/orm/src/model.rs::gets_page": {
     "exported": true,
     "signature": "pub async fn gets_page \u003c M : Model \u003e (m : \u0026 M , page : u32 , per_page : u32) -\u003e Result \u003c Page \u003c M \u003e \u003e"
+  },
+  "packages/rust/orm/src/model.rs::group_rows": {
+    "exported": false,
+    "signature": " fn group_rows (core : \u0026 Core , result : \u0026 QueryResult) -\u003e Result \u003c GroupRows \u003e"
   },
   "packages/rust/orm/src/model.rs::hook_request": {
     "exported": false,
@@ -7778,6 +7854,10 @@
   "packages/rust/orm/src/model.rs::load": {
     "exported": false,
     "signature": " async fn load (c : \u0026 Core , kind : \u0026 str) -\u003e Result \u003c Loaded \u003e"
+  },
+  "packages/rust/orm/src/model.rs::lookahead_request": {
+    "exported": false,
+    "signature": " fn lookahead_request (c : \u0026 Core , kind : \u0026 str , page : u32 , per_page : u32) -\u003e Result \u003c (Executor , Core , Req) \u003e"
   },
   "packages/rust/orm/src/model.rs::match_key": {
     "exported": false,
@@ -7870,6 +7950,10 @@
   "packages/rust/orm/src/model.rs::select": {
     "exported": false,
     "signature": " async fn select (ex : \u0026 Executor , conn : \u0026 Option \u003c Db \u003e , req : \u0026 mut Req) -\u003e Result \u003c QueryResult \u003e"
+  },
+  "packages/rust/orm/src/model.rs::select_page": {
+    "exported": false,
+    "signature": " async fn select_page (ex : \u0026 Executor , conn : \u0026 Option \u003c Db \u003e , req : \u0026 mut Req , keep : Option \u003c usize \u003e) -\u003e Result \u003c QueryResult \u003e"
   },
   "packages/rust/orm/src/model.rs::split_read_plan": {
     "exported": false,

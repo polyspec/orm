@@ -1883,6 +1883,7 @@ class ChainBuild {
       if (q.aggregate.column !== undefined) m[CORE].aggregate(q.aggregate.agg, q.aggregate.column);
       for (const column of q.aggregate.group_by ?? []) m[CORE].groupBy.push(column);
     }
+    for (const column of q.group_by ?? []) m[CORE].groupBy.push(column);
     for (const join of q.joins ?? []) {
       const child = coreModel(join.model, this.context);
       const inner = new ChainBuild(this.context, this.outer);
@@ -1992,7 +1993,7 @@ function chainBuilt(s, context) {
   const m = s.unconnected === true ? model : model.connect(connectionOf(s, context));
   const build = new ChainBuild(context);
   if (s.unconnected !== true) build.db = connectionOf(s, context);
-  const paged = s.page === true;
+  const paged = s.page === true || s.lookahead === true;
   build.query(m, s, { limit: !paged && s.offset === undefined });
   if (!paged && s.offset !== undefined && s.limit !== undefined) m.limit(s.offset, typeof s.limit === 'number' ? s.limit : s.limit.count);
   if (s.relation !== undefined) {
@@ -2048,6 +2049,7 @@ const TABLE_OPS = {
     }
     if (s.compile === true) return { json: plainJson(await m.getQuery()) };
     if (s.plan === true) {
+      if (s.plan_page === undefined && s.limit.offset % s.limit.count !== 0) throw new Error('a plan needs an offset that is a multiple of its count');
       const steps = s.plan_page === undefined
         ? await m.getPagePlanSteps(Math.floor(s.limit.offset / s.limit.count) + 1, s.limit.count)
         : await m.getPagePlanSteps(s.plan_page.page, s.plan_page.per_page);
@@ -2056,6 +2058,18 @@ const TABLE_OPS = {
         const shown = { role: step.role, tables: step.tables, count: Object.fromEntries(s.plan_count.map(text => [text, sql.split(text).length - 1])) };
         return s.plan_sql === true ? { ...shown, sql: step.sql } : shown;
       }) };
+    }
+    if (s.lookahead === true) {
+      const count = s.limit?.count;
+      const offset = s.limit?.offset;
+      if (!Number.isSafeInteger(count) || !Number.isSafeInteger(offset) || count <= 0 || offset % count !== 0) throw new Error('a lookahead page needs a limit whose count is above 0 and whose offset is a multiple of the count');
+      const number = offset / count + 1;
+      if (s.aggregate !== undefined) {
+        const page = await m.getsCountLookaheadPage(number, count);
+        return { json: plainJson({ items: page.items.toArray(), page: page.page, per_page: page.perPage, has_next: page.hasNext }) };
+      }
+      const page = await m.getsLookaheadPage(number, count);
+      return { json: plainJson({ items: page.items.keys(), page: page.page, per_page: page.perPage, has_next: page.hasNext }) };
     }
     if (s.aggregate?.agg === 'sum') return { json: await m.getSum() };
     if (s.aggregate?.agg === 'avg') return { json: await m.getAvg() };
@@ -2070,6 +2084,7 @@ const TABLE_OPS = {
       const count = typeof s.limit === 'number' ? s.limit : s.limit?.count;
       if (s.plan_page === undefined && !(count > 0)) throw new Error('a page needs a limit count above 0');
       const offset = (s.offset ?? 0) + (s.limit?.offset ?? 0);
+      if (s.plan_page === undefined && offset % count !== 0) throw new Error('a page needs an offset that is a multiple of its count');
       const page = s.plan_page === undefined
         ? await m.getsPage(Math.floor(offset / count) + 1, count)
         : await m.getsPage(s.plan_page.page, s.plan_page.per_page);
@@ -2293,7 +2308,7 @@ function installHook(s, context) {
   return hooked;
 }
 
-const READS = new Set(['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate']);
+const READS = new Set(['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate', 'lookahead_paginate', 'group_lookahead_paginate']);
 
 /** Whether a kind list (or one of the names reads, reads+restore, every) holds kind. */
 function kindMatches(kinds, kind) {

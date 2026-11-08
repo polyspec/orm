@@ -279,6 +279,10 @@ export class Planner {
         this.selectStep(add, steps, r, 'count', '', undefined);
         present(appendRelations, 'the relation steps of a paginate plan')();
         break;
+      case 'lookahead_paginate': case 'group_lookahead_paginate':
+        // One statement and its relations, with no count: the root limit reads one row past the page (INT-164).
+        this.selectStep(add, steps, this.lookaheadQuery(r), r.kind === 'lookahead_paginate' ? 'all' : 'group_count', '', undefined);
+        break;
       case 'insert': add(this.insertStep(r)); break;
       case 'update': add(this.updateStep(r)); break;
       case 'delete': add(this.deleteStep(r)); break;
@@ -286,6 +290,16 @@ export class Planner {
       case 'restart_identity': add(this.restartIdentityStep(r)); break;
     }
     return { manifest_hash: this.m.manifestHash, kind: r.kind, steps };
+  }
+
+  /**
+   * The root query of a lookahead page: a query without an order is ordered by the primary key of its entity, or by its
+   * group_by columns, ascending in their order, so that consecutive pages neither repeat nor skip a row.
+   */
+  private lookaheadQuery(r: Request): RequestQuery {
+    if ((r.order ?? []).length > 0) return r;
+    const columns = r.kind === 'group_lookahead_paginate' ? r.group_by ?? [] : this.entity(r.entity).primaryKey;
+    return { ...r, order: columns.map(column => ({ column })) };
   }
 
   /** Deterministic aliases: root "a", joins by name (nested joins prefixed by the parent alias). */

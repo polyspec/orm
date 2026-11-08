@@ -2,7 +2,7 @@ import { isUtf8 } from 'node:buffer';
 import { CORE, Core, RowState, configError, integerRanges, isModel, styledField, type EntityDef, type ModelLike, type SetSpec } from './core.js';
 import { CodecError, encodeStyled } from './codec.js';
 import { Value as OrderedJsonValue, stringify as orderedJsonStringify } from '@polyspec/ordered-json';
-import { Db, DatetimeKey, keyOfValues, keyText, keyValue, pagePlanSteps, paginate, query, readTime, resolve, rowKey, scalar, scalarKey, statement, write, type Executor, type Key, type QueryPlanStep, type Result } from './database.js';
+import { Db, DatetimeKey, keyOfValues, keyText, keyValue, lookahead, pagePlanSteps, paginate, query, readTime, resolve, rowKey, scalar, scalarKey, statement, write, type Executor, type Key, type QueryPlanStep, type Result } from './database.js';
 import { restoreKey } from './engine/validate.js';
 import { fieldOf, type Entity, type Field, type RuntimeModel } from './engine/model.js';
 import type { Assemble, Request } from './ir.js';
@@ -172,6 +172,20 @@ export abstract class Model implements ModelLike {
     const found = await pageOf(this[CORE], page, perPage);
     return { ...found, items: collectionOf(this, found.items) };
   }
+  /** Returns one page of matching rows read one row past its end, and whether a next page exists; it counts nothing. */
+  public async getsLookaheadPage(page: number, perPage: number): Promise<LookaheadPage<this>> {
+    const { ex, q, r } = lookaheadRequest(this[CORE], 'lookahead_paginate', page, perPage);
+    const { result, hasNext } = await lookahead(ex, r.finish(), r.params, perPage);
+    const items = await assemble(q, ex, r.external, result);
+    return { items: collectionOf(this, items), page, perPage, hasNext };
+  }
+  /** Returns one page of the group rows of getsCount read one group past its end, and whether a next page exists. */
+  public async getsCountLookaheadPage(page: number, perPage: number): Promise<GroupLookaheadPage> {
+    const { ex, r } = lookaheadRequest(this[CORE], 'group_lookahead_paginate', page, perPage);
+    if (r.external.size !== 0) throw configError('group count cannot return relations');
+    const { result, hasNext } = await lookahead(ex, r.finish(), r.params, perPage);
+    return { items: groupRowsOf(this[CORE], ex, result), page, perPage, hasNext };
+  }
   /** Returns the steps of the plan that getsPage runs, in their order, without executing it. */
   public async getPagePlanSteps(page: number, perPage: number): Promise<QueryPlanStep[]> {
     const { ex, r } = pageRequest(this[CORE], page, perPage);
@@ -249,6 +263,22 @@ export interface Page<T extends Model = Model> {
   totalPages: number;
   page: number;
   perPage: number;
+}
+
+/** One page of models read one row past its end, with no total (INT-164). */
+export interface LookaheadPage<T extends Model = Model> {
+  items: Collection<T>;
+  page: number;
+  perPage: number;
+  hasNext: boolean;
+}
+
+/** One page of the group rows of getsCount read one group past its end, with no total (INT-164). */
+export interface GroupLookaheadPage {
+  items: GroupRows;
+  page: number;
+  perPage: number;
+  hasNext: boolean;
 }
 
 function terminal(c: Core): Executor {
@@ -487,7 +517,11 @@ async function grouped(c: Core): Promise<GroupRows> {
   const r = c.build('group_count');
   if (r.error) throw r.error;
   if (r.external.size !== 0) throw configError('group count cannot return relations');
-  const result = await query(ex, r.finish(), r.params);
+  return groupRowsOf(c, ex, await query(ex, r.finish(), r.params));
+}
+
+/** The group rows of the main step of a group_count or a group_lookahead_paginate result. */
+function groupRowsOf(c: Core, ex: Executor, result: Result): GroupRows {
   const columns = result.plan.steps[0]?.assemble?.columns;
   if (!columns) throw new OrmError(codes.INTERNAL, 'group count has no result declaration');
   const names = new Set<string>();
@@ -623,6 +657,18 @@ function pageRequest(c: Core, page: number, perPage: number) {
   const q = c.clone();
   q.limit = { offset: (page - 1) * perPage, count: perPage };
   const r = q.build('paginate');
+  if (r.error) throw r.error;
+  return { ex, q, r };
+}
+
+/** The arguments of a lookahead page checked and its request of kind built, whose root limit reads one row past the page. */
+function lookaheadRequest(c: Core, kind: 'lookahead_paginate' | 'group_lookahead_paginate', page: number, perPage: number) {
+  if (!Number.isSafeInteger(page) || !Number.isSafeInteger(perPage) || page < 1 || perPage < 1) throw configError('getsLookaheadPage requires a positive page and perPage');
+  if (c.limit) throw configError('getsLookaheadPage cannot be combined with limit');
+  const ex = terminal(c);
+  const q = c.clone();
+  q.limit = { offset: (page - 1) * perPage, count: perPage + 1 };
+  const r = q.build(kind);
   if (r.error) throw r.error;
   return { ex, q, r };
 }

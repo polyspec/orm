@@ -12,7 +12,7 @@ const reservedSegments = ['and', 'or', 'with', 'gt', 'lt', 'ge', 'le', 'eq', 'ne
 /** A prefix no column name may start with. */
 const reservedPrefixes = ['and', 'or', 'get', 'set', 'new', 'plus', 'minus', 'order_by', 'group_by', 'tuple', 'gt', 'lt', 'ge', 'le', 'eq', 'ne', 'lk', 'lb', 'between', 'fulltext'];
 /** Names no column may have. */
-const reservedColumns = ['and', 'or', 'not', 'get', 'gets', 'gets_page', 'get_query', 'limit', 'alias', 'connect', 'create', 'creates', 'update', 'delete', 'restore', 'save', 'on', 'random'];
+const reservedColumns = ['and', 'or', 'not', 'get', 'gets', 'gets_page', 'gets_lookahead_page', 'gets_count_lookahead_page', 'get_query', 'limit', 'alias', 'connect', 'create', 'creates', 'update', 'delete', 'restore', 'save', 'on', 'random'];
 
 /** Applies the column naming rules. */
 function checkColumnName(n: string): string | undefined {

@@ -1313,6 +1313,23 @@ final class Db
     }
 
     /**
+     * @internal The one page statement of a lookahead page, whose limit reads one row past the page: whether that row
+     *     came, and the row dropped before the relation steps read the parents of the page (INT-164).
+     * @return array{0: array, 1: array, 2: bool}
+     */
+    public function lookahead(?TxFrame $frame, Request $r, int $perPage): array
+    {
+        $this->preparePage($frame, $r);
+        $plan = $this->plan($r);
+        $main = $this->query($plan['steps'][0], $r->params);
+        $hasNext = count($main) > $perPage;
+        if ($hasNext) {
+            $main = array_slice($main, 0, $perPage);
+        }
+        return [$plan, $this->relations($plan, $r->params, $main), $hasNext];
+    }
+
+    /**
      * @internal @return array{0: int|float|string|null, 1: int} the key of the inserted row and the
      *     affected rows: the generated identity, or the key_prefix key that a corpus allocated on a markdown
      *     connection, which the insert reads with RETURNING (PRT-73)

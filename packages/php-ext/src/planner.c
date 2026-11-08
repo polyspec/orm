@@ -3352,6 +3352,28 @@ static bool compile_body(pctx *c, HashTable *r, zval *ret)
             if (EG(exception) == NULL) return fail("INTERNAL", "paginate main step has no assembly");
             return false;
         }
+    } else if (strcmp(k, "lookahead_paginate") == 0 || strcmp(k, "group_lookahead_paginate") == 0) {
+        /* One statement and its relations, with no count: the root limit reads one row past the page (INT-164). */
+        bool grouped = strcmp(k, "group_lookahead_paginate") == 0;
+        HashTable *q = r;
+        if (count_of(lst(r, "order")) == 0) {
+            /* A query without an order is ordered by the primary key, or by its group_by columns, ascending in their
+             * order, so that consecutive pages neither repeat nor skip a row. */
+            HashTable *columns = grouped ? lst(r, "group_by") : lst(entity(c, gs(c, r, "entity")), "pk");
+            zval *order = newlist(c);
+            zval *column;
+            ZEND_HASH_FOREACH_VAL(columns, column) {
+                ZVAL_DEREF(column);
+                zval *item = newlist(c);
+                put(item, "column", column);
+                lpush(order, item);
+            } ZEND_HASH_FOREACH_END();
+            zval *copy = keep(c);
+            ZVAL_ARR(copy, zend_array_dup(r));
+            put(copy, "order", order);
+            q = Z_ARRVAL_P(copy);
+        }
+        OKB(select_step(c, steps, q, grouped ? "group_count" : "all", ZSTR_EMPTY_ALLOC(), NULL, false));
     } else if (strcmp(k, "insert") == 0) {
         st = insert_step(c, r);
         OKB(st);

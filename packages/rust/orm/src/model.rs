@@ -9,7 +9,7 @@ use std::sync::Arc;
 use indexmap::IndexMap;
 
 use crate::array::ArrayValue;
-use crate::collection::{AnyCollection, Collection, GroupRow, GroupRows, Key, Page};
+use crate::collection::{AnyCollection, Collection, GroupLookaheadPage, GroupRow, GroupRows, Key, LookaheadPage, Page};
 use crate::core::{config, CondGroup, CondKind, CondNode, Core, PredSpec, PredValue, RelSpec, SetSpec, SetValue};
 use crate::db::{apply_request_hook, Db, Executor, QueryPlanStep, Statement};
 use crate::driver::{child_keys, first_cell, parent_values, positional, relation_chunks, same_scalar};
@@ -204,6 +204,8 @@ struct QueryResult {
     params: Vec<Param>,
     /// The total row count of a paginate request, read from its count step.
     count: Option<i64>,
+    /// Whether a lookahead page read the row past its end, which is dropped before the relation steps (INT-164).
+    has_next: bool,
 }
 
 impl QueryResult {
@@ -416,6 +418,12 @@ fn checked_lock(ex: &Executor, req: &Req) -> Result<String> {
 }
 
 async fn select(ex: &Executor, conn: &Option<Db>, req: &mut Req) -> Result<QueryResult> {
+    select_page(ex, conn, req, None).await
+}
+
+/// Runs a read. With `keep`, the size of a lookahead page, the root rows past `keep` set `has_next` and are dropped before
+/// the relation steps read their parents (INT-164).
+async fn select_page(ex: &Executor, conn: &Option<Db>, req: &mut Req, keep: Option<usize>) -> Result<QueryResult> {
     hook_request(conn, ex, req)?;
     let db = ex.db().clone();
     // The lock of the request, at the root or on a relation step, is checked and taken once, before any statement (PRT-8).
@@ -445,7 +453,12 @@ async fn select(ex: &Executor, conn: &Option<Db>, req: &mut Req) -> Result<Query
             }
         }
     }
-    let mut out = QueryResult { plan: plan.clone(), main, steps: HashMap::new(), params: req.params.clone(), count: None };
+    let mut has_next = false;
+    if let Some(keep) = keep {
+        has_next = main.len() > keep;
+        main.truncate(keep);
+    }
+    let mut out = QueryResult { plan: plan.clone(), main, steps: HashMap::new(), params: req.params.clone(), count: None, has_next };
     for st in plan.steps.iter().skip(1) {
         if st.role == "count" && req.ir.kind == "paginate" {
             let raw = ex.query(st, &req.params, Vec::new()).await?;
@@ -858,9 +871,48 @@ pub async fn gets_count<M: Model>(m: &M) -> Result<GroupRows> {
     let ex = terminal(m.core())?;
     let mut request = build(m.core(), "group_count");
     let result = select(&ex, &m.core().conn, &mut request).await?;
+    group_rows(m.core(), &result)
+}
+
+/// Returns one page of the models of `gets` and whether a next page exists, read by one statement that reads one row past
+/// the page and counts nothing (INT-164).
+pub async fn gets_lookahead_page<M: Model>(m: &M, page: u32, per_page: u32) -> Result<LookaheadPage<M>> {
+    let (ex, q, mut req) = lookahead_request(m.core(), "lookahead_paginate", page, per_page)?;
+    let res = select_page(&ex, &q.conn, &mut req, Some(per_page as usize)).await?;
+    let loaded = assemble(&q, &req, &res).await?;
+    Ok(LookaheadPage { items: Collection::from_boxes(loaded.items, loaded.fetched), page, per_page, has_next: res.has_next })
+}
+
+/// Returns one page of the group rows of `gets_count` and whether a next page exists, read by one statement that reads one
+/// group past the page and counts nothing (INT-164).
+pub async fn gets_count_lookahead_page<M: Model>(m: &M, page: u32, per_page: u32) -> Result<GroupLookaheadPage> {
+    let (ex, q, mut req) = lookahead_request(m.core(), "group_lookahead_paginate", page, per_page)?;
+    let res = select_page(&ex, &q.conn, &mut req, Some(per_page as usize)).await?;
+    Ok(GroupLookaheadPage { items: group_rows(m.core(), &res)?, page, per_page, has_next: res.has_next })
+}
+
+/// The arguments of a lookahead page checked and its request of `kind` built, whose root limit reads one row past the page.
+fn lookahead_request(c: &Core, kind: &str, page: u32, per_page: u32) -> Result<(Executor, Core, Req)> {
+    if page == 0 || per_page == 0 {
+        return Err(config("gets_lookahead_page requires a positive page and per_page"));
+    }
+    if c.limit.is_some() {
+        return Err(config("gets_lookahead_page cannot be combined with limit"));
+    }
+    let ex = terminal(c)?;
+    let mut q = c.clone();
+    let offset = (page - 1).checked_mul(per_page).ok_or_else(|| config("page offset exceeds u32 range"))?;
+    let count = per_page.checked_add(1).ok_or_else(|| config("page size exceeds u32 range"))?;
+    q.limit = Some((offset, count));
+    let req = build(&q, kind);
+    Ok((ex, q, req))
+}
+
+/// The group rows of the root step of a `group_count` or a `group_lookahead_paginate` result.
+fn group_rows(core: &Core, result: &QueryResult) -> Result<GroupRows> {
     let columns = &result.plan.steps[0].assemble.as_ref().ok_or_else(|| Error::internal("group count has no assemble"))?.columns;
     let rows = result.rows();
-    let entity = m.core().ent.entity_schema()?;
+    let entity = core.ent.entity_schema()?;
     let mut groups = Vec::with_capacity(rows.len());
     for row in rows {
         let mut values = Vec::with_capacity(columns.len());

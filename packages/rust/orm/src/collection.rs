@@ -309,6 +309,22 @@ pub struct Page<M> {
     pub per_page: u32,
 }
 
+/// One page of models read one row past its end, with no total (INT-164).
+pub struct LookaheadPage<M> {
+    pub items: Collection<M>,
+    pub page: u32,
+    pub per_page: u32,
+    pub has_next: bool,
+}
+
+/// One page of the group rows of `gets_count` read one group past its end, with no total (INT-164).
+pub struct GroupLookaheadPage {
+    pub items: GroupRows,
+    pub page: u32,
+    pub per_page: u32,
+    pub has_next: bool,
+}
+
 /// One grouped result with exactly the selected grouping values and its count.
 #[derive(Clone)]
 pub struct GroupRow {

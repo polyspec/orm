@@ -2763,6 +2763,8 @@ static PHP_MINIT_FUNCTION(polyspec_orm)
     polyspec_request_ce = register_class_Polyspec_Orm_Request();
     polyspec_styled_value_ce = register_class_Polyspec_Orm_StyledValue(php_json_serializable_ce);
     polyspec_page_ce = register_class_Polyspec_Orm_Page();
+    polyspec_lookahead_page_ce = register_class_Polyspec_Orm_LookaheadPage();
+    polyspec_group_lookahead_page_ce = register_class_Polyspec_Orm_GroupLookaheadPage();
     polyspec_func_ce = register_class_Polyspec_Orm_Func();
     polyspec_pending_time_ce = register_class_Polyspec_Orm_PendingTime();
     zend_class_entry *runtime_model_ce = register_class_Polyspec_Orm_RuntimeModel();

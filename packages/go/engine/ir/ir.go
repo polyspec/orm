@@ -24,7 +24,7 @@ type Request struct {
 	IRVersion int `json:"ir_version"`
 	// ManifestHash is the manifestHash of the generated code that made the request.
 	ManifestHash string `json:"manifest_hash"`
-	Kind         string `json:"kind"` // one all count group_count sum avg paginate insert update delete restore restart_identity
+	Kind         string `json:"kind"` // one all count group_count sum avg paginate lookahead_paginate group_lookahead_paginate insert update delete restore restart_identity
 	Query
 	// Load means insert loads a row under the stored key as it is: it takes the value of the identity column,
 	// and requires that value if the table has an identity. It is not used with on_duplicate.
@@ -312,7 +312,7 @@ func Validate(m *runtimemodel.Model, r *Request) error {
 		return errf("SCHEMA_HASH_MISMATCH", "client %s, engine %s", r.ManifestHash, m.ManifestHash)
 	}
 	switch r.Kind {
-	case "one", "all", "count", "group_count", "sum", "avg", "paginate", "insert", "update", "delete", "restore", "restart_identity":
+	case "one", "all", "count", "group_count", "sum", "avg", "paginate", "lookahead_paginate", "group_lookahead_paginate", "insert", "update", "delete", "restore", "restart_identity":
 	default:
 		return errf("IR_INVALID", "unknown kind %q", r.Kind)
 	}
@@ -348,10 +348,13 @@ func Validate(m *runtimemodel.Model, r *Request) error {
 			return errf("OPERATOR_NOT_ALLOWED", "%s on %s.%s (%s)", r.Kind, r.Entity, r.Agg, c.Type)
 		}
 	}
-	if r.Kind == "group_count" && !hasGroupBy(&r.Query) {
-		return errf("IR_INVALID", "group_count needs group_by")
+	if (r.Kind == "group_count" || r.Kind == "group_lookahead_paginate") && !hasGroupBy(&r.Query) {
+		return errf("IR_INVALID", "%s needs group_by", r.Kind)
 	}
-	if hasGroupBy(&r.Query) && r.Kind != "count" && r.Kind != "group_count" {
+	if (r.Kind == "lookahead_paginate" || r.Kind == "group_lookahead_paginate") && r.Limit == nil {
+		return errf("IR_INVALID", "%s needs limit", r.Kind)
+	}
+	if hasGroupBy(&r.Query) && r.Kind != "count" && r.Kind != "group_count" && r.Kind != "group_lookahead_paginate" {
 		return errf("IR_INVALID", "group_by is only valid on count or group_count, not %s", r.Kind)
 	}
 	if r.Kind == "insert" || r.Kind == "update" || r.Kind == "restore" {

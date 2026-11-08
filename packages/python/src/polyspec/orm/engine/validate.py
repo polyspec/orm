@@ -25,6 +25,8 @@ _KINDS = frozenset(
         "sum",
         "avg",
         "paginate",
+        "lookahead_paginate",
+        "group_lookahead_paginate",
         "insert",
         "update",
         "delete",
@@ -904,9 +906,20 @@ def validate(m: RuntimeModel, r: dict) -> None:
                 codes.OPERATOR_NOT_ALLOWED,
                 f"{r['kind']} on {r['entity']}.{r['agg']} ({c.type})",
             )
-    if r["kind"] == "group_count" and not (r.get("group_by") or []):
-        _fail(codes.IR_INVALID, "group_count needs group_by")
-    if (r.get("group_by") or []) and r["kind"] not in ("count", "group_count"):
+    if r["kind"] in ("group_count", "group_lookahead_paginate") and not (
+        r.get("group_by") or []
+    ):
+        _fail(codes.IR_INVALID, f"{r['kind']} needs group_by")
+    if (
+        r["kind"] in ("lookahead_paginate", "group_lookahead_paginate")
+        and r.get("limit") is None
+    ):
+        _fail(codes.IR_INVALID, f"{r['kind']} needs limit")
+    if (r.get("group_by") or []) and r["kind"] not in (
+        "count",
+        "group_count",
+        "group_lookahead_paginate",
+    ):
         _fail(
             codes.IR_INVALID,
             f"group_by is only valid on count or group_count, not {r['kind']}",

@@ -365,6 +365,22 @@ type Page[T Model] struct {
 	PerPage    int
 }
 
+// LookaheadPage is one page of models read one row past its end, with no total (INT-164).
+type LookaheadPage[T Model] struct {
+	Items   *Collection[T]
+	Page    int
+	PerPage int
+	HasNext bool
+}
+
+// GroupLookaheadPage is one page of the group rows of GetsCount read one group past its end, with no total (INT-164).
+type GroupLookaheadPage struct {
+	Items   *GroupRows
+	Page    int
+	PerPage int
+	HasNext bool
+}
+
 // ErrNullColumn reports SQL NULL in a non-null generated model field.
 var ErrNullColumn = codecErr(CodeCodecDecode, "non-null column received SQL NULL")
 

@@ -365,6 +365,10 @@ class Planner:
             self._select_step(add, steps, r, "count", "", None)
             for scope, asm, step_id in deferred:
                 self._relation_steps(add, steps, scope, asm, step_id)
+        elif kind in ("lookahead_paginate", "group_lookahead_paginate"):
+            # One statement and its relations, with no count: the root limit reads one row past the page (INT-164).
+            root = "all" if kind == "lookahead_paginate" else "group_count"
+            self._select_step(add, steps, self._lookahead_query(r), root, "", None)
         elif kind == "insert":
             add(self._insert_step(r))
         elif kind == "update":
@@ -378,6 +382,18 @@ class Planner:
         else:
             _fail(codes.IR_INVALID, f"unknown request kind {kind}")
         return {"manifest_hash": self.m.manifest_hash, "kind": kind, "steps": steps}
+
+    def _lookahead_query(self, r: dict) -> dict:
+        """The root query of a lookahead page: a query without an order is ordered by the primary key of its entity, or
+        by its group_by columns, ascending in their order, so that consecutive pages neither repeat nor skip a row."""
+        if r.get("order"):
+            return r
+        columns = (
+            self._entity(r["entity"]).primary_key
+            if r["kind"] == "lookahead_paginate"
+            else r["group_by"]
+        )
+        return {**r, "order": [{"column": column} for column in columns]}
 
     def _build_scopes(self, q: dict, alias: str, parent) -> _Scope:
         scope = _Scope(self._entity(q["entity"]), alias, q, parent)

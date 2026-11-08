@@ -2331,6 +2331,10 @@
     "exported": true,
     "signature": "export function keyValue(value: unknown): Key"
   },
+  "packages/ts/src/database.ts::lookahead": {
+    "exported": true,
+    "signature": "export async function lookahead(ex: Executor, given: Request, givenParams: readonly unknown[], perPage: number): Promise\u003c{ result: Result; hasNext: boolean; }\u003e"
+  },
   "packages/ts/src/database.ts::mainStep": {
     "exported": false,
     "signature": "function mainStep(plan: Plan): PlanStep"
@@ -7971,6 +7975,10 @@
     "exported": false,
     "signature": "private joinScope(s: Scope, rel: string): Scope"
   },
+  "packages/ts/src/engine/planner.ts::Planner.lookaheadQuery": {
+    "exported": false,
+    "signature": "private lookaheadQuery(r: Request): RequestQuery"
+  },
   "packages/ts/src/engine/planner.ts::Planner.managedInsertColumns": {
     "exported": false,
     "signature": "private managedInsertColumns(ent: Entity, set: readonly Assignment[]): { column: string; value: (b: Builder) =\u003e string; }[]"
@@ -9565,7 +9573,7 @@
   },
   "packages/ts/src/ir.ts::QueryKind": {
     "exported": true,
-    "signature": "type QueryKind = 'one' | 'all' | 'count' | 'group_count' | 'sum' | 'avg' | 'paginate' | 'insert' | 'update' | 'delete' | 'restore' | 'restart_identity'"
+    "signature": "type QueryKind = 'one' | 'all' | 'count' | 'group_count' | 'sum' | 'avg' | 'paginate' | 'lookahead_paginate' | 'group_lookahead_paginate' | 'insert' | 'update' | 'delete' | 'restore' | 'restart_identity'"
   },
   "packages/ts/src/ir.ts::Relation": {
     "exported": true,
@@ -10291,6 +10299,54 @@
     "exported": true,
     "signature": "public values(): T[]"
   },
+  "packages/ts/src/model.ts::GroupLookaheadPage": {
+    "exported": true,
+    "signature": "interface GroupLookaheadPage"
+  },
+  "packages/ts/src/model.ts::GroupLookaheadPage#field.hasNext": {
+    "exported": true,
+    "signature": "boolean"
+  },
+  "packages/ts/src/model.ts::GroupLookaheadPage#field.items": {
+    "exported": true,
+    "signature": "GroupRows"
+  },
+  "packages/ts/src/model.ts::GroupLookaheadPage#field.page": {
+    "exported": true,
+    "signature": "number"
+  },
+  "packages/ts/src/model.ts::GroupLookaheadPage#field.perPage": {
+    "exported": true,
+    "signature": "number"
+  },
+  "packages/ts/src/model.ts::GroupLookaheadPage#wire": {
+    "exported": true,
+    "signature": "{\"items\":\"GroupRows\",\"page\":\"integer\",\"perPage\":\"integer\",\"hasNext\":\"bool\"}"
+  },
+  "packages/ts/src/model.ts::LookaheadPage": {
+    "exported": true,
+    "signature": "interface LookaheadPage"
+  },
+  "packages/ts/src/model.ts::LookaheadPage#field.hasNext": {
+    "exported": true,
+    "signature": "boolean"
+  },
+  "packages/ts/src/model.ts::LookaheadPage#field.items": {
+    "exported": true,
+    "signature": "Collection\u003cT\u003e"
+  },
+  "packages/ts/src/model.ts::LookaheadPage#field.page": {
+    "exported": true,
+    "signature": "number"
+  },
+  "packages/ts/src/model.ts::LookaheadPage#field.perPage": {
+    "exported": true,
+    "signature": "number"
+  },
+  "packages/ts/src/model.ts::LookaheadPage#wire": {
+    "exported": true,
+    "signature": "{\"items\":\"Collection\u003cT\u003e\",\"page\":\"integer\",\"perPage\":\"integer\",\"hasNext\":\"bool\"}"
+  },
   "packages/ts/src/model.ts::MissingKey": {
     "exported": false,
     "signature": "class MissingKey { public constructor(message: string); }"
@@ -10398,6 +10454,14 @@
   "packages/ts/src/model.ts::Model.getsCount": {
     "exported": true,
     "signature": "public async getsCount(): Promise\u003cGroupRows\u003e"
+  },
+  "packages/ts/src/model.ts::Model.getsCountLookaheadPage": {
+    "exported": true,
+    "signature": "public async getsCountLookaheadPage(page: number, perPage: number): Promise\u003cGroupLookaheadPage\u003e"
+  },
+  "packages/ts/src/model.ts::Model.getsLookaheadPage": {
+    "exported": true,
+    "signature": "public async getsLookaheadPage(page: number, perPage: number): Promise\u003cLookaheadPage\u003cthis\u003e\u003e"
   },
   "packages/ts/src/model.ts::Model.getsPage": {
     "exported": true,
@@ -10627,6 +10691,10 @@
     "exported": false,
     "signature": "function finishWrite(r: WriteRequest): Request"
   },
+  "packages/ts/src/model.ts::groupRowsOf": {
+    "exported": false,
+    "signature": "function groupRowsOf(c: Core, ex: Executor, result: Result): GroupRows"
+  },
   "packages/ts/src/model.ts::groupValue": {
     "exported": false,
     "signature": "function groupValue(db: Db, column: Assemble['columns'][number], raw: unknown, schema: Entity): unknown"
@@ -10682,6 +10750,10 @@
   "packages/ts/src/model.ts::load": {
     "exported": false,
     "signature": "async function load(c: Core, kind: 'one' | 'all'): Promise\u003cCollection\u003e"
+  },
+  "packages/ts/src/model.ts::lookaheadRequest": {
+    "exported": false,
+    "signature": "function lookaheadRequest(c: Core, kind: 'lookahead_paginate' | 'group_lookahead_paginate', page: number, perPage: number)"
   },
   "packages/ts/src/model.ts::matchValues": {
     "exported": false,

@@ -114,8 +114,8 @@ final class Validator
         }
         $kind = $r['kind'] ?? '';
         if (
-            !in_array($kind, ['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate', 'insert', 'update',
-            'delete', 'restore', 'restart_identity'], true)
+            !in_array($kind, ['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate', 'lookahead_paginate',
+            'group_lookahead_paginate', 'insert', 'update', 'delete', 'restore', 'restart_identity'], true)
         ) {
             throw self::err(Code::IR_INVALID, "unknown kind \"$kind\"");
         }
@@ -153,10 +153,16 @@ final class Validator
                 throw self::err(Code::OPERATOR_NOT_ALLOWED, "$kind on $entity.$agg ({$c['type']})");
             }
         }
-        if ($kind === 'group_count' && !self::hasGroupBy($r)) {
-            throw self::err(Code::IR_INVALID, 'group_count needs group_by');
+        if (($kind === 'group_count' || $kind === 'group_lookahead_paginate') && !self::hasGroupBy($r)) {
+            throw self::err(Code::IR_INVALID, "$kind needs group_by");
         }
-        if (self::hasGroupBy($r) && $kind !== 'count' && $kind !== 'group_count') {
+        if (($kind === 'lookahead_paginate' || $kind === 'group_lookahead_paginate') && !isset($r['limit'])) {
+            throw self::err(Code::IR_INVALID, "$kind needs limit");
+        }
+        if (
+            self::hasGroupBy($r) && $kind !== 'count' && $kind !== 'group_count'
+            && $kind !== 'group_lookahead_paginate'
+        ) {
             throw self::err(Code::IR_INVALID, "group_by is only valid on count or group_count, not $kind");
         }
         $set = $r['set'] ?? [];

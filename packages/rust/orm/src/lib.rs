@@ -42,7 +42,7 @@ pub use args::{
 };
 pub use array::ArrayValue;
 pub use chrono;
-pub use collection::{Collection, GroupRow, GroupRows, Key, Page};
+pub use collection::{Collection, GroupLookaheadPage, GroupRow, GroupRows, Key, LookaheadPage, Page};
 pub use core::Core;
 pub use db::{AuditSource, Config, Db, DbStats, QueryPlanStep, RequestHook, RequestParams, Statement};
 pub use engine::Dialect;

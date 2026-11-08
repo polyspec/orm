@@ -164,6 +164,9 @@ func (p *Planner) Compile(r *ir.Request) (*plan.Plan, error) {
 				reorderPaginateCount(ps)
 			}
 		}
+	case "lookahead_paginate", "group_lookahead_paginate":
+		// One statement and its relations, with no count: the root limit reads one row past the page (INT-164).
+		_, err = p.selectStep(ps, lookaheadQuery(p.M.Entities[r.Entity], r), lookaheadRoot[r.Kind], "", nil)
 	case "insert":
 		var st *plan.Step
 		if st, err = p.insertStep(r); err == nil {
@@ -197,6 +200,27 @@ func (p *Planner) Compile(r *ir.Request) (*plan.Plan, error) {
 		out.Steps = append(out.Steps, *st)
 	}
 	return out, nil
+}
+
+// lookaheadRoot is the select kind of the root statement of each lookahead kind.
+var lookaheadRoot = map[string]string{"lookahead_paginate": "all", "group_lookahead_paginate": "group_count"}
+
+// lookaheadQuery is the root query of a lookahead page: a query without an order is ordered by the primary key of its
+// entity, or by its group_by columns, ascending in their order, so that consecutive pages neither repeat nor skip a row.
+func lookaheadQuery(ent *runtimemodel.Entity, r *ir.Request) *ir.Query {
+	if len(r.Order) > 0 {
+		return &r.Query
+	}
+	q := r.Query
+	columns := ent.PK
+	if r.Kind == "group_lookahead_paginate" {
+		columns = q.GroupBy
+	}
+	q.Order = make([]ir.Order, len(columns))
+	for i, column := range columns {
+		q.Order[i] = ir.Order{Column: column}
+	}
+	return &q
 }
 
 // reorderPaginateCount places the count statement after the root statement.
@@ -348,7 +372,7 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 	if len(where) > 0 {
 		sb.WriteString(" WHERE " + strings.Join(where, " AND "))
 	}
-	// The validator admits group_by only on count and group_count.
+	// The validator admits group_by only on count, group_count and group_lookahead_paginate.
 	if len(q.GroupBy) > 0 {
 		sb.WriteString(" GROUP BY " + p.renderGroupBy(root, q))
 	}

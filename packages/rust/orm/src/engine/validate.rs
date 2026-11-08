@@ -116,7 +116,20 @@ pub(crate) fn validate(m: &Manifest, r: &ir::Request) -> Result<()> {
     }
     if !matches!(
         r.kind.as_str(),
-        "one" | "all" | "count" | "group_count" | "sum" | "avg" | "paginate" | "insert" | "update" | "delete" | "restore" | "restart_identity"
+        "one"
+            | "all"
+            | "count"
+            | "group_count"
+            | "sum"
+            | "avg"
+            | "paginate"
+            | "lookahead_paginate"
+            | "group_lookahead_paginate"
+            | "insert"
+            | "update"
+            | "delete"
+            | "restore"
+            | "restart_identity"
     ) {
         return Err(err(codes::IR_INVALID, format!("unknown kind {:?}", r.kind)));
     }
@@ -149,10 +162,13 @@ pub(crate) fn validate(m: &Manifest, r: &ir::Request) -> Result<()> {
             return Err(err(codes::OPERATOR_NOT_ALLOWED, format!("{} on {}.{} ({})", r.kind, q.entity, r.agg, c.ty.render())));
         }
     }
-    if r.kind == "group_count" && q.group_by.is_empty() {
-        return Err(err(codes::IR_INVALID, "group_count needs group_by"));
+    if (r.kind == "group_count" || r.kind == "group_lookahead_paginate") && q.group_by.is_empty() {
+        return Err(err(codes::IR_INVALID, format!("{} needs group_by", r.kind)));
     }
-    if !q.group_by.is_empty() && r.kind != "count" && r.kind != "group_count" {
+    if (r.kind == "lookahead_paginate" || r.kind == "group_lookahead_paginate") && q.limit.is_none() {
+        return Err(err(codes::IR_INVALID, format!("{} needs limit", r.kind)));
+    }
+    if !q.group_by.is_empty() && r.kind != "count" && r.kind != "group_count" && r.kind != "group_lookahead_paginate" {
         return Err(err(codes::IR_INVALID, format!("group_by is only valid on count or group_count, not {}", r.kind)));
     }
     if r.kind == "insert" || r.kind == "update" || r.kind == "restore" {

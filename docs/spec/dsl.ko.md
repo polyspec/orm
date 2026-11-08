@@ -1,5 +1,5 @@
 <!-- doc-id: dsl -->
-<!-- source-sha256: 0b8b11c36f66a0070a433433fd8f9284962c36094d334426fc3e4012b4faa640 -->
+<!-- source-sha256: 3984abc4fc3ae8e13c6fd1d99c57dba09920f8a3651369da204e5edca97382c6 -->
 # DSL
 
 이 문서는 [설계 계획](plan.md)이 정한 쿼리 문법을 정의한다. 클라이언트 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록하며, 이 문서와 일치하지 않는 클라이언트는 미완료 상태다.
@@ -247,7 +247,7 @@ rows, err := model.Product().Connect(slave1).
 
 ## 6. 정렬과 범위
 
-- **DSL-99** `orderBy<Col>Asc()`, `orderBy<Col>Desc()`, `orderBySeqDescAndNameAsc()` 같은 체인이 정렬을 정한다. `orderByRandom()`은 방언 함수로 행을 무작위 정렬한다. `groupBy<Col>()`은 `getsCount()`와 group count에서 그룹을 정하며, 다른 읽기에서는 `IR_INVALID`이다. `limit(offset, count)`은 범위를 정한다.
+- **DSL-99** `orderBy<Col>Asc()`, `orderBy<Col>Desc()`, `orderBySeqDescAndNameAsc()` 같은 체인이 정렬을 정한다. `orderByRandom()`은 방언 함수로 행을 무작위 정렬한다. `groupBy<Col>()`은 `getsCount()`, `getsCountLookaheadPage()`(INT-164), group count에서 그룹을 정하며, 다른 읽기에서는 `IR_INVALID`이다. `limit(offset, count)`은 범위를 정한다.
 
 ## 7. 쓰기
 
@@ -355,7 +355,7 @@ await master.transaction(async () => { … }, { isolation: 'serializable', readO
 
 ## 9. 예약 명칭
 
-- **DSL-127** 생성기는 메서드 명칭이 예약 메서드(`and`, `or`, `get`, `gets`, `getsPage`, `getQuery`, `limit`, `alias`, `connect`, `create`, `creates`, `update`, `delete`, `restore`, `save`, `on`)와 같거나 예약 접두어(`and`, `or`, `get`, `set`, `new`, `plus`, `minus`, `orderBy`, `groupBy`, `tuple`, 연산자)로 시작하는 컬럼을 거부한다. `orderByRandom()`이 예약되어 있으므로 `random` 컬럼도 거부한다.
+- **DSL-127** 생성기는 메서드 명칭이 예약 메서드(`and`, `or`, `get`, `gets`, `getsPage`, `getsLookaheadPage`, `getsCountLookaheadPage`, `getQuery`, `limit`, `alias`, `connect`, `create`, `creates`, `update`, `delete`, `restore`, `save`, `on`)와 같거나 예약 접두어(`and`, `or`, `get`, `set`, `new`, `plus`, `minus`, `orderBy`, `groupBy`, `tuple`, 연산자)로 시작하는 컬럼을 거부한다. `orderByRandom()`이 예약되어 있으므로 `random` 컬럼도 거부한다.
 
 - **DSL-128** 행에 추가되는 명칭은 하나의 명칭 공간을 사용한다. 대상은 실제 컬럼, `addColumn<Name>(fn)`이나 `addColumn<Col>Alias<Name>(fn)`으로 추가한 컬럼, 관계 결과 명칭, `new<Name>` 명칭이다. 이 공간에서 명칭이 겹치면 거부한다. Go와 Rust는 생성 단계에서 거부하고 PHP와 TypeScript는 `CONFIG`를 반환한다. 따라서 같은 테이블에 대한 관계 두 개는 서로 다른 별칭이 필요하며, 서브쿼리 컬럼은 실제 컬럼이 아닌 명칭을 사용해야 한다.
 

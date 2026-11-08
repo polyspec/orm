@@ -36,6 +36,17 @@ final class Planner
                 }
                 $this->relationSteps($steps, $root, $main->assemble, $main->id);
                 break;
+            case 'lookahead_paginate':
+            case 'group_lookahead_paginate':
+                // One statement and its relations, with no count: the root limit reads one row past the page (INT-164).
+                $this->selectStep(
+                    $steps,
+                    $this->lookaheadQuery($r),
+                    $r['kind'] === 'lookahead_paginate' ? 'all' : 'group_count',
+                    '',
+                    null
+                );
+                break;
             case 'insert':
                 $steps->add($this->insertStep($r));
                 break;
@@ -56,6 +67,20 @@ final class Planner
         }
         return ['manifest_hash' => $this->m->manifestHash, 'kind' => $r['kind'],
             'steps' => array_map(static fn(PlanStep $s): array => $s->toArray(), $steps->steps)];
+    }
+
+    /**
+     * The root query of a lookahead page: a query without an order is ordered by the primary key of its entity, or by
+     * its group_by columns, ascending in their order, so that consecutive pages neither repeat nor skip a row.
+     */
+    private function lookaheadQuery(array $r): array
+    {
+        if (($r['order'] ?? []) !== []) {
+            return $r;
+        }
+        $columns = $r['kind'] === 'group_lookahead_paginate' ? $r['group_by'] : $this->m->entities[$r['entity']]['pk'];
+        $r['order'] = array_map(static fn(string $column): array => ['column' => $column], $columns);
+        return $r;
     }
 
     private static function err(string $code, string $msg): OrmException

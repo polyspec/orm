@@ -5509,8 +5509,8 @@ mod tables {
     use polyspec_orm::dbspec::Type;
     use polyspec_orm::ir::{Assign, Group, Item, Pred, Query, Request};
     use polyspec_orm::model::{
-        create, creates, delete, get_avg, get_core, get_count, get_page_plan_steps, get_query, get_sum, gets, gets_count, gets_page, restore,
-        restore_or_create, save, to_array, update,
+        create, creates, delete, get_avg, get_core, get_count, get_page_plan_steps, get_query, get_sum, gets, gets_count, gets_count_lookahead_page,
+        gets_lookahead_page, gets_page, restore, restore_or_create, save, to_array, update,
     };
     use polyspec_orm::{AesKeyring, Collection, Config, Core, Db, Entity, Error as OrmError, Model, Param, RequestParams, Schema, Val};
     use serde_json::{json, Map, Value};
@@ -5520,7 +5520,7 @@ mod tables {
     use crate::plain::Plain;
 
     /// The kinds of the read requests (the hook kinds reads and reads+restore).
-    const READS: [&str; 7] = ["one", "all", "count", "group_count", "sum", "avg", "paginate"];
+    const READS: [&str; 9] = ["one", "all", "count", "group_count", "sum", "avg", "paginate", "lookahead_paginate", "group_lookahead_paginate"];
 
     /// A request that a record action of the installed hook saw: its kind, its table and the wrapper of the bound value of a
     /// record_param action (hook.records).
@@ -5978,6 +5978,9 @@ mod tables {
                     core.group_by(&column);
                 }
             }
+            for column in names(&crate::recipe_reads::read(q, "group_by")["group_by"]) {
+                core.group_by(&column);
+            }
             for join in crate::recipe_reads::read(q, "joins")["joins"].as_array().into_iter().flatten() {
                 let mut child = core_of(join["model"].as_str().ok_or_else(|| format!("join {join} names no model"))?)?;
                 let mut inner = Build { joined: HashMap::new(), outer: self.outer, db: None, handles: self.handles.clone() };
@@ -6323,7 +6326,8 @@ mod tables {
                     core.connect(db);
                 }
                 let mut build = Build { db: Some(db.clone()), handles: self.handles.clone(), ..Build::default() };
-                let paged = crate::recipe_reads::read(step, "page")["page"].as_bool() == Some(true);
+                let paged = crate::recipe_reads::read(step, "page")["page"].as_bool() == Some(true)
+                    || crate::recipe_reads::read(step, "lookahead")["lookahead"].as_bool() == Some(true);
                 build.query(&mut core, step, !paged && crate::recipe_reads::read(step, "offset")["offset"].is_null())?;
                 if !paged && !crate::recipe_reads::read(step, "offset")["offset"].is_null() {
                     let (_, count) = limit_of(&crate::recipe_reads::read(step, "limit")["limit"])?.unwrap_or((0, 0));
@@ -6377,6 +6381,9 @@ mod tables {
                     if count == 0 {
                         return Err("a plan needs a limit above 0".into());
                     }
+                    if offset % count != 0 {
+                        return Err("a plan needs an offset that is a multiple of its count".into());
+                    }
                     (offset / count + 1, count)
                 } else {
                     let number = |key: &str| {
@@ -6403,6 +6410,9 @@ mod tables {
                 return Ok(json!({ "json": list }));
             }
             let root = TableRow::from_core(core);
+            if crate::recipe_reads::read(step, "lookahead")["lookahead"].as_bool() == Some(true) {
+                return Self::lookahead(step, &root).await;
+            }
             if let Some(name) = crate::recipe_reads::read(step, "group_value")["group_value"].as_str() {
                 let groups = gets_count(&root).await.map_err(orm)?;
                 let row = groups.iter().next().ok_or_else(|| format!("group_value {name}: the aggregate has no group row"))?;
@@ -6435,6 +6445,28 @@ mod tables {
             Ok(fields)
         }
 
+        /// gets_lookahead_page, or gets_count_lookahead_page with an aggregate of count, on the page of the limit of the step:
+        /// the keys of the models or the group rows, the page, its size and whether a next page exists (INT-164).
+        async fn lookahead(step: &Value, root: &TableRow) -> Result<Value, String> {
+            let limit = &crate::recipe_reads::read(step, "limit")["limit"];
+            let part = |name: &str| limit.get(name).and_then(Value::as_u64).map(u32::try_from).transpose().map_err(|e| e.to_string());
+            let (Some(offset), Some(count)) = (part("offset")?, part("count")?) else {
+                return Err("a lookahead page needs a limit whose count is above 0 and whose offset is a multiple of the count".into());
+            };
+            if count == 0 || offset % count != 0 {
+                return Err("a lookahead page needs a limit whose count is above 0 and whose offset is a multiple of the count".into());
+            }
+            let number = offset / count + 1;
+            if crate::recipe_reads::read(step, "aggregate").get("aggregate").is_some() {
+                let page = gets_count_lookahead_page(root, number, count).await.map_err(orm)?;
+                let items = page.items.to_array().map_err(orm)?.plain().map_err(orm)?;
+                return Ok(json!({ "json": { "items": items, "page": page.page, "per_page": page.per_page, "has_next": page.has_next } }));
+            }
+            let page = gets_lookahead_page(root, number, count).await.map_err(orm)?;
+            let keys: Vec<Value> = page.items.keys().iter().map(polyspec_orm::Key::to_json).collect();
+            Ok(json!({ "json": { "items": keys, "page": page.page, "per_page": page.per_page, "has_next": page.has_next } }))
+        }
+
         /// gets_page: the keys and the counts of the page, and the rows and total of a rows expect.
         async fn page(&mut self, step: &Value, root: &TableRow) -> Result<Value, String> {
             let (offset, count) = limit_of(&crate::recipe_reads::read(step, "limit")["limit"])?.unwrap_or((0, 0));
@@ -6442,6 +6474,9 @@ mod tables {
             let (number, size) = if crate::recipe_reads::read(step, "plan_page")["plan_page"].is_null() {
                 if count == 0 {
                     return Err("a paged model.query needs a limit above 0".into());
+                }
+                if offset % count != 0 {
+                    return Err("a page needs an offset that is a multiple of its count".into());
                 }
                 (offset / count + 1, count)
             } else {

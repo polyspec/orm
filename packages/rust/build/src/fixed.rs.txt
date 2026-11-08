@@ -85,6 +85,11 @@ impl T {
         polyspec_orm::model::gets_count(self).await
     }
 
+    /// Returns one page of grouping values and row counts and whether a next page exists, with no total.
+    pub async fn gets_count_lookahead_page(&self, page: u32, per_page: u32) -> polyspec_orm::Result<polyspec_orm::GroupLookaheadPage> {
+        polyspec_orm::model::gets_count_lookahead_page(self, page, per_page).await
+    }
+
     /// Returns the sum of the column selected with sum_<col>; 0 when SQL gives null.
     pub async fn get_sum(&self) -> polyspec_orm::Result<f64> {
         polyspec_orm::model::get_sum(&self.__orm).await
@@ -98,6 +103,11 @@ impl T {
     /// Returns one page of matching rows.
     pub async fn gets_page(&self, page: u32, per_page: u32) -> polyspec_orm::Result<polyspec_orm::Page<Self>> {
         polyspec_orm::model::gets_page(self, page, per_page).await
+    }
+
+    /// Returns one page of matching rows and whether a next page exists, with no total.
+    pub async fn gets_lookahead_page(&self, page: u32, per_page: u32) -> polyspec_orm::Result<polyspec_orm::LookaheadPage<Self>> {
+        polyspec_orm::model::gets_lookahead_page(self, page, per_page).await
     }
 
     /// Returns the steps of the plan that gets_page runs, in their order, without executing it.

@@ -1717,6 +1717,8 @@ final class Db
     public function scalarOf(?TxFrame $frame, Request $r): mixed {}
     /** @internal @return array{0: array, 1: array, 2: int} */
     public function paginate(?TxFrame $frame, Request $r): array {}
+    /** @internal @return array{0: array, 1: array, 2: bool} */
+    public function lookahead(?TxFrame $frame, Request $r, int $perPage): array {}
     /** @internal @return array{0: int|float|string|null, 1: int} */
     public function writeOf(?TxFrame $frame, Request $r, ?\Closure $afterHook = null): array {}
     public function execute(array $step, array $params): void {}
@@ -2035,6 +2037,30 @@ final readonly class Page
     public function __construct(Collection $items, int $totalCount, int $totalPages, int $page, int $perPage) {}
 }
 
+/** One page of models read one row past its end, with no total (INT-164). @template TModel of Model */
+final readonly class LookaheadPage
+{
+    /** @var Collection<TModel> */
+    public Collection $items;
+    public int $page;
+    public int $perPage;
+    public bool $hasNext;
+
+    /** @param Collection $items */
+    public function __construct(Collection $items, int $page, int $perPage, bool $hasNext) {}
+}
+
+/** One page of the group rows of getsCount read one group past its end, with no total (INT-164). */
+final readonly class GroupLookaheadPage
+{
+    public GroupRows $items;
+    public int $page;
+    public int $perPage;
+    public bool $hasNext;
+
+    public function __construct(GroupRows $items, int $page, int $perPage, bool $hasNext) {}
+}
+
 /** An ORM function expression passed to the native planner. */
 final readonly class Func
 {
@@ -2325,6 +2351,8 @@ abstract class Model implements \JsonSerializable, ModelMetadata
     private function aggregate(string $fn): ?float {}
     private static function aggregateNumber(mixed $value): float {}
     public function getsPage(int $page, int $perPage): Page {}
+    public function getsLookaheadPage(int $page, int $perPage): LookaheadPage {}
+    public function getsCountLookaheadPage(int $page, int $perPage): GroupLookaheadPage {}
     public function getPagePlanSteps(int $page, int $perPage): array {}
     public function getQuery(): array {}
     private static function manifestHash(): string {}

@@ -5161,6 +5161,17 @@
               "aggregate": {
                 "$ref": "#/$defs/aggregate"
               },
+              "lookahead": {
+                "description": "The query reads one lookahead page of its limit by getsLookaheadPage, or by getsCountLookaheadPage with an aggregate of count (INT-164).",
+                "type": "boolean"
+              },
+              "group_by": {
+                "description": "The columns that the chain groups by, each by groupBy, so that page reads getsPage on a grouped chain (DSL-67).",
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/name"
+                }
+              },
               "joins": {
                 "type": "array",
                 "items": {
@@ -5461,6 +5472,17 @@
               },
               "aggregate": {
                 "$ref": "#/$defs/aggregate"
+              },
+              "lookahead": {
+                "description": "The query reads one lookahead page of its limit by getsLookaheadPage, or by getsCountLookaheadPage with an aggregate of count (INT-164).",
+                "type": "boolean"
+              },
+              "group_by": {
+                "description": "The columns that the chain groups by, each by groupBy, so that page reads getsPage on a grouped chain (DSL-67).",
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/name"
+                }
               },
               "joins": {
                 "type": "array",

@@ -806,6 +806,97 @@ ZEND_METHOD(Polyspec_Orm_Model, groupValue)
     if (read_string_is(type, "bytes") && no_stage && !model_output_bytes(return_value)) RETURN_THROWS();
 }
 
+/* The GroupRows of the main step of a group_count or a group_lookahead_paginate result: the selected values of each row
+ * by the column declarations of the plan, and its checked row_count (INT-68). db, plan and result are borrowed. */
+static bool group_rows_of(zval *self, zval *db, zval *plan, zval *result, zval *out)
+{
+    zval *steps = plan != NULL ? read_array(plan, "steps") : NULL;
+    zval *step = steps != NULL && Z_TYPE_P(steps) == IS_ARRAY ? zend_hash_index_find(Z_ARRVAL_P(steps), 0) : NULL;
+    zval *assembly = step != NULL ? read_array(step, "assemble") : NULL;
+    zval *columns = assembly != NULL ? read_array(assembly, "columns") : NULL;
+    if (columns == NULL || Z_TYPE_P(columns) != IS_ARRAY) return read_throw("INTERNAL", "group count has no result declaration");
+    zval names;
+    array_init(&names);
+    bool has_count = false;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(columns), zval *column) {
+        if (read_is_true(column, "hidden")) continue;
+        zval *name = read_array(column, "name");
+        if (name == NULL || Z_TYPE_P(name) != IS_STRING || Z_STRLEN_P(name) == 0 || zend_hash_exists(Z_ARRVAL(names), Z_STR_P(name))) {
+            zval_ptr_dtor(&names);
+            zend_string *message = strpprintf(0, "group result repeats or omits column %s", name != NULL && Z_TYPE_P(name) == IS_STRING ? Z_STRVAL_P(name) : "");
+            read_throw("CONFIG", ZSTR_VAL(message));
+            zend_string_release(message);
+            return false;
+        }
+        zval flag;
+        ZVAL_TRUE(&flag);
+        zend_hash_update(Z_ARRVAL(names), Z_STR_P(name), &flag);
+        if (zend_string_equals_literal(Z_STR_P(name), "row_count")) has_count = true;
+    } ZEND_HASH_FOREACH_END();
+    zval_ptr_dtor(&names);
+    if (!has_count) return read_throw("INTERNAL", "group result has no row_count");
+    zval rows;
+    array_init(&rows);
+    zval *main = read_array(result, "main");
+    if (main != NULL && Z_TYPE_P(main) == IS_ARRAY) ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(main), zval *raw_row) {
+        zval entries;
+        array_init(&entries);
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(columns), zval *column) {
+            if (read_is_true(column, "hidden")) continue;
+            zval *idx = read_array(column, "index"), *name = read_array(column, "name");
+            if (idx == NULL || Z_TYPE_P(idx) != IS_LONG || name == NULL) {
+                zval_ptr_dtor(&entries);
+                zval_ptr_dtor(&rows);
+                return read_throw("INTERNAL", "group result column declaration is incomplete");
+            }
+            zval *raw = zend_hash_index_find(Z_ARRVAL_P(raw_row), (zend_ulong)Z_LVAL_P(idx));
+            if (raw == NULL) {
+                zval_ptr_dtor(&entries);
+                zval_ptr_dtor(&rows);
+                zend_string *message = strpprintf(0, "group result column %s is missing", Z_STRVAL_P(name));
+                read_throw("INTERNAL", ZSTR_VAL(message));
+                zend_string_release(message);
+                return false;
+            }
+            zval args[3], value;
+            ZVAL_COPY(&args[0], db);
+            ZVAL_COPY(&args[1], column);
+            ZVAL_COPY(&args[2], raw);
+            bool ok = read_model_call(self, "groupValue", &value, 3, args);
+            for (int k = 0; k < 3; k++) zval_ptr_dtor(&args[k]);
+            if (!ok) {
+                zval_ptr_dtor(&entries);
+                zval_ptr_dtor(&rows);
+                return false;
+            }
+            zval pair;
+            array_init_size(&pair, 2);
+            zval c;
+            ZVAL_COPY(&c, name);
+            add_next_index_zval(&pair, &c);
+            add_next_index_zval(&pair, &value);
+            add_next_index_zval(&entries, &pair);
+        } ZEND_HASH_FOREACH_END();
+        zval group_row, ctor;
+        object_init_ex(&group_row, polyspec_group_row_ce);
+        zend_call_method(Z_OBJ(group_row), polyspec_group_row_ce, NULL, "__construct", sizeof("__construct") - 1, &ctor, 1, &entries, NULL);
+        zval_ptr_dtor(&entries);
+        if (!Z_ISUNDEF(ctor)) zval_ptr_dtor(&ctor);
+        if (EG(exception) != NULL) {
+            zval_ptr_dtor(&rows);
+            zval_ptr_dtor(&group_row);
+            return false;
+        }
+        add_next_index_zval(&rows, &group_row);
+    } ZEND_HASH_FOREACH_END();
+    zval ctor;
+    object_init_ex(out, polyspec_group_rows_ce);
+    zend_call_method(Z_OBJ_P(out), polyspec_group_rows_ce, NULL, "__construct", sizeof("__construct") - 1, &ctor, 1, &rows, NULL);
+    zval_ptr_dtor(&rows);
+    if (!Z_ISUNDEF(ctor)) zval_ptr_dtor(&ctor);
+    return EG(exception) == NULL;
+}
+
 ZEND_METHOD(Polyspec_Orm_Model, getsCount)
 {
     ZEND_PARSE_PARAMETERS_NONE();
@@ -813,15 +904,10 @@ ZEND_METHOD(Polyspec_Orm_Model, getsCount)
     zval kind,args[2],request;ZVAL_STRING(&kind,"group_count");ZVAL_COPY(&args[0],&kind);ZVAL_COPY(&args[1],&db);if(!read_model_call(ZEND_THIS,"build",&request,2,args)){zval_ptr_dtor(&kind);zval_ptr_dtor(&args[0]);zval_ptr_dtor(&args[1]);zval_ptr_dtor(&executor);zval_ptr_dtor(&db);zval_ptr_dtor(&frame);RETURN_THROWS();}zval_ptr_dtor(&kind);zval_ptr_dtor(&args[0]);zval_ptr_dtor(&args[1]);
     zval *external=read_object_prop(&request,"external");if(external!=NULL&&Z_TYPE_P(external)==IS_ARRAY&&zend_hash_num_elements(Z_ARRVAL_P(external))!=0){zval_ptr_dtor(&request);zval_ptr_dtor(&executor);zval_ptr_dtor(&db);zval_ptr_dtor(&frame);read_throw("CONFIG","group count cannot return relations");RETURN_THROWS();}
     zval select_args[2],selected;ZVAL_COPY(&select_args[0],&frame);ZVAL_COPY(&select_args[1],&request);bool ok=read_call(&db,"select",&selected,2,select_args);zval_ptr_dtor(&select_args[0]);zval_ptr_dtor(&select_args[1]);zval_ptr_dtor(&request);zval_ptr_dtor(&executor);zval_ptr_dtor(&frame);if(!ok){zval_ptr_dtor(&db);RETURN_THROWS();}
-    zval *plan=zend_hash_index_find(Z_ARRVAL(selected),0),*result=zend_hash_index_find(Z_ARRVAL(selected),1);zval *steps=plan!=NULL?read_array(plan,"steps"):NULL,*step=steps!=NULL&&Z_TYPE_P(steps)==IS_ARRAY?zend_hash_index_find(Z_ARRVAL_P(steps),0):NULL,*assembly=step!=NULL?read_array(step,"assemble"):NULL,*columns=assembly!=NULL?read_array(assembly,"columns"):NULL;
-    if(columns==NULL||Z_TYPE_P(columns)!=IS_ARRAY){zval_ptr_dtor(&selected);zval_ptr_dtor(&db);read_throw("INTERNAL","group count has no result declaration");RETURN_THROWS();}
-    zval names;array_init(&names);bool has_count=false;
-    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(columns),zval *column){if(read_is_true(column,"hidden"))continue;zval *name=read_array(column,"name");if(name==NULL||Z_TYPE_P(name)!=IS_STRING||Z_STRLEN_P(name)==0||zend_hash_exists(Z_ARRVAL(names),Z_STR_P(name))){zval_ptr_dtor(&names);zval_ptr_dtor(&selected);zval_ptr_dtor(&db);zend_string *message=strpprintf(0,"group result repeats or omits column %s",name!=NULL&&Z_TYPE_P(name)==IS_STRING?Z_STRVAL_P(name):"");read_throw("CONFIG",ZSTR_VAL(message));zend_string_release(message);RETURN_THROWS();}zval flag;ZVAL_TRUE(&flag);zend_hash_update(Z_ARRVAL(names),Z_STR_P(name),&flag);if(zend_string_equals_literal(Z_STR_P(name),"row_count"))has_count=true;}ZEND_HASH_FOREACH_END();
-    if(!has_count){zval_ptr_dtor(&names);zval_ptr_dtor(&selected);zval_ptr_dtor(&db);read_throw("INTERNAL","group result has no row_count");RETURN_THROWS();}
-    zval rows;array_init(&rows);zval *main=read_array(result,"main");if(main!=NULL&&Z_TYPE_P(main)==IS_ARRAY)ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(main),zval *raw_row){zval entries;array_init(&entries);ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(columns),zval *column){if(read_is_true(column,"hidden"))continue;zval *idx=read_array(column,"index"),*name=read_array(column,"name");if(idx==NULL||Z_TYPE_P(idx)!=IS_LONG||name==NULL){zval_ptr_dtor(&entries);zval_ptr_dtor(&rows);zval_ptr_dtor(&names);zval_ptr_dtor(&selected);zval_ptr_dtor(&db);read_throw("INTERNAL","group result column declaration is incomplete");RETURN_THROWS();}zval *raw=zend_hash_index_find(Z_ARRVAL_P(raw_row),(zend_ulong)Z_LVAL_P(idx));if(raw==NULL){zval_ptr_dtor(&entries);zval_ptr_dtor(&rows);zval_ptr_dtor(&names);zval_ptr_dtor(&selected);zval_ptr_dtor(&db);zend_string *message=strpprintf(0,"group result column %s is missing",Z_STRVAL_P(name));read_throw("INTERNAL",ZSTR_VAL(message));zend_string_release(message);RETURN_THROWS();}zval args[3],value;ZVAL_COPY(&args[0],&db);ZVAL_COPY(&args[1],column);ZVAL_COPY(&args[2],raw);if(!read_model_call(ZEND_THIS,"groupValue",&value,3,args)){for(int k=0;k<3;k++)zval_ptr_dtor(&args[k]);zval_ptr_dtor(&entries);zval_ptr_dtor(&rows);zval_ptr_dtor(&names);zval_ptr_dtor(&selected);zval_ptr_dtor(&db);RETURN_THROWS();}for(int k=0;k<3;k++)zval_ptr_dtor(&args[k]);zval pair;array_init_size(&pair,2);zval c;ZVAL_COPY(&c,name);add_next_index_zval(&pair,&c);add_next_index_zval(&pair,&value);add_next_index_zval(&entries,&pair);}ZEND_HASH_FOREACH_END();
-      zval group_row;object_init_ex(&group_row,polyspec_group_row_ce);zval ctor;zend_call_method(Z_OBJ(group_row),polyspec_group_row_ce,NULL,"__construct",sizeof("__construct")-1,&ctor,1,&entries,NULL);zval_ptr_dtor(&entries);if(!Z_ISUNDEF(ctor))zval_ptr_dtor(&ctor);if(EG(exception)!=NULL){zval_ptr_dtor(&rows);zval_ptr_dtor(&names);zval_ptr_dtor(&selected);zval_ptr_dtor(&db);zval_ptr_dtor(&group_row);RETURN_THROWS();}add_next_index_zval(&rows,&group_row);
-    }ZEND_HASH_FOREACH_END();
-    object_init_ex(return_value,polyspec_group_rows_ce);zval ctor;zend_call_method(Z_OBJ_P(return_value),polyspec_group_rows_ce,NULL,"__construct",sizeof("__construct")-1,&ctor,1,&rows,NULL);zval_ptr_dtor(&rows);if(!Z_ISUNDEF(ctor))zval_ptr_dtor(&ctor);zval_ptr_dtor(&names);zval_ptr_dtor(&selected);zval_ptr_dtor(&db);if(EG(exception)!=NULL)RETURN_THROWS();
+    ok = group_rows_of(ZEND_THIS, &db, zend_hash_index_find(Z_ARRVAL(selected), 0), zend_hash_index_find(Z_ARRVAL(selected), 1), return_value);
+    zval_ptr_dtor(&selected);
+    zval_ptr_dtor(&db);
+    if (!ok) RETURN_THROWS();
 }
 
 ZEND_METHOD(Polyspec_Orm_Model, aggregate)
@@ -1381,13 +1467,25 @@ ZEND_METHOD(Polyspec_Orm_Model, getAvg)
     if (!read_aggregate(ZEND_THIS, "avg", return_value)) RETURN_THROWS();
 }
 
-/* The arguments of a page checked and its request built: the one request of getsPage and getPagePlanSteps. On success the
- * caller owns db, frame, clone and request. */
-static bool page_request(zval *self, zend_long page, zend_long per_page, zval *db, zval *frame, zval *clone, zval *request)
+/* The arguments of a page checked and its request of kind built: the one request of getsPage and getPagePlanSteps
+ * (paginate), and of the lookahead pages, whose limit reads extra rows past the page (INT-164). terminal names the
+ * terminal in a refusal. On success the caller owns db, frame, clone and request. */
+static bool page_request_of(zval *self, const char *kind, const char *terminal, zend_long extra, zend_long page,
+    zend_long per_page, zval *db, zval *frame, zval *clone, zval *request)
 {
-    if (page < 1 || per_page < 1) { read_throw("CONFIG", "getsPage requires a positive page and perPage"); return false; }
+    if (page < 1 || per_page < 1) {
+        zend_string *message = strpprintf(0, "%s requires a positive page and perPage", terminal);
+        read_throw("CONFIG", ZSTR_VAL(message));
+        zend_string_release(message);
+        return false;
+    }
     zval *limit = model_state_property(model_state_of(Z_OBJ_P(self)), "limit");
-    if (limit != NULL && Z_TYPE_P(limit) != IS_NULL) { read_throw("CONFIG", "getsPage cannot be combined with limit"); return false; }
+    if (limit != NULL && Z_TYPE_P(limit) != IS_NULL) {
+        zend_string *message = strpprintf(0, "%s cannot be combined with limit", terminal);
+        read_throw("CONFIG", ZSTR_VAL(message));
+        zend_string_release(message);
+        return false;
+    }
     zval executor;
     if (!read_model_call(self, "executor", &executor, 0, NULL)) return false;
     zval *dbp = zend_hash_index_find(Z_ARRVAL(executor), 0), *framep = zend_hash_index_find(Z_ARRVAL(executor), 1);
@@ -1403,11 +1501,11 @@ static bool page_request(zval *self, zend_long page, zend_long per_page, zval *d
     ZVAL_LONG(&right, per_page);
     mul_function(&offset, &left, &right);
     add_assoc_zval(&page_limit, "offset", &offset);
-    add_assoc_long(&page_limit, "count", per_page);
+    add_assoc_long(&page_limit, "count", per_page + extra);
     model_state_property_set(model_state_of(Z_OBJ_P(clone)), "limit", &page_limit);
     zval_ptr_dtor(&page_limit);
     zval args[2];
-    ZVAL_STRING(&args[0], "paginate");
+    ZVAL_STRING(&args[0], kind);
     ZVAL_COPY(&args[1], db);
     bool built = read_model_call(clone, "build", request, 2, args);
     zval_ptr_dtor(&args[0]);
@@ -1422,7 +1520,100 @@ static bool page_method_request(zend_execute_data *execute_data, zend_long *page
     static const char *const scalar_types[] = {"int", "int"};
     if (!model_reject_null_scalar_args(execute_data, scalar_types, 2)) return false;
     ZEND_PARSE_PARAMETERS_START(2,2) Z_PARAM_LONG(*page) Z_PARAM_LONG(*per_page) ZEND_PARSE_PARAMETERS_END_EX(return false);
-    return page_request(ZEND_THIS, *page, *per_page, db, frame, clone, request);
+    return page_request_of(ZEND_THIS, "paginate", "getsPage", 0, *page, *per_page, db, frame, clone, request);
+}
+
+/* A lookahead page of kind (INT-164): its request, whose limit reads one row past the page, run by Db::lookahead. On
+ * success the caller owns db, request, clone and result, the tuple [plan, result, hasNext]. */
+static bool lookahead_run(zend_execute_data *execute_data, const char *kind, zend_long *page, zend_long *per_page, zval *db,
+    zval *clone, zval *request, zval *result)
+{
+    static const char *const scalar_types[] = {"int", "int"};
+    if (!model_reject_null_scalar_args(execute_data, scalar_types, 2)) return false;
+    ZEND_PARSE_PARAMETERS_START(2,2) Z_PARAM_LONG(*page) Z_PARAM_LONG(*per_page) ZEND_PARSE_PARAMETERS_END_EX(return false);
+    zval frame;
+    if (!page_request_of(ZEND_THIS, kind, "getsLookaheadPage", 1, *page, *per_page, db, &frame, clone, request)) return false;
+    if (strcmp(kind, "group_lookahead_paginate") == 0) {
+        zval *external = read_object_prop(request, "external");
+        if (external != NULL && Z_TYPE_P(external) == IS_ARRAY && zend_hash_num_elements(Z_ARRVAL_P(external)) != 0) {
+            zval_ptr_dtor(&frame); zval_ptr_dtor(request); zval_ptr_dtor(clone); zval_ptr_dtor(db);
+            return read_throw("CONFIG", "group count cannot return relations");
+        }
+    }
+    zval args[3];
+    ZVAL_COPY(&args[0], &frame);
+    ZVAL_COPY(&args[1], request);
+    ZVAL_LONG(&args[2], *per_page);
+    bool ok = read_call(db, "lookahead", result, 3, args);
+    zval_ptr_dtor(&args[0]);
+    zval_ptr_dtor(&args[1]);
+    zval_ptr_dtor(&frame);
+    if (ok && (Z_TYPE_P(result) != IS_ARRAY || zend_hash_index_find(Z_ARRVAL_P(result), 2) == NULL)) {
+        zval_ptr_dtor(result);
+        ok = read_throw("INTERNAL", "lookahead result is incomplete");
+    }
+    if (!ok) { zval_ptr_dtor(request); zval_ptr_dtor(clone); zval_ptr_dtor(db); }
+    return ok;
+}
+
+/* Builds a lookahead page object of ce from its items, page, perPage and hasNext. */
+static bool lookahead_page_object(zend_class_entry *ce, zval *items, zend_long page, zend_long per_page, bool has_next, zval *out)
+{
+    object_init_ex(out, ce);
+    if (EG(exception) != NULL) return false;
+    zval args[4], ctor;
+    ZVAL_COPY(&args[0], items);
+    ZVAL_LONG(&args[1], page);
+    ZVAL_LONG(&args[2], per_page);
+    ZVAL_BOOL(&args[3], has_next);
+    read_call(out, "__construct", &ctor, 4, args);
+    for (int i = 0; i < 4; i++) zval_ptr_dtor(&args[i]);
+    if (!Z_ISUNDEF(ctor)) zval_ptr_dtor(&ctor);
+    return EG(exception) == NULL;
+}
+
+ZEND_METHOD(Polyspec_Orm_Model, getsLookaheadPage)
+{
+    zend_long page, per_page;
+    zval db, clone, request, result;
+    if (!lookahead_run(execute_data, "lookahead_paginate", &page, &per_page, &db, &clone, &request, &result)) RETURN_THROWS();
+    zval *plan = zend_hash_index_find(Z_ARRVAL(result), 0), *rows = zend_hash_index_find(Z_ARRVAL(result), 1);
+    bool has_next = zend_is_true(zend_hash_index_find(Z_ARRVAL(result), 2));
+    bool ok = plan != NULL && rows != NULL;
+    if (!ok) read_throw("INTERNAL", "lookahead result is incomplete");
+    zval items;
+    ZVAL_UNDEF(&items);
+    if (ok) {
+        zval args[4];
+        ZVAL_COPY(&args[0], &db);
+        ZVAL_COPY(&args[1], &request);
+        ZVAL_COPY(&args[2], plan);
+        ZVAL_COPY(&args[3], rows);
+        ok = read_model_call(&clone, "assemble", &items, 4, args);
+        for (int i = 0; i < 4; i++) zval_ptr_dtor(&args[i]);
+    }
+    if (ok) ok = lookahead_page_object(polyspec_lookahead_page_ce, &items, page, per_page, has_next, return_value);
+    if (!Z_ISUNDEF(items)) zval_ptr_dtor(&items);
+    zval_ptr_dtor(&result); zval_ptr_dtor(&request); zval_ptr_dtor(&clone); zval_ptr_dtor(&db);
+    if (!ok) RETURN_THROWS();
+}
+
+ZEND_METHOD(Polyspec_Orm_Model, getsCountLookaheadPage)
+{
+    zend_long page, per_page;
+    zval db, clone, request, result;
+    if (!lookahead_run(execute_data, "group_lookahead_paginate", &page, &per_page, &db, &clone, &request, &result)) RETURN_THROWS();
+    zval *plan = zend_hash_index_find(Z_ARRVAL(result), 0), *rows = zend_hash_index_find(Z_ARRVAL(result), 1);
+    bool has_next = zend_is_true(zend_hash_index_find(Z_ARRVAL(result), 2));
+    zval groups;
+    ZVAL_UNDEF(&groups);
+    bool ok = plan != NULL && rows != NULL;
+    if (!ok) read_throw("INTERNAL", "lookahead result is incomplete");
+    if (ok) ok = group_rows_of(ZEND_THIS, &db, plan, rows, &groups);
+    if (ok) ok = lookahead_page_object(polyspec_group_lookahead_page_ce, &groups, page, per_page, has_next, return_value);
+    if (!Z_ISUNDEF(groups)) zval_ptr_dtor(&groups);
+    zval_ptr_dtor(&result); zval_ptr_dtor(&request); zval_ptr_dtor(&clone); zval_ptr_dtor(&db);
+    if (!ok) RETURN_THROWS();
 }
 
 ZEND_METHOD(Polyspec_Orm_Model, getPagePlanSteps)

@@ -31,6 +31,8 @@ __all__ = [
     "Key",
     "Model",
     "Page",
+    "LookaheadPage",
+    "GroupLookaheadPage",
     "RegisteredModel",
     "register_model",
 ]
@@ -83,6 +85,25 @@ class Page(dict):
     totalPages: int
     page: int
     perPage: int
+
+
+class LookaheadPage(dict):
+    """One page of models read one row past its end, with no total: items, page, perPage and hasNext (INT-164)."""
+
+    items: "Collection"
+    page: int
+    perPage: int
+    hasNext: bool
+
+
+class GroupLookaheadPage(dict):
+    """One page of the group rows of gets_count read one group past its end, with no total: items, page, perPage and
+    hasNext (INT-164)."""
+
+    items: "GroupRows"
+    page: int
+    perPage: int
+    hasNext: bool
 
 
 class Collection:
@@ -471,6 +492,19 @@ class Model:
         from polyspec.orm.model_exec import page_of
 
         return Page(page_of(self.core, page, per_page))
+
+    def gets_lookahead_page(self, page: int, per_page: int) -> LookaheadPage[Self]:
+        """Returns one page of the matching rows and whether a next page exists, read by one statement with no count."""
+        from polyspec.orm.model_exec import lookahead_page_of
+
+        return lookahead_page_of(self.core, page, per_page)
+
+    def gets_count_lookahead_page(self, page: int, per_page: int) -> GroupLookaheadPage:
+        """Returns one page of the group rows of gets_count and whether a next page exists, read by one statement with no
+        count."""
+        from polyspec.orm.model_exec import group_lookahead_page_of
+
+        return group_lookahead_page_of(self.core, page, per_page)
 
     def get_page_plan_steps(self, page: int, per_page: int) -> list[dict]:
         """Returns the steps of the plan that gets_page runs, in their order, without running it."""

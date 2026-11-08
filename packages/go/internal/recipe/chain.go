@@ -42,6 +42,7 @@ type chainQuery struct {
 	Limit         *chainLimit       `json:"limit"`
 	Lock          string            `json:"lock"`
 	Aggregate     *chainAggregate   `json:"aggregate"`
+	GroupBy       []string          `json:"group_by"`
 	Joins         []chainJoin       `json:"joins"`
 	Relations     []chainRelation   `json:"relations"`
 	ForceIndex    string            `json:"force_index"`
@@ -135,6 +136,7 @@ type chainStep struct {
 	JSONOutput      bool                       `json:"json_output"`
 	GroupValue      string                     `json:"group_value"`
 	Page            bool                       `json:"page"`
+	Lookahead       bool                       `json:"lookahead"`
 	Compile         bool                       `json:"compile"`
 	Plan            bool                       `json:"plan"`
 	PlanPage        *chainPlanPage             `json:"plan_page"`
@@ -762,6 +764,9 @@ func (b *chainBuild) query(core *orm.Core, q chainQuery) error {
 			core.GroupBy(column)
 		}
 	}
+	for _, column := range q.k("group_by").GroupBy {
+		core.GroupBy(column)
+	}
 	for _, j := range q.k("joins").Joins {
 		child := chainCore(j.Model, b.c)
 		inner := &chainBuild{c: b.c, joined: map[string]*orm.Core{}, outer: b.outer}
@@ -1106,7 +1111,7 @@ func chainBuilt(s chainStep, db *orm.DB, c *databaseContext) (*orm.Core, error) 
 	if q.k("limit").Limit != nil && s.k("offset").Offset > 0 {
 		q.Limit = &chainLimit{Offset: s.k("offset").Offset, Count: q.k("limit").Limit.Count}
 	}
-	if s.k("page").Page {
+	if s.k("page").Page || s.k("lookahead").Lookahead {
 		q.Limit = nil
 	}
 	build := &chainBuild{c: c, joined: map[string]*orm.Core{}, db: db}
@@ -1176,6 +1181,8 @@ func chainGets(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
 			return outcome{}, err
 		}
 		return jsonOutcome(map[string]any{"sql": statement.SQL, "binds": statement.Binds}), nil
+	case s.k("lookahead").Lookahead:
+		return chainLookahead(s, core)
 	case s.k("aggregate").Aggregate != nil && s.k("aggregate").Aggregate.Agg == "sum":
 		sum, err := core.GetSum()
 		if err != nil {
@@ -1219,6 +1226,9 @@ func chainGets(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
 			if limit.Count <= 0 {
 				return outcome{}, fmt.Errorf("a plan needs a limit count above 0")
 			}
+			if limit.Offset%limit.Count != 0 {
+				return outcome{}, fmt.Errorf("a plan needs an offset that is a multiple of its count")
+			}
 			page = chainPlanPage{Page: limit.Offset/limit.Count + 1, PerPage: limit.Count}
 		}
 		steps, err := core.GetPagePlanSteps(page.Page, page.PerPage)
@@ -1230,6 +1240,9 @@ func chainGets(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
 		var limit chainLimit
 		if s.k("limit").Limit != nil {
 			limit = chainLimit{Offset: limit.Offset + s.k("offset").Offset + s.k("limit").Limit.Offset, Count: s.k("limit").Limit.Count}
+		}
+		if limit.Count > 0 && limit.Offset%limit.Count != 0 {
+			return outcome{}, fmt.Errorf("a page needs an offset that is a multiple of its count")
 		}
 		return chainPage(s, core, limit.Offset/max(limit.Count, 1)+1, limit.Count, c)
 	case s.k("plan_page").PlanPage != nil:
@@ -1397,13 +1410,9 @@ func chainPage(s chainStep, core *orm.Core, number, count int, c *databaseContex
 	if err != nil {
 		return outcome{}, err
 	}
-	keys := []any{}
-	for _, key := range page.Items.Keys() {
-		value, err := key.Value()
-		if err != nil {
-			return outcome{}, err
-		}
-		keys = append(keys, value)
+	keys, err := itemKeys(page.Items)
+	if err != nil {
+		return outcome{}, err
 	}
 	fields := map[string]any{"keys": keys, "total": page.TotalCount, "pages": page.TotalPages, "page": page.Page, "per_page": page.PerPage}
 	if s.k("items").Items {
@@ -1423,6 +1432,45 @@ func chainPage(s chainStep, core *orm.Core, number, count int, c *databaseContex
 		out.fields["rows"] = cells
 	}
 	return out, nil
+}
+
+// chainLookahead runs GetsLookaheadPage, or GetsCountLookaheadPage with an aggregate of count, on the page of the limit
+// of the step: the keys of the models or the group rows, the page, its size and whether a next page exists (INT-164).
+func chainLookahead(s chainStep, core *orm.Core) (outcome, error) {
+	limit := s.k("limit").Limit
+	if limit == nil || limit.Count <= 0 || limit.Offset%limit.Count != 0 {
+		return outcome{}, fmt.Errorf("a lookahead page needs a limit whose count is above 0 and whose offset is a multiple of the count")
+	}
+	number := limit.Offset/limit.Count + 1
+	if s.k("aggregate").Aggregate != nil {
+		page, err := orm.GetsCountLookaheadPage(core, number, limit.Count)
+		if err != nil {
+			return outcome{}, err
+		}
+		return jsonOutcome(map[string]any{"items": page.Items.ToArray(), "page": page.Page, "per_page": page.PerPage, "has_next": page.HasNext}), nil
+	}
+	page, err := orm.GetsLookaheadPage[*tableRow](core, number, limit.Count)
+	if err != nil {
+		return outcome{}, err
+	}
+	keys, err := itemKeys(page.Items)
+	if err != nil {
+		return outcome{}, err
+	}
+	return jsonOutcome(map[string]any{"items": keys, "page": page.Page, "per_page": page.PerPage, "has_next": page.HasNext}), nil
+}
+
+// itemKeys is the value of each key of items, in collection order.
+func itemKeys(items *orm.Collection[*tableRow]) ([]any, error) {
+	keys := []any{}
+	for _, key := range items.Keys() {
+		value, err := key.Value()
+		if err != nil {
+			return nil, err
+		}
+		keys = append(keys, value)
+	}
+	return keys, nil
 }
 
 // chainAssign sets the members of an object of values on core, in the written order. A null wrapper is SetNull; an

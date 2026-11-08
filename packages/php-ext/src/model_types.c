@@ -11,6 +11,8 @@
 zend_class_entry *polyspec_request_ce;
 zend_class_entry *polyspec_styled_value_ce;
 zend_class_entry *polyspec_page_ce;
+zend_class_entry *polyspec_lookahead_page_ce;
+zend_class_entry *polyspec_group_lookahead_page_ce;
 zend_class_entry *polyspec_func_ce;
 zend_class_entry *polyspec_pending_time_ce;
 
@@ -719,6 +721,41 @@ ZEND_METHOD(Polyspec_Orm_Page, __construct)
     zend_update_property_long(polyspec_page_ce, Z_OBJ_P(ZEND_THIS), "page", sizeof("page") - 1, Z_LVAL_P(page_value));
     zend_update_property_long(polyspec_page_ce, Z_OBJ_P(ZEND_THIS), "perPage", sizeof("perPage") - 1, Z_LVAL_P(per_page_value));
     zend_update_property(polyspec_page_ce, Z_OBJ_P(ZEND_THIS), "items", sizeof("items") - 1, items);
+}
+
+/* The fields of a lookahead page of ce (INT-164): items of items_class, page, perPage and hasNext, and no total. */
+static void lookahead_page_construct(INTERNAL_FUNCTION_PARAMETERS, zend_class_entry *ce, const char *items_class)
+{
+    zval *items, *page_value, *per_page_value, *has_next_value;
+    zend_string *items_name = zend_string_init(items_class, strlen(items_class), 0);
+    zend_class_entry *items_ce = zend_lookup_class(items_name);
+    zend_string_release(items_name);
+    if (items_ce == NULL) RETURN_THROWS();
+    ZEND_PARSE_PARAMETERS_START(4, 4)
+        Z_PARAM_OBJECT_OF_CLASS(items, items_ce)
+        Z_PARAM_ZVAL(page_value)
+        Z_PARAM_ZVAL(per_page_value)
+        Z_PARAM_ZVAL(has_next_value)
+    ZEND_PARSE_PARAMETERS_END();
+    if (!model_types_scalar_argument(page_value, 2, MAY_BE_LONG, "int") ||
+        !model_types_scalar_argument(per_page_value, 3, MAY_BE_LONG, "int") ||
+        !model_types_scalar_argument(has_next_value, 4, MAY_BE_BOOL, "bool")) {
+        RETURN_THROWS();
+    }
+    zend_update_property(ce, Z_OBJ_P(ZEND_THIS), "items", sizeof("items") - 1, items);
+    zend_update_property_long(ce, Z_OBJ_P(ZEND_THIS), "page", sizeof("page") - 1, Z_LVAL_P(page_value));
+    zend_update_property_long(ce, Z_OBJ_P(ZEND_THIS), "perPage", sizeof("perPage") - 1, Z_LVAL_P(per_page_value));
+    zend_update_property_bool(ce, Z_OBJ_P(ZEND_THIS), "hasNext", sizeof("hasNext") - 1, zend_is_true(has_next_value));
+}
+
+ZEND_METHOD(Polyspec_Orm_LookaheadPage, __construct)
+{
+    lookahead_page_construct(INTERNAL_FUNCTION_PARAM_PASSTHRU, polyspec_lookahead_page_ce, ORM_NS "\\Collection");
+}
+
+ZEND_METHOD(Polyspec_Orm_GroupLookaheadPage, __construct)
+{
+    lookahead_page_construct(INTERNAL_FUNCTION_PARAM_PASSTHRU, polyspec_group_lookahead_page_ce, ORM_NS "\\GroupRows");
 }
 
 ZEND_METHOD(Polyspec_Orm_Func, __construct)

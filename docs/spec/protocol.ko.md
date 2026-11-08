@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: d4f08e7e555df5570a8175b27e148272ff76c4f7e15bf5aa3afd08cf88cfc31d -->
+<!-- source-sha256: 93820ff0c71b467c0a062552a473efe0a63504657eb780d2ca494c27f83cf255 -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `packages/go/engine/ir/ir.go`와 `packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -10,7 +10,7 @@
 {
   "ir_version": 1,
   "manifest_hash": "sha256:e82672f09b5852725e8b4d17ad0500b3d8ef5fbeeeee1c04c7e2b1ec0b9bb785",
-  "kind": "one | all | count | group_count | sum | avg | paginate | insert | update | delete | restore | restart_identity",
+  "kind": "one | all | count | group_count | sum | avg | paginate | lookahead_paginate | group_lookahead_paginate | insert | update | delete | restore | restart_identity",
   "entity": "author",
   "columns": Columns,
   "where": Group,
@@ -36,7 +36,7 @@
 모든 클라이언트는 요청을 엄격하게 decode한다. 최상위나 어떤 객체(`ref`, `pred`, item, group, order item, `limit`, join, relation, 할당) 안에서든 그 객체가 정의하지 않은 member는 `IR_INVALID`이고, JSON type이 틀린 member도 그렇다: 문자열이 아닌 `column`, `agg`, `entity`, `op`, 정수가 아닌 매개변수 위치나 개수(`0.0`이나 `1e1`처럼 literal이 정수가 아닌 수도 포함한다. TypeScript는 literal을 지키는 ordered-json으로 요청 text를 읽는다), 배열이 아닌 목록 member, 객체가 아닌 객체 member가 그 예다. `sum`과 `avg`는 column을 `agg`에 적으므로 `sum` 요청의 `column`은 정의되지 않은 member다. 이 형태 검사는 다른 모든 규칙보다 먼저 하므로, type이 틀린 이름의 요청은 `COLUMN_UNKNOWN`이나 `ENTITY_UNKNOWN`이 아니라 `IR_INVALID`로 실패한다. null인 member는 없는 것과 같다. `tests/ir/validate.json`(`shape-*` case)이 이 사례를 담고, Go, PHP, Rust, TypeScript, Python이 이를 실행한다.
 
 - **PRT-1** `manifest_hash`: generated code가 가진 document set의 `manifestHash`다. `sha256:` 뒤에 소문자 16진수 64자리가 온다([manifest와 hash](dbspec.ko.md#manifest-and-hashes)). 클라이언트가 읽은 모델과 hash가 다른 요청은 `SCHEMA_HASH_MISMATCH`로 실패한다. 이 필드는 `schema_hash`를 대신하며 오류 코드 이름은 그대로다
-- **PRT-2** `kind`: `one`과 `all`은 행을 읽고, `count`는 행이나 그룹 수를 계산하며, `group_count`는 `row_count`를 가진 그룹 행을 반환한다. `sum`과 `avg`는 `agg`를 집계하고, `paginate`는 페이지 문장과 개수 문장을 반환하며, `insert`, `update`, `delete`는 행을 쓰고, `restore`는 지워진 행 하나의 soft delete 컬럼을 비우며([restore](#_1-5-restore)), `restart_identity`는 테이블의 identity를 가장 큰 key 다음에서 다시 시작한다([적재](#_1-6-load))
+- **PRT-2** `kind`: `one`과 `all`은 행을 읽고, `count`는 행이나 그룹 수를 계산하며, `group_count`는 `row_count`를 가진 그룹 행을 반환한다. `sum`과 `avg`는 `agg`를 집계하고, `paginate`는 페이지 문장과 개수 문장을, `lookahead_paginate`와 `group_lookahead_paginate`는 페이지 너머의 행 하나를 더 읽는 `all`과 `group_count`의 페이지 문장 하나를 반환하며(INT-164), `insert`, `update`, `delete`는 행을 쓰고, `restore`는 지워진 행 하나의 soft delete 컬럼을 비우며([restore](#_1-5-restore)), `restart_identity`는 테이블의 identity를 가장 큰 key 다음에서 다시 시작한다([적재](#_1-6-load))
 - **PRT-3** `load`: `insert`가 행을 저장된 key 그대로 쓴다. identity 컬럼의 값을 받는다([적재](#_1-6-load))
 - **PRT-4** `set`: `insert`와 `update`의 할당
 - **PRT-5** `rows`: 추가로 삽입할 각 행의 매개변수를 `set` 컬럼 순서로 나열한다. 이때 `set`의 모든 항목은 값 할당이어야 하며 `on_duplicate`는 사용할 수 없다
@@ -46,7 +46,7 @@
 
 `Query`는 루트, 조인 자식, 관계 자식, 서브쿼리가 함께 쓰는 형태로 `entity`, `columns`, `on`(조인 자식 전용), `where`, `joins`, `relations`, `order`, `group_by`, `limit`, `force_index`, `lock`, 관계 옵션으로 이루어진다.
 
-`group_by`는 `count`(group 수)와 `group_count`의 루트에서만 유효하다. 다른 kind, 조인 자식, 관계 자식, 서브쿼리에서는 요청이 `IR_INVALID`로 실패한다. group된 행은 group 밖의 컬럼 값이 없어서, 다른 kind는 세 database 모두에서 출력을 정할 수 없다.
+`group_by`는 `count`(group 수), `group_count`, `group_lookahead_paginate`의 루트에서만 유효하며, 뒤의 둘은 그것을 필요로 한다. 다른 kind, 조인 자식, 관계 자식, 서브쿼리에서는 요청이 `IR_INVALID`로 실패한다. group된 행은 group 밖의 컬럼 값이 없어서, 다른 kind는 세 database 모두에서 출력을 정할 수 없다.
 
 ### 1.1 컬럼
 
@@ -179,7 +179,7 @@ PostgreSQL identity는 명시한 key를 지나 나아가지 않으므로 다시 
 
 ### 2.1 관계 단계
 
-- **PRT-38** 관계마다 부모 단계 뒤에 `relation` 단계가 하나 있다. 중첩 관계도 같은 규칙을 따르며, `paginate`는 단계를 main, count, relation 순서로 둔다. count 단계는 main 단계 다음에 오며, main의 조건과 join을 그대로 갖되 order와 page limit은 갖지 않는다.
+- **PRT-38** 관계마다 부모 단계 뒤에 `relation` 단계가 하나 있다. 중첩 관계도 같은 규칙을 따르며, `paginate`는 단계를 main, count, relation 순서로 둔다. count 단계는 main 단계 다음에 오며, main의 조건과 join을 그대로 갖되 order와 page limit은 갖지 않는다. `lookahead_paginate`와 `group_lookahead_paginate`는 count 단계가 없다. main 단계는 order와 루트 limit을 가진 `all` 또는 `group_count`의 문장이고 client는 그 count를 `perPage + 1`로 정하며, `lookahead_paginate`는 그 뒤에 relation 단계가 오고 relation 단계는 추가 행을 뺀 페이지의 부모를 읽는다. `order`가 없는 query는 `lookahead_paginate`에서 primary key의, `group_lookahead_paginate`에서 `group_by` 컬럼의 차례대로 오름차순 정렬하며, lookahead kind는 루트 `limit`이 필요하고 없으면 `IR_INVALID` "%s needs limit"이다.
 - **PRT-39** 클라이언트는 모든 부모 행의 키를 순서대로 읽고, 키가 null인 행과 중복을 제거한다. 남은 키가 없으면 문장을 실행하지 않는다. `if_parent`가 있으면 컬럼 값이 매개변수와 같은 부모만 사용한다.
 - **PRT-40** `parent` 슬롯은 클라이언트가 키 목록으로 확장하는 자리표시자 하나다. 목록은 마지막 키를 반복해 2의 거듭제곱 길이로 맞추므로 크기 구간마다 준비된 문장 하나를 사용한다. 드라이버 바인드 한도보다 긴 목록은 나누어 실행한다.
 - **PRT-40a** `polyspec/orm-php-ext` package의 PHP extension은 composite relation의 `parent` slot을 native class에서 펼치고, 각 행의 두 key 구성 요소를 bind한다(PRT-40).

@@ -434,6 +434,12 @@ impl<'m> Planner<'m> {
             "paginate" => {
                 self.select_step(&mut steps, &r.query, "all", "", None, true)?;
             }
+            "lookahead_paginate" | "group_lookahead_paginate" => {
+                // One statement and its relations, with no count: the root limit reads one row past the page (INT-164).
+                let root = if r.kind == "group_lookahead_paginate" { "group_count" } else { "all" };
+                let q = self.lookahead_query(r)?;
+                self.select_step(&mut steps, &q, root, "", None, false)?;
+            }
             "insert" => steps.push(self.insert_step(r)?),
             "update" => steps.push(self.update_step(r)?),
             "delete" => steps.push(self.delete_step(r)?),
@@ -445,6 +451,17 @@ impl<'m> Planner<'m> {
             st.id = i as u32;
         }
         Ok(Plan { manifest_hash: self.m.manifest_hash.clone(), kind: r.kind.clone(), steps })
+    }
+
+    /// The root query of a lookahead page: a query without an order is ordered by the primary key of its entity, or by its
+    /// group_by columns, ascending in their order, so that consecutive pages neither repeat nor skip a row.
+    fn lookahead_query(&self, r: &ir::Request) -> Result<ir::Query> {
+        let mut q = r.query.clone();
+        if q.order.is_empty() {
+            let columns = if r.kind == "group_lookahead_paginate" { q.group_by.clone() } else { self.entity(&q.entity)?.primary_key.clone() };
+            q.order = columns.into_iter().map(|column| ir::Order { column, ..Default::default() }).collect();
+        }
+        Ok(q)
     }
 
     /// Assigns aliases: root "a", joins by result name, nested joins and the

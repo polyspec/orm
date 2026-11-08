@@ -321,7 +321,7 @@ func kindMatches(kinds any, kind string) bool {
 }
 
 // readKinds are the request kinds that the name reads covers.
-var readKinds = []string{"one", "all", "count", "group_count", "sum", "avg", "paginate"}
+var readKinds = []string{"one", "all", "count", "group_count", "sum", "avg", "paginate", "lookahead_paginate", "group_lookahead_paginate"}
 
 // equalPred is the predicate column = value with the value bound through addParam.
 func equalPred(addParam func(any) int, column string, value any) ir.Pred {
