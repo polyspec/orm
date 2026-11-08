@@ -1,8 +1,8 @@
 <!-- doc-id: features -->
-<!-- source-sha256: df0085f14cdf99af052109272c1e234afb824172b93d08aae4b2a0e8e9e2aff9 -->
+<!-- source-sha256: 61b9e8081b9f39147a9a0db65bfbafc10d706c8eb21172f323cfe80abfd3cace -->
 # 기능 정의
 
-실행 기준은 저장소의 기능 manifest이다. 먼저 manifest의 `source.read_order` 경로를 읽고 선택한 기능의 모든 참조 경로를 읽는다. 각 항목은 input, output, 상태 전이, 오류, parity unit, fixture, test, paired document, 실제 검증 명령을 정의한다.
+실행 기준은 저장소의 기능 manifest이다. 먼저 manifest의 `source.read_order` 경로를 읽고 선택한 기능의 모든 참조 경로를 읽는다. 각 항목은 input, output, 상태 전이, 오류, fixture, test, paired document, 실제 검증 명령을 정의한다.
 
 | ID | 기능 | 상태 | 언어 |
 |---|---|---|---|

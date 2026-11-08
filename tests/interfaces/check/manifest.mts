@@ -25,7 +25,7 @@ type AdapterCase = { test?: string; id?: string; phase?: string };
 type BehaviorAdapter = {
   status?: string; primitive?: string; surface?: string; cases?: AdapterCase[]; item?: string; required_case?: string;
 };
-export type BehaviorContract = { id?: string; completion_item?: string; parity?: string; adapters?: Record<string, BehaviorAdapter> };
+export type BehaviorContract = { id?: string; completion_item?: string; adapters?: Record<string, BehaviorAdapter> };
 /**
  * Extension is what implements part of the contract outside the five client languages (extensions in contracts/interfaces.json, PHP extension
  * polyspec_orm). Its declarations are read from roots by a syntax language's extractor, only rules and owners are checked, and it holds its symbol snapshot and its hash
@@ -141,7 +141,7 @@ export function validateBehaviorAdapters(contracts: BehaviorContract[], surfaces
   const surfaceIds = new Set(surfaces.map(surface => surface.id ?? ''));
   for (const contract of contracts) {
     const id = contract.id ?? '', adapters = contract.adapters ?? {};
-    if (id === '' || ids.has(id) || (contract.completion_item ?? '') === '' || (contract.parity ?? '') === '' || runtimes.some(runtime => !Object.hasOwn(adapters, runtime))
+    if (id === '' || ids.has(id) || (contract.completion_item ?? '') === '' || runtimes.some(runtime => !Object.hasOwn(adapters, runtime))
       || Object.keys(adapters).some(runtime => !runtimes.includes(runtime))) {
       throw new Error(`invalid or duplicate behavior adapter contract ${id}`);
     }

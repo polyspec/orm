@@ -104,7 +104,7 @@ mod aggregate_numeric {
         }
     }
 
-    /// One test per case id; the parity check compares these names with the ids of the fixture.
+    /// One test per case id, named by the id of its fixture case.
     macro_rules! cases {
         ($($id:ident),* $(,)?) => {
             $(

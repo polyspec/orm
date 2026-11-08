@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: db5bb1fa532b236a8652e65929dc3bb054a0abe1bc4d2bea5383a8f7744abfc1 -->
+<!-- source-sha256: 7fe44269bbb01e4b8d43ecda8bdd7161b4927286641aa6f90ddc4f41e3b4fd49 -->
 # 사용법
 
 하나의 dbspec document set에서 language client를 생성한다. 공통 contract는 Go, PHP, PHP extension, TypeScript, Python, Rust 여섯 구현에 적용되며 확장의 미완료 native 범위는 별도로 추적한다.

@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: 86279c201c938619e886f4506154e99a4a5e0b30778564e7d3e5a4493d21a3a8 -->
+<!-- source-sha256: a816fb8a4572528c71171232ac22d6c48e7367d6e43b3d4700bc348f712bb4d0 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -96,18 +96,10 @@
   CI job의 `GROUP`, `GITHUB_ACTIONS`, `ORM_CHECK_RUN_ID`, 상위 make의 `MAKEFLAGS`와 Makefile이 export하는 변수는 그
   process에 닿지 않는다(`make repo-check`).
   Enforced by: `make repo-check`
-- Own: 둘 이상의 runtime이 가진 동작은 recipe의 case다(docs/spec/feature-coverage.md의 FCV-2).
-  `config/parity.json`에서 owner가 없고 native test를 묶는 feature unit은 binding 수와 상관없이 그 unit을 지목하는 finding이다.
-  suite unit의 entry나 case를 실행하는 binding은 native test가 아니다.
-  예외는 FCV-2가 native로 남는다고 쓰고 콜론 뒤에 이유를 밝힌 unit뿐이다. 이유가 없는 줄은 아무것도 면제하지 않으며,
-  어떤 unit도 가리키지 않는 예외도 finding이다. 변환을 기다리는 unit의 목록은 두지 않는다. 그런 목록은 끝나지 않은 작업에서도
-  검사를 통과시키기 때문이다.
-  Enforced by: `make repo-check`
-- Own: `config/parity.json`의 binding이 지목한 파일의 모든 시험은 자기 binding을 가지거나 FCV-2의 줄
-  ``- In `<file>`, `<test>` stays as a native test: <reason>``을 가진다. parity 도구는 시험이 아니라 파일을 검사하기 때문이다.
-  symbol 없이 묶인 suite는 파일 전체이며 도구가 그 case를 recipe와 비교한다. literal이 아닌 이름은 읽지 않고, 없는 시험이나
-  파일을 지목한 줄은 finding이다.
-  Enforced by: `make repo-check`
+- Own: 둘 이상의 runtime이 가진 동작은 recipe의 case이며(docs/spec/feature-coverage.md의 FCV-2), 그런 동작의 native test는
+  FCV-2가 콜론 뒤에 이유를 밝힌 곳에만 남는다. 이 규칙의 검사는 kit 0.0.100이 지운 config/parity.json의 feature unit을 읽었다.
+  contracts/implementations.json의 시험을 읽는 그 검사는 보류된 row T400-1이다.
+  Enforced by: none, 그 검사는 보류된 row T400-1이다
 - Own: 성능은 측정하고 보고할 뿐 test를 실패시키지 않는다. test는 측정(CPU 시간과 wall-clock 시간, 기준, 비율, 기계)을
   출력하고, 측정이 문서의 기준값을 넘으면 측정값, 기준값, 기계를 담은 `WARNING` 줄을 출력한다. check runner는 그 줄을
   실행 기록과 summary에 남기고 GitHub `::warning::` annotation으로 쓴다. test는 그래도 통과한다. test는 정확성으로만
@@ -204,13 +196,13 @@
 - Own: 적합성 비교와 기록은 비어 있지 않고 중복 없는 벡터 이름 및 각 데이터베이스 기대값 파일에서 정확히 같은 벡터 이름을 요구한다. 누락되거나 추가된 이름은 오류다.
   Enforced by: `make conformance-check`
 - Own: 공통 계획·방언·스키마·오류 동작은 `packages/go/engine/*`, `packages/go/cmd/orm-gen`, 계약 문서에서 정의한다. 클라이언트 동작은 소유하는 `packages/<runtime>/*` 폴더에 구현하고 공통 검증은 `tests/*`, `schema/*`, `scripts/*`에 둔다. 지원하는 모든 클라이언트에서 필요한 실행 사례가 통과하기 전에는 기능을 완료하지 않는다.
-  Enforced by: `make parity-declarations-check`
-- Own: 기능 coverage 증거는 현재 검사에서 실행한 명령의 종료 상태와 그 entry가 쓴 `CASE <id> [<database>] PASS` 줄에서 얻는다(docs/spec/feature-coverage.md FCV-12). 이름만 있는 테스트 파일이나 저장된 출력은 실행 증거가 아니다. `make parity-check`가 기능의 recipe를 실행하고, `make feature-coverage-of/<id>`가 기능 하나의 coverage를 읽으며, reader의 변경 반례 테스트는 `make feature-unit-check`에서 실행한다. `make orm-check`는 검증 명령을 각 명령이 선언한 `shard`(cargo로 Rust를 build하고 실행하는 명령은 `rust`)에 따라 `make feature-verify-rust`와 `make feature-verify-other`에서 실행하고, `make feature-check`는 그 둘을 `make feature-performance-check`와 함께 실행한다.
-  Enforced by: `make feature-unit-check`, `make parity-check`
+  Enforced by: `make feature-verify-other`
+- Own: 기능 coverage 증거는 현재 검사에서 실행한 명령의 종료 상태와 그 entry가 쓴 `CASE <id> [<database>] PASS` 줄에서 얻는다(docs/spec/feature-coverage.md FCV-12). 이름만 있는 테스트 파일이나 저장된 출력은 실행 증거가 아니다. 기능의 검증 명령이 그 recipe를 실행하고, `make feature-coverage-of/<id>`가 기능 하나의 coverage를 읽으며, reader의 변경 반례 테스트는 `make feature-unit-check`에서 실행한다. `make orm-check`는 검증 명령을 각 명령이 선언한 `shard`(cargo로 Rust를 build하고 실행하는 명령은 `rust`)에 따라 `make feature-verify-rust`와 `make feature-verify-other`에서 실행하고, `make feature-check`는 그 둘을 `make feature-performance-check`와 함께 실행한다.
+  Enforced by: `make feature-unit-check`, `make feature-verify-other`
 - Own: coverage 검사기는 선언된 각 entry를 한 번 실행하고 그 종료 상태와 `ORM_RECIPE_RESULTS`의 결과 파일에 쓴 줄에서 성공을 판단한다. 다른 테스트 출력은 결과를 제공할 수 없고, 줄이 없는 사례는 통과하지 않은 것이다. 사례마다 자기 database를 가지므로 검사기는 database 상태를 읽지 않는다.
   Enforced by: `make feature-unit-check`
 - Own: coverage 사례 ID는 언어에 공통인 동작을 가리킨다. entry는 통과한 사례에 그 ID를 쓰고, 검사기는 그 줄에서만 ID를 수용한다. 데이터베이스 사례에서 entry는 자기 실행의 server DSN으로 사례마다 자기 database를 만든다.
-  Enforced by: `make feature-unit-check`, `make parity-check`
+  Enforced by: `make feature-unit-check`, `make feature-verify-other`
 - Own: 소유 client는 `packages/<runtime>` 아래에 있는 테스트로 자기 동작 사례를 실행한다. 선언된 각 사용 부분은 자기 디렉터리의 테스트로 별도의 통합 사례를 실행한다. 기능 계약은 두 부분, 테스트 경로, 명령을 지정하며 소유자·사용자 증거가 없거나 테스트가 해당 부분 밖에 있으면 coverage 검사가 실패한다. 중앙 conformance는 client 결과를 비교하며 소유자 테스트를 대신하지 않는다.
   Enforced by: `make feature-unit-check`
 - Own: 관찰할 이벤트가 있으면 폴링이나 타이머 대신 그 이벤트를 사용한다. 선언된 기한에는 타이머를 사용할 수 있다. 이 저장소가 만드는 것에 심볼릭 링크를 쓰지 않고 대체 실행 경로를 쓰지 않는다. 다이어그램의 원본은 Mermaid 정의이며 생성물은 원본 정의와 분리해 보관한다.
@@ -224,7 +216,7 @@
 - Own: SQLite 실제 스키마 가져오기는 `INTEGER PRIMARY KEY AUTOINCREMENT`만 부호 있는 `i64` 자동 키로 바꾸고 일반 `INTEGER`는 `i32`로 유지한다.
   Enforced by: `make dbspec-introspect-check`
 - Own: 모든 변환은 idempotent하다. parse한 canonical source를 emit하면 byte 단위로 같고, 같은 입력으로 operation을 반복하면 같은 결과와 상태가 된다.
-  Enforced by: `make parity-check`
+  Enforced by: `make feature-verify-other`
 - Own: 이름은 그것이 하는 일을 말하고, 한 개념은 모든 client에서 한 이름을 쓴다. 이름, prefix, suffix가 동작을 고르지 않는다. 동작은 명시적으로 선언한다.
   Enforced by: none, 이름은 검토의 판단이며 언어 사이의 이름을 비교하는 검사가 없다
 - Refines P11: code 주석과 commit message는 영어다. tracked code 파일의 주석에는 한글이 없으며, `make comment-language-check`(T131)가 한글 주석을 파일과 줄을 대며 실패시킨다. commit message에도 한글을 쓰지 않는다. 새로 쓰거나 바꾸는 주석은 영어다(PRINCIPLES.md).

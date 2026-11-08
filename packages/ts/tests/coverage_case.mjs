@@ -1,7 +1,7 @@
 // Shared runner of the feature coverage test. The checker runs it as `node <file> <case id>...`, and
 // since the whole output must be only `CASE <id> PASS` lines, it runs only the requested cases in order and
 // writes only that one line per passing case. A failure throws, so the process ends with a non-zero code.
-// When run without a case ID (the parity check's `node --test <file>`), it registers, for each case of the suite,
+// When run without a case ID (`node --test <file>`), it registers, for each case of the suite,
 // a top-level node:test test under that ID.
 import { createRequire } from 'node:module';
 import { caseTest } from '../../../tests/testcase.mts';

@@ -146,7 +146,7 @@ export function runStep(program: string, args: string[], { cwd, env, step, label
   if (!guard) return plainStep(program, args, { cwd, env, step, spawned });
   install();
   const temporary = mkdtempSync(join(tmpdir(), 'orm-step-'));
-  // The run directory of the step, which the step owns: the recipes of the step (parity-prepare) write into it, and the
+  // The run directory of the step, which the step owns: the recipes of the step write into it, and the
   // runner removes it when the step ends, pass or fail, before it looks for leftovers.
   const stepRun = join(cwd ?? '.', '.runtime/run', basename(temporary));
   mkdirSync(stepRun, { recursive: true });

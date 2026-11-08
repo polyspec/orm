@@ -1,19 +1,27 @@
-// The recipe format of docs/spec/feature-coverage.md (FCV-2 to FCV-4): every recipe of the parity suites is valid against
+// The recipe format of docs/spec/feature-coverage.md (FCV-2 to FCV-4): every recipe of tests/ and contracts/ is valid against
 // scripts/features/schema/recipe.schema.json, and the schema refuses each break of the format that a recipe can hold.
 import assert from 'node:assert/strict';
-import { globSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { caseTest, COMPUTE } from '../../tests/testcase.mts';
-import { parseRecipeCases, readParityConfig } from '../json/formats.mts';
+
 import { checkJson, parseJsonValue, readJsonFile, refusedPaths, type Json } from '../json/schema.mts';
 import { executeCoverage, languages, recipeCaseIds, selectFeatures, type Manifest, type Owner } from './coverage.mts';
 import { FEATURES_SCHEMA, ownerRecipeCommands, readFeatures } from './manifest.mts';
-import { casesOn, withCasesOn } from './recipe-cases.mts';
+import { jsonFiles } from './recipe-files.mts';
+import { readImplementations } from '../json/formats.mts';
 import { testDirectoryOf } from './packages.mts';
 
 const root = new URL('../..', import.meta.url).pathname;
+// The recipes are the JSON files of tests/ and contracts/ that name the recipe schema.
+const namedSchema = (file: string): unknown => {
+  const value: unknown = JSON.parse(readFileSync(resolve(root, file), 'utf8'));
+  return value !== null && typeof value === 'object' && '$schema' in value ? value.$schema : undefined;
+};
+const implementations = readImplementations(resolve(root, 'contracts/implementations.json'));
+const recipeFiles = jsonFiles(root).filter(file => { const named = namedSchema(file); return typeof named === 'string' && named.endsWith('/recipe.schema.json'); });
 const schema = resolve(root, 'scripts/features/schema/recipe.schema.json');
 const fixtures = resolve(root, 'scripts/features/fixtures/recipes');
 
@@ -165,22 +173,14 @@ caseTest('an expect names exactly the databases that run its step', COMPUTE, () 
   assert.notDeepEqual(expectFaults(change(database, ['cases', 0, 'steps', decode, 'expect', 'postgres'])), [], 'an expect without one database');
   assert.notDeepEqual(expectFaults(change(database, ['cases', 0, 'only'], ['postgres'])), [], 'a case with only whose expect names the others');
   assert.notDeepEqual(expectFaults(change(change(database, ['cases', 0, 'steps', decode, 'only'], ['postgres']), ['cases', 0, 'steps', decode, 'expect', 'postgres'])), [], 'a step with only whose expect leaves it out');
-  const parity = readParityConfig(resolve(root, 'config/parity.json'));
-  const files = (parity.suites ?? []).flatMap(glob => globSync(glob, { cwd: root }));
-  assert.deepEqual(files.flatMap(file => expectFaults(jsonFile(file)).map(fault => `${file}: ${fault}`)), []);
+  assert.deepEqual(recipeFiles.flatMap(file => expectFaults(jsonFile(file)).map(fault => `${file}: ${fault}`)), []);
 });
 
 // One subtest per recipe, so that a run reports every invalid recipe and not the first.
-const suiteFiles = (readParityConfig(resolve(root, 'config/parity.json')).suites ?? []).flatMap(glob => globSync(glob, { cwd: root }));
-
-caseTest('config/parity.json names the suite files', COMPUTE, () => {
-  assert.ok(suiteFiles.length > 0, 'config/parity.json names no suite file');
-});
-
-for (const file of suiteFiles) {
+for (const file of recipeFiles) {
   const value: unknown = JSON.parse(readFileSync(resolve(root, file), 'utf8'));
   const named = value !== null && typeof value === 'object' && '$schema' in value ? value.$schema : undefined;
-  if (typeof named !== 'string' || !named.endsWith('/recipe.schema.json')) continue;
+  if (typeof named !== 'string') continue;
   caseTest(`the recipe ${file} names the recipe schema and is valid against it`, COMPUTE, () => {
     assert.equal(resolve(root, dirname(file), named), schema, `${file} names another recipe schema`);
     assert.deepEqual(refused(value, file), [], file);
@@ -216,21 +216,19 @@ caseTest('the recipe is the list of the cases of its owners', COMPUTE, () => {
 });
 
 // sampleOwner is a manifest in which the TypeScript owner runs entry as a recipe owner; the other owners are declared and
-// not selected, since the checker requires an owner for each language that the parity of the feature claims.
+// not selected, since the checker requires an owner for each language that the tests of the feature claim.
 function sampleOwner(entry: string, recipe: string, cases: string[]): Manifest {
   const owners = Object.fromEntries(languages.map((language): [string, Owner] => {
+    // The other test lies in the first root of its implementation, so that the language is a language of the feature.
     const part = testDirectoryOf(language);
-    return [language, { part, tests: [`${part}/other`], commands: {} }];
+    const first = implementations.find(entry => entry.name === language)?.roots[0] ?? part;
+    return [language, { part, tests: [`${first}/other`], commands: {} }];
   }));
   owners.typescript = { part: 'packages/ts', tests: [entry],
     commands: { none: [{ runner: 'node', test: entry, cases, recipe }] } };
-  return selectFeatures({ features: [{ id: 'sample', status: 'partial', parity: languages.map(name => `fixture-${name}`),
+  return selectFeatures({ features: [{ id: 'sample', status: 'partial', tests: Object.values(owners).flatMap(owner => owner.tests),
     coverage: { kind: 'independent', cases: ['whole'], owners, dependents: [] } }] }, 'sample', ['owner/typescript']);
 }
-const sampleParity = {
-  implementations: languages.map(name => ({ name, runner: 'node', roots: [] })),
-  units: languages.map(name => ({ id: `fixture-${name}`, bindings: [{ implementation: name }] })),
-};
 
 // outcome is what a run of the sample reports, its errors and its TAP lines, which it keeps out of the output of this test.
 async function outcome(manifest: Manifest, root: string): Promise<{ errors: string[]; text: string }> {
@@ -241,7 +239,7 @@ async function outcome(manifest: Manifest, root: string): Promise<{ errors: stri
   const context = process.env.NODE_TEST_CONTEXT;
   delete process.env.NODE_TEST_CONTEXT;
   try {
-    const errors = await executeCoverage(manifest, root, 5000, sampleParity);
+    const errors = await executeCoverage(manifest, root, 5000);
     return { errors, text: [...errors, ...lines].join('\n') };
   } finally {
     console.log = log;
@@ -317,28 +315,4 @@ caseTest('the recipe dbspec_introspect names every case of tests/dbspec/introspe
   const named = items(jsonFile('contracts/fixtures/dbspec_introspect/dbspec_introspect.json'), ['cases']).flatMap(entry =>
     items(entry, ['steps']).filter(step => step !== null && typeof step === 'object' && !Array.isArray(step) && step.vectors === '../../../tests/dbspec/introspect.json').map(step => label(at(step, ['case']))));
   assert.deepEqual([...named].sort(), [...vectors].sort());
-});
-
-// A runner registers a case with only on the databases it names, so a suite unit of a database selects exactly those cases: the parity tool
-// counts any other case as not executed (FCV-12). A recipe with such a case holds them in its key cases_on, as its cases state them.
-caseTest('a suite unit of a database selects the cases that database runs', COMPUTE, () => {
-  const problems: string[] = [];
-  const units = readParityConfig(resolve(root, 'config/parity.json')).units as { id: string; kind?: string; file?: string; cases?: string }[];
-  for (const unit of units) {
-    const database = [...DATABASES, 'markdown'].find(name => unit.id.endsWith(`-${name}`));
-    if (unit.kind !== 'suite' || database === undefined || !unit.file?.startsWith('contracts/fixtures/')) continue;
-    const text = readFileSync(resolve(root, unit.file), 'utf8');
-    const { cases } = parseRecipeCases(text, unit.file);
-    if (unit.cases === `$.cases_on.${database}[*]`) {
-      if (text !== withCasesOn(text)) problems.push(`${unit.file}: cases_on differs from its cases; run node scripts/features/recipe-cases.mts`);
-      continue;
-    }
-    // A markdown connection runs what SQLite runs (DIA-154).
-    const runs = database === 'markdown' ? ['sqlite', 'markdown'] : [database];
-    for (const item of cases) if (item.only !== undefined && !runs.some(name => item.only?.includes(name))) problems.push(`${unit.id} selects ${item.id}, which runs only on ${item.only.join(', ')}`);
-  }
-  assert.deepEqual(problems.slice(0, 5), []);
-  const sample = '{\n  "cases": [\n    {"id": "a", "only": ["mysql"]},\n    {"id": "b"}\n  ]\n}\n';
-  assert.deepEqual(casesOn(parseRecipeCases(sample, 'sample').cases), { mysql: ['a', 'b'], postgres: ['b'], sqlite: ['b'] });
-  assert.equal(withCasesOn(withCasesOn(sample)), withCasesOn(sample));
 });

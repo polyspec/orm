@@ -1,0 +1,1209 @@
+{
+  "comment": "The implementations of orm, in their order: the one language set that the scripts, the tests and the documents of orm read. The PHP extension implements the PHP library (S10 of PRINCIPLES.md). Each implementation names its roots, the globs of its test files, its support files (a module that tests import and that holds no test) and its internal tests (a test of one implementation's own mechanism, with its reason); every other test file of its roots belongs to a feature of contracts/features.json.",
+  "implementations": [
+    {
+      "name": "go",
+      "roots": [
+        "packages/go/bindmessages",
+        "packages/go/cmd",
+        "packages/go/decimalmodel",
+        "packages/go/engine",
+        "packages/go/generator",
+        "packages/go/internal",
+        "packages/go/markdownmodel",
+        "packages/go/model",
+        "packages/go/orm",
+        "packages/go/procevent",
+        "packages/go/testcase",
+        "examples",
+        "packages/go/bench"
+      ],
+      "tests": [
+        "**/*_test.go",
+        "packages/**/*_test.go",
+        "tests/**/*_test.go",
+        "examples/**/*_test.go",
+        "packages/go/{cmd,decimalmodel,engine,generator,internal,markdownmodel,model,orm,procevent,testcase}/**/coverage_*_test.go"
+      ],
+      "support": [
+        "packages/go/engine/dbspec/vector_reader_test.go",
+        "packages/go/orm/failing_driver_test.go",
+        "packages/go/orm/schema_helpers_test.go",
+        "packages/go/orm/test_helpers_test.go",
+        "packages/go/bench/process_cpu_unix_test.go",
+        "packages/go/bench/process_cpu_windows_test.go",
+        "packages/go/bench/gate_helpers_test.go",
+        "packages/go/internal/dialects/runner_environment_physical_test.go",
+        "packages/go/engine/dbspec/vectors_test.go",
+        "packages/go/internal/dialects/servers_test.go",
+        "packages/go/engine/dbspec/plan_test.go"
+      ],
+      "internal": [
+        {
+          "glob": "packages/go/orm/driver_error_test.go",
+          "reason": "test: maps stand-in errors at the private MySQL and driver mappers; a server condition reaches these codes through the recipes"
+        },
+        {
+          "glob": "examples/dsn_test.go",
+          "reason": "harness: tests that the standalone examples refuse to start without their benchmark DSN; the preflight belongs to the example commands, not to the ORM client contract"
+        },
+        {
+          "glob": "examples/outputs_test.go",
+          "reason": "harness: compares the output of the runnable example programs against their seeded database; this is the repository example integration contract, not a client-library behavior"
+        },
+        {
+          "glob": "packages/go/bench/client_test.go",
+          "reason": "harness: contains only client benchmark functions for measuring one Go workload, not a shared ORM behavior case"
+        },
+        {
+          "glob": "packages/go/bench/dsn_test.go",
+          "reason": "harness: tests the private Go benchmark harness requirement for ORM_BENCH_MYSQL_DSN and its own DSN helper"
+        },
+        {
+          "glob": "packages/go/bench/hot_path_gate_test.go",
+          "reason": "harness: tests only Go-specific hot-path threshold and load measurement mechanics; the six-client database behavior is covered by performance_gate owner cases"
+        },
+        {
+          "glob": "packages/go/bench/native_test.go",
+          "reason": "harness: contains native-driver benchmark workloads and raw scans used as a local measurement baseline, not a client contract case"
+        },
+        {
+          "glob": "packages/go/bench/statements_test.go",
+          "reason": "harness: checks the SQL and rows of the Go performance measurement harness against its raw native baseline, not shared client behavior"
+        },
+        {
+          "glob": "packages/go/engine/dbspec/testdata/fixture/fixture_test.go",
+          "reason": "harness: creates intentionally invalid dbspec vectors for the Go harness's child-process failure test; these vectors are not accepted ORM inputs or client behavior"
+        },
+        {
+          "glob": "packages/go/internal/buildconstraints/buildconstraints_test.go",
+          "reason": "harness: reads the build constraints of every Go file of the repository, a rule of the Go test run itself rather than client behavior"
+        },
+        {
+          "glob": "packages/go/engine/dbspec/harness_test.go",
+          "reason": "harness: tests the Go dbspec case runner's failure-only output protocol through a deliberately failing child fixture; it does not exercise dbspec client behavior"
+        },
+        {
+          "glob": "packages/go/engine/dbspec/names_test.go",
+          "reason": "harness: checks flat Go subtest names so the test runner can select exact case IDs; it does not exercise dbspec client behavior"
+        },
+        {
+          "glob": "packages/go/engine/dbspec/vector_loaders_test.go",
+          "reason": "harness: tests the Go dbspec test-vector decoder and diagnostic paths for malformed harness input, not the client dbspec contract"
+        },
+        {
+          "glob": "packages/go/engine/dialect/sqlite_test.go",
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/engine/interface_test.go",
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/engine/ir/fuzz_test.go",
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/engine/ir/operators_test.go",
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/engine/ir/params_test.go",
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/engine/plan/plan_test.go",
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/engine/planner/restore_test.go",
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/engine/planner/soft_delete_test.go",
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/internal/conformance/main_test.go",
+          "reason": "harness: tests private helpers of the Go conformance result runner and vector selector; the result harness is not the ORM client behavior"
+        },
+        {
+          "glob": "packages/go/internal/dialects/ddl_physical_test.go",
+          "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
+        },
+        {
+          "glob": "packages/go/internal/dialects/introspect_compare_physical_test.go",
+          "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
+        },
+        {
+          "glob": "packages/go/internal/dialects/probe_test.go",
+          "reason": "harness: tests the Go-only dialect probe registry, documentation citations and the implementations of contracts/implementations.json; it does not exercise an ORM client contract"
+        },
+        {
+          "glob": "packages/go/internal/dialects/schema_documents_physical_test.go",
+          "reason": "fixture: an internal package test of the go module that reads the fixtures of the contract data, not a helper the contract names (K313)"
+        },
+        {
+          "glob": "packages/go/internal/dialects/sqlite_filename_physical_test.go",
+          "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
+        },
+        {
+          "glob": "packages/go/internal/testassert/read_test.go",
+          "reason": "test: tests the private typed-value reader used by Go test assertions; no public client behavior is invoked"
+        },
+        {
+          "glob": "packages/go/model/assignment_test.go",
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/orm/assignment_propagation_test.go",
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/orm/context_reset_test.go",
+          "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
+        },
+        {
+          "glob": "packages/go/orm/fuzz_test.go",
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/orm/goexit_test.go",
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/orm/keyword_test.go",
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/orm/pg/pg_test.go",
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/orm/refusal_test.go",
+          "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
+        },
+        {
+          "glob": "packages/go/orm/related_test.go",
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/orm/split_plan_test.go",
+          "reason": "test: an internal package test of the go module that measures what a split read allocates, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/orm/sqlite/sqlite_test.go",
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/orm/statement_fault_entry_test.go",
+          "reason": "harness: an internal package test of the go module that checks the test harness of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/orm/styled_state_physical_test.go",
+          "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
+        },
+        {
+          "glob": "packages/go/procevent/procevent_test.go",
+          "reason": "harness: tests Go process-exit and directory-event observation helpers used by test runners; it does not exercise ORM client behavior"
+        },
+        {
+          "glob": "packages/go/testcase/stall_test.go",
+          "reason": "harness: tests testcase step-budget and stalled-case cancellation primitives used to run tests; it does not exercise an ORM contract"
+        },
+        {
+          "glob": "packages/go/testcase/testdata/fixture/fixture_test.go",
+          "reason": "harness: supplies testdata child-process fixtures whose deliberate pass, failure, skip, group and deadline outcomes are inspected by the testcase harness tests"
+        },
+        {
+          "glob": "packages/go/testcase/testcase_test.go",
+          "reason": "harness: tests testcase output formatting and runner/group/deadline primitives; its subject is the Go test harness rather than an ORM client behavior"
+        },
+        {
+          "glob": "packages/go/engine/dbspec/literal_test.go",
+          "reason": "test: directly checks the Go engine's CanonicalLiteral helper; public default literal parsing and diagnostics are exercised by the six-client dbspec-canonical and dbspec-invalid vectors"
+        },
+        {
+          "glob": "packages/go/orm/model_update_state_test.go",
+          "reason": "test: a unit test of the private update state of Core (the selected columns and the key values that retainUpdateState keeps after an update of an unloaded row), reached inside package orm, not a behaviour of the contract; its owner is unloaded-update-state-go, while the public update behaviour remains covered by the model_writes cases (K313)"
+        },
+        {
+          "glob": "packages/go/engine/compile_bench_test.go",
+          "reason": "harness: benchmark, not a behaviour case; BenchmarkCompileList times the compile path over the bench model"
+        },
+        {
+          "glob": "packages/go/generator/gen_go_output_internal_test.go",
+          "reason": "test: the staging directory, output replacement and go/packages load and convergence failures of the Go generator, mechanics of the Go generator that the contract does not state"
+        },
+        {
+          "glob": "packages/go/generator/gen_go_scan_internal_test.go",
+          "reason": "test: the go/packages scan of the Go generator: hand-written files of the model package, pattern spelling, build tags and the generated relation getter text"
+        },
+        {
+          "glob": "packages/go/orm/cancel_waiter_internal_test.go",
+          "reason": "harness: tests newWaiter, the lock-wait helper that the cancellation tests use to time a cancel"
+        },
+        {
+          "glob": "packages/go/orm/collection_key_internal_test.go",
+          "reason": "test: the private fetchKey and keyName of a model, which reject a key callback of the wrong type; the key column behaviour of a collection is the interfaces.md collection key unit (T326-7)"
+        },
+        {
+          "glob": "packages/go/orm/driver_error_internal_test.go",
+          "reason": "test: the private mapDriverErrContext keeps the context cause beside the error it maps, through errors.Join, so errors.Is finds both; the CANCELED code is a case of the CFG-9 unit (T326-14)"
+        },
+        {
+          "glob": "packages/go/orm/shape_internal_test.go",
+          "reason": "test: reflects over the Go request struct to check that the private plan cache key shapeKey reads every field"
+        },
+        {
+          "glob": "packages/go/engine/dbspec/stress_test.go",
+          "reason": "test: the measurement of dbspec-stress-bench that docs/spec/dbspec.md Verification requires, parse time against the reference work; the canonical round trip of the document is the case stress-canonical-roundtrip of dbspec-limits"
+        },
+        {
+          "glob": "packages/go/engine/engine_test.go",
+          "reason": "test: the Go engine's own compile assertions, kept beside the recipe tests/planner/compile.json for shapes it has not taken over."
+        },
+        {
+          "glob": "packages/go/engine/query_forms_test.go",
+          "reason": "test: the Go engine's own query form assertions, kept beside the recipe tests/planner/compile.json for shapes it has not taken over."
+        },
+        {
+          "glob": "packages/go/engine/planner/scalar_subquery_type_test.go",
+          "reason": "test: a column that the planner finds missing after validation is INTERNAL; a request cannot reach it, so no recipe can state it."
+        },
+        {
+          "glob": "packages/go/orm/values_test.go",
+          "reason": "test: the private irFunc of every value and column function of Go; what a request carries is the case value_function_parameter_indexes."
+        },
+        {
+          "glob": "packages/go/orm/catalog_auto_identity_test.go",
+          "reason": "harness: the helpers that open a SQLite catalog fixture and compare its rows, used by the internal catalog tests of this directory; the file holds no test"
+        },
+        {
+          "glob": "packages/go/orm/catalog_mutation_test.go",
+          "reason": "test: calls the private catalogSameCell and catalogBytesValue with values no server stores, such as a TIME(7) native type; the cases row_baseline_exact_values and described_temporal_matrix hold what a server can return"
+        },
+        {
+          "glob": "packages/go/orm/catalog_temporal_test.go",
+          "reason": "test: passes a Go time.Time, which a recipe value cannot express, and calls the private bool, zero date and temporal text conversions with values no server returns; temporal_text_row_cycle_sqlite and described_temporal_text hold the public reads"
+        }
+      ]
+    },
+    {
+      "name": "php",
+      "roots": [
+        "packages/php"
+      ],
+      "tests": [
+        "**/*Test.php",
+        "packages/php/tests/**/*.php",
+        "packages/php-ext/tests/**/*.php",
+        "tests/**/*.php",
+        "packages/php/tests/Coverage*Test.php"
+      ],
+      "support": [
+        "packages/php/tests/CallbackFailed.php",
+        "packages/php/tests/CannedCatalogPdo.php",
+        "packages/php/tests/CatalogAnswerPdo.php",
+        "packages/php/tests/CaseCorpus.php",
+        "packages/php/tests/CatalogAnswerStatement.php",
+        "packages/php/tests/CodecYamlProbe.php",
+        "packages/php/tests/CollectionIdentityCases.php",
+        "packages/php/tests/CollectionWeakTypedKeyCases.php",
+        "packages/php/tests/ColumnFunctionMetadataAssertions.php",
+        "packages/php/tests/CountingPdo.php",
+        "packages/php/tests/DatabaseTestAssertions.php",
+        "packages/php/tests/DbspecSqliteLockCases.php",
+        "packages/php/tests/DbspecStressTestSupport.php",
+        "packages/php/tests/DbspecTimedCases.php",
+        "packages/php/tests/FailingPdo.php",
+        "packages/php/tests/FailingSqliteLockPdo.php",
+        "packages/php/tests/FailingStatement.php",
+        "packages/php/tests/FakeSqliteLockStatement.php",
+        "packages/php/tests/GroupRowsCases.php",
+        "packages/php/tests/ModelTestFailingPdo.php",
+        "packages/php/tests/ModelTypesWeakCallerCases.php",
+        "packages/php/tests/NativeByteCellFixture.php",
+        "packages/php/tests/NativeFixtureVectors.php",
+        "packages/php/tests/OrmGenProcessCase.php",
+        "packages/php/tests/OrmGenTestSupport.php",
+        "packages/php/tests/PageCacheBoundCases.php",
+        "packages/php/tests/Served.php",
+        "packages/php/tests/SqliteConcurrencyWriter.php",
+        "packages/php/tests/SqliteLiteralRowsPdo.php",
+        "packages/php/tests/SqliteRowLockPdo.php",
+        "packages/php/tests/SqliteRowLockStatement.php",
+        "packages/php/tests/StatementCountingPdo.php",
+        "packages/php/tests/StatementEventLog.php",
+        "packages/php/tests/Stop.php",
+        "packages/php/tests/TransactionCloseDuringFailure.php",
+        "packages/php/tests/TransactionFailureCases.php",
+        "packages/php/tests/TransactionTrackingPdo.php",
+        "packages/php/tests/UninitializedRecordingPdo.php",
+        "packages/php/tests/WarningStreamProtocol.php",
+        "packages/php/tests/WasInsertedCases.php",
+        "packages/php/tests/autoload.php",
+        "packages/php/tests/bench.php",
+        "packages/php/tests/bootstrap.php",
+        "packages/php/tests/case_clock.php",
+        "packages/php/tests/case_database.php",
+        "packages/php/tests/codec-yaml-probe.php",
+        "packages/php/tests/collection-weak-caller.php",
+        "packages/php/tests/coverage_cases.php",
+        "packages/php/tests/dbspec-php-interface-program.php",
+        "packages/php/tests/dbspec_analysis_cases.php",
+        "packages/php/tests/dbspec_behaviour.php",
+        "packages/php/tests/dbspec_limit_cases.php",
+        "packages/php/tests/dbspec_plan_cases.php",
+        "packages/php/tests/dbspec_verify_errors_case.php",
+        "packages/php/tests/extension_run_guard.php",
+        "packages/php/tests/fixtures/CodecProbeDumper.php",
+        "packages/php/tests/fixtures/CodecProbeYamlStream.php",
+        "packages/php/tests/generated_classes.php",
+        "packages/php/tests/generated_fixture.php",
+        "packages/php/tests/limit_columns_peak.php",
+        "packages/php/tests/markdown_test_server.php",
+        "packages/php/tests/model-types-weak-caller.php",
+        "packages/php/tests/perf_extensions.php",
+        "packages/php/tests/phpstan-runner.php",
+        "packages/php/tests/phpstan/CollectionGet.php",
+        "packages/php/tests/phpstan/GroupRowsIteration.php",
+        "packages/php/tests/phpstan/RawCollection.php",
+        "packages/php/tests/request_hook_cases.php",
+        "packages/php/tests/request_termination_child.php",
+        "packages/php/tests/sqlite_concurrency_writer.php",
+        "packages/php/tests/three_drivers.php",
+        "packages/php/tests/transaction_deadlock_child.php",
+        "packages/php/tests/was_inserted_child.php",
+        "packages/php/tests/PgsqlPdoAdapterCases.php",
+        "packages/php/tests/FiberTransaction.php",
+        "packages/php/tests/PostgresSessionSettings.php",
+        "packages/php/tests/QueryCancellationDbCases.php",
+        "packages/php/tests/StatementRunnerCases.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php/tests/RecipeCases.php",
+        "packages/php/tests/SqliteRecipeTestCase.php",
+        "packages/php/tests/DatabaseRecipeTestCase.php",
+        "packages/php/tests/PlanCacheCompositeCases.php",
+        "packages/php/tests/RecipeRecording.php",
+        "packages/php/tests/RecipeSubscription.php",
+        "packages/php/tests/RecipeModel.php",
+        "packages/php/tests/RecipeApply.php",
+        "packages/php/tests/RecipeStep.php",
+        "packages/php/tests/RecipeIntrospect.php",
+        "packages/php/tests/CatalogPostgresTemporalPdo.php",
+        "packages/php/tests/CatalogPostgresTemporalCases.php",
+        "packages/php/tests/RecipeKeys.php",
+        "packages/php/tests/dbspec_cases.php",
+        "packages/php/tests/RecipeGenerator.php"
+      ],
+      "internal": [
+        {
+          "glob": "packages/php/tests/NativeCellReadTest.php",
+          "reason": "test: the private row assembly refuses a non-finite float cell of a stand-in driver row, a cell that MySQL and SQLite do not store"
+        },
+        {
+          "glob": "packages/php/tests/DbspecApplyCleanupTest.php",
+          "reason": "test: injects a close failure into the private effect query of PlanApply, which holds a PDO statement; the cleanup errors are cases of tests/dbspec/apply-verification-errors.json"
+        },
+        {
+          "glob": "packages/php/tests/DbspecCatalogChecksTest.php",
+          "reason": "test: directly exercises the @internal Dbspec\\CatalogChecks adapter; accepted and rejected check introspection remains covered across all clients by dbspec-introspect cases"
+        },
+        {
+          "glob": "packages/php/tests/CodecYamlCauseTest.php",
+          "reason": "test: injects PHP YAML parser and dumper dependency failures through CodecYamlProbe to verify wrapper codes and exact cause identity; shared codec vectors cover invalid caller input"
+        },
+        {
+          "glob": "packages/php/tests/DbspecGraphTest.php",
+          "reason": "test: probes PHP-specific array element type guards in the @internal dbspec Graph validator; public parse/emit is covered by every-line-kind, plan emission by rename-table-and-column, and manifest output by the shared hashes and sets vectors"
+        },
+        {
+          "glob": "packages/php/tests/DbspecIntrospectStressTest.php",
+          "reason": "test: the PHP-specific 2000-table SQLite workload records memory and elapsed-time measurements for dbspec-stress-bench; canonical stress-document behavior is covered by dbspec-stress-canonical-roundtrip"
+        },
+        {
+          "glob": "packages/php/tests/DbspecMermaidErrorBoundaryTest.php",
+          "reason": "test: injects an unexpected exception into the private Mermaid catalog builder and verifies the same exception object escapes; the public invalid-name diagnostic is covered by dbspec-mermaid"
+        },
+        {
+          "glob": "packages/php/tests/FuncSourceAdapterTest.php",
+          "reason": "test: checks the PHP-specific callable-to-parameter lowering adapter; public value-function behavior is exercised across clients by planner_value_function_today"
+        },
+        {
+          "glob": "packages/php/tests/ModelTypesSourceTest.php",
+          "reason": "test: checks PHP-internal Request canonicalization, PendingTime lazy wrapping, and PHP weak scalar caller rules"
+        },
+        {
+          "glob": "packages/php/tests/OrmGenPackageTest.php",
+          "reason": "ecosystem: an internal test of the PHP package that checks that its Composer autoload and bin carry the generator, an install rule of the language ecosystem, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/php/tests/AutoloadTest.php",
+          "reason": "ecosystem: an internal test of the PHP package that checks the package, loader or install rule of the language ecosystem, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/php/tests/ClientGenericsTest.php",
+          "reason": "ecosystem: an internal test of the PHP package that checks the package, loader or install rule of the language ecosystem, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/php/tests/ConformanceResultTest.php",
+          "reason": "harness: an internal test of the PHP package that checks the test harness of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/php/tests/CoverageCasesTest.php",
+          "reason": "harness: tests the PHP coverage-case fixture and environment helpers used by owner tests; it does not exercise ORM client behavior"
+        },
+        {
+          "glob": "packages/php/tests/DatabaseTestAssertionsTest.php",
+          "reason": "harness: tests shared PHPUnit fixture/assertion helpers used by owner tests; it does not exercise ORM client behavior"
+        },
+        {
+          "glob": "packages/php/tests/DriverErrorTest.php",
+          "reason": "external: an internal test of the PHP package that runs against a database or driver of an external service, not a helper the contract names (K313)"
+        },
+        {
+          "glob": "packages/php/tests/OrmGenTestSupportTest.php",
+          "reason": "harness: an internal test of the PHP package that checks the test harness of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/php/tests/PerformanceGateCoverageCase.php",
+          "reason": "harness: an internal test of the PHP package that checks the test harness of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/php/tests/PlanCacheMemoryTest.php",
+          "reason": "test: checks plan and statement cache placeholder bounds and LRU accounting, not query results or a shared client guarantee"
+        },
+        {
+          "glob": "packages/php/tests/RelationKeysTest.php",
+          "reason": "test: an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/php/tests/SqliteWithoutMysqlTest.php",
+          "reason": "ecosystem: an internal test of the PHP package that checks the package, loader or install rule of the language ecosystem, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/php/tests/UnselectedColumnDbTest.php",
+          "reason": "external: an internal test of the PHP package that runs against a database or driver of an external service, not a helper the contract names (K313)"
+        },
+        {
+          "glob": "packages/php/tests/UnselectedColumnTest.php",
+          "reason": "test: an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/php/tests/DbspecCatalogRowsTest.php",
+          "reason": "test: tests the internal catalog row reader of the PHP library (Dbspec\\CatalogRows), which the extension implements in C; the shared dbspec vectors stay in DbspecTest"
+        },
+        {
+          "glob": "packages/php/tests/DbspecPlanReaderTest.php",
+          "reason": "harness: verifies ownership of the PHP dbspec plan-vector reader; it does not parse or plan a client request"
+        },
+        {
+          "glob": "packages/php/tests/DbspecRunnerTest.php",
+          "reason": "harness: verifies PHP-only vector selection, chaining, and subprocess output of the dbspec comparison runners; the shared suites test the accepted and rejected dbspec behavior"
+        },
+        {
+          "glob": "packages/php/tests/DbspecUnicodeTest.php",
+          "reason": "test: exhaustively compares the generated private PHP UnicodeWord range table with its own membership search; public syntax behavior is covered by dbspec-syntax"
+        },
+        {
+          "glob": "packages/php/tests/PerfExtensionsTest.php",
+          "reason": "harness: checks the PHP benchmark runner extension refusal list and loaded-process state, not ORM client behavior"
+        },
+        {
+          "glob": "packages/php/tests/PerfGateTest.php",
+          "reason": "harness: validates the PHP benchmark/baseline wrapper; the shared hot-path performance units own client results and warning-only measurement behavior"
+        },
+        {
+          "glob": "packages/php/tests/PgsqlPdoAdapterTest.php",
+          "reason": "test: directly tests the @internal PDO compatibility adapter and Db::pdo bridge, not the public ORM connection API"
+        },
+        {
+          "glob": "packages/php/tests/SetReaderDiagnosticsTest.php",
+          "reason": "test: injects synthetic stream-wrapper failures into the @internal SetReader diagnostics and cache; public readSet behavior is covered by dbspec-set-files"
+        },
+        {
+          "glob": "packages/php/tests/RecipeRecording.php",
+          "reason": "harness: a helper class of the statement events recipe (RecipeRecording and RecipeSubscription) that the bootstrap requires; it holds no test, and the recipe cases are bound by the statement_events suite units"
+        },
+        {
+          "glob": "packages/php/tests/RecipeSubscription.php",
+          "reason": "harness: a helper class of the statement events recipe (RecipeRecording and RecipeSubscription) that the bootstrap requires; it holds no test, and the recipe cases are bound by the statement_events suite units"
+        },
+        {
+          "glob": "packages/php/tests/DbspecStressTest.php",
+          "reason": "test: the measurement of dbspec-stress-bench that docs/spec/dbspec.md Verification requires, parse time against the reference work; the canonical round trip of the document is the case stress-canonical-roundtrip of dbspec-limits"
+        },
+        {
+          "glob": "packages/php/tests/DbspecPlanTest.php",
+          "reason": "harness: tests the PHP compare harness and the connection, value and cleanup helpers of the dbspec database tests; it holds no shared client behaviour"
+        },
+        {
+          "glob": "packages/php/tests/EngineTest.php",
+          "reason": "test: the PHP engine's own compile assertions, kept beside the recipe tests/planner/compile.json for shapes it has not taken over."
+        },
+        {
+          "glob": "packages/php/tests/CodecErrorCauseTest.php",
+          "reason": "test: the native cause that a PHP codec exception chains to; the code of each failure is the case decode_errors of the codec recipe."
+        },
+        {
+          "glob": "packages/php/tests/CatalogQueryBoundsTest.php",
+          "reason": "test: invokes the private verifyInsertedRow and sameRow by reflection; a server cannot make the returned row differ, and PHP false against 0 reaches no public read"
+        },
+        {
+          "glob": "packages/php/tests/CoveragePlannerTest.php",
+          "reason": "harness: a post-validation invariant of the planner that no public input reaches, so no recipe can state it; the planner suite target runs this file."
+        }
+      ]
+    },
+    {
+      "name": "php-extension",
+      "roots": [
+        "packages/php-ext"
+      ],
+      "tests": [
+        "**/*Test.php",
+        "packages/php/tests/**/*.php",
+        "packages/php-ext/tests/**/*.php",
+        "tests/**/*.php"
+      ],
+      "support": [
+        "packages/php-ext/tests/AuditLazyFakePdo.php",
+        "packages/php-ext/tests/AuditLazyFakeStatement.php",
+        "packages/php-ext/tests/CatalogMetadataFailurePdo.php",
+        "packages/php-ext/tests/CatalogMetadataFailureStatement.php",
+        "packages/php-ext/tests/ChainNativeRegistryFixture.php",
+        "packages/php-ext/tests/CollectionFakePdo.php",
+        "packages/php-ext/tests/CollectionFixtureModel.php",
+        "packages/php-ext/tests/ConnectionTimeoutCleanupPdo.php",
+        "packages/php-ext/tests/ConnectionTimeoutCleanupStatement.php",
+        "packages/php-ext/tests/CoverageNativeDecimalModel.php",
+        "packages/php-ext/tests/DslFixture.php",
+        "packages/php-ext/tests/ModelAssemblyFixture.php",
+        "packages/php-ext/tests/ModelAssemblyTestSupport.php",
+        "packages/php-ext/tests/ModelReadShapeFixture.php",
+        "packages/php-ext/tests/ModelReadWarningStream.php",
+        "packages/php-ext/tests/ModelStreamFixture.php",
+        "packages/php-ext/tests/ModelStreamWarningWrapper.php",
+        "packages/php-ext/tests/ModelTypesPendingFixture.php",
+        "packages/php-ext/tests/NativeMethodAssertions.php",
+        "packages/php-ext/tests/NativeModelFixture.php",
+        "packages/php-ext/tests/NativeQueryProbePdo.php",
+        "packages/php-ext/tests/NativeQueryProbeStatement.php",
+        "packages/php-ext/tests/NativeTestEventLog.php",
+        "packages/php-ext/tests/PhpExtensionBootstrapAssertions.php",
+        "packages/php-ext/tests/RuntimeModelBadGeneratedFixture.php",
+        "packages/php-ext/tests/RuntimeModelGeneratedFixture.php",
+        "packages/php-ext/tests/bootstrap.php",
+        "packages/php-ext/tests/declarations.php",
+        "packages/php-ext/tests/declarations_functions.php",
+        "packages/php-ext/tests/model-weak-caller.php",
+        "packages/php-ext/tests/silent_paths.php",
+        "packages/php-ext/tests/CatalogCommitFaultPdo.php",
+        "packages/php-ext/tests/CatalogPageMutationPdo.php",
+        "packages/php-ext/tests/CatalogPageMutationStatement.php"
+      ],
+      "internal": [
+        {
+          "glob": "packages/php-ext/tests/ModelStreamReadTest.php",
+          "reason": "test: the native row assembly reads stream cells and their warnings from a stand-in, the form that no recipe database returns"
+        },
+        {
+          "glob": "packages/php-ext/tests/RegistrySchemaNativeTest.php",
+          "reason": "test: reads by reflection that Registry and Schema are classes of the extension, and its own runtime cache; the manifest hash is the case dbspec_manifest_hash of tests/dbspec/schema-definition.json"
+        },
+        {
+          "glob": "packages/php-ext/tests/DbspecApplyCleanupTestExtensionTest.php",
+          "reason": "test: runs DbspecApplyCleanupTest on the extension, the close failure of the private effect query"
+        },
+        {
+          "glob": "packages/php-ext/tests/CodecCauseTest.php",
+          "reason": "test: injects PHP YAML parser and dumper dependency failures through CodecYamlProbe to verify native wrapper codes and exact cause identity; shared codec vectors cover invalid caller input"
+        },
+        {
+          "glob": "packages/php-ext/tests/DbspecReleaseHooksTest.php",
+          "reason": "harness: checks that the release build of the PHP extension holds the Dbspec class and omits the private test hooks of --enable-polyspec-orm-native-test; it tests the build, not ORM client behavior."
+        },
+        {
+          "glob": "packages/php-ext/tests/MermaidErrorBoundaryTest.php",
+          "reason": "test: exercises the private Mermaid test hook for a coded catalog-build exception and an unexpected Throwable; public invalid-name diagnostics are covered by dbspec-mermaid"
+        },
+        {
+          "glob": "packages/php-ext/tests/ArginfoBuildTest.php",
+          "reason": "harness: checks extension build bootstrap ordering and tool availability before invoking the generator; it does not exercise ORM behavior"
+        },
+        {
+          "glob": "packages/php-ext/tests/MarkdownNativeTest.php",
+          "reason": "ecosystem: checks that the markdown session, its PDO adapter and its statement adapter are native classes of the extension, not the results of a markdown connection"
+        },
+        {
+          "glob": "packages/php-ext/tests/PlanCacheMemoryNativeTest.php",
+          "reason": "test: checks native statement-cache retention, LRU eviction and close accounting, not query results or a shared client guarantee"
+        },
+        {
+          "glob": "packages/php-ext/tests/StatementEventSurfaceTest.php",
+          "reason": "harness: verifies the native extension registers the internal StatementEvent class; event construction and dispatch behavior are exercised by the statement_events recipe cases"
+        },
+        {
+          "glob": "packages/php-ext/tests/ChainNativeSurfaceTest.php",
+          "reason": "test: `model-native-php-extension-check` verifies internal Polyspec\\Orm\\Internal\\Chain registration and direct words/parseMeta/orderMeta/pairMeta/columnName helper behavior in testNativeClassOwnsTheCompletePublicChainSurface, testWordsAndNameConversionsKeepTheChainGrammar, testNativeParserAcceptsConnectorsComparisonsAndTuples, testNativeParserRejectsUnknownAndDisallowedOperatorsAsConfig, and testNativeOrderPairAndColumnLookupReturnExactNames; public fluent query output and IR validation remain exercised by coverage-model-query-rows and ir-validate"
+        },
+        {
+          "glob": "packages/php-ext/tests/ValidatorNativeTest.php",
+          "reason": "test: the extension releases what its validator looks up; this is the memory of the native code."
+        },
+        {
+          "glob": "packages/php-ext/tests/CodecErrorCauseTestExtensionTest.php",
+          "reason": "test: the PHP cause test run in the extension; see packages/php/tests/CodecErrorCauseTest.php."
+        }
+      ]
+    },
+    {
+      "name": "typescript",
+      "roots": [
+        "packages/ts"
+      ],
+      "tests": [
+        "**/*.test.{ts,mts,cts,mjs,cjs,js}",
+        "packages/ts/tests/**/*.mjs",
+        "tests/*/**/*.mjs",
+        "packages/ts/tests/coverage_*.mjs",
+        "packages/ts/tests/model.mjs",
+        "packages/ts/tests/decimal_model_db.mjs",
+        "packages/ts/tests/engine_features.mjs"
+      ],
+      "support": [
+        "packages/ts/tests/case-database.mjs",
+        "packages/ts/tests/assertions.mjs",
+        "packages/ts/tests/capture-error.mjs",
+        "packages/ts/tests/check-state.mjs",
+        "packages/ts/tests/conditional-entry.mjs",
+        "packages/ts/tests/database-case-fixture.mjs",
+        "packages/ts/tests/database-case-tests.mjs",
+        "packages/ts/tests/dbspec-plan-fixture.mjs",
+        "packages/ts/tests/internal-column-error.mjs",
+        "packages/ts/tests/mysql-test-options.mjs",
+        "packages/ts/tests/bench-set.mjs",
+        "packages/ts/tests/codec_case.mjs",
+        "packages/ts/tests/coverage_case.mjs",
+        "packages/ts/tests/markdown_cases.mjs",
+        "packages/ts/tests/markdown_sqlite.mjs",
+        "packages/ts/tests/plan_case.mjs",
+        "packages/ts/tests/request_hook_run.mjs",
+        "packages/ts/tests/statement-runner-run.mjs",
+        "packages/ts/tests/coverage_performance_report.mjs",
+        "packages/ts/tests/was-inserted-child.mjs",
+        "packages/ts/tests/coverage_performance_gate.mjs",
+        "packages/ts/tests/parse_documents.mjs",
+        "packages/ts/tests/error_code.mjs",
+        "packages/ts/tests/markdown_test_listener.mjs",
+        "packages/ts/tests/registered_models.mjs",
+        "packages/ts/tests/generated_model_output.mjs",
+        "packages/ts/tests/schema_of.mjs",
+        "packages/ts/tests/generator_scan.mjs",
+        "packages/ts/tests/recipe.mjs",
+        "packages/ts/tests/recipe_model.mjs",
+        "packages/ts/tests/sqlite_writer_child.mjs",
+        "packages/ts/tests/recipe_reads.mjs",
+        "packages/ts/tests/recipe_apply.mjs",
+        "packages/ts/tests/recipe_introspect.mjs",
+        "packages/ts/tests/recipe_keys.mjs",
+        "packages/ts/tests/tsc-diagnostics.mjs",
+        "packages/ts/tests/recipe_generator.mjs"
+      ],
+      "internal": [
+        {
+          "glob": "packages/ts/tests/driver-integer-param.mjs",
+          "reason": "test: the private mysqlParams turns an integral number parameter into a bigint and keeps every other value, for a pooler that a recipe database does not stand in for"
+        },
+        {
+          "glob": "packages/ts/tests/codec-aes-errors.test.mjs",
+          "reason": "test: injects a failure into each phase of the native decipher of Node, checks that the error keeps its identity, that only the exact native authentication error of final becomes CODEC_DECODE and that no plaintext returns; a recipe cannot inject it, and the codes of the shared failures are recipe cases of tests/codec/codec.json"
+        },
+        {
+          "glob": "packages/ts/tests/paginate-order.mjs",
+          "reason": "test: invokes the private paginate helper with a fake database to verify internal plan ordering and dispatch; public pagination is held by the page steps of the recipes conformance_verification and complex_query"
+        },
+        {
+          "glob": "packages/ts/tests/dbspec-mermaid-errors.mjs",
+          "reason": "test: injects an unexpected error into the private Mermaid catalog builder and verifies the same error object escapes; the public invalid-name diagnostic is the case catalog_build_failure_is_diagnostic of the unit dbspec-mermaid"
+        },
+        {
+          "glob": "packages/ts/tests/mysql-test-options.test.mjs",
+          "reason": "harness: tests parsing MySQL DSNs for TypeScript physical-test setup, not the public ORM DSN contract"
+        },
+        {
+          "glob": "packages/ts/tests/internal-column-error.test.mjs",
+          "reason": "harness: tests a TypeScript test-only matcher for internal-column error messages, not ORM result or error behavior"
+        },
+        {
+          "glob": "packages/ts/tests/database-case-tests.test.mjs",
+          "reason": "harness: tests registration and execution of TypeScript database-case harness callbacks; it does not exercise ORM client behavior"
+        },
+        {
+          "glob": "packages/ts/tests/dbspec-plan-fixture.test.mjs",
+          "reason": "harness: tests the TypeScript apply-test fixture selector for one already-shared dbspec plan vector; it does not add client plan behavior"
+        },
+        {
+          "glob": "packages/ts/tests/database-case-fixture.test.mjs",
+          "reason": "harness: tests fixture loading and per-case state setup for TypeScript database test programs; it does not exercise ORM client behavior"
+        },
+        {
+          "glob": "packages/ts/tests/conditional-entry.test.mjs",
+          "reason": "ecosystem: tests the Node package conditional-export loader in isolated child processes, not runtime ORM behavior"
+        },
+        {
+          "glob": "packages/ts/tests/check-state.test.mjs",
+          "reason": "harness: tests the TypeScript test-only case assertion and failure-reporting helper; it does not exercise ORM client behavior"
+        },
+        {
+          "glob": "packages/ts/tests/capture-error.test.mjs",
+          "reason": "harness: tests the TypeScript test-only error capture helper used by checker and fixture tests; it does not exercise ORM client behavior"
+        },
+        {
+          "glob": "packages/ts/tests/assertions.test.mjs",
+          "reason": "harness: tests exactKeys, the TypeScript test-only assertion helper used to validate test fixtures; it does not exercise ORM client behavior"
+        },
+        {
+          "glob": "packages/ts/tests/coverage_performance_gate.test.mjs",
+          "reason": "harness: an internal test of the TypeScript package that checks the performance report formatter, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/ts/tests/bin-mode.mjs",
+          "reason": "ecosystem: an internal test of the TypeScript package that checks the package, loader or install rule of the language ecosystem, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/ts/tests/driver-error.mjs",
+          "reason": "external: an internal test of the TypeScript package that runs against a database or driver of an external service, not a helper the contract names (K313)"
+        },
+        {
+          "glob": "packages/ts/tests/coverage_performance_gate.mjs",
+          "reason": "harness: an internal test of the TypeScript package that checks the test harness of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/ts/tests/split-plan.test.mjs",
+          "reason": "test: an internal test of the TypeScript package that measures what a split read allocates, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/ts/testing/interfaces/typescript-api.test.ts",
+          "reason": "harness: an internal test that verifies the TypeScript compiler API declaration against the installed compiler API, not shared ORM behaviour (K313)"
+        },
+        {
+          "glob": "packages/ts/tests/parse_documents.test.mjs",
+          "reason": "harness: tests the TypeScript DDL-vector adapter that parses each document with its sibling documents and preserves fixture order; the cross-client DDL behavior is exercised by the shared dbspec-ddl vector suite"
+        },
+        {
+          "glob": "packages/ts/tests/column_function_metadata.mjs",
+          "reason": "test: mutates requests after successful validation to manufacture impossible missing-column states, then checks private planner/parameter/output-assembly invariant failures; public valid and rejected requests are covered by shared planner units"
+        },
+        {
+          "glob": "packages/ts/tests/coverage-case-unit.mjs",
+          "reason": "harness: exercises the TypeScript coverage-case runner, including selected-case order, duplicate rejection, deadlines, database selection, and cleanup; it does not run ORM client behavior"
+        },
+        {
+          "glob": "packages/ts/tests/error_code.test.mjs",
+          "reason": "harness: tests the TypeScript test-only codeOf assertion helper with synthetic promise outcomes; it does not exercise ORM errors or client behavior"
+        },
+        {
+          "glob": "packages/ts/tests/markdown_test_listener.test.mjs",
+          "reason": "harness: tests the TypeScript Markdown test-server fixture lifecycle, ephemeral loopback binding and socket cleanup; it does not exercise Markdown ORM requests"
+        },
+        {
+          "glob": "packages/ts/tests/registered_models.test.mjs",
+          "reason": "harness: tests the TypeScript model fixture factory used by isolated client tests; it checks test-created class maps and fixture manifest assembly, not generated client behavior"
+        },
+        {
+          "glob": "packages/ts/tests/generated_model_output.test.mjs",
+          "reason": "harness: tests a TypeScript test-only reader for generated source text and declared field extraction using a temporary fixture; generated output behavior is verified by generator owner checks"
+        },
+        {
+          "glob": "packages/ts/tests/generator_scan.test.mjs",
+          "reason": "harness: tests the TypeScript generator-scan runner's isolated child environment, captured process result and generated-model reader; public scanned-chain semantics are exercised by the shared generator-scan feature units"
+        },
+        {
+          "glob": "packages/ts/tests/schema_of.test.mjs",
+          "reason": "harness: tests a TypeScript test-only schema fixture adapter that assembles the public manifest result into the shape generated test models consume; shared manifest/hash behavior is covered by dbspec vectors"
+        },
+        {
+          "glob": "packages/ts/tests/complex-query-request-types.mjs",
+          "reason": "ecosystem: runs the host TypeScript compiler against temporary positive and negative request type fixtures; the shared complex-query runtime behavior is covered by the recipe complex_query"
+        },
+        {
+          "glob": "packages/ts/tests/fulltext-chain-types.mjs",
+          "reason": "ecosystem: runs the host TypeScript compiler against temporary positive and negative full-text chain type fixtures; runtime full-text behavior is covered by fulltext-search"
+        },
+        {
+          "glob": "packages/ts/tests/dbspec-unicode.mjs",
+          "reason": "generated: exhaustively checks the private generated Unicode range table against its own membership predicate; shared syntax vectors cover parser behavior"
+        },
+        {
+          "glob": "packages/ts/tests/dbspec-stress.mjs",
+          "reason": "test: the measurement of dbspec-stress-bench that docs/spec/dbspec.md Verification requires, parse time against the reference work; the canonical round trip of the document is the case stress-canonical-roundtrip of dbspec-limits"
+        },
+        {
+          "glob": "packages/ts/tests/scalar_subquery_type.mjs",
+          "reason": "test: a column that the planner finds missing after validation is INTERNAL; a request cannot reach it, so no recipe can state it."
+        },
+        {
+          "glob": "packages/ts/tests/clock.mjs",
+          "reason": "test: calls the module-private wallMicros of dist/clock.js with a wall clock and a monotonic clock that the case sets, which no public call or recipe step can set; what a stored value holds is the case clock_microseconds of the recipe conformance_verification (K313)"
+        }
+      ]
+    },
+    {
+      "name": "python",
+      "roots": [
+        "packages/python"
+      ],
+      "tests": [
+        "**/test_*.py",
+        "packages/python/tests/**/*.py",
+        "tests/**/*.py",
+        "packages/python/tests/coverage_*.py"
+      ],
+      "support": [
+        "packages/python/tests/__init__.py",
+        "packages/python/tests/models/__init__.py",
+        "packages/python/tests/bench_set.py",
+        "packages/python/tests/case_database.py",
+        "packages/python/tests/coverage_case.py",
+        "packages/python/tests/dbspec_apply_runner.py",
+        "packages/python/tests/dbspec_introspect.py",
+        "packages/python/tests/dbspec_introspect_runner.py",
+        "packages/python/tests/dbspec_plans.py",
+        "packages/python/tests/dbspec_vectors_reader.py",
+        "packages/python/tests/testcase.py",
+        "packages/python/tests/vector_case.py",
+        "packages/python/tests/runner_connect.py",
+        "packages/python/tests/server_database.py",
+        "packages/python/tests/was_inserted_child.py",
+        "packages/python/tests/coverage_performance_gate.py",
+        "packages/python/tests/recipe.py",
+        "packages/python/tests/recipe_model.py",
+        "packages/python/tests/recipe_reads.py",
+        "packages/python/tests/recipe_apply.py",
+        "packages/python/tests/recipe_introspect.py",
+        "packages/python/tests/recipe_keys.py",
+        "packages/python/tests/recipe_generator.py"
+      ],
+      "internal": [
+        {
+          "glob": "packages/python/tests/test_catalog_mutation_helper.py",
+          "reason": "test: calls private _lock_original_row with FakeSession to verify helper call ordering and schema-change refusal without a real SQL session"
+        },
+        {
+          "glob": "packages/python/tests/mermaid_error_boundary.py",
+          "reason": "test: injects an unexpected exception into the private Mermaid catalog builder and verifies the same exception object escapes; the public invalid-name diagnostic is covered by dbspec-mermaid"
+        },
+        {
+          "glob": "packages/python/tests/test_no_path_change.py",
+          "reason": "ecosystem: an internal test of the Python package that checks the package, loader or install rule of the language ecosystem, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/python/tests/test_packaging.py",
+          "reason": "ecosystem: an internal test of the Python package that checks the package, loader or install rule of the language ecosystem, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/python/tests/test_requires_python.py",
+          "reason": "ecosystem: an internal test of the Python package that checks the package, loader or install rule of the language ecosystem, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/python/tests/conformance_result.py",
+          "reason": "harness: an internal test of the Python package that checks the test harness of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/python/tests/coverage_performance_gate.py",
+          "reason": "harness: an internal test of the Python package that checks the test harness of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/python/tests/test_split_plan.py",
+          "reason": "test: an internal test of the Python package that measures what a split read allocates, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/python/tests/entry_point_check.py",
+          "reason": "ecosystem: an implementation test that checks the installed Python entry point and package import boundary, not shared ORM behaviour (K313)"
+        },
+        {
+          "glob": "packages/python/tests/test_mysql_found_rows.py",
+          "reason": "test: an internal test of the Python client that reads the PyMySQL client flags of the connection, an implementation detail; the found-rows behaviour of CFG-10 is the affected_counts vector of the conformance suite (P32)"
+        },
+        {
+          "glob": "packages/python/tests/test_aggregate_numeric_driver_values.py",
+          "reason": "test: exercises the private _aggregate_number conversion helper with Python Decimal and bool inputs; public aggregate value behavior is covered by the six-client aggregate-numeric suite"
+        },
+        {
+          "glob": "packages/python/tests/coverage_case_test.py",
+          "reason": "harness: tests the Python feature-coverage runner’s case selection, database iteration and result events; client behavior is exercised by the declared feature owner cases"
+        },
+        {
+          "glob": "packages/python/tests/test_python_extractor.py",
+          "reason": "harness: tests the Python interface symbol extractor on temporary source and against its snapshot; public API declarations are checked by the interface contract tools"
+        },
+        {
+          "glob": "packages/python/tests/test_testcase.py",
+          "reason": "harness: tests Python testcase discovery, reporting and deadline behavior; it does not exercise ORM client behavior"
+        },
+        {
+          "glob": "packages/python/tests/test_python_natives.py",
+          "reason": "harness: compares Python interface declarations with snapshots and shared native tables; it is a declaration extractor check, not runtime client behavior"
+        },
+        {
+          "glob": "packages/python/tests/test_column_function_internal.py",
+          "reason": "test: mutates a validated request to manufacture impossible missing-column states, then checks private parameter-use, planner and Markdown invariant failures; the public COLUMN_UNKNOWN case is covered by the shared planner_rejects_unknown_column vector"
+        },
+        {
+          "glob": "packages/python/tests/test_utils_statements.py",
+          "reason": "test: verifies the private Python driver adapter that translates PostgreSQL statement markers for psycopg; public utility behavior is exercised through the transaction-local-value owner case"
+        },
+        {
+          "glob": "packages/python/tests/test_installed_differences.py",
+          "reason": "test: tests the Python-only installed_differences helper with constructed parsed schemas and unsupported-object records; public database comparison and install errors are covered by the six-client add_tables_and_columns and install feature cases"
+        },
+        {
+          "glob": "packages/python/tests/test_scalar_subquery_type.py",
+          "reason": "test: a column that the planner finds missing after validation is INTERNAL; a request cannot reach it, so no recipe can state it."
+        },
+        {
+          "glob": "packages/python/tests/test_catalog_described_temporal.py",
+          "reason": "test: calls the private temporal conversions and passes a datetime value, which a recipe cannot express; temporal_text_row_cycle_sqlite, described_temporal_matrix and described_temporal_text hold the public reads"
+        }
+      ]
+    },
+    {
+      "name": "rust",
+      "roots": [
+        "packages/rust",
+        "benchmarks/rust"
+      ],
+      "tests": [
+        "**/tests/**/*.rs",
+        "packages/**/tests/**/*.rs",
+        "tests/**/*.rs",
+        "benchmarks/rust/src/native.rs",
+        "packages/rust/**/tests/**/coverage_*.rs"
+      ],
+      "support": [
+        "packages/rust/tests/tests/integration/main.rs",
+        "packages/rust/tests/tests/integration_program/bench_set.rs",
+        "packages/rust/build/tests/lock_probe/mod.rs",
+        "packages/rust/build/tests/row_insert_identity/expression.rs",
+        "packages/rust/orm/tests/common/audit_rows.rs",
+        "packages/rust/schema/tests/common/dbspec_cases.rs",
+        "packages/rust/tests/build.rs",
+        "packages/rust/tests/bench_model.rs",
+        "packages/rust/tests/src/client_bench.rs",
+        "packages/rust/tests/tests/common/mod.rs",
+        "packages/rust/build/src/test_support.rs",
+        "packages/rust/build/tests/common/grid_open.rs",
+        "packages/rust/build/tests/common/physical_dialects.rs",
+        "packages/rust/build/tests/common/physical_fixture.rs",
+        "packages/rust/build/tests/common/table_column.rs",
+        "packages/rust/build/tests/unit/catalog_fixtures.rs",
+        "packages/rust/orm/tests/common/apply_stop.rs",
+        "packages/rust/orm/tests/common/case_database_run.rs",
+        "packages/rust/orm/tests/common/clock_event.rs",
+        "packages/rust/orm/tests/common/dbspec_apply_support.rs",
+        "packages/rust/orm/tests/common/fixed_plan_time.rs",
+        "packages/rust/orm/tests/common/json_trials.rs",
+        "packages/rust/orm/tests/common/plan_cases.rs",
+        "packages/rust/orm/tests/common/plan_recipe.rs",
+        "packages/rust/orm/tests/common/plan_sources.rs",
+        "packages/rust/orm/tests/common/map_rows.rs",
+        "packages/rust/orm/tests/common/or_panic.rs",
+        "packages/rust/orm/tests/common/pool_exec.rs",
+        "packages/rust/orm/tests/common/pool_scalar.rs",
+        "packages/rust/orm/tests/common/result_code.rs",
+        "packages/rust/orm/tests/common/secret_config.rs",
+        "packages/rust/orm/tests/common/service_model.rs",
+        "packages/rust/orm/tests/common/sql_text_rows.rs",
+        "packages/rust/orm/tests/common/sqlite_case.rs",
+        "packages/rust/orm/tests/common/test_support.rs",
+        "packages/rust/orm/tests/common/typed_model.rs",
+        "packages/rust/schema/tests/common/or_panic.rs",
+        "packages/rust/schema/tests/common/vector_file.rs",
+        "packages/rust/tests/tests/common/result_code.rs",
+        "packages/rust/orm/tests/common/clock_test_support.rs",
+        "packages/rust/schema/tests/common/json_lines.rs",
+        "packages/rust/tests/src/lib.rs",
+        "packages/rust/tests/src/recipe.rs",
+        "packages/rust/tests/src/recipe_apply.rs",
+        "packages/rust/tests/src/recipe_reads.rs",
+        "packages/rust/tests/src/recipe_keys.rs",
+        "packages/rust/tests/src/recipe_generator.rs",
+        "packages/rust/tests/src/plain.rs",
+        "packages/rust/tests/tests/common/or_panic.rs",
+        "packages/rust/tests/tests/model_writes/dispatch.rs",
+        "packages/rust/tests/tests/fulltext_search/chain.rs",
+        "packages/rust/tests/tests/fulltext_search/dispatch.rs",
+        "packages/rust/tests/src/bench_models.rs",
+        "packages/rust/tests/src/bench_set_dispatch.rs"
+      ],
+      "internal": [
+        {
+          "glob": "packages/rust/schema/tests/dbspec_runtime.rs",
+          "reason": "test: the public surface of the Rust runtime model that no other runtime has, the diagnostics of parse_manifest and the foreign keys, unique key columns, default literal, audit history and action and immutable of runtime_model (FCV-2)"
+        },
+        {
+          "glob": "packages/rust/orm/src/driver/tests.rs",
+          "reason": "test: calls the crate-private parent-slot expansion and SQLite binding helpers directly; public composite relation behavior is covered by the six-client composite-key feature cases"
+        },
+        {
+          "glob": "packages/rust/tests/src/markdown.rs",
+          "reason": "harness: the corpus helpers of the markdown recipe units (the corpus of a case, its file modes and its hand-written files); the cases are bound by the markdown suite units, and the module holds no test of its own"
+        },
+        {
+          "glob": "packages/rust/tests/src/conformance.rs",
+          "reason": "harness: an internal test of the Rust package that checks the test harness of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/rust/build/tests/unit/row_insert_lock.rs",
+          "reason": "test: a unit test of the private SQL-text helper postgres_insert_lock of the catalog, reached through super::*, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/rust/build/tests/lock_probe_order.rs",
+          "reason": "harness: an internal test of the Rust package that checks the test harness of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/rust/orm/tests/unit/temporal_args.rs",
+          "reason": "test: a unit test of the crate-private argument conversion of args.rs, reached through super, that turns chrono dates and datetimes into canonical text before binding; the canonical text is the contract of the codec and precision cases (K313)"
+        },
+        {
+          "glob": "benchmarks/rust/src/native.rs",
+          "reason": "harness: verifies that the standalone sqlx baseline encrypts its benchmark insert value with the documented fixture key; the assertion validates benchmark workload construction, not a Rust ORM behavior"
+        },
+        {
+          "glob": "benchmarks/rust/tests/dsn.rs",
+          "reason": "harness: tests DSN and iteration argument validation of the standalone Rust benchmark executable, not the ORM client DSN contract"
+        },
+        {
+          "glob": "benchmarks/rust/tests/seeded.rs",
+          "reason": "harness: runs and checks the standalone seeded-database benchmark output and statistics; it is a benchmark executable integration test"
+        },
+        {
+          "glob": "packages/rust/testcase/tests/form.rs",
+          "reason": "harness: runs deliberate testcase fixtures in child processes and checks testcase report formatting and deadline results; it tests the Rust test harness"
+        },
+        {
+          "glob": "packages/rust/build/src/tests/build_environment.rs",
+          "reason": "harness: verifies Cargo build-script environment propagation through child processes; this tests Rust build plumbing, not shared ORM behavior"
+        },
+        {
+          "glob": "packages/rust/build/src/tests/out_dir.rs",
+          "reason": "harness: verifies the Rust build script requires Cargo OUT_DIR; this tests Cargo-specific build plumbing"
+        },
+        {
+          "glob": "packages/rust/case-clock/src/lib.rs",
+          "reason": "harness: tests the Rust case-clock helper that reports process and thread CPU time for test reporting; it is test instrumentation, not ORM behavior"
+        },
+        {
+          "glob": "packages/rust/tests/tests/client_bench_args.rs",
+          "reason": "harness: tests missing, malformed and nonpositive iteration arguments of the standalone Rust client_bench executable before it connects; this is benchmark CLI validation, not ORM behavior"
+        },
+        {
+          "glob": "packages/rust/tests/tests/client_bench_dsn.rs",
+          "reason": "harness: tests the standalone Rust client_bench executable refuses a missing or empty benchmark DSN before connecting; this is benchmark CLI validation, not the public client DSN contract"
+        },
+        {
+          "glob": "packages/rust/tests/tests/example_dsn.rs",
+          "reason": "harness: tests the standalone complex and demo examples refuse to start without their benchmark DSN; this is example preflight behavior, not the ORM client contract"
+        },
+        {
+          "glob": "packages/rust/testing/interfaces/src/main.rs",
+          "reason": "harness: unit tests the Rust interface-extractor test program and its declaration parsing; runtime API shape is checked by the shared interface contract tools"
+        },
+        {
+          "glob": "packages/rust/schema/src/dbspec/check.rs",
+          "reason": "test: checks the private CheckParser cursor lookahead/end-position invariant; public predicate diagnostics are exercised by dbspec-invalid"
+        },
+        {
+          "glob": "packages/rust/schema/src/dbspec/parser.rs",
+          "reason": "test: checks the private Rust parser cursor token-order invariant; public canonical parse/emission behavior is exercised by dbspec-canonical and dbspec-normalize"
+        },
+        {
+          "glob": "packages/rust/schema/src/dbspec/unicode_word.rs",
+          "reason": "generated: exhaustively checks the private generated Unicode range table against its own binary-search implementation; public syntax behavior is exercised by dbspec-syntax"
+        },
+        {
+          "glob": "packages/rust/schema/src/dbspec/set_internal_tests.rs",
+          "reason": "test: checks private set path, schema number, and nested JSON scanner mechanics; public set-reader diagnostics remain exercised by the six-client dbspec-set-files cases"
+        },
+        {
+          "glob": "packages/rust/schema/src/names.rs",
+          "reason": "test: checks the internal ASCII identifier conversion helper directly; generated entity type names remain exercised by the generated-manifest feature cases"
+        },
+        {
+          "glob": "packages/rust/build/src/lib.rs",
+          "reason": "harness: its inline unit tests Cargo rerun-if-changed metadata for the set file and its documents; generated model behavior is exercised by the model_generation feature units"
+        },
+        {
+          "glob": "packages/rust/build/src/catalog/row_snapshot_internal_tests.rs",
+          "reason": "test: isolated cause_message_tests assert private row-snapshot validation and serialization error-cause details; public RowSnapshot baseline and update behavior remains owned by the build crate row_snapshot, row_mutation, and row_update tests (K313)"
+        },
+        {
+          "glob": "packages/rust/build/src/tool_db_internal_tests.rs",
+          "reason": "test: isolated cause_message_tests exercise Rust build-time SQLx adapter decoding, bounded-statement preflight, and DSN diagnostic causes; shared runtime behavior remains in the declared catalog and tool owner cases (K313)"
+        },
+        {
+          "glob": "packages/rust/orm/src/db/executor_route_tests.rs",
+          "reason": "test: exercises the crate-private Executor routing between pool and transaction connections and closed-database error propagation; it is not a shared client behavior unit (K313)"
+        },
+        {
+          "glob": "packages/rust/orm/src/db/pool_stats_tests.rs",
+          "reason": "test: checks the private pool_in_use arithmetic helper and its impossible-snapshot panic; public DbStats values are exercised by the six-client connection-pool-statistics feature (K313)"
+        },
+        {
+          "glob": "packages/rust/build/tests/unit/assignment_budget.rs",
+          "reason": "test: tests the private checked-add assignment budget helper at exact limits and overflow; its owner is rust-duplicate-catalog-check, while shared model assignment behavior remains covered by catalog-plain-query-budgets and model_writes cases"
+        },
+        {
+          "glob": "packages/rust/build/tests/unit/insert_values.rs",
+          "reason": "test: tests the private insert-values assignment budget validator and ROW_INSERT_LIMIT diagnostic; its owner is rust-duplicate-catalog-check, while shared insert behavior remains covered by model_writes cases"
+        },
+        {
+          "glob": "packages/rust/build/tests/unit/row_update_budget.rs",
+          "reason": "test: tests the private row-snapshot update budget validator and ROW_UPDATE_LIMIT diagnostic; its owner is rust-duplicate-catalog-check, while shared update behavior remains covered by model_writes cases"
+        },
+        {
+          "glob": "packages/rust/build/tests/unit/catalog_tool_errors.rs",
+          "reason": "test: tests the private catalog_query_error mapping that puts the TOOL_QUERY_STATEMENT and TOOL_QUERY_COLUMNS codes of tool_db ahead of the driver text; its owner is catalog-tool-errors-rust-check, while the codes of INT-124 and INT-125 are the public behaviour of the catalog recipes (K313)"
+        },
+        {
+          "glob": "packages/rust/build/tests/unit/catalog_value.rs",
+          "reason": "test: tests the private mapping of an unsupported tool cell to CATALOG_VALUE and the catalog codes of the tool errors; its owner is catalog-value-rust-check, while the shared behavior is covered by the catalog_connection recipe"
+        },
+        {
+          "glob": "packages/rust/schema/tests/dbspec_model.rs",
+          "reason": "test: edits the public Rust structs of a parsed document, a surface the other runtimes do not type this way; parse and emit are covered by dbspec-canonical"
+        },
+        {
+          "glob": "packages/rust/orm/tests/unit/codec_tests.rs",
+          "reason": "test: the private helpers of the Rust codec, whose faults a public call cannot reach."
+        },
+        {
+          "glob": "packages/rust/schema/src/dbspec/mod.rs",
+          "reason": "test: the private operator tables of the Rust schema crate; what a request can reach is the case operators_follow_type_and_codec of tests/ir/validate.json."
+        },
+        {
+          "glob": "packages/rust/build/tests/unit/read_only_policy.rs",
+          "reason": "test: calls the private validate for the cause its tokenizer failure keeps; read_statements and read_only_grid_shapes hold the shapes"
+        },
+        {
+          "glob": "packages/rust/orm/tests/unit/coverage_planner.rs",
+          "reason": "harness: a post-validation invariant of the planner that no public input reaches, so no recipe can state it; the planner suite target runs this file."
+        },
+        {
+          "glob": "packages/rust/build/src/catalog/temporal.rs",
+          "reason": "test: calls the private is_temporal, fraction and precision with forms no server stores, such as datetime(7); temporal_write_and_limits and described_temporal_matrix hold what a server reaches"
+        },
+        {
+          "glob": "packages/rust/orm/tests/unit/time_precision.rs",
+          "reason": "test: calls the crate-private check_param, time_value, bound_time_value and clock_digits directly, reached through super; the values that a write can hold are the bind_time and bind_datetime cases of tests/bind/messages.json (K313)"
+        },
+        {
+          "glob": "packages/rust/orm/src/engine/mod.rs",
+          "reason": "test: unit tests of the crate-private compile of the engine, reached through super; the statements of a default now column on each database are the case now_defaults of the recipe conformance_verification (K313)"
+        }
+      ]
+    }
+  ]
+}

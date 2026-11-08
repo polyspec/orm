@@ -838,25 +838,5 @@
         }
       ]
     }
-  ],
-  "cases_on": {
-    "mysql": [
-      "constraint_errors",
-      "external_relation"
-    ],
-    "postgres": [
-      "constraint_errors",
-      "external_relation"
-    ],
-    "sqlite": [
-      "constraint_errors",
-      "external_relation",
-      "sqlite_driver_error_ends_with_its_result_code"
-    ],
-    "markdown": [
-      "constraint_errors",
-      "external_relation",
-      "sqlite_driver_error_ends_with_its_result_code"
-    ]
-  }
+  ]
 }

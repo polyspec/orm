@@ -194,8 +194,6 @@ rules:
       # The layout rules name PYTHONPATH to forbid it.
       - "!config/layout.kit.yml"
       - "!config/layout.yml"
-      # The parity API tests hold PYTHONPATH as data while checking the declaration validator.
-      - "!tests/kit/parity-api.test.mts"
     pattern: "PYTHONPATH"
     message: "S5: no PYTHONPATH; a Python package resolves through its environment"
 

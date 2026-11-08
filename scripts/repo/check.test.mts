@@ -18,7 +18,7 @@ import { execFileSync } from 'node:child_process';
 import { CI_SETUP, expandNeeds, failedCiSetup, GROUP_OUTPUTS, groupOutputs, groupSetupErrors, RUNNER_STEPS, stepCondition } from '../check/ci-setup.mts';
 import { declaredNeeds, readCheckInputs } from '../check/inputs.mts';
 import { readFeatures } from '../features/manifest.mts';
-import { parseRecipeCases, readComposer, readPackage, readParityConfig } from '../json/formats.mts';
+import { parseRecipeCases, readComposer, readPackage } from '../json/formats.mts';
 import { kitCopies, kitOwnedPaths } from './kit-copies.mts';
 import { andLists, segments, shellSegments } from './shell.mts';
 import { readWorkflow } from './workflow.mts';
@@ -26,7 +26,6 @@ import { parse as parseYaml, stringify } from 'yaml';
 import { parse as parseToml } from 'smol-toml';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mts';
 import { detachedGroupErrors, timeFailureErrors } from './sources.mts';
-import { nativeBoundUnitErrors, nativeExceptions, nativeTestLines, unboundNativeTestErrors } from './parity-units.mts';
 import { callerEnvironmentErrors, generateRuns, scriptCommands, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, generatedCodesErrors, phpExtensionBuildErrors, typescriptHolderErrors, typescriptReaderErrors, typescriptExclusiveReaderErrors, phpunitModelErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, makeTargets, rustTestCaseErrors, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors, tools } from './testcases.mts';
 
 // yamlSteps writes steps (the values of a workflow's steps) as the list under a job's steps:, six spaces deep.
@@ -691,11 +690,10 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
     assert.deepEqual(targets[`markdown_${groupRuntime}`], markdown, `${markdown.join(' and ')} are the only targets in their native runtime cell`);
   }
   assert.deepEqual(targets.feature_performance, ['feature-performance-check'], 'the performance measurement has its own CI job');
-  assert.equal(targets.parity, undefined, 'the parity gate runs in the gates workflow of kit, not in a CI group (KSTD-5-115)');
-  assert.ok(checkTargets(makefile).includes('parity-check') && kitGates(makefile).includes('parity-check'));
-  for (const phase of ['parity-api-check', 'parity-bindings-go-check', 'parity-bindings-php-check', 'parity-bindings-php-extension-check', 'parity-bindings-typescript-check', 'parity-bindings-python-check', 'parity-bindings-rust-check'])
-    assert.equal(checkTargets(makefile).includes(phase), false, `${phase} is not duplicated as a separate suite target`);
-  for (const gate of ['parity-check', 'layout-check']) assert.ok(!groups.some(group => targets[group]?.includes(gate)), `${gate} runs in the gates workflow of kit`);
+  // The suite of each runtime has its own CI job (scripts/suite-test.mts).
+  for (const runtime of ['php', 'typescript', 'python']) assert.deepEqual(targets[`suite_${runtime}`], [`suite-${runtime}-check`], `suite-${runtime}-check has its own CI job`);
+  assert.ok(checkTargets(makefile).includes('layout-check') && kitGates(makefile).includes('layout-check'));
+  assert.ok(!groups.some(group => targets[group]?.includes('layout-check')), 'layout-check runs in the gates workflow of kit');
   assert.equal(groupOutputs(targets.static ?? [], declaredNeeds(repository.pathname)).php, true,
     'the static group bootstraps the pinned PHP before the full tool inventory is installed');
   const workflowValue: unknown = parseYaml(workflow);
@@ -739,9 +737,6 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   for (const selected of [...selectedTools, ...pythonTools]) {
     assert.ok(declaredTools.has(selected), `CI selects ${selected} for Kit install-tools, but it is not declared by this checkout`);
   }
-  // orm owns the parity recipes (T391): the phase targets run the parity utility of kit, one phase each.
-  assert.match(makefile, /^parity-api-check:.*\n\t\$\(NODE\) \$\(KIT\)\/parity\.\$\(KIT_EXT\) --phase api$/m,
-    'parity-api-check runs the api phase of the parity utility of kit');
   assert.match(makefile, /^orm-install-python: orm-codes-python\n\t\$\(MAKE\) --no-print-directory install-tools TOOLS="python uv"$/m,
     'the Python installer does not widen a runtime-specific setup back to the full tool inventory');
   // The link of kit reads the uv project of orm, and a PHP job installs no uv, so only orm-install-python and make install link.
@@ -765,7 +760,6 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   assert.match(makefile, /^install:.*orm-install-interfaces-typescript$/m,
     'the full install still prepares the TypeScript checker used by the interface extractor');
   assert.match(workflow, /id: interfaces-typescript\n        if: \$\{\{ !cancelled\(\) && steps\.group-needs\.outputs\.interfaces-typescript == 'true' \}\}\n        run: make orm-install-interfaces-typescript/);
-  assert.match(workflow, /id: parity-symbols\n        if: \$\{\{ !cancelled\(\) && steps\.group-needs\.outputs\.parity-symbols == 'true' \}\}\n        run: make kit-install-symbols EXTRACTORS="go php"/);
   // The PHP extension setup that every job runs writes the copy of the SQLite cancel callback that the build compiles (T290) and
   // the SQLite result code names that it includes (INT-154); the build runs the gen_stub.php of the PHP itself, so the setup
   // installs no arginfo generator (kit K930).
@@ -775,7 +769,6 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   assert.equal((matrixWorkflow.match(/id: go-lease-modules/g) ?? []).length, 1, 'every group installs the shared runner dependency in its own job');
   assert.match(workflow, /id: go-lease-modules\n        if: \$\{\{ !cancelled\(\) \}\}\n        run: make orm-install-go-lease/);
   assert.match(workflow, /id: go-modules\n        if: \$\{\{ !cancelled\(\) && steps\.group-needs\.outputs\.go == 'true' \}\}\n        run: make orm-install-go/);
-  assert.match(makefile, /^parity-check: parity-prepare$/m, 'the default full Kit parity target remains available');
   assert.ok(workflow.includes('        run: make check-run GROUP=${{ matrix.group }}\n'), 'ci.yml runs make check-run for the group of its matrix');
   assert.deepEqual(ciCheckTargetErrors(workflow, makefile), []);
 });
@@ -795,18 +788,17 @@ caseTest('database-free dbspec verification stays in the static CI group', COMPU
 
 caseTest('the CI groups leave out the gates of kit, which the gates workflow runs (KSTD-5-115)', COMPUTE, () => {
   const grouped = `jobs:\n  test:\n    strategy:\n      matrix:\n        group: [one]\n    steps:\n      - name: make orm-check\n        run: make check-run GROUP=\${{ matrix.group }}\n`;
-  const make = (...lines: string[]) => ['CHECK_TARGETS = a-check lint-go parity-check', ...lines, ''].join('\n');
-  assert.deepEqual(ciCheckTargetErrors(grouped, make('CI_KIT_GATES = lint-go parity-check', 'CI_GROUPS = one', 'CI_TARGETS_one = a-check')), []);
-  assert.deepEqual(ciCheckTargetErrors(grouped, make('CI_KIT_GATES = lint-go parity-check', 'CI_GROUPS = one', 'CI_TARGETS_one = a-check lint-go')), [
+  const make = (...lines: string[]) => ['CHECK_TARGETS = a-check lint-go layout-check', ...lines, ''].join('\n');
+  assert.deepEqual(ciCheckTargetErrors(grouped, make('CI_KIT_GATES = lint-go layout-check', 'CI_GROUPS = one', 'CI_TARGETS_one = a-check')), []);
+  assert.deepEqual(ciCheckTargetErrors(grouped, make('CI_KIT_GATES = lint-go layout-check', 'CI_GROUPS = one', 'CI_TARGETS_one = a-check lint-go')), [
     'CI group one runs lint-go, a gate of kit (CI_KIT_GATES) that the gates workflow runs',
   ]);
-  assert.deepEqual(ciCheckTargetErrors(grouped, make('CI_KIT_GATES = lint-go parity-check b-check', 'CI_GROUPS = one', 'CI_TARGETS_one = a-check')), [
+  assert.deepEqual(ciCheckTargetErrors(grouped, make('CI_KIT_GATES = lint-go layout-check b-check', 'CI_GROUPS = one', 'CI_TARGETS_one = a-check')), [
     'CI_KIT_GATES names b-check, which is not a target of CHECK_TARGETS',
   ]);
   const makefile = text('Makefile');
   const gates = /^CI_KIT_GATES = (.*)$/m.exec(makefile)?.[1]?.split(/\s+/) ?? [];
-  assert.ok(gates.includes('parity-check') && gates.includes('lint-ts'), 'the Makefile declares the gates of kit');
-  assert.deepEqual(ciGroups(makefile).groups.filter(group => group === 'parity'), []);
+  assert.ok(gates.includes('layout-check') && gates.includes('lint-ts'), 'the Makefile declares the gates of kit');
 });
 
 caseTest('a CI group set that omits, repeats or adds a target of CHECK_TARGETS fails', COMPUTE, () => {
@@ -872,7 +864,6 @@ caseTest('every CI group runs the setup steps of its needs and of the setup step
   assert.deepEqual(expandNeeds(['databases']), ['databases', 'go-lease', 'node-modules', 'server-programs', 'flowmark']);
   assert.deepEqual(expandNeeds(['php-extension-tools']), ['php-extension-tools', 'php', 'composer', 'node-modules']);
   assert.deepEqual(expandNeeds(['interfaces-typescript']), ['interfaces-typescript', 'node-modules']);
-  assert.deepEqual(expandNeeds(['parity-symbols']), ['parity-symbols', 'node-modules', 'go', 'php', 'composer']);
   assert.deepEqual(expandNeeds(['rust', 'go']), ['rust', 'go']);
   assert.deepEqual(expandNeeds(['php']), ['php']);
   const { groups, targets } = ciGroups(text('Makefile'));
@@ -884,7 +875,6 @@ caseTest('every CI group runs the setup steps of its needs and of the setup step
   assert.equal(outputs('client_db_php')['php-extension-tools'], false, 'PHP library groups skip the native build tool install');
   assert.equal(outputs('client_db_php_extension')['php-extension-tools'], true, 'PHP-extension groups install their native build tools');
   assert.equal(outputs('static')['interfaces-typescript'], true, 'the static TypeScript extractor installs its pinned checker');
-  assert.equal(outputs('static')['parity-symbols'], false, 'the static group does not install API parity extractors');
   for (const need of ['go', 'rust', 'php', 'php-extension-tools', 'python', 'databases', 'node-modules'])
     assert.equal(outputs('conformance')[need], true, `the cross-runtime comparison group installs ${need}`);
   // A case runs on MySQL, PostgreSQL, SQLite and flowmark, and WITH_TEST_ENV hands FLOWMARK to every target, so each group that
@@ -915,21 +905,20 @@ caseTest('a CI group job runs each setup step under its declared condition and r
   assert.equal(stepCondition('go-lease-modules'), '${{ !cancelled() }}');
   assert.equal(stepCondition('go-modules'), "${{ !cancelled() && steps.group-needs.outputs.go == 'true' }}");
   assert.equal(stepCondition('interfaces-typescript'), "${{ !cancelled() && steps.group-needs.outputs.interfaces-typescript == 'true' }}");
-  assert.equal(stepCondition('parity-symbols'), "${{ !cancelled() && steps.group-needs.outputs.parity-symbols == 'true' }}");
   assert.equal(stepCondition('composer'), "${{ !cancelled() && steps.group-needs.outputs.php == 'true' }}");
   assert.equal(stepCondition('servers'), "${{ !cancelled() && steps.group-needs.outputs.databases == 'true' }}");
   assert.deepEqual(groupOutputs(['a', 'b'], { a: ['go', 'composer'], b: ['databases'] }),
-    { 'node-modules': true, 'interfaces-typescript': false, 'parity-symbols': false, go: true, rust: false, php: true, 'php-extension-tools': false, 'server-programs': true, databases: true, python: false, flowmark: true });
+    { 'node-modules': true, 'interfaces-typescript': false, go: true, rust: false, php: true, 'php-extension-tools': false, 'server-programs': true, databases: true, python: false, flowmark: true });
   assert.deepEqual(groupOutputs(['b'], { b: ['databases'] }),
-    { 'node-modules': true, 'interfaces-typescript': false, 'parity-symbols': false, go: false, rust: false, php: false, 'php-extension-tools': false, 'server-programs': true, databases: true, python: false, flowmark: true });
+    { 'node-modules': true, 'interfaces-typescript': false, go: false, rust: false, php: false, 'php-extension-tools': false, 'server-programs': true, databases: true, python: false, flowmark: true });
   assert.deepEqual(groupOutputs(['c'], { c: ['go', 'flowmark'] }),
-    { 'node-modules': false, 'interfaces-typescript': false, 'parity-symbols': false, go: true, rust: false, php: false, 'php-extension-tools': false, 'server-programs': false, databases: false, python: false, flowmark: true });
+    { 'node-modules': false, 'interfaces-typescript': false, go: true, rust: false, php: false, 'php-extension-tools': false, 'server-programs': false, databases: false, python: false, flowmark: true });
   assert.deepEqual(groupOutputs(['php-library'], { 'php-library': ['php'] }),
-    { 'node-modules': false, 'interfaces-typescript': false, 'parity-symbols': false, go: false, rust: false, php: true, 'php-extension-tools': false, 'server-programs': false, databases: false, python: false, flowmark: false });
+    { 'node-modules': false, 'interfaces-typescript': false, go: false, rust: false, php: true, 'php-extension-tools': false, 'server-programs': false, databases: false, python: false, flowmark: false });
   assert.deepEqual(groupOutputs(['php-extension'], { 'php-extension': ['php', 'php-extension-tools'] }),
-    { 'node-modules': true, 'interfaces-typescript': false, 'parity-symbols': false, go: false, rust: false, php: true, 'php-extension-tools': true, 'server-programs': false, databases: false, python: false, flowmark: false });
-  assert.deepEqual(groupOutputs(['api'], { api: ['parity-symbols', 'interfaces-typescript'] }),
-    { 'node-modules': true, 'interfaces-typescript': true, 'parity-symbols': true, go: true, rust: false, php: true, 'php-extension-tools': false, 'server-programs': false, databases: false, python: false, flowmark: false });
+    { 'node-modules': true, 'interfaces-typescript': false, go: false, rust: false, php: true, 'php-extension-tools': true, 'server-programs': false, databases: false, python: false, flowmark: false });
+  assert.deepEqual(groupOutputs(['api'], { api: ['interfaces-typescript'] }),
+    { 'node-modules': true, 'interfaces-typescript': true, go: false, rust: false, php: false, 'php-extension-tools': false, 'server-programs': false, databases: false, python: false, flowmark: false });
   assert.equal(groupOutputs(['php-ext-tools'], { 'php-ext-tools': ['php-extension-tools'] }).php, true,
     'the native extension build tools require the pinned PHP setup');
   assert.throws(() => groupOutputs(['x'], {}), /target x declares no needs in contracts\/check-inputs\.json; declare its scope and needs there/);
@@ -1281,9 +1270,6 @@ caseTest('a target that only reads the TypeScript build output does not hold it 
   assert.deepEqual(typescriptExclusiveReaderErrors('build-ts: typescript-build\n'), []);
   assert.deepEqual(typescriptExclusiveReaderErrors('e: f g\nf:\n\t$(READ_TYPESCRIPT)\ng:\n\t$(HOLD_TYPESCRIPT)\n'), ['Makefile e takes the shared lease of the TypeScript build output before the exclusive one in one make; run the exclusive holder first']);
   assert.deepEqual(typescriptExclusiveReaderErrors('e: g f\nf:\n\t$(READ_TYPESCRIPT)\ng:\n\t$(HOLD_TYPESCRIPT)\n'), []);
-  // A recipe that kit owns reads the client through a prerequisite that holds the shared lease.
-  const parity = makeTargets(text('Makefile')).filter(rule => rule.target === 'parity-declarations-check').flatMap(rule => rule.prerequisites);
-  assert.ok(parity.includes('typescript-read') && !parity.includes('typescript-build'), parity.join(' '));
 });
 
 // T341-1: a target that runs PHPUnit with the packages/php configuration reaches php-models, which writes the bootstrap it requires, directly or through a prerequisite.
@@ -2299,7 +2285,7 @@ caseTest('the toolchain checks read the commands that a step runs', COMPUTE, () 
 // writes it among its prerequisites, directly or through a hub, so make writes the file before the recipe reads it.
 caseTest('a target that reads an error code file has the target that writes it as a prerequisite', COMPUTE, () => {
   assert.deepEqual(generatedCodesErrors(text('Makefile')), []);
-  const kit = 'lint-ts: typescript-build\nlint-php test-php-ext: orm-codes-php\nparity-declarations-check parity-check parity-api-check $(KIT_PARITY_BINDING_TARGETS): orm-codes\n';
+  const kit = 'lint-ts: typescript-build\nlint-php test-php-ext: orm-codes-php\n';
   const makefile = [
     'orm-codes: orm-codes-typescript orm-codes-php orm-codes-python',
     'orm-codes-typescript orm-codes-php orm-codes-python: orm-codes-%:',
@@ -2358,8 +2344,6 @@ caseTest('a target that reads an error code file has the target that writes it a
     missing('lint-ts', 'typescript'),
     missing('lint-php', 'php'),
     missing('test-php-ext', 'php'),
-    ...['parity-declarations-check', 'parity-check', 'parity-api-check', '$(KIT_PARITY_BINDING_TARGETS)']
-      .flatMap(target => [missing(target, 'typescript'), missing(target, 'php'), missing(target, 'python')]),
   ]);
 });
 
@@ -2419,93 +2403,6 @@ caseTest('every CI job restores the caches of its locked installs', COMPUTE, () 
   assert.deepEqual(lockedCacheErrors(text('.github/workflows/ci.yml')), []);
 });
 
-// The native-bound units case (CR14, B2-4) checks the rule of FCV-2 over a fixture of config/parity.json and a fixture of the spec.
-// The check of `make repo-check` runs the same rule on the tree itself (scripts/repo/check.mts), which names the units that are
-// still native until the conversion rows are done, so this case holds the rule and not the state of the tree.
-const nativeBinding = (implementation: string) => ({ implementation, test: `tests/${implementation}.test`, id: 'a test' });
-const sixBindings = ['go', 'php', 'php-extension', 'typescript', 'python', 'rust'].map(nativeBinding);
-const nativeUnit = (id: string) => ({ id, kind: 'feature', bindings: sixBindings });
-const noSuite = (file: string): unknown => { throw new Error(`no suite file ${file} in this fixture`); };
-const nativeSpec = (...exceptions: string[]) => [
-  '- **FCV-1** Each feature declares its coverage.',
-  '',
-  '- **FCV-2** One spec holds every orm test; a runtime keeps a native test only for a behaviour that no other runtime has.',
-  ...exceptions,
-  '- **FCV-3** A recipe with a fixture is one suite unit per database.',
-  '  - `after-the-rule` stays native in every runtime: this line is outside FCV-2.',
-  '',
-].join('\n');
-caseTest('a feature unit with no owner that is bound natively is a finding', COMPUTE, () => {
-  const finding = (id: string, implementations = 'go, php, php-extension, typescript, python, rust') => `config/parity.json unit ${id} is bound natively in ${implementations}, and no recipe case holds it; make it the cases of a recipe (FCV-2 to FCV-4), or state why it stays native in FCV-2 of docs/spec/feature-coverage.md`;
-  assert.deepEqual(nativeBoundUnitErrors([nativeUnit('shared')], nativeSpec(), noSuite), [finding('shared')]);
-  assert.deepEqual(nativeBoundUnitErrors([nativeUnit('shared'), nativeUnit('other')], nativeSpec(), noSuite), [finding('shared'), finding('other')]);
-  // A binding removed from one runtime does not leave the rule.
-  assert.deepEqual(nativeBoundUnitErrors([{ ...nativeUnit('five'), bindings: sixBindings.slice(1) }], nativeSpec(), noSuite),
-    [finding('five', 'php, php-extension, typescript, python, rust')]);
-});
-caseTest('a binding that runs a case of a suite is no native test, and a native test beside it is', COMPUTE, () => {
-  const readSuite = (file: string): unknown => {
-    assert.equal(file, 'tests/recipe.json');
-    return { cases: [{ id: 'a-case' }] };
-  };
-  const suite = { id: 'recipe', kind: 'suite', file: 'tests/recipe.json', cases: '$.cases[*].id', bindings: [
-    { implementation: 'go', test: 'recipe_test.go', symbol: 'TestRecipeNone' },
-    { implementation: 'php', test: 'RecipeTest.php', symbol: 'Polyspec\\Orm\\Tests\\RecipeTest::testNone' },
-    { implementation: 'rust', test: 'recipe.rs', symbol: 'recipe_none' },
-    { implementation: 'python', test: 'recipe.py' },
-  ] };
-  const held = [
-    { implementation: 'go', test: 'recipe_test.go', id: 'TestRecipeNone/a-case' },
-    { implementation: 'go', test: 'recipe_test.go', id: 'TestRecipeNone' },
-    { implementation: 'php', test: 'RecipeTest.php', id: 'RecipeTest::testNone with data set "a-case"' },
-    { implementation: 'rust', test: 'recipe.rs', id: 'recipe_none::a-case' },
-    { implementation: 'python', test: 'recipe.py', id: 'a-case' },
-  ];
-  assert.deepEqual(nativeBoundUnitErrors([suite, { id: 'held', kind: 'feature', bindings: held }], nativeSpec(), readSuite), []);
-  for (const [native, implementation] of [
-    [{ implementation: 'go', test: 'recipe_test.go', id: 'TestPlanCache' }, 'go'],
-    [{ implementation: 'go', test: 'other_test.go', id: 'TestRecipeNone' }, 'go'],
-    [{ implementation: 'php', test: 'RecipeTest.php', id: 'RecipeTest::testNative' }, 'php'],
-    [{ implementation: 'rust', test: 'recipe.rs', id: 'recipe_nonesuch' }, 'rust'],
-    [{ implementation: 'python', test: 'recipe.py', id: 'test_native' }, 'python'],
-  ] as const) {
-    const errors = nativeBoundUnitErrors([suite, { id: 'mixed', kind: 'feature', bindings: [...held, native] }], nativeSpec(), readSuite);
-    assert.equal(errors.length, 1, `${native.test} ${native.id}`);
-    assert.match(errors[0] ?? '', new RegExp(`unit mixed is bound natively in ${implementation}, and`));
-  }
-});
-caseTest('a suite, an owner unit or an API unit is no finding of the native rule', COMPUTE, () => {
-  assert.deepEqual(nativeBoundUnitErrors([
-    { id: 'recipe', kind: 'suite', bindings: sixBindings },
-    { ...nativeUnit('one-runtime'), bindings: [nativeBinding('go')], owner: { kind: 'binding' } },
-    { id: 'api', kind: 'api' },
-  ], nativeSpec(), noSuite), []);
-});
-caseTest('only FCV-2, with a reason, excepts a unit from the native rule', COMPUTE, () => {
-  const stated = '  - `stated` (DSL-1) stays native in every runtime, as an FCV-2 binding surface: no public call can name it.';
-  assert.deepEqual(nativeExceptions(nativeSpec(stated)), [{ id: 'stated', reason: 'no public call can name it' }]);
-  assert.deepEqual(nativeBoundUnitErrors([nativeUnit('stated')], nativeSpec(stated), noSuite), []);
-  // Two units of one line, and two sentences of one line, are each their own exception.
-  assert.deepEqual(nativeExceptions(nativeSpec('  - `one` and `two` stay native too: a reason. `three` stays native: another reason.')), [
-    { id: 'one', reason: 'a reason' }, { id: 'two', reason: 'a reason' }, { id: 'three', reason: 'another reason' },
-  ]);
-  // A line with no reason, and a line outside FCV-2, except nothing.
-  for (const spec of [nativeSpec('  - `stated` stays native in every runtime.'), nativeSpec('  - `stated` stays native:'), nativeSpec('  - `stated` is mentioned here: a text.'), nativeSpec().replace('`after-the-rule`', '`stated`')])
-    assert.equal(nativeBoundUnitErrors([nativeUnit('stated')], spec, noSuite).length, 1, spec);
-});
-caseTest('an exception of FCV-2 names a unit of config/parity.json', COMPUTE, () => {
-  assert.deepEqual(nativeBoundUnitErrors([], nativeSpec('  - `gone` stays native: a reason.'), noSuite), [
-    'docs/spec/feature-coverage.md FCV-2 states that gone stays native, and config/parity.json has no such unit; remove the line or name the unit',
-  ]);
-});
-caseTest('the native rule reads the exceptions of the spec and the units of the tree', COMPUTE, () => {
-  const units = readParityConfig(join(repository.pathname, 'config/parity.json')).units;
-  const exceptions = nativeExceptions(text('docs/spec/feature-coverage.md'));
-  assert.ok(exceptions.length > 0, 'FCV-2 of the spec states units that stay native, so the parser that finds none reads the wrong text');
-  assert.deepEqual(exceptions.filter(({ id }) => !units.some(unit => unit.id === id)), []);
-  assert.match(text('scripts/repo/check.mts'), /nativeBoundUnitErrors\(readParityConfig\(.*\)\.units, text\('docs\/spec\/feature-coverage\.md'\), /, 'make repo-check runs the rule on the tree');
-});
-
 // The generator case (CR6, B3-2) runs go-models twice on the same inputs with a fake go on the command line. The fake logs each `run`,
 // the generator call. The first make runs the generator and the second, on the same tracked inputs, runs none.
 caseTest('an up-to-date Go model generator runs nothing again', PROCESS, () => {
@@ -2529,56 +2426,4 @@ caseTest('an up-to-date Go model generator runs nothing again', PROCESS, () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
-});
-
-// The unbound-test case (T334-3-12) holds the rule over fixtures of each runner: a test of a bound file has a binding or a line of FCV-2.
-const unboundCase = (implementation: string, file: string, source: string, bound: string, lines: string[] = [], other: Record<string, string> = {}) => {
-  const tree: Record<string, string> = { [file]: source, ...other };
-  return unboundNativeTestErrors(
-    [{ id: 'unit', kind: 'feature', bindings: [{ implementation, test: file, id: bound }] }],
-    nativeSpec(...lines), Object.keys(tree), path => tree[path] ?? '');
-};
-const unbound = (file: string, test: string) => `${file}: the native test ${test} has no binding in config/parity.json and no line of FCV-2; make it the cases of a recipe (FCV-2 to FCV-4), bind it to the unit that states it, or state why it stays native in FCV-2 of docs/spec/feature-coverage.md`;
-for (const [implementation, file, source, boundId, other] of [
-  ['go', 'a_test.go', 'func TestBound(t *testing.T) {}\nfunc TestMain(m *testing.M) {}\nfunc TestOther(t *testing.T) {}\nfunc helper() {}\n', 'TestBound/case', 'TestOther'],
-  ['php', 'packages/php/tests/ATest.php', 'class ATest { public function testBound(): void {} public function testOther(): void {} private function helper(): void {} }', 'Polyspec\\Orm\\Tests\\ATest::testBound with data set "x"', 'testOther'],
-  ['php-extension', 'packages/php-ext/tests/ATest.php', 'class ATest { public function testBound(): void {} public function testOther(): void {} }', 'ATest::testBound', 'testOther'],
-  ['python', 't.py', 'class A:\n    def test_bound(self):\n        pass\n\n    def test_other(self):\n        def test_nested():\n            pass\n', 'test_bound', 'test_other'],
-  ['typescript', 't.mjs', "caseTest('bound', COMPUTE, () => {});\ntest('other', () => { /x/.test('not a test'); });\nfor (const n of names) caseTest(n, COMPUTE, () => {});\n", 'bound', 'other'],
-  ['rust', 't.rs', '#[test]\nfn bound() {}\n#[tokio::test]\n#[ignore]\nasync fn other() {}\nfn helper() {}\n', 'tests::bound', 'other'],
-] as const) {
-  caseTest(`a test of a bound ${implementation} file with no binding is a finding, and a line of FCV-2 keeps it`, COMPUTE, () => {
-    assert.deepEqual(unboundCase(implementation, file, source, boundId), [unbound(file, other)]);
-    assert.deepEqual(unboundCase(implementation, file, source, boundId, [`  - In \`${file}\`, \`${other}\` stays as a native test: it reads a private step.`]), []);
-    assert.deepEqual(unboundCase(implementation, file, source, other), [unbound(file, source.includes('TestBound') ? 'TestBound' : source.includes('testBound') ? 'testBound' : source.includes('test_bound') ? 'test_bound' : 'bound')]);
-  });
-}
-caseTest('a test of a PHP trait is a test of the class that uses it', COMPUTE, () => {
-  const file = 'packages/php/tests/ATest.php';
-  const trait = 'packages/php/tests/Cases.php';
-  const source = 'use Other\\Thing;\nclass ATest {\n    use Cases;\n    public function testBound(): void {}\n}\n';
-  assert.deepEqual(unboundCase('php', file, source, 'testBound', [], { [trait]: 'trait Cases { public function testShared(): void {} }' }), [unbound(file, 'testShared')]);
-});
-caseTest('a suite bound with no symbol is a whole file, which the parity tool compares with its recipe', COMPUTE, () => {
-  assert.deepEqual(unboundNativeTestErrors([{ id: 'suite', kind: 'suite', bindings: [{ implementation: 'python', test: 't.py' }] }], nativeSpec(), ['t.py'], () => 'def test_case():\n    pass\n'), []);
-});
-caseTest('a line of FCV-2 that names a test or a file that is not there is a finding', COMPUTE, () => {
-  const file = 'a_test.go';
-  assert.deepEqual(unboundCase('go', file, 'func TestBound(t *testing.T) {}\n', 'TestBound', [`  - In \`${file}\`, \`TestGone\` stays as a native test: it reads a private step.`]),
-    [`docs/spec/feature-coverage.md FCV-2 keeps the native test TestGone of ${file}, and that file holds no such test; remove the name from the line`]);
-  assert.deepEqual(unboundCase('go', file, 'func TestBound(t *testing.T) {}\n', 'TestBound', ['  - In `gone_test.go`, `TestGone` stays as a native test: it reads a private step.']),
-    ['docs/spec/feature-coverage.md FCV-2 keeps native tests of gone_test.go, and no binding of config/parity.json names that file; remove the line or bind the file']);
-  assert.deepEqual(nativeTestLines(nativeSpec('  - In `f.go`, `TestA`, `TestB` and `TestC` stay as native tests: a reason.')), [{ file: 'f.go', names: ['TestA', 'TestB', 'TestC'], reason: 'a reason.' }]);
-  assert.deepEqual(nativeExceptions(nativeSpec('  - In `f.go`, `testa-b` stays as a native test: a reason.')), []);
-});
-
-
-caseTest('parity bindings do not repeat the interface checker owned by the API phase', COMPUTE, () => {
-  const targets = makeTargets(text('Makefile'));
-  const prerequisites = (name: string) => targets.filter(entry => entry.target === name).flatMap(entry => entry.prerequisites);
-  assert.ok(prerequisites('parity-api-check').includes('interface-check'));
-  assert.ok(prerequisites('parity-check').includes('interface-check'));
-  assert.ok(!prerequisites('$(PARITY_GATE_TARGETS)').includes('interface-check'));
-  for (const runtime of ['go', 'php', 'php-extension', 'typescript', 'python', 'rust'])
-    assert.ok(!prerequisites(`parity-bindings-${runtime}-check`).includes('interface-check'));
 });

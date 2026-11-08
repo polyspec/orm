@@ -1767,7 +1767,7 @@ def _plan(step: dict, recipe_dir: Path, database: str) -> None:
         )
 
 
-# The dbspec ops (FCV-4): each maps to one call of the public Python API that config/parity.json names for the dbspec
+# The dbspec ops (FCV-4): each maps to one call of the public Python API of the dbspec
 # document and plan units. The schema text of parse ops is the joined lines with a final newline.
 _DBSPEC_OPS = (
     "dbspec.parse",

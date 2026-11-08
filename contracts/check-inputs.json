@@ -1,5 +1,5 @@
 {
-  "comment": "Each make target of CHECK_TARGETS declares its scope and the setup steps it needs: needs [\"databases\"] is a target that reads the servers of make orm-test-servers and the bench and decimal databases of the run, which the runner records as not-run, with the failed step and its first failure lines, when the setup steps servers, databases/create or go-lease fail; needs [] runs whatever the setup steps did. The other needs are the tools that the CI setup steps install (scripts/check/ci-setup.mts): go, go-lease, rust, php, php-min, composer, node-modules, interfaces-typescript, parity-symbols, php-extension-tools and server-programs; when such a step fails in CI, the runner records the targets that need it as not-run with that step, and runs every other target. A local run has no CI setup steps. An owner target is a per-file check (format, checklist, documents, the unit tests of a checker): make owner-check runs it when a changed path matches its inputs. A suite target is part of the full suite only: make orm-check runs it once, and make owner-check never selects it; a changed feature's own verification and coverage run in its place. make owner-check and make repo-check fail on a target without a scope, an owner target without inputs, a suite target with inputs, and an input pattern that matches no tracked file. A pattern matches a repository path: * within one path segment, ** across segments.",
+  "comment": "Each make target of CHECK_TARGETS declares its scope and the setup steps it needs: needs [\"databases\"] is a target that reads the servers of make orm-test-servers and the bench and decimal databases of the run, which the runner records as not-run, with the failed step and its first failure lines, when the setup steps servers, databases/create or go-lease fail; needs [] runs whatever the setup steps did. The other needs are the tools that the CI setup steps install (scripts/check/ci-setup.mts): go, go-lease, rust, php, php-min, composer, node-modules, interfaces-typescript, php-extension-tools and server-programs; when such a step fails in CI, the runner records the targets that need it as not-run with that step, and runs every other target. A local run has no CI setup steps. An owner target is a per-file check (format, checklist, documents, the unit tests of a checker): make owner-check runs it when a changed path matches its inputs. A suite target is part of the full suite only: make orm-check runs it once, and make owner-check never selects it; a changed feature's own verification and coverage run in its place. make owner-check and make repo-check fail on a target without a scope, an owner target without inputs, a suite target with inputs, and an input pattern that matches no tracked file. A pattern matches a repository path: * within one path segment, ** across segments.",
   "targets": {
     "collection-php-extension-check": {
       "scope": "owner",
@@ -134,10 +134,6 @@
       "scope": "suite",
       "needs": []
     },
-    "test-markers-check": {
-      "scope": "suite",
-      "needs": []
-    },
     "duplication-check": {
       "scope": "suite",
       "needs": []
@@ -147,10 +143,6 @@
       "needs": []
     },
     "suppression-check": {
-      "scope": "suite",
-      "needs": []
-    },
-    "divergence-check": {
       "scope": "suite",
       "needs": []
     },
@@ -1949,7 +1941,6 @@
       ],
       "inputs": [
         "Makefile",
-        "config/parity.json",
         "docs/spec/protocol.md",
         "docs/spec/protocol.ko.md",
         "packages/go/orm/driver_error_test.go",
@@ -1976,7 +1967,8 @@
         "packages/ts/src/codec.ts",
         "packages/ts/src/database.ts",
         "packages/ts/src/driver.ts",
-        "packages/ts/src/model.ts"
+        "packages/ts/src/model.ts",
+        "contracts/implementations.json"
       ]
     },
     "bind-check": {
@@ -3080,7 +3072,6 @@
       ],
       "inputs": [
         "scripts/features/**",
-        "config/parity.json",
         "contracts/fixtures/**/*.json",
         "tests/codec/*.json",
         "tests/conformance/*.json",
@@ -3107,7 +3098,8 @@
         "packages/python/tests/test_group_rows.py",
         "packages/rust/orm/src/row.rs",
         "packages/ts/src/model.ts",
-        "packages/ts/tests/group_rows.mjs"
+        "packages/ts/tests/group_rows.mjs",
+        "contracts/implementations.json"
       ]
     },
     "group-count-boolean-unit-check": {
@@ -3123,7 +3115,6 @@
       ],
       "inputs": [
         "Makefile",
-        "config/parity.json",
         "contracts/features.json",
         "contracts/check-inputs.json",
         "packages/go/orm/group_rows.go",
@@ -3139,7 +3130,8 @@
         "packages/rust/orm/src/row.rs",
         "packages/ts/src/group_rows.ts",
         "packages/ts/src/model.ts",
-        "packages/ts/tests/group_rows.mjs"
+        "packages/ts/tests/group_rows.mjs",
+        "contracts/implementations.json"
       ]
     },
     "feature-verify-rust": {
@@ -3263,12 +3255,6 @@
         "contracts/fixtures/complex_query/complex_query.dbs"
       ]
     },
-    "parity-declarations-check": {
-      "scope": "suite",
-      "needs": [
-        "node-modules"
-      ]
-    },
     "mermaid-error-ts-check": {
       "scope": "owner",
       "needs": [
@@ -3371,7 +3357,6 @@
       ],
       "inputs": [
         "Makefile",
-        "config/parity.json",
         "contracts/check-inputs.json",
         "contracts/fixtures/styled_column_states.json",
         "packages/go/orm/codec.go",
@@ -3399,7 +3384,8 @@
         "packages/python/tests/test_styled_column_states.py",
         "packages/rust/orm/src/codec.rs",
         "packages/rust/orm/src/model.rs",
-        "packages/rust/orm/tests/styled_column_states.rs"
+        "packages/rust/orm/tests/styled_column_states.rs",
+        "contracts/implementations.json"
       ]
     },
     "request-hook-php-extension-check": {
@@ -3637,9 +3623,9 @@
         "node-modules"
       ],
       "inputs": [
-        "config/parity.json",
         "tests/interfaces/check/api.test.mts",
-        "Makefile"
+        "Makefile",
+        "contracts/implementations.json"
       ]
     },
     "php-test-assertions-helper-check": {
@@ -3721,9 +3707,13 @@
         "scripts/features/recipe-runners.test.mts",
         "scripts/features/recipe-keys.mts",
         "scripts/features/schema/recipe-keys.json",
-        "config/parity.json",
         "contracts/fixtures/**",
-        "packages/**"
+        "packages/**",
+        "contracts/implementations.json",
+        "scripts/features/languages.mts",
+        "scripts/features/recipe-files.mts",
+        "scripts/features/rust-code.mts",
+        "scripts/json/schema/implementations.schema.json"
       ]
     },
     "conformance-generated-methods-check/go": {
@@ -4154,40 +4144,6 @@
         "tests/markdown/flowmark.version",
         "packages/ts/tests/markdown_conformance.mjs",
         "packages/ts/tests/markdown_cases.mjs"
-      ]
-    },
-    "parity-check": {
-      "scope": "suite",
-      "needs": [
-        "go",
-        "rust",
-        "php",
-        "composer",
-        "python",
-        "node-modules",
-        "interfaces-typescript",
-        "parity-symbols",
-        "php-extension-tools",
-        "databases",
-        "flowmark",
-        "go-lease"
-      ]
-    },
-    "parity-api-check": {
-      "scope": "suite",
-      "needs": [
-        "go",
-        "rust",
-        "php",
-        "composer",
-        "python",
-        "node-modules",
-        "interfaces-typescript",
-        "parity-symbols",
-        "php-extension-tools",
-        "databases",
-        "flowmark",
-        "go-lease"
       ]
     },
     "bind-models-check": {
@@ -5273,6 +5229,48 @@
         "databases",
         "flowmark"
       ]
+    },
+    "suite-php-check": {
+      "scope": "suite",
+      "needs": [
+        "php",
+        "composer",
+        "databases",
+        "flowmark"
+      ]
+    },
+    "suite-typescript-check": {
+      "scope": "suite",
+      "needs": [
+        "node-modules",
+        "databases",
+        "flowmark"
+      ]
+    },
+    "suite-python-check": {
+      "scope": "suite",
+      "needs": [
+        "python",
+        "databases",
+        "flowmark"
+      ]
+    },
+    "suite-test-unit-check": {
+      "scope": "owner",
+      "needs": [
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "scripts/suite-test.mts",
+        "scripts/suite-test.test.mts",
+        "scripts/features/languages.mts",
+        "scripts/features/rust-code.mts",
+        "scripts/features/performance-reference.mts",
+        "scripts/decimal-physical-check.mts",
+        "contracts/implementations.json",
+        "scripts/json/schema/implementations.schema.json"
+      ]
     }
   },
   "paths": {
@@ -5502,7 +5500,7 @@
     },
     "config/toolchain.json": {
       "scope": "suite",
-      "reason": "it declares the symbol extractors and toolchains that make install-tools and the install of the parity symbols put in place for every check and the parity gate"
+      "reason": "it declares the PHP release, the symbol extractors and the mise release that make install-tools and make kit-install-symbols put in place for every check"
     },
     "config/rebuild.json": {
       "scope": "suite",

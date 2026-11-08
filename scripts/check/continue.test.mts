@@ -100,7 +100,7 @@ caseTest('client-db-test runs the next lane after a failed lane in sequence and 
   }
 });
 
-// The php-extension lane case (KSTD-5-88-6) checks that the lane of the implementation php-extension of config/parity.json builds the
+// The php-extension lane case (KSTD-5-88-6) checks that the lane of the implementation php-extension of contracts/implementations.json builds the
 // extension into the directory of its run through make php-ext-build, then runs every PHP database test file of the php lane with
 // that build loaded, through kit's run-tests in extension mode, and removes the build.
 caseTest('client-db-test runs the php-extension lane with the extension it builds', PROCESS, () => {
@@ -291,7 +291,7 @@ caseTest('client-db-test refuses an unknown lane name and an empty selection', P
   try {
     const typo = f.run(['scripts/client-db-test.mts'], { ORM_RUST_TEST_FEATURES: 'none', ORM_CLIENT_DB_LANGS: 'typscript' });
     assert.equal(typo.status, 2, typo.stdout + typo.stderr);
-    // The lanes are the implementations of config/parity.json in their declared order (e2b543b51, fb80ef7c1).
+    // The lanes are the implementations of contracts/implementations.json in their declared order (e2b543b51, fb80ef7c1).
     assert.match(typo.stderr, /client-db-test: ORM_CLIENT_DB_LANGS names typscript, which is no lane; the lanes are go, php, php-extension, typescript, python, rust\n/);
     const empty = f.run(['scripts/client-db-test.mts'], { ORM_RUST_TEST_FEATURES: 'none', ORM_CLIENT_DB_LANGS: ',' });
     assert.equal(empty.status, 2, empty.stdout + empty.stderr);

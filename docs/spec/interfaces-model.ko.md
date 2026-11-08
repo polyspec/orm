@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces-model -->
-<!-- source-sha256: 86bb6d220a0ce3878b5910fbe5d0920e905596c0d16251cbd0917ac2c1c6d5f9 -->
+<!-- source-sha256: 75ef64da01bf0a5dab13023789559260b66447358971b7cebec58b6b18f8bc37 -->
 # 공통 구성요소
 
 <!-- contracts/interfaces.json에서 생성됨. 직접 수정하지 않는다. -->
@@ -302,7 +302,7 @@ classDiagram
 | Db.withSignal | typescript | CFG-9 | `packages/ts/src/database.ts::Db.withSignal` |
 | Db.withFuture | python | CFG-9 | `packages/python/src/polyspec/orm/database.py::Db.with_future` |
 
-Host-native API는 해당 host의 공개 primitive 형식으로만 선언하며 공통 signature를 요구하지 않는다. 공통 동작은 `behavior_adapters`의 모든 runtime 항목과 정확한 parity case로 검증한다. `unresolved` 항목은 구현 완료 증거가 아니다.
+Host-native API는 해당 host의 공개 primitive 형식으로만 선언하며 공통 signature를 요구하지 않는다. 공통 동작은 `behavior_adapters`의 모든 runtime 항목과 정확한 test case로 검증한다. `unresolved` 항목은 구현 완료 증거가 아니다.
 
 ## 공통 동작 adapter
 

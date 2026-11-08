@@ -23,7 +23,7 @@ function componentManifest(components: Component[], ...rules: string[]): Manifes
       ])),
     })),
     behavior_adapters: [{
-      id: 'CFG-9', completion_item: 'KSTD-2-11-16', parity: 'unit', adapters: Object.fromEntries(['go', 'php', 'php-extension', 'python', 'rust', 'typescript'].map(runtime => [runtime, {
+      id: 'CFG-9', completion_item: 'KSTD-2-11-16', adapters: Object.fromEntries(['go', 'php', 'php-extension', 'python', 'rust', 'typescript'].map(runtime => [runtime, {
         status: 'unresolved', item: 'fixture', required_case: 'cancellation-case',
       }])),
     }],
@@ -169,19 +169,17 @@ caseTest('CFG-9 records six explicit adapters and refuses fake, missing, or unre
   assert.throws(() => validateBehaviorAdapters([unresolvedAsPass], surfaces), /php: implemented adapter requires/);
 });
 
-caseTest('behavior adapters must match exact parity bindings', COMPUTE, () => {
+caseTest('behavior adapter cases must name a case of a test file of their runtime', COMPUTE, () => {
   const contract: BehaviorContract = {
-    id: 'CFG-9', parity: 'cancel-query', adapters: {
-      go: { status: 'implemented', primitive: 'context.Context', cases: [{ test: 'cancel_test.go', id: 'TestCancel' }] },
+    id: 'CFG-9', adapters: {
+      go: { status: 'implemented', primitive: 'context.Context', cases: [{ test: 'packages/go/orm/cancel_test.go', id: 'TestCancel [sqlite]' }] },
       php: { status: 'unresolved', item: 'KSTD-2-11-16-1', required_case: 'cancel_active_query' },
     },
   };
-  const runtimes = ['php-extension', 'python', 'rust', 'typescript'] as const;
-  const adapters = contract.adapters;
-  assert.ok(adapters);
-  for (const runtime of runtimes) adapters[runtime] = { status: 'unresolved', item: 'fixture', required_case: 'cancel' };
-  const unit = { id: 'cancel-query', bindings: [{ implementation: 'go', test: 'cancel_test.go', id: 'TestCancel' }] };
-  assert.deepEqual(checkBehaviorAdapterCases([contract], [unit]), []);
-  assert.notDeepEqual(checkBehaviorAdapterCases([contract], [{ ...unit, bindings: [] }]), [], 'missing native case passed');
-  assert.notDeepEqual(checkBehaviorAdapterCases([contract], [{ ...unit, bindings: [{ implementation: 'go', test: 'fake.go', id: 'TestCancel' }] }]), [], 'fake native symbol/case passed');
+  const owner = (file: string) => file.startsWith('packages/go/') ? 'go' : undefined;
+  const files = (text: string) => (file: string) => file === 'packages/go/orm/cancel_test.go' ? text : undefined;
+  assert.deepEqual(checkBehaviorAdapterCases([contract], owner, files('func TestCancel(t *testing.T) {}')), []);
+  assert.match(checkBehaviorAdapterCases([contract], owner, files('func TestCancelLater(t *testing.T) {}')).join('\n'), /holds no case TestCancel \[sqlite\]/);
+  assert.match(checkBehaviorAdapterCases([contract], owner, () => undefined).join('\n'), /cancel_test\.go does not exist/);
+  assert.match(checkBehaviorAdapterCases([contract], () => 'rust', files('func TestCancel(t *testing.T) {}')).join('\n'), /is not a file of the go package/);
 });

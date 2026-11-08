@@ -15,13 +15,13 @@ import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { readJsonFile } from '../../../scripts/json/schema.mts';
 import { COMPUTE, PROCESS, runCase, runLong, type Step } from '../../testcase.mts';
-import { checkBehaviorAdapterCases, checkNativeSurfaces, checkOwners, checkOwnersAs, checkProhibitedSymbols, checkRecords, checkRules, differences } from './contract.mts';
+import { checkNativeSurfaces, checkOwners, checkOwnersAs, checkProhibitedSymbols, checkRecords, checkRules, differences } from './contract.mts';
 import { diagram } from './diagram.mts';
 import { buildGo, buildRust, checkCallsInRoots, extract, type Tools } from './extract.mts';
 import { byteOrder, goJson } from './json.mts';
 import { allRules, checkErrorLabels, readErrorCatalog, readManifest, validateManifest, type Extension, type Manifest, type Owner, type Rule, type Symbols } from './manifest.mts';
 import { parserMutations } from './mutations.mts';
-import { apiProblems, readParity } from './api.mts';
+import { apiProblems, readImplementationNames } from './api.mts';
 
 const symbolsSchema = resolve(import.meta.dirname, '../../../scripts/schema/interface-symbols.schema.json');
 
@@ -225,8 +225,6 @@ async function main(argv: string[]): Promise<number> {
     const codes = readErrorCatalog(root);
     const failures = checkErrorLabels(codes, allRules(m), m.sequences ?? []);
     if (failures.length !== 0) throw new Error(failures.join('\n'));
-    const adapterFailures = checkBehaviorAdapterCases(m.behavior_adapters ?? [], readParity(root).units ?? []);
-    if (adapterFailures.length !== 0) throw new Error(adapterFailures.join('\n'));
     const english = diagram(m, false), korean = diagram(m, true);
     const englishPath = join(root, 'docs/spec/interfaces-model.md'), koreanPath = join(root, 'docs/spec/interfaces-model.ko.md');
     if (generate) {
@@ -239,9 +237,9 @@ async function main(argv: string[]): Promise<number> {
     order = await loadOrder(root, join(root, m.schema ?? ''));
   });
   if (!manifestPassed) return 1;
-  // The API units of config/parity.json are read here, so that the check of each client runs against the same units.
-  const apiPassed = await runCase('interfaces/api-units', MANIFEST, () => {
-    const problems = apiProblems(root, readParity(root), readErrorCatalog(root));
+  // The error catalog of every implementation is read here, before the check of each client.
+  const apiPassed = await runCase('interfaces/error-catalogs', MANIFEST, () => {
+    const problems = apiProblems(root, readImplementationNames(root), readErrorCatalog(root));
     if (problems.length > 0) throw new Error(problems.join('\n'));
   });
   const tools: Tools = {};

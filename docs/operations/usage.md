@@ -1,7 +1,7 @@
 <!-- doc-id: usage -->
 # Usage
 
-Generate language clients from one dbspec document set. `config/parity.json` declares Go, PHP, PHP extension, TypeScript, Python and Rust as the six implementations; the PHP extension shares the PHP-facing API surface and its unfinished native scope is tracked separately.
+Generate language clients from one dbspec document set. `contracts/implementations.json` declares Go, PHP, PHP extension, TypeScript, Python and Rust as the six implementations; the PHP extension shares the PHP-facing API surface and its unfinished native scope is tracked separately.
 Supported databases are MySQL 8 by default, PostgreSQL 12+, and SQLite 3.46+.
 
 A query starts with a generated model and receives an opened database connection through `connect`. Inside a transaction callback, a model without `connect` uses the active transaction.

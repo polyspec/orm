@@ -1,7 +1,7 @@
 <?php
 
 // Unit test of the orm-gen test support (packages/php/tests/OrmGenTestSupport.php). The support is shared by the
-// orm-gen, scan, scan parity, Markdown conformance and PHPStan runner tests, so a change to it is checked by this test
+// orm-gen, scan, Markdown conformance and PHPStan runner tests, so a change to it is checked by this test
 // (the helpers in contracts/features.json), not by the features that use it; make orm-check runs those.
 declare(strict_types=1);
 

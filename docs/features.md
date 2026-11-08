@@ -1,7 +1,7 @@
 <!-- doc-id: features -->
 # Feature definitions
 
-The executable source is the repository feature manifest. Read the manifest, then its `source.read_order` paths and every path listed by the selected feature. Each entry defines inputs, outputs, state transitions, errors, parity units, fixtures, tests, paired documentation, and executable verification commands.
+The executable source is the repository feature manifest. Read the manifest, then its `source.read_order` paths and every path listed by the selected feature. Each entry defines inputs, outputs, state transitions, errors, fixtures, tests, paired documentation, and executable verification commands.
 
 | ID | Feature | Status | Languages |
 |---|---|---|---|

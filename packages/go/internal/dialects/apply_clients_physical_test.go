@@ -68,7 +68,7 @@ const runnerDeadline = 2 * time.Minute
 // gets one more minute.
 const pairDeadline = 3*runnerDeadline + time.Minute
 
-// applyClients is the client with the apply runner of tests/dbspec/apply, as set by the declared implementations of config/parity.json.
+// applyClients is the client with the apply runner of tests/dbspec/apply, as set by the implementations of contracts/implementations.json.
 var applyClients = dbspecLanguages()
 
 type applyClientRunner struct {
@@ -87,10 +87,10 @@ func applyClientRunners(goRunner, rustRunner, extension, python string) map[stri
 	}
 }
 
-// dbspecLanguages reads the declared implementations of config/parity.json. This test runs from the package directory,
+// dbspecLanguages reads the implementations of contracts/implementations.json. This test runs from the package directory,
 // so the paths are relative to packages/go/internal/dialects.
 func dbspecLanguages() []string {
-	return testcase.ParityImplementations(repoRoot)
+	return testcase.Implementations(repoRoot)
 }
 
 // TestApplyChainAcrossClients checks, for every ordered pair, whether a chain applied by one client is continued

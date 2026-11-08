@@ -197,7 +197,7 @@ text lives in T128's Cause and Acceptance, plus `docs/spec/editor.md`.
   - `dbspec-set.json` is specified in `docs/spec/dbspec.md` "Documents and use" (+ko), with the
     validation vectors.
   - A public set-reading API in every runtime (`Dbspec.readSet`), with its interfaces rule,
-    symbols, parity unit and feature tests. Go's `runtimemodel.LoadFileSet` is replaced by it.
+    symbols, recipe cases and feature tests. Go's `runtimemodel.LoadFileSet` is replaced by it.
   - Generators take the set file. The forms removed, with no compatibility:
     - Go `--document`/`--use`;
     - TS and Python `--schema`/`--use`;
@@ -280,8 +280,8 @@ text lives in T128's Cause and Acceptance, plus `docs/spec/editor.md`.
       primary key and the document name.
   - **ORES-70** Introspection, Mermaid import, emit, compare, diff, render and the hashes neither take nor
     produce positions.
-  - **ORES-71** Every runtime's parse result has the same shape, with parity and vectors for each kind.
-  - It needs vectors in cases.json; the interfaces, symbols and parity wiring; and a statement
+  - **ORES-71** Every runtime's parse result has the same shape, checked by the same vectors in every runtime for each kind.
+  - It needs vectors in cases.json; the interfaces and symbols wiring; and a statement
     in `docs/spec/dbspec.md` (+ko).
   - **ORES-72** Analysis tokens serve highlighting only. Tools locate declarations through these positions,
     never by scanning tokens or text.
@@ -295,7 +295,7 @@ text lives in T128's Cause and Acceptance, plus `docs/spec/editor.md`.
   - requirements:
     - interfaces rules `Dbspec.analyze` and `Dbspec.format`, with a mapping in every language;
     - the symbol snapshots and hashes;
-    - parity API units;
+    - the recipe cases that the six runtimes run;
     - the `schema_definition` tests;
     - the php-extension rules list and stubs;
     - the Dbspec row of `docs/spec/interfaces-model.md` (+ko).
@@ -379,7 +379,7 @@ those IDs. Each row also updates its `docs/features.md` rows and its EDT-n rules
   - The conformance cases carry the expected tokens and the formatted text.
   - Go, Rust, PHP, the PHP extension and Python implement `analyze` and `format`; Python
     extends its existing `analyze`. Each holds the AST invariant and idempotence.
-  - The parity and conformance runners compare tokens and formatted text.
+  - The recipe and conformance runners compare tokens and formatted text.
   - `features.md`: `template-language` passes in every runtime.
 - **Row C, template T23.3: no grammar in the VS Code extension.**
   - Its tmLanguage keeps only the HTML host (`text.html.basic` with embedded CSS and JS).
@@ -523,13 +523,13 @@ One item at a time.
 - **orm:**
   - `make dbspec-go-check dbspec-ts-check dbspec-php-check dbspec-php-extension-check
     dbspec-rust-check python-check dbspec-compare-check`;
-  - `node tests/interfaces/check/main.mts --self-test`; `make parity-check`;
+  - `node tests/interfaces/check/main.mts --self-test`; `make feature-verify-other`;
     `make feature-unit-check`;
   - the language, LSP, CodeMirror and vscode tests; the import check;
   - `npm run docs:check` (the built `dbspec.html` holds the class spans in both themes);
     `make release-coverage docs-check kit-check`;
   - the `ci` and `docs-pages` workflows green; the release verified.
 - **template:**
-  - `make orm-check`: conformance and parity with tokens and format, the invariant test, the
+  - `make orm-check`: conformance and the recipes with tokens and format, the invariant test, the
     editor import check, the vscode integration;
   - template CI green.

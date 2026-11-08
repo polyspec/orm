@@ -10,25 +10,21 @@ import { dirname, join } from 'node:path';
 import { testDirectoryOf } from './packages.mts';
 import { cargoBuildArgs, cargoFeaturesForPackage, cargoPathModuleFiles, cargoTargetArgs, cargoWorkspaceManifestPath, checkCoverage, databases, executeCoverage, resultCases, languages, NATIVE_DEADLINE, run, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
 import { readFeatures } from './manifest.mts';
-import { readParityConfig, type ParityConfig } from '../json/formats.mts';
+import { readImplementations } from '../json/formats.mts';
 
-// Synthetic manifests use explicit minimal parity, independent of the repository's live native-unit inventory.
-const fixtureLanguages = ['go', 'php', 'php-extension', 'python', 'rust', 'typescript'];
-const fixtureParity: ParityConfig = {
-  implementations: fixtureLanguages.map(name => ({ name, runner: 'node', roots: [] })),
-  units: fixtureLanguages.map(name => ({ id: `fixture-${name}`, bindings: [{ implementation: name }] })),
-};
-const parityUnits = readParityConfig(new URL('../../config/parity.json', import.meta.url).pathname).units;
-function parityOf(claimed: string[]): string[] {
+// Synthetic manifests claim a language by a test in the first root of that implementation (contracts/implementations.json).
+const implementations = readImplementations(new URL('../../contracts/implementations.json', import.meta.url).pathname);
+function testsOf(claimed: string[]): string[] {
   return claimed.map(language => {
-    if (!fixtureLanguages.includes(language)) throw new Error(`unknown fixture language ${language}`);
-    return `fixture-${language}`;
+    const first = implementations.find(entry => entry.name === language)?.roots[0];
+    if (first === undefined) throw new Error(`unknown fixture language ${language}`);
+    return `${first}/fixture`;
   });
 }
 const checkSampleCoverage = (manifest: Manifest, reports: Record<string, Report[] | undefined>): string[] =>
-  checkCoverage(manifest, reports, fixtureParity);
+  checkCoverage(manifest, reports);
 /** The sample contract of these cases: one feature, every client owning it, and one Go dependent. */
-type SampleManifest = { features: [Feature & { parity: string[]; coverage: Coverage & { owners: Record<string, Owner>; dependents: Dependent[] } }] };
+type SampleManifest = { features: [Feature & { tests: string[]; coverage: Coverage & { owners: Record<string, Owner>; dependents: Dependent[] } }] };
 /** The execution reports of the sample contract, by item key. */
 type Reports = Record<string, Report[]>;
 
@@ -52,7 +48,7 @@ function defined<T>(value: T | undefined): T {
 
 // sampleManifest is the manifest of one independent Go feature whose only test is the owner file.
 function sampleManifest(owner: string): SampleManifest {
-  return { features: [{ id: 'sample', status: 'partial', parity: parityOf(['go']),
+  return { features: [{ id: 'sample', status: 'partial', tests: testsOf(['go']),
     coverage: { kind: 'independent', cases: ['first'],
       owners: { go: { part: 'packages/go/sample', tests: [owner],
         commands: { none: [{ runner: 'go', test: owner, cases: ['first'], symbol: 'TestFirst' }] } } },
@@ -127,26 +123,6 @@ caseTest('PHP extension catalog, schema and statement event coverage use native 
     assert.ok(phpOwner.tests.includes(command.test), `PHP statement_events runs undeclared test ${command.test}`);
     assert.ok(command.test.startsWith('packages/php/tests/'),
       `PHP statement_events runs outside the PHP package: ${command.test}`);
-  }
-  const catalog = manifest.features.find(item => item.id === 'catalog_connection');
-  assert.ok(catalog);
-  // The read and row-mutation units were dropped: their cases are bound by the per-database catalog_connection units.
-  const catalogRequirements: Record<string, string[]> = {
-    'catalog_connection-mysql': ['SCH-6a', 'INT-113', 'INT-114', 'INT-103', 'INT-115', 'INT-109', 'INT-123', 'DBS-113', 'SCH-3'],
-    'catalog_connection-postgres': ['SCH-6a', 'INT-113', 'INT-114', 'INT-103', 'INT-115', 'INT-109', 'INT-123', 'DBS-113', 'SCH-3'],
-    'catalog_connection-sqlite': ['SCH-6a', 'INT-113', 'INT-114', 'INT-103', 'INT-115', 'INT-109', 'INT-123', 'DBS-113', 'SCH-3'],
-  };
-  for (const [id, requirements] of Object.entries(catalogRequirements)) {
-    assert.ok(catalog.parity.includes(id), `catalog_connection omits ${id}`);
-    const unit: ParityConfig['units'][number] | undefined = parityUnits.find(item => item.id === id);
-    assert.ok(unit, `config/parity.json omits ${id}`);
-    assert.ok(unit.requirements, `config/parity.json omits requirements for ${id}`);
-    for (const requirement of requirements) assert.ok(unit.requirements.includes(requirement), `${id} omits ${requirement}`);
-    assert.ok(unit.bindings, `config/parity.json omits bindings for ${id}`);
-    assert.deepEqual(
-      [...new Set(unit.bindings.map(binding => binding.implementation))].toSorted(),
-      [...languages].toSorted(),
-    );
   }
 });
 
@@ -382,7 +358,7 @@ caseTest('TypeScript behavior tests stay in their client directory', COMPUTE, as
 
 function contract(kind = 'database'): SampleManifest {
   return { features: [{ id: 'sample', status: 'implemented',
-    parity: parityOf(languages),
+    tests: testsOf(languages),
     coverage: { kind, cases: ['first', 'second'],
       owners: Object.fromEntries(languages.map(language => {
         const test = ownerTests[language] ?? '';
@@ -406,12 +382,12 @@ function selectedSample(manifest: SampleManifest, parts: string[]): Manifest {
       : {};
     owners[language] ??= { part: testDirectoryOf(language), tests: [test], commands };
   }
-  feature.parity = parityOf(languages);
+  feature.tests = testsOf(languages);
   return selectFeatures(manifest, feature.id, parts);
 }
 
 function runSelected(manifest: SampleManifest, root: string, parts: string[]): Promise<string[]> {
-  return executeCoverage(selectedSample(manifest, parts), root, NATIVE_DEADLINE, fixtureParity);
+  return executeCoverage(selectedSample(manifest, parts), root, NATIVE_DEADLINE);
 }
 
 function negativeSelected(manifest: SampleManifest, root: string, parts: string[]) {
@@ -463,7 +439,7 @@ function tapFailures(lines: string[]): string[] {
 
 // negative returns the execution errors and the TAP failure groups of a negative sample; the calling test checks the exact text.
 async function negative(manifest: Manifest, root: string): Promise<{ errors: string[]; failures: string[] }> {
-  const { value, lines } = await quietly(() => executeCoverage(manifest, root, NATIVE_DEADLINE, fixtureParity));
+  const { value, lines } = await quietly(() => executeCoverage(manifest, root, NATIVE_DEADLINE));
   return { errors: value.toSorted(), failures: tapFailures(lines) };
 }
 
@@ -479,17 +455,17 @@ caseTest('a shared Markdown session case requires an owner for every client', CO
   feature.id = 'markdown-session';
   feature.status = 'partial';
   feature.coverage.cases = ['markdown_session'];
-  feature.parity = parityOf(languages.filter(language => language !== 'python'));
+  feature.tests = testsOf(languages.filter(language => language !== 'python'));
   delete feature.coverage.owners.python;
   assert.match(checkSampleCoverage(manifest, {}).join('\n'), /markdown-session\/owner\/python: missing owning client part/);
 });
 
-caseTest('an implemented feature must claim every client language in its parity units', COMPUTE, () => {
+caseTest('an implemented feature must claim every client language by its tests', COMPUTE, () => {
   assert.match(mutation((m, r) => {
-    m.features[0].parity = parityOf(languages.filter(language => language !== 'python'));
+    m.features[0].tests = testsOf(languages.filter(language => language !== 'python'));
     delete m.features[0].coverage.owners.python;
     for (const database of databases) delete r[`sample/owner/python/${database}`];
-  }), /sample: implemented feature lacks a parity unit in a client language/);
+  }), /sample: implemented feature has no test in a client language/);
 });
 
 // Database requirements use the files explicitly assigned to each database command; shared native files may serve several databases.
@@ -567,7 +543,7 @@ caseTest('missing owner, dependent, database, case, and a second run are RED', C
 
 // Requirements: FCV-5.
 caseTest('identity, result and unknown report mutations are RED', COMPUTE, () => {
-  assert.match(mutation((m) => { m.features[0].parity = parityOf(languages.filter(language => language !== 'rust')); }), /lacks a parity unit in a client language/);
+  assert.match(mutation((m) => { m.features[0].tests = testsOf(languages.filter(language => language !== 'rust')); }), /has no test in a client language/);
   assert.match(mutation((_, r) => { defined(defined(r['sample/owner/go/mysql'])[0]).part = 'packages/php'; }), /report identity differs/);
   assert.match(mutation((_, r) => { defined(defined(r['sample/dependent/service/go/mysql'])[0]).role = 'owner'; }), /report identity differs/);
   assert.match(mutation((_, r) => { defined(defined(r['sample/dependent/service/go/mysql'])[0]).tests = [defined(ownerTests.go)]; }), /executed test paths differ/);
@@ -585,7 +561,7 @@ caseTest('owner and dependent entries execute once from their own parts', PROCES
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-')));
   const owner = 'packages/ts/tests/owner.mjs';
   const dependent = 'packages/ts/use/dependent.mjs';
-  const manifest: SampleManifest = { features: [{ id: 'sample', status: 'partial', parity: parityOf(['typescript']),
+  const manifest: SampleManifest = { features: [{ id: 'sample', status: 'partial', tests: testsOf(['typescript']),
     coverage: { kind: 'independent', cases: ['first', 'second'],
       owners: { typescript: { part: 'packages/ts', tests: [owner],
         commands: { none: [{ runner: 'node', test: owner, cases: ['first', 'second'] }] } } },
@@ -738,7 +714,7 @@ caseTest('PHP coverage cases use their explicitly declared method symbols', PROC
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-php-symbols-')));
   const file = 'packages/php/tests/OwnerTest.php';
   const method = 'testSchemaInstallExisting';
-  const manifest: SampleManifest = { features: [{ id: 'sample', status: 'partial', parity: parityOf(['php']),
+  const manifest: SampleManifest = { features: [{ id: 'sample', status: 'partial', tests: testsOf(['php']),
     coverage: { kind: 'independent', cases: ['schema_install_existing'], dependents: [], owners: {
       php: { part: 'packages/php/tests', tests: [file], commands: { none: [{ runner: 'php', test: file,
         cases: ['schema_install_existing'], symbol: method }] } },
@@ -802,7 +778,7 @@ caseTest('coverage runs without cargo proceed while the Rust test build runs', P
   const fifo = join(root, 'build-gate');
   const written = join(root, 'written');
   const cargoArguments = join(root, 'cargo-arguments');
-  const manifest: SampleManifest = { features: [{ id: 'sample', status: 'partial', parity: parityOf(['rust', 'php']),
+  const manifest: SampleManifest = { features: [{ id: 'sample', status: 'partial', tests: testsOf(['rust', 'php']),
     coverage: { kind: 'independent', cases: ['first'], dependents: [], owners: {
       rust: { part: 'packages/rust/orm', tests: [rustFile], commands: { none: [{ runner: 'cargo', test: rustFile, cases: ['first'] }] } },
       php: { part: 'packages/php/tests', tests: [phpFile], commands: { none: [{ runner: 'php', test: phpFile, cases: ['first'], symbol: 'testFirst' }] } },
@@ -849,7 +825,7 @@ caseTest('invented JSON success from an arbitrary command is not execution evide
   // @ts-expect-error: a shell command in place of native test commands is the invalid contract under test.
   defined(defined(manifest.features[0].coverage.dependents[0]).commands).none =
     `node -e 'process.stdout.write(${JSON.stringify(report('dependent', 'packages/go/model', [dependentTest], 'go', ['first'], 'service'))})'`;
-  assert.match((await executeCoverage(manifest, new URL('../..', import.meta.url).pathname, NATIVE_DEADLINE, fixtureParity)).join('\n'),
+  assert.match((await executeCoverage(manifest, new URL('../..', import.meta.url).pathname, NATIVE_DEADLINE)).join('\n'),
     /invalid test command/);
 });
 
@@ -862,7 +838,7 @@ caseTest('a run is the exit status of its entry and the lines it wrote', PROCESS
   const fileOf = (database: string) => `packages/ts/tests/${database}.mjs`;
   const recipe = 'contracts/fixtures/sample/sample.json';
   const manifest = (): SampleManifest => ({
-    features: [{ id: 'sample', status: 'partial', parity: parityOf(['typescript']),
+    features: [{ id: 'sample', status: 'partial', tests: testsOf(['typescript']),
       coverage: { kind: 'database', cases: ['first'], dependents: [], owners: {
         typescript: { part: 'packages/ts', tests: databases.map(fileOf), commands: Object.fromEntries(databases.map(database =>
           [database, [{ runner: 'node', test: fileOf(database), cases: ['first'], recipe }]])) },
@@ -913,7 +889,7 @@ caseTest('Go, PHP, and Rust native cases execute through their owning files', PR
       'assert_eq!(std::env::var("CARGO_MANIFEST_DIR").as_deref(), Ok(env!("CARGO_MANIFEST_DIR"))); ' +
       'std::fs::write(std::env::var_os("ORM_RECIPE_RESULTS").unwrap(), "CASE first PASS\\n").unwrap(); } }\n');
     for (const item of cases) {
-      const manifest: SampleManifest = { features: [{ id: 'sample', status: 'partial', parity: parityOf([item.language]),
+      const manifest: SampleManifest = { features: [{ id: 'sample', status: 'partial', tests: testsOf([item.language]),
         coverage: { kind: 'independent', cases: ['first'], dependents: [], owners: {
           [item.language]: { part: item.part, tests: [item.file], commands: {
             none: [{ runner: item.runner, test: item.file, cases: ['first'],
@@ -931,7 +907,7 @@ caseTest('Go, PHP, and Rust native cases execute through their owning files', PR
     // is not execution evidence.
     const unused = 'packages/rust/orm/src/unused.rs';
     await writeFile(join(root, unused), '#[test] fn first() {}\n');
-    const uncompiled: SampleManifest = { features: [{ id: 'sample', status: 'partial', parity: parityOf(['rust']),
+    const uncompiled: SampleManifest = { features: [{ id: 'sample', status: 'partial', tests: testsOf(['rust']),
       coverage: { kind: 'independent', cases: ['first'], dependents: [], owners: {
         rust: { part: 'packages/rust/orm', tests: [unused], commands: { none: [{ runner: 'cargo', test: unused, cases: ['first'] }] } },
       } } }] };
@@ -939,7 +915,7 @@ caseTest('Go, PHP, and Rust native cases execute through their owning files', PR
     // A skipped Go test exits 0 and writes no line, so it is no pass.
     const go = defined(cases[0]);
     await writeFile(join(root, go.file), 'package orm\nimport "testing"\nfunc TestFirst(t *testing.T) { t.Skip("no executed pass") }\n');
-    const skipped: SampleManifest = { features: [{ id: 'sample', status: 'partial', parity: parityOf(['go']),
+    const skipped: SampleManifest = { features: [{ id: 'sample', status: 'partial', tests: testsOf(['go']),
       coverage: { kind: 'independent', cases: ['first'], dependents: [], owners: {
         go: { part: go.part, tests: [go.file], commands: { none: [{ runner: 'go', test: go.file, cases: ['first'], symbol: go.symbol ?? '' }] } },
       } } }] };
@@ -962,7 +938,7 @@ caseTest('Python cases execute on the interpreter of ORM_PYTHON', PROCESS, async
   const owner = 'packages/python/tests/owner.py';
   const interpreter = join(root, 'bin/python');
   const previous = process.env.ORM_PYTHON;
-  const manifest: SampleManifest = { features: [{ id: 'sample', status: 'partial', parity: parityOf(['python']),
+  const manifest: SampleManifest = { features: [{ id: 'sample', status: 'partial', tests: testsOf(['python']),
     coverage: { kind: 'independent', cases: ['first'], dependents: [],
       owners: { python: { part: 'packages/python/tests', tests: [owner],
         commands: { none: [{ runner: 'python', test: owner, cases: ['first'] }] } } } } }] };
@@ -991,7 +967,7 @@ caseTest('Python cases execute on the interpreter of ORM_PYTHON', PROCESS, async
 caseTest('every native run reports its command and TAP result', PROCESS, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-report-')));
   const owner = 'packages/ts/tests/owner.mjs';
-  const manifest: SampleManifest = { features: [{ id: 'sample', status: 'partial', parity: parityOf(['typescript']),
+  const manifest: SampleManifest = { features: [{ id: 'sample', status: 'partial', tests: testsOf(['typescript']),
     coverage: { kind: 'independent', cases: ['first'], dependents: [],
       owners: { typescript: { part: 'packages/ts', tests: [owner],
         commands: { none: [{ runner: 'node', test: owner, cases: ['first'] }] } } } } }] };

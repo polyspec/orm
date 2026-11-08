@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 import { parseRecipeCases, type RecipeCases } from '../json/formats.mts';
 import { parseJson, readJsonFile } from '../json/schema.mts';
 
-/** A language of the clients (the declared implementations of config/parity.json). */
+/** A language of the clients (the implementations of contracts/implementations.json). */
 export type Language = 'go' | 'php' | 'php-extension' | 'rust' | 'typescript' | 'python';
 /** A verification command of a feature. */
 export type Verification = { id: string; command: string; shard: string; inputs?: string[]; cwd?: string; environment?: 'linux-runner' };
@@ -25,7 +25,7 @@ export type VectorContract = { source: string; required_databases: string[]; min
 export type ManifestFeature = {
   id: string; title: string; title_ko: string; status: 'planned' | 'partial' | 'implemented'; description: string; description_ko: string;
   inputs: { type: string; fields: string[] }; outputs: { type: string; fields: string[] }; state: string[]; errors: { code: string; when: string }[];
-  parity: string[]; fixtures: string[]; tests: string[]; docs: string[]; verification: Verification[];
+  fixtures: string[]; tests: string[]; docs: string[]; verification: Verification[];
   coverage?: Coverage; public_constraints?: string[]; vector_contract?: VectorContract;
 };
 /** A helper that several features use. */

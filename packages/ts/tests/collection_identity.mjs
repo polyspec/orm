@@ -32,7 +32,7 @@ function compositeValueOf(entry) {
   return valueOf(entry, true);
 }
 
-// Each case is a node:test test, the form that the parity runner reads (tests/testcase.mts, caseTest).
+// Each case is a node:test test (tests/testcase.mts, caseTest).
 // Requirements: PRT-35.
 caseTest('collection-key/composite-typed-components', COMPUTE, () => {
   const seen = new Map();

@@ -154,23 +154,23 @@ func TestExtensionContractRejectsDrift(t *testing.T) {
 	}
 }
 
-// The language set of the contracts is the declared implementations of config/parity.json, in their order.
+// The language set of the contracts is the implementations of contracts/implementations.json, in their order.
 func TestLanguagesAreTheDeclaredImplementations(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "config", "parity.json"))
+	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "contracts", "implementations.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	var parity struct {
+	var declared struct {
 		Implementations []struct {
 			Name string `json:"name"`
 		} `json:"implementations"`
 	}
-	if err := json.Unmarshal(raw, &parity); err != nil {
+	if err := json.Unmarshal(raw, &declared); err != nil {
 		t.Fatal(err)
 	}
 	var want []string
-	for _, implementation := range parity.Implementations {
+	for _, implementation := range declared.Implementations {
 		if implementation.Name == "php-extension" {
 			continue
 		}

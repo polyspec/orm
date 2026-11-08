@@ -10,7 +10,6 @@ import * as ownerSelection from './owners.mts';
 import type { CheckInputs, Owner, TargetDeclaration } from './owners.mts';
 import { parseJson, refusedPaths } from '../json/schema.mts';
 import { parseFeatures, readFeatures } from './manifest.mts';
-import { readParityConfig } from '../json/formats.mts';
 import { alternatives, checkCommand, expand, featureCommands, makefileCommands, memoryTree, readMakefile, readTree, staleNames } from './test-names.mts';
 
 const { CHECK_INPUTS_SCHEMA, checkInputErrors, makeArguments, manifestChanges, manifestInputErrors, pathScopeErrors, readCheckInputs, selectHelpers, selectOwners, selectTargets, untestedPaths } = ownerSelection;
@@ -192,7 +191,7 @@ caseTest('every target of CHECK_TARGETS declares inputs that match tracked files
   assert.ok(checkTargets.includes('catalog-described-temporal-go-check'), 'CHECK_TARGETS includes appended owner targets');
   const tracked = (await import('node:child_process')).execFileSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean);
   assert.deepEqual(checkInputErrors(inputs, checkTargets, tracked), []);
-  assert.deepEqual(checkInputErrors({ a: { scope: 'owner', needs: [], inputs: ['docs/**'] }, 'parity-api-check': { scope: 'suite', needs: [] } }, ['a'], ['docs/x.md']), []);
+  assert.deepEqual(checkInputErrors({ a: { scope: 'owner', needs: [], inputs: ['docs/**'] } }, ['a'], ['docs/x.md']), []);
   assert.deepEqual(checkInputErrors({ a: { scope: 'owner', needs: [], inputs: ['docs/**'] }, b: { scope: 'owner', needs: [], inputs: ['nothing/**'] } }, ['a', 'c'], ['docs/x.md']), [
     'contracts/check-inputs.json declares no scope of c of CHECK_TARGETS',
     'contracts/check-inputs.json declares b, which is not in CHECK_TARGETS',
@@ -274,7 +273,7 @@ caseTest('the schema of contracts/check-inputs.json refuses a target or path out
 // provides (scripts/check/ci-setup.mts).
 caseTest('every target declares the setup steps it needs', 5000, async () => {
   assert.deepEqual(checkInputErrors({ b: { scope: 'suite', needs: ['servers'] }, c: { scope: 'suite', needs: ['databases'] } }, ['b', 'c'], []), [
-    'contracts/check-inputs.json: b needs servers, which no setup step provides; the needs are databases, mysql-privilege-server, node-modules, go, go-lease, interfaces-typescript, parity-symbols, rust, php-min, php, composer, php-extension-tools, server-programs, python, flowmark',
+    'contracts/check-inputs.json: b needs servers, which no setup step provides; the needs are databases, mysql-privilege-server, node-modules, go, go-lease, interfaces-typescript, rust, php-min, php, composer, php-extension-tools, server-programs, python, flowmark',
   ]);
 });
 
@@ -445,13 +444,12 @@ caseTest('a Makefile recipe is read after make expands it', 5000, () => {
     [[], ['go test: -run TestGone in packages/go/orm']]);
 });
 
-// A verification, a Makefile recipe, a parity binding and a check input name only what the tree holds (FCV-7).
-caseTest('every declared command, binding and input names a test of the tree', 120_000, async () => {
+// A verification, a Makefile recipe and a check input name only what the tree holds (FCV-7).
+caseTest('every declared command and input names a test of the tree', 120_000, async () => {
   const read = async (path: string) => readFile(join(root, path), 'utf8');
   const stale = staleNames(readTree(root), {
     makefile: await read('Makefile'),
     features: parseFeatures(await read('contracts/features.json'), 'contracts/features.json'),
-    parity: readParityConfig(join(root, 'config/parity.json')),
     checkInputs: parseJson<CheckInputs>(await read('contracts/check-inputs.json'), CHECK_INPUTS_SCHEMA, 'contracts/check-inputs.json'),
   });
   assert.deepEqual([...stale].map(([name, places]) => `${name} <- ${places.join(', ')}`).sort(), []);

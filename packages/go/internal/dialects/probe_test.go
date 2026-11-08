@@ -130,11 +130,11 @@ func readDBSpecFile(t *testing.T, name string) []byte {
 	return raw
 }
 
-// TestParityDeclaresImplementations checks that config/parity.json declares the
-// implementations that the physical tests and the contract tests run.
-func TestParityDeclaresImplementations(t *testing.T) {
+// TestImplementationsAreDeclared checks that contracts/implementations.json
+// declares the implementations that the physical tests and the contract tests run.
+func TestImplementationsAreDeclared(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	if len(testcase.ParityImplementations(repoRoot)) == 0 {
-		t.Fatal("config/parity.json declares no implementation")
+	if len(testcase.Implementations(repoRoot)) == 0 {
+		t.Fatal("contracts/implementations.json declares no implementation")
 	}
 }

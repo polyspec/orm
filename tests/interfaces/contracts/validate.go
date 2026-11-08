@@ -23,7 +23,7 @@ func compact(s string) string {
 var languages = implementationLanguages()
 
 func implementationLanguages() []string {
-	languages := testcase.ParityImplementations(filepath.Join("..", "..", ".."))
+	languages := testcase.Implementations(filepath.Join("..", "..", ".."))
 	return slices.DeleteFunc(languages, func(language string) bool { return language == "php-extension" })
 }
 

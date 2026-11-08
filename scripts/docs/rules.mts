@@ -6,6 +6,7 @@ import { tablesIn } from './tables.mts';
 import { COMPUTE, sections } from '../../tests/testcase.mts';
 import { kitCopies, kitOwnedPaths } from '../repo/kit-copies.mts';
 import { readJsonFile } from '../json/schema.mts';
+import { readImplementations } from '../json/formats.mts';
 import { errorCode } from '../../tests/errors.mts';
 import { filterRuleFailures, onlyRuleFromArgs } from './rules-filter.mts';
 import { countMismatches, declaredClientAliases, incompleteClientSets } from './implementation-count.mts';
@@ -132,24 +133,17 @@ for (const file of allDocs) {
   }
 }
 
-// The implementation count of the documents is the declared implementations of config/parity.json. A document that counts clients,
-// implementations, runners, planners or outputs in English or Korean states that number; history (CHANGELOG, the
+// The implementation count of the documents is the implementations of contracts/implementations.json. A document that counts
+// clients, implementations, runners, planners or outputs in English or Korean states that number; history (CHANGELOG, the
 // checklist) is not checked.
-type Parity = { implementations: { name: string }[] };
-const isImplementation = (value: unknown): value is Parity['implementations'][number] =>
-  typeof value === 'object' && value !== null && 'name' in value && typeof value.name === 'string';
-const isParity = (value: unknown): value is Parity =>
-  typeof value === 'object' && value !== null && 'implementations' in value && Array.isArray(value.implementations) && value.implementations.every(isImplementation);
-const parityData: unknown = JSON.parse(await readFile(path.join(root, 'config/parity.json'), 'utf8'));
-if (!isParity(parityData)) fail('docs.implementation-count', 'config/parity.json does not match { implementations: [{ name: string }] }');
-const clients = isParity(parityData) ? parityData.implementations.map(implementation => implementation.name) : [];
-if (clients.length === 0) fail('docs.implementation-count', 'config/parity.json declares no implementation');
+const clients = readImplementations(path.join(root, 'contracts/implementations.json')).map(implementation => implementation.name);
+if (clients.length === 0) fail('docs.implementation-count', 'contracts/implementations.json declares no implementation');
 for (const file of [...sources, ...translations.values()]) {
   if (file.includes(`${path.sep}docs${path.sep}plans${path.sep}`) || path.basename(file).startsWith('CHANGELOG')) continue;
   const text = prose(await readFile(file, 'utf8'));
   const isKorean = file.endsWith('.ko.md');
   for (const phrase of countMismatches(text, isKorean, clients.length)) {
-    fail('docs.implementation-count', `${relative(file)} counts ${JSON.stringify(phrase)}; config/parity.json declares ${clients.length} clients (${clients.join(', ')})`);
+    fail('docs.implementation-count', `${relative(file)} counts ${JSON.stringify(phrase)}; contracts/implementations.json declares ${clients.length} clients (${clients.join(', ')})`);
   }
 }
 
@@ -162,7 +156,7 @@ for (const file of ['docs/spec/protocol.md', 'docs/spec/protocol.ko.md']) {
   const rows = tablesIn(section).flatMap(table => [table.header, ...table.rows]).map(cells => cells[0] ?? '');
   for (const client of clients) {
     const name = clientNames[client] ?? client;
-    if (!rows.includes(name)) fail('docs.implementation-count', `${file} section 4 has no ${name} row; config/parity.json declares ${client}`);
+    if (!rows.includes(name)) fail('docs.implementation-count', `${file} section 4 has no ${name} row; contracts/implementations.json declares ${client}`);
   }
 }
 

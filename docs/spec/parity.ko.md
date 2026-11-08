@@ -1,10 +1,10 @@
 <!-- doc-id: parity-spec -->
-<!-- source-sha256: efad5f096b272ef89628f0bb2a56979aeb83d79180ec6d549f612753b6ba652f -->
+<!-- source-sha256: a244d04c71111c10b0e310ad2d9d999ff34742156df9ddb56d03eb1e2745fec4 -->
 # 언어 parity
 
 ## 구현 내부 test
 
-구현 내부 test는 그 구현의 구조나 helper를 검사하며 공유 contract 동작을 검사하지 않으므로 parity unit이 아니다. 해당 경로와 이유를 `config/parity.json`의 구현별 `internal` 목록에 선언한다. feature-check inventory는 그 선언을 따르므로 이 test를 공유 feature에 연결할 필요가 없다.
+구현 내부 test는 그 구현의 구조나 helper를 검사하며 공유 contract 동작을 검사하지 않는다. 해당 경로와 이유를 `contracts/implementations.json`의 구현별 `internal` 목록에 선언한다. feature-check inventory는 그 선언을 따르므로 이 test를 공유 feature에 연결할 필요가 없고, 이 test도 자기 runtime의 target에서 실행된다.
 
 PHP의 SQLite case는 sqlite 경로가 MySQL dialect class를 load하지 않는다는 것만 증명한다. method 호출과 상수에 대해서는 아무것도 증명하지 않는다.
 

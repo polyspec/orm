@@ -30,23 +30,11 @@ export const parseNpmLock = (text: string, source: string): NpmLock => parseJson
 export const readComposer = (file: string): ComposerManifest => readJsonFile<ComposerManifest>(file, schema('composer'));
 /** parseComposer reads the text of a composer.json; source names it in the errors. */
 export const parseComposer = (text: string, source: string): ComposerManifest => parseJson<ComposerManifest>(text, schema('composer'), source);
-/** The fields of config/parity.json that the scripts read: the implementations and the units. */
-export type ParityConfig = {
-  testPatterns?: { runner: string; globs: string[] }[];
-  suites?: string[];
-  implementations: {
-    name: string;
-    runner: string;
-    roots: string[];
-    tests?: string[];
-    support?: string[];
-    errors?: { file?: string; pattern?: string };
-    internal?: { glob: string; reason: string }[];
-  }[];
-  units: { id: string; kind?: string; file?: string; requirements?: string[]; owner?: { kind?: string; artifact?: string; package?: string; parts?: string[] }; bindings?: { implementation: string; test?: string; id?: string; symbol?: string; command?: string[] }[]; symbols?: { implementation?: string; symbol?: string }[] }[];
-};
-/** readParityConfig reads config/parity.json, the one source of the parity units. */
-export const readParityConfig = (file: string): ParityConfig => readJsonFile<ParityConfig>(file, schema('parity'));
+/** contracts/implementations.json: the implementations of orm, in their order. */
+/** One implementation of contracts/implementations.json: its roots, the globs of its test files, its support files and its internal tests. */
+export type Implementation = { name: string; roots: string[]; tests: string[]; support: string[]; internal: { glob: string; reason: string }[] };
+export type Implementations = { comment: string; implementations: Implementation[] };
+export const readImplementations = (file: string): Implementation[] => readJsonFile<Implementations>(file, schema('implementations')).implementations;
 /** readComposerPackages reads a composer.lock or a vendor/composer/installed.json. */
 export const readComposerPackages = (file: string): ComposerPackages => readJsonFile<ComposerPackages>(file, schema('composer-lock'));
 /** parseComposerPackages reads the text of a composer.lock; source names it in the errors. */

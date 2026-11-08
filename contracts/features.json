@@ -54,42 +54,6 @@
           "when": "the server ended the connection (a killed session, a restart, an idle limit) or the connection broke; the statement fails with this code and is not sent again"
         }
       ],
-      "parity": [
-        "connection_pool-mysql",
-        "connection_pool-postgres",
-        "connection_pool-sqlite",
-        "connection_pool-markdown",
-        "coverage-dsn-connection",
-        "model-construction-connection-rust",
-        "model-construction-connection-typescript",
-        "model-construction-connection-python",
-        "php-public-connection-call",
-        "php-loaded-row-short-connection-call",
-        "rust-public-connection-call",
-        "typescript-public-connection-call",
-        "sqlite-minimum-driver-version",
-        "php-python-session-initialization",
-        "php-extension-pgsql-adapter-statement-sqlstate",
-        "parameter-slot-validation-vectors",
-        "markdown-message-vectors",
-        "py-test-placeholders",
-        "pool-idle-server-end",
-        "dsn_connection-mysql",
-        "dsn_connection-postgres",
-        "dsn_connection-sqlite",
-        "dsn-reject-checked",
-        "dsn-reject-parameters",
-        "dsn-reject-php-pool",
-        "connection-driver-from-dsn",
-        "connection-sqlite-crashed-holder",
-        "model_socket-mysql",
-        "connection-mysql-tls-requires-hostname-tcp",
-        "connection-sqlite-absolute-path",
-        "connection-dsn-supported-parameters",
-        "connection-dsn-utc",
-        "native-markdown-connect-refused",
-        "dsn-reject"
-      ],
       "fixtures": [
         "packages/go/orm/test_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
@@ -858,35 +822,6 @@
           "code": "EMPTY_IN",
           "when": "an IN list is empty"
         }
-      ],
-      "parity": [
-        "coverage-model-query-rows",
-        "coverage-model-scalar-subquery-column",
-        "column-function-generated-alias",
-        "go-model-chain-argument-types",
-        "chain-null-on-a-non-null-column",
-        "page-cache-root-limit-values",
-        "plan-cache-in-list-shapes-share-ten-bucketed-keys",
-        "group-rows-database-query-preserves-values",
-        "remove-columns-keeps-primary-foreign-and-added",
-        "go-model-constructor-api",
-        "php-internal-model-conditions",
-        "collection-null-identity-from-physical-row",
-        "php-extension-collection-surface",
-        "php-extension-model-date-read-decode-error",
-        "model_queries-mysql",
-        "model_queries-postgres",
-        "model_queries-sqlite",
-        "dsl-dynamic",
-        "collection-recipe",
-        "group-row-driver-cell-forms",
-        "added-column-safe-integer-typescript",
-        "model_queries_chain-mysql",
-        "model_queries_chain-postgres",
-        "model_queries_chain-sqlite",
-        "go-time-setter-records-the-first-bad-text",
-        "dsl",
-        "plan-cache-composite-parameter-order"
       ],
       "fixtures": [
         "tests/conformance/vectors.json",
@@ -1755,26 +1690,6 @@
           "when": "restore names a key that no row has"
         }
       ],
-      "parity": [
-        "coverage-model-write-cycle",
-        "php-extension-native-write-layer",
-        "ts-styled-value-checks-setter",
-        "ts-styled-value-checks-output",
-        "ts-styled-value-checks-encoding",
-        "model_writes-mysql",
-        "model_writes-postgres",
-        "model_writes-sqlite",
-        "markdown-message-dynamic-vectors",
-        "markdown-message-untyped-null-vectors",
-        "markdown-message-python-null-vectors",
-        "raw_text-mysql",
-        "raw_text-postgres",
-        "raw_text-sqlite",
-        "raw_text-markdown",
-        "model_writes_chain-mysql",
-        "model_writes_chain-postgres",
-        "model_writes_chain-sqlite"
-      ],
       "fixtures": [
         "tests/conformance/vectors.json",
         "contracts/fixtures/decimal_model.json",
@@ -2405,26 +2320,6 @@
           "code": "FAULT",
           "when": "a test fault armed through the test entry point reported the rollback of a transaction whose callback failed as failed after the rollback ran; it is the rollback error of a ROLLBACK error"
         }
-      ],
-      "parity": [
-        "transactions-mysql",
-        "transactions-postgres",
-        "transactions-sqlite",
-        "transaction-failure-rollback",
-        "php-internal-rollback-rollback-fault",
-        "transaction-failure-savepoint-end",
-        "transaction-control-methods-are-private",
-        "sqlite-locked-is-driver",
-        "php-extension-failed-statement-closes-cursor",
-        "transaction-execution-flow-context",
-        "transaction-flow-overlap-rejected",
-        "transaction-audit-lazy-fake-pdo",
-        "transaction-send-savepoint",
-        "utils-mysql",
-        "utils-postgres",
-        "utils-sqlite",
-        "connection-first-statement-lost",
-        "connection-cancelled-transaction-session-state"
       ],
       "fixtures": [
         "packages/php/tests/transaction_deadlock_child.php",
@@ -3164,11 +3059,6 @@
           "when": "a subscriber returned an error or threw; the error is its cause"
         }
       ],
-      "parity": [
-        "statement-events-server-transactions",
-        "coverage-statement-events-statement-events",
-        "statement-event-subscription-php-extension"
-      ],
       "fixtures": [
         "contracts/fixtures/statement_events/statement_events.dbs"
       ],
@@ -3483,30 +3373,6 @@
           "code": "SCHEMA_INVALID",
           "when": "a document of the set breaks a dbspec rule"
         }
-      ],
-      "parity": [
-        "generator",
-        "php-generator-scan-vector-in-both-php-modes",
-        "php-phpstan-finds-the-query-methods-in-both-php-modes",
-        "generated-external-model-reads-its-table",
-        "generated-typed-getter-public-column-api",
-        "generated-nonnull-styled-setter-rejects-sql-null",
-        "coverage-model-generation-model-generation-check",
-        "rust-model-generation-repeat-and-build-equivalence",
-        "dynamic-vs-scanned-model-chain-dispatch",
-        "static-model-chain-generation",
-        "dynamic-model-chain-resolution",
-        "dsl-50-operator-value-shapes",
-        "chain-null-on-a-non-null-column",
-        "generator-orders-sets-by-imports",
-        "runtime-model-default-select-set",
-        "generator-scan",
-        "runtime-model-entities",
-        "runtime-model-plans",
-        "php-generated-model-loads-only-the-used-classes",
-        "php-generated-model-reads-without-parsing",
-        "php-extension-generated-model-loads-only-the-used-classes",
-        "php-extension-generated-model-reads-without-parsing"
       ],
       "fixtures": [
         "packages/php/tests/coverage_cases.php",
@@ -3859,59 +3725,6 @@
           "code": "CONFIG",
           "when": "a database connection is invalid"
         }
-      ],
-      "parity": [
-        "schema-definition",
-        "coverage-schema-definition-dbspec-emit-round-trip",
-        "coverage-schema-definition-dbspec-manifest-hash",
-        "coverage-schema-definition-dbspec-render-ddl",
-        "coverage-schema-definition-dbspec-analyze-tokens",
-        "coverage-schema-definition-dbspec-format",
-        "coverage-schema-definition-dbspec-parse-positions",
-        "dbspec_introspect-mysql",
-        "dbspec_introspect-postgres",
-        "dbspec_introspect-sqlite",
-        "dbspec-introspect-silent-failure",
-        "dbspec-introspect-extension-method",
-        "php-dbspec-interface-compatibility",
-        "php-dbspec-apply-drift-error-fields",
-        "php-dbspec-rollback-drift-error-fields",
-        "dbspec-apply-cleanup-go",
-        "dbspec-apply-cleanup-typescript",
-        "dbspec-apply-cleanup-rust",
-        "dbspec-apply-cleanup-python",
-        "dbspec-apply-cleanup-php",
-        "dbspec-apply-cleanup-errors",
-        "dbspec-dialect-refusal",
-        "py-dbspec-apply-sqlite-lock-faults",
-        "dbspec-canonical",
-        "dbspec-introspect-messages",
-        "dbspec-document-and-table-limits",
-        "dbspec-total-column-count-limit",
-        "dbspec-foreign-key-count-limit",
-        "dbspec-stress-canonical-roundtrip",
-        "dbspec-limits",
-        "schema-set-load-external-documents",
-        "dbspec-plans",
-        "dbspec-plans-invalid",
-        "dbspec-plan-chains",
-        "dbspec-plan-parse",
-        "dbspec-plan-comparisons",
-        "dbspec-add-tables-steps",
-        "dbspec-rules",
-        "dbspec-files",
-        "dbspec-invalid",
-        "dbspec-limit-stop-no-tokens",
-        "dbspec-normalize",
-        "dbspec-positions",
-        "dbspec-document-byte-order-mark",
-        "dbspec-set-parse",
-        "dbspec-encoding-and-limit-natives",
-        "dbspec_apply-mysql",
-        "dbspec_apply-postgres",
-        "dbspec_apply-sqlite",
-        "py-dbspec-cases",
-        "dbspec-show-create-check-body"
       ],
       "fixtures": [
         "contracts/fixtures/bench/bench.dbs",
@@ -4672,16 +4485,6 @@
           "when": "addTablesAndColumns found a difference between the existing tables of the document set and the set other than a missing table, a missing column that is null or has a default or a missing index; a missing unique key is such a difference, because it can fail on the existing rows"
         }
       ],
-      "parity": [
-        "schema_install-mysql",
-        "schema_install-postgres",
-        "schema_install-sqlite",
-        "php-extension-privileges-native",
-        "schema-manifest-text-hash-mismatch-is-reported",
-        "coverage-schema-install-bench",
-        "schema-register-reuses-engine-per-hash",
-        "php-audit-external-sets-registration-order"
-      ],
       "fixtures": [
         "packages/php/tests/coverage_cases.php",
         "packages/ts/tests/coverage_case.mjs",
@@ -5160,14 +4963,6 @@
           "when": "a function name is unknown"
         }
       ],
-      "parity": [
-        "planner",
-        "ir-validate",
-        "dbspec-operator-validation-limits",
-        "planner_scalar_subquery_aggregate_types",
-        "request-manifest-hash-mismatch",
-        "column-function-factories-native"
-      ],
       "fixtures": [
         "contracts/fixtures/restore_keys.dbs",
         "contracts/fixtures/aes_chain.dbs",
@@ -5495,12 +5290,6 @@
           "when": "a tuple condition has the wrong width"
         }
       ],
-      "parity": [
-        "composite_keys-mysql",
-        "composite_keys-postgres",
-        "composite_keys-sqlite",
-        "php-extension-composite-relation-parent-slot"
-      ],
       "fixtures": [
         "tests/conformance/vectors.json",
         "contracts/fixtures/bench/bench.dbs",
@@ -5775,28 +5564,6 @@
           "code": "CODEC_UNSUPPORTED",
           "when": "a value cannot be decoded"
         }
-      ],
-      "parity": [
-        "coverage-authenticated-encryption-aes-envelope-decrypt",
-        "coverage-authenticated-encryption-aes-round-trip",
-        "coverage-authenticated-encryption-aes-tamper-rejected",
-        "coverage-authenticated-encryption-aes-wrong-key-rejected",
-        "coverage-authenticated-encryption-blind-index-vector",
-        "aes_rotation-mysql",
-        "aes_rotation-postgres",
-        "aes_rotation-sqlite",
-        "aes-read-row-without-version-cell",
-        "aes-plan-without-version-column",
-        "aes-rotation-row-without-aes-column",
-        "aes-rotation-status-operation",
-        "aes-json-column",
-        "codec-integer-beyond-i64",
-        "codec-bytes-value",
-        "codec-ordered-json-text-is-unicode",
-        "sqlite-text-in-numeric-column",
-        "aes-current-version-write",
-        "aes-rotation-all-columns",
-        "aes-rotation-stale-rows"
       ],
       "fixtures": [
         "tests/codec/codec.json",
@@ -6123,12 +5890,6 @@
           "when": "an IN list is empty"
         }
       ],
-      "parity": [
-        "parameter_chunking-mysql",
-        "parameter_chunking-postgres",
-        "parameter_chunking-sqlite",
-        "coverage-parameter-chunking-native"
-      ],
       "fixtures": [
         "contracts/fixtures/parameter_chunking/parameter_chunking.dbs",
         "packages/php/tests/coverage_cases.php",
@@ -6440,17 +6201,6 @@
           "code": "DRIVER",
           "when": "a trigger, such as an immutable or audit trigger, refuses a write, or the driver reports another error that the catalog does not list"
         }
-      ],
-      "parity": [
-        "client-query-relation",
-        "coverage-constraints-and-relations-immutable-write",
-        "coverage-constraints-and-relations-constraint-errors",
-        "constraints_and_relations-mysql",
-        "constraints_and_relations-postgres",
-        "constraints_and_relations-sqlite",
-        "immutable_write-mysql",
-        "immutable_write-postgres",
-        "immutable_write-sqlite"
       ],
       "fixtures": [
         "contracts/fixtures/bench/bench.dbs",
@@ -6946,14 +6696,6 @@
           "when": "a transaction has audit values on a connection without an audit source, a source or transaction value is not a column of the audit record table, the sets of the connection name no or several audit record tables, or an audited table is written outside a transaction with audit values"
         }
       ],
-      "parity": [
-        "audit_triggers-mysql",
-        "audit_triggers-postgres",
-        "audit_triggers-sqlite",
-        "external_audit-mysql",
-        "external_audit-postgres",
-        "external_audit-sqlite"
-      ],
       "fixtures": [
         "contracts/fixtures/audit_triggers/audit_triggers.json",
         "contracts/fixtures/audit_triggers/audit_triggers.dbs",
@@ -7374,29 +7116,6 @@
           "code": "interface-check",
           "when": "a language's extracted declarations differ from the manifest, or a component diagram differs from the manifest"
         }
-      ],
-      "parity": [
-        "public-interface",
-        "public-interface-signed",
-        "postgres-listen-notify",
-        "native-public-package-entry",
-        "code-catalog-matches-errors-yaml",
-        "rust-value-types-native-contract",
-        "rust-row-value-decoding-native-contract",
-        "go-plan-id-native-contract",
-        "python-native-codegen-entry",
-        "python-native-mysql-driver-conversion",
-        "python-native-postgres-loader",
-        "python-native-mysql-placeholder",
-        "python-native-postgres-placeholder",
-        "python-native-clock-source",
-        "python-native-dialect-hooks-contract",
-        "python-native-test-fault-entry",
-        "python-native-test-fault-state",
-        "php-go-text-serialization-native-contract",
-        "php-extension-go-text-serialization-native-contract",
-        "recipe-unknown-keys",
-        "markdown-message-raw-text-vectors"
       ],
       "fixtures": [
         "contracts/interfaces.json",
@@ -7819,14 +7538,6 @@
           "when": "a workload's client/native ratio exceeds its recorded bound; the runner prints the measured pair and the bound"
         }
       ],
-      "parity": [
-        "hot-path-performance-measurement-mysql",
-        "hot-path-performance-measurement-postgres",
-        "hot-path-performance-measurement-sqlite",
-        "performance_gate-mysql",
-        "performance_gate-postgres",
-        "performance_gate-sqlite"
-      ],
       "fixtures": [
         "contracts/performance-references.json",
         "docs/operations/perf-raw-go-native.txt",
@@ -8159,18 +7870,6 @@
           "code": "CONFIG",
           "when": "a runner cannot connect or another run holds the lock"
         }
-      ],
-      "parity": [
-        "conformance_verification-mysql",
-        "conformance_verification-postgres",
-        "conformance_verification-sqlite",
-        "conformance_verification_dynamic-mysql",
-        "conformance_verification_dynamic-postgres",
-        "conformance_verification_dynamic-sqlite",
-        "conformance_verification_dynamic-markdown",
-        "coverage-conformance-verification-conformance-vector",
-        "markdown-conformance",
-        "conformance-errors-refusal"
       ],
       "fixtures": [
         "tests/conformance/vectors.json",
@@ -8616,18 +8315,6 @@
           "when": "the DSN, the table reference or a limit is invalid, or a read-only statement writes"
         }
       ],
-      "parity": [
-        "catalog_connection-mysql",
-        "catalog_connection-postgres",
-        "catalog_connection-sqlite",
-        "catalog_connection-sqlite-only",
-        "catalog_connection-sqlite-only-markdown",
-        "catalog-temporal-native-default-precision",
-        "catalog-row-baseline-compares-exact-values",
-        "catalog-table-page-prepared-columns-differ-from-the-descriptor",
-        "php-catalog-mysql-holds-one-connection",
-        "php-extension-catalog-mysql-holds-one-connection"
-      ],
       "fixtures": [
         "packages/rust/tests/tests/common/mod.rs"
       ],
@@ -9065,21 +8752,6 @@
           "when": "the request the hook changed is invalid, such as a parameter index outside the parameters; no statement runs"
         }
       ],
-      "parity": [
-        "coverage-request-hook-invalid-param",
-        "coverage-request-hook-read-filter",
-        "request-hook-reads-params",
-        "coverage-request-hook-relation-scope",
-        "coverage-request-hook-restore-hook-set-key",
-        "coverage-request-hook-restore-no-key",
-        "coverage-request-hook-restore-rewritten-key",
-        "coverage-request-hook-restore-rewritten-key-set-scope",
-        "coverage-request-hook-without-hook",
-        "request_hook-mysql",
-        "request_hook-postgres",
-        "request_hook-sqlite",
-        "request-hook-root-is-the-connection"
-      ],
       "fixtures": [
         "contracts/fixtures/request_hook/request_hook.dbs",
         "packages/ts/tests/request_hook_run.mjs",
@@ -9416,15 +9088,6 @@
           "code": "OPERATOR_NOT_ALLOWED",
           "when": "the SQLite dialect receives a full-text predicate; rejection occurs before any query event"
         }
-      ],
-      "parity": [
-        "complex_query-mysql",
-        "complex_query-postgres",
-        "complex_query-sqlite",
-        "fulltext-search-recipe-mysql",
-        "fulltext-search-recipe-postgres",
-        "fulltext-search-recipe-sqlite",
-        "python-fulltext-generated-method"
       ],
       "fixtures": [
         "contracts/fixtures/complex_query/complex_query.dbs",
@@ -9764,14 +9427,6 @@
           "code": "CONFIG",
           "when": "the statement is not text, or the frame is used after its transaction ended"
         }
-      ],
-      "parity": [
-        "statement-runner-python-active-frame",
-        "statement-runner-frame-after-its-transaction-ended",
-        "statement-runner-non-text-statement",
-        "statement_runner-mysql",
-        "statement_runner-postgres",
-        "statement_runner-sqlite"
       ],
       "fixtures": [
         "contracts/fixtures/statement_runner/statement_runner.json"

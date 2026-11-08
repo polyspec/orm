@@ -12,17 +12,7 @@
   "php": [
     "8.4"
   ],
-  "exceptions": [
-    {
-      "tool": "rust",
-      "channel": "nightly-2026-10-01",
-      "scope": "packages/rust",
-      "reason": "The parity check reads the public symbols of the Rust crates from rustdoc JSON, which is unstable (rust-lang/rust#76578), so the extractor needs a nightly toolchain",
-      "retry": "rustdoc JSON is stable in a Rust release"
-    }
-  ],
   "symbolExtractors": [
-    "go",
     "php"
   ]
 }

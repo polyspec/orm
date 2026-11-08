@@ -1,10 +1,10 @@
 <!-- doc-id: remediation-plan -->
-<!-- source-sha256: b52e71dd08d8952c091ce4bcedd80df045370b45fdb6ee61fc3e948da91ed8ca -->
+<!-- source-sha256: 83576abb95650816bd5d5972290b24a84111625868120c6ddbb0c0ef48846f27 -->
 # 남은 작업의 진단과 해결 방안
 
 [English](remediation-plan.md)
 
-이 문서는 main `3a11004fb`와 함께 보고된 미병합 작업에서 확인한 남은 작업의 기술적 근거와 완료 판정 기준을 기록한다. 작업 원장이 아니라 설계 및 근거 지도다. 권위 있는 상태, 순서, 명령, 항목별 근거는 [실행 체크리스트](../plans/execution/checklist.ko.md)에만 있다. 현재 kit 표준 체크리스트와 겹치는 항목이 있다. 향후 하나로 통합할 때 모든 ID, 순서, 상태, 부모, 근거를 보존해야 한다. 이 문서로 상태를 추론하지 않는다. 아래의 완료 기준은 앞으로 필요한 근거이며, 과거 자료나 정적 분석은 실행 통과 결과가 아니다.
+이 문서는 main `3a11004fb`와 함께 보고된 미병합 작업에서 확인한 남은 작업의 기술적 근거와 완료 판정 기준을 기록한다. 작업 원장이 아니라 설계 및 근거 지도다. 권위 있는 상태, 순서, 명령, 항목별 근거는 [실행 체크리스트](../plans/execution/checklist.ko.md)에만 있다. 현재 kit 표준 체크리스트와 겹치는 항목이 있다. 향후 하나로 통합할 때 모든 ID, 순서, 상태, 부모, 근거를 보존해야 한다. 이 문서로 상태를 추론하지 않는다. 이 지도가 적는 parity 도구, `config/parity.json`과 그 검사(`make parity-check`, `make parity-declarations-check`)는 kit 0.0.100과 함께 지워졌다(T400). 이제 모든 test 파일은 자기 runtime의 target에서 실행되므로(docs/spec/feature-coverage.md FCV-6), 아래의 parity unit과 binding은 현재 검사가 아니라 `3a11004fb`의 진단이다. 아래의 완료 기준은 앞으로 필요한 근거이며, 과거 자료나 정적 분석은 실행 통과 결과가 아니다.
 
 ## 순서와 근거 원칙
 

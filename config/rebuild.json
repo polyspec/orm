@@ -70,10 +70,6 @@
       "kind": "ecosystem",
       "tool": "ajv"
     },
-    "scripts/check/parity-context.mts": {
-      "kind": "policy",
-      "reason": "the servers and run databases of one parity job of this repository, prepared and cleaned up in separate workflow steps that share them only through GITHUB_ENV; no ecosystem tool owns a check context across steps"
-    },
     "scripts/check/record.mts": {
       "kind": "policy",
       "reason": "the run record of the check runner of this repository (.runtime/check/<id>/record.json), so a killed run stays recorded as incomplete"
@@ -108,7 +104,7 @@
     },
     "scripts/client-db-test.mts": {
       "kind": "policy",
-      "reason": "runs the database tests of every client on SQLite, MySQL and PostgreSQL with the servers of make orm-test-servers, the parity rule of this repository"
+      "reason": "runs the database tests of every client on SQLite, MySQL and PostgreSQL with the servers of make orm-test-servers, a rule of this repository"
     },
     "scripts/comments/check.mts": {
       "kind": "ecosystem",
@@ -168,11 +164,11 @@
     },
     "scripts/features/coverage.mts": {
       "kind": "policy",
-      "reason": "the feature coverage rule of this repository: each feature runs its owner tests in every language its parity units bind; it runs cargo test, go test, PHPUnit and node"
+      "reason": "the feature coverage rule of this repository: each feature runs its owner tests in every language whose roots hold one of its tests; it runs cargo test, go test, PHPUnit and node"
     },
     "scripts/features/languages.mts": {
       "kind": "policy",
-      "reason": "the language set of the feature checks from config/parity.json, a rule of this repository"
+      "reason": "the language set and the test inventory of the feature checks from contracts/implementations.json, a rule of this repository"
     },
     "scripts/features/manifest.mts": {
       "kind": "ecosystem",
@@ -262,10 +258,6 @@
       "kind": "policy",
       "reason": "the rule (kit K171) that one Node version declared in mise.toml runs every check and workflow"
     },
-    "scripts/repo/parity-units.mts": {
-      "kind": "policy",
-      "reason": "the rule of FCV-2 over config/parity.json: a shared unit bound natively with no reason in the spec is a finding"
-    },
     "scripts/repo/probes.mts": {
       "kind": "policy",
       "reason": "the rule of this repository that a client sends no probing statement on connect"
@@ -320,7 +312,7 @@
     },
     "scripts/typescript/sqlite-test.mts": {
       "kind": "policy",
-      "reason": "runs the TypeScript integration tests on SQLite, MySQL and PostgreSQL with the servers of make orm-test-servers, the parity rule of this repository"
+      "reason": "runs the TypeScript integration tests on SQLite, MySQL and PostgreSQL with the servers of make orm-test-servers, a rule of this repository"
     },
     "scripts/unselected-column-physical-check.mts": {
       "kind": "policy",
@@ -386,10 +378,6 @@
       "kind": "policy",
       "reason": "the copy of a built test binary of this repository, by a clone where the file system has one; no ecosystem tool names it for this copy"
     },
-    "scripts/features/recipe-cases.mts": {
-      "kind": "policy",
-      "reason": "writes the key cases_on of a recipe of this repository from its cases (FCV-12), the form that the parity units of those recipes read"
-    },
     "scripts/features/recipe-keys.mts": {
       "kind": "policy",
       "reason": "generates the key table of the recipe format of this repository from its schema, which every runner reads (FCV-2 to FCV-4)"
@@ -400,7 +388,23 @@
     },
     "scripts/features/test-names.mts": {
       "kind": "policy",
-      "reason": "reports a test name that a command of the Makefile, the features or the parity units of this repository names and no test holds"
+      "reason": "reports a test name that a command of the Makefile or the features of this repository names and no test holds"
+    },
+    "scripts/check/job-context.mts": {
+      "kind": "policy",
+      "reason": "the servers and run databases of one CI job of this repository (the php-ext job), prepared and cleaned up in separate workflow steps that share them only through GITHUB_ENV; no ecosystem tool owns a check context across steps"
+    },
+    "scripts/suite-test.mts": {
+      "kind": "policy",
+      "reason": "runs every test file of one runtime of contracts/implementations.json, each as its own process, a rule of this repository; no runner of the ecosystem reads that inventory"
+    },
+    "scripts/features/recipe-files.mts": {
+      "kind": "policy",
+      "reason": "lists the JSON files of the recipes of this repository under tests/ and contracts/"
+    },
+    "scripts/features/rust-code.mts": {
+      "kind": "policy",
+      "reason": "reads the test attributes of a Rust file from its code, without comments and literals, so that the test inventory of this repository holds every file that cargo runs"
     }
   }
 }

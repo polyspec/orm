@@ -128,9 +128,9 @@
       "additionalProperties": false
     },
     "behaviorContract": {
-      "type": "object", "required": ["id", "completion_item", "parity", "adapters"],
+      "type": "object", "required": ["id", "completion_item", "adapters"],
       "properties": {
-        "id": { "type": "string" }, "completion_item": { "type": "string" }, "parity": { "type": "string" },
+        "id": { "type": "string" }, "completion_item": { "type": "string" },
         "adapters": {
           "type": "object", "required": ["go", "php", "php-extension", "python", "rust", "typescript"],
           "properties": {

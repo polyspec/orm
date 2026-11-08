@@ -29,7 +29,7 @@ _.ignore_aliases
 _.Representer
 _.isolation_level
 
-# Public API of the Python client, kept in parity with the other languages (docs/spec/interfaces.md).
+# Public API of the Python client, the same as the other languages (docs/spec/interfaces.md).
 _.CODES  # CodecError: the stable codes a codec failure carries
 _.max_open_connections  # DbStats fields of stats()
 _.open_connections
@@ -98,13 +98,13 @@ _.text_factory
 
 # Error codes of the catalog that orm-gen writes from docs/spec/errors.yaml for every client: this client receives
 # WRITE_CONFLICT from the markdown executor's answer as text and raises no RELATION_UNKNOWN, so no Python code names the
-# constant. The catalog keeps every code of each client, which the parity of the codes compares.
+# constant. The catalog keeps every code of each client, which the catalog check of tests/interfaces/check/api.mts compares.
 RELATION_UNKNOWN
 WRITE_CONFLICT
 
 # The codes of the Rust catalog tool and of the grid temporal values, which orm-gen writes from docs/spec/errors.yaml with
-# every other code: this client raises none of them, and the catalog keeps every code of each client, which the parity of
-# the codes compares (KSTD-2-11-1).
+# every other code: this client raises none of them, and the catalog keeps every code of each client, which the catalog
+# check of tests/interfaces/check/api.mts compares (KSTD-2-11-1).
 TOOL_BIND_INVALID
 TOOL_BIND_LIMIT
 TOOL_QUERY_COLUMNS

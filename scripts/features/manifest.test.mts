@@ -59,7 +59,7 @@ caseTest('the schema of contracts/features.json refuses a manifest outside its s
   const { title: _title, ...untitled } = first;
   assert.ok(refused({ ...manifest, features: [untitled] }).includes('/features/0'));
   assert.ok(refused(withFeature(feature => ({ ...feature, status: 'done' }))).includes('/features/0/status'));
-  assert.ok(refused(withFeature(feature => ({ ...feature, parity: [] }))).includes('/features/0/parity'));
+  assert.ok(refused(withFeature(feature => ({ ...feature, parity: ['unit'] }))).includes('/features/0'), 'a feature names its languages by its tests, not by units');
   assert.ok(refused(withFeature(feature => ({ ...feature, status: 'implemented', tests: [] }))).includes('/features/0/tests'));
   assert.ok(refused(withFeature(feature => ({ ...feature, status: 'implemented', docs: [] }))).includes('/features/0/docs'));
   assert.ok(refused(withFeature(feature => ({ ...feature, status: 'partial', verification: [] }))).includes('/features/0/verification'));
@@ -200,9 +200,9 @@ function markdownNamingErrors(sources: Record<string, string>, registrations: Re
 }
 
 caseTest('Markdown test server names and owner registrations stay aligned across clients', COMPUTE, () => {
-  const parity = readFileSync(`${root}/config/parity.json`, 'utf8');
-  assert.ok(parity.includes('packages/php/tests/markdown_test_server.php'), 'parity omits the PHP Markdown test server');
-  assert.ok(!parity.includes('markdown_fake_server.php'), 'parity retains the previous PHP Markdown test server path');
+  const implementations = readFileSync(`${root}/contracts/implementations.json`, 'utf8');
+  assert.ok(implementations.includes('packages/php/tests/markdown_test_server.php'), 'contracts/implementations.json omits the PHP Markdown test server');
+  assert.ok(!implementations.includes('markdown_fake_server.php'), 'contracts/implementations.json retains the previous PHP Markdown test server path');
   const connection = manifest.features.find(feature => feature.id === 'dsn_connection');
   assert.ok(connection, 'contracts/features.json omits dsn_connection');
   const phpVerification = connection.verification.find(item => item.id === 'markdown-session-php');

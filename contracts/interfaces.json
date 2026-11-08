@@ -86,7 +86,6 @@
     {
       "id": "CFG-9",
       "completion_item": "KSTD-2-11-16",
-      "parity": "handle-disposal-abandoned-query-cancels-and-releases",
       "adapters": {
         "go": {
           "status": "implemented",

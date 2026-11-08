@@ -3,7 +3,7 @@
 
 ## Implementation-internal tests
 
-An implementation-internal test checks the structure or helpers of its own implementation, not shared behavior, so it is not a parity unit. Declare its path and reason in that implementation's `internal` list in `config/parity.json`; the feature-check inventory follows that declaration without requiring the test to bind to a shared feature.
+An implementation-internal test checks the structure or helpers of its own implementation, not shared behavior. Declare its path and reason in that implementation's `internal` list in `contracts/implementations.json`; the feature-check inventory follows that declaration without requiring the test to name a shared feature, and the test still runs in the target of its runtime.
 
 The SQLite case of PHP proves that the sqlite path loads no MySQL dialect class; it proves nothing about method calls or constants.
 

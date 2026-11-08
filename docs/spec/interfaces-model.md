@@ -301,7 +301,7 @@ A component marked `<<internal>>` states its grounding in the manifest field `in
 | Db.withSignal | typescript | CFG-9 | `packages/ts/src/database.ts::Db.withSignal` |
 | Db.withFuture | python | CFG-9 | `packages/python/src/polyspec/orm/database.py::Db.with_future` |
 
-A host-native API uses its host language’s public primitive and has no common signature. The shared behavior is checked through every runtime entry and its exact parity cases in `behavior_adapters`. An `unresolved` entry is not implementation evidence.
+A host-native API uses its host language’s public primitive and has no common signature. The shared behavior is checked through every runtime entry and its exact test cases in `behavior_adapters`. An `unresolved` entry is not implementation evidence.
 
 ## Shared behavior adapters
 

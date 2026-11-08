@@ -6,7 +6,7 @@
 // case database of its own (case-database.mjs), created on those servers and
 // dropped when the case ends; the databases the DSNs name are not changed.
 //
-// Each case is one node:test test named by its parity id; node --test-name-pattern selects one.
+// Each case is one node:test test named by its case id; node --test-name-pattern selects one.
 // Usage: node packages/ts/tests/model.mjs (after npm run typescript:build)
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';

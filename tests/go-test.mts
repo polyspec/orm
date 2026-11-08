@@ -77,7 +77,7 @@ function go(args: string[], step?: Step): Promise<GoResult> {
   return new Promise<GoResult>((resolve, reject) => {
     const child = spawn('go', ['test', ...(step ? [] : ['-json']), ...args], { stdio: step ? ['ignore', 'pipe', 'pipe'] : ['inherit', 'pipe', 'inherit'] });
     const lines = step ? stepLines(step) : null;
-    // -json in the test arguments asks for the raw test2json stream on standard output (the parity reader of kit reads it).
+    // -json in the test arguments asks for the raw test2json stream on standard output (its reader reads the events of each test).
     const events = step ? null : testEvents(undefined, args.includes('-json'));
     child.stdout?.on('data', (chunk: Buffer) => (lines ?? events)?.write(String(chunk)));
     child.stderr?.on('data', (chunk: Buffer) => lines?.write(String(chunk)));

@@ -1,6 +1,6 @@
 # The one bootstrap of every CI job of orm (kit K992), which orm took from the example of kit and owns (T391): ci-pipeline.yml,
 # release.yml and the jobs of ci.yml run it after their checkout with `uses: ./.github/actions/kit-bootstrap`, so no workflow
-# carries a copy of these steps. The parity, runtime and release jobs set PHP up before it; the shared job of ci-pipeline sets
+# carries a copy of these steps. The runtime and release jobs set PHP up before it; the shared job of ci-pipeline sets
 # it up after. Each step runs a target of the Makefile.
 name: kit bootstrap
 description: Sets up the Node.js of mise.toml, installs the locked kit package, then the npm of var/tools and the packages of package-lock.json.

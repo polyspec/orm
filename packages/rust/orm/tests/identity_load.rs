@@ -1,7 +1,7 @@
 //! Runs the shared cases of contracts/fixtures/identity_load.json with this client (packages/go/orm/
 //! identity_load_test.go, the same cases). A single test function, `identity_load`, runs all cases of the file in turn
-//! and prints one report line per case, `PASS identity-load/<case id>` or `FAIL identity-load/<case id>` (language
-//! parity unit "identity-load"). A compile case adds the fixture's manifest_hash to the request, compiles it for the three dialects,
+//! and prints one report line per case, `PASS identity-load/<case id>` or `FAIL identity-load/<case id>`. A compile
+//! case adds the fixture's manifest_hash to the request, compiles it for the three dialects,
 //! and compares the statement or error with `engine::compile`. An execute case runs against MySQL, PostgreSQL, and SQLite, each in its own case
 //! database with the fixture contracts/fixtures/identity_load.dbs installed; it compiles each step's request for that database's
 //! dialect, runs it with `Db::execute`, and at the end reads load_probe's rows with the fixture's `read` SQL through the driver

@@ -1,15 +1,10 @@
 {
   "schema": 1,
   "runtimes": ["go", "php", "php-ext", "python", "rust", "ts"],
-  "comment": "Kit gates install each runtime from its pinned lock, then prepare parity's database servers and run-owned fixtures in an isolated job context. The provider runs API and binding phases separately.",
-  "parityMode": "phases",
+  "comment": "Kit gates install each runtime from its pinned lock; the php-ext job prepares its database servers and run-owned fixtures in an isolated job context.",
   "setup": {
     "shared": [
       "orm-install-go-lease"
-    ],
-    "parity": [
-      "orm-install-flowmark",
-      "orm-install-interfaces-typescript"
     ],
     "runtimes": {
       "go": [
@@ -35,9 +30,6 @@
     }
   },
   "tools": {
-    "parity": [
-      "go"
-    ],
     "php": [
       "go"
     ],
@@ -52,10 +44,6 @@
     ]
   },
   "contexts": {
-    "parity": {
-      "prepare": "parity-context-prepare",
-      "cleanup": "parity-context-cleanup"
-    },
     "php-ext": {
       "prepare": "php-extension-context-prepare",
       "cleanup": "php-extension-context-cleanup"

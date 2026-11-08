@@ -115,10 +115,10 @@
       ]
     },
     {
-      "id": "tests.language-parity",
-      "source": "config/parity.json and contracts/features.json",
-      "checker": "parity-check",
-      "failure": "a language test file that config/parity.json does not declare, or a parity unit binding that the parity check cannot run"
+      "id": "tests.language-suite",
+      "source": "contracts/implementations.json and contracts/features.json",
+      "checker": "feature-verify-other",
+      "failure": "a test file of an implementation that belongs to no feature, or a support or internal declaration of contracts/implementations.json that selects no test file"
     },
     {
       "id": "status.evidence",

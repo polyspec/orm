@@ -33,18 +33,6 @@
     "seed": {
       "$ref": "#/$defs/seed"
     },
-    "cases_on": {
-      "description": "The case ids that each database runs, for the parity tool (FCV-12); scripts/features/recipe-cases.mts writes it from the cases.",
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["mysql", "postgres", "sqlite"],
-      "properties": {
-        "markdown": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
-        "mysql": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
-        "postgres": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
-        "sqlite": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
-      }
-    },
     "cases": {
       "type": "array",
       "minItems": 1,
@@ -3454,7 +3442,77 @@
             "description": "A request of the protocol (docs/spec/protocol.md) without manifest_hash; the step adds the hash of the schema named by schema."
           },
           "expect": {
-            "$ref": "#/$defs/expect"
+            "type": "object",
+            "required": ["none"],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "type": "object",
+                "required": ["value"],
+                "additionalProperties": false,
+                "properties": {
+                  "value": {
+                    "type": "object",
+                    "required": ["uses"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "uses": {
+                        "type": "array",
+                        "description": "One list for each parameter, in the order of the parameters.",
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "description": "The use of one parameter: its type alone for a value whose column does not decide it, else its column slot; assign marks a value assigned to the column (FCV-4).",
+                            "oneOf": [
+                              {
+                                "required": ["type"],
+                                "additionalProperties": false,
+                                "properties": {
+                                  "type": {
+                                    "type": "string"
+                                  },
+                                  "assign": {
+                                    "const": true
+                                  }
+                                }
+                              },
+                              {
+                                "required": ["type", "column", "length", "null", "precision", "scale"],
+                                "additionalProperties": false,
+                                "properties": {
+                                  "type": {
+                                    "type": "string"
+                                  },
+                                  "column": {
+                                    "type": "string"
+                                  },
+                                  "length": {
+                                    "type": "integer"
+                                  },
+                                  "null": {
+                                    "type": "boolean"
+                                  },
+                                  "precision": {
+                                    "type": "integer"
+                                  },
+                                  "scale": {
+                                    "type": "integer"
+                                  },
+                                  "assign": {
+                                    "const": true
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       },
@@ -3489,7 +3547,38 @@
             "description": "The output names of the first statement whose columns the expect states."
           },
           "expect": {
-            "$ref": "#/$defs/expect"
+            "type": "object",
+            "required": ["none"],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "type": "object",
+                "required": ["value"],
+                "additionalProperties": false,
+                "properties": {
+                  "value": {
+                    "type": "array",
+                    "description": "The output columns that names selects, in the order of names, one entry for each time the plan selects the name (PRT-69, DIA-33).",
+                    "items": {
+                      "type": "object",
+                      "required": ["name", "type", "hidden"],
+                      "additionalProperties": false,
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string"
+                        },
+                        "hidden": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       },

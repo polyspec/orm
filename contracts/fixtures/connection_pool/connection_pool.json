@@ -851,41 +851,5 @@
         }
       ]
     }
-  ],
-  "cases_on": {
-    "mysql": [
-      "the_pool_size_is_the_open_maximum",
-      "an_unset_or_zero_pool_size_opens_at_most_ten",
-      "transactions_wait_at_the_open_maximum",
-      "the_idle_size_closes_what_it_does_not_keep",
-      "an_unset_idle_size_keeps_the_pool_size",
-      "an_idle_size_above_the_pool_size_is_refused",
-      "a_connection_within_its_lifetime_is_reused",
-      "a_connection_whose_lifetime_passes_in_use_is_not_used_again",
-      "an_idle_connection_past_its_lifetime_is_closed",
-      "an_idle_size_above_the_default_pool_size_is_refused",
-      "each_connection_counts_its_own_pool"
-    ],
-    "postgres": [
-      "the_pool_size_is_the_open_maximum",
-      "an_unset_or_zero_pool_size_opens_at_most_ten",
-      "transactions_wait_at_the_open_maximum",
-      "the_idle_size_closes_what_it_does_not_keep",
-      "an_unset_idle_size_keeps_the_pool_size",
-      "an_idle_size_above_the_pool_size_is_refused",
-      "a_connection_within_its_lifetime_is_reused",
-      "a_connection_whose_lifetime_passes_in_use_is_not_used_again",
-      "an_idle_connection_past_its_lifetime_is_closed",
-      "an_idle_size_above_the_default_pool_size_is_refused",
-      "each_connection_counts_its_own_pool"
-    ],
-    "sqlite": [
-      "an_idle_size_above_the_pool_size_is_refused",
-      "an_idle_size_above_the_default_pool_size_is_refused"
-    ],
-    "markdown": [
-      "an_idle_size_above_the_pool_size_is_refused",
-      "an_idle_size_above_the_default_pool_size_is_refused"
-    ]
-  }
+  ]
 }

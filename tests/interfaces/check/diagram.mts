@@ -54,8 +54,8 @@ export function diagram(m: Manifest, korean: boolean): string {
     b += `| ${surface.id ?? ''} | ${surface.owner ?? ''} | ${surface.semantic ?? ''} | \`${surface.symbol ?? ''}\` |\n`;
   }
   b += korean
-    ? '\nHost-native API는 해당 host의 공개 primitive 형식으로만 선언하며 공통 signature를 요구하지 않는다. 공통 동작은 `behavior_adapters`의 모든 runtime 항목과 정확한 parity case로 검증한다. `unresolved` 항목은 구현 완료 증거가 아니다.\n'
-    : '\nA host-native API uses its host language’s public primitive and has no common signature. The shared behavior is checked through every runtime entry and its exact parity cases in `behavior_adapters`. An `unresolved` entry is not implementation evidence.\n';
+    ? '\nHost-native API는 해당 host의 공개 primitive 형식으로만 선언하며 공통 signature를 요구하지 않는다. 공통 동작은 `behavior_adapters`의 모든 runtime 항목과 정확한 test case로 검증한다. `unresolved` 항목은 구현 완료 증거가 아니다.\n'
+    : '\nA host-native API uses its host language’s public primitive and has no common signature. The shared behavior is checked through every runtime entry and its exact test cases in `behavior_adapters`. An `unresolved` entry is not implementation evidence.\n';
   const behaviors = m.behavior_adapters ?? [];
   b += korean
     ? '\n## 공통 동작 adapter\n\n- **INT-139** 생성 구성요소 문서는 manifest의 모든 component, method, field, ownership edge를 영·한으로 기록한다.\n\n| 요구사항 | 완료 checklist 항목 | Runtime | 상태 | Host primitive | 실행 case |\n|---|---|---|---|---|---|\n'

@@ -2,7 +2,6 @@ import { createHash } from 'node:crypto';
 import { lstat, mkdir, readFile, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { git, readRecord, recordPath, type CheckRecord } from '../check/record.mts';
-import { readParityConfig, type ParityConfig } from '../json/formats.mts';
 import { run } from './coverage.mts';
 import { runLong } from '../../tests/testcase.mts';
 
@@ -209,34 +208,47 @@ export async function recordPerformanceReferencesFromCheckRun(
 /** One native measurement of PERF-1: the process that runs a binding of hot-path-performance-measurement-<database>. */
 export type PerformanceCommand = { runtime: PerformanceRuntime; database: PerformanceDatabase; symbol: string; program: string; args: string[]; env?: Record<string, string> };
 
-/** The name a binding gives its test within its file: a PHP binding is `<class>::<method>`. */
-const bindingMethod = (id: string): string => id.slice(id.lastIndexOf(':') + 1);
+/** The suffix that the Go test and the PHP files of PERF-1 give each database. */
+const DATABASE_SUFFIX: Record<PerformanceDatabase, { go: string; php: string }> = {
+  mysql: { go: 'Mysql', php: '' },
+  postgres: { go: 'Postgres', php: 'Postgres' },
+  sqlite: { go: 'SQLite', php: 'Sqlite' },
+};
+
+/** The test of PERF-1 that `runtime` runs on `database`: its file, and its name within the file (a PHP test is its method). */
+export function performanceTest(runtime: PerformanceRuntime, database: PerformanceDatabase): { test: string; symbol: string } {
+  const suffix = DATABASE_SUFFIX[database];
+  switch (runtime) {
+    case 'go': return { test: 'packages/go/bench/performance_measurement_test.go', symbol: `TestPerformanceMeasurement${suffix.go}` };
+    case 'php': return { test: `packages/php/tests/CoveragePerformanceGate${suffix.php}Test.php`, symbol: 'testHotPathGate' };
+    case 'php-extension': return { test: `packages/php-ext/tests/CoveragePerformanceGateExtension${suffix.php}Test.php`, symbol: 'testHotPathGate' };
+    case 'typescript': return { test: `packages/ts/tests/coverage_performance_gate_${database}.mjs`, symbol: 'hot_path_gate' };
+    case 'python': return { test: `packages/python/tests/coverage_performance_gate_${database}.py`, symbol: 'test_hot_path_gate' };
+    case 'rust': return { test: 'packages/rust/tests/tests/coverage_performance_gate.rs', symbol: `coverage_hot_path_gate_${database}` };
+  }
+}
 
 /**
- * The native measurement of every binding of the units hot-path-performance-measurement-<database> (FCV-2: a time is no value
- * that a recipe case can expect). Each command runs from the checkout root, and a test that runs none of its tests fails.
+ * The native measurement of PERF-1 in every runtime on every database (FCV-2: a time is no value that a recipe case can
+ * expect). Each command runs from the checkout root, and a test that runs none of its tests fails.
  */
-export function performanceCommands(parity: Pick<ParityConfig, 'units'>, env: NodeJS.ProcessEnv): PerformanceCommand[] {
+export function performanceCommands(env: NodeJS.ProcessEnv): PerformanceCommand[] {
   const commands: PerformanceCommand[] = [];
   for (const database of PERFORMANCE_DATABASES) {
-    const unit = parity.units.find(entry => entry.id === `hot-path-performance-measurement-${database}`);
-    if (unit === undefined) throw new Error(`config/parity.json has no unit hot-path-performance-measurement-${database}`);
     for (const runtime of PERFORMANCE_RUNTIMES) {
-      const binding = unit.bindings?.find(entry => entry.implementation === runtime);
-      if (binding?.test === undefined || binding.id === undefined) throw new Error(`${unit.id} has no ${runtime} test`);
-      const { test, id: symbol } = binding;
+      const { test, symbol } = performanceTest(runtime, database);
       const entry = { runtime, database, symbol };
       switch (runtime) {
         case 'go':
           commands.push({ ...entry, program: 'node', args: ['tests/go-test.mts', '-v', '-timeout', '0', './packages/go/bench', '-run', `^${symbol}$`, '-count=1'] });
           break;
         case 'php':
-          commands.push({ ...entry, program: 'php', args: ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', '--filter', `/::${bindingMethod(symbol)}$/`, test] });
+          commands.push({ ...entry, program: 'php', args: ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', '--filter', `/::${symbol}$/`, test] });
           break;
         case 'php-extension': {
           const extension = env.POLYSPEC_ORM_EXTENSION;
           if (!extension) throw new Error('POLYSPEC_ORM_EXTENSION is unset; run this through make, which builds the extension and exports it');
-          commands.push({ ...entry, program: 'php', args: ['-d', `extension=${extension}`, 'vendor-php/bin/phpunit', '--configuration', 'packages/php-ext/phpunit.xml.dist', '--filter', `/::${bindingMethod(symbol)}$/`, test], env: { ORM_PHP_MODE: 'extension' } });
+          commands.push({ ...entry, program: 'php', args: ['-d', `extension=${extension}`, 'vendor-php/bin/phpunit', '--configuration', 'packages/php-ext/phpunit.xml.dist', '--filter', `/::${symbol}$/`, test], env: { ORM_PHP_MODE: 'extension' } });
           break;
         }
         case 'typescript':
@@ -264,7 +276,7 @@ export function performanceCommands(parity: Pick<ParityConfig, 'units'>, env: No
  * the build inside a go or cargo run has no deadline, and each test keeps its own.
  */
 async function measurePerformance(root: string): Promise<void> {
-  const commands = performanceCommands(readParityConfig(resolve(root, 'config/parity.json')), process.env);
+  const commands = performanceCommands(process.env);
   const measurements: PerformanceMeasurement[] = [];
   const failed: string[] = [];
   for (const attempt of [1, 2] as const) {

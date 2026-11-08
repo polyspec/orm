@@ -10,7 +10,7 @@ import { errorCode } from '../../tests/errors.mts';
 import { GO_TEST_TAGS } from '../../tests/go-test.mts';
 import { readFeatures } from './manifest.mts';
 import { implementationLanguages, featureLanguages } from './languages.mts';
-import { parseRecipeCases, type ParityConfig } from '../json/formats.mts';
+import { parseRecipeCases } from '../json/formats.mts';
 import { programEnvironment, readBinaries } from '../../tests/cargo-test.mts';
 
 // cargoTestScript is the script that builds the test binary under the lease and copies it.
@@ -25,7 +25,7 @@ export type Dependent = { id: string; language: string; part: string; tests: str
 /** The coverage declaration of a feature. */
 export type Coverage = { kind: string; cases: string[]; owners?: Record<string, Owner>; dependents?: Dependent[] };
 /** A feature contract of contracts/features.json. */
-export type Feature = { id: string; status?: string; parity?: string[]; coverage?: Coverage; tests?: string[] };
+export type Feature = { id: string; status?: string; coverage?: Coverage; tests?: string[] };
 /** The feature manifest, contracts/features.json. */
 export type Manifest = { features?: Feature[] };
 /** One required execution: an owner or dependent part on one database. */
@@ -51,9 +51,9 @@ type Plan = { feature: Feature; item: Item; native: Spec[] };
 type Prepared = { program: string; args: string[]; cwd?: string | undefined; label?: string; env?: Record<string, string> };
 
 export const languages = implementationLanguages();
-// claimedLanguages are the client languages of a feature: the ones its parity units bind. Each claimed language needs an owner.
-const claimedLanguages = (feature: Feature, parityConfig?: ParityConfig): Set<string> =>
-  new Set(featureLanguages(feature.parity ?? [], parityConfig));
+// claimedLanguages are the client languages of a feature: the ones whose roots hold one of its tests. Each claimed language needs
+// an owner.
+const claimedLanguages = (feature: Feature): Set<string> => new Set(featureLanguages(feature.tests ?? []));
 export const databases = ['mysql', 'postgres', 'sqlite'];
 
 const validPart = (part: unknown): part is string => typeof part === 'string' && part !== '' &&
@@ -64,12 +64,12 @@ const validTests = (part: string, tests: unknown): tests is string[] => Array.is
     file.slice(part.length + 1).split('/').every(segment =>
       segment && segment !== '.' && segment !== '..' && /^[A-Za-z0-9_.-]+$/.test(segment)));
 
-function requirements(feature: Feature, coverage: Coverage, errors: string[], parityConfig?: ParityConfig): Item[] {
+function requirements(feature: Feature, coverage: Coverage, errors: string[]): Item[] {
   const selectedDatabase = selectedDatabases.get(feature);
   const selectedCases = selectedCasesByFeature.get(feature);
   const required = coverage.kind === 'database' ? (selectedDatabase ? [selectedDatabase] : databases) : ['none'];
   const items: Item[] = [];
-  const claimed = claimedLanguages(feature, parityConfig);
+  const claimed = claimedLanguages(feature);
   if (!coverage.owners || typeof coverage.owners !== 'object' || Array.isArray(coverage.owners))
     errors.push(`${feature.id}: missing owners`);
   for (const language of Object.keys(coverage.owners ?? {})) {
@@ -168,7 +168,6 @@ function selectCommandCases(command: NativeCommand[] | undefined, selectedCases:
 export function checkCoverage(
   manifest: Manifest,
   reports: Record<string, Report[] | undefined>,
-  parityConfig?: ParityConfig,
 ): string[] {
   const errors: string[] = [];
   const ids = new Set<string>();
@@ -187,7 +186,7 @@ export function checkCoverage(
       errors.push(`${feature.id}: coverage cases must be distinct nonempty IDs`);
       continue;
     }
-    for (const item of requirements(feature, coverage, errors, parityConfig)) {
+    for (const item of requirements(feature, coverage, errors)) {
         const { key, language, database } = item;
         expected.add(key);
         const executions = reports[key];
@@ -213,8 +212,8 @@ export function checkCoverage(
             errors.push(`${key}: executed case IDs differ from contract`);
         }
     }
-    if (feature.status === 'implemented' && languages.some(language => !claimedLanguages(feature, parityConfig).has(language)))
-      errors.push(`${feature.id}: implemented feature lacks a parity unit in a client language`);
+    if (feature.status === 'implemented' && languages.some(language => !claimedLanguages(feature).has(language)))
+      errors.push(`${feature.id}: implemented feature has no test in a client language`);
   }
   for (const key of Object.keys(reports)) {
     if (!expected.has(key)) errors.push(`${key}: undeclared execution report`);
@@ -677,7 +676,6 @@ export async function executeCoverage(
   manifest: Manifest,
   root: string,
   timeoutMs = NATIVE_DEADLINE,
-  parityConfig?: ParityConfig,
 ): Promise<string[]> {
   const reports: Record<string, Report[]> = {};
   const errors: string[] = [];
@@ -685,7 +683,7 @@ export async function executeCoverage(
   for (const feature of manifest.features ?? []) {
     const coverage = feature.coverage;
     if (!coverage || !['database', 'independent'].includes(coverage.kind)) continue;
-    for (const item of requirements(feature, coverage, errors, parityConfig)) {
+    for (const item of requirements(feature, coverage, errors)) {
         const { key, command } = item;
         if (!command) {
           errors.push(`${key}: no executable command`);
@@ -732,7 +730,7 @@ export async function executeCoverage(
     await builds?.cargoReady;
     await rm(directory, { recursive: true, force: true });
   }
-  return [...errors, ...checkCoverage(manifest, reports, parityConfig)];
+  return [...errors, ...checkCoverage(manifest, reports)];
 
   async function runLane(lane: Plan[]): Promise<void> {
     for (const plan of lane) {

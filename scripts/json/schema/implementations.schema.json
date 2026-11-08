@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "contracts/implementations.json",
+  "description": "The implementations of orm, in their order, with the roots, test globs, support files and internal tests of each.",
+  "type": "object",
+  "required": ["comment", "implementations"],
+  "additionalProperties": false,
+  "properties": {
+    "comment": { "type": "string", "minLength": 1 },
+    "implementations": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "roots", "tests", "support", "internal"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "enum": ["go", "php", "php-extension", "typescript", "python", "rust"] },
+          "roots": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+          "tests": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+          "support": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+          "internal": {
+            "type": "array",
+            "items": {
+              "type": "object", "required": ["glob", "reason"], "additionalProperties": false,
+              "properties": { "glob": { "type": "string", "minLength": 1 }, "reason": { "type": "string", "minLength": 1 } }
+            }
+          }
+        }
+      }
+    }
+  }
+}

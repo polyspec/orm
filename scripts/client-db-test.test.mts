@@ -4,8 +4,9 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { caseTest, COMPUTE } from '../tests/testcase.mts';
 import { dirname, relative, resolve } from 'node:path';
-import { GO_LANE_PACKAGES, GO_LANE_SKIP, poolerRecipeCommands, poolerRecipeUnits, rustOwnedElsewhereSkipArguments, rustPoolerThreadArguments, rustTargetPoolSize } from './client-db-test.mts';
-import { readParityConfig } from './json/formats.mts';
+import { GO_LANE_PACKAGES, GO_LANE_SKIP, poolerRecipeCommands, poolerRecipeTests, rustOwnedElsewhereSkipArguments, rustPoolerThreadArguments, rustTargetPoolSize } from './client-db-test.mts';
+import { readTree } from './features/recipe-runners.mts';
+import { phpScope, readTree as readNamesTree } from './features/test-names.mts';
 import { COMMANDS as PERF_COMMANDS } from './perf-test.mts';
 import { readFeatures, type CoverageOwner, type Language, type NativeCommand } from './features/manifest.mts';
 
@@ -18,26 +19,40 @@ caseTest('the pooler lane caps the Rust test threads at the backend count per po
   assert.deepEqual(rustPoolerThreadArguments(2, 4), ['--test-threads=1']);
 });
 
-caseTest('every lane without a whole run runs every recipe unit with a database through the poolers (T343-12)', COMPUTE, () => {
-  const units = readParityConfig(resolve(root, 'config/parity.json')).units;
-  const recipes = poolerRecipeUnits(units);
-  assert.ok(recipes.length > 0, 'the recipe units are found');
-  assert.ok(recipes.every(unit => /-(mysql|postgres)$/.test(unit.id)), 'a unit without a database server is not listed');
+caseTest('every lane without a whole run runs every recipe test with a server through the poolers (T343-12)', COMPUTE, () => {
+  const names = readNamesTree(root);
+  const { bindings } = readTree();
+  const phpText = (file: string) => phpScope(names, [file]).text;
   for (const lane of ['php', 'php-extension', 'typescript', 'python'] as const) {
-    const commands = poolerRecipeCommands(lane, units, '/extension.so');
-    // A suite that names its runtimes in its owner parts leaves the others out.
-    const owned = recipes.filter(unit => unit.owner?.parts === undefined || unit.owner.parts.includes(`owner/${lane}`));
-    assert.equal(commands.length, owned.length, `${lane} has one command per unit`);
-    owned.forEach((unit, index) => {
-      const test = unit.bindings?.find(binding => binding.implementation === lane)?.test ?? '';
+    const tests = poolerRecipeTests(lane, bindings, phpText);
+    assert.ok(tests.length > 0, `${lane} has recipe tests with a server`);
+    const commands = poolerRecipeCommands(lane, tests, '/extension.so');
+    assert.equal(commands.length, tests.length, `${lane} has one command per test`);
+    tests.forEach((test, index) => {
       const named = lane === 'python' ? test.replace(/\.py$/, '').replaceAll('/', '.') : test;
-      assert.ok(commands[index]?.args.includes(named), `${lane} runs ${unit.id} with ${named}`);
+      assert.ok(commands[index]?.args.includes(named), `${lane} runs ${named}`);
     });
   }
-  const catalog = recipes.find(unit => unit.id === 'catalog_connection-mysql');
-  assert.ok(catalog, 'catalog_connection-mysql is listed');
-  const php = poolerRecipeCommands('php', [catalog], '/extension.so')[0];
-  assert.deepEqual(php?.args.slice(3, 5), ['--filter', 'testMysql']);
+  assert.ok(poolerRecipeTests('typescript', bindings, phpText).includes('packages/ts/tests/catalog_connection-mysql.test.mjs'));
+  assert.ok(!poolerRecipeTests('typescript', bindings, phpText).includes('packages/ts/tests/catalog_connection-sqlite.test.mjs'), 'a SQLite test is not a test with a server');
+  // PHP holds no pool (CFG-4), so connection_pool has no PHP test with a server.
+  assert.ok(!poolerRecipeTests('php', bindings, phpText).some(test => /ConnectionPool/.test(test)));
+  const [php] = poolerRecipeCommands('php', ['packages/php/tests/CatalogConnectionRecipeTest.php'], '/extension.so');
+  assert.deepEqual(php?.args.slice(3, 5), ['--filter', '/::test(?:Mysql|Postgres)(?: |$)/']);
+});
+
+caseTest('a recipe test runs through the poolers only when it runs a recipe of contracts/fixtures on a server', COMPUTE, () => {
+  const binding = (implementation: string, test: string, recipe = 'contracts/fixtures/a/a.json') => ({ implementation, test, recipes: [recipe] });
+  const bindings = [
+    binding('typescript', 'packages/ts/tests/a-mysql.test.mjs'), binding('typescript', 'packages/ts/tests/a-sqlite.test.mjs'),
+    binding('typescript', 'packages/ts/tests/b-postgres.test.mjs', 'tests/b/b.json'),
+    binding('python', 'packages/python/tests/test_a_postgres.py'), binding('python', 'packages/python/tests/test_a_sqlite.py'),
+    binding('php', 'packages/php/tests/ARecipeTest.php'), binding('php', 'packages/php/tests/BRecipeTest.php'),
+  ];
+  const text = (file: string) => file.endsWith('ARecipeTest.php') ? 'public function testPostgres(): void {}' : 'public function testSqlite(): void {}';
+  assert.deepEqual(poolerRecipeTests('typescript', bindings, text), ['packages/ts/tests/a-mysql.test.mjs']);
+  assert.deepEqual(poolerRecipeTests('python', bindings, text), ['packages/python/tests/test_a_postgres.py']);
+  assert.deepEqual(poolerRecipeTests('php', bindings, text), ['packages/php/tests/ARecipeTest.php']);
 });
 
 caseTest('the Rust pool size of the integration program is read from its declaration', COMPUTE, () => {

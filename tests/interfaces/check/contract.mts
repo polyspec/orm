@@ -2,7 +2,6 @@
 // lists of owners, and the wire format of records. Each check returns one line per difference.
 import { sortBytes } from './json.mts';
 import { mark, type BehaviorContract, type ContractRecord, type NativeSurface, type Owner, type Rule, type Symbol, type Symbols } from './manifest.mts';
-import type { ParityBinding } from './api.mts';
 
 /** differences returns the differences between expected and actual symbols (missing, changed, unexpected) in byte order. */
 // show writes one symbol with whether it is public and its signature.
@@ -77,22 +76,25 @@ export function checkNativeSurfaces(lang: string, actual: Symbols, surfaces: Nat
   return errors;
 }
 
-/** checkBehaviorAdapterCases ties each declared runtime adapter to the exact executable binding of its parity unit. */
-export function checkBehaviorAdapterCases(contracts: BehaviorContract[], units: { id?: string; bindings?: ParityBinding[] }[]): string[] {
+/**
+ * checkBehaviorAdapterCases ties each case of a declared runtime adapter to a test that exists: the case's file is in the
+ * package of that runtime (`owner` names it), the file exists, and the case's name (without a trailing ` [database]`) is a
+ * word of the file. `read` returns the text of a file, or undefined when the file does not exist.
+ */
+export function checkBehaviorAdapterCases(contracts: BehaviorContract[], owner: (file: string) => string | undefined,
+  read: (file: string) => string | undefined): string[] {
   const errors: string[] = [];
   for (const contract of contracts) {
-    const id = contract.id ?? '', unitId = contract.parity ?? '';
-    const unit = units.find(candidate => candidate.id === unitId);
-    if (unit === undefined) {
-      errors.push(`${id}: missing parity unit ${unitId}`);
-      continue;
-    }
+    const id = contract.id ?? '';
     for (const [runtime, adapter] of Object.entries(contract.adapters ?? {})) {
-      const expected = (adapter.cases ?? []).map(c => `${c.test ?? ''}::${c.id ?? ''}`).sort();
-      const actual = (unit.bindings ?? []).filter(binding => binding.implementation === runtime)
-        .map(binding => `${binding.test ?? ''}::${binding.id ?? ''}`).sort();
-      if (expected.join('\n') !== actual.join('\n')) {
-        errors.push(`${id}/${runtime}: parity bindings differ\n  want ${expected.join(', ')}\n  got  ${actual.join(', ')}`);
+      for (const entry of adapter.cases ?? []) {
+        const file = entry.test ?? '', name = (entry.id ?? '').replace(/ \[[^\]]+\]$/, '');
+        const text = read(file);
+        if (owner(file) !== runtime) errors.push(`${id}/${runtime}: ${file} is not a file of the ${runtime} package`);
+        else if (text === undefined) errors.push(`${id}/${runtime}: ${file} does not exist`);
+        else if (name === '' || !new RegExp(`(?<![\\w])${name.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w])`, 'u').test(text)) {
+          errors.push(`${id}/${runtime}: ${file} holds no case ${entry.id ?? ''}`);
+        }
       }
     }
   }

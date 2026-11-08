@@ -536,19 +536,15 @@ const CODES_READERS: Record<string, RegExp> = {
   python: /\$\(PYTHON_VENV\)|\$\(RUN_TESTS\) python\b/,
 };
 // KIT_CODES_READERS are the targets whose recipe kit.mk owns and that read error code files: the Makefile only adds their
-// prerequisites. The parity targets read the error files of every implementation of config/parity.json.
+// prerequisites.
 // ALL_CODES_READERS start the interface checker tests/interfaces/check/main.mts, directly or through the recipe case interface_symbols
-// of each client that the feature, owner and client-db runners start; its API units read the error code
+// of each client that the feature, owner and client-db runners start; its catalog check reads the error code
 // files of every implementation.
 const ALL_CODES_READERS = /tests\/interfaces\/check\/main\.mts|scripts\/features\/(?:coverage|owners)\.mts|scripts\/client-db-test\.mts/;
 const KIT_CODES_READERS: Record<string, string[]> = {
   'lint-ts': ['typescript'],
   'lint-php': ['php'],
   'test-php-ext': ['php'],
-  'parity-declarations-check': ['typescript', 'php', 'python'],
-  'parity-check': ['typescript', 'php', 'python'],
-  'parity-api-check': ['typescript', 'php', 'python'],
-  '$(KIT_PARITY_BINDING_TARGETS)': ['typescript', 'php', 'python'],
 };
 
 // generatedCodesErrors returns one error for each make target that reads an error code file without orm-codes-<lang>, which writes

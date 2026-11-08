@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Own the servers and run databases of one Kit parity job. The provider calls prepare and cleanup in
+// Own the servers and run databases of one Kit CI job (the php-ext runtime job). The provider calls prepare and cleanup in
 // separate workflow steps, so the run directory and database DSNs cross that boundary only through the job's GITHUB_ENV.
 import { appendFileSync, existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
@@ -8,9 +8,9 @@ import { environmentFile } from './databases.mts';
 
 const SERVER_ENV = '.runtime/servers/env';
 const RUN_PARENT = '.runtime/run';
-const markerName = '.kit-parity-context.json';
+const markerName = '.kit-job-context.json';
 
-export type ContextScope = 'parity' | 'php-ext';
+export type ContextScope = 'php-ext';
 type ContextState = { schema: 1; scope: ContextScope; runId: string; attempt: string; serverStartAttempted: boolean; databaseCreateAttempted: boolean };
 export type ContextCommandResult = { status: number | null; signal: NodeJS.Signals | null };
 export type ContextCommand = (command: string, args: string[], cwd: string, env: NodeJS.ProcessEnv) => ContextCommandResult;
@@ -62,7 +62,7 @@ function readOwnedState(root: string, directory: string, scope: ContextScope, ru
   const markerStat = lstatSync(marker);
   if (!markerStat.isFile() || markerStat.isSymbolicLink()) throw new Error(`refusing to use invalid ${scope} context ownership marker ${marker}`);
   const parsed: unknown = JSON.parse(readFileSync(marker, 'utf8'));
-  if (!isObjectRecord(parsed)) throw new Error(`invalid parity context ownership marker ${marker}`);
+  if (!isObjectRecord(parsed)) throw new Error(`invalid context ownership marker ${marker}`);
   if (parsed.schema !== 1 || parsed.scope !== scope || parsed.runId !== runId || parsed.attempt !== attempt
       || typeof parsed.serverStartAttempted !== 'boolean' || typeof parsed.databaseCreateAttempted !== 'boolean') {
     throw new Error(`${scope} context ownership marker does not match workflow run ${runId}/${attempt}`);
@@ -171,12 +171,12 @@ if (import.meta.main) {
   const action = process.argv[2];
   const scope = process.argv[3];
   try {
-    if (scope !== 'parity' && scope !== 'php-ext') throw new Error('context scope must be parity or php-ext');
+    if (scope !== 'php-ext') throw new Error('context scope must be php-ext');
     if (action === 'prepare') prepareContext(scope);
     else if (action === 'cleanup') cleanupContext(scope);
-    else throw new Error('usage: parity-context.mts prepare|cleanup parity|php-ext');
+    else throw new Error('usage: job-context.mts prepare|cleanup php-ext');
   } catch (error) {
-    console.error(`parity-context: ${error instanceof Error ? error.message : String(error)}`);
+    console.error(`job-context: ${error instanceof Error ? error.message : String(error)}`);
     process.exitCode = 1;
   }
 }

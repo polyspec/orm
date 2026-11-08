@@ -1,9 +1,9 @@
 # The gate pipeline of orm (kit K270, K910), which orm took from the example of kit and owns (T391); every step runs a target
 # of the Makefile. .github/workflows/ci.yml holds the triggers and the concurrency and calls it as a job
-# (`uses: ./.github/workflows/ci-pipeline.yml`), so one push runs one workflow: shared first, then the parity and runtime jobs in
+# (`uses: ./.github/workflows/ci-pipeline.yml`), so one push runs one workflow: shared first, then the runtime jobs in
 # parallel, then required. Each job installs only its own locked prerequisites, declared in config/ci.json or selected from the
 # repository's deps-<runtime> targets (K859), and runs the gate of its group with the targets that config/ci.json declares for
-# that group (targets.shared, targets.parity, targets.runtimes.<runtime>) through make ci-targets, inside its context window.
+# that group (targets.shared, targets.runtimes.<runtime>) through make ci-targets, inside its context window.
 name: ci-pipeline
 
 on:
@@ -19,12 +19,7 @@ jobs:
     outputs:
       runtimes: ${{ steps.plan.outputs.runtimes }}
       runner: ${{ steps.plan.outputs.runner }}
-      parity_mode: ${{ steps.plan.outputs.parity_mode }}
-      parity_matrix: ${{ steps.plan.outputs.parity_matrix }}
       has_runtimes: ${{ steps.plan.outputs.has_runtimes }}
-      parity_tools: ${{ steps.plan.outputs.parity_tools }}
-      parity_targets: ${{ steps.plan.outputs.parity_targets }}
-      extractors: ${{ steps.plan.outputs.extractors }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -58,133 +53,6 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: kit-report-shared
-          path: var/report/ci-targets/
-          if-no-files-found: ignore
-
-  parity:
-    needs: shared
-    if: ${{ needs.shared.outputs.parity_mode == 'full' }}
-    runs-on: ${{ needs.shared.outputs.runner }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          fetch-depth: 0
-      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
-        if: ${{ contains(needs.shared.outputs.parity_tools, 'php') }}
-        with:
-          php-version-file: .php-version
-          tools: none
-          coverage: none
-      # The bootstrap of kit (K992): the Node.js of mise.toml, the locked kit package, the npm of var/tools and the packages.
-      - uses: ./.github/actions/kit-bootstrap
-      - name: install parity toolchains
-        if: ${{ needs.shared.outputs.parity_tools != '[]' }}
-        run: make install-tools TOOLS="${{ join(fromJSON(needs.shared.outputs.parity_tools), ' ') }}"
-      - name: install symbol extractors
-        if: ${{ needs.shared.outputs.extractors != '[]' }}
-        run: make kit-install-symbols EXTRACTORS="${{ join(fromJSON(needs.shared.outputs.extractors), ' ') }}"
-      - name: install parity prerequisites
-        run: make kit-ci-setup GROUP=parity
-      - id: context_prepare
-        name: prepare parity CI context
-        run: make kit-ci-context-prepare GROUP=parity
-      - name: parity gate
-        run: make ci-targets TARGETS="kit-gates-parity ${{ join(fromJSON(needs.shared.outputs.parity_targets), ' ') }}"
-      - name: cleanup parity CI context
-        if: ${{ always() && steps.context_prepare.outcome != 'skipped' }}
-        run: make kit-ci-context-cleanup GROUP=parity
-      # actions/upload-artifact v7.0.1: the report of make ci-targets, var/report/ci-targets.
-      - name: report
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: kit-report-parity
-          path: var/report/ci-targets/
-          if-no-files-found: ignore
-
-  parity-api:
-    needs: shared
-    if: ${{ needs.shared.outputs.parity_mode == 'phases' }}
-    runs-on: ${{ needs.shared.outputs.runner }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          fetch-depth: 0
-      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
-        if: ${{ contains(needs.shared.outputs.parity_tools, 'php') }}
-        with:
-          php-version-file: .php-version
-          tools: none
-          coverage: none
-      # The bootstrap of kit (K992): the Node.js of mise.toml, the locked kit package, the npm of var/tools and the packages.
-      - uses: ./.github/actions/kit-bootstrap
-      - name: install parity toolchains
-        if: ${{ needs.shared.outputs.parity_tools != '[]' }}
-        run: make install-tools TOOLS="${{ join(fromJSON(needs.shared.outputs.parity_tools), ' ') }}"
-      - name: install symbol extractors
-        if: ${{ needs.shared.outputs.extractors != '[]' }}
-        run: make kit-install-symbols EXTRACTORS="${{ join(fromJSON(needs.shared.outputs.extractors), ' ') }}"
-      - name: install parity prerequisites
-        run: make kit-ci-setup GROUP=parity
-      - id: context_prepare
-        name: prepare parity CI context
-        run: make kit-ci-context-prepare GROUP=parity
-      - name: API phase
-        run: make ci-targets TARGETS="parity-api-check ${{ join(fromJSON(needs.shared.outputs.parity_targets), ' ') }}"
-      - name: cleanup parity CI context
-        if: ${{ always() && steps.context_prepare.outcome != 'skipped' }}
-        run: make kit-ci-context-cleanup GROUP=parity
-      # actions/upload-artifact v7.0.1: the report of make ci-targets, var/report/ci-targets.
-      - name: report
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: kit-report-parity-api
-          path: var/report/ci-targets/
-          if-no-files-found: ignore
-
-  parity-bindings:
-    needs: shared
-    if: ${{ needs.shared.outputs.parity_mode == 'phases' }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include: ${{ fromJSON(needs.shared.outputs.parity_matrix) }}
-    runs-on: ${{ needs.shared.outputs.runner }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          fetch-depth: 0
-      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
-        if: ${{ contains(needs.shared.outputs.parity_tools, 'php') }}
-        with:
-          php-version-file: .php-version
-          tools: none
-          coverage: none
-      # The bootstrap of kit (K992): the Node.js of mise.toml, the locked kit package, the npm of var/tools and the packages.
-      - uses: ./.github/actions/kit-bootstrap
-      - name: install parity toolchains
-        if: ${{ needs.shared.outputs.parity_tools != '[]' }}
-        run: make install-tools TOOLS="${{ join(fromJSON(needs.shared.outputs.parity_tools), ' ') }}"
-      - name: install symbol extractors
-        if: ${{ needs.shared.outputs.extractors != '[]' }}
-        run: make kit-install-symbols EXTRACTORS="${{ join(fromJSON(needs.shared.outputs.extractors), ' ') }}"
-      - name: install parity prerequisites
-        run: make kit-ci-setup GROUP=parity
-      - id: context_prepare
-        name: prepare parity CI context
-        run: make kit-ci-context-prepare GROUP=parity
-      - name: binding phase
-        run: make ci-targets TARGETS="parity-bindings-${{ matrix.implementation }}-check"
-      - name: cleanup parity CI context
-        if: ${{ always() && steps.context_prepare.outcome != 'skipped' }}
-        run: make kit-ci-context-cleanup GROUP=parity
-      # actions/upload-artifact v7.0.1: the report of make ci-targets, var/report/ci-targets.
-      - name: report
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: kit-report-parity-bindings-${{ matrix.implementation }}
           path: var/report/ci-targets/
           if-no-files-found: ignore
 
@@ -228,24 +96,18 @@ jobs:
           path: var/report/ci-targets/
           if-no-files-found: ignore
 
-  # The closing common part: it fails when a job that the plan selected does not succeed. The plan selects shared, the parity job
-  # of parity_mode full, the parity-api and parity-bindings jobs of phases, and runtime when the repository has one (K950). A job
+  # The closing common part: it fails when a job that the plan selected does not succeed. The plan selects shared, and runtime when
+  # the repository has one (K950). A job
   # the plan did not select is skipped and is not a result; a selected job that is skipped fails the pipeline. It runs on the
   # default runner, since the runner output of shared is empty when shared fails before the plan.
   required:
     if: ${{ always() }}
-    needs: [shared, parity, parity-api, parity-bindings, runtime]
+    needs: [shared, runtime]
     runs-on: ubuntu-24.04
     env:
       SHARED_RESULT: ${{ needs.shared.result }}
-      PARITY_RESULT: ${{ needs.parity.result }}
-      PARITY_API_RESULT: ${{ needs.parity-api.result }}
-      PARITY_BINDINGS_RESULT: ${{ needs.parity-bindings.result }}
       RUNTIME_RESULT: ${{ needs.runtime.result }}
       SHARED_SELECTED: 'true'
-      PARITY_SELECTED: ${{ needs.shared.outputs.parity_mode == 'full' }}
-      PARITY_API_SELECTED: ${{ needs.shared.outputs.parity_mode == 'phases' }}
-      PARITY_BINDINGS_SELECTED: ${{ needs.shared.outputs.parity_mode == 'phases' }}
       RUNTIME_SELECTED: ${{ needs.shared.outputs.has_runtimes == 'true' }}
     steps:
       - name: require every job that the plan selected
@@ -263,8 +125,5 @@ jobs:
             fi
           }
           judge shared "$SHARED_RESULT" "$SHARED_SELECTED"
-          judge parity "$PARITY_RESULT" "$PARITY_SELECTED"
-          judge parity-api "$PARITY_API_RESULT" "$PARITY_API_SELECTED"
-          judge parity-bindings "$PARITY_BINDINGS_RESULT" "$PARITY_BINDINGS_SELECTED"
           judge runtime "$RUNTIME_RESULT" "$RUNTIME_SELECTED"
           exit "$failed"

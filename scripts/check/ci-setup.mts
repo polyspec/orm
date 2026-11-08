@@ -25,7 +25,6 @@ export const CI_SETUP: Record<string, string | null> = {
   // The full Go workspace modules and generated models are installed only for groups that declare Go work.
   'go-modules': 'go',
   'interfaces-typescript': 'interfaces-typescript',
-  'parity-symbols': 'parity-symbols',
   rust: 'rust',
   'rust-cache': null,
   'cache-npm': null,
@@ -61,7 +60,6 @@ export const NEEDS = ['databases', 'mysql-privilege-server', ...new Set(Object.v
 export const GROUP_OUTPUTS: Record<string, string[]> = {
   'node-modules': ['node-modules', 'databases'],
   'interfaces-typescript': ['interfaces-typescript'],
-  'parity-symbols': ['parity-symbols'],
   go: ['go'],
   rust: ['rust'],
   php: ['php', 'php-min', 'composer'],
@@ -81,7 +79,6 @@ export const STEP_OUTPUT: Record<string, string | null> = {
   go: null,
   // Kit bootstrap, which installs the pinned npm and the packages, runs in every group before group-needs: the first Make target reads Kit's Makefile.
   'interfaces-typescript': 'interfaces-typescript',
-  'parity-symbols': 'parity-symbols',
   rust: 'rust',
   'rust-cache': 'rust',
   'rust-crates': 'rust',
@@ -119,7 +116,6 @@ export const SETUP_NEEDS: Record<string, string[]> = {
   'php-min': ['node-modules'],
   'php-extension-tools': ['php', 'composer', 'node-modules'],
   'interfaces-typescript': ['node-modules'],
-  'parity-symbols': ['node-modules', 'go', 'php', 'composer'],
 };
 
 // expandNeeds is the need list with the needs that SETUP_NEEDS names appended transitively (declared order first, then the order added).

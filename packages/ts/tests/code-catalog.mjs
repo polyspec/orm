@@ -27,7 +27,7 @@ function readCatalog(yaml) {
 
 const escape = text => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-// Each case is a node:test test, the form that the parity runner reads (tests/testcase.mts, caseTest).
+// Each case is a node:test test (tests/testcase.mts, caseTest).
 // Requirements: INT-65.
 caseTest('code-catalog/matches-errors-yaml', COMPUTE, async () => {
   const catalog = readCatalog(await readFile(new URL('../../../docs/spec/errors.yaml', import.meta.url), 'utf8'));

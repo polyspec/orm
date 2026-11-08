@@ -6,14 +6,14 @@ import { COMPUTE, runGroup, sections, stepLines, type Step } from '../../tests/t
 import { errorCode, errorMessage } from '../../tests/errors.mts';
 import type { Check } from './select.mts';
 import { manifestInputErrors } from './owners.mts';
+import { phpScope, readTree as readNamesTree } from './test-names.mts';
 import { readFeatures, type FeatureManifest } from './manifest.mts';
-import { boundTestPaths, implementationFiles, implementationLanguages, implementationTestInventory, koreanDocumentPath, unlistedFeatureTestErrors, unitTests, unknownParityUnits } from './languages.mts';
+import { implementationFiles, implementationOf, implementationTestInventory, koreanDocumentPath, unlistedFeatureTestErrors } from './languages.mts';
 import { JsonError, parseJsonValue, readJsonFile, SchemaError } from '../json/schema.mts';
 import { parseSelection, selectChecks, selectionErrors, SHARDS } from './select.mts';
 import { completionItemAdapterErrors } from './behavior-adapters.mts';
 import { checkBehaviorAdapterCases } from '../../tests/interfaces/check/contract.mts';
 import { readManifest as readInterfaceManifest, validateManifest as validateInterfaceManifest } from '../../tests/interfaces/check/manifest.mts';
-import { readParity } from '../../tests/interfaces/check/api.mts';
 
 const root = resolve(new URL('../..', import.meta.url).pathname);
 // The manifest check before the verify command is one case that reads a file and compares it.
@@ -28,11 +28,15 @@ const interfaceManifest = readInterfaceManifest(resolve(root, 'contracts/interfa
 validateInterfaceManifest(interfaceManifest);
 const checklist = await readFile(resolve(root, 'docs/plans/kit-standard/checklist.md'), 'utf8');
 errors.push(...completionItemAdapterErrors(checklist, interfaceManifest.behavior_adapters ?? []));
-errors.push(...checkBehaviorAdapterCases(interfaceManifest.behavior_adapters ?? [], readParity(root).units ?? []));
+// The text of a case file is the file itself and, for PHP, each class it extends, trait it uses or file it requires.
+const sourceTree = readNamesTree(root);
+errors.push(...checkBehaviorAdapterCases(interfaceManifest.behavior_adapters ?? [], file => implementationOf(file), file => {
+  if (!sourceTree.files.includes(file)) return undefined;
+  return file.endsWith('.php') ? phpScope(sourceTree, [file]).text : sourceTree.read(file);
+}));
 const ids = new Set<string>();
 // shardOf is, for each (cwd, command), the verify command that first declared it and its shard.
 const shardOf = new Map<string, { shard: string; name: string }>();
-const clients = implementationLanguages();
 const VECTORS_SCHEMA = new URL('../../tests/conformance/schema/vectors.schema.json', import.meta.url).pathname;
 const FIXTURE_SCHEMA = new URL('./schema/fixture.schema.json', import.meta.url).pathname;
 const runVerification = process.argv.includes('--run');
@@ -133,15 +137,12 @@ for (const feature of manifest.features) {
   }
 }
 
-// The parity inventory in config/parity.json separates shared tests from support and implementation-internal tests.
-// Every declared shared test (or exact parity test binding) belongs to a feature; the parity declaration check validates
-// the remaining implementation test classifications. A shared vector contract covers all clients because the conformance
-// comparator fails when one language does not run the declared vectors.
+// The test inventory of contracts/implementations.json separates the tests of the features from support modules and internal
+// tests. Every test file belongs to a feature; a shared vector contract covers all clients because the conformance comparator
+// fails when one language does not run the declared vectors.
 const tracked = execFileSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean);
-const allImplementationFiles = new Set<string>(implementationFiles(root));
-for (const language of implementationLanguages()) for (const file of boundTestPaths(language)) allImplementationFiles.add(file);
-const discovered = implementationTestInventory(allImplementationFiles);
-const existing: Record<string, Set<string>> = Object.fromEntries(Object.entries(discovered).map(([language, files]) => [language, new Set(files)]));
+const inventory = implementationTestInventory(implementationFiles(root));
+errors.push(...inventory.stale);
 const listedByFeatures = new Set<string>();
 for (const feature of manifest.features) {
   for (const relative of [...feature.fixtures, ...feature.tests]) listedByFeatures.add(relative);
@@ -153,20 +154,7 @@ for (const feature of manifest.features) {
 for (const helper of manifest.helpers ?? []) for (const relative of [...helper.paths, ...helper.tests]) listedByFeatures.add(relative);
 // Verify commands, coverage units, and helpers declare the inputs that owner-check will select (scripts/features/owners.mts).
 errors.push(...manifestInputErrors(manifest, tracked));
-for (const feature of manifest.features) {
-  for (const id of unknownParityUnits(feature.parity)) errors.push(`${feature.id}: parity unit ${id} is not declared in config/parity.json`);
-  // Each owner or dependent test of a language is bound by a parity unit of that language that the feature names.
-  const parts = [
-    ...Object.entries(feature.coverage?.owners ?? {}).map(([language, owner]) => ({ language, tests: owner.tests, role: 'owner' })),
-    ...(feature.coverage?.dependents ?? []).map(dependent => ({ language: dependent.language, tests: dependent.tests, role: `dependent ${dependent.id}` })),
-  ];
-  for (const { language, tests, role } of parts) {
-    if (!clients.includes(language)) continue;
-    const bound = feature.parity.some(id => unitTests(id, language).some(test => tests.includes(test)));
-    if (!bound) errors.push(`${feature.id}: the ${role} of ${language} is bound by no parity unit of that feature`);
-  }
-}
-errors.push(...unlistedFeatureTestErrors(existing, listedByFeatures));
+errors.push(...unlistedFeatureTestErrors(inventory.tests, listedByFeatures));
 
 errors.push(...selectionErrors(manifest, selection));
 log.end(errors.length ? `${errors.length} error(s); each is listed at the end` : undefined);

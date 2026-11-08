@@ -1,98 +1,49 @@
-// The API units of config/parity.json (kind api): each code of docs/spec/errors.yaml is one unit, whose symbol each declared
-// implementation names. The checker reads the units from that file and refuses a unit, symbol or constant that does not match the
-// catalog and the catalog file of its client. Units of other API symbols (codec, collection, AES) are not declared yet.
+// The error catalog of every implementation: each code of docs/spec/errors.yaml is one constant of the catalog file of each
+// implementation of contracts/implementations.json, which orm-gen writes from the same file. The checker refuses a code that a
+// catalog file lacks or holds twice, a constant of a catalog file that names no code, and an implementation with no catalog file.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { readParityConfig } from '../../../scripts/json/formats.mts';
+import { readImplementations } from '../../../scripts/json/formats.mts';
 
-type ApiSymbol = { implementation?: string; symbol?: string; symbols?: string[] };
-export type ParityBinding = { implementation?: string; test?: string; id?: string };
-type ApiUnit = {
-  id?: string;
-  kind?: string;
-  requirements?: string[];
-  owner?: { kind?: string; artifact?: string; package?: string };
-  symbols?: ApiSymbol[];
-  bindings?: ParityBinding[];
-};
-type ParityImplementation = { name?: string; errors?: { file?: string; pattern?: string } };
-export type Parity = {
-  implementations?: ParityImplementation[];
-  units?: ApiUnit[];
+/** The catalog file of each implementation and the pattern of its line, whose group 1 is the code. */
+export const ERROR_CATALOGS: Record<string, { file: string; pattern: string }> = {
+  go: { file: 'packages/go/orm/codes.go', pattern: '^\\tCode\\w+\\s+= "(\\w+)"' },
+  php: { file: 'packages/php/src/Code.php', pattern: "^    public const (\\w+) = '\\w+';$" },
+  'php-extension': { file: 'packages/php-ext/src/polyspec_orm.stub.php', pattern: "^    public const (?:string )?(\\w+) = '\\1';$" },
+  typescript: { file: 'packages/ts/src/codes.ts', pattern: "^export const (\\w+) = '\\w+';$" },
+  python: { file: 'packages/python/src/polyspec/orm/codes.py', pattern: '^(\\w+) = "\\w+"$' },
+  rust: { file: 'packages/rust/orm/src/codes.rs', pattern: '^pub const (\\w+): &str = "\\w+";$' },
 };
 
-const PREFIX = 'error-code-';
-
-/** readParity reads config/parity.json, the one source of the units. */
-export function readParity(root: string): Parity {
-  return readParityConfig(join(root, 'config/parity.json'));
-}
-
-/** unitID is the unit of the catalog code `code`: error-code- and the code in lower case with - for _. */
-function unitID(code: string): string {
-  return `${PREFIX}${code.toLowerCase().replaceAll('_', '-')}`;
+/** The implementations of orm (contracts/implementations.json). */
+export function readImplementationNames(root: string): string[] {
+  return readImplementations(join(root, 'contracts/implementations.json')).map(entry => entry.name);
 }
 
 /**
- * apiProblems returns each way the error-catalog units of `parity` differ from the catalog `codes`: a code without its unit,
- * a unit that names no code, a declared implementation without its symbol, a symbol of an undeclared implementation, and a
- * symbol that is no constant of the client's catalog file carrying the code. `sources` gives the text of a catalog file by its
- * path in the declaration; without it the file is read from `root`.
+ * apiProblems returns each way the catalog file of an implementation of `implementations` differs from the catalog `codes`: an
+ * implementation with no catalog file, a code its file lacks or holds twice, and a constant of its file that names no code.
+ * `sources` gives the text of a catalog file by its path; without it the file is read from `root`.
  */
-export function apiProblems(root: string, parity: Parity, codes: Set<string>, sources?: Map<string, string>): string[] {
+export function apiProblems(root: string, implementations: readonly string[], codes: Set<string>, sources?: Map<string, string>, catalogs = ERROR_CATALOGS): string[] {
   const problems: string[] = [];
-  const members = (parity.implementations ?? []).map(entry => entry.name ?? '');
-  const implementations = new Map((parity.implementations ?? []).map(entry => [entry.name ?? '', entry]));
-  const units = (parity.units ?? []).filter(unit => (unit.id ?? '').startsWith(PREFIX));
-  const byID = new Map<string, ApiUnit>();
-  for (const unit of units) {
-    const id = unit.id ?? '';
-    if (byID.has(id)) problems.push(`API unit ${id} is declared twice`);
-    byID.set(id, unit);
-  }
-  for (const code of codes) {
-    if (!byID.has(unitID(code))) problems.push(`no API unit ${unitID(code)} for the code ${code} of docs/spec/errors.yaml`);
-  }
-  const catalogIDs = new Set([...codes].map(unitID));
-  for (const unit of units) {
-    const id = unit.id ?? '';
-    if (unit.kind !== 'api') problems.push(`${id} is not of kind api`);
-    if (!catalogIDs.has(id)) problems.push(`API unit ${id} names no code of docs/spec/errors.yaml`);
-    const code = [...codes].find(entry => unitID(entry) === id);
-    if (code === undefined) continue;
-    const named = unit.symbols ?? [];
-    for (const member of members) {
-      const entries = named.filter(entry => entry.implementation === member);
-      if (entries.length !== 1) problems.push(`API unit ${id} names ${entries.length} symbols of ${member}, want one`);
+  for (const implementation of implementations) {
+    const catalog = catalogs[implementation];
+    if (catalog === undefined) {
+      problems.push(`${implementation} declares no error catalog file`);
+      continue;
     }
-    for (const entry of named) {
-      const implementation = entry.implementation ?? '';
-      const symbols = entry.symbols ?? (entry.symbol === undefined ? [] : [entry.symbol]);
-      if (!members.includes(implementation)) {
-        problems.push(`API unit ${id} names ${implementation}, which parity.json does not declare`);
-        continue;
-      }
-      const errors = implementations.get(implementation)?.errors;
-      if (errors?.file === undefined || errors.pattern === undefined) {
-        problems.push(`${implementation} declares no error catalog file, so ${symbols.join(', ') || '(no symbols)'} of ${id} has no constant to name`);
-        continue;
-      }
-      const text = sources?.get(errors.file) ?? readFileSync(join(root, errors.file), 'utf8');
-      const pattern = new RegExp(errors.pattern);
-      const line = text.split('\n').find(candidate => pattern.exec(candidate)?.[1] === code);
-      if (line === undefined) problems.push(`${errors.file} has no constant for ${code}, which API unit ${id} names for ${implementation}`);
-      else {
-        const constants = symbols.filter(symbol => {
-          const identifier = /([A-Za-z_]\w*)(?::\w+)?$/.exec(symbol)?.[1] ?? '';
-          return identifier !== '' && new RegExp(`\\b${identifier}\\b`).test(line);
-        });
-        if (constants.length === 0) {
-          for (const symbol of symbols) problems.push(`${implementation}: the symbol ${symbol} of ${id} is not the constant of ${code} in ${errors.file}`);
-        } else if (constants.length > 1) {
-          problems.push(`${implementation}: API unit ${id} names ${constants.length} symbols of ${code} in ${errors.file}, want one`);
-        }
-      }
+    const text = sources?.get(catalog.file) ?? readFileSync(join(root, catalog.file), 'utf8');
+    const pattern = new RegExp(catalog.pattern);
+    const found = text.split('\n').flatMap(line => {
+      const code = pattern.exec(line)?.[1];
+      return code === undefined ? [] : [code];
+    });
+    for (const code of codes) {
+      const count = found.filter(entry => entry === code).length;
+      if (count !== 1) problems.push(`${catalog.file} holds ${count} constants for ${code} of docs/spec/errors.yaml, want one (${implementation})`);
     }
+    for (const code of new Set(found)) if (!codes.has(code)) problems.push(`${catalog.file} holds the constant ${code}, which docs/spec/errors.yaml does not declare (${implementation})`);
   }
   return problems;
 }

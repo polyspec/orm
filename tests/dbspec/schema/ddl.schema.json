@@ -12,7 +12,7 @@
   ],
   "properties": {
     "requirements": {
-      "description": "The requirement ids of docs/spec that the cases of each section test, read by the parity check of @polyspec/kit (R15) and by no runner.",
+      "description": "The requirement ids of docs/spec that the cases of each section test, read by no runner.",
       "type": "object",
       "additionalProperties": false,
       "required": [

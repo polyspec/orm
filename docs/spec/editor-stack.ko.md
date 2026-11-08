@@ -1,5 +1,5 @@
 <!-- doc-id: plans-editor-stack -->
-<!-- source-sha256: db75a92e6b45e2fdf29350b67d8def1d235b4bd457885aa33a87d4656f95bcbb -->
+<!-- source-sha256: 7ab3059d74f1fbb9b8ce7d8831f47ba23f02ebdd23a9a0bb300caf1423e50df4 -->
 # 계획: 표준으로서의 dbspec editor stack
 
 [English](editor-stack.md)
@@ -178,7 +178,7 @@ Cause, Acceptance, 그리고 `docs/spec/editor.md`에 있다.
   - T128의 Acceptance를 판정에 맞게 다시 쓴다.
 - **T128-2a 모든 runtime의 set 파일**(판정 4).
   - `dbspec-set.json`을 `docs/spec/dbspec.md` "Documents and use"(+ko)에 검증 vector와 함께 명세한다.
-  - 모든 runtime의 공개 set 읽기 API(`Dbspec.readSet`). interfaces 규칙, symbol, parity unit, feature
+  - 모든 runtime의 공개 set 읽기 API(`Dbspec.readSet`). interfaces 규칙, symbol, recipe case, feature
     test를 갖춘다. Go의 `runtimemodel.LoadFileSet`은 이것으로 바뀐다.
   - 생성기는 set 파일을 받는다. 호환 없이 제거하는 형식:
     - Go `--document`/`--use`;
@@ -250,8 +250,8 @@ Cause, Acceptance, 그리고 `docs/spec/editor.md`에 있다.
     - 모양은 `docs/spec/dbspec.md`(+ko)에 적는다. vector는 반복된 `codec`, `checkbox`, 다섯 `state_machine`
       형식 각각, `use` table, diagram 항목, primary key, document 이름을 담는다.
   - **ORES-70** introspection, Mermaid import, emit, compare, diff, render, hash는 위치를 받지도 내지도 않는다.
-  - **ORES-71** 모든 runtime의 parse 결과는 같은 모양이며, kind마다 parity와 vector를 가진다.
-  - cases.json의 vector, interfaces, symbol, parity 연결, `docs/spec/dbspec.md`(+ko)의 서술이 필요하다.
+  - **ORES-71** 모든 runtime의 parse 결과는 같은 모양이며, kind마다 모든 runtime이 같은 vector로 검사한다.
+  - cases.json의 vector, interfaces, symbol 연결, `docs/spec/dbspec.md`(+ko)의 서술이 필요하다.
   - **ORES-72** 분석 token은 highlight에만 쓰인다. 도구는 token이나 text를 훑지 않고 이 위치로 선언을 찾는다.
   - **ORES-83** `polyspec-orm` wheel의 Python parse position은 바꿀 수 없는 기록이다. `kind`, `path`(목록이 아닌 이름의 tuple), `line`, `column`은 만들 때 정해지며, 그중 하나에 대입하면 오류가 난다.
 - **T128-3 모든 runtime의 `analyze`와 `format`.**
@@ -263,7 +263,7 @@ Cause, Acceptance, 그리고 `docs/spec/editor.md`에 있다.
   - interface 기록:
     - 모든 언어에 mapping을 가진 interfaces 규칙 `Dbspec.analyze`와 `Dbspec.format`;
     - symbol snapshot과 hash;
-    - parity API unit;
+    - 여섯 runtime이 실행하는 recipe case;
     - `schema_definition` test;
     - php-extension 규칙 목록과 stub;
     - `docs/spec/interfaces-model.md`(+ko)의 Dbspec 행.
@@ -341,7 +341,7 @@ Cause, Acceptance, 그리고 `docs/spec/editor.md`에 있다.
   - conformance case가 기대 token과 format된 text를 가진다.
   - Go, Rust, PHP, PHP extension, Python이 `analyze`와 `format`을 구현한다; Python은 기존 `analyze`를
     확장한다. 각각 AST 불변식과 멱등성을 지킨다.
-  - parity와 conformance runner가 token과 format된 text를 비교한다.
+  - recipe와 conformance runner가 token과 format된 text를 비교한다.
   - `features.md`: `template-language`가 모든 runtime에서 통과한다.
 - **행 C, template T23.3: VS Code 확장에 문법이 없다.**
   - tmLanguage는 HTML host(`text.html.basic`과 포함된 CSS, JS)만 남긴다.
@@ -468,13 +468,13 @@ Cause, Acceptance, 그리고 `docs/spec/editor.md`에 있다.
 - **orm:**
   - `make dbspec-go-check dbspec-ts-check dbspec-php-check dbspec-php-extension-check
     dbspec-rust-check python-check dbspec-compare-check`;
-  - `node tests/interfaces/check/main.mts --self-test`; `make parity-check`;
+  - `node tests/interfaces/check/main.mts --self-test`; `make feature-verify-other`;
     `make feature-unit-check`;
   - language, LSP, CodeMirror, vscode test; import 검사;
   - `npm run docs:check`(build된 `dbspec.html`이 두 theme 모두에서 class span을 가진다);
     `make release-coverage docs-check kit-check`;
   - `ci`와 `docs-pages` workflow green; release 검증.
 - **template:**
-  - `make orm-check`: token과 format을 포함한 conformance와 parity, 불변식 test, editor import 검사, vscode
+  - `make orm-check`: token과 format을 포함한 conformance와 recipe, 불변식 test, editor import 검사, vscode
     integration;
   - template CI green.

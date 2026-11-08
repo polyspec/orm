@@ -1,5 +1,5 @@
 // test-names reads, without running anything, the test files, test symbols and name filters that the commands of the Makefile,
-// contracts/features.json, config/parity.json and contracts/check-inputs.json name, and reports each name that no test of the tree holds.
+// contracts/features.json and contracts/check-inputs.json name, and reports each name that no test of the tree holds.
 // A runner reports such a name one at a time, or not at all where another alternative of the filter still selects a test.
 import { existsSync, readFileSync } from 'node:fs';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -197,7 +197,7 @@ type PhpScope = { names: string[]; text: string; cases: string[] };
 const phpFiles = (tree: Tree) => tree.files.filter(path => path.endsWith('.php') && /^packages\/php(-ext)?\/tests\//.test(path));
 
 // phpScope lists `Namespace\Class::method` of the files and of each class they extend, trait they use or file they require.
-const phpScope = (tree: Tree, paths: string[]): PhpScope => {
+export const phpScope = (tree: Tree, paths: string[]): PhpScope => {
   const all = phpFiles(tree);
   const seen = new Set<string>();
   const names: string[] = [];
@@ -655,27 +655,11 @@ export const featureCommands = (makefile: Makefile, place: string, command: stri
 
 const pathHeld = (tree: Tree, path: string) => /[*?{[]/.test(path) ? tree.files.some(file => minimatch(file, path)) : tree.files.includes(path) || tree.files.some(file => file.startsWith(`${path}/`));
 
-// bindingLeaf is the part of a parity binding id that its test file or recipe declares.
-const bindingLeaf = (implementation: string, id: string): string => {
-  if (implementation === 'go') return id.includes('/') ? id.slice(id.indexOf('/') + 1) : id;
-  if (implementation === 'php' || implementation === 'php-extension') return (/ with data set "([^"]+)"/.exec(id)?.[1]) ?? id.replace(/ .*$/, '').split('::').at(-1) ?? '';
-  if (implementation === 'rust') return id.split('::').at(-1) ?? '';
-  return id;
-};
-
-const bindingSources = (tree: Tree, implementation: string, test: string): string => {
-  if (implementation === 'php' || implementation === 'php-extension') return phpScope(tree, [test]).text;
-  if (implementation === 'rust') return [...rustIncluded(tree, test)].map(path => tree.read(path)).join('\n');
-  if (implementation === 'typescript') return [...nodeSources(tree, test)].map(path => tree.read(path)).join('\n');
-  return tree.read(test);
-};
-
 type Features = { features: { id: string; tests?: string[]; verification?: { id: string; command: string; inputs?: string[] }[]; coverage?: { owners?: Record<string, { tests?: string[]; commands?: Record<string, { test?: string; recipe?: string; symbol?: string }[]> }> } }[]; helpers?: { id: string; command?: string; paths?: string[]; tests?: string[] }[] };
-type Parity = { units: { id: string; bindings?: { implementation: string; test?: string; id?: string; symbol?: string }[] }[] };
 type Inputs = { targets: Record<string, { inputs?: string[] }>; paths: Record<string, unknown> };
 
-// staleNames is every name of the four declaring files that no test of the tree holds, each with the places that name it.
-export const staleNames = (tree: Tree, sources: { makefile: string; features: Features; parity: Parity; checkInputs: Inputs }): Map<string, string[]> => {
+// staleNames is every name of the declaring files that no test of the tree holds, each with the places that name it.
+export const staleNames = (tree: Tree, sources: { makefile: string; features: Features; checkInputs: Inputs }): Map<string, string[]> => {
   const stale = new Map<string, string[]>();
   const add = (name: string, place: string) => {
     const places = stale.get(name) ?? [];
@@ -714,25 +698,6 @@ export const staleNames = (tree: Tree, sources: { makefile: string; features: Fe
   }
   for (const { place, command } of commands) {
     for (const name of checkCommand(tree, command, makefile.targets)) add(name, place);
-  }
-  for (const unit of sources.parity.units) {
-    for (const binding of unit.bindings ?? []) {
-      const place = `config/parity.json ${unit.id}`;
-      if (binding.test === undefined || !pathHeld(tree, binding.test)) {
-        add(`test file: ${binding.test ?? 'none'}`, place);
-        continue;
-      }
-      const text = bindingSources(tree, binding.implementation, binding.test);
-      const cases = recipeCases(tree, text);
-      if (binding.id !== undefined) {
-        const leaf = bindingLeaf(binding.implementation, binding.id);
-        const pieces = binding.implementation === 'typescript' || binding.id.includes(' with data set ') ? leaf.split(/[/[\]:]/).map(piece => piece.trim()).filter(Boolean) : [leaf];
-        const searched = binding.id.includes(' with data set ') ? phpFiles(tree).map(path => tree.read(path)).join('\n') : text;
-        const titled = binding.implementation === 'typescript' && nodeTitles(text).templates.some(title => title.test(leaf));
-        if (!cases.includes(leaf) && !titled && !pieces.every(piece => searched.includes(piece))) add(`parity binding: ${binding.id} in ${binding.test}`, place);
-      }
-      if (binding.symbol !== undefined && !text.includes(bindingLeaf(binding.implementation, binding.symbol))) add(`parity symbol: ${binding.symbol} in ${binding.test}`, place);
-    }
   }
   for (const [target, declaration] of Object.entries(sources.checkInputs.targets)) {
     for (const input of declaration.inputs ?? []) {

@@ -24,7 +24,7 @@ features:
     link: /spec/dialects
 ---
 <!-- doc-id: index -->
-<!-- source-sha256: 6207074820eef2fe65b91b7ab9d985334e21722cf34d5cbc40b2a5d04d4a87ec -->
+<!-- source-sha256: 98d07a11ed719c0d5a741a14ca45570290fb1a05372c6c10e1079faa171ded37 -->
 
 ## 공통 client contract의 query
 
@@ -64,6 +64,6 @@ Go `model.Author()`은 `*model.AuthorModel`을 반환한다. Rust와 TypeScript�
 
 ## 구현 상태
 
-`config/parity.json`은 **Go, PHP, PHP-extension, Rust, TypeScript, Python** 여섯 implementation을 선언한다. 위 예시는 library API의 문법을 보여 준다. PHP-extension도 공통 implementation 집합에 속하지만, 아직 끝나지 않은 native 동작과 database 근거는 [체크리스트](plans/execution/checklist.md)에 남아 있다. 공통 protocol은 caller process 안에서 planning하도록 정하며, 검증한 범위는 [구현 대조표](operations/interface-implementation.md)에 적혀 있다.
+`contracts/implementations.json`은 **Go, PHP, PHP-extension, Rust, TypeScript, Python** 여섯 implementation을 선언한다. 위 예시는 library API의 문법을 보여 준다. PHP-extension도 공통 implementation 집합에 속하지만, 아직 끝나지 않은 native 동작과 database 근거는 [체크리스트](plans/execution/checklist.md)에 남아 있다. 공통 protocol은 caller process 안에서 planning하도록 정하며, 검증한 범위는 [구현 대조표](operations/interface-implementation.md)에 적혀 있다.
 
 [DSL](spec/dsl.md) · [스키마](spec/schema.md) · [IR / Plan](spec/protocol.md) · [복합 query 예제](spec/complex-query.md) · [문서 빌드와 배포](operations/docs-development.md) · [English](index.md)

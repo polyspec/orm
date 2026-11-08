@@ -32,7 +32,7 @@
     "feature": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "title", "title_ko", "status", "description", "description_ko", "inputs", "outputs", "state", "errors", "parity", "fixtures", "tests", "docs", "verification"],
+      "required": ["id", "title", "title_ko", "status", "description", "description_ko", "inputs", "outputs", "state", "errors", "fixtures", "tests", "docs", "verification"],
       "properties": {
         "id": { "$ref": "#/$defs/text" },
         "title": { "type": "string" },
@@ -51,13 +51,6 @@
             "required": ["code", "when"],
             "properties": { "code": { "type": "string" }, "when": { "type": "string" } }
           }
-        },
-        "parity": {
-          "description": "The ids of the parity units of config/parity.json that bind this feature's tests; the languages of the feature are the client implementations those units bind.",
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": { "$ref": "#/$defs/text" }
         },
         "fixtures": { "$ref": "#/$defs/paths" },
         "tests": { "$ref": "#/$defs/paths" },

@@ -115,18 +115,10 @@ from kit and holds as its own; this file states only the rules of orm.
   and the variables the Makefile exports do not reach it (`make repo-check`).
   Enforced by: `make repo-check`
 - Own: A behaviour that more than one runtime has is the cases of a recipe (FCV-2 of
-  docs/spec/feature-coverage.md). A feature unit of `config/parity.json` with no owner that binds a native test is a
-  finding that names the unit, whatever the number of its bindings; a binding that runs the entry or a case of a suite
-  unit is no native test. The one exception is a unit that FCV-2 states to
-  stay native, with its reason after a colon; a line without a reason excepts nothing, and an exception that names no
-  unit is a finding too. No list of units waiting for conversion exists: such a list would let the check pass on
-  unfinished work.
-  Enforced by: `make repo-check`
-- Own: Every test of a file that a binding of `config/parity.json` names has a binding of its own or a line of FCV-2,
-  ``- In `<file>`, `<test>` stays as a native test: <reason>``, because the parity tool checks a file and not a test. A
-  suite bound with no symbol is a whole file, whose cases the tool compares with the recipe. A name that is not a literal
-  is not read; a line that names a test or a file that is not there is a finding.
-  Enforced by: `make repo-check`
+  docs/spec/feature-coverage.md), and a native test of such a behaviour stays only where FCV-2 states its reason after a colon.
+  The check of this rule read the feature units of config/parity.json, which kit 0.0.100 removed; its check over the tests of
+  contracts/implementations.json is row T400-1, held.
+  Enforced by: none, its check is the held row T400-1
 - Own: Performance is measured and reported; it never fails a test. A test prints its measurements (CPU and wall-clock
   time, the reference, the ratio and the machine), and a measurement above its documented reference value prints a
   `WARNING` line with the measurement, the reference and the machine, which the check runner keeps in the run record
@@ -238,13 +230,13 @@ from kit and holds as its own; this file states only the rules of orm.
 - Own: Conformance comparison and recording require nonempty, unique vector names and exactly the same vector names in each database expectation file; an omitted or extra name is an error.
   Enforced by: `make conformance-check`
 - Own: Define common planner, dialect, schema, and error behavior in `packages/go/engine/*`, `packages/go/cmd/orm-gen`, and the protocol documents. Implement client behavior in its owning `packages/<runtime>/*` directory; shared verification belongs in `tests/*`, `schema/*`, and `scripts/*`. A feature remains incomplete until every supported client has its required executable cases.
-  Enforced by: `make parity-declarations-check`
-- Own: Feature coverage evidence comes from commands executed in the current check: the exit status of the entry and the `CASE <id> [<database>] PASS` lines that it wrote (docs/spec/feature-coverage.md FCV-12). Named test files or saved output are not execution evidence. `make parity-check` runs the recipes of the features, `make feature-coverage-of/<id>` reads the coverage of one feature, and the mutation tests of the reader run in `make feature-unit-check`. `make orm-check` runs the verification commands in `make feature-verify-rust` and `make feature-verify-other`, as the `shard` of each command declares (`rust` for a command that builds and runs Rust with cargo), and `make feature-check` runs them with `make feature-performance-check`.
-  Enforced by: `make feature-unit-check`, `make parity-check`
+  Enforced by: `make feature-verify-other`
+- Own: Feature coverage evidence comes from commands executed in the current check: the exit status of the entry and the `CASE <id> [<database>] PASS` lines that it wrote (docs/spec/feature-coverage.md FCV-12). Named test files or saved output are not execution evidence. the verification commands of the features run their recipes, `make feature-coverage-of/<id>` reads the coverage of one feature, and the mutation tests of the reader run in `make feature-unit-check`. `make orm-check` runs the verification commands in `make feature-verify-rust` and `make feature-verify-other`, as the `shard` of each command declares (`rust` for a command that builds and runs Rust with cargo), and `make feature-check` runs them with `make feature-performance-check`.
+  Enforced by: `make feature-unit-check`, `make feature-verify-other`
 - Own: The coverage checker invokes each declared entry once and derives success from its exit status and the lines it wrote to the results file of `ORM_RECIPE_RESULTS`. Other test output cannot supply a result, and a case without a line did not pass. The checker reads no database state, since each case has a database of its own.
   Enforced by: `make feature-unit-check`
 - Own: A coverage case ID names shared behavior. An entry writes that ID for a case it has passed, and the checker accepts the ID only from that line. For database cases the entry makes a database of its own for each case from the server DSNs of its run.
-  Enforced by: `make feature-unit-check`, `make parity-check`
+  Enforced by: `make feature-unit-check`, `make feature-verify-other`
 - Own: An owning client executes its own behavior cases from tests located under `packages/<runtime>`. Each declared dependent part executes separate integration cases from tests in its own directory. The feature contract names both parts, test paths, and commands; missing owner or dependent-part evidence or a test path outside its part fails the coverage check. Central conformance compares client results and does not replace owner tests.
   Enforced by: `make feature-unit-check`
 - Own: Use an event instead of polling or a timer to observe it. A declared deadline may use a timer. Do not use symbolic links in what this repository creates, and do not use alternate execution paths. Mermaid definitions are the source for diagrams; store generated artifacts separately from their source definitions.
@@ -258,7 +250,7 @@ from kit and holds as its own; this file states only the rules of orm.
 - Own: SQLite live import maps only `INTEGER PRIMARY KEY AUTOINCREMENT` to the signed `i64` automatic key; an ordinary `INTEGER` remains `i32`.
   Enforced by: `make dbspec-introspect-check`
 - Own: Every transformation is idempotent: emitting a parsed canonical source reproduces it byte for byte, and repeating an operation with the same input yields the same result and state.
-  Enforced by: `make parity-check`
+  Enforced by: `make feature-verify-other`
 - Own: Names state what the thing does, and one concept has one name in every client. A name, prefix or suffix never selects behavior; behavior is declared explicitly.
   Enforced by: none, a name is a judgement of review; no check compares names across clients
 - Refines P11: Code comments and commit messages are English. A comment of a tracked code file holds no Hangul; `make comment-language-check` (T131) fails on one and names its file and line. A commit message holds no Hangul either. A new or changed comment is English (PRINCIPLES.md).

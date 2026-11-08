@@ -92,25 +92,25 @@ caseTest('the feature verification targets declare the TypeScript extractor need
   }
 });
 
-caseTest('the canonical parity target declares every client and fixture setup need', COMPUTE, () => {
+caseTest('the suite targets and the comparison declare every client and fixture setup need', COMPUTE, () => {
   const inputs: unknown = JSON.parse(readFileSync(join(repo, 'contracts/check-inputs.json'), 'utf8'));
   if (!isRecord(inputs) || !isRecord(inputs.targets)) throw new Error('contracts/check-inputs.json has no targets object');
-  const parity = inputs.targets['parity-check'];
-  if (!isRecord(parity) || !isStringArray(parity.needs)) throw new Error('parity-check has no needs list');
-  assert.deepEqual(parity.needs, ['go', 'rust', 'php', 'composer', 'python', 'node-modules', 'interfaces-typescript', 'parity-symbols', 'php-extension-tools', 'databases', 'flowmark', 'go-lease']);
-  // The API phase runs through the database wrapper, which runs only declared targets, so it is declared with the scope and needs
-  // of parity-check (T274); it is no target of CHECK_TARGETS (KSTD-5-115). The binding phases are not declared.
-  const api = inputs.targets['parity-api-check'];
-  if (!isRecord(api) || !isStringArray(api.needs)) throw new Error('parity-api-check has no needs list');
-  assert.deepEqual([api.scope, api.needs], [parity.scope, parity.needs], 'parity-api-check declares the scope and needs of parity-check');
-  for (const phase of ['parity-bindings-go-check', 'parity-bindings-php-check', 'parity-bindings-php-extension-check', 'parity-bindings-typescript-check', 'parity-bindings-python-check', 'parity-bindings-rust-check'])
-    assert.equal(Object.hasOwn(inputs.targets, phase), false, `${phase} is not a second suite target`);
+  // A suite runs the test files of its runtime on the servers of a run and on flowmark (scripts/suite-test.mts).
+  const suites: Record<string, string[]> = {
+    'suite-php-check': ['php', 'composer', 'databases', 'flowmark'],
+    'suite-typescript-check': ['node-modules', 'databases', 'flowmark'],
+    'suite-python-check': ['python', 'databases', 'flowmark'],
+  };
+  for (const [name, needs] of Object.entries(suites)) {
+    const declared: unknown = inputs.targets[name];
+    if (!isRecord(declared) || !isStringArray(declared.needs)) throw new Error(`${name} has no needs list`);
+    assert.deepEqual([declared.scope, declared.needs], ['suite', needs], name);
+  }
   const comparison = inputs.targets['conformance-check'];
   if (!isRecord(comparison) || !isStringArray(comparison.needs)) throw new Error('conformance-check has no needs list');
   for (const need of ['go', 'rust', 'php', 'php-extension-tools', 'python', 'databases', 'node-modules'])
     assert.ok(comparison.needs.includes(need), `the cross-runtime comparison independently declares ${need}`);
-  const expanded = expandNeeds(parity.needs);
-  assert.ok(expanded.includes('databases'));
+  assert.ok(expandNeeds(['databases']).includes('server-programs'));
   assert.deepEqual(SETUP_NEEDS['databases'], ['go-lease', 'node-modules', 'server-programs', 'flowmark']);
   // flowmark is the fourth database of a case, and WITH_TEST_ENV hands every target FLOWMARK, so databases installs it.
   assert.ok(expandNeeds(['databases']).includes('flowmark'));
@@ -118,7 +118,6 @@ caseTest('the canonical parity target declares every client and fixture setup ne
   const makefile = readFileSync(join(repo, 'Makefile'), 'utf8');
   // T299: make exports every variable of the TEST_ENV file of the run into itself.
   assert.match(makefile, /\$\(foreach v,\$\(TEST_ENV_NAMES\),\$\(eval export \$\(v\) :=/);
-  assert.match(makefile, /for v in BENCH_MYSQL_DSN BENCH_POSTGRES_DSN BENCH_SQLITE_DSN;/);
 });
 
 // stub runs runChecks with stub commands. The database command (node scripts/check/databases.mts) logs `databases <action>`, and a make target logs its own

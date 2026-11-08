@@ -5,22 +5,21 @@ import { tmpdir } from 'node:os';
 import { readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { caseTest, COMPUTE } from '../../tests/testcase.mts';
-import { readParityConfig } from '../json/formats.mts';
-import { boundTestPaths, featureLanguages, implementationFiles, implementationInternalTestPaths, implementationLanguages, implementationSourceRoots, implementationSupportGlobs, implementationTestGlobs, implementationTestInventory, isDeclaredSharedTest, isFeatureTestPath, isImplementationInternalTest, koreanDocumentPath, unknownParityUnits, unitTests, unlistedFeatureTestErrors } from './languages.mts';
+import { readImplementations, type Implementation } from '../json/formats.mts';
+import { featureLanguages, implementationFiles, implementationLanguages, implementationOf, implementationTestInventory, koreanDocumentPath, unlistedFeatureTestErrors } from './languages.mts';
 
 const root = resolve(new URL('../..', import.meta.url).pathname);
-const parity = readParityConfig(resolve(root, 'config/parity.json'));
+const implementations = readImplementations(resolve(root, 'contracts/implementations.json'));
 
-caseTest('the declared implementations of config/parity.json are the feature language set', COMPUTE, () => {
-  assert.deepEqual(parity.implementations.map(entry => entry.name).sort(), ['go', 'php', 'php-extension', 'python', 'rust', 'typescript']);
-  assert.deepEqual(implementationLanguages(), parity.implementations.map(entry => entry.name));
+caseTest('the implementations of contracts/implementations.json are the feature language set', COMPUTE, () => {
+  assert.deepEqual(implementations.map(entry => entry.name).sort(), ['go', 'php', 'php-extension', 'python', 'rust', 'typescript']);
+  assert.deepEqual(implementationLanguages(), implementations.map(entry => entry.name));
 });
 
 // Each reader takes the language set from the declared implementations through implementationLanguages() and writes no
-// list of its own; a hand-written list here would disagree with config/parity.json as soon as an implementation changes.
+// list of its own; a hand-written list here would disagree with contracts/implementations.json as soon as an implementation changes.
 const readers = [
   'scripts/features/build.mts',
-  'scripts/features/check.mts',
   'scripts/features/coverage.mts',
   'scripts/decimal-physical-check.mts',
 ];
@@ -37,70 +36,50 @@ function handWrittenSet(source: string): boolean {
 }
 
 for (const file of readers) {
-  caseTest(`${file} reads the language set from config/parity.json`, COMPUTE, async () => {
+  caseTest(`${file} reads the language set from contracts/implementations.json`, COMPUTE, async () => {
     const source = await readFile(resolve(root, file), 'utf8');
     assert.equal(handWrittenSet(source), false, `${file} writes its own language list`);
-    assert.match(source, /implementationLanguages\(\)|featureLanguages\(/, `${file} does not read the language set of config/parity.json`);
+    assert.match(source, /implementationLanguages\(\)|featureLanguages\(/, `${file} does not read the language set of contracts/implementations.json`);
   });
 }
 
-// A feature's languages are the declared implementations its parity units bind, php-extension among them, and an
-// undeclared unit id is reported.
-caseTest('featureLanguages derives the implementations that the parity units bind', COMPUTE, () => {
-  assert.deepEqual(featureLanguages(['audit_triggers-mysql']), implementationLanguages());
-  assert.deepEqual(unknownParityUnits(['audit_triggers-mysql', 'no-such-unit']), ['no-such-unit']);
-  assert.deepEqual(unitTests('audit_triggers-mysql', 'python'), ['packages/python/tests/test_audit_triggers_mysql.py']);
-  assert.deepEqual(unitTests('audit_triggers-mysql', 'typescript'), ['packages/ts/tests/audit_triggers-mysql.test.mjs']);
-  assert.deepEqual(unitTests('audit_triggers-mysql', 'php-extension'), ['packages/php-ext/tests/AuditTriggersRecipeTestExtensionTest.php']);
+// A feature's languages are the implementations whose roots hold one of its tests, php-extension among them; a root outside
+// packages (examples, benchmarks/rust) belongs to its implementation too.
+caseTest('featureLanguages derives the implementations whose roots hold the tests', COMPUTE, () => {
+  assert.deepEqual(featureLanguages(['packages/php-ext/tests/AuditTriggersRecipeTestExtensionTest.php', 'packages/go/orm/codec_test.go']), ['go', 'php-extension']);
+  assert.equal(implementationOf('packages/php-ext/tests/x.php'), 'php-extension');
+  assert.equal(implementationOf('packages/php/tests/x.php'), 'php');
+  assert.equal(implementationOf('examples/dsn_test.go'), 'go');
+  assert.equal(implementationOf('benchmarks/rust/src/native.rs'), 'rust');
+  assert.equal(implementationOf('docs/test_outside.py'), undefined);
+  assert.deepEqual(featureLanguages(['docs/spec/x.md']), []);
 });
 
-caseTest('feature ownership distinguishes declared implementation-internal tests from shared behavior tests', COMPUTE, () => {
-  const internal = implementationInternalTestPaths(parity);
-  assert.equal(isImplementationInternalTest('go', 'packages/go/orm/split_plan_test.go', internal), true);
-  assert.equal(isImplementationInternalTest('typescript', 'packages/ts/tests/split-plan.test.mjs', internal), true);
-  assert.equal(isImplementationInternalTest('python', 'packages/python/tests/test_split_plan.py', internal), true);
-  assert.equal(isImplementationInternalTest('go', 'packages/go/orm/recipe_fulltext_search_test.go', internal), false);
-  assert.equal(isImplementationInternalTest('python', 'packages/python/tests/test_complex_query_mysql.py', internal), false);
+const probe: Implementation = {
+  name: 'go', roots: ['packages/go'], tests: ['**/*_test.go'],
+  support: ['packages/go/orm/test_helpers_test.go'], internal: [{ glob: 'packages/go/orm/split_plan_test.go', reason: 'internal' }],
+};
+
+caseTest('the test inventory is the files its globs select, less its support files and internal tests', COMPUTE, () => {
+  const files = ['packages/go/orm/codec_test.go', 'packages/go/orm/test_helpers_test.go', 'packages/go/orm/split_plan_test.go', 'packages/go/orm/codec.go', 'docs/x_test.go'];
+  assert.deepEqual(implementationTestInventory(files, [probe]), { tests: { go: ['packages/go/orm/codec_test.go'] }, stale: [] });
 });
 
-caseTest('shared feature tests come from parity test globs or exact bindings, while support and internal files stay separate', COMPUTE, () => {
-  const globs = implementationTestGlobs(parity);
-  // A recipe entry comes from its exact binding, not from a glob: its name is the suite's, and config/parity.json binds it.
-  assert.equal(isDeclaredSharedTest('go', 'packages/go/orm/recipe_transactions_test.go', globs), false);
-  assert.ok(boundTestPaths('go', parity).includes('packages/go/orm/recipe_transactions_test.go'));
-  assert.equal(isDeclaredSharedTest('go', 'packages/go/model/coverage_dsn_test.go', globs), true);
-  assert.equal(isDeclaredSharedTest('php', 'packages/php/tests/TransactionsRecipeTest.php', globs), false);
-  assert.ok(boundTestPaths('php', parity).includes('packages/php/tests/TransactionsRecipeTest.php'));
-  assert.equal(isDeclaredSharedTest('php', 'packages/php/tests/CallbackFailed.php', globs), false);
-  assert.equal(isDeclaredSharedTest('rust', 'packages/rust/tests/tests/transactions_mysql.rs', globs), false);
-  assert.ok(boundTestPaths('rust', parity).includes('packages/rust/tests/tests/transactions_mysql.rs'));
-  assert.equal(isDeclaredSharedTest('rust', 'packages/rust/orm/tests/common/test_support.rs', globs), false);
-  assert.equal(isDeclaredSharedTest('typescript', 'packages/ts/tests/coverage_transactions.mjs', globs), true);
-  assert.equal(isDeclaredSharedTest('typescript', 'packages/ts/tests/coverage_case.mjs', globs), true);
-  assert.equal(isDeclaredSharedTest('python', 'packages/python/tests/coverage_case.py', globs), true);
-  assert.ok(boundTestPaths('go', parity).includes('packages/go/orm/transaction_api_test.go'));
-  const internal = implementationInternalTestPaths(parity);
-  const support = implementationSupportGlobs(parity);
-  assert.equal(isFeatureTestPath('go', 'packages/go/orm/recipe_transactions_test.go', globs, [], internal, support), true);
-  assert.equal(isFeatureTestPath('go', 'packages/go/orm/test_helpers_test.go', globs, [], internal, support), false);
-  assert.equal(isFeatureTestPath('go', 'packages/go/orm/transaction_api_test.go', globs, ['packages/go/orm/transaction_api_test.go'], internal, support), true);
-  assert.equal(isFeatureTestPath('go', 'packages/go/orm/mysqlonly/mysqlonly_test.go', globs, [], internal, support), true);
-  assert.equal(isFeatureTestPath('php', 'packages/php/tests/PageCacheBoundCases.php', globs, boundTestPaths('php', parity), internal, support), false, 'declared PHP test traits remain support files');
-  assert.equal(isFeatureTestPath('php-extension', 'packages/php-ext/tests/AesUtilsNativeTest.php', globs, boundTestPaths('php-extension', parity), internal, support), true);
-  assert.equal(isFeatureTestPath('php-extension', 'packages/php-ext/tests/ValidatorNativeTest.php', globs, boundTestPaths('php-extension', parity), internal, support), false, 'a declared internal test is no feature test');
-  assert.equal(isFeatureTestPath('php-extension', 'packages/php-ext/tests/bootstrap.php', globs, boundTestPaths('php-extension', parity), internal, support), false);
-  assert.equal(isFeatureTestPath('php', 'packages/php/tests/CannedCatalogPdo.php', globs, boundTestPaths('php', parity), internal, support), false, 'declared PHP doubles remain support files');
-  assert.equal(isFeatureTestPath('rust', 'packages/rust/orm/tests/common/test_support.rs', globs, [], internal, support), false, 'declared Rust test modules remain support files');
-  assert.equal(isImplementationInternalTest('python', 'packages/python/tests/entry_point_check.py', internal), true, 'the package entry-point owner test is implementation-internal');
-  assert.equal(isFeatureTestPath('typescript', 'packages/ts/tests/coverage_performance_gate.test.mjs', globs, [], internal, support), false);
-  assert.equal(isFeatureTestPath('typescript', 'packages/ts/tests/coverage_performance_report.mjs', globs, [], internal, support), false);
-  assert.equal(isFeatureTestPath('php', 'packages/php/testing/interfaces/php.php', globs, boundTestPaths('php', parity), internal, support), false);
-  assert.equal(isFeatureTestPath('typescript', 'packages/ts/testing/interfaces/typescript.mts', globs, boundTestPaths('typescript', parity), internal, support), false);
-  assert.equal(isFeatureTestPath('python', 'packages/python/testing/interfaces/python.py', globs, boundTestPaths('python', parity), internal, support), false);
-  assert.equal(isFeatureTestPath('rust', 'packages/rust/testing/interfaces/src/main.rs', globs, boundTestPaths('rust', parity), internal, support), false);
+caseTest('a support or internal glob that selects no test file is stale', COMPUTE, () => {
+  const { stale } = implementationTestInventory(['packages/go/orm/codec_test.go', 'packages/go/orm/split_plan_test.go'], [probe]);
+  assert.deepEqual(stale, ['go: packages/go/orm/test_helpers_test.go selects no test file of packages/go']);
 });
 
-caseTest('an unlisted test selected by each Kit convention fails feature ownership', COMPUTE, () => {
+caseTest('the declared inventory of this checkout has no stale declaration, and names its support and internal files', COMPUTE, () => {
+  const inventory = implementationTestInventory(implementationFiles(root));
+  assert.deepEqual(inventory.stale, []);
+  assert.equal(inventory.tests['go']?.includes('packages/go/orm/test_helpers_test.go'), false, 'a declared Go support file is no feature test');
+  assert.equal(inventory.tests['php-extension']?.includes('packages/php-ext/tests/ValidatorNativeTest.php'), false, 'a declared internal test is no feature test');
+  assert.equal(inventory.tests['go']?.includes('packages/go/model/coverage_schema_install_test.go'), true);
+  assert.equal(inventory.tests['typescript']?.includes('packages/ts/tests/coverage_transactions.mjs'), true);
+});
+
+caseTest('an unlisted test selected by the globs of each implementation fails feature ownership', COMPUTE, () => {
   const cases = [
     ['go', 'packages/go/orm/new_contract_probe_test.go'],
     ['php', 'packages/php/tests/NewContractProbeTest.php'],
@@ -109,20 +88,9 @@ caseTest('an unlisted test selected by each Kit convention fails feature ownersh
     ['python', 'packages/python/tests/test_new_contract_probe.py'],
     ['rust', 'packages/rust/orm/tests/unit/new_contract_probe.rs'],
   ] as const;
-  const roots = implementationSourceRoots(parity);
-  const unlisted: Record<string, string[]> = {};
-  for (const [language, file] of cases) {
-    assert.ok((roots[language] ?? []).some(root => file.startsWith(`${root}/`)));
-    assert.equal(isFeatureTestPath(language, file), true, `${language} convention-selected test cannot disappear from the feature inventory`);
-    unlisted[language] = [file];
-  }
-  assert.deepEqual(unlistedFeatureTestErrors(unlisted, new Set()), cases.map(([language, file]) =>
-    `${file}: ${language} test file belongs to no feature`));
-  const goProbe = cases[0]?.[1];
-  assert.ok(goProbe, 'the Go probe case is missing');
-  const goInventory = implementationTestInventory([goProbe], parity).go;
-  assert.ok(goInventory?.includes(goProbe), 'the checker inventory includes a convention-selected test without an explicit parity glob');
-  assert.equal(isFeatureTestPath('go', 'packages/go/orm/test_helpers_test.go'), false, 'the explicit support glob excludes test helpers');
+  const { tests } = implementationTestInventory(cases.map(([, file]) => file));
+  for (const [language, file] of cases) assert.deepEqual(tests[language], [file], `${language} selects ${file}`);
+  assert.deepEqual(unlistedFeatureTestErrors(tests, new Set()), cases.map(([language, file]) => `${file}: ${language} test file belongs to no feature`));
 });
 
 caseTest('the feature checker pairs English documents with their Korean twin exactly once', COMPUTE, () => {
@@ -132,7 +100,7 @@ caseTest('the feature checker pairs English documents with their Korean twin exa
 
 // A generated file that the repository ignores is no test file: the fixture models that make python-models writes into
 // packages/python/tests/models matched the Python test glob on disk, and the feature check named them a test of no feature,
-// while kit's parity declaration check reads only the files Git tracks or would track (T339-17).
+// while only the files Git tracks or would track are files of the tree (T339-17).
 caseTest('the implementation files are the checked files of the roots, without the files Git ignores', COMPUTE, () => {
   const base = mkdtempSync(join(tmpdir(), 'orm-feature-files-'));
   try {
@@ -146,8 +114,8 @@ caseTest('the implementation files are the checked files of the roots, without t
     writeFileSync(join(base, 'docs/test_outside.py'), '');
     execFileSync('git', ['init', '-q'], { cwd: base });
     execFileSync('git', ['add', '.gitignore', 'packages/python/tests/test_tracked.py'], { cwd: base });
-    const config = { ...parity, implementations: parity.implementations.map(entry => ({ ...entry, roots: entry.name === 'python' ? ['packages/python'] : [] })) };
-    assert.deepEqual(implementationFiles(base, config), [
+    const python = implementations.filter(entry => entry.name === 'python').map(entry => ({ ...entry, roots: ['packages/python'] }));
+    assert.deepEqual(implementationFiles(base, python), [
       'packages/python/tests/models/__init__.py',
       'packages/python/tests/test_tracked.py',
       'packages/python/tests/test_untracked.py',

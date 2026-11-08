@@ -20,13 +20,14 @@ import { fileURLToPath } from 'node:url';
 import { keepAll, render, run, runLanes, variable, type Command } from './check/commands.mts';
 import { COMMANDS as TYPESCRIPT_COMMANDS, sqliteTest } from './typescript/sqlite-test.mts';
 import { implementationLanguages } from './features/languages.mts';
-import { readParityConfig } from './json/formats.mts';
+import { readTree, type Binding } from './features/recipe-runners.mts';
+import { phpScope, readTree as readNamesTree } from './features/test-names.mts';
 import { readJsonFile } from './json/schema.mts';
 import { PROXYSQL_BACKEND_CONNECTIONS } from './test-servers.mts';
 
 const root = resolve(import.meta.dirname, '..');
 const MARKDOWN_CASES_SCHEMA = new URL('./json/schema/markdown-cases.schema.json', import.meta.url).pathname;
-// The lanes are the declared implementations of config/parity.json, the one language set.
+// The lanes are the implementations of contracts/implementations.json, the one language set.
 const LANES = implementationLanguages();
 const isLane = (name: string): boolean => LANES.includes(name);
 const env = (name: string): string => process.env[name] ?? '';
@@ -83,31 +84,33 @@ const PHP_EXTENSION: Command[] = PHP_TESTS.map(test => ({
 // The Python database tests run as modules of packages.python.tests with the Python of the venv (ORM_PYTHON).
 const PYTHON_TESTS = ['mysql_session', 'statement_fault', 'identity_load', 'connection_pool'];
 const PYTHON: Command[] = PYTHON_TESTS.map(test => ({ program: variable('ORM_PYTHON'), args: ['-m', `packages.python.tests.${test}`], cwd: root }));
-// The recipe units with a database run through the poolers in every lane, since a statement a client sends through a pooler is user
-// behaviour in every client (T343-12). Go and Rust run them in their whole runs; the other lanes list them here, one command per unit
-// of config/parity.json, so a new unit is in the pooler lanes when it is declared. No unit is excluded: a case that needs a direct
-// server declares it with its reason in not_through_pooler (FCV-10), and the direct lanes run it.
-type ParityUnit = ReturnType<typeof readParityConfig>['units'][number];
-const NAMED_PHP_TEST = /::(\w+)$/;
-export function poolerRecipeUnits(units: readonly ParityUnit[]): ParityUnit[] {
-  return units.filter(unit => unit.kind === 'suite' && unit.file?.startsWith('contracts/fixtures/') && /-(mysql|postgres)$/.test(unit.id));
+// The recipes with a database run through the poolers in every lane, since a statement a client sends through a pooler is user
+// behaviour in every client (T343-12). Go and Rust run them in their whole runs; the other lanes find them here, among the recipe
+// tests of scripts/features/recipe-runners.mts that run a recipe of contracts/fixtures on a server: a TypeScript
+// `<recipe>-(mysql|postgres).test.mjs`, a Python `test_<recipe>_(mysql|postgres).py`, and a PHP test class with the method testMysql or
+// testPostgres (its own, a trait's or its parent's), run with a filter on those methods. So a new recipe test is in the pooler lanes
+// when it is written. No recipe is excluded: a case that needs a direct server declares it with its reason in not_through_pooler
+// (FCV-10), and the direct lanes run it.
+export type PoolerLane = 'php' | 'php-extension' | 'typescript' | 'python';
+const SERVER_TEST = { typescript: /-(?:mysql|postgres)\.test\.mjs$/, python: /\/test_\w+_(?:mysql|postgres)\.py$/ } as const;
+const PHP_SERVER_METHOD = /\bfunction test(?:Mysql|Postgres)\s*\(/;
+// The PHPUnit filter of the server methods: the name of a test is `Class::method`, and a data set follows a space.
+const PHP_SERVER_FILTER = '/::test(?:Mysql|Postgres)(?: |$)/';
+/** poolerRecipeTests is the recipe tests of `lane` that run a recipe of contracts/fixtures on a server, in byte order. */
+export function poolerRecipeTests(lane: PoolerLane, bindings: readonly Binding[], phpText: (file: string) => string): string[] {
+  return bindings
+    .filter(binding => binding.implementation === lane && binding.recipes.some(recipe => recipe.startsWith('contracts/fixtures/')))
+    .map(binding => binding.test)
+    .filter(test => lane === 'typescript' || lane === 'python' ? SERVER_TEST[lane].test(test) : PHP_SERVER_METHOD.test(phpText(test)))
+    .sort();
 }
-const phpUnitFilter = (symbol: string | undefined, id: string): string => {
-  const method = symbol === undefined ? undefined : NAMED_PHP_TEST.exec(symbol)?.[1];
-  if (method === undefined) throw new Error(`client-db-test: the PHP binding of ${id} names no test method`);
-  return method;
-};
-export function poolerRecipeCommands(lane: 'php' | 'php-extension' | 'typescript' | 'python', units: readonly ParityUnit[], extensionLibrary = PHP_EXTENSION_LIBRARY): Command[] {
-  // A suite that names its runtimes in its owner parts leaves the others out: PHP holds no pool, so connection_pool has no PHP lane.
-  return poolerRecipeUnits(units).filter(unit => unit.owner?.parts === undefined || unit.owner.parts.includes(`owner/${lane}`)).map(unit => {
-    const binding = unit.bindings?.find(item => item.implementation === lane);
-    if (binding?.test === undefined) throw new Error(`client-db-test: the unit ${unit.id} has no ${lane} test`);
-    const test = binding.test;
+export function poolerRecipeCommands(lane: PoolerLane, tests: readonly string[], extensionLibrary = PHP_EXTENSION_LIBRARY): Command[] {
+  return tests.map(test => {
     switch (lane) {
       case 'php':
-        return { program: 'php', args: ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', '--filter', phpUnitFilter(binding.symbol, unit.id), test], cwd: root, env: { ORM_PHP_MODE: 'library' } };
+        return { program: 'php', args: ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', '--filter', PHP_SERVER_FILTER, test], cwd: root, env: { ORM_PHP_MODE: 'library' } };
       case 'php-extension':
-        return { program: 'node', args: [KIT_RUN_TESTS, 'phpunit', '--php-extension', extensionLibrary, '--', '--configuration', 'packages/php-ext/phpunit.xml.dist', '--filter', phpUnitFilter(binding.symbol, unit.id), test], cwd: root, env: { ORM_PHP_MODE: 'extension' } };
+        return { program: 'node', args: [KIT_RUN_TESTS, 'phpunit', '--php-extension', extensionLibrary, '--', '--configuration', 'packages/php-ext/phpunit.xml.dist', '--filter', PHP_SERVER_FILTER, test], cwd: root, env: { ORM_PHP_MODE: 'extension' } };
       case 'typescript':
         return { program: 'node', args: ['--test', test], cwd: root };
       case 'python':
@@ -115,8 +118,21 @@ export function poolerRecipeCommands(lane: 'php' | 'php-extension' | 'typescript
     }
   });
 }
-const parityUnits = (): ParityUnit[] => readParityConfig(join(root, 'config/parity.json')).units;
-const poolerRecipes = (lane: 'php' | 'php-extension' | 'typescript' | 'python'): Command[] => process.env['ORM_CLIENT_DB_POOLER'] === '1' ? poolerRecipeCommands(lane, parityUnits()) : [];
+// The recipe tests of the tree and the PHP text of a test (the file, its parent classes, its traits and the files it requires).
+// It is read once, when a lane first needs it.
+let tree: { bindings: Binding[]; phpText: (file: string) => string } | undefined;
+const recipeTree = (): { bindings: Binding[]; phpText: (file: string) => string } => {
+  if (tree === undefined) {
+    const names = readNamesTree(root);
+    tree = { bindings: readTree().bindings, phpText: file => phpScope(names, [file]).text };
+  }
+  return tree;
+};
+const poolerTests = (lane: PoolerLane): string[] => {
+  const { bindings, phpText } = recipeTree();
+  return poolerRecipeTests(lane, bindings, phpText);
+};
+const poolerRecipes = (lane: PoolerLane): Command[] => process.env['ORM_CLIENT_DB_POOLER'] === '1' ? poolerRecipeCommands(lane, poolerTests(lane)) : [];
 /** The value of TARGET_POOL_SIZE, the connection pool of each Rust integration test, read from its declaration (T343-1). */
 export function rustTargetPoolSize(repository: string): number {
   const source = readFileSync(resolve(repository, 'packages/rust/tests/tests/integration_program/main.rs'), 'utf8');
@@ -155,7 +171,7 @@ const RUST_TESTS: Command = {
   env: { ORM_BUILD_TEST_ROOT: resolve(root, 'packages/rust/build') },
 };
 /** The commands this script runs, for make repo-check. */
-export const COMMANDS = [...[...GO, ...PHP, PHP_EXTENSION_BUILD, ...PHP_EXTENSION, ...PYTHON, RUST_TESTS, ...(['php', 'php-extension', 'typescript', 'python'] as const).flatMap(lane => poolerRecipeCommands(lane, parityUnits()))].map(step => render(step, root)), ...TYPESCRIPT_COMMANDS];
+export const COMMANDS = [...[...GO, ...PHP, PHP_EXTENSION_BUILD, ...PHP_EXTENSION, ...PYTHON, RUST_TESTS, ...(['php', 'php-extension', 'typescript', 'python'] as const).flatMap(lane => poolerRecipeCommands(lane, poolerTests(lane)))].map(step => render(step, root)), ...TYPESCRIPT_COMMANDS];
 
 const lanes: Record<string, (write: (line: string) => void) => Promise<string[]>> = {
   go: write => keepAll(GO, write),
@@ -195,10 +211,10 @@ if (import.meta.main) {
     console.error(`client-db-test: ORM_CLIENT_DB_LANGS=${env('ORM_CLIENT_DB_LANGS')} selects no lane; the lanes are ${LANES.join(', ')}`);
     process.exit(2);
   }
-  // A client of config/parity.json without a lane here is a failure, not a lane that silently does not run.
+  // A client of contracts/implementations.json without a lane here is a failure, not a lane that silently does not run.
   const runs = Object.fromEntries(selected.map(lane => {
     const run = lanes[lane];
-    if (!run) throw new Error(`client-db-test: the client ${lane} of config/parity.json has no lane`);
+    if (!run) throw new Error(`client-db-test: the client ${lane} of contracts/implementations.json has no lane`);
     return [lane, run];
   }));
   const failed = await runLanes('client-db-test', runs, process.env['ORM_CLIENT_DB_LANES'] === 'parallel');
