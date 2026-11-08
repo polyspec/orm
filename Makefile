@@ -1656,6 +1656,15 @@ endef
 $(eval $(call RECIPE_VECTORS_TARGETS,generated-methods,generated))
 $(eval $(call RECIPE_VECTORS_TARGETS,fixed-clock,fixed-clock))
 
+# feature-rust-unit runs one Rust test of a feature: the make variables FEATURE_CRATE (the directory of the crate's Cargo.toml,
+# from the checkout root), FEATURE_CARGO_TARGET (the cargo target option, such as `--test coverage_performance_gate` or
+# `--bin conformance`) and FEATURE_TEST (the exact name of the test) are passed by its caller, the PERF-1 measurement of
+# scripts/features/performance-reference.mts. The test is selected by its exact name. It runs through tests/cargo-test.mts,
+# the runner of every Rust test, which gives the test binaries the copied programs they read (polyspec_orm_testcase::program).
+.PHONY: feature-rust-unit
+feature-rust-unit:
+	$(WITH_TEST_ENV) cd $(FEATURE_CRATE) && $(CARGO_TEST) feature-rust-unit -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline $(FEATURE_CARGO_TARGET) -- --test-threads=1 --exact $(FEATURE_TEST)
+
 # feature-check is the performance measurement and all verification commands; CI runs each runtime's Markdown target and performance
 # in separate groups.
 # feature-verify-rust runs the verification commands of shard rust, and feature-verify-other runs shard other. Commands shared by features
