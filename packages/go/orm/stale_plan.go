@@ -43,16 +43,20 @@ func (d *DB) openStalePlanSession(ctx context.Context) (*stalePlanSession, error
 	if _, err := conn.ExecContext(ctx, "BEGIN"); err != nil {
 		return nil, s.discard(err)
 	}
-	err = conn.Raw(func(driverConn any) error {
+	if err := d.deallocate(ctx, conn); err != nil {
+		return nil, s.discard(err)
+	}
+	return s, nil
+}
+
+// deallocate releases the named statements of the connection, on the server and in the statement cache of its driver.
+func (d *DB) deallocate(ctx context.Context, conn *sql.Conn) error {
+	return conn.Raw(func(driverConn any) error {
 		driverMu.RLock()
 		deallocate := deallocators[d.driver]
 		driverMu.RUnlock()
 		return deallocate(ctx, driverConn)
 	})
-	if err != nil {
-		return nil, s.discard(err)
-	}
-	return s, nil
 }
 
 // finish commits when err is nil, discards the connection and returns err joined with what failed on the way. A failed

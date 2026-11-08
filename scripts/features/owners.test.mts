@@ -212,7 +212,7 @@ caseTest('a selected make target runs with the environments of owner-check and t
 const t42 = [
   'packages/go/orm/recipe_statement_events_test.go', 'packages/go/orm/events.go',
   'packages/php/src/StatementEvent.php', 'packages/php/tests/StatementEventsRecipeTest.php',
-  'packages/rust/orm/src/events.rs', 'packages/rust/tests/tests/statement_events_sqlite.rs',
+  'packages/rust/orm/src/events.rs', 'packages/rust/tests/tests/all/statement_events_sqlite.rs',
   'packages/ts/src/events.ts', 'packages/ts/tests/statement_events-sqlite.test.mjs',
   'contracts/fixtures/statement_events/statement_events.dbs',
 ];
@@ -339,7 +339,7 @@ caseTest('generator consumers select their own runtime checks', 5000, () => {
     ['php-extension', 'packages/php-ext/tests/ModelNativeTest.php'],
     ['typescript', 'packages/ts/tests/generate.mjs'],
     ['python', 'packages/python/tests/test_orm_gen.py'],
-    ['rust', 'packages/rust/build/tests/generate.rs'],
+    ['rust', 'packages/rust/build/tests/cases/generate.rs'],
   ] as const) {
     const selected = selectTargets(targets, [path]).filter(({ tested, target }) => tested.length && target.startsWith('generator-consumer-check')).map(({ target }) => target);
     assert.deepEqual(selected, [`generator-consumer-check/${runtime}`]);

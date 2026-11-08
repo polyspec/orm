@@ -542,6 +542,12 @@ impl MarkdownLease {
     pub fn discard(&mut self) {
         self.discarded = true;
     }
+
+    /// Undoes `discard`: the lease gives its session back to the pool when it drops, as a lease of a session that ended
+    /// cleanly does, so the next acquire finds it idle and opens no other session (INT-106b).
+    pub fn keep(&mut self) {
+        self.discarded = false;
+    }
 }
 
 impl Drop for MarkdownLease {

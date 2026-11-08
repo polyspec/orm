@@ -27,7 +27,7 @@ export const RUNNERS: { [implementation: string]: Runner } = {
   python: { call: /\brecipe_tests\b/, files: /^packages\/python\/tests\/recipe(_model)?\.py$/ },
   rust: {
     call: /\brecipe::\w*trials/,
-    files: /^packages\/rust\/tests\/(src\/(recipe|recipe_apply|bench_set_dispatch)\.rs|tests\/[^/]+\/dispatch\.rs)$/,
+    files: /^packages\/rust\/tests\/(src\/(recipe|recipe_apply|bench_set_dispatch)\.rs|tests\/all\/[^/]+\/dispatch\.rs)$/,
   },
 };
 
@@ -38,7 +38,7 @@ export const RUNNERS: { [implementation: string]: Runner } = {
 export const READERS: Record<string, string> = {
   'packages/ts/tests/recipe_keys.test.mjs': 'the unit test of the key check of the TypeScript runner; its recipes are inputs of that check',
   'packages/python/tests/test_recipe_keys.py': 'the unit test of the key check of the Python runner; its recipes are inputs of that check',
-  'packages/rust/tests/tests/recipe_keys.rs': 'the unit test of the key check of the Rust runner; its recipes are inputs of that check',
+  'packages/rust/tests/tests/all/recipe_keys.rs': 'the unit test of the key check of the Rust runner; its recipes are inputs of that check',
   'packages/php/tests/RecipeKeysTest.php': 'the unit test of the key check of the PHP runner; its recipes are inputs of that check',
   'packages/ts/tests/dbspec-set-edges.mjs': 'reads the cases of tests/dbspec/set-files.json through parseSet, a call that only TypeScript has (DBS-176)',
   'packages/ts/tests/dbspec-begin-exclusive-lock.mjs': 'reads one plan of tests/dbspec/plan-cases.json to hold a lock that only the TypeScript apply test observes',

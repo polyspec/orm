@@ -1,0 +1,18 @@
+[package]
+name = "polyspec-orm-testcase-cases"
+version = "0.0.22"
+edition = "2021"
+rust-version = "1.99.0"
+publish = false
+
+[lib]
+path = "lib.rs"
+test = false
+doctest = false
+
+[dependencies]
+polyspec-orm-testcase = { path = "../.." }
+tokio = { version = "1", features = ["rt", "macros"] }
+
+[lints]
+workspace = true

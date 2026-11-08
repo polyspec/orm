@@ -39,9 +39,9 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:4481f3902b21951b81a578c69c5035f0548dfd2de4b6b6c48fcbde2aec7780a2",
+    "go": "sha256:9efc8bae7a282ac5a6c23b04073df92e1cef4f14d016f841fe7b5c443e2c6ccd",
     "php": "sha256:291af2ee163a5f43003f10cd6fc85f7b93ba9ae1e23bd25c3d53ec47c942cf7e",
-    "rust": "sha256:27df25b785b584c80a5276831c27f30c68be6e78c02bfc4b2c563bbf197b4817",
+    "rust": "sha256:b9b1b67df9d065708b9b51488ba4245d9c4b051fd34c9236e8fbc53c9eb36dce",
     "typescript": "sha256:e48f010989ba7ef4422da50ee57b18995c5afc1305d4341dcc34324746ce1139",
     "python": "sha256:611f27a7d95a2c80d7f8b8e03af7412060bb3939a87fad8ef00db2857ade8839"
   },
@@ -154,7 +154,7 @@
           "primitive": "dropping the statement future",
           "cases": [
             {
-              "test": "packages/rust/orm/tests/zone.rs",
+              "test": "packages/rust/orm/tests/cases/zone.rs",
               "id": "dropping_a_query_cancels_it"
             }
           ]

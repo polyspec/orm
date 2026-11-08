@@ -14,13 +14,13 @@ caseTest('dispatches each decimal owner to its native command and rejects unknow
   const extension = '/build/polyspec_orm.so';
   const rustRun = mkdtempSync(join(tmpdir(), 'orm-decimal-rust-'));
   writeFileSync(join(rustRun, 'binaries.json'), JSON.stringify({
-    tests: [{ executable: '/target/decimal_physical', manifestDir: '/packages/rust/tests', target: 'decimal_physical', copy: '/run/0-decimal_physical' }], programs: {},
+    tests: [{ executable: '/target/all', manifestDir: '/packages/rust/tests', target: 'all', copy: '/run/0-all' }], programs: {},
   }));
   const cases = [
     ['go', 'go', ['test', '-tags', 'ormtest', '-json']],
     ['php', 'php', ['vendor-php/bin/phpunit']],
     ['php-extension', process.execPath, [kitRunTests, 'phpunit']],
-    ['rust', '/run/0-decimal_physical', ['decimal_postgres', '--exact']],
+    ['rust', '/run/0-all', ['decimal_physical::decimal_postgres', '--exact']],
     ['python', '/venv/bin/python', ['-m', 'packages.python.tests.decimal_model_db']],
     ['typescript', 'node', ['packages/ts/tests/decimal_model_db.mjs']],
   ] as const;
@@ -115,7 +115,7 @@ caseTest('matches the exact PHP extension decimal native test event', COMPUTE, (
 });
 
 caseTest('matches the exact Rust decimal test symbol and passing summary', COMPUTE, () => {
-  const output = 'test decimal_mysql ... ok\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.03s';
+  const output = 'test decimal_physical::decimal_mysql ... ok\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.03s';
   assert.equal(observed('rust', 'mysql', output), true);
   assert.equal(observed('rust', 'mysql', output.replace('decimal_mysql', 'decimal_postgres')), false);
   assert.equal(observed('rust', 'mysql', output.replace('1 passed; 0 failed', '0 passed; 1 failed')), false);

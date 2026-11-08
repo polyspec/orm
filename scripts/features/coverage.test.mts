@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { testDirectoryOf } from './packages.mts';
-import { cargoBuildArgs, cargoFeaturesForPackage, cargoPathModuleFiles, cargoTargetArgs, cargoWorkspaceManifestPath, checkCoverage, databases, executeCoverage, resultCases, languages, NATIVE_DEADLINE, run, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
+import { cargoBuildArgs, cargoFeaturesForPackage, cargoModuleFilter, programCaseModules, cargoPathModuleFiles, cargoTargetArgs, cargoWorkspaceManifestPath, checkCoverage, databases, executeCoverage, resultCases, languages, NATIVE_DEADLINE, run, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
 import { readFeatures } from './manifest.mts';
 import { readImplementations } from '../json/formats.mts';
 
@@ -36,7 +36,7 @@ delete process.env.NODE_TEST_CONTEXT;
 const ownerTests: Record<string, string> = {
   go: 'packages/go/orm/dsn_test.go', php: 'packages/php/tests/DsnTest.php',
   'php-extension': 'packages/php-ext/tests/CatalogConnectionSurfaceTest.php', python: 'packages/python/tests/test_utils_statements.py',
-  rust: 'packages/rust/orm/tests/zone.rs', typescript: 'packages/ts/tests/typecheck.ts',
+  rust: 'packages/rust/orm/tests/cases/zone.rs', typescript: 'packages/ts/tests/typecheck.ts',
 };
 const dependentTest = 'packages/go/model/model_test.go';
 
@@ -179,6 +179,26 @@ caseTest('Rust coverage maps nested modules to the most specific Cargo test targ
     { name: 'integration', kind: ['test'], src_path: join(root, 'packages/rust/tests/tests/integration.rs'), test: true },
     { name: 'nested', kind: ['test'], src_path: join(root, 'packages/rust/tests/tests/integration/main.rs'), test: true },
   ], [nestedIntegration]), /maps to 2 Cargo test targets at its most specific module root/);
+});
+
+caseTest('Rust coverage runs a module of a test program through the filter of its module path', COMPUTE, () => {
+  const root = new URL('../..', import.meta.url).pathname;
+  const program = { name: 'all', kind: ['test'], src_path: join(root, 'packages/rust/tests/tests/all/main.rs'), test: true };
+  const alone = { name: 'zone', kind: ['test'], src_path: join(root, 'packages/rust/orm/tests/cases/zone.rs'), test: true };
+  const library = { name: 'polyspec-orm', kind: ['lib'], src_path: join(root, 'packages/rust/orm/src/lib.rs'), test: true };
+  const targets = [library, program, alone];
+  assert.equal(cargoModuleFilter(targets, join(root, 'packages/rust/tests/tests/all/transactions_mysql.rs')), 'transactions_mysql::');
+  assert.equal(cargoModuleFilter(targets, join(root, 'packages/rust/tests/tests/all/integration_program/mod.rs')), 'integration_program::');
+  assert.equal(cargoModuleFilter(targets, join(root, 'packages/rust/tests/tests/all/main.rs')), undefined);
+  assert.equal(cargoModuleFilter(targets, join(root, 'packages/rust/orm/tests/cases/zone.rs')), undefined);
+  assert.equal(cargoModuleFilter(targets, join(root, 'packages/rust/orm/src/driver.rs')), undefined);
+});
+
+caseTest('Rust coverage finds a test that a test case crate holds and the one program runs', COMPUTE, () => {
+  const root = new URL('../..', import.meta.url).pathname;
+  const main = join(root, 'packages/rust/tests/tests/all/main.rs');
+  const modules = programCaseModules(main, 'Group::new("zone", polyspec_orm_cases::zone::trials),\nGroup::new("lock", polyspec_orm_build_cases::lock::trials),\nGroup::new("own", own::trials),\n');
+  assert.deepEqual([...modules], [[join(root, 'packages/rust/orm/tests/cases/zone.rs'), 'zone'], [join(root, 'packages/rust/build/tests/cases/lock.rs'), 'lock']]);
 });
 
 caseTest('Rust coverage maps explicit library path modules to the library test target', COMPUTE, async () => {

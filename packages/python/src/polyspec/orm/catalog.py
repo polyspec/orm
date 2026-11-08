@@ -1,7 +1,7 @@
 # The catalog connection (docs/spec/schema.md SCH-6a; docs/spec/interfaces.md, "Qualified native Rust table metadata"
 # to "Rust native grid query specification"). It is modelled on the Go client (packages/go/orm/catalog*.go): it reads
 # table metadata and bounded table pages, runs validated read-only queries and changes rows with explicit commands.
-# Each operation runs in its own session, a fresh driver connection that ends with its transaction. A descriptor or a
+# Each operation runs in its own session, a fresh transaction; a committed mutation leaves its connection to the next session. A descriptor or a
 # page is not authorization for a row change: each change re-reads its row inside its own transaction.
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ import re
 import sqlite3
 import stat
 import struct
+import threading
 import uuid
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
@@ -1177,7 +1178,7 @@ def _sqlite_text(value: bytes):
 
 
 class _Session:
-    """One driver connection inside one transaction. The connection ends with the session."""
+    """One driver connection inside one transaction. The connection ends with the session, unless a commit keeps it (INT-106e)."""
 
     def __init__(self, dialect: str, wrapper):
         self.dialect = dialect
@@ -1571,13 +1572,16 @@ class _Session:
 
 class CatalogConnection:
     """A catalog connection to a MySQL, PostgreSQL or SQLite database, or a markdown corpus, selected by its DSN. Each
-    operation runs in its own session: a fresh driver connection that ends with the operation's transaction. A flowmark
-    server runs SQL in SQLite's dialect on the corpus, so the catalog of a corpus is a SQLite catalog (DIA-185)."""
+    operation runs in its own session, a fresh transaction; the connection of a committed mutation stays for the next
+    session (INT-106e). A flowmark server runs SQL in SQLite's dialect on the corpus, so the catalog of a corpus is a SQLite
+    catalog (DIA-185)."""
 
     def __init__(self, parsed: ParsedDsn):
         self._parsed = parsed
         self._dialect = "sqlite" if parsed.driver == "markdown" else parsed.driver
         self._closed = False
+        self._idle = None
+        self._idle_lock = threading.Lock()
         # Until when a refused connect is a socket of this catalog still on the server (CFG-35).
         self._reopen_until = 0.0
 
@@ -1588,6 +1592,9 @@ class CatalogConnection:
     def close(self) -> None:
         """Ends the connection. No operation runs after it."""
         self._closed = True
+        idle = self._take_idle()
+        if idle is not None:
+            idle.close()
 
     def _ensure_open(self) -> None:
         if self._closed:
@@ -1621,8 +1628,33 @@ class CatalogConnection:
         session.close()
         self._reopen_until = _monotonic() + 2.0
 
+    def _take_idle(self):
+        """The connection that the last committed session left, which the caller now holds, or None."""
+        with self._idle_lock:
+            idle, self._idle = self._idle, None
+        return idle
+
+    def _keep(self, session: _Session) -> None:
+        """Keeps the connection of a session whose COMMIT the server acknowledged for the next session: that transaction and its
+        locks have ended, and a writable session changes no setting of its connection (INT-106e). A SQLite file opens no socket,
+        so its connection closes as before."""
+        if self._dialect != "sqlite":
+            with self._idle_lock:
+                if self._idle is None and not self._closed:
+                    self._idle = session.wrapper
+                    return
+        self._close(session)
+
     def _begin(self, read_only: bool) -> _Session:
-        session = self._open()
+        self._ensure_open()
+        idle = self._take_idle()
+        if idle is not None:
+            # A connection that waited may have ended meanwhile, and nothing has run on it yet: a new connection takes its place.
+            with contextlib.suppress(OrmError):
+                return self._begin_on(_Session(self._dialect, idle), read_only)
+        return self._begin_on(self._open(), read_only)
+
+    def _begin_on(self, session: _Session, read_only: bool) -> _Session:
         try:
             if read_only and self._dialect == "sqlite":
                 session.run("PRAGMA query_only=ON")
@@ -1711,7 +1743,7 @@ class CatalogConnection:
                 f"commit outcome unknown; do not retry: {commit_error}",
                 commit_error,
             ) from commit_error
-        self._close(session)
+        self._keep(session)
         return value
 
     def current_namespace(self) -> str:

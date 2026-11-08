@@ -117,7 +117,7 @@
         "Makefile",
         "scripts/rust/compiler-fixtures.mts",
         "scripts/rust/compiler-fixtures.schema.json",
-        "packages/rust/orm/tests/compiler_fixtures.rs",
+        "packages/rust/orm/tests/cases/compiler_fixtures.rs",
         "packages/rust/testing/compiler-fixtures/cases.json",
         "packages/rust/tests/build.rs",
         "packages/rust/tests/bench_model.rs"
@@ -704,8 +704,8 @@
         "Makefile",
         "contracts/fixtures/bench/dbspec-set.json",
         "packages/rust/build/src/generate.rs",
-        "packages/rust/build/tests/generate.rs",
-        "packages/rust/tests/tests/integration_program/main.rs"
+        "packages/rust/build/tests/cases/generate.rs",
+        "packages/rust/tests/tests/all/integration_program/mod.rs"
       ]
     },
     "php-min-check": {
@@ -1094,7 +1094,7 @@
         "packages/rust/orm/src/engine/planner.rs",
         "packages/rust/orm/src/markdown.rs",
         "packages/rust/orm/tests/unit/coverage_planner.rs",
-        "packages/rust/tests/tests/planner_compile_none.rs",
+        "packages/rust/tests/tests/all/planner_compile_none.rs",
         "tests/planner/compile.json",
         "tests/planner/shared_blind_index.dbs"
       ]
@@ -1235,7 +1235,7 @@
         "packages/rust/orm/src/engine/planner.rs",
         "packages/rust/orm/src/markdown.rs",
         "packages/rust/orm/tests/unit/coverage_planner.rs",
-        "packages/rust/tests/tests/planner_compile_none.rs"
+        "packages/rust/tests/tests/all/planner_compile_none.rs"
       ]
     },
     "scalar-subquery-column-check/typescript": {
@@ -1332,7 +1332,7 @@
         "contracts/interfaces.json",
         "packages/rust/orm/src/engine/*.rs",
         "packages/rust/orm/tests/unit/coverage_planner.rs",
-        "packages/rust/tests/tests/planner_compile_none.rs",
+        "packages/rust/tests/tests/all/planner_compile_none.rs",
         "tests/ir/validate.json"
       ]
     },
@@ -1547,9 +1547,9 @@
       ],
       "inputs": [
         "tests/codec/**",
-        "packages/rust/tests/tests/codec_none.rs",
+        "packages/rust/tests/tests/all/codec_none.rs",
         "packages/rust/tests/src/recipe.rs",
-        "packages/rust/tests/tests/codec_integer_beyond_i64_none.rs",
+        "packages/rust/tests/tests/all/codec_integer_beyond_i64_none.rs",
         "packages/rust/orm/src/codec.rs"
       ]
     },
@@ -1728,10 +1728,10 @@
         "contracts/fixtures/schema_install/**",
         "contracts/fixtures/external/**",
         "contracts/fixtures/add_tables_and_columns/**",
-        "packages/rust/tests/tests/schema_install_mysql.rs",
-        "packages/rust/tests/tests/schema_install_postgres.rs",
-        "packages/rust/tests/tests/schema_install_sqlite.rs",
-        "packages/rust/tests/tests/schema_install_markdown.rs",
+        "packages/rust/tests/tests/all/schema_install_mysql.rs",
+        "packages/rust/tests/tests/all/schema_install_postgres.rs",
+        "packages/rust/tests/tests/all/schema_install_sqlite.rs",
+        "packages/rust/tests/tests/all/schema_install_markdown.rs",
         "packages/rust/tests/src/recipe.rs",
         "packages/rust/tests/Cargo.toml"
       ]
@@ -1761,12 +1761,12 @@
       ],
       "inputs": [
         "contracts/fixtures/catalog_connection/**",
-        "packages/rust/tests/tests/catalog_connection_sqlite_only.rs",
-        "packages/rust/tests/tests/catalog_connection_sqlite_only_markdown.rs",
-        "packages/rust/tests/tests/catalog_connection_mysql.rs",
-        "packages/rust/tests/tests/catalog_connection_postgres.rs",
-        "packages/rust/tests/tests/catalog_connection_sqlite.rs",
-        "packages/rust/tests/tests/catalog_connection_markdown.rs",
+        "packages/rust/tests/tests/all/catalog_connection_sqlite_only.rs",
+        "packages/rust/tests/tests/all/catalog_connection_sqlite_only_markdown.rs",
+        "packages/rust/tests/tests/all/catalog_connection_mysql.rs",
+        "packages/rust/tests/tests/all/catalog_connection_postgres.rs",
+        "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
+        "packages/rust/tests/tests/all/catalog_connection_markdown.rs",
         "packages/rust/tests/src/recipe.rs",
         "packages/rust/tests/Cargo.toml",
         "packages/rust/build/src/catalog/**",
@@ -1783,10 +1783,10 @@
       ],
       "inputs": [
         "contracts/fixtures/statement_events/**",
-        "packages/rust/tests/tests/statement_events_mysql.rs",
-        "packages/rust/tests/tests/statement_events_postgres.rs",
-        "packages/rust/tests/tests/statement_events_sqlite.rs",
-        "packages/rust/tests/tests/statement_events_markdown.rs",
+        "packages/rust/tests/tests/all/statement_events_mysql.rs",
+        "packages/rust/tests/tests/all/statement_events_postgres.rs",
+        "packages/rust/tests/tests/all/statement_events_sqlite.rs",
+        "packages/rust/tests/tests/all/statement_events_markdown.rs",
         "packages/rust/tests/src/recipe.rs",
         "packages/rust/tests/Cargo.toml",
         "packages/rust/build/src/catalog/**",
@@ -1975,10 +1975,10 @@
       ],
       "inputs": [
         "contracts/fixtures/dsn_connection/**",
-        "packages/rust/tests/tests/dsn_connection_mysql.rs",
-        "packages/rust/tests/tests/dsn_connection_postgres.rs",
-        "packages/rust/tests/tests/dsn_connection_sqlite.rs",
-        "packages/rust/tests/tests/dsn_connection_markdown.rs",
+        "packages/rust/tests/tests/all/dsn_connection_mysql.rs",
+        "packages/rust/tests/tests/all/dsn_connection_postgres.rs",
+        "packages/rust/tests/tests/all/dsn_connection_sqlite.rs",
+        "packages/rust/tests/tests/all/dsn_connection_markdown.rs",
         "packages/rust/tests/src/recipe.rs",
         "packages/rust/tests/Cargo.toml"
       ]
@@ -2074,7 +2074,7 @@
         "tests/markdown/session.json",
         "tests/bind/dbspec-set.json",
         "tests/bind/slots.dbs",
-        "packages/rust/tests/tests/markdown_session.rs",
+        "packages/rust/tests/tests/all/markdown_session.rs",
         "packages/rust/tests/src/recipe.rs",
         "packages/rust/tests/Cargo.toml",
         "packages/rust/orm/src/markdown.rs"
@@ -2170,10 +2170,10 @@
       ],
       "inputs": [
         "contracts/fixtures/connection_pool/**",
-        "packages/rust/tests/tests/connection_pool_mysql.rs",
-        "packages/rust/tests/tests/connection_pool_postgres.rs",
-        "packages/rust/tests/tests/connection_pool_sqlite.rs",
-        "packages/rust/tests/tests/connection_pool_markdown.rs",
+        "packages/rust/tests/tests/all/connection_pool_mysql.rs",
+        "packages/rust/tests/tests/all/connection_pool_postgres.rs",
+        "packages/rust/tests/tests/all/connection_pool_sqlite.rs",
+        "packages/rust/tests/tests/all/connection_pool_markdown.rs",
         "packages/rust/tests/src/recipe.rs",
         "packages/rust/tests/Cargo.toml"
       ]
@@ -2406,7 +2406,7 @@
       "inputs": [
         "tests/collection/collection.json",
         "scripts/features/schema/recipe.schema.json",
-        "packages/rust/tests/tests/collection_none.rs",
+        "packages/rust/tests/tests/all/collection_none.rs",
         "packages/rust/tests/src/recipe.rs"
       ]
     },
@@ -2611,7 +2611,7 @@
         "rust"
       ],
       "inputs": [
-        "packages/rust/orm/tests/package_entry.rs"
+        "packages/rust/orm/tests/cases/package_entry.rs"
       ]
     },
     "typescript-package-entry-check": {
@@ -2767,10 +2767,10 @@
         "flowmark"
       ],
       "inputs": [
-        "packages/rust/tests/tests/dbspec_introspect_mysql.rs",
-        "packages/rust/tests/tests/dbspec_introspect_postgres.rs",
-        "packages/rust/tests/tests/dbspec_introspect_sqlite.rs",
-        "packages/rust/tests/tests/dbspec_introspect_markdown.rs",
+        "packages/rust/tests/tests/all/dbspec_introspect_mysql.rs",
+        "packages/rust/tests/tests/all/dbspec_introspect_postgres.rs",
+        "packages/rust/tests/tests/all/dbspec_introspect_sqlite.rs",
+        "packages/rust/tests/tests/all/dbspec_introspect_markdown.rs",
         "packages/rust/orm/src/dbspec.rs",
         "contracts/fixtures/dbspec_introspect/**",
         "tests/dbspec/introspect.json",
@@ -3464,7 +3464,7 @@
       ],
       "inputs": [
         "packages/rust/orm/src/tx.rs",
-        "packages/rust/orm/tests/rollback.rs",
+        "packages/rust/orm/tests/cases/rollback.rs",
         "contracts/fixtures/rollback.dbs",
         "Makefile"
       ]
@@ -4091,7 +4091,7 @@
       "inputs": [
         "tests/ir/validate.json",
         "scripts/features/schema/recipe.schema.json",
-        "packages/rust/tests/tests/ir_validate_none.rs",
+        "packages/rust/tests/tests/all/ir_validate_none.rs",
         "packages/rust/orm/src/testing/ir_request.rs"
       ]
     },
@@ -4272,7 +4272,9 @@
         "contracts/fixtures/conformance_verification/**",
         "tests/conformance/vectors.json",
         "Makefile",
-        "packages/rust/tests/src/conformance.rs"
+        "packages/rust/tests/src/conformance.rs",
+        "packages/rust/tests/src/conformance_values.rs",
+        "packages/rust/tests/tests/all/conformance_runner.rs"
       ]
     },
     "conformance-fixed-clock-check/go": {
@@ -4371,7 +4373,9 @@
         "contracts/fixtures/conformance_verification/**",
         "tests/conformance/vectors.json",
         "Makefile",
-        "packages/rust/tests/src/conformance.rs"
+        "packages/rust/tests/src/conformance.rs",
+        "packages/rust/tests/src/conformance_values.rs",
+        "packages/rust/tests/tests/all/conformance_runner.rs"
       ]
     },
     "conformance-refusal-check/go": {
@@ -4470,7 +4474,7 @@
         "scripts/features/schema/recipe.schema.json",
         "scripts/features/schema/recipe-keys.json",
         "packages/rust/tests/src/recipe_keys.rs",
-        "packages/rust/tests/tests/recipe_keys.rs"
+        "packages/rust/tests/tests/all/recipe_keys.rs"
       ]
     },
     "recipe-unknown-key-check/php-extension": {
@@ -4664,7 +4668,7 @@
         "tests/markdown/corpus/**",
         "tests/markdown/catalogs/**",
         "tests/markdown/flowmark.version",
-        "packages/rust/tests/tests/markdown_conformance.rs"
+        "packages/rust/tests/tests/all/markdown_conformance.rs"
       ]
     },
     "markdown-conformance-check/typescript": {
@@ -4729,16 +4733,16 @@
         "contracts/fixtures/model_queries/**",
         "contracts/fixtures/model_queries_chain/**",
         "contracts/fixtures/model_chain/**",
-        "packages/rust/tests/tests/model_queries_mysql.rs",
-        "packages/rust/tests/tests/model_queries_postgres.rs",
-        "packages/rust/tests/tests/model_queries_sqlite.rs",
-        "packages/rust/tests/tests/model_queries_markdown.rs",
+        "packages/rust/tests/tests/all/model_queries_mysql.rs",
+        "packages/rust/tests/tests/all/model_queries_postgres.rs",
+        "packages/rust/tests/tests/all/model_queries_sqlite.rs",
+        "packages/rust/tests/tests/all/model_queries_markdown.rs",
         "packages/rust/tests/src/recipe.rs",
         "packages/rust/tests/Cargo.toml",
-        "packages/rust/tests/tests/model_queries_chain_mysql.rs",
-        "packages/rust/tests/tests/model_queries_chain_postgres.rs",
-        "packages/rust/tests/tests/model_queries_chain_sqlite.rs",
-        "packages/rust/tests/tests/model_queries_chain_markdown.rs"
+        "packages/rust/tests/tests/all/model_queries_chain_mysql.rs",
+        "packages/rust/tests/tests/all/model_queries_chain_postgres.rs",
+        "packages/rust/tests/tests/all/model_queries_chain_sqlite.rs",
+        "packages/rust/tests/tests/all/model_queries_chain_markdown.rs"
       ]
     },
     "model-queries-check/typescript": {
@@ -4852,14 +4856,14 @@
       "inputs": [
         "contracts/fixtures/constraints_and_relations/**",
         "contracts/fixtures/immutable_write/**",
-        "packages/rust/tests/tests/constraints_and_relations_mysql.rs",
-        "packages/rust/tests/tests/constraints_and_relations_postgres.rs",
-        "packages/rust/tests/tests/constraints_and_relations_sqlite.rs",
-        "packages/rust/tests/tests/constraints_and_relations_markdown.rs",
-        "packages/rust/tests/tests/immutable_write_mysql.rs",
-        "packages/rust/tests/tests/immutable_write_postgres.rs",
-        "packages/rust/tests/tests/immutable_write_sqlite.rs",
-        "packages/rust/tests/tests/immutable_write_markdown.rs",
+        "packages/rust/tests/tests/all/constraints_and_relations_mysql.rs",
+        "packages/rust/tests/tests/all/constraints_and_relations_postgres.rs",
+        "packages/rust/tests/tests/all/constraints_and_relations_sqlite.rs",
+        "packages/rust/tests/tests/all/constraints_and_relations_markdown.rs",
+        "packages/rust/tests/tests/all/immutable_write_mysql.rs",
+        "packages/rust/tests/tests/all/immutable_write_postgres.rs",
+        "packages/rust/tests/tests/all/immutable_write_sqlite.rs",
+        "packages/rust/tests/tests/all/immutable_write_markdown.rs",
         "packages/rust/tests/src/recipe.rs",
         "packages/rust/tests/Cargo.toml"
       ]
@@ -4964,9 +4968,9 @@
       ],
       "inputs": [
         "contracts/fixtures/request_hook/**",
-        "packages/rust/tests/tests/request_hook_mysql.rs",
-        "packages/rust/tests/tests/request_hook_postgres.rs",
-        "packages/rust/tests/tests/request_hook_sqlite.rs",
+        "packages/rust/tests/tests/all/request_hook_mysql.rs",
+        "packages/rust/tests/tests/all/request_hook_postgres.rs",
+        "packages/rust/tests/tests/all/request_hook_sqlite.rs",
         "packages/rust/tests/src/recipe.rs",
         "packages/rust/tests/Cargo.toml",
         "packages/rust/orm/src/db.rs",
@@ -4985,14 +4989,14 @@
         "contracts/fixtures/audit_triggers/**",
         "contracts/fixtures/external_audit/**",
         "contracts/fixtures/external/**",
-        "packages/rust/tests/tests/external_audit_mysql.rs",
-        "packages/rust/tests/tests/external_audit_postgres.rs",
-        "packages/rust/tests/tests/external_audit_sqlite.rs",
-        "packages/rust/tests/tests/external_audit_markdown.rs",
-        "packages/rust/tests/tests/audit_triggers_mysql.rs",
-        "packages/rust/tests/tests/audit_triggers_postgres.rs",
-        "packages/rust/tests/tests/audit_triggers_sqlite.rs",
-        "packages/rust/tests/tests/audit_triggers_markdown.rs",
+        "packages/rust/tests/tests/all/external_audit_mysql.rs",
+        "packages/rust/tests/tests/all/external_audit_postgres.rs",
+        "packages/rust/tests/tests/all/external_audit_sqlite.rs",
+        "packages/rust/tests/tests/all/external_audit_markdown.rs",
+        "packages/rust/tests/tests/all/audit_triggers_mysql.rs",
+        "packages/rust/tests/tests/all/audit_triggers_postgres.rs",
+        "packages/rust/tests/tests/all/audit_triggers_sqlite.rs",
+        "packages/rust/tests/tests/all/audit_triggers_markdown.rs",
         "packages/rust/tests/src/recipe.rs",
         "packages/rust/tests/Cargo.toml",
         "packages/rust/orm/src/db.rs",
@@ -5009,10 +5013,10 @@
       ],
       "inputs": [
         "contracts/fixtures/parameter_chunking/**",
-        "packages/rust/tests/tests/parameter_chunking_mysql.rs",
-        "packages/rust/tests/tests/parameter_chunking_postgres.rs",
-        "packages/rust/tests/tests/parameter_chunking_sqlite.rs",
-        "packages/rust/tests/tests/parameter_chunking_markdown.rs",
+        "packages/rust/tests/tests/all/parameter_chunking_mysql.rs",
+        "packages/rust/tests/tests/all/parameter_chunking_postgres.rs",
+        "packages/rust/tests/tests/all/parameter_chunking_sqlite.rs",
+        "packages/rust/tests/tests/all/parameter_chunking_markdown.rs",
         "packages/rust/tests/src/recipe.rs",
         "packages/rust/tests/Cargo.toml",
         "packages/rust/orm/src/db.rs",
@@ -5029,10 +5033,10 @@
       ],
       "inputs": [
         "contracts/fixtures/aes_rotation/**",
-        "packages/rust/tests/tests/aes_rotation_mysql.rs",
-        "packages/rust/tests/tests/aes_rotation_postgres.rs",
-        "packages/rust/tests/tests/aes_rotation_sqlite.rs",
-        "packages/rust/tests/tests/aes_rotation_markdown.rs",
+        "packages/rust/tests/tests/all/aes_rotation_mysql.rs",
+        "packages/rust/tests/tests/all/aes_rotation_postgres.rs",
+        "packages/rust/tests/tests/all/aes_rotation_sqlite.rs",
+        "packages/rust/tests/tests/all/aes_rotation_markdown.rs",
         "packages/rust/tests/src/recipe.rs",
         "packages/rust/tests/Cargo.toml",
         "packages/rust/orm/src/db.rs",
@@ -5424,10 +5428,10 @@
       ],
       "inputs": [
         "contracts/fixtures/conformance_verification/**",
-        "packages/rust/tests/tests/conformance_verification_mysql.rs",
-        "packages/rust/tests/tests/conformance_verification_postgres.rs",
-        "packages/rust/tests/tests/conformance_verification_sqlite.rs",
-        "packages/rust/tests/tests/conformance_verification_markdown.rs",
+        "packages/rust/tests/tests/all/conformance_verification_mysql.rs",
+        "packages/rust/tests/tests/all/conformance_verification_postgres.rs",
+        "packages/rust/tests/tests/all/conformance_verification_sqlite.rs",
+        "packages/rust/tests/tests/all/conformance_verification_markdown.rs",
         "packages/rust/tests/src/recipe.rs"
       ]
     },
@@ -5699,10 +5703,10 @@
       ],
       "inputs": [
         "contracts/fixtures/complex_query/**",
-        "packages/rust/tests/tests/complex_query_mysql.rs",
-        "packages/rust/tests/tests/complex_query_postgres.rs",
-        "packages/rust/tests/tests/complex_query_sqlite.rs",
-        "packages/rust/tests/tests/complex_query_markdown.rs",
+        "packages/rust/tests/tests/all/complex_query_mysql.rs",
+        "packages/rust/tests/tests/all/complex_query_postgres.rs",
+        "packages/rust/tests/tests/all/complex_query_sqlite.rs",
+        "packages/rust/tests/tests/all/complex_query_markdown.rs",
         "packages/rust/tests/src/recipe.rs"
       ]
     },
@@ -6110,7 +6114,7 @@
         "contracts/fixtures/styled_column_states.json",
         "packages/rust/orm/src/codec.rs",
         "packages/rust/orm/src/model.rs",
-        "packages/rust/orm/tests/styled_column_states.rs"
+        "packages/rust/orm/tests/cases/styled_column_states.rs"
       ]
     },
     "styled-column-states-unit-check/php-extension": {
@@ -6210,7 +6214,7 @@
         "Makefile",
         "tests/collection/keys.json",
         "packages/rust/orm/src/collection.rs",
-        "packages/rust/orm/tests/collection_identity.rs",
+        "packages/rust/orm/tests/cases/collection_identity.rs",
         "packages/rust/orm/src/model.rs"
       ]
     },
@@ -6336,7 +6340,7 @@
         "contracts/check-inputs.json",
         "packages/rust/orm/src/dbspec/apply.rs",
         "tests/dbspec/apply-verification-errors.json",
-        "packages/rust/tests/tests/dbspec_apply_verification_errors_none.rs"
+        "packages/rust/tests/tests/all/dbspec_apply_verification_errors_none.rs"
       ]
     }
   },
@@ -6489,9 +6493,9 @@
       "scope": "lint",
       "reason": "it configures rustfmt, which rust-fmt-check runs over every Rust file"
     },
-    "packages/rust/tests/tests/integration/main.rs": {
+    "packages/rust/tests/tests/all/main.rs": {
       "scope": "suite",
-      "reason": "the crate root of the Rust integration test target: it generates the models and declares the coverage and result-chain modules of every database feature, so it changes which Rust feature cases compile and run"
+      "reason": "the crate root of the one Rust test program: it generates the models and lists every test module as a group, so it changes which Rust feature cases compile and run"
     },
     "packages/ts/testing/dbspec/apply/typescript.mts": {
       "scope": "suite",

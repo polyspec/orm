@@ -15,7 +15,9 @@ use std::sync::Mutex;
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
+mod groups;
 mod sqlite_file;
+pub use groups::{run_groups, Group};
 pub use sqlite_file::SqliteFile;
 
 /// The time a case allows for each step of its work (the Go testcase package's stepBudget). The MySQL stress plan applies its steps

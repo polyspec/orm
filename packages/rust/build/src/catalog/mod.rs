@@ -263,6 +263,9 @@ impl CatalogConnection {
 pub(super) async fn begin_session(connection: &mut Conn, begin: &str) -> Result<(), String> {
     connection.exec(begin, &[]).await.map_err(|error| error.to_string())?;
     if matches!(connection, Conn::Postgres(_)) {
+        // A connection from the pool may hold statements of an earlier session: forget them on this side too, or the next use of
+        // a text it remembers names a statement that the server has released.
+        connection.forget_statements().await.map_err(|error| error.to_string())?;
         connection.exec("DEALLOCATE ALL", &[]).await.map_err(|error| error.to_string())?;
     }
     Ok(())

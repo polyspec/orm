@@ -1,6 +1,6 @@
 //! The generated-model ops of the model_queries and constraints_and_relations recipes (docs/spec/feature-coverage.md FCV-4):
 //! each op calls the generated model that its step names (Author, User or NoteReader) on the connection that model.connect
-//! opened. The trial binaries of both recipes include the models of the bench set as `crate::model` and share this file. A
+//! opened. The test program includes the models of the bench set as `crate::model`, and the modules of both recipes share this file. A
 //! model, a column or an op without an arm here fails its step by name.
 
 use polyspec_orm::Db;

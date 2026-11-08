@@ -1,0 +1,8 @@
+// Requirements: DBS-108, SCH-7, FCV-3, FCV-4 (docs/spec/feature-coverage.md).
+//! The recipe tests/dbspec/set-decimal.json on postgres (docs/spec/feature-coverage.md FCV-3).
+
+use polyspec_orm_tests::recipe;
+
+pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
+    recipe::table_trials("dbspec_set_decimal_postgres", "tests/dbspec/set-decimal.json", "contracts/fixtures/dbspec-set.json", "postgres")
+}

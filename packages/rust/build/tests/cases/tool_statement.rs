@@ -1,0 +1,22 @@
+use polyspec_orm_build::tool_db::{Conn, QueryLimits};
+
+#[tokio::main(flavor = "current_thread")]
+// Requirements: INT-125.
+async fn bounded_query_rejects_ambiguous_multiple_result_sets() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    tokio::time::timeout(std::time::Duration::from_secs(5), async {
+        let pool = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
+        let mut connection = Conn::Sqlite(pool.acquire().await.unwrap());
+        let error = connection.query_bounded("SELECT 1; SELECT 2", &[], QueryLimits::default()).await.expect_err("must not merge multiple result sets");
+        assert!(error.to_string().contains("TOOL_QUERY_STATEMENT"));
+        assert!(connection.query_bounded("SELECT ';'", &[], QueryLimits::default()).await.is_ok());
+        drop(connection);
+        pool.close().await;
+    })
+    .await
+    .expect("statement test deadline");
+}
+
+pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
+    polyspec_orm_testcase::native_trials!("tool_statement": bounded_query_rejects_ambiguous_multiple_result_sets)
+}

@@ -12,11 +12,15 @@ use std::sync::{Arc, Mutex};
 polyspec_orm::models!();
 
 use model::{Author, ClockCell, HexCell, Service, ServiceMember, UpsertCell};
-use polyspec_orm::{Collection, Db, Model, Null, Param};
+use polyspec_orm::{Collection, Db, Model, Null};
 use polyspec_orm_tests::plain::Plain;
 use serde_json::{json, Map, Value};
 
 use polyspec_orm_test_support::statement_record;
+
+#[path = "conformance_values.rs"]
+mod values;
+use values::{norm, param_json, Args};
 
 #[derive(Default)]
 struct Log {
@@ -28,83 +32,6 @@ struct Log {
 
 type Shared = Arc<Mutex<Log>>;
 
-fn time_text(t: &chrono::NaiveDateTime) -> String {
-    t.format("%Y-%m-%d %H:%M:%S%.6f").to_string()
-}
-
-/// Renders a bound value the way every runner does.
-fn norm(v: &Value, log: &Log) -> Value {
-    match v {
-        Value::Number(n) => match n.as_i64() {
-            Some(x) if log.seqs.contains(&x) => json!("$SEQ"),
-            _ => v.clone(),
-        },
-        Value::String(s) => {
-            if s.starts_with("ORM-AES2\0") {
-                assert!(s.len() >= 9 + 12 + 16, "invalid AES ciphertext bind");
-                json!("$AES")
-            } else if s.starts_with("ORM-AES2") {
-                panic!("invalid AES ciphertext bind")
-            } else if s.to_ascii_lowercase().starts_with("4f524d2d41455332") {
-                assert!(
-                    s.to_ascii_lowercase().starts_with("4f524d2d4145533200")
-                        && s.len() >= 2 * (9 + 12 + 16)
-                        && s.len() % 2 == 0
-                        && s.bytes().all(|b| b.is_ascii_hexdigit()),
-                    "invalid hex AES ciphertext bind"
-                );
-                json!("$AES")
-            } else {
-                v.clone()
-            }
-        }
-        _ => v.clone(),
-    }
-}
-
-fn param_json(p: &Param) -> Result<Value, String> {
-    Ok(match p {
-        Param::Null => Value::Null,
-        Param::Bool(b) => json!(b),
-        Param::I64(x) => json!(x),
-        Param::F64(x) => {
-            if !x.is_finite() {
-                return Err("non-finite float bind".into());
-            }
-            json!(x)
-        }
-        Param::Str(s) => json!(s),
-        Param::Bytes(b) => {
-            if b.starts_with(b"ORM-AES2\0") {
-                if b.len() < 9 + 12 + 16 {
-                    return Err("invalid AES ciphertext bind".into());
-                }
-                json!("$AES")
-            } else {
-                json!(String::from_utf8(b.clone()).map_err(|e| e.to_string())?)
-            }
-        }
-        Param::DateTime(t) => json!(time_text(t)),
-        Param::Date(d) => json!(d.to_string()),
-    })
-}
-
-#[test]
-fn invalid_binds_cannot_be_rendered_as_valid_values() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    assert!(param_json(&Param::Bytes(vec![0xff])).is_err());
-    assert!(param_json(&Param::Bytes(b"ORM-AES2\0".to_vec())).is_err());
-    let mut encrypted = b"ORM-AES2\0".to_vec();
-    encrypted.extend([0xff; 12 + 16]);
-    assert_eq!(param_json(&Param::Bytes(encrypted)).unwrap(), json!("$AES"));
-    assert!(param_json(&Param::F64(f64::INFINITY)).is_err());
-    assert_eq!(param_json(&Param::Bytes(Vec::new())).unwrap(), json!(""));
-    let log = Log::default();
-    assert!(std::panic::catch_unwind(|| norm(&json!("ORM-AES2broken"), &log)).is_err());
-    assert!(std::panic::catch_unwind(|| norm(&json!("4f524d2d4145533200bad"), &log)).is_err());
-    assert!(std::panic::catch_unwind(|| norm(&json!(format!("4f524d2d41455332ff{}", "00".repeat(28))), &log)).is_err());
-}
-
 /// Hides the identity of rows a vector created: their keys wherever they are bound,
 /// including statements logged earlier.
 fn mask(shared: &Shared, seqs: &[i64]) {
@@ -114,7 +41,7 @@ fn mask(shared: &Shared, seqs: &[i64]) {
     for st in statements.iter_mut() {
         if let Some(binds) = st["binds"].as_array_mut() {
             for b in binds.iter_mut() {
-                *b = norm(b, &log);
+                *b = norm(b, &log.seqs);
             }
         }
     }
@@ -147,83 +74,6 @@ fn picks<M: Model>(c: &Collection<M>, names: &[&str]) -> Value {
     Value::Array(c.models().map(|m| pick(Some(m), names)).collect())
 }
 
-struct Args {
-    dsn: String,
-    /// The vector name to run. If empty, all vectors run.
-    vectors: Vec<String>,
-}
-
-const USAGE: &str = "usage: conformance --dsn URI [--vector NAME]...";
-
-impl Args {
-    fn parse(args: &[String]) -> Result<Args, String> {
-        let mut dsn = None;
-        let mut vectors: Vec<String> = Vec::new();
-        let mut rest = args.iter();
-        while let Some(flag) = rest.next() {
-            let value = rest.next().ok_or_else(|| format!("{flag} requires a value; {USAGE}"))?;
-            match flag.as_str() {
-                "--dsn" if dsn.is_none() => dsn = Some(value.clone()),
-                "--dsn" => return Err(format!("--dsn is given twice; {USAGE}")),
-                "--vector" if value.is_empty() => return Err(format!("--vector requires a nonempty name; {USAGE}")),
-                "--vector" if vectors.contains(value) => return Err(format!("vector {value} is selected twice")),
-                "--vector" => vectors.push(value.clone()),
-                other => return Err(format!("unknown argument {other:?}; {USAGE}")),
-            }
-        }
-        let dsn = dsn.ok_or_else(|| format!("--dsn is required; {USAGE}"))?;
-        Ok(Args { dsn, vectors })
-    }
-}
-
-#[test]
-fn arguments_reject_missing_duplicate_and_unknown_flags() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    let parse = |args: &[&str]| Args::parse(&args.iter().map(|a| (*a).to_owned()).collect::<Vec<_>>());
-    let args = parse(&["--dsn", "sqlite://x", "--vector", "relations", "--vector", "conditions_values"]).unwrap();
-    assert_eq!((args.dsn.as_str(), args.vectors), ("sqlite://x", vec!["relations".to_owned(), "conditions_values".to_owned()]));
-    assert!(parse(&["--dsn", "sqlite://x"]).unwrap().vectors.is_empty());
-    for invalid in [
-        &["--vector", "relations"][..],
-        &["--dsn"],
-        &["--dsn", "a", "--dsn", "b"],
-        &["--dsn", "a", "--vector", ""],
-        &["--dsn", "a", "--vector", "relations", "--vector", "relations"],
-        &["--dsn", "a", "--vectors", "relations"],
-    ] {
-        assert!(parse(invalid).is_err(), "{invalid:?}");
-    }
-}
-
-/// Each body of this runner is declared once and is named in tests/conformance/vectors.json. A vector name with no body here
-/// is a recipe case (tests/conformance/README.md). The declared names are read from this file: the first string literal after
-/// each run invocation. The call token is built with concat! so that this test does not count itself.
-#[test]
-fn every_body_is_a_vector_of_the_vector_file() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    let call = concat!("run", "!(");
-    let declared: Vec<&str> = include_str!("conformance.rs")
-        .split(call)
-        .skip(1)
-        .map(|rest| {
-            let literal = rest.trim_start().strip_prefix('"').unwrap_or_else(|| panic!("a vector invocation has no name literal"));
-            &literal[..literal.find('"').unwrap_or_else(|| panic!("a vector name literal is not closed"))]
-        })
-        .collect();
-    let mut seen = HashSet::new();
-    for name in &declared {
-        assert!(seen.insert(*name), "vector {name} is declared twice");
-    }
-    let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/conformance/vectors.json");
-    let text = std::fs::read_to_string(&path).or_panic(|e| format!("{}: {e}", path.display()));
-    let recorded: Value = serde_json::from_str(&text).or_panic(|e| format!("{}: {e}", path.display()));
-    let vectors = recorded["vectors"].as_array().unwrap_or_else(|| panic!("{}: no vectors array", path.display()));
-    let names: HashSet<&str> = vectors.iter().map(|vector| vector["name"].as_str().unwrap_or_else(|| panic!("a vector has no name"))).collect();
-    for name in &declared {
-        assert!(names.contains(name), "the body {name} is not a vector of {}", path.display());
-    }
-}
-
 #[tokio::main]
 async fn main() {
     let args = match Args::parse(&std::env::args().skip(1).collect::<Vec<_>>()) {
@@ -249,7 +99,7 @@ async fn main() {
     let _recording = db
         .subscribe(move |e: &polyspec_orm::StatementEvent<'_>| {
             let mut log = hook.lock().unwrap();
-            let binds: Vec<Value> = e.binds.iter().map(|b| norm(&param_json(b).or_panic(|e| format!("invalid query bind: {e}")), &log)).collect();
+            let binds: Vec<Value> = e.binds.iter().map(|b| norm(&param_json(b).or_panic(|e| format!("invalid query bind: {e}")), &log.seqs)).collect();
             let transaction = e.transaction.map(|n| {
                 let next = log.transactions.len() as u64 + 1;
                 *log.transactions.entry(n).or_insert(next)

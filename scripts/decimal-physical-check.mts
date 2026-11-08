@@ -29,7 +29,7 @@ export function command(language: string, database: string, environment: NodeJS.
       `with data set "${database}"$`, 'packages/php-ext/tests/DecimalModelDbNativeTest.php']];
   }
   if (language === 'rust') {
-    return [rustTest(environment).copy, [id, '--exact']];
+    return [rustTest(environment).copy, [`decimal_physical::${id}`, '--exact']];
   }
   if (language === 'python') {
     // ORM_PYTHON is the Python of the venv that make orm-install-python builds.
@@ -64,7 +64,7 @@ export function observed(language: string, database: string, output: string): bo
     return testResults.length === 1 && testResults[0]?.Action === 'pass' && testResults[0].Test === `TestDecimalPhysical${suffix}` &&
       events.some(event => event.Action === 'pass' && !event.Test);
   }
-  if (language === 'rust') return output.includes(`test ${id} ... ok`) && output.includes('1 passed; 0 failed');
+  if (language === 'rust') return output.includes(`test decimal_physical::${id} ... ok`) && output.includes('1 passed; 0 failed');
   // PHPUnit writes TeamCity lines per test (testStarted, testFailed, testIgnored, testFinished). All the expected tests must
   // finish, and there must be no failed or skipped test.
   if (language === 'php') {

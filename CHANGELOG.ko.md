@@ -1,9 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 92655153baa1a0d1eeefb4f42b4eb2c38a0f57b1b44671b8bd8c93ec0350d0a2 -->
+<!-- source-sha256: cdb895edb0e7214310212815b4aedf2034a3c11127457bc67b3f4ae67963effc -->
 # 변경 이력
 
 ## Unreleased
 
+- Tests: workspace의 Rust suite는 polyspec-orm-tests의 test program 하나 `all`이다. 예전 test program은 각각 trial이 `<module>::<name>`인 module이고, group은 차례로 실행되며 group마다 한 줄과 마지막 개수를 쓴다. 각 package의 시험은 그 test case crate tests/cases에 남고, Make target은 `--test all -- <module>::`로 시험을 고른다 (T375). markdown recipe 시험도 이 program의 module이다.
+- catalog 연결은 Rust, Go, TypeScript, Python에서 commit된 변경의 연결을 다음 session에 넘긴다 (INT-106b에서 INT-106e). 그래서 recipe 사례의 seed 행이 연결 하나로 쓰인다: PostgreSQL의 Rust recipe conformance_verification은 사례 90개에 연결 15,959개를 열던 것이 1,465개를 열고, Go, TypeScript, Python도 같이 준다. markdown session도 새 `MarkdownLease::keep`으로 같은 방식으로 pool에 돌아간다 (T366).
 - PHP: packages/php/tests와 packages/php-ext/tests의 모든 PHPUnit test class가 size를 선언하므로, 시간 제한은 멈춘 case의 기한(60, 120, 300초)이고 어떤 case도 부하에서 PHPUnit이 size 없는 class에 주는 1초로 실패하지 않는다 (T393).
 - CI: 한 runtime의 job은 그 runtime의 part만 실행하고, runtime 이름이 없는 job은 많아야 한 runtime의 part를 실행한다. conformance-refusal-check, native-error-cause-check, testcase-check는 각 part가 그 runtime의 group에서 실행되고, repository 검사는 다른 runtime의 part에 닿는 group을 실패시킨다 (T388).
 - CI: 독립 native 검사와 setup을 runtime group에 배치하고 전용 target이 실행하는 native case를 전체 실행에서 제외하며 여러 group이 호출하는 검사를 탐지하고 generator module을 각 검사 대신 설치 단계에서 준비한다 (T388).

@@ -1643,6 +1643,10 @@
     "exported": false,
     "signature": "pub (crate) async fn query_result_values_bounded (\u0026 mut self , sql : \u0026 str , params : \u0026 [P] , limits : QueryLimits) -\u003e Result \u003c QueryResult , sqlx :: Error \u003e"
   },
+  "packages/rust/build/src/tool_db.rs::Conn::return_to_pool": {
+    "exported": false,
+    "signature": "pub (crate) async fn return_to_pool (mut self)"
+  },
   "packages/rust/build/src/tool_db.rs::Conn::rollback": {
     "exported": true,
     "signature": "pub async fn rollback (\u0026 mut self) -\u003e Result \u003c () , sqlx :: Error \u003e"
@@ -7022,6 +7026,10 @@
   "packages/rust/orm/src/markdown.rs::MarkdownLease::discard": {
     "exported": true,
     "signature": "pub fn discard (\u0026 mut self)"
+  },
+  "packages/rust/orm/src/markdown.rs::MarkdownLease::keep": {
+    "exported": true,
+    "signature": "pub fn keep (\u0026 mut self)"
   },
   "packages/rust/orm/src/markdown.rs::MarkdownLease::raw": {
     "exported": true,

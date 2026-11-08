@@ -43,7 +43,7 @@ caseTest('Rust workspace dispatch matches a skip by its full symbol', COMPUTE, (
 caseTest('the rust lane runs the sections of the integration program in its workspace run, with no ignored run', COMPUTE, () => {
   for (const command of CLIENT_DB_COMMANDS) {
     assert.ok(!/ --(include-)?ignored( |$)/.test(command), `a command runs ignored tests: ${command}`);
-    assert.ok(!command.includes('--test integration_program'), `a command runs the integration program apart from the workspace run: ${command}`);
+    assert.ok(!command.includes('integration_program::'), `a command runs the integration program apart from the workspace run: ${command}`);
   }
   assert.ok(CLIENT_DB_COMMANDS.some(command => command.includes('tests/cargo-test.mts workspace-tests')), 'the rust lane has its workspace run');
 });

@@ -1,4 +1,6 @@
 [package]
+# Its integration tests run as groups of the one test program, packages/rust/tests/tests/all.
+autotests = false
 name = "polyspec-orm-schema"
 version = "0.0.22"
 edition = "2021"

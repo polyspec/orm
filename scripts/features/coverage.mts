@@ -42,7 +42,7 @@ type CargoSpec = Extract<Spec, { format: 'cargo' }>;
 /** A build of buildNative: its binary or its error. */
 type Built = { binary: string; error?: undefined } | { error: string; binary?: undefined };
 /** The Rust builds of a crate. */
-type CargoBuilt = { files: Map<string, string[]>; programs: Record<string, string>; error?: undefined } | { error: string; files?: undefined; programs?: undefined };
+type CargoBuilt = { files: Map<string, string[]>; filters: Map<string, string>; programs: Record<string, string>; error?: undefined } | { error: string; files?: undefined; filters?: undefined; programs?: undefined };
 /** The builds that the executions share. */
 type Builds = { go: Map<string, Built>; cargo: Map<string, CargoBuilt>; cargoReady: Promise<void> };
 /** The planned executions of one item. */
@@ -352,7 +352,8 @@ async function entryTest(item: Item, command: NativeCommand, root: string): Prom
     if (!new RegExp(`\\bfunc\\s+${symbol}\\s*\\(`).test(await readFile(testPath, 'utf8'))) throw new Error(`test symbol ${symbol} is absent from declared test file`);
     return { format: 'go', cwd: dirname(testPath), symbol, cases, database };
   }
-  return { format: 'cargo', cwd: await owningCrate(testPath, resolve(root, item.part)), testPath, cases, database };
+  const program = (await programModules(root)).has(testPath) ? resolve(root, RUST_TEST_PROGRAM_CRATE) : undefined;
+  return { format: 'cargo', cwd: program ?? await owningCrate(testPath, resolve(root, item.part)), testPath, cases, database };
 }
 
 // owningCrate is the directory of the Cargo manifest of a Rust test file, within the part of its owner.
@@ -511,6 +512,31 @@ function cargoMetadataOf(text: string): CargoMetadata {
   return { packages, ...(root === undefined ? {} : { workspace_root: jsonString(root, 'cargo metadata workspace_root') }) };
 }
 
+/** The crate of the one Rust test program, and its root file, which runs as a group each test module of a test case crate. */
+export const RUST_TEST_PROGRAM_CRATE = 'packages/rust/tests';
+const RUST_TEST_PROGRAM_ROOT = `${RUST_TEST_PROGRAM_CRATE}/tests/all/main.rs`;
+
+/** The test modules of test case crates that a root file of a test program runs, by the file of each: `polyspec_orm_<package>_cases`, or `polyspec_orm_cases` of the package orm, holds them in `<package>/tests/cases`. */
+export function programCaseModules(rootFile: string, text: string): Map<string, string> {
+  const packages = resolve(dirname(rootFile), '../../..');
+  const modules = new Map<string, string>();
+  for (const match of text.matchAll(/\bpolyspec_orm(?:_(\w+?))?_cases::(\w+)::trials\b/g)) {
+    if (match[2]) modules.set(resolve(packages, match[1] ?? 'orm', 'tests/cases', `${match[2]}.rs`), match[2]);
+  }
+  return modules;
+}
+
+/** The modules of the one Rust test program, by file. */
+async function programModules(root: string): Promise<Map<string, string>> {
+  const file = resolve(root, RUST_TEST_PROGRAM_ROOT);
+  try {
+    return programCaseModules(file, await readFile(file, 'utf8'));
+  } catch (error) {
+    if (errorCode(error) !== 'ENOENT') throw error;
+    return new Map();
+  }
+}
+
 /** The files included by an explicit Rust #[path] declaration in a library target. */
 export async function cargoPathModuleFiles(targets: CargoTarget[]): Promise<{ target: string; file: string }[]> {
   const modules: { target: string; file: string }[] = [];
@@ -595,6 +621,20 @@ export function cargoFeaturesForPackage(project: CargoMetadata, selectedPackage:
   return applicable.length ? ['--features', applicable.join(',')] : [];
 }
 
+/**
+ * The name filter of a test file that is a module of a Cargo test target: the trials of a module are `<module path>::<name>`, and a
+ * test program holds many modules. The root file of a target has no filter: its binary runs what it holds.
+ */
+export function cargoModuleFilter(targets: CargoTarget[], testPath: string): string | undefined {
+  const path = resolve(testPath);
+  const owners = targets.filter(target => target.test && target.kind.includes('test') && path.startsWith(`${dirname(resolve(target.src_path))}${sep}`));
+  const owner = owners.sort((left, right) => right.src_path.length - left.src_path.length)[0];
+  if (owner === undefined || resolve(owner.src_path) === path || !['main.rs', 'lib.rs'].includes(basename(owner.src_path))) return undefined;
+  const parts = relative(dirname(resolve(owner.src_path)), path).replace(/\.rs$/, '').split(sep);
+  if (parts.at(-1) === 'mod') parts.pop();
+  return `${parts.join('::')}::`;
+}
+
 /** Builds only the selected package's Rust test targets from the canonical workspace manifest. */
 export function cargoBuildArgs(workspaceManifestPath: string, packageName: string, features: string[], targetArgs: string[]): string[] {
   return ['cargo', 'test', '--no-run', '--manifest-path', workspaceManifestPath, '--package', packageName,
@@ -608,6 +648,7 @@ async function buildCargo(plans: Plans, directory: string, builds: Builds, build
   const requestedFeatures = process.env.ORM_RUST_TEST_FEATURES?.split(',').filter(Boolean) ?? [];
   for (const [crate, crateSpecs] of cargoCrates) {
     const files = new Map<string, string[]>();
+    const filters = new Map<string, string>();
     let programPaths: Record<string, string> = {};
     const error = await build(`cargo/${relative(plans.root, crate) || '.'}`, async step => {
       // The build and the copy are done under an exclusive lease on the shared Rust target directory (tests/cargo-test.mts --copy). Runs
@@ -625,7 +666,15 @@ async function buildCargo(plans: Plans, directory: string, builds: Builds, build
       const features = cargoFeaturesForPackage(project, selectedPackage, requestedFeatures);
       const dependencyRoot = dirname(workspaceManifestPath);
       const pathModules = await cargoPathModuleFiles(selectedPackage.targets);
+      const program = selectedPackage.targets.find(target => target.kind.includes('test') && resolve(target.src_path) === resolve(plans.root, RUST_TEST_PROGRAM_ROOT));
+      const included = program === undefined ? new Map<string, string>() : await programModules(plans.root);
+      if (program !== undefined) pathModules.push(...[...included.keys()].map(file => ({ target: program.name, file })));
       const targetArgs = cargoTargetArgs(selectedPackage.targets, crateSpecs.map(spec => spec.testPath), pathModules);
+      for (const { testPath } of crateSpecs) {
+        const name = included.get(testPath);
+        const filter = name === undefined ? cargoModuleFilter(selectedPackage.targets, testPath) : `${name}::`;
+        if (filter !== undefined) filters.set(testPath, filter);
+      }
       const copies = resolve(directory, `cargo-${builds.cargo.size}-${relative(plans.root, crate).replaceAll('/', '_') || 'root'}`);
       await mkdir(copies, { recursive: true });
       const result = await run(lease, ['run', leases, 'exclusive', '--wait', '--', process.execPath, cargoTestScript, '--copy', copies, '--',
@@ -638,9 +687,13 @@ async function buildCargo(plans: Plans, directory: string, builds: Builds, build
           files.set(file, [...(files.get(file) ?? []), binary.copy]);
         }
       }
+      // A test case crate is a library of the program, so the dep-info of the program does not list its modules.
+      for (const binary of copied.tests.filter(candidate => candidate.target === program?.name)) {
+        for (const file of included.keys()) files.set(file, [...(files.get(file) ?? []), binary.copy]);
+      }
       step(`${new Set([...files.values()].flat()).size} test binaries`);
     });
-    builds.cargo.set(crate, error ? { error } : { files, programs: programPaths });
+    builds.cargo.set(crate, error ? { error } : { files, filters, programs: programPaths });
   }
 }
 
@@ -660,7 +713,8 @@ function prepared(spec: Spec, builds: Builds, root: string): Prepared[] {
   if (!crate || crate.error !== undefined) throw new Error(`cargo test build failed: ${crate?.error ?? 'it was not built'}`);
   const executables = crate.files.get(spec.testPath) ?? [];
   if (executables.length === 0) throw new Error(`no test binary compiles ${spec.testPath}`);
-  return executables.map((executable: string) => ({ program: executable, args: ['--test-threads=1'], cwd: spec.cwd,
+  const filter = crate.filters.get(spec.testPath);
+  return executables.map((executable: string) => ({ program: executable, args: ['--test-threads=1', ...(filter === undefined ? [] : [filter])], cwd: spec.cwd,
     env: { ...crate.programs, CARGO_MANIFEST_DIR: spec.cwd } }));
 }
 

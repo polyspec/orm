@@ -803,6 +803,8 @@ const OPS = {
       if (refused.code !== s.refused_code) throw new Error(`the refused connection has the code ${refused.code}, want ${s.refused_code}`);
       return {};
     }
+    // A committed mutation leaves its connection in the pool of the catalog that this step replaces (INT-106d).
+    if (!context.closed) await context.catalog.close();
     const catalog = await connectCatalog(dsn);
     context.namespace = await catalog.currentNamespace();
     context.catalog = catalog;
