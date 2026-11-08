@@ -42,7 +42,7 @@ class CatalogOneConnectionTest extends TestCase
                 } catch (OrmException $stop) {
                     self::assertSame(Code::CATALOG_LIMIT, $stop->code_);
                 }
-                self::assertOne($catalog, 'a budget stop');
+                self::assertOneAfterClose($catalog, 'a budget stop');
             } finally {
                 $catalog->close();
             }
@@ -105,9 +105,29 @@ class CatalogOneConnectionTest extends TestCase
 
     private static function assertOne(Catalog $catalog, string $after): void
     {
-        $rows = $catalog->readOnlyQuery(
+        self::assertSame(1, self::connections($catalog), "the connections of the catalog's database after $after");
+    }
+
+    /**
+     * The kill connection of a budget stop is closed by the stop, and the server ends its thread within the 2 s of
+     * CFG-35, which it announces to no one; until then PROCESSLIST still lists it. So the count is read again until it
+     * is one or those 2 s end, and the last count read is the one asserted.
+     */
+    private static function assertOneAfterClose(Catalog $catalog, string $after): void
+    {
+        $end = hrtime(true) + 2_000_000_000;
+        $count = self::connections($catalog);
+        while ($count !== 1 && hrtime(true) < $end) {
+            usleep(10_000);
+            $count = self::connections($catalog);
+        }
+        self::assertSame(1, $count, "the connections of the catalog's database within 2 s after $after");
+    }
+
+    private static function connections(Catalog $catalog): mixed
+    {
+        return $catalog->readOnlyQuery(
             'SELECT COUNT(*) AS n FROM information_schema.PROCESSLIST WHERE DB = DATABASE()'
-        )->rows;
-        self::assertSame(1, $rows[0][0], "the connections of the catalog's database after $after");
+        )->rows[0][0];
     }
 }
