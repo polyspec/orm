@@ -860,7 +860,7 @@ const OPS = {
       return at;
     });
     const types = page.result.columns.map(c => c.nativeType);
-    return { bind: page, columns: page.result.columns.map(c => c.name), order_by: page.orderBy, has_more: page.hasMore, rows: page.result.rows.map(row => indexes.map(at => plain(row[at], types[at]))) };
+    return { bind: page, columns: page.result.columns.map(c => c.name), order_by: page.orderBy, has_more: page.hasMore, rows: page.result.rows.map(row => indexes.map(at => described(row[at], types[at], catalog.dialect))) };
   },
   async 'catalog.read_only_query'(s, context) {
     const result = await context.catalog.readOnlyQuery(sql(s.sql, context), (s.binds ?? []).map(bind => native(databaseValue(stepArgument(bind, context), context))), limits(s));
@@ -1264,6 +1264,34 @@ function plain(value, nativeType) {
   if (typeof value === 'number') return { float: String(value) };
   throw new Error(`no recipe wrapper for the plain value ${String(value)}`);
 }
+
+/**
+ * The recipe wrapper of a value of a described table. A float is a bits cell (INT-183): the number of a 4-byte float column (MySQL
+ * FLOAT, PostgreSQL real) holds a single-precision value, and any other float a double, a SQLite REAL included. A text takes the
+ * temporal or decimal kind of its column only in the form of that kind: a SQLite column declared TIME(3) keeps a text such as abc
+ * (INT-184).
+ */
+function described(value, nativeType, dialect) {
+  const type = (nativeType ?? '').toLowerCase();
+  if (typeof value === 'number') {
+    const float32 = dialect !== 'sqlite' && /^(float|real)\b/.test(type);
+    const float = float32 || (dialect === 'sqlite' ? !type.includes('int') && /real|floa|doub/.test(type) : /^(double|float|real)\b/.test(type));
+    if (float32) return { f32_bits: new Uint32Array(new Float32Array([value]).buffer)[0] };
+    if (float || !Number.isInteger(value)) return { f64_bits: String(new BigUint64Array(new Float64Array([value]).buffer)[0]) };
+  }
+  if (typeof value === 'string') {
+    const kind = temporalKind(nativeType);
+    if (kind !== null && !KIND_FORMS[kind].test(value)) return { text: value };
+  }
+  return plain(value, nativeType);
+}
+
+const KIND_FORMS = {
+  date: /^\d{4}-\d{2}-\d{2}$/,
+  time: /^\d{2}:\d{2}:\d{2}(\.\d+)?$/,
+  datetime: /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$/,
+  decimal: /^-?\d+(\.\d+)?$/,
+};
 
 function temporalKind(nativeType) {
   const type = (nativeType ?? '').toLowerCase();
