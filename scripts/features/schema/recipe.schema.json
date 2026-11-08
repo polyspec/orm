@@ -9259,6 +9259,11 @@
                 "type": "string",
                 "pattern": "^[A-Z][A-Z0-9_]*$"
               },
+              "message": {
+                "description": "The whole text of the error, its code included.",
+                "type": "string",
+                "minLength": 1
+              },
               "message_holds": {
                 "description": "The text that the message of the error holds.",
                 "type": "string",
@@ -9369,6 +9374,11 @@
                 "type": "string",
                 "pattern": "^[A-Z][A-Z0-9_]*$"
               },
+              "message": {
+                "description": "The whole text of the error, its code included.",
+                "type": "string",
+                "minLength": 1
+              },
               "message_holds": {
                 "description": "The text that the message of the error holds.",
                 "type": "string",
@@ -9423,6 +9433,11 @@
               "error": {
                 "type": "string",
                 "pattern": "^[A-Z][A-Z0-9_]*$"
+              },
+              "message": {
+                "description": "The whole text of the error, its code included.",
+                "type": "string",
+                "minLength": 1
               },
               "message_suffix": {
                 "description": "The text that the message of the error ends with.",

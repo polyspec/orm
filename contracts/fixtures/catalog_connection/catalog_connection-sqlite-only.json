@@ -151,7 +151,7 @@
           "expect": {
             "sqlite": {
               "error": "GRID_TEMPORAL_VALUE",
-              "message": "GRID_TEMPORAL_VALUE: the stored value is not a dbspec datetime"
+              "message": "GRID_TEMPORAL_VALUE: column 2: the stored value is not a dbspec datetime"
             }
           }
         },
@@ -177,7 +177,7 @@
           "expect": {
             "sqlite": {
               "error": "GRID_TEMPORAL_VALUE",
-              "message": "GRID_TEMPORAL_VALUE: the stored value is not a dbspec date"
+              "message": "GRID_TEMPORAL_VALUE: column 2: the stored value is not a dbspec date"
             }
           }
         },
@@ -203,7 +203,7 @@
           "expect": {
             "sqlite": {
               "error": "GRID_TEMPORAL_VALUE",
-              "message": "GRID_TEMPORAL_VALUE: the stored value is not a dbspec date"
+              "message": "GRID_TEMPORAL_VALUE: column 2: the stored value is not a dbspec date"
             }
           }
         },
@@ -229,7 +229,7 @@
           "expect": {
             "sqlite": {
               "error": "GRID_TEMPORAL_VALUE",
-              "message": "GRID_TEMPORAL_VALUE: the stored value is not a dbspec time"
+              "message": "GRID_TEMPORAL_VALUE: column 2: the stored value is not a dbspec time"
             }
           }
         },
@@ -255,7 +255,7 @@
           "expect": {
             "sqlite": {
               "error": "GRID_TEMPORAL_VALUE",
-              "message": "GRID_TEMPORAL_VALUE: the stored value is not a dbspec datetime"
+              "message": "GRID_TEMPORAL_VALUE: column 2: the stored value is not a dbspec datetime"
             }
           }
         }
