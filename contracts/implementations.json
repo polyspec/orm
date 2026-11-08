@@ -718,7 +718,7 @@
         },
         {
           "glob": "packages/ts/tests/codec-aes-errors.test.mjs",
-          "reason": "test: injects a failure into each phase of the native decipher of Node, checks that the error keeps its identity, that only the exact native authentication error of final becomes CODEC_DECODE and that no plaintext returns; a recipe cannot inject it, and the codes of the shared failures are recipe cases of tests/codec/codec.json"
+          "reason": "test: injects a failure into each phase of the native cipher and decipher of Node, checks that each is the error of its rule (aes: the encryption failed, aes: authentication failed) with the native failure as its cause and that no plaintext returns; a recipe cannot inject it, and the codes of the shared failures are recipe cases of tests/codec/codec.json"
         },
         {
           "glob": "packages/ts/tests/paginate-order.mjs",
