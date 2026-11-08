@@ -77,9 +77,10 @@ export function observed(language: string, database: string, output: string): bo
       && JSON.stringify(finished) === JSON.stringify(wanted)
       && !/^##teamcity\[test(?:Failed|Ignored) /m.test(output);
   }
+  // Kit's run-tests reports each case by its qualified name and the time it took, after the time of the run.
   if (language === 'php-extension') {
-    const name = `DecimalModelDbNativeTest::testNativeRoundTrip with data set "${database}"`;
-    return output.split('\n').filter(line => line.includes(`✔ ${name} `)).length === 1
+    const name = `Polyspec\\Orm\\Extension\\Tests\\DecimalModelDbNativeTest::testNativeRoundTrip with data set "${database}"`;
+    return output.split('\n').filter(line => line.includes(`✔ ${name} (`)).length === 1
       && output.includes(': 1 passed, 0 failed, 0 timed out, 0 skipped');
   }
   // The Python test uses unittest's TextTestRunner, which reports each named test and a complete summary.
