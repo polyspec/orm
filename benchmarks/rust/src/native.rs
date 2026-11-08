@@ -105,10 +105,9 @@ async fn list100(pool: &MySqlPool, service_seq: i64) -> Vec<Author> {
 /// The value the insert workload writes to `aes_hex_email`: like the Go baseline's `HostEncode`,
 /// writes the AES envelope of `bench-salt` as hex text.
 fn insert_email() -> String {
-    polyspec_orm::codec::hex_upper(&polyspec_orm::codec::aes_encrypt(
-        b"ins@example.com",
-        "bench-salt",
-    ))
+    polyspec_orm::codec::hex_upper(
+        &polyspec_orm::codec::aes_encrypt(b"ins@example.com", "bench-salt").expect("aes envelope"),
+    )
 }
 
 async fn insert(pool: &MySqlPool, i: usize) -> u64 {

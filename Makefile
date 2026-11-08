@@ -2662,7 +2662,7 @@ codec-check/python: python-venv-check
 codec-check/go:
 	$(GO_TEST) ./packages/go/orm -run '^(TestRecipeCodecNone|TestRecipeCodecIntegerBeyondI64None|TestRecipeCodecBytesValueNone|TestRecipeCodecNonFiniteValueNone|TestRecipeCodecJsonDepthNone|TestRecipeCodecRawTextNone|TestRecipeCodecMapKeysNone|TestRecipeCodecStyledUnsetNone)$$' -count=1
 codec-check/rust: lease-tool
-	cd packages/rust && $(CARGO_TEST) codec-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test all -- codec_none:: codec_integer_beyond_i64_none::
+	cd packages/rust && $(CARGO_TEST) codec-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test all -- codec_none:: codec_integer_beyond_i64_none:: codec_json_depth_none::
 codec-check/typescript: typescript-current
 	$(READ_TYPESCRIPT)
 	$(NODE) --test packages/ts/tests/codec-none.test.mjs packages/ts/tests/codec-integer-beyond-i64-none.test.mjs packages/ts/tests/codec-bytes-value-none.test.mjs packages/ts/tests/codec-non-finite-value-none.test.mjs packages/ts/tests/codec-json-depth-none.test.mjs packages/ts/tests/codec-lone-surrogate-none.test.mjs packages/ts/tests/codec-undefined-member-none.test.mjs

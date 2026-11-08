@@ -20,9 +20,7 @@ fn malformed_serialize_states_its_rule() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let error = decode(&["serialize".into()], &Val::Str("i:not-a-number;".into())).expect_err("malformed integer must fail");
     assert_eq!(error.code(), CODEC_DECODE);
-    assert!(error.to_string().starts_with("CODEC_DECODE: serialize: bad int at "), "{error}");
-    assert!(!error.to_string().contains("not-a-number"), "{error}");
-    assert!(!error.to_string().contains("invalid digit"), "{error}");
+    assert_eq!(error.to_string(), "CODEC_DECODE: serialize: bad int");
 
     let error = decode(&["base64".into()], &Val::Bytes(vec![0xff])).expect_err("invalid UTF-8 bytes must fail");
     assert_eq!(error.to_string(), "CODEC_DECODE: base64: bad input");
@@ -46,23 +44,46 @@ fn codec_parser_refusals_state_the_stage_text() {
         let error = decode(&styles.into_iter().map(str::to_owned).collect::<Vec<_>>(), &raw).expect_err("malformed input must fail");
         assert_eq!(error.to_string(), message);
     }
-    for (raw, prefix) in [
-        (Val::Str("s:x:\"a\";".into()), "CODEC_DECODE: serialize: bad string length at "),
-        (Val::Str("a:x:{}".into()), "CODEC_DECODE: serialize: bad array length at "),
-        (Val::Str("d:not-a-float;".into()), "CODEC_DECODE: serialize: bad float at "),
-        (Val::Bytes(b"s:1:\"\xff\";".to_vec()), "CODEC_DECODE: serialize: string is not utf-8 at "),
+    // A text names no position (COD-70); the library failure that found the rule stays the source (COD-71).
+    for (raw, message) in [
+        (Val::Str("s:x:\"a\";".into()), "CODEC_DECODE: serialize: bad string length"),
+        (Val::Str("a:x:{}".into()), "CODEC_DECODE: serialize: bad array length"),
+        (Val::Str("d:not-a-float;".into()), "CODEC_DECODE: serialize: bad float"),
+        (Val::Bytes(b"s:1:\"\xff\";".to_vec()), "CODEC_DECODE: serialize: string is not valid UTF-8"),
     ] {
         let error = decode(&["serialize".into()], &raw).expect_err("malformed serialize input must fail");
-        let message = error.to_string();
-        assert!(message.strip_prefix(prefix).is_some_and(|at| at.parse::<usize>().is_ok()), "{message}");
+        assert_eq!(error.to_string(), message);
     }
 
     let error = decode(&["yaml".into()], &Val::Str("9223372036854775808\n".into())).expect_err("out-of-range YAML integer must fail");
-    assert!(error.to_string().starts_with("CODEC_DECODE: yaml: integer is outside the i64 range at line 1, column "), "{error}");
-    assert!(!error.to_string().contains("9223372036854775808"), "{error}");
+    assert_eq!(error.to_string(), "CODEC_DECODE: yaml: integer is outside the i64 range");
 
-    let mut encrypted = aes_encrypt(b"payload", "key");
+    let mut encrypted = aes_encrypt(b"payload", "key").expect("AES-GCM encrypts any plaintext");
     *encrypted.last_mut().expect("AES envelope has ciphertext") ^= 1;
     let error = aes_decrypt(&encrypted, "key").expect_err("tampered AES authentication tag must fail");
     assert_eq!(error.to_string(), "CODEC_DECODE: aes: authentication failed");
+}
+
+/// saphyr-parser reports an alias whose anchor is not in the stream only by the text of its error, which the yaml stage
+/// reads as `yaml-alias`; the locked library must still report it with that text, or this test turns red.
+#[test]
+fn yaml_unknown_anchor_report_is_the_locked_library_text() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let mut reader = YamlReader::default();
+    let error = YamlParser::new_from_str("a: *missing\n").load(&mut reader, true).expect_err("an alias without its anchor must not parse");
+    assert_eq!(error.info(), YAML_UNKNOWN_ANCHOR);
+    let error = decode(&["yaml".into()], &Val::Str("a: *missing\n".into())).expect_err("an alias must fail");
+    assert_eq!(error.to_string(), "CODEC_DECODE: yaml: aliases are not supported");
+    assert!(std::error::Error::source(&error).is_some(), "the parser error is the cause");
+}
+
+/// The guards of the yaml reader that no stream reaches state yaml-parse and keep what they found as the cause (COD-72).
+#[test]
+fn yaml_reader_guards_state_yaml_parse() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let mut reader = YamlReader::default();
+    reader.on_event(YamlEvent::SequenceEnd, YamlSpan::default());
+    let error = reader.error.expect("an end without a start is refused");
+    assert_eq!(error.to_string(), "CODEC_DECODE: yaml: the stream does not parse");
+    assert_eq!(std::error::Error::source(&error).map(ToString::to_string).as_deref(), Some("a collection end without a start"));
 }
