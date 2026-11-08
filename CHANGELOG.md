@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- orm pins ordered-json 0.0.23 in every ecosystem, and each lock is refreshed by its own package manager (T413).
+
 ## 0.0.25
 
 - orm adopts kit 0.0.102 (T410).
