@@ -90,7 +90,7 @@ fn report_case(id: &str, database: &str) {
 pub fn trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testcase::Trial> {
     assert_eq!(database, NONE, "recipe {path}: database {database} has no case database in this helper");
     let (root, text) = recipe_text(path);
-    let recipe: Value = match serde_json::from_str(&text) {
+    let recipe: Value = match crate::recipe_keys::parse_recipe(&text) {
         Ok(recipe) => recipe,
         Err(error) => panic!("recipe {path}: {error}"),
     };
@@ -1020,21 +1020,19 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
         .unwrap_or_default();
     let key = crate::recipe_reads::read(step, "key")["key"].as_str().unwrap_or_default();
     let op = crate::recipe_reads::read(step, "op")["op"].as_str().unwrap_or_default();
-    let failed = |error: polyspec_orm::Error| (error.code().to_owned(), error.to_string());
-    let outcome: Outcome = match op {
-        "codec.decode" => codec::decode(&styles, &cell(&crate::recipe_reads::read(step, "raw")["raw"], bound)?).map(Produced::Read).map_err(failed),
-        "codec.encode" => encode(&styles, &crate::recipe_reads::read(step, "value")["value"], bound)?.map(Produced::Written).map_err(failed),
-        "codec.host_encode" => {
-            codec::host_encode(&param(&crate::recipe_reads::read(step, "value")["value"], bound)?, &styles, key).map(Produced::Written).map_err(failed)
+    let result: polyspec_orm::Result<Produced> = match op {
+        "codec.decode" => codec::decode(&styles, &cell(&crate::recipe_reads::read(step, "raw")["raw"], bound)?).map(Produced::Read),
+        "codec.encode" => encode(&styles, &crate::recipe_reads::read(step, "value")["value"], bound)?.map(Produced::Written),
+        "codec.host_encode" => codec::host_encode(&param(&crate::recipe_reads::read(step, "value")["value"], bound)?, &styles, key).map(Produced::Written),
+        "codec.host_decode" => codec::host_decode(&cell(&crate::recipe_reads::read(step, "raw")["raw"], bound)?, &styles, key).map(Produced::Read),
+        "codec.blind_index" => {
+            codec::blind_index(&param(&crate::recipe_reads::read(step, "value")["value"], bound)?, key).map(|text| Produced::Written(Param::Str(text)))
         }
-        "codec.host_decode" => {
-            codec::host_decode(&cell(&crate::recipe_reads::read(step, "raw")["raw"], bound)?, &styles, key).map(Produced::Read).map_err(failed)
-        }
-        "codec.blind_index" => codec::blind_index(&param(&crate::recipe_reads::read(step, "value")["value"], bound)?, key)
-            .map(|text| Produced::Written(Param::Str(text)))
-            .map_err(failed),
         other => return Err(format!("OP_UNKNOWN {other}")),
     };
+    // Whether the error keeps a failure of the library as its source (COD-71).
+    let has_cause = result.as_ref().err().is_some_and(|error| std::error::Error::source(error).is_some());
+    let outcome: Outcome = result.map_err(|error| (error.code().to_owned(), error.to_string()));
     if let Some(name) = crate::recipe_reads::read(step, "as")["as"].as_str() {
         bound.insert(name.to_owned(), outcome.clone());
     }
@@ -1045,19 +1043,25 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
         };
     };
     // A key of the outcome that this op does not read is a finding, as in the other runners (FCV-4).
-    if let Some(unread) = expect
-        .as_object()
-        .and_then(|fields| fields.keys().find(|key| !["error", "message", "bytes_prefix_hex", "bytes_length", "value"].contains(&key.as_str())))
-    {
+    if let Some(unread) = expect.as_object().and_then(|fields| {
+        fields.keys().find(|key| !["error", "message", "library_cause", "bytes_prefix_hex", "bytes_length", "value"].contains(&key.as_str()))
+    }) {
         return Err(format!("the helper did not read expect.{unread} of {op}"));
     }
     if let Some(code) = expect["error"].as_str() {
         // message is the whole text of the error, its code included (INT-163).
         let whole = expect["message"].as_str();
+        // library_cause: true states that the error keeps the failure of the library as its source (COD-71).
+        let library_cause = match &expect["library_cause"] {
+            Value::Null => false,
+            Value::Bool(stated) => *stated,
+            other => return Err(format!("expect.library_cause is {other}, want true")),
+        };
         return match outcome {
             Err((got, message)) if got == code && whole.is_some_and(|want| want != message) => {
                 Err(format!("error message {message:?}, want {:?}", whole.unwrap_or_default()))
             }
+            Err((got, message)) if got == code && library_cause && !has_cause => Err(format!("error {message:?} keeps no library cause, want one")),
             Err((got, _)) if got == code => Ok(()),
             Err((got, message)) => Err(format!("error {got} ({message}), want {code}")),
             Ok(_) => Err(format!("error none, want {code}")),
@@ -2571,6 +2575,8 @@ fn cell(raw: &Value, bound: &HashMap<String, Outcome>) -> Result<Val, String> {
         ("null", _) => Ok(Val::Null),
         ("text", body) => Ok(Val::Str(body.as_str().unwrap_or_default().to_owned())),
         ("bytes_hex", body) => Ok(Val::Bytes(hex_bytes(body.as_str().unwrap_or_default())?)),
+        // A cell that a driver read as an integer, which no stage reads (COD-70 `cell-kind`).
+        ("int", body) => body.as_str().unwrap_or_default().parse().map(Val::I64).map_err(|error| format!("int wrapper: {error}")),
         (other, _) => Err(format!("a {other} wrapper is not a cell")),
     }
 }
@@ -2618,11 +2624,22 @@ fn encode(styles: &[String], raw: &Value, bound: &HashMap<String, Outcome>) -> R
         let value = ordered_json::parse(&json_text(inner)?).map_err(|e| e.to_string())?;
         return Ok(codec::encode_ordered(&stages, StyledValue::Value(&value)));
     }
-    if styles.iter().any(|s| s == "ordered_json") {
+    // An ordered-json value holds at most the levels its parser reads, so a value nested deeper is the common value, the
+    // one Rust value that holds it (COD-70 `json-depth`).
+    if styles.iter().any(|s| s == "ordered_json") && depth(raw) <= ordered_json::MAX_DEPTH {
         let value = ordered_json::parse(&json_text(raw)?).map_err(|e| e.to_string())?;
         return Ok(codec::encode_ordered(&stages, StyledValue::Value(&value)));
     }
     Ok(codec::encode(&stages, StyledValue::Value(&to_value(raw)?)))
+}
+
+/// The nesting of a wrapper: the levels of its arrays and objects.
+fn depth(w: &Value) -> usize {
+    match kind(w) {
+        Ok(("array", body)) => 1 + body.as_array().into_iter().flatten().map(depth).max().unwrap_or(0),
+        Ok(("object", body)) => 1 + body.as_array().into_iter().flatten().map(|pair| depth(&pair[1])).max().unwrap_or(0),
+        _ => 0,
+    }
 }
 
 fn kind(w: &Value) -> Result<(&str, &Value), String> {

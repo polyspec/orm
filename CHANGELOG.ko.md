@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c1c88b90895cabdd11fd5a85a87be63785d5348b398137b5b57a1705939f2b1c -->
+<!-- source-sha256: d30cb29985b3befc04a5054b1b442b06ddbe9c61bc67fafc8f530423188a2af2 -->
 # 변경 이력
 
 ## Unreleased
+
+- Breaking: Rust codec의 거부는 위치도 library 텍스트도 없이 그 COD-70 규칙의 한 텍스트를 말하고, library의 실패를 `source()`로 가진다 (COD-70, COD-71, XV33). `serialize: <rule> at <offset>`은 `serialize: <rule>`이고, `serialize: bad boolean`은 `serialize: bad bool`이다. UTF-8이 아닌 field(`serialize: bad utf-8`)는 그 field의 규칙, 예컨대 `serialize: bad int`이다. `serialize: string is not utf-8`은 `serialize: string is not valid UTF-8`이고, `serialize: bad key`는 `serialize: array key must be int or string`이다. i64 밖의 `i` field는 `serialize: integer is outside the i64 range`이고, `d:inf;`와 `d:Infinity;`는 `serialize: bad float`, `s:+0:"";`는 `serialize: bad string length`이다. `yaml: <rule> at line L, column C`는 `yaml: <rule>`이다. collection의 `yaml: anchors and explicit tags are not supported`는 `yaml: anchors are not supported` 또는 `yaml: explicit tags are not supported`이고, `yaml: plain boolean, null, and floating-point map keys are not supported`는 `yaml: map keys must be strings or integers`이다. anchor가 stream에 없는 alias는 `yaml: the stream does not parse`가 아니라 `yaml: aliases are not supported`이다. 첫 `serialize`나 `yaml` 단계 아래의 ordered-json 값은 `<stage>: an ordered-json value is written only by the ordered_json stage`이고, 첫 `gz`나 `base64` 단계나 빈 목록 아래에서는 `text-kind`의 텍스트이다. `ordered_json` 아래에서 256 단계보다 깊이 중첩된 값은 `json: value nesting exceeds 256 levels`이다. UTF-8이 아닌 byte의 `ip: <library text>`는 `ip: the text is not an address`이다. `blind_index`는 `host_encode`의 host style이 아니고(`CODEC_UNSUPPORTED: host style blind_index`), `host_decode`는 host 단계가 아닌 style을 cell을 읽기 전에 거부한다. `codec::aes_encrypt`는 `Result`를 돌려주고, cipher나 random source의 실패는 panic이 아니라 `CODEC_ENCODE: aes: the encryption failed`이다. decode guard `style <style> after a decoded value`는 제거된다 (COD-72). Tests: Rust recipe runner는 `library_cause`를 읽고, `int` cell을 받고, 어떤 깊이의 recipe도 읽으며, `make codec-check/rust`에서 `tests/codec/codec-json-depth.json`을 묶는다.
 
 ## 0.0.26
 

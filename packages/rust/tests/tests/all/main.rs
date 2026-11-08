@@ -31,6 +31,7 @@ mod catalog_connection_sqlite_only_markdown;
 mod client_bench_args;
 mod client_bench_dsn;
 mod codec_integer_beyond_i64_none;
+mod codec_json_depth_none;
 mod codec_none;
 mod collection_none;
 mod complex_query_markdown;
@@ -234,6 +235,7 @@ fn main() {
         polyspec_orm_testcase::Group::new("client_bench_args", client_bench_args::trials),
         polyspec_orm_testcase::Group::new("client_bench_dsn", client_bench_dsn::trials),
         polyspec_orm_testcase::Group::new("codec_integer_beyond_i64_none", codec_integer_beyond_i64_none::trials),
+        polyspec_orm_testcase::Group::new("codec_json_depth_none", codec_json_depth_none::trials),
         polyspec_orm_testcase::Group::new("codec_none", codec_none::trials),
         polyspec_orm_testcase::Group::new("collection_none", collection_none::trials),
         polyspec_orm_testcase::Group::new("complex_query_mysql", complex_query_mysql::trials),

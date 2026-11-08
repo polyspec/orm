@@ -26,9 +26,20 @@ fn unknown_key(object: &Map<String, Value>, keys: &[&str]) -> Option<String> {
     names.into_iter().find(|name| !keys.contains(&name.as_str())).cloned()
 }
 
+/// The JSON value of a recipe text. A recipe may nest deeper than the 128 levels that serde_json reads by default, as the
+/// values of `tests/codec/codec-json-depth.json` do (COD-70 `json-depth`), so the reader reads every level.
+pub fn parse_recipe(text: &str) -> serde_json::Result<Value> {
+    use serde::Deserialize as _;
+    let mut reader = serde_json::Deserializer::from_str(text);
+    reader.disable_recursion_limit();
+    let value = Value::deserialize(&mut reader)?;
+    reader.end()?;
+    Ok(value)
+}
+
 /// Refuses the recipe text at `path` (relative to the repository root) on its first key or op that its table does not hold.
 pub fn check_keys(path: &str, text: &str) -> Result<(), String> {
-    let recipe: Value = serde_json::from_str(text).map_err(|error| format!("recipe {path}: {error}"))?;
+    let recipe: Value = parse_recipe(text).map_err(|error| format!("recipe {path}: {error}"))?;
     let object = recipe.as_object().ok_or_else(|| format!("recipe {path}: not an object"))?;
     let schema = match object.get("$schema").and_then(Value::as_str) {
         Some(schema) if !schema.is_empty() => schema,
