@@ -3869,17 +3869,17 @@ def _table_model_query(step: dict, context: dict) -> dict:
         number = offset // count + 1
         if aggregate is not None:
             group_page = model.gets_count_lookahead_page(number, count)
-            items = _plain_json(group_page.items.to_array())
+            items = _plain_json(group_page["items"].to_array())
         else:
             group_page = model.gets_lookahead_page(number, count)
-            items = [_key_json(key) for key in group_page.items.keys()]
+            items = [_key_json(key) for key in group_page["items"].keys()]
         return {
             "json": _plain_json(
                 {
                     "items": items,
-                    "page": group_page.page,
-                    "per_page": group_page.per_page,
-                    "has_next": group_page.has_next,
+                    "page": group_page["page"],
+                    "per_page": group_page["perPage"],
+                    "has_next": group_page["hasNext"],
                 }
             )
         }

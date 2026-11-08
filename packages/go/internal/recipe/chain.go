@@ -1409,13 +1409,9 @@ func chainPage(s chainStep, core *orm.Core, number, count int, c *databaseContex
 	if err != nil {
 		return outcome{}, err
 	}
-	keys := []any{}
-	for _, key := range page.Items.Keys() {
-		value, err := key.Value()
-		if err != nil {
-			return outcome{}, err
-		}
-		keys = append(keys, value)
+	keys, err := itemKeys(page.Items)
+	if err != nil {
+		return outcome{}, err
 	}
 	fields := map[string]any{"keys": keys, "total": page.TotalCount, "pages": page.TotalPages, "page": page.Page, "per_page": page.PerPage}
 	if s.k("items").Items {
@@ -1456,15 +1452,24 @@ func chainLookahead(s chainStep, core *orm.Core) (outcome, error) {
 	if err != nil {
 		return outcome{}, err
 	}
+	keys, err := itemKeys(page.Items)
+	if err != nil {
+		return outcome{}, err
+	}
+	return jsonOutcome(map[string]any{"items": keys, "page": page.Page, "per_page": page.PerPage, "has_next": page.HasNext}), nil
+}
+
+// itemKeys is the value of each key of items, in collection order.
+func itemKeys(items *orm.Collection[*tableRow]) ([]any, error) {
 	keys := []any{}
-	for _, key := range page.Items.Keys() {
+	for _, key := range items.Keys() {
 		value, err := key.Value()
 		if err != nil {
-			return outcome{}, err
+			return nil, err
 		}
 		keys = append(keys, value)
 	}
-	return jsonOutcome(map[string]any{"items": keys, "page": page.Page, "per_page": page.PerPage, "has_next": page.HasNext}), nil
+	return keys, nil
 }
 
 // chainAssign sets the members of an object of values on core, in the written order. A null wrapper is SetNull; an

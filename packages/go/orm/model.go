@@ -744,19 +744,25 @@ func GetsCountLookaheadPage(c *Core, page, perPage int) (*GroupLookaheadPage, er
 // lookaheadRequest checks the arguments of a lookahead page and builds its request of kind, whose root limit reads one
 // row past the page.
 func (c *Core) lookaheadRequest(kind string, page, perPage int) (executor, *Core, *request, error) {
+	return c.limitedRequest("getsLookaheadPage", kind, page, perPage, perPage+1)
+}
+
+// limitedRequest checks the arguments of the page terminal name and builds its request of kind, whose root limit starts
+// at the page and reads count rows.
+func (c *Core) limitedRequest(name, kind string, page, perPage, count int) (executor, *Core, *request, error) {
 	c.ensureStatement()
 	if page < 1 || perPage < 1 {
-		return nil, nil, nil, configErr("getsLookaheadPage requires a positive page and perPage")
+		return nil, nil, nil, configErr("%s requires a positive page and perPage", name)
 	}
 	if c.limit != nil {
-		return nil, nil, nil, configErr("getsLookaheadPage cannot be combined with limit")
+		return nil, nil, nil, configErr("%s cannot be combined with limit", name)
 	}
 	ex, err := c.terminal()
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	q := c.Clone()
-	q.limit = &ir.Limit{Offset: (page - 1) * perPage, Count: perPage + 1}
+	q.limit = &ir.Limit{Offset: (page - 1) * perPage, Count: count}
 	return ex, q, q.build(kind), nil
 }
 
@@ -826,20 +832,7 @@ func GetsPage[T Model](c *Core, page, perPage int) (*Page[T], error) {
 
 // pageRequest checks the arguments of a page and builds its request: the one request of GetsPage and GetPagePlanSteps.
 func (c *Core) pageRequest(page, perPage int) (executor, *Core, *request, error) {
-	c.ensureStatement()
-	if page < 1 || perPage < 1 {
-		return nil, nil, nil, configErr("getsPage requires a positive page and perPage")
-	}
-	if c.limit != nil {
-		return nil, nil, nil, configErr("getsPage cannot be combined with limit")
-	}
-	ex, err := c.terminal()
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	q := c.Clone()
-	q.limit = &ir.Limit{Offset: (page - 1) * perPage, Count: perPage}
-	return ex, q, q.build("paginate"), nil
+	return c.limitedRequest("getsPage", "paginate", page, perPage, perPage)
 }
 
 // GetPagePlanSteps returns the steps of the plan that GetsPage runs, in their order, without executing it.

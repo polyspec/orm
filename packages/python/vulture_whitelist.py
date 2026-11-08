@@ -52,6 +52,7 @@ _.secret  # planner: the secret slot of a statement
 _.totalCount  # Page: the fields of one page of rows
 _.totalPages
 _.perPage
+_.hasNext  # LookaheadPage and GroupLookaheadPage: whether a next page exists (INT-164)
 
 # Public types of the dbspec API and of the IR (docs/spec/protocol.md), which consumers annotate with; a TypedDict
 # key names a field of the wire form, read by key, never by attribute.

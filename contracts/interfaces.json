@@ -39,11 +39,11 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:540c670eea3d4d2013fae9b45e2490f0f028925d73fdca850c65767a05f0096c",
+    "go": "sha256:305306c46c6acbe3a62d91bcbc270b35cbf1c3bfe43c7961ffbc7389da779719",
     "php": "sha256:e3064dc7a5aa805e6073681865c6b98a1f29f239ca3ca25c5c7cd10c2e6d00cb",
     "rust": "sha256:b9d4db8a2de70077ea3a80f7203d576d6ae749f48cabf9153e4d68d119121a2d",
     "typescript": "sha256:d36560ae3e271e6f9fae996a6be6f3339680a49c8cab7ec64878f4ae619e7273",
-    "python": "sha256:037cac1a571086527a56691981d40e8becb6a1d42a75caf3040c9dd08c19fec9"
+    "python": "sha256:611f27a7d95a2c80d7f8b8e03af7412060bb3939a87fad8ef00db2857ade8839"
   },
   "native_surfaces": [
     {
@@ -4782,8 +4782,8 @@
           "fields": [
             "items",
             "page",
-            "per_page",
-            "has_next"
+            "perPage",
+            "hasNext"
           ]
         }
       }
@@ -4833,8 +4833,8 @@
           "fields": [
             "items",
             "page",
-            "per_page",
-            "has_next"
+            "perPage",
+            "hasNext"
           ]
         }
       }

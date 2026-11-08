@@ -87,41 +87,23 @@ class Page(dict):
     perPage: int
 
 
-class LookaheadPage[T]:
-    """One page of models read one row past its end, with no total: items, page, per_page and has_next (INT-164)."""
+class LookaheadPage(dict):
+    """One page of models read one row past its end, with no total: items, page, perPage and hasNext (INT-164)."""
 
-    __slots__ = ("items", "page", "per_page", "has_next")
     items: "Collection"
     page: int
-    per_page: int
-    has_next: bool
-
-    def __init__(
-        self, items: "Collection", page: int, per_page: int, has_next: bool
-    ) -> None:
-        self.items = items
-        self.page = page
-        self.per_page = per_page
-        self.has_next = has_next
+    perPage: int
+    hasNext: bool
 
 
-class GroupLookaheadPage:
-    """One page of the group rows of gets_count read one group past its end, with no total: items, page, per_page and
-    has_next (INT-164)."""
+class GroupLookaheadPage(dict):
+    """One page of the group rows of gets_count read one group past its end, with no total: items, page, perPage and
+    hasNext (INT-164)."""
 
-    __slots__ = ("items", "page", "per_page", "has_next")
     items: "GroupRows"
     page: int
-    per_page: int
-    has_next: bool
-
-    def __init__(
-        self, items: "GroupRows", page: int, per_page: int, has_next: bool
-    ) -> None:
-        self.items = items
-        self.page = page
-        self.per_page = per_page
-        self.has_next = has_next
+    perPage: int
+    hasNext: bool
 
 
 class Collection:

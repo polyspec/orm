@@ -1095,26 +1095,32 @@ def _lookahead_request(c: Core, kind: str, page: int, per_page: int):
 
 def lookahead_page_of(c: Core, page: int, per_page: int):
     """Returns one page of the matching rows and whether a next page exists, read by one statement (INT-164)."""
-    from polyspec.orm.model import LookaheadPage
 
     ex, q, request = _lookahead_request(c, "lookahead_paginate", page, per_page)
     result = lookahead_query(ex, request.finish(), request.params, per_page)
     items = _assemble(q, ex, request.external, result["result"])
-    return LookaheadPage(items, page, per_page, result["has_next"])
+    return {
+        "items": items,
+        "page": page,
+        "perPage": per_page,
+        "hasNext": result["has_next"],
+    }
 
 
 def group_lookahead_page_of(c: Core, page: int, per_page: int):
     """Returns one page of the group rows of gets_count and whether a next page exists, read by one statement
     (INT-164)."""
-    from polyspec.orm.model import GroupLookaheadPage
 
     ex, _, request = _lookahead_request(c, "group_lookahead_paginate", page, per_page)
     if request.external:
         raise OrmError(codes.CONFIG, "group count cannot return relations")
     result = lookahead_query(ex, request.finish(), request.params, per_page)
-    return GroupLookaheadPage(
-        _group_rows(ex, c, result["result"]), page, per_page, result["has_next"]
-    )
+    return {
+        "items": _group_rows(ex, c, result["result"]),
+        "page": page,
+        "perPage": per_page,
+        "hasNext": result["has_next"],
+    }
 
 
 def page_plan_steps_of(c: Core, page: int, per_page: int) -> list[dict]:

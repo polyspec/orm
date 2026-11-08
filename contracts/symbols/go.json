@@ -21175,6 +21175,10 @@
     "exported": false,
     "signature": "receiver=*Core func(ent *runtimemodel.Entity) (map[string]any, error)"
   },
+  "packages/go/orm/model.go::Core.limitedRequest": {
+    "exported": false,
+    "signature": "receiver=*Core func(name, kind string, page, perPage, count int) (executor, *Core, *request, error)"
+  },
   "packages/go/orm/model.go::Core.load": {
     "exported": false,
     "signature": "receiver=*Core func(kind string) (*collection, error)"

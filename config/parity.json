@@ -9980,6 +9980,7 @@
       "kind": "suite",
       "requirements": [
         "INT-5",
+        "INT-164",
         "PRT-69",
         "INT-98",
         "DSL-137",
@@ -10236,6 +10237,7 @@
       "kind": "suite",
       "requirements": [
         "INT-5",
+        "INT-164",
         "PRT-69",
         "INT-98",
         "DSL-137",
@@ -10491,6 +10493,7 @@
       "kind": "suite",
       "requirements": [
         "INT-5",
+        "INT-164",
         "PRT-69",
         "INT-98",
         "DSL-137",
@@ -10747,6 +10750,7 @@
       "kind": "suite",
       "requirements": [
         "INT-5",
+        "INT-164",
         "PRT-69",
         "INT-98",
         "DSL-137",

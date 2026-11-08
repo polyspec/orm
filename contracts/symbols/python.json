@@ -3561,9 +3561,9 @@
   },
   "packages/python/src/polyspec/orm/model.py::GroupLookaheadPage": {
     "exported": true,
-    "signature": "class GroupLookaheadPage"
+    "signature": "class GroupLookaheadPage(dict)"
   },
-  "packages/python/src/polyspec/orm/model.py::GroupLookaheadPage#field.has_next": {
+  "packages/python/src/polyspec/orm/model.py::GroupLookaheadPage#field.hasNext": {
     "exported": true,
     "signature": "bool"
   },
@@ -3575,15 +3575,15 @@
     "exported": true,
     "signature": "int"
   },
-  "packages/python/src/polyspec/orm/model.py::GroupLookaheadPage#field.per_page": {
+  "packages/python/src/polyspec/orm/model.py::GroupLookaheadPage#field.perPage": {
     "exported": true,
     "signature": "int"
   },
   "packages/python/src/polyspec/orm/model.py::LookaheadPage": {
     "exported": true,
-    "signature": "class LookaheadPage"
+    "signature": "class LookaheadPage(dict)"
   },
-  "packages/python/src/polyspec/orm/model.py::LookaheadPage#field.has_next": {
+  "packages/python/src/polyspec/orm/model.py::LookaheadPage#field.hasNext": {
     "exported": true,
     "signature": "bool"
   },
@@ -3595,7 +3595,7 @@
     "exported": true,
     "signature": "int"
   },
-  "packages/python/src/polyspec/orm/model.py::LookaheadPage#field.per_page": {
+  "packages/python/src/polyspec/orm/model.py::LookaheadPage#field.perPage": {
     "exported": true,
     "signature": "int"
   },
