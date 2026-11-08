@@ -3,9 +3,9 @@
 declare(strict_types=1);
 
 // The native read of a date column (T293): a stored value that no date form reads throws the CODEC_DECODE
-// OrmException "invalid date value <text>" that Model::timeValue of the PHP library throws, on a row read and on a
-// grouped value, and a text that the library reads in one of its fallback forms reads natively too. Each case stores
-// its value in a SQLite file through PDO, since the model writes only valid dates.
+// OrmException "day_cell.day: date cell is not a date" that the PHP library throws (COD-1, COD-61), on a row read and
+// on a grouped value, and a text that the library reads in one of its fallback forms reads natively too. Each case
+// stores its value in a SQLite file through PDO, since the model writes only valid dates.
 
 namespace Polyspec\Orm\Extension\Tests;
 
@@ -59,7 +59,7 @@ final class InvalidDateReadNativeTest extends TestCase
         return (new DayCell())->connect($db)->seq(1)->get()?->getDay();
     }
 
-    /** Asserts that $read, on a row whose day is $day, throws the CODEC_DECODE error that names $day. */
+    /** Asserts that $read, on a row whose day is $day, throws the CODEC_DECODE error of the column, which names no value. */
     private static function assertReadRefuses(int|string $day, callable $read): void
     {
         self::withDay($day, static function ($db) use ($day, $read): void {
@@ -68,7 +68,7 @@ final class InvalidDateReadNativeTest extends TestCase
                 self::fail("a read accepted the date value $day");
             } catch (OrmException $error) {
                 self::assertSame(Code::CODEC_DECODE, $error->code_);
-                self::assertSame("CODEC_DECODE: invalid date value $day", $error->getMessage());
+                self::assertSame('CODEC_DECODE: day_cell.day: date cell is not a date', $error->getMessage());
             }
         });
     }

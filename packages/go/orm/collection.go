@@ -691,7 +691,8 @@ func (c *Core) TimeText(column, text string, precision int) (string, error) {
 	return value, nil
 }
 
-// AsTime converts a date or datetime value to time.Time in any of the layouts that a setter takes.
+// AsTime converts a date or datetime value to time.Time in any of the layouts that a setter takes; any other value is
+// CODEC_DECODE, whose message names no value (INT-163).
 func AsTime(v any) (time.Time, error) {
 	switch x := v.(type) {
 	case time.Time:
@@ -705,7 +706,7 @@ func AsTime(v any) (time.Time, error) {
 	case []byte:
 		return AsTime(string(x))
 	}
-	return time.Time{}, codecErr(CodeCodecDecode, "cannot convert %T value %v to time", v, v)
+	return time.Time{}, codecErr(CodeCodecDecode, "cell is not a date or datetime")
 }
 
 // AsDate converts a date cell to time.Time: a time that the driver read, or the text YYYY-MM-DD of a real day; any other

@@ -38,7 +38,7 @@ rand = "0.10"
 flate2 = "1"
 futures-util = "0.3"
 base64 = "0.22"
-aes-gcm = "0.10"
+aes-gcm = { version = "0.10", features = ["std"] }
 sha2 = "0.10"
 hmac = "0.12"
 saphyr-parser = "0.2.1"

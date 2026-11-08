@@ -43,7 +43,7 @@ struct Canonicalizer {
 impl Canonicalizer {
     fn fail(&mut self, code: &str, msg: impl Into<String>) {
         if self.err.is_none() {
-            self.err = Some(Error::Engine { code: code.into(), msg: msg.into() });
+            self.err = Some(Error::Engine { code: code.into(), msg: msg.into(), source: None });
         }
     }
 

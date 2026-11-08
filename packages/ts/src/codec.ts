@@ -14,18 +14,21 @@ export type EncodedValue = string | Uint8Array | null;
 /** The value of a column with an ordered_json stage: an ordered-json value. */
 export type { JsonValue };
 
-/** The bytes of a plaintext: bytes as given and a string as its UTF-8; a value of another kind is CODEC_ENCODE (COD-1). */
-function plainBytes(value: unknown): Buffer {
+/**
+ * The bytes of a plaintext of a host stage or a blind index (what): bytes as given and a string as its UTF-8; a value of
+ * another kind is CODEC_ENCODE `<what> input must be text or bytes`, which names no host type (COD-1, INT-163).
+ */
+function plainBytes(value: unknown, what: 'host' | 'blind index'): Buffer {
   if (value instanceof Uint8Array) return Buffer.from(value);
   if (typeof value === 'string') return Buffer.from(value);
-  throw new CodecError(codes.CODEC_ENCODE, `host input must be text or bytes, got a ${typeof value}`);
+  throw new CodecError(codes.CODEC_ENCODE, `${what} input must be text or bytes`);
 }
 
 /** Returns the stable lowercase HMAC-SHA256 index for plaintext. */
 export function blindIndex(value: unknown, key: string): string | null {
   if (value === null) return null;
   if (key === '') throw new CodecError(codes.CONFIG, 'secret blind_index not configured');
-  const input = plainBytes(value);
+  const input = plainBytes(value, 'blind index');
   return createHmac('sha256', key).update(input).digest('hex');
 }
 
@@ -35,7 +38,7 @@ export function hostEncode(value: unknown, styles: readonly string[], aesKey: st
     if (style !== 'aes' && style !== 'hex' && style !== 'ip') throw new CodecError(codes.CODEC_UNSUPPORTED, `host style ${style}`);
   }
   if (value === null) return null;
-  let current: Buffer<ArrayBufferLike> = plainBytes(value);
+  let current: Buffer<ArrayBufferLike> = plainBytes(value, 'host');
   let textResult = false;
   for (const style of styles) {
     switch (style) {
@@ -109,27 +112,27 @@ function packIp(value: string): Buffer {
   const source = value;
   const version = source.includes('%') ? 0 : isIP(source);
   if (version === 4) return Buffer.from(source.split('.').map(Number));
-  if (version !== 6) throw new CodecError(codes.CODEC_ENCODE, `ip: ${JSON.stringify(source)} is not an address`);
+  if (version !== 6) throw new CodecError(codes.CODEC_ENCODE, 'ip: the text is not an address');
   const halves = source.split('::');
-  if (halves.length > 2) throw new CodecError(codes.CODEC_ENCODE, `ip: ${JSON.stringify(source)} is not an address`);
+  if (halves.length > 2) throw new CodecError(codes.CODEC_ENCODE, 'ip: the text is not an address');
   const parse = (part: string): number[] => part === '' ? [] : part.split(':').flatMap(token => {
     if (token.includes('.')) {
       const [a, b, c, d] = token.split('.').map(Number);
-      if (a === undefined || b === undefined || c === undefined || d === undefined) throw new CodecError(codes.CODEC_ENCODE, `ip: ${JSON.stringify(source)} is not an address`);
+      if (a === undefined || b === undefined || c === undefined || d === undefined) throw new CodecError(codes.CODEC_ENCODE, 'ip: the text is not an address');
       return [(a<<8)|b, (c<<8)|d];
     }
     return [Number.parseInt(token,16)];
   });
   const left=parse(present(halves[0], 'the first half of an IPv6 address')), right=parse(halves[1]??'');
   const groups=halves.length===2?[...left,...Array.from({ length: 8-left.length-right.length }, () => 0),...right]:left;
-  if(groups.length!==8)throw new CodecError(codes.CODEC_ENCODE,`ip: ${JSON.stringify(source)} is not an address`);
+  if(groups.length!==8)throw new CodecError(codes.CODEC_ENCODE,'ip: the text is not an address');
   const out=Buffer.alloc(16);groups.forEach((group,index)=>out.writeUInt16BE(group,index*2));
   return out;
 }
 
 function unpackIp(value: Buffer): string {
   if(value.length===4)return [...value].join('.');
-  if(value.length!==16)throw new CodecError(codes.CODEC_DECODE,`ip: byte length ${value.length}`);
+  if(value.length!==16)throw new CodecError(codes.CODEC_DECODE,'ip: the cell is not 4 or 16 packed bytes');
   const groups=Array.from({length:8},(_,index)=>value.readUInt16BE(index*2));
   let bestStart=-1,bestLength=0;
   for(let index=0;index<groups.length;){if(groups[index]!==0){index++;continue;}let end=index;while(end<groups.length&&groups[end]===0)end++;if(end-index>bestLength&&end-index>=2){bestStart=index;bestLength=end-index;}index=end;}
@@ -167,7 +170,7 @@ function string(value: Uint8Array, operation: 'decode' | 'encode'): string {
     return text.decode(value);
   } catch (error) {
     if (error instanceof CodecError) throw error;
-    throw new CodecError(operation === 'decode' ? codes.CODEC_DECODE : codes.CODEC_ENCODE, `invalid UTF-8: ${String(error)}`, { cause: error });
+    throw new CodecError(operation === 'decode' ? codes.CODEC_DECODE : codes.CODEC_ENCODE, operation === 'decode' ? 'decoded text is not valid UTF-8' : 'the text is not valid UTF-8', { cause: error });
   }
 }
 
@@ -226,7 +229,7 @@ export function decode(styles: readonly string[], raw: string | Uint8Array | nul
         try {
           current = new Uint8Array(inflateSync(current));
         } catch (error) {
-          throw new CodecError(codes.CODEC_DECODE, `gz: ${String(error)}`);
+          throw new CodecError(codes.CODEC_DECODE, 'gz: bad zlib stream', { cause: error });
         }
         break;
       case 'base64':
@@ -243,7 +246,7 @@ export function decode(styles: readonly string[], raw: string | Uint8Array | nul
           value = orderedJsonParse(string(current, 'decode'));
         } catch (error) {
           if (error instanceof CodecError) throw error;
-          throw new CodecError(codes.CODEC_DECODE, `json: ${String(error)}`, { cause: error });
+          throw new CodecError(codes.CODEC_DECODE, 'json: the cell is not JSON', { cause: error });
         }
         break;
       default:
@@ -288,7 +291,7 @@ export function encodeStyled(styles: readonly string[], state: StyledValue<unkno
         try {
           current = utf8.encode(yamlText(validateCodecValue(commonValue(transformed, 'yaml'), 'yaml encode')));
         } catch (error) {
-          throw new CodecError(codes.CODEC_ENCODE, `yaml: ${String(error)}`);
+          throw new CodecError(codes.CODEC_ENCODE, error instanceof CodecRule ? `yaml: ${error.message}` : 'yaml: the value has no YAML text', { cause: error });
         }
         break;
       case 'ordered_json':
@@ -301,7 +304,7 @@ export function encodeStyled(styles: readonly string[], state: StyledValue<unkno
         try {
           current = new Uint8Array(deflateSync(current, { level: 9 }));
         } catch (error) {
-          throw new CodecError(codes.CODEC_ENCODE, `gz: ${String(error)}`);
+          throw new CodecError(codes.CODEC_ENCODE, 'gz: the compression failed', { cause: error });
         }
         break;
       default:
@@ -391,7 +394,7 @@ function orderedJsonValue(value: unknown): JsonValue {
     return orderedJsonParse(jsonText(value, 0));
   } catch (error) {
     if (error instanceof CodecError) throw error;
-    throw new CodecError(codes.CODEC_ENCODE, `json: ${String(error)}`);
+    throw new CodecError(codes.CODEC_ENCODE, 'json: the value has no JSON text', { cause: error });
   }
 }
 
@@ -413,11 +416,11 @@ function jsonText(value: unknown, depth: number): string {
     case 'boolean': return value ? 'true' : 'false';
     case 'string': return jsonString(value);
     case 'number':
-      if (!Number.isFinite(value)) throw new CodecError(codes.CODEC_ENCODE, `json: non-finite number ${value}`);
+      if (!Number.isFinite(value)) throw new CodecError(codes.CODEC_ENCODE, 'json: non-finite number');
       return JSON.stringify(value);
     case 'bigint': return value.toString();
     case 'object': break;
-    default: throw new CodecError(codes.CODEC_ENCODE, `json: ${typeof value} is not a JSON value`);
+    default: throw new CodecError(codes.CODEC_ENCODE, 'json: the value is not a JSON value');
   }
   if (Array.isArray(value)) return `[${value.map(item => jsonText(item, depth + 1)).join(',')}]`;
   if (value instanceof Uint8Array) throw new CodecError(codes.CODEC_ENCODE, 'json: bytes are not a JSON value');
@@ -425,14 +428,13 @@ function jsonText(value: unknown, depth: number): string {
   if (proto !== Object.prototype && proto !== null) {
     const toJSON = (value as { toJSON?: unknown }).toJSON;
     if (typeof toJSON !== 'function') {
-      const constructor: unknown = typeof proto === 'object' ? Reflect.get(proto, 'constructor') : undefined;
-      throw new CodecError(codes.CODEC_ENCODE, `json: ${typeof constructor === 'function' ? constructor.name : 'object'} is not a JSON value`);
+      throw new CodecError(codes.CODEC_ENCODE, 'json: the value is not a JSON value');
     }
     return jsonText(toJSON.call(value), depth + 1);
   }
   const members: string[] = [];
   for (const [key, item] of Object.entries(value)) {
-    if (item === undefined) throw new CodecError(codes.CODEC_ENCODE, `json: member ${JSON.stringify(key)} is undefined`);
+    if (item === undefined) throw new CodecError(codes.CODEC_ENCODE, 'json: a member is undefined');
     members.push(`${jsonString(key)}:${jsonText(item, depth + 1)}`);
   }
   return `{${members.join(',')}}`;
@@ -448,12 +450,12 @@ function decodeYaml(current: Uint8Array): CodecValue {
     const stream = source.startsWith('\ufeff') ? source.slice(1) : source;
     const refused = YAML_NOT_PRINTABLE.exec(stream);
     if (refused !== null) {
-      throw new CodecError(codes.CODEC_DECODE, `yaml: character U+${present(refused[0].codePointAt(0), 'the refused character').toString(16).toUpperCase().padStart(4, '0')} at ${refused.index} is not printable`);
+      throw new CodecError(codes.CODEC_DECODE, 'yaml: the stream holds a character that is not printable');
     }
     const documents = parseAllDocuments(stream, { version: '1.2', schema: 'core', strict: true, uniqueKeys: true, stringKeys: true, intAsBigInt: true });
     // A stream without a document (empty, or comments only) is not a YAML value.
-    if (documents.length === 0) throw new Error('no document');
-    if (documents.length > 1) throw new Error('multiple documents are not supported');
+    if (documents.length === 0) throw new CodecRule('no document');
+    if (documents.length > 1) throw new CodecRule('multiple documents are not supported');
     const document = present(documents[0], 'the one YAML document');
     if (document.errors.length > 0) throw document.errors[0];
     if (document.warnings.length > 0) throw document.warnings[0];
@@ -462,8 +464,8 @@ function decodeYaml(current: Uint8Array): CodecValue {
       // docs/spec/codec.md (yaml): anchors and every explicit tag, the core tags included, are refused.
       // The parser sets a node's anchor and tag only when the text writes them.
       Node(_key, node) {
-        if (node.anchor !== undefined) throw new Error(`anchor &${node.anchor} is not supported`);
-        if (node.tag !== undefined) throw new Error(`explicit tag ${node.tag} is not supported`);
+        if (node.anchor !== undefined) throw new CodecRule('anchors are not supported');
+        if (node.tag !== undefined) throw new CodecRule('explicit tags are not supported');
         // docs/spec/codec.md (yaml): an integral key is its decimal string, and two keys of one string are duplicates.
         if (isMap(node)) {
           const keys = new Set<string>();
@@ -476,20 +478,20 @@ function decodeYaml(current: Uint8Array): CodecValue {
               const tag = schema.tags.find(candidate => candidate.default === true && candidate.test?.test(text))?.tag;
               if (tag === 'tag:yaml.org,2002:int') key.value = name = BigInt(text).toString();
             }
-            if (keys.has(name)) throw new Error(`duplicate map key ${name}`);
+            if (keys.has(name)) throw new CodecRule('duplicate map key');
             keys.add(name);
           }
         }
       },
       Pair(_key, pair) {
-        if (!isScalar(pair.key) || typeof pair.key.value !== 'string') throw new Error('map keys must be scalar strings');
+        if (!isScalar(pair.key) || typeof pair.key.value !== 'string') throw new CodecRule('map keys must be scalar strings');
         // stringKeys keeps a key's value a string, so a plain key's core type is the tag the core schema
         // resolves its text to, found by the schema's own tests as the parser does for a value.
         if (pair.key.type === 'PLAIN') {
           const text = pair.key.source ?? pair.key.value;
           const tag = schema.tags.find(candidate => candidate.default === true && candidate.test?.test(text))?.tag;
           if (tag === 'tag:yaml.org,2002:bool' || tag === 'tag:yaml.org,2002:null' || tag === 'tag:yaml.org,2002:float') {
-            throw new Error('plain boolean, null, and floating-point map keys are not supported');
+            throw new CodecRule('plain boolean, null, and floating-point map keys are not supported');
           }
         }
       },
@@ -497,36 +499,39 @@ function decodeYaml(current: Uint8Array): CodecValue {
     return validateCodecValue(document.toJS({ maxAliasCount: 0 }), 'yaml decode');
   } catch (error) {
     if (error instanceof CodecError) throw error;
-    throw new CodecError(codes.CODEC_DECODE, `yaml: ${String(error)}`, { cause: error });
+    throw new CodecError(codes.CODEC_DECODE, error instanceof CodecRule ? `yaml: ${error.message}` : 'yaml: the stream does not parse', { cause: error });
   }
 }
+
+/** A rule of the yaml stage that its text states, as against a failure of the YAML library, whose text can quote the cell. */
+class CodecRule extends Error {}
 
 function validateCodecValue(value: unknown, operation: string): CodecValue {
   if (value === null || typeof value === 'boolean' || typeof value === 'string') return value;
   if (typeof value === 'bigint') {
-    if (!i64(value)) throw new Error(`${operation}: integer ${value} is outside the i64 range`);
+    if (!i64(value)) throw new CodecRule(`${operation}: integer is outside the i64 range`);
     return value;
   }
   if (typeof value === 'number') {
-    if (!Number.isFinite(value)) throw new Error(`${operation}: number ${value} is not finite`);
+    if (!Number.isFinite(value)) throw new CodecRule(`${operation}: number is not finite`);
     return value;
   }
   if (Array.isArray(value)) return value.map(item => validateCodecValue(item, operation));
   if (typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
     return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, validateCodecValue(item, operation)]));
   }
-  throw new Error(`${operation}: value type is not supported`);
+  throw new CodecRule(`${operation}: value type is not supported`);
 }
 
 function phpSerialize(value: CodecValue): string {
   if (value === null) return 'N;';
   if (typeof value === 'boolean') return value ? 'b:1;' : 'b:0;';
   if (typeof value === 'bigint') {
-    if (!i64(value)) throw new CodecError(codes.CODEC_ENCODE, `integer ${value} is outside the i64 range`);
+    if (!i64(value)) throw new CodecError(codes.CODEC_ENCODE, 'integer is outside the i64 range');
     return `i:${value};`;
   }
   if (typeof value === 'number') {
-    if (!Number.isFinite(value)) throw new CodecError(codes.CODEC_ENCODE, `number ${value} is not finite`);
+    if (!Number.isFinite(value)) throw new CodecError(codes.CODEC_ENCODE, 'number is not finite');
     return `d:${phpFloat(value)};`;
   }
   if (typeof value === 'string') return `s:${utf8.encode(value).length}:"${value}";`;
@@ -612,7 +617,7 @@ class PhpParser {
         const raw = this.until(59);
         if (!/^[+-]?[0-9]+$/.test(raw)) this.fail('bad int');
         const value = BigInt(raw);
-        if (!i64(value)) this.fail(`integer ${raw} is outside the i64 range`);
+        if (!i64(value)) this.fail('integer is outside the i64 range');
         return value;
       }
       case 'd': {
@@ -640,9 +645,9 @@ class PhpParser {
       case 'C':
       case 'r':
       case 'R':
-        throw new CodecError(codes.CODEC_UNSUPPORTED, `serialize: objects and references are not supported (${type})`);
+        throw new CodecError(codes.CODEC_UNSUPPORTED, 'serialize: objects and references are not supported');
       default:
-        this.fail(`unknown type ${type}`);
+        this.fail('unknown type');
     }
   }
 

@@ -95,7 +95,7 @@ pub fn sqlite_result_error(message: &str, result: i64) -> sqlx::Error {
 /// Consumes the configured statement fault of `db` and returns its error. None if there is no fault.
 pub(crate) fn take_statement_fault(db: &Db) -> Option<Error> {
     let fault = db.inner.statement_fault.lock().unwrap().take()?;
-    Some(Error::Engine { code: fault.code, msg: fault.message })
+    Some(Error::Engine { code: fault.code, msg: fault.message, source: None })
 }
 
 /// The statement gate of a connection: the next statement on one of its transactions waits there, holding the

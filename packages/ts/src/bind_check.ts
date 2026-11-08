@@ -32,10 +32,6 @@ const integerRanges: Record<string, readonly [bigint, bigint]> = {
   i64: [-9223372036854775808n, 9223372036854775807n],
 };
 
-function shown(value: unknown): string {
-  return typeof value === 'bigint' ? `${value}` : typeof value === 'string' ? JSON.stringify(value) : String(value);
-}
-
 /** Refuses SQL NULL as parameter i when slot assigns a non-null column; it runs for every slot before any statement. */
 export function checkAssign(i: number, value: unknown, slot: ParamSlot): void {
   if ((value === null || value === undefined) && slot.notNull === true) {
@@ -47,23 +43,23 @@ export function checkAssign(i: number, value: unknown, slot: ParamSlot): void {
  * Checks the value of parameter i against the logical type of a slot it fills: the host value kind, the range of an
  * integer, a finite f64, the precision and scale of a decimal, a date from 0001-01-01 to 9999-12-31, no non-zero digit
  * of a time or datetime past its precision, at most n characters of a varchar(n), no U+0000 in text and a lower-case
- * canonical uuid. A value outside it is CODEC_ENCODE; SQL NULL is accepted.
+ * canonical uuid. A value outside it is CODEC_ENCODE with the text of PRT-32a, which names no value; SQL NULL is accepted.
  */
 export function checkParam(i: number, value: unknown, slot: ParamSlot, zone: string): void {
   if (value === null || value === undefined) return;
-  const kind = (): OrmError => new OrmError(codes.CODEC_ENCODE, `parameter ${i} (${typeof value}) is not a ${slot.type} value`);
+  const kind = (): OrmError => new OrmError(codes.CODEC_ENCODE, `parameter ${i} is not a ${slot.type} value`);
   switch (slot.type) {
     case 'i16': case 'i32': case 'i64': {
       if (!(typeof value === 'bigint' || (typeof value === 'number' && Number.isInteger(value)))) throw kind();
       const n = BigInt(value);
       const [low, high] = integerRanges[slot.type] ?? [0n, 0n];
-      if (n < low || n > high) throw new OrmError(codes.CODEC_ENCODE, `parameter ${i} (${shown(value)}) is outside ${slot.type}`);
+      if (n < low || n > high) throw new OrmError(codes.CODEC_ENCODE, `parameter ${i} is outside ${slot.type}`);
       return;
     }
     case 'f64':
       if (typeof value === 'bigint') return;
       if (typeof value !== 'number') throw kind();
-      if (!Number.isFinite(value)) throw new OrmError(codes.CODEC_ENCODE, `parameter ${i} (${value}) is not a finite f64`);
+      if (!Number.isFinite(value)) throw new OrmError(codes.CODEC_ENCODE, `parameter ${i} is not a finite f64`);
       return;
     case 'bool':
       if (typeof value !== 'boolean') throw kind();
@@ -73,16 +69,17 @@ export function checkParam(i: number, value: unknown, slot: ParamSlot, zone: str
       try {
         normalizeDecimal(value, slot.precision, slot.scale);
       } catch (error) {
-        throw new OrmError(codes.CODEC_ENCODE, `parameter ${i}: ${error instanceof Error ? error.message : String(error)}`);
+        throw refused(error, `parameter ${i} is not a decimal of its precision and scale`);
       }
       return;
     case 'varchar': case 'text': case 'uuid': {
-      if (typeof value !== 'string') throw kind();
+      // A text with a lone surrogate is no sequence of Unicode scalar values, so it is not valid UTF-8 (PRT-32a, COD-64).
+      if (typeof value !== 'string' || !value.isWellFormed()) throw kind();
       if (value.includes('\u0000')) throw new OrmError(codes.CODEC_ENCODE, `parameter ${i} holds U+0000, which no ${slot.type} value holds`);
       // The length of a varchar is in characters, the code points of the text.
       const n = Array.from(value).length;
-      if (slot.type === 'varchar' && slot.length > 0 && n > slot.length) throw new OrmError(codes.CODEC_ENCODE, `parameter ${i} has ${n} characters, more than varchar(${slot.length})`);
-      if (slot.type === 'uuid' && !canonicalUuid.test(value)) throw new OrmError(codes.CODEC_ENCODE, `parameter ${i} (${shown(value)}) is not a lower-case canonical uuid`);
+      if (slot.type === 'varchar' && slot.length > 0 && n > slot.length) throw new OrmError(codes.CODEC_ENCODE, `parameter ${i} is longer than varchar(${slot.length})`);
+      if (slot.type === 'uuid' && !canonicalUuid.test(value)) throw new OrmError(codes.CODEC_ENCODE, `parameter ${i} is not a lower-case canonical uuid`);
       return;
     }
     case 'bytes':
@@ -94,14 +91,22 @@ export function checkParam(i: number, value: unknown, slot: ParamSlot, zone: str
       try {
         text = timeValue(value, slot.type, zone, slot.precision);
       } catch (error) {
-        throw new OrmError(codes.CODEC_ENCODE, `parameter ${i}: ${error instanceof Error ? error.message : String(error)}`);
+        throw refused(error, `parameter ${i} is not a ${slot.type} value`);
       }
       if (slot.type !== 'time' && (!/^\d{4}-/.test(text) || text.startsWith('0000'))) {
-        throw new OrmError(codes.CODEC_ENCODE, `parameter ${i} (${shown(value)}) is outside 0001-01-01 to 9999-12-31`);
+        throw new OrmError(codes.CODEC_ENCODE, `parameter ${i} is outside 0001-01-01 to 9999-12-31`);
       }
       return;
     }
   }
+}
+
+/**
+ * The PRT-32a refusal text of a parameter in place of the CODEC_ENCODE that refused its value; any other failure is
+ * returned as it is, so it stays its own error.
+ */
+function refused(error: unknown, text: string): unknown {
+  return error instanceof OrmError && error.code === codes.CODEC_ENCODE ? new OrmError(codes.CODEC_ENCODE, text, error) : error;
 }
 
 /**

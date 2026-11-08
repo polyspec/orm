@@ -71,8 +71,13 @@ _INTEGER_RANGES = {
 }
 
 
-def _shown(value) -> str:
-    return repr(value) if isinstance(value, str) else str(value)
+def _utf8(text: str) -> bool:
+    """A text of Unicode scalar values, which UTF-8 encodes; a lone surrogate is none (PRT-32a, COD-64)."""
+    try:
+        text.encode("utf-8")
+    except UnicodeEncodeError:
+        return False
+    return True
 
 
 def check_assign(i: int, value, slot: ParamSlot) -> None:
@@ -89,8 +94,9 @@ def check_param(i: int, value, slot: ParamSlot, zone: str) -> None:
     """Checks the value of parameter i against the logical type of a slot it fills: the host value kind, the range of
     an integer, a finite f64, the precision and scale of a decimal, a date from 0001-01-01 to 9999-12-31, no non-zero
     digit of a time or datetime past its precision, at most n characters of a varchar(n), no U+0000 in text and a
-    lower-case canonical uuid. A value outside it is CODEC_ENCODE; SQL NULL is accepted."""
-    from polyspec.orm.database import time_value
+    lower-case canonical uuid. A value outside it is CODEC_ENCODE with the text of PRT-32a, which names no value;
+    SQL NULL is accepted."""
+    from polyspec.orm.database import _time_text_outside_range, time_value
     from polyspec.orm.decimal import normalize_decimal
 
     if value is None:
@@ -99,7 +105,7 @@ def check_param(i: int, value, slot: ParamSlot, zone: str) -> None:
     def kind() -> OrmError:
         return OrmError(
             codes.CODEC_ENCODE,
-            f"parameter {i} ({type(value).__name__}) is not a {slot.type} value",
+            f"parameter {i} is not a {slot.type} value",
         )
 
     t = slot.type
@@ -108,16 +114,12 @@ def check_param(i: int, value, slot: ParamSlot, zone: str) -> None:
             raise kind()
         low, high = _INTEGER_RANGES[t]
         if not low <= value <= high:
-            raise OrmError(
-                codes.CODEC_ENCODE, f"parameter {i} ({value}) is outside {t}"
-            )
+            raise OrmError(codes.CODEC_ENCODE, f"parameter {i} is outside {t}")
     elif t == "f64":
         if not isinstance(value, (int, float)) or isinstance(value, bool):
             raise kind()
         if isinstance(value, float) and not math.isfinite(value):
-            raise OrmError(
-                codes.CODEC_ENCODE, f"parameter {i} ({value}) is not a finite f64"
-            )
+            raise OrmError(codes.CODEC_ENCODE, f"parameter {i} is not a finite f64")
     elif t == "bool":
         if not isinstance(value, bool):
             raise kind()
@@ -127,9 +129,14 @@ def check_param(i: int, value, slot: ParamSlot, zone: str) -> None:
         try:
             normalize_decimal(value, slot.precision, slot.scale)
         except OrmError as error:
-            raise OrmError(codes.CODEC_ENCODE, f"parameter {i}: {error}") from error
+            if error.code != codes.CODEC_ENCODE:
+                raise
+            raise OrmError(
+                codes.CODEC_ENCODE,
+                f"parameter {i} is not a decimal of its precision and scale",
+            ) from error
     elif t in ("varchar", "text", "uuid"):
-        if not isinstance(value, str):
+        if not isinstance(value, str) or not _utf8(value):
             raise kind()
         if "\0" in value:
             raise OrmError(
@@ -139,12 +146,12 @@ def check_param(i: int, value, slot: ParamSlot, zone: str) -> None:
         if t == "varchar" and slot.length > 0 and len(value) > slot.length:
             raise OrmError(
                 codes.CODEC_ENCODE,
-                f"parameter {i} has {len(value)} characters, more than varchar({slot.length})",
+                f"parameter {i} is longer than varchar({slot.length})",
             )
         if t == "uuid" and not _CANONICAL_UUID.match(value):
             raise OrmError(
                 codes.CODEC_ENCODE,
-                f"parameter {i} ({_shown(value)}) is not a lower-case canonical uuid",
+                f"parameter {i} is not a lower-case canonical uuid",
             )
     elif t == "bytes":
         if not isinstance(value, (bytes, bytearray, memoryview, str)):
@@ -155,13 +162,21 @@ def check_param(i: int, value, slot: ParamSlot, zone: str) -> None:
         try:
             text = time_value(value, t, zone, slot.precision)
         except OrmError as error:
-            raise OrmError(codes.CODEC_ENCODE, f"parameter {i}: {error}") from error
+            if error.code != codes.CODEC_ENCODE:
+                raise
+            # A text of the value form whose instant no Python date holds is outside the range, as in every client.
+            if _time_text_outside_range(value, t, slot.precision):
+                raise OrmError(
+                    codes.CODEC_ENCODE,
+                    f"parameter {i} is outside 0001-01-01 to 9999-12-31",
+                ) from error
+            raise kind() from error
         if t != "time" and (
             re.match(r"\d{4}-", text) is None or text.startswith("0000")
         ):
             raise OrmError(
                 codes.CODEC_ENCODE,
-                f"parameter {i} ({_shown(value)}) is outside 0001-01-01 to 9999-12-31",
+                f"parameter {i} is outside 0001-01-01 to 9999-12-31",
             )
 
 

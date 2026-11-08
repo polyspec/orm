@@ -1315,12 +1315,8 @@ static bool bound_time_text(zval *dt, zend_long prec, const char *col, zend_stri
     }
     for (size_t i = (size_t)prec; i < ZSTR_LEN(u); i++) {
         if (ZSTR_VAL(u)[i] != '0') {
-            zend_string *full = format_of(dt, "Y-m-d H:i:s.u");
-            db_throw_orm("CODEC_ENCODE", "%s value %s has a non-zero digit past its %ld fraction digits", col,
-                full != NULL ? ZSTR_VAL(full) : "", (long)prec);
-            if (full != NULL) {
-                zend_string_release(full);
-            }
+            /* The text names no value (INT-163), as Db::boundTimeText writes it. */
+            db_throw_orm("CODEC_ENCODE", "%s value is not a %s", col, col);
             zend_string_release(u);
             return false;
         }
@@ -1332,8 +1328,9 @@ static bool bound_time_text(zval *dt, zend_long prec, const char *col, zend_stri
 
 static void invalid_time_text(const char *v, size_t vlen, const char *col)
 {
-    const char *form = strcmp(col, "date") == 0 ? "YYYY-MM-DD" : "YYYY-MM-DD HH:MM:SS[.ffffff][Z|\xc2\xb1HH:MM]";
-    db_throw_orm("CODEC_ENCODE", "%s value \"%.*s\" is not %s", col, (int)vlen, v, form);
+    (void)v;
+    (void)vlen;
+    db_throw_orm("CODEC_ENCODE", "%s value is not a %s", col, col);
 }
 
 static bool datetime_in_zone(zval *value, zval *zone, zval *out)
@@ -1378,13 +1375,13 @@ static bool time_value(zval *v, const char *col, zend_long prec, zval *zone, zva
         int fl = n == 0 ? -1 : match_fraction(s + n, len - n, &fd);
         if (n == 0 || fl < 0 || n + (size_t)(fl == 0 ? 0 : fl) != len) {
             zval_ptr_dtor(&cur);
-            db_throw_orm("CODEC_ENCODE", "time value \"%.*s\" is not HH:MM:SS[.ffffff]", (int)len, s);
+            db_throw_orm("CODEC_ENCODE", "time value is not a time");
             return false;
         }
         zend_long h = digits_value(s, 2), m = digits_value(s + 3, 2), sec = digits_value(s + 6, 2);
         if (h > 23 || m > 59 || sec > 59) {
             zval_ptr_dtor(&cur);
-            db_throw_orm("CODEC_ENCODE", "time value \"%.*s\" is not HH:MM:SS[.ffffff]", (int)len, s);
+            db_throw_orm("CODEC_ENCODE", "time value is not a time");
             return false;
         }
         /* The fraction padded to six digits: the digits past the precision must be zero. */
@@ -1395,8 +1392,7 @@ static bool time_value(zval *v, const char *col, zend_long prec, zval *zone, zva
         for (size_t i = (size_t)prec; i < 6; i++) {
             if (frac[i] != '0') {
                 zval_ptr_dtor(&cur);
-                db_throw_orm("CODEC_ENCODE", "time value \"%.*s\" has a non-zero digit past its %ld fraction digits",
-                    (int)len, s, (long)prec);
+                db_throw_orm("CODEC_ENCODE", "time value is not a time");
                 return false;
             }
         }

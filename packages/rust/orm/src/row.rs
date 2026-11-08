@@ -145,7 +145,7 @@ fn type_name(r: &MySqlRow, i: usize) -> &str {
 }
 
 fn required_cell<T>(value: Option<T>, i: usize) -> Result<T> {
-    value.ok_or_else(|| Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("column {i} is NULL where a value is required") })
+    value.ok_or_else(|| Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("column {i} is NULL where a value is required"), source: None })
 }
 
 /// A `YEAR` cell, which `YEAR(col)` also returns. sqlx's i64 does not accept `YEAR` (only
@@ -160,8 +160,11 @@ fn raw_i64(r: &MySqlRow, i: usize) -> Result<i64> {
         "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" => required_cell(r.try_get::<Option<i64>, _>(i)?, i)?,
         "YEAR" => required_cell(year_cell(r, i)?, i)?,
         "TINYINT UNSIGNED" | "SMALLINT UNSIGNED" | "MEDIUMINT UNSIGNED" | "INT UNSIGNED" | "BIGINT UNSIGNED" => {
-            i64::try_from(required_cell(r.try_get::<Option<u64>, _>(i)?, i)?)
-                .map_err(|error| Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("column {i} exceeds i64 range: {error}") })?
+            i64::try_from(required_cell(r.try_get::<Option<u64>, _>(i)?, i)?).map_err(|error| Error::Engine {
+                code: crate::codes::CODEC_DECODE.into(),
+                msg: format!("column {i} exceeds i64 range: {error}"),
+                source: None,
+            })?
         }
         "BOOLEAN" => i64::from(required_cell(r.try_get::<Option<bool>, _>(i)?, i)?),
         _ => read_cell_mysql(r, i)?.as_i64()?,
@@ -215,9 +218,11 @@ pub fn read_cell_mysql(row: &MySqlRow, i: usize) -> Result<Val> {
         "YEAR" => year_cell(row, i)?.map(Val::I64),
         "TINYINT UNSIGNED" | "SMALLINT UNSIGNED" | "MEDIUMINT UNSIGNED" | "INT UNSIGNED" | "BIGINT UNSIGNED" => {
             return match row.try_get::<Option<u64>, _>(i)? {
-                Some(value) => i64::try_from(value)
-                    .map(Val::I64)
-                    .map_err(|error| Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("column {i} exceeds i64 range: {error}") }),
+                Some(value) => i64::try_from(value).map(Val::I64).map_err(|error| Error::Engine {
+                    code: crate::codes::CODEC_DECODE.into(),
+                    msg: format!("column {i} exceeds i64 range: {error}"),
+                    source: None,
+                }),
                 None => Ok(Val::Null),
             };
         }
@@ -342,9 +347,10 @@ pub fn decode_styled(asm: &crate::plan::Assemble, data: &mut [Vec<Val>], aes_key
                         let index = node.version_index.ok_or_else(|| Error::Engine {
                             code: crate::codes::INTERNAL.into(),
                             msg: format!("{}: the AES version column is not selected", node.entity),
+                            source: None,
                         })?;
-                        let version = aes_row_version(row, index)?;
-                        aes_keys.get(&version).map(String::as_str).ok_or_else(|| Error::Config(format!("AES version {version} is not declared")))?
+                        let version = aes_row_version(row, index).map_err(|error| crate::model::column_decode_error(node.entity, node.version_name, error))?;
+                        aes_keys.get(&version).map(String::as_str).ok_or_else(|| Error::Config("aes version is not declared".into()))?
                     } else {
                         // Non-AES host stages do not consume an AES key.
                         ""
@@ -368,6 +374,8 @@ struct StyledNode<'a> {
     styled: Vec<crate::codec::StyledCol>,
     names: Vec<&'a str>,
     version_index: Option<usize>,
+    /// The key version column, which a refusal of its cell names (COD-41).
+    version_name: &'a str,
 }
 
 /// Collects the nodes with styled columns, the root first, then each joined child in plan order.
@@ -388,12 +396,19 @@ fn styled_nodes<'a>(asm: &'a crate::plan::Assemble, out: &mut Vec<StyledNode<'a>
             let column = asm.aes_version.map(|at| &asm.columns[at]).ok_or_else(|| Error::Engine {
                 code: crate::codes::INTERNAL.into(),
                 msg: format!("{}: the plan reads an AES column without its key version column", asm.entity),
+                source: None,
             })?;
-            Some(column.index)
+            Some(column)
         } else {
             None
         };
-        out.push(StyledNode { entity: &asm.entity, styled, names, version_index });
+        out.push(StyledNode {
+            entity: &asm.entity,
+            styled,
+            names,
+            version_index: version_index.map(|column| column.index),
+            version_name: version_index.map_or("", |column| column.name.as_str()),
+        });
     }
     for child in &asm.children {
         if let Some(assemble) = &child.assemble {
@@ -403,34 +418,41 @@ fn styled_nodes<'a>(asm: &'a crate::plan::Assemble, out: &mut Vec<StyledNode<'a>
     Ok(())
 }
 
-/// The key version a row stores in its version column: a positive 32-bit integer, otherwise CODEC_DECODE (COD-44).
+/// The key version a row stores in its version column: a positive 32-bit integer, as an integer, a float with no
+/// fraction or its digits, with leading zeros, as a text or bytes (COD-44, COD-49, COD-53); otherwise
+/// `aes version is not a positive 32-bit integer`, which names no value (INT-163).
+pub(crate) fn stored_version(value: &Val) -> Result<i32> {
+    let refused = || Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: "aes version is not a positive 32-bit integer".into(), source: None };
+    let stored = match value {
+        Val::I64(n) => *n,
+        Val::F64(x) if x.is_finite() && x.trunc() == *x && x.abs() < 4_294_967_296.0 => *x as i64,
+        Val::Str(_) | Val::Bytes(_) => {
+            let digits = match value {
+                Val::Str(text) => text.as_bytes(),
+                Val::Bytes(bytes) => bytes.as_slice(),
+                _ => unreachable!(),
+            };
+            if digits.is_empty() || !digits.iter().all(u8::is_ascii_digit) {
+                return Err(refused());
+            }
+            let significant = &digits[digits.iter().take_while(|d| **d == b'0').count()..];
+            if significant.len() > 10 {
+                return Err(refused());
+            }
+            significant.iter().fold(0i64, |n, d| n * 10 + i64::from(d - b'0'))
+        }
+        _ => return Err(refused()),
+    };
+    match i32::try_from(stored) {
+        Ok(version) if version >= 1 => Ok(version),
+        _ => Err(refused()),
+    }
+}
+
+/// The key version of a row, read from the cell at `index` (COD-44).
 fn aes_row_version(row: &[Val], index: usize) -> Result<i32> {
     let value = row.get(index).ok_or_else(|| Error::internal(format!("AES version cell index {index} is absent from the selected row")))?;
-    // A stored version written as text of digits reads as its number (COD-49, COD-53): MySQL delivers that text as bytes.
-    let digits = match value {
-        Val::Str(text) => Some(text.as_bytes()),
-        Val::Bytes(bytes) => Some(bytes.as_slice()),
-        _ => None,
-    };
-    let stored = match digits {
-        Some(digits) if !digits.is_empty() && digits.iter().all(u8::is_ascii_digit) => {
-            let text = std::str::from_utf8(digits)
-                .map_err(|error| Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("aes version is not text: {error}") })?;
-            text.parse::<i64>().map_err(|error| Error::Engine {
-                code: crate::codes::CODEC_DECODE.into(),
-                msg: format!("aes version {text:?} is not a positive 32-bit integer: {error}"),
-            })?
-        }
-        _ => value.as_i64()?,
-    };
-    let version = i32::try_from(stored).map_err(|error| Error::Engine {
-        code: crate::codes::CODEC_DECODE.into(),
-        msg: format!("aes version {stored} is not a positive 32-bit integer: {error}"),
-    })?;
-    if version < 1 {
-        return Err(Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("aes version {stored} is not a positive 32-bit integer") });
-    }
-    Ok(version)
+    stored_version(value)
 }
 
 /// Applies declared boolean column types to positional rows, including joined rows.
@@ -440,7 +462,7 @@ pub(crate) fn decode_boolean_columns(asm: &crate::plan::Assemble, data: &mut [Ve
         for row in data.iter_mut() {
             let value = row.get_mut(column.index).ok_or_else(|| Error::internal(format!("boolean column {} has no value", column.name)))?;
             if !value.is_null() {
-                *value = Val::Bool(value.as_bool()?);
+                *value = Val::Bool(value.as_bool().map_err(|error| crate::model::column_decode_error(&asm.entity, &column.name, error))?);
             }
         }
     }

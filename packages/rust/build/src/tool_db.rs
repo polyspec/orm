@@ -243,7 +243,7 @@ pub(crate) fn temporal_val(cell: GridCell) -> Result<Val, sqlx::Error> {
     match cell {
         GridCell::Null => Ok(Val::Null),
         GridCell::Date(text) | GridCell::Time(text) | GridCell::DateTime(text) => Ok(Val::Text(text)),
-        other => Err(unsupported_value(format_args!("{other:?} is not a temporal cell"))),
+        _ => Err(unsupported_value(format_args!("the cell is not a temporal cell"))),
     }
 }
 

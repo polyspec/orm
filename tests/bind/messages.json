@@ -1,6 +1,7 @@
 {
   "$schema": "../../scripts/features/schema/recipe.schema.json",
   "requirements": [
+    "PRT-32a",
     "PRT-67",
     "PRT-64"
   ],
@@ -305,6 +306,7 @@
     {
       "id": "message_time_not_clock",
       "requirements": [
+        "PRT-32a",
         "PRT-67"
       ],
       "steps": [
@@ -318,7 +320,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE"
+            "error": "CODEC_ENCODE",
+            "text": "CODEC_ENCODE: parameter 0 is not a time value"
           }
         }
       ]
@@ -326,6 +329,7 @@
     {
       "id": "message_datetime_not_date",
       "requirements": [
+        "PRT-32a",
         "PRT-67"
       ],
       "steps": [
@@ -339,7 +343,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE"
+            "error": "CODEC_ENCODE",
+            "text": "CODEC_ENCODE: parameter 0 is not a datetime value"
           }
         }
       ]
@@ -501,6 +506,7 @@
     {
       "id": "bind_f64_nan",
       "requirements": [
+        "PRT-32a",
         "PRT-67",
         "DIA-31"
       ],
@@ -515,7 +521,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE"
+            "error": "CODEC_ENCODE",
+            "text": "CODEC_ENCODE: parameter 0 is not a finite f64"
           }
         }
       ]
@@ -523,6 +530,7 @@
     {
       "id": "bind_f64_infinity",
       "requirements": [
+        "PRT-32a",
         "PRT-67",
         "DIA-31"
       ],
@@ -537,7 +545,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE"
+            "error": "CODEC_ENCODE",
+            "text": "CODEC_ENCODE: parameter 0 is not a finite f64"
           }
         }
       ]
@@ -545,6 +554,7 @@
     {
       "id": "bind_f64_negative_infinity",
       "requirements": [
+        "PRT-32a",
         "PRT-67",
         "DIA-31"
       ],
@@ -559,7 +569,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE"
+            "error": "CODEC_ENCODE",
+            "text": "CODEC_ENCODE: parameter 0 is not a finite f64"
           }
         }
       ]
@@ -633,6 +644,7 @@
     {
       "id": "bind_decimal_precision",
       "requirements": [
+        "PRT-32a",
         "PRT-67",
         "DIA-31"
       ],
@@ -647,7 +659,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE"
+            "error": "CODEC_ENCODE",
+            "text": "CODEC_ENCODE: parameter 0 is not a decimal of its precision and scale"
           }
         }
       ]
@@ -655,6 +668,7 @@
     {
       "id": "bind_decimal_scale",
       "requirements": [
+        "PRT-32a",
         "PRT-67",
         "DIA-31"
       ],
@@ -669,7 +683,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE"
+            "error": "CODEC_ENCODE",
+            "text": "CODEC_ENCODE: parameter 0 is not a decimal of its precision and scale"
           }
         }
       ]
@@ -785,6 +800,7 @@
     {
       "id": "bind_varchar_too_long",
       "requirements": [
+        "PRT-32a",
         "PRT-67",
         "DIA-31"
       ],
@@ -799,7 +815,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE"
+            "error": "CODEC_ENCODE",
+            "text": "CODEC_ENCODE: parameter 0 is longer than varchar(3)"
           }
         }
       ]
@@ -807,6 +824,7 @@
     {
       "id": "bind_varchar_trailing_space",
       "requirements": [
+        "PRT-32a",
         "PRT-67",
         "DIA-31"
       ],
@@ -821,7 +839,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE"
+            "error": "CODEC_ENCODE",
+            "text": "CODEC_ENCODE: parameter 0 is longer than varchar(3)"
           }
         }
       ]
@@ -829,6 +848,7 @@
     {
       "id": "bind_varchar_code_points_too_long",
       "requirements": [
+        "PRT-32a",
         "PRT-67",
         "DIA-31"
       ],
@@ -843,7 +863,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE"
+            "error": "CODEC_ENCODE",
+            "text": "CODEC_ENCODE: parameter 0 is longer than varchar(3)"
           }
         }
       ]
@@ -851,6 +872,7 @@
     {
       "id": "bind_varchar_nul",
       "requirements": [
+        "PRT-32a",
         "PRT-67",
         "DIA-31"
       ],
@@ -865,7 +887,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE"
+            "error": "CODEC_ENCODE",
+            "text": "CODEC_ENCODE: parameter 0 holds U+0000, which no varchar value holds"
           }
         }
       ]
@@ -917,6 +940,7 @@
     {
       "id": "bind_text_nul",
       "requirements": [
+        "PRT-32a",
         "PRT-67",
         "DIA-31"
       ],
@@ -931,7 +955,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE"
+            "error": "CODEC_ENCODE",
+            "text": "CODEC_ENCODE: parameter 0 holds U+0000, which no text value holds"
           }
         }
       ]
@@ -1029,6 +1054,7 @@
     {
       "id": "bind_uuid_upper",
       "requirements": [
+        "PRT-32a",
         "PRT-67",
         "DIA-31"
       ],
@@ -1043,7 +1069,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE"
+            "error": "CODEC_ENCODE",
+            "text": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
           }
         }
       ]
@@ -1051,6 +1078,7 @@
     {
       "id": "bind_uuid_braces",
       "requirements": [
+        "PRT-32a",
         "PRT-67",
         "DIA-31"
       ],
@@ -1065,7 +1093,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE"
+            "error": "CODEC_ENCODE",
+            "text": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
           }
         }
       ]
@@ -1073,6 +1102,7 @@
     {
       "id": "bind_uuid_no_hyphens",
       "requirements": [
+        "PRT-32a",
         "PRT-67",
         "DIA-31"
       ],
@@ -1087,7 +1117,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE"
+            "error": "CODEC_ENCODE",
+            "text": "CODEC_ENCODE: parameter 0 is not a lower-case canonical uuid"
           }
         }
       ]
@@ -1161,6 +1192,7 @@
     {
       "id": "bind_date_year_zero",
       "requirements": [
+        "PRT-32a",
         "PRT-67",
         "DIA-31"
       ],
@@ -1175,7 +1207,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE"
+            "error": "CODEC_ENCODE",
+            "text": "CODEC_ENCODE: parameter 0 is outside 0001-01-01 to 9999-12-31"
           }
         }
       ]
@@ -1183,6 +1216,7 @@
     {
       "id": "bind_date_not_a_day",
       "requirements": [
+        "PRT-32a",
         "PRT-67",
         "DIA-31"
       ],
@@ -1197,7 +1231,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE"
+            "error": "CODEC_ENCODE",
+            "text": "CODEC_ENCODE: parameter 0 is not a date value"
           }
         }
       ]
@@ -1249,6 +1284,7 @@
     {
       "id": "bind_time_p0_digit_past_p",
       "requirements": [
+        "PRT-32a",
         "PRT-67",
         "DIA-31"
       ],
@@ -1263,7 +1299,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE"
+            "error": "CODEC_ENCODE",
+            "text": "CODEC_ENCODE: parameter 0 is not a time value"
           }
         }
       ]
@@ -1315,6 +1352,7 @@
     {
       "id": "bind_time_p1_digit_past_p",
       "requirements": [
+        "PRT-32a",
         "PRT-67",
         "DIA-31"
       ],
@@ -1329,7 +1367,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE"
+            "error": "CODEC_ENCODE",
+            "text": "CODEC_ENCODE: parameter 0 is not a time value"
           }
         }
       ]
@@ -1381,6 +1420,7 @@
     {
       "id": "bind_time_p2_digit_past_p",
       "requirements": [
+        "PRT-32a",
         "PRT-67",
         "DIA-31"
       ],
@@ -1395,7 +1435,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE"
+            "error": "CODEC_ENCODE",
+            "text": "CODEC_ENCODE: parameter 0 is not a time value"
           }
         }
       ]
@@ -1425,6 +1466,7 @@
     {
       "id": "bind_time_p3_digit_past_p",
       "requirements": [
+        "PRT-32a",
         "PRT-67",
         "DIA-31"
       ],
@@ -1439,7 +1481,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE"
+            "error": "CODEC_ENCODE",
+            "text": "CODEC_ENCODE: parameter 0 is not a time value"
           }
         }
       ]
@@ -1447,6 +1490,7 @@
     {
       "id": "bind_time_hour_24",
       "requirements": [
+        "PRT-32a",
         "PRT-67",
         "DIA-31"
       ],
@@ -1461,7 +1505,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE"
+            "error": "CODEC_ENCODE",
+            "text": "CODEC_ENCODE: parameter 0 is not a time value"
           }
         }
       ]
@@ -1513,6 +1558,7 @@
     {
       "id": "bind_datetime_p0_digit_past_p",
       "requirements": [
+        "PRT-32a",
         "PRT-67",
         "DIA-31"
       ],
@@ -1527,7 +1573,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE"
+            "error": "CODEC_ENCODE",
+            "text": "CODEC_ENCODE: parameter 0 is not a datetime value"
           }
         }
       ]
@@ -1579,6 +1626,7 @@
     {
       "id": "bind_datetime_p1_digit_past_p",
       "requirements": [
+        "PRT-32a",
         "PRT-67",
         "DIA-31"
       ],
@@ -1593,7 +1641,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE"
+            "error": "CODEC_ENCODE",
+            "text": "CODEC_ENCODE: parameter 0 is not a datetime value"
           }
         }
       ]
@@ -1645,6 +1694,7 @@
     {
       "id": "bind_datetime_p2_digit_past_p",
       "requirements": [
+        "PRT-32a",
         "PRT-67",
         "DIA-31"
       ],
@@ -1659,7 +1709,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE"
+            "error": "CODEC_ENCODE",
+            "text": "CODEC_ENCODE: parameter 0 is not a datetime value"
           }
         }
       ]
@@ -1711,6 +1762,7 @@
     {
       "id": "bind_datetime_before_first",
       "requirements": [
+        "PRT-32a",
         "PRT-67",
         "DIA-31"
       ],
@@ -1725,7 +1777,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE"
+            "error": "CODEC_ENCODE",
+            "text": "CODEC_ENCODE: parameter 0 is outside 0001-01-01 to 9999-12-31"
           }
         }
       ]
@@ -1733,6 +1786,7 @@
     {
       "id": "bind_datetime_year_zero",
       "requirements": [
+        "PRT-32a",
         "PRT-67",
         "DIA-31"
       ],
@@ -1747,7 +1801,8 @@
             }
           ],
           "expect": {
-            "error": "CODEC_ENCODE"
+            "error": "CODEC_ENCODE",
+            "text": "CODEC_ENCODE: parameter 0 is outside 0001-01-01 to 9999-12-31"
           }
         }
       ]

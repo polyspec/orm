@@ -338,9 +338,9 @@ final class PerfGateTest extends TestCase
                     $v = $vals[$index];
                     $values[$name] = $v === null ? null : (bool) $v;
                 }
-                foreach ($groups['date'] as [$index, $name]) {
+                foreach ($groups['date'] as [$index, $name, $kind]) {
                     $v = $vals[$index];
-                    $values[$name] = $v === null ? null : new PendingTime($v, $zone);
+                    $values[$name] = $v === null ? null : new PendingTime($v, $zone, $kind);
                 }
                 foreach ($groups['string'] as [$index, $name]) {
                     $v = $vals[$index];

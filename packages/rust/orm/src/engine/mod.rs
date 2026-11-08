@@ -16,7 +16,7 @@ use crate::schema::Manifest;
 use crate::{Error, Result};
 
 pub(crate) fn err(code: &str, msg: impl Into<String>) -> Error {
-    Error::Engine { code: code.into(), msg: msg.into() }
+    Error::Engine { code: code.into(), msg: msg.into(), source: None }
 }
 
 /// Validates a request against the manifest and plans it for a dialect. A step of the plan that
@@ -186,7 +186,7 @@ mod tests {
         for dialect in [Dialect::MySql, Dialect::Postgres, Dialect::Sqlite] {
             for (message, request) in &cases {
                 match compile(&manifest, dialect, request) {
-                    Err(Error::Engine { code, msg }) => {
+                    Err(Error::Engine { code, msg, .. }) => {
                         assert!(code == crate::codes::IR_INVALID && msg.contains(message), "{dialect:?}: want {message}, got {code} {msg}")
                     }
                     other => panic!("{dialect:?}: want {message}, got {other:?}"),

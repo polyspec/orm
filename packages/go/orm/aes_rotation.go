@@ -1,7 +1,6 @@
 package orm
 
 import (
-	"fmt"
 	"math"
 	"regexp"
 	"sort"
@@ -33,7 +32,7 @@ func (d *DB) aesKeyring() (AESKeyring, error) {
 func HostDecodeVersioned(raw any, styles []string, version int32, keyring AESKeyring) (any, error) {
 	key, ok := keyring.keys[version]
 	if !ok {
-		return nil, configErr("aes key version %d is not declared", version)
+		return nil, configErr("aes version is not declared")
 	}
 	return HostDecode(raw, styles, key)
 }
@@ -44,12 +43,12 @@ func NewAESKeyring(keys map[int32]string, current int32) (AESKeyring, error) {
 	copyKeys := make(map[int32]string, len(keys))
 	for version, key := range keys {
 		if version < 1 || key == "" {
-			return AESKeyring{}, configErr("aes key version %d has an empty key or is invalid", version)
+			return AESKeyring{}, configErr("aes key list holds an invalid version or an empty key")
 		}
 		copyKeys[version] = key
 	}
 	if current < 1 || copyKeys[current] == "" {
-		return AESKeyring{}, configErr("aes current version %d is not declared", current)
+		return AESKeyring{}, configErr("aes current version is not declared")
 	}
 	return AESKeyring{keys: copyKeys, current: current}, nil
 }
@@ -96,20 +95,21 @@ func RotateAESRow(row map[string]any, versionColumn string, columns []AESRotatio
 			}
 			var ok bool
 			if oldKey, ok = keyring.keys[oldVersion]; !ok {
-				return nil, configErr("aes key version %d is not declared", oldVersion)
+				return nil, configErr("aes version is not declared")
 			}
 			if newKey, ok = keyring.keys[targetVersion]; !ok {
-				return nil, configErr("aes target version %d is not declared", targetVersion)
+				return nil, configErr("aes version is not declared")
 			}
 			keysRead = true
 		}
+		// A refusal of a stage is its own text with no entity and column, as every client states it (COD-47).
 		plain, err := HostDecode(value, column.Styles, oldKey)
 		if err != nil {
-			return nil, fmt.Errorf("aes column %s: %w", column.Name, err)
+			return nil, err
 		}
 		encoded, err := HostEncode(plain, column.Styles, newKey)
 		if err != nil {
-			return nil, fmt.Errorf("aes column %s: %w", column.Name, err)
+			return nil, err
 		}
 		out[column.Name] = encoded
 	}

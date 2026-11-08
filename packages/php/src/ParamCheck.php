@@ -77,8 +77,8 @@ final class ParamCheck
      * Checks the value of parameter $i against the logical type of a slot it fills: the host value kind,
      * the range of an integer, a finite f64, the precision and scale of a decimal, a date from 0001-01-01
      * to 9999-12-31, no non-zero digit of a time or datetime past its precision, at most n characters of a
-     * varchar(n), no U+0000 in text and a lower-case canonical uuid. A value outside it is CODEC_ENCODE;
-     * SQL NULL is accepted.
+     * varchar(n), no U+0000 in text and a lower-case canonical uuid. A value outside it is CODEC_ENCODE
+     * with the text of PRT-32a, which names no value; SQL NULL is accepted.
      *
      * @param array{type: string, precision: int, scale: int, length: int} $slot
      */
@@ -90,7 +90,7 @@ final class ParamCheck
         $type = $slot['type'];
         $kind = static fn(): OrmException => new OrmException(
             Code::CODEC_ENCODE,
-            "parameter $i (" . get_debug_type($v) . ") is not a $type value"
+            "parameter $i is not a $type value"
         );
         switch ($type) {
             case 'i16':
@@ -101,7 +101,7 @@ final class ParamCheck
                 }
                 [$low, $high] = self::INTEGER_RANGES[$type];
                 if ($v < $low || $v > $high) {
-                    throw new OrmException(Code::CODEC_ENCODE, "parameter $i ($v) is outside $type");
+                    throw new OrmException(Code::CODEC_ENCODE, "parameter $i is outside $type");
                 }
                 return;
             case 'f64':
@@ -109,10 +109,7 @@ final class ParamCheck
                     throw $kind();
                 }
                 if (is_float($v) && !is_finite($v)) {
-                    throw new OrmException(
-                        Code::CODEC_ENCODE,
-                        "parameter $i (" . var_export($v, true) . ') is not a finite f64'
-                    );
+                    throw new OrmException(Code::CODEC_ENCODE, "parameter $i is not a finite f64");
                 }
                 return;
             case 'bool':
@@ -127,7 +124,14 @@ final class ParamCheck
                 try {
                     Decimal::normalize($v, $slot['precision'], $slot['scale']);
                 } catch (OrmException $e) {
-                    throw new OrmException(Code::CODEC_ENCODE, "parameter $i: " . $e->getMessage(), $e);
+                    if ($e->code_ !== Code::CODEC_ENCODE) {
+                        throw $e;
+                    }
+                    throw new OrmException(
+                        Code::CODEC_ENCODE,
+                        "parameter $i is not a decimal of its precision and scale",
+                        $e
+                    );
                 }
                 return;
             case 'varchar':
@@ -146,17 +150,14 @@ final class ParamCheck
                 if ($type === 'varchar' && $slot['length'] > 0 && $n > $slot['length']) {
                     throw new OrmException(
                         Code::CODEC_ENCODE,
-                        "parameter $i has $n characters, more than varchar({$slot['length']})"
+                        "parameter $i is longer than varchar({$slot['length']})"
                     );
                 }
                 if (
                     $type === 'uuid'
                     && preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/D', $v) !== 1
                 ) {
-                    throw new OrmException(
-                        Code::CODEC_ENCODE,
-                        "parameter $i (\"$v\") is not a lower-case canonical uuid"
-                    );
+                    throw new OrmException(Code::CODEC_ENCODE, "parameter $i is not a lower-case canonical uuid");
                 }
                 return;
             case 'bytes':
@@ -173,17 +174,16 @@ final class ParamCheck
                 try {
                     $text = Db::timeValue($v, $type, $slot['precision'], $zone);
                 } catch (OrmException $e) {
-                    throw new OrmException(Code::CODEC_ENCODE, "parameter $i: " . $e->getMessage(), $e);
+                    if ($e->code_ !== Code::CODEC_ENCODE) {
+                        throw $e;
+                    }
+                    throw new OrmException(Code::CODEC_ENCODE, "parameter $i is not a $type value", $e);
                 }
                 if (
                     $type !== 'time' && (!is_string($text) || preg_match('/^\d{4}-/', $text) !== 1
                     || str_starts_with($text, '0000'))
                 ) {
-                    $shown = "\"$v\"";
-                    throw new OrmException(
-                        Code::CODEC_ENCODE,
-                        "parameter $i ($shown) is outside 0001-01-01 to 9999-12-31"
-                    );
+                    throw new OrmException(Code::CODEC_ENCODE, "parameter $i is outside 0001-01-01 to 9999-12-31");
                 }
                 return;
         }

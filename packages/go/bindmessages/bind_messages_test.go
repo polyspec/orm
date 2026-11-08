@@ -147,8 +147,8 @@ func connectSendListener(t *testing.T, first chan<- json.RawMessage) *orm.DB {
 }
 
 // sendFirst runs call on a connection to a listener that answers connect and records the first message after it, and returns
-// that message's value, or the code of the orm error that call returns before it sends a message. A whole step returns the
-// whole message, as the statement that begins a transaction is compared.
+// that message's value, or the whole text of the orm error that call returns before it sends a message, its code first. A
+// whole step returns the whole message, as the statement that begins a transaction is compared.
 func sendFirst(t *testing.T, whole bool, call func(db *orm.DB) error) (json.RawMessage, string) {
 	t.Helper()
 	first := make(chan json.RawMessage, 1)
@@ -164,7 +164,8 @@ func sendFirst(t *testing.T, whole bool, call func(db *orm.DB) error) (json.RawM
 	}
 	var e *ir.Error
 	if errors.As(callErr, &e) {
-		return nil, e.Code
+		// The whole text of the error, its code first, as every client writes it (PRT-32a).
+		return nil, e.Code + ": " + e.Msg
 	}
 	t.Fatalf("the call returned %v and sent no message", callErr)
 	return nil, ""

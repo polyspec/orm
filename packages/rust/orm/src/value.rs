@@ -148,9 +148,11 @@ impl TryFrom<u64> for Param {
     type Error = crate::Error;
 
     fn try_from(x: u64) -> crate::Result<Self> {
-        i64::try_from(x)
-            .map(Param::I64)
-            .map_err(|error| crate::Error::Engine { code: crate::codes::CODEC_ENCODE.into(), msg: format!("unsigned integer exceeds i64 range: {error}") })
+        i64::try_from(x).map(Param::I64).map_err(|error| crate::Error::Engine {
+            code: crate::codes::CODEC_ENCODE.into(),
+            msg: format!("unsigned integer exceeds i64 range: {error}"),
+            source: None,
+        })
     }
 }
 
@@ -188,7 +190,12 @@ pub enum Val {
 }
 
 fn decode_value(message: impl Into<String>) -> crate::Error {
-    crate::Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: message.into() }
+    crate::Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: message.into(), source: None }
+}
+
+/// The CODEC_DECODE of a cell with message, keeping the failure that found it.
+fn decode_value_by(message: impl Into<String>, cause: impl std::error::Error + Send + Sync + 'static) -> crate::Error {
+    crate::Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: message.into(), source: Some(Box::new(cause)) }
 }
 
 /// Ordered-json values are equal when their compact texts are equal.
@@ -223,7 +230,7 @@ impl Val {
                 let Val::Ordered(value) = std::mem::replace(self, Val::Null) else { unreachable!() };
                 Ok(value)
             }
-            other => Err(decode_value(format!("expected ordered JSON, received {other:?}"))),
+            _ => Err(decode_value("cell is not ordered JSON")),
         }
     }
 
@@ -231,47 +238,42 @@ impl Val {
         matches!(self, Val::Null)
     }
 
+    /// An i64 cell: an integer, a float with no fraction, or the exact digits of an integer as text or bytes; a boolean
+    /// is no integer (COD-1).
     pub fn as_i64(&self) -> crate::Result<i64> {
-        match self {
-            Val::I64(x) => Ok(*x),
-            Val::F64(x) if x.is_finite() && x.fract() == 0.0 && *x >= i64::MIN as f64 && *x < 9_223_372_036_854_775_808.0 => Ok(*x as i64),
-            Val::Bool(b) => Ok(i64::from(*b)),
-            Val::Str(s) => s.parse().map_err(|error| decode_value(format!("invalid i64: {s:?}: {error}"))),
-            // MySQL returns the text of a character column as bytes when the column was not declared as text.
-            Val::Bytes(bytes) => {
-                let text = std::str::from_utf8(bytes).map_err(|error| decode_value(format!("invalid i64: {bytes:?}: {error}")))?;
-                text.parse().map_err(|error| decode_value(format!("invalid i64: {text:?}: {error}")))
-            }
-            other => Err(decode_value(format!("expected i64, received {other:?}"))),
-        }
+        self.integer("i64")
     }
 
     pub fn as_i32(&self) -> crate::Result<i32> {
-        i32::try_from(self.as_i64()?).map_err(|error| decode_value(format!("integer is outside i32 range: {error}")))
+        Ok(self.integer("i32")? as i32)
     }
 
     pub fn as_i16(&self) -> crate::Result<i16> {
-        i16::try_from(self.as_i64()?).map_err(|error| decode_value(format!("integer is outside i16 range: {error}")))
+        Ok(self.integer("i16")? as i16)
+    }
+
+    /// The integer of an integer column type in its range, or the refusal of that type (COD-1).
+    fn integer(&self, column_type: &str) -> crate::Result<i64> {
+        let (low, high) = crate::cell::integer_range(column_type);
+        crate::cell::integer_cell(self, low, high, true).ok_or_else(|| crate::cell::cell_refusal(column_type))
     }
 
     pub fn as_f64(&self) -> crate::Result<f64> {
         match self {
             Val::F64(x) if x.is_finite() => Ok(*x),
             Val::I64(x) if x.unsigned_abs() <= (1u64 << 53) => Ok(*x as f64),
+            // A text reads only when its decimal value is the f64 exactly (INT-141).
             Val::Str(s) => {
-                let value = s.parse::<f64>().map_err(|error| decode_value(format!("invalid finite f64: {s:?}: {error}")))?;
-                if !value.is_finite() {
-                    return Err(decode_value(format!("invalid finite f64: {s:?}")));
-                }
+                let value = crate::cell::f64_cell(self).ok_or_else(|| crate::cell::cell_refusal("f64"))?;
                 let exact =
                     if s.contains('e') || s.contains('E') { rust_decimal::Decimal::from_scientific(s) } else { rust_decimal::Decimal::from_str_exact(s) }
-                        .map_err(|error| decode_value(format!("decimal cannot be checked for exact f64 conversion: {s:?}: {error}")))?;
+                        .map_err(|error| crate::cell::cell_refusal_by("f64", error))?;
                 if rust_decimal::Decimal::from_f64_retain(value) != Some(exact) {
-                    return Err(decode_value(format!("decimal loses precision as f64: {s:?}")));
+                    return Err(crate::cell::cell_refusal("f64"));
                 }
                 Ok(value)
             }
-            other => Err(decode_value(format!("expected finite f64, received {other:?}"))),
+            _ => Err(crate::cell::cell_refusal("f64")),
         }
     }
 
@@ -282,25 +284,19 @@ impl Val {
             Val::F64(value) if value.is_finite() => Ok(*value),
             Val::I64(value) => Ok(*value as f64),
             Val::Str(text) => {
-                let value = text.parse::<f64>().map_err(|error| decode_value(format!("invalid finite aggregate number: {text:?}: {error}")))?;
+                let value = text.parse::<f64>().map_err(|error| decode_value_by("aggregate cell is not a finite number", error))?;
                 if !value.is_finite() {
-                    return Err(decode_value(format!("invalid finite aggregate number: {text:?}")));
+                    return Err(decode_value("aggregate cell is not a finite number"));
                 }
                 Ok(value)
             }
-            other => Err(decode_value(format!("expected a finite aggregate number, received {other:?}"))),
+            _ => Err(decode_value("aggregate cell is not a finite number")),
         }
     }
 
+    /// A bool cell: a boolean, the integer 0 or 1, or the text 0, 1, f, t, false or true (COD-1).
     pub fn as_bool(&self) -> crate::Result<bool> {
-        match self {
-            Val::Bool(b) => Ok(*b),
-            Val::I64(0) => Ok(false),
-            Val::I64(1) => Ok(true),
-            Val::Str(s) if s == "0" || s == "false" => Ok(false),
-            Val::Str(s) if s == "1" || s == "true" => Ok(true),
-            other => Err(decode_value(format!("expected boolean, received {other:?}"))),
-        }
+        crate::cell::bool_cell(self).ok_or_else(|| crate::cell::cell_refusal("bool"))
     }
 
     /// Moves a decoded styled value out (leaves Null); Null stays Null.
@@ -315,7 +311,7 @@ impl Val {
                 Ok(Some(serde_json::Value::String(value)))
             }
             Val::Null => Ok(None),
-            other => Err(decode_value(format!("expected JSON, received {other:?}"))),
+            _ => Err(decode_value("cell is not JSON")),
         }
     }
 
@@ -334,7 +330,7 @@ impl Val {
                 let Val::Str(value) = std::mem::replace(self, Val::Null) else { unreachable!() };
                 Ok(value.into_bytes())
             }
-            other => Err(decode_value(format!("expected bytes, received {other:?}"))),
+            _ => Err(crate::cell::cell_refusal("bytes")),
         }
     }
 
@@ -345,13 +341,13 @@ impl Val {
         match std::mem::replace(self, Val::Null) {
             Val::Str(value) => Ok(value),
             Val::Bytes(bytes) => String::from_utf8(bytes).map_err(|e| {
+                let cause = e.utf8_error();
                 *self = Val::Bytes(e.into_bytes());
-                decode_value("text is not valid UTF-8")
+                crate::cell::invalid_utf8(cause)
             }),
             other => {
-                let message = format!("expected string, received {other:?}");
                 *self = other;
-                Err(decode_value(message))
+                Err(crate::cell::cell_refusal("text"))
             }
         }
     }
@@ -359,7 +355,7 @@ impl Val {
     pub fn as_string(&self) -> crate::Result<String> {
         Ok(match self {
             Val::Str(s) => s.clone(),
-            Val::Bytes(b) => std::str::from_utf8(b).map_err(|error| decode_value(format!("bytes are not UTF-8: {error}")))?.to_owned(),
+            Val::Bytes(b) => std::str::from_utf8(b).map_err(crate::cell::invalid_utf8)?.to_owned(),
             Val::I64(x) => x.to_string(),
             Val::F64(x) if x.is_finite() => x.to_string(),
             Val::Bool(b) => (*b as i64).to_string(),
@@ -367,7 +363,7 @@ impl Val {
             Val::Date(d) => d.to_string(),
             Val::Json(v) => v.to_string(),
             Val::Ordered(v) => v.compact(),
-            other => return Err(decode_value(format!("expected text value, received {other:?}"))),
+            _ => return Err(crate::cell::cell_refusal("text")),
         })
     }
 
@@ -382,7 +378,9 @@ impl Val {
             Val::F64(_) => return Err(decode_value("non-finite f64 cannot be JSON")),
             Val::Str(s) => serde_json::json!(s),
             // JSON has no bytes, so the JSON output refuses a bytes value (COD-26).
-            Val::Bytes(_) => return Err(crate::Error::Engine { code: crate::codes::CODEC_ENCODE.into(), msg: "JSON output cannot write bytes".into() }),
+            Val::Bytes(_) => {
+                return Err(crate::Error::Engine { code: crate::codes::CODEC_ENCODE.into(), msg: "JSON output cannot write bytes".into(), source: None })
+            }
             Val::DateTime(t) => serde_json::json!(t.format("%Y-%m-%d %H:%M:%S%.6f").to_string()),
             Val::Date(d) => serde_json::json!(d.to_string()),
             Val::Bool(b) => serde_json::json!(b),
@@ -391,34 +389,15 @@ impl Val {
         })
     }
 
+    /// A datetime cell: a datetime, or the text YYYY-MM-DD HH:MM:SS (or with T) with a fraction of up to nine digits
+    /// and an optional offset, as UTC (COD-1, PRT-67).
     pub fn as_datetime(&self) -> crate::Result<NaiveDateTime> {
-        match self {
-            Val::DateTime(t) => Ok(*t),
-            // The text is read with a space or a T between the date and the time (PRT-67), each with fractional seconds first and
-            // without them second. If every shape fails, the error of the last shape is reported with the text.
-            Val::Str(s) => {
-                let mut last = None;
-                for shape in ["%Y-%m-%d %H:%M:%S%.f", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S%.f", "%Y-%m-%dT%H:%M:%S"] {
-                    match NaiveDateTime::parse_from_str(s, shape) {
-                        Ok(value) => return Ok(value),
-                        Err(error) => last = Some(error),
-                    }
-                }
-                Err(decode_value(match last {
-                    Some(error) => format!("invalid datetime: {s:?}: {error}"),
-                    None => format!("invalid datetime: {s:?}"),
-                }))
-            }
-            other => Err(decode_value(format!("expected datetime, received {other:?}"))),
-        }
+        crate::cell::datetime_cell(self, 9).ok_or_else(|| crate::cell::cell_refusal("datetime"))
     }
 
+    /// A date cell: a date, or the text YYYY-MM-DD of a real day (COD-1).
     pub fn as_date(&self) -> crate::Result<NaiveDate> {
-        match self {
-            Val::Date(d) => Ok(*d),
-            Val::Str(s) => NaiveDate::parse_from_str(s, "%Y-%m-%d").map_err(|error| decode_value(format!("invalid date: {s:?}: {error}"))),
-            other => Err(decode_value(format!("expected date, received {other:?}"))),
-        }
+        crate::cell::date_cell(self).ok_or_else(|| crate::cell::cell_refusal("date"))
     }
 }
 
@@ -465,6 +444,9 @@ fn esc(s: &str) -> String {
 /// The serde_json form of an ordered-json value (the array form of a row).
 /// A number outside the serde_json range, such as 1e400, returns CODEC_ENCODE.
 pub(crate) fn ordered_to_json(v: &ordered_json::Value) -> crate::Result<serde_json::Value> {
-    serde_json::from_str(&v.compact())
-        .map_err(|e| crate::Error::Engine { code: crate::codes::CODEC_ENCODE.into(), msg: format!("json: the value has no serde_json form: {e}") })
+    serde_json::from_str(&v.compact()).map_err(|e| crate::Error::Engine {
+        code: crate::codes::CODEC_ENCODE.into(),
+        msg: format!("json: the value has no serde_json form: {e}"),
+        source: None,
+    })
 }

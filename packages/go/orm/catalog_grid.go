@@ -185,7 +185,7 @@ func catalogGridCell(value any, native string, dialect string) (CatalogGridCell,
 	case int64:
 		if strings.HasPrefix(native, "UNSIGNED ") {
 			if v < 0 {
-				return refuse("negative value %d", v)
+				return refuse("a negative value is not an unsigned integer")
 			}
 			return cell(CatalogGridUnsigned, uint64(v))
 		}
@@ -209,7 +209,7 @@ func catalogGridCell(value any, native string, dialect string) (CatalogGridCell,
 		}
 		return catalogGridTextual(string(v), native, dialect, refuse, cell)
 	default:
-		return refuse("driver value %T", value)
+		return refuse("the driver value has no grid cell")
 	}
 }
 
@@ -229,7 +229,7 @@ func catalogGridSQLite(value any, refuse func(string, ...any) (CatalogGridCell, 
 	case []byte:
 		return cell(CatalogGridBinary, append([]byte(nil), v...))
 	default:
-		return refuse("driver value %T", value)
+		return refuse("the driver value has no grid cell")
 	}
 }
 
@@ -262,7 +262,7 @@ func catalogGridTextual(text string, native, dialect string, refuse func(string,
 	if dialect == "mysql" && strings.HasPrefix(native, "UNSIGNED ") {
 		u, err := strconv.ParseUint(text, 10, 64)
 		if err != nil {
-			return refuse("unsigned integer %q: %v", text, err)
+			return refuse("the text is not an unsigned integer")
 		}
 		return cell(CatalogGridUnsigned, u)
 	}
@@ -271,24 +271,24 @@ func catalogGridTextual(text string, native, dialect string, refuse func(string,
 	case "TINYINT", "SMALLINT", "MEDIUMINT", "INT", "BIGINT":
 		n, err := strconv.ParseInt(text, 10, 64)
 		if err != nil {
-			return refuse("integer %q: %v", text, err)
+			return refuse("the text is not a signed 64-bit integer")
 		}
 		return cell(CatalogGridInteger, n)
 	case "FLOAT":
 		f, err := strconv.ParseFloat(text, 32)
 		if err != nil {
-			return refuse("float %q: %v", text, err)
+			return refuse("the text is not a float")
 		}
 		return cell(CatalogGridFloat32, math.Float32bits(float32(f)))
 	case "DOUBLE":
 		f, err := strconv.ParseFloat(text, 64)
 		if err != nil {
-			return refuse("float %q: %v", text, err)
+			return refuse("the text is not a float")
 		}
 		return cell(CatalogGridFloat64, math.Float64bits(f))
 	case "DECIMAL", "NUMERIC":
 		if !catalogGridFiniteDecimal(text) {
-			return refuse("nonfinite decimal %q", text)
+			return refuse("the decimal is not finite")
 		}
 		return cell(CatalogGridDecimal, text)
 	case "TIME":
@@ -306,7 +306,7 @@ func catalogGridTextual(text string, native, dialect string, refuse func(string,
 	case "DATETIME", "TIMESTAMP":
 		match := catalogGridDateTimeRE.FindStringSubmatch(text)
 		if match == nil {
-			return catalogGridTemporalRefusal(fmt.Errorf("datetime text %q", text))
+			return catalogGridTemporalRefusal(fmt.Errorf("datetime is not YYYY-MM-DD HH:MM:SS"))
 		}
 		date, err := catalogGridDateText(match[1])
 		if err != nil {
@@ -357,7 +357,7 @@ func catalogGridDate(year, month, day int) (string, error) {
 		return "", fmt.Errorf("date outside 0001-01-01 to 9999-12-31")
 	}
 	if t := time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC); t.Year() != year || int(t.Month()) != month || t.Day() != day {
-		return "", fmt.Errorf("date %04d-%02d-%02d is not a calendar date", year, month, day)
+		return "", fmt.Errorf("date is not a calendar date")
 	}
 	return fmt.Sprintf("%04d-%02d-%02d", year, month, day), nil
 }
@@ -366,7 +366,7 @@ func catalogGridDate(year, month, day int) (string, error) {
 func catalogGridDateText(text string) (string, error) {
 	match := catalogGridDateRE.FindStringSubmatch(text)
 	if match == nil {
-		return "", fmt.Errorf("date text %q", text)
+		return "", fmt.Errorf("date is not YYYY-MM-DD")
 	}
 	year, err := strconv.Atoi(match[1])
 	if err != nil {
@@ -388,7 +388,7 @@ func catalogGridDateText(text string) (string, error) {
 func catalogGridClock(text string) (string, error) {
 	match := catalogGridTimeRE.FindStringSubmatch(text)
 	if match == nil {
-		return "", fmt.Errorf("time text %q", text)
+		return "", fmt.Errorf("time is not HH:MM:SS")
 	}
 	hour, err := strconv.Atoi(match[1])
 	if err != nil {

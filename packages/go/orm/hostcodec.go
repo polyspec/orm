@@ -11,7 +11,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 	"net/netip"
 	"strings"
 	"sync"
@@ -27,7 +26,7 @@ func AESEncrypt(plain []byte, key string) ([]byte, error) {
 	}
 	nonce := make([]byte, gcm.NonceSize())
 	if _, err := rand.Read(nonce); err != nil {
-		return nil, fmt.Errorf("aes: nonce generation: %w", err)
+		return nil, codecCause(CodeCodecEncode, "aes: the encryption failed", err)
 	}
 	out := append([]byte{}, aesV2Prefix...)
 	out = append(out, nonce...)
@@ -108,7 +107,7 @@ func BlindIndex(v any, key string) (string, error) {
 		}
 		plain = x
 	default:
-		return "", codecErr(CodeCodecEncode, "blind index input must be text or bytes, got %T", v)
+		return "", codecErr(CodeCodecEncode, "blind index input must be text or bytes")
 	}
 	h := hmac.New(sha256.New, []byte(key))
 	_, _ = h.Write(plain)
@@ -121,7 +120,7 @@ func packIP(s string) ([]byte, error) {
 	// The exact text only: white space around the address, and a zone, is CODEC_ENCODE (docs/spec/codec.md).
 	ip, err := netip.ParseAddr(s)
 	if err != nil || ip.Zone() != "" {
-		return nil, codecErr(CodeCodecEncode, "ip: %q is not an address", s)
+		return nil, codecErr(CodeCodecEncode, "ip: the text is not an address")
 	}
 	return ip.AsSlice(), nil
 }
@@ -131,7 +130,7 @@ func packIP(s string) ([]byte, error) {
 func unpackIP(b []byte) (string, error) {
 	ip, ok := netip.AddrFromSlice(b)
 	if !ok {
-		return "", codecErr(CodeCodecDecode, "ip: %d packed bytes", len(b))
+		return "", codecErr(CodeCodecDecode, "ip: the cell is not 4 or 16 packed bytes")
 	}
 	return ip.String(), nil
 }
@@ -161,7 +160,7 @@ func HostEncode(v any, styles []string, aesKey string) (any, error) {
 		}
 		cur = x
 	default:
-		return nil, codecErr(CodeCodecEncode, "host input must be text or bytes, got %T", v)
+		return nil, codecErr(CodeCodecEncode, "host input must be text or bytes")
 	}
 	for _, st := range styles {
 		var err error
@@ -203,7 +202,7 @@ func HostDecode(raw any, styles []string, aesKey string) (any, error) {
 	case []byte:
 		cur = x
 	default:
-		return nil, codecErr(CodeCodecDecode, "cell is %T, not bytes", raw)
+		return nil, codecErr(CodeCodecDecode, "cell is not bytes")
 	}
 	for i := len(styles) - 1; i >= 0; i-- {
 		var err error

@@ -39,7 +39,7 @@ caseTest('invalid UTF-8 in JSON and YAML returns CODEC_DECODE', COMPUTE, () => {
     const error = thrown(() => decode([style], new Uint8Array([0xff])));
     assert(error instanceof CodecError);
     assert.equal(error.code, 'CODEC_DECODE');
-    assert.match(error.message, /^CODEC_DECODE: invalid UTF-8:/);
+    assert.equal(error.message, 'CODEC_DECODE: decoded text is not valid UTF-8');
     assert(error.cause instanceof TypeError);
   }
 });

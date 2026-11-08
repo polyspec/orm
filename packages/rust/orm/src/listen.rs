@@ -39,6 +39,7 @@ impl Db {
             return Err(Error::Engine {
                 code: codes::DRIVER.into(),
                 msg: "a PostgreSQL notification payload must be shorter than 8000 bytes and contain no U+0000".into(),
+                source: None,
             });
         }
         let ex = match active_for(self) {
@@ -80,7 +81,7 @@ impl Db {
     /// The error of a LISTEN or NOTIFY operation on a connection without it (DIA-196).
     fn listenable(&self, surface: &str) -> Result<()> {
         if self.driver() != "postgres" {
-            return Err(Error::Engine { code: codes::CAPABILITY_UNSUPPORTED.into(), msg: format!("{surface} is supported on PostgreSQL only") });
+            return Err(Error::Engine { code: codes::CAPABILITY_UNSUPPORTED.into(), msg: format!("{surface} is supported on PostgreSQL only"), source: None });
         }
         Ok(())
     }
@@ -101,7 +102,7 @@ impl Subscription {
             Ok(Ok(Some(n))) => Ok(Notification { channel: n.channel().to_owned(), payload: n.payload().to_owned(), pid: n.process_id() }),
             Ok(Ok(None)) => {
                 self.inner = None;
-                Err(Error::Engine { code: codes::CONNECTION_LOST.into(), msg: "the LISTEN connection was lost".into() })
+                Err(Error::Engine { code: codes::CONNECTION_LOST.into(), msg: "the LISTEN connection was lost".into(), source: None })
             }
             Ok(Err(error)) => {
                 let mapped = Error::from(error);
@@ -112,7 +113,7 @@ impl Subscription {
             }
             Err(_) => {
                 self.inner = None;
-                Err(Error::Engine { code: codes::CANCELED.into(), msg: "the receive of the LISTEN subscription expired".into() })
+                Err(Error::Engine { code: codes::CANCELED.into(), msg: "the receive of the LISTEN subscription expired".into(), source: None })
             }
         }
     }

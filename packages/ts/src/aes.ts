@@ -26,10 +26,11 @@ export function storedVersion(value: unknown): number {
 export class AesKeyring {
   private readonly keys: ReadonlyMap<number, string>;
   public constructor(keys: ReadonlyMap<number, string>, public readonly currentVersion: number) {
-    if (!Number.isSafeInteger(currentVersion) || currentVersion < 1 || !keys.has(currentVersion)) throw new OrmError(codes.CONFIG, `AES version ${currentVersion} is not declared`);
+    // The key list is checked before the current version, and no text names a version (COD-44, INT-163).
     for (const [version, key] of keys) {
-      if (!Number.isSafeInteger(version) || version < 1 || key.length === 0) throw new OrmError(codes.CONFIG, `AES version ${version} has no key`);
+      if (!Number.isSafeInteger(version) || version < 1 || key.length === 0) throw new OrmError(codes.CONFIG, 'aes key list holds an invalid version or an empty key');
     }
+    if (!Number.isSafeInteger(currentVersion) || currentVersion < 1 || !keys.has(currentVersion)) throw new OrmError(codes.CONFIG, 'aes current version is not declared');
     this.keys = new Map(keys);
   }
 
@@ -37,7 +38,7 @@ export class AesKeyring {
 
   public key(version: number): string {
     const key = this.keys.get(version);
-    if (key === undefined) throw new OrmError(codes.CONFIG, `AES version ${version} is not declared`);
+    if (key === undefined) throw new OrmError(codes.CONFIG, 'aes version is not declared');
     return key;
   }
 

@@ -271,10 +271,10 @@ ZEND_METHOD(Polyspec_Orm_Model, resolved)
     ZEND_PARSE_PARAMETERS_START(1, 1) Z_PARAM_ZVAL(value) ZEND_PARSE_PARAMETERS_END();
     if (!query_instance(value, "Polyspec\\Orm\\PendingTime")) RETURN_COPY(value);
     zend_class_entry *pending_ce = query_class("Polyspec\\Orm\\PendingTime");
-    zval text_rv, zone_rv;
-    zval *text, *zone;
-    if (!pending_time_parts(pending_ce, value, &text_rv, &zone_rv, &text, &zone)) RETURN_THROWS();
-    if (!model_time_value_in_zone(text, zone, return_value)) RETURN_THROWS();
+    zval text_rv, zone_rv, type_rv;
+    zval *text, *zone, *type;
+    if (!pending_time_parts(pending_ce, value, &text_rv, &zone_rv, &type_rv, &text, &zone, &type)) RETURN_THROWS();
+    if (!model_time_value_in_zone(text, zone, Z_STRVAL_P(type), return_value)) RETURN_THROWS();
 }
 
 ZEND_METHOD(Polyspec_Orm_Model, putSet)
@@ -347,7 +347,11 @@ ZEND_METHOD(Polyspec_Orm_Model, columnValue)
     }
     if (zend_string_equals_literal(Z_STR_P(type), "decimal")) {
         if (Z_TYPE(value) != IS_STRING) {
-            zval_ptr_dtor(&value); query_throw_config("decimal cell requires exact text"); RETURN_THROWS();
+            zval_ptr_dtor(&value);
+            zend_string *message = zend_string_init(ZEND_STRL("decimal cell is not a decimal of its precision and scale"), 0);
+            query_throw_orm("CODEC_DECODE", message);
+            zend_string_release(message);
+            RETURN_THROWS();
         }
         zval *precision = zend_hash_str_find(Z_ARRVAL_P(column), "precision", sizeof("precision") - 1);
         zval *scale = zend_hash_str_find(Z_ARRVAL_P(column), "scale", sizeof("scale") - 1);
@@ -357,7 +361,7 @@ ZEND_METHOD(Polyspec_Orm_Model, columnValue)
         RETURN_STR(normalized);
     }
     if (zend_string_equals_literal(Z_STR_P(type), "date") || zend_string_equals_literal(Z_STR_P(type), "datetime")) {
-        if (!model_time_value_in_zone(&value, zone, return_value)) {
+        if (!model_time_value_in_zone(&value, zone, Z_STRVAL_P(type), return_value)) {
             zval_ptr_dtor(&value);
             RETURN_THROWS();
         }
@@ -1109,14 +1113,16 @@ ZEND_METHOD(Polyspec_Orm_Model, query)
 
 ZEND_METHOD(Polyspec_Orm_Model, timeValue)
 {
-    static const char *const scalar_types[] = {NULL, NULL};
-    if (!model_reject_null_scalar_args(execute_data, scalar_types, 2)) RETURN_THROWS();
+    static const char *const scalar_types[] = {NULL, NULL, "string"};
+    if (!model_reject_null_scalar_args(execute_data, scalar_types, 3)) RETURN_THROWS();
     zval *input, *zone;
-    ZEND_PARSE_PARAMETERS_START(2, 2)
+    zend_string *type;
+    ZEND_PARSE_PARAMETERS_START(3, 3)
         Z_PARAM_ZVAL(input)
         Z_PARAM_OBJECT(zone)
+        Z_PARAM_STR(type)
     ZEND_PARSE_PARAMETERS_END();
-    if (!model_time_value_in_zone(input, zone, return_value)) RETURN_THROWS();
+    if (!model_time_value_in_zone(input, zone, ZSTR_VAL(type), return_value)) RETURN_THROWS();
 }
 
 ZEND_METHOD(Polyspec_Orm_Model, subject)

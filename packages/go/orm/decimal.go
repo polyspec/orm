@@ -1,23 +1,23 @@
 package orm
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/polyspec/orm/packages/go/engine/ir"
 )
 
-// NormalizeDecimal validates a decimal field value and pads it to the declared scale.
+// NormalizeDecimal validates a decimal field value and pads it to the declared scale; a value outside it is
+// CODEC_ENCODE "decimal: <reason>", which names no value (COD-2, INT-163).
 func NormalizeDecimal(input string, precision, scale int) (string, error) {
 	fail := func(reason string) (string, error) {
-		return "", &ir.Error{Code: CodeCodecEncode, Msg: fmt.Sprintf("decimal %q: %s", input, reason)}
+		return "", &ir.Error{Code: CodeCodecEncode, Msg: "decimal: " + reason}
 	}
 	if precision < 1 || precision > 18 || scale < 0 || scale > precision {
 		return fail("invalid precision or scale")
 	}
 	if input == "" {
-		return fail("empty value")
+		return fail("invalid text")
 	}
 	negative := false
 	if input[0] == '-' || input[0] == '+' {
@@ -75,7 +75,7 @@ func DecimalScaledInt(input string, precision, scale int) (int64, error) {
 	digits := strings.Replace(canonical, ".", "", 1)
 	n, err := strconv.ParseInt(digits, 10, 64)
 	if err != nil {
-		return 0, codecErr(CodeCodecEncode, "decimal %q exceeds scaled integer range: %v", input, err)
+		return 0, &ir.Error{Code: CodeCodecEncode, Msg: "decimal: value exceeds the scaled integer range", Cause: err}
 	}
 	return n, nil
 }

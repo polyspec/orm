@@ -35,7 +35,7 @@ impl SqliteRowLockSequenceOps for FakeSequence {
 }
 
 fn lock_error() -> Error {
-    Error::Engine { code: codes::LOCK_NOT_AVAILABLE.into(), msg: "busy".into() }
+    Error::Engine { code: codes::LOCK_NOT_AVAILABLE.into(), msg: "busy".into(), source: None }
 }
 
 fn restore_error() -> Error {
@@ -70,7 +70,7 @@ async fn production_nowait_sequence_preserves_both_errors_and_attempts_restore()
 async fn failed_nowait_setup_still_restores_and_skips_lock_attempt() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let mut sequence = FakeSequence {
-        set_error: Some(Error::Engine { code: codes::CANCELED.into(), msg: "set zero failed".into() }),
+        set_error: Some(Error::Engine { code: codes::CANCELED.into(), msg: "set zero failed".into(), source: None }),
         primary_error: None,
         restore_error: Some(restore_error()),
         calls: Vec::new(),

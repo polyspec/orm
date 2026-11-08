@@ -486,7 +486,7 @@ fn parse_sqlite_version(version: &str) -> Result<(u32, u32, u32)> {
 fn check_sqlite_version(version: &str) -> Result<()> {
     let parsed = parse_sqlite_version(version)?;
     if parsed < (3, 46, 0) {
-        return Err(Error::Engine { code: codes::CAPABILITY_UNSUPPORTED.into(), msg: format!("SQLite {version} is older than 3.46") });
+        return Err(Error::Engine { code: codes::CAPABILITY_UNSUPPORTED.into(), msg: format!("SQLite {version} is older than 3.46"), source: None });
     }
     Ok(())
 }
@@ -543,7 +543,7 @@ impl SqliteRowLockSequenceOps for SqliteRowLockSequence<'_> {
                 let busy = crate::sqlite_busy(&error);
                 let mapped = Error::from(error);
                 match busy {
-                    Ok(true) if self.nowait => Err(Error::Engine { code: crate::codes::LOCK_NOT_AVAILABLE.into(), msg: mapped.to_string() }),
+                    Ok(true) if self.nowait => Err(Error::Engine { code: crate::codes::LOCK_NOT_AVAILABLE.into(), msg: mapped.to_string(), source: None }),
                     Ok(true) | Ok(false) => Err(mapped),
                     Err(error) => Err(error),
                 }
@@ -593,11 +593,11 @@ impl Db {
             return Err(Error::Config("cache sizes must be positive".into()));
         }
         if cfg.aes_version <= 0 {
-            return Err(Error::Config("aes_version must be positive".into()));
+            return Err(Error::Config("aes current version is not declared".into()));
         }
         for (version, key) in &cfg.aes_keys {
             if *version <= 0 || key.is_empty() {
-                return Err(Error::Config(format!("aes_keys[{version}] requires a positive version and nonempty key")));
+                return Err(Error::Config("aes key list holds an invalid version or an empty key".into()));
             }
         }
         if cfg.aes_keys.is_empty() {
@@ -605,11 +605,11 @@ impl Db {
                 cfg.aes_keys.insert(cfg.aes_version, cfg.aes_key.clone());
             }
         } else {
-            let current = cfg.aes_keys.get(&cfg.aes_version).ok_or_else(|| Error::Config(format!("aes_keys[{}] is missing", cfg.aes_version)))?;
+            let current = cfg.aes_keys.get(&cfg.aes_version).ok_or_else(|| Error::Config("aes current version is not declared".into()))?;
             if cfg.aes_key.is_empty() {
                 cfg.aes_key = current.clone();
             } else if &cfg.aes_key != current {
-                return Err(Error::Config(format!("aes_key differs from aes_keys[{}]", cfg.aes_version)));
+                return Err(Error::Config("aes key differs from the key list at the current version".into()));
             }
         }
         let pool_size = if pool_size == 0 { DEFAULT_POOL_SIZE } else { pool_size };
@@ -802,6 +802,7 @@ impl Db {
             return Err(Error::Engine {
                 code: codes::SCHEMA_HASH_MISMATCH.into(),
                 msg: format!("manifest {} is not registered on this connection: connect through its generated models or install it", req.schema.hash()),
+                source: None,
             });
         }
         let Some(dialect) = self.inner.dialect else { return Err(Error::internal("the connection has no dialect")) };
@@ -898,10 +899,12 @@ impl Db {
                         let precision = u8::try_from(b.precision).map_err(|error| Error::Engine {
                             code: codes::SCHEMA_INVALID.into(),
                             msg: format!("invalid decimal precision {}: {error}", b.precision),
+                            source: None,
                         })?;
                         let scale = u8::try_from(b.scale).map_err(|error| Error::Engine {
                             code: codes::SCHEMA_INVALID.into(),
                             msg: format!("invalid decimal scale {}: {error}", b.scale),
+                            source: None,
                         })?;
                         v = match v {
                             Param::Null => Param::Null,
@@ -911,6 +914,7 @@ impl Db {
                                 return Err(Error::Engine {
                                     code: codes::CODEC_ENCODE.into(),
                                     msg: format!("decimal bind requires exact text, received {other:?}"),
+                                    source: None,
                                 })
                             }
                         };
@@ -1144,13 +1148,18 @@ impl Db {
             self.ensure_open()?;
         }
         if step.assemble.is_some() {
-            return Err(Error::Engine { code: codes::IR_INVALID.into(), msg: "execute runs a statement without rows; the statement is a read".into() });
+            return Err(Error::Engine {
+                code: codes::IR_INVALID.into(),
+                msg: "execute runs a statement without rows; the statement is a read".into(),
+                source: None,
+            });
         }
         for (i, b) in step.bind_slots.iter().enumerate() {
             if b.from == "param" && b.param >= params.len() {
                 return Err(Error::Engine {
                     code: codes::IR_INVALID.into(),
                     msg: format!("bind slot {i} reads parameter {}, but execute has {} parameters", b.param, params.len()),
+                    source: None,
                 });
             }
         }
@@ -1311,12 +1320,12 @@ pub(crate) fn bound_time_value(v: Param, col_type: &str, precision: i64, zone: &
             if sqlite_date_text(&text) {
                 Ok(Param::Str(text))
             } else {
-                Err(invalid_time_text(&text, col_type))
+                Err(invalid_time_text(col_type))
             }
         }
         Param::DateTime(t) => datetime_digits(&t.format(SQLITE_DATETIME).to_string(), precision).map(Param::Str),
         Param::Str(text) => {
-            let full = sqlite_datetime_text(&text, zone)?.ok_or_else(|| invalid_time_text(&text, col_type))?;
+            let full = sqlite_datetime_text(&text, zone)?.ok_or_else(|| invalid_time_text(col_type))?;
             datetime_digits(&full, precision).map(Param::Str)
         }
         other => Ok(other),
@@ -1383,7 +1392,7 @@ fn sqlite_datetime_text(text: &str, zone: &Zone) -> Result<Option<String>> {
 pub(crate) fn message_time_text(text: &str, col_type: &str, zone: &Zone) -> Result<String> {
     match col_type {
         "date" if sqlite_date_text(text) => Ok(text.to_owned()),
-        "date" => Err(invalid_time_text(text, col_type)),
+        "date" => Err(invalid_time_text(col_type)),
         "time" => {
             let b = text.as_bytes();
             let clock = b.len() >= 8
@@ -1402,10 +1411,10 @@ pub(crate) fn message_time_text(text: &str, col_type: &str, zone: &Zone) -> Resu
             };
             match (clock, fraction) {
                 (true, Some(f)) => Ok(format!("{}.{f:0<6}", &text[..8])),
-                _ => Err(Error::Engine { code: codes::CODEC_ENCODE.into(), msg: format!("time value {text:?} is not HH:MM:SS[.ffffff]") }),
+                _ => Err(invalid_time_text("time")),
             }
         }
-        _ => sqlite_datetime_text(text, zone)?.ok_or_else(|| invalid_time_text(text, col_type)),
+        _ => sqlite_datetime_text(text, zone)?.ok_or_else(|| invalid_time_text(col_type)),
     }
 }
 
@@ -1416,7 +1425,7 @@ fn datetime_digits(text: &str, precision: i64) -> Result<String> {
         return Ok(text.to_owned());
     };
     if fraction[p..].bytes().any(|b| b != b'0') {
-        return Err(Error::Engine { code: codes::CODEC_ENCODE.into(), msg: format!("datetime value {text:?} has more than {p} fraction digits") });
+        return Err(invalid_time_text("datetime"));
     }
     Ok(if p == 0 { whole.to_owned() } else { format!("{whole}.{}", &fraction[..p]) })
 }
@@ -1442,9 +1451,10 @@ pub(crate) fn precision_count(precision: i64) -> Result<usize> {
     let count = usize::try_from(precision).map_err(|error| Error::Engine {
         code: codes::SCHEMA_INVALID.into(),
         msg: format!("precision {precision} is not a count of fractional digits: {error}"),
+        source: None,
     })?;
     if count > 6 {
-        return Err(Error::Engine { code: codes::SCHEMA_INVALID.into(), msg: format!("precision {precision} is outside 0..6") });
+        return Err(Error::Engine { code: codes::SCHEMA_INVALID.into(), msg: format!("precision {precision} is outside 0..6"), source: None });
     }
     Ok(count)
 }
@@ -1456,18 +1466,18 @@ pub(crate) fn time_value(v: Param, precision: i64) -> Result<Param> {
     let text = match v {
         Param::Null => return Ok(Param::Null),
         Param::Str(text) => text,
-        other => return Err(Error::Engine { code: codes::CODEC_ENCODE.into(), msg: format!("time value must be HH:MM:SS text, received {other:?}") }),
+        _ => return Err(invalid_time_text("time")),
     };
     let full = message_time_text(&text, "time", &Zone)?;
     let (whole, fraction) = full.split_at(8);
     let p = p.min(6);
     if fraction[1 + p..].bytes().any(|b| b != b'0') {
-        return Err(Error::Engine { code: codes::CODEC_ENCODE.into(), msg: format!("time value {text:?} has more than {p} fraction digits") });
+        return Err(invalid_time_text("time"));
     }
     Ok(Param::Str(if p == 0 { whole.to_owned() } else { format!("{whole}{}", &fraction[..1 + p]) }))
 }
 
-fn invalid_time_text(text: &str, col_type: &str) -> Error {
-    let form = if col_type == "date" { "YYYY-MM-DD" } else { "YYYY-MM-DD HH:MM:SS[.ffffff][Z|±HH:MM]" };
-    Error::Engine { code: codes::CODEC_ENCODE.into(), msg: format!("{col_type} value {text:?} is not {form}") }
+/// The CODEC_ENCODE of a value that its date, time or datetime type does not hold, which names no value (INT-163).
+fn invalid_time_text(col_type: &str) -> Error {
+    Error::Engine { code: codes::CODEC_ENCODE.into(), msg: format!("{col_type} value is not a {col_type}"), source: None }
 }

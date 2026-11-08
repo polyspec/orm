@@ -22,12 +22,6 @@ static bool aes_fail(const char *code, zend_string *message)
     return false;
 }
 
-static bool aes_failf(const char *code, const char *format, zend_long value)
-{
-    zend_string *message = strpprintf(0, format, value);
-    return aes_fail(code, message);
-}
-
 static int aes_key_bucket_compare(Bucket *left, Bucket *right)
 {
     if (Z_TYPE(left->val) == IS_LONG && Z_TYPE(right->val) == IS_LONG) {
@@ -85,17 +79,12 @@ ZEND_METHOD(Polyspec_Orm_AesKeyring, __construct)
     ZEND_HASH_FOREACH_KEY_VAL(keys, index, key, secret) {
         zend_long version = key == NULL ? (zend_long)index : 0;
         if (key != NULL || version < 1 || Z_TYPE_P(secret) != IS_STRING || Z_STRLEN_P(secret) == 0) {
-            if (key != NULL) {
-                zend_string *message = strpprintf(0, "AES version %s has no key", ZSTR_VAL(key));
-                aes_fail("CONFIG", message);
-            } else {
-                aes_failf("CONFIG", "AES version %ld has no key", version);
-            }
+            aes_fail("CONFIG", zend_string_init(ZEND_STRL("aes key list holds an invalid version or an empty key"), 0));
             RETURN_THROWS();
         }
     } ZEND_HASH_FOREACH_END();
     if (current_version < 1 || !zend_hash_index_exists(keys, (zend_ulong)current_version)) {
-        aes_failf("CONFIG", "AES version %ld is not declared", current_version);
+        aes_fail("CONFIG", zend_string_init(ZEND_STRL("aes current version is not declared"), 0));
         RETURN_THROWS();
     }
     zval key_values, current_value;
@@ -132,7 +121,7 @@ ZEND_METHOD(Polyspec_Orm_AesKeyring, key)
     zval *keys = zend_read_property(aes_keyring_ce, Z_OBJ_P(ZEND_THIS), "keys", sizeof("keys") - 1, 1, &rv);
     zval *key = zend_hash_index_find(Z_ARRVAL_P(keys), (zend_ulong)version);
     if (key == NULL) {
-        aes_failf("CONFIG", "AES version %ld is not declared", version);
+        aes_fail("CONFIG", zend_string_init(ZEND_STRL("aes version is not declared"), 0));
         RETURN_THROWS();
     }
     RETURN_STR_COPY(Z_STR_P(key));
@@ -208,12 +197,12 @@ ZEND_METHOD(Polyspec_Orm_AesKeyring, rotateRow)
             zval *new_secret = zend_hash_index_find(Z_ARRVAL_P(keys), (zend_ulong)target_version);
             if (old_secret == NULL) {
                 discard_result(return_value);
-                aes_failf("CONFIG", "AES version %ld is not declared", old_version);
+                aes_fail("CONFIG", zend_string_init(ZEND_STRL("aes version is not declared"), 0));
                 RETURN_THROWS();
             }
             if (new_secret == NULL) {
                 discard_result(return_value);
-                aes_failf("CONFIG", "AES version %ld is not declared", target_version);
+                aes_fail("CONFIG", zend_string_init(ZEND_STRL("aes version is not declared"), 0));
                 RETURN_THROWS();
             }
             old_key = zend_string_copy(Z_STR_P(old_secret));

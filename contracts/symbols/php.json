@@ -6149,7 +6149,7 @@
   },
   "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::rowVersion": {
     "exported": false,
-    "signature": "private static function rowVersion(array $vals, int $index): int"
+    "signature": "private static function rowVersion(array $vals, int $index, string $name): int"
   },
   "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::serializedI64": {
     "exported": false,
@@ -6529,7 +6529,7 @@
   },
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::invalidTimeText": {
     "exported": false,
-    "signature": "private static function invalidTimeText(string $v, string $colType): Polyspec\\Orm\\OrmException"
+    "signature": "private static function invalidTimeText(string $colType): Polyspec\\Orm\\OrmException"
   },
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::joined": {
     "exported": false,
@@ -11075,6 +11075,10 @@
     "exported": true,
     "signature": "public static function rows(iterable $values): array"
   },
+  "packages/php/src/Internal/CodecRule.php::Polyspec\\Orm\\Internal\\CodecRule": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Internal\\CodecRule extends InvalidArgumentException implements Stringable,Throwable uses "
+  },
   "packages/php/src/Internal/FetchesAllRows.php::Polyspec\\Orm\\Internal\\FetchesAllRows": {
     "exported": true,
     "signature": " trait Polyspec\\Orm\\Internal\\FetchesAllRows extends  implements  uses "
@@ -12589,7 +12593,7 @@
   },
   "packages/php/src/Model.php::Polyspec\\Orm\\Model::timeValue": {
     "exported": false,
-    "signature": "private static function timeValue(mixed $v, DateTimeZone $zone): DateTimeImmutable"
+    "signature": "private static function timeValue(mixed $v, DateTimeZone $zone, string $type): DateTimeImmutable"
   },
   "packages/php/src/Model.php::Polyspec\\Orm\\Model::toArray": {
     "exported": true,
@@ -12907,13 +12911,17 @@
     "exported": true,
     "signature": "public readonly string"
   },
+  "packages/php/src/PendingTime.php::Polyspec\\Orm\\PendingTime::$type": {
+    "exported": true,
+    "signature": "public readonly string"
+  },
   "packages/php/src/PendingTime.php::Polyspec\\Orm\\PendingTime::$zone": {
     "exported": true,
     "signature": "public readonly DateTimeZone"
   },
   "packages/php/src/PendingTime.php::Polyspec\\Orm\\PendingTime::__construct": {
     "exported": true,
-    "signature": "public function __construct(string $text, DateTimeZone $zone): "
+    "signature": "public function __construct(string $text, DateTimeZone $zone, string $type): "
   },
   "packages/php/src/PlanAssemble.php::Polyspec\\Orm\\PlanAssemble": {
     "exported": true,

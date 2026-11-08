@@ -262,7 +262,7 @@ func catalogCellKey(cell any) (string, error) {
 	case time.Time:
 		return "t" + v.UTC().Format(time.RFC3339Nano), nil
 	default:
-		return "", catalogErr("ROW_SNAPSHOT_INVALID", "unsupported cell type %T", cell)
+		return "", catalogErr("ROW_SNAPSHOT_INVALID", "unsupported cell type")
 	}
 }
 

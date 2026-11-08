@@ -29,6 +29,12 @@ func codecErr(code, format string, a ...any) error {
 	return &ir.Error{Code: code, Msg: fmt.Sprintf(format, a...)}
 }
 
+// codecCause is the error of code with the fixed text msg of a rule and the library error that failed as its cause, whose
+// text can quote the cell, so the text names no value (INT-163).
+func codecCause(code, msg string, cause error) error {
+	return &ir.Error{Code: code, Msg: msg, Cause: cause}
+}
+
 // checkCodecStyles refuses a style that no stage names and a value stage outside the first position, before any value or
 // cell is read (docs/spec/codec.md COD-35).
 func checkCodecStyles(styles []string) error {
@@ -61,7 +67,7 @@ func Decode(styles []string, raw any) (StyledValue, error) {
 	case []byte:
 		b = x
 	default:
-		return StyledValue{}, codecErr(CodeCodecDecode, "cell is %T, not bytes", raw)
+		return StyledValue{}, codecErr(CodeCodecDecode, "cell is not bytes")
 	}
 	// An empty cell is CODEC_DECODE, except under a last base64 stage and under no stage, whose encoders write an empty cell
 	// for empty text (docs/spec/codec.md COD-14).
@@ -79,25 +85,25 @@ func Decode(styles []string, raw any) (StyledValue, error) {
 		case "gz":
 			r, e := zlib.NewReader(bytes.NewReader(cur))
 			if e != nil {
-				return StyledValue{}, codecErr(CodeCodecDecode, "gz: %v", e)
+				return StyledValue{}, codecCause(CodeCodecDecode, "gz: bad zlib stream", e)
 			}
 			v, err = io.ReadAll(r)
 			closeErr := r.Close()
 			if err != nil {
-				return StyledValue{}, codecErr(CodeCodecDecode, "gz: %v", err)
+				return StyledValue{}, codecCause(CodeCodecDecode, "gz: bad zlib stream", err)
 			}
 			if closeErr != nil {
-				return StyledValue{}, codecErr(CodeCodecDecode, "gz: %v", closeErr)
+				return StyledValue{}, codecCause(CodeCodecDecode, "gz: bad zlib stream", closeErr)
 			}
 		case "base64":
 			// A stored cell is decoded only in the form the encoder writes: whitespace, line breaks, missing padding, or non-zero
 			// padding bits is CODEC_DECODE (docs/spec/codec.md). Go's decoder skips \r and \n, so they are rejected separately.
 			if bytes.ContainsAny(cur, "\r\n") {
-				return StyledValue{}, codecErr(CodeCodecDecode, "base64: line break in stored text")
+				return StyledValue{}, codecErr(CodeCodecDecode, "base64: bad input")
 			}
 			v, err = base64.StdEncoding.Strict().DecodeString(string(cur))
 			if err != nil {
-				return StyledValue{}, codecErr(CodeCodecDecode, "base64: %v", err)
+				return StyledValue{}, codecCause(CodeCodecDecode, "base64: bad input", err)
 			}
 		case "serialize":
 			v, err = phpUnserialize(cur)
@@ -112,7 +118,7 @@ func Decode(styles []string, raw any) (StyledValue, error) {
 		case "ordered_json":
 			v, err = orderedjson.ParseBytes(cur)
 			if err != nil {
-				return StyledValue{}, codecErr(CodeCodecDecode, "json: %v", err)
+				return StyledValue{}, codecCause(CodeCodecDecode, "json: the cell is not JSON", err)
 			}
 		default:
 			return StyledValue{}, codecErr(CodeCodecUnsupported, "style %s", styles[i])
@@ -165,10 +171,10 @@ func Encode(styles []string, v StyledValue) (any, error) {
 				cur, err = goyaml.Marshal(&doc)
 			}
 			if err != nil {
-				return nil, codecErr(CodeCodecEncode, "yaml: %v", err)
+				return nil, codecCause(CodeCodecEncode, "yaml: the value has no YAML text", err)
 			}
 			if _, err := yamlDecode(cur); err != nil {
-				return nil, codecErr(CodeCodecEncode, "yaml: encoded value is outside the common value model: %v", err)
+				return nil, codecCause(CodeCodecEncode, "yaml: the written text does not read back as the value", err)
 			}
 		case "ordered_json":
 			ordered, err := orderedJSONValue(value)
@@ -176,38 +182,38 @@ func Encode(styles []string, v StyledValue) (any, error) {
 				// The ordered-json library returns its own errors, such as a text that is not UTF-8 (COD-14).
 				var coded *ir.Error
 				if !errors.As(err, &coded) {
-					return nil, codecErr(CodeCodecEncode, "json: %v", err)
+					return nil, codecCause(CodeCodecEncode, "json: the value has no JSON text", err)
 				}
 				return nil, err
 			}
 			raw, err := orderedJSONCompact(ordered)
 			if err != nil {
-				return nil, codecErr(CodeCodecEncode, "json: %v", err)
+				return nil, codecCause(CodeCodecEncode, "json: the value has no JSON text", err)
 			}
 			cur = []byte(raw)
 		case "base64":
 			if i == 0 {
-				if cur, err = firstStageText(st+" as the first stage", value); err != nil {
+				if cur, err = firstStageText("a first "+st+" stage", value); err != nil {
 					return nil, err
 				}
 			}
 			cur = []byte(base64.StdEncoding.EncodeToString(cur))
 		case "gz":
 			if i == 0 {
-				if cur, err = firstStageText(st+" as the first stage", value); err != nil {
+				if cur, err = firstStageText("a first "+st+" stage", value); err != nil {
 					return nil, err
 				}
 			}
 			var buf bytes.Buffer
 			w, err := zlib.NewWriterLevel(&buf, zlib.BestCompression)
 			if err != nil {
-				return nil, codecErr(CodeCodecEncode, "gz: %v", err)
+				return nil, codecCause(CodeCodecEncode, "gz: the compression failed", err)
 			}
 			if _, err := w.Write(cur); err != nil {
-				return nil, codecErr(CodeCodecEncode, "gz: %v", err)
+				return nil, codecCause(CodeCodecEncode, "gz: the compression failed", err)
 			}
 			if err := w.Close(); err != nil {
-				return nil, codecErr(CodeCodecEncode, "gz: %v", err)
+				return nil, codecCause(CodeCodecEncode, "gz: the compression failed", err)
 			}
 			if i == len(styles)-1 {
 				return buf.Bytes(), nil
@@ -225,7 +231,7 @@ func Encode(styles []string, v StyledValue) (any, error) {
 func firstStageText(stage string, value any) ([]byte, error) {
 	s, ok := value.(string)
 	if !ok {
-		return nil, codecErr(CodeCodecEncode, "%s encodes a string value, got %T", stage, value)
+		return nil, codecErr(CodeCodecEncode, "%s takes a string value", stage)
 	}
 	return []byte(s), nil
 }
@@ -297,7 +303,7 @@ func yamlDecode(b []byte) (any, error) {
 	}
 	file, err := yamlparser.ParseBytes(b, 0)
 	if err != nil {
-		return nil, codecErr(CodeCodecDecode, "yaml: %v", err)
+		return nil, codecCause(CodeCodecDecode, "yaml: the stream does not parse", err)
 	}
 	switch len(file.Docs) {
 	case 0:
@@ -324,9 +330,9 @@ func yamlStream(b []byte) ([]byte, error) {
 		return nil, codecErr(CodeCodecDecode, "yaml: the stream is not UTF-8")
 	}
 	b = bytes.TrimPrefix(b, []byte("\uFEFF"))
-	for at, r := range string(b) {
+	for _, r := range string(b) {
 		if !yamlPrintable(r) {
-			return nil, codecErr(CodeCodecDecode, "yaml: character U+%04X at byte %d is not printable", r, at)
+			return nil, codecErr(CodeCodecDecode, "yaml: the stream holds a character that is not printable")
 		}
 	}
 	return b, nil
@@ -368,7 +374,7 @@ func yamlNode(node ast.Node) (any, error) {
 	case *ast.MappingValueNode:
 		return yamlMapping([]*ast.MappingValueNode{n})
 	case *ast.TagNode:
-		return nil, codecErr(CodeCodecDecode, "yaml: explicit tag %q at line %d is not supported", n.Start.Value, yamlLine(n))
+		return nil, codecErr(CodeCodecDecode, "yaml: explicit tags are not supported at line %d", yamlLine(n))
 	case *ast.AliasNode:
 		return nil, codecErr(CodeCodecDecode, "yaml: aliases are not supported at line %d", yamlLine(n))
 	case *ast.AnchorNode:
@@ -382,7 +388,7 @@ func yamlNode(node ast.Node) (any, error) {
 		}
 		return text, nil
 	}
-	return nil, codecErr(CodeCodecDecode, "yaml: node %s at line %d is not supported", node.Type(), yamlLine(node))
+	return nil, codecErr(CodeCodecDecode, "yaml: the node at line %d is not supported", yamlLine(node))
 }
 
 func yamlMapping(values []*ast.MappingValueNode) (map[string]any, error) {
@@ -393,7 +399,7 @@ func yamlMapping(values []*ast.MappingValueNode) (map[string]any, error) {
 			return nil, err
 		}
 		if _, exists := out[key]; exists {
-			return nil, codecErr(CodeCodecDecode, "yaml: duplicate map key %q at line %d", key, yamlLine(item.Key))
+			return nil, codecErr(CodeCodecDecode, "yaml: duplicate map key at line %d", yamlLine(item.Key))
 		}
 		value, err := yamlNode(item.Value)
 		if err != nil {
@@ -455,13 +461,13 @@ func yamlCoreScalar(text string, line int) (any, error) {
 			value, err = strconv.ParseInt(text, 10, 64)
 		}
 		if err != nil {
-			return nil, codecErr(CodeCodecDecode, "yaml: integer %s at line %d is outside the int64 range", text, line)
+			return nil, codecErr(CodeCodecDecode, "yaml: integer at line %d is outside the i64 range", line)
 		}
 		return value, nil
 	case yamlCoreFloat.MatchString(text):
 		value, err := strconv.ParseFloat(text, 64)
 		if err != nil || math.IsNaN(value) || math.IsInf(value, 0) {
-			return nil, codecErr(CodeCodecDecode, "yaml: non-finite or invalid float %s at line %d", text, line)
+			return nil, codecErr(CodeCodecDecode, "yaml: non-finite or invalid float at line %d", line)
 		}
 		return value, nil
 	}
@@ -524,7 +530,7 @@ func commonValue(v any) error {
 			}
 		}
 	default:
-		return codecErr(CodeCodecEncode, "yaml: a %T is not a value", v)
+		return codecErr(CodeCodecEncode, "yaml: the value is not a codec value")
 	}
 	return nil
 }
@@ -577,7 +583,7 @@ func phpSerialize(sb *strings.Builder, v any) error {
 		}
 		sb.WriteString("}")
 	default:
-		return codecErr(CodeCodecEncode, "cannot serialize %T", v)
+		return codecErr(CodeCodecEncode, "serialize: the value is not a codec value")
 	}
 	return nil
 }
@@ -709,18 +715,18 @@ func (p *phpParser) value() (any, error) {
 			case "1":
 				return true, nil
 			}
-			return nil, p.fail("bad bool " + s)
+			return nil, p.fail("bad bool")
 		case 'i':
 			n, err := strconv.ParseInt(s, 10, 64)
 			if err != nil {
-				return nil, p.fail("bad int " + s)
+				return nil, p.fail("bad int")
 			}
 			return n, nil
 		default:
 			// A float of the common value model is finite (COD-16), so INF, -INF and NAN are not values.
 			f, err := strconv.ParseFloat(s, 64)
 			if err != nil || math.IsNaN(f) || math.IsInf(f, 0) {
-				return nil, p.fail("bad float " + s)
+				return nil, p.fail("bad float")
 			}
 			return f, nil
 		}
@@ -789,7 +795,7 @@ func (p *phpParser) value() (any, error) {
 		}
 		return m, nil
 	case 'O', 'C', 'r', 'R':
-		return nil, codecErr(CodeCodecUnsupported, "serialize: objects and references are not supported (%c)", t)
+		return nil, codecErr(CodeCodecUnsupported, "serialize: objects and references are not supported")
 	}
-	return nil, p.fail(fmt.Sprintf("unknown type %q", t))
+	return nil, p.fail("unknown type")
 }

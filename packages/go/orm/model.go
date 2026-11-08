@@ -882,7 +882,7 @@ func (r *request) assign(ent *runtimemodel.Entity, s setSpec) (ir.Assign, error)
 		// f64 slot check of PRT-67 runs here first.
 		if f, ok := s.value.(float64); ok {
 			if col := ent.Field(s.column); col != nil && col.Type == "f64" && len(col.Codec) == 0 {
-				if err := finiteF64(len(r.params), f, f); err != nil {
+				if err := finiteF64(len(r.params), f); err != nil {
 					return a, err
 				}
 			}

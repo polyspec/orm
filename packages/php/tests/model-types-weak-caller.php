@@ -23,7 +23,7 @@ function modelTypesWeakFunc(mixed $name, mixed $column): Func
 
 function modelTypesWeakPendingTime(mixed $text, DateTimeZone $zone): PendingTime
 {
-    return new PendingTime($text, $zone);
+    return new PendingTime($text, $zone, 'datetime');
 }
 
 function modelTypesWeakPage(mixed $totalCount, mixed $totalPages, mixed $page, mixed $perPage): Page

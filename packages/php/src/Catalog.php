@@ -1031,7 +1031,7 @@ final class Catalog
                     // PostgreSQL writes NaN and the infinities of numeric as text.
                     $text = self::gridText($value);
                     if ($text === 'NaN' || str_contains($text, 'Infinity')) {
-                        throw self::refused("PostgreSQL numeric $text is not finite");
+                        throw self::refused('PostgreSQL numeric is not finite');
                     }
                     return new CatalogGridCell('decimal', $text);
                 case 'TIMESTAMPTZ':
@@ -1070,7 +1070,7 @@ final class Catalog
             }
             return new CatalogGridCell('text', $value);
         }
-        throw self::refused('native type ' . get_debug_type($value) . " of column type \"$native\"");
+        throw self::refused("the driver value has no cell of column type \"$native\"");
     }
 
     /** The bytes of a binary value. PDO reads a PostgreSQL bytea as a stream, which is read to its end here. */
@@ -1080,7 +1080,7 @@ final class Catalog
             return $value;
         }
         if (!is_resource($value)) {
-            throw self::refused('expected binary data, got ' . get_debug_type($value));
+            throw self::refused('expected binary data');
         }
         $data = stream_get_contents($value);
         fclose($value);
@@ -1098,7 +1098,7 @@ final class Catalog
     private static function gridText(mixed $value): string
     {
         if (!is_string($value)) {
-            throw self::refused('expected text, got ' . get_debug_type($value));
+            throw self::refused('expected text');
         }
         return $value;
     }
@@ -1126,7 +1126,7 @@ final class Catalog
         if (is_string($value) && is_numeric($value)) {
             return (float) $value;
         }
-        throw self::refused('expected a number, got ' . get_debug_type($value));
+        throw self::refused('expected a number');
     }
 
     /**
@@ -1142,11 +1142,11 @@ final class Catalog
             ) : new CatalogGridCell('integer', $value);
         }
         if (!is_string($value)) {
-            throw self::refused('expected an integer, got ' . get_debug_type($value));
+            throw self::refused('expected an integer');
         }
         if ($unsigned) {
             if (preg_match('/^\d+$/', $value) !== 1) {
-                throw self::refused("unsigned integer text \"$value\"");
+                throw self::refused('unsigned integer text is not digits');
             }
             return new CatalogGridCell('unsigned', $value);
         }
@@ -1156,7 +1156,7 @@ final class Catalog
             if (preg_match('/^\d+$/', $value) === 1) {
                 return new CatalogGridCell('unsigned', $value);
             }
-            throw self::refused("integer text \"$value\" is outside the signed 64-bit range");
+            throw self::refused('integer text is outside the signed 64-bit range');
         }
         return new CatalogGridCell('integer', $n);
     }
@@ -1170,7 +1170,7 @@ final class Catalog
         ) {
             throw new OrmException(
                 Code::GRID_TEMPORAL_VALUE,
-                "unsupported grid value: date \"$text\" is outside 0001-01-01 to 9999-12-31 or is not a date"
+                'unsupported grid value: date is outside 0001-01-01 to 9999-12-31 or is not a date'
             );
         }
         return $text;
@@ -1189,7 +1189,7 @@ final class Catalog
         if (preg_match('/^(\d{2,3}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?$/', $text, $m) !== 1) {
             throw new OrmException(
                 Code::GRID_TEMPORAL_VALUE,
-                "unsupported grid value: time \"$text\" is not a time of day"
+                'unsupported grid value: time is not a time of day'
             );
         }
         if ((int) $m[1] > 23 || (int) $m[2] > 59 || (int) $m[3] > 59) {
@@ -1210,7 +1210,7 @@ final class Catalog
             // PostgreSQL infinity has no date and time: the grid refuses it as a temporal value.
             throw new OrmException(
                 Code::GRID_TEMPORAL_VALUE,
-                "unsupported grid value: datetime \"$text\" has no date and time"
+                'unsupported grid value: datetime has no date and time'
             );
         }
         return self::dateText(substr($text, 0, $space)) . ' ' . self::timeText(substr($text, $space + 1));
@@ -1935,7 +1935,7 @@ final class Catalog
         if ($row[6] !== null && !is_string($row[6])) {
             throw new OrmException(
                 Code::TABLE_METADATA_INVALID,
-                "default expression of column \"$name\" is " . get_debug_type($row[6])
+                "default expression of column \"$name\" is not text"
             );
         }
         return new CatalogColumn(
@@ -1952,7 +1952,7 @@ final class Catalog
     private static function text(mixed $value): string
     {
         if (!is_string($value)) {
-            throw new OrmException(Code::TABLE_METADATA_INVALID, 'expected text, got ' . get_debug_type($value));
+            throw new OrmException(Code::TABLE_METADATA_INVALID, 'expected text');
         }
         return $value;
     }
@@ -1966,7 +1966,7 @@ final class Catalog
         if ($value === 0 || $value === 1 || $value === '0' || $value === '1') {
             return $value === 1 || $value === '1';
         }
-        throw new OrmException(Code::TABLE_METADATA_INVALID, 'expected a boolean, got ' . var_export($value, true));
+        throw new OrmException(Code::TABLE_METADATA_INVALID, 'expected a boolean');
     }
 
     /** An integer of a metadata row: a native integer, or text that holds one. */
@@ -1974,7 +1974,7 @@ final class Catalog
     {
         $n = is_string($value) ? filter_var($value, FILTER_VALIDATE_INT) : $value;
         if (!is_int($n)) {
-            throw new OrmException(Code::TABLE_METADATA_INVALID, 'expected an integer, got ' . get_debug_type($value));
+            throw new OrmException(Code::TABLE_METADATA_INVALID, 'expected an integer');
         }
         return $n;
     }
@@ -2252,7 +2252,7 @@ final class Catalog
             if (strlen($digits) > $precision && trim(substr($digits, $precision), '0') !== '') {
                 throw new OrmException(
                     Code::CODEC_ENCODE,
-                    "temporal value \"$value\" has more fraction digits than its precision $precision"
+                    "temporal value has more fraction digits than its precision $precision"
                 );
             }
         }
@@ -2281,7 +2281,7 @@ final class Catalog
         if (trim(substr($digits, $precision), '0') !== '') {
             throw new OrmException(
                 Code::GRID_TEMPORAL_PRECISION,
-                "temporal value \"$value\" has more fraction digits than its precision $precision"
+                "temporal value has more fraction digits than its precision $precision"
             );
         }
         return $precision === 0 ? substr($text, 0, $dot) : substr($text, 0, $dot + 1 + $precision);
@@ -2308,7 +2308,7 @@ final class Catalog
             return self::bytes($value);
         }
         if (!is_string($value)) {
-            throw new OrmException(Code::CATALOG_VALUE, 'unsupported driver value ' . get_debug_type($value));
+            throw new OrmException(Code::CATALOG_VALUE, 'unsupported driver value');
         }
         // A value that is not valid UTF-8 is its bytes: a database tool shows the cell (INT-153).
         if (!self::isUtf8($value)) {
@@ -2371,7 +2371,7 @@ final class Catalog
             }
             return $value;
         }
-        throw new OrmException(Code::CATALOG_PARAM, 'parameter has unsupported type ' . get_debug_type($value));
+        throw new OrmException(Code::CATALOG_PARAM, 'parameter has an unsupported type');
     }
 
     /**

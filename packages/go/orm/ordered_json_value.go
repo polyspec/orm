@@ -27,23 +27,14 @@ func orderedJSONReflect(reflectValue reflect.Value) (*orderedjson.Value, error) 
 	if !reflectValue.IsValid() {
 		return orderedjson.Null(), nil
 	}
-	if reflectValue.Type() == jsonTextValueType {
+	// A JSON text value and a raw message are their bytes, which are one JSON text.
+	if reflectValue.Type() == jsonTextValueType || reflectValue.Type() == jsonRawMessageType {
 		if reflectValue.IsNil() {
 			return orderedjson.Null(), nil
 		}
 		parsed, err := orderedjson.ParseBytes(reflectValue.Bytes())
 		if err != nil {
-			return nil, codecErr(CodeCodecEncode, "json: raw value: %v", err)
-		}
-		return parsed, nil
-	}
-	if reflectValue.Type() == jsonRawMessageType {
-		if reflectValue.IsNil() {
-			return orderedjson.Null(), nil
-		}
-		parsed, err := orderedjson.ParseBytes(reflectValue.Bytes())
-		if err != nil {
-			return nil, codecErr(CodeCodecEncode, "json: raw message: %v", err)
+			return nil, codecCause(CodeCodecEncode, "json: the value has no JSON text", err)
 		}
 		return parsed, nil
 	}
@@ -67,11 +58,11 @@ func orderedJSONReflect(reflectValue reflect.Value) (*orderedjson.Value, error) 
 		if marshaler, ok := reflectValue.Interface().(json.Marshaler); ok {
 			body, err := marshaler.MarshalJSON()
 			if err != nil {
-				return nil, codecErr(CodeCodecEncode, "json: custom marshaler: %v", err)
+				return nil, codecCause(CodeCodecEncode, "json: the value has no JSON text", err)
 			}
 			parsed, err := orderedjson.ParseBytes(body)
 			if err != nil {
-				return nil, codecErr(CodeCodecEncode, "json: custom marshaler returned invalid JSON: %v", err)
+				return nil, codecCause(CodeCodecEncode, "json: the value has no JSON text", err)
 			}
 			return parsed, nil
 		}

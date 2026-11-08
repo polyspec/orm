@@ -442,7 +442,7 @@ ZEND_METHOD(Polyspec_Orm_Model, assembleRow)
                 zval_ptr_dtor(&column);
                 if (ok && Z_TYPE(cell) == IS_OBJECT && Z_OBJCE(cell) == polyspec_pending_time_ce) {
                     zval *text = zend_read_property(polyspec_pending_time_ce, Z_OBJ(cell), ZEND_STRL("text"), 1, NULL);
-                    ok = text != NULL && model_time_value_in_zone(text, zone, &converted);
+                    ok = text != NULL && model_time_value_in_zone(text, zone, Z_STRVAL_P(kind), &converted);
                     zval_ptr_dtor(&cell);
                 } else if (ok) {
                     ZVAL_COPY_VALUE(&converted, &cell);
@@ -795,7 +795,7 @@ ZEND_METHOD(Polyspec_Orm_Model, groupValue)
     if(use_fallback){zval type_copy,precision;array_init(&fallback);ZVAL_COPY(&type_copy,type);ZVAL_LONG(&precision,6);zend_hash_str_update(Z_ARRVAL(fallback),"type",sizeof("type")-1,&type_copy);zend_hash_str_update(Z_ARRVAL(fallback),"precision",sizeof("precision")-1,&precision);}
     bool ok=cell_value(Z_STR_P(entity),Z_STR_P(name),use_fallback?&fallback:declared,raw,sqlite,true,&zone,&cell);
     if(use_fallback)zval_ptr_dtor(&fallback);
-    if(ok&&Z_TYPE(cell)==IS_OBJECT&&Z_OBJCE(cell)==polyspec_pending_time_ce){zval *text=zend_read_property(polyspec_pending_time_ce,Z_OBJ(cell),ZEND_STRL("text"),1,NULL);ok=text!=NULL&&model_time_value_in_zone(text,&zone,return_value);zval_ptr_dtor(&cell);}
+    if(ok&&Z_TYPE(cell)==IS_OBJECT&&Z_OBJCE(cell)==polyspec_pending_time_ce){zval *text=zend_read_property(polyspec_pending_time_ce,Z_OBJ(cell),ZEND_STRL("text"),1,NULL);ok=text!=NULL&&model_time_value_in_zone(text,&zone,Z_STRVAL_P(type),return_value);zval_ptr_dtor(&cell);}
     else if(ok)ZVAL_COPY_VALUE(return_value,&cell);
     zval_ptr_dtor(&zone);
     if(!ok){zval_ptr_dtor(&meta);RETURN_THROWS();}
@@ -1157,7 +1157,7 @@ static bool cell_value(zend_string *entity, zend_string *name, zval *col, zval *
                 zval_ptr_dtor(&micro);
             }
             if (!whole) { zval_ptr_dtor(&v); return cell_refuse(entity, name, type, NULL); }
-            bool ok = model_time_value_in_zone(&v, zone, out);
+            bool ok = model_time_value_in_zone(&v, zone, type, out);
             zval_ptr_dtor(&v);
             return ok;
         }
@@ -1171,13 +1171,14 @@ static bool cell_value(zend_string *entity, zend_string *name, zval *col, zval *
         /* The text is checked now; the getter parses it in the connection's zone when it is first read (T189). */
         object_init_ex(out, polyspec_pending_time_ce);
         if (EG(exception) != NULL) { zend_string_release(text); return false; }
-        zval args[2], rv;
+        zval args[3], rv;
         ZVAL_STR(&args[0], text);
         ZVAL_COPY(&args[1], zone);
-        zend_call_method(Z_OBJ_P(out), polyspec_pending_time_ce, NULL, "__construct", sizeof("__construct") - 1, &rv, 2, &args[0],
-            &args[1]);
+        ZVAL_STRING(&args[2], type);
+        zend_call_known_instance_method(polyspec_pending_time_ce->constructor, Z_OBJ_P(out), &rv, 3, args);
         zval_ptr_dtor(&args[0]);
         zval_ptr_dtor(&args[1]);
+        zval_ptr_dtor(&args[2]);
         if (!Z_ISUNDEF(rv)) zval_ptr_dtor(&rv);
         if (EG(exception) != NULL) { zval_ptr_dtor(out); ZVAL_UNDEF(out); return false; }
         return true;

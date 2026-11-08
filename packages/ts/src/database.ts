@@ -323,17 +323,10 @@ function timeForm(value: unknown, colType: string, zone: string, precision: numb
   return `${formatInstant(instant, zone).slice(0, 19)}${f}`;
 }
 
-function timeShape(colType: string, precision: number): string {
-  const f = precision > 0 ? `.${'f'.repeat(precision)}` : '';
-  if (colType === 'date') return 'YYYY-MM-DD';
-  if (colType === 'time') return `HH:MM:SS${f}`;
-  return `YYYY-MM-DD HH:MM:SS${f}[Z|±HH:MM]`;
-}
-
-/** Writes a date, time or datetime bind in its stored text form; any other value is CODEC_ENCODE. */
+/** Writes a date, time or datetime bind in its stored text form; any other value is CODEC_ENCODE, whose text names no value (INT-163). */
 export function timeValue(value: unknown, colType: string, zone: string, precision: number): string {
   const text = timeForm(value, colType, zone, precision);
-  if (text === undefined) throw new OrmError(codes.CODEC_ENCODE, `${colType} value ${JSON.stringify(value)} is not ${timeShape(colType, precision)}`);
+  if (text === undefined) throw new OrmError(codes.CODEC_ENCODE, `${colType} value is not a ${colType}`);
   return text;
 }
 
@@ -505,11 +498,11 @@ type AesConfig = { version: number; key: string; keyring: AesKeyring | undefined
 /** aesConfig reads the AES options and refuses, before anything opens, a configuration that holds no usable current key (COD-8). */
 function aesConfig(options: ConnectOptions): AesConfig {
   const version = options.aesVersion ?? 1;
-  if (!Number.isSafeInteger(version) || version < 1) throw new OrmError(codes.CONFIG, 'aes version must be a positive integer');
+  if (!Number.isSafeInteger(version) || version < 1) throw new OrmError(codes.CONFIG, 'aes current version is not declared');
   // aesKey is the key of aesVersion: writes encrypt with it, and aesKeys holds it at aesVersion.
   const given = options.aesKey ?? '';
   const listed = options.aesKeys?.get(version) ?? '';
-  if (given !== '' && options.aesKeys !== undefined && listed !== given) throw new OrmError(codes.CONFIG, `aesKey differs from aesKeys[${version}]`);
+  if (given !== '' && options.aesKeys !== undefined && listed !== given) throw new OrmError(codes.CONFIG, 'aes key differs from the key list at the current version');
   const key = given !== '' ? given : listed;
   const keys = options.aesKeys ?? (key === '' ? undefined : new Map([[version, key]]));
   return { version, key, keyring: keys === undefined ? undefined : new AesKeyring(keys, version) };
@@ -1414,8 +1407,11 @@ async function select(ex: Executor, cached: Cached, step: PlanStep, params: read
  */
 export function decodeAssembly(row: unknown[], assemble: Assemble, db: Db): void {
   let versionCell: unknown;
+  let versionName = '';
   if (assemble.aes_version !== undefined) {
-    versionCell = row[present(assemble.columns[assemble.aes_version], 'the AES version column of an assembly').index];
+    const versionColumn = present(assemble.columns[assemble.aes_version], 'the AES version column of an assembly');
+    versionName = versionColumn.name;
+    versionCell = row[versionColumn.index];
     if (versionCell === undefined) throw new OrmError(codes.INTERNAL, 'the AES version cell of an assembly is missing from the row');
   } else if (assemble.columns.some(column => column.styles.includes('aes'))) {
     // The planner selects the version column of every AES column, so a plan without one is broken: no version is assumed.
@@ -1428,7 +1424,9 @@ export function decodeAssembly(row: unknown[], assemble: Assemble, db: Db): void
     const client = column.styles.filter(style => style !== 'aes' && style !== 'hex' && style !== 'ip');
     // The version is read only for a non-NULL value. With a keyring, a version it does not declare is CONFIG; the single key is used only without a keyring (COD-8).
     if (value !== null && host.length > 0) {
-      const key = host.includes('aes') && db.aesKeyring !== undefined ? db.aesKeyring.key(storedVersion(versionCell)) : db.aesKey;
+      // A stored version that is no positive 32-bit integer is the CODEC_DECODE of the version cell (COD-41, COD-44).
+      const keyring = db.aesKeyring;
+      const key = host.includes('aes') && keyring !== undefined ? keyring.key(versionOf(assemble, versionName, versionCell)) : db.aesKey;
       const cell = cellBytes(value, column.index);
       value = decodedCell(assemble, column.name, () => hostDecode(cell, host, key));
     }
@@ -1439,6 +1437,16 @@ export function decodeAssembly(row: unknown[], assemble: Assemble, db: Db): void
     row[column.index] = value;
   }
   for (const child of assemble.children) if (child.kind === 'join' && child.assemble) decodeAssembly(row, child.assemble, db);
+}
+
+/** The stored version of a row that a read decodes with; its refusal names the entity and the version column (COD-41). */
+function versionOf(assemble: Assemble, column: string, cell: unknown): number {
+  try {
+    return storedVersion(cell);
+  } catch (error) {
+    if (!(error instanceof OrmError) || error.code !== codes.CODEC_DECODE) throw error;
+    throw new OrmError(error.code, `${assemble.entity}.${column}: ${error.message.slice(error.code.length + 2)}`, error);
+  }
 }
 
 /** A CODEC_DECODE of a read cell names its entity and column: `CODEC_DECODE: <entity>.<column>: <message>` (COD-41). */

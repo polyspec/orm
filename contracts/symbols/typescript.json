@@ -103,9 +103,9 @@
     "exported": true,
     "signature": "export function fulltextBoolean(value: string): string"
   },
-  "packages/ts/src/bind_check.ts::shown": {
+  "packages/ts/src/bind_check.ts::refused": {
     "exported": false,
-    "signature": "function shown(value: unknown): string"
+    "signature": "function refused(error: unknown, text: string): unknown"
   },
   "packages/ts/src/bind_check.ts::transformParam": {
     "exported": true,
@@ -795,6 +795,10 @@
     "exported": true,
     "signature": "typeof CONFIG | typeof CODEC_DECODE | typeof CODEC_ENCODE | typeof CODEC_UNSUPPORTED"
   },
+  "packages/ts/src/codec.ts::CodecRule": {
+    "exported": false,
+    "signature": "class CodecRule"
+  },
   "packages/ts/src/codec.ts::CodecValue": {
     "exported": true,
     "signature": "type CodecValue = null | boolean | bigint | number | string | CodecValue[] | {\n    [key: string]: CodecValue;\n}"
@@ -933,7 +937,7 @@
   },
   "packages/ts/src/codec.ts::plainBytes": {
     "exported": false,
-    "signature": "function plainBytes(value: unknown): Buffer"
+    "signature": "function plainBytes(value: unknown, what: 'host' | 'blind index'): Buffer"
   },
   "packages/ts/src/codec.ts::storedJsonText": {
     "exported": false,
@@ -2447,10 +2451,6 @@
     "exported": false,
     "signature": "function timeForm(value: unknown, colType: string, zone: string, precision: number): string | undefined"
   },
-  "packages/ts/src/database.ts::timeShape": {
-    "exported": false,
-    "signature": "function timeShape(colType: string, precision: number): string"
-  },
   "packages/ts/src/database.ts::timeValue": {
     "exported": true,
     "signature": "export function timeValue(value: unknown, colType: string, zone: string, precision: number): string"
@@ -2458,6 +2458,10 @@
   "packages/ts/src/database.ts::validDate": {
     "exported": false,
     "signature": "function validDate(y: string, m: string, d: string, h = '00', mi = '00', sec = '00'): boolean"
+  },
+  "packages/ts/src/database.ts::versionOf": {
+    "exported": false,
+    "signature": "function versionOf(assemble: Assemble, column: string, cell: unknown): number"
   },
   "packages/ts/src/database.ts::withRootInList": {
     "exported": false,

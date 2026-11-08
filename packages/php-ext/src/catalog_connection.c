@@ -748,7 +748,7 @@ static void cat_throw_descriptor_name(void)
 static zend_string *cat_text(zval *v)
 {
     if (Z_TYPE_P(v) != IS_STRING) {
-        db_throw_orm("TABLE_METADATA_INVALID", "expected text, got %s", zend_zval_type_name(v));
+        db_throw_orm("TABLE_METADATA_INVALID", "expected text");
         return NULL;
     }
     return Z_STR_P(v);
@@ -789,7 +789,7 @@ static bool cat_parse_int(zval *v, zend_long *out)
 static bool cat_int(zval *v, zend_long *out)
 {
     if (cat_parse_int(v, out)) return true;
-    db_throw_orm("TABLE_METADATA_INVALID", "expected an integer, got %s", zend_zval_type_name(v));
+    db_throw_orm("TABLE_METADATA_INVALID", "expected an integer");
     return false;
 }
 
@@ -923,7 +923,7 @@ static bool cat_cell_value(zval *v, zend_string *type, const char *dialect, zval
                 ZVAL_COPY(out, v);
                 return true;
             }
-            db_throw_orm("TABLE_METADATA_INVALID", "expected an integer, got %s", zend_zval_type_name(v));
+            db_throw_orm("TABLE_METADATA_INVALID", "expected an integer");
             return false;
         }
         ZVAL_LONG(out, n);
@@ -1475,7 +1475,7 @@ static bool cat_param(zval *v)
         }
         return true;
     default:
-        db_throw_orm("CATALOG_PARAM", "parameter has unsupported type %s", zend_zval_type_name(v));
+        db_throw_orm("CATALOG_PARAM", "parameter has an unsupported type");
         return false;
     }
 }
@@ -1543,7 +1543,7 @@ static bool cat_cell_key(zval *cell, smart_str *out)
         smart_str_appendl(out, Z_STRVAL_P(cell), Z_STRLEN_P(cell));
         return true;
     default:
-        db_throw_orm("ROW_SNAPSHOT_INVALID", "unsupported cell type %s", zend_zval_type_name(cell));
+        db_throw_orm("ROW_SNAPSHOT_INVALID", "unsupported cell type");
         return false;
     }
 }
@@ -2020,8 +2020,8 @@ static bool cat_described_temporal(zval *value, char kind, zend_long precision, 
     size_t end = (size_t)precision > length - dot - 1 ? length : dot + 1 + (size_t)precision;
     for (size_t i = end; i < length; i++) {
         if (t[i] != '0') {
-            db_throw_orm("GRID_TEMPORAL_PRECISION", "temporal value \"%s\" has more fraction digits than its precision " ZEND_LONG_FMT,
-                         s, precision);
+            db_throw_orm("GRID_TEMPORAL_PRECISION", "temporal value has more fraction digits than its precision " ZEND_LONG_FMT,
+                         precision);
             zval_ptr_dtor(&text);
             return false;
         }

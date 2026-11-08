@@ -30715,6 +30715,7 @@
       "id": "markdown-message-vectors",
       "kind": "suite",
       "requirements": [
+        "PRT-32a",
         "PRT-67",
         "PRT-64"
       ],

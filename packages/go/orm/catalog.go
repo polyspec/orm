@@ -489,7 +489,7 @@ func catalogValue(value any, nativeType string) (any, error) {
 		}
 		return catalogBytesValue(v, nativeType)
 	default:
-		return nil, catalogErr(catalogCodeValue, "unsupported driver value %T", value)
+		return nil, catalogErr(catalogCodeValue, "unsupported driver value")
 	}
 }
 
@@ -514,13 +514,13 @@ func catalogBytesValue(value []byte, nativeType string) (any, error) {
 			if u, unsigned := strconv.ParseUint(string(value), 10, 64); unsigned == nil {
 				return u, nil
 			}
-			return nil, catalogErr(catalogCodeValue, "integer of native type %q: %v", nativeType, err)
+			return nil, catalogErr(catalogCodeValue, "integer of native type %q is not an integer", nativeType)
 		}
 		return n, nil
 	case strings.Contains(t, "FLOAT"), strings.Contains(t, "DOUBLE"), strings.Contains(t, "REAL"):
 		f, err := strconv.ParseFloat(string(value), 64)
 		if err != nil {
-			return nil, catalogErr(catalogCodeValue, "float of native type %q: %v", nativeType, err)
+			return nil, catalogErr(catalogCodeValue, "float of native type %q is not a number", nativeType)
 		}
 		return f, nil
 	case strings.Contains(t, "CHAR"), strings.Contains(t, "TEXT"), strings.Contains(t, "JSON"), strings.Contains(t, "ENUM"),
@@ -565,7 +565,7 @@ func catalogParams(params []any) ([]any, error) {
 			}
 			out[i] = v
 		default:
-			return nil, catalogErr(catalogCodeParam, "parameter %d has unsupported type %T", i+1, param)
+			return nil, catalogErr(catalogCodeParam, "parameter %d has an unsupported type", i+1)
 		}
 	}
 	return out, nil

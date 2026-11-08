@@ -22,7 +22,7 @@ pub enum Key {
 }
 
 fn null_key() -> Error {
-    Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: "collection row identity contains SQL NULL".into() }
+    Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: "collection row identity contains SQL NULL".into(), source: None }
 }
 
 impl Key {
@@ -335,11 +335,11 @@ impl GroupRow {
     }
 
     pub fn value(&self, name: &str) -> Result<&Val> {
-        self.values
-            .iter()
-            .find(|(key, _)| key == name)
-            .map(|(_, value)| value)
-            .ok_or_else(|| crate::Error::Engine { code: crate::codes::COLUMN_UNSELECTED.into(), msg: format!("group result has no selected column {name}") })
+        self.values.iter().find(|(key, _)| key == name).map(|(_, value)| value).ok_or_else(|| crate::Error::Engine {
+            code: crate::codes::COLUMN_UNSELECTED.into(),
+            msg: format!("group result has no selected column {name}"),
+            source: None,
+        })
     }
 
     /// The selected values by name, with `row_count`, in the array form of every runtime (COD-27, INT-69).
@@ -354,7 +354,11 @@ impl GroupRow {
         for (name, value) in &self.values {
             let text = match value {
                 Val::Bytes(_) => {
-                    return Err(Error::Engine { code: crate::codes::CODEC_ENCODE.into(), msg: format!("group column {name}: JSON output cannot write bytes") })
+                    return Err(Error::Engine {
+                        code: crate::codes::CODEC_ENCODE.into(),
+                        msg: format!("group column {name}: JSON output cannot write bytes"),
+                        source: None,
+                    })
                 }
                 Val::Ordered(value) => value.compact(),
                 other => other.to_json()?.to_string(),
@@ -367,7 +371,7 @@ impl GroupRow {
 
 fn checked_group_row_count(value: &Val) -> Result<i64> {
     const MAX_SAFE: i64 = 9_007_199_254_740_991;
-    let invalid = || Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: "group result row_count is not an exact integer".into() };
+    let invalid = || Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: "group result row_count is not an exact integer".into(), source: None };
     let count = match value {
         Val::I64(count) => *count,
         Val::F64(count) if count.is_finite() && count.fract() == 0.0 && *count >= 0.0 && *count <= MAX_SAFE as f64 => *count as i64,
@@ -377,7 +381,7 @@ fn checked_group_row_count(value: &Val) -> Result<i64> {
         _ => return Err(invalid()),
     };
     if count < 0 {
-        return Err(Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: "group result row_count is negative".into() });
+        return Err(Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: "group result row_count is negative".into(), source: None });
     }
     if count > MAX_SAFE {
         return Err(invalid());

@@ -262,7 +262,7 @@ func catalogColumnRow(row []any) (CatalogColumn, error) {
 	case string:
 		column.DefaultExpression = &value
 	default:
-		return CatalogColumn{}, catalogErr(catalogCodeMetadata, "default expression of column %q is %T", name, row[6])
+		return CatalogColumn{}, catalogErr(catalogCodeMetadata, "default expression of column %q is not text", name)
 	}
 	return column, nil
 }
@@ -271,7 +271,7 @@ func catalogColumnRow(row []any) (CatalogColumn, error) {
 func catalogText(value any) (string, error) {
 	text, ok := value.(string)
 	if !ok {
-		return "", catalogErr(catalogCodeMetadata, "expected text, got %T", value)
+		return "", catalogErr(catalogCodeMetadata, "expected text")
 	}
 	return text, nil
 }
@@ -286,14 +286,14 @@ func catalogBool(value any) (bool, error) {
 			return v == 1, nil
 		}
 	}
-	return false, catalogErr(catalogCodeMetadata, "expected a boolean, got %v", value)
+	return false, catalogErr(catalogCodeMetadata, "expected a boolean")
 }
 
 // catalogInt reads an integer of a metadata row.
 func catalogInt(value any) (int64, error) {
 	n, ok := value.(int64)
 	if !ok {
-		return 0, catalogErr(catalogCodeMetadata, "expected an integer, got %T", value)
+		return 0, catalogErr(catalogCodeMetadata, "expected an integer")
 	}
 	return n, nil
 }

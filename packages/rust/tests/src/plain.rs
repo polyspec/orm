@@ -11,7 +11,7 @@ pub trait Plain {
 
 impl Plain for ArrayValue {
     fn plain(&self) -> Result<Value> {
-        let encode = |msg: String| Error::Engine { code: codes::CODEC_ENCODE.into(), msg };
+        let encode = |msg: String| Error::Engine { code: codes::CODEC_ENCODE.into(), msg, source: None };
         Ok(match self {
             ArrayValue::Null => Value::Null,
             ArrayValue::Bool(b) => Value::Bool(*b),

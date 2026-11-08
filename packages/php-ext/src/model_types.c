@@ -789,17 +789,20 @@ ZEND_METHOD(Polyspec_Orm_Func, ir)
 
 ZEND_METHOD(Polyspec_Orm_PendingTime, __construct)
 {
-    zval *text, *zone;
+    zval *text, *zone, *type;
     zend_string *zone_name = zend_string_init("DateTimeZone", sizeof("DateTimeZone") - 1, 0);
     zend_class_entry *zone_ce = zend_lookup_class(zone_name);
     zend_string_release(zone_name);
     if (zone_ce == NULL) RETURN_THROWS();
-    ZEND_PARSE_PARAMETERS_START(2, 2)
+    ZEND_PARSE_PARAMETERS_START(3, 3)
         Z_PARAM_ZVAL(text)
         Z_PARAM_OBJECT_OF_CLASS(zone, zone_ce)
+        Z_PARAM_ZVAL(type)
     ZEND_PARSE_PARAMETERS_END();
     if (!model_types_scalar_argument(text, 1, MAY_BE_STRING, "string")) RETURN_THROWS();
+    if (!model_types_scalar_argument(type, 3, MAY_BE_STRING, "string")) RETURN_THROWS();
     zend_update_property_str(polyspec_pending_time_ce, Z_OBJ_P(ZEND_THIS), "text", sizeof("text") - 1, Z_STR_P(text));
     zend_update_property(polyspec_pending_time_ce, Z_OBJ_P(ZEND_THIS), "zone", sizeof("zone") - 1, zone);
+    zend_update_property_str(polyspec_pending_time_ce, Z_OBJ_P(ZEND_THIS), "type", sizeof("type") - 1, Z_STR_P(type));
 }
 

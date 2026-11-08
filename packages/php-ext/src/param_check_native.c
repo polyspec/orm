@@ -24,47 +24,6 @@ static void param_add_zval(zval *array, const char *name, zval *value)
     zend_hash_str_update(Z_ARRVAL_P(array), name, strlen(name), &copy);
 }
 
-static zend_string *param_debug_type(zval *value)
-{
-    zend_function *function = zend_hash_str_find_ptr(EG(function_table), ZEND_STRL("get_debug_type"));
-    if (function == NULL) {
-        const char *type = zend_zval_type_name(value);
-        return zend_string_init(type, strlen(type), 0);
-    }
-    zval argument, result;
-    ZVAL_COPY(&argument, value);
-    ZVAL_UNDEF(&result);
-    zend_call_known_function(function, NULL, NULL, &result, 1, &argument, NULL);
-    zval_ptr_dtor(&argument);
-    if (EG(exception) != NULL || Z_TYPE(result) != IS_STRING) {
-        if (!Z_ISUNDEF(result)) zval_ptr_dtor(&result);
-        return NULL;
-    }
-    zend_string *type = zend_string_copy(Z_STR(result));
-    zval_ptr_dtor(&result);
-    return type;
-}
-
-static zend_string *param_var_export(zval *value)
-{
-    zend_function *function = zend_hash_str_find_ptr(EG(function_table), ZEND_STRL("var_export"));
-    if (function == NULL) return zend_string_init(zend_zval_type_name(value), strlen(zend_zval_type_name(value)), 0);
-    zval arguments[2], result;
-    ZVAL_COPY(&arguments[0], value);
-    ZVAL_TRUE(&arguments[1]);
-    ZVAL_UNDEF(&result);
-    zend_call_known_function(function, NULL, NULL, &result, 2, arguments, NULL);
-    zval_ptr_dtor(&arguments[0]);
-    zval_ptr_dtor(&arguments[1]);
-    if (EG(exception) != NULL || Z_TYPE(result) != IS_STRING) {
-        if (!Z_ISUNDEF(result)) zval_ptr_dtor(&result);
-        return NULL;
-    }
-    zend_string *text = zend_string_copy(Z_STR(result));
-    zval_ptr_dtor(&result);
-    return text;
-}
-
 /* Throws CODEC_ENCODE while retaining the same previous exception as ParamCheck.php. */
 static bool param_throw_encode(zend_string *message, zend_object *previous)
 {
@@ -105,7 +64,9 @@ static bool param_throw_encode(zend_string *message, zend_object *previous)
     return false;
 }
 
-static bool param_wrap_pending(zend_long index)
+/* Replaces the pending CODEC_ENCODE OrmException with the CODEC_ENCODE of PRT-32a, `parameter <i> <rule>`, which names
+ * no value; the pending exception stays its previous one. Any other pending exception stays as it is. */
+static bool param_wrap_pending(zend_long index, const char *rule, const char *type)
 {
     if (EG(exception) == NULL) return false;
     zend_object *previous = EG(exception);
@@ -113,19 +74,16 @@ static bool param_wrap_pending(zend_long index)
     zend_class_entry *ce = zend_lookup_class(name);
     zend_string_release(name);
     if (ce == NULL || !instanceof_function(previous->ce, ce)) return false;
+    zval code_rv;
+    zval *code = zend_read_property(ce, previous, "code_", sizeof("code_") - 1, true, &code_rv);
+    if (Z_TYPE_P(code) != IS_STRING || !zend_string_equals_literal(Z_STR_P(code), "CODEC_ENCODE")) return false;
 
-    zval previous_value, result;
+    zval previous_value;
     ZVAL_OBJ_COPY(&previous_value, previous);
     zend_clear_exception();
-    ZVAL_UNDEF(&result);
-    zend_call_method_with_0_params(Z_OBJ(previous_value), Z_OBJCE(previous_value), NULL, "getMessage", &result);
-    if (EG(exception) != NULL || Z_TYPE(result) != IS_STRING) {
-        if (!Z_ISUNDEF(result)) zval_ptr_dtor(&result);
-        zend_throw_exception_object(&previous_value);
-        return false;
-    }
-    zend_string *message = zend_strpprintf(0, "parameter " ZEND_LONG_FMT ": %s", index, Z_STRVAL(result));
-    zval_ptr_dtor(&result);
+    zend_string *message = type == NULL
+        ? zend_strpprintf(0, "parameter " ZEND_LONG_FMT " %s", index, rule)
+        : zend_strpprintf(0, "parameter " ZEND_LONG_FMT " %s %s value", index, rule, type);
     bool ok = param_throw_encode(message, Z_OBJ(previous_value));
     zval_ptr_dtor(&previous_value);
     return ok;
@@ -133,11 +91,8 @@ static bool param_wrap_pending(zend_long index)
 
 static bool param_throw_kind(zend_long index, zval *value, zend_string *type)
 {
-    zend_string *debug = param_debug_type(value);
-    if (debug == NULL) return false;
-    zend_string *message = zend_strpprintf(0, "parameter " ZEND_LONG_FMT " (%s) is not a %s value",
-        index, ZSTR_VAL(debug), ZSTR_VAL(type));
-    zend_string_release(debug);
+    (void)value;
+    zend_string *message = zend_strpprintf(0, "parameter " ZEND_LONG_FMT " is not a %s value", index, ZSTR_VAL(type));
     return param_throw_encode(message, NULL);
 }
 
@@ -308,8 +263,7 @@ ZEND_METHOD(Polyspec_Orm_ParamCheck, check)
         if (zend_string_equals_literal(type, "i16")) { low = -32768; high = 32767; }
         else if (zend_string_equals_literal(type, "i32")) { low = -2147483648; high = 2147483647; }
         if (Z_LVAL_P(value) < low || Z_LVAL_P(value) > high) {
-            zend_string *message = zend_strpprintf(0, "parameter " ZEND_LONG_FMT " (" ZEND_LONG_FMT ") is outside %s",
-                index, Z_LVAL_P(value), ZSTR_VAL(type));
+            zend_string *message = zend_strpprintf(0, "parameter " ZEND_LONG_FMT " is outside %s", index, ZSTR_VAL(type));
             param_throw_encode(message, NULL);
             RETURN_THROWS();
         }
@@ -321,11 +275,7 @@ ZEND_METHOD(Polyspec_Orm_ParamCheck, check)
             RETURN_THROWS();
         }
         if (Z_TYPE_P(value) == IS_DOUBLE && !isfinite(Z_DVAL_P(value))) {
-            zend_string *shown = param_var_export(value);
-            if (shown == NULL) RETURN_THROWS();
-            zend_string *message = zend_strpprintf(0, "parameter " ZEND_LONG_FMT " (%s) is not a finite f64",
-                index, ZSTR_VAL(shown));
-            zend_string_release(shown);
+            zend_string *message = zend_strpprintf(0, "parameter " ZEND_LONG_FMT " is not a finite f64", index);
             param_throw_encode(message, NULL);
             RETURN_THROWS();
         }
@@ -349,7 +299,7 @@ ZEND_METHOD(Polyspec_Orm_ParamCheck, check)
             precision == NULL || Z_TYPE_P(precision) == IS_NULL ? 0 : zval_get_long(precision),
             scale == NULL || Z_TYPE_P(scale) == IS_NULL ? 0 : zval_get_long(scale));
         if (normalized == NULL) {
-            if (EG(exception) != NULL) param_wrap_pending(index);
+            if (EG(exception) != NULL) param_wrap_pending(index, "is not a decimal of its precision and scale", NULL);
             RETURN_THROWS();
         }
         zend_string_release(normalized);
@@ -377,15 +327,14 @@ ZEND_METHOD(Polyspec_Orm_ParamCheck, check)
             zend_long max = length == NULL || Z_TYPE_P(length) == IS_NULL ? 0 : zval_get_long(length);
             size_t characters = utf8_count(bytes);
             if (max > 0 && characters > (size_t)max) {
-                zend_string *message = zend_strpprintf(0, "parameter " ZEND_LONG_FMT " has %zu characters, more than varchar(" ZEND_LONG_FMT ")",
-                    index, characters, max);
+                zend_string *message = zend_strpprintf(0, "parameter " ZEND_LONG_FMT " is longer than varchar(" ZEND_LONG_FMT ")",
+                    index, max);
                 param_throw_encode(message, NULL);
                 RETURN_THROWS();
             }
         }
         if (zend_string_equals_literal(type, "uuid") && !param_uuid(Z_STR_P(value))) {
-            zend_string *message = zend_strpprintf(0, "parameter " ZEND_LONG_FMT " (\"%s\") is not a lower-case canonical uuid",
-                index, Z_STRVAL_P(value));
+            zend_string *message = zend_strpprintf(0, "parameter " ZEND_LONG_FMT " is not a lower-case canonical uuid", index);
             param_throw_encode(message, NULL);
             RETURN_THROWS();
         }
@@ -416,7 +365,7 @@ ZEND_METHOD(Polyspec_Orm_ParamCheck, check)
         bool ok = param_call_time_value(value, type,
             precision == NULL || Z_TYPE_P(precision) == IS_NULL ? 0 : zval_get_long(precision), zone, &converted);
         if (!ok) {
-            if (EG(exception) != NULL) param_wrap_pending(index);
+            if (EG(exception) != NULL) param_wrap_pending(index, "is not a", ZSTR_VAL(type));
             RETURN_THROWS();
         }
         if (!zend_string_equals_literal(type, "time")) {
@@ -428,11 +377,7 @@ ZEND_METHOD(Polyspec_Orm_ParamCheck, check)
                 && Z_STRVAL(converted)[3] >= '0' && Z_STRVAL(converted)[3] <= '9';
             if (!valid) {
                 zval_ptr_dtor(&converted);
-                zend_string *shown = zval_get_string(value);
-                if (EG(exception) != NULL) RETURN_THROWS();
-                zend_string *message = zend_strpprintf(0, "parameter " ZEND_LONG_FMT " (\"%s\") is outside 0001-01-01 to 9999-12-31",
-                    index, ZSTR_VAL(shown));
-                zend_string_release(shown);
+                zend_string *message = zend_strpprintf(0, "parameter " ZEND_LONG_FMT " is outside 0001-01-01 to 9999-12-31", index);
                 param_throw_encode(message, NULL);
                 RETURN_THROWS();
             }

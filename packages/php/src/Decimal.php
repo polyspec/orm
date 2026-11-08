@@ -18,7 +18,7 @@ final class Decimal
     public static function fromScaled(mixed $value, int $precision, int $scale): string
     {
         if (!is_int($value) && !(is_string($value) && preg_match('/\A-?[0-9]+\z/', $value) === 1)) {
-            throw new OrmException(Code::CODEC_DECODE, 'decimal scaled cell requires an integer');
+            throw new OrmException(Code::CODEC_DECODE, 'decimal cell is not a decimal of its precision and scale');
         }
         $digits = (string) $value;
         $negative = str_starts_with($digits, '-');
@@ -35,21 +35,27 @@ final class Decimal
     public static function decode(mixed $value, int $precision, int $scale): string
     {
         if (!is_string($value)) {
-            throw new OrmException(Code::CODEC_DECODE, 'decimal cell requires exact text');
+            throw new OrmException(Code::CODEC_DECODE, 'decimal cell is not a decimal of its precision and scale');
         }
         try {
             return self::normalize($value, $precision, $scale);
         } catch (OrmException $error) {
-            throw new OrmException(Code::CODEC_DECODE, "invalid decimal cell: {$error->getMessage()}", $error);
+            if ($error->code_ !== Code::CODEC_ENCODE) {
+                throw $error;
+            }
+            throw new OrmException(
+                Code::CODEC_DECODE,
+                'decimal cell is not a decimal of its precision and scale',
+                $error,
+            );
         }
     }
 
     public static function normalize(string $input, int $precision, int $scale): string
     {
-        $fail = static fn(string $reason): OrmException => new OrmException(
-            Code::CODEC_ENCODE,
-            "decimal $input: $reason"
-        );
+        // A value outside its decimal type is CODEC_ENCODE `decimal: <reason>`, which names no value (COD-2,
+        // INT-163).
+        $fail = static fn(string $reason): OrmException => new OrmException(Code::CODEC_ENCODE, "decimal: $reason");
         if ($precision < 1 || $precision > 18 || $scale < 0 || $scale > $precision) {
             throw $fail('invalid precision or scale');
         }

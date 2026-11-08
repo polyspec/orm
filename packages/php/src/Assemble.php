@@ -38,17 +38,20 @@ final class Assemble
     }
 
     /**
-     * The styled cells of one indexed node, without its joined nodes, for Codec::decodeRows; the last field of a cell
-     * is the <entity>.<column> that a CODEC_DECODE of the cell names (COD-41).
+     * The styled cells of one indexed node, without its joined nodes, for Codec::decodeRows; the last two fields of a
+     * cell are the <entity>.<column> that a CODEC_DECODE of the cell names and the <entity>.<column> of the node's
+     * aes_version column, which a CODEC_DECODE of its stored version names, or null (COD-41, COD-44).
      */
     public static function cells(array $a, RuntimeModel $model): array
     {
         // A node that reads an AES column also reads the entity's aes_version column.
         $name = $model->entities[$a['entity']]['aes_version'];
         $version = null;
+        $versionName = null;
         foreach ($a['columns'] as $c) {
             if ($name !== '' && ($c['column'] ?? '') === $name) {
                 $version = $c['index'];
+                $versionName = $a['entity'] . '.' . $c['name'];
                 break;
             }
         }
@@ -57,7 +60,7 @@ final class Assemble
             if (!empty($c['styles'])) {
                 $out[] = [
                     $c['index'], $c['host'], $c['codec'], in_array('aes', $c['host'], true), $version,
-                    $a['entity'] . '.' . $c['name'],
+                    $a['entity'] . '.' . $c['name'], $versionName,
                 ];
             }
         }

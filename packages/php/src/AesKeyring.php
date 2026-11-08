@@ -15,11 +15,11 @@ final class AesKeyring
     {
         foreach ($keys as $version => $key) {
             if (!is_int($version) || $version < 1 || !is_string($key) || $key === '') {
-                throw new OrmException(Code::CONFIG, "AES version $version has no key");
+                throw new OrmException(Code::CONFIG, 'aes key list holds an invalid version or an empty key');
             }
         }
         if ($currentVersion < 1 || !isset($keys[$currentVersion])) {
-            throw new OrmException(Code::CONFIG, "AES version $currentVersion is not declared");
+            throw new OrmException(Code::CONFIG, 'aes current version is not declared');
         }
         $this->keys = $keys;
     }
@@ -34,7 +34,7 @@ final class AesKeyring
 
     public function key(int $version): string
     {
-        return $this->keys[$version] ?? throw new OrmException(Code::CONFIG, "AES version $version is not declared");
+        return $this->keys[$version] ?? throw new OrmException(Code::CONFIG, 'aes version is not declared');
     }
 
     /**
@@ -88,9 +88,9 @@ final class AesKeyring
             if ($oldKey === null) {
                 $oldVersion = self::storedVersion($row[$versionColumn]);
                 $oldKey = $this->keys[$oldVersion]
-                    ?? throw new OrmException(Code::CONFIG, "AES version $oldVersion is not declared");
+                    ?? throw new OrmException(Code::CONFIG, 'aes version is not declared');
                 $newKey = $this->keys[$targetVersion]
-                    ?? throw new OrmException(Code::CONFIG, "AES version $targetVersion is not declared");
+                    ?? throw new OrmException(Code::CONFIG, 'aes version is not declared');
             }
             $plain = Codec::hostDecode($row[$column['name']], $column['styles'], $oldKey);
             $out[$column['name']] = Codec::hostEncode($plain, $column['styles'], $newKey);

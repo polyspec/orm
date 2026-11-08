@@ -55,16 +55,14 @@ class CodecError(Exception):
         self.code = code
 
 
-def _as_bytes(value) -> bytes:
-    # The plaintext of a host stage: bytes as given and a str as its UTF-8; a value of another kind is CODEC_ENCODE (COD-1).
+def _as_bytes(value, what: str) -> bytes:
+    # The plaintext of a host stage or a blind index (what): bytes as given and a str as its UTF-8; a value of another kind
+    # is CODEC_ENCODE "<what> input must be text or bytes", which names no host type (COD-1, INT-163).
     if isinstance(value, (bytes, bytearray, memoryview)):
         return bytes(value)
     if isinstance(value, str):
         return value.encode("utf-8")
-    raise CodecError(
-        codes.CODEC_ENCODE,
-        f"host input must be text or bytes, got {type(value).__name__}",
-    )
+    raise CodecError(codes.CODEC_ENCODE, f"{what} input must be text or bytes")
 
 
 def blind_index(value, key: str):
@@ -73,7 +71,9 @@ def blind_index(value, key: str):
         return None
     if key == "":
         raise CodecError(codes.CONFIG, "secret blind_index not configured")
-    return hmac.new(key.encode("utf-8"), _as_bytes(value), hashlib.sha256).hexdigest()
+    return hmac.new(
+        key.encode("utf-8"), _as_bytes(value, "blind index"), hashlib.sha256
+    ).hexdigest()
 
 
 def _aes_v2_key(key: str) -> bytes:
@@ -81,10 +81,6 @@ def _aes_v2_key(key: str) -> bytes:
     digest.update(b"polyspec/orm/aes-256-gcm/v2\x00")
     digest.update(key.encode("utf-8"))
     return digest.digest()
-
-
-def _quoted(text: str) -> str:
-    return json.dumps(text)
 
 
 def _pack_ip(value: str) -> bytes:
@@ -95,14 +91,14 @@ def _pack_ip(value: str) -> bytes:
     except ValueError:
         address = None
     if address is None or getattr(address, "scope_id", None) is not None:
-        raise CodecError(codes.CODEC_ENCODE, f"ip: {_quoted(value)} is not an address")
+        raise CodecError(codes.CODEC_ENCODE, "ip: the text is not an address")
     return address.packed
 
 
 def _unpack_ip(value: bytes) -> str:
     # The RFC 5952 text, which writes an IPv4-mapped address as ::ffff:a.b.c.d (section 5), as MySQL INET6_NTOA does.
     if len(value) not in (4, 16):
-        raise CodecError(codes.CODEC_DECODE, f"ip: byte length {len(value)}")
+        raise CodecError(codes.CODEC_DECODE, "ip: the cell is not 4 or 16 packed bytes")
     return str(ipaddress.ip_address(value))
 
 
@@ -115,7 +111,7 @@ def host_encode(value, styles, aes_key: str):
             raise CodecError(codes.CODEC_UNSUPPORTED, f"host style {style}")
     if value is None:
         return None
-    current = _as_bytes(value)
+    current = _as_bytes(value, "host")
     text_result = False
     for style in styles:
         if style == "aes":
@@ -167,10 +163,10 @@ def host_decode(raw, styles, aes_key: str):
                 current = AESGCM(_aes_v2_key(aes_key)).decrypt(
                     nonce, sealed, _AES_PREFIX
                 )
-            except InvalidTag:
+            except InvalidTag as error:
                 raise CodecError(
                     codes.CODEC_DECODE, "aes: authentication failed"
-                ) from None
+                ) from error
         elif style == "ip":
             return _unpack_ip(current)
         else:
@@ -186,8 +182,11 @@ def _text(data: bytes, operation: str) -> str:
         return data.decode("utf-8")
     except UnicodeDecodeError as error:
         raise CodecError(
-            f"CODEC_{operation.upper()}", f"invalid UTF-8: {error}"
-        ) from None
+            f"CODEC_{operation.upper()}",
+            "decoded text is not valid UTF-8"
+            if operation == "decode"
+            else "the text is not valid UTF-8",
+        ) from error
 
 
 def _decode_base64(data: bytes) -> bytes:
@@ -264,13 +263,11 @@ def php_serialize(value) -> str:
         return "b:1;" if value else "b:0;"
     if isinstance(value, int):
         if not _I64_MIN <= value <= _I64_MAX:
-            raise CodecError(
-                codes.CODEC_ENCODE, f"integer {value} is outside the i64 range"
-            )
+            raise CodecError(codes.CODEC_ENCODE, "integer is outside the i64 range")
         return f"i:{value};"
     if isinstance(value, float):
         if not math.isfinite(value):
-            raise CodecError(codes.CODEC_ENCODE, f"number {value} is not finite")
+            raise CodecError(codes.CODEC_ENCODE, "number is not finite")
         return f"d:{_php_float(value)};"
     if isinstance(value, str):
         return f's:{len(value.encode(_UTF8))}:"{value}";'
@@ -283,7 +280,7 @@ def php_serialize(value) -> str:
         keys = sorted(value.keys())
         parts = "".join(f"{_php_key(key)}{php_serialize(value[key])}" for key in keys)
         return f"a:{len(keys)}:{{{parts}}}"
-    raise CodecError(codes.CODEC_ENCODE, f"{type(value).__name__} is not a codec value")
+    raise CodecError(codes.CODEC_ENCODE, "serialize: the value is not a codec value")
 
 
 class _PhpParser:
@@ -446,7 +443,7 @@ def _json_text(value, depth: int) -> str:
         return str(value)
     if isinstance(value, float):
         if not math.isfinite(value):
-            raise CodecError(codes.CODEC_ENCODE, f"json: non-finite number {value}")
+            raise CodecError(codes.CODEC_ENCODE, "json: non-finite number")
         text = json.dumps(value, ensure_ascii=False)
         # JSON.stringify writes an integer-valued float as '2'; json.dumps writes '2.0'.
         if text.endswith(".0"):
@@ -467,9 +464,7 @@ def _json_text(value, depth: int) -> str:
                 f"{json.dumps(key, ensure_ascii=False)}:{_json_text(value[key], depth + 1)}"
             )
         return "{" + ",".join(members) + "}"
-    raise CodecError(
-        codes.CODEC_ENCODE, f"json: {type(value).__name__} is not a JSON value"
-    )
+    raise CodecError(codes.CODEC_ENCODE, "json: the value is not a JSON value")
 
 
 def ordered_json_value(value) -> OrderedJson:
@@ -480,7 +475,9 @@ def ordered_json_value(value) -> OrderedJson:
     except CodecError:
         raise
     except (TypeError, ValueError) as error:
-        raise CodecError(codes.CODEC_ENCODE, f"json: {error}") from None
+        raise CodecError(
+            codes.CODEC_ENCODE, "json: the value has no JSON text"
+        ) from error
 
 
 def _common_value(value, style: str):
@@ -572,7 +569,7 @@ def _yaml_node(tree, node):
                     codes.CODEC_DECODE, "yaml: map keys must be strings or integers"
                 )
             if key in mapping:
-                raise CodecError(codes.CODEC_DECODE, f"yaml: duplicate key {key}")
+                raise CodecError(codes.CODEC_DECODE, "yaml: duplicate map key")
             mapping[key] = _yaml_node(tree, child)
         return mapping
     if tree.is_seq(node):
@@ -615,9 +612,13 @@ def _decode_yaml(data: bytes):
         raise
     except ryml.ExceptionBasic as error:
         # str() of a rapidyaml exception is empty; its message is the attribute msg.
-        raise CodecError(codes.CODEC_DECODE, f"yaml: {error.msg}") from None
+        raise CodecError(
+            codes.CODEC_DECODE, "yaml: the stream does not parse"
+        ) from error
     except (TypeError, ValueError) as error:
-        raise CodecError(codes.CODEC_DECODE, f"yaml: {error}") from None
+        raise CodecError(
+            codes.CODEC_DECODE, "yaml: the stream does not parse"
+        ) from error
 
 
 _YAML_1_1_BREAKS = ("\x85", "\u2028", "\u2029")
@@ -652,7 +653,9 @@ def _yaml_dump(value) -> str:
     except CodecError:
         raise
     except (ruamel.yaml.YAMLError, TypeError, ValueError) as error:
-        raise CodecError(codes.CODEC_ENCODE, f"yaml: {error}") from None
+        raise CodecError(
+            codes.CODEC_ENCODE, "yaml: the value has no YAML text"
+        ) from error
     return out.getvalue()
 
 
@@ -695,7 +698,7 @@ def decode(styles, raw):
             try:
                 current = zlib.decompress(current, 47)
             except zlib.error as error:
-                raise CodecError(codes.CODEC_DECODE, f"gz: {error}") from None
+                raise CodecError(codes.CODEC_DECODE, "gz: bad zlib stream") from error
         elif style == "base64":
             current = _decode_base64(current)
         elif style == "serialize":
@@ -710,7 +713,9 @@ def decode(styles, raw):
             except CodecError:
                 raise
             except (TypeError, ValueError) as error:
-                raise CodecError(codes.CODEC_DECODE, f"json: {error}") from None
+                raise CodecError(
+                    codes.CODEC_DECODE, "json: the cell is not JSON"
+                ) from error
             has_value = True
         else:
             raise CodecError(codes.CODEC_UNSUPPORTED, f"style {style}")

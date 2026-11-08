@@ -398,29 +398,38 @@ def _time_form(value, col_type: str, zone: str, precision: int):
         return None
 
 
-def _time_shape(col_type: str, precision: int) -> str:
-    f = "." + "f" * precision if precision > 0 else ""
+def _time_text_outside_range(value, col_type: str, precision: int) -> bool:
+    """Whether value is a date or datetime text of the value form whose instant is outside 0001-01-01 to 9999-12-31,
+    such as the year 0000 or an offset that moves it past either end, which _time_form refuses because no Python date
+    holds it. The Gregorian calendar repeats every 400 years, so the date is checked 400 years later."""
+    if not isinstance(value, str) or col_type not in ("date", "datetime"):
+        return False
     if col_type == "date":
-        return "YYYY-MM-DD"
-    if col_type == "time":
-        return f"HH:MM:SS{f}"
-    return "YYYY-MM-DD HH:MM:SS" + f + "[Z|±HH:MM]"
-
-
-def _shown(value) -> str:
-    """value as an error message writes it: a string as JSON, another value as its text."""
-    return json.dumps(value) if isinstance(value, str) else str(value)
+        m = _DATE_TEXT.fullmatch(value)
+        return m is not None and _valid_date(
+            str(int(m.group(1)) + 400), m.group(2), m.group(3)
+        )
+    m = _DATETIME_TEXT.fullmatch(value)
+    return (
+        m is not None
+        and _valid_date(
+            str(int(m.group(1)) + 400),
+            m.group(2),
+            m.group(3),
+            m.group(4),
+            m.group(5),
+            m.group(6),
+        )
+        and _fraction(m.group(7), precision) is not None
+    )
 
 
 def time_value(value, col_type: str, zone: str, precision: int) -> str:
-    """Writes date, time, and datetime binds in stored text form; any other value is CODEC_ENCODE."""
+    """Writes date, time, and datetime binds in stored text form; any other value is CODEC_ENCODE, whose text names no
+    value (INT-163)."""
     text = _time_form(value, col_type, zone, precision)
     if text is None:
-        raise OrmError(
-            codes.CODEC_ENCODE,
-            f"{col_type} value {_shown(value)} is not "
-            f"{_time_shape(col_type, precision)}",
-        )
+        raise OrmError(codes.CODEC_ENCODE, f"{col_type} value is not a {col_type}")
     return text
 
 
@@ -1754,14 +1763,14 @@ class Db:
             or isinstance(self.aes_version, bool)
             or self.aes_version < 1
         ):
-            raise OrmError(codes.CONFIG, "aes version must be a positive integer")
+            raise OrmError(codes.CONFIG, "aes current version is not declared")
         self.aes_keyring = options.get("aesKeyring")
         if self.aes_keyring is not None:
             current_key = self.aes_keyring.key(self.aes_version)
             if self.aes_key and self.aes_key != current_key:
                 raise OrmError(
                     codes.CONFIG,
-                    f"aesKey differs from aesKeys[{self.aes_version}]",
+                    "aes key differs from the key list at the current version",
                 )
             if not self.aes_key:
                 self.aes_key = current_key
@@ -2832,9 +2841,22 @@ def _select(ex: Executor, cached: dict, step: dict, params, parents=None):
     return result["rows"]
 
 
+def _read_version(entity: str, column: str, cell) -> int:
+    """The stored version of a row that a read decodes with: a version that is no positive 32-bit integer is the
+    CODEC_DECODE of its cell, which names the entity and the version column, as every client states it (COD-41,
+    COD-44)."""
+    try:
+        return _stored_version(cell)
+    except OrmError as error:
+        message = str(error).partition(": ")[2]
+        raise OrmError(error.code, f"{entity}.{column}: {message}", error) from error
+
+
 def _decode_assembly(row, assemble: dict, db: Db) -> None:
     version_cell = None
+    version_name = ""
     if "aes_version" in assemble:
+        version_name = assemble["columns"][assemble["aes_version"]]["name"]
         version_index = assemble["columns"][assemble["aes_version"]]["index"]
         if (
             not isinstance(version_index, int)
@@ -2865,7 +2887,9 @@ def _decode_assembly(row, assemble: dict, db: Db) -> None:
         try:
             if value is not None and host:
                 if "aes" in host and db.aes_keyring is not None:
-                    key = db.aes_keyring.key(_stored_version(version_cell))
+                    key = db.aes_keyring.key(
+                        _read_version(assemble["entity"], version_name, version_cell)
+                    )
                 else:
                     key = db.aes_key
                 value = host_decode(value, host, key)

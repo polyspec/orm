@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: 45f7fbfa6cb705ebee562e918789edf3a0decce3171a0cc3e2cec444df65ce7a -->
+<!-- source-sha256: 790619fdf9fd392b11faa0c3651f378c8d14815e29abbc1ec0fbf6a29c38d976 -->
 # dbspec
 
 [English](dbspec.md)
@@ -362,7 +362,7 @@ client는 문서 집합으로 runtime model 하나를 만들고, 생성 코드�
 | `time(p)` | 소수 자릿수가 p인 `string` `HH:MM:SS` | `string` | PHP와 동일 (native Model) | `string` | `String` | `str` |
 | `datetime(p)` | UTC의 `time.Time` | UTC의 `\DateTimeImmutable` | PHP와 동일 (native Model) | 소수 자릿수가 p인 `string` `YYYY-MM-DD HH:MM:SS` | `NaiveDateTime` | 소수 자릿수가 p인 UTC의 `str` `YYYY-MM-DD HH:MM:SS` |
 
-- **DBS-121** 생성된 `date`, `time(p)`, `datetime(p)` 컬럼의 setter는 모든 언어에서 텍스트 형태를 받는다: Go와 TypeScript는 `string`, Python은 `str`, PHP는 `string`, Rust는 `String`이다. 네이티브 날짜·시간 값은 setter가 받지 않아 문장을 실행하기 전에 타입 검사가 거부하며, 텍스트는 setter 실행 시 검사되고 바인드 계층이 다시 검사한다.
+- **DBS-121** 생성된 `date`, `time(p)`, `datetime(p)` 컬럼의 setter는 모든 언어에서 텍스트 형태를 받는다: Go와 TypeScript는 `string`, Python은 `str`, PHP는 `string`, Rust는 `String`이다. 네이티브 날짜·시간 값은 setter가 받지 않아 문장을 실행하기 전에 타입 검사가 거부하며, 텍스트는 setter 실행 시 검사되고 바인드 계층이 다시 검사한다. setter가 거부하는 텍스트는 모든 언어에서 `CODEC_ENCODE` `<entity>.<column>: <type> value is not a <type>`이며, 이 메시지는 값을 적지 않는다(INT-163).
 
 - **DBS-121a** Python의 생성 setter는 값의 정적 type이 없으므로 nullable이 아닌 컬럼에도 `None`을 받는다. 그 row의 insert를 만들 때 message를 보내기 전에 `CODEC_ENCODE`로 거부한다. 다른 runtime의 typed setter는 null을 받지 않으므로 이 case는 `tests/bind/messages-python-null.json`이 담고, Python만 실행한다.
 

@@ -489,17 +489,20 @@ ZEND_METHOD(Polyspec_Orm_Config, __construct)
     }
 
     /* The stub arginfo supplies the PHP defaults; parse variables are initialized to those same values. */
-    if (aes_version < 1 || plan_cache_size < 1 || statement_cache_size < 1) {
-        native_config_error("AES version and cache sizes must be positive");
+    if (plan_cache_size < 1 || statement_cache_size < 1) {
+        native_config_error("cache sizes must be positive");
+        if (owns_empty_keys) zend_hash_destroy(&empty_keys);
+        RETURN_THROWS();
+    }
+    if (aes_version < 1) {
+        native_config_error("aes current version is not declared");
         if (owns_empty_keys) zend_hash_destroy(&empty_keys);
         RETURN_THROWS();
     }
     zval *selected = zend_hash_index_find(aes_keys, (zend_ulong)aes_version);
     if (ZSTR_LEN(aes_key) != 0 && zend_hash_num_elements(aes_keys) != 0
         && (selected == NULL || Z_TYPE_P(selected) != IS_STRING || !zend_string_equals(Z_STR_P(selected), aes_key))) {
-        zend_string *message = strpprintf(0, "aesKey differs from aesKeys[" ZEND_LONG_FMT "]", aes_version);
-        native_config_error(ZSTR_VAL(message));
-        zend_string_release(message);
+        native_config_error("aes key differs from the key list at the current version");
         if (owns_empty_keys) zend_hash_destroy(&empty_keys);
         RETURN_THROWS();
     }
@@ -510,14 +513,12 @@ ZEND_METHOD(Polyspec_Orm_Config, __construct)
         ZEND_HASH_FOREACH_KEY_VAL_IND(aes_keys, listed_version, listed_name, listed_key) {
             ZVAL_DEREF(listed_key);
             if (listed_name != NULL || (zend_long)listed_version < 1 || Z_TYPE_P(listed_key) != IS_STRING || Z_STRLEN_P(listed_key) == 0) {
-                native_config_error("AES key list holds an invalid version or an empty key");
+                native_config_error("aes key list holds an invalid version or an empty key");
                 RETURN_THROWS();
             }
         } ZEND_HASH_FOREACH_END();
         if (selected == NULL) {
-            zend_string *message = strpprintf(0, "AES version " ZEND_LONG_FMT " is not declared", aes_version);
-            native_config_error(ZSTR_VAL(message));
-            zend_string_release(message);
+            native_config_error("aes current version is not declared");
             RETURN_THROWS();
         }
     }

@@ -92,7 +92,7 @@ pub(super) fn declared_precision(metadata: &TableMetadata, dialect: &str, checks
                         if let Some(precision) = expected {
                             if precision != digits {
                                 return Err(format!(
-                                    "GRID_TEMPORAL_PRECISION: column {:?} holds {digits} fraction digits; its dbspec CHECK fixes {precision}",
+                                    "GRID_TEMPORAL_PRECISION: column {:?} holds a fraction whose digits are not the {precision} that its dbspec CHECK fixes",
                                     column.name
                                 ));
                             }

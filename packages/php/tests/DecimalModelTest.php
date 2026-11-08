@@ -76,13 +76,13 @@ class DecimalModelTest extends TestCase
         } catch (OrmException $error) {
             self::assertSame(Code::CODEC_DECODE, $error->code_);
             self::assertSame(
-                'CODEC_DECODE: invalid decimal cell: CODEC_ENCODE: decimal 1.234: fraction exceeds scale',
+                'CODEC_DECODE: decimal cell is not a decimal of its precision and scale',
                 $error->getMessage()
             );
             self::assertInstanceOf(OrmException::class, $error->getPrevious());
             self::assertSame(Code::CODEC_ENCODE, $error->getPrevious()->code_);
             self::assertSame(
-                'CODEC_ENCODE: decimal 1.234: fraction exceeds scale',
+                'CODEC_ENCODE: decimal: fraction exceeds scale',
                 $error->getPrevious()->getMessage()
             );
         }

@@ -848,11 +848,11 @@ static bool model_time_ends_with_offset(const zend_string *text)
     return ends;
 }
 
-/* Reads input as a date in zone into ret, as Model::timeValue of the PHP library does: the form of its length, then a text
- * with a UTC offset through the DateTimeImmutable constructor, then each fallback form. A value that no form reads throws the
- * CODEC_DECODE OrmException "invalid date value <text>", whose previous is the exception of the constructor when it threw, so
- * false always leaves an exception pending (T293). */
-bool model_time_value_in_zone(zval *input, zval *zone, zval *ret)
+/* Reads input as a value of the date or datetime type in zone into ret, as Model::timeValue of the PHP library does: the
+ * form of its length, then a text with a UTC offset through the DateTimeImmutable constructor, then each other form. A value
+ * that no form reads throws the CODEC_DECODE OrmException "<type> cell is not a <type>" (COD-1), which names no value, whose
+ * previous is the exception of the constructor when it threw, so false always leaves an exception pending (T293). */
+bool model_time_value_in_zone(zval *input, zval *zone, const char *type, zval *ret)
 {
     zend_class_entry *immutable = php_date_get_immutable_ce();
     zend_class_entry *interface = php_date_get_interface_ce();
@@ -897,7 +897,7 @@ bool model_time_value_in_zone(zval *input, zval *zone, zval *ret)
             return false;
         }
         if (Z_TYPE(time) == IS_UNDEF) {
-            zend_string *message = strpprintf(0, "invalid date value %s", ZSTR_VAL(text));
+            zend_string *message = strpprintf(0, "%s cell is not a %s", type, type);
             orm_throw_exception_previous("CODEC_DECODE", message, cause);
             zend_string_release(message);
             zend_string_release(text);
@@ -912,7 +912,7 @@ bool model_time_value_in_zone(zval *input, zval *zone, zval *ret)
 }
 
 
-static bool model_time_value(model_state *s, zval *input, zval *ret)
+static bool model_time_value(model_state *s, zval *input, const char *type, zval *ret)
 {
     zval zone;
     ZVAL_UNDEF(&zone);
@@ -920,7 +920,7 @@ static bool model_time_value(model_state *s, zval *input, zval *ret)
         if (Z_TYPE(zone) != IS_UNDEF) zval_ptr_dtor(&zone);
         return false;
     }
-    bool ok = model_time_value_in_zone(input, &zone, ret);
+    bool ok = model_time_value_in_zone(input, &zone, type, ret);
     zval_ptr_dtor(&zone);
     return ok;
 }
@@ -929,7 +929,7 @@ zend_string *model_decimal_normalize(zend_string *input, zend_long precision, ze
 {
     const char *s = ZSTR_VAL(input);
     if (precision < 1 || precision > 18 || scale < 0 || scale > precision) {
-        smart_str msg = {0}; smart_str_append_printf(&msg, "decimal %s: invalid precision or scale", s);
+        smart_str msg = {0}; smart_str_appendl(&msg, ZEND_STRL("decimal: invalid precision or scale"));
         zend_string *text = smart_str_extract(&msg); model_throw_orm("CODEC_ENCODE", ZSTR_VAL(text)); zend_string_release(text);
         return NULL;
     }
@@ -949,14 +949,14 @@ zend_string *model_decimal_normalize(zend_string *input, zend_long precision, ze
     }
     if (i != n) goto invalid;
     if (frac_end - frac_start > (size_t)scale) {
-        smart_str msg = {0}; smart_str_append_printf(&msg, "decimal %s: fraction exceeds scale", s);
+        smart_str msg = {0}; smart_str_appendl(&msg, ZEND_STRL("decimal: fraction exceeds scale"));
         zend_string *text = smart_str_extract(&msg); model_throw_orm("CODEC_ENCODE", ZSTR_VAL(text)); zend_string_release(text); return NULL;
     }
     size_t first_nonzero = whole_start;
     while (first_nonzero < whole_end && s[first_nonzero] == '0') first_nonzero++;
     size_t whole_digits = first_nonzero == whole_end ? 1 : whole_end - first_nonzero;
     if ((first_nonzero == whole_end ? 0 : whole_digits) + (size_t)scale > (size_t)precision) {
-        smart_str msg = {0}; smart_str_append_printf(&msg, "decimal %s: value exceeds precision", s);
+        smart_str msg = {0}; smart_str_appendl(&msg, ZEND_STRL("decimal: value exceeds precision"));
         zend_string *text = smart_str_extract(&msg); model_throw_orm("CODEC_ENCODE", ZSTR_VAL(text)); zend_string_release(text); return NULL;
     }
     size_t frac_len = frac_end - frac_start;
@@ -975,7 +975,7 @@ zend_string *model_decimal_normalize(zend_string *input, zend_long precision, ze
     return smart_str_extract(&out);
 invalid:
     {
-        smart_str msg = {0}; smart_str_append_printf(&msg, "decimal %s: invalid text", s);
+        smart_str msg = {0}; smart_str_appendl(&msg, ZEND_STRL("decimal: invalid text"));
         zend_string *text = smart_str_extract(&msg); model_throw_orm("CODEC_ENCODE", ZSTR_VAL(text)); zend_string_release(text); return NULL;
     }
 }
@@ -1003,11 +1003,12 @@ ZEND_METHOD(Polyspec_Orm_Model, readColumn)
     zend_string_release(pending_name);
     if (pending_ce != NULL && Z_TYPE_P(value) == IS_OBJECT && instanceof_function(Z_OBJCE_P(value), pending_ce)) {
         zval text_rv, zone_rv;
-        zval *text, *zone;
-        if (!pending_time_parts(pending_ce, value, &text_rv, &zone_rv, &text, &zone)) RETURN_THROWS();
+        zval type_rv;
+        zval *text, *zone, *type;
+        if (!pending_time_parts(pending_ce, value, &text_rv, &zone_rv, &type_rv, &text, &zone, &type)) RETURN_THROWS();
         zval converted;
         ZVAL_UNDEF(&converted);
-        if (!model_time_value_in_zone(text, zone, &converted)) RETURN_THROWS();
+        if (!model_time_value_in_zone(text, zone, Z_STRVAL_P(type), &converted)) RETURN_THROWS();
         zval_ptr_dtor(value);
         ZVAL_COPY_VALUE(value, &converted);
     }
@@ -1082,13 +1083,21 @@ ZEND_METHOD(Polyspec_Orm_Model, writeColumn)
         }
         zval parsed;
         ZVAL_UNDEF(&parsed);
-        if (!model_time_value(s, input, &parsed)) {
-            zval_ptr_dtor(&meta); zval_ptr_dtor(&value); zval_ptr_dtor(&set_value);
-            /* A text that no time form reads is refused as a write (PRT-67); model_time_value reports a read. */
+        if (!model_time_value(s, input, Z_STRVAL_P(type), &parsed)) {
+            /* A text that no time form reads is refused as a write (PRT-67, DBS-121); model_time_value reports a read. */
             zend_object *previous = EG(exception);
             GC_ADDREF(previous);
             zend_clear_exception();
-            zend_string *text = strpprintf(0, "%s: invalid date value %s", ZSTR_VAL(column), Z_STRVAL_P(input));
+            zval *entity = zend_hash_str_find(Z_ARRVAL(meta), "entity", sizeof("entity") - 1);
+            if (entity == NULL || Z_TYPE_P(entity) != IS_STRING) {
+                OBJ_RELEASE(previous);
+                zval_ptr_dtor(&meta); zval_ptr_dtor(&value); zval_ptr_dtor(&set_value);
+                model_throw_orm("INTERNAL", "the model metadata names no entity");
+                RETURN_THROWS();
+            }
+            zend_string *text = strpprintf(0, "%s.%s: %s value is not a %s", Z_STRVAL_P(entity), ZSTR_VAL(column),
+                Z_STRVAL_P(type), Z_STRVAL_P(type));
+            zval_ptr_dtor(&meta); zval_ptr_dtor(&value); zval_ptr_dtor(&set_value);
             orm_throw_exception_previous("CODEC_ENCODE", text, previous);
             zend_string_release(text);
             RETURN_THROWS();

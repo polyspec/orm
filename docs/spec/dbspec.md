@@ -360,7 +360,7 @@ A client builds one runtime model from the document set, and generated code is p
 | `time(p)` | `string` `HH:MM:SS` with p fraction digits | `string` | same as PHP (native Model) | `string` | `String` | `str` |
 | `datetime(p)` | `time.Time` in UTC | `\DateTimeImmutable` in UTC | same as PHP (native Model) | `string` `YYYY-MM-DD HH:MM:SS` with p fraction digits | `NaiveDateTime` | `str` `YYYY-MM-DD HH:MM:SS` with p fraction digits, in UTC |
 
-- **DBS-121** A generated setter of a `date`, `time(p)` or `datetime(p)` column takes the text form in every language: `string` in Go and TypeScript, `str` in Python, `string` in PHP and `String` in Rust. A native date or time value is not accepted by the setter, so the type check reports it before the statement; the text is checked when the setter runs and the bind layer checks it again.
+- **DBS-121** A generated setter of a `date`, `time(p)` or `datetime(p)` column takes the text form in every language: `string` in Go and TypeScript, `str` in Python, `string` in PHP and `String` in Rust. A native date or time value is not accepted by the setter, so the type check reports it before the statement; the text is checked when the setter runs and the bind layer checks it again. A text that the setter refuses is `CODEC_ENCODE` `<entity>.<column>: <type> value is not a <type>` in every language, which names no value (INT-163).
 
 - **DBS-121a** Python generated setters take `None` for a column that is not nullable, since Python has no static type of the value; building the insert of that row refuses it with `CODEC_ENCODE` before any message is sent. The typed setters of the other runtimes take no null, so the case is held by `tests/bind/messages-python-null.json`, which only Python runs.
 

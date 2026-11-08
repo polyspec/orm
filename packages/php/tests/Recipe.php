@@ -1716,20 +1716,21 @@ final class Recipe
      * Runs one markdown.send step (FCV-4) on a listener that answers connect with {"ok":true}, records the first
      * message after it and answers that message with SEND_ERROR so the call ends. The expect is {"message": JSON},
      * compared with the whole statement that begins a transaction or the one parameter of a statement, or
-     * {"error": CODE}, compared with the code of the orm error that the call raises before it sends a message.
+     * {"error": CODE, "text": TEXT}, compared with the code and the whole text (PRT-32a) of the orm error that the call
+     * raises before it sends a message; the text is optional.
      */
     private static function sendStep(RecipeStep $step): void
     {
         self::loadBindModels();
         $begin = $step->has('begin');
-        [$message, $code] = self::sendFirst(static function (mixed $db) use ($step, $begin): void {
+        [$message, $code, $text] = self::sendFirst(static function (mixed $db) use ($step, $begin): void {
             if ($begin) {
                 $db->transaction(static fn(): null => null, '', $step['begin']['read_only'] === true);
             } else {
                 self::sendQuery($step, $db);
             }
         });
-        self::checkMessage($step['expect'], $message, $code, $begin);
+        self::checkMessage($step['expect'], $message, $code, $begin, $text);
     }
 
     /**
@@ -2134,7 +2135,7 @@ final class Recipe
     private static function assignStep(RecipeStep $step): void
     {
         self::loadBindModels();
-        [$message, $code] = self::sendFirst(static function (mixed $db) use ($step): void {
+        [$message, $code, $text] = self::sendFirst(static function (mixed $db) use ($step): void {
             $model = $step['model'];
             $column = $step['column'];
             if ($model !== 'slots' || $column !== 'varchar_value') {
@@ -2143,45 +2144,57 @@ final class Recipe
             $text = $step['value']['text'] ?? Assert::fail('model.assign takes a text wrapper in the PHP cases');
             (new \Polyspec\Orm\Tests\BindModel\Slots())->connect($db)->setVarcharValue($text)->create();
         });
-        self::checkMessage($step['expect'], $message, $code);
+        self::checkMessage($step['expect'], $message, $code, false, $text);
     }
 
     /**
      * Runs call with a connection to a markdown listener that answers connect with {"ok":true}, answers the setup
      * statements of orm's SQLite dialect, such as the row lock table that a transaction needs, as done, records the
      * first other message and answers it and every later one with SEND_ERROR so the call ends. Returns the first
-     * other message, or null, and the code of the orm error that call raises before it sends a message.
+     * other message, or null, and the code and the whole text of the orm error that call raises before it sends a
+     * message.
      *
      * @param callable(mixed): void $call
-     * @return array{0: ?string, 1: string}
+     * @return array{0: ?string, 1: string, 2: string}
      */
     private static function sendFirst(callable $call): array
     {
         $server = start_markdown_test_server(['--send', self::SEND_ERROR]);
         $code = '';
+        $text = '';
         $db = null;
         try {
             $db = \Polyspec\Orm\Tests\BindModel\connect($server[2], new Config());
             $call($db);
         } catch (OrmException $error) {
             $code = $error->code_;
+            $text = $error->getMessage();
         } finally {
             $db?->close();
             $received = markdown_test_server_received_messages($server);
         }
         // The first line is connect; the second is the first message after it that is not a setup statement, which
         // the listener does not record.
-        return [$received[1] ?? null, $code];
+        return [$received[1] ?? null, $code, $text];
     }
 
     /**
-     * Checks the message or the error code of a listener step against its expect, {"message": JSON} or {"error": CODE}.
-     * A whole step compares the whole message, as the statement that begins a transaction is.
+     * Checks the message or the error of a listener step against its expect, {"message": JSON} or
+     * {"error": CODE, "text": TEXT} with an optional whole text. A whole step compares the whole message, as the
+     * statement that begins a transaction is.
      */
-    private static function checkMessage(array $expect, ?string $message, string $code, bool $whole = false): void
-    {
+    private static function checkMessage(
+        array $expect,
+        ?string $message,
+        string $code,
+        bool $whole = false,
+        string $text = ''
+    ): void {
         if (isset($expect['error'])) {
             Assert::assertSame($expect['error'], $message === null ? $code : '', 'the error code of the call');
+            if (isset($expect['text'])) {
+                Assert::assertSame($expect['text'], $text, 'the error text of the call');
+            }
             return;
         }
         if ($message === null) {
@@ -2302,6 +2315,10 @@ final class Recipe
             $code = $result['error']?->code_ ?? 'none';
             if ($code !== $expect['error']) {
                 Assert::fail("error $code, want {$expect['error']}");
+            }
+            // message is the whole text of the error, its code included (INT-163).
+            if (isset($expect['message'])) {
+                Assert::assertSame($expect['message'], $result['error']?->getMessage(), 'error message');
             }
             return;
         }

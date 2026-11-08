@@ -1527,8 +1527,7 @@ final class Db
     private static function boundTimeText(\DateTimeImmutable $t, int $precision, string $colType): string
     {
         if (trim(substr($t->format('u'), $precision), '0') !== '') {
-            throw new OrmException(Code::CODEC_ENCODE, "$colType value " . $t->format('Y-m-d H:i:s.u')
-                . " has a non-zero digit past its $precision fraction digits");
+            throw new OrmException(Code::CODEC_ENCODE, "$colType value is not a $colType");
         }
         return self::timeText($t, $precision);
     }
@@ -1560,12 +1559,11 @@ final class Db
                 preg_match('/^(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?$/D', $v, $m) !== 1
                 || (int) $m[1] > 23 || (int) $m[2] > 59 || (int) $m[3] > 59
             ) {
-                throw new OrmException(Code::CODEC_ENCODE, "time value \"$v\" is not HH:MM:SS[.ffffff]");
+                throw new OrmException(Code::CODEC_ENCODE, 'time value is not a time');
             }
             $fraction = str_pad($m[4] ?? '', 6, '0');
             if (trim(substr($fraction, $precision), '0') !== '') {
-                throw new OrmException(Code::CODEC_ENCODE, "time value \"$v\" has a non-zero digit past its "
-                    . "$precision fraction digits");
+                throw new OrmException(Code::CODEC_ENCODE, 'time value is not a time');
             }
             return "$m[1]:$m[2]:$m[3]" . ($precision > 0 ? '.' . substr($fraction, 0, $precision) : '');
         }
@@ -1585,7 +1583,7 @@ final class Db
             $d = preg_match('/^\d{4}-\d{2}-\d{2}$/D', $v) === 1
                 ? \DateTimeImmutable::createFromFormat('!Y-m-d', $v, $zone) : false;
             if ($d === false || $d->format('Y-m-d') !== $v) {
-                throw self::invalidTimeText($v, $colType);
+                throw self::invalidTimeText($colType);
             }
             return $v;
         }
@@ -1596,7 +1594,7 @@ final class Db
                 $m
             ) !== 1
         ) {
-            throw self::invalidTimeText($v, $colType);
+            throw self::invalidTimeText($colType);
         }
         $fraction = $m[3] ?? '';
         $text = $m[1] . ' ' . $m[2] . '.' . str_pad($fraction, 6, '0');
@@ -1604,21 +1602,21 @@ final class Db
         if ($offset === '') {
             $t = \DateTimeImmutable::createFromFormat('!Y-m-d H:i:s.u', $text, $zone);
             if ($t === false || $t->format('Y-m-d H:i:s.u') !== $text) {
-                throw self::invalidTimeText($v, $colType);
+                throw self::invalidTimeText($colType);
             }
             return self::boundTimeText($t, $precision, $colType);
         }
         $t = \DateTimeImmutable::createFromFormat('!Y-m-d H:i:s.uP', $text . ($offset === 'Z' ? '+00:00' : $offset));
         if ($t === false || $t->format('Y-m-d H:i:s.u') !== $text) {
-            throw self::invalidTimeText($v, $colType);
+            throw self::invalidTimeText($colType);
         }
         return self::boundTimeText($t->setTimezone($zone), $precision, $colType);
     }
 
-    private static function invalidTimeText(string $v, string $colType): OrmException
+    /** The refusal of a date or datetime text, which names no value (INT-163). */
+    private static function invalidTimeText(string $colType): OrmException
     {
-        $form = $colType === 'date' ? 'YYYY-MM-DD' : 'YYYY-MM-DD HH:MM:SS[.ffffff][Z|±HH:MM]';
-        return new OrmException(Code::CODEC_ENCODE, "$colType value \"$v\" is not $form");
+        return new OrmException(Code::CODEC_ENCODE, "$colType value is not a $colType");
     }
 
     private function args(array $step, array $params, array $parentVals = [], ?TxFrame $frame = null): array

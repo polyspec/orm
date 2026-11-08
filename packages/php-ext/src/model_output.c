@@ -487,12 +487,11 @@ static bool output_json_text(zval *value, zend_string **text)
     if (status != SUCCESS || EG(exception) != NULL || Z_TYPE(result) != IS_STRING) {
         zend_class_entry *json_exception_ce = output_class("JsonException");
         if (EG(exception) != NULL && json_exception_ce != NULL && instanceof_function(EG(exception)->ce, json_exception_ce)) {
-            zval rv; zval *message = zend_read_property(zend_ce_exception, EG(exception), "message", sizeof("message") - 1, 1, &rv);
-            zend_string *copy = zval_get_string(message);
+            /* The stage text names no library text (INT-163); the JsonException stays the previous exception. */
             zend_object *exception = EG(exception); EG(exception) = NULL;
-            smart_str error = {0}; smart_str_appends(&error, "json: "); smart_str_append(&error, copy);
-            zend_string *message_text = smart_str_extract(&error); orm_throw_exception_previous("CODEC_ENCODE", message_text, exception);
-            zend_string_release(message_text); zend_string_release(copy);
+            zend_string *message_text = zend_string_init(ZEND_STRL("json: the value has no JSON text"), 0);
+            orm_throw_exception_previous("CODEC_ENCODE", message_text, exception);
+            zend_string_release(message_text);
         }
         if (Z_TYPE(result) != IS_UNDEF) zval_ptr_dtor(&result);
         return false;

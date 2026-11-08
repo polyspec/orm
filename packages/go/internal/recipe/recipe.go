@@ -144,11 +144,11 @@ type step struct {
 }
 
 // MarkdownSend runs one markdown.send step on a markdown connection to a listener that records the first message it receives,
-// and returns that message (the JSON of the message, or of the parameter of a statement) and the code of the error that the
-// public call returned before it sent one. A begin step passes begin, the statement passes column, operator and params.
+// and returns that message (the JSON of the message, or of the parameter of a statement) and the whole text of the error that
+// the public call returned before it sent one, its code first (PRT-32a). A begin step passes begin, the statement passes column, operator and params.
 // A non-empty processZone is the IANA zone name that is the process default zone while the step runs.
 // It is supplied by the test package that owns the listener and the generated bind models, since they cannot be reached from here.
-type MarkdownSend func(t *testing.T, column, operator string, params []json.RawMessage, begin *bool, processZone string) (message json.RawMessage, code string)
+type MarkdownSend func(t *testing.T, column, operator string, params []json.RawMessage, begin *bool, processZone string) (message json.RawMessage, failure string)
 
 // MarkdownBuilder runs one markdown.builder step: the builder calls on the generated model of the bind fixture, then its count
 // terminal, on a listener that records a message. It returns the code and the text of the error of the terminal, and fails the test
@@ -667,6 +667,7 @@ func check(raw json.RawMessage, r result, styles []string) error {
 	var outcome struct {
 		Value        json.RawMessage `json:"value"`
 		Error        string          `json:"error"`
+		Message      string          `json:"message"`
 		MessageHolds string          `json:"message_holds"`
 		BytesPrefix  string          `json:"bytes_prefix_hex"`
 		BytesLength  int             `json:"bytes_length"`
@@ -677,6 +678,10 @@ func check(raw json.RawMessage, r result, styles []string) error {
 	if outcome.Error != "" {
 		if got := orm.ErrorCode(r.err); got != outcome.Error {
 			return fmt.Errorf("error %q (%w), want %s", got, r.err, outcome.Error)
+		}
+		// message is the whole text of the error, its code included (INT-163).
+		if outcome.Message != "" && r.err.Error() != outcome.Message {
+			return fmt.Errorf("error message %q, want %q", r.err.Error(), outcome.Message)
 		}
 		if !strings.Contains(r.err.Error(), outcome.MessageHolds) {
 			return fmt.Errorf("error %q, want a message that holds %q", r.err.Error(), outcome.MessageHolds)
@@ -1932,7 +1937,8 @@ func dbspecPlan(raw json.RawMessage, bound map[string]result) (*dbspec.Plan, err
 }
 
 // checkSend runs a markdown.send step and checks its expect: {"message": <json>} against the first message the listener received,
-// or {"error": <code>} against the code of the error the call returned before it sent a message. The expect is not per database.
+// or {"error": <code>, "text": <whole text>} against the error the call returned before it sent a message; the text is optional.
+// The expect is not per database.
 func checkSend(t *testing.T, s step, fn MarkdownSend) error {
 	if fn == nil {
 		return fmt.Errorf("markdown.send needs WithMarkdownSend")
@@ -1947,8 +1953,8 @@ func checkSend(t *testing.T, s step, fn MarkdownSend) error {
 		}
 		begin = &b.ReadOnly
 	}
-	message, code := fn(t, s.k("column").Column, s.k("operator").Operator, s.k("params").Params, begin, s.k("process_zone").ProcessZone)
-	return checkMessage(s.k("expect").Expect, message, code)
+	message, failure := fn(t, s.k("column").Column, s.k("operator").Operator, s.k("params").Params, begin, s.k("process_zone").ProcessZone)
+	return checkMessage(s.k("expect").Expect, message, failure)
 }
 
 // checkBuilder runs one markdown.builder step and compares the code and the text of its error with the expect of database (FCV-4).
@@ -2068,14 +2074,25 @@ func checkAssign(t *testing.T, s step, fn ModelAssign) error {
 
 // checkMessage checks the message or the code of an error of a markdown listener step against its expect, {"message": JSON}
 // or {"error": CODE}.
-func checkMessage(expect map[string]json.RawMessage, message json.RawMessage, code string) error {
+func checkMessage(expect map[string]json.RawMessage, message json.RawMessage, failure string) error {
+	// The code of an error is its text up to the first colon, as every client writes it (PRT-32a).
+	code, _, _ := strings.Cut(failure, ":")
 	if raw, ok := expect["error"]; ok {
 		var want string
 		if err := json.Unmarshal(raw, &want); err != nil {
 			return err
 		}
 		if code != want {
-			return fmt.Errorf("the call returned error %q, want %q (message %s)", code, want, message)
+			return fmt.Errorf("the call returned error %q, want %q (message %s)", failure, want, message)
+		}
+		if raw, ok := expect["text"]; ok {
+			var text string
+			if err := json.Unmarshal(raw, &text); err != nil {
+				return err
+			}
+			if failure != text {
+				return fmt.Errorf("the call returned %q, want %q", failure, text)
+			}
 		}
 		return nil
 	}
@@ -2083,8 +2100,8 @@ func checkMessage(expect map[string]json.RawMessage, message json.RawMessage, co
 	if !ok {
 		return fmt.Errorf("the step expects a message or an error")
 	}
-	if code != "" {
-		return fmt.Errorf("the call returned error %s before a message", code)
+	if failure != "" {
+		return fmt.Errorf("the call returned error %q before a message", failure)
 	}
 	var got, want any
 	if err := json.Unmarshal(message, &got); err != nil {

@@ -21,6 +21,7 @@ use Purr\Yaml\Exception\ParseException;
 use Purr\Yaml\Exception\ReferenceException;
 use Purr\Yaml\Schema\CoreSchema;
 use Purr\Yaml\YamlStream;
+use Polyspec\Orm\Internal\CodecRule;
 
 use function Polyspec\OrderedJson\parse as orderedJsonParse;
 
@@ -51,7 +52,7 @@ final class Codec
             return $v->bytes;
         }
         if (!is_string($v)) {
-            throw new OrmException(Code::CODEC_ENCODE, "$what input must be text or bytes, got " . get_debug_type($v));
+            throw new OrmException(Code::CODEC_ENCODE, "$what input must be text or bytes");
         }
         return $v;
     }
@@ -132,8 +133,10 @@ final class Codec
                     try {
                         $v = self::yamlDecode($v);
                         self::validateCommonValue($v);
-                    } catch (ParseException | ReferenceException | \InvalidArgumentException $e) {
+                    } catch (CodecRule $e) {
                         throw new OrmException(Code::CODEC_DECODE, 'yaml: ' . $e->getMessage(), $e);
+                    } catch (ParseException | ReferenceException | \InvalidArgumentException $e) {
+                        throw new OrmException(Code::CODEC_DECODE, 'yaml: the stream does not parse', $e);
                     }
                     break;
                 case 'ordered_json':
@@ -141,7 +144,7 @@ final class Codec
                     try {
                         $v = orderedJsonParse($v);
                     } catch (\InvalidArgumentException $e) {
-                        throw new OrmException(Code::CODEC_DECODE, 'json: ' . $e->getMessage(), $e);
+                        throw new OrmException(Code::CODEC_DECODE, 'json: the cell is not JSON', $e);
                     }
                     break;
                 default:
@@ -171,8 +174,8 @@ final class Codec
         $cur = $value;
         // A first gz or base64 stage encodes the string, and an empty stage list writes it as it is.
         if (in_array($styles[0] ?? null, [null, 'gz', 'base64'], true) && !is_string($value)) {
-            throw new OrmException(Code::CODEC_ENCODE, ($styles[0] ?? 'an empty stage list') . ': the value is '
-                . get_debug_type($value) . ', not a string');
+            $stage = isset($styles[0]) ? "a first {$styles[0]} stage" : 'an empty stage list';
+            throw new OrmException(Code::CODEC_ENCODE, "$stage takes a string value");
         }
         if ($styles === []) {
             return $value;
@@ -184,7 +187,7 @@ final class Codec
                     // writes the common value model only (COD-16, COD-63).
                     try {
                         self::validateCommonValue($value);
-                    } catch (\InvalidArgumentException $e) {
+                    } catch (CodecRule $e) {
                         throw new OrmException(Code::CODEC_ENCODE, 'serialize: ' . $e->getMessage(), $e);
                     }
                     $cur = serialize($value);
@@ -193,15 +196,17 @@ final class Codec
                     try {
                         self::validateCommonValue($value);
                         $cur = (new Dumper())->dumpDocument(new Document(self::yamlNodeOf($value))) . "\n";
-                    } catch (\InvalidArgumentException $e) {
+                    } catch (CodecRule $e) {
                         throw new OrmException(Code::CODEC_ENCODE, 'yaml: ' . $e->getMessage(), $e);
+                    } catch (\InvalidArgumentException $e) {
+                        throw new OrmException(Code::CODEC_ENCODE, 'yaml: the value has no YAML text', $e);
                     }
                     break;
                 case 'ordered_json':
                     try {
                         $cur = self::compactJsonText(orderedJsonParse(self::jsonText($value))->raw());
                     } catch (\JsonException | \InvalidArgumentException $e) {
-                        throw new OrmException(Code::CODEC_ENCODE, 'json: ' . $e->getMessage(), $e);
+                        throw new OrmException(Code::CODEC_ENCODE, 'json: the value has no JSON text', $e);
                     }
                     break;
                 case 'base64':
@@ -285,7 +290,7 @@ final class Codec
             return self::jsonText($value->jsonSerialize());
         }
         if (is_object($value) || is_resource($value)) {
-            throw new OrmException(Code::CODEC_ENCODE, 'json: ' . get_debug_type($value) . ' is not a JSON value');
+            throw new OrmException(Code::CODEC_ENCODE, 'json: the value is not a JSON value');
         }
         return json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
     }
@@ -303,11 +308,11 @@ final class Codec
         $documents = (new YamlStream())->fromString($text);
         switch (count($documents)) {
             case 0:
-                throw new \InvalidArgumentException('no document');
+                throw new CodecRule('no document');
             case 1:
                 return self::yamlNode($documents->at(0)->getRoot(), new CoreSchema());
             default:
-                throw new \InvalidArgumentException('multiple documents are not supported');
+                throw new CodecRule('multiple documents are not supported');
         }
     }
 
@@ -319,17 +324,13 @@ final class Codec
     private static function yamlStream(string $text): void
     {
         if (!mb_check_encoding($text, 'UTF-8')) {
-            throw new \InvalidArgumentException('the stream is not UTF-8');
+            throw new CodecRule('the stream is not UTF-8');
         }
         $stream = str_starts_with($text, "\u{FEFF}") ? substr($text, 3) : $text;
         $notPrintable = '/[^\t\n\r\x{20}-\x{7E}\x{85}\x{A0}-\x{D7FF}\x{E000}-\x{FEFE}\x{FF00}-\x{FFFD}'
             . '\x{10000}-\x{10FFFF}]/u';
-        if (preg_match($notPrintable, $stream, $match, PREG_OFFSET_CAPTURE) === 1) {
-            throw new \InvalidArgumentException(sprintf(
-                'character U+%04X at byte %d is not printable',
-                mb_ord($match[0][0], 'UTF-8'),
-                $match[0][1]
-            ));
+        if (preg_match($notPrintable, $stream) === 1) {
+            throw new CodecRule('the stream holds a character that is not printable');
         }
     }
 
@@ -357,20 +358,20 @@ final class Codec
             return;
         }
         if (!$inRange) {
-            throw new \InvalidArgumentException("integer {$text} at line {$node->getLine()} is outside the i64 range");
+            throw new CodecRule("integer at line {$node->getLine()} is outside the i64 range");
         }
     }
 
     private static function yamlNode(AbstractNode $node, CoreSchema $schema): mixed
     {
         if ($node instanceof AliasNode) {
-            throw new \InvalidArgumentException("aliases are not supported at line {$node->getLine()}");
+            throw new CodecRule("aliases are not supported at line {$node->getLine()}");
         }
         if ($node->hasAnchor()) {
-            throw new \InvalidArgumentException("anchors are not supported at line {$node->getLine()}");
+            throw new CodecRule("anchors are not supported at line {$node->getLine()}");
         }
         if ($node->findTag() !== null) {
-            throw new \InvalidArgumentException("tag {$node->findTag()} at line {$node->getLine()} is not supported");
+            throw new CodecRule("explicit tags are not supported at line {$node->getLine()}");
         }
         if ($node instanceof ScalarNode) {
             self::yamlIntegerInRange($node);
@@ -388,20 +389,18 @@ final class Codec
             foreach ($node->getEntries() as $entry) {
                 $key = self::yamlNode($entry->getKey(), $schema);
                 if (!is_string($key) && !is_int($key)) {
-                    throw new \InvalidArgumentException(
+                    throw new CodecRule(
                         "map keys must be strings or integers at line {$entry->getKey()->getLine()}"
                     );
                 }
                 if (array_key_exists($key, $out)) {
-                    throw new \InvalidArgumentException(
-                        "duplicate map key {$key} at line {$entry->getKey()->getLine()}"
-                    );
+                    throw new CodecRule("duplicate map key at line {$entry->getKey()->getLine()}");
                 }
                 $out[$key] = self::yamlNode($entry->getValue(), $schema);
             }
             return $out;
         }
-        throw new \InvalidArgumentException('node ' . get_debug_type($node) . ' is not supported');
+        throw new CodecRule("the node at line {$node->getLine()} is not supported");
     }
 
     private static function finiteValue(mixed $value): bool
@@ -445,18 +444,18 @@ final class Codec
                 array_keys($value),
                 $value,
             ))),
-            default => throw new \InvalidArgumentException('value type is not supported'),
+            default => throw new CodecRule('value type is not supported'),
         };
     }
 
     private static function validateCommonValue(mixed $value): void
     {
         if (is_float($value) && !is_finite($value)) {
-            throw new \InvalidArgumentException('non-finite numbers are not supported');
+            throw new CodecRule('non-finite numbers are not supported');
         }
         if (!is_array($value)) {
             if ($value !== null && !is_bool($value) && !is_int($value) && !is_float($value) && !is_string($value)) {
-                throw new \InvalidArgumentException('value type is not supported');
+                throw new CodecRule('value type is not supported');
             }
             return;
         }
@@ -522,7 +521,7 @@ final class Codec
                     );
                     $cur = "ORM-AES2\0" . $nonce . $encrypted . $tag;
                     if ($encrypted === false) {
-                        throw new OrmException(Code::CODEC_ENCODE, 'aes: ' . (string) openssl_error_string());
+                        throw new OrmException(Code::CODEC_ENCODE, 'aes: the encryption failed');
                     }
                     break;
                 case 'hex':
@@ -607,7 +606,7 @@ final class Codec
         // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged -- a text that is no address returns false, reported as CODEC_ENCODE below
         $b = str_contains($s, "\0") || str_contains($s, '%') ? false : @inet_pton($s);
         if ($b === false) {
-            throw new OrmException(Code::CODEC_ENCODE, "ip: \"$s\" is not an address");
+            throw new OrmException(Code::CODEC_ENCODE, 'ip: the text is not an address');
         }
         return $b;
     }
@@ -617,7 +616,7 @@ final class Codec
     {
         $n = strlen($b);
         if ($n !== 4 && $n !== 16) {
-            throw new OrmException(Code::CODEC_DECODE, "ip: $n packed bytes");
+            throw new OrmException(Code::CODEC_DECODE, 'ip: the cell is not 4 or 16 packed bytes');
         }
         return inet_ntop($b);
     }
@@ -626,10 +625,11 @@ final class Codec
      * Decodes the styled cells of positional rows in place: the host stages first, then the codec
      * stages. $cells is a step's 'decode' list from Assemble::index (joined columns included):
      * [index, host stages, codec stages, whether the host stages include aes, the index of the
-     * node's aes_key_version column or null, the <entity>.<column> of the cell]. A CODEC_DECODE of a
-     * cell names its entity and column: "CODEC_DECODE: <entity>.<column>: <message>" (COD-41).
+     * node's aes_key_version column or null, the <entity>.<column> of the cell, the <entity>.<column> of
+     * the version column or null]. A CODEC_DECODE of a cell names its entity and column, and one of a
+     * stored version names the version column: "CODEC_DECODE: <entity>.<column>: <message>" (COD-41).
      * @param list<list<mixed>> $rows
-     * @param list<array{0: int, 1: list<string>, 2: list<string>, 3: bool, 4: ?int, 5: string}> $cells
+     * @param list<array{0: int, 1: list<string>, 2: list<string>, 3: bool, 4: ?int, 5: string, 6: ?string}> $cells
      */
     public static function decodeRows(array &$rows, array $cells, Config $config): void
     {
@@ -641,10 +641,10 @@ final class Codec
             }
         }
         foreach ($rows as &$vals) {
-            foreach ($cells as [$index, $host, $codec, $aes, $versionIndex, $name]) {
+            foreach ($cells as [$index, $host, $codec, $aes, $versionIndex, $name, $versionName]) {
                 $v = $vals[$index];
                 if ($host !== []) {
-                    if ($aes && $versionIndex === null) {
+                    if ($aes && ($versionIndex === null || $versionName === null)) {
                         // The planner selects the version column of every AES column, so a plan without one is broken:
                         // no version is assumed.
                         throw new OrmException(Code::INTERNAL, 'an AES column has no version column');
@@ -652,7 +652,9 @@ final class Codec
                     // The version is read only for a non-NULL value: a NULL cell with a NULL version stays NULL
                     // (COD-44).
                     if ($v !== null) {
-                        $key = !$aes ? $config->aesKey : $keyring->key(self::rowVersion($vals, $versionIndex));
+                        $key = !$aes
+                            ? $config->aesKey
+                            : $keyring->key(self::rowVersion($vals, $versionIndex, $versionName));
                         try {
                             $v = self::hostDecode($v, $host, $key);
                         } catch (OrmException $e) {
@@ -689,15 +691,19 @@ final class Codec
 
     /**
      * The key version of a read row's version cell (COD-44): a missing cell is INTERNAL, a stored version that is not a
-     * positive 32-bit integer is CODEC_DECODE.
+     * positive 32-bit integer is the CODEC_DECODE of the version cell, which names its <entity>.<column> (COD-41).
      * @param array<array-key, mixed> $vals
      */
-    private static function rowVersion(array $vals, int $index): int
+    private static function rowVersion(array $vals, int $index, string $name): int
     {
         if (!array_key_exists($index, $vals)) {
             throw new OrmException(Code::INTERNAL, "the AES version cell $index is missing from the row");
         }
-        return AesKeyring::storedVersion($vals[$index]);
+        try {
+            return AesKeyring::storedVersion($vals[$index]);
+        } catch (OrmException $e) {
+            throw self::namedDecodeFailure($e, $name);
+        }
     }
 
     /**

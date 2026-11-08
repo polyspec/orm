@@ -16,7 +16,13 @@ use crate::value::{Param, StyledValue, Val};
 use crate::{Error, Result};
 
 fn err(code: &str, msg: impl Into<String>) -> Error {
-    Error::Engine { code: code.into(), msg: msg.into() }
+    Error::Engine { code: code.into(), msg: msg.into(), source: None }
+}
+
+/// The stage text `msg` of a failure of the library a stage reads or writes with, which keeps that failure as its
+/// source (COD-41).
+fn err_cause(code: &str, msg: impl Into<String>, cause: impl std::error::Error + Send + Sync + 'static) -> Error {
+    Error::Engine { code: code.into(), msg: msg.into(), source: Some(Box::new(cause)) }
 }
 
 /// Stored cell → decoded value, or `Val::Null` for SQL NULL. The `ordered_json`
@@ -29,7 +35,7 @@ pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
         Val::Json(v) if styles.len() == 1 && styles[0] == "ordered_json" => v.to_string().into_bytes(),
         Val::Str(s) => s.as_bytes().to_vec(),
         Val::Bytes(b) => b.clone(),
-        other => return Err(err(CODEC_DECODE, format!("cell is {other:?}, not bytes"))),
+        _ => return Err(err(CODEC_DECODE, "cell is not bytes")),
     };
     let mut value: Option<Val> = None;
     for st in styles.iter().rev() {
@@ -39,27 +45,29 @@ pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
         match st.as_str() {
             "gz" => {
                 let mut out = Vec::new();
-                flate2::read::ZlibDecoder::new(cur.as_slice()).read_to_end(&mut out).map_err(|e| err(CODEC_DECODE, format!("gz: {e}")))?;
+                flate2::read::ZlibDecoder::new(cur.as_slice()).read_to_end(&mut out).map_err(|error| err_cause(CODEC_DECODE, "gz: bad zlib stream", error))?;
                 cur = out;
             }
             "base64" => {
-                let text = std::str::from_utf8(&cur).map_err(|error| err(CODEC_DECODE, format!("base64 input is not UTF-8: {error}")))?;
+                let text = std::str::from_utf8(&cur).map_err(|error| err_cause(CODEC_DECODE, "base64: bad input", error))?;
                 // A stored cell is decoded only in the form the encoder writes (docs/spec/codec.md). STANDARD rejects whitespace, missing padding,
                 // and nonzero padding bits.
-                cur = base64::engine::general_purpose::STANDARD.decode(text).map_err(|e| err(CODEC_DECODE, format!("base64: {e}")))?;
+                cur = base64::engine::general_purpose::STANDARD.decode(text).map_err(|error| err_cause(CODEC_DECODE, "base64: bad input", error))?;
             }
             "serialize" => value = Some(Val::Json(php_unserialize(&cur)?)),
             "yaml" => {
                 value = Some(Val::Json(yaml_decode(&cur)?));
             }
-            "ordered_json" => value = Some(Val::Ordered(strict_json::parse_bytes(&cur).map_err(|e| err(CODEC_DECODE, format!("json: {e}")))?)),
+            "ordered_json" => {
+                value = Some(Val::Ordered(strict_json::parse_bytes(&cur).map_err(|error| err_cause(CODEC_DECODE, "json: the cell is not JSON", error))?))
+            }
             other => return Err(err(CODEC_UNSUPPORTED, format!("style {other}"))),
         }
     }
     // Without a value stage (no stage, or a list that starts with gz or base64) the value is the text of the bytes.
     Ok(match value {
         Some(value) => value,
-        None => Val::Str(String::from_utf8(cur).map_err(|e| err(CODEC_DECODE, format!("decoded text is not valid UTF-8: {e}")))?),
+        None => Val::Str(String::from_utf8(cur).map_err(|error| err_cause(CODEC_DECODE, "decoded text is not valid UTF-8", error))?),
     })
 }
 
@@ -126,7 +134,7 @@ pub fn encode_ordered(styles: &[&str], v: StyledValue<&strict_json::Value>) -> R
     match styles.first() {
         Some(&"ordered_json") => finish(&styles[1..], ordered_text(v).into_bytes()),
         // An ordered-json value is written by a first ordered_json stage only (COD-16).
-        _ => Err(err(CODEC_ENCODE, format!("an ordered-json value is written by a first ordered_json stage only, not {styles:?}"))),
+        _ => Err(err(CODEC_ENCODE, "an ordered-json value is written by a first ordered_json stage only")),
     }
 }
 
@@ -158,8 +166,8 @@ fn encode_binary_stage(style: &str, cur: &mut Vec<u8>) -> Result<()> {
         }
         "gz" => {
             let mut enc = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::best());
-            enc.write_all(cur).map_err(|e| err(CODEC_ENCODE, format!("gz: {e}")))?;
-            *cur = enc.finish().map_err(|e| err(CODEC_ENCODE, format!("gz: {e}")))?;
+            enc.write_all(cur).map_err(|error| err_cause(CODEC_ENCODE, "gz: the compression failed", error))?;
+            *cur = enc.finish().map_err(|error| err_cause(CODEC_ENCODE, "gz: the compression failed", error))?;
             Ok(())
         }
         other => Err(err(CODEC_UNSUPPORTED, format!("style {other}"))),
@@ -191,8 +199,8 @@ pub fn encode(styles: &[&str], v: StyledValue<&Value>) -> Result<Param> {
                 cur = yaml_encode(&value)?;
             }
             "ordered_json" => {
-                let raw = serde_json::to_vec(&value).map_err(|e| err(CODEC_ENCODE, format!("json: {e}")))?;
-                let parsed = strict_json::parse_bytes(&raw).map_err(|e| err(CODEC_ENCODE, format!("json: {e}")))?;
+                let raw = serde_json::to_vec(&value).map_err(|error| err_cause(CODEC_ENCODE, "json: the value has no JSON text", error))?;
+                let parsed = strict_json::parse_bytes(&raw).map_err(|error| err_cause(CODEC_ENCODE, "json: the value has no JSON text", error))?;
                 cur = strict_json::stringify(&parsed).into_bytes();
             }
             "base64" | "gz" => encode_binary_stage(st, &mut cur)?,
@@ -218,13 +226,19 @@ struct YamlReader {
     documents: usize,
     frames: Vec<YamlFrame>,
     value: Option<Value>,
-    error: Option<String>,
+    error: Option<Error>,
 }
 
 impl YamlReader {
     fn fail(&mut self, mark: YamlMarker, message: impl AsRef<str>) {
+        self.refuse(mark, message.as_ref(), None);
+    }
+
+    /// Keeps the first refusal of the stream: the rule with its line and column, and the failure that found it, if any.
+    fn refuse(&mut self, mark: YamlMarker, message: &str, source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>) {
         if self.error.is_none() {
-            self.error = Some(format!("{} at line {}, column {}", message.as_ref(), mark.line(), mark.col()));
+            let msg = format!("yaml: {message} at line {}, column {}", mark.line(), mark.col());
+            self.error = Some(Error::Engine { code: CODEC_DECODE.into(), msg, source });
         }
     }
 
@@ -249,7 +263,7 @@ impl YamlReader {
                         _ => return self.fail(mark, "plain boolean, null, and floating-point map keys are not supported"),
                     };
                     if map.contains_key(&name) {
-                        return self.fail(mark, format!("duplicate map key {name:?}"));
+                        return self.fail(mark, "duplicate map key");
                     }
                     *key = Some(name);
                 }
@@ -293,7 +307,7 @@ impl<'input> SpannedEventReceiver<'input> for YamlReader {
                 } else {
                     match yaml_core_scalar(text.into_owned()) {
                         Ok(value) => self.place(value, mark),
-                        Err(message) => self.fail(mark, message),
+                        Err((message, source)) => self.refuse(mark, message, source),
                     }
                 }
             }
@@ -309,6 +323,11 @@ impl<'input> SpannedEventReceiver<'input> for YamlReader {
     }
 }
 
+/// The failure that found a refused plain scalar.
+type YamlCause = Box<dyn std::error::Error + Send + Sync + 'static>;
+/// A refused plain scalar: the rule it breaks and the failure that found it, if any.
+type YamlScalarRefusal = (&'static str, Option<YamlCause>);
+
 static YAML_CORE_INT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\A(?:[-+]?[0-9]+|0o[0-7]+|0x[0-9a-fA-F]+)\z").unwrap());
 static YAML_CORE_FLOAT: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\A(?:[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?|[-+]?\.(?:inf|Inf|INF)|\.(?:nan|NaN|NAN))\z").unwrap());
@@ -317,7 +336,7 @@ static YAML_CORE_FLOAT: LazyLock<Regex> =
 /// null, bool, int and float by their regular expressions, and str otherwise. saphyr-parser
 /// reports a plain scalar as its text and resolves no tag, so the core schema is applied here. An integer
 /// outside i64 and a float that is not finite are outside the common value model.
-fn yaml_core_scalar(text: String) -> std::result::Result<Value, String> {
+fn yaml_core_scalar(text: String) -> std::result::Result<Value, YamlScalarRefusal> {
     Ok(match text.as_str() {
         "" | "~" | "null" | "Null" | "NULL" => Value::Null,
         "true" | "True" | "TRUE" => Value::Bool(true),
@@ -328,13 +347,17 @@ fn yaml_core_scalar(text: String) -> std::result::Result<Value, String> {
                 (_, Some(digits)) => i64::from_str_radix(digits, 16),
                 _ => text.parse::<i64>(),
             };
-            Value::from(parsed.map_err(|error| format!("integer {text} is outside the i64 range: {error}"))?)
+            Value::from(parsed.map_err(|error| ("integer is outside the i64 range", Some(Box::new(error) as YamlCause)))?)
         }
         _ if YAML_CORE_FLOAT.is_match(&text) => {
-            let float = text.parse::<f64>().map_err(|error| format!("float {text} is not a number: {error}"))?;
+            // .inf and .nan are YAML floats that are not finite; Rust reads them without the dot.
+            let float = match text.trim_start_matches(['+', '-']).strip_prefix('.') {
+                Some(word) if word.eq_ignore_ascii_case("inf") || word.eq_ignore_ascii_case("nan") => return Err(("number is not finite", None)),
+                _ => text.parse::<f64>().map_err(|error| ("float is not a number", Some(Box::new(error) as YamlCause)))?,
+            };
             match serde_json::Number::from_f64(float) {
                 Some(number) => Value::Number(number),
-                None => return Err(format!("non-finite number {text} is not supported")),
+                None => return Err(("number is not finite", None)),
             }
         }
         _ => Value::String(text),
@@ -352,15 +375,15 @@ fn yaml_printable(c: char) -> bool {
 /// YAML value. An explicit empty document (`---`) is null. Before parsing, the reader
 /// removes a leading byte order mark and refuses a character outside c-printable.
 fn yaml_decode(bytes: &[u8]) -> Result<Value> {
-    let source = std::str::from_utf8(bytes).map_err(|e| err(CODEC_DECODE, format!("yaml: invalid UTF-8: {e}")))?;
+    let source = std::str::from_utf8(bytes).map_err(|error| err_cause(CODEC_DECODE, "yaml: the stream is not UTF-8", error))?;
     let source = source.strip_prefix('\u{feff}').unwrap_or(source);
-    if let Some((at, c)) = source.char_indices().find(|&(_, c)| !yaml_printable(c)) {
-        return Err(err(CODEC_DECODE, format!("yaml: character U+{:04X} at byte {at} is not printable", c as u32)));
+    if source.chars().any(|c| !yaml_printable(c)) {
+        return Err(err(CODEC_DECODE, "yaml: the stream holds a character that is not printable"));
     }
     let mut reader = YamlReader::default();
-    YamlParser::new_from_str(source).load(&mut reader, true).map_err(|e| err(CODEC_DECODE, format!("yaml: {e}")))?;
+    YamlParser::new_from_str(source).load(&mut reader, true).map_err(|error| err_cause(CODEC_DECODE, "yaml: the stream does not parse", error))?;
     match reader.error {
-        Some(message) => Err(err(CODEC_DECODE, format!("yaml: {message}"))),
+        Some(error) => Err(error),
         None if reader.documents == 0 => Err(err(CODEC_DECODE, "yaml: no document")),
         None => Ok(reader.value.unwrap_or(Value::Null)),
     }
@@ -372,20 +395,18 @@ fn yaml_decode(bytes: &[u8]) -> Result<Value> {
 /// a text that does not read back as the value returns CODEC_ENCODE instead of storing it.
 fn yaml_encode(value: &Value) -> Result<Vec<u8>> {
     number_check(value, "yaml")?;
-    let text = serde_saphyr::to_string(value).map_err(|e| err(CODEC_ENCODE, format!("yaml: {e}")))?;
+    let text = serde_saphyr::to_string(value).map_err(|error| err_cause(CODEC_ENCODE, "yaml: the value has no YAML text", error))?;
     match yaml_decode(text.as_bytes()) {
         Ok(read) if read == *value => Ok(text.into_bytes()),
-        Ok(read) => Err(err(CODEC_ENCODE, format!("yaml: the written text {text:?} reads back as {read}, not {value}"))),
-        Err(e) => Err(err(CODEC_ENCODE, format!("yaml: the written text {text:?} does not read back: {e}"))),
+        // The text and the value are data, so the refusal names neither (INT-163).
+        Ok(_) | Err(_) => Err(err(CODEC_ENCODE, "yaml: the written text does not read back as the value")),
     }
 }
 
 /// Refuses a number the common value model (COD-16) does not hold: an integer beyond i64.
 fn number_check(value: &Value, style: &str) -> Result<()> {
     match value {
-        Value::Number(number) if number.is_u64() && number.as_i64().is_none() => {
-            Err(err(CODEC_ENCODE, format!("{style}: integer {number} is outside the i64 range")))
-        }
+        Value::Number(number) if number.is_u64() && number.as_i64().is_none() => Err(err(CODEC_ENCODE, format!("{style}: integer is outside the i64 range"))),
         Value::Array(items) => items.iter().try_for_each(|item| number_check(item, style)),
         Value::Object(map) => map.values().try_for_each(|item| number_check(item, style)),
         _ => Ok(()),
@@ -404,7 +425,7 @@ fn php_serialize(out: &mut String, v: &Value) -> Result<()> {
             } else if let Some(f) = n.as_f64() {
                 out.push_str(&format!("d:{};", php_float(f)));
             } else {
-                return Err(err(CODEC_ENCODE, format!("number {n} out of range")));
+                return Err(err(CODEC_ENCODE, "integer is outside the i64 range"));
             }
         }
         Value::String(s) => out.push_str(&format!("s:{}:\"{}\";", s.len(), s)),
@@ -485,6 +506,11 @@ impl<'a> Parser<'a> {
         err(CODEC_DECODE, format!("serialize: {msg} at {}", self.i))
     }
 
+    /// The refusal `msg` at the offset, keeping the failure that found it.
+    fn fail_cause(&self, msg: &str, cause: impl std::error::Error + Send + Sync + 'static) -> Error {
+        err_cause(CODEC_DECODE, format!("serialize: {msg} at {}", self.i), cause)
+    }
+
     fn expect(&mut self, c: u8) -> Result<()> {
         if self.b.get(self.i) != Some(&c) {
             return Err(self.fail(&format!("expected {}", c as char)));
@@ -496,7 +522,7 @@ impl<'a> Parser<'a> {
     fn until(&mut self, c: u8) -> Result<&'a str> {
         let rest = &self.b[self.i..];
         let j = rest.iter().position(|&x| x == c).ok_or_else(|| self.fail(&format!("expected {}", c as char)))?;
-        let s = std::str::from_utf8(&rest[..j]).map_err(|error| self.fail(&format!("bad utf-8: {error}")))?;
+        let s = std::str::from_utf8(&rest[..j]).map_err(|error| self.fail_cause("bad utf-8", error))?;
         self.i += j + 1;
         Ok(s)
     }
@@ -518,13 +544,13 @@ impl<'a> Parser<'a> {
                         "1" => Ok(Value::Bool(true)),
                         _ => Err(self.fail("bad boolean")),
                     },
-                    b'i' => s.parse::<i64>().map(Value::from).map_err(|error| self.fail(&format!("bad int: {error}"))),
+                    b'i' => s.parse::<i64>().map(Value::from).map_err(|error| self.fail_cause("bad int", error)),
                     _ => {
                         let f = match s {
                             "INF" => f64::INFINITY,
                             "-INF" => f64::NEG_INFINITY,
                             "NAN" => f64::NAN,
-                            _ => s.parse::<f64>().map_err(|error| self.fail(&format!("bad float: {error}")))?,
+                            _ => s.parse::<f64>().map_err(|error| self.fail_cause("bad float", error))?,
                         };
                         serde_json::Number::from_f64(f).map(Value::Number).ok_or_else(|| self.fail("non-finite float"))
                     }
@@ -532,12 +558,12 @@ impl<'a> Parser<'a> {
             }
             b's' => {
                 self.expect(b':')?;
-                let n: usize = self.until(b':')?.parse().map_err(|error| self.fail(&format!("bad string length: {error}")))?;
+                let n: usize = self.until(b':')?.parse().map_err(|error| self.fail_cause("bad string length", error))?;
                 self.expect(b'"')?;
                 if self.i + n > self.b.len() {
                     return Err(self.fail("string overruns input"));
                 }
-                let s = String::from_utf8(self.b[self.i..self.i + n].to_vec()).map_err(|error| self.fail(&format!("string is not utf-8: {error}")))?;
+                let s = String::from_utf8(self.b[self.i..self.i + n].to_vec()).map_err(|error| self.fail_cause("string is not utf-8", error))?;
                 self.i += n;
                 self.expect(b'"')?;
                 self.expect(b';')?;
@@ -545,7 +571,7 @@ impl<'a> Parser<'a> {
             }
             b'a' => {
                 self.expect(b':')?;
-                let n: usize = self.until(b':')?.parse().map_err(|error| self.fail(&format!("bad array length: {error}")))?;
+                let n: usize = self.until(b':')?.parse().map_err(|error| self.fail_cause("bad array length", error))?;
                 self.expect(b'{')?;
                 let mut keys: Vec<String> = Vec::with_capacity(n);
                 let mut vals: Vec<Value> = Vec::with_capacity(n);
@@ -578,8 +604,8 @@ impl<'a> Parser<'a> {
                 }
                 Ok(Value::Object(m))
             }
-            b'O' | b'C' | b'r' | b'R' => Err(err(CODEC_UNSUPPORTED, format!("serialize: objects and references are not supported ({})", t as char))),
-            other => Err(self.fail(&format!("unknown type {}", other as char))),
+            b'O' | b'C' | b'r' | b'R' => Err(err(CODEC_UNSUPPORTED, "serialize: objects and references are not supported")),
+            _ => Err(self.fail("unknown type")),
         }
     }
 }
@@ -644,9 +670,9 @@ pub fn blind_index(v: &Param, key: &str) -> Result<String> {
         Param::Null => return Ok(String::new()),
         Param::Str(s) => s.as_bytes().to_vec(),
         Param::Bytes(b) => b.clone(),
-        other => return Err(err(CODEC_ENCODE, format!("blind index input must be text or bytes, got {other:?}"))),
+        _ => return Err(err(CODEC_ENCODE, "blind index input must be text or bytes")),
     };
-    let mut mac = <Hmac<Sha256> as Mac>::new_from_slice(key.as_bytes()).map_err(|error| Error::Config(format!("invalid blind_index key: {error}")))?;
+    let mut mac = <Hmac<Sha256> as Mac>::new_from_slice(key.as_bytes()).expect("HMAC takes a key of any length");
     mac.update(&plain);
     Ok(hex_upper(&mac.finalize().into_bytes()).to_ascii_lowercase())
 }
@@ -681,7 +707,7 @@ pub fn aes_decrypt(cipher_text: &[u8], key: &str) -> Result<Vec<u8>> {
     let nonce = Nonce::from(nonce);
     cipher
         .decrypt(&nonce, Payload { msg: &cipher_text[offset + 12..], aad: AES_V2_PREFIX })
-        .map_err(|error| err(CODEC_DECODE, format!("aes: authentication failed: {error:?}")))
+        .map_err(|error| err_cause(CODEC_DECODE, "aes: authentication failed", error))
 }
 
 /// Upper-case hex text, the form every encoder writes.
@@ -726,7 +752,7 @@ fn pack_ip(s: &str) -> Result<Vec<u8>> {
     match s.parse::<std::net::IpAddr>() {
         Ok(std::net::IpAddr::V4(a)) => Ok(a.octets().to_vec()),
         Ok(std::net::IpAddr::V6(a)) => Ok(a.octets().to_vec()),
-        Err(_) => Err(err(CODEC_ENCODE, format!("ip: {s:?} is not an address"))),
+        Err(_) => Err(err(CODEC_ENCODE, "ip: the text is not an address")),
     }
 }
 
@@ -735,7 +761,7 @@ fn unpack_ip(b: &[u8]) -> Result<String> {
     match b.len() {
         4 => Ok(std::net::Ipv4Addr::from(<[u8; 4]>::try_from(b).unwrap()).to_string()),
         16 => Ok(std::net::Ipv6Addr::from(<[u8; 16]>::try_from(b).unwrap()).to_string()),
-        n => Err(err(CODEC_DECODE, format!("ip: {n} packed bytes"))),
+        _ => Err(err(CODEC_DECODE, "ip: the cell is not 4 or 16 packed bytes")),
     }
 }
 
@@ -753,7 +779,7 @@ pub fn host_encode(v: &Param, styles: &[String], aes_key: &str) -> Result<Param>
         Param::Str(s) => s.as_bytes().to_vec(),
         Param::Bytes(b) => b.clone(),
         // A host stage takes text or bytes only (COD-1).
-        other => return Err(err(CODEC_ENCODE, format!("host input must be text or bytes, got {other:?}"))),
+        _ => return Err(err(CODEC_ENCODE, "host input must be text or bytes")),
     };
     for st in styles {
         cur = match st.as_str() {
@@ -782,7 +808,7 @@ pub fn host_decode(raw: &Val, styles: &[String], aes_key: &str) -> Result<Val> {
         Val::Null => return Ok(Val::Null),
         Val::Str(s) => s.as_bytes().to_vec(),
         Val::Bytes(b) => b.clone(),
-        other => return Err(err(CODEC_DECODE, format!("cell is {other:?}, not bytes"))),
+        _ => return Err(err(CODEC_DECODE, "cell is not bytes")),
     };
     for st in styles.iter().rev() {
         cur = match st.as_str() {

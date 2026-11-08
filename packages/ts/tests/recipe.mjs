@@ -283,6 +283,8 @@ function run(step, bound, database) {
   if (expect.error !== undefined) {
     const code = result.error?.code ?? '';
     if (code !== expect.error) throw new Error(`error ${code || 'none'} (${result.error ?? result.value}), want ${expect.error}`);
+    // message is the whole text of the error, its code included (INT-163).
+    if (expect.message !== undefined && result.error.message !== expect.message) throw new Error(`error message ${JSON.stringify(result.error.message)}, want ${JSON.stringify(expect.message)}`);
     return;
   }
   if (result.error !== undefined) throw new Error(`unexpected error ${result.error}`);
@@ -3014,8 +3016,8 @@ async function checkBuilder(step, database) {
   }
 }
 
-// checkFirst runs call on a connection to the markdown.send listener and compares the first message it records, or the OrmError code of a
-// call that sent none, with the expect of step. A whole step compares the whole message, as the statement that begins a transaction is.
+// checkFirst runs call on a connection to the markdown.send listener and compares the first message it records, or the OrmError code and
+// its whole text (PRT-32a) of a call that sent none, with the expect of step. A whole step compares the whole message, as the statement that begins a transaction is.
 async function checkFirst(call, step, wrappedExpect, whole = false) {
   const received = [];
   const server = await startMarkdownSendListener(received);
@@ -3032,11 +3034,12 @@ async function checkFirst(call, step, wrappedExpect, whole = false) {
   }
   let got;
   if (received.length > 0) got = { message: whole ? fromJson(parseJson(received[0])) : messageValue(received[0]) };
-  else if (callError instanceof OrmError) got = { code: callError.code };
+  else if (callError instanceof OrmError) got = { code: callError.code, text: callError.message };
   else throw new Error(`the call returned ${callError ?? 'no error'} and sent no message`, { cause: callError });
   if (step.expect.error !== undefined) {
     const code = got.code ?? '';
     if (code !== step.expect.error) throw new Error(`the call returned error ${code || 'none'}, want ${step.expect.error}`);
+    if (step.expect.text !== undefined && got.text !== step.expect.text) throw new Error(`the call returned ${JSON.stringify(got.text)}, want ${JSON.stringify(step.expect.text)}`);
     return;
   }
   if (step.expect.message === undefined) throw new Error('markdown.send expects a message or an error');

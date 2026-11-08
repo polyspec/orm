@@ -62,7 +62,7 @@ impl Req {
     }
 
     pub fn error(&self) -> Option<Error> {
-        self.err.as_ref().map(|(code, msg)| Error::Engine { code: code.clone(), msg: msg.clone() })
+        self.err.as_ref().map(|(code, msg)| Error::Engine { code: code.clone(), msg: msg.clone(), source: None })
     }
 
     /// The plan-cache key: FNV-1a 64 over the IR bytes, streamed without allocating them.
@@ -173,10 +173,11 @@ pub(crate) fn validate_page_params(r: &ir::Request, params: &[Param]) -> crate::
     let value = |index: usize, field: &str| -> crate::Result<i64> {
         match params.get(index) {
             Some(Param::I64(value)) => Ok(*value),
-            Some(_) => Err(Error::Engine { code: codes::CODEC_ENCODE.into(), msg: format!("page {field} must be an integer") }),
+            Some(_) => Err(Error::Engine { code: codes::CODEC_ENCODE.into(), msg: format!("page {field} must be an integer"), source: None }),
             None => Err(Error::Engine {
                 code: codes::IR_INVALID.into(),
                 msg: format!("page {field} parameter index {index} out of range (n_params {})", params.len()),
+                source: None,
             }),
         }
     };
@@ -184,10 +185,10 @@ pub(crate) fn validate_page_params(r: &ir::Request, params: &[Param]) -> crate::
     let count = value(*count_p, "count")?;
     const MAX_SAFE_INTEGER: i64 = 9_007_199_254_740_991;
     if !(-MAX_SAFE_INTEGER..=MAX_SAFE_INTEGER).contains(&offset) || !(-MAX_SAFE_INTEGER..=MAX_SAFE_INTEGER).contains(&count) {
-        return Err(Error::Engine { code: codes::CODEC_ENCODE.into(), msg: "page offset and count must be safe integers".into() });
+        return Err(Error::Engine { code: codes::CODEC_ENCODE.into(), msg: "page offset and count must be safe integers".into(), source: None });
     }
     if offset < 0 || count <= 0 {
-        return Err(Error::Engine { code: codes::IR_INVALID.into(), msg: "limit offset>=0, count>0".into() });
+        return Err(Error::Engine { code: codes::IR_INVALID.into(), msg: "limit offset>=0, count>0".into(), source: None });
     }
     Ok(())
 }
@@ -229,7 +230,11 @@ fn query(r: &mut Req, c: &Core, f: &mut Frame<'_>, joins: &mut HashSet<String>, 
         }
         if rel.child.conn.is_some() {
             if rel.child.limit.is_some() {
-                r.fail(Error::Engine { code: codes::LIMIT_IN_RELATION.into(), msg: format!("{} relation uses limit; use group_limit", rel.child.ent.name) });
+                r.fail(Error::Engine {
+                    code: codes::LIMIT_IN_RELATION.into(),
+                    msg: format!("{} relation uses limit; use group_limit", rel.child.ent.name),
+                    source: None,
+                });
                 return None;
             }
             r.external.entry(c.id).or_default().push(rel.clone());
@@ -265,7 +270,7 @@ fn relation(r: &mut Req, rel: &RelSpec) -> Option<ir::Relation> {
     let mut joins = HashSet::new();
     let mut q = query(r, ch, &mut f, &mut joins, false)?;
     if ch.limit.is_some() {
-        r.fail(Error::Engine { code: codes::LIMIT_IN_RELATION.into(), msg: format!("{} relation uses limit; use group_limit", ch.ent.name) });
+        r.fail(Error::Engine { code: codes::LIMIT_IN_RELATION.into(), msg: format!("{} relation uses limit; use group_limit", ch.ent.name), source: None });
         return None;
     }
     q.flatten = ch.parent_node;

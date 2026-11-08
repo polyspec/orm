@@ -32,15 +32,15 @@ static void decimal_decode_error(const char *message)
     value_throw_orm("CODEC_DECODE", message);
 }
 
-/* Throws the CODEC_DECODE error of a failed normalization with that failure as its previous, as Decimal.php:43 does (T295). */
+/* Throws the CODEC_DECODE cell refusal of COD-1 in place of the CODEC_ENCODE of a failed normalization, with that failure
+ * as its previous, as Decimal.php does (T295); any other pending exception stays as it is. */
 static void decimal_rethrow_decode_error(void)
 {
     if (EG(exception) == NULL) return;
-    zval message_rv;
-    zval *message = zend_read_property(zend_ce_exception, EG(exception), ZEND_STRL("message"), 1, &message_rv);
-    zend_string *text = Z_TYPE_P(message) == IS_STRING
-        ? zend_strpprintf(0, "invalid decimal cell: %s", Z_STRVAL_P(message))
-        : zend_string_init("invalid decimal cell", sizeof("invalid decimal cell") - 1, 0);
+    zval code_rv;
+    zval *code = zend_read_property(EG(exception)->ce, EG(exception), ZEND_STRL("code_"), 1, &code_rv);
+    if (Z_TYPE_P(code) != IS_STRING || !zend_string_equals_literal(Z_STR_P(code), "CODEC_ENCODE")) return;
+    zend_string *text = zend_string_init(ZEND_STRL("decimal cell is not a decimal of its precision and scale"), 0);
     zend_object *cause = EG(exception); EG(exception) = NULL;
     orm_throw_exception_previous("CODEC_DECODE", text, cause);
     zend_string_release(text);
@@ -111,14 +111,14 @@ ZEND_METHOD(Polyspec_Orm_Decimal, fromScaled)
     }
     else if (Z_TYPE_P(value) == IS_STRING && decimal_integer_text(Z_STR_P(value))) digits = zend_string_copy(Z_STR_P(value));
     if (digits == NULL) {
-        decimal_decode_error("decimal scaled cell requires an integer");
+        decimal_decode_error("decimal cell is not a decimal of its precision and scale");
         RETURN_THROWS();
     }
     if (scale > 1000) {
-        zend_string *message = zend_strpprintf(0, "invalid decimal cell: decimal %s: invalid precision or scale", ZSTR_VAL(digits));
+        /* A scale that Decimal::normalize refuses: its CODEC_ENCODE is the cause of the cell refusal, as in Decimal.php. */
         zend_string_release(digits);
-        decimal_decode_error(ZSTR_VAL(message));
-        zend_string_release(message);
+        value_throw_orm("CODEC_ENCODE", "decimal: invalid precision or scale");
+        decimal_rethrow_decode_error();
         RETURN_THROWS();
     }
     bool negative = ZSTR_VAL(digits)[0] == '-';
@@ -161,7 +161,7 @@ ZEND_METHOD(Polyspec_Orm_Decimal, decode)
         Z_PARAM_LONG(scale)
     ZEND_PARSE_PARAMETERS_END();
     if (Z_TYPE_P(value) != IS_STRING) {
-        decimal_decode_error("decimal cell requires exact text");
+        decimal_decode_error("decimal cell is not a decimal of its precision and scale");
         RETURN_THROWS();
     }
     zend_string *result = decimal_normalize(Z_STR_P(value), precision, scale);

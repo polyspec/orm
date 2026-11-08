@@ -214,7 +214,7 @@ function integerOf(value: unknown, type: string): bigint {
   if (typeof value === 'bigint') return value;
   if (typeof value === 'number' && Number.isInteger(value)) return BigInt(value);
   if (typeof value === 'string' && /^-?\d+$/.test(value)) return BigInt(value);
-  throw err(CODE_VALUE, `integer of native type "${type}" expected, got ${String(value)}`);
+  throw err(CODE_VALUE, `integer of native type "${type}" is not an integer`);
 }
 
 /** An integer for a plain read: a number inside the safe range, otherwise the exact bigint. */
@@ -227,7 +227,7 @@ function utf8Of(value: Uint8Array, type: string): string {
   try {
     return new TextDecoder('utf-8', { fatal: true }).decode(value);
   } catch (error) {
-    throw err(CODE_VALUE, `text of native type "${type}" is not valid UTF-8: ${messageOf(error)}`, error);
+    throw err(CODE_VALUE, `text of native type "${type}" is not valid UTF-8`, error);
   }
 }
 
@@ -243,7 +243,7 @@ function bytesValue(value: Uint8Array, type: string): CatalogValue {
   if (/FLOAT|DOUBLE|REAL/.test(upper)) {
     const text = utf8Of(value, type);
     const number = Number(text);
-    if (Number.isNaN(number) && text !== 'NaN') throw err(CODE_VALUE, `float of native type "${type}" is not a number: ${text}`);
+    if (Number.isNaN(number) && text !== 'NaN') throw err(CODE_VALUE, `float of native type "${type}" is not a number`);
     return number;
   }
   if (/CHAR|TEXT|JSON|ENUM|^SET|UUID|XML|NAME/.test(upper)) return utf8Of(value, type);
@@ -267,7 +267,7 @@ function plainValue(value: unknown, column: DriverColumn): CatalogValue {
   }
   if (typeof value === 'string' && FLOAT32_TYPES.has(baseType(column.type))) return float32FromBits(float32BitsOfText(value));
   if (typeof value === 'string') return value;
-  throw err(CODE_VALUE, `unsupported driver value of type ${typeof value}`);
+  throw err(CODE_VALUE, 'unsupported driver value');
 }
 
 /** The float bits of a number as an IEEE-754 double. */
@@ -306,7 +306,7 @@ function float32BitsOfText(text: string): number {
   const special = specials[text];
   if (special !== undefined) return Number(special);
   const match = /^([+-])?(\d+)(?:\.(\d+))?(?:[eE]([+-]?\d+))?$/.exec(text);
-  if (match === null) throw err(CODE_VALUE, `float text "${text}" is not a decimal number`);
+  if (match === null) throw err(CODE_VALUE, 'float text is not a decimal number');
   const sign = match[1] === '-' ? 1n << 31n : 0n;
   const fraction = match[3] ?? '';
   const exponent10 = Number(match[4] ?? '0') - fraction.length;
@@ -355,14 +355,14 @@ const TIME_TEXT = /^(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?$/;
 /** A dbspec date `YYYY-MM-DD` from 0001-01-01 to 9999-12-31; any other text fails with GRID_TEMPORAL_VALUE. */
 function dateText(text: string): string {
   const match = DATE_TEXT.exec(text);
-  if (match === null) throw err(CODE_TEMPORAL_VALUE, `date "${text}" is not in the form YYYY-MM-DD`);
+  if (match === null) throw err(CODE_TEMPORAL_VALUE, 'date is not in the form YYYY-MM-DD');
   const year = Number(match[1]);
   const month = Number(match[2]);
   const day = Number(match[3]);
   const date = new Date(0);
   date.setUTCFullYear(year, month - 1, day);
   if (year < 1 || date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
-    throw err(CODE_TEMPORAL_VALUE, `date "${text}" is outside 0001-01-01 to 9999-12-31 or is not a calendar date`);
+    throw err(CODE_TEMPORAL_VALUE, 'date is outside 0001-01-01 to 9999-12-31 or is not a calendar date');
   }
   return text;
 }
@@ -370,18 +370,18 @@ function dateText(text: string): string {
 /** A dbspec time `HH:MM:SS.ffffff` with six fraction digits, within 00:00:00 to 23:59:59.999999. */
 function timeText(text: string): string {
   const match = TIME_TEXT.exec(text);
-  if (match === null) throw err(CODE_TEMPORAL_VALUE, `time "${text}" is not in the form HH:MM:SS`);
+  if (match === null) throw err(CODE_TEMPORAL_VALUE, 'time is not in the form HH:MM:SS');
   const hours = Number(match[1]);
   const minutes = Number(match[2]);
   const seconds = Number(match[3]);
-  if (hours > 23 || minutes > 59 || seconds > 59) throw err(CODE_TEMPORAL_VALUE, `time "${text}" is outside 00:00:00 to 23:59:59.999999`);
+  if (hours > 23 || minutes > 59 || seconds > 59) throw err(CODE_TEMPORAL_VALUE, 'time is outside 00:00:00 to 23:59:59.999999');
   return `${match[1]}:${match[2]}:${match[3]}.${(match[4] ?? '').padEnd(6, '0')}`;
 }
 
 /** A dbspec datetime `YYYY-MM-DD HH:MM:SS.ffffff` in UTC. */
 function datetimeText(text: string): string {
   const [date = '', time = ''] = text.split(' ');
-  if (text.split(' ').length !== 2) throw err(CODE_TEMPORAL_VALUE, `datetime "${text}" is not in the form YYYY-MM-DD HH:MM:SS`);
+  if (text.split(' ').length !== 2) throw err(CODE_TEMPORAL_VALUE, 'datetime is not in the form YYYY-MM-DD HH:MM:SS');
   return `${dateText(date)} ${timeText(time)}`;
 }
 
@@ -423,7 +423,7 @@ function describedTemporal(value: string, kind: 'date' | 'time' | 'datetime', pr
   const head = text.slice(0, dot);
   const digits = text.slice(dot + 1);
   if (digits.slice(precision) !== '0'.repeat(Math.max(0, digits.length - precision))) {
-    throw err(CODE_TEMPORAL_PRECISION, `temporal value "${value}" has more fraction digits than its precision ${precision}`);
+    throw err(CODE_TEMPORAL_PRECISION, `temporal value has more fraction digits than its precision ${precision}`);
   }
   return precision === 0 ? head : `${head}.${digits.slice(0, precision)}`;
 }
@@ -432,13 +432,13 @@ function describedTemporal(value: string, kind: 'date' | 'time' | 'datetime', pr
 function sqliteGridCell(value: unknown): CatalogGridCell {
   if (value === null) return { kind: 'null' };
   if (typeof value === 'bigint') {
-    if (value < I64_MIN || value > I64_MAX) throw err(CODE_VALUE, `integer ${value.toString()} is outside the signed 64-bit range`);
+    if (value < I64_MIN || value > I64_MAX) throw err(CODE_VALUE, 'integer is outside the signed 64-bit range');
     return { kind: 'integer', value };
   }
   if (typeof value === 'number') return { kind: 'float64', bits: float64Bits(value) };
   if (typeof value === 'string') return { kind: 'text', value };
   if (value instanceof Uint8Array) return { kind: 'binary', value: new Uint8Array(value) };
-  throw err(CODE_VALUE, `unsupported driver value of type ${typeof value}`);
+  throw err(CODE_VALUE, 'unsupported driver value');
 }
 
 /** A grid cell of a MySQL or PostgreSQL column, by its native type (the Rust grid rules, decode and temporal forms). */
@@ -450,10 +450,10 @@ function gridCell(value: unknown, column: DriverColumn, dialect: DriverName): Ca
   const unsupported = (): OrmError => err(CODE_VALUE, `grid cell of native type "${type}" is not supported`);
   const integer = (number: bigint): CatalogGridCell => {
     if (type.endsWith(' UNSIGNED')) {
-      if (number < 0n || number > U64_MAX) throw err(CODE_VALUE, `unsigned integer ${number.toString()} is outside the 64-bit range`);
+      if (number < 0n || number > U64_MAX) throw err(CODE_VALUE, 'unsigned integer is outside the 64-bit range');
       return { kind: 'unsigned', value: number };
     }
-    if (number < I64_MIN || number > I64_MAX) throw err(CODE_VALUE, `integer ${number.toString()} is outside the signed 64-bit range`);
+    if (number < I64_MIN || number > I64_MAX) throw err(CODE_VALUE, 'integer is outside the signed 64-bit range');
     return { kind: 'integer', value: number };
   };
   if (value instanceof Uint8Array) {
@@ -479,7 +479,7 @@ function gridCell(value: unknown, column: DriverColumn, dialect: DriverName): Ca
   if (FLOAT32_TYPES.has(base)) return { kind: 'float32', bits: float32BitsOfText(value) };
   if (FLOAT64_TYPES.has(base)) {
     const number = Number(value);
-    if (Number.isNaN(number) && value !== 'NaN') throw err(CODE_VALUE, `float of native type "${type}" is not a number: ${value}`);
+    if (Number.isNaN(number) && value !== 'NaN') throw err(CODE_VALUE, `float of native type "${type}" is not a number`);
     return { kind: 'float64', bits: float64Bits(number) };
   }
   if (DECIMAL_TYPES.has(base)) {
@@ -525,7 +525,7 @@ function describedBoolean(plain: CatalogValue, described: CatalogColumn, dialect
   if (plain === null) return null;
   if (typeof plain === 'boolean') return plain;
   if (plain === 0 || plain === 1) return plain === 1;
-  throw err(CODE_VALUE, `${described.name} holds ${String(plain)}, not a boolean`);
+  throw err(CODE_VALUE, `${described.name} holds a value that is not a boolean`);
 }
 
 /** A MySQL TIMESTAMP or a PostgreSQL timestamptz or timetz column, which follows a time zone that dbspec declares for no column (INT-103). */
@@ -558,7 +558,7 @@ function sqliteTemporal(plain: CatalogValue, described: CatalogColumn): CatalogV
   const fixed = described.checkPrecision ?? 0;
   const digits = fractionDigits(plain);
   if (digits !== fixed) {
-    throw err(CODE_TEMPORAL_PRECISION, `${described.name} holds ${digits} fraction digits; its dbspec CHECK fixes ${fixed}`);
+    throw err(CODE_TEMPORAL_PRECISION, `${described.name} holds a fraction whose digits are not the ${fixed} that its dbspec CHECK fixes`);
   }
   return plain;
 }
@@ -654,7 +654,7 @@ function cellKey(cell: unknown): string {
   if (typeof cell === 'bigint') return `i${cell.toString()}`;
   if (typeof cell === 'string') return `s${Buffer.byteLength(cell, 'utf8')}:${cell}`;
   if (cell instanceof Uint8Array) return `x${Buffer.from(cell).toString('hex')}`;
-  throw err(CODE_SNAPSHOT, `unsupported cell type ${typeof cell}`);
+  throw err(CODE_SNAPSHOT, 'unsupported cell type');
 }
 
 function sameCell(a: unknown, b: unknown): boolean {

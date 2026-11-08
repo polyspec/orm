@@ -6,6 +6,7 @@ pub mod args;
 mod array;
 mod bind_check;
 mod canonical;
+mod cell;
 pub mod codec;
 pub mod codes;
 pub mod collection;
@@ -58,8 +59,9 @@ pub use value::{Param, StyledValue, Val};
 /// Every failure surfaces as one of these; engine codes pass through unchanged.
 #[derive(Debug)]
 pub enum Error {
-    /// An error with a code from docs/spec/errors.yaml.
-    Engine { code: String, msg: String },
+    /// An error with a code from docs/spec/errors.yaml; `source` is the failure that caused it, such as the library
+    /// failure under a codec stage text (COD-41), or None.
+    Engine { code: String, msg: String, source: Option<Box<dyn std::error::Error + Send + Sync + 'static>> },
     /// A driver error: the code the error catalog names for it, or DRIVER,
     /// with the driver message and the driver error.
     Driver { code: String, msg: String, source: sqlx::Error },
@@ -80,7 +82,7 @@ pub enum Error {
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Error::Engine { code, msg } => write!(f, "{code}: {msg}"),
+            Error::Engine { code, msg, .. } => write!(f, "{code}: {msg}"),
             Error::Driver { code, msg, .. } => write!(f, "{code}: {msg}"),
             Error::NoRows => write!(f, "{}: query returned no rows", codes::NO_ROWS),
             Error::OptimisticLock => write!(f, "{}: row changed since it was read", codes::OPTIMISTIC_LOCK),
@@ -103,6 +105,7 @@ impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Error::Driver { source, .. } => Some(source),
+            Error::Engine { source: Some(source), .. } => Some(source.as_ref()),
             Error::Cleanup { primary, .. } => Some(primary),
             Error::Rollback { callback, .. } => Some(callback.as_ref()),
             Error::Subscriber { source, .. } => Some(source.as_ref()),
@@ -187,10 +190,17 @@ impl From<sqlx::Error> for Error {
                             return Error::Engine {
                                 code: codes::DRIVER.into(),
                                 msg: format!("sqlite reported extended result code {text:?}, which is not a number: {error}; {}", s.message()),
+                                source: None,
                             };
                         }
                     },
-                    None => return Error::Engine { code: codes::DRIVER.into(), msg: format!("sqlite reported no extended result code: {}", s.message()) },
+                    None => {
+                        return Error::Engine {
+                            code: codes::DRIVER.into(),
+                            msg: format!("sqlite reported no extended result code: {}", s.message()),
+                            source: None,
+                        }
+                    }
                 };
                 // The message ends with the name of the extended result code (INT-154).
                 Some((sqlite_extended_code(n, s.message()), format!("{}{}", s.message(), sqlite_codes::result_code_suffix(n))))
@@ -247,7 +257,7 @@ impl Error {
     }
 
     pub(crate) fn internal(msg: impl Into<String>) -> Error {
-        Error::Engine { code: codes::INTERNAL.into(), msg: msg.into() }
+        Error::Engine { code: codes::INTERNAL.into(), msg: msg.into(), source: None }
     }
 }
 
@@ -281,6 +291,7 @@ pub(crate) fn sqlite_busy(e: &sqlx::Error) -> Result<bool> {
     let n: i64 = text.parse().map_err(|error| Error::Engine {
         code: codes::DRIVER.into(),
         msg: format!("sqlite reported extended result code {text:?}, which is not a number: {error}"),
+        source: None,
     })?;
     Ok(n & 0xff == 5)
 }

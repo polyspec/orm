@@ -419,15 +419,16 @@ PHP;
         }
     }
 
-    public function testPendingTimePreservesUnparsedTextAndTimezoneIdentity(): void
+    public function testPendingTimePreservesUnparsedTextTimezoneIdentityAndType(): void
     {
         $zone = new \DateTimeZone('Pacific/Chatham');
-        $time = new PendingTime('2031-06-07 08:09:10.123456', $zone);
+        $time = new PendingTime('2031-06-07 08:09:10.123456', $zone, 'datetime');
         self::assertSame($time->text, '2031-06-07 08:09:10.123456');
         self::assertSame($zone, $time->zone);
+        self::assertSame('datetime', $time->type);
         $reflection = new \ReflectionClass(PendingTime::class);
         self::assertSame(
-            ['text', 'zone'],
+            ['text', 'zone', 'type'],
             array_map(
                 static fn (\ReflectionProperty $property): string => $property->getName(),
                 $reflection->getProperties(),
@@ -435,8 +436,10 @@ PHP;
         );
         self::assertSame('string', $reflection->getProperty('text')->getType()->getName());
         self::assertSame(\DateTimeZone::class, $reflection->getProperty('zone')->getType()->getName());
+        self::assertSame('string', $reflection->getProperty('type')->getType()->getName());
         self::assertTrue($reflection->getProperty('text')->isReadOnly());
         self::assertTrue($reflection->getProperty('zone')->isReadOnly());
+        self::assertTrue($reflection->getProperty('type')->isReadOnly());
         try {
             $time->text = 'changed';
             self::fail('readonly deferred text changed');
@@ -451,15 +454,16 @@ PHP;
         $resolve = new \ReflectionMethod(Model::class, 'resolved');
         $model = new ModelTypesPendingFixture();
         $zone = new \DateTimeZone('UTC');
-        $resolved = $resolve->invoke($model, new PendingTime('2031-06-07 08:09:10', $zone));
+        $resolved = $resolve->invoke($model, new PendingTime('2031-06-07 08:09:10', $zone, 'datetime'));
         self::assertInstanceOf(\DateTimeImmutable::class, $resolved);
         self::assertSame('2031-06-07T08:09:10+00:00', $resolved->format('Y-m-d\TH:i:sP'));
 
         try {
-            $resolve->invoke($model, new PendingTime('not a date', $zone));
+            $resolve->invoke($model, new PendingTime('not a date', $zone, 'date'));
             self::fail('an invalid pending time must be rejected');
         } catch (OrmException $error) {
             self::assertSame(Code::CODEC_DECODE, $error->code_);
+            self::assertSame('CODEC_DECODE: date cell is not a date', $error->getMessage());
         }
     }
 }

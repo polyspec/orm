@@ -35,10 +35,10 @@ var integerRanges = map[string][2]int64{
 	"i64": {math.MinInt64, math.MaxInt64},
 }
 
-// finiteF64 refuses the non-finite f64 f of parameter i, whose host value is v, with CODEC_ENCODE.
-func finiteF64(i int, v any, f float64) error {
+// finiteF64 refuses the non-finite f64 f of parameter i with CODEC_ENCODE; the text names no value (PRT-32a).
+func finiteF64(i int, f float64) error {
 	if math.IsNaN(f) || math.IsInf(f, 0) {
-		return codecErr(CodeCodecEncode, "parameter %d (%v) is not a finite f64", i, v)
+		return codecErr(CodeCodecEncode, "parameter %d is not a finite f64", i)
 	}
 	return nil
 }
@@ -47,8 +47,8 @@ func finiteF64(i int, v any, f float64) error {
 // before any statement: the host value kind, the range of an integer, a finite f64, the
 // precision and scale of a decimal, a date from 0001-01-01 to 9999-12-31, no non-zero digit
 // of a time or datetime past its precision, at most n characters of a varchar(n), no U+0000
-// in text and a lower-case canonical uuid. A value outside it is CODEC_ENCODE; SQL NULL is
-// accepted.
+// in text and a lower-case canonical uuid. A value outside it is CODEC_ENCODE with the text of PRT-32a,
+// which names no value; SQL NULL is accepted.
 func (d *DB) checkParam(i int, v any, s paramSlot) error {
 	if v == nil {
 		return nil
@@ -57,7 +57,7 @@ func (d *DB) checkParam(i int, v any, s paramSlot) error {
 		return nil
 	}
 	kind := func() error {
-		return codecErr(CodeCodecEncode, "parameter %d (%T) is not a %s value", i, v, s.Type)
+		return codecErr(CodeCodecEncode, "parameter %d is not a %s value", i, s.Type)
 	}
 	switch s.Type {
 	case "i16", "i32", "i64":
@@ -66,7 +66,7 @@ func (d *DB) checkParam(i int, v any, s paramSlot) error {
 			return kind()
 		}
 		if r := integerRanges[s.Type]; err != nil || n < r[0] || n > r[1] {
-			return codecErr(CodeCodecEncode, "parameter %d (%v) is outside %s", i, v, s.Type)
+			return codecErr(CodeCodecEncode, "parameter %d is outside %s", i, s.Type)
 		}
 	case "f64":
 		var f float64
@@ -86,10 +86,10 @@ func (d *DB) checkParam(i int, v any, s paramSlot) error {
 				return kind()
 			}
 			if err != nil {
-				return codecErr(CodeCodecEncode, "parameter %d (%v): %v", i, v, err)
+				return kind()
 			}
 		}
-		if err := finiteF64(i, v, f); err != nil {
+		if err := finiteF64(i, f); err != nil {
 			return err
 		}
 	case "bool":
@@ -102,7 +102,7 @@ func (d *DB) checkParam(i int, v any, s paramSlot) error {
 			return kind()
 		}
 		if _, err := NormalizeDecimal(text, s.Precision, s.Scale); err != nil {
-			return codecErr(CodeCodecEncode, "parameter %d: %v", i, err)
+			return refused(err, codecErr(CodeCodecEncode, "parameter %d is not a decimal of its precision and scale", i))
 		}
 	case "varchar", "text", "uuid":
 		text, ok := v.(string)
@@ -113,10 +113,10 @@ func (d *DB) checkParam(i int, v any, s paramSlot) error {
 			return codecErr(CodeCodecEncode, "parameter %d holds U+0000, which no %s value holds", i, s.Type)
 		}
 		if n := utf8.RuneCountInString(text); s.Type == "varchar" && s.Length > 0 && n > s.Length {
-			return codecErr(CodeCodecEncode, "parameter %d has %d characters, more than varchar(%d)", i, n, s.Length)
+			return codecErr(CodeCodecEncode, "parameter %d is longer than varchar(%d)", i, s.Length)
 		}
 		if s.Type == "uuid" && !canonicalUUID.MatchString(text) {
-			return codecErr(CodeCodecEncode, "parameter %d (%q) is not a lower-case canonical uuid", i, text)
+			return codecErr(CodeCodecEncode, "parameter %d is not a lower-case canonical uuid", i)
 		}
 	case "bytes":
 		switch v.(type) {
@@ -130,14 +130,14 @@ func (d *DB) checkParam(i int, v any, s paramSlot) error {
 		}
 		out, err := d.bindTimeValue(v, s.Type, s.Precision)
 		if err != nil {
-			return codecErr(CodeCodecEncode, "parameter %d: %v", i, err)
+			return refused(err, kind())
 		}
 		text, ok := out.(string)
 		if !ok {
-			return codecErr(CodeCodecEncode, "parameter %d: the time value is %T, not text", i, out)
+			return kind()
 		}
 		if s.Type != "time" && (len(text) < 5 || text[4] != '-' || text[:4] == "0000" || text[0] == '-') {
-			return codecErr(CodeCodecEncode, "parameter %d (%v) is outside 0001-01-01 to 9999-12-31", i, v)
+			return codecErr(CodeCodecEncode, "parameter %d is outside 0001-01-01 to 9999-12-31", i)
 		}
 	}
 	return nil
@@ -185,4 +185,13 @@ func uintValue(x uint64) (int64, bool, error) {
 		return 0, true, fmt.Errorf("%d is past int64", x)
 	}
 	return int64(x), true, nil
+}
+
+// refused is the PRT-32a refusal text in place of the CODEC_ENCODE err that refused a parameter value; any other error is
+// returned as it is, so it stays its own error.
+func refused(err, text error) error {
+	if ErrorCode(err) == CodeCodecEncode {
+		return text
+	}
+	return err
 }

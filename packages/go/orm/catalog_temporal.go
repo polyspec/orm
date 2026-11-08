@@ -99,7 +99,7 @@ func catalogDescribedTemporal(value any, column CatalogColumn, dialect string) (
 	if dialect == "sqlite" {
 		text, isText := value.(string)
 		if !isText {
-			return invalid("holds a %T, not a dbspec %s", value, kind)
+			return invalid("holds a value that is not a dbspec %s", kind)
 		}
 		digits, err := catalogDescribedFraction(text, kind)
 		if err != nil {
@@ -113,7 +113,7 @@ func catalogDescribedTemporal(value any, column CatalogColumn, dialect string) (
 			precision = 0
 		}
 		if digits != precision {
-			return nil, catalogErr(CodeGridTemporalPrecision, "column %q holds %d fraction digits; its dbspec CHECK fixes %d", column.Name, digits, precision)
+			return nil, catalogErr(CodeGridTemporalPrecision, "column %q holds a fraction whose digits are not the %d that its dbspec CHECK fixes", column.Name, precision)
 		}
 		return text, nil
 	}
@@ -131,12 +131,12 @@ func catalogDescribedTemporal(value any, column CatalogColumn, dialect string) (
 		switch kind {
 		case "date":
 			if v.Hour() != 0 || v.Minute() != 0 || v.Second() != 0 || v.Nanosecond() != 0 {
-				return invalid("date value %s has a time of day", v)
+				return invalid("a date value has a time of day")
 			}
 			return date, nil
 		case "datetime":
 			if v.Nanosecond()%1000 != 0 {
-				return nil, catalogErr(CodeGridTemporalPrecision, "column %q: datetime value %s has a digit past six fraction digits", column.Name, v)
+				return nil, catalogErr(CodeGridTemporalPrecision, "column %q: a datetime value has a digit past six fraction digits", column.Name)
 			}
 			text = fmt.Sprintf("%s %02d:%02d:%02d.%06d", date, v.Hour(), v.Minute(), v.Second(), v.Nanosecond()/1000)
 		default:
@@ -165,12 +165,12 @@ func catalogDescribedTemporal(value any, column CatalogColumn, dialect string) (
 			text = match[1] + " " + clock
 		}
 	default:
-		return invalid("holds a %T, not a dbspec %s", value, kind)
+		return invalid("holds a value that is not a dbspec %s", kind)
 	}
 	// text has six fraction digits here; it keeps exactly p of them.
 	dot := strings.LastIndexByte(text, '.')
 	if strings.Trim(text[dot+1+precision:], "0") != "" {
-		return nil, catalogErr(CodeGridTemporalPrecision, "column %q: %s value %v has a non-zero digit past its %d fraction digits", column.Name, kind, value, precision)
+		return nil, catalogErr(CodeGridTemporalPrecision, "column %q: a %s value has a non-zero digit past its %d fraction digits", column.Name, kind, precision)
 	}
 	if precision == 0 {
 		return text[:dot], nil
@@ -183,21 +183,21 @@ func catalogDescribedFraction(text, kind string) (int, error) {
 	switch kind {
 	case "date":
 		if !catalogDescribedDateText.MatchString(text) {
-			return 0, fmt.Errorf("%q is not a dbspec date", text)
+			return 0, fmt.Errorf("the text is not a dbspec date")
 		}
 		_, err := catalogGridDateText(text)
 		return 0, err
 	case "time":
 		match := catalogDescribedTimeText.FindStringSubmatch(text)
 		if match == nil {
-			return 0, fmt.Errorf("%q is not a dbspec time", text)
+			return 0, fmt.Errorf("the text is not a dbspec time")
 		}
 		_, err := catalogGridClock(text)
 		return len(match[2]), err
 	}
 	match := catalogDescribedStampText.FindStringSubmatch(text)
 	if match == nil {
-		return 0, fmt.Errorf("%q is not a dbspec datetime", text)
+		return 0, fmt.Errorf("the text is not a dbspec datetime")
 	}
 	if _, err := catalogGridDateText(match[1]); err != nil {
 		return 0, err
@@ -246,7 +246,7 @@ func catalogDescribedBool(value any, column CatalogColumn, dialect string) (any,
 			return v == 1, nil
 		}
 	}
-	return nil, catalogErr(catalogCodeValue, "column %q holds %v, not a boolean", column.Name, value)
+	return nil, catalogErr(catalogCodeValue, "column %q holds a value that is not a boolean", column.Name)
 }
 
 // catalogSelectList is the select list of a read of a described table, in physical order. The SQLite driver parses the

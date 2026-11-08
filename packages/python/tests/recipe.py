@@ -1086,12 +1086,13 @@ def _send_in_process_zone(step: dict) -> None:
 def _send(step: dict, call=None) -> None:
     """Runs one markdown.send step and checks its expect, which is not per database: {"message": JSON} against the first
     message the listener received (the whole message of the statement that begins a transaction, the one parameter of a
-    statement), or {"error": CODE} against
-    the code of the orm error that the call raises before it sends a message. A call, when given, runs the public call of the
+    statement), or {"error": CODE, "text": TEXT} against the code and the whole text (PRT-32a) of the orm error that the
+    call raises before it sends a message; the text is optional. A call, when given, runs the public call of the
     step in place of its filter or transaction."""
     received: list = []
     listener, thread = _start_send_listener(received)
     code = ""
+    text = ""
     db = None
     try:
         models = _bind_models()
@@ -1109,6 +1110,7 @@ def _send(step: dict, call=None) -> None:
                 _query_slot(models, db, step)
         except OrmError as error:
             code = error.code
+            text = str(error)
     finally:
         if db is not None:
             db.close()
@@ -1121,6 +1123,8 @@ def _send(step: dict, call=None) -> None:
             raise AssertionError(
                 f"the call returned error {got or 'none'}, want {expect['error']}"
             )
+        if "text" in expect and text != expect["text"]:
+            raise AssertionError(f"the call returned {text!r}, want {expect['text']!r}")
         return
     if not received:
         raise AssertionError(
@@ -2284,6 +2288,11 @@ def _run(step: dict, bound: dict, database: str) -> None:
         if code != expect["error"]:
             raise AssertionError(
                 f"error {code or 'none'} ({result!r}), want {expect['error']}"
+            )
+        # message is the whole text of the error, its code included (INT-163).
+        if "message" in expect and str(result.error) != expect["message"]:
+            raise AssertionError(
+                f"error message {str(result.error)!r}, want {expect['message']!r}"
             )
         return
     if type(result) is _Failed:

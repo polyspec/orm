@@ -27,6 +27,7 @@
     "COD-38",
     "COD-39",
     "COD-40",
+    "COD-41",
     "PLN-15",
     "DIA-32"
   ],
@@ -11284,7 +11285,8 @@
         "COD-37",
         "COD-39",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-41"
       ],
       "steps": [
         {
@@ -11298,7 +11300,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: hex: odd length or non-hex input"
             }
           }
         }
@@ -11311,7 +11314,8 @@
         "COD-37",
         "COD-39",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-41"
       ],
       "steps": [
         {
@@ -11325,7 +11329,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: hex: odd length or non-hex input"
             }
           }
         }
@@ -11393,7 +11398,8 @@
         "COD-3",
         "COD-38",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-41"
       ],
       "steps": [
         {
@@ -11407,7 +11413,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: ip: the cell is not 4 or 16 packed bytes"
             }
           }
         }
@@ -12022,7 +12029,8 @@
         "COD-39",
         "COD-40",
         "PLN-15",
-        "COD-6"
+        "COD-6",
+        "COD-41"
       ],
       "steps": [
         {
@@ -12037,7 +12045,8 @@
           "key": "bench-salt",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: aes: authentication failed"
             }
           }
         }
@@ -12398,7 +12407,8 @@
         "COD-33",
         "COD-34",
         "COD-35",
-        "COD-37"
+        "COD-37",
+        "COD-41"
       ],
       "steps": [
         {
@@ -12411,7 +12421,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: json: the cell is not JSON"
             }
           }
         },
@@ -12425,7 +12436,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: the stream does not parse"
             }
           }
         },
@@ -12482,7 +12494,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: gz: bad zlib stream"
             }
           }
         },
@@ -12497,7 +12510,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: base64: bad input"
             }
           }
         },
@@ -12722,7 +12736,8 @@
         "COD-11",
         "COD-12",
         "COD-14",
-        "COD-37"
+        "COD-37",
+        "COD-41"
       ],
       "steps": [
         {
@@ -12742,7 +12757,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: a first gz stage takes a string value"
             }
           }
         },
@@ -12756,7 +12772,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: a first base64 stage takes a string value"
             }
           }
         }
@@ -16094,7 +16111,8 @@
       "id": "host_values_by_kind",
       "requirements": [
         "COD-1",
-        "COD-4"
+        "COD-4",
+        "COD-41"
       ],
       "steps": [
         {
@@ -16142,7 +16160,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: host input must be text or bytes"
             }
           }
         },
@@ -16199,7 +16218,8 @@
           "key": "blind-key",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: blind index input must be text or bytes"
             }
           }
         },
@@ -16514,7 +16534,8 @@
       "requirements": [
         "COD-14",
         "COD-31",
-        "COD-37"
+        "COD-37",
+        "COD-41"
       ],
       "steps": [
         {
@@ -16607,7 +16628,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: an empty stage list takes a string value"
             }
           }
         },
@@ -17018,7 +17040,8 @@
     {
       "id": "aes_tamper_positions",
       "requirements": [
-        "COD-6"
+        "COD-6",
+        "COD-41"
       ],
       "steps": [
         {
@@ -17077,7 +17100,8 @@
           "key": "bench-salt",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: aes: unsupported ciphertext format"
             }
           }
         },
@@ -17166,7 +17190,8 @@
       "id": "host_stage_vectors",
       "requirements": [
         "COD-3",
-        "COD-38"
+        "COD-38",
+        "COD-41"
       ],
       "steps": [
         {
@@ -17250,7 +17275,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: ip: the text is not an address"
             }
           }
         },
@@ -17265,7 +17291,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: ip: the cell is not 4 or 16 packed bytes"
             }
           }
         },

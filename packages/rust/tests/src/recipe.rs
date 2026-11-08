@@ -1045,7 +1045,12 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
         };
     };
     if let Some(code) = expect["error"].as_str() {
+        // message is the whole text of the error, its code included (INT-163).
+        let whole = expect["message"].as_str();
         return match outcome {
+            Err((got, message)) if got == code && whole.is_some_and(|want| want != message) => {
+                Err(format!("error message {message:?}, want {:?}", whole.unwrap_or_default()))
+            }
             Err((got, _)) if got == code => Ok(()),
             Err((got, message)) => Err(format!("error {got} ({message}), want {code}")),
             Ok(_) => Err(format!("error none, want {code}")),
@@ -2196,7 +2201,7 @@ fn model_assign(step: &Value) -> Result<(), String> {
 }
 
 /// Runs one call on a connection to a listener of its own, and checks the first message that the listener records, or the
-/// code of the error that the call returned before it sent one, against the expect of `step`.
+/// code and the whole text (PRT-32a) of the error that the call returned before it sent one, against the expect of `step`.
 fn send_and_check(step: &Value, call: Call, op: &str) -> Result<(), String> {
     let listener = markdown::send_listener();
     let call_kind = match &call {
@@ -2209,15 +2214,16 @@ fn send_and_check(step: &Value, call: Call, op: &str) -> Result<(), String> {
     let sent = match (listener.finish(), result) {
         (Some(message), _) if whole => Sent::Message(message),
         (Some(message), _) => Sent::Message(message_value(&message)?),
-        (None, Err(error)) => Sent::Error(error.code().to_owned()),
+        (None, Err(error)) => Sent::Error(error.code().to_owned(), error.to_string()),
         (None, Ok(())) => return Err("the call returned and sent no message".to_owned()),
     };
     let expect = &crate::recipe_reads::read(step, "expect")["expect"];
     if let Some(want) = expect.get("error") {
         let want = want.as_str().unwrap_or_default();
+        let text = expect.get("text").and_then(Value::as_str);
         return match sent {
-            Sent::Error(code) if code == want => Ok(()),
-            Sent::Error(code) => Err(format!("the call returned error {code}, want {want}")),
+            Sent::Error(code, got) if code == want && text.is_none_or(|text| text == got) => Ok(()),
+            Sent::Error(_, got) => Err(format!("the call returned {got:?}, want {want} {text:?}")),
             Sent::Message(message) => Err(format!("the call sent {message} and returned no error, want {want}")),
         };
     }
@@ -2225,7 +2231,7 @@ fn send_and_check(step: &Value, call: Call, op: &str) -> Result<(), String> {
     match sent {
         Sent::Message(got) if same_message(&got, want) => Ok(()),
         Sent::Message(got) => Err(format!("message {got}, want {want}")),
-        Sent::Error(code) => Err(format!("the call returned error {code} before a message")),
+        Sent::Error(_, got) => Err(format!("the call returned {got:?} before a message")),
     }
 }
 
@@ -2269,7 +2275,8 @@ impl Drop for ProcessZone {
 /// What a markdown.send call sent: the value of its first message, or the code of its error.
 enum Sent {
     Message(Value),
-    Error(String),
+    /// The code and the whole text of the error.
+    Error(String, String),
 }
 
 /// What one listener step runs on its connection: a markdown.send call, or the text of a model.assign setter.
@@ -3914,7 +3921,7 @@ mod database {
                     .subscribe(move |event: &StatementEvent<'_>| {
                         if event.kind == kind {
                             return Err(match &refusal {
-                                Some((code, msg)) => polyspec_orm::Error::Engine { code: code.clone(), msg: msg.clone() }.into(),
+                                Some((code, msg)) => polyspec_orm::Error::Engine { code: code.clone(), msg: msg.clone(), source: None }.into(),
                                 None => "subscriber refused the event".into(),
                             });
                         }
@@ -6651,7 +6658,7 @@ mod tables {
 
         async fn connect_audited(&mut self, connections: &mut Connections, name: &str, dsn: &str, pool_size: u32, source: &Value) -> Result<Value, String> {
             let source: polyspec_orm::AuditSource = if source["fail"].as_bool() == Some(true) {
-                Arc::new(|| Err(polyspec_orm::Error::Engine { code: "CALLBACK".into(), msg: "the audit source failed".into() }))
+                Arc::new(|| Err(polyspec_orm::Error::Engine { code: "CALLBACK".into(), msg: "the audit source failed".into(), source: None }))
             } else {
                 let values = pairs(&source["values"])?;
                 Arc::new(move || Ok(values.clone()))
@@ -7075,8 +7082,8 @@ mod tables {
                         records.lock().expect("the records").push((request.kind.clone(), request.query.entity.clone(), param));
                     }
                 }
-                ("fail", _) => return Err(OrmError::Engine { code: action.code.clone(), msg: format!("request hook refused {}", request.kind) }),
-                (other, _) => return Err(OrmError::Engine { code: "STEP".into(), msg: format!("hook action {other} has no column value") }),
+                ("fail", _) => return Err(OrmError::Engine { code: action.code.clone(), msg: format!("request hook refused {}", request.kind), source: None }),
+                (other, _) => return Err(OrmError::Engine { code: "STEP".into(), msg: format!("hook action {other} has no column value"), source: None }),
             }
         }
         Ok(())

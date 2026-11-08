@@ -10,10 +10,11 @@ _DECIMAL_TEXT = re.compile(r"[+-]?[0-9]+(?:\.[0-9]+)?\Z")
 
 
 def normalize_decimal(text: str, precision: int, scale: int) -> str:
-    """Checks a decimal field value and pads it to the declared scale."""
+    """Checks a decimal field value and pads it to the declared scale; a value outside it is CODEC_ENCODE
+    `decimal: <reason>`, which names no value (COD-2, INT-163)."""
 
     def fail(reason: str) -> None:
-        raise OrmError(codes.CODEC_ENCODE, f"decimal {text!r}: {reason}")
+        raise OrmError(codes.CODEC_ENCODE, f"decimal: {reason}")
 
     if (
         not isinstance(precision, int)
@@ -46,7 +47,8 @@ def decimal_scaled(text: str, precision: int, scale: int) -> int:
 def decimal_from_scaled(raw, precision: int, scale: int) -> str:
     if not isinstance(raw, int) or isinstance(raw, bool):
         raise OrmError(
-            codes.CODEC_DECODE, f"decimal scaled cell has type {type(raw).__name__}"
+            codes.CODEC_DECODE,
+            "decimal cell is not a decimal of its precision and scale",
         )
     negative = raw < 0
     digits = str(-raw if negative else raw).rjust(scale + 1, "0")
@@ -55,6 +57,10 @@ def decimal_from_scaled(raw, precision: int, scale: int) -> str:
     try:
         return normalize_decimal(("-" if negative else "") + digits, precision, scale)
     except OrmError as cause:
+        if cause.code != codes.CODEC_ENCODE:
+            raise
         raise OrmError(
-            codes.CODEC_DECODE, f"invalid scaled decimal cell: {cause}"
-        ) from None
+            codes.CODEC_DECODE,
+            "decimal cell is not a decimal of its precision and scale",
+            cause,
+        ) from cause

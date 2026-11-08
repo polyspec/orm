@@ -1544,9 +1544,11 @@ orm-test-servers-leases-clear:
 # (AGENTS.md "Owner checks"). The run uses its own test server environment and databases.
 # make owner-check, which runs the owner-check utility of @polyspec/kit, passes this target the paths that changed under the rules of
 # config/owner-checks.json.
+# The Python owners import the slot models that ORM_PYTHON_BIND_MODELS names (the markdown.builder and bind steps), as the
+# coverage of a feature does.
 .PHONY: feature-owner-check
-feature-owner-check: orm-codes
-	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python node scripts/features/owners.mts $(PATHS)
+feature-owner-check: orm-codes bind-python-models
+	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_PYTHON_BIND_MODELS=$(BIND_PY_MODELS) node scripts/features/owners.mts $(PATHS)
 
 feature-unit-check: feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners feature-unit-check/select
 feature-unit-check/docs:

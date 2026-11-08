@@ -901,7 +901,11 @@ fn joined(mut errors: Vec<Error>) -> Result<()> {
 async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool, timeout_ms: u64) -> Result<TxShared> {
     db.ensure_open()?;
     if timeout_ms > 0 && !matches!(db.pool(), Pool::Postgres(_)) {
-        return Err(Error::Engine { code: codes::CAPABILITY_UNSUPPORTED.into(), msg: "transaction timeoutMs is supported only by postgres".into() });
+        return Err(Error::Engine {
+            code: codes::CAPABILITY_UNSUPPORTED.into(),
+            msg: "transaction timeoutMs is supported only by postgres".into(),
+            source: None,
+        });
     }
     let level = isolation.map(Isolation::sql);
     // The statement that opens a transaction (docs/operations/usage.md "Statement events").
@@ -1122,7 +1126,11 @@ async fn take_inner(tx: &TxShared) -> Result<TxInner> {
 /// `test-faults`).
 fn rollback_fault(db: &Db) -> Result<()> {
     if db.inner.rollback_fault.swap(false, Ordering::AcqRel) {
-        return Err(Error::Engine { code: codes::FAULT.into(), msg: "test fault: the rollback of the transaction ran and is reported as failed".into() });
+        return Err(Error::Engine {
+            code: codes::FAULT.into(),
+            msg: "test fault: the rollback of the transaction ran and is reported as failed".into(),
+            source: None,
+        });
     }
     Ok(())
 }
@@ -1141,7 +1149,7 @@ async fn rollback(tx: &TxShared) -> Result<()> {
 
 /// The retryable DEADLOCK error.
 pub fn transaction_conflict(message: impl Into<String>) -> Error {
-    Error::Engine { code: codes::DEADLOCK.into(), msg: message.into() }
+    Error::Engine { code: codes::DEADLOCK.into(), msg: message.into(), source: None }
 }
 
 #[cfg(test)]

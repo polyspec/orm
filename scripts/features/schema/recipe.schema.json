@@ -3617,6 +3617,11 @@
                     "type": "string",
                     "pattern": "^[A-Z_]+$",
                     "description": "The code of the error that the public call returns before any message is sent."
+                  },
+                  "text": {
+                    "type": "string",
+                    "pattern": "^[A-Z_]+: ",
+                    "description": "The whole text of that error, its code first, as every client writes it (PRT-32a, INT-163)."
                   }
                 }
               }

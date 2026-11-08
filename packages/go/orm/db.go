@@ -278,7 +278,7 @@ func resolveAESConfig(cfg *Config) error {
 		cfg.AESVersion = 1
 	}
 	if cfg.AESVersion < 0 {
-		return configErr("aes current version %d is not declared", cfg.AESVersion)
+		return configErr("aes current version is not declared")
 	}
 	if len(cfg.AESKeys) != 0 {
 		if _, err := NewAESKeyring(cfg.AESKeys, cfg.AESVersion); err != nil {
@@ -293,7 +293,7 @@ func resolveAESConfig(cfg *Config) error {
 	case cfg.AESKey == "":
 		cfg.AESKey = cfg.AESKeys[cfg.AESVersion]
 	case cfg.AESKeys[cfg.AESVersion] != cfg.AESKey:
-		return configErr("AESKey differs from AESKeys[%d]", cfg.AESVersion)
+		return configErr("aes key differs from the key list at the current version")
 	}
 	return nil
 }

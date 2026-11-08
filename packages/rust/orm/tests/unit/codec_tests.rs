@@ -14,49 +14,55 @@ fn php_int_key_keeps_out_of_range_decimal_as_string() {
     assert_eq!(php_int_key("-0"), None);
 }
 
+/// A refusal of a codec stage states its rule and names neither the value nor the library text.
 #[test]
-fn malformed_serialize_preserves_parser_cause_message() {
+fn malformed_serialize_states_its_rule() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let error = decode(&["serialize".into()], &Val::Str("i:not-a-number;".into())).expect_err("malformed integer must fail");
     assert_eq!(error.code(), CODEC_DECODE);
-    assert!(error.to_string().contains("bad int: invalid digit found in string"), "{error}");
+    assert!(error.to_string().starts_with("CODEC_DECODE: serialize: bad int at "), "{error}");
     assert!(!error.to_string().contains("not-a-number"), "{error}");
+    assert!(!error.to_string().contains("invalid digit"), "{error}");
 
     let error = decode(&["base64".into()], &Val::Bytes(vec![0xff])).expect_err("invalid UTF-8 bytes must fail");
-    assert!(error.to_string().contains("base64 input is not UTF-8: "), "{error}");
+    assert_eq!(error.to_string(), "CODEC_DECODE: base64: bad input");
     let error = host_decode(&Val::Bytes(vec![0xff]), &["hex".into()], "").expect_err("invalid hex input must fail");
     assert_eq!(error.to_string(), "CODEC_DECODE: hex: odd length or non-hex input");
 
     let error = host_decode(&Val::Bytes(b"not-an-aes-envelope".to_vec()), &["aes".into()], "key").expect_err("malformed AES envelope must fail");
-    assert!(error.to_string().contains("aes: "), "{error}");
+    assert_eq!(error.to_string(), "CODEC_DECODE: aes: unsupported ciphertext format");
 }
 
+/// A stream that the library of a stage refuses is the stage's own text, never the library's.
 #[test]
-fn additional_codec_parser_cause_messages_are_preserved() {
+fn codec_parser_refusals_state_the_stage_text() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    for (styles, raw, prefix) in [
-        (vec!["gz"], Val::Bytes(b"not-zlib".to_vec()), "gz: "),
-        (vec!["base64"], Val::Str("!".into()), "base64: "),
-        (vec!["ordered_json"], Val::Str("{".into()), "json: "),
-        (vec!["yaml"], Val::Str("a: [".into()), "yaml: "),
-        (vec!["serialize"], Val::Str("s:x:\"a\";".into()), "bad string length: "),
-        (vec!["serialize"], Val::Str("a:x:{}".into()), "bad array length: "),
-        (vec!["serialize"], Val::Str("d:not-a-float;".into()), "bad float: "),
+    for (styles, raw, message) in [
+        (vec!["gz"], Val::Bytes(b"not-zlib".to_vec()), "CODEC_DECODE: gz: bad zlib stream"),
+        (vec!["base64"], Val::Str("!".into()), "CODEC_DECODE: base64: bad input"),
+        (vec!["ordered_json"], Val::Str("{".into()), "CODEC_DECODE: json: the cell is not JSON"),
+        (vec!["yaml"], Val::Str("a: [".into()), "CODEC_DECODE: yaml: the stream does not parse"),
     ] {
         let error = decode(&styles.into_iter().map(str::to_owned).collect::<Vec<_>>(), &raw).expect_err("malformed input must fail");
+        assert_eq!(error.to_string(), message);
+    }
+    for (raw, prefix) in [
+        (Val::Str("s:x:\"a\";".into()), "CODEC_DECODE: serialize: bad string length at "),
+        (Val::Str("a:x:{}".into()), "CODEC_DECODE: serialize: bad array length at "),
+        (Val::Str("d:not-a-float;".into()), "CODEC_DECODE: serialize: bad float at "),
+        (Val::Bytes(b"s:1:\"\xff\";".to_vec()), "CODEC_DECODE: serialize: string is not utf-8 at "),
+    ] {
+        let error = decode(&["serialize".into()], &raw).expect_err("malformed serialize input must fail");
         let message = error.to_string();
-        assert!(message.contains(prefix), "{message}");
-        assert!(message.split_once(prefix).is_some_and(|(_, cause)| !cause.trim().is_empty()), "{message}");
+        assert!(message.strip_prefix(prefix).is_some_and(|at| at.parse::<usize>().is_ok()), "{message}");
     }
 
-    let error = decode(&["serialize".into()], &Val::Bytes(b"s:1:\"\xff\";".to_vec())).expect_err("serialized non-UTF-8 string must fail");
-    assert!(error.to_string().contains("string is not utf-8: "), "{error}");
-
     let error = decode(&["yaml".into()], &Val::Str("9223372036854775808\n".into())).expect_err("out-of-range YAML integer must fail");
-    assert!(error.to_string().contains("integer 9223372036854775808 is outside the i64 range: number too large to fit in target type"), "{error}");
+    assert!(error.to_string().starts_with("CODEC_DECODE: yaml: integer is outside the i64 range at line 1, column "), "{error}");
+    assert!(!error.to_string().contains("9223372036854775808"), "{error}");
 
     let mut encrypted = aes_encrypt(b"payload", "key");
     *encrypted.last_mut().expect("AES envelope has ciphertext") ^= 1;
     let error = aes_decrypt(&encrypted, "key").expect_err("tampered AES authentication tag must fail");
-    assert!(error.to_string().contains("aes: authentication failed: "), "{error}");
+    assert_eq!(error.to_string(), "CODEC_DECODE: aes: authentication failed");
 }

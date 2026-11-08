@@ -2367,6 +2367,10 @@
     "exported": false,
     "signature": " fn is_canonical_uuid (text : \u0026 str) -\u003e bool"
   },
+  "packages/rust/orm/src/bind_check.rs::refused": {
+    "exported": false,
+    "signature": " fn refused (error : Error , text : Error) -\u003e Error"
+  },
   "packages/rust/orm/src/bind_check.rs::transform_param": {
     "exported": false,
     "signature": "pub (crate) fn transform_param (kind : \u0026 str , v : \u0026 Param) -\u003e Result \u003c Param \u003e"
@@ -2443,6 +2447,122 @@
     "exported": false,
     "signature": "pub (crate) fn canonicalize (request : \u0026 mut ir :: Request , params : \u0026 mut Vec \u003c Param \u003e) -\u003e Result \u003c () \u003e"
   },
+  "packages/rust/orm/src/cell.rs::Clock": {
+    "exported": false,
+    "signature": " struct Clock \u003c 'a \u003e { h : u32 , m : u32 , s : u32 , fraction : \u0026 'a [u8] , rest : \u0026 'a [u8] , }"
+  },
+  "packages/rust/orm/src/cell.rs::Clock#field.fraction": {
+    "exported": false,
+    "signature": "\u0026 'a [u8]"
+  },
+  "packages/rust/orm/src/cell.rs::Clock#field.h": {
+    "exported": false,
+    "signature": "u32"
+  },
+  "packages/rust/orm/src/cell.rs::Clock#field.m": {
+    "exported": false,
+    "signature": "u32"
+  },
+  "packages/rust/orm/src/cell.rs::Clock#field.rest": {
+    "exported": false,
+    "signature": "\u0026 'a [u8]"
+  },
+  "packages/rust/orm/src/cell.rs::Clock#field.s": {
+    "exported": false,
+    "signature": "u32"
+  },
+  "packages/rust/orm/src/cell.rs::Clock#wire": {
+    "exported": false,
+    "signature": "{\"fraction\":\"unsupported:\u0026 'a [u8]\",\"h\":\"integer\",\"m\":\"integer\",\"rest\":\"unsupported:\u0026 'a [u8]\",\"s\":\"integer\"}"
+  },
+  "packages/rust/orm/src/cell.rs::added_cell": {
+    "exported": false,
+    "signature": "pub (crate) fn added_cell (column_type : \u0026 str , value : Val) -\u003e Result \u003c Val \u003e"
+  },
+  "packages/rust/orm/src/cell.rs::bool_cell": {
+    "exported": false,
+    "signature": "pub (crate) fn bool_cell (value : \u0026 Val) -\u003e Option \u003c bool \u003e"
+  },
+  "packages/rust/orm/src/cell.rs::cell_message": {
+    "exported": false,
+    "signature": "pub (crate) fn cell_message (column_type : \u0026 str) -\u003e String"
+  },
+  "packages/rust/orm/src/cell.rs::cell_refusal": {
+    "exported": false,
+    "signature": "pub (crate) fn cell_refusal (column_type : \u0026 str) -\u003e Error"
+  },
+  "packages/rust/orm/src/cell.rs::cell_refusal_by": {
+    "exported": false,
+    "signature": "pub (crate) fn cell_refusal_by (column_type : \u0026 str , cause : impl std :: error :: Error + Send + Sync + 'static) -\u003e Error"
+  },
+  "packages/rust/orm/src/cell.rs::clock": {
+    "exported": false,
+    "signature": " fn clock (text : \u0026 [u8]) -\u003e Option \u003c Clock \u003c '_ \u003e \u003e"
+  },
+  "packages/rust/orm/src/cell.rs::date_cell": {
+    "exported": false,
+    "signature": "pub (crate) fn date_cell (value : \u0026 Val) -\u003e Option \u003c NaiveDate \u003e"
+  },
+  "packages/rust/orm/src/cell.rs::date_text": {
+    "exported": false,
+    "signature": " fn date_text (text : \u0026 [u8]) -\u003e Option \u003c NaiveDate \u003e"
+  },
+  "packages/rust/orm/src/cell.rs::datetime_cell": {
+    "exported": false,
+    "signature": "pub (crate) fn datetime_cell (value : \u0026 Val , precision : u8) -\u003e Option \u003c NaiveDateTime \u003e"
+  },
+  "packages/rust/orm/src/cell.rs::decimal_f64": {
+    "exported": false,
+    "signature": " fn decimal_f64 (text : \u0026 [u8]) -\u003e Option \u003c f64 \u003e"
+  },
+  "packages/rust/orm/src/cell.rs::decimal_number": {
+    "exported": false,
+    "signature": " fn decimal_number (b : \u0026 [u8]) -\u003e bool"
+  },
+  "packages/rust/orm/src/cell.rs::declared_cell": {
+    "exported": false,
+    "signature": "pub (crate) fn declared_cell (ty : \u0026 Type , value : Val) -\u003e Result \u003c Val \u003e"
+  },
+  "packages/rust/orm/src/cell.rs::digits": {
+    "exported": false,
+    "signature": " fn digits (bytes : \u0026 [u8]) -\u003e bool"
+  },
+  "packages/rust/orm/src/cell.rs::exact_integer": {
+    "exported": false,
+    "signature": "pub (crate) fn exact_integer (text : \u0026 [u8]) -\u003e Option \u003c i64 \u003e"
+  },
+  "packages/rust/orm/src/cell.rs::f64_cell": {
+    "exported": false,
+    "signature": "pub (crate) fn f64_cell (value : \u0026 Val) -\u003e Option \u003c f64 \u003e"
+  },
+  "packages/rust/orm/src/cell.rs::fraction_digits": {
+    "exported": false,
+    "signature": " fn fraction_digits (fraction : \u0026 [u8] , precision : u8) -\u003e Option \u003c String \u003e"
+  },
+  "packages/rust/orm/src/cell.rs::integer_cell": {
+    "exported": false,
+    "signature": "pub (crate) fn integer_cell (value : \u0026 Val , low : i64 , high : i64 , text : bool) -\u003e Option \u003c i64 \u003e"
+  },
+  "packages/rust/orm/src/cell.rs::integer_range": {
+    "exported": false,
+    "signature": "pub (crate) fn integer_range (column_type : \u0026 str) -\u003e (i64 , i64)"
+  },
+  "packages/rust/orm/src/cell.rs::invalid_utf8": {
+    "exported": false,
+    "signature": "pub (crate) fn invalid_utf8 (cause : impl std :: error :: Error + Send + Sync + 'static) -\u003e Error"
+  },
+  "packages/rust/orm/src/cell.rs::number": {
+    "exported": false,
+    "signature": " fn number (bytes : \u0026 [u8]) -\u003e u32"
+  },
+  "packages/rust/orm/src/cell.rs::offset_seconds": {
+    "exported": false,
+    "signature": " fn offset_seconds (zone : \u0026 [u8]) -\u003e Option \u003c i64 \u003e"
+  },
+  "packages/rust/orm/src/cell.rs::time_cell": {
+    "exported": false,
+    "signature": "pub (crate) fn time_cell (value : \u0026 Val , precision : u8) -\u003e Option \u003c String \u003e"
+  },
   "packages/rust/orm/src/codec.rs::Parser": {
     "exported": false,
     "signature": " struct Parser \u003c 'a \u003e { b : \u0026 'a [u8] , i : usize , }"
@@ -2454,6 +2574,10 @@
   "packages/rust/orm/src/codec.rs::Parser \u003c 'a \u003e::fail": {
     "exported": false,
     "signature": " fn fail (\u0026 self , msg : \u0026 str) -\u003e Error"
+  },
+  "packages/rust/orm/src/codec.rs::Parser \u003c 'a \u003e::fail_cause": {
+    "exported": false,
+    "signature": " fn fail_cause (\u0026 self , msg : \u0026 str , cause : impl std :: error :: Error + Send + Sync + 'static) -\u003e Error"
   },
   "packages/rust/orm/src/codec.rs::Parser \u003c 'a \u003e::until": {
     "exported": false,
@@ -2495,6 +2619,10 @@
     "exported": true,
     "signature": "{\"codec\":\"list\u003ctext\u003e\",\"host\":\"list\u003ctext\u003e\",\"index\":\"integer\"}"
   },
+  "packages/rust/orm/src/codec.rs::YamlCause": {
+    "exported": false,
+    "signature": "# [doc = \" The failure that found a refused plain scalar.\"] type YamlCause = Box \u003c dyn std :: error :: Error + Send + Sync + 'static \u003e ;"
+  },
   "packages/rust/orm/src/codec.rs::YamlFrame": {
     "exported": false,
     "signature": " enum YamlFrame  { Sequence (Vec \u003c Value \u003e) , Mapping { map : Map \u003c String , Value \u003e , key : Option \u003c String \u003e } }"
@@ -2505,7 +2633,7 @@
   },
   "packages/rust/orm/src/codec.rs::YamlReader": {
     "exported": false,
-    "signature": " struct YamlReader  { documents : usize , frames : Vec \u003c YamlFrame \u003e , value : Option \u003c Value \u003e , error : Option \u003c String \u003e , }"
+    "signature": " struct YamlReader  { documents : usize , frames : Vec \u003c YamlFrame \u003e , value : Option \u003c Value \u003e , error : Option \u003c Error \u003e , }"
   },
   "packages/rust/orm/src/codec.rs::YamlReader as SpannedEventReceiver \u003c 'input \u003e::on_event": {
     "exported": false,
@@ -2517,7 +2645,7 @@
   },
   "packages/rust/orm/src/codec.rs::YamlReader#field.error": {
     "exported": false,
-    "signature": "Option \u003c String \u003e"
+    "signature": "Option \u003c Error \u003e"
   },
   "packages/rust/orm/src/codec.rs::YamlReader#field.frames": {
     "exported": false,
@@ -2529,7 +2657,7 @@
   },
   "packages/rust/orm/src/codec.rs::YamlReader#wire": {
     "exported": false,
-    "signature": "{\"documents\":\"integer\",\"error\":\"text\",\"frames\":\"list\u003cYamlFrame\u003e\",\"value\":\"Value\"}"
+    "signature": "{\"documents\":\"integer\",\"error\":\"Error\",\"frames\":\"list\u003cYamlFrame\u003e\",\"value\":\"Value\"}"
   },
   "packages/rust/orm/src/codec.rs::YamlReader::at_key": {
     "exported": false,
@@ -2543,9 +2671,17 @@
     "exported": false,
     "signature": " fn place (\u0026 mut self , value : Value , mark : YamlMarker)"
   },
+  "packages/rust/orm/src/codec.rs::YamlReader::refuse": {
+    "exported": false,
+    "signature": " fn refuse (\u0026 mut self , mark : YamlMarker , message : \u0026 str , source : Option \u003c Box \u003c dyn std :: error :: Error + Send + Sync + 'static \u003e \u003e)"
+  },
   "packages/rust/orm/src/codec.rs::YamlReader::start_collection": {
     "exported": false,
     "signature": " fn start_collection (\u0026 mut self , anchor : usize , tag : bool , frame : YamlFrame , mark : YamlMarker)"
+  },
+  "packages/rust/orm/src/codec.rs::YamlScalarRefusal": {
+    "exported": false,
+    "signature": "# [doc = \" A refused plain scalar: the rule it breaks and the failure that found it, if any.\"] type YamlScalarRefusal = (\u0026 'static str , Option \u003c YamlCause \u003e) ;"
   },
   "packages/rust/orm/src/codec.rs::aes_decrypt": {
     "exported": true,
@@ -2590,6 +2726,10 @@
   "packages/rust/orm/src/codec.rs::err": {
     "exported": false,
     "signature": " fn err (code : \u0026 str , msg : impl Into \u003c String \u003e) -\u003e Error"
+  },
+  "packages/rust/orm/src/codec.rs::err_cause": {
+    "exported": false,
+    "signature": " fn err_cause (code : \u0026 str , msg : impl Into \u003c String \u003e , cause : impl std :: error :: Error + Send + Sync + 'static) -\u003e Error"
   },
   "packages/rust/orm/src/codec.rs::executor_stages": {
     "exported": true,
@@ -2669,7 +2809,7 @@
   },
   "packages/rust/orm/src/codec.rs::yaml_core_scalar": {
     "exported": false,
-    "signature": " fn yaml_core_scalar (text : String) -\u003e std :: result :: Result \u003c Value , String \u003e"
+    "signature": " fn yaml_core_scalar (text : String) -\u003e std :: result :: Result \u003c Value , YamlScalarRefusal \u003e"
   },
   "packages/rust/orm/src/codec.rs::yaml_decode": {
     "exported": false,
@@ -4137,7 +4277,7 @@
   },
   "packages/rust/orm/src/db.rs::invalid_time_text": {
     "exported": false,
-    "signature": " fn invalid_time_text (text : \u0026 str , col_type : \u0026 str) -\u003e Error"
+    "signature": " fn invalid_time_text (col_type : \u0026 str) -\u003e Error"
   },
   "packages/rust/orm/src/db.rs::markdown_written": {
     "exported": false,
@@ -4717,7 +4857,7 @@
   },
   "packages/rust/orm/src/decimal.rs::invalid": {
     "exported": false,
-    "signature": " fn invalid (input : \u0026 str , reason : \u0026 str) -\u003e crate :: Error"
+    "signature": " fn invalid (reason : \u0026 str) -\u003e crate :: Error"
   },
   "packages/rust/orm/src/decimal.rs::normalize": {
     "exported": true,
@@ -4726,6 +4866,10 @@
   "packages/rust/orm/src/decimal.rs::scaled": {
     "exported": true,
     "signature": "pub fn scaled (input : \u0026 str , precision : u8 , scale : u8) -\u003e crate :: Result \u003c i64 \u003e"
+  },
+  "packages/rust/orm/src/decimal.rs::undecodable": {
+    "exported": false,
+    "signature": " fn undecodable () -\u003e crate :: Error"
   },
   "packages/rust/orm/src/driver.rs::CancellableConnection": {
     "exported": false,
@@ -6541,7 +6685,7 @@
   },
   "packages/rust/orm/src/lib.rs::Error": {
     "exported": true,
-    "signature": "pub enum Error  { # [doc = \" An error with a code from docs/spec/errors.yaml.\"] Engine { code : String , msg : String } , # [doc = \" A driver error: the code the error catalog names for it, or DRIVER,\"] # [doc = \" with the driver message and the driver error.\"] Driver { code : String , msg : String , source : sqlx :: Error } , # [doc = \" A strict one-row query matched no row.\"] NoRows , # [doc = \" Update with optimistic locking matched no row.\"] OptimisticLock , # [doc = \" Executor configuration problem (missing AES key, bad transform input, …).\"] Config (String) , # [doc = \" A transaction or savepoint callback failed and its rollback failed too.\"] Rollback { callback : Box \u003c Error \u003e , rollback : Box \u003c Error \u003e } , # [doc = \" A primary operation failed and one or more cleanup actions failed; the primary code remains observable.\"] Cleanup { primary : Box \u003c Error \u003e , cleanup : Vec \u003c Error \u003e } , # [doc = \" A statement event subscriber failed (SUBSCRIBER); `source` is its error.\"] Subscriber { msg : String , source : events :: SubscriberError } }"
+    "signature": "pub enum Error  { # [doc = \" An error with a code from docs/spec/errors.yaml; `source` is the failure that caused it, such as the library\"] # [doc = \" failure under a codec stage text (COD-41), or None.\"] Engine { code : String , msg : String , source : Option \u003c Box \u003c dyn std :: error :: Error + Send + Sync + 'static \u003e \u003e } , # [doc = \" A driver error: the code the error catalog names for it, or DRIVER,\"] # [doc = \" with the driver message and the driver error.\"] Driver { code : String , msg : String , source : sqlx :: Error } , # [doc = \" A strict one-row query matched no row.\"] NoRows , # [doc = \" Update with optimistic locking matched no row.\"] OptimisticLock , # [doc = \" Executor configuration problem (missing AES key, bad transform input, …).\"] Config (String) , # [doc = \" A transaction or savepoint callback failed and its rollback failed too.\"] Rollback { callback : Box \u003c Error \u003e , rollback : Box \u003c Error \u003e } , # [doc = \" A primary operation failed and one or more cleanup actions failed; the primary code remains observable.\"] Cleanup { primary : Box \u003c Error \u003e , cleanup : Vec \u003c Error \u003e } , # [doc = \" A statement event subscriber failed (SUBSCRIBER); `source` is its error.\"] Subscriber { msg : String , source : events :: SubscriberError } }"
   },
   "packages/rust/orm/src/lib.rs::Error as From \u003c sqlx :: Error \u003e::from": {
     "exported": true,
@@ -7463,10 +7607,6 @@
     "exported": false,
     "signature": "{\"by_key\":\"HashMap\",\"data\":\"list\u003clist\u003cVal\u003e\u003e\"}"
   },
-  "packages/rust/orm/src/model.rs::added_column_value": {
-    "exported": false,
-    "signature": " fn added_column_value (typ : \u0026 str , value : Val) -\u003e Result \u003c Val \u003e"
-  },
   "packages/rust/orm/src/model.rs::assemble": {
     "exported": false,
     "signature": " async fn assemble (c : \u0026 Core , req : \u0026 Req , res : \u0026 QueryResult) -\u003e Result \u003c Loaded \u003e"
@@ -7543,9 +7683,9 @@
     "exported": false,
     "signature": " fn encode_ordered (ent : \u0026 dbspec :: Entity , column : \u0026 str , v : \u0026 ordered_json :: Value) -\u003e Result \u003c Param \u003e"
   },
-  "packages/rust/orm/src/model.rs::exact_integer_text": {
+  "packages/rust/orm/src/model.rs::entity_field": {
     "exported": false,
-    "signature": " fn exact_integer_text (value : \u0026 Val) -\u003e Result \u003c () \u003e"
+    "signature": " fn entity_field \u003c 'a \u003e (ent : \u0026 'a dbspec :: Entity , column : \u0026 str) -\u003e Result \u003c \u0026 'a dbspec :: Field \u003e"
   },
   "packages/rust/orm/src/model.rs::finish_write": {
     "exported": false,
@@ -8377,7 +8517,7 @@
   },
   "packages/rust/orm/src/row.rs::StyledNode": {
     "exported": false,
-    "signature": " struct StyledNode \u003c 'a \u003e { entity : \u0026 'a str , styled : Vec \u003c crate :: codec :: StyledCol \u003e , names : Vec \u003c \u0026 'a str \u003e , version_index : Option \u003c usize \u003e , }"
+    "signature": " struct StyledNode \u003c 'a \u003e { entity : \u0026 'a str , styled : Vec \u003c crate :: codec :: StyledCol \u003e , names : Vec \u003c \u0026 'a str \u003e , version_index : Option \u003c usize \u003e , # [doc = \" The key version column, which a refusal of its cell names (COD-41).\"] version_name : \u0026 'a str , }"
   },
   "packages/rust/orm/src/row.rs::StyledNode#field.entity": {
     "exported": false,
@@ -8395,9 +8535,13 @@
     "exported": false,
     "signature": "Option \u003c usize \u003e"
   },
+  "packages/rust/orm/src/row.rs::StyledNode#field.version_name": {
+    "exported": false,
+    "signature": "\u0026 'a str"
+  },
   "packages/rust/orm/src/row.rs::StyledNode#wire": {
     "exported": false,
-    "signature": "{\"entity\":\"unsupported:\u0026 'a str\",\"names\":\"list\u003cunsupported:\u0026 'a str\u003e\",\"styled\":\"list\u003cStyledCol\u003e\",\"version_index\":\"integer\"}"
+    "signature": "{\"entity\":\"unsupported:\u0026 'a str\",\"names\":\"list\u003cunsupported:\u0026 'a str\u003e\",\"styled\":\"list\u003cStyledCol\u003e\",\"version_index\":\"integer\",\"version_name\":\"unsupported:\u0026 'a str\"}"
   },
   "packages/rust/orm/src/row.rs::aes_row_version": {
     "exported": false,
@@ -8462,6 +8606,10 @@
   "packages/rust/orm/src/row.rs::required_cell": {
     "exported": false,
     "signature": " fn required_cell \u003c T \u003e (value : Option \u003c T \u003e , i : usize) -\u003e Result \u003c T \u003e"
+  },
+  "packages/rust/orm/src/row.rs::stored_version": {
+    "exported": false,
+    "signature": "pub (crate) fn stored_version (value : \u0026 Val) -\u003e Result \u003c i32 \u003e"
   },
   "packages/rust/orm/src/row.rs::styled_nodes": {
     "exported": false,
@@ -9651,10 +9799,6 @@
     "exported": false,
     "signature": " fn rotation_key \u003c 'a \u003e (version : Option \u003c \u0026 Val \u003e , keyring : \u0026 'a AesKeyring) -\u003e Result \u003c \u0026 'a str \u003e"
   },
-  "packages/rust/orm/src/utils.rs::row_version": {
-    "exported": false,
-    "signature": " fn row_version (v : \u0026 Val) -\u003e Result \u003c i32 \u003e"
-  },
   "packages/rust/orm/src/utils.rs::schema_target": {
     "exported": false,
     "signature": " fn schema_target (documents : \u0026 [Document]) -\u003e Result \u003c Document \u003e"
@@ -9747,6 +9891,10 @@
     "exported": true,
     "signature": "pub fn as_string (\u0026 self) -\u003e crate :: Result \u003c String \u003e"
   },
+  "packages/rust/orm/src/value.rs::Val::integer": {
+    "exported": false,
+    "signature": " fn integer (\u0026 self , column_type : \u0026 str) -\u003e crate :: Result \u003c i64 \u003e"
+  },
   "packages/rust/orm/src/value.rs::Val::into_json": {
     "exported": true,
     "signature": "pub fn into_json (mut self) -\u003e crate :: Result \u003c serde_json :: Value \u003e"
@@ -9782,6 +9930,10 @@
   "packages/rust/orm/src/value.rs::decode_value": {
     "exported": false,
     "signature": " fn decode_value (message : impl Into \u003c String \u003e) -\u003e crate :: Error"
+  },
+  "packages/rust/orm/src/value.rs::decode_value_by": {
+    "exported": false,
+    "signature": " fn decode_value_by (message : impl Into \u003c String \u003e , cause : impl std :: error :: Error + Send + Sync + 'static) -\u003e crate :: Error"
   },
   "packages/rust/orm/src/value.rs::esc": {
     "exported": false,

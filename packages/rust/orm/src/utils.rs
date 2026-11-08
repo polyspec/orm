@@ -224,7 +224,7 @@ impl<'a> Utils<'a> {
     pub fn local(&self, key: &str) -> Result<String> {
         let t = self.active("local")?;
         let v = t.locals.lock().unwrap().get(key).cloned();
-        v.ok_or_else(|| Error::Engine { code: codes::NO_ROWS.into(), msg: format!("local value {key} is not set") })
+        v.ok_or_else(|| Error::Engine { code: codes::NO_ROWS.into(), msg: format!("local value {key} is not set"), source: None })
     }
 
     /// Schema installation and inspection.
@@ -446,7 +446,11 @@ pub struct PrivilegeUtils<'a> {
 impl PrivilegeUtils<'_> {
     fn table(&self, table: &str) -> Result<(String, String)> {
         if self.u.db.sql_driver() != "postgres" {
-            return Err(Error::Engine { code: codes::CAPABILITY_UNSUPPORTED.into(), msg: "table privileges are supported only by postgres".into() });
+            return Err(Error::Engine {
+                code: codes::CAPABILITY_UNSUPPORTED.into(),
+                msg: "table privileges are supported only by postgres".into(),
+                source: None,
+            });
         }
         let parts: Vec<&str> = table.split('.').collect();
         if parts.len() != 2 || !valid_key(parts[0]) || !valid_key(parts[1]) {
@@ -513,10 +517,10 @@ pub struct AesKeyring {
 impl AesKeyring {
     pub fn new(keys: BTreeMap<i32, String>, current: i32) -> Result<Self> {
         if keys.iter().any(|(version, key)| *version < 1 || key.is_empty()) {
-            return Err(Error::Config("AES key list contains an invalid entry".into()));
+            return Err(Error::Config("aes key list holds an invalid version or an empty key".into()));
         }
         if !keys.contains_key(&current) {
-            return Err(Error::Config(format!("AES version {current} is not declared")));
+            return Err(Error::Config("aes current version is not declared".into()));
         }
         Ok(AesKeyring { keys, current })
     }
@@ -531,7 +535,7 @@ impl AesKeyring {
     }
 
     fn key(&self, version: i32) -> Result<&str> {
-        self.keys.get(&version).map(String::as_str).ok_or_else(|| Error::Config(format!("AES version {version} is not declared")))
+        self.keys.get(&version).map(String::as_str).ok_or_else(|| Error::Config("aes version is not declared".into()))
     }
 }
 
@@ -557,21 +561,13 @@ struct AesSpec {
     column_types: Vec<&'static str>,
 }
 
-fn row_version(v: &Val) -> Result<i32> {
-    let n = v.as_i32()?;
-    if n <= 0 {
-        return Err(Error::Engine { code: codes::CODEC_DECODE.into(), msg: "AES row version must be a positive integer".into() });
-    }
-    Ok(n)
-}
-
 fn rotation_columns(row: &[Val], key_count: usize, column_count: usize) -> Result<&[Val]> {
     row.get(key_count + 1..key_count + 1 + column_count).ok_or_else(|| Error::internal("AES rotation row is missing a selected AES column"))
 }
 
 fn rotation_key<'a>(version: Option<&Val>, keyring: &'a AesKeyring) -> Result<&'a str> {
     let version = version.ok_or_else(|| Error::internal("AES rotation row is missing its key version"))?;
-    keyring.key(row_version(version)?)
+    keyring.key(crate::row::stored_version(version)?)
 }
 
 /// AES key version status and rotation.
@@ -606,7 +602,7 @@ impl AesUtils<'_> {
         let sql = format!("SELECT {version}, COUNT(*) FROM {} GROUP BY {version} ORDER BY {version}", quote(d, &spec.table));
         let mut status = AesRotationStatus { current: keyring.current, total: 0, pending: 0, versions: BTreeMap::new() };
         for row in self.u.query(&self.u.read(), KIND_UTILITY, std::slice::from_ref(&spec.table), sql, &[], &[]).await? {
-            let stored = row_version(&row[0])?;
+            let stored = crate::row::stored_version(&row[0])?;
             let count = row[1].as_i64()?;
             if count < 0 {
                 return Err(Error::internal("negative AES key version count"));
@@ -705,6 +701,7 @@ where
                 "the existing tables of the document set differ beyond missing tables, missing columns that are null or have a default and missing indexes: {}",
                 planned.differences.join("; ")
             ),
+            source: None,
         });
     }
     for step in &planned.steps {
@@ -811,7 +808,7 @@ fn schema_target(documents: &[Document]) -> Result<Document> {
 
 /// A diagnostic of the document set is SCHEMA_INVALID.
 fn invalid(errors: Vec<dbspec::Diagnostic>) -> Error {
-    Error::Engine { code: codes::SCHEMA_INVALID.into(), msg: errors.iter().map(ToString::to_string).collect::<Vec<_>>().join("; ") }
+    Error::Engine { code: codes::SCHEMA_INVALID.into(), msg: errors.iter().map(ToString::to_string).collect::<Vec<_>>().join("; "), source: None }
 }
 
 /// Turns off foreign keys on the SQLite connection, adds tables and columns in a BEGIN IMMEDIATE transaction, then checks the foreign
@@ -861,7 +858,9 @@ where
         (result, Ok(())) => result,
         (Ok(_), Err(e)) => Err(e),
         // An error from failing to turn foreign keys back on is also kept in the message.
-        (Err(error), Err(restore)) => Err(Error::Engine { code: error.code().to_owned(), msg: format!("{error}; restoring foreign keys failed: {restore}") }),
+        (Err(error), Err(restore)) => {
+            Err(Error::Engine { code: error.code().to_owned(), msg: format!("{error}; restoring foreign keys failed: {restore}"), source: None })
+        }
     }
 }
 

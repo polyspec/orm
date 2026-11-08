@@ -16,7 +16,7 @@ pub struct Manifest {
 }
 
 fn invalid(msg: String) -> Error {
-    Error::Engine { code: codes::SCHEMA_INVALID.into(), msg }
+    Error::Engine { code: codes::SCHEMA_INVALID.into(), msg, source: None }
 }
 
 fn diagnostics(errors: Vec<dbspec::Diagnostic>) -> Error {
@@ -40,6 +40,7 @@ fn documents(text: &str, external: &str, hash: &str) -> Result<Vec<Document>> {
         return Err(Error::Engine {
             code: codes::SCHEMA_HASH_MISMATCH.into(),
             msg: format!("models were generated from manifest {hash} but the embedded manifest is {}", manifest.manifest_hash),
+            source: None,
         });
     }
     Ok(documents)
@@ -61,7 +62,7 @@ impl Manifest {
     }
 
     pub fn entity(&self, name: &str) -> Result<&Entity> {
-        self.model.entity(name).ok_or_else(|| Error::Engine { code: codes::ENTITY_UNKNOWN.into(), msg: name.to_owned() })
+        self.model.entity(name).ok_or_else(|| Error::Engine { code: codes::ENTITY_UNKNOWN.into(), msg: name.to_owned(), source: None })
     }
 }
 
@@ -111,7 +112,7 @@ impl Schema {
     /// before any statement it is CONFIG; if the text is not a manifest, it is SCHEMA_INVALID.
     pub(crate) fn registered(&self) -> Result<Arc<Manifest>> {
         self.manifest().map_err(|e| match e {
-            Error::Engine { code, msg } if code == codes::SCHEMA_HASH_MISMATCH => Error::Config(format!("invalid schema manifest: {msg}")),
+            Error::Engine { code, msg, .. } if code == codes::SCHEMA_HASH_MISMATCH => Error::Config(format!("invalid schema manifest: {msg}")),
             other => other,
         })
     }
@@ -134,12 +135,12 @@ impl Schema {
         self.manifest
             .get_or_init(|| {
                 Manifest::load_set(self.text, self.external, self.hash).map(Arc::new).map_err(|e| match e {
-                    Error::Engine { code, msg } => (code, msg),
+                    Error::Engine { code, msg, .. } => (code, msg),
                     other => (codes::SCHEMA_INVALID.to_owned(), other.to_string()),
                 })
             })
             .clone()
-            .map_err(|(code, msg)| Error::Engine { code, msg })
+            .map_err(|(code, msg)| Error::Engine { code, msg, source: None })
     }
 }
 

@@ -166,22 +166,18 @@ def _bool(value) -> bool:
         return value
     if isinstance(value, int) and value in (0, 1):
         return value == 1
-    raise _error(codes.TABLE_METADATA_INVALID, f"expected a boolean, got {value!r}")
+    raise _error(codes.TABLE_METADATA_INVALID, "expected a boolean")
 
 
 def _int(value) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
-        raise _error(
-            codes.TABLE_METADATA_INVALID, f"expected an integer, got {value!r}"
-        )
+        raise _error(codes.TABLE_METADATA_INVALID, "expected an integer")
     return value
 
 
 def _text(value) -> str:
     if not isinstance(value, str):
-        raise _error(
-            codes.TABLE_METADATA_INVALID, f"expected text, got {type(value).__name__}"
-        )
+        raise _error(codes.TABLE_METADATA_INVALID, "expected text")
     return value
 
 
@@ -201,7 +197,7 @@ def _check_value(value):
         if math.isnan(value) or math.isinf(value):
             raise _error(codes.CATALOG_VALUE, "non-finite float value")
         return value
-    raise _error(codes.CATALOG_VALUE, f"unsupported native type {type(value).__name__}")
+    raise _error(codes.CATALOG_VALUE, "unsupported driver value")
 
 
 def _mysql_time_value(value, precision: int) -> str:
@@ -209,7 +205,7 @@ def _mysql_time_value(value, precision: int) -> str:
     if not isinstance(value, timedelta):
         raise _error(
             codes.CATALOG_VALUE,
-            f"unsupported native type {type(value).__name__}",
+            "unsupported driver value",
         )
     micros = (value.days * 86400 + value.seconds) * 1000000 + value.microseconds
     if not 0 <= micros < 86400 * 1000000:
@@ -300,13 +296,13 @@ def _described_date(text: str, column: CatalogColumn) -> str:
     """A dbspec date YYYY-MM-DD, a calendar date from 0001-01-01 to 9999-12-31."""
     match = _DESCRIBED_DATE_TEXT.fullmatch(text)
     if match is None:
-        raise _temporal_value_error(column, f"{text!r} is not a dbspec date")
+        raise _temporal_value_error(column, "the text is not a dbspec date")
     try:
         date(*(int(part) for part in match.groups()))
     except ValueError:
         raise _temporal_value_error(
             column,
-            f"{text!r} is outside 0001-01-01 to 9999-12-31 or is not a calendar date",
+            "the text is outside 0001-01-01 to 9999-12-31 or is not a calendar date",
         ) from None
     return text
 
@@ -316,11 +312,11 @@ def _described_clock(text: str, column: CatalogColumn) -> tuple:
     and the number of fraction digits it has."""
     match = _DESCRIBED_TIME_TEXT.fullmatch(text)
     if match is None:
-        raise _temporal_value_error(column, f"{text!r} is not a dbspec time")
+        raise _temporal_value_error(column, "the text is not a dbspec time")
     hour, minute, second = (int(part) for part in match.groups()[:3])
     if hour > 23 or minute > 59 or second > 59:
         raise _temporal_value_error(
-            column, f"{text!r} is outside 00:00:00 to 23:59:59.999999"
+            column, "the text is outside 00:00:00 to 23:59:59.999999"
         )
     fraction = match.group(4) or ""
     return f"{text[:8]}.{fraction.ljust(6, '0')}", len(fraction)
@@ -335,7 +331,7 @@ def _described_text(text: str, kind: str, column: CatalogColumn) -> tuple:
         return _described_clock(text, column)
     match = _DESCRIBED_DATETIME_TEXT.fullmatch(text)
     if match is None:
-        raise _temporal_value_error(column, f"{text!r} is not a dbspec datetime")
+        raise _temporal_value_error(column, "the text is not a dbspec datetime")
     clock, digits = _described_clock(match.group(2), column)
     return f"{_described_date(match.group(1), column)} {clock}", digits
 
@@ -351,7 +347,8 @@ def _described_boolean(value, column: CatalogColumn, dialect: str):
     if isinstance(value, int) and value in (0, 1):
         return value == 1
     raise _error(
-        codes.CATALOG_VALUE, f"column {column.name!r} holds {value!r}, not a boolean"
+        codes.CATALOG_VALUE,
+        f"column {column.name!r} holds a value that is not a boolean",
     )
 
 
@@ -376,7 +373,7 @@ def _described_temporal(value, column: CatalogColumn, dialect: str):
     if dialect == "sqlite":
         if not isinstance(value, str):
             raise _temporal_value_error(
-                column, f"holds a {type(value).__name__}, not a dbspec {kind}"
+                column, f"holds a value that is not a dbspec {kind}"
             )
         _, digits = _described_text(value, kind, column)
         if kind == "date":
@@ -387,7 +384,7 @@ def _described_temporal(value, column: CatalogColumn, dialect: str):
         if digits != precision:
             raise _error(
                 codes.GRID_TEMPORAL_PRECISION,
-                f"column {column.name!r} holds {digits} fraction digits; its dbspec CHECK fixes {precision}",
+                f"column {column.name!r} holds a fraction whose digits are not the {precision} that its dbspec CHECK fixes",
             )
         return value
     if isinstance(value, str):
@@ -418,7 +415,7 @@ def _described_temporal(value, column: CatalogColumn, dialect: str):
         text = f"{seconds // 3600:02d}:{seconds // 60 % 60:02d}:{seconds % 60:02d}.{fraction:06d}"
     else:
         raise _temporal_value_error(
-            column, f"holds a {type(value).__name__}, not a dbspec {kind}"
+            column, f"holds a value that is not a dbspec {kind}"
         )
     if kind == "date":
         return text
@@ -427,7 +424,7 @@ def _described_temporal(value, column: CatalogColumn, dialect: str):
     if text[dot + 1 + precision :].strip("0"):
         raise _error(
             codes.GRID_TEMPORAL_PRECISION,
-            f"column {column.name!r}: {kind} value {value!r} has a non-zero digit past its {precision} fraction digits",
+            f"column {column.name!r}: a {kind} value has a non-zero digit past its {precision} fraction digits",
         )
     return text[:dot] if precision == 0 else text[: dot + 1 + precision]
 
@@ -496,7 +493,7 @@ def _params(values) -> list:
         else:
             raise _error(
                 codes.CATALOG_PARAM,
-                f"parameter {index} has unsupported type {type(value).__name__}",
+                f"parameter {index} has an unsupported type",
             )
     return out
 
@@ -554,9 +551,7 @@ def _cell_key(cell) -> str:
         if cell.tzinfo is not None:
             raise _error(codes.ROW_SNAPSHOT_INVALID, "time cell has a time zone")
         return "h" + cell.isoformat(timespec="microseconds")
-    raise _error(
-        codes.ROW_SNAPSHOT_INVALID, f"unsupported cell type {type(cell).__name__}"
-    )
+    raise _error(codes.ROW_SNAPSHOT_INVALID, "unsupported cell type")
 
 
 def _same_row(a, b) -> bool:
@@ -1065,14 +1060,14 @@ def _time_text(hour: int, minute: int, second: int, micro: int) -> str:
 def _pg_text_date(text: str) -> GridCell:
     match = _DATE_TEXT.fullmatch(text)
     if match is None:
-        raise _refuse_temporal(f"date text {text!r}")
+        raise _refuse_temporal("date is not YYYY-MM-DD")
     return GridCell("date", _date_text(*(int(part) for part in match.groups())))
 
 
 def _pg_text_time(text: str) -> str:
     match = _TIME_TEXT.fullmatch(text)
     if match is None:
-        raise _refuse_temporal(f"time text {text!r}")
+        raise _refuse_temporal("time is not HH:MM:SS")
     hour, minute, second = (int(part) for part in match.groups()[:3])
     fraction = (match.group(4) or "").ljust(6, "0")
     return _time_text(hour, minute, second, int(fraction or "0"))
@@ -1146,7 +1141,7 @@ def _grid_cell(value, dialect: str, code, unsigned: bool) -> GridCell:
         if code == _PG_NUMERIC and isinstance(value, str):
             # PostgreSQL writes NaN and the infinities of numeric as text.
             if value == "NaN" or "Infinity" in value:
-                raise _refuse(f"PostgreSQL numeric {value} is not finite")
+                raise _refuse("PostgreSQL numeric is not finite")
             return GridCell("decimal", value)
         if code in (_PG_TIMESTAMPTZ, _PG_TIMETZ):
             raise _refuse("PostgreSQL timestamptz and timetz are unsupported")
@@ -1170,7 +1165,7 @@ def _grid_cell(value, dialect: str, code, unsigned: bool) -> GridCell:
         return GridCell("text", value)
     if isinstance(value, bytes):
         return GridCell("binary", value)
-    raise _refuse(f"native type {type(value).__name__} of column type {code}")
+    raise _refuse(f"the driver value has no cell of column type {code}")
 
 
 def _sqlite_text(value: bytes):

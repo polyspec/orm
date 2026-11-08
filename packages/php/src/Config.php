@@ -38,11 +38,14 @@ final class Config
          */
         public readonly ?\Closure $auditSource = null,
     ) {
-        if ($aesVersion < 1 || $planCacheSize < 1 || $statementCacheSize < 1) {
-            throw new OrmException(Code::CONFIG, 'AES version and cache sizes must be positive');
+        if ($planCacheSize < 1 || $statementCacheSize < 1) {
+            throw new OrmException(Code::CONFIG, 'cache sizes must be positive');
+        }
+        if ($aesVersion < 1) {
+            throw new OrmException(Code::CONFIG, 'aes current version is not declared');
         }
         if ($aesKey !== '' && $aesKeys !== [] && ($aesKeys[$aesVersion] ?? '') !== $aesKey) {
-            throw new OrmException(Code::CONFIG, "aesKey differs from aesKeys[$aesVersion]");
+            throw new OrmException(Code::CONFIG, 'aes key differs from the key list at the current version');
         }
         if ($aesKeys !== []) {
             new AesKeyring($aesKeys, $aesVersion);

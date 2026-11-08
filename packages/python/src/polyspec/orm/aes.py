@@ -54,17 +54,19 @@ class AesKeyring:
     """Holds, per version, the keys that open stored AES values."""
 
     def __init__(self, keys: Mapping[int, str], current_version: int):
+        # The key list is checked before the current version, and no text names a version (COD-44, INT-163).
+        for version, key in keys.items():
+            if not _is_safe_integer(version) or version < 1 or len(key) == 0:
+                raise OrmError(
+                    codes.CONFIG,
+                    "aes key list holds an invalid version or an empty key",
+                )
         if (
             not _is_safe_integer(current_version)
             or current_version < 1
             or current_version not in keys
         ):
-            raise OrmError(
-                codes.CONFIG, f"AES version {current_version} is not declared"
-            )
-        for version, key in keys.items():
-            if not _is_safe_integer(version) or version < 1 or len(key) == 0:
-                raise OrmError(codes.CONFIG, f"AES version {version} has no key")
+            raise OrmError(codes.CONFIG, "aes current version is not declared")
         self._keys = dict(keys)
         self.current_version = current_version
 
@@ -74,7 +76,7 @@ class AesKeyring:
     def key(self, version: int) -> str:
         key = self._keys.get(version)
         if key is None:
-            raise OrmError(codes.CONFIG, f"AES version {version} is not declared")
+            raise OrmError(codes.CONFIG, "aes version is not declared")
         return key
 
     def rotate_row(

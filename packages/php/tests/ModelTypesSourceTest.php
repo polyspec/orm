@@ -24,11 +24,12 @@ final class ModelTypesSourceTest extends TestCase
         self::assertSame(9, $request->shape()['n_params']);
     }
 
-    public function testPendingTimePreservesLoadedTextAndZone(): void
+    public function testPendingTimePreservesLoadedTextZoneAndType(): void
     {
         $zone = new DateTimeZone('UTC');
-        $pending = new PendingTime('not parsed yet', $zone);
+        $pending = new PendingTime('not parsed yet', $zone, 'date');
         self::assertSame('not parsed yet', $pending->text);
         self::assertSame($zone, $pending->zone);
+        self::assertSame('date', $pending->type);
     }
 }

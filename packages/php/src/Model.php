@@ -450,10 +450,12 @@ abstract class Model implements \JsonSerializable, ModelMetadata
             }
             // The text is checked now; the getter returns the parsed time in the connection's zone (T189).
             try {
-                $stored = self::timeValue($value, $this->conn?->zone() ?? new \DateTimeZone('UTC'));
+                $stored = self::timeValue($value, $this->conn?->zone() ?? new \DateTimeZone('UTC'), $col['type']);
             } catch (OrmException $error) {
-                // A text that no time form reads is refused as a write (PRT-67); timeValue reports a read.
-                throw new OrmException(Code::CODEC_ENCODE, "$column: invalid date value $value", $error);
+                // A text that no time form reads is refused as a write (PRT-67, DBS-121); timeValue reports a read.
+                $entity = static::meta()['entity'];
+                $type = $col['type'];
+                throw new OrmException(Code::CODEC_ENCODE, "$entity.$column: $type value is not a $type", $error);
             }
         }
         $this->values[$column] = $stored;
@@ -467,14 +469,14 @@ abstract class Model implements \JsonSerializable, ModelMetadata
     {
         $v = $this->values[$column] ?? null;
         if ($v instanceof PendingTime) {
-            $v = $this->values[$column] = self::timeValue($v->text, $v->zone);
+            $v = $this->values[$column] = self::timeValue($v->text, $v->zone, $v->type);
         }
         return $v;
     }
 
     private static function resolved(mixed $v): mixed
     {
-        return $v instanceof PendingTime ? self::timeValue($v->text, $v->zone) : $v;
+        return $v instanceof PendingTime ? self::timeValue($v->text, $v->zone, $v->type) : $v;
     }
 
     private function putSet(string $column, array $spec): void
@@ -502,14 +504,15 @@ abstract class Model implements \JsonSerializable, ModelMetadata
             'i16', 'i32', 'i64' => (int) $v,
             'f64' => (float) $v,
             'decimal' => is_string($v) ? Decimal::normalize($v, $col['precision'], $col['scale'])
-                : throw new OrmException(Code::CODEC_DECODE, 'decimal cell requires exact text'),
+                : throw new OrmException(Code::CODEC_DECODE, self::cellMessage('decimal')),
             'bool' => (bool) $v,
-            'date', 'datetime' => self::timeValue($v, $zone),
+            'date', 'datetime' => self::timeValue($v, $zone, $col['type']),
             default => is_string($v) ? $v : (string) $v,
         };
     }
 
-    private static function timeValue(mixed $v, \DateTimeZone $zone): \DateTimeImmutable
+    /** A date or datetime as its time; any other value is the CODEC_DECODE of its type (COD-1), which names no value. */
+    private static function timeValue(mixed $v, \DateTimeZone $zone, string $type): \DateTimeImmutable
     {
         if ($v instanceof \DateTimeInterface) {
             return \DateTimeImmutable::createFromInterface($v)->setTimezone($zone);
@@ -531,7 +534,7 @@ abstract class Model implements \JsonSerializable, ModelMetadata
             try {
                 return (new \DateTimeImmutable($s))->setTimezone($zone);
             } catch (\Exception $e) {
-                throw new OrmException(Code::CODEC_DECODE, "invalid date value $s", $e);
+                throw new OrmException(Code::CODEC_DECODE, self::cellMessage($type), $e);
             }
         }
         // A space or a T separates the date and the time (PRT-67).
@@ -541,7 +544,7 @@ abstract class Model implements \JsonSerializable, ModelMetadata
                 return $t;
             }
         }
-        throw new OrmException(Code::CODEC_DECODE, "invalid date value $s");
+        throw new OrmException(Code::CODEC_DECODE, self::cellMessage($type));
     }
 
     /** The message of a cell that its column type refuses: one text per type, no value, no host type (COD-1). */
@@ -654,7 +657,7 @@ abstract class Model implements \JsonSerializable, ModelMetadata
                     throw self::cellRefusal($entity, $name, self::cellMessage($type));
                 }
                 // The text is checked now; the getter parses it in the connection's zone when it is first read (T189).
-                return new PendingTime($text, $zone);
+                return new PendingTime($text, $zone, $type);
             case 'time':
                 $text = is_string($v) ? self::timeText($type, $v, $col['precision']) : null;
                 if ($text === null) {
@@ -2651,7 +2654,7 @@ abstract class Model implements \JsonSerializable, ModelMetadata
         try {
             return json_encode($v, self::JSON_FLAGS);
         } catch (\JsonException $e) {
-            throw new OrmException(Code::CODEC_ENCODE, 'json: ' . $e->getMessage(), $e);
+            throw new OrmException(Code::CODEC_ENCODE, 'json: the value has no JSON text', $e);
         }
     }
 

@@ -4049,7 +4049,7 @@
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::timeValue": {
     "exported": false,
-    "signature": "private static function timeValue(mixed $v, DateTimeZone $zone): DateTimeImmutable"
+    "signature": "private static function timeValue(mixed $v, DateTimeZone $zone, string $type): DateTimeImmutable"
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::toArray": {
     "exported": true,
@@ -4395,13 +4395,17 @@
     "exported": true,
     "signature": "public readonly string"
   },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\PendingTime::$type": {
+    "exported": true,
+    "signature": "public readonly string"
+  },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\PendingTime::$zone": {
     "exported": true,
     "signature": "public readonly DateTimeZone"
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\PendingTime::__construct": {
     "exported": true,
-    "signature": "public function __construct(string $text, DateTimeZone $zone): "
+    "signature": "public function __construct(string $text, DateTimeZone $zone, string $type): "
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Planner": {
     "exported": true,

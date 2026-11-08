@@ -1,13 +1,19 @@
 //! Exact decimal field values.
 
-fn invalid(input: &str, reason: &str) -> crate::Error {
-    crate::Error::Engine { code: crate::codes::CODEC_ENCODE.into(), msg: format!("decimal {input:?}: {reason}") }
+/// The CODEC_ENCODE `decimal: <reason>` of a value outside its decimal type, which names no value (COD-2, INT-163).
+fn invalid(reason: &str) -> crate::Error {
+    crate::Error::Engine { code: crate::codes::CODEC_ENCODE.into(), msg: format!("decimal: {reason}"), source: None }
+}
+
+/// The COD-1 refusal of a decimal cell that is no decimal of its precision and scale, which names no value.
+fn undecodable() -> crate::Error {
+    crate::Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: "decimal cell is not a decimal of its precision and scale".into(), source: None }
 }
 
 /// Validate a decimal field value and pad it to its declared scale.
 pub fn normalize(input: &str, precision: u8, scale: u8) -> crate::Result<String> {
     if !(1..=18).contains(&precision) || scale > precision {
-        return Err(invalid(input, "invalid precision or scale"));
+        return Err(invalid("invalid precision or scale"));
     }
     let (negative, unsigned) = if let Some(value) = input.strip_prefix('-') {
         (true, value)
@@ -26,16 +32,16 @@ pub fn normalize(input: &str, precision: u8, scale: u8) -> crate::Result<String>
         || !fraction.bytes().all(|byte| byte.is_ascii_digit())
         || unsigned.ends_with('.')
     {
-        return Err(invalid(input, "invalid text"));
+        return Err(invalid("invalid text"));
     }
     if fraction.len() > usize::from(scale) {
-        return Err(invalid(input, "fraction exceeds scale"));
+        return Err(invalid("fraction exceeds scale"));
     }
     let whole = whole_text.trim_start_matches('0');
     let whole = if whole.is_empty() { "0" } else { whole };
     let whole_digits = if whole == "0" { 0 } else { whole.len() };
     if whole_digits + usize::from(scale) > usize::from(precision) {
-        return Err(invalid(input, "value exceeds precision"));
+        return Err(invalid("value exceeds precision"));
     }
     let padded = format!("{fraction:0<width$}", width = usize::from(scale));
     let negative = negative && !(whole == "0" && padded.bytes().all(|byte| byte == b'0'));
@@ -50,7 +56,7 @@ pub fn normalize(input: &str, precision: u8, scale: u8) -> crate::Result<String>
 /// Bind a decimal to SQLite without a floating-point conversion.
 pub fn scaled(input: &str, precision: u8, scale: u8) -> crate::Result<i64> {
     let canonical = normalize(input, precision, scale)?;
-    canonical.replace('.', "").parse::<i64>().map_err(|error| invalid(input, &format!("scaled integer overflow: {error}")))
+    canonical.replace('.', "").parse::<i64>().map_err(|error| invalid(&format!("scaled integer overflow: {error}")))
 }
 
 /// Decode an exact decimal result cell from SQL text or a SQLite scaled integer.
@@ -74,8 +80,7 @@ pub fn decode(value: crate::Val, precision: u8, scale: u8) -> crate::Result<Stri
                 digits
             }
         }
-        other => return Err(crate::Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("decimal cell has invalid type {other:?}") }),
+        _ => return Err(undecodable()),
     };
-    normalize(&text, precision, scale)
-        .map_err(|error| crate::Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("invalid decimal cell: {error}") })
+    normalize(&text, precision, scale).map_err(|error| if error.code() == crate::codes::CODEC_ENCODE { undecodable() } else { error })
 }

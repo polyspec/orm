@@ -556,7 +556,7 @@ final class ModelNativeTest extends TestCase
             self::fail('Expected Config to reject different active AES keys');
         } catch (\Polyspec\Orm\OrmException $error) {
             self::assertSame('CONFIG', $error->code_);
-            self::assertSame('CONFIG: aesKey differs from aesKeys[1]', $error->getMessage());
+            self::assertSame('CONFIG: aes key differs from the key list at the current version', $error->getMessage());
         }
 
         $stateReflection = new ReflectionClass(\Polyspec\Orm\DbState::class);
@@ -821,19 +821,19 @@ final class ModelNativeTest extends TestCase
             \Polyspec\Orm\ParamCheck::check(4, 'value', ['type' => 'i32'], $zone);
             self::fail('Expected ParamCheck to reject a non-integer bind value');
         } catch (\Polyspec\Orm\OrmException $error) {
-            self::assertSame('CODEC_ENCODE: parameter 4 (string) is not a i32 value', $error->getMessage());
+            self::assertSame('CODEC_ENCODE: parameter 4 is not a i32 value', $error->getMessage());
         }
         try {
             \Polyspec\Orm\ParamCheck::check(5, '1.234', ['type' => 'decimal', 'precision' => 4, 'scale' => 2], $zone);
             self::fail('Expected ParamCheck to reject decimal precision loss');
         } catch (\Polyspec\Orm\OrmException $error) {
             self::assertSame(
-                'CODEC_ENCODE: parameter 5: CODEC_ENCODE: decimal 1.234: fraction exceeds scale',
+                'CODEC_ENCODE: parameter 5 is not a decimal of its precision and scale',
                 $error->getMessage()
             );
             self::assertInstanceOf(\Polyspec\Orm\OrmException::class, $error->getPrevious());
             self::assertSame(
-                'CODEC_ENCODE: decimal 1.234: fraction exceeds scale',
+                'CODEC_ENCODE: decimal: fraction exceeds scale',
                 $error->getPrevious()->getMessage()
             );
         }
@@ -859,14 +859,12 @@ final class ModelNativeTest extends TestCase
             self::fail('Expected ParamCheck to reject non-zero time precision loss');
         } catch (\Polyspec\Orm\OrmException $error) {
             self::assertSame(
-                'CODEC_ENCODE: parameter 6: CODEC_ENCODE: time value "12:34:56.123" has a non-zero digit '
-                    . 'past its 2 fraction digits',
+                'CODEC_ENCODE: parameter 6 is not a time value',
                 $error->getMessage()
             );
             self::assertInstanceOf(\Polyspec\Orm\OrmException::class, $error->getPrevious());
             self::assertSame(
-                'CODEC_ENCODE: time value "12:34:56.123" has a non-zero digit '
-                    . 'past its 2 fraction digits',
+                'CODEC_ENCODE: time value is not a time',
                 $error->getPrevious()->getMessage()
             );
         }
@@ -984,13 +982,13 @@ final class ModelNativeTest extends TestCase
         self::assertSame($node['node'] + 1, $child['node']);
         self::assertSame(
             [
-                [1, ['hex'], ['base64'], false, null, 'zone_event.start_dt'],
-                [2, ['aes'], [], true, null, 'zone_event.start_dt'],
+                [1, ['hex'], ['base64'], false, null, 'zone_event.start_dt', null],
+                [2, ['aes'], [], true, null, 'zone_event.start_dt', null],
             ],
             $plan['steps'][1]['decode'],
         );
         self::assertSame(
-            [[2, ['aes'], [], true, null, 'zone_event.start_dt']],
+            [[2, ['aes'], [], true, null, 'zone_event.start_dt', null]],
             \Polyspec\Orm\Assemble::cells($child, $model)
         );
     }

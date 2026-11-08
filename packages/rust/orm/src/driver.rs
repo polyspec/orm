@@ -35,7 +35,11 @@ pub(crate) fn same_scalar(v: &Val, p: &Param) -> Result<bool> {
         Param::F64(x) => x.to_string(),
         Param::Str(s) => s.clone(),
         Param::Bytes(b) => std::str::from_utf8(b)
-            .map_err(|error| Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("relation key bytes are not UTF-8: {error}") })?
+            .map_err(|error| Error::Engine {
+                code: crate::codes::CODEC_DECODE.into(),
+                msg: format!("relation key bytes are not UTF-8: {error}"),
+                source: None,
+            })?
             .to_owned(),
         Param::DateTime(t) => t.format("%Y-%m-%d %H:%M:%S%.6f").to_string(),
         Param::Date(d) => d.to_string(),
@@ -618,6 +622,7 @@ fn parent_bind_slot(st: &Step) -> Result<usize> {
         return Err(Error::Engine {
             code: crate::codes::IR_INVALID.into(),
             msg: format!("relation {} requires exactly one parent bind slot, found {count}", st.id),
+            source: None,
         });
     }
     Ok(parent_slot.expect("a single parent bind slot has an index"))
@@ -626,7 +631,7 @@ fn parent_bind_slot(st: &Step) -> Result<usize> {
 pub(crate) fn relation_chunks(st: &Step, vals: Vec<Param>, driver: &str) -> Result<Vec<Vec<Param>>> {
     let width = st.parent.as_ref().map(|parent| parent.keys.len()).unwrap_or(0);
     if width == 0 || !vals.len().is_multiple_of(width) {
-        return Err(Error::Engine { code: crate::codes::IR_INVALID.into(), msg: format!("relation {} has invalid parent key values", st.id) });
+        return Err(Error::Engine { code: crate::codes::IR_INVALID.into(), msg: format!("relation {} has invalid parent key values", st.id), source: None });
     }
     let non_parent = st.bind_slots.iter().filter(|bind| bind.from != "parent").count();
     let limit: usize = if driver == "sqlite" { 999 } else { 65535 };
@@ -635,6 +640,7 @@ pub(crate) fn relation_chunks(st: &Step, vals: Vec<Param>, driver: &str) -> Resu
         return Err(Error::Engine {
             code: crate::codes::IR_INVALID.into(),
             msg: format!("relation {} needs at least {} bind parameters but {} permits {}", st.id, non_parent + width, driver, limit),
+            source: None,
         });
     }
     let mut chunk_tuples = 1usize;
@@ -689,7 +695,7 @@ fn decode_declared_text_columns(asm: &Assemble, data: &mut [Vec<Val>]) -> Result
         for row in data.iter_mut() {
             let value = row.get_mut(column.index).ok_or_else(|| Error::internal(format!("text column {} has no value", column.name)))?;
             if matches!(value, Val::Bytes(_)) {
-                *value = Val::Str(value.take_string()?);
+                *value = Val::Str(value.take_string().map_err(|error| crate::model::column_decode_error(&asm.entity, &column.name, error))?);
             }
         }
     }

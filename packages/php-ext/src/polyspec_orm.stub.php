@@ -2056,8 +2056,9 @@ final class PendingTime
 {
     public readonly string $text;
     public readonly \DateTimeZone $zone;
+    public readonly string $type;
 
-    public function __construct(string $text, \DateTimeZone $zone) {}
+    public function __construct(string $text, \DateTimeZone $zone, string $type) {}
 }
 
 namespace Polyspec\Orm;
@@ -2274,7 +2275,7 @@ abstract class Model implements \JsonSerializable, ModelMetadata
     private static function resolved(mixed $v): mixed {}
     private function putSet(string $column, array $spec): void {}
     private static function columnValue(array $col, mixed $v, \DateTimeZone $zone): mixed {}
-    private static function timeValue(mixed $v, \DateTimeZone $zone): \DateTimeImmutable {}
+    private static function timeValue(mixed $v, \DateTimeZone $zone, string $type): \DateTimeImmutable {}
     private static function cellMessage(string $type): string {}
     private static function cellRefusal(string $entity, string $name, string $message, ?\Throwable $previous = null): OrmException {}
     private static function cellValue(string $entity, string $name, array $col, mixed $v, bool $sqlite, bool $integerText, \DateTimeZone $zone): mixed {}

@@ -189,7 +189,7 @@ pub struct Core {
 }
 
 pub(crate) fn config(msg: impl Into<String>) -> Error {
-    Error::Engine { code: codes::CONFIG.into(), msg: msg.into() }
+    Error::Engine { code: codes::CONFIG.into(), msg: msg.into(), source: None }
 }
 
 impl Core {
@@ -254,13 +254,17 @@ impl Core {
         if self.field_ready(name) {
             Ok(())
         } else {
-            Err(Error::Engine { code: crate::codes::COLUMN_UNSELECTED.into(), msg: format!("{}.{name} was not loaded or assigned", self.ent.name) })
+            Err(Error::Engine {
+                code: crate::codes::COLUMN_UNSELECTED.into(),
+                msg: format!("{}.{name} was not loaded or assigned", self.ent.name),
+                source: None,
+            })
         }
     }
 
     /// The first recorded builder error.
     pub fn err(&self) -> Option<Error> {
-        self.err.as_ref().map(|(code, msg)| Error::Engine { code: code.clone(), msg: msg.clone() })
+        self.err.as_ref().map(|(code, msg)| Error::Engine { code: code.clone(), msg: msg.clone(), source: None })
     }
 
     pub(crate) fn fail(&mut self, msg: impl Into<String>) {
@@ -677,7 +681,7 @@ fn predicate(key: &ChainKey, arg: Arg, single: bool) -> crate::Result<PredSpec> 
                 return Err(config("tuple values must be a list of value groups"));
             };
             if rows.is_empty() {
-                return Err(Error::Engine { code: codes::EMPTY_IN.into(), msg: "tuple condition received an empty list".into() });
+                return Err(Error::Engine { code: codes::EMPTY_IN.into(), msg: "tuple condition received an empty list".into(), source: None });
             }
             let op = if key.op == "tuple" { "tuple_in" } else { "tuple_not_in" };
             return Ok(PredSpec { column: String::new(), op, value: PredValue::Tuples(key.columns.to_vec(), rows) });
@@ -734,7 +738,7 @@ fn predicate(key: &ChainKey, arg: Arg, single: bool) -> crate::Result<PredSpec> 
                 return Err(config(format!("a list is not accepted by the {} operator", key.op)));
             }
             if list.is_empty() {
-                return Err(Error::Engine { code: codes::EMPTY_IN.into(), msg: format!("{} received an empty list", key.column) });
+                return Err(Error::Engine { code: codes::EMPTY_IN.into(), msg: format!("{} received an empty list", key.column), source: None });
             }
             Ok(pred(if key.op == "ne" { "not_in" } else { "in" }, PredValue::List(list)))
         }

@@ -18,7 +18,7 @@ fn relation_step(sql: &str, slots: &[&str], key_width: usize) -> Step {
 fn assert_parent_slot_invalid(step: &Step, numbered: bool) {
     let error = statement(step, vec![Param::I64(7)], numbered).expect_err("invalid parent bind slot must fail before query");
     match error {
-        Error::Engine { code, msg } => {
+        Error::Engine { code, msg, .. } => {
             assert_eq!(code, codes::IR_INVALID);
             assert!(msg.contains("relation 67"), "{msg}");
             assert!(msg.contains("parent bind slot"), "{msg}");

@@ -17289,7 +17289,7 @@
   },
   "packages/go/orm/bind_check.go::finiteF64": {
     "exported": false,
-    "signature": "func(i int, v any, f float64) error"
+    "signature": "func(i int, f float64) error"
   },
   "packages/go/orm/bind_check.go::integerValue": {
     "exported": false,
@@ -17322,6 +17322,10 @@
   "packages/go/orm/bind_check.go::paramSlot#field.Type": {
     "exported": false,
     "signature": "string"
+  },
+  "packages/go/orm/bind_check.go::refused": {
+    "exported": false,
+    "signature": "func(err, text error) error"
   },
   "packages/go/orm/bind_check.go::uintValue": {
     "exported": false,
@@ -18294,6 +18298,10 @@
   "packages/go/orm/codec.go::checkCodecStyles": {
     "exported": false,
     "signature": "func(styles []string) error"
+  },
+  "packages/go/orm/codec.go::codecCause": {
+    "exported": false,
+    "signature": "func(code, msg string, cause error) error"
   },
   "packages/go/orm/codec.go::codecErr": {
     "exported": false,

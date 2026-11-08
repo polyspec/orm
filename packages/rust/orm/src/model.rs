@@ -259,6 +259,7 @@ fn batch_fits(driver: &str, parts: &[usize], columns: usize) -> Result<()> {
             return Err(Error::Engine {
                 code: codes::BATCH_TOO_LARGE.into(),
                 msg: format!("creates batch {} of {part} rows binds {binds} parameters, over the {driver} limit of {limit}", i + 1),
+                source: None,
             });
         }
     }
@@ -341,8 +342,11 @@ fn root_in_parts(req: &mut Req, binds: usize, driver: &str) -> Result<Vec<Req>> 
     if binds <= limit {
         return Ok(Vec::new());
     }
-    let too_large =
-        || Error::Engine { code: codes::IR_INVALID.into(), msg: format!("the statement needs {binds} bind parameters but {driver} permits {limit}") };
+    let too_large = || Error::Engine {
+        code: codes::IR_INVALID.into(),
+        msg: format!("the statement needs {binds} bind parameters but {driver} permits {limit}"),
+        source: None,
+    };
     let q = &req.ir.query;
     let Some(where_) = &q.where_ else { return Err(too_large()) };
     if q.limit.is_some() || !q.order.is_empty() || !q.group_by.is_empty() {
@@ -477,7 +481,11 @@ async fn select(ex: &Executor, conn: &Option<Db>, req: &mut Req) -> Result<Query
 }
 
 fn split_row_key(row: &[Val], refs: &[crate::plan::KeyRef]) -> Result<Key> {
-    Key::of_row(row, refs)?.ok_or_else(|| Error::Engine { code: codes::CODEC_DECODE.into(), msg: "split query row identity contains SQL NULL".into() })
+    Key::of_row(row, refs)?.ok_or_else(|| Error::Engine {
+        code: codes::CODEC_DECODE.into(),
+        msg: "split query row identity contains SQL NULL".into(),
+        source: None,
+    })
 }
 
 // ---- assembly ----
@@ -500,19 +508,30 @@ impl<'a> Assembler<'a> {
             core.conn = self.conn.clone();
         }
         let mut st = RowState { loaded: true, ..Default::default() };
-        for col in &asm.columns {
-            let v = row[col.index].clone();
+        let ent = b.ent.entity_schema()?;
+        for (at, col) in asm.columns.iter().enumerate() {
+            let mut v = row[col.index].clone();
             if col.hidden {
                 st.hidden.insert(col.name.clone());
             }
             st.add_name(&col.name);
-            if !col.column.is_empty()
-                && col.column == col.name
-                && m.assign_dyn(&col.name, v.clone()).map_err(|error| column_decode_error(b.ent.name, &col.name, error))?
-            {
-                continue;
+            if !col.column.is_empty() && col.column == col.name {
+                // A declared column holds the value of its type (COD-1), and the key version column the version that COD-44
+                // reads; a styled column was decoded through its stages.
+                if asm.aes_version == Some(at) {
+                    if !v.is_null() {
+                        v = Val::I64(i64::from(crate::row::stored_version(&v).map_err(|error| column_decode_error(b.ent.name, &col.name, error))?));
+                    }
+                } else if col.styles.is_empty() {
+                    if let Some(field) = ent.field(&col.column) {
+                        v = crate::cell::declared_cell(&field.ty, v).map_err(|error| column_decode_error(b.ent.name, &col.name, error))?;
+                    }
+                }
+                if m.assign_dyn(&col.name, v.clone()).map_err(|error| column_decode_error(b.ent.name, &col.name, error))? {
+                    continue;
+                }
             }
-            let added = added_column_value(&col.typ, v).map_err(|error| column_decode_error(b.ent.name, &col.name, error))?;
+            let added = crate::cell::added_cell(&col.typ, v).map_err(|error| column_decode_error(b.ent.name, &col.name, error))?;
             st.extra.insert(col.name.clone(), added);
         }
         for key in &asm.key {
@@ -520,7 +539,6 @@ impl<'a> Assembler<'a> {
             let value = m.value_dyn(&name).or_else(|| st.extra.get(&name).cloned()).ok_or_else(|| Error::internal(format!("key column {name} is missing")))?;
             st.original.insert(name, val_param(&value));
         }
-        let ent = b.ent.entity_schema()?;
         let updated = ent.updated.as_deref().unwrap_or("");
         if !updated.is_empty() && st.names.iter().any(|n| n == updated) {
             let value = m
@@ -582,47 +600,13 @@ impl<'a> Assembler<'a> {
     }
 }
 
-/// An added column by the type its plan column states (INT-160); other types keep the driver value.
-fn added_column_value(typ: &str, value: Val) -> Result<Val> {
-    if matches!(value, Val::Null) {
-        return Ok(value);
-    }
-    if matches!(typ, "i64" | "i32" | "i16") {
-        exact_integer_text(&value)?;
-    }
-    Ok(match typ {
-        "i64" => Val::I64(value.as_i64()?),
-        "i32" => Val::I64(i64::from(value.as_i32()?)),
-        "i16" => Val::I64(i64::from(value.as_i16()?)),
-        "f64" => Val::F64(value.as_f64()?),
-        "bool" => Val::Bool(value.as_bool()?),
-        "date" => Val::Date(value.as_date()?),
-        "datetime" => Val::DateTime(value.as_datetime()?),
-        _ => value,
-    })
-}
-
-/// Refuses a text cell that is not exactly the digits of an integer (INT-160), which `str::parse` would read: a plus sign or a leading zero.
-fn exact_integer_text(value: &Val) -> Result<()> {
-    let text = match value {
-        Val::Str(text) => text.as_str(),
-        Val::Bytes(bytes) => {
-            std::str::from_utf8(bytes).map_err(|error| Error::Engine { code: codes::CODEC_DECODE.into(), msg: format!("invalid i64: {bytes:?}: {error}") })?
-        }
-        _ => return Ok(()),
-    };
-    let digits = text.strip_prefix('-').unwrap_or(text);
-    if digits.is_empty() || !digits.bytes().all(|byte| byte.is_ascii_digit()) || (digits.len() > 1 && digits.starts_with('0')) {
-        return Err(Error::Engine { code: codes::CODEC_DECODE.into(), msg: format!("the text {text:?} is not exactly an integer") });
-    }
-    Ok(())
-}
-
 /// The refusal of a bytes value in the array and JSON output names its entity and column, as a read refusal does:
 /// `CODEC_ENCODE: <entity>.<column>: JSON output cannot write bytes` (COD-26).
 fn column_output_error(entity: &str, column: &str, value: &Val, error: Error) -> Error {
     match (value, error) {
-        (Val::Bytes(_), Error::Engine { code, msg }) if code == codes::CODEC_ENCODE => Error::Engine { code, msg: format!("{entity}.{column}: {msg}") },
+        (Val::Bytes(_), Error::Engine { code, msg, .. }) if code == codes::CODEC_ENCODE => {
+            Error::Engine { code, msg: format!("{entity}.{column}: {msg}"), source: None }
+        }
         (_, other) => other,
     }
 }
@@ -630,7 +614,7 @@ fn column_output_error(entity: &str, column: &str, value: &Val, error: Error) ->
 /// A `CODEC_DECODE` of a read cell names its entity and column: `CODEC_DECODE: <entity>.<column>: <message>` (COD-41).
 pub(crate) fn column_decode_error(entity: &str, column: &str, error: Error) -> Error {
     match error {
-        Error::Engine { code, msg } if code == codes::CODEC_DECODE => Error::Engine { code, msg: format!("{entity}.{column}: {msg}") },
+        Error::Engine { code, msg, .. } if code == codes::CODEC_DECODE => Error::Engine { code, msg: format!("{entity}.{column}: {msg}"), source: None },
         other => other,
     }
 }
@@ -654,9 +638,11 @@ fn collection_key(c: &Core, m: &dyn AnyModel, asm: &Assemble, row: &[Val]) -> Re
         let declared = asm.columns.iter().find(|column| column.index == reference.index).map(|column| column.typ.as_str());
         values.push(match (declared, row[reference.index].clone()) {
             (Some("bool"), Val::I64(number)) => Val::Bool(number != 0),
-            (Some("datetime"), Val::Str(text)) => {
-                Val::DateTime(crate::driver::parse_datetime(&text).map_err(|error| Error::Engine { code: codes::CODEC_DECODE.into(), msg: error })?)
-            }
+            (Some("datetime"), Val::Str(text)) => Val::DateTime(crate::driver::parse_datetime(&text).map_err(|error| Error::Engine {
+                code: codes::CODEC_DECODE.into(),
+                msg: error,
+                source: None,
+            })?),
             (_, cell) => cell,
         });
     }
@@ -882,14 +868,19 @@ pub async fn gets_count<M: Model>(m: &M) -> Result<GroupRows> {
             if !column.hidden {
                 let value = row.get(column.index).cloned().ok_or_else(|| Error::internal("group result column is missing"))?;
                 if matches!(value, Val::Null) && column.column == column.name && entity.field(&column.column).is_some_and(|field| !field.nullable) {
-                    return Err(Error::Engine { code: codes::CODEC_DECODE.into(), msg: format!("group column {} is SQL NULL", column.name) });
+                    return Err(Error::Engine { code: codes::CODEC_DECODE.into(), msg: format!("group column {} is SQL NULL", column.name), source: None });
                 }
-                let value = match (value, entity.field(&column.column).map(|field| &field.ty)) {
+                // A declared column holds the value of its type and an added column the value of its plan type, each refused as
+                // `<entity>.<column>: <message>` (COD-1, INT-160); a styled column was decoded through its stages.
+                let declared = entity.field(&column.column).filter(|_| column.column == column.name);
+                let value = match (value, declared.map(|field| &field.ty)) {
                     (Val::Null, _) => Val::Null,
-                    (value, Some(polyspec_orm_schema::dbspec::Type::Decimal(precision, scale))) if column.column == column.name => {
-                        Val::Str(crate::decimal::decode(value, *precision, *scale)?)
+                    (value, _) if !column.styles.is_empty() => value,
+                    (value, Some(polyspec_orm_schema::dbspec::Type::Decimal(precision, scale))) => {
+                        Val::Str(crate::decimal::decode(value, *precision, *scale).map_err(|error| column_decode_error(&entity.name, &column.name, error))?)
                     }
-                    (value, _) => value,
+                    (value, Some(ty)) => crate::cell::declared_cell(ty, value).map_err(|error| column_decode_error(&entity.name, &column.name, error))?,
+                    (value, None) => crate::cell::added_cell(&column.typ, value).map_err(|error| column_decode_error(&entity.name, &column.name, error))?,
                 };
                 values.push((column.name.clone(), value));
             }
@@ -936,7 +927,7 @@ async fn scalar(c: &Core, kind: &str) -> Result<Val> {
     }
     if !parts.is_empty() {
         if kind != "count" {
-            return Err(Error::Engine { code: codes::IR_INVALID.into(), msg: "a split IN list can be merged only for a count".into() });
+            return Err(Error::Engine { code: codes::IR_INVALID.into(), msg: "a split IN list can be merged only for a count".into(), source: None });
         }
         let mut total: i64 = 0;
         for mut part in parts {
@@ -1037,13 +1028,18 @@ fn write_req(c: &Core, kind: &str) -> Req {
     Req::new(c.ent.schema, kind, c.ent.name)
 }
 
+/// The field `column` of an entity, or COLUMN_UNKNOWN naming `entity.column`.
+fn entity_field<'a>(ent: &'a dbspec::Entity, column: &str) -> Result<&'a dbspec::Field> {
+    ent.field(column).ok_or_else(|| Error::Engine { code: codes::COLUMN_UNKNOWN.into(), msg: format!("{}.{column}", ent.name), source: None })
+}
+
 fn encode(ent: &dbspec::Entity, column: &str, v: &serde_json::Value) -> Result<Param> {
-    let col = ent.field(column).ok_or_else(|| Error::Engine { code: codes::COLUMN_UNKNOWN.into(), msg: format!("{}.{column}", ent.name) })?;
+    let col = entity_field(ent, column)?;
     crate::codec::encode(&crate::codec::executor_stages(&col.codec), crate::StyledValue::Value(v))
 }
 
 fn encode_ordered(ent: &dbspec::Entity, column: &str, v: &ordered_json::Value) -> Result<Param> {
-    let col = ent.field(column).ok_or_else(|| Error::Engine { code: codes::COLUMN_UNKNOWN.into(), msg: format!("{}.{column}", ent.name) })?;
+    let col = entity_field(ent, column)?;
     crate::codec::encode_ordered(&crate::codec::executor_stages(&col.codec), crate::StyledValue::Value(v))
 }
 
@@ -1052,7 +1048,7 @@ fn assign(r: &mut Req, ent: &dbspec::Entity, s: &SetSpec) -> Result<ir::Assign> 
     match &s.value {
         SetValue::Null => a.null = true,
         SetValue::Value(v) => {
-            let field = ent.field(&s.column).ok_or_else(|| Error::Engine { code: codes::COLUMN_UNKNOWN.into(), msg: format!("{}.{}", ent.name, s.column) })?;
+            let field = entity_field(ent, &s.column)?;
             validate_host_value(&field.codec, v)?;
             a.p = Some(r.p(v.clone()));
         }
@@ -1286,9 +1282,7 @@ pub async fn creates<M: Model>(m: &M, rows: Vec<M>, batch: usize) -> Result<u64>
                     }
                     let v = match &s.value {
                         SetValue::Value(v) => {
-                            let field = ent
-                                .field(&s.column)
-                                .ok_or_else(|| Error::Engine { code: codes::COLUMN_UNKNOWN.into(), msg: format!("{}.{}", ent.name, s.column) })?;
+                            let field = entity_field(&ent, &s.column)?;
                             validate_host_value(&field.codec, v)?;
                             v.clone()
                         }
@@ -1524,7 +1518,11 @@ pub async fn restore_or_create<M: Model>(m: &M) -> Result<M> {
             return get_core(&q).await?.ok_or(Error::NoRows);
         }
         if get_count(&q).await? > 0 {
-            return Err(Error::Engine { code: codes::ROW_NOT_DELETED.into(), msg: "restoreOrCreate: a row that is not deleted holds the key".into() });
+            return Err(Error::Engine {
+                code: codes::ROW_NOT_DELETED.into(),
+                msg: "restoreOrCreate: a row that is not deleted holds the key".into(),
+                source: None,
+            });
         }
         let mut row = m.clone();
         create(&mut row).await
@@ -1671,7 +1669,7 @@ fn revision_guard(c: &Core, ent: &dbspec::Entity, req: &mut Req, update: bool, o
 fn revision_checked(c: &Core, column: Option<&str>, affected: u64) -> Result<()> {
     match (column, &c.expected_revision) {
         (Some(column), Some((_, revision))) if affected == 0 => {
-            Err(Error::Engine { code: codes::REVISION_CHANGED.into(), msg: format!("the row's {column} is not {revision}") })
+            Err(Error::Engine { code: codes::REVISION_CHANGED.into(), msg: format!("the row's {column} is not {revision}"), source: None })
         }
         _ => Ok(()),
     }
@@ -1741,8 +1739,11 @@ pub fn to_json(m: &dyn AnyModel) -> Result<String> {
 /// The JSON output as a serde_json raw value, which a serde_json serializer
 /// writes unchanged; serde serialization of models and collections uses it.
 pub fn raw_json(text: Result<String>) -> Result<Box<serde_json::value::RawValue>> {
-    serde_json::value::RawValue::from_string(text?)
-        .map_err(|e| Error::Engine { code: crate::codes::CODEC_ENCODE.into(), msg: format!("json: model output: {e}") })
+    serde_json::value::RawValue::from_string(text?).map_err(|e| Error::Engine {
+        code: crate::codes::CODEC_ENCODE.into(),
+        msg: format!("json: model output: {e}"),
+        source: None,
+    })
 }
 
 /// The members of the JSON output of a row: name and JSON text.
@@ -1829,7 +1830,7 @@ fn styled_column(c: &Core, name: &str) -> Result<bool> {
 
 fn missing_output_column(c: &Core, name: &str) -> Error {
     if c.row.is_none() {
-        Error::Engine { code: codes::COLUMN_UNSELECTED.into(), msg: format!("{}.{} has no decoded value", c.ent.name, name) }
+        Error::Engine { code: codes::COLUMN_UNSELECTED.into(), msg: format!("{}.{} has no decoded value", c.ent.name, name), source: None }
     } else {
         Error::internal(format!("model output column {name} is missing"))
     }
@@ -1887,7 +1888,7 @@ mod column_decode_tests {
     #[test]
     fn decoded_cell_failure_names_the_column() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let error = Error::Engine { code: codes::CODEC_DECODE.into(), msg: "non-null JSON column received NULL".into() };
+        let error = Error::Engine { code: codes::CODEC_DECODE.into(), msg: "non-null JSON column received NULL".into(), source: None };
         let error = column_decode_error("author", "jsons_tags", error);
         assert_eq!(error.code(), codes::CODEC_DECODE);
         assert_eq!(error.to_string(), "CODEC_DECODE: author.jsons_tags: non-null JSON column received NULL");
