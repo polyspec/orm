@@ -1,5 +1,6 @@
 #!/bin/sh
-# Delegate extension builds to the canonical Kit builder, which stages the tracked source-copy declarations for each run.
+# Delegate extension builds to the canonical Kit builder, which stages the tracked source-copy declarations for each run; the
+# layout is the one kit 0.0.98 fixed (packages/php-ext, var/php-ext, the PHP library packages/php, vendor and node_modules skipped).
 # Usage: sh packages/php-ext/scripts/build.sh <published polyspec_orm.so> [release|native-test]
 set -eu
 out=${1:?usage: sh packages/php-ext/scripts/build.sh <published polyspec_orm.so> [release|native-test]}
@@ -25,7 +26,7 @@ if ! cmp -s packages/php/src/native/sqlite_cancel.c packages/php-ext/src/native/
   echo "build.sh: packages/php-ext/src/native/sqlite_cancel.c is missing or differs from packages/php/src/native/sqlite_cancel.c; run make packages/php-ext/src/native/sqlite_cancel.c" >&2
   exit 1
 fi
-set -- "$builder" build --output "$out" --configure-arg
+set -- "$builder" build --extension packages/php-ext --build-dir var/php-ext --skip vendor --skip node_modules --library packages/php --output "$out" --configure-arg
 case "$mode" in
   release) set -- "$@" --disable-polyspec-orm-native-test ;;
   native-test)
