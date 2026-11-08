@@ -1,8 +1,8 @@
 <?php
 
-// The PHP error chain of the codec and of Model's value conversion: an expected failure of a library is the stage's
-// own text and keeps the library's exception as its previous exception, a rule of the codec keeps itself, and an
-// unexpected throwable passes through by identity. The codec cases that every client
+// The PHP error chain of the codec and of Model's value conversion: a failure of a library is the text of its rule and
+// keeps the library's exception as its previous exception (COD-71), a rule that the codec checks itself has no previous
+// exception, and a throwable of a caller's value passes through by identity. The codec cases that every client
 // shares are the codec recipe, tests/codec/codec.json (CodecRecipeTest).
 declare(strict_types=1);
 
@@ -35,8 +35,8 @@ class CodecErrorCauseTest extends TestCase
 
     public function testCodecExpectedExceptionCause(): void
     {
-        // A failure of the library of a stage is the stage's own text and keeps the library exception as its previous
-        // one; a rule of the codec is its rule text and keeps the rule as an InvalidArgumentException.
+        // A failure of the library of a stage is the text of its rule and keeps the library exception as its previous
+        // one; a rule that the codec checks itself is its text alone (COD-70, COD-71).
         $cases = [
             'YAML parser syntax' => [
                 fn() => Codec::decode(['yaml'], 'value: ['),
@@ -45,17 +45,17 @@ class CodecErrorCauseTest extends TestCase
             ],
             'YAML undefined alias' => [
                 fn() => Codec::decode(['yaml'], "value: *missing\n"),
-                'CODEC_DECODE: yaml: the stream does not parse',
+                'CODEC_DECODE: yaml: aliases are not supported',
                 true,
             ],
             'YAML codec policy' => [
                 fn() => Codec::decode(['yaml'], "value: &x 1\nother: *x\n"),
-                'CODEC_DECODE: yaml: anchors are not supported at line 1',
+                'CODEC_DECODE: yaml: anchors are not supported',
                 false,
             ],
             'YAML encode policy' => [
                 fn() => Codec::encode(['yaml'], StyledValue::value(new \stdClass())),
-                'CODEC_ENCODE: yaml: value type is not supported',
+                'CODEC_ENCODE: yaml: the value is not a codec value',
                 false,
             ],
             'ordered JSON parser' => [
@@ -63,9 +63,14 @@ class CodecErrorCauseTest extends TestCase
                 'CODEC_DECODE: json: the cell is not JSON',
                 true,
             ],
-            'JSON encoder' => [
+            'JSON text' => [
                 fn() => Codec::encode(['ordered_json'], StyledValue::value("\xFF")),
-                'CODEC_ENCODE: json: the value has no JSON text',
+                'CODEC_ENCODE: json: the text is not a sequence of Unicode scalar values',
+                false,
+            ],
+            'gz stream' => [
+                fn() => Codec::decode(['gz'], 'not zlib'),
+                'CODEC_DECODE: gz: bad zlib stream',
                 true,
             ],
         ];
@@ -75,11 +80,10 @@ class CodecErrorCauseTest extends TestCase
                 self::fail("$name: expected codec failure");
             } catch (OrmException $exception) {
                 self::assertSame($message, $exception->getMessage(), $name);
-                $previous = $exception->getPrevious();
-                self::assertInstanceOf(\Throwable::class, $previous, $name);
-                if (!$library) {
-                    self::assertInstanceOf(\InvalidArgumentException::class, $previous, $name);
-                    self::assertStringEndsWith(': ' . $previous->getMessage(), $message, $name);
+                if ($library) {
+                    self::assertInstanceOf(\Throwable::class, $exception->getPrevious(), $name);
+                } else {
+                    self::assertNull($exception->getPrevious(), $name);
                 }
             }
         }

@@ -161,7 +161,7 @@ final class Recipe
             self::$document = json_decode(
                 (string) file_get_contents(dirname(__DIR__, 3) . '/' . $path),
                 true,
-                512,
+                RecipeKeys::DEPTH,
                 JSON_THROW_ON_ERROR
             );
             self::$documentPath = $path;
@@ -2262,6 +2262,14 @@ final class Recipe
             if (isset($expect['message'])) {
                 Assert::assertSame($expect['message'], $result['error']?->getMessage(), 'error message');
             }
+            // The error keeps the failure of the library that its rule meets as its previous exception (COD-71).
+            if (isset($expect['library_cause'])) {
+                Assert::assertInstanceOf(
+                    \Throwable::class,
+                    $result['error']?->getPrevious(),
+                    'the error keeps the failure of the library as its cause'
+                );
+            }
             return;
         }
         if ($result['error'] !== null) {
@@ -2327,9 +2335,9 @@ final class Recipe
         return $bound[$name]['value'];
     }
 
-    /** A stored cell, which PHP holds as a string of bytes: SQL NULL is null, and bytes or a written cell are their
-     * string. */
-    private static function cell(array $raw, array $bound): ?string
+    /** A stored cell, which PHP holds as a string of bytes: SQL NULL is null, bytes or a written cell are their
+     * string, and a wrapper of another kind, such as an int, is the value it is, which the codec refuses as a cell. */
+    private static function cell(array $raw, array $bound): mixed
     {
         $value = self::argument($raw, $bound);
         return $value instanceof Bytes ? $value->bytes : $value;
@@ -2345,22 +2353,27 @@ final class Recipe
     }
 
     /**
-     * Whether the recipe value is bytes or a list or a map that holds bytes at any depth.
+     * Whether the recipe value has no ordered-json value: it is or holds at any depth bytes, a float that is not
+     * finite or a text that is not UTF-8, which JSON has no text for, or it nests deeper than the 256 levels that the
+     * ordered-json parser reads (FCV-4).
      *
      * @param array<string, mixed> $raw
      */
-    private static function holdsBytes(array $raw): bool
+    private static function outsideOrderedJson(array $raw, int $depth = 0): bool
     {
-        if (array_key_exists('bytes_hex', $raw)) {
+        if (array_intersect_key($raw, ['bytes_hex' => true, 'f64' => true, 'text_hex' => true]) !== []) {
             return true;
         }
-        foreach ($raw['array'] ?? [] as $item) {
-            if (self::holdsBytes($item)) {
-                return true;
-            }
+        $items = array_key_exists('array', $raw) ? $raw['array']
+            : (array_key_exists('object', $raw) ? array_column($raw['object'], 1) : null);
+        if ($items === null) {
+            return false;
         }
-        foreach ($raw['object'] ?? [] as [, $item]) {
-            if (self::holdsBytes($item)) {
+        if ($depth + 1 > 256) {
+            return true;
+        }
+        foreach ($items as $item) {
+            if (self::outsideOrderedJson($item, $depth + 1)) {
                 return true;
             }
         }
@@ -2384,9 +2397,9 @@ final class Recipe
         if (array_key_exists('ordered_json', $raw)) {
             return StyledValue::value(OrderedJson::parse(self::jsonText($raw['ordered_json'])));
         }
-        // Bytes have no JSON text, so a value that holds bytes reaches an ordered_json stage as the value it is
-        // (COD-63).
-        if (in_array('ordered_json', $styles, true) && !self::holdsBytes($raw)) {
+        // A value that has no ordered-json value reaches an ordered_json stage as the PHP value it is, which the stage
+        // refuses by its rule (COD-63, COD-70).
+        if (in_array('ordered_json', $styles, true) && !self::outsideOrderedJson($raw)) {
             return StyledValue::value(OrderedJson::parse(self::jsonText($raw)));
         }
         return StyledValue::value(self::toValue($raw));

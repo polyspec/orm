@@ -5626,8 +5626,6 @@
         "packages/ts/tests/codec-undefined-member-none.test.mjs",
         "packages/php/tests/CodecRawTextRecipeTest.php",
         "packages/php-ext/tests/CodecRawTextRecipeExtensionTest.php",
-        "packages/php/tests/CodecOrderedJsonTextTest.php",
-        "packages/php-ext/tests/CodecOrderedJsonTextExtensionTest.php",
         "packages/python/tests/test_codec_ordered_json_text.py",
         "packages/go/orm/recipe_aes_rotation_test.go",
         "packages/php/tests/AesRotationMysqlTest.php",

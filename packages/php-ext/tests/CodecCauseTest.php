@@ -29,14 +29,18 @@ final class CodecCauseTest extends TestCase
         }
     }
 
-    public function testYamlUnexpectedThrowableIdentity(): void
+    public function testYamlEveryLibraryThrowableIsItsRule(): void
     {
+        // No exception of the library leaves a native codec call either (COD-71).
         require_once dirname(__DIR__, 2) . '/php/tests/CodecYamlProbe.php';
-        foreach (['decode', 'dump'] as $operation) {
+        $codes = ['decode' => \Polyspec\Orm\Code::CODEC_DECODE, 'dump' => \Polyspec\Orm\Code::CODEC_ENCODE];
+        foreach ($codes as $operation => $code) {
             foreach (['runtime', 'type', 'error'] as $failure) {
                 $result = CodecYamlProbe::run($operation, $failure, true);
                 self::assertSame(true, $result['native'], 'the isolated child loaded the built native extension');
-                self::assertSame(true, $result['identity'], "native $operation $failure keeps exact throwable");
+                self::assertSame(true, $result['wrapped'], "native $operation $failure is mapped");
+                self::assertSame($code, $result['code'], "native $operation $failure code");
+                self::assertSame(true, $result['previousSame'], "native $operation $failure retains exact cause");
             }
         }
     }

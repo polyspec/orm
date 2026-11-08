@@ -50,7 +50,6 @@ require_once __DIR__ . '/DatabaseRecipeTestCase.php';
 require_once __DIR__ . '/PlanCacheCompositeCases.php';
 require_once __DIR__ . '/CodecRecipeTest.php';
 require_once __DIR__ . '/CodecBytesValueRecipeTest.php';
-require_once __DIR__ . '/CodecOrderedJsonTextTest.php';
 require_once __DIR__ . '/PostgresSessionSettings.php';
 require_once __DIR__ . '/FiberTransaction.php';
 require_once __DIR__ . '/QueryCancellationDbCases.php';

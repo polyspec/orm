@@ -37,29 +37,18 @@ namespace {
         fwrite(STDERR, 'the codec returned instead of propagating the configured YAML failure');
         exit(1);
     } catch (\Throwable $actual) {
-        $expectedFailure = in_array($failure, ['parse', 'reference', 'policy'], true);
-        if ($expectedFailure) {
-            $valid = $actual instanceof \Polyspec\Orm\OrmException
-                && $actual->code_ === $expectedCode
-                && $actual->getPrevious() === $previous;
-            if (!$valid) {
-                fwrite(STDERR, 'the expected YAML wrapper did not retain its exact cause object');
-                exit(1);
-            }
-            fwrite(STDOUT, json_encode([
-                'wrapped' => true,
-                'code' => $actual->code_,
-                'previousSame' => $actual->getPrevious() === $previous,
-                'native' => $mode === 'native' && (new \ReflectionClass(\Polyspec\Orm\Codec::class))->isInternal(),
-            ], JSON_THROW_ON_ERROR));
-            exit(0);
-        }
-        if ($actual !== $previous) {
-            fwrite(STDERR, 'the unexpected YAML throwable changed identity');
+        // Every failure of the library is the error of its rule, with the failure as its exact cause (COD-71).
+        $valid = $actual instanceof \Polyspec\Orm\OrmException
+            && $actual->code_ === $expectedCode
+            && $actual->getPrevious() === $previous;
+        if (!$valid) {
+            fwrite(STDERR, 'the YAML wrapper did not retain its exact cause object');
             exit(1);
         }
         fwrite(STDOUT, json_encode([
-            'identity' => $actual === $previous,
+            'wrapped' => true,
+            'code' => $actual->code_,
+            'previousSame' => $actual->getPrevious() === $previous,
             'native' => $mode === 'native' && (new \ReflectionClass(\Polyspec\Orm\Codec::class))->isInternal(),
         ], JSON_THROW_ON_ERROR));
         exit(0);
