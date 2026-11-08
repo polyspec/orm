@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d37915df6ff7456dca31660887593b15a648c7e6b186c87ae0941d559b7c8d0a -->
+<!-- source-sha256: b0dfd9a96b811d9f5a3a3db0687c98363285bb1cf88c59a9248330117748c262 -->
 # 변경 이력
 
 ## Unreleased
+
+- orm-gen `--scan`은 Go, TypeScript, Python, PHP, Rust에서 import한 class를 각 언어의 checker가 그 binding을 해석하는 대로 해석한다 (DSL-151, T408): hand-written module이 model 이름으로 선언한 type은 그 module의 type이므로 그 호출을 선언하지도 거부하지도 않고, module이 set의 model에서 re-export한 class는 그 model이다. TypeScript는 hand-written module에서 import한 모든 class를 이름으로 받아, `./calls.ts`에서 import한 interface `Module`이 `Module.submit is not a model method`로 생성을 멈췄고, Rust는 scan의 어떤 module을 거친 path도 이름으로 받았다. Go는 type alias를 model로 풀지 못했고, Python과 Rust는 set의 class의 re-export(`from ..model.models import Product`, `pub use`)를 따라가지 않았다. recipe generator_scan이 여섯 runtime에서 두 형태를 모두 담는다.
 
 ## 0.0.24
 

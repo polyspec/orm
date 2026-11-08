@@ -86,10 +86,32 @@ struct Binding {
     result: bool,
 }
 
+/// The modules of the scan as the checker resolves a path through them (DSL-151).
+struct Modules {
+    /// The modules that include another set's model file, and the other modules of the scan, which include no model file of this
+    /// set: a model reached through one is not this set's, unless the module re-exports it.
+    foreign: HashSet<String>,
+    /// The model names that a module re-exports from this set's model module, by a `pub use` of it or of a module that re-exports it.
+    reexports: HashMap<String, HashSet<String>>,
+}
+
+impl Modules {
+    /// Whether the class `name` reached through `module` is not this set's class.
+    fn foreign(&self, module: &str, name: &str) -> bool {
+        self.foreign.contains(module) && !self.reexports.get(module).is_some_and(|names| names.contains(name))
+    }
+}
+
+/// A `pub use` of a module of the scan: the module it is in, the module its path names last, and the name it takes, or none for a glob.
+struct Reexport {
+    module: String,
+    from: String,
+    name: Option<String>,
+}
+
 struct Scanner<'a> {
     models: &'a HashSet<String>,
-    /// The modules that include another set's model file (DSL-151): a model reached through one is not this set's.
-    foreign: &'a HashSet<String>,
+    modules: &'a Modules,
     /// The names that a `use` of this file binds to a model of a foreign module.
     hidden: HashSet<String>,
     fallible_setters: &'a HashSet<(String, String)>,
@@ -121,21 +143,47 @@ pub fn scan(paths: &[PathBuf], models: &HashSet<String>, fallible_setters: &Hash
     }
     let mut own = HashSet::new();
     let mut foreign = HashSet::new();
+    let mut known = HashSet::new();
+    let mut uses = Vec::new();
     for (f, ast) in files.iter().zip(&parsed) {
         let stem = match f.file_stem().and_then(|n| n.to_str()) {
             Some("mod") => f.parent().and_then(|d| d.file_name()).and_then(|n| n.to_str()).unwrap_or(""),
             Some(stem) => stem,
             None => "",
         };
-        model_modules(f, stem, &ast.items, &normalize(model_file), &mut own, &mut foreign);
+        model_modules(f, stem, &ast.items, &normalize(model_file), &mut own, &mut foreign, &mut known, &mut uses);
     }
-    let foreign: HashSet<String> = foreign.difference(&own).cloned().collect();
+    // A module of the scan that includes no model file of this set is another module, as the checker resolves a path through it to
+    // its own item: a class of a model's name reached through it is not this set's model (DSL-151).
+    let foreign: HashSet<String> = foreign.union(&known).filter(|m| !own.contains(*m)).cloned().collect();
+    // A `pub use` re-exports the model names it takes from this set's model module or from a module that re-exports them, followed
+    // until no module gains a name.
+    let mut reexports: HashMap<String, HashSet<String>> = HashMap::new();
+    loop {
+        let mut changed = false;
+        for r in &uses {
+            let names: Vec<String> = if own.contains(&r.from) {
+                r.name.iter().filter(|n| models.contains(*n)).cloned().chain(r.name.is_none().then(|| models.iter().cloned()).into_iter().flatten()).collect()
+            } else if let Some(from) = reexports.get(&r.from) {
+                from.iter().filter(|n| r.name.as_ref().is_none_or(|name| name == *n)).cloned().collect()
+            } else {
+                Vec::new()
+            };
+            for name in names {
+                changed |= reexports.entry(r.module.clone()).or_default().insert(name);
+            }
+        }
+        if !changed {
+            break;
+        }
+    }
+    let modules = Modules { foreign, reexports };
     for (f, ast) in files.iter().zip(&parsed) {
-        let mut uses = Uses { models, foreign: &foreign, hidden: HashSet::new() };
+        let mut uses = Uses { models, modules: &modules, hidden: HashSet::new() };
         uses.visit_file(ast);
         let mut s = Scanner {
             models,
-            foreign: &foreign,
+            modules: &modules,
             hidden: uses.hidden,
             fallible_setters,
             file: f.display().to_string(),
@@ -211,15 +259,30 @@ fn included_file(file: &Path, tokens: &proc_macro2::TokenStream) -> Option<(Path
 
 /// Collects the model modules of `items`: an inline module or a file whose items `include!` a model file, and `models!()`,
 /// which includes this set's generated model as the module `model`. A module that includes `model_file` is this set's (`own`);
-/// one that includes another model file is another set's (`foreign`).
-fn model_modules(file: &Path, name: &str, items: &[syn::Item], model_file: &Path, own: &mut HashSet<String>, foreign: &mut HashSet<String>) {
+/// one that includes another model file is another set's (`foreign`). Every module of the scan, a file or an inline module, is
+/// `known`, and each `pub use` of a module is one of `uses`.
+#[allow(clippy::too_many_arguments, reason = "the four collections are filled in the one walk of the items")]
+fn model_modules(
+    file: &Path,
+    name: &str,
+    items: &[syn::Item],
+    model_file: &Path,
+    own: &mut HashSet<String>,
+    foreign: &mut HashSet<String>,
+    known: &mut HashSet<String>,
+    uses: &mut Vec<Reexport>,
+) {
+    if !name.is_empty() {
+        known.insert(name.to_owned());
+    }
     for item in items {
         match item {
             syn::Item::Mod(m) => {
                 if let Some((_, content)) = &m.content {
-                    model_modules(file, &m.ident.unraw().to_string(), content, model_file, own, foreign);
+                    model_modules(file, &m.ident.unraw().to_string(), content, model_file, own, foreign, known, uses);
                 }
             }
+            syn::Item::Use(u) if !matches!(u.vis, syn::Visibility::Inherited) => reexported(name, &u.tree, None, uses),
             syn::Item::Macro(m) => {
                 let included = if m.mac.path.is_ident("include") {
                     included_file(file, &m.mac.tokens).map(|found| (name.to_owned(), found))
@@ -245,34 +308,59 @@ fn model_modules(file: &Path, name: &str, items: &[syn::Item], model_file: &Path
     }
 }
 
+/// Collects the `pub use` items of the module `module`: `last` is the module that the path names before the tree.
+fn reexported(module: &str, tree: &syn::UseTree, last: Option<String>, uses: &mut Vec<Reexport>) {
+    match tree {
+        syn::UseTree::Path(p) => reexported(module, &p.tree, Some(p.ident.unraw().to_string()), uses),
+        syn::UseTree::Name(n) => {
+            if let Some(from) = last {
+                let name = n.ident.unraw().to_string();
+                uses.push(Reexport { module: module.to_owned(), from, name: Some(name) });
+            }
+        }
+        // A renamed re-export gives the model another name, which no generated class has; it is not followed.
+        syn::UseTree::Rename(_) => {}
+        syn::UseTree::Glob(_) => {
+            if let Some(from) = last {
+                uses.push(Reexport { module: module.to_owned(), from, name: None });
+            }
+        }
+        syn::UseTree::Group(g) => {
+            for t in &g.items {
+                reexported(module, t, last.clone(), uses);
+            }
+        }
+    }
+}
+
 /// Collects the names that the `use` items of a file bind to a model of a foreign module: `use a::foreign::Model`, `use
 /// a::foreign::{Model as Other}` and `use a::foreign::*`.
 struct Uses<'a> {
     models: &'a HashSet<String>,
-    foreign: &'a HashSet<String>,
+    modules: &'a Modules,
     hidden: HashSet<String>,
 }
 
 impl Uses<'_> {
     fn tree(&mut self, tree: &syn::UseTree, last: Option<String>) {
-        let from_foreign = last.as_ref().is_some_and(|m| self.foreign.contains(m));
+        let from_foreign = |name: &str| last.as_ref().is_some_and(|m| self.modules.foreign(m, name));
         match tree {
             syn::UseTree::Path(p) => self.tree(&p.tree, Some(p.ident.unraw().to_string())),
             syn::UseTree::Name(n) => {
                 let name = n.ident.unraw().to_string();
-                if from_foreign && self.models.contains(&name) {
+                if self.models.contains(&name) && from_foreign(&name) {
                     self.hidden.insert(name);
                 }
             }
             syn::UseTree::Rename(r) => {
-                if from_foreign && self.models.contains(&r.ident.unraw().to_string()) {
+                let name = r.ident.unraw().to_string();
+                if self.models.contains(&name) && from_foreign(&name) {
                     self.hidden.insert(r.rename.unraw().to_string());
                 }
             }
             syn::UseTree::Glob(_) => {
-                if from_foreign {
-                    self.hidden.extend(self.models.iter().cloned());
-                }
+                let hidden: Vec<String> = self.models.iter().filter(|name| from_foreign(name)).cloned().collect();
+                self.hidden.extend(hidden);
             }
             syn::UseTree::Group(g) => {
                 for t in &g.items {
@@ -366,7 +454,7 @@ impl Scanner<'_> {
     /// `use` of the file binds to a foreign module's model (DSL-151).
     fn own_path(&self, segments: &[String]) -> bool {
         match segments {
-            [.., module, _] => !self.foreign.contains(module) && !self.hidden.contains(module),
+            [.., module, name] => !self.modules.foreign(module, name) && !self.hidden.contains(module),
             [name] => !self.hidden.contains(name),
             [] => true,
         }
@@ -452,7 +540,7 @@ impl Scanner<'_> {
                     let segs: Vec<String> = p.path.segments.iter().map(|s| s.ident.to_string()).collect();
                     match segs.as_slice() {
                         // A class of a foreign module, by its path or by the name a `use` gives it, is another set's.
-                        [.., module, _, new] if new == "new" && self.foreign.contains(module) => Some(FOREIGN.to_owned()),
+                        [.., module, name, new] if new == "new" && self.modules.foreign(module, name) => Some(FOREIGN.to_owned()),
                         [name, new] if new == "new" && self.hidden.contains(name) => Some(FOREIGN.to_owned()),
                         [.., model, new] if new == "new" && self.models.contains(model) => {
                             Some(if self.own_path(&segs[..segs.len() - 1]) { model.clone() } else { FOREIGN.to_owned() })

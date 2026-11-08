@@ -7,7 +7,7 @@ import { dirname, extname, isAbsolute, join, resolve } from 'node:path';
 import { parseSync, visitorKeys } from 'oxc-parser';
 import { GENERATOR_SCAN_PARSE } from '../codes.js';
 import { OrmError } from '../runtime_error.js';
-import type { ArrowFunctionExpression, Expression, Function as FunctionNode, ImportDeclaration, ModuleExportName, Node, ParamPattern, Statement, TSType, TSTypeName } from 'oxc-parser';
+import type { ArrowFunctionExpression, Expression, Function as FunctionNode, ImportDeclaration, ModuleExportName, Node, ParamPattern, Program, Statement, TSType, TSTypeName } from 'oxc-parser';
 
 /** The source files the scan reads; oxc-parser takes the language from the extension. */
 const extensions = new Set(['.ts', '.mts', '.js', '.mjs']);
@@ -361,18 +361,18 @@ class Scanner {
   }
 
   private visitImport(node: ImportDeclaration): void {
-    const own = ownModule(this.set, this.file, node.source.value);
-    for (const specifier of node.specifiers) {
-      if (specifier.type === 'ImportNamespaceSpecifier') {
-        if (own) this.namespaces.add(specifier.local.name);
-        else this.namespaces.delete(specifier.local.name);
-        this.classes.delete(specifier.local.name);
+    const specifier = node.source.value;
+    for (const item of node.specifiers) {
+      if (item.type === 'ImportNamespaceSpecifier') {
+        if (ownBinding(this.set, this.file, specifier, undefined)) this.namespaces.add(item.local.name);
+        else this.namespaces.delete(item.local.name);
+        this.classes.delete(item.local.name);
       }
-      if (specifier.type === 'ImportDefaultSpecifier') this.classes.delete(specifier.local.name);
-      if (specifier.type !== 'ImportSpecifier') continue;
-      const imported = exportName(specifier.imported);
-      if (own && this.models.has(imported)) this.classes.set(specifier.local.name, imported);
-      else this.classes.delete(specifier.local.name);
+      if (item.type === 'ImportDefaultSpecifier') this.classes.delete(item.local.name);
+      if (item.type !== 'ImportSpecifier') continue;
+      const imported = exportName(item.imported);
+      if (this.models.has(imported) && ownBinding(this.set, this.file, specifier, imported)) this.classes.set(item.local.name, imported);
+      else this.classes.delete(item.local.name);
     }
   }
 
@@ -551,27 +551,48 @@ function moduleFile(path: string): string | undefined {
 }
 
 /**
- * Whether an import names the classes of the set (docs/spec/dsl.md, DSL-151). A relative or absolute specifier resolves against the
- * importing file: the set's output module is the set's; a module that orm-gen generated from another manifest is another set's,
- * whose classes are not this set's models even where their names are the same; any other module, and a bare specifier (a package
- * or a path alias, which no file of the scan names), keeps the class name rule.
+ * Whether the binding `name` that `file` imports from `specifier` is the set's class of that name (docs/spec/dsl.md, DSL-151), as the
+ * TypeScript checker resolves the binding; `name` undefined asks it of a namespace import. A relative or absolute specifier resolves
+ * against the importing file: the set's output module is the set's; a module that orm-gen generated from another manifest is another
+ * set's, whose classes are not this set's models even where their names are the same; any other module holds the set's class only
+ * when it re-exports it from one, so a type that the module declares itself under a model's name is that module's type. A bare
+ * specifier (a package or a path alias, which no file of the scan names), and a specifier that names no file, keep the class name rule.
  */
-function ownModule(set: SetModule, file: string, specifier: string): boolean {
+function ownBinding(set: SetModule, file: string, specifier: string, name: string | undefined, seen: Set<string> = new Set()): boolean {
   if (!specifier.startsWith('.') && !isAbsolute(specifier)) return true;
   const path = resolve(dirname(file), specifier);
   if (path.replace(/\.[cm]?[jt]sx?$/, '') === set.module || path === set.module) return true;
   const found = moduleFile(path);
   if (found === undefined) return true;
   const text = readFileSync(found, 'utf8');
-  if (!text.startsWith(generatedHeader)) return true;
-  const hash = hashLine.exec(text)?.[1];
-  return hash === undefined || hash === set.hash;
+  if (text.startsWith(generatedHeader)) {
+    const hash = hashLine.exec(text)?.[1];
+    return hash === undefined || hash === set.hash;
+  }
+  if (seen.has(found)) return false;
+  seen.add(found);
+  const program = parseModule(found, text);
+  const imports = new Map<string, { source: string; imported: string }>();
+  for (const statement of program.body) {
+    if (statement.type !== 'ImportDeclaration') continue;
+    for (const item of statement.specifiers) if (item.type === 'ImportSpecifier') imports.set(item.local.name, { source: statement.source.value, imported: exportName(item.imported) });
+  }
+  for (const statement of program.body) {
+    if (statement.type === 'ExportAllDeclaration' && statement.exported === null && ownBinding(set, found, statement.source.value, name, seen)) return true;
+    if (statement.type !== 'ExportNamedDeclaration' || name === undefined) continue;
+    for (const item of statement.specifiers) {
+      if (exportName(item.exported) !== name) continue;
+      const local = exportName(item.local);
+      if (statement.source !== null) return ownBinding(set, found, statement.source.value, local, seen);
+      const from = imports.get(local);
+      return from !== undefined && from.imported === name && ownBinding(set, found, from.source, from.imported, seen);
+    }
+  }
+  return false;
 }
 
-/** Parses a source file; a syntax error fails the scan with the file, its position and the errors, since an unparsed file would hide its calls. */
-function visitFile(path: string, models: ReadonlySet<string>, out: Map<string, Set<string>>, sites: ScanSite[], module: SetModule): void {
-  if (!extensions.has(extname(path))) return;
-  const text = readFileSync(path, 'utf8');
+/** The program of a module that an import of the scan names; a syntax error fails the scan as an unparsed scanned file does (DSL-152). */
+function parseModule(path: string, text: string): Program {
   const parsed = parseSync(path, text);
   const errors = parsed.errors.filter(error => error.severity === 'Error');
   const [first] = errors;
@@ -582,7 +603,13 @@ function visitFile(path: string, models: ReadonlySet<string>, out: Map<string, S
     const where = label === undefined ? '' : `${lineColumn(text, label.start)}:`;
     throw new OrmError(GENERATOR_SCAN_PARSE, `orm-gen --scan: ${path}:${where} does not parse: ${errors.map(error => error.message).join('; ')}`);
   }
-  new Scanner(models, out, sites, resolve(path), module).visit(parsed.program);
+  return parsed.program;
+}
+
+/** Parses a source file; a syntax error fails the scan with the file, its position and the errors, since an unparsed file would hide its calls. */
+function visitFile(path: string, models: ReadonlySet<string>, out: Map<string, Set<string>>, sites: ScanSite[], module: SetModule): void {
+  if (!extensions.has(extname(path))) return;
+  new Scanner(models, out, sites, resolve(path), module).visit(parseModule(path, readFileSync(path, 'utf8')));
 }
 
 function visitDir(dir: string, models: ReadonlySet<string>, out: Map<string, Set<string>>, sites: ScanSite[], module: SetModule): void {

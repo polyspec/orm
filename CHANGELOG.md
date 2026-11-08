@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- orm-gen `--scan` resolves an imported class as the checker of each language resolves its binding, in Go, TypeScript, Python, PHP and Rust (DSL-151, T408): a type that a hand-written module declares under a model's name is that module's type, so its calls are neither declared nor refused, and a class that a module re-exports from the set's models is the model. TypeScript took every class imported from a hand-written module by its name, so an interface `Module` imported from `./calls.ts` stopped generation with `Module.submit is not a model method`, and Rust took a path through any module of the scan by its name; Go did not resolve a type alias to the model, and Python and Rust did not follow a re-export of the set's class (`from ..model.models import Product`, `pub use`). The recipe generator_scan holds both forms in the six runtimes.
+
 ## 0.0.24
 
 - Go: the published module imports no package that it does not contain, so `go mod tidy` passes in a consumer of the release (INT-138, T405). The test of the signed limit, `TestRecipePublicInterfaceSignedNone`, imported the generated and untracked bindmodel from the package orm, so every consumer that imported orm failed `go mod tidy` with `module github.com/polyspec/orm/packages/go@v0.0.23 ... does not contain package .../bindmodel`; it runs in bindmessages beside the other recipes of the bind models. `TestExternalModuleCanImportClient` now builds a consumer module against the tracked files of packages/go and runs `go mod tidy` and `go build` on the Go roots of contracts/interfaces.json.

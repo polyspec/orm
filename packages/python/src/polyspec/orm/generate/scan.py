@@ -130,6 +130,58 @@ def _own_module(set_module: list, path: str, level: int, module: str | None) -> 
     return 0 < len(parts) <= len(set_module) and set_module[-len(parts) :] == parts
 
 
+def _module_file(path: str, level: int, module: str | None) -> str | None:
+    """The file that a relative import names from the importing file, a module or a package's __init__.py, or None when it names
+    no file; an absolute import names a folder of sys.path that the scan does not know, so it names none."""
+    if level == 0:
+        return None
+    folder = os.path.dirname(os.path.abspath(path))
+    for _ in range(level - 1):
+        folder = os.path.dirname(folder)
+    base = os.path.join(folder, *[part for part in (module or "").split(".") if part])
+    for candidate in (base + ".py", os.path.join(base, "__init__.py")):
+        if os.path.isfile(candidate):
+            return candidate
+    return None
+
+
+def _parse(path: str):
+    try:
+        with open(path, encoding="utf-8") as handle:
+            return ast.parse(handle.read(), filename=path)
+    except SyntaxError as error:
+        # A file that does not parse would hide its calls, so it fails the scan (docs/spec/dsl.md, DSL-152).
+        raise OrmError(
+            codes.GENERATOR_SCAN_PARSE,
+            f"--scan: {path}:{error.lineno}:{error.offset}: does not parse: {error.msg}",
+        ) from error
+
+
+def _reexports(
+    set_module: list, path: str, level: int, module: str | None, name: str, seen: set
+) -> bool:
+    """Whether the module that a relative import of `path` names binds `name` to the set's class, as the checker resolves the
+    binding (docs/spec/dsl.md, DSL-151): by a `from ... import` of that name, or of `*`, from the set's models.py or from a
+    module that binds it so. A name that the module declares itself, or takes from elsewhere, is the module's own."""
+    found = _module_file(path, level, module)
+    if found is None or found in seen:
+        return False
+    seen.add(found)
+    for node in _parse(found).body:
+        if not isinstance(node, ast.ImportFrom):
+            continue
+        for alias in node.names:
+            if alias.name != "*" and (
+                alias.name != name or alias.asname not in (None, name)
+            ):
+                continue
+            if _own_module(set_module, found, node.level, node.module) or _reexports(
+                set_module, found, node.level, node.module, name, seen
+            ):
+                return True
+    return False
+
+
 def _scan_tree(
     tree, classes: dict, out: dict, sites=None, path="", set_module=None
 ) -> None:
@@ -144,9 +196,10 @@ def _scan_tree(
             from_models = _own_module(set_module, path, node.level, node.module)
             for alias in node.names:
                 if alias.name in classes:
-                    imported[alias.asname or alias.name] = (
-                        alias.name if from_models else None
+                    own = from_models or _reexports(
+                        set_module, path, node.level, node.module, alias.name, set()
                     )
+                    imported[alias.asname or alias.name] = alias.name if own else None
 
         def visit_Import(self, node):
             for alias in node.names:
@@ -563,16 +616,7 @@ def _scan_tree(
 def _scan_file(path: str, classes: dict, out: dict, sites, set_module: list) -> None:
     if not path.endswith(".py"):
         return
-    try:
-        with open(path, encoding="utf-8") as handle:
-            tree = ast.parse(handle.read(), filename=path)
-    except SyntaxError as error:
-        # A file that does not parse would hide its calls, so it fails the scan (docs/spec/dsl.md, DSL-152).
-        raise OrmError(
-            codes.GENERATOR_SCAN_PARSE,
-            f"--scan: {path}:{error.lineno}:{error.offset}: does not parse: {error.msg}",
-        ) from error
-    _scan_tree(tree, classes, out, sites, path, set_module)
+    _scan_tree(_parse(path), classes, out, sites, path, set_module)
 
 
 def scan_model_calls(paths, models, sites=None, out_dir=".") -> dict:

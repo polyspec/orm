@@ -254,11 +254,12 @@ func (g *goGen) modelOf(t types.Type, modelPath string) *goModel {
 	if t == nil || modelPath == "" {
 		return nil
 	}
-	ptr, ok := t.(*types.Pointer)
+	// A type alias is the type it names, as the checker resolves it (DSL-151): a model reached through an alias is the model.
+	ptr, ok := types.Unalias(t).(*types.Pointer)
 	if !ok {
 		return nil
 	}
-	named, ok := ptr.Elem().(*types.Named)
+	named, ok := types.Unalias(ptr.Elem()).(*types.Named)
 	if !ok || named.Obj().Pkg() == nil || strings.TrimSuffix(named.Obj().Pkg().Path(), "_test") != modelPath {
 		return nil
 	}

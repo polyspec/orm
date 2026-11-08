@@ -63,6 +63,108 @@
       ]
     },
     {
+      "id": "imported-local-type",
+      "requirements": [
+        "DSL-151"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "names.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "calls/calls.go": "package calls\n\ntype Product struct{}\n\nfunc (Product) Submit()      {}\nfunc (Product) Name() string { return \"\" }\n",
+                "example/example.go": "package example\n\nimport (\n\t\"example.com/ormexample/calls\"\n\t\"example.com/ormexample/model\"\n)\n\nfunc Run(p calls.Product) string {\n\tp.Submit()\n\treturn p.Name()\n}\n\nfunc Cheap() *model.ProductModel { return model.Product().LtPrice(1) }\n"
+              },
+              "typescript": {
+                "example/calls.ts": "export interface Product {\n  submit(): void;\n  name(): string;\n}\n",
+                "example/submit.ts": "import type { Product } from './calls.ts';\n\nexport function run(p: Product): string {\n  p.submit();\n  return p.name();\n}\n",
+                "example/example.ts": "import { Product } from '../model/models.js';\n\nnew Product().ltPrice(1);\n",
+                "example/aliased.ts": "import { type Product as Local } from './calls.js';\n\nexport function local(p: Local): void {\n  p.submit();\n}\n"
+              },
+              "python": {
+                "example/calls.py": "class Product:\n    def submit(self) -> None:\n        pass\n\n    def name(self) -> str:\n        return \"\"\n",
+                "example/submit.py": "from .calls import Product\n\n\ndef run(p: Product) -> str:\n    p.submit()\n    return p.name()\n",
+                "example/example.py": "from ..model.models import Product\n\nProduct().lt_price(1)\n"
+              },
+              "php": {
+                "example/calls.php": "<?php\n\nnamespace Example\\Calls;\n\nfinal class Product\n{\n    public function submit(): void {}\n\n    public function name(): string { return ''; }\n}\n",
+                "example/submit.php": "<?php\n\nuse Example\\Calls\\Product;\n\nfunction run(Product $p): string\n{\n    $p->submit();\n    return $p->name();\n}\n",
+                "example/example.php": "<?php\n\nuse Example\\Model\\Product;\n\n(new Product())->ltPrice(1);\n"
+              },
+              "rust": {
+                "example/calls.rs": "pub struct Product;\n\nimpl Product {\n    pub fn submit(&self) {}\n    pub fn name(&self) -> String { String::new() }\n}\n",
+                "example/example.rs": "mod own { include!(\"../model/orm_model.rs\"); }\nmod calls;\nuse crate::calls::Product as Local;\nuse own::{Product as Model};\n\nfn run(p: &calls::Product) -> String {\n    p.submit();\n    p.name()\n}\n\nfn imported(p: &crate::calls::Product, q: &Local) {\n    p.submit();\n    q.submit();\n}\n\nfn cheap() {\n    let _ = Model::new().lt_price(1);\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [
+                  "product.lt_price"
+                ],
+                "excludes": [
+                  "product.submit"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "reexported-model",
+      "requirements": [
+        "DSL-151"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "names.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "exports/exports.go": "package exports\n\nimport \"example.com/ormexample/model\"\n\nvar Product = model.Product\n\ntype Brand = model.BrandModel\n",
+                "example/example.go": "package example\n\nimport \"example.com/ormexample/exports\"\n\nfunc Cheap() any { return exports.Product().GtPrice(1) }\n\nfunc Brand(b *exports.Brand) any { return b.GtMinPrice(1) }\n"
+              },
+              "typescript": {
+                "example/exports.ts": "export { Product } from '../model/models.js';\n",
+                "example/barrel.ts": "export * from '../model/models.js';\n",
+                "example/example.ts": "import { Product } from './exports.js';\nimport { Brand } from './barrel.js';\n\nnew Product().gtPrice(1);\nnew Brand().gtMinPrice(1);\n"
+              },
+              "python": {
+                "example/exports.py": "from ..model.models import Brand, Product\n\n__all__ = [\"Brand\", \"Product\"]\n",
+                "example/example.py": "from .exports import Brand, Product\n\nProduct().gt_price(1)\nBrand().gt_min_price(1)\n"
+              },
+              "php": {
+                "example/example.php": "<?php\n\n// PHP has no re-export: a class is named by its fully qualified name, which use gives it.\nuse Example\\Model\\Brand;\nuse Example\\Model\\Product;\n\n(new Product())->gtPrice(1);\n(new Brand())->gtMinPrice(1);\n"
+              },
+              "rust": {
+                "example/exports.rs": "pub use crate::own::Product;\n",
+                "example/barrel.rs": "pub use crate::own::*;\n",
+                "example/example.rs": "mod own { include!(\"../model/orm_model.rs\"); }\nmod barrel;\nmod exports;\nuse exports::Product;\n\nfn cheap() {\n    let _ = Product::new().gt_price(1);\n    let _ = barrel::Brand::new().gt_min_price(1);\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [
+                  "product.gt_price",
+                  "brand.gt_min_price"
+                ],
+                "excludes": [
+                  "brand.lt_min_price"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "reassigned-variable",
       "requirements": [
         "DSL-151"
