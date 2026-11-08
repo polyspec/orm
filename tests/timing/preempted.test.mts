@@ -102,8 +102,9 @@ caseTest('rust: the stress test passes while preempted', TIMEOUT, async ({ step 
 });
 
 caseTest('rust: the polyspec-orm-schema vector tests pass while preempted', TIMEOUT, async ({ step }) => {
-  const tests = ['dbspec_model', 'dbspec_runtime'];
-  await passesPreempted(step, 'cargo', ['test', '--locked', '--offline', '-p', 'polyspec-orm-schema', ...tests.flatMap((name) => ['--test', name])], `${root}packages/rust`);
+  // The vector tests of polyspec-orm-schema are the groups dbspec_model and dbspec_runtime of the one Rust test program (T375).
+  const groups = ['dbspec_model::', 'dbspec_runtime::'];
+  await passesPreempted(step, 'cargo', ['test', '--locked', '--offline', '-p', 'polyspec-orm-tests', '--test', 'all', '--', ...groups], `${root}packages/rust`);
 });
 
 for (const test of ['DbspecRulesTest', 'DbspecRenderStatementsRecipeTest', 'DbspecMermaidRecipeTest', 'DbspecPlanTest', 'DbspecStressTest']) {
