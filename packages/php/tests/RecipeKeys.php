@@ -9,6 +9,13 @@ namespace Polyspec\Orm\Tests;
 
 final class RecipeKeys
 {
+    /**
+     * The nesting depth with which a recipe is read: a recipe holds a value nested past the 256 levels of the
+     * ordered-json parser (tests/codec/codec-json-depth.json), each level of a wrapper is two JSON levels, and the
+     * recipe nests around the value.
+     */
+    public const DEPTH = 1024;
+
     /** @var array<string, array<string, mixed>> the key tables that have been read, by file */
     private static array $tables = [];
 
@@ -41,7 +48,7 @@ final class RecipeKeys
     /** The recipe of the text at path, decoded once: the same refusals as check. */
     public static function decoded(string $path, string $text): array
     {
-        $recipe = json_decode($text, true, 512, JSON_THROW_ON_ERROR);
+        $recipe = json_decode($text, true, self::DEPTH, JSON_THROW_ON_ERROR);
         $schema = $recipe['$schema'] ?? null;
         if (!is_string($schema) || $schema === '') {
             throw new \RuntimeException("recipe $path: no \$schema names the recipe key table");

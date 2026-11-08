@@ -17,11 +17,9 @@ use Purr\Yaml\Node\NodeList;
 use Purr\Yaml\Node\ScalarNode;
 use Purr\Yaml\Node\ScalarStyle;
 use Purr\Yaml\Node\SequenceNode;
-use Purr\Yaml\Exception\ParseException;
 use Purr\Yaml\Exception\ReferenceException;
 use Purr\Yaml\Schema\CoreSchema;
 use Purr\Yaml\YamlStream;
-use Polyspec\Orm\Internal\CodecRule;
 
 use function Polyspec\OrderedJson\parse as orderedJsonParse;
 
@@ -30,9 +28,16 @@ use function Polyspec\OrderedJson\parse as orderedJsonParse;
  * The host stages (aes/hex/ip) are the ones a dialect leaves to the executor (docs/spec/dialects.md):
  * MySQL runs them in SQL, PostgreSQL asks for aes/hex, SQLite for all three. They come first on
  * write (before the codec stages already applied by the builder) and last on read.
+ *
+ * Each refusal is a rule of COD-70 with its code and its one text, which names no value and no position; a failure of a
+ * library is the error of its rule with the failure kept as the previous exception (COD-71), and no exception of a
+ * library leaves a call.
  */
 final class Codec
 {
+    /** The nesting that the ordered-json parser reads (json-depth of COD-70). */
+    private const int JSON_DEPTH = 256;
+
     /** Returns the stable lowercase HMAC-SHA256 index for plaintext. */
     public static function blindIndex(mixed $v, string $key): ?string
     {
@@ -45,7 +50,10 @@ final class Codec
         return hash_hmac('sha256', self::plainBytes($v, 'blind index'), $key);
     }
 
-    /** The bytes of a plaintext: Bytes as given and a string as its bytes; another kind is CODEC_ENCODE (COD-1). */
+    /**
+     * The bytes of a plaintext: Bytes as given and a string as its bytes; another kind is CODEC_ENCODE (COD-1), and a
+     * string that is not UTF-8 is no sequence of Unicode scalar values (host-input-unicode).
+     */
     private static function plainBytes(mixed $v, string $what): string
     {
         if ($v instanceof Bytes) {
@@ -54,7 +62,49 @@ final class Codec
         if (!is_string($v)) {
             throw new OrmException(Code::CODEC_ENCODE, "$what input must be text or bytes");
         }
+        if (!mb_check_encoding($v, 'UTF-8')) {
+            throw new OrmException(Code::CODEC_ENCODE, "$what input is not a sequence of Unicode scalar values");
+        }
         return $v;
+    }
+
+    /**
+     * Runs a library call that reports its failure only by returning false (COD-71): its result and, on false, the
+     * cause, an exception that holds the warning of the call or, when the call warns of nothing, its name.
+     *
+     * @return array{mixed, ?\RuntimeException}
+     */
+    private static function libraryCall(string $name, \Closure $call): array
+    {
+        $warning = null;
+        set_error_handler(static function (int $level, string $message) use (&$warning): bool {
+            $warning = $message;
+            return true;
+        });
+        try {
+            $result = $call();
+        } finally {
+            restore_error_handler();
+        }
+        return [$result, $result === false ? new \RuntimeException($warning ?? "$name returned false") : null];
+    }
+
+    /** The cause of an OpenSSL call that returned false: the queue of OpenSSL errors, or the name of the call. */
+    private static function opensslFailure(string $name): \RuntimeException
+    {
+        $errors = [];
+        while (($error = openssl_error_string()) !== false) {
+            $errors[] = $error;
+        }
+        return new \RuntimeException($errors === [] ? "$name returned false" : implode('; ', $errors));
+    }
+
+    /** Empties the queue of OpenSSL errors, so that the queue after a call holds only the errors of that call. */
+    private static function opensslClear(): void
+    {
+        do {
+            $error = openssl_error_string();
+        } while ($error !== false);
     }
 
     /**
@@ -74,6 +124,7 @@ final class Codec
             }
         }
     }
+
     /** @param list<string> $styles */
     public static function decode(array $styles, mixed $raw): StyledValue
     {
@@ -81,25 +132,27 @@ final class Codec
         if (is_resource($raw)) {
             $raw = stream_get_contents($raw); // pdo_pgsql hands bytea columns over as streams
         }
+        if ($raw instanceof Bytes) {
+            $raw = $raw->bytes;
+        }
         if ($raw === null) {
             return StyledValue::sqlNull();
+        }
+        if (!is_string($raw)) {
+            throw new OrmException(Code::CODEC_DECODE, 'cell is not bytes');
         }
         // An empty cell is CODEC_DECODE, except under a last base64 stage and under no stage, whose encoders write an
         // empty cell for empty text (docs/spec/codec.md COD-14).
         if ($raw === '' && $styles !== [] && end($styles) !== 'base64') {
             throw new OrmException(Code::CODEC_DECODE, 'styled cell is empty');
         }
-        if (!is_string($raw)) {
-            throw new OrmException(Code::CODEC_DECODE, 'cell is not a string');
-        }
         $v = $raw;
         for ($i = count($styles) - 1; $i >= 0; $i--) {
             switch ($styles[$i]) {
                 case 'gz':
-                    // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged -- a bad stream returns false, reported as CODEC_DECODE below
-                    $v = @gzuncompress($v);
-                    if ($v === false) {
-                        throw new OrmException(Code::CODEC_DECODE, 'gz: bad zlib stream');
+                    [$v, $cause] = self::libraryCall('gzuncompress', static fn (): string|false => gzuncompress($v));
+                    if ($cause !== null) {
+                        throw new OrmException(Code::CODEC_DECODE, 'gz: bad zlib stream', $cause);
                     }
                     break;
                 case 'base64':
@@ -107,43 +160,29 @@ final class Codec
                     // breaks, no missing padding, no non-zero padding bit is CODEC_DECODE
                     // (docs/spec/codec.md). PHP's strict mode also accepts whitespace and missing padding, so
                     // re-encode the text and check that it is the same.
-                    $decoded = base64_decode($v, true);
-                    $v = $decoded !== false && base64_encode($decoded) === $v ? $decoded : false;
-                    if ($v === false) {
+                    [$decoded, $cause] = self::libraryCall(
+                        'base64_decode',
+                        static fn (): string|false => base64_decode($v, true)
+                    );
+                    if ($cause !== null) {
+                        throw new OrmException(Code::CODEC_DECODE, 'base64: bad input', $cause);
+                    }
+                    if (base64_encode($decoded) !== $v) {
                         throw new OrmException(Code::CODEC_DECODE, 'base64: bad input');
                     }
+                    $v = $decoded;
                     break;
                 case 'serialize':
-                    $refusal = self::serializedRefusal($v);
-                    if ($refusal !== null) {
-                        throw $refusal;
-                    }
-                    // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged -- a bad format returns false, reported as CODEC_DECODE below
-                    $v = @unserialize($v, ['allowed_classes' => false]);
-                    if ($v === false && $raw !== serialize(false)) {
-                        throw new OrmException(Code::CODEC_DECODE, 'serialize: bad format');
-                    }
-                    $v = self::normalize($v);
-                    // A float of the common value model is finite (COD-16), so INF, -INF and NAN are not values.
-                    if (!self::finiteValue($v)) {
-                        throw new OrmException(Code::CODEC_DECODE, 'serialize: non-finite numbers are not supported');
-                    }
+                    $v = self::unserialized($v);
                     break;
                 case 'yaml':
-                    try {
-                        $v = self::yamlDecode($v);
-                        self::validateCommonValue($v);
-                    } catch (CodecRule $e) {
-                        throw new OrmException(Code::CODEC_DECODE, 'yaml: ' . $e->getMessage(), $e);
-                    } catch (ParseException | ReferenceException | \InvalidArgumentException $e) {
-                        throw new OrmException(Code::CODEC_DECODE, 'yaml: the stream does not parse', $e);
-                    }
+                    $v = self::yamlDecode($v);
                     break;
                 case 'ordered_json':
                     // The ordered-json value keeps the member order, the number text, and {} apart from [].
                     try {
                         $v = orderedJsonParse($v);
-                    } catch (\InvalidArgumentException $e) {
+                    } catch (\Throwable $e) {
                         throw new OrmException(Code::CODEC_DECODE, 'json: the cell is not JSON', $e);
                     }
                     break;
@@ -152,7 +191,7 @@ final class Codec
             }
         }
         // Without a value stage (no stage, or a list that starts with gz or base64) the value is the text of the bytes.
-        if (in_array($styles[0] ?? null, [null, 'gz', 'base64'], true) && preg_match('//u', $v) !== 1) {
+        if (in_array($styles[0] ?? null, [null, 'gz', 'base64'], true) && !mb_check_encoding($v, 'UTF-8')) {
             throw new OrmException(Code::CODEC_DECODE, 'decoded text is not valid UTF-8');
         }
         return StyledValue::value($v);
@@ -173,9 +212,16 @@ final class Codec
         $value = $v->payload();
         $cur = $value;
         // A first gz or base64 stage encodes the string, and an empty stage list writes it as it is.
-        if (in_array($styles[0] ?? null, [null, 'gz', 'base64'], true) && !is_string($value)) {
-            $stage = isset($styles[0]) ? "a first {$styles[0]} stage" : 'an empty stage list';
-            throw new OrmException(Code::CODEC_ENCODE, "$stage takes a string value");
+        if (in_array($styles[0] ?? null, [null, 'gz', 'base64'], true)) {
+            if (!is_string($value)) {
+                $stage = isset($styles[0]) ? "a first {$styles[0]} stage" : 'an empty stage list';
+                throw new OrmException(Code::CODEC_ENCODE, "$stage takes a string value");
+            }
+            if (!mb_check_encoding($value, 'UTF-8')) {
+                $stage = isset($styles[0]) ? "{$styles[0]}: " : '';
+                $rule = 'the text is not a sequence of Unicode scalar values';
+                throw new OrmException(Code::CODEC_ENCODE, $stage . $rule);
+            }
         }
         if ($styles === []) {
             return $value;
@@ -185,41 +231,89 @@ final class Codec
                 case 'serialize':
                     // serialize writes any PHP value, a Bytes or an ordered-json object among them; the stage
                     // writes the common value model only (COD-16, COD-63).
-                    try {
-                        self::validateCommonValue($value);
-                    } catch (CodecRule $e) {
-                        throw new OrmException(Code::CODEC_ENCODE, 'serialize: ' . $e->getMessage(), $e);
-                    }
+                    self::checkCodecValue('serialize', $value);
                     $cur = serialize($value);
                     break;
                 case 'yaml':
-                    try {
-                        self::validateCommonValue($value);
-                        $cur = (new Dumper())->dumpDocument(new Document(self::yamlNodeOf($value))) . "\n";
-                    } catch (CodecRule $e) {
-                        throw new OrmException(Code::CODEC_ENCODE, 'yaml: ' . $e->getMessage(), $e);
-                    } catch (\InvalidArgumentException $e) {
-                        throw new OrmException(Code::CODEC_ENCODE, 'yaml: the value has no YAML text', $e);
-                    }
+                    $cur = self::yamlText($value);
                     break;
                 case 'ordered_json':
-                    try {
-                        $cur = self::compactJsonText(orderedJsonParse(self::jsonText($value))->raw());
-                    } catch (\JsonException | \InvalidArgumentException $e) {
-                        throw new OrmException(Code::CODEC_ENCODE, 'json: the value has no JSON text', $e);
-                    }
+                    $cur = self::orderedJsonText($value);
                     break;
                 case 'base64':
                     $cur = base64_encode($cur);
                     break;
                 case 'gz':
-                    $cur = gzcompress($cur, 9);
+                    [$cur, $cause] = self::libraryCall('gzcompress', static fn (): string|false => gzcompress($cur, 9));
+                    if ($cause !== null) {
+                        throw new OrmException(Code::CODEC_ENCODE, 'gz: the compression failed', $cause);
+                    }
                     break;
                 default:
                     throw new OrmException(Code::CODEC_UNSUPPORTED, "style $st");
             }
         }
         return $styles[count($styles) - 1] === 'gz' ? new Bytes($cur) : $cur;
+    }
+
+    /**
+     * The rule of COD-70 that a value under a first serialize or yaml stage breaks, or null for a value of the common
+     * value model of COD-16: the first node that breaks one, keys before their values.
+     */
+    private static function codecValueRule(mixed $value): ?string
+    {
+        if ($value === null || is_bool($value) || is_int($value)) {
+            return null;
+        }
+        if (is_string($value)) {
+            return mb_check_encoding($value, 'UTF-8') ? null : 'the text is not a sequence of Unicode scalar values';
+        }
+        if (is_float($value)) {
+            return is_finite($value) ? null : 'number is not finite';
+        }
+        if (is_array($value)) {
+            foreach ($value as $key => $item) {
+                if (is_string($key) && !mb_check_encoding($key, 'UTF-8')) {
+                    return 'the text is not a sequence of Unicode scalar values';
+                }
+                $rule = self::codecValueRule($item);
+                if ($rule !== null) {
+                    return $rule;
+                }
+            }
+            return null;
+        }
+        if ($value instanceof Value) {
+            return 'an ordered-json value is written only by the ordered_json stage';
+        }
+        return 'the value is not a codec value';
+    }
+
+    /** Refuses a value under the first stage by the rule it breaks, prefixed by the stage. */
+    private static function checkCodecValue(string $stage, mixed $value): void
+    {
+        $rule = self::codecValueRule($value);
+        if ($rule !== null) {
+            throw new OrmException(Code::CODEC_ENCODE, "$stage: $rule");
+        }
+    }
+
+    /**
+     * The stored text of an ordered_json write: the JSON text of the value, read by the ordered-json parser and written
+     * compact. The rules of the value come first; a failure of the JSON writer or of the parser is json-text.
+     */
+    private static function orderedJsonText(mixed $value): string
+    {
+        try {
+            $text = self::jsonText($value, 0);
+        } catch (\JsonException | \InvalidArgumentException $e) {
+            throw new OrmException(Code::CODEC_ENCODE, 'json: the value has no JSON text', $e);
+        }
+        try {
+            return self::compactJsonText(orderedJsonParse($text)->raw());
+        } catch (\Throwable $e) {
+            throw new OrmException(Code::CODEC_ENCODE, 'json: the value has no JSON text', $e);
+        }
     }
 
     /**
@@ -256,38 +350,76 @@ final class Codec
         return $out;
     }
 
+    /** The deepest nesting of arrays and objects in a JSON text, its string literals aside. */
+    private static function jsonTextDepth(string $text): int
+    {
+        $depth = 0;
+        $deepest = 0;
+        $inString = false;
+        $escaped = false;
+        $length = strlen($text);
+        for ($i = 0; $i < $length; $i++) {
+            $c = $text[$i];
+            if ($inString) {
+                if ($escaped) {
+                    $escaped = false;
+                } elseif ($c === '\\') {
+                    $escaped = true;
+                } elseif ($c === '"') {
+                    $inString = false;
+                }
+            } elseif ($c === '"') {
+                $inString = true;
+            } elseif ($c === '[' || $c === '{') {
+                $deepest = max($deepest, ++$depth);
+            } elseif ($c === ']' || $c === '}') {
+                $depth--;
+            }
+        }
+        return $deepest;
+    }
+
     /**
-     * The JSON text of an ordered-json value or of the common value model. An
-     * ordered-json value, also inside an array, is written as its compact text.
+     * The JSON text of an ordered-json value or of the common value model, at the nesting depth of its container. An
+     * ordered-json value, also inside an array, is written as its text. Each node is checked in order: a nesting past
+     * the 256 levels of the parser, a string that is not UTF-8, a float that is not finite and a value outside the
+     * JSON value model are their rules of COD-70.
      */
-    private static function jsonText(mixed $value): string
+    private static function jsonText(mixed $value, int $depth): string
     {
         if ($value instanceof Value) {
             // The source text keeps the member order and the repeated names that the member map collapses (DIA-26).
-            return $value->raw();
+            $raw = $value->raw();
+            if ($depth + self::jsonTextDepth($raw) > self::JSON_DEPTH) {
+                throw self::jsonDepthError();
+            }
+            return $raw;
         }
-        if (is_array($value)) {
+        if (is_array($value) || $value instanceof \stdClass) {
+            if ($depth + 1 > self::JSON_DEPTH) {
+                throw self::jsonDepthError();
+            }
+            $members = is_array($value) ? $value : get_object_vars($value);
             $parts = [];
-            if (array_is_list($value)) {
+            if (is_array($value) && array_is_list($value)) {
                 foreach ($value as $item) {
-                    $parts[] = self::jsonText($item);
+                    $parts[] = self::jsonText($item, $depth + 1);
                 }
                 return '[' . implode(',', $parts) . ']';
             }
-            foreach ($value as $key => $item) {
-                $parts[] = self::jsonText((string) $key) . ':' . self::jsonText($item);
-            }
-            return '{' . implode(',', $parts) . '}';
-        }
-        if ($value instanceof \stdClass) {
-            $parts = [];
-            foreach (get_object_vars($value) as $key => $item) {
-                $parts[] = self::jsonText((string) $key) . ':' . self::jsonText($item);
+            foreach ($members as $key => $item) {
+                $parts[] = self::jsonText((string) $key, $depth + 1) . ':' . self::jsonText($item, $depth + 1);
             }
             return '{' . implode(',', $parts) . '}';
         }
         if ($value instanceof \JsonSerializable) {
-            return self::jsonText($value->jsonSerialize());
+            return self::jsonText($value->jsonSerialize(), $depth);
+        }
+        if (is_string($value) && !mb_check_encoding($value, 'UTF-8')) {
+            throw new OrmException(Code::CODEC_ENCODE, 'json: the text is not a sequence of Unicode scalar values');
+        }
+        if (is_float($value) && !is_finite($value)) {
+            throw new OrmException(Code::CODEC_ENCODE, 'json: non-finite number');
         }
         if (is_object($value) || is_resource($value)) {
             throw new OrmException(Code::CODEC_ENCODE, 'json: the value is not a JSON value');
@@ -295,24 +427,46 @@ final class Codec
         return json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
     }
 
+    private static function jsonDepthError(): OrmException
+    {
+        return new OrmException(Code::CODEC_ENCODE, 'json: value nesting exceeds ' . self::JSON_DEPTH . ' levels');
+    }
+
+    /** The error of a rule of the yaml decode. */
+    private static function yamlRule(string $rule, ?\Throwable $cause = null): OrmException
+    {
+        return new OrmException(Code::CODEC_DECODE, "yaml: $rule", $cause);
+    }
+
     /**
      * Reads one YAML 1.2 document with purrphp/yaml and resolves its plain scalars by the library's
      * core schema. The codec's own rules (docs/spec/codec.md, yaml) apply on the node model: one document,
      * no aliases, anchors or explicit tags, no duplicate keys, string or integral keys; << is an ordinary key, since
      * YAML 1.2 has no merge key (COD-29), so the node model is read without the library's merge (ValueBuilder).
-     * A text without a document (empty or only comments) is not a YAML value and is refused.
+     * A text without a document (empty or only comments) is not a YAML value and is refused. The parser of purrphp/yaml
+     * resolves an alias as it reads it and refuses one whose anchor is not in the stream with a ReferenceException,
+     * which is yaml-alias; any other failure of the library, a node of a kind that the walk does not read included, is
+     * yaml-parse, with the failure as its cause (COD-71, COD-72).
      */
     private static function yamlDecode(string $text): mixed
     {
         self::yamlStream($text);
-        $documents = (new YamlStream())->fromString($text);
-        switch (count($documents)) {
-            case 0:
-                throw new CodecRule('no document');
-            case 1:
-                return self::yamlNode($documents->at(0)->getRoot(), new CoreSchema());
-            default:
-                throw new CodecRule('multiple documents are not supported');
+        try {
+            $documents = (new YamlStream())->fromString($text);
+            $count = count($documents);
+            if ($count === 0) {
+                throw self::yamlRule('no document');
+            }
+            if ($count > 1) {
+                throw self::yamlRule('multiple documents are not supported');
+            }
+            return self::yamlNode($documents->at(0)->getRoot(), new CoreSchema());
+        } catch (OrmException $e) {
+            throw $e;
+        } catch (ReferenceException $e) {
+            throw self::yamlRule('aliases are not supported', $e);
+        } catch (\Throwable $e) {
+            throw self::yamlRule('the stream does not parse', $e);
         }
     }
 
@@ -324,13 +478,13 @@ final class Codec
     private static function yamlStream(string $text): void
     {
         if (!mb_check_encoding($text, 'UTF-8')) {
-            throw new CodecRule('the stream is not UTF-8');
+            throw self::yamlRule('the stream is not UTF-8');
         }
         $stream = str_starts_with($text, "\u{FEFF}") ? substr($text, 3) : $text;
         $notPrintable = '/[^\t\n\r\x{20}-\x{7E}\x{85}\x{A0}-\x{D7FF}\x{E000}-\x{FEFE}\x{FF00}-\x{FFFD}'
             . '\x{10000}-\x{10FFFF}]/u';
         if (preg_match($notPrintable, $stream) === 1) {
-            throw new CodecRule('the stream holds a character that is not printable');
+            throw self::yamlRule('the stream holds a character that is not printable');
         }
     }
 
@@ -358,24 +512,39 @@ final class Codec
             return;
         }
         if (!$inRange) {
-            throw new CodecRule("integer at line {$node->getLine()} is outside the i64 range");
+            throw self::yamlRule('integer is outside the i64 range');
         }
     }
 
-    private static function yamlNode(AbstractNode $node, CoreSchema $schema): mixed
+    /** The properties of a node that the codec refuses: an alias, an anchor and an explicit tag, in that order. */
+    private static function yamlProperties(AbstractNode $node): void
     {
         if ($node instanceof AliasNode) {
-            throw new CodecRule("aliases are not supported at line {$node->getLine()}");
+            throw self::yamlRule('aliases are not supported');
         }
         if ($node->hasAnchor()) {
-            throw new CodecRule("anchors are not supported at line {$node->getLine()}");
+            throw self::yamlRule('anchors are not supported');
         }
         if ($node->findTag() !== null) {
-            throw new CodecRule("explicit tags are not supported at line {$node->getLine()}");
+            throw self::yamlRule('explicit tags are not supported');
         }
+    }
+
+    /**
+     * A node as a PHP value, with the rules of the codec. The node model of purrphp/yaml has four kinds (its
+     * NodeVisitor): an alias, which yamlProperties refuses, a scalar, a sequence and a mapping, which is the last.
+     */
+    private static function yamlNode(AbstractNode $node, CoreSchema $schema): mixed
+    {
+        self::yamlProperties($node);
         if ($node instanceof ScalarNode) {
             self::yamlIntegerInRange($node);
-            return $schema->resolve($node);
+            $value = $schema->resolve($node);
+            // A float beyond the f64 range is read as INF, so the rule covers it with .inf and .nan (COD-16).
+            if (is_float($value) && !is_finite($value)) {
+                throw self::yamlRule('number is not finite');
+            }
+            return $value;
         }
         if ($node instanceof SequenceNode) {
             $out = [];
@@ -384,47 +553,58 @@ final class Codec
             }
             return $out;
         }
-        if ($node instanceof MappingNode) {
-            $out = [];
-            foreach ($node->getEntries() as $entry) {
-                $key = self::yamlNode($entry->getKey(), $schema);
-                if (!is_string($key) && !is_int($key)) {
-                    throw new CodecRule(
-                        "map keys must be strings or integers at line {$entry->getKey()->getLine()}"
-                    );
-                }
-                if (array_key_exists($key, $out)) {
-                    throw new CodecRule("duplicate map key at line {$entry->getKey()->getLine()}");
-                }
-                $out[$key] = self::yamlNode($entry->getValue(), $schema);
+        /** @var MappingNode $node */
+        $out = [];
+        foreach ($node->getEntries() as $entry) {
+            $keyNode = $entry->getKey();
+            if ($keyNode instanceof SequenceNode || $keyNode instanceof MappingNode) {
+                self::yamlProperties($keyNode);
+                throw self::yamlRule('map keys must be scalar strings');
             }
-            return $out;
+            $key = self::yamlNode($keyNode, $schema);
+            if (!is_string($key) && !is_int($key)) {
+                throw self::yamlRule('map keys must be strings or integers');
+            }
+            if (array_key_exists($key, $out)) {
+                throw self::yamlRule('duplicate map key');
+            }
+            $out[$key] = self::yamlNode($entry->getValue(), $schema);
         }
-        throw new CodecRule("the node at line {$node->getLine()} is not supported");
+        return $out;
     }
 
-    private static function finiteValue(mixed $value): bool
+    /**
+     * The YAML text of a value under a first yaml stage: the rules of the value, the text that the Dumper of
+     * purrphp/yaml writes, and the text read back, which must be the value (yaml-read-back).
+     */
+    private static function yamlText(mixed $value): string
     {
-        if (is_float($value)) {
-            return is_finite($value);
+        self::checkCodecValue('yaml', $value);
+        try {
+            $text = (new Dumper())->dumpDocument(new Document(self::yamlNodeOf($value))) . "\n";
+        } catch (\Throwable $e) {
+            throw new OrmException(Code::CODEC_ENCODE, 'yaml: the value has no YAML text', $e);
         }
-        if (is_array($value)) {
-            foreach ($value as $item) {
-                if (!self::finiteValue($item)) {
-                    return false;
-                }
-            }
+        try {
+            $back = self::yamlDecode($text);
+        } catch (OrmException $e) {
+            throw new OrmException(Code::CODEC_ENCODE, 'yaml: the written text does not read back as the value', $e);
         }
-        return true;
+        if ($back !== $value) {
+            throw new OrmException(Code::CODEC_ENCODE, 'yaml: the written text does not read back as the value');
+        }
+        return $text;
     }
 
     /**
      * The YAML node of a common value, which the Dumper of purrphp/yaml writes. A string, a key or a value, is
      * double-quoted, so the core schema reads it as a string and each character outside c-printable is its escape
      * (COD-29); a float is written by its shortest text with its fraction, so it reads back as a float; a key is the
-     * string of a PHP array key.
+     * string of a PHP array key. The value is one that codecValueRule passed, so an array is the last kind.
+     *
+     * @param null|bool|int|float|string|array<array-key, mixed> $value
      */
-    private static function yamlNodeOf(mixed $value): AbstractNode
+    private static function yamlNodeOf(null|bool|int|float|string|array $value): AbstractNode
     {
         return match (true) {
             $value === null => new ScalarNode('null'),
@@ -433,10 +613,10 @@ final class Codec
             is_float($value) => new ScalarNode(json_encode($value, JSON_PRESERVE_ZERO_FRACTION | JSON_THROW_ON_ERROR)),
             is_string($value) => new ScalarNode($value, ScalarStyle::DoubleQuoted),
             $value === [] => new SequenceNode(new NodeList(), CollectionStyle::Flow),
-            is_array($value) && array_is_list($value) => new SequenceNode(
+            array_is_list($value) => new SequenceNode(
                 new NodeList(...array_map(self::yamlNodeOf(...), $value))
             ),
-            is_array($value) => new MappingNode(new MappingEntryList(...array_map(
+            default => new MappingNode(new MappingEntryList(...array_map(
                 static fn (int|string $key, mixed $item): MappingEntry => new MappingEntry(
                     new ScalarNode((string) $key, ScalarStyle::DoubleQuoted),
                     self::yamlNodeOf($item),
@@ -444,23 +624,179 @@ final class Codec
                 array_keys($value),
                 $value,
             ))),
-            default => throw new CodecRule('value type is not supported'),
         };
     }
 
-    private static function validateCommonValue(mixed $value): void
+    // ---- serialize: a reader of PHP's serialize format ----
+
+    /** The error of a rule of the serialize decode. */
+    private static function serializeRule(string $rule): OrmException
     {
-        if (is_float($value) && !is_finite($value)) {
-            throw new CodecRule('non-finite numbers are not supported');
+        return new OrmException(Code::CODEC_DECODE, "serialize: $rule");
+    }
+
+    /** Moves past the delimiter at $at, or refuses the cell as serialize-expected. */
+    private static function serializedDelimiter(string $text, int &$at, string $delimiter): void
+    {
+        if ($at >= strlen($text) || $text[$at] !== $delimiter) {
+            throw self::serializeRule("expected $delimiter");
         }
-        if (!is_array($value)) {
-            if ($value !== null && !is_bool($value) && !is_int($value) && !is_float($value) && !is_string($value)) {
-                throw new CodecRule('value type is not supported');
+        $at++;
+    }
+
+    /** The field from $at up to the delimiter that ends it, moving past the delimiter. */
+    private static function serializedField(string $text, int &$at, string $delimiter): string
+    {
+        $end = strpos($text, $delimiter, $at);
+        if ($end === false) {
+            throw self::serializeRule("expected $delimiter");
+        }
+        $field = substr($text, $at, $end - $at);
+        $at = $end + 1;
+        return $field;
+    }
+
+    /** The length of a string or an array: digits only, as the grammar of unserialize reads it. */
+    private static function serializedLength(string $field, string $what): int
+    {
+        if (preg_match('/\A[0-9]+\z/', $field) !== 1) {
+            throw self::serializeRule("bad $what length");
+        }
+        // A length past PHP_INT_MAX is past the end of any cell; the cast gives PHP_INT_MAX.
+        return (int) $field;
+    }
+
+    /** An i field: an optional sign and digits, in the i64 range (COD-16), which unserialize would clamp. */
+    private static function serializedInt(string $field): int
+    {
+        if (preg_match('/\A([+-]?)0*([0-9]+)\z/', $field, $m) !== 1) {
+            throw self::serializeRule('bad int');
+        }
+        $limit = $m[1] === '-' ? '9223372036854775808' : '9223372036854775807';
+        if (strlen($m[2]) > strlen($limit) || (strlen($m[2]) === strlen($limit) && strcmp($m[2], $limit) > 0)) {
+            throw self::serializeRule('integer is outside the i64 range');
+        }
+        return (int) $field;
+    }
+
+    /**
+     * A d field of the grammar of unserialize: an optional sign, digits with an optional fraction and an optional
+     * exponent, or NAN, INF and -INF, which with a float beyond the f64 range are not finite (COD-16).
+     */
+    private static function serializedFloat(string $field): float
+    {
+        if ($field === 'NAN' || $field === 'INF' || $field === '-INF') {
+            throw self::serializeRule('non-finite float');
+        }
+        if (preg_match('/\A[+-]?([0-9]*\.[0-9]+|[0-9]+\.[0-9]*|[0-9]+)([eE][+-]?[0-9]+)?\z/', $field) !== 1) {
+            throw self::serializeRule('bad float');
+        }
+        $value = (float) $field;
+        if (!is_finite($value)) {
+            throw self::serializeRule('non-finite float');
+        }
+        return $value;
+    }
+
+    /**
+     * Reads a serialized cell by the grammar of PHP's unserialize, with the rules of COD-70: the values of the common
+     * value model (COD-16), no object or reference (COD-34), and nothing after the value. An array opens a frame
+     * [items, members left, whether its key is read, key], so a nesting of any depth reads without recursion; an array
+     * key is a whole value, an integer or a string, and a later key replaces an earlier one, as unserialize does.
+     */
+    private static function unserialized(string $text): mixed
+    {
+        $at = 0;
+        $length = strlen($text);
+        /** @var list<array{0: array<array-key, mixed>, 1: int, 2: bool, 3: int|string}> $open */
+        $open = [];
+        while (true) {
+            if ($at >= $length) {
+                throw self::serializeRule('unexpected end');
             }
-            return;
+            $type = $text[$at++];
+            if ($type === 'a') {
+                self::serializedDelimiter($text, $at, ':');
+                $members = self::serializedLength(self::serializedField($text, $at, ':'), 'array');
+                self::serializedDelimiter($text, $at, '{');
+                if ($members > 0) {
+                    $open[] = [[], $members, false, 0];
+                    continue;
+                }
+                self::serializedDelimiter($text, $at, '}');
+                $value = [];
+            } else {
+                $value = self::serializedScalar($text, $at, $type);
+            }
+            while (true) {
+                if ($open === []) {
+                    if ($at !== $length) {
+                        throw self::serializeRule('trailing data');
+                    }
+                    return $value;
+                }
+                $top = count($open) - 1;
+                if (!$open[$top][2]) {
+                    if (!is_int($value) && !is_string($value)) {
+                        throw self::serializeRule('array key must be int or string');
+                    }
+                    $open[$top][2] = true;
+                    $open[$top][3] = $value;
+                    continue 2;
+                }
+                $open[$top][0][$open[$top][3]] = $value;
+                $open[$top][2] = false;
+                if (--$open[$top][1] > 0) {
+                    continue 2;
+                }
+                self::serializedDelimiter($text, $at, '}');
+                $value = array_pop($open)[0];
+            }
         }
-        foreach ($value as $item) {
-            self::validateCommonValue($item);
+    }
+
+    /** A value of the type letter $type other than an array, read from $at. */
+    private static function serializedScalar(string $text, int &$at, string $type): null|bool|int|float|string
+    {
+        switch ($type) {
+            case 'N':
+                self::serializedDelimiter($text, $at, ';');
+                return null;
+            case 'b':
+                self::serializedDelimiter($text, $at, ':');
+                $field = self::serializedField($text, $at, ';');
+                if ($field !== '0' && $field !== '1') {
+                    throw self::serializeRule('bad bool');
+                }
+                return $field === '1';
+            case 'i':
+                self::serializedDelimiter($text, $at, ':');
+                return self::serializedInt(self::serializedField($text, $at, ';'));
+            case 'd':
+                self::serializedDelimiter($text, $at, ':');
+                return self::serializedFloat(self::serializedField($text, $at, ';'));
+            case 's':
+                self::serializedDelimiter($text, $at, ':');
+                $size = self::serializedLength(self::serializedField($text, $at, ':'), 'string');
+                self::serializedDelimiter($text, $at, '"');
+                if ($size > strlen($text) - $at) {
+                    throw self::serializeRule('string overruns input');
+                }
+                $value = substr($text, $at, $size);
+                $at += $size;
+                if (!mb_check_encoding($value, 'UTF-8')) {
+                    throw self::serializeRule('string is not valid UTF-8');
+                }
+                self::serializedDelimiter($text, $at, '"');
+                self::serializedDelimiter($text, $at, ';');
+                return $value;
+            case 'O':
+            case 'C':
+            case 'r':
+            case 'R':
+                throw new OrmException(Code::CODEC_UNSUPPORTED, 'serialize: objects and references are not supported');
+            default:
+                throw self::serializeRule('unknown type');
         }
     }
 
@@ -481,6 +817,16 @@ final class Codec
         return $derived[$key] ??= hash('sha256', "polyspec/orm/aes-256-gcm/v2\0" . $key, true);
     }
 
+    /** Refuses a host style list with a style other than aes, hex and ip before the value or the cell is read. */
+    private static function checkHostStyles(array $styles): void
+    {
+        foreach ($styles as $st) {
+            if (!self::isHostStyle($st)) {
+                throw new OrmException(Code::CODEC_UNSUPPORTED, "host style $st");
+            }
+        }
+    }
+
     /**
      * Applies the host stages of a bind slot (`bind_slots[].host_styles`, write order) to a value.
      * Returns a string when the last stage is hex (text column), otherwise Bytes (a binary column:
@@ -492,56 +838,64 @@ final class Codec
         if ($styles === []) {
             throw new OrmException(Code::CODEC_ENCODE, 'host style list is empty');
         }
-        foreach ($styles as $st) {
-            if (!in_array($st, ['aes', 'hex', 'ip'], true)) {
-                throw new OrmException(Code::CODEC_UNSUPPORTED, "host style $st");
-            }
-        }
+        self::checkHostStyles($styles);
         if ($v === null) {
             return null;
         }
         $cur = self::plainBytes($v, 'host');
         foreach ($styles as $st) {
-            switch ($st) {
-                case 'aes':
-                    if ($aesKey === '') {
-                        throw new OrmException(Code::CONFIG, 'secret aes not configured');
-                    }
-                    $nonce = random_bytes(12);
-                    $tag = '';
-                    $encrypted = openssl_encrypt(
-                        $cur,
-                        'aes-256-gcm',
-                        self::aesV2Key($aesKey),
-                        OPENSSL_RAW_DATA,
-                        $nonce,
-                        $tag,
-                        "ORM-AES2\0",
-                        16
-                    );
-                    $cur = "ORM-AES2\0" . $nonce . $encrypted . $tag;
-                    if ($encrypted === false) {
-                        throw new OrmException(Code::CODEC_ENCODE, 'aes: the encryption failed');
-                    }
-                    break;
-                case 'hex':
-                    $cur = strtoupper(bin2hex($cur));
-                    break;
-                case 'ip':
-                    $cur = self::packIp($cur);
-                    break;
-                default:
-                    throw new OrmException(Code::CODEC_UNSUPPORTED, "host style $st");
-            }
+            $cur = match ($st) {
+                'aes' => self::aesSeal($cur, $aesKey),
+                'hex' => strtoupper(bin2hex($cur)),
+                'ip' => self::packIp($cur),
+            };
         }
         return $styles[count($styles) - 1] === 'hex' ? $cur : new Bytes($cur);
+    }
+
+    /** The ORM-AES2 envelope of the bytes: the prefix, a random 12-byte nonce, the AES-256-GCM ciphertext and its tag. */
+    private static function aesSeal(string $plain, string $aesKey): string
+    {
+        if ($aesKey === '') {
+            throw new OrmException(Code::CONFIG, 'secret aes not configured');
+        }
+        try {
+            $nonce = random_bytes(12);
+        } catch (\Throwable $e) {
+            throw new OrmException(Code::CODEC_ENCODE, 'aes: the encryption failed', $e);
+        }
+        $tag = '';
+        self::opensslClear();
+        try {
+            $encrypted = openssl_encrypt(
+                $plain,
+                'aes-256-gcm',
+                self::aesV2Key($aesKey),
+                OPENSSL_RAW_DATA,
+                $nonce,
+                $tag,
+                "ORM-AES2\0",
+                16
+            );
+        } catch (\Throwable $e) {
+            throw new OrmException(Code::CODEC_ENCODE, 'aes: the encryption failed', $e);
+        }
+        if ($encrypted === false) {
+            $cause = self::opensslFailure('openssl_encrypt');
+            throw new OrmException(Code::CODEC_ENCODE, 'aes: the encryption failed', $cause);
+        }
+        return "ORM-AES2\0" . $nonce . $encrypted . $tag;
     }
 
     /** Undoes hostEncode on a read cell (styles in write order, applied in reverse). @param list<string> $styles */
     public static function hostDecode(mixed $raw, array $styles, string $aesKey): ?string
     {
+        self::checkHostStyles($styles);
         if (is_resource($raw)) {
             $raw = stream_get_contents($raw);
+        }
+        if ($raw instanceof Bytes) {
+            $raw = $raw->bytes;
         }
         if ($raw === null) {
             return null;
@@ -553,48 +907,55 @@ final class Codec
         for ($i = count($styles) - 1; $i >= 0; $i--) {
             switch ($styles[$i]) {
                 case 'hex':
-                    $cur = strlen($cur) % 2 === 0 && strspn($cur, '0123456789ABCDEF') === strlen($cur)
-                        ? hex2bin($cur) : false;
-                    if ($cur === false) {
+                    if (strlen($cur) % 2 !== 0 || strspn($cur, '0123456789ABCDEF') !== strlen($cur)) {
                         throw new OrmException(Code::CODEC_DECODE, 'hex: odd length or non-hex input');
                     }
+                    $cur = hex2bin($cur);
                     break;
                 case 'aes':
-                    if ($aesKey === '') {
-                        throw new OrmException(Code::CONFIG, 'secret aes not configured');
-                    }
-                    $prefix = "ORM-AES2\0";
-                    if (!str_starts_with($cur, $prefix)) {
-                        throw new OrmException(Code::CODEC_DECODE, 'aes: unsupported ciphertext format');
-                    }
-                    if (strlen($cur) < strlen($prefix) + 12 + 16) {
-                        throw new OrmException(Code::CODEC_DECODE, 'aes: truncated v2 envelope');
-                    }
-                    $offset = strlen($prefix);
-                    $nonce = substr($cur, $offset, 12);
-                    $tag = substr($cur, -16);
-                    $ciphertext = substr($cur, $offset + 12, -16);
-                    $plain = openssl_decrypt(
-                        $ciphertext,
-                        'aes-256-gcm',
-                        self::aesV2Key($aesKey),
-                        OPENSSL_RAW_DATA,
-                        $nonce,
-                        $tag,
-                        $prefix
-                    );
-                    if ($plain === false) {
-                        throw new OrmException(Code::CODEC_DECODE, 'aes: authentication failed');
-                    }
-                    $cur = $plain;
+                    $cur = self::aesOpen($cur, $aesKey);
                     break;
-                case 'ip':
-                    return self::unpackIp($cur);
                 default:
-                    throw new OrmException(Code::CODEC_UNSUPPORTED, "host style {$styles[$i]}");
+                    // ip, the last kind of host style: its text ends the decode.
+                    return self::unpackIp($cur);
             }
         }
         return $cur;
+    }
+
+    /** The plaintext of an ORM-AES2 envelope that the key authenticates. */
+    private static function aesOpen(string $cur, string $aesKey): string
+    {
+        if ($aesKey === '') {
+            throw new OrmException(Code::CONFIG, 'secret aes not configured');
+        }
+        $prefix = "ORM-AES2\0";
+        if (!str_starts_with($cur, $prefix)) {
+            throw new OrmException(Code::CODEC_DECODE, 'aes: unsupported ciphertext format');
+        }
+        if (strlen($cur) < strlen($prefix) + 12 + 16) {
+            throw new OrmException(Code::CODEC_DECODE, 'aes: truncated v2 envelope');
+        }
+        $offset = strlen($prefix);
+        self::opensslClear();
+        try {
+            $plain = openssl_decrypt(
+                substr($cur, $offset + 12, -16),
+                'aes-256-gcm',
+                self::aesV2Key($aesKey),
+                OPENSSL_RAW_DATA,
+                substr($cur, $offset, 12),
+                substr($cur, -16),
+                $prefix
+            );
+        } catch (\Throwable $e) {
+            throw new OrmException(Code::CODEC_DECODE, 'aes: authentication failed', $e);
+        }
+        if ($plain === false) {
+            $cause = self::opensslFailure('openssl_decrypt');
+            throw new OrmException(Code::CODEC_DECODE, 'aes: authentication failed', $cause);
+        }
+        return $plain;
     }
 
     /** INET6_ATON: 4 bytes for IPv4 and 16 for IPv6, an IPv4-mapped address included (COD-38). */
@@ -603,10 +964,12 @@ final class Codec
         // The exact text only: white space around the address is CODEC_ENCODE (docs/spec/codec.md).
         // inet_pton throws a ValueError on a NUL byte, which is not an address either, and accepts a zone (%eth0),
         // which is no part of one (COD-38).
-        // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged -- a text that is no address returns false, reported as CODEC_ENCODE below
-        $b = str_contains($s, "\0") || str_contains($s, '%') ? false : @inet_pton($s);
-        if ($b === false) {
+        if (str_contains($s, "\0") || str_contains($s, '%')) {
             throw new OrmException(Code::CODEC_ENCODE, 'ip: the text is not an address');
+        }
+        [$b, $cause] = self::libraryCall('inet_pton', static fn (): string|false => inet_pton($s));
+        if ($cause !== null) {
+            throw new OrmException(Code::CODEC_ENCODE, 'ip: the text is not an address', $cause);
         }
         return $b;
     }
@@ -618,6 +981,7 @@ final class Codec
         if ($n !== 4 && $n !== 16) {
             throw new OrmException(Code::CODEC_DECODE, 'ip: the cell is not 4 or 16 packed bytes');
         }
+        // inet_ntop writes the text of any 4 or 16 bytes (COD-72).
         return inet_ntop($b);
     }
 
@@ -704,61 +1068,5 @@ final class Codec
         } catch (OrmException $e) {
             throw self::namedDecodeFailure($e, $name);
         }
-    }
-
-    /**
-     * The refusal of a serialized text that unserialize would read without an error: a value that starts with O:,
-     * C:, R: or r: is CODEC_UNSUPPORTED (COD-34), and an integer outside i64 is CODEC_DECODE (COD-16), since
-     * unserialize clamps it to PHP_INT_MAX or PHP_INT_MIN. The walk reads each value by its type letter and skips a
-     * string by its byte length, so the letters inside a string are text; it stops at the first value it cannot read
-     * and leaves that format failure to unserialize.
-     */
-    private static function serializedRefusal(string $text): ?OrmException
-    {
-        $at = 0;
-        $length = strlen($text);
-        while ($at < $length) {
-            $type = $text[$at];
-            if (in_array($type, ['O', 'C', 'R', 'r'], true) && substr($text, $at + 1, 1) === ':') {
-                return new OrmException(Code::CODEC_UNSUPPORTED, 'serialize: objects and references are not supported');
-            }
-            if ($type === '}' || $type === 'N' && substr($text, $at, 2) === 'N;') {
-                $at += $type === '}' ? 1 : 2;
-                continue;
-            }
-            if ($type === 's' && preg_match('/\Gs:(\d+):"/', $text, $m, 0, $at) === 1) {
-                $at += strlen($m[0]) + (int) $m[1] + 2;
-                continue;
-            }
-            if ($type === 'a' && preg_match('/\Ga:\d+:\{/', $text, $m, 0, $at) === 1) {
-                $at += strlen($m[0]);
-                continue;
-            }
-            if (preg_match('/\G([bid]):([^;]*);/', $text, $m, 0, $at) === 1) {
-                if ($m[1] === 'i' && !self::serializedI64($m[2])) {
-                    return new OrmException(Code::CODEC_DECODE, "serialize: integer {$m[2]} is outside the i64 range");
-                }
-                $at += strlen($m[0]);
-                continue;
-            }
-            return null;
-        }
-        return null;
-    }
-
-    /** Whether the text of a serialized integer, with its optional sign and leading zeros, is in the i64 range. */
-    private static function serializedI64(string $digits): bool
-    {
-        if (preg_match('/^([+-]?)0*([0-9]+)$/', $digits, $m) !== 1) {
-            return true;
-        }
-        $limit = $m[1] === '-' ? '9223372036854775808' : '9223372036854775807';
-        return strlen($m[2]) < strlen($limit) || strlen($m[2]) === strlen($limit) && strcmp($m[2], $limit) <= 0;
-    }
-
-    /** unserialize gives PHP arrays as-is; nothing to change in the value model (int keys stay int keys). */
-    private static function normalize(mixed $v): mixed
-    {
-        return $v;
     }
 }

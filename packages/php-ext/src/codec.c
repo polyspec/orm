@@ -1,25 +1,33 @@
 /*
  * Polyspec\Orm\Codec of the PHP library (packages/php/src/Codec.php) in C. The dispatch of the stages, the byte work (gz with
- * libz, base64 strictly as the encoder writes it, the ip packing), the value checks and the error codes are made here, the same
- * as Codec.php. The parsers and writers that the library itself calls are called through the engine by the same public names:
- * Polyspec\OrderedJson\parse and stringify (the ordered-json value), Purr\Yaml (the YAML node model, CoreSchema and the
- * Dumper), and serialize, unserialize, json_encode and get_object_vars of PHP's own core. Each step
- * keeps the order and the exception classes of Codec.php, so a failure gives the same code.
+ * libz, base64 strictly as the encoder writes it, the ip packing), the reader of the serialize format, the value checks and the
+ * error codes are made here, the same as Codec.php. The parsers and writers that the library itself calls are called through the
+ * engine by the same public names: Polyspec\OrderedJson\parse (the ordered-json value), Purr\Yaml (the YAML node model, CoreSchema
+ * and the Dumper), and serialize, json_encode, get_object_vars, random_bytes and openssl of PHP's own core. Each refusal is the rule
+ * of COD-70 with its code and its one text, the same as Codec.php, and a failure of a library keeps its failure as the previous
+ * exception (COD-71).
  */
 #include "codec.h"
 #include "aes_keyring.h"
 #include "ext/json/php_json.h"
+#include "ext/spl/spl_exceptions.h"
 #include "ext/standard/base64.h"
 #include "Zend/zend_exceptions.h"
 #include "Zend/zend_interfaces.h"
 #include "Zend/zend_enum.h"
 #include "Zend/zend_smart_str.h"
+#include "Zend/zend_strtod.h"
 #include <arpa/inet.h>
 #include <ctype.h>
 #include <math.h>
 #include <stdarg.h>
 #include <string.h>
 #include <zlib.h>
+
+/* The nesting that the ordered-json parser reads (json-depth of COD-70), Codec::JSON_DEPTH. */
+#define JSON_DEPTH 256
+
+#define TEXT_UNICODE "the text is not a sequence of Unicode scalar values"
 
 /* ---- engine helpers ---- */
 
@@ -53,28 +61,23 @@ static bool is_instance(zval *obj, const char *name, bool *yes)
         }                                 \
     } while (0)
 
-/* Whether the pending exception is an instance of the class named. */
-static bool exception_is(const char *name)
+/* Whether an object is an instance of the class or interface named. A class that is not loaded has no instance, so the lookup
+ * loads nothing and throws nothing, and it may run while an exception is pending. */
+static bool object_is(zend_object *obj, const char *name)
 {
-    if (EG(exception) == NULL) {
+    if (obj == NULL) {
         return false;
     }
     zend_string *n = zend_string_init(name, strlen(name), 0);
-    zend_class_entry *ce = zend_lookup_class(n);
+    zend_class_entry *ce = zend_lookup_class_ex(n, NULL, ZEND_FETCH_CLASS_NO_AUTOLOAD);
     zend_string_release(n);
-    return ce != NULL && instanceof_function(EG(exception)->ce, ce);
+    return ce != NULL && instanceof_function(obj->ce, ce);
 }
 
-static bool yaml_decode_exception_expected(void)
+/* Whether the pending exception is an instance of the class named. */
+static bool exception_is(const char *name)
 {
-    return exception_is("Purr\\Yaml\\Exception\\ParseException")
-        || exception_is("Purr\\Yaml\\Exception\\ReferenceException")
-        || exception_is("InvalidArgumentException");
-}
-
-static bool yaml_encode_exception_expected(void)
-{
-    return exception_is("InvalidArgumentException");
+    return object_is(EG(exception), name);
 }
 
 /* Releases a string that may be NULL (a style that is not set). */
@@ -134,16 +137,6 @@ static bool call_method(zval *obj, const char *method, zval *ret, uint32_t argc,
     add_next_index_string(&cb, method);
     bool ok = invoke(&cb, ret, argc, argv);
     zval_ptr_dtor(&cb);
-    return ok;
-}
-
-/* Calls a function with the warnings of its call silenced, as the @ operator does in Codec.php. */
-static bool call_silenced(const char *name, zval *ret, uint32_t argc, zval *argv)
-{
-    zend_long saved = EG(error_reporting);
-    EG(error_reporting) = 0;
-    bool ok = call_fn(name, ret, argc, argv);
-    EG(error_reporting) = saved;
     return ok;
 }
 
@@ -235,31 +228,17 @@ static bool orm_failf_previous(const char *code, zend_object *previous, const ch
     return orm_fail_previous(code, msg, previous);
 }
 
-/*
- * A value stage failed. err is the codec's own rule, which names no value (INT-163): it is prefixed by the stage and kept
- * as an InvalidArgumentException, the previous exception, as Codec.php keeps its CodecRule. With no rule, the expected
- * delegated PHP exception of the library is the previous exception and the stage states library, its own text, so no
- * library text reaches the message.
- */
-static bool stage_fail(const char *stage, const char *code, zend_string *err, const char *library)
+/* The cause of a library call that reported its failure only by its result (COD-71): a RuntimeException that holds what the
+ * library reports, as Codec::libraryCall. It is not thrown; the caller gives it to the error of its rule. */
+static zend_object *library_cause(const char *fmt, ...)
 {
-    if (EG(exception) == NULL && err != NULL) {
-        zend_class_entry *ce = class_named("InvalidArgumentException");
-        if (ce == NULL) {
-            str_free(err);
-            return false;
-        }
-        zend_throw_exception(ce, ZSTR_VAL(err), 0);
-    }
-    zend_object *previous = EG(exception) != NULL ? take_exception() : NULL;
-    bool r = orm_failf_previous(code, previous, "%s: %s", stage, err != NULL ? ZSTR_VAL(err) : library);
-    str_free(err);
-    return r;
-}
-
-static void err_set(zend_string **err, const char *msg)
-{
-    *err = zend_string_init(msg, strlen(msg), 0);
+    va_list ap;
+    va_start(ap, fmt);
+    zend_string *msg = zend_vstrpprintf(0, fmt, ap);
+    va_end(ap);
+    zend_throw_exception(spl_ce_RuntimeException, ZSTR_VAL(msg), 0);
+    zend_string_release(msg);
+    return take_exception();
 }
 
 /* The style at index i of a list, as a new string, or NULL when it is not set. */
@@ -285,12 +264,14 @@ static bool need_string(zval *v, const char *fn)
 
 /* ---- gz and the UTF-8 check ---- */
 
-/* gzuncompress: the zlib stream of in, or NULL when it is not one. */
-static zend_string *gz_inflate(zend_string *in)
+/* gzuncompress: the zlib stream of in, or NULL with the message of zlib when it is not one. */
+static zend_string *gz_inflate(zend_string *in, const char **message)
 {
     z_stream zs;
     memset(&zs, 0, sizeof zs);
-    if (inflateInit(&zs) != Z_OK) {
+    int r = inflateInit(&zs);
+    if (r != Z_OK) {
+        *message = zs.msg != NULL ? zs.msg : zError(r);
         return NULL;
     }
     size_t cap = ZSTR_LEN(in) * 4 + 256, produced = 0;
@@ -300,7 +281,7 @@ static zend_string *gz_inflate(zend_string *in)
     for (;;) {
         zs.next_out = (Bytef *)ZSTR_VAL(out) + produced;
         zs.avail_out = (uInt)(cap - produced);
-        int r = inflate(&zs, Z_NO_FLUSH);
+        r = inflate(&zs, Z_NO_FLUSH);
         produced = cap - zs.avail_out;
         if (r == Z_STREAM_END) {
             break;
@@ -310,6 +291,8 @@ static zend_string *gz_inflate(zend_string *in)
             out = zend_string_extend(out, cap, 0);
             continue;
         }
+        /* A stream that ends before its end is Z_BUF_ERROR or Z_OK with input left: zlib names it a data error. */
+        *message = zs.msg != NULL ? zs.msg : zError(r == Z_OK || r == Z_BUF_ERROR ? Z_DATA_ERROR : r);
         inflateEnd(&zs);
         zend_string_release(out);
         return NULL;
@@ -320,12 +303,14 @@ static zend_string *gz_inflate(zend_string *in)
     return out;
 }
 
-/* gzcompress($data, 9): a zlib stream with the memory level of php_zlib_encode (MAX_MEM_LEVEL). */
-static zend_string *gz_deflate(zend_string *in)
+/* gzcompress($data, 9): a zlib stream with the memory level of php_zlib_encode (MAX_MEM_LEVEL), or NULL with the message of zlib. */
+static zend_string *gz_deflate(zend_string *in, const char **message)
 {
     z_stream zs;
     memset(&zs, 0, sizeof zs);
-    if (deflateInit2(&zs, 9, Z_DEFLATED, MAX_WBITS, MAX_MEM_LEVEL, Z_DEFAULT_STRATEGY) != Z_OK) {
+    int r = deflateInit2(&zs, 9, Z_DEFLATED, MAX_WBITS, MAX_MEM_LEVEL, Z_DEFAULT_STRATEGY);
+    if (r != Z_OK) {
+        *message = zs.msg != NULL ? zs.msg : zError(r);
         return NULL;
     }
     uLong bound = deflateBound(&zs, (uLong)ZSTR_LEN(in));
@@ -334,20 +319,22 @@ static zend_string *gz_deflate(zend_string *in)
     zs.avail_in = (uInt)ZSTR_LEN(in);
     zs.next_out = (Bytef *)ZSTR_VAL(out);
     zs.avail_out = (uInt)bound;
-    int r = deflate(&zs, Z_FINISH);
+    r = deflate(&zs, Z_FINISH);
     size_t produced = bound - zs.avail_out;
-    deflateEnd(&zs);
     if (r != Z_STREAM_END) {
+        *message = zs.msg != NULL ? zs.msg : zError(r);
+        deflateEnd(&zs);
         zend_string_release(out);
         return NULL;
     }
+    deflateEnd(&zs);
     ZSTR_LEN(out) = produced;
     ZSTR_VAL(out)[produced] = '\0';
     return out;
 }
 
-/* preg_match('//u') and mb_check_encoding of Codec.php: whether the bytes are valid UTF-8 (no overlong form, no surrogate,
- * nothing above U+10FFFF); a text stage and the YAML stream (COD-13) check their bytes with it. */
+/* mb_check_encoding($s, 'UTF-8') of Codec.php: whether the bytes are valid UTF-8 (no overlong form, no surrogate, nothing above
+ * U+10FFFF), which is a sequence of Unicode scalar values. */
 static bool valid_utf8(const unsigned char *s, size_t n)
 {
     size_t i = 0;
@@ -392,59 +379,71 @@ bool codec_valid_utf8(const char *s, size_t n)
     return valid_utf8((const unsigned char *)s, n);
 }
 
-/* ---- YAML: the value model and the node model of purr, and its Dumper ---- */
-
-/* validateCommonValue: the error message of a value outside the common value model (COD-16), or true. */
-static bool common_value(zval *v, zend_string **err)
+static bool str_utf8(zend_string *s)
 {
-    if (Z_TYPE_P(v) == IS_DOUBLE && !isfinite(Z_DVAL_P(v))) {
-        err_set(err, "non-finite numbers are not supported");
-        return false;
-    }
-    if (Z_TYPE_P(v) == IS_ARRAY) {
-        zval *item;
-        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(v), item)
-        {
-            if (!common_value(item, err)) {
-                return false;
-            }
-        }
-        ZEND_HASH_FOREACH_END();
-        return true;
-    }
+    return valid_utf8((const unsigned char *)ZSTR_VAL(s), ZSTR_LEN(s));
+}
+
+/* ---- the common value model ---- */
+
+/* Codec::codecValueRule: the rule of COD-70 that a value under a first serialize or yaml stage breaks, or NULL for a value of the
+ * common value model of COD-16: the first node that breaks one, keys before their values. */
+static const char *codec_value_rule(zval *v)
+{
+    ZVAL_DEREF(v);
     switch (Z_TYPE_P(v)) {
         case IS_NULL:
         case IS_FALSE:
         case IS_TRUE:
         case IS_LONG:
-        case IS_DOUBLE:
+            return NULL;
         case IS_STRING:
-            return true;
+            return str_utf8(Z_STR_P(v)) ? NULL : TEXT_UNICODE;
+        case IS_DOUBLE:
+            return zend_finite(Z_DVAL_P(v)) ? NULL : "number is not finite";
+        case IS_ARRAY: {
+            zend_string *key;
+            zval *item;
+            ZEND_HASH_FOREACH_STR_KEY_VAL(Z_ARRVAL_P(v), key, item)
+            {
+                if (key != NULL && !str_utf8(key)) {
+                    return TEXT_UNICODE;
+                }
+                const char *rule = codec_value_rule(item);
+                if (rule != NULL) {
+                    return rule;
+                }
+            }
+            ZEND_HASH_FOREACH_END();
+            return NULL;
+        }
+        case IS_OBJECT:
+            if (object_is(Z_OBJ_P(v), "Polyspec\\OrderedJson\\Value")) {
+                return "an ordered-json value is written only by the ordered_json stage";
+            }
+            return "the value is not a codec value";
         default:
-            err_set(err, "value type is not supported");
-            return false;
+            return "the value is not a codec value";
     }
 }
 
-static zend_string *line_message(const char *fmt, zend_long line)
+/* Codec::checkCodecValue: a value under the first stage is refused by the rule it breaks, prefixed by the stage. */
+static bool check_codec_value(const char *stage, zval *v)
 {
-    return zend_strpprintf(0, fmt, line);
+    const char *rule = codec_value_rule(v);
+    return rule == NULL || orm_failf("CODEC_ENCODE", "%s: %s", stage, rule);
 }
 
-static bool node_line(zval *node, zend_long *line)
+/* ---- YAML: the node model of purr, its core schema and its Dumper ---- */
+
+static bool yaml_rule(const char *rule)
 {
-    zval rv;
-    if (!call_method(node, "getLine", &rv, 0, NULL)) {
-        return false;
-    }
-    *line = zval_get_long(&rv);
-    zval_ptr_dtor(&rv);
-    return true;
+    return orm_failf("CODEC_DECODE", "yaml: %s", rule);
 }
 
 /* Codec.php yamlIntegerInRange: an integer of the core schema outside i64 is not a value of the common value model (COD-16); the
  * reader turns a decimal one into a float and wraps an octal or hexadecimal one, so the plain text is checked here. */
-static bool yaml_integer_in_range(zval *node, zend_string **err)
+static bool yaml_integer_in_range(zval *node)
 {
     zval style, value;
     if (!call_method(node, "getStyle", &style, 0, NULL)) {
@@ -486,100 +485,84 @@ static bool yaml_integer_in_range(zval *node, zend_string **err)
             in_range = digits < 19 || (digits == 19 && memcmp(s + i, max, 19) <= 0);
         }
     }
-    if (integer && !in_range) {
-        zend_long line = 0;
-        if (!node_line(node, &line)) {
-            zval_ptr_dtor(&value);
-            return false;
-        }
-        *err = line_message("integer at line " ZEND_LONG_FMT " is outside the i64 range", line);
-        zval_ptr_dtor(&value);
-        return false;
-    }
     zval_ptr_dtor(&value);
-    return true;
+    return !integer || in_range || yaml_rule("integer is outside the i64 range");
 }
 
-/* Codec.php finiteValue: a float of the common value model is finite (COD-16). */
-static bool finite_value(zval *v)
-{
-    if (Z_TYPE_P(v) == IS_DOUBLE) {
-        return zend_finite(Z_DVAL_P(v));
-    }
-    if (Z_TYPE_P(v) == IS_ARRAY) {
-        zval *item;
-        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(v), item) {
-            if (!finite_value(item)) {
-                return false;
-            }
-        } ZEND_HASH_FOREACH_END();
-    }
-    return true;
-}
-
-/* Codec.php yamlNode: a purr node as a PHP value, with the checks of the codec's YAML rules. err gets the message of a rule. */
-static bool yaml_node(zval *node, zval *schema, zval *out, zend_string **err)
+/* Codec::yamlProperties: the properties of a node that the codec refuses, an alias, an anchor and an explicit tag, in that order. */
+static bool yaml_properties(zval *node)
 {
     bool yes;
-    zval rv;
-    zend_long line;
-
     IS_A(node, "Purr\\Yaml\\Node\\AliasNode", yes);
     if (yes) {
-        if (!node_line(node, &line)) {
-            return false;
-        }
-        *err = line_message("aliases are not supported at line " ZEND_LONG_FMT, line);
-        return false;
+        return yaml_rule("aliases are not supported");
     }
+    zval rv;
     if (!call_method(node, "hasAnchor", &rv, 0, NULL)) {
         return false;
     }
-    if (Z_TYPE(rv) == IS_TRUE) {
-        if (!node_line(node, &line)) {
-            return false;
-        }
-        *err = line_message("anchors are not supported at line " ZEND_LONG_FMT, line);
+    bool anchored = Z_TYPE(rv) == IS_TRUE;
+    zval_ptr_dtor(&rv);
+    if (anchored) {
+        return yaml_rule("anchors are not supported");
+    }
+    if (!call_method(node, "findTag", &rv, 0, NULL)) {
         return false;
     }
-    zval tag;
-    if (!call_method(node, "findTag", &tag, 0, NULL)) {
+    bool tagged = Z_TYPE(rv) != IS_NULL;
+    zval_ptr_dtor(&rv);
+    return !tagged || yaml_rule("explicit tags are not supported");
+}
+
+/* The items of a purr list (a NodeList or a MappingEntryList) as a PHP list, as iterator_to_array($list, false). */
+static bool yaml_items(zval *node, const char *method, zval *items)
+{
+    zval list;
+    if (!call_method(node, method, &list, 0, NULL)) {
         return false;
     }
-    if (Z_TYPE(tag) == IS_OBJECT) {
-        zval_ptr_dtor(&tag);
-        if (!node_line(node, &line)) {
-            return false;
-        }
-        *err = line_message("explicit tags are not supported at line " ZEND_LONG_FMT, line);
+    zval args[2];
+    ZVAL_COPY_VALUE(&args[0], &list);
+    ZVAL_FALSE(&args[1]);
+    bool ok = call_fn("iterator_to_array", items, 2, args);
+    zval_ptr_dtor(&list);
+    return ok;
+}
+
+/* Codec.php yamlNode: a purr node as a PHP value, with the rules of the codec. The node model of purrphp/yaml has four kinds (its
+ * NodeVisitor): an alias, which yaml_properties refuses, a scalar, a sequence and a mapping, which is the last; a node of another
+ * kind has no getEntries, and the failure of that call is yaml-parse (COD-72). */
+static bool yaml_node(zval *node, zval *schema, zval *out)
+{
+    bool yes;
+    if (!yaml_properties(node)) {
         return false;
     }
-    zval_ptr_dtor(&tag);
 
     IS_A(node, "Purr\\Yaml\\Node\\ScalarNode", yes);
     if (yes) {
-        if (!yaml_integer_in_range(node, err)) {
+        if (!yaml_integer_in_range(node)) {
             return false;
         }
         zval arg;
         ZVAL_COPY(&arg, node);
         bool ok = call_method(schema, "resolve", out, 1, &arg);
         zval_ptr_dtor(&arg);
-        return ok;
+        if (!ok) {
+            return false;
+        }
+        /* A float beyond the f64 range is read as INF, so the rule covers it with .inf and .nan (COD-16). */
+        if (Z_TYPE_P(out) == IS_DOUBLE && !zend_finite(Z_DVAL_P(out))) {
+            zval_ptr_dtor(out);
+            return yaml_rule("number is not finite");
+        }
+        return true;
     }
 
     IS_A(node, "Purr\\Yaml\\Node\\SequenceNode", yes);
     if (yes) {
-        zval list, items;
-        if (!call_method(node, "getItems", &list, 0, NULL)) {
-            return false;
-        }
-        zval args[2];
-        ZVAL_COPY_VALUE(&args[0], &list);
-        ZVAL_FALSE(&args[1]);
-        bool ok = call_fn("iterator_to_array", &items, 2, args);
-        zval_ptr_dtor(&list);
-        if (!ok) {
+        zval items;
+        if (!yaml_items(node, "getItems", &items)) {
             return false;
         }
         array_init(out);
@@ -587,7 +570,7 @@ static bool yaml_node(zval *node, zval *schema, zval *out, zend_string **err)
         ZEND_HASH_FOREACH_VAL(Z_ARRVAL(items), item)
         {
             zval val;
-            if (!yaml_node(item, schema, &val, err)) {
+            if (!yaml_node(item, schema, &val)) {
                 zval_ptr_dtor(&items);
                 zval_ptr_dtor(out);
                 return false;
@@ -599,95 +582,76 @@ static bool yaml_node(zval *node, zval *schema, zval *out, zend_string **err)
         return true;
     }
 
-    IS_A(node, "Purr\\Yaml\\Node\\MappingNode", yes);
-    if (yes) {
-        zval list, entries;
-        if (!call_method(node, "getEntries", &list, 0, NULL)) {
-            return false;
-        }
-        zval args[2];
-        ZVAL_COPY_VALUE(&args[0], &list);
-        ZVAL_FALSE(&args[1]);
-        bool ok = call_fn("iterator_to_array", &entries, 2, args);
-        zval_ptr_dtor(&list);
-        if (!ok) {
-            return false;
-        }
-        array_init(out);
-        zval *entry;
-        ZEND_HASH_FOREACH_VAL(Z_ARRVAL(entries), entry)
-        {
-            /* << is an ordinary key: YAML 1.2 has no merge key (COD-29). */
-            zval keynode, key, valnode, val;
-            if (!call_method(entry, "getKey", &keynode, 0, NULL)) {
-                goto fail;
-            }
-            if (!yaml_node(&keynode, schema, &key, err)) {
-                zval_ptr_dtor(&keynode);
-                goto fail;
-            }
-            if (Z_TYPE(key) != IS_STRING && Z_TYPE(key) != IS_LONG) {
-                zend_long kl = 0;
-                if (!node_line(&keynode, &kl)) {
-                    zval_ptr_dtor(&keynode);
-                    zval_ptr_dtor(&key);
-                    goto fail;
-                }
-                *err = line_message("map keys must be strings or integers at line " ZEND_LONG_FMT, kl);
-                zval_ptr_dtor(&keynode);
-                zval_ptr_dtor(&key);
-                goto fail;
-            }
-            zval *exists = Z_TYPE(key) == IS_STRING ? zend_symtable_find(Z_ARRVAL_P(out), Z_STR(key))
-                                                    : zend_hash_index_find(Z_ARRVAL_P(out), (zend_ulong)Z_LVAL(key));
-            if (exists != NULL) {
-                zend_long kl = 0;
-                if (!node_line(&keynode, &kl)) {
-                    zval_ptr_dtor(&keynode);
-                    zval_ptr_dtor(&key);
-                    goto fail;
-                }
-                *err = line_message("duplicate map key at line " ZEND_LONG_FMT, kl);
-                zval_ptr_dtor(&keynode);
-                zval_ptr_dtor(&key);
-                goto fail;
-            }
-            zval_ptr_dtor(&keynode);
-            if (!call_method(entry, "getValue", &valnode, 0, NULL)) {
-                zval_ptr_dtor(&key);
-                goto fail;
-            }
-            if (!yaml_node(&valnode, schema, &val, err)) {
-                zval_ptr_dtor(&valnode);
-                zval_ptr_dtor(&key);
-                goto fail;
-            }
-            zval_ptr_dtor(&valnode);
-            if (Z_TYPE(key) == IS_STRING) {
-                zend_symtable_update(Z_ARRVAL_P(out), Z_STR(key), &val);
-            } else {
-                zend_hash_index_update(Z_ARRVAL_P(out), (zend_ulong)Z_LVAL(key), &val);
-            }
-            zval_ptr_dtor(&key);
-            continue;
-        fail:
-            zval_ptr_dtor(&entries);
-            zval_ptr_dtor(out);
-            return false;
-        }
-        ZEND_HASH_FOREACH_END();
-        zval_ptr_dtor(&entries);
-        return true;
-    }
-
-    if (!node_line(node, &line)) {
+    zval entries;
+    if (!yaml_items(node, "getEntries", &entries)) {
         return false;
     }
-    *err = line_message("the node at line " ZEND_LONG_FMT " is not supported", line);
-    return false;
+    array_init(out);
+    zval *entry;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL(entries), entry)
+    {
+        /* << is an ordinary key: YAML 1.2 has no merge key (COD-29). */
+        zval keynode, key, valnode, val;
+        bool sequence, mapping;
+        if (!call_method(entry, "getKey", &keynode, 0, NULL)) {
+            goto fail;
+        }
+        if (!is_instance(&keynode, "Purr\\Yaml\\Node\\SequenceNode", &sequence)
+            || !is_instance(&keynode, "Purr\\Yaml\\Node\\MappingNode", &mapping)) {
+            zval_ptr_dtor(&keynode);
+            goto fail;
+        }
+        if (sequence || mapping) {
+            if (yaml_properties(&keynode)) {
+                (void)yaml_rule("map keys must be scalar strings");
+            }
+            zval_ptr_dtor(&keynode);
+            goto fail;
+        }
+        bool read = yaml_node(&keynode, schema, &key);
+        zval_ptr_dtor(&keynode);
+        if (!read) {
+            goto fail;
+        }
+        if (Z_TYPE(key) != IS_STRING && Z_TYPE(key) != IS_LONG) {
+            zval_ptr_dtor(&key);
+            (void)yaml_rule("map keys must be strings or integers");
+            goto fail;
+        }
+        zval *exists = Z_TYPE(key) == IS_STRING ? zend_symtable_find(Z_ARRVAL_P(out), Z_STR(key))
+                                                : zend_hash_index_find(Z_ARRVAL_P(out), (zend_ulong)Z_LVAL(key));
+        if (exists != NULL) {
+            zval_ptr_dtor(&key);
+            (void)yaml_rule("duplicate map key");
+            goto fail;
+        }
+        if (!call_method(entry, "getValue", &valnode, 0, NULL)) {
+            zval_ptr_dtor(&key);
+            goto fail;
+        }
+        read = yaml_node(&valnode, schema, &val);
+        zval_ptr_dtor(&valnode);
+        if (!read) {
+            zval_ptr_dtor(&key);
+            goto fail;
+        }
+        if (Z_TYPE(key) == IS_STRING) {
+            zend_symtable_update(Z_ARRVAL_P(out), Z_STR(key), &val);
+        } else {
+            zend_hash_index_update(Z_ARRVAL_P(out), (zend_ulong)Z_LVAL(key), &val);
+        }
+        zval_ptr_dtor(&key);
+        continue;
+    fail:
+        zval_ptr_dtor(&entries);
+        zval_ptr_dtor(out);
+        return false;
+    }
+    ZEND_HASH_FOREACH_END();
+    zval_ptr_dtor(&entries);
+    return true;
 }
 
-/* yamlDecode: one YAML document, read by purr and resolved by its core schema. */
 /* Whether a character may appear in a YAML stream (YAML 1.2.2, 5.1, c-printable), as Codec::yamlStream. A byte order mark is
  * the encoding mark at the start of the stream (5.2) and never content. */
 static bool yaml_printable(unsigned long cp)
@@ -699,13 +663,12 @@ static bool yaml_printable(unsigned long cp)
 
 /* The stream rules of YAML 1.2 that the reader does not apply, as Codec::yamlStream: the stream is UTF-8, a byte order mark
  * may start it and appears nowhere else, and every character is printable. */
-static bool yaml_stream(zend_string *text, zend_string **err)
+static bool yaml_stream(zend_string *text)
 {
     const unsigned char *s = (const unsigned char *)ZSTR_VAL(text);
     size_t n = ZSTR_LEN(text), i = 0;
     if (!valid_utf8(s, n)) {
-        *err = zend_string_init(ZEND_STRL("the stream is not UTF-8"), 0);
-        return false;
+        return yaml_rule("the stream is not UTF-8");
     }
     if (n >= 3 && s[0] == 0xEF && s[1] == 0xBB && s[2] == 0xBF) i = 3;
     while (i < n) {
@@ -714,21 +677,22 @@ static bool yaml_stream(zend_string *text, zend_string **err)
         for (size_t k = 1; k < len; k++) cp = (cp << 6) | (s[i + k] & 0x3F);
         i += len;
         if (!yaml_printable(cp)) {
-            *err = zend_string_init(ZEND_STRL("the stream holds a character that is not printable"), 0);
-            return false;
+            return yaml_rule("the stream holds a character that is not printable");
         }
     }
     return true;
 }
 
-static bool yaml_decode_text(zend_string *text, zval *out, zend_string **err)
+/* The read of yamlDecode: one YAML document, read by purr and resolved by its core schema. A rule is a pending OrmException, and
+ * a failure of the library is its own pending exception. */
+static bool yaml_read(zend_string *text, zval *out)
 {
-    if (!yaml_stream(text, err)) {
+    if (!yaml_stream(text)) {
         return false;
     }
     zend_class_entry *stream_ce = class_named("Purr\\Yaml\\YamlStream");
-    zend_class_entry *schema_ce = class_named("Purr\\Yaml\\Schema\\CoreSchema");
-    if (stream_ce == NULL || schema_ce == NULL) {
+    zend_class_entry *schema_ce = stream_ce != NULL ? class_named("Purr\\Yaml\\Schema\\CoreSchema") : NULL;
+    if (schema_ce == NULL) {
         return false;
     }
     zval stream, docs, arg, count, doc, root, schema;
@@ -748,15 +712,9 @@ static bool yaml_decode_text(zend_string *text, zval *out, zend_string **err)
         zval_ptr_dtor(&docs);
         return false;
     }
-    if (n == 0) {
+    if (n == 0 || n > 1) {
         zval_ptr_dtor(&docs);
-        err_set(err, "no document");
-        return false;
-    }
-    if (n > 1) {
-        zval_ptr_dtor(&docs);
-        err_set(err, "multiple documents are not supported");
-        return false;
+        return yaml_rule(n == 0 ? "no document" : "multiple documents are not supported");
     }
     zval index;
     ZVAL_LONG(&index, 0);
@@ -774,10 +732,26 @@ static bool yaml_decode_text(zend_string *text, zval *out, zend_string **err)
         zval_ptr_dtor(&root);
         return false;
     }
-    ok = yaml_node(&root, &schema, out, err);
+    ok = yaml_node(&root, &schema, out);
     zval_ptr_dtor(&root);
     zval_ptr_dtor(&schema);
     return ok;
+}
+
+/* Codec::yamlDecode: the read, whose rules pass as they are; the parser resolves an alias as it reads it and refuses one whose
+ * anchor is not in the stream with a ReferenceException, which is yaml-alias, and any other failure of the library is yaml-parse,
+ * with the failure as the previous exception (COD-71). */
+static bool yaml_decode(zend_string *text, zval *out)
+{
+    if (yaml_read(text, out)) {
+        return true;
+    }
+    if (EG(exception) == NULL || exception_is("Polyspec\\Orm\\OrmException")) {
+        return false;
+    }
+    bool alias = exception_is("Purr\\Yaml\\Exception\\ReferenceException");
+    zend_object *cause = take_exception();
+    return orm_failf_previous("CODEC_DECODE", cause, "yaml: %s", alias ? "aliases are not supported" : "the stream does not parse");
 }
 
 /* A new object of the class, built as `new` builds it with the arguments; it takes no ownership of them. */
@@ -828,9 +802,10 @@ static bool yaml_scalar(zend_string *text, bool quoted, zval *out)
 }
 
 /* yamlNodeOf of Codec.php: the YAML node of a common value, its strings and keys double-quoted and a float by its shortest
- * text with its fraction. */
+ * text with its fraction. The value is one that codec_value_rule passed, so an array is the last kind. */
 static bool yaml_node_of(zval *v, zval *out)
 {
+    ZVAL_DEREF(v);
     switch (Z_TYPE_P(v)) {
         case IS_NULL:
             return yaml_scalar(zend_string_init(ZEND_STRL("null"), 0), false, out);
@@ -850,12 +825,10 @@ static bool yaml_node_of(zval *v, zval *out)
         }
         case IS_STRING:
             return yaml_scalar(zend_string_copy(Z_STR_P(v)), true, out);
-        case IS_ARRAY:
-            break;
         default:
-            zend_throw_exception(class_named("InvalidArgumentException"), "value type is not supported", 0);
-            return false;
+            break;
     }
+    ZEND_ASSERT(Z_TYPE_P(v) == IS_ARRAY);
     HashTable *ht = Z_ARRVAL_P(v);
     uint32_t n = zend_hash_num_elements(ht), i = 0;
     bool list = zend_array_is_list(ht);
@@ -920,12 +893,9 @@ static bool yaml_node_of(zval *v, zval *out)
     return ok;
 }
 
-/* The YAML text of a common value, as Codec.php writes it: the Dumper of purrphp/yaml writes its node, then a line break. */
-static bool yaml_dump(zval *value, zval *out, zend_string **err)
+/* The text that the Dumper of purrphp/yaml writes for the node of a value, then a line break; a failure is a pending exception. */
+static bool yaml_dump(zval *value, zval *out)
 {
-    if (!common_value(value, err)) {
-        return false;
-    }
     zval root, document, dumper, text;
     if (!yaml_node_of(value, &root)) {
         return false;
@@ -950,6 +920,33 @@ static bool yaml_dump(zval *value, zval *out, zend_string **err)
     return true;
 }
 
+/* Codec::yamlText: the rules of the value, the text that the Dumper writes, and the text read back, which must be the value
+ * (yaml-read-back). */
+static bool yaml_text(zval *value, zval *out)
+{
+    if (!check_codec_value("yaml", value)) {
+        return false;
+    }
+    zval text, back;
+    if (!yaml_dump(value, &text)) {
+        zend_object *cause = EG(exception) != NULL ? take_exception() : NULL;
+        return orm_failf_previous("CODEC_ENCODE", cause, "yaml: the value has no YAML text");
+    }
+    if (!yaml_decode(Z_STR(text), &back)) {
+        zval_ptr_dtor(&text);
+        zend_object *cause = EG(exception) != NULL ? take_exception() : NULL;
+        return orm_failf_previous("CODEC_ENCODE", cause, "yaml: the written text does not read back as the value");
+    }
+    bool same = zend_is_identical(&back, value);
+    zval_ptr_dtor(&back);
+    if (!same) {
+        zval_ptr_dtor(&text);
+        return orm_failf("CODEC_ENCODE", "yaml: the written text does not read back as the value");
+    }
+    ZVAL_COPY_VALUE(out, &text);
+    return true;
+}
+
 /* ---- ordered JSON: the text of a value, as Codec.php jsonText ---- */
 
 static bool json_scalar(zval *v, smart_str *out)
@@ -966,10 +963,15 @@ static bool json_scalar(zval *v, smart_str *out)
     return ok;
 }
 
-static bool json_text(zval *v, smart_str *out);
+static bool json_text(zval *v, zend_long depth, smart_str *out);
+
+static bool json_depth_error(void)
+{
+    return orm_failf("CODEC_ENCODE", "json: value nesting exceeds %d levels", JSON_DEPTH);
+}
 
 /* The map form of Codec.php: each key as its string's JSON text, then ':' and the member's text. */
-static bool json_map(HashTable *ht, smart_str *out)
+static bool json_map(HashTable *ht, zend_long depth, smart_str *out)
 {
     smart_str_appendc(out, '{');
     bool first = true;
@@ -982,16 +984,15 @@ static bool json_map(HashTable *ht, smart_str *out)
             smart_str_appendc(out, ',');
         }
         first = false;
-        zend_string *k = key != NULL ? zend_string_copy(key) : zend_long_to_str((zend_long)idx);
         zval kz;
-        ZVAL_STR(&kz, k);
-        bool ok = json_scalar(&kz, out);
+        ZVAL_STR(&kz, key != NULL ? zend_string_copy(key) : zend_long_to_str((zend_long)idx));
+        bool ok = json_text(&kz, depth, out);
         zval_ptr_dtor(&kz);
         if (!ok) {
             return false;
         }
         smart_str_appendc(out, ':');
-        if (!json_text(item, out)) {
+        if (!json_text(item, depth, out)) {
             return false;
         }
     }
@@ -1029,9 +1030,41 @@ static void compact_json_text(const char *text, size_t len, smart_str *out)
     }
 }
 
-static bool json_text(zval *v, smart_str *out)
+/* Codec::jsonTextDepth: the deepest nesting of arrays and objects in a JSON text, its string literals aside. */
+static zend_long json_text_depth(const char *text, size_t len)
+{
+    zend_long depth = 0, deepest = 0;
+    bool in_string = false, escaped = false;
+    for (size_t i = 0; i < len; i++) {
+        char c = text[i];
+        if (in_string) {
+            if (escaped) {
+                escaped = false;
+            } else if (c == '\\') {
+                escaped = true;
+            } else if (c == '"') {
+                in_string = false;
+            }
+        } else if (c == '"') {
+            in_string = true;
+        } else if (c == '[' || c == '{') {
+            if (++depth > deepest) {
+                deepest = depth;
+            }
+        } else if (c == ']' || c == '}') {
+            depth--;
+        }
+    }
+    return deepest;
+}
+
+/* Codec::jsonText: the JSON text of an ordered-json value or of the common value model, at the depth of its container. Each node is
+ * checked in order: a nesting past the 256 levels of the parser, a string that is not UTF-8, a float that is not finite and a value
+ * outside the JSON value model are their rules of COD-70. */
+static bool json_text(zval *v, zend_long depth, smart_str *out)
 {
     bool yes;
+    ZVAL_DEREF(v);
     if (Z_TYPE_P(v) == IS_OBJECT) {
         IS_A(v, "Polyspec\\OrderedJson\\Value", yes);
         if (yes) {
@@ -1040,54 +1073,70 @@ static bool json_text(zval *v, smart_str *out)
             if (!call_method(v, "raw", &s, 0, NULL)) {
                 return false;
             }
+            if (depth + json_text_depth(Z_STRVAL(s), Z_STRLEN(s)) > JSON_DEPTH) {
+                zval_ptr_dtor(&s);
+                return json_depth_error();
+            }
             smart_str_append(out, Z_STR(s));
             zval_ptr_dtor(&s);
             return true;
         }
     }
-    if (Z_TYPE_P(v) == IS_ARRAY) {
-        HashTable *ht = Z_ARRVAL_P(v);
-        if (zend_array_is_list(ht)) {
-            smart_str_appendc(out, '[');
-            bool first = true;
-            zval *item;
-            ZEND_HASH_FOREACH_VAL(ht, item)
-            {
-                if (!first) {
-                    smart_str_appendc(out, ',');
-                }
-                first = false;
-                if (!json_text(item, out)) {
-                    return false;
-                }
-            }
-            ZEND_HASH_FOREACH_END();
-            smart_str_appendc(out, ']');
-            return true;
-        }
-        return json_map(ht, out);
-    }
+    bool std_class = false;
     if (Z_TYPE_P(v) == IS_OBJECT) {
-        IS_A(v, "stdClass", yes);
-        if (yes) {
+        IS_A(v, "stdClass", std_class);
+    }
+    if (Z_TYPE_P(v) == IS_ARRAY || std_class) {
+        if (depth + 1 > JSON_DEPTH) {
+            return json_depth_error();
+        }
+        if (std_class) {
             zval props;
             if (!call_fn("get_object_vars", &props, 1, v)) {
                 return false;
             }
-            bool ok = json_map(Z_ARRVAL(props), out);
+            bool ok = json_map(Z_ARRVAL(props), depth + 1, out);
             zval_ptr_dtor(&props);
             return ok;
         }
+        HashTable *ht = Z_ARRVAL_P(v);
+        if (!zend_array_is_list(ht)) {
+            return json_map(ht, depth + 1, out);
+        }
+        smart_str_appendc(out, '[');
+        bool first = true;
+        zval *item;
+        ZEND_HASH_FOREACH_VAL(ht, item)
+        {
+            if (!first) {
+                smart_str_appendc(out, ',');
+            }
+            first = false;
+            if (!json_text(item, depth + 1, out)) {
+                return false;
+            }
+        }
+        ZEND_HASH_FOREACH_END();
+        smart_str_appendc(out, ']');
+        return true;
+    }
+    if (Z_TYPE_P(v) == IS_OBJECT) {
         IS_A(v, "JsonSerializable", yes);
         if (yes) {
             zval s;
             if (!call_method(v, "jsonSerialize", &s, 0, NULL)) {
                 return false;
             }
-            bool ok = json_text(&s, out);
+            bool ok = json_text(&s, depth, out);
             zval_ptr_dtor(&s);
             return ok;
         }
+    }
+    if (Z_TYPE_P(v) == IS_STRING && !str_utf8(Z_STR_P(v))) {
+        return orm_failf("CODEC_ENCODE", "json: " TEXT_UNICODE);
+    }
+    if (Z_TYPE_P(v) == IS_DOUBLE && !zend_finite(Z_DVAL_P(v))) {
+        return orm_failf("CODEC_ENCODE", "json: non-finite number");
     }
     if (Z_TYPE_P(v) == IS_OBJECT || Z_TYPE_P(v) == IS_RESOURCE) {
         return orm_fail("CODEC_ENCODE", zend_string_init(ZEND_STRL("json: the value is not a JSON value"), 0));
@@ -1095,14 +1144,347 @@ static bool json_text(zval *v, smart_str *out)
     return json_scalar(v, out);
 }
 
+/* Codec::orderedJsonText: the JSON text of the value, read by the ordered-json parser and written compact. A failure of the JSON
+ * writer, or an InvalidArgumentException of a JsonSerializable, or any failure of the parser is json-text. */
+static bool ordered_json_text(zval *value, zval *out)
+{
+    smart_str buf = {0};
+    if (!json_text(value, 0, &buf)) {
+        smart_str_free(&buf);
+        if (exception_is("JsonException") || exception_is("InvalidArgumentException")) {
+            return orm_failf_previous("CODEC_ENCODE", take_exception(), "json: the value has no JSON text");
+        }
+        return false;
+    }
+    zval text, parsed, s;
+    ZVAL_STR(&text, smart_str_extract(&buf));
+    bool ok = call_fn("Polyspec\\OrderedJson\\parse", &parsed, 1, &text);
+    zval_ptr_dtor(&text);
+    if (ok) {
+        ok = call_method(&parsed, "raw", &s, 0, NULL);
+        zval_ptr_dtor(&parsed);
+    }
+    if (!ok) {
+        zend_object *cause = EG(exception) != NULL ? take_exception() : NULL;
+        return orm_failf_previous("CODEC_ENCODE", cause, "json: the value has no JSON text");
+    }
+    smart_str stored = {0};
+    compact_json_text(Z_STRVAL(s), Z_STRLEN(s), &stored);
+    zval_ptr_dtor(&s);
+    ZVAL_STR(out, smart_str_extract(&stored));
+    return true;
+}
+
+/* ---- serialize: a reader of PHP's serialize format, as Codec::unserialized ---- */
+
+static bool serialize_rule(const char *rule)
+{
+    return orm_failf("CODEC_DECODE", "serialize: %s", rule);
+}
+
+/* Moves past the delimiter at *at, or refuses the cell as serialize-expected. */
+static bool serialized_delimiter(const char *s, size_t n, size_t *at, char delimiter)
+{
+    if (*at >= n || s[*at] != delimiter) {
+        return orm_failf("CODEC_DECODE", "serialize: expected %c", delimiter);
+    }
+    (*at)++;
+    return true;
+}
+
+/* The field from *at up to the delimiter that ends it, moving past the delimiter. */
+static bool serialized_field(const char *s, size_t n, size_t *at, char delimiter, const char **field, size_t *len)
+{
+    const char *end = *at < n ? memchr(s + *at, delimiter, n - *at) : NULL;
+    if (end == NULL) {
+        return orm_failf("CODEC_DECODE", "serialize: expected %c", delimiter);
+    }
+    *field = s + *at;
+    *len = (size_t)(end - *field);
+    *at = (size_t)(end - s) + 1;
+    return true;
+}
+
+/* The length of a string or an array: digits only, as the grammar of unserialize reads it; a length past SIZE_MAX is SIZE_MAX,
+ * which is past the end of any cell. */
+static bool serialized_length(const char *f, size_t len, const char *what, size_t *out)
+{
+    if (len == 0) {
+        return orm_failf("CODEC_DECODE", "serialize: bad %s length", what);
+    }
+    size_t value = 0;
+    for (size_t i = 0; i < len; i++) {
+        if (f[i] < '0' || f[i] > '9') {
+            return orm_failf("CODEC_DECODE", "serialize: bad %s length", what);
+        }
+        size_t digit = (size_t)(f[i] - '0');
+        value = value > (SIZE_MAX - digit) / 10 ? SIZE_MAX : value * 10 + digit;
+    }
+    *out = value;
+    return true;
+}
+
+/* An i field: an optional sign and digits, in the i64 range (COD-16), which unserialize would clamp. */
+static bool serialized_int(const char *f, size_t len, zend_long *out)
+{
+    size_t i = 0;
+    bool negative = false;
+    if (i < len && (f[i] == '+' || f[i] == '-')) {
+        negative = f[i] == '-';
+        i++;
+    }
+    if (i == len) {
+        return serialize_rule("bad int");
+    }
+    for (size_t k = i; k < len; k++) {
+        if (f[k] < '0' || f[k] > '9') {
+            return serialize_rule("bad int");
+        }
+    }
+    while (i + 1 < len && f[i] == '0') {
+        i++;
+    }
+    const char *limit = negative ? "9223372036854775808" : "9223372036854775807";
+    size_t digits = len - i;
+    if (digits > 19 || (digits == 19 && memcmp(f + i, limit, 19) > 0)) {
+        return serialize_rule("integer is outside the i64 range");
+    }
+    zend_ulong value = 0;
+    for (; i < len; i++) {
+        value = value * 10 + (zend_ulong)(f[i] - '0');
+    }
+    *out = !negative ? (zend_long)value : value == (zend_ulong)ZEND_LONG_MAX + 1 ? ZEND_LONG_MIN : -(zend_long)value;
+    return true;
+}
+
+/* A d field of the grammar of unserialize: an optional sign, digits with an optional fraction and an optional exponent, or NAN,
+ * INF and -INF, which with a float beyond the f64 range are not finite (COD-16). The value is zend_strtod's, as the cast of
+ * Codec.php reads it. */
+static bool serialized_float(const char *f, size_t len, double *out)
+{
+    if ((len == 3 && (memcmp(f, "NAN", 3) == 0 || memcmp(f, "INF", 3) == 0)) || (len == 4 && memcmp(f, "-INF", 4) == 0)) {
+        return serialize_rule("non-finite float");
+    }
+    size_t i = 0, whole = 0, fraction = 0;
+    if (i < len && (f[i] == '+' || f[i] == '-')) {
+        i++;
+    }
+    for (; i < len && f[i] >= '0' && f[i] <= '9'; i++) {
+        whole++;
+    }
+    if (i < len && f[i] == '.') {
+        for (i++; i < len && f[i] >= '0' && f[i] <= '9'; i++) {
+            fraction++;
+        }
+    }
+    bool form = whole + fraction > 0;
+    if (form && i < len && (f[i] == 'e' || f[i] == 'E')) {
+        size_t exponent = 0;
+        i++;
+        if (i < len && (f[i] == '+' || f[i] == '-')) {
+            i++;
+        }
+        for (; i < len && f[i] >= '0' && f[i] <= '9'; i++) {
+            exponent++;
+        }
+        form = exponent > 0;
+    }
+    if (!form || i != len) {
+        return serialize_rule("bad float");
+    }
+    /* The field ends at its ';', so zend_strtod stops at the end of the field. */
+    double value = zend_strtod(f, NULL);
+    if (!zend_finite(value)) {
+        return serialize_rule("non-finite float");
+    }
+    *out = value;
+    return true;
+}
+
+/* Codec::serializedScalar: a value of the type letter t other than an array, read from *at. */
+static bool serialized_scalar(const char *s, size_t n, size_t *at, char t, zval *out)
+{
+    const char *f;
+    size_t len;
+    switch (t) {
+        case 'N':
+            if (!serialized_delimiter(s, n, at, ';')) {
+                return false;
+            }
+            ZVAL_NULL(out);
+            return true;
+        case 'b':
+            if (!serialized_delimiter(s, n, at, ':') || !serialized_field(s, n, at, ';', &f, &len)) {
+                return false;
+            }
+            if (len != 1 || (f[0] != '0' && f[0] != '1')) {
+                return serialize_rule("bad bool");
+            }
+            ZVAL_BOOL(out, f[0] == '1');
+            return true;
+        case 'i': {
+            zend_long value;
+            if (!serialized_delimiter(s, n, at, ':') || !serialized_field(s, n, at, ';', &f, &len) || !serialized_int(f, len, &value)) {
+                return false;
+            }
+            ZVAL_LONG(out, value);
+            return true;
+        }
+        case 'd': {
+            double value;
+            if (!serialized_delimiter(s, n, at, ':') || !serialized_field(s, n, at, ';', &f, &len) || !serialized_float(f, len, &value)) {
+                return false;
+            }
+            ZVAL_DOUBLE(out, value);
+            return true;
+        }
+        case 's': {
+            size_t size;
+            if (!serialized_delimiter(s, n, at, ':') || !serialized_field(s, n, at, ':', &f, &len)
+                || !serialized_length(f, len, "string", &size) || !serialized_delimiter(s, n, at, '"')) {
+                return false;
+            }
+            if (size > n - *at) {
+                return serialize_rule("string overruns input");
+            }
+            const char *bytes = s + *at;
+            *at += size;
+            if (!valid_utf8((const unsigned char *)bytes, size)) {
+                return serialize_rule("string is not valid UTF-8");
+            }
+            if (!serialized_delimiter(s, n, at, '"') || !serialized_delimiter(s, n, at, ';')) {
+                return false;
+            }
+            ZVAL_STRINGL(out, bytes, size);
+            return true;
+        }
+        case 'O':
+        case 'C':
+        case 'r':
+        case 'R':
+            return orm_fail("CODEC_UNSUPPORTED", zend_string_init(ZEND_STRL("serialize: objects and references are not supported"), 0));
+        default:
+            return serialize_rule("unknown type");
+    }
+}
+
+/* An open array of the reader: its items, the members left, whether its key is read, and the key. */
+typedef struct {
+    zval items;
+    size_t left;
+    bool keyed;
+    zval key;
+} serialized_frame;
+
+/* Codec::unserialized: a serialized cell read by the grammar of PHP's unserialize, with the rules of COD-70: the values of the
+ * common value model (COD-16), no object or reference (COD-34), and nothing after the value. An array opens a frame, so a nesting
+ * of any depth reads without recursion; an array key is a whole value, an integer or a string, and a later key replaces an
+ * earlier one, as unserialize does. */
+static bool unserialized(zend_string *in, zval *out)
+{
+    const char *s = ZSTR_VAL(in);
+    size_t n = ZSTR_LEN(in), at = 0, depth = 0, cap = 0;
+    serialized_frame *open = NULL;
+    bool ok = true, done = false;
+    while (!done) {
+        zval value;
+        if (at >= n) {
+            ok = serialize_rule("unexpected end");
+            break;
+        }
+        char t = s[at++];
+        if (t == 'a') {
+            const char *f;
+            size_t len, members;
+            if (!serialized_delimiter(s, n, &at, ':') || !serialized_field(s, n, &at, ':', &f, &len)
+                || !serialized_length(f, len, "array", &members) || !serialized_delimiter(s, n, &at, '{')) {
+                ok = false;
+                break;
+            }
+            if (members > 0) {
+                if (depth == cap) {
+                    cap = cap == 0 ? 8 : cap * 2;
+                    open = safe_erealloc(open, cap, sizeof(serialized_frame), 0);
+                }
+                array_init(&open[depth].items);
+                open[depth].left = members;
+                open[depth].keyed = false;
+                ZVAL_UNDEF(&open[depth].key);
+                depth++;
+                continue;
+            }
+            if (!serialized_delimiter(s, n, &at, '}')) {
+                ok = false;
+                break;
+            }
+            array_init(&value);
+        } else if (!serialized_scalar(s, n, &at, t, &value)) {
+            ok = false;
+            break;
+        }
+        for (;;) {
+            if (depth == 0) {
+                if (at != n) {
+                    zval_ptr_dtor(&value);
+                    ok = serialize_rule("trailing data");
+                } else {
+                    ZVAL_COPY_VALUE(out, &value);
+                }
+                done = true;
+                break;
+            }
+            serialized_frame *top = &open[depth - 1];
+            if (!top->keyed) {
+                if (Z_TYPE(value) != IS_LONG && Z_TYPE(value) != IS_STRING) {
+                    zval_ptr_dtor(&value);
+                    ok = serialize_rule("array key must be int or string");
+                    done = true;
+                    break;
+                }
+                ZVAL_COPY_VALUE(&top->key, &value);
+                top->keyed = true;
+                break;
+            }
+            if (Z_TYPE(top->key) == IS_LONG) {
+                zend_hash_index_update(Z_ARRVAL(top->items), (zend_ulong)Z_LVAL(top->key), &value);
+            } else {
+                zend_symtable_update(Z_ARRVAL(top->items), Z_STR(top->key), &value);
+                zval_ptr_dtor(&top->key);
+            }
+            ZVAL_UNDEF(&top->key);
+            top->keyed = false;
+            if (--top->left > 0) {
+                break;
+            }
+            if (!serialized_delimiter(s, n, &at, '}')) {
+                ok = false;
+                done = true;
+                break;
+            }
+            ZVAL_COPY_VALUE(&value, &top->items);
+            depth--;
+        }
+    }
+    for (size_t i = 0; i < depth; i++) {
+        zval_ptr_dtor(&open[i].items);
+        if (open[i].keyed) {
+            zval_ptr_dtor(&open[i].key);
+        }
+    }
+    if (open != NULL) {
+        efree(open);
+    }
+    return ok;
+}
+
 /* ---- host stages: the ip packing (INET6_ATON) ---- */
 
-/* packIp: the packed address of the exact text s, or false (the caller gives the error). */
+/* packIp: the packed address of the exact text s, or false with the error of ip-text. */
 static bool ip_pack(zend_string *s, zend_string **packed)
 {
     /* A NUL byte, and a zone (%eth0), which inet_pton accepts, are no part of an address (COD-38). */
     if (memchr(ZSTR_VAL(s), '\0', ZSTR_LEN(s)) != NULL || memchr(ZSTR_VAL(s), '%', ZSTR_LEN(s)) != NULL) {
-        return false;
+        return orm_failf("CODEC_ENCODE", "ip: the text is not an address");
     }
     unsigned char buf[16];
     if (inet_pton(AF_INET, ZSTR_VAL(s), buf) == 1) {
@@ -1114,7 +1496,7 @@ static bool ip_pack(zend_string *s, zend_string **packed)
         *packed = zend_string_init((char *)buf, 16, 0);
         return true;
     }
-    return false;
+    return orm_failf_previous("CODEC_ENCODE", library_cause("inet_pton returned false"), "ip: the text is not an address");
 }
 
 static bool make_bytes(zend_string *bytes, zval *ret)
@@ -1144,93 +1526,29 @@ bool codec_is_host_style(zend_string *style)
     return zend_string_equals_literal(style, "aes") || zend_string_equals_literal(style, "hex") || zend_string_equals_literal(style, "ip");
 }
 
-static bool codec_copy_or_read_stream(zval *raw, zval *value)
+/* The cell of a decode: a stream read to its contents and a Bytes as its bytes; any other value as it is. */
+static bool codec_cell(zval *raw, zval *value)
 {
     ZVAL_COPY(value, raw);
-    if (Z_TYPE_P(value) != IS_RESOURCE) return true;
-    zval contents;
-    if (!call_fn("stream_get_contents", &contents, 1, value)) {
+    if (Z_TYPE_P(value) == IS_RESOURCE) {
+        zval contents;
+        if (!call_fn("stream_get_contents", &contents, 1, value)) {
+            zval_ptr_dtor(value);
+            return false;
+        }
+        zval_ptr_dtor(value);
+        ZVAL_COPY_VALUE(value, &contents);
+    }
+    bool bytes;
+    if (!is_instance(value, "Polyspec\\Orm\\Bytes", &bytes)) {
         zval_ptr_dtor(value);
         return false;
     }
-    zval_ptr_dtor(value);
-    ZVAL_COPY_VALUE(value, &contents);
-    return true;
-}
-
-/* Reads the decimal digits at s[*at], moving *at past them; false when there is none. */
-static bool serialized_digits(const char *s, size_t len, size_t *at, size_t *value)
-{
-    size_t start = *at;
-    *value = 0;
-    while (*at < len && s[*at] >= '0' && s[*at] <= '9') {
-        *value = *value * 10 + (size_t)(s[*at] - '0');
-        (*at)++;
-    }
-    return *at > start;
-}
-
-/* Whether the text of a serialized integer, with its optional sign and leading zeros, is in the i64 range, as
- * Codec::serializedI64; a text that is no integer is left to unserialize. */
-static bool serialized_i64(const char *s, size_t len)
-{
-    size_t at = 0;
-    bool negative = false;
-    if (at < len && (s[at] == '+' || s[at] == '-')) {
-        negative = s[at] == '-';
-        at++;
-    }
-    if (at == len) return true;
-    for (size_t i = at; i < len; i++) {
-        if (s[i] < '0' || s[i] > '9') return true;
-    }
-    while (at + 1 < len && s[at] == '0') at++;
-    const char *limit = negative ? "9223372036854775808" : "9223372036854775807";
-    size_t digits = len - at, limit_len = strlen(limit);
-    return digits < limit_len || (digits == limit_len && memcmp(s + at, limit, limit_len) <= 0);
-}
-
-/* The refusal of a serialized text that unserialize would read without an error, as Codec::serializedRefusal: a value that
- * starts with O:, C:, R: or r: is CODEC_UNSUPPORTED (COD-34), and an integer outside i64 is CODEC_DECODE (COD-16), since
- * unserialize clamps it. The walk reads each value by its type letter and skips a string by its byte length, so the letters
- * inside a string are text; it stops at the first value it cannot read and leaves that format failure to unserialize.
- * It returns false after it has set the error. */
-static bool serialized_refusal(const char *s, size_t len)
-{
-    size_t at = 0, n;
-    while (at < len) {
-        char type = s[at];
-        if (strchr("OCRr", type) != NULL && at + 1 < len && s[at + 1] == ':') {
-            return orm_fail("CODEC_UNSUPPORTED", zend_string_init(ZEND_STRL("serialize: objects and references are not supported"), 0));
-        }
-        if (type == '}') {
-            at++;
-        } else if (type == 'N' && at + 1 < len && s[at + 1] == ';') {
-            at += 2;
-        } else if (type == 's' && at + 1 < len && s[at + 1] == ':') {
-            at += 2;
-            if (!serialized_digits(s, len, &at, &n) || at + 1 >= len || s[at] != ':' || s[at + 1] != '"') {
-                return true;
-            }
-            at += 2 + n + 2;
-        } else if (type == 'a' && at + 1 < len && s[at + 1] == ':') {
-            at += 2;
-            if (!serialized_digits(s, len, &at, &n) || at + 1 >= len || s[at] != ':' || s[at + 1] != '{') {
-                return true;
-            }
-            at += 2;
-        } else if (strchr("bid", type) != NULL && at + 1 < len && s[at + 1] == ':') {
-            const char *end = memchr(s + at, ';', len - at);
-            if (end == NULL) {
-                return true;
-            }
-            if (type == 'i' && !serialized_i64(s + at + 2, (size_t)(end - s) - at - 2)) {
-                return orm_failf("CODEC_DECODE", "serialize: integer %.*s is outside the i64 range", (int)((size_t)(end - s) - at - 2), s + at + 2);
-            }
-            at = (size_t)(end - s) + 1;
-        } else {
-            return true;
-        }
+    if (bytes) {
+        zval rv;
+        zend_string *s = zval_get_string(read_prop(value, "bytes", &rv));
+        zval_ptr_dtor(value);
+        ZVAL_STR(value, s);
     }
     return true;
 }
@@ -1258,7 +1576,8 @@ static bool check_styles(HashTable *styles)
     return true;
 }
 
-/* plainBytes of Codec.php: Bytes as given and a string as its bytes; a value of another kind is CODEC_ENCODE (COD-1). */
+/* plainBytes of Codec.php: Bytes as given and a string as its bytes; a value of another kind is CODEC_ENCODE (COD-1), and a string
+ * that is not UTF-8 is no sequence of Unicode scalar values (host-input-unicode). */
 static bool plain_bytes(zval *v, const char *what, zend_string **out)
 {
     bool yes;
@@ -1268,12 +1587,16 @@ static bool plain_bytes(zval *v, const char *what, zend_string **out)
         *out = zval_get_string(read_prop(v, "bytes", &rv));
         return true;
     }
-    if (Z_TYPE_P(v) == IS_STRING) {
-        *out = zend_string_copy(Z_STR_P(v));
-        return true;
+    if (Z_TYPE_P(v) != IS_STRING) {
+        orm_failf("CODEC_ENCODE", "%s input must be text or bytes", what);
+        return false;
     }
-    orm_failf("CODEC_ENCODE", "%s input must be text or bytes", what);
-    return false;
+    if (!str_utf8(Z_STR_P(v))) {
+        orm_failf("CODEC_ENCODE", "%s input is not a sequence of Unicode scalar values", what);
+        return false;
+    }
+    *out = zend_string_copy(Z_STR_P(v));
+    return true;
 }
 
 static bool decode_stages(HashTable *styles, zval *raw, zval *ret)
@@ -1283,25 +1606,23 @@ static bool decode_stages(HashTable *styles, zval *raw, zval *ret)
     }
     zend_long n = zend_hash_num_elements(styles);
     zval cur;
-    if (!codec_copy_or_read_stream(raw, &cur)) return false;
+    if (!codec_cell(raw, &cur)) return false;
     if (Z_TYPE(cur) == IS_NULL) {
         zval_ptr_dtor(&cur);
         return call_static("Polyspec\\Orm\\StyledValue", "sqlNull", ret, 0, NULL);
     }
+    if (Z_TYPE(cur) != IS_STRING) {
+        zval_ptr_dtor(&cur);
+        return orm_fail("CODEC_DECODE", zend_string_init(ZEND_STRL("cell is not bytes"), 0));
+    }
     zend_string *last = n > 0 ? style_at(styles, n - 1) : NULL;
     /* An empty cell is CODEC_DECODE, except under a last base64 stage and under no stage (docs/spec/codec.md COD-14). */
-    if (Z_TYPE(cur) == IS_STRING && Z_STRLEN(cur) == 0 && n > 0 && !streq(last, "base64")) {
-        str_free(last);
+    bool empty = Z_STRLEN(cur) == 0 && n > 0 && !streq(last, "base64");
+    str_free(last);
+    if (empty) {
         zval_ptr_dtor(&cur);
         return orm_fail("CODEC_DECODE", zend_string_init(ZEND_STRL("styled cell is empty"), 0));
     }
-    if (Z_TYPE(cur) != IS_STRING) {
-        str_free(last);
-        zval_ptr_dtor(&cur);
-        return orm_fail("CODEC_DECODE", zend_string_init(ZEND_STRL("cell is not a string"), 0));
-    }
-    zval original;
-    ZVAL_COPY(&original, &cur);
 
     for (zend_long i = n - 1; i >= 0; i--) {
         zend_string *st = style_at(styles, i);
@@ -1310,9 +1631,10 @@ static bool decode_stages(HashTable *styles, zval *raw, zval *ret)
             if (!need_string(&cur, "gzuncompress")) {
                 ok = false;
             } else {
-                zend_string *out = gz_inflate(Z_STR(cur));
+                const char *message = NULL;
+                zend_string *out = gz_inflate(Z_STR(cur), &message);
                 if (out == NULL) {
-                    ok = orm_fail("CODEC_DECODE", zend_string_init(ZEND_STRL("gz: bad zlib stream"), 0));
+                    ok = orm_failf_previous("CODEC_DECODE", library_cause("%s", message), "gz: bad zlib stream");
                 } else {
                     zval_ptr_dtor(&cur);
                     ZVAL_STR(&cur, out);
@@ -1323,66 +1645,34 @@ static bool decode_stages(HashTable *styles, zval *raw, zval *ret)
                 ok = false;
             } else {
                 zend_string *dec = php_base64_decode_ex((const unsigned char *)Z_STRVAL(cur), Z_STRLEN(cur), true);
-                bool same = false;
-                if (dec != NULL) {
-                    zend_string *re = php_base64_encode((const unsigned char *)ZSTR_VAL(dec), ZSTR_LEN(dec));
-                    same = zend_string_equals(re, Z_STR(cur));
-                    zend_string_release(re);
-                }
-                if (dec == NULL || !same) {
-                    if (dec != NULL) {
-                        zend_string_release(dec);
-                    }
-                    ok = orm_fail("CODEC_DECODE", zend_string_init(ZEND_STRL("base64: bad input"), 0));
+                if (dec == NULL) {
+                    ok = orm_failf_previous("CODEC_DECODE", library_cause("base64_decode returned false"), "base64: bad input");
                 } else {
-                    zval_ptr_dtor(&cur);
-                    ZVAL_STR(&cur, dec);
+                    /* PHP's strict mode also accepts whitespace and missing padding, so the text is encoded again and compared. */
+                    zend_string *re = php_base64_encode((const unsigned char *)ZSTR_VAL(dec), ZSTR_LEN(dec));
+                    bool same = zend_string_equals(re, Z_STR(cur));
+                    zend_string_release(re);
+                    if (!same) {
+                        zend_string_release(dec);
+                        ok = orm_fail("CODEC_DECODE", zend_string_init(ZEND_STRL("base64: bad input"), 0));
+                    } else {
+                        zval_ptr_dtor(&cur);
+                        ZVAL_STR(&cur, dec);
+                    }
                 }
             }
         } else if (streq(st, "serialize")) {
-            if (!need_string(&cur, "unserialize")) {
+            zval value;
+            if (!need_string(&cur, "unserialize") || !unserialized(Z_STR(cur), &value)) {
                 ok = false;
             } else {
-                if (!serialized_refusal(Z_STRVAL(cur), Z_STRLEN(cur))) {
-                    ok = false;
-                } else {
-                    zval args[2], opts, result;
-                    array_init(&opts);
-                    add_assoc_bool(&opts, "allowed_classes", false);
-                    ZVAL_COPY(&args[0], &cur);
-                    ZVAL_COPY_VALUE(&args[1], &opts);
-                    ok = call_silenced("unserialize", &result, 2, args);
-                    zval_ptr_dtor(&args[0]);
-                    zval_ptr_dtor(&args[1]);
-                    if (ok && Z_TYPE(result) == IS_FALSE) {
-                        /* $raw !== serialize(false), which is "b:0;" */
-                        bool is_false_text = Z_TYPE(original) == IS_STRING && zend_string_equals_literal(Z_STR(original), "b:0;");
-                        if (!is_false_text) {
-                            zval_ptr_dtor(&result);
-                            ok = orm_fail("CODEC_DECODE", zend_string_init(ZEND_STRL("serialize: bad format"), 0));
-                        }
-                    }
-                    if (ok && !finite_value(&result)) {
-                        zval_ptr_dtor(&result);
-                        ok = orm_fail("CODEC_DECODE", zend_string_init(ZEND_STRL("serialize: non-finite numbers are not supported"), 0));
-                    }
-                    if (ok) {
-                        zval_ptr_dtor(&cur);
-                        ZVAL_COPY_VALUE(&cur, &result);
-                    }
-                }
+                zval_ptr_dtor(&cur);
+                ZVAL_COPY_VALUE(&cur, &value);
             }
         } else if (streq(st, "yaml")) {
-            zend_string *err = NULL;
             zval value;
-            if (!need_string(&cur, "Yaml")) {
+            if (!need_string(&cur, "Yaml") || !yaml_decode(Z_STR(cur), &value)) {
                 ok = false;
-            } else if (!yaml_decode_text(Z_STR(cur), &value, &err)) {
-                ok = EG(exception) == NULL || yaml_decode_exception_expected()
-                    ? stage_fail("yaml", "CODEC_DECODE", err, "the stream does not parse") : false;
-            } else if (!common_value(&value, &err)) {
-                zval_ptr_dtor(&value);
-                ok = stage_fail("yaml", "CODEC_DECODE", err, "the stream does not parse");
             } else {
                 zval_ptr_dtor(&cur);
                 ZVAL_COPY_VALUE(&cur, &value);
@@ -1391,13 +1681,11 @@ static bool decode_stages(HashTable *styles, zval *raw, zval *ret)
             if (!need_string(&cur, "Polyspec\\OrderedJson\\parse")) {
                 ok = false;
             } else {
+                /* The ordered-json value keeps the member order, the number text, and {} apart from []. */
                 zval parsed;
                 if (!call_fn("Polyspec\\OrderedJson\\parse", &parsed, 1, &cur)) {
-                    if (exception_is("InvalidArgumentException")) {
-                        ok = orm_failf_previous("CODEC_DECODE", take_exception(), "json: the cell is not JSON");
-                    } else {
-                        ok = false;
-                    }
+                    zend_object *cause = EG(exception) != NULL ? take_exception() : NULL;
+                    ok = orm_failf_previous("CODEC_DECODE", cause, "json: the cell is not JSON");
                 } else {
                     zval_ptr_dtor(&cur);
                     ZVAL_COPY_VALUE(&cur, &parsed);
@@ -1408,32 +1696,19 @@ static bool decode_stages(HashTable *styles, zval *raw, zval *ret)
         }
         str_free(st);
         if (!ok) {
-            str_free(last);
             zval_ptr_dtor(&cur);
-            zval_ptr_dtor(&original);
             return false;
         }
     }
-    zval_ptr_dtor(&original);
 
     /* Without a value stage (no stage, or a list that starts with gz or base64) the value is the text of the bytes. */
     zend_string *first = style_at(styles, 0);
-    if (first == NULL || streq(first, "gz") || streq(first, "base64")) {
-        if (!need_string(&cur, "preg_match")) {
-            str_free(first);
-            str_free(last);
-            zval_ptr_dtor(&cur);
-            return false;
-        }
-        if (!valid_utf8((const unsigned char *)Z_STRVAL(cur), Z_STRLEN(cur))) {
-            str_free(first);
-            str_free(last);
-            zval_ptr_dtor(&cur);
-            return orm_fail("CODEC_DECODE", zend_string_init(ZEND_STRL("decoded text is not valid UTF-8"), 0));
-        }
-    }
+    bool text = first == NULL || streq(first, "gz") || streq(first, "base64");
     str_free(first);
-    str_free(last);
+    if (text && Z_TYPE(cur) == IS_STRING && !str_utf8(Z_STR(cur))) {
+        zval_ptr_dtor(&cur);
+        return orm_fail("CODEC_DECODE", zend_string_init(ZEND_STRL("decoded text is not valid UTF-8"), 0));
+    }
 
     zval args[1];
     ZVAL_COPY_VALUE(&args[0], &cur);
@@ -1472,16 +1747,29 @@ bool codec_encode(HashTable *styles, zval *styled, zval *ret)
     zend_long n = zend_hash_num_elements(styles);
     zend_string *first = style_at(styles, 0);
     /* A first gz or base64 stage encodes the string, and an empty stage list writes it as it is. */
-    if ((first == NULL || streq(first, "gz") || streq(first, "base64")) && Z_TYPE(value) != IS_STRING) {
-        /* "<stage> takes a string value", which names no host type (INT-163). */
-        if (first != NULL) {
-            orm_failf("CODEC_ENCODE", "a first %s stage takes a string value", ZSTR_VAL(first));
-        } else {
-            orm_failf("CODEC_ENCODE", "an empty stage list takes a string value");
+    if (first == NULL || streq(first, "gz") || streq(first, "base64")) {
+        bool refused = false;
+        if (Z_TYPE(value) != IS_STRING) {
+            /* "<stage> takes a string value", which names no host type (INT-163). */
+            refused = true;
+            if (first != NULL) {
+                orm_failf("CODEC_ENCODE", "a first %s stage takes a string value", ZSTR_VAL(first));
+            } else {
+                orm_failf("CODEC_ENCODE", "an empty stage list takes a string value");
+            }
+        } else if (!str_utf8(Z_STR(value))) {
+            refused = true;
+            if (first != NULL) {
+                orm_failf("CODEC_ENCODE", "%s: " TEXT_UNICODE, ZSTR_VAL(first));
+            } else {
+                orm_failf("CODEC_ENCODE", TEXT_UNICODE);
+            }
         }
-        str_free(first);
-        zval_ptr_dtor(&value);
-        return false;
+        if (refused) {
+            str_free(first);
+            zval_ptr_dtor(&value);
+            return false;
+        }
     }
     str_free(first);
     if (n == 0) {
@@ -1497,48 +1785,24 @@ bool codec_encode(HashTable *styles, zval *styled, zval *ret)
         if (streq(st, "serialize")) {
             /* serialize writes any PHP value, a Bytes or an ordered-json object among them; the stage writes the common value
              * model only (COD-16, COD-63). */
-            zend_string *err = NULL;
             zval s;
-            if (!common_value(&value, &err)) {
-                ok = stage_fail("serialize", "CODEC_ENCODE", err, "the value is not a codec value");
+            if (!check_codec_value("serialize", &value)) {
+                ok = false;
             } else if ((ok = call_fn("serialize", &s, 1, &value))) {
                 zval_ptr_dtor(&cur);
                 ZVAL_COPY_VALUE(&cur, &s);
             }
         } else if (streq(st, "yaml")) {
-            zend_string *err = NULL;
             zval s;
-            if (!yaml_dump(&value, &s, &err)) {
-                ok = EG(exception) == NULL || yaml_encode_exception_expected() ? stage_fail("yaml", "CODEC_ENCODE", err, "the value has no YAML text") : false;
-            } else {
+            if ((ok = yaml_text(&value, &s))) {
                 zval_ptr_dtor(&cur);
                 ZVAL_COPY_VALUE(&cur, &s);
             }
         } else if (streq(st, "ordered_json")) {
-            smart_str buf = {0};
-            zval text, parsed, s;
-            if (!json_text(&value, &buf)) {
-                ok = false;
-            } else {
-                ZVAL_STR(&text, smart_str_extract(&buf));
-                if (!call_fn("Polyspec\\OrderedJson\\parse", &parsed, 1, &text)) {
-                    ok = false;
-                } else if (!call_method(&parsed, "raw", &s, 0, NULL)) {
-                    zval_ptr_dtor(&parsed);
-                    ok = false;
-                } else {
-                    smart_str stored = {0};
-                    compact_json_text(Z_STRVAL(s), Z_STRLEN(s), &stored);
-                    zval_ptr_dtor(&s);
-                    zval_ptr_dtor(&parsed);
-                    zval_ptr_dtor(&cur);
-                    ZVAL_STR(&cur, smart_str_extract(&stored));
-                }
-                zval_ptr_dtor(&text);
-            }
-            smart_str_free(&buf);
-            if (!ok && (exception_is("JsonException") || exception_is("InvalidArgumentException"))) {
-                ok = orm_failf_previous("CODEC_ENCODE", take_exception(), "json: the value has no JSON text");
+            zval s;
+            if ((ok = ordered_json_text(&value, &s))) {
+                zval_ptr_dtor(&cur);
+                ZVAL_COPY_VALUE(&cur, &s);
             }
         } else if (streq(st, "base64")) {
             if (!need_string(&cur, "base64_encode")) {
@@ -1552,9 +1816,10 @@ bool codec_encode(HashTable *styles, zval *styled, zval *ret)
             if (!need_string(&cur, "gzcompress")) {
                 ok = false;
             } else {
-                zend_string *enc = gz_deflate(Z_STR(cur));
+                const char *message = NULL;
+                zend_string *enc = gz_deflate(Z_STR(cur), &message);
                 if (enc == NULL) {
-                    ok = orm_fail("CODEC_ENCODE", zend_string_init(ZEND_STRL("gz: the compression failed"), 0));
+                    ok = orm_failf_previous("CODEC_ENCODE", library_cause("%s", message), "gz: the compression failed");
                 } else {
                     zval_ptr_dtor(&cur);
                     ZVAL_STR(&cur, enc);
@@ -1592,13 +1857,10 @@ bool codec_encode(HashTable *styles, zval *styled, zval *ret)
 static bool aes_seal(zend_string *plain, zend_string *key, zend_string **sealed);
 static zend_string *hex_encode_upper(zend_string *in);
 
-bool codec_host_encode(zval *v, HashTable *styles, zend_string *aes_key, zval *ret)
+/* checkHostStyles of Codec.php: a style other than aes, hex and ip is refused before the value or the cell is read. */
+static bool check_host_styles(HashTable *styles)
 {
-    ZVAL_UNDEF(ret);
     zend_long n = zend_hash_num_elements(styles);
-    if (n == 0) {
-        return orm_fail("CODEC_ENCODE", zend_string_init(ZEND_STRL("host style list is empty"), 0));
-    }
     for (zend_long i = 0; i < n; i++) {
         zend_string *st = style_at(styles, i);
         bool host = streq(st, "aes") || streq(st, "hex") || streq(st, "ip");
@@ -1607,6 +1869,19 @@ bool codec_host_encode(zval *v, HashTable *styles, zend_string *aes_key, zval *r
         if (!ok) {
             return false;
         }
+    }
+    return true;
+}
+
+bool codec_host_encode(zval *v, HashTable *styles, zend_string *aes_key, zval *ret)
+{
+    ZVAL_UNDEF(ret);
+    zend_long n = zend_hash_num_elements(styles);
+    if (n == 0) {
+        return orm_fail("CODEC_ENCODE", zend_string_init(ZEND_STRL("host style list is empty"), 0));
+    }
+    if (!check_host_styles(styles)) {
+        return false;
     }
     if (Z_TYPE_P(v) == IS_NULL) {
         ZVAL_NULL(ret);
@@ -1619,45 +1894,28 @@ bool codec_host_encode(zval *v, HashTable *styles, zend_string *aes_key, zval *r
 
     for (zend_long i = 0; i < n; i++) {
         zend_string *st = style_at(styles, i);
+        bool ok = true;
+        zend_string *next = NULL;
         if (streq(st, "ip")) {
-            zend_string *packed = NULL;
-            if (!ip_pack(cur, &packed)) {
-                bool fail = orm_failf("CODEC_ENCODE", "ip: the text is not an address");
-                str_free(st);
-                zend_string_release(cur);
-                return fail;
-            }
-            zend_string_release(cur);
-            cur = packed;
+            ok = ip_pack(cur, &next);
         } else if (streq(st, "aes")) {
-            str_free(st);
             if (ZSTR_LEN(aes_key) == 0) {
-                zend_string_release(cur);
-                return orm_fail("CONFIG", zend_string_init(ZEND_STRL("secret aes not configured"), 0));
+                ok = orm_fail("CONFIG", zend_string_init(ZEND_STRL("secret aes not configured"), 0));
+            } else {
+                ok = aes_seal(cur, aes_key, &next);
             }
-            zend_string *sealed;
-            bool ok = aes_seal(cur, aes_key, &sealed);
-            zend_string_release(cur);
-            if (!ok) {
-                return false;
-            }
-            cur = sealed;
-            continue;
-        } else if (streq(st, "hex")) {
-            str_free(st);
-            zend_string *h = hex_encode_upper(cur);
-            zend_string_release(cur);
-            cur = h;
-            continue;
         } else {
-            bool fail = orm_failf("CODEC_UNSUPPORTED", "host style %s", st != NULL ? ZSTR_VAL(st) : "");
-            str_free(st);
-            zend_string_release(cur);
-            return fail;
+            /* hex, the last kind of host style. */
+            next = hex_encode_upper(cur);
         }
         str_free(st);
+        zend_string_release(cur);
+        if (!ok) {
+            return false;
+        }
+        cur = next;
     }
-    zend_string *last = n > 0 ? style_at(styles, n - 1) : NULL;
+    zend_string *last = style_at(styles, n - 1);
     bool hex = streq(last, "hex");
     str_free(last);
     if (hex) {
@@ -1726,20 +1984,71 @@ static bool aes_v2_key(zend_string *key, zend_string **out)
     return true;
 }
 
+/* Codec::opensslClear: empties the queue of OpenSSL errors, so that the queue after a call holds only the errors of that call. */
+static bool openssl_clear(void)
+{
+    for (;;) {
+        zval e;
+        if (!call_fn("openssl_error_string", &e, 0, NULL)) {
+            return false;
+        }
+        bool more = Z_TYPE(e) == IS_STRING;
+        zval_ptr_dtor(&e);
+        if (!more) {
+            return true;
+        }
+    }
+}
+
+/* Codec::opensslFailure: the cause of an OpenSSL call that returned false, the queue of OpenSSL errors or the name of the call. */
+static zend_object *openssl_failure(const char *name)
+{
+    smart_str errors = {0};
+    for (;;) {
+        zval e;
+        if (!call_fn("openssl_error_string", &e, 0, NULL)) {
+            smart_str_free(&errors);
+            return take_exception();
+        }
+        if (Z_TYPE(e) != IS_STRING) {
+            zval_ptr_dtor(&e);
+            break;
+        }
+        if (errors.s != NULL) {
+            smart_str_appends(&errors, "; ");
+        }
+        smart_str_append(&errors, Z_STR(e));
+        zval_ptr_dtor(&e);
+    }
+    if (errors.s == NULL) {
+        return library_cause("%s returned false", name);
+    }
+    smart_str_0(&errors);
+    zend_object *cause = library_cause("%s", ZSTR_VAL(errors.s));
+    smart_str_free(&errors);
+    return cause;
+}
+
 /*
- * Codec.php's aes write: openssl_encrypt of cur with AES-256-GCM, the v2 key, a random 12-byte nonce and the envelope prefix as
- * additional data, then the envelope "ORM-AES2\0" . nonce . ciphertext . tag.
+ * Codec.php's aesSeal: openssl_encrypt of cur with AES-256-GCM, the v2 key, a random 12-byte nonce and the envelope prefix as
+ * additional data, then the envelope "ORM-AES2\0" . nonce . ciphertext . tag. A failure of the random source or of the cipher is
+ * aes-encrypt with the failure as its cause.
  */
 static bool aes_seal(zend_string *plain, zend_string *key, zend_string **sealed)
 {
-    zend_string *k;
-    if (!aes_v2_key(key, &k)) {
-        return false;
-    }
     zval len, nonce;
     ZVAL_LONG(&len, AES_NONCE_LEN);
     if (!call_fn("random_bytes", &nonce, 1, &len)) {
+        return orm_failf_previous("CODEC_ENCODE", take_exception(), "aes: the encryption failed");
+    }
+    zend_string *k;
+    if (!aes_v2_key(key, &k)) {
+        zval_ptr_dtor(&nonce);
+        return false;
+    }
+    if (!openssl_clear()) {
         zend_string_release(k);
+        zval_ptr_dtor(&nonce);
         return false;
     }
     zval tag, tagref;
@@ -1764,11 +2073,12 @@ static bool aes_seal(zend_string *plain, zend_string *key, zend_string **sealed)
     zval_ptr_dtor(&tagref);
     if (!called) {
         zval_ptr_dtor(&nonce);
-        return false;
+        return orm_failf_previous("CODEC_ENCODE", take_exception(), "aes: the encryption failed");
     }
-    if (Z_TYPE(enc) == IS_FALSE) {
+    if (Z_TYPE(enc) != IS_STRING) {
         zval_ptr_dtor(&nonce);
-        return orm_failf("CODEC_ENCODE", "aes: the encryption failed");
+        zend_string_release(tag_s);
+        return orm_failf_previous("CODEC_ENCODE", openssl_failure("openssl_encrypt"), "aes: the encryption failed");
     }
     zend_string *enc_s = Z_STR(enc);
     zend_string *nonce_s = Z_STR(nonce);
@@ -1792,11 +2102,14 @@ static bool aes_seal(zend_string *plain, zend_string *key, zend_string **sealed)
 }
 
 /*
- * Codec.php's aes read: the envelope of cur opened with the v2 key. Another format, a truncated envelope and a failed authentication
- * are CODEC_DECODE.
+ * Codec.php's aesOpen: the envelope of cur opened with the v2 key. Another format and a truncated envelope are their rules, and a
+ * failed authentication keeps the failure of openssl_decrypt as its cause.
  */
 static bool aes_open(zend_string *cur, zend_string *key, zend_string **plain)
 {
+    if (ZSTR_LEN(key) == 0) {
+        return orm_fail("CONFIG", zend_string_init(ZEND_STRL("secret aes not configured"), 0));
+    }
     size_t n = ZSTR_LEN(cur);
     const char *c = ZSTR_VAL(cur);
     if (n < AES_PREFIX_LEN || memcmp(c, AES_PREFIX, AES_PREFIX_LEN) != 0) {
@@ -1805,33 +2118,32 @@ static bool aes_open(zend_string *cur, zend_string *key, zend_string **plain)
     if (n < AES_PREFIX_LEN + AES_NONCE_LEN + AES_TAG_LEN) {
         return orm_fail("CODEC_DECODE", zend_string_init(ZEND_STRL("aes: truncated v2 envelope"), 0));
     }
-    zend_string *nonce = zend_string_init(c + AES_PREFIX_LEN, AES_NONCE_LEN, 0);
-    zend_string *ciphertext = zend_string_init(c + AES_PREFIX_LEN + AES_NONCE_LEN, n - AES_PREFIX_LEN - AES_NONCE_LEN - AES_TAG_LEN, 0);
-    zend_string *tag = zend_string_init(c + n - AES_TAG_LEN, AES_TAG_LEN, 0);
     zend_string *k;
     if (!aes_v2_key(key, &k)) {
-        zend_string_release(nonce);
-        zend_string_release(ciphertext);
-        zend_string_release(tag);
+        return false;
+    }
+    if (!openssl_clear()) {
+        zend_string_release(k);
         return false;
     }
     zval a[7], res;
-    ZVAL_STR(&a[0], ciphertext);
+    ZVAL_STR(&a[0], zend_string_init(c + AES_PREFIX_LEN + AES_NONCE_LEN, n - AES_PREFIX_LEN - AES_NONCE_LEN - AES_TAG_LEN, 0));
     ZVAL_STRING(&a[1], "aes-256-gcm");
     ZVAL_STR(&a[2], k);
     ZVAL_LONG(&a[3], 1);
-    ZVAL_STR(&a[4], nonce);
-    ZVAL_STR(&a[5], tag);
+    ZVAL_STR(&a[4], zend_string_init(c + AES_PREFIX_LEN, AES_NONCE_LEN, 0));
+    ZVAL_STR(&a[5], zend_string_init(c + n - AES_TAG_LEN, AES_TAG_LEN, 0));
     ZVAL_STRINGL(&a[6], AES_PREFIX, AES_PREFIX_LEN);
     bool called = call_fn("openssl_decrypt", &res, 7, a);
     for (int i = 0; i < 7; i++) {
         zval_ptr_dtor(&a[i]);
     }
     if (!called) {
-        return false;
+        return orm_failf_previous("CODEC_DECODE", take_exception(), "aes: authentication failed");
     }
     if (Z_TYPE(res) != IS_STRING) {
-        return orm_fail("CODEC_DECODE", zend_string_init(ZEND_STRL("aes: authentication failed"), 0));
+        zval_ptr_dtor(&res);
+        return orm_failf_previous("CODEC_DECODE", openssl_failure("openssl_decrypt"), "aes: authentication failed");
     }
     *plain = Z_STR(res);
     return true;
@@ -1878,13 +2190,16 @@ bool codec_blind_index(zval *v, zend_string *key, zval *ret)
 }
 
 /*
- * Codec::hostDecode: undoes the host stages of a read cell, in reverse write order. hex and ip are decoded as Codec.php does, and an ip
- * stage ends the decode there, as the PHP loop returns there. A codec style in the list is CODEC_UNSUPPORTED.
+ * Codec::hostDecode: undoes the host stages of a read cell, in reverse write order, after the styles are checked. hex and ip are
+ * decoded as Codec.php does, and an ip stage ends the decode there, as the PHP loop returns there.
  */
 bool codec_host_decode(zval *raw, HashTable *styles, zend_string *aes_key, zval *ret)
 {
+    if (!check_host_styles(styles)) {
+        return false;
+    }
     zval cur;
-    if (!codec_copy_or_read_stream(raw, &cur)) return false;
+    if (!codec_cell(raw, &cur)) return false;
     if (Z_TYPE(cur) == IS_NULL) {
         ZVAL_NULL(ret);
         return true;
@@ -1899,21 +2214,16 @@ bool codec_host_decode(zval *raw, HashTable *styles, zend_string *aes_key, zval 
     zend_long n = zend_hash_num_elements(styles);
     for (zend_long i = n - 1; i >= 0; i--) {
         zend_string *st = style_at(styles, i);
-        if (streq(st, "hex")) {
+        bool is_hex = streq(st, "hex"), is_aes = streq(st, "aes");
+        str_free(st);
+        if (is_hex) {
             zend_string *out = hex_decode(s);
+            zend_string_release(s);
             if (out == NULL) {
-                str_free(st);
-                zend_string_release(s);
                 return orm_fail("CODEC_DECODE", zend_string_init(ZEND_STRL("hex: odd length or non-hex input"), 0));
             }
-            zend_string_release(s);
             s = out;
-        } else if (streq(st, "aes")) {
-            str_free(st);
-            if (ZSTR_LEN(aes_key) == 0) {
-                zend_string_release(s);
-                return orm_fail("CONFIG", zend_string_init(ZEND_STRL("secret aes not configured"), 0));
-            }
+        } else if (is_aes) {
             zend_string *plain;
             bool ok = aes_open(s, aes_key, &plain);
             zend_string_release(s);
@@ -1921,29 +2231,20 @@ bool codec_host_decode(zval *raw, HashTable *styles, zend_string *aes_key, zval 
                 return false;
             }
             s = plain;
-            continue;
-        } else if (streq(st, "ip")) {
-            str_free(st);
+        } else {
+            /* ip, the last kind of host style: its text ends the decode. */
             size_t len = ZSTR_LEN(s);
             if (len != 4 && len != 16) {
                 zend_string_release(s);
                 return orm_failf("CODEC_DECODE", "ip: the cell is not 4 or 16 packed bytes");
             }
+            /* inet_ntop writes the text of any 4 or 16 bytes into a buffer of INET6_ADDRSTRLEN (COD-72). */
             char text[INET6_ADDRSTRLEN];
-            if (inet_ntop(len == 4 ? AF_INET : AF_INET6, ZSTR_VAL(s), text, sizeof(text)) == NULL) {
-                zend_string_release(s);
-                return orm_fail("CODEC_DECODE", zend_string_init(ZEND_STRL("ip: the packed address is not valid"), 0));
-            }
+            (void)inet_ntop(len == 4 ? AF_INET : AF_INET6, ZSTR_VAL(s), text, sizeof(text));
             zend_string_release(s);
             ZVAL_STRING(ret, text);
             return true;
-        } else {
-            bool ok = orm_failf("CODEC_UNSUPPORTED", "host style %s", st != NULL ? ZSTR_VAL(st) : "");
-            str_free(st);
-            zend_string_release(s);
-            return ok;
         }
-        str_free(st);
     }
     ZVAL_STR(ret, s);
     return true;

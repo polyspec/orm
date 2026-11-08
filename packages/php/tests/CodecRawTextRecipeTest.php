@@ -1,6 +1,7 @@
 <?php
 
-// The recipe tests/codec/codec-raw-text.json without a database: a string whose bytes are not UTF-8 is refused (COD-64, COD-70).
+// The recipe tests/codec/codec-raw-text.json without a database: a string whose bytes are not UTF-8 is refused
+// (COD-64, COD-70).
 // Requirements: COD-64, COD-70.
 declare(strict_types=1);
 
