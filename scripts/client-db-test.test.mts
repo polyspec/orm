@@ -1,16 +1,12 @@
 // The unit tests of the client database lanes: the Rust thread cap of the pooler lane (T343-1), the Go owner of the
 // repeated member name case of model_writes and its declaration on every owner (T343-2).
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import { readdirSync, readFileSync } from 'node:fs';
 import { caseTest, COMPUTE } from '../tests/testcase.mts';
 import { dirname, relative, resolve } from 'node:path';
-import { GO_LANE_PACKAGES, GO_LANE_SKIP, GO_DIRECT_CHECKS, goLaneSkip, poolerRecipeCommands, poolerRecipeTests, rustOwnedElsewhereSkipArguments, rustDirectRecipeSkipArguments, rustPoolerThreadArguments, rustTargetPoolSize } from './client-db-test.mts';
+import { GO_LANE_PACKAGES, GO_LANE_SKIP, poolerRecipeCommands, poolerRecipeTests, rustOwnedElsewhereSkipArguments, rustPoolerThreadArguments, rustTargetPoolSize } from './client-db-test.mts';
 import { readTree } from './features/recipe-runners.mts';
 import { phpScope, readTree as readNamesTree } from './features/test-names.mts';
-import { parseRecipeCases } from './json/formats.mts';
-import { ciGroups } from './repo/ci.mts';
-import { makeTargets } from './repo/testcases.mts';
 import { COMMANDS as PERF_COMMANDS } from './perf-test.mts';
 import { readFeatures, type CoverageOwner, type Language, type NativeCommand } from './features/manifest.mts';
 
@@ -106,10 +102,10 @@ caseTest('the Rust lane skips the cases that markdown-conformance-check owns', C
 const goTestCheckRoots = ['packages/go/cmd', 'packages/go/procevent', 'packages/go/internal'];
 
 caseTest('the Go lane runs every package of packages/go that go-test-check does not run (T334-3-27)', COMPUTE, () => {
-  const tracked = execFileSync('git', ['ls-files', '-z', 'packages/go/**/*.go'], { cwd: root }).toString().split('\0').filter(Boolean);
-  const outputs = [...readFileSync(resolve(root, 'packages/go/models.txt'), 'utf8').matchAll(/^--set [^\n]*? --out (\S+)/gm)]
-    .map(match => relative(root, resolve(root, 'packages/go', match[1] ?? '')));
-  const packages = new Set([...tracked.map(file => dirname(file)), ...outputs].filter(path => !path.split('/').includes('testdata')));
+  const packages = new Set(readdirSync(resolve(root, 'packages/go'), { recursive: true, withFileTypes: true })
+    .filter(entry => entry.isFile() && entry.name.endsWith('.go'))
+    .map(entry => relative(root, dirname(resolve(entry.parentPath, entry.name))))
+    .filter(path => !path.split('/').includes('testdata')));
   const expected = [...packages].filter(path => !goTestCheckRoots.some(owner => path === owner || path.startsWith(`${owner}/`))).map(path => `./${path}`).sort();
   assert.deepEqual([...GO_LANE_PACKAGES].sort(), expected);
 });
@@ -129,75 +125,4 @@ caseTest('the Rust lane runs the recipe programs in its workspace run and leaves
     assert.ok(!skipped.includes(`model_writes_chain_${database}`), `the recipe program of ${database}`);
   }
   assert.ok(skipped.every(symbol => symbol.startsWith('markdown_conformance::') || symbol.startsWith('coverage_performance_gate::coverage_hot_path_gate_')), skipped.join(' '));
-});
-
-caseTest('direct Go conformance runs once while the pooler lane retains all four database cases', COMPUTE, () => {
-  const source = readFileSync(resolve(root, 'packages/go/orm/recipe_conformance_verification_test.go'), 'utf8');
-  const names = [...source.matchAll(/^func (Test\w+)\(t \*testing\.T\)/gm)].map(match => match[1] ?? '');
-  assert.equal(names.length, 4);
-  const direct = new RegExp(goLaneSkip(false));
-  const pooler = new RegExp(goLaneSkip(true));
-  for (const name of names) {
-    assert.ok(direct.test(name), `${name} belongs to the dedicated direct target`);
-    assert.ok(!pooler.test(name), `${name} must still exercise pooler connections`);
-    assert.ok(!direct.test(`${name}Helper`), 'the skip matches exact native names');
-  }
-  const recipe = readFileSync(resolve(root, 'Makefile'), 'utf8').match(/^conformance-verification-check\/go:[^\n]*\n\t([^\n]+)/m)?.[1] ?? '';
-  const filter = /-run '([^']+)'/.exec(recipe)?.[1]?.replaceAll('$$', '$');
-  assert.ok(filter);
-  for (const name of names) assert.ok(new RegExp(filter).test(name), `${name} remains executed by its dedicated target`);
-});
-
-caseTest('Rust direct conformance skips exact recipe cases and keeps the pooler run', COMPUTE, () => {
-  const args = rustDirectRecipeSkipArguments(root, false);
-  const symbols = args.filter((_, index) => index % 2 === 1);
-  assert.ok(args.every((value, index) => index % 2 === 1 || value === '--skip'));
-  assert.equal(new Set(symbols).size, symbols.length);
-  assert.deepEqual(rustDirectRecipeSkipArguments(root, true), []);
-  const recipeFile = resolve(root, 'contracts/fixtures/conformance_verification/conformance_verification.json');
-  const recipe = parseRecipeCases(readFileSync(recipeFile, 'utf8'), recipeFile);
-  const makefile = readFileSync(resolve(root, 'Makefile'), 'utf8');
-  const command = /^conformance-verification-check\/rust:[^\n]*\n\t([^\n]+)/m.exec(makefile)?.[1] ?? '';
-  for (const database of ['mysql', 'postgres', 'sqlite', 'markdown']) {
-    const target = `conformance_verification_${database}`;
-    assert.ok(command.includes(`--test ${target}`), `${target} remains in the dedicated target`);
-    const selected = recipe.cases.filter(entry => entry.only === undefined || entry.only.includes(database) || (database === 'markdown' && entry.only.includes('sqlite')));
-    assert.deepEqual(symbols.filter(symbol => symbol.startsWith(`${target}::`)), selected.map(entry => `${target}::${entry.id}`));
-  }
-  assert.ok(symbols.length > 0);
-  assert.ok(symbols.every(symbol => /^conformance_verification_(mysql|postgres|sqlite|markdown)::.+$/.test(symbol)));
-});
-
-caseTest('each Go direct skip has a scheduled whole-test owner and cannot skip another package', COMPUTE, () => {
-  const makefile = readFileSync(resolve(root, 'Makefile'), 'utf8');
-  const rules = makeTargets(makefile);
-  const scheduled = new Set(Object.values(ciGroups(makefile).targets).flat());
-  assert.ok(Object.keys(GO_DIRECT_CHECKS).length > 1);
-  const filters = Object.entries(GO_DIRECT_CHECKS).map(([target, filter]) => {
-    assert.ok(scheduled.has(target), `${target} is scheduled`);
-    const command = rules.filter(rule => rule.target === target).flatMap(rule => rule.commands)
-      .find(command => command.includes('$(GO_TEST) ./packages/go/orm -run'));
-    assert.ok(command, `${target} executes the Go package`);
-    assert.equal(/-run '([^']+)' -count=1$/.exec(command)?.[1]?.replaceAll('$$', '$'), filter);
-    assert.ok(!filter.includes('/'), `${target} selects full top-level tests`);
-    return new RegExp(filter);
-  });
-  const direct = new RegExp(goLaneSkip(false));
-  const pooler = new RegExp(goLaneSkip(true));
-  const original = new RegExp(GO_LANE_SKIP);
-  const files = execFileSync('git', ['ls-files', '-z', 'packages/go/**/*_test.go'], { cwd: root }).toString().split('\0').filter(Boolean);
-  let selected = 0;
-  for (const file of files) {
-    if (!GO_LANE_PACKAGES.includes(`./${dirname(file)}`)) continue;
-    const tests = [...readFileSync(resolve(root, file), 'utf8').matchAll(/^func (Test\w+)\(/gm)].map(match => match[1] ?? '');
-    for (const name of tests) {
-      const owners = dirname(file) === 'packages/go/orm' ? filters.filter(filter => filter.test(name)) : [];
-      assert.ok(owners.length <= 1, `${name} has repeated dedicated owners`);
-      const owned = owners.length === 1;
-      assert.equal(direct.test(name), original.test(name) || owned, `${file}: ${name}`);
-      assert.equal(pooler.test(name), original.test(name), `pooler: ${name}`);
-      if (owned) selected++;
-    }
-  }
-  assert.ok(selected > 4, 'more than the four conformance suites are assigned');
 });

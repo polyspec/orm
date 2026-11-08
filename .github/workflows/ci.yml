@@ -157,10 +157,6 @@ jobs:
         id: go-modules
         if: ${{ !cancelled() && steps.group-needs.outputs.go == 'true' }}
         run: make orm-install-go
-      - name: Go modules of the code generator
-        id: go-codes
-        if: ${{ !cancelled() && steps.group-needs.outputs.go-codes == 'true' }}
-        run: make orm-install-go-codes
       # The markdown-conformance-check/<runtime> groups run each native client
       # on the flowmark build that tests/markdown/flowmark.version pins;
       # make orm-install-flowmark installs it.
@@ -198,11 +194,11 @@ jobs:
         # of require.php in packages/php/composer.json; setup-php installs it
         # first, and the PHP of .php-version after it becomes php on PATH.
         id: php-min
-        if: ${{ !cancelled() && steps.group-needs.outputs.php-min == 'true' }}
+        if: ${{ !cancelled() && steps.group-needs.outputs.php == 'true' }}
         run: make --no-print-directory ci-php-min-version >> "$GITHUB_OUTPUT"
       - uses: shivammathur/setup-php@v2
         id: php-min-release
-        if: ${{ !cancelled() && steps.group-needs.outputs.php-min == 'true' }}
+        if: ${{ !cancelled() && steps.group-needs.outputs.php == 'true' }}
         with:
           php-version: ${{ steps.php-min.outputs.version }}
           extensions: pdo_sqlite, openssl
@@ -318,17 +314,6 @@ jobs:
         id: go
         if: ${{ !cancelled() }}
         run: make install-tools TOOLS=go
-      - name: cache of the Go modules
-        id: cache-go
-        if: ${{ !cancelled() }}
-        uses: actions/cache@v4
-        with:
-          path: ~/go/pkg/mod
-          key: go-modules-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
-      - name: Go modules of the code generator
-        id: go-codes
-        if: ${{ !cancelled() }}
-        run: make orm-install-go-codes
       # docs-verify-idempotent builds docs/.vitepress/dist twice and compares
       # every byte, and docs-site-check builds it and reads its pages and links
       # with Node. make docs-ci runs the two through the runner of make orm-check,
@@ -401,10 +386,6 @@ jobs:
         id: go-lease-modules
         if: ${{ !cancelled() }}
         run: make orm-install-go-lease
-      - name: Go modules of the code generator
-        id: go-codes
-        if: ${{ !cancelled() }}
-        run: make orm-install-go-codes
       - name: VS Code of the integration test
         id: vscode
         if: ${{ !cancelled() }}

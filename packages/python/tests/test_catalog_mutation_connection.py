@@ -43,7 +43,9 @@ class CommittedMutationsTest(unittest.TestCase):
         self.assertEqual(refused.exception.code, codes.ROW_CONFLICT)
         insert(7)
         self.assertEqual(_run(catalog, f"SELECT COUNT(*) FROM {table}")[0][0], 6)
-        return [row[0] for row in _run(catalog, f"SELECT backend FROM {table} WHERE id < 7")]
+        return [
+            row[0] for row in _run(catalog, f"SELECT backend FROM {table} WHERE id < 7")
+        ]
 
     def test_committed_mutations_share_one_connection(self):
         for variable, column in (

@@ -556,23 +556,10 @@ export function generatedCodesErrors(makefile: string): string[] {
   const targets = makeTargets(makefile);
   const prerequisites = new Map<string, string[]>();
   for (const rule of targets) prerequisites.set(rule.target, [...(prerequisites.get(rule.target) ?? []), ...rule.prerequisites]);
-  // A completed prerequisite may generate code through an unconditional recursive make. Only a whole, unguarded command
-  // counts: a conditional invocation, ignored failure or background command does not establish that the output was written.
-  const recursive = new Map<string, string[]>();
-  for (const rule of targets)
-    for (const command of rule.commands) {
-      const match = /^\$\(MAKE\) --no-print-directory ([a-zA-Z0-9_/-]+)$/.exec(command);
-      if (match?.[1]) recursive.set(rule.target, [...(recursive.get(rule.target) ?? []), match[1]]);
-    }
-  const completed = (target: string, wanted: string, seen: Set<string>): boolean => {
-    if (target === wanted || target === 'orm-codes') return true;
+  const reaches = (target: string, wanted: string, seen = new Set<string>()): boolean => {
     if (seen.has(target)) return false;
     seen.add(target);
-    return [...(prerequisites.get(target) ?? []), ...(recursive.get(target) ?? [])]
-      .some(child => completed(child, wanted, seen));
-  };
-  const reaches = (target: string, wanted: string, seen = new Set<string>()): boolean => {
-    return (prerequisites.get(target) ?? []).some(prerequisite => completed(prerequisite, wanted, seen));
+    return (prerequisites.get(target) ?? []).some(prerequisite => prerequisite === wanted || prerequisite === 'orm-codes' || reaches(prerequisite, wanted, seen));
   };
   const readers = new Map<string, Set<string>>();
   for (const rule of targets)

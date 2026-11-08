@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: cdb895edb0e7214310212815b4aedf2034a3c11127457bc67b3f4ae67963effc -->
+<!-- source-sha256: dafc2e2b904793db9d12ec7a5b6345148959762242b3272e8c56a49725fe8e48 -->
 # 변경 이력
 
 ## Unreleased
@@ -7,8 +7,6 @@
 - Tests: workspace의 Rust suite는 polyspec-orm-tests의 test program 하나 `all`이다. 예전 test program은 각각 trial이 `<module>::<name>`인 module이고, group은 차례로 실행되며 group마다 한 줄과 마지막 개수를 쓴다. 각 package의 시험은 그 test case crate tests/cases에 남고, Make target은 `--test all -- <module>::`로 시험을 고른다 (T375). markdown recipe 시험도 이 program의 module이다.
 - catalog 연결은 Rust, Go, TypeScript, Python에서 commit된 변경의 연결을 다음 session에 넘긴다 (INT-106b에서 INT-106e). 그래서 recipe 사례의 seed 행이 연결 하나로 쓰인다: PostgreSQL의 Rust recipe conformance_verification은 사례 90개에 연결 15,959개를 열던 것이 1,465개를 열고, Go, TypeScript, Python도 같이 준다. markdown session도 새 `MarkdownLease::keep`으로 같은 방식으로 pool에 돌아간다 (T366).
 - PHP: packages/php/tests와 packages/php-ext/tests의 모든 PHPUnit test class가 size를 선언하므로, 시간 제한은 멈춘 case의 기한(60, 120, 300초)이고 어떤 case도 부하에서 PHPUnit이 size 없는 class에 주는 1초로 실패하지 않는다 (T393).
-- CI: 한 runtime의 job은 그 runtime의 part만 실행하고, runtime 이름이 없는 job은 많아야 한 runtime의 part를 실행한다. conformance-refusal-check, native-error-cause-check, testcase-check는 각 part가 그 runtime의 group에서 실행되고, repository 검사는 다른 runtime의 part에 닿는 group을 실패시킨다 (T388).
-- CI: 독립 native 검사와 setup을 runtime group에 배치하고 전용 target이 실행하는 native case를 전체 실행에서 제외하며 여러 group이 호출하는 검사를 탐지하고 generator module을 각 검사 대신 설치 단계에서 준비한다 (T388).
 - orm은 parity를 지우는 kit 0.0.101을 채택한다(T400): contracts/implementations.json은 여섯 구현을 root, test glob, support 파일, internal 시험과 함께 선언하고, 그 inventory의 모든 test 파일은 자기 runtime의 target에서 실행된다. PHP, TypeScript, Python 파일은 각자 CI group을 가진 새 suite-php-check, suite-typescript-check, suite-python-check에서, Go, Rust, PHP extension은 예전처럼 client target에서 실행된다. config/parity.json, parity job과 gate, divergence-check, test-markers-check, recipe의 key cases_on을 지우고, recipe schema는 ir.param_uses와 planner.columns의 expect를 적는다. feature unit 없는 FCV-2 native 규칙의 검사는 보류된 row T400-1이다.
 - orm은 0.0.98의 동작을 유지한 채 kit 0.0.99를 채택한다(T399): 각 recipe는 0.0.98이 기본으로 정하던 값을 넘기고, kit-check은 gate에서 빠지며, config/duplication.json과 config/generated.json은 0.0.98이 고정한 값을 선언한다. build-go, build-ts, build-rust는 run-long 아래에서 실행되고 build-rust는 공유 Rust target 폴더에 그 lease 아래에서 빌드한다. 전에는 0.0.98이 둘 다 없이 runtime-targets 안에서 실행했다.
 - Go, Rust, TypeScript, Python, PHP, PHP 확장에서 lookahead 페이지는 자기 끝 너머의 행 하나를 더 읽고 아무것도 세지 않는다(INT-164, T394). `getsLookaheadPage(page, perPage)`는 model의 `LookaheadPage`를, `groupBy` 체인의 `getsCountLookaheadPage(page, perPage)`는 `group_count` group 행의 `GroupLookaheadPage`를 반환하며, 각각 `items`, `page`, `perPage`, `hasNext`를 가지고 total은 없다. 각각 요청 kind `lookahead_paginate` 또는 `group_lookahead_paginate`, 곧 `LIMIT perPage + 1`을 가진 문장 하나를 실행한다. 추가 행은 `hasNext`만 정하고, relation 단계는 그것을 뺀 페이지의 부모를 읽으며, 끝을 지난 페이지는 비어 있고 `hasNext`가 false이고, 순서가 없는 체인은 primary key나 `group_by` 컬럼의 오름차순으로 정렬한다. `getsPage`와 group 체인에 대한 그 거부는 바뀌지 않는다.

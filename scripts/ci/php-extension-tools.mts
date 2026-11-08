@@ -1,4 +1,4 @@
-// make php-extension-tools-check checks what the build of the PHP extension polyspec_orm (packages/php-ext, C built
+// make orm-install-php-extension-tools checks what the build of the PHP extension polyspec_orm (packages/php-ext, C built
 // with phpize) needs besides the PHP of .php-version: phpize and php-config on PATH, of the PHP on PATH. The check of the
 // arginfo header (make lint-php-ext) checks its stub hash when present; the build uses the installed offline generator and parser.
 import { spawnSync } from 'node:child_process';

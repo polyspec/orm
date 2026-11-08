@@ -385,8 +385,9 @@ const checkRust = (tree: Tree, words: string[], cwd: string, report: Report) => 
     if (found.length === 0) report('rust test program', `--test ${name}`);
     for (const path of found) rustIncluded(tree, path, files);
   }
-  // A program runs the modules of a test case crate as groups, so those modules declare its names too.
-  for (const path of [...files]) {
+  // A program runs the modules of a test case crate as groups, so those modules declare its names too. The loop reads a
+  // copy of the set, since rustIncluded adds the files that it finds to that set.
+  for (const path of new Set(files)) {
     for (const match of tree.read(path).matchAll(/\bpolyspec_orm(?:_(\w+?))?_cases::(\w+)::trials\b/g)) {
       rustIncluded(tree, `packages/rust/${match[1] ?? 'orm'}/tests/cases/${must(match[2])}.rs`, files);
     }

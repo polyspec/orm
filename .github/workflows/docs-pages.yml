@@ -43,17 +43,6 @@ jobs:
         id: go
         if: ${{ !cancelled() }}
         run: make install-tools TOOLS=go
-      - name: cache of the Go modules
-        id: cache-go
-        if: ${{ !cancelled() }}
-        uses: actions/cache@v4
-        with:
-          path: ~/go/pkg/mod
-          key: go-modules-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
-      - name: Go modules of the code generator
-        id: go-codes
-        if: ${{ !cancelled() }}
-        run: make orm-install-go-codes
       - name: build the site
         id: build
         if: ${{ !cancelled() }}

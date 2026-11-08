@@ -184,7 +184,7 @@ caseTest('the Kit jobs declare the context and setup targets that own their nati
   assert.ok(isRecord(config.contexts));
   assert.deepEqual(config.contexts, { 'php-ext': { prepare: 'php-extension-context-prepare', cleanup: 'php-extension-context-cleanup' } });
   assert.ok(isRecord(config.setup));
-  assert.deepEqual(config.setup.shared, ['orm-install-go-lease', 'orm-install-go-codes']);
+  assert.deepEqual(config.setup.shared, ['orm-install-go-lease']);
   assert.ok(isRecord(config.setup.runtimes));
   assert.deepEqual(config.setup.runtimes.go, ['orm-install-go']);
   assert.deepEqual(config.setup.runtimes.php, ['orm-install-php']);
@@ -198,5 +198,5 @@ caseTest('the Kit jobs declare the context and setup targets that own their nati
   assert.match(makefile, /^php-extension-context-prepare:\n\t\$\(NODE\) scripts\/check\/job-context\.mts prepare php-ext$/m);
   assert.match(makefile, /^php-extension-context-cleanup:\n\t\$\(NODE\) scripts\/check\/job-context\.mts cleanup php-ext$/m);
   assert.match(makefile, /^orm-install-php-extension-runtime:/m);
-  assert.match(makefile, /^orm-install-typescript-runtime: orm-install-go-lease orm-install-codes-typescript\n\t\$\(MAKE\) --no-print-directory build-ts$/m);
+  assert.match(makefile, /^orm-install-typescript-runtime: orm-install-go-lease orm-codes-typescript build-ts$/m);
 });
