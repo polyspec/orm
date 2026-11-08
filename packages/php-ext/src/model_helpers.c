@@ -1,5 +1,5 @@
 /*
- * The value helpers of Polyspec\Orm\Model (packages/php/src/Model.php) in C: prefixed, sixFractionDigits, arrayValue and
+ * The value helpers of Polyspec\Orm\Model (packages/php/src/Model.php) in C: prefixed, arrayValue and
  * the datetime text they use. They keep the PHP client's rules. They are not registered in arginfo until the class is
  * (T182-6-5): the methods that call them are C bodies of the same class.
  */
@@ -15,30 +15,6 @@ bool model_prefixed(str name, str prefix)
     }
     unsigned char c = (unsigned char)name.s[prefix.n];
     return c >= 'A' && c <= 'Z';
-}
-
-/* Model::sixFractionDigits: the text up to and including its first dot, then the first six digits of what follows, padded
- * with zeros (substr(substr($text, $dot + 1) . '000000', 0, 6)). A text without a dot gets `.000000`. */
-str model_six_fraction_digits(str text)
-{
-    size_t dot = text.n;
-    for (size_t i = 0; i < text.n; i++) {
-        if (text.s[i] == '.') {
-            dot = i;
-            break;
-        }
-    }
-    if (dot == text.n) {
-        return fmt("%S.000000", text);
-    }
-    size_t head = dot + 1;
-    size_t tail = text.n - head;
-    char *out = dbs_alloc(head + 6);
-    memcpy(out, text.s, head);
-    for (size_t k = 0; k < 6; k++) {
-        out[head + k] = k < tail ? text.s[head + k] : '0';
-    }
-    return (str){out, head + 6};
 }
 
 /* Model::arrayValue: a DateTimeInterface becomes its `Y-m-d H:i:s.u` text; any other value is returned unchanged. */

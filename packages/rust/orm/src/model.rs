@@ -1687,11 +1687,10 @@ pub fn to_array(m: &dyn AnyModel) -> Result<ArrayValue> {
     let empty = RowState::default();
     let st = c.row.as_ref().unwrap_or(&empty);
     for (name, v) in row_values(m)? {
-        // A time or datetime text from the database has the column precision; the array form has six digits.
-        let temporal_text = c.ent.entity_schema()?.field(&name).is_some_and(|f| matches!(f.ty, dbspec::Type::Time(_) | dbspec::Type::DateTime(_)));
-        let value = match &v {
-            Val::Str(text) if temporal_text => ArrayValue::Text(six_fraction_digits(text)),
-            other => ArrayValue::of(other),
+        // A datetime(p) column is its text with exactly p fraction digits (PRT-69); a time(p) column holds that text.
+        let value = match (datetime_precision(c, &name)?, &v) {
+            (Some(precision), Val::DateTime(t)) => ArrayValue::Text(datetime_text(t, precision)),
+            (_, other) => ArrayValue::of(other),
         };
         let value = if styled_column(c, &name)? {
             if matches!(v, Val::Null) {
@@ -1758,12 +1757,11 @@ fn json_members(m: &dyn AnyModel) -> Result<Vec<(String, String)>> {
     let empty = RowState::default();
     let st = c.row.as_ref().unwrap_or(&empty);
     for (name, v) in row_values(m)? {
-        // A time or datetime text from the database has the column precision; the JSON form has six digits, as the array form.
-        let temporal_text = c.ent.entity_schema()?.field(&name).is_some_and(|f| matches!(f.ty, dbspec::Type::Time(_) | dbspec::Type::DateTime(_)));
-        let document = match &v {
-            Val::Ordered(o) => o.compact(),
-            Val::Str(text) if temporal_text => serde_json::json!(six_fraction_digits(text)).to_string(),
-            other => other.to_json().map_err(|error| column_output_error(c.ent.name, &name, other, error))?.to_string(),
+        // The JSON form writes a datetime(p) column as the array form does (PRT-69).
+        let document = match (datetime_precision(c, &name)?, &v) {
+            (_, Val::Ordered(o)) => o.compact(),
+            (Some(precision), Val::DateTime(t)) => serde_json::json!(datetime_text(t, precision)).to_string(),
+            (_, other) => other.to_json().map_err(|error| column_output_error(c.ent.name, &name, other, error))?.to_string(),
         };
         let text = if styled_column(c, &name)? {
             if matches!(v, Val::Null) {
@@ -1816,12 +1814,21 @@ fn row_values(m: &dyn AnyModel) -> Result<Vec<(String, Val)>> {
     Ok(values)
 }
 
-/// A time or datetime text with six fraction digits, zeros past the column precision.
-fn six_fraction_digits(text: &str) -> String {
-    match text.split_once('.') {
-        Some((head, fraction)) => format!("{head}.{:0<6}", &fraction[..fraction.len().min(6)]),
-        None => format!("{text}.000000"),
+/// The precision p of a declared datetime(p) column of the row, or None for any other name.
+fn datetime_precision(c: &Core, name: &str) -> Result<Option<u8>> {
+    Ok(c.ent.entity_schema()?.field(name).and_then(|f| match f.ty {
+        dbspec::Type::DateTime(precision) => Some(precision),
+        _ => None,
+    }))
+}
+
+/// The text of a datetime(p) value: YYYY-MM-DD HH:MM:SS with exactly p fraction digits, and no dot when p is 0 (PRT-69).
+fn datetime_text(t: &chrono::NaiveDateTime, precision: u8) -> String {
+    let head = t.format("%Y-%m-%d %H:%M:%S");
+    if precision == 0 {
+        return head.to_string();
     }
+    format!("{head}.{}", &format!("{:09}", chrono::Timelike::nanosecond(t))[..usize::from(precision)])
 }
 
 fn styled_column(c: &Core, name: &str) -> Result<bool> {

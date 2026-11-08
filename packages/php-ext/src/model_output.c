@@ -52,22 +52,6 @@ static void output_array_value(zval *value, zval *result)
     }
 }
 
-static zend_string *output_six_digits(zend_string *input)
-{
-    const char *bytes = ZSTR_VAL(input);
-    size_t dot = ZSTR_LEN(input);
-    for (size_t i = 0; i < ZSTR_LEN(input); i++) if (bytes[i] == '.') { dot = i; break; }
-    if (dot == ZSTR_LEN(input)) {
-        smart_str out = {0}; smart_str_append(&out, input); smart_str_appends(&out, ".000000");
-        return smart_str_extract(&out);
-    }
-    smart_str out = {0};
-    smart_str_appendl(&out, bytes, dot + 1);
-    size_t have = ZSTR_LEN(input) - dot - 1;
-    for (size_t i = 0; i < 6; i++) smart_str_appendc(&out, i < have ? bytes[dot + 1 + i] : '0');
-    return smart_str_extract(&out);
-}
-
 static bool output_string_result(int status, zval *result, zend_string **text)
 {
     if (status != SUCCESS || EG(exception) != NULL || Z_TYPE_P(result) != IS_STRING) {
@@ -79,22 +63,37 @@ static bool output_string_result(int status, zval *result, zend_string **text)
     return true;
 }
 
+/* A column value of the array form (Model::columnArrayValue): a date, datetime(p) and time(p) column each has one
+   temporal form, the text of docs/spec/protocol.md PRT-69: YYYY-MM-DD, and YYYY-MM-DD HH:MM:SS and HH:MM:SS with exactly
+   p fraction digits, the precision of the column. A time column holds that text, as its getter returns it. */
 static void output_column_value(zval *column, zval *value, zval *result)
 {
     zval *type = output_assoc(column, "type");
-    if (Z_TYPE_P(value) == IS_STRING && type != NULL && Z_TYPE_P(type) == IS_STRING &&
-        (zend_string_equals_literal(Z_STR_P(type), "time") || zend_string_equals_literal(Z_STR_P(type), "datetime"))) {
-        ZVAL_STR(result, output_six_digits(Z_STR_P(value)));
+    if (!output_instance(value, "DateTimeInterface") || type == NULL || Z_TYPE_P(type) != IS_STRING) {
+        output_array_value(value, result);
         return;
     }
-    if (output_instance(value, "DateTimeInterface")) {
-        const char *format = "Y-m-d H:i:s.u";
-        if (type != NULL && Z_TYPE_P(type) == IS_STRING && zend_string_equals_literal(Z_STR_P(type), "date")) format = "Y-m-d";
-        else if (type != NULL && Z_TYPE_P(type) == IS_STRING && zend_string_equals_literal(Z_STR_P(type), "time")) format = "H:i:s.u";
-        output_format_datetime(value, format, result);
+    if (zend_string_equals_literal(Z_STR_P(type), "date")) {
+        output_format_datetime(value, "Y-m-d", result);
         return;
     }
-    output_array_value(value, result);
+    bool time = zend_string_equals_literal(Z_STR_P(type), "time");
+    if (!time && !zend_string_equals_literal(Z_STR_P(type), "datetime")) {
+        output_array_value(value, result);
+        return;
+    }
+    zval *precision = output_assoc(column, "precision");
+    zend_long digits = precision != NULL && Z_TYPE_P(precision) == IS_LONG ? Z_LVAL_P(precision) : 0;
+    zval full;
+    output_format_datetime(value, time ? "H:i:s.u" : "Y-m-d H:i:s.u", &full);
+    if (EG(exception) != NULL || Z_TYPE(full) != IS_STRING) {
+        ZVAL_COPY_VALUE(result, &full);
+        return;
+    }
+    /* The text ends with a dot and six microsecond digits; p of them stay, and the dot only when p is above 0. */
+    size_t length = Z_STRLEN(full) - 7 + (digits > 0 ? (size_t)digits + 1 : 0);
+    ZVAL_STRINGL(result, Z_STRVAL(full), length);
+    zval_ptr_dtor(&full);
 }
 
 static void output_append(zval *out, HashTable *seen, zend_string *name, zval *value)
@@ -566,26 +565,20 @@ ZEND_METHOD(Polyspec_Orm_Model, pairs)
 
 ZEND_METHOD(Polyspec_Orm_Model, columnArrayValue)
 {
-    static const char *const scalar_types[] = {"string", NULL};
-    if (!model_reject_null_scalar_args(execute_data, scalar_types, 2)) RETURN_THROWS();
-    zend_string *type; zval *value;
-    ZEND_PARSE_PARAMETERS_START(2, 2)
+    static const char *const scalar_types[] = {"string", "int", NULL};
+    if (!model_reject_null_scalar_args(execute_data, scalar_types, 3)) RETURN_THROWS();
+    zend_string *type; zend_long precision; zval *value;
+    ZEND_PARSE_PARAMETERS_START(3, 3)
         Z_PARAM_STR(type)
+        Z_PARAM_LONG(precision)
         Z_PARAM_ZVAL(value)
     ZEND_PARSE_PARAMETERS_END();
-    zval column; array_init(&column); add_assoc_str(&column, "type", zend_string_copy(type));
+    zval column; array_init(&column);
+    add_assoc_str(&column, "type", zend_string_copy(type));
+    add_assoc_long(&column, "precision", precision);
     output_column_value(&column, value, return_value);
     zval_ptr_dtor(&column);
     if (EG(exception) != NULL) RETURN_THROWS();
-}
-
-ZEND_METHOD(Polyspec_Orm_Model, sixFractionDigits)
-{
-    static const char *const scalar_types[] = {"string"};
-    if (!model_reject_null_scalar_args(execute_data, scalar_types, 1)) RETURN_THROWS();
-    zend_string *text;
-    ZEND_PARSE_PARAMETERS_START(1, 1) Z_PARAM_STR(text) ZEND_PARSE_PARAMETERS_END();
-    RETURN_STR(output_six_digits(text));
 }
 
 ZEND_METHOD(Polyspec_Orm_Model, arrayValue)

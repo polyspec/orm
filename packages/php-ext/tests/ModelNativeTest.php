@@ -256,7 +256,6 @@ final class ModelNativeTest extends TestCase
             'restoreKeyValue',
             'pairs',
             'columnArrayValue',
-            'sixFractionDigits',
             'arrayValue',
             'holdsOrderedJson',
             ] as $name

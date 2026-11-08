@@ -10763,10 +10763,6 @@
     "exported": false,
     "signature": "async function scalarOf(c: Core, kind: 'count' | 'sum' | 'avg', agg = ''): Promise\u003cunknown\u003e"
   },
-  "packages/ts/src/model.ts::temporalOutput": {
-    "exported": false,
-    "signature": "function temporalOutput(columnType: string, value: unknown): unknown"
-  },
   "packages/ts/src/model.ts::terminal": {
     "exported": false,
     "signature": "function terminal(c: Core): Executor"

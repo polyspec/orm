@@ -2346,8 +2346,7 @@ abstract class Model implements \JsonSerializable, ModelMetadata
     private function restoreKeyValue(Request $r, array $own, string $column): mixed {}
     public function connection(): ?Db {}
     private function pairs(): array {}
-    private static function columnArrayValue(string $type, mixed $v): mixed {}
-    private static function sixFractionDigits(string $text): string {}
+    private static function columnArrayValue(string $type, int $precision, mixed $v): mixed {}
     private static function arrayValue(mixed $v): mixed {}
     public function toArray(): array {}
     public function toJson(): string {}

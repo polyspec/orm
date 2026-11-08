@@ -3717,7 +3717,7 @@
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::columnArrayValue": {
     "exported": false,
-    "signature": "private static function columnArrayValue(string $type, mixed $v): mixed"
+    "signature": "private static function columnArrayValue(string $type, int $precision, mixed $v): mixed"
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::columnOrExtra": {
     "exported": false,
@@ -4030,10 +4030,6 @@
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::save": {
     "exported": true,
     "signature": "public function save(): static"
-  },
-  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::sixFractionDigits": {
-    "exported": false,
-    "signature": "private static function sixFractionDigits(string $text): string"
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::subject": {
     "exported": false,

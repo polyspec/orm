@@ -179,24 +179,6 @@ def _json_column(core, name: str, value):
     return value
 
 
-def _column_type(core, name: str) -> str:
-    """The dbspec type of a column of the core's entity, or "" when the name is no column."""
-    entity = getattr(getattr(core, "ent", None), "entity", None)
-    for field in getattr(entity, "fields", ()):
-        if field.name == name:
-            return field.type
-    return ""
-
-
-def _temporal_output(column_type: str, value):
-    """A time or datetime value of the array and JSON forms has six fraction digits, zeros past the column
-    precision, as docs/spec/protocol.md section 5 (Read) states for every column precision."""
-    if column_type not in ("time", "datetime") or not isinstance(value, str):
-        return value
-    head, dot, fraction = value.partition(".")
-    return f"{head}.{(fraction + '000000')[:6]}" if dot else f"{head}.000000"
-
-
 def _related_output(value):
     """A related model is written as its own row output, a collection as a list of them."""
     if value is None:
@@ -558,9 +540,7 @@ class Model:
             if isinstance(value, StyledValue):
                 value = value.to_json()
             else:
-                value = _temporal_output(
-                    _column_type(self.core, name), _related_output(value)
-                )
+                value = _related_output(value)
             out[name] = value
         return out
 
@@ -571,7 +551,7 @@ class Model:
         return (
             "{"
             + ",".join(
-                f"{_string_text(name)}:{_json_text(_temporal_output(_column_type(self.core, name), _json_column(self.core, name, value)))}"
+                f"{_string_text(name)}:{_json_text(_json_column(self.core, name, value))}"
                 for name, value in _pairs(self.core)
             )
             + "}"

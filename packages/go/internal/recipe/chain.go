@@ -14,7 +14,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"time"
 
 	orderedjson "github.com/polyspec/ordered-json/packages/go"
 	"github.com/polyspec/orm/packages/go/orm"
@@ -1312,11 +1311,13 @@ type tableRelation struct {
 	Columns []string `json:"columns"`
 }
 
-// tableCells is the recipe wrappers of the columns of a table row.
+// tableCells is the recipe wrappers of the columns of a table row, read from the array form of the library (COD-27,
+// FCV-4).
 func tableCells(r *tableRow, columns []string) ([]any, error) {
 	out := make([]any, len(columns))
+	values := r.m.ToArray()
 	for i, column := range columns {
-		v, ok := r.vals[column]
+		v, ok := values[column]
 		if !ok {
 			return nil, fmt.Errorf("the row has no column %s", column)
 		}
@@ -1859,26 +1860,13 @@ func tableValue(s *orm.Schema, table string, row *tableRow, name string, v any) 
 	case "f64":
 		return orm.AsFloat64(v)
 	case "date":
-		// A temporal cell is the text of the value model (PRT-69), as the other runtimes read it; the generated model
-		// reads it with the same conversion.
-		t, err := orm.AsDate(v)
-		if err != nil {
-			return nil, err
-		}
-		return t.Format(time.DateOnly), nil
+		// A temporal cell is held as the generated model holds it, and its text is the array form of the library
+		// (PRT-69, FCV-4).
+		return orm.AsDate(v)
 	case "datetime":
-		t, err := orm.AsDateTime(v, field.Precision)
-		if err != nil {
-			return nil, err
-		}
-		return t.Format("2006-01-02 15:04:05.000000"), nil
+		return orm.AsDateTime(v, field.Precision)
 	case "time":
-		// The cell is read at its declared precision (COD-1) and written with six fraction digits (PRT-69).
-		text, err := orm.AsTimeText(v, field.Precision)
-		if err != nil {
-			return nil, err
-		}
-		return orm.AsTimeText(text, 6)
+		return orm.AsTimeText(v, field.Precision)
 	case "bytes":
 		if len(field.Codec) == 0 {
 			return orm.AsBytes(v)

@@ -7,7 +7,6 @@ ZEND_METHOD(Polyspec_Orm_Model, jsonSerialize);
 ZEND_METHOD(Polyspec_Orm_Model, jsonText);
 ZEND_METHOD(Polyspec_Orm_Model, pairs);
 ZEND_METHOD(Polyspec_Orm_Model, columnArrayValue);
-ZEND_METHOD(Polyspec_Orm_Model, sixFractionDigits);
 ZEND_METHOD(Polyspec_Orm_Model, arrayValue);
 ZEND_METHOD(Polyspec_Orm_Model, holdsOrderedJson);
 zend_class_entry *model_output_bytes_class(void);
