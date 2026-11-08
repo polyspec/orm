@@ -18387,13 +18387,13 @@
            [
             "transaction",
             {
-             "null": true
+             "null": "int"
             }
            ],
            [
             "error",
             {
-             "null": true
+             "null": "text"
             }
            ]
           ]
@@ -18438,13 +18438,13 @@
            [
             "transaction",
             {
-             "null": true
+             "null": "int"
             }
            ],
            [
             "error",
             {
-             "null": true
+             "null": "text"
             }
            ]
           ]
@@ -18498,13 +18498,13 @@
            [
             "transaction",
             {
-             "null": true
+             "null": "int"
             }
            ],
            [
             "error",
             {
-             "null": true
+             "null": "text"
             }
            ]
           ]
@@ -18549,13 +18549,13 @@
            [
             "transaction",
             {
-             "null": true
+             "null": "int"
             }
            ],
            [
             "error",
             {
-             "null": true
+             "null": "text"
             }
            ]
           ]
@@ -18609,13 +18609,13 @@
            [
             "transaction",
             {
-             "null": true
+             "null": "int"
             }
            ],
            [
             "error",
             {
-             "null": true
+             "null": "text"
             }
            ]
           ]
@@ -18660,13 +18660,13 @@
            [
             "transaction",
             {
-             "null": true
+             "null": "int"
             }
            ],
            [
             "error",
             {
-             "null": true
+             "null": "text"
             }
            ]
           ]
@@ -18800,13 +18800,13 @@
            [
             "transaction",
             {
-             "null": true
+             "null": "int"
             }
            ],
            [
             "error",
             {
-             "null": true
+             "null": "text"
             }
            ]
           ]
@@ -18851,13 +18851,13 @@
            [
             "transaction",
             {
-             "null": true
+             "null": "int"
             }
            ],
            [
             "error",
             {
-             "null": true
+             "null": "text"
             }
            ]
           ]
@@ -18911,13 +18911,13 @@
            [
             "transaction",
             {
-             "null": true
+             "null": "int"
             }
            ],
            [
             "error",
             {
-             "null": true
+             "null": "text"
             }
            ]
           ]
@@ -18962,13 +18962,13 @@
            [
             "transaction",
             {
-             "null": true
+             "null": "int"
             }
            ],
            [
             "error",
             {
-             "null": true
+             "null": "text"
             }
            ]
           ]
@@ -19022,13 +19022,13 @@
            [
             "transaction",
             {
-             "null": true
+             "null": "int"
             }
            ],
            [
             "error",
             {
-             "null": true
+             "null": "text"
             }
            ]
           ]
@@ -19073,13 +19073,13 @@
            [
             "transaction",
             {
-             "null": true
+             "null": "int"
             }
            ],
            [
             "error",
             {
-             "null": true
+             "null": "text"
             }
            ]
           ]
