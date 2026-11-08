@@ -3712,6 +3712,93 @@
       ]
     },
     {
+      "id": "decode_empty_cell_refused",
+      "requirements": [
+        "COD-14",
+        "COD-41"
+      ],
+      "steps": [
+        {
+          "op": "codec.decode",
+          "styles": [
+            "ordered_json"
+          ],
+          "raw": {
+            "text": ""
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: styled cell is empty"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": ""
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: styled cell is empty"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": ""
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: styled cell is empty"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize",
+            "gz"
+          ],
+          "raw": {
+            "text": ""
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: styled cell is empty"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "ordered_json",
+            "base64",
+            "gz"
+          ],
+          "raw": {
+            "text": ""
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: styled cell is empty"
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "base64_empty_list",
       "requirements": [
         "COD-3",

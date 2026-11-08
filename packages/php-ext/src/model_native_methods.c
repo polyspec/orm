@@ -4,6 +4,7 @@
 #include "model_chain.h"
 #include "pending_time_parts.h"
 #include "orm_exception_object.h"
+#include "param_check_native.h"
 #include "Zend/zend_exceptions.h"
 #include "Zend/zend_interfaces.h"
 #include "Zend/zend_closures.h"
@@ -1072,7 +1073,8 @@ ZEND_METHOD(Polyspec_Orm_Model, writeColumn)
         ZVAL_STR_COPY(&set_value, canonical);
     }
     if (Z_TYPE_P(input) != IS_NULL && type != NULL && Z_TYPE_P(type) == IS_STRING
-        && (zend_string_equals_literal(Z_STR_P(type), "date") || zend_string_equals_literal(Z_STR_P(type), "datetime"))) {
+        && (zend_string_equals_literal(Z_STR_P(type), "date") || zend_string_equals_literal(Z_STR_P(type), "time")
+            || zend_string_equals_literal(Z_STR_P(type), "datetime"))) {
         if (Z_TYPE_P(input) != IS_STRING) {
             zval_ptr_dtor(&meta); zval_ptr_dtor(&value); zval_ptr_dtor(&set_value);
             smart_str message = {0};
@@ -1081,9 +1083,30 @@ ZEND_METHOD(Polyspec_Orm_Model, writeColumn)
             model_throw_orm("CODEC_ENCODE", ZSTR_VAL(text)); zend_string_release(text);
             RETURN_THROWS();
         }
-        zval parsed;
+        /* The text is checked now, a nonzero fraction digit past p among it, and the bind layer checks it again (DBS-121);
+         * the getter of a date or datetime returns the parsed time in the connection's zone. */
+        bool is_time = zend_string_equals_literal(Z_STR_P(type), "time");
+        zval *precision = zend_hash_str_find(Z_ARRVAL_P(col), "precision", sizeof("precision") - 1);
+        zend_long p = zend_string_equals_literal(Z_STR_P(type), "date") ? 0 : (precision != NULL && Z_TYPE_P(precision) == IS_LONG ? Z_LVAL_P(precision) : -1);
+        if (p < 0) {
+            zval_ptr_dtor(&meta); zval_ptr_dtor(&value); zval_ptr_dtor(&set_value);
+            model_throw_orm("INTERNAL", "the model metadata names no precision of a time or datetime column");
+            RETURN_THROWS();
+        }
+        zval zone, bound, parsed;
+        ZVAL_UNDEF(&zone);
+        ZVAL_UNDEF(&bound);
         ZVAL_UNDEF(&parsed);
-        if (!model_time_value(s, input, Z_STRVAL_P(type), &parsed)) {
+        bool ok = model_zone(s, &zone);
+        if (ok) {
+            ok = param_call_time_value(input, Z_STR_P(type), p, &zone, &bound);
+            zval_ptr_dtor(&bound);
+        }
+        if (Z_TYPE(zone) != IS_UNDEF) zval_ptr_dtor(&zone);
+        if (ok && !is_time) {
+            ok = model_time_value(s, input, Z_STRVAL_P(type), &parsed);
+        }
+        if (!ok) {
             /* A text that no time form reads is refused as a write (PRT-67, DBS-121); model_time_value reports a read. */
             zend_object *previous = EG(exception);
             GC_ADDREF(previous);
@@ -1102,8 +1125,10 @@ ZEND_METHOD(Polyspec_Orm_Model, writeColumn)
             zend_string_release(text);
             RETURN_THROWS();
         }
-        zval_ptr_dtor(&value);
-        ZVAL_COPY_VALUE(&value, &parsed);
+        if (!is_time) {
+            zval_ptr_dtor(&value);
+            ZVAL_COPY_VALUE(&value, &parsed);
+        }
     }
     zval *codec = zend_hash_str_find(Z_ARRVAL_P(col), "codec", sizeof("codec") - 1);
     if (codec != NULL && Z_TYPE_P(codec) == IS_ARRAY && zend_hash_num_elements(Z_ARRVAL_P(codec)) != 0) {

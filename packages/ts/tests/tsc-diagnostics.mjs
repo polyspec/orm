@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
+import { readFileSync } from 'node:fs';
 
 const tsc = fileURLToPath(new URL('../../../node_modules/.bin/tsc', import.meta.url));
 
@@ -15,7 +16,7 @@ export async function tscDiagnostics(prefix, name, texts) {
     const files = texts.map((_, i) => `${name}${i}.ts`);
     for (const [i, text] of texts.entries()) await writeFile(path.join(dir, files[i]), text);
     await writeFile(path.join(dir, 'tsconfig.json'), JSON.stringify({
-      compilerOptions: { target: 'ES2022', module: 'NodeNext', moduleResolution: 'NodeNext', strict: true, noUncheckedIndexedAccess: true, exactOptionalPropertyTypes: true, noEmit: true, skipLibCheck: true, types: [] },
+      compilerOptions: { target: 'ES2022', lib: JSON.parse(readFileSync(new URL('../tsconfig.json', import.meta.url), 'utf8')).compilerOptions.lib, module: 'NodeNext', moduleResolution: 'NodeNext', strict: true, noUncheckedIndexedAccess: true, exactOptionalPropertyTypes: true, noEmit: true, skipLibCheck: true, types: [] },
       files,
     }));
     let output = '';

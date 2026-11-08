@@ -19,7 +19,7 @@ final class ModelReadShapeFixture extends Model
                 'ratio' => ['type' => 'f64', 'codec' => []],
                 'row_count' => ['type' => 'f64', 'codec' => []],
                 'payload' => ['type' => 'text', 'codec' => ['name' => 'json']],
-                'updated_ts' => ['type' => 'datetime', 'codec' => []],
+                'updated_ts' => ['type' => 'datetime', 'precision' => 6, 'codec' => []],
             ],
         ];
     }

@@ -566,7 +566,11 @@ def convert(type_: str, value, zone: str, declared: Field | None = None):
         if isinstance(value, bool):
             raise refused
         if isinstance(value, (int, float, Decimal)):
-            number = float(value)
+            try:
+                number = float(value)
+            except OverflowError as error:
+                # An integer past the f64 range is no finite number.
+                raise refused from error
         elif isinstance(value, str) and _DECIMAL_NUMBER_TEXT.fullmatch(value):
             number = float(value)
         else:

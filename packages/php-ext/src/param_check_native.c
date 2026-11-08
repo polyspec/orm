@@ -96,7 +96,9 @@ static bool param_throw_kind(zend_long index, zval *value, zend_string *type)
     return param_throw_encode(message, NULL);
 }
 
-static bool param_call_time_value(zval *value, zend_string *type, zend_long precision, zval *zone, zval *result)
+/* The bound text of a date, time or datetime value by Polyspec\\Orm\\Db::timeValue, with a nonzero fraction digit past p
+ * refused; false with the CODEC_ENCODE of the value thrown. */
+bool param_call_time_value(zval *value, zend_string *type, zend_long precision, zval *zone, zval *result)
 {
     zend_string *name = zend_string_init(ZEND_STRL("Polyspec\\Orm\\Db"), 0);
     zend_class_entry *ce = zend_lookup_class(name);

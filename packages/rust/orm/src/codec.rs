@@ -37,6 +37,11 @@ pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
         Val::Bytes(b) => b.clone(),
         _ => return Err(err(CODEC_DECODE, "cell is not bytes")),
     };
+    // An empty cell is CODEC_DECODE, except under a last base64 stage and under no stage, whose encoders write an empty
+    // cell for empty text (docs/spec/codec.md COD-14).
+    if cur.is_empty() && styles.last().is_some_and(|last| last != "base64") {
+        return Err(err(CODEC_DECODE, "styled cell is empty"));
+    }
     let mut value: Option<Val> = None;
     for st in styles.iter().rev() {
         if value.is_some() {

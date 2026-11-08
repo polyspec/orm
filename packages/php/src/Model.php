@@ -444,13 +444,18 @@ abstract class Model implements \JsonSerializable, ModelMetadata
             }
         }
         $stored = $value;
-        if (in_array($col['type'], ['date', 'datetime'], true) && $value !== null) {
+        if (in_array($col['type'], ['date', 'time', 'datetime'], true) && $value !== null) {
             if (!is_string($value)) {
                 throw new OrmException(Code::CODEC_ENCODE, "$column requires its text form");
             }
-            // The text is checked now; the getter returns the parsed time in the connection's zone (T189).
+            // The text is checked now, a nonzero fraction digit past p among it, and the bind layer checks it again
+            // (DBS-121); the getter of a date or datetime returns the parsed time in the connection's zone (T189).
             try {
-                $stored = self::timeValue($value, $this->conn?->zone() ?? new \DateTimeZone('UTC'), $col['type']);
+                $zone = $this->conn?->zone() ?? new \DateTimeZone('UTC');
+                Db::timeValue($value, $col['type'], $col['type'] === 'date' ? 0 : $col['precision'], $zone);
+                if ($col['type'] !== 'time') {
+                    $stored = self::timeValue($value, $zone, $col['type']);
+                }
             } catch (OrmException $error) {
                 // A text that no time form reads is refused as a write (PRT-67, DBS-121); timeValue reports a read.
                 $entity = static::meta()['entity'];

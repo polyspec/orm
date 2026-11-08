@@ -106,7 +106,7 @@ final class ModelAssemblyTest extends TestCase
             $visited[$key] = $row;
         }
         self::assertSame(['first' => $first, 9 => $second], $visited);
-        self::assertSame($rows->toArray(), $rows->jsonSerialize());
+        self::assertSame(json_encode($rows->toArray(), JSON_THROW_ON_ERROR), json_encode($rows, JSON_THROW_ON_ERROR));
         self::assertSame($rows->toArray(), (clone $rows)->toArray());
         try {
             clone $iterator;

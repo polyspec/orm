@@ -238,6 +238,28 @@ impl Core {
         self.ent
     }
 
+    /// Checks the text that the setter of a `date`, `time(p)` or `datetime(p)` column takes, a nonzero fraction digit past
+    /// p among it; the bind layer checks it again (DBS-121). A text the column does not hold is CODEC_ENCODE
+    /// `<entity>.<column>: <type> value is not a <type>`, which names no value (INT-163). A text of the value form outside
+    /// 0001-01-01 to 9999-12-31 is left to the range rule of the bind layer (PRT-32a).
+    pub fn check_time_text(&self, column: &str, column_type: &str, precision: u8, text: &str) -> crate::Result<()> {
+        let cell = crate::value::Val::Str(text.to_owned());
+        let held = match column_type {
+            "date" => crate::cell::date_cell(&cell).is_some(),
+            "time" => crate::cell::time_cell(&cell, precision).is_some(),
+            "datetime" => crate::cell::datetime_cell(&cell, precision).is_some(),
+            other => return Err(Error::internal(format!("column type {other} is not date, time or datetime"))),
+        };
+        if held {
+            return Ok(());
+        }
+        Err(Error::Engine {
+            code: codes::CODEC_ENCODE.into(),
+            msg: format!("{}.{column}: {column_type} value is not a {column_type}", self.ent.name),
+            source: None,
+        })
+    }
+
     /// Marks a generated field assigned from a checked value.
     pub fn mark_field_ready(&mut self, name: &str) {
         self.invalidated_fields.remove(name);

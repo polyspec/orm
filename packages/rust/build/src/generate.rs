@@ -1010,12 +1010,23 @@ fn model_source(gm: &Model<'_>) -> String {
                 write!(b, "    /// Sets {col} after exact decimal validation.\n    pub fn set_{col}(mut self, v: impl Into<String>) -> polyspec_orm::Result<Self> {{\n        let value = polyspec_orm::decimal::normalize(&v.into(), {precision}, {scale})?;\n        self.__orm.set({col:?}, value.clone().into());\n        self.{id} = value;\n        self.__orm.mark_field_ready({col:?});\n        Ok(self)\n    }}\n\n").expect("fmt::Write into a String cannot fail");
             }
         } else if matches!(c.ty, Type::Date | Type::DateTime(_)) && c.codec.is_empty() {
-            // The setter takes the text form and parses it into the typed field (T189).
+            // The setter checks the text form (DBS-121) and parses it into the typed field (T189).
             let parse = if matches!(c.ty, Type::Date) { "as_date" } else { "as_datetime" };
+            let (type_name, precision) = match c.ty {
+                Type::DateTime(p) => ("datetime", p),
+                _ => ("date", 0),
+            };
             if c.nullable {
-                write!(b, "    /// Sets {col} from its text form; None or Null stores NULL.\n    pub fn set_{col}(mut self, v: impl polyspec_orm::IntoNullable<String>) -> polyspec_orm::Result<Self> {{\n        let text = v.into_nullable();\n        let value = match &text {{ Some(s) => Some(polyspec_orm::Val::Str(s.clone()).{parse}()?), None => None }};\n        self.__orm.set({col:?}, text.into());\n        self.{id} = value;\n        self.__orm.mark_field_ready({col:?});\n        Ok(self)\n    }}\n\n").expect("fmt::Write into a String cannot fail");
+                write!(b, "    /// Sets {col} from its text form; None or Null stores NULL.\n    pub fn set_{col}(mut self, v: impl polyspec_orm::IntoNullable<String>) -> polyspec_orm::Result<Self> {{\n        let text = v.into_nullable();\n        if let Some(s) = &text {{\n            self.__orm.check_time_text({col:?}, \"{type_name}\", {precision}, s)?;\n        }}\n        let value = match &text {{ Some(s) => Some(polyspec_orm::Val::Str(s.clone()).{parse}()?), None => None }};\n        self.__orm.set({col:?}, text.into());\n        self.{id} = value;\n        self.__orm.mark_field_ready({col:?});\n        Ok(self)\n    }}\n\n").expect("fmt::Write into a String cannot fail");
             } else {
-                write!(b, "    /// Sets {col} from its text form.\n    pub fn set_{col}(mut self, v: impl Into<String>) -> polyspec_orm::Result<Self> {{\n        let text: String = v.into();\n        let value = polyspec_orm::Val::Str(text.clone()).{parse}()?;\n        self.__orm.set({col:?}, text.into());\n        self.{id} = value;\n        self.__orm.mark_field_ready({col:?});\n        Ok(self)\n    }}\n\n").expect("fmt::Write into a String cannot fail");
+                write!(b, "    /// Sets {col} from its text form.\n    pub fn set_{col}(mut self, v: impl Into<String>) -> polyspec_orm::Result<Self> {{\n        let text: String = v.into();\n        self.__orm.check_time_text({col:?}, \"{type_name}\", {precision}, &text)?;\n        let value = polyspec_orm::Val::Str(text.clone()).{parse}()?;\n        self.__orm.set({col:?}, text.into());\n        self.{id} = value;\n        self.__orm.mark_field_ready({col:?});\n        Ok(self)\n    }}\n\n").expect("fmt::Write into a String cannot fail");
+            }
+        } else if let (Type::Time(precision), true) = (c.ty, c.codec.is_empty()) {
+            // The setter checks the text form, a nonzero fraction digit past p among it (DBS-121).
+            if c.nullable {
+                write!(b, "    /// Sets {col} from its text form; None or Null stores NULL.\n    pub fn set_{col}(mut self, v: impl polyspec_orm::IntoNullable<String>) -> polyspec_orm::Result<Self> {{\n        let v = v.into_nullable();\n        if let Some(s) = &v {{\n            self.__orm.check_time_text({col:?}, \"time\", {precision}, s)?;\n        }}\n        self.__orm.set({col:?}, v.clone().into());\n        self.{id} = v;\n        self.__orm.mark_field_ready({col:?});\n        Ok(self)\n    }}\n\n").expect("fmt::Write into a String cannot fail");
+            } else {
+                write!(b, "    /// Sets {col} from its text form.\n    pub fn set_{col}(mut self, v: impl Into<String>) -> polyspec_orm::Result<Self> {{\n        let v: String = v.into();\n        self.__orm.check_time_text({col:?}, \"time\", {precision}, &v)?;\n        self.__orm.set({col:?}, v.clone().into());\n        self.{id} = v;\n        self.__orm.mark_field_ready({col:?});\n        Ok(self)\n    }}\n\n").expect("fmt::Write into a String cannot fail");
             }
         } else if fd != bt {
             write!(

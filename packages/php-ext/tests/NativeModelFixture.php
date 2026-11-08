@@ -17,7 +17,7 @@ final class NativeModelFixture extends Model
                 'label' => ['type' => 'text', 'codec' => [], 'nullable' => true],
                 'payload' => ['type' => 'text', 'codec' => ['ordered_json'], 'nullable' => true],
                 'amount' => ['type' => 'decimal', 'precision' => 8, 'scale' => 2, 'codec' => [], 'nullable' => true],
-                'happened' => ['type' => 'datetime', 'codec' => [], 'nullable' => true],
+                'happened' => ['type' => 'datetime', 'precision' => 6, 'codec' => [], 'nullable' => true],
             ],
         ];
     }

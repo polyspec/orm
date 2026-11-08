@@ -160,11 +160,7 @@ fn raw_i64(r: &MySqlRow, i: usize) -> Result<i64> {
         "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" => required_cell(r.try_get::<Option<i64>, _>(i)?, i)?,
         "YEAR" => required_cell(year_cell(r, i)?, i)?,
         "TINYINT UNSIGNED" | "SMALLINT UNSIGNED" | "MEDIUMINT UNSIGNED" | "INT UNSIGNED" | "BIGINT UNSIGNED" => {
-            i64::try_from(required_cell(r.try_get::<Option<u64>, _>(i)?, i)?).map_err(|error| Error::Engine {
-                code: crate::codes::CODEC_DECODE.into(),
-                msg: format!("column {i} exceeds i64 range: {error}"),
-                source: None,
-            })?
+            i64::try_from(required_cell(r.try_get::<Option<u64>, _>(i)?, i)?).map_err(|error| crate::cell::cell_refusal_by("i64", error))?
         }
         "BOOLEAN" => i64::from(required_cell(r.try_get::<Option<bool>, _>(i)?, i)?),
         _ => read_cell_mysql(r, i)?.as_i64()?,
@@ -217,14 +213,12 @@ pub fn read_cell_mysql(row: &MySqlRow, i: usize) -> Result<Val> {
         "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" => row.try_get::<Option<i64>, _>(i)?.map(Val::I64),
         "YEAR" => year_cell(row, i)?.map(Val::I64),
         "TINYINT UNSIGNED" | "SMALLINT UNSIGNED" | "MEDIUMINT UNSIGNED" | "INT UNSIGNED" | "BIGINT UNSIGNED" => {
-            return match row.try_get::<Option<u64>, _>(i)? {
-                Some(value) => i64::try_from(value).map(Val::I64).map_err(|error| Error::Engine {
-                    code: crate::codes::CODEC_DECODE.into(),
-                    msg: format!("column {i} exceeds i64 range: {error}"),
-                    source: None,
-                }),
-                None => Ok(Val::Null),
-            };
+            // An unsigned value past i64 keeps its exact digits, as a text protocol sends them, so the column type that
+            // reads it refuses it by its own rule and names its column (COD-1).
+            return Ok(match row.try_get::<Option<u64>, _>(i)? {
+                Some(value) => i64::try_from(value).map_or_else(|_| Val::Bytes(value.to_string().into_bytes()), Val::I64),
+                None => Val::Null,
+            });
         }
         "FLOAT" | "DOUBLE" => row.try_get::<Option<f64>, _>(i)?.map(Val::F64),
         // Preserve DECIMAL text exactly; a caller that requests f64 checks precision.

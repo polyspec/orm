@@ -6225,6 +6225,18 @@ mod tables {
                 value = Param::Str(at.naive_utc().format("%Y-%m-%d %H:%M:%S%.6f").to_string());
             }
         }
+        // The setter of a date, time or datetime column checks its text form (DBS-121).
+        if let (Some(ty), Param::Str(text)) = (field.map(|field| field.ty), &value) {
+            let checked = match ty {
+                Type::Date => Some(("date", 0)),
+                Type::Time(p) => Some(("time", p)),
+                Type::DateTime(p) => Some(("datetime", p)),
+                _ => None,
+            };
+            if let Some((type_name, precision)) = checked {
+                row.core.check_time_text(column, type_name, precision, text).map_err(orm)?;
+            }
+        }
         let read = match &value {
             Param::Null => Val::Null,
             Param::Bool(b) => Val::Bool(*b),
@@ -6238,11 +6250,6 @@ mod tables {
         row.core.set(column, value);
         // A non-finite float reaches the write, whose slot check refuses it (CODEC_ENCODE, PRT-67).
         if matches!(read, Val::F64(f) if !f.is_finite()) {
-            row.values.insert(column.to_owned(), read);
-            return Ok(());
-        }
-        // A text that is no time reaches the write, whose slot check refuses it (CODEC_ENCODE, PRT-67).
-        if matches!(field.map(|field| field.ty), Some(Type::DateTime(_))) && matches!(read, Val::Str(_)) && read.as_datetime().is_err() {
             row.values.insert(column.to_owned(), read);
             return Ok(());
         }

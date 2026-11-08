@@ -5287,6 +5287,10 @@
     }
   },
   "paths": {
+    ".editorconfig": {
+      "scope": "lint",
+      "reason": "the editor settings that orm keeps in the form of kit (scripts/repo/kit-copies.mts): the whitespace and line endings an editor applies; no test or tool of a check reads it"
+    },
     ".githooks/commit-msg": {
       "scope": "lint",
       "reason": "the commit-msg hook of orm: it runs make commit-msg-hook on the message being committed; no test reads it"

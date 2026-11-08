@@ -26,12 +26,6 @@ _GETTER_TYPES = {
     "string": ((str,), "str"),
 }
 
-_INTEGER_RANGES = {
-    "i16": (-32768, 32767),
-    "i32": (-2147483648, 2147483647),
-    "i64": (-9007199254740991, 9007199254740991),
-}
-
 SAFE_INTEGER = 9007199254740991
 
 
@@ -512,6 +506,24 @@ class Core:
             f"{type(value).__name__}, not {expected}"
         )
 
+    def _check_time_text(self, column: str, field, value) -> None:
+        """The setter checks the text of a date, time or datetime column, a nonzero fraction digit past p among it, and
+        the bind layer checks it again (DBS-121); a text the column does not hold is refused by its column, naming no
+        value (INT-163). A text of the value form outside 0001-01-01 to 9999-12-31 is left to the range rule of the bind
+        layer (PRT-32a), since no Python date holds it."""
+        from polyspec.orm.database import _time_text_outside_range, time_value
+
+        try:
+            time_value(value, field.type, "UTC", field.precision)
+        except OrmError as error:
+            if _time_text_outside_range(value, field.type, field.precision):
+                return
+            raise OrmError(
+                codes.CODEC_ENCODE,
+                f"{self.ent.entity.name}.{column}: {field.type} value is not a {field.type}",
+                error,
+            ) from error
+
     def set_value(self, column: str, value) -> None:
         """Stores a column value and records it for the next write; null stores NULL."""
         from polyspec.orm.decimal import normalize_decimal
@@ -534,21 +546,14 @@ class Core:
                     raise OrmError(
                         error.code, str(error).partition(": ")[2], error
                     ) from error
-            rng = _INTEGER_RANGES.get(field.type)
-            if rng is not None and (
-                not _is_safe_integer(value) or not rng[0] <= value <= rng[1]
-            ):
-                raise OrmError(
-                    codes.CODEC_ENCODE,
-                    f"{column} ({field.type}) requires an integer "
-                    f"from {rng[0]} to {rng[1]}",
-                )
             if field.type == "decimal":
                 if not isinstance(value, str):
                     raise OrmError(
                         codes.CODEC_ENCODE, f"{column} requires exact decimal text"
                     )
                 value = normalize_decimal(value, field.precision, field.scale)
+            if field.type in ("date", "time", "datetime"):
+                self._check_time_text(column, field, value)
         self.values[column] = value
         if value is None or (
             isinstance(value, StyledValue) and value.kind == "sql-null"

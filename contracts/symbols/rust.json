@@ -3411,6 +3411,10 @@
     "exported": true,
     "signature": "pub fn chain (\u0026 mut self , conn : \u0026 'static str , keys : \u0026 [ChainKey] , args : Vec \u003c Arg \u003e)"
   },
+  "packages/rust/orm/src/core.rs::Core::check_time_text": {
+    "exported": true,
+    "signature": "pub fn check_time_text (\u0026 self , column : \u0026 str , column_type : \u0026 str , precision : u8 , text : \u0026 str) -\u003e crate :: Result \u003c () \u003e"
+  },
   "packages/rust/orm/src/core.rs::Core::connect": {
     "exported": true,
     "signature": "pub fn connect (\u0026 mut self , db : \u0026 Db)"

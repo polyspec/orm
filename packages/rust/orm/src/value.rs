@@ -150,8 +150,8 @@ impl TryFrom<u64> for Param {
     fn try_from(x: u64) -> crate::Result<Self> {
         i64::try_from(x).map(Param::I64).map_err(|error| crate::Error::Engine {
             code: crate::codes::CODEC_ENCODE.into(),
-            msg: format!("unsigned integer exceeds i64 range: {error}"),
-            source: None,
+            msg: "unsigned integer is outside i64".into(),
+            source: Some(Box::new(error)),
         })
     }
 }

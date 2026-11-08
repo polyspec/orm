@@ -13,6 +13,7 @@ final class NativeByteCellFixture extends Model
         return [
             'entity' => 'native_byte_cell',
             'updated' => '',
+            'aes_version' => '',
             'columns' => [
                 'body' => ['type' => 'bytes', 'codec' => [], 'nullable' => true],
                 'ratio' => ['type' => 'f64', 'codec' => [], 'nullable' => true],

@@ -30,12 +30,6 @@ from polyspec.orm.model import Collection, Model
 from polyspec.orm.names import ChainKey
 from polyspec.orm.styled_value import StyledValue
 
-_INTEGER_RANGES = {
-    "i16": (-32768, 32767),
-    "i32": (-2147483648, 2147483647),
-    "i64": (-9007199254740991, 9007199254740991),
-}
-
 __all__ = ["execute_query", "load"]
 
 

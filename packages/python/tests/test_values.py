@@ -20,7 +20,8 @@ class DatabaseCellConversionTest(unittest.TestCase):
                     convert("f64", value, "+00:00")
                 self.assertEqual(raised.exception.code, "CODEC_DECODE")
         self.assertTrue(math.isfinite(convert("f64", 1.25, "+00:00")))
-        self.assertEqual(convert("f64", 2**63 - 1, "+00:00"), 2**63 - 1)
+        # An integer cell of an f64 column reads as the nearest f64, as in every client (COD-1).
+        self.assertEqual(convert("f64", 2**63 - 1, "+00:00"), float(2**63 - 1))
 
 
 class ValueFunctionTest(unittest.TestCase):

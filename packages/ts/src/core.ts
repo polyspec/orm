@@ -1,4 +1,4 @@
-import { Db } from './database.js';
+import { Db, timeValue } from './database.js';
 import type { ColumnFunctionIR, Group, Item, Limit, Order, Predicate, KeyPair, Relation, Request, RequestQuery, Subquery, Join, QueryKind } from './ir.js';
 import { fieldOf, type Entity, type Field, type RuntimeModel } from './engine/model.js';
 import type { ChainKey } from './names.js';
@@ -417,13 +417,18 @@ export class Core {
       if (!field.nullable && value.kind === 'sql-null') throw new OrmError(codes.CODEC_ENCODE, `${column} does not accept SQL NULL`);
       if (value.kind === 'value') value.payload();
     } else if (value !== null) {
-      const range = integerRanges[field.type];
-      if (range !== undefined && (typeof value !== 'number' || !Number.isSafeInteger(value) || value < range[0] || value > range[1])) {
-        throw new OrmError(codes.CODEC_ENCODE, `${column} (${field.type}) requires an integer from ${range[0]} to ${range[1]}`);
-      }
       if (field.type === 'decimal') {
         if (typeof value !== 'string') throw new OrmError(codes.CODEC_ENCODE, `${column} requires exact decimal text`);
         value = normalizeDecimal(value, field.precision, field.scale);
+      }
+      if (field.type === 'date' || field.type === 'time' || field.type === 'datetime') {
+        // The setter checks the text of its column, a nonzero fraction digit past p among it, and the bind layer checks
+        // it again (DBS-121); a text the column does not hold is refused by its column, naming no value (INT-163).
+        try {
+          timeValue(value, field.type, 'UTC', field.precision);
+        } catch (error) {
+          throw new OrmError(codes.CODEC_ENCODE, `${this.ent.entity.name}.${column}: ${field.type} value is not a ${field.type}`, error);
+        }
       }
     }
     this.values.set(column, value);
