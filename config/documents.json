@@ -11,5 +11,12 @@
   "siteLinks": true,
   "changelogs": [
     "CHANGELOG.md"
+  ],
+  "changelogRules": [
+    "unreleased-first",
+    "unreleased-once",
+    "versions-only",
+    "newest-first",
+    "unreleased-empty-at-release"
   ]
 }

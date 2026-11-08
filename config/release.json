@@ -118,5 +118,18 @@
   },
   "goModules": {
     "packages/go": "github.com/polyspec/orm/packages/go"
-  }
+  },
+  "annotatedTags": true,
+  "packageFiles": [
+    "package.json",
+    "composer.json",
+    "Cargo.toml",
+    "pyproject.toml",
+    "go.mod",
+    "VERSION"
+  ],
+  "writtenFiles": [
+    "config/phpunit/composer.json",
+    ".mise/locks/**"
+  ]
 }

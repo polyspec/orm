@@ -27,7 +27,7 @@ import { parse as parseToml } from 'smol-toml';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mts';
 import { detachedGroupErrors, timeFailureErrors } from './sources.mts';
 import { nativeBoundUnitErrors, nativeExceptions, nativeTestLines, unboundNativeTestErrors } from './parity-units.mts';
-import { callerEnvironmentErrors, generateRuns, scriptCommands, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, generatedCodesErrors, phpExtensionBuildErrors, typescriptHolderErrors, typescriptReaderErrors, typescriptExclusiveReaderErrors, phpunitModelErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, makeTargets, rustTestCaseErrors, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
+import { callerEnvironmentErrors, generateRuns, scriptCommands, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, generatedCodesErrors, phpExtensionBuildErrors, typescriptHolderErrors, typescriptReaderErrors, typescriptExclusiveReaderErrors, phpunitModelErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, makeTargets, rustTestCaseErrors, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors, tools } from './testcases.mts';
 
 // yamlSteps writes steps (the values of a workflow's steps) as the list under a job's steps:, six spaces deep.
 const yamlSteps = (steps: unknown[]) => stringify(steps).split('\n').map(line => line ? `      ${line}` : line).join('\n');
@@ -93,7 +93,7 @@ caseTest('the TypeScript runtime build generates models before compiling their c
   const result = spawnSync('make', ['-n', 'build-ts'], { cwd: root, encoding: 'utf8', env: isolatedEnvironment() });
   assert.equal(result.status, 0, result.stderr);
   const generation = result.stdout.indexOf('npm run typescript:build');
-  const build = /runtime-targets\.(?:mjs|mts) build ts/.exec(result.stdout)?.index ?? -1;
+  const build = /runtime-targets\.(?:mjs|mts) build --roots packages\/ts /.exec(result.stdout)?.index ?? -1;
   assert.ok(generation >= 0, 'build-ts does not run the TypeScript model generator');
   assert.ok(build >= 0, 'build-ts does not invoke the TypeScript runtime build');
   assert.ok(generation < build, 'build-ts compiles consumers before refreshing generated models');
@@ -486,7 +486,7 @@ caseTest('every Python run of run-tests gives the cases the deadlines of their t
   const harness = text('packages/python/tests/testcase.py');
   const seconds = (name: string) => Number(new RegExp(`^${name} = ([0-9.]+)$`, 'm').exec(harness)?.[1]);
   assert.equal(Number.isFinite(seconds('PROCESS')) && Number.isFinite(seconds('GRACE')), true, 'testcase.py states PROCESS and GRACE');
-  const timeout = /^PYTHON_TESTS = \$\(RUN_TESTS\) python --timeout (\d+) --venv \$\(PYTHON_VENV\) --module packages\.python\.tests\.testcase$/m.exec(makefile)?.[1];
+  const timeout = /^PYTHON_TESTS = (?:[A-Z_]+=\S+ )*\$\(RUN_TESTS\) python --timeout (\d+) --venv \$\(PYTHON_VENV\) --module packages\.python\.tests\.testcase$/m.exec(makefile)?.[1];
   assert.equal(Number(timeout), seconds('PROCESS') + seconds('GRACE'), 'PYTHON_TESTS gives run-tests the longest deadline class with its grace');
   assert.deepEqual(makefile.split('\n').filter(line => /\$\(RUN_TESTS\) python\b/.test(line) && !line.startsWith('PYTHON_TESTS = ')), [],
     'every Python run of run-tests goes through PYTHON_TESTS');
@@ -1768,6 +1768,17 @@ caseTest('every build tool of the Makefile, package.json and the scripts runs un
   const { recipes, packageUnits, scripts } = runUnits();
   assert.ok(scripts.some(unit => unit.name === 'scripts/typescript/sqlite-test.mts'));
   assert.deepEqual(unwrappedToolErrors([...recipes, ...packageUnits.filter(unit => segments(unit.commands[0] ?? '', 'sh').length > 1), ...scripts]), []);
+});
+
+caseTest('a go command is go or a path to go, and a make target name that holds go is none', COMPUTE, () => {
+  const goBuild = tools.find(([name]) => name === 'go build')?.[1];
+  assert.ok(goBuild);
+  for (const command of ['go build ./...', 'cd packages/go && go build ./...', '/repo/var/tools/mise/shims/go build ./...'])
+    assert.equal(goBuild.test(command), true, command);
+  for (const command of ['$(MAKE) --no-print-directory build-go build-php', 'make build-go build-ts', 'cargo build --locked'])
+    assert.equal(goBuild.test(command), false, command);
+  assert.deepEqual(unwrappedToolErrors([{ name: 'Makefile build', commands: ['$(MAKE) --no-print-directory build-go build-php'], dialect: 'make' }]), []);
+  assert.equal(unwrappedToolErrors([{ name: 'Makefile build-go', commands: ['$(NODE) runtime-targets.mjs build --roots packages/go -- /repo/var/tools/mise/shims/go build ./...'], dialect: 'make' }]).length, 1);
 });
 
 // The rerun case checks the repository's workflow and the minimal workflow by the runner's identity.

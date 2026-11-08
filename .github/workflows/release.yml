@@ -65,9 +65,8 @@ jobs:
         run: command -v zip >/dev/null || { echo 'Info-ZIP is required for Composer release archives; install the zip package on the Ubuntu runner'; exit 1; }
       # shivammathur/setup-php 2.40.0: the PHP of .php-version for the Composer packages and the extension of the release. A
       # repository that needs PHP (a Composer package of config/release.json, or php of config/toolchain.json) declares
-      # .php-version, which the kit-check of CI requires (K193); a repository without PHP has none and sets up no PHP. The
-      # release runs no kit-check of its own: release-tag refuses a commit whose CI run, kit-check included, did not pass
-      # (K755).
+      # .php-version; a repository without PHP has none and sets up no PHP. The release runs no check of its own: release-tag
+      # refuses a commit whose CI run did not pass (K755).
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
         if: ${{ hashFiles('.php-version') != '' }}
         with:

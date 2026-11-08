@@ -45496,5 +45496,6 @@
       "checklist": "docs/plans/kit-standard/checklist.md",
       "item": "KSTD-2-11-16"
     }
-  ]
+  ],
+  "ownerCrossChecks": true
 }

@@ -1,5 +1,6 @@
 {
   "schema": 1,
+  "runtimes": ["go", "php", "php-ext", "python", "rust", "ts"],
   "comment": "Kit gates install each runtime from its pinned lock, then prepare parity's database servers and run-owned fixtures in an isolated job context. The provider runs API and binding phases separately.",
   "parityMode": "phases",
   "setup": {

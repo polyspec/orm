@@ -124,6 +124,9 @@ export MISE_CONFIG_DIR := $(KIT_TOOLS)/mise/config
 export MISE_GLOBAL_CONFIG_FILE := $(CURDIR)/mise.toml
 export MISE_GLOBAL_CONFIG_ROOT := $(CURDIR)
 MISE_ENVIRONMENT := MISE_DATA_DIR MISE_CACHE_DIR MISE_STATE_DIR MISE_CONFIG_DIR MISE_GLOBAL_CONFIG_FILE MISE_GLOBAL_CONFIG_ROOT
+# kit 0.0.98's run-tests dropped NODE_TEST_CONTEXT, so a node --test that a recipe starts from inside a node test runs as
+# its own run, not as a child of that test (kit K1094); no recipe passes it on.
+unexport NODE_TEST_CONTEXT
 export PATH := $(KIT_TOOLS)/bin:$(KIT_TOOLS)/mise/shims:$(PATH)
 # KIT_WORKTREE is set in a linked worktree, whose main checkout is another folder; CARGO_PROFILE_DEV_DEBUG reads it.
 KIT_GIT_COMMON := $(abspath $(shell git rev-parse --git-common-dir 2>/dev/null))
@@ -163,11 +166,14 @@ install-kit: ## Install mise, the node and npm of mise.toml, the packages, the t
 	$(MAKE) --no-print-directory install-packages
 	$(MAKE) --no-print-directory install-tools
 	$(MAKE) --no-print-directory kit-install-declared
+# The home and the cache of the Composer that install-tools and install-symbols run, the folders of var/tools that kit 0.0.98
+# set (kit K1095).
+COMPOSER_TOOL_ENV = COMPOSER_HOME=$(CURDIR)/var/tools/composer/home COMPOSER_CACHE_DIR=$(CURDIR)/var/tools/composer/cache
 install-tools: ## Install every locked tool of mise.toml, or the tools that TOOLS names; TOOLS=npm runs the bootstrap; ONLINE
 ifeq ($(TOOLS),npm)
 	$(ONLINE) $(BOOTSTRAP_NODE) $(KIT)/bootstrap/bootstrap.$(KIT_EXT)
 else
-	$(ONLINE) $(NODE) $(KIT)/install-tools.$(KIT_EXT) $(TOOLS)
+	$(COMPOSER_TOOL_ENV) $(ONLINE) $(NODE) $(KIT)/install-tools.$(KIT_EXT) --no-self-update $(TOOLS)
 endif
 # npm reads allow-remote from the .npmrc of the checkout, since package.json pins packages by the URL of their release asset.
 install-packages: ## Install the packages of package-lock.json with the npm of var/tools; ONLINE
@@ -175,9 +181,9 @@ install-packages: ## Install the packages of package-lock.json with the npm of v
 install-link: ## Link the packages to the checkouts of the link declaration .links; no Claude Code hook is written
 	$(NODE) $(KIT)/link.$(KIT_EXT) link
 kit-install-declared: ## Install the symbol extractors that config/toolchain.json declares; ONLINE
-	$(ONLINE) $(NODE) $(KIT)/install-symbols.$(KIT_EXT) --declared
+	$(COMPOSER_TOOL_ENV) $(ONLINE) $(NODE) $(KIT)/install-symbols.$(KIT_EXT) --declared
 kit-install-symbols: ## Install the symbol extractors that EXTRACTORS="go php" names; their tools must be installed first; ONLINE
-	$(ONLINE) $(NODE) $(KIT)/install-symbols.$(KIT_EXT) $(EXTRACTORS)
+	$(COMPOSER_TOOL_ENV) $(ONLINE) $(NODE) $(KIT)/install-symbols.$(KIT_EXT) $(EXTRACTORS)
 # toolchain-lock writes mise.lock with the mise that the bootstrap installed. mise locks a pypi: tool with uv, which takes the
 # first uv of PATH, so mise first locks and installs uv and python, then locks every tool with that Python as UV_PYTHON.
 TOOLCHAIN_LOCK_PLATFORMS := linux-x64,linux-arm64,macos-arm64,macos-x64,windows-x64,windows-arm64
@@ -204,12 +210,12 @@ python-venv: ## Make the virtual environment DIR from the python3 of mise.toml w
 	@test -n "$(DIR)" || { echo "python-venv: DIR is required; run make python-venv DIR=<folder>, which names the venv to make" >&2; exit 1; }
 	$(NODE) $(KIT)/python-venv.$(KIT_EXT) $(DIR)
 uv-install: ## Install the Python package of DIR with uv sync --locked and the flags of SYNC; ONLINE
-	UV_SYNC="$(SYNC)" $(ONLINE) $(NODE) $(KIT)/uv-install.$(KIT_EXT) $(DIR)
+	UV_SYNC="--locked $(SYNC)" $(ONLINE) $(NODE) $(KIT)/uv-install.$(KIT_EXT) $(DIR)
 
 # The gates of orm. kit-gates holds all of them; CI runs them as the partitions below in the jobs of ci-pipeline.yml, and land
 # runs those that the changed paths select. kit-gates-static runs every gate past a failure, so one run names each failing gate.
 .PHONY: kit-gates kit-gates-static kit-gates-parity kit-gates-runtime-ts kit-gates-runtime-php kit-gates-runtime-python kit-gates-runtime-go kit-gates-runtime-rust kit-gates-runtime-php-ext
-KIT_GATES_STATIC := kit-check layout-check docs-check rules-check owner-validate rebuild-check language-check test-markers-check duplication-check parity-declarations-check suppression-check divergence-check
+KIT_GATES_STATIC := layout-check docs-check rules-check owner-validate rebuild-check language-check test-markers-check duplication-check parity-declarations-check suppression-check divergence-check
 # kit-gates runs the gates one at a time in the order below, its prerequisites, which land reads as the gates of orm: lint-ts
 # comes first, since its make then holds the exclusive lease of the TypeScript build output for its life, which the shared lease of
 # a later reader such as parity-declarations-check reuses; a shared lease taken first would block that exclusive one.
@@ -228,26 +234,28 @@ kit-gates-runtime-go: lint-go ## Run the Go gate
 kit-gates-runtime-rust: lint-rust ## Run the Rust gate
 kit-gates-runtime-php-ext: lint-php-ext test-php-ext ## Run the PHP extension gates
 
-.PHONY: kit-check layout-check docs-check rules-check owner-check owner-validate rebuild-check language-check test-markers-check duplication-check suppression-check divergence-check
-kit-check: ## Check config/*.json against the schemas of the kit utilities; offline
-	$(NODE) $(KIT)/kit-check.$(KIT_EXT)
+.PHONY: layout-check docs-check rules-check owner-check owner-validate rebuild-check language-check test-markers-check duplication-check suppression-check divergence-check
 layout-check: ## Check the folder layout against config/layout.yml with alint, that Git ignores each install folder and that no generated file is tracked; offline
 	@test -x $(ALINT) || { echo "layout-check: $(ALINT) is missing; run make install-tools, which installs the alint of mise.toml" >&2; exit 1; }
 	$(ALINT) check --config config/layout.yml --color never --compact .
-	$(NODE) $(KIT)/generated-files.$(KIT_EXT) installs
-	$(NODE) $(KIT)/generated-files.$(KIT_EXT) tracked
+	$(NODE) $(KIT)/generated-files.$(KIT_EXT) installs var package.json=node_modules pyproject.toml=.venv composer.json=vendor
+	$(NODE) $(KIT)/generated-files.$(KIT_EXT) tracked --binary ELF --binary Mach-O --binary PE
 docs-check: ## Check the documents of config/documents.json and the checklists of config/checklist.json; offline
-	$(NODE) $(KIT)/check-documents.$(KIT_EXT)
+	$(NODE) $(KIT)/check-documents.$(KIT_EXT) --checklist-place --private-path /Users/ --private-path /home/ --kit-rows
 rules-check: ## Check that every rule of PRINCIPLES.md and AGENTS.md names a check that a workflow or a Git hook reaches; offline
 	$(NODE) $(KIT)/check-rules.$(KIT_EXT)
 owner-check: ## Run the checks that own the changed paths (config/owner-checks.json); PATHS="a b" or BASE=<revision> selects the paths
-	$(NODE) $(KIT)/owner-check.$(KIT_EXT) $(if $(PATHS),--paths "$(PATHS)") $(if $(BASE),--base $(BASE))
+	$(NODE) $(KIT)/owner-check.$(KIT_EXT) --every-path $(if $(PATHS),--paths "$(PATHS)") $(if $(BASE),--base $(BASE))
 owner-validate: ## Check that config/owner-checks.json owns every tracked path and names only existing checks; offline
-	$(NODE) $(KIT)/owner-check.$(KIT_EXT) --validate
+	$(NODE) $(KIT)/owner-check.$(KIT_EXT) --every-path --validate
+# The tool sources of rebuild-check, the values that kit 0.0.98 fixed (kit K1080): the scripts and generators, each glob quoted.
+REBUILD_SOURCES := --source 'scripts/**/*.{mts,mjs,cjs,js,ts,py,php,sh,mk}' --source 'packages/*/{scripts,tools,bin}/**/*.{mts,mjs,cjs,js,ts,py,php,sh,mk}' --source 'packages/*/*/{scripts,tools,bin}/**/*.{mts,mjs,cjs,js,ts,py,php,sh,mk}' --source '**/*_generate.go' --source '**/*.generate.{mts,mjs,cjs,js,ts,py,php,sh,mk}' --source 'benchmarks/**/*.{mts,mjs,cjs,js,ts,py,php,sh,mk}' --source 'examples/**/*.{mts,mjs,cjs,js,ts,py,php,sh,mk}' --source 'tests/fixtures/*/generate.*'
+# The files among the sources that are no tool source (kit K1080): the .d.ts declarations and the tests.
+REBUILD_EXCLUDES := --exclude '**/*.d.ts' --exclude '*/**/{test,tests}/**' --exclude 'test/**' --exclude 'tests/**/{*_generate.go,*.generate.*}' --exclude '**/*.{test,spec}.{js,jsx,ts,tsx,cjs,cts,mjs,mts}' --exclude '**/{*_test.go,test_*.py,*_test.py,*Test.php}'
 rebuild-check: ## Check that every tool that config/rebuild.json selects has its class (S1); offline
-	$(NODE) $(KIT)/rebuild-check.$(KIT_EXT)
+	$(NODE) $(KIT)/rebuild-check.$(KIT_EXT) $(REBUILD_SOURCES) $(REBUILD_EXCLUDES)
 language-check: ## Fail on Hangul in a comment, an identifier, a message or a test name of the code; offline
-	$(NODE) $(KIT)/language-check.$(KIT_EXT)
+	$(NODE) $(KIT)/language-check.$(KIT_EXT) --forbid '\p{Script=Hangul}'
 test-markers-check: ## Fail on a test that a marker skips or narrows; offline
 	$(NODE) $(KIT)/test-markers.$(KIT_EXT)
 duplication-check: ## Fail while a piece of 6 lines or more of code exists twice outside the folders of config/duplication.json; offline
@@ -255,7 +263,7 @@ duplication-check: ## Fail while a piece of 6 lines or more of code exists twice
 suppression-check: ## Fail on a suppression of a lint finding that states no reason in the form of its tool; offline
 	$(NODE) $(KIT)/suppression-check.$(KIT_EXT)
 divergence-check: ## Fail on an implementation that diverges by a branch on the runtime or a narrowing of its run without a kind of reason; offline
-	$(NODE) $(KIT)/divergence-check.$(KIT_EXT)
+	$(NODE) $(KIT)/divergence-check.$(KIT_EXT) --reason-kind generated --reason-kind fixture --reason-kind test --reason-kind harness --reason-kind ecosystem --reason-kind external --feature-state partial --feature-state unsupported --parity config/parity.json
 
 # The lint of each language, by the configuration files of the root (ruff.toml, phpcs.xml.dist, phpstan.dist.neon,
 # .golangci.yml, clippy.toml, .oxlintrc.json, knip.json) and the lints of each Cargo workspace, which each tool reads itself.
@@ -266,32 +274,56 @@ lint-ts: ## Lint the TypeScript: oxlint, knip, the type check of each project, A
 	$(NODE) $(KIT)/catch-check.$(KIT_EXT)
 lint-js: lint-ts
 lint-php: ## Lint the PHP: phpcs, and PHPStan on each Composer package; offline
-	$(NODE) $(KIT)/lint-php.$(KIT_EXT)
+	$(NODE) $(KIT)/lint-php.$(KIT_EXT) --memory-limit=-1
 lint-python: ## Lint the Python: ruff, and vulture on each package; offline
 	$(NODE) $(KIT)/lint-python.$(KIT_EXT)
 lint-go: ## Lint the Go: golangci-lint and deadcode -test in each Go module; offline once the modules are downloaded
 	$(NODE) $(KIT)/lint-go.$(KIT_EXT)
 lint-rust: ## Lint the Rust: cargo clippy in each Cargo workspace
-	$(NODE) $(KIT)/lint-rust.$(KIT_EXT)
+	$(NODE) $(KIT)/lint-rust.$(KIT_EXT) --locked
 
 # The PHP extension of packages/php-ext (S10): its build with phpize, the check of its names, its stub and its arginfo, and the
 # comparison of its declarations with the PHP library before its unit tests.
 .PHONY: build-php-ext lint-php-ext test-php-ext
 build-php-ext: ## Build packages/php-ext into var/php-ext/polyspec_orm.so after the arginfo check; ONLINE (gen_stub.php may fetch its PHP-Parser once)
-	$(ONLINE) $(NODE) $(KIT)/php-extension.$(KIT_EXT) build
+	$(ONLINE) $(NODE) $(KIT)/php-extension.$(KIT_EXT) build --extension packages/php-ext --build-dir var/php-ext --skip vendor --skip node_modules --library packages/php
 lint-php-ext: ## Check the names, the stub and the stub hash of the arginfo header of the extension; offline
-	$(NODE) $(KIT)/php-extension.$(KIT_EXT) check
+	$(NODE) $(KIT)/php-extension.$(KIT_EXT) check --extension packages/php-ext --build-dir var/php-ext --skip vendor --skip node_modules --library packages/php
 test-php-ext: build-php-ext ## Compare the declarations of the built extension with the PHP library, then run its unit tests with CASES=<pattern>; offline
-	$(NODE) $(KIT)/php-extension.$(KIT_EXT) test
+	$(NODE) $(KIT)/php-extension.$(KIT_EXT) test --extension packages/php-ext --build-dir var/php-ext --skip vendor --skip node_modules --library packages/php -- --roots packages/php packages/php-ext
 
-# The tasks of P29: each runs its target for every runtime that packages/ holds.
-.PHONY: build test lint build-go build-js build-php build-python build-rust build-ts test-go test-js test-php test-python test-rust test-ts
-build test lint: ## Run build-<runtime>, test-<runtime> or lint-<runtime> for every runtime of packages/; offline
-	$(NODE) $(KIT)/runtime-targets.$(KIT_EXT) task $@
-build-go build-js build-php build-python build-rust build-ts: ## Build each package of the runtime with the build of its ecosystem; offline
-	$(NODE) $(KIT)/runtime-targets.$(KIT_EXT) build $(@:build-%=%)
-test-go test-js test-php test-python test-rust test-ts: ## Run the unit tests of each package of the runtime with the name filter CASES=<pattern>; offline
-	$(NODE) $(KIT)/runtime-targets.$(KIT_EXT) $(@:test-%=%)
+# The tasks of P29: each runs its target for every runtime of packages/ (go, php, php-ext, python, rust, ts) (kit K1106).
+.PHONY: build test lint build-go build-php build-python build-rust build-ts test-go test-php test-python test-rust test-ts
+build: ## Run build-<runtime> for every runtime of packages/; offline
+	$(MAKE) --no-print-directory build-go build-php build-php-ext build-python build-rust build-ts
+test: ## Run test-<runtime> for every runtime of packages/; offline
+	$(MAKE) --no-print-directory test-go test-php test-php-ext test-python test-rust test-ts
+lint: ## Run lint-<runtime> for every runtime of packages/; offline
+	$(MAKE) --no-print-directory lint-go lint-php lint-php-ext lint-python lint-rust lint-ts
+# The build of each package of a runtime with the build of its ecosystem; a PHP library has none (kit K1106). Each build is
+# long-running work under run-long; go and uv are the tools of the checkout (K393-1), and cargo builds into the shared target
+# directory under its lease.
+build-go: ## Build the Go modules with go build; offline
+	$(RUN_LONG) go-build/runtime -- $(NODE) $(KIT)/runtime-targets.$(KIT_EXT) build --roots examples packages/go tests -- $(GO) build ./...
+build-php: ## A PHP library has no build step; offline
+build-python: ## Build the Python package with uv build; offline
+	$(RUN_LONG) python-build/runtime -- $(NODE) $(KIT)/runtime-targets.$(KIT_EXT) build --roots packages/python -- $(UV) build
+build-rust: lease-tool ## Build the Rust workspace with cargo build; offline
+	$(RUN_LONG) rust-build/runtime -- $(NODE) $(KIT)/runtime-targets.$(KIT_EXT) build --roots packages/rust -- $(CARGO_LEASED) cargo build --locked
+build-ts: ## Build the TypeScript package with tsc; offline
+	$(RUN_LONG) typescript-build/runtime -- $(NODE) $(KIT)/runtime-targets.$(KIT_EXT) build --roots packages/ts -- node_modules/.bin/tsc -p tsconfig.build.json
+# The unit tests of a runtime with the name filter CASES=<pattern>, with the runner arguments that kit 0.0.98 passed (kit K1094,
+# K1106): one go test over the Go modules, one test at a time in cargo and node, and the 30 s test timeout of node.
+test-go: ## Run the unit tests of the Go modules with CASES=<pattern>; offline
+	$(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner go --roots examples packages/go tests -- -count=1 -timeout=0
+test-php: ## Run the unit tests of the PHP package with CASES=<pattern>; offline
+	$(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner php --roots packages/php
+test-python: ## Run the unit tests of the Python package with CASES=<pattern>; offline
+	PYTHONUNBUFFERED=1 NO_COLOR=1 PYTHON_COLORS=0 $(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner python --roots packages/python --venv .venv
+test-rust: ## Run the unit tests of the Rust workspace with CASES=<pattern>; offline
+	$(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner cargo --roots packages/rust -- -- --test-threads=1
+test-ts: ## Run the unit tests of the TypeScript package with CASES=<pattern>; offline
+	$(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner node --roots packages/ts -- --test-timeout=30000 --test-concurrency=1
 
 # Parity (config/parity.json): the declarations, every binding, the API phase, and the bindings of one implementation, which
 # the parity-bindings jobs of ci-pipeline.yml run for each implementation of the declaration.
@@ -312,15 +344,15 @@ $(KIT_PARITY_BINDING_TARGETS): parity-bindings-%-check:
 .PHONY: kit-ci-plan kit-ci-setup kit-ci-context-prepare kit-ci-context-cleanup ci-targets ci-passed
 CI_REPORT ?= var/report/ci-targets
 kit-ci-plan: ## Validate config/ci.json and write the runtime, tool and target plan to GITHUB_OUTPUT
-	$(NODE) $(KIT)/ci-setup.$(KIT_EXT) --plan
+	$(NODE) $(KIT)/ci-setup.$(KIT_EXT) --parity config/parity.json --plan
 kit-ci-setup: ## Run the setup targets of config/ci.json for GROUP=shared|parity|parity-binding|runtime, with RUNTIME or IMPLEMENTATION
-	$(NODE) $(KIT)/ci-setup.$(KIT_EXT) --setup $(GROUP) $(if $(filter parity-binding,$(GROUP)),$(IMPLEMENTATION),$(RUNTIME))
+	$(NODE) $(KIT)/ci-setup.$(KIT_EXT) --parity config/parity.json --setup $(GROUP) $(if $(filter parity-binding,$(GROUP)),$(IMPLEMENTATION),$(RUNTIME))
 kit-ci-context-prepare: ## Run the context preparation target of config/ci.json for GROUP and RUNTIME
-	$(NODE) $(KIT)/ci-setup.$(KIT_EXT) --context-prepare $(GROUP) $(RUNTIME)
+	$(NODE) $(KIT)/ci-setup.$(KIT_EXT) --parity config/parity.json --context-prepare $(GROUP) $(RUNTIME)
 kit-ci-context-cleanup: ## Run the context cleanup target of config/ci.json for GROUP and RUNTIME
-	$(NODE) $(KIT)/ci-setup.$(KIT_EXT) --context-cleanup $(GROUP) $(RUNTIME)
+	$(NODE) $(KIT)/ci-setup.$(KIT_EXT) --parity config/parity.json --context-cleanup $(GROUP) $(RUNTIME)
 ci-targets: ## Run TARGETS past failures and write CI_REPORT (logs, record.json, summary.md)
-	$(NODE) $(KIT)/ci-targets.$(KIT_EXT) $(CI_REPORT) $(TARGETS)
+	$(NODE) $(KIT)/ci-targets.$(KIT_EXT) -k $(CI_REPORT) $(TARGETS)
 ci-passed: ## Fail unless every job of RESULTS, the JSON of toJSON(needs), has the result success
 	$(NODE) $(KIT)/ci-passed.$(KIT_EXT)
 
@@ -328,16 +360,22 @@ ci-passed: ## Fail unless every job of RESULTS, the JSON of toJSON(needs), has t
 # and declares the merge drivers of the changelogs and checklists, which git runs as twin-merge with MERGE="%O %A %B %P". The
 # hooks of .githooks are orm's own and run the two targets after twin-merge.
 .PHONY: hooks hooks-check twin-merge staged-generated-hook commit-msg-hook
+# The declaration of make hooks (kit K1099): the hooks pre-commit and commit-msg of .githooks,
+# the merges of the changelogs and checklists (kit K354) and their drivers, which run twin-merge of this checkout.
+TWIN_MERGE_DRIVER := make --no-print-directory twin-merge MERGE="%O %A %B %P"
+HOOK_DECLARATION := --hooks-path .githooks --hook pre-commit --hook commit-msg --merge 'CHANGELOG.md=kit-changelog' --merge 'CHANGELOG.ko.md=kit-twin' \
+	--merge 'docs/plans/*/checklist.md=kit-checklist' --merge 'docs/plans/*/checklist.ko.md=kit-twin' \
+	--driver 'kit-twin=$(TWIN_MERGE_DRIVER)' --driver 'kit-changelog=$(TWIN_MERGE_DRIVER)' --driver 'kit-checklist=$(TWIN_MERGE_DRIVER)'
 hooks: ## Point core.hooksPath at .githooks, make its hooks executable and declare the merge drivers
-	$(NODE) $(KIT)/git-hooks.$(KIT_EXT) install
+	$(NODE) $(KIT)/git-hooks.$(KIT_EXT) install $(HOOK_DECLARATION)
 hooks-check: ## Fail while core.hooksPath is not .githooks, a hook of config/checklist.json is missing or not executable, or a merge driver is missing
-	$(NODE) $(KIT)/git-hooks.$(KIT_EXT) check
+	$(NODE) $(KIT)/git-hooks.$(KIT_EXT) check $(HOOK_DECLARATION)
 twin-merge: ## The merge drivers of a Korean twin, a changelog and a checklist; git runs it with MERGE="<base> <ours> <theirs> <path>"; offline
 	@$(NODE) $(KIT)/twin-merge.$(KIT_EXT) $(MERGE)
 staged-generated-hook: ## Fail while a staged path has a generated segment that config/generated.json does not declare; .githooks/pre-commit runs it
-	$(NODE) $(KIT)/generated-files.$(KIT_EXT) staged
+	$(NODE) $(KIT)/generated-files.$(KIT_EXT) staged --binary ELF --binary Mach-O --binary PE
 commit-msg-hook: ## Check the message MESSAGE being committed by the commit rules (P28); .githooks/commit-msg runs it
-	$(NODE) $(KIT)/check-commits.$(KIT_EXT) --message $(MESSAGE)
+	$(NODE) $(KIT)/check-commits.$(KIT_EXT) --message $(MESSAGE) --rules commit-ai-footer,commit-ai-identity
 
 # The plans and the row procedure (P24 to P28): the plan utility reads its values from the environment, where make puts its
 # command-line variables. The texts of a row reach it as their raw values (`$(value)`), in single quotes, so a text that names
@@ -345,13 +383,13 @@ commit-msg-hook: ## Check the message MESSAGE being committed by the commit rule
 .PHONY: plan-new plan-split item-new item-edit item-state item-test commit documents-stamp text-absent worktree-setup land
 raw_text = $(foreach v,$(1),$(if $(filter undefined,$(origin $(v))),,$(v)='$(subst ','\'',$(value $(v)))'))
 plan-new: ## Write the plan NAME=<slug> into docs/plans/<slug>/ with TITLE and TITLE_KO; offline
-	$(NODE) $(KIT)/plan.$(KIT_EXT) plan-new
+	NAME_PATTERN='^[a-z][a-z0-9-]*$$' $(NODE) $(KIT)/plan.$(KIT_EXT) plan-new
 plan-split: ## Move the items IDS with their sub-items from the plan FROM to the plan TO, in both languages; offline
 	$(NODE) $(KIT)/plan.$(KIT_EXT) plan-split
 item-new: ## Add the item ID to the checklist of PLAN with TASK, TASK_KO, DELIVERABLES and VERIFICATION; on main it commits it with BODY_FILE; offline
 	$(call raw_text,TASK TASK_KO DELIVERABLES VERIFICATION) $(NODE) $(KIT)/plan.$(KIT_EXT) item-new
 item-edit: ## Replace the cells of the item ID with TASK, TASK_KO, DELIVERABLES, VERIFICATION, CAUSE, RETRY, CAUSE_KO or RETRY_KO; offline
-	$(call raw_text,TASK TASK_KO DELIVERABLES VERIFICATION CAUSE RETRY CAUSE_KO RETRY_KO) $(NODE) $(KIT)/plan.$(KIT_EXT) item-edit
+	$(call raw_text,TASK TASK_KO DELIVERABLES VERIFICATION CAUSE RETRY CAUSE_KO RETRY_KO) DONE_STAYS=1 $(NODE) $(KIT)/plan.$(KIT_EXT) item-edit
 item-state: ## Move the item ID to STATE in both languages along an allowed transition; offline
 	$(NODE) $(KIT)/plan.$(KIT_EXT) item-state
 item-test: ## Run the commands of the Verification cell of the item ID in order; offline
@@ -366,17 +404,23 @@ text-absent: export KIT_TEXT_ABSENT_FILE = $(value FILE)
 text-absent: export KIT_TEXT_ABSENT_TEXT = $(value TEXT)
 text-absent: ## Fail while the tracked file FILE holds the stale text TEXT, naming each line (P19); offline
 	$(NODE) $(KIT)/text-absent.$(KIT_EXT)
+# The worktree of a row (kit K1107), as kit 0.0.98 made it: ../<main checkout>-<NAME>-<ID> on <TYPE or fix>/<NAME>-<ID> from main;
+# a worktree without node_modules first gets npm ci of the npm of var/tools, then make install and make link-check run in it. The
+# worktree runs its own tools in a make of its own (kit K858): the recipe drops the flags of this make and this var/tools from PATH.
+WORKTREE_MAIN = $(patsubst %/.git,%,$(shell git rev-parse --path-format=absolute --git-common-dir))
+WORKTREE_DECLARATION = --folder $(WORKTREE_MAIN)-$(NAME)-$(ID) --branch $(or $(TYPE),fix)/$(NAME)-$(ID) --base main --prepare 'test -d node_modules || PATH="$(KIT_TOOLS)/bin:$$PATH" $(NPM) ci --ignore-scripts' --make install --make link-check
+WORKTREE_ENVIRONMENT = env -u MAKEFLAGS -u MFLAGS -u MAKELEVEL PATH="$$(printf '%s' "$$PATH" | awk -v RS=: -v ORS=: -v tools='$(KIT_TOOLS)' 'index($$0, tools) != 1' | sed 's/:$$//')"
 worktree-setup: ## Create or reuse the worktree of the row NAME and ID from main, run make install and make link-check in it; ONLINE
-	$(ONLINE) $(NODE) $(KIT)/worktree-setup.$(KIT_EXT) $(NAME) $(ID) $(or $(TYPE),fix)
+	$(ONLINE) $(WORKTREE_ENVIRONMENT) $(NODE) $(KIT)/worktree-setup.$(KIT_EXT) $(WORKTREE_DECLARATION)
 # land runs the WORKTREE_STOP target of the worktree before it removes the worktree.
 land: ## Land the branch BRANCH on main by a fast-forward after the gates that its changed paths select, then remove its worktree; offline
-	$(NODE) $(KIT)/land.$(KIT_EXT) $(BRANCH)
+	$(NODE) $(KIT)/land.$(KIT_EXT) $(BRANCH) main
 
 # The release (config/release.json): release.yml tags the commit of the successful CI run RUN, then builds, publishes and
 # undrafts the GitHub Release of the tag TAG; release-candidate prepares the archives of the committed candidate before CI.
 .PHONY: release-candidate release-prepare release-tools release-tools-path release-tag release-assets release-candidate-assets release-publish release-undraft release-coverage
 release-candidate: ## Prepare the VERSION archives of the committed candidate before CI
-	$(NODE) $(KIT)/release-run.$(KIT_EXT) prepare "$(VERSION)"
+	RELEASE_ASSETS=var/release/assets $(NODE) $(KIT)/release-run.$(KIT_EXT) prepare "$(VERSION)"
 release-prepare:: ## The preparation of the release before release-tools; orm needs none
 	@:
 release-tools: ## Install the tools that config/release.json needs for the release; ONLINE
@@ -389,19 +433,19 @@ release-tools-path: ## Append var/tools/bin and the shims of mise to GITHUB_PATH
 	@for name in $(MISE_ENVIRONMENT); do echo "$$name=$$(printenv $$name)"; done >> "$$GITHUB_ENV"
 release-tag: ## Tag the commit of the successful CI run RUN with vX.Y.Z of its change log and the Go module tags; AUTO for a workflow_run; reads the run with gh
 	@test -n "$$RUN" || { echo "release-tag: RUN is required; run make release-tag RUN=<id of a successful ci.yml run>" >&2; exit 1; }
-	$(NODE) $(KIT)/release-run.$(KIT_EXT) tag "$$RUN"$(if $(AUTO), --auto)
+	RELEASE_MAIN=origin/main $(NODE) $(KIT)/release-run.$(KIT_EXT) tag "$$RUN"$(if $(AUTO), --auto)
 release-assets: ## Build the archive of every package of TAG and packages.json into var/release/assets; ONLINE
 	@test -n "$$TAG" || { echo "release-assets: TAG is required; run make release-assets TAG=v<version>" >&2; exit 1; }
-	$(ONLINE) $(NODE) $(KIT)/release.$(KIT_EXT) assets "$$TAG"
+	RELEASE_ASSETS=var/release/assets $(ONLINE) $(NODE) $(KIT)/release.$(KIT_EXT) assets "$$TAG"
 release-candidate-assets: ## Build the archive of every package from the committed HEAD for VERSION into var/release/assets; ONLINE
 	@test -n "$$VERSION" || { echo "release-candidate-assets: VERSION is required; run make release-candidate-assets VERSION=<version>" >&2; exit 1; }
-	$(ONLINE) $(NODE) $(KIT)/release.$(KIT_EXT) candidate-assets "$$VERSION"
+	RELEASE_ASSETS=var/release/assets $(ONLINE) $(NODE) $(KIT)/release.$(KIT_EXT) candidate-assets "$$VERSION"
 release-publish: ## Create the GitHub Release of TAG as a draft with its notes and the files of release-assets
 	@test -n "$$TAG" || { echo "release-publish: TAG is required; run make release-publish TAG=v<version>" >&2; exit 1; }
-	$(NODE) $(KIT)/release.$(KIT_EXT) publish "$$TAG"
+	RELEASE_ASSETS=var/release/assets RELEASE_RECORDS=var/release $(NODE) $(KIT)/release.$(KIT_EXT) publish "$$TAG"
 release-undraft: ## Make the draft release of TAG public
 	@test -n "$$TAG" || { echo "release-undraft: TAG is required; run make release-undraft TAG=v<version>" >&2; exit 1; }
-	$(NODE) $(KIT)/release.$(KIT_EXT) undraft "$$TAG"
+	RELEASE_RECORDS=var/release $(NODE) $(KIT)/release.$(KIT_EXT) undraft "$$TAG"
 release-coverage: ## Require every package file of the checkout to be classified in config/release.json; offline
 	$(NODE) $(KIT)/release.$(KIT_EXT) coverage
 # The release uses the released versions, so its Go runs without the go.work of the links; the archive builds build the tree
@@ -413,7 +457,7 @@ release-assets release-candidate-assets: export GOWORK = $(CURDIR)/go.work
 .PHONY: commit-msg-check
 commit-msg-check:
 	@test -n "$(MESSAGE)" || { echo "commit-msg-check: MESSAGE is missing; git gives the hook .githooks/commit-msg the message file, which passes it as MESSAGE"; exit 2; }
-	$(NODE) $(KIT)/check-commits.$(KIT_EXT) --message "$(MESSAGE)"
+	$(NODE) $(KIT)/check-commits.$(KIT_EXT) --message "$(MESSAGE)" --rules commit-ai-footer,commit-ai-identity
 # WITH_TEST_ENV reads TEST_ENV. The server DSN ORM_TEST_MYSQL_SERVER_DSN, which bypasses the pooler,
 # and ORM_TEST_POSTGRES_SERVER_DSN are also defined by TEST_ENV (go test outside make reads the same file too).
 # Even if client-pooler-check changes ORM_TEST_*_DSN to pooler DSNs, the rollback-failure case still ends the transaction's session on the
@@ -515,7 +559,7 @@ TSC_BUILD = $(RUN_LONG) typescript-build -- node scripts/typescript/build.mts >&
 # dbspec-rust-check, dbspec-ts-check, and dbspec-compare-check run once inside feature-verify-rust or feature-verify-other, so they are not listed again.
 # contracts/check-inputs.json declares a scope for each target: owner targets
 # are also selected by make owner-check, and suite targets run only in the whole suite.
-CHECK_TARGETS = connection-sqlite-several-processes-python-check styled-column-states-unit-check recipe-runners-check group-count-boolean-unit-check runner-check typescript-build-unit-check scripts-typecheck docs-check docs-parse-check docs-site-check docs-site-parse-check release-coverage kit-check owner-validate comment-language-check testcase-check repo-check orm-test-servers-check docs-rules-check docs-implementation-count-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check orm-install-cli-check docs-verify-idempotent go-model-check go-sqlite-version-check php-model-check client-unit-check php-gen-unit-check phpstan-test-runner-helper-check dbspec-sqlite-literal-rows-helper-check php-test-assertions-helper-check dbspec-php-interface-program-helper-check generator-consumer-check php-min-check ts-check ts-aes-auth-check ts-codec-errors-check sqlite-version-ts-check sqlite-version-rust-check relation-parent-bind-rust-check collection-composite-key-check interface-typescript-extractor-check ts-min-check rust-check rust-build-environment-check rust-build-outdir-check rust-duplicate-catalog-check rust-time-precision-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-go-check client-db-php-check client-db-php-extension-check client-db-typescript-check client-db-python-check client-db-rust-check codec-check ir-validate-check recipe-unknown-key-check conformance-refusal-check bind-check bind-models-check fuzz-check client-pooler-go-check client-pooler-php-check client-pooler-php-extension-check client-pooler-typescript-check client-pooler-python-check client-pooler-rust-check case-database-check dialect-facts-check conformance-check markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/php-extension markdown-conformance-check/typescript markdown-conformance-check/python markdown-conformance-check/rust package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-python-check dbspec-introspect-compare-check ts-model-check dbspec-language-check dbspec-plan-php-check dbspec-go-check/engine dbspec-php-check/set dbspec-php-check/render perf-check dbspec-php-extension-check dbspec-apply-pairs-check dbspec-verify-errors-check collection-php-extension-check model-types-php-extension-check model-native-php-extension-check feature-unit-check feature-verify-rust feature-verify-other feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check go-test-check python-check python-native-host-api-check parity-declarations-check parity-check generated-lint-check layout-check rules-check rebuild-check language-check test-markers-check duplication-check link-check suppression-check divergence-check lint-ts lint-php lint-python lint-go lint-rust lint-php-ext test-php-ext collection-get-phpstan-check dbspec-lock-go-check dbspec-lock-php-check dbspec-lock-php-extension-check dbspec-lock-python-check dbspec-lock-rust-check dbspec-lock-ts-check php-codec-causes-check scalar-subquery-column-check nowait-restore-check mermaid-error-ts-check mermaid-error-python-check mermaid-error-php-check mermaid-error-php-extension-check php-extension-build-logs-check php-catalog-bounds-check column-function-metadata-check paged-read-rust-check page-cache-unit-check rust-compiler-fixtures-check native-error-cause-check request-hook-php-extension-check rust-causes-check go-catalog-session-error-check catalog-php-extension-surface-check transaction-failure-php-extension-check transaction-failure-go-check transaction-failure-php-check php-query-cancellation-check php-query-cancellation-extension-check transaction-failure-typescript-check transaction-failure-python-check transaction-failure-rust-check connection-timeout-php-extension-check mysql-tls-php-extension-check mysql-session-php-extension-check go-package-entry-check native-arginfo-php-extension-check request-hook-audit-native-binding-check native-api-equivalence-check php-package-entry-check php-extension-package-entry-check rust-package-entry-check typescript-package-entry-check python-package-entry-check interface-api-binding-unit-check catalog-mutation-helper-ts-check catalog-mutation-helper-python-check model-chunk-composite-native-php-extension-check model-query-write-php-extension-unit-check php-lifecycle-extension-native-check connection-pool-resource-bounds-typescript-check connection-utc-php-extension-check complex-query-typescript-unit-check python-complex-query-check complex-query-typescript-request-check makefile-pinned-node-recipes-check audit-native-method-assertions-helper-check rust-closed-executor-check typescript-internal-column-error-helper-check typescript-dbspec-plan-fixture-check physical-command-case-helper-check typescript-capture-error-helper-check typescript-check-state-helper-check typescript-performance-gate-unit-check mysql-test-options-helper-check database-case-tests-helper-check typescript-conditional-entry-helper-check typescript-database-case-fixture-helper-check php-plan-cache-memory-check split-read-plan-check typescript-test-exact-keys-check pgsql-pdo-adapter-php-check pgsql-pdo-adapter-php-extension-check parent-slot-expansion-php-extension-check feature-performance-check php-go-text-check catalog-connection-check/go catalog-connection-check/rust catalog-connection-check/typescript catalog-connection-check/python catalog-connection-check/php catalog-connection-check/php-extension dsn-connection-check/go dsn-connection-check/rust dsn-connection-check/typescript dsn-connection-check/python dsn-connection-check/php dsn-connection-check/php-extension connection-pool-check/go connection-pool-check/rust connection-pool-check/typescript connection-pool-check/python raw-text-check/go raw-text-check/php raw-text-check/php-extension catalog-value-rust-check statement-events-check/go statement-events-check/rust statement-events-check/typescript statement-events-check/python statement-events-check/php statement-events-check/php-extension catalog-tool-errors-rust-check request-hook-check/go request-hook-check/typescript request-hook-check/python request-hook-check/php request-hook-check/php-extension request-hook-check/rust conformance-verification-check/go complex-query-check/go conformance-verification-check/typescript complex-query-check/typescript conformance-verification-check/python complex-query-check/python conformance-verification-check/php complex-query-check/php conformance-verification-check/php-extension complex-query-check/php-extension conformance-verification-check/rust complex-query-check/rust parameter-chunking-check/go aes-rotation-check/go parameter-chunking-check/rust aes-rotation-check/rust parameter-chunking-check/typescript aes-rotation-check/typescript parameter-chunking-check/python aes-rotation-check/python parameter-chunking-check/php aes-rotation-check/php parameter-chunking-check/php-extension aes-rotation-check/php-extension php-ext-memory-check audit-triggers-check/go audit-triggers-check/rust audit-triggers-check/typescript audit-triggers-check/python audit-triggers-check/php audit-triggers-check/php-extension collection-recipe-check  conformance-generated-methods-check/go conformance-fixed-clock-check/go conformance-generated-methods-check/typescript conformance-fixed-clock-check/typescript conformance-generated-methods-check/python conformance-fixed-clock-check/python conformance-generated-methods-check/php conformance-fixed-clock-check/php conformance-generated-methods-check/php-extension conformance-fixed-clock-check/php-extension conformance-generated-methods-check/rust conformance-fixed-clock-check/rust
+CHECK_TARGETS = connection-sqlite-several-processes-python-check styled-column-states-unit-check recipe-runners-check group-count-boolean-unit-check runner-check typescript-build-unit-check scripts-typecheck docs-check docs-parse-check docs-site-check docs-site-parse-check release-coverage owner-validate comment-language-check testcase-check repo-check orm-test-servers-check docs-rules-check docs-implementation-count-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check orm-install-cli-check docs-verify-idempotent go-model-check go-sqlite-version-check php-model-check client-unit-check php-gen-unit-check phpstan-test-runner-helper-check dbspec-sqlite-literal-rows-helper-check php-test-assertions-helper-check dbspec-php-interface-program-helper-check generator-consumer-check php-min-check ts-check ts-aes-auth-check ts-codec-errors-check sqlite-version-ts-check sqlite-version-rust-check relation-parent-bind-rust-check collection-composite-key-check interface-typescript-extractor-check ts-min-check rust-check rust-build-environment-check rust-build-outdir-check rust-duplicate-catalog-check rust-time-precision-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-go-check client-db-php-check client-db-php-extension-check client-db-typescript-check client-db-python-check client-db-rust-check codec-check ir-validate-check recipe-unknown-key-check conformance-refusal-check bind-check bind-models-check fuzz-check client-pooler-go-check client-pooler-php-check client-pooler-php-extension-check client-pooler-typescript-check client-pooler-python-check client-pooler-rust-check case-database-check dialect-facts-check conformance-check markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/php-extension markdown-conformance-check/typescript markdown-conformance-check/python markdown-conformance-check/rust package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-python-check dbspec-introspect-compare-check ts-model-check dbspec-language-check dbspec-plan-php-check dbspec-go-check/engine dbspec-php-check/set dbspec-php-check/render perf-check dbspec-php-extension-check dbspec-apply-pairs-check dbspec-verify-errors-check collection-php-extension-check model-types-php-extension-check model-native-php-extension-check feature-unit-check feature-verify-rust feature-verify-other feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check go-test-check python-check python-native-host-api-check parity-declarations-check parity-check generated-lint-check layout-check rules-check rebuild-check language-check test-markers-check duplication-check link-check suppression-check divergence-check lint-ts lint-php lint-python lint-go lint-rust lint-php-ext test-php-ext collection-get-phpstan-check dbspec-lock-go-check dbspec-lock-php-check dbspec-lock-php-extension-check dbspec-lock-python-check dbspec-lock-rust-check dbspec-lock-ts-check php-codec-causes-check scalar-subquery-column-check nowait-restore-check mermaid-error-ts-check mermaid-error-python-check mermaid-error-php-check mermaid-error-php-extension-check php-extension-build-logs-check php-catalog-bounds-check column-function-metadata-check paged-read-rust-check page-cache-unit-check rust-compiler-fixtures-check native-error-cause-check request-hook-php-extension-check rust-causes-check go-catalog-session-error-check catalog-php-extension-surface-check transaction-failure-php-extension-check transaction-failure-go-check transaction-failure-php-check php-query-cancellation-check php-query-cancellation-extension-check transaction-failure-typescript-check transaction-failure-python-check transaction-failure-rust-check connection-timeout-php-extension-check mysql-tls-php-extension-check mysql-session-php-extension-check go-package-entry-check native-arginfo-php-extension-check request-hook-audit-native-binding-check native-api-equivalence-check php-package-entry-check php-extension-package-entry-check rust-package-entry-check typescript-package-entry-check python-package-entry-check interface-api-binding-unit-check catalog-mutation-helper-ts-check catalog-mutation-helper-python-check model-chunk-composite-native-php-extension-check model-query-write-php-extension-unit-check php-lifecycle-extension-native-check connection-pool-resource-bounds-typescript-check connection-utc-php-extension-check complex-query-typescript-unit-check python-complex-query-check complex-query-typescript-request-check makefile-pinned-node-recipes-check audit-native-method-assertions-helper-check rust-closed-executor-check typescript-internal-column-error-helper-check typescript-dbspec-plan-fixture-check physical-command-case-helper-check typescript-capture-error-helper-check typescript-check-state-helper-check typescript-performance-gate-unit-check mysql-test-options-helper-check database-case-tests-helper-check typescript-conditional-entry-helper-check typescript-database-case-fixture-helper-check php-plan-cache-memory-check split-read-plan-check typescript-test-exact-keys-check pgsql-pdo-adapter-php-check pgsql-pdo-adapter-php-extension-check parent-slot-expansion-php-extension-check feature-performance-check php-go-text-check catalog-connection-check/go catalog-connection-check/rust catalog-connection-check/typescript catalog-connection-check/python catalog-connection-check/php catalog-connection-check/php-extension dsn-connection-check/go dsn-connection-check/rust dsn-connection-check/typescript dsn-connection-check/python dsn-connection-check/php dsn-connection-check/php-extension connection-pool-check/go connection-pool-check/rust connection-pool-check/typescript connection-pool-check/python raw-text-check/go raw-text-check/php raw-text-check/php-extension catalog-value-rust-check statement-events-check/go statement-events-check/rust statement-events-check/typescript statement-events-check/python statement-events-check/php statement-events-check/php-extension catalog-tool-errors-rust-check request-hook-check/go request-hook-check/typescript request-hook-check/python request-hook-check/php request-hook-check/php-extension request-hook-check/rust conformance-verification-check/go complex-query-check/go conformance-verification-check/typescript complex-query-check/typescript conformance-verification-check/python complex-query-check/python conformance-verification-check/php complex-query-check/php conformance-verification-check/php-extension complex-query-check/php-extension conformance-verification-check/rust complex-query-check/rust parameter-chunking-check/go aes-rotation-check/go parameter-chunking-check/rust aes-rotation-check/rust parameter-chunking-check/typescript aes-rotation-check/typescript parameter-chunking-check/python aes-rotation-check/python parameter-chunking-check/php aes-rotation-check/php parameter-chunking-check/php-extension aes-rotation-check/php-extension php-ext-memory-check audit-triggers-check/go audit-triggers-check/rust audit-triggers-check/typescript audit-triggers-check/python audit-triggers-check/php audit-triggers-check/php-extension collection-recipe-check  conformance-generated-methods-check/go conformance-fixed-clock-check/go conformance-generated-methods-check/typescript conformance-fixed-clock-check/typescript conformance-generated-methods-check/python conformance-fixed-clock-check/python conformance-generated-methods-check/php conformance-fixed-clock-check/php conformance-generated-methods-check/php-extension conformance-fixed-clock-check/php-extension conformance-generated-methods-check/rust conformance-fixed-clock-check/rust
 # CI splits make orm-check into one job per CI group and runs them at the same time (the job test, matrix group in .github/workflows/ci.yml).
 # Each job runs `make check-run GROUP=<group>`, which runs CI_TARGETS_<group>; together the groups run every target of CHECK_TARGETS
 # once each, without the gates of kit, CI_KIT_GATES (make repo-check verifies it). The gates of kit are the prerequisites of
@@ -537,7 +581,7 @@ CHECK_TARGETS = connection-sqlite-several-processes-python-check styled-column-s
 #   feature_helpers: the helper checks without the stress helpers and FEATURE_SUITE_HELPERS (feature-helper-check)
 #   stress_mysql: MySQL application of the stress plan (feature-stress-mysql-check)
 #   stress_pg_sqlite: bench of the stress document and PostgreSQL and SQLite application (feature-stress-pg-sqlite-check)
-CI_KIT_GATES = kit-check layout-check docs-check rules-check owner-validate rebuild-check language-check test-markers-check duplication-check parity-declarations-check parity-check suppression-check divergence-check lint-ts lint-php lint-python lint-go lint-rust lint-php-ext test-php-ext
+CI_KIT_GATES = layout-check docs-check rules-check owner-validate rebuild-check language-check test-markers-check duplication-check parity-declarations-check parity-check suppression-check divergence-check lint-ts lint-php lint-python lint-go lint-rust lint-php-ext test-php-ext
 CI_GROUPS = static clients_db performance client_db_go client_db_php client_db_php_extension client_db_typescript client_db_python client_db_rust clients_pooler_go clients_pooler_php clients_pooler_php_extension clients_pooler_typescript clients_pooler_python clients_pooler_rust conformance dbspec dbspec_apply dbspec_go dbspec_php dbspec_php_extension dbspec_typescript dbspec_python dbspec_rust markdown_go markdown_php markdown_php_extension markdown_typescript markdown_python markdown_rust feature_performance feature_verify_rust feature_verify_other feature_helpers stress_mysql stress_pg_sqlite python
 CI_TARGETS_static = connection-sqlite-several-processes-python-check styled-column-states-unit-check recipe-runners-check group-count-boolean-unit-check runner-check typescript-build-unit-check docs-parse-check release-coverage comment-language-check testcase-check repo-check orm-test-servers-check docs-rules-check docs-implementation-count-check docs-dbs-check dbspec-codemirror-check dbspec-lsp-check orm-install-cli-check go-model-check go-sqlite-version-check php-model-check client-unit-check php-gen-unit-check phpstan-test-runner-helper-check php-test-assertions-helper-check dbspec-sqlite-literal-rows-helper-check php-min-check rust-check go-fmt-check go-vet-check rust-fmt-check codec-check ir-validate-check recipe-unknown-key-check conformance-refusal-check bind-check bind-models-check fuzz-check package-check ts-model-check ts-aes-auth-check ts-codec-errors-check sqlite-version-ts-check sqlite-version-rust-check relation-parent-bind-rust-check collection-composite-key-check interface-typescript-extractor-check collection-php-extension-check model-types-php-extension-check model-native-php-extension-check model-chunk-composite-native-php-extension-check feature-unit-check generated-lint-check link-check collection-get-phpstan-check rust-build-environment-check rust-build-outdir-check rust-duplicate-catalog-check php-catalog-bounds-check rust-time-precision-check php-codec-causes-check scalar-subquery-column-check nowait-restore-check dbspec-language-check rust-150-check dbspec-verify-errors-check php-extension-build-logs-check column-function-metadata-check paged-read-rust-check page-cache-unit-check rust-compiler-fixtures-check native-error-cause-check request-hook-php-extension-check rust-causes-check go-catalog-session-error-check catalog-php-extension-surface-check go-package-entry-check native-arginfo-php-extension-check request-hook-audit-native-binding-check transaction-failure-php-extension-check transaction-failure-go-check transaction-failure-php-check transaction-failure-typescript-check transaction-failure-python-check transaction-failure-rust-check php-package-entry-check php-extension-package-entry-check rust-package-entry-check typescript-package-entry-check python-package-entry-check interface-api-binding-unit-check native-api-equivalence-check model-query-write-php-extension-unit-check php-lifecycle-extension-native-check complex-query-typescript-unit-check python-complex-query-check complex-query-typescript-request-check makefile-pinned-node-recipes-check audit-native-method-assertions-helper-check rust-closed-executor-check physical-command-case-helper-check typescript-conditional-entry-helper-check typescript-database-case-fixture-helper-check php-plan-cache-memory-check split-read-plan-check typescript-performance-gate-unit-check typescript-test-exact-keys-check php-go-text-check catalog-value-rust-check catalog-tool-errors-rust-check collection-recipe-check 
 CI_TARGETS_clients_db = example-check
@@ -773,38 +817,38 @@ catalog-mutation-helper-python-check: python-venv-check
 	$(PYTHON_TESTS) -- packages.python.tests.test_catalog_described_temporal
 
 catalog-mutation-helper-ts-check: typescript-read
-	$(RUN_TESTS) node -- --test packages/ts/tests/catalog-mutation-helper.test.mjs
+	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 --test packages/ts/tests/catalog-mutation-helper.test.mjs
 
 typescript-internal-column-error-helper-check:
-	$(RUN_TESTS) node -- --test packages/ts/tests/internal-column-error.test.mjs
+	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 --test packages/ts/tests/internal-column-error.test.mjs
 
 typescript-dbspec-plan-fixture-check: typescript-read
-	$(RUN_TESTS) node -- --test packages/ts/tests/dbspec-plan-fixture.test.mjs
+	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 --test packages/ts/tests/dbspec-plan-fixture.test.mjs
 
 physical-command-case-helper-check:
-	$(RUN_TESTS) node -- --test scripts/physical-command-case.test.mts
+	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 --test scripts/physical-command-case.test.mts
 
 typescript-capture-error-helper-check:
-	$(RUN_TESTS) node -- --test packages/ts/tests/capture-error.test.mjs
+	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 --test packages/ts/tests/capture-error.test.mjs
 
 typescript-check-state-helper-check:
-	$(RUN_TESTS) node -- --test packages/ts/tests/check-state.test.mjs
+	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 --test packages/ts/tests/check-state.test.mjs
 
 .PHONY: typescript-test-exact-keys-check
 typescript-test-exact-keys-check:
-	$(RUN_TESTS) node -- --test packages/ts/tests/assertions.test.mjs
+	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 --test packages/ts/tests/assertions.test.mjs
 
 mysql-test-options-helper-check:
-	$(RUN_TESTS) node -- --test packages/ts/tests/mysql-test-options.test.mjs
+	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 --test packages/ts/tests/mysql-test-options.test.mjs
 
 database-case-tests-helper-check:
-	$(RUN_TESTS) node -- --test packages/ts/tests/database-case-tests.test.mjs
+	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 --test packages/ts/tests/database-case-tests.test.mjs
 
 typescript-conditional-entry-helper-check:
-	$(RUN_TESTS) node -- --test packages/ts/tests/conditional-entry.test.mjs
+	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 --test packages/ts/tests/conditional-entry.test.mjs
 
 typescript-database-case-fixture-helper-check: typescript-read
-	$(RUN_TESTS) node -- --test packages/ts/tests/database-case-fixture.test.mjs
+	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 --test packages/ts/tests/database-case-fixture.test.mjs
 
 # The six dbspec SQLite lock/session checks execute focused fake-driver cases; none starts or opens a database.
 dbspec-lock-go-check:
@@ -886,7 +930,7 @@ dbspec-compare-check/%: RUN_DIR = $(abspath .runtime/run)/dbspec-compare-check-$
 dbspec-compare-check: dbspec-compare-check/unit dbspec-compare-check/runners dbspec-compare-check/inputs dbspec-compare-check/compare
 	rm -rf $(RUN_DIR)
 dbspec-compare-check/unit:
-	$(RUN_TESTS) node -- tests/dbspec/compare/check.test.mts
+	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 tests/dbspec/compare/check.test.mts
 # PYTHON_VENV is the virtual environment that orm-install-python makes. It holds the Python client installed editable,
 # with the pinned dependencies of its pyproject.toml (ordered-json, cryptography, PyMySQL, psycopg, rapidyaml, ruamel.yaml) and
 # of its extra test (jsonschema-rs); the checks
@@ -1029,7 +1073,7 @@ dbspec-rust-check/set: dbspec-rust-check/set/vectors dbspec-rust-check/set/unit
 dbspec-rust-check/set/vectors:
 	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test dbspec_read_set_none -p polyspec-orm-schema --test dbspec_set_working_directory -- --nocapture
 dbspec-rust-check/set/unit:
-	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm-schema --lib dbspec::set
+	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm-schema --lib dbspec::set -- --test-threads=1
 # dbspec-rust-check/unicode checks that the Unicode word rune table written by Go (unicode_word.rs) matches the ranges at every code point.
 dbspec-rust-check/unicode:
 	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-schema --lib dbspec::unicode_word -- --nocapture
@@ -1040,7 +1084,7 @@ dbspec-rust-check/render-physical: flowmark-check
 .PHONY: dbspec-verify-errors-rust-check
 dbspec-verify-errors-rust-check: lease-tool
 	$(LEASE) hold $(CARGO_LEASES) exclusive --wait --pid $$PPID
-	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-tests --test dbspec_apply_verification_errors_none -- --nocapture
+	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-tests --test dbspec_apply_verification_errors_none -- --test-threads=1 --nocapture
 
 .PHONY: dbspec-verify-errors-check dbspec-verify-errors-php-extension-check
 dbspec-verify-errors-check: dbspec-verify-errors-rust-check dbspec-verify-errors-php-extension-check php-vendor-check python-venv-check typescript-current
@@ -1056,7 +1100,7 @@ dbspec-verify-errors-php-extension-check: php-models orm-install-php-extension-t
 dbspec-rust-check/show-create: dbspec-rust-check/show-create/unit dbspec-rust-check/show-create/vectors
 .PHONY: dbspec-rust-check/show-create/unit dbspec-rust-check/show-create/vectors
 dbspec-rust-check/show-create/unit:
-	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm-schema --lib show_create_tests
+	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm-schema --lib show_create_tests -- --test-threads=1
 dbspec-rust-check/show-create/vectors:
 	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test dbspec_show_create_introspect_none -- --nocapture
 
@@ -1177,7 +1221,7 @@ dbspec-php-extension-check:
 	if $(MAKE) --no-print-directory -k RUN_DIR="$$run_dir" DBSPEC_PHP_EXTENSION_SHARED_RUN=1 $(DBSPEC_PHP_EXTENSION_PARTS); then :; else status=$$?; fi; \
 	exit "$$status"
 dbspec-php-extension-check/arginfo:
-	$(NODE) $(KIT)/php-extension.$(KIT_EXT) check
+	$(NODE) $(KIT)/php-extension.$(KIT_EXT) check --extension packages/php-ext --build-dir var/php-ext --skip vendor --skip node_modules --library packages/php
 dbspec-php-extension-check/prepare:
 	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
 # Builds the extension in an isolated run directory and executes only its native Collection unit cases.
@@ -1461,18 +1505,18 @@ dbspec-php-extension-check/executor: php-vendor-check dbspec-php-extension-check
 # line. Each language's comments come from its own lexer (scripts/comments/check.mts), and strings are not comments.
 comment-language-check: comment-language-check/unit comment-language-check/run
 comment-language-check/unit:
-	$(RUN_TESTS) node -- scripts/comments/check.test.mts
+	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 scripts/comments/check.test.mts
 comment-language-check/run:
 	$(NODE) scripts/comments/check.mts
 
 repo-check: repo-check/unit repo-check/run
 repo-check/unit:
-	$(RUN_TESTS) node -- scripts/repo/check.test.mts scripts/repo/python-venv.test.mts scripts/repo/worktree-stop.test.mts
+	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 scripts/repo/check.test.mts scripts/repo/python-venv.test.mts scripts/repo/worktree-stop.test.mts
 repo-check/run:
 	$(NODE) scripts/repo/check.mts
 
 makefile-pinned-node-recipes-check:
-	$(RUN_TESTS) node -- tests/repo/pinned-node-recipes.test.mts
+	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 tests/repo/pinned-node-recipes.test.mts
 
 # orm-test-servers-check checks the MySQL configuration migration of test-servers.mts (scripts/test-servers-mysql.mts) with a temporary
 # root server: it moves other configurations in the same count, does nothing for identical configurations, and refuses colliding names
@@ -1554,28 +1598,28 @@ feature-unit-check: feature-unit-check/docs feature-unit-check/coverage feature-
 feature-unit-check/docs:
 	$(NODE) scripts/features/build.mts --check
 feature-unit-check/coverage:
-	$(RUN_TESTS) node -- scripts/features/coverage.test.mts scripts/features/languages.test.mts scripts/features/performance-reference.test.mts scripts/features/recipes.test.mts
+	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 scripts/features/coverage.test.mts scripts/features/languages.test.mts scripts/features/performance-reference.test.mts scripts/features/recipes.test.mts
 feature-unit-check/owners:
-	$(RUN_TESTS) node -- scripts/features/owners.test.mts scripts/features/manifest.test.mts
+	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 scripts/features/owners.test.mts scripts/features/manifest.test.mts
 feature-unit-check/select: lease-tool
-	$(RUN_TESTS) node -- scripts/features/select.test.mts scripts/features/typescript-lease.test.mts
+	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 scripts/features/select.test.mts scripts/features/typescript-lease.test.mts
 
 # recipe-keys-check checks that the key table of the recipe format is the one its schema makes, and runs the unit tests of the
 # generator (T334-3-5-6). recipe-unknown-key-check runs the refusal test of every runner's loader, which must run at least one test.
 .PHONY: recipe-keys-check recipe-unknown-key-check recipe-unknown-key-check/go recipe-unknown-key-check/typescript recipe-unknown-key-check/python recipe-unknown-key-check/php recipe-unknown-key-check/rust recipe-unknown-key-check/php-extension
 recipe-keys-check:
 	$(NODE) scripts/features/recipe-keys.mts --check
-	$(RUN_TESTS) node -- scripts/features/recipe-keys.test.mts
+	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 scripts/features/recipe-keys.test.mts
 # recipe-runners-check checks that each runtime has one recipe runner (FCV-15), and runs the unit tests of the check.
 .PHONY: recipe-runners-check
 recipe-runners-check:
 	$(NODE) scripts/features/recipe-runners.mts
-	$(RUN_TESTS) node -- scripts/features/recipe-runners.test.mts
+	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 scripts/features/recipe-runners.test.mts
 recipe-unknown-key-check: recipe-unknown-key-check/go recipe-unknown-key-check/typescript recipe-unknown-key-check/python recipe-unknown-key-check/php recipe-unknown-key-check/rust recipe-unknown-key-check/php-extension
 recipe-unknown-key-check/go: recipe-keys-check
 	$(GO_TEST) ./packages/go/internal/recipe -run '^(TestCheckKeysAcceptsAndRefusesByName|TestLoadKeyTableNamesTheSchemaTable)$$' -count=1
 recipe-unknown-key-check/typescript: recipe-keys-check
-	$(RUN_TESTS) node -- packages/ts/tests/recipe_keys.test.mjs
+	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 packages/ts/tests/recipe_keys.test.mjs
 recipe-unknown-key-check/python: recipe-keys-check python-venv-check
 	$(PYTHON_TESTS) -- packages.python.tests.test_recipe_keys
 recipe-unknown-key-check/php: recipe-keys-check php-vendor-check php-models
@@ -1593,7 +1637,7 @@ conformance-refusal-check: conformance-refusal-check/go conformance-refusal-chec
 conformance-refusal-check/go:
 	$(GO_TEST) ./packages/go/model -run '^TestRefusalIsATypedError$$' -count=1
 conformance-refusal-check/typescript: typescript-read
-	$(RUN_TESTS) node -- packages/ts/tests/refusal-before-request.mjs
+	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 packages/ts/tests/refusal-before-request.mjs
 conformance-refusal-check/rust-fixtures: lease-tool
 	cd packages/rust && $(CARGO_TEST) conformance-refusal-rust-fixtures -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm --test compiler_fixtures -- --test-threads=1 compiler_fixtures::refusal-
 
@@ -1714,7 +1758,7 @@ RUN_TESTS = $(NODE) $(KIT)/run-tests.$(KIT_EXT)
 # PYTHON_TESTS runs Python tests through the harness of packages/python/tests/testcase.py, which keeps the deadline of each
 # case by its class and ends the process GRACE after it. run-tests gives every case of a --module harness one timeout, so
 # PYTHON_TESTS gives it the longest class, PROCESS (300 s), with GRACE (5 s), and the class of a case decides when it fails.
-PYTHON_TESTS = $(RUN_TESTS) python --timeout 305 --venv $(PYTHON_VENV) --module packages.python.tests.testcase
+PYTHON_TESTS = PYTHONUNBUFFERED=1 NO_COLOR=1 PYTHON_COLORS=0 $(RUN_TESTS) python --timeout 305 --venv $(PYTHON_VENV) --module packages.python.tests.testcase
 client-unit-check: client-unit-check/dsn client-unit-check/markdown client-unit-check/relation-keys client-unit-check/code-catalog client-unit-check/insert-parts client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/orm-gen-python client-unit-check/orm-gen-typescript client-unit-check/model-methods client-unit-check/client-generics client-unit-check/perf-extensions client-unit-check/dbspec-runners
 client-unit-check/dbspec-runners: php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRunnerTest.php
@@ -1740,10 +1784,10 @@ client-unit-check/engine: php-vendor-check php-models
 nowait-restore-check: lease-tool typescript-read php-vendor-check php-models python-venv-check orm-install-php-extension-tools
 	@set +e; status=0; \
 	$(GO_TEST) ./packages/go/orm -run '^TestAcquireSQLiteRowLock' -count=1 || status=1; \
-	$(RUN_TESTS) node --conditions=orm-test --test packages/ts/tests/sqlite-row-lock-restore.mjs || status=1; \
+	$(RUN_TESTS) node --timeout 30 --test-concurrency=1 --conditions=orm-test --test packages/ts/tests/sqlite-row-lock-restore.mjs || status=1; \
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/SqliteRowLockRestoreTest.php || status=1; \
 	$(PYTHON_TESTS) -- packages.python.tests.test_sqlite_row_lock_restore || status=1; \
-	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib db::sqlite_row_lock_restore_tests || status=1; \
+	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib db::sqlite_row_lock_restore_tests -- --test-threads=1 || status=1; \
 	run_dir="$(abspath .runtime/run)/nowait-restore-$$$$"; trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; \
 	if $(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); then \
 		env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php/phpunit.xml.dist packages/php/tests/SqliteRowLockRestoreTest.php || status=1; \
@@ -2320,23 +2364,23 @@ sqlite-version-ts-check: typescript-current
 # rust-build-environment-check runs the Rust build library path-resolution unit cases.
 .PHONY: rust-build-environment-check
 rust-build-environment-check: lease-tool
-	ORM_BUILD_TEST_ROOT=$(abspath packages/rust/build) $(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm-build --lib tests::build_environment::environment_subprocess
+	ORM_BUILD_TEST_ROOT=$(abspath packages/rust/build) $(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm-build --lib tests::build_environment::environment_subprocess -- --test-threads=1
 	cd packages/rust && $(CARGO_TEST) rust-build-rerun-inputs -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-build --lib tests::rerun_inputs_name_the_set_file_and_every_document -- --test-threads=1 --exact
 
 # rust-build-outdir-check runs the missing OUT_DIR propagation unit case.
 .PHONY: rust-build-outdir-check
 rust-build-outdir-check: lease-tool
-	ORM_BUILD_TEST_ROOT=$(abspath packages/rust/build) $(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm-build --lib tests::out_dir::load_requires_out_dir
+	ORM_BUILD_TEST_ROOT=$(abspath packages/rust/build) $(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm-build --lib tests::out_dir::load_requires_out_dir -- --test-threads=1
 
 # rust-time-precision-check runs the Rust temporal precision bind cases without a database.
 .PHONY: rust-time-precision-check
 rust-time-precision-check: lease-tool
-	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib db::time_precision_tests
+	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib db::time_precision_tests -- --test-threads=1
 
 # rust-temporal-args-check runs the pure Rust temporal argument conversion cases without a database.
 .PHONY: rust-temporal-args-check
 rust-temporal-args-check: lease-tool
-	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib args::temporal_args::temporal_arguments_become_canonical_text_before_binding
+	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib args::temporal_args::temporal_arguments_become_canonical_text_before_binding -- --test-threads=1
 
 # Compile the public Product request for MySQL/PostgreSQL and reject SQLite without a live database.
 # Column-function metadata checks run for all six native clients and continue after a failure.
@@ -2356,7 +2400,7 @@ column-function-metadata-check/go:
 	(cd packages/go && $(GO) test ./engine/ir -run '^TestParamUsesColumnFunction' -count=1) || status=1; \
 	exit $$status
 column-function-metadata-check/rust: lease-tool
-	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib column_function_metadata
+	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib column_function_metadata -- --test-threads=1
 column-function-metadata-check/typescript: typescript-current
 	$(READ_TYPESCRIPT)
 	$(RUN_LONG) column-function-metadata-typescript -- $(NODE) --test packages/ts/tests/column_function_metadata.mjs
@@ -2385,7 +2429,7 @@ scalar-subquery-column-check:
 scalar-subquery-column-check/go:
 	cd packages/go && $(GO) test ./engine/planner -run '^TestScalarSubquery' -count=1
 scalar-subquery-column-check/rust: lease-tool
-	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib scalar_subquery_
+	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib scalar_subquery_ -- --test-threads=1
 scalar-subquery-column-check/typescript: typescript-current
 	$(READ_TYPESCRIPT)
 	$(RUN_LONG) scalar-subquery-column-typescript -- $(NODE) packages/ts/tests/scalar_subquery_type.mjs
@@ -2446,7 +2490,7 @@ split-read-plan-check/python: python-venv-check python-models
 	$(PYTHON_TESTS) -- packages.python.tests.test_split_plan
 
 split-read-plan-check/rust:
-	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib model::split_plan_tests::split_root_in_count_plans_no_statement_over_the_bind_limit
+	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib model::split_plan_tests::split_root_in_count_plans_no_statement_over_the_bind_limit -- --test-threads=1
 
 # The six native clients preserve typed composite collection components and the shared opaque encoding.
 collection-composite-key-check: typescript-read php-vendor-check python-venv-check orm-install-php-extension-tools php-models
@@ -2455,11 +2499,11 @@ collection-composite-key-check: typescript-read php-vendor-check python-venv-che
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	status=0; \
-	$(RUN_TESTS) node --test --test-name-pattern='collection-key/(composite-typed-components|nullable-composite-row-has-no-key)' packages/ts/tests/collection_identity.mjs || status=1; \
+	$(RUN_TESTS) node --timeout 30 --test-concurrency=1 --test --test-name-pattern='collection-key/(composite-typed-components|nullable-composite-row-has-no-key)' packages/ts/tests/collection_identity.mjs || status=1; \
 	$(GO_TEST) ./packages/go/orm -run '^(TestCompositeCollectionKeyTypedComponentsFromFixture|TestNullableCompositeRowHasNoCollectionKey)$$' -count=1 || status=1; \
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CollectionIdentityTest.php --filter 'testCompositeComponentsPreserveTypedIdentityAndSharedEncoding|testNullCompositeRowHasNoCollectionKey' || status=1; \
 	$(PYTHON_TESTS) -- packages.python.tests.test_collection_identity.CollectionIdentityTest.test_a_key_outside_the_python_key_type_is_refused packages.python.tests.test_collection_identity.CollectionIdentityTest.test_composite_components_preserve_typed_identity_and_shared_encoding packages.python.tests.test_collection_identity.CollectionIdentityTest.test_a_null_composite_row_has_no_collection_key || status=1; \
-	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --test collection_identity composite || status=1; \
+	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --test collection_identity composite -- --test-threads=1 || status=1; \
 	if $(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); then \
 	  env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelAssemblyTest.php packages/php-ext/tests/CollectionTest.php --filter 'testTypedIdentityOrderedReplacementAndArrayViews|testCompositeComponentsPreserveTypedIdentityAndSharedEncoding|testNullCompositeRowHasNoCollectionKey' || status=1; \
 	else status=1; fi; \
@@ -2467,7 +2511,7 @@ collection-composite-key-check: typescript-read php-vendor-check python-venv-che
 
 # sqlite-version-rust-check runs only the Rust SQLite native-version unit cases.
 sqlite-version-rust-check: lease-tool
-	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib db::sqlite_version_tests
+	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm --lib db::sqlite_version_tests -- --test-threads=1
 
 # ts-min-check runs the TypeScript tests on the lowest Node release that
 # package.json supports. The npm of that release refuses the checkout, whose devEngines names the npm of mise.toml
@@ -2574,15 +2618,15 @@ orm-install-cli-check: lease-tool orm-codes-typescript
 .PHONY: dbspec-go-check dbspec-go-check/engine dbspec-go-check/unicode
 dbspec-go-check: dbspec-go-check/engine dbspec-go-check/unicode dbspec-go-check/render-physical
 dbspec-go-check/engine:
-	$(RUN_TESTS) go --cwd packages/go -- ./engine/dbspec -count=1
+	$(RUN_TESTS) go --cwd packages/go -- -count=1 -timeout=0 ./engine/dbspec -count=1
 # dbspec-go-check/render-physical runs the rendered statements of tests/dbspec/ddl.json with their behavior steps on MySQL, PostgreSQL and
 # SQLite, through the recipe tests/dbspec/render-physical.json; an unset ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN fails it by name.
 dbspec-go-check/render-physical: flowmark-check
-	$(WITH_TEST_ENV) $(RUN_TESTS) go --cwd packages/go -- ./orm -run '^TestRecipeDbspec(RenderPhysical|SetDecimal)' -count=1
+	$(WITH_TEST_ENV) $(RUN_TESTS) go --cwd packages/go -- -count=1 -timeout=0 ./orm -run '^TestRecipeDbspec(RenderPhysical|SetDecimal)' -count=1
 # dbspec-go-check/unicode checks that the three table files written by the generator of tests/dbspec/unicode match the current Go tables, and that the C extension and the Python module
 # give the same classification as Go at every code point.
 dbspec-go-check/unicode:
-	$(RUN_TESTS) go --cwd . -- ./tests/dbspec/unicode -count=1
+	$(RUN_TESTS) go --cwd . -- -count=1 -timeout=0 ./tests/dbspec/unicode -count=1
 
 docs-dev:
 	$(NPM) run docs:dev
@@ -3787,4 +3831,4 @@ php-test-assertions-helper-check: php-vendor-check php-models
 
 .PHONY: typescript-performance-gate-unit-check
 typescript-performance-gate-unit-check:
-	$(RUN_TESTS) node -- --test packages/ts/tests/coverage_performance_gate.test.mjs
+	$(RUN_TESTS) node --timeout 30 -- --test-concurrency=1 --test packages/ts/tests/coverage_performance_gate.test.mjs

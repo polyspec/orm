@@ -20,7 +20,15 @@
     "packages/ts/src/sqlite-codes.ts",
     "packages/php/src/SqliteCodes.php",
     "packages/python/src/polyspec/orm/_sqlite_codes.py",
-    "packages/php-ext/src/sqlite_codes.h"
+    "packages/php-ext/src/sqlite_codes.h",
+    "**/node_modules/**",
+    "**/vendor/**",
+    "**/.venv/**",
+    "**/venv/**",
+    "**/__pycache__/**",
+    "**/target/**",
+    "**/dist/**",
+    "**/*.egg-info/**"
   ],
   "tracked": [
     {
@@ -49,5 +57,12 @@
       "path": "tests/*/fixtures/**",
       "reason": "test fixtures, which the tests read as committed inputs"
     }
+  ],
+  "headers": [
+    "Code generated .* DO NOT EDIT"
+  ],
+  "moduleFiles": [
+    "go.mod",
+    "Cargo.toml"
   ]
 }

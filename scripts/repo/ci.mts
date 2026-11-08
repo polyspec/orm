@@ -809,10 +809,10 @@ export function concurrencyErrors(workflows: Record<string, string>): string[] {
 }
 
 // CI_PASSED_STEPS are the steps of ci.yml's last job, ci-passed. The check that the verify step of release requires from ci.yml is this one job: it runs with `if: always()`,
-// so it runs even when other jobs fail or are cancelled. Its needs are every other job, so make ci-passed passes only when all of those jobs succeed.
+// so it runs even when other jobs fail or are cancelled. Its needs are every other job, so make ci-passed passes only when all of those jobs succeed; FAIL_SKIPPED=1 fails a skipped job too (kit K1111).
 // make ci-passed runs the Makefile of the repository and the ci-passed tool of @polyspec/kit with node, so the
 // checkout, the node of mise.toml and the install of the package come before it.
-export const CI_PASSED_STEP: Record<string, unknown> = { name: 'every job passed', if: NOT_CANCELLED, env: { RESULTS: '${{ toJSON(needs) }}' }, run: 'make ci-passed' };
+export const CI_PASSED_STEP: Record<string, unknown> = { name: 'every job passed', if: NOT_CANCELLED, env: { RESULTS: '${{ toJSON(needs) }}' }, run: 'make ci-passed FAIL_SKIPPED=1' };
 export const CI_PASSED_STEPS: Record<string, unknown>[] = [
   { uses: 'actions/checkout@v5' },
   { uses: 'actions/setup-node@v7', with: { 'node-version-file': 'mise.toml', 'package-manager-cache': false } },

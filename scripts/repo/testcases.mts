@@ -144,13 +144,14 @@ export function reportingScriptErrors(commands: { source: string; command: strin
 
 // Build and lint tools do not report their own cases. Because these tools are long-running work, they run
 // under tests/run-long.mts (Makefile's RUN_LONG, TSC_BUILD) without a deadline, with step logs (RUN, STEP, exit code, PASS or FAIL).
-// `cargo test --no-run` is checked by unbuiltCargoTestErrors.
-const tools: [string, RegExp][] = [
+// `cargo test --no-run` is checked by unbuiltCargoTestErrors. A go command is go itself or a path ending in /go, so the
+// target names of `$(MAKE) build-go build-php` hold no go build.
+export const tools: [string, RegExp][] = [
   ['tsc', /(?:^|[\s/])tsc(?=\s|$)/],
   ['a TypeScript build', /\bnpm\s+(?:--prefix\s+\S+\s+)?run\s+(?:typescript:build|typescript:check|build)(?=\s|$)/],
-  ['go generate', /\bgo\s+generate\b/],
-  ['go vet', /\bgo\s+vet\b/],
-  ['go build', /\bgo\s+build\b/],
+  ['go generate', /(?:^|[\s/])go\s+generate\b/],
+  ['go vet', /(?:^|[\s/])go\s+vet\b/],
+  ['go build', /(?:^|[\s/])go\s+build\b/],
   ['cargo build', /\bcargo\s+(?:\+\S+\s+)?(?:build|check|clippy)\b/],
 ];
 const noRun = /\bcargo\s+(?:\+\S+\s+)?test\b(?=.*\s--no-run\b)/;

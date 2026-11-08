@@ -1,5 +1,19 @@
 {
   "schema": 1,
-  "hooks": ["commit-msg", "pre-commit"],
-  "idPattern": "[A-Z][A-Za-z0-9]*(?:[.-][A-Za-z0-9]+)*"
+  "idPattern": "[A-Z][A-Za-z0-9]*(?:[.-][A-Za-z0-9]+)*",
+  "states": {
+    "waiting": "[ ]",
+    "active": "[~]",
+    "verifying": "[v]",
+    "done": "[o]",
+    "bypassed": "[!]",
+    "impossible": "[-]"
+  },
+  "columns": [
+    "ID",
+    "Task",
+    "Deliverables",
+    "Verification",
+    "State"
+  ]
 }

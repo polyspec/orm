@@ -438,4 +438,4 @@ jobs:
         if: ${{ !cancelled() }}
         env:
           RESULTS: ${{ toJSON(needs) }}
-        run: make ci-passed
+        run: make ci-passed FAIL_SKIPPED=1

@@ -118,17 +118,6 @@
         "packages/rust/tests/bench_model.rs"
       ]
     },
-    "kit-check": {
-      "scope": "owner",
-      "needs": [],
-      "inputs": [
-        "package-lock.json",
-        "mise.toml",
-        "mise.lock",
-        ".mise/locks/**",
-        "config/**"
-      ]
-    },
     "layout-check": {
       "scope": "suite",
       "needs": []
@@ -5342,6 +5331,14 @@
     "composer.lock": {
       "scope": "suite",
       "reason": "it pins the PHP dependencies that every PHP check loads through the autoloader"
+    },
+    "config/duplication.json": {
+      "scope": "suite",
+      "reason": "it declares the formats, the minimum and the excludes of make duplication-check, which reads every source file of the repository"
+    },
+    "config/generated.json": {
+      "scope": "suite",
+      "reason": "it declares the generated paths, headers and module files that make layout-check and the pre-commit staged check read over every tracked or staged file"
     },
     "examples/go.mod": {
       "scope": "suite",

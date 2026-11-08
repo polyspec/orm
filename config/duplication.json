@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "formats": [
+    "typescript",
+    "javascript",
+    "go",
+    "php",
+    "python",
+    "rust",
+    "c"
+  ],
+  "minLines": 6,
+  "ignorePatterns": [
+    "(?m)^(declare\\([^)]*\\)|namespace [^;]+|use [^;]+);$",
+    "(?m)^import\\s[^;'\"]*['\"][^'\"\\n]*['\"];?$",
+    "(?m)^package \\w+$",
+    "(?m)^import (\\w+ )?\"[^\"\\n]*\"$",
+    "(?m)^import \\([^)]*\\)$",
+    "(?m)^import [^\\n]+$",
+    "(?m)^from [\\w.]+ import [^\\n(]+$",
+    "(?m)^from [\\w.]+ import \\([^)]*\\)$",
+    "(?m)^(pub )?use [^;]+;$",
+    "(?m)^#include [<\"][^>\"\\n]*[>\"]$"
+  ],
+  "exclude": [
+    {
+      "glob": "packages/php-ext/src/polyspec_*.stub.php",
+      "reason": "ecosystem: the S10 stub declares the library under the same names and signatures, since the PHP stub generator reads it to write the arginfo header"
+    }
+  ]
+}
