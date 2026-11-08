@@ -9,7 +9,7 @@ A client renders the model built with the [DSL](dsl.md) into the request below, 
 {
   "ir_version": 1,
   "manifest_hash": "sha256:e82672f09b5852725e8b4d17ad0500b3d8ef5fbeeeee1c04c7e2b1ec0b9bb785",
-  "kind": "one | all | count | group_count | sum | avg | paginate | insert | update | delete | restore | restart_identity",
+  "kind": "one | all | count | group_count | sum | avg | paginate | lookahead_paginate | group_lookahead_paginate | insert | update | delete | restore | restart_identity",
   "entity": "author",
   "columns": Columns,
   "where": Group,
@@ -35,7 +35,7 @@ Values never appear in the request. Every value is a parameter index into the cl
 A request is decoded strictly in every client. A member that its object does not define, at the top level or inside any object (`ref`, `pred`, an item, a group, an order item, `limit`, a join, a relation, an assignment), is `IR_INVALID`, and so is a member of the wrong JSON type: a `column`, `agg`, `entity` or `op` that is not a string, a parameter index or count that is not an integer (also a number written as `0.0` or `1e1`, whose literal is not an integer; TypeScript reads a request text through ordered-json, which keeps the literal), a list member that is not an array, or an object member that is not an object. A `column` on a `sum` request is such an unknown member, since `sum` and `avg` name their column in `agg`. The shape check comes before every other rule, so the request fails with `IR_INVALID`, not with `COLUMN_UNKNOWN` or `ENTITY_UNKNOWN` for a name of the wrong type. A null member is absent. `tests/ir/validate.json` (the `shape-*` cases) holds these cases, which Go, PHP, Rust, TypeScript and Python run.
 
 - **PRT-1** `manifest_hash`: the `manifestHash` of the document set the generated code carries: `sha256:` followed by 64 lower-case hexadecimal digits ([manifest and hashes](dbspec.md#manifest-and-hashes)). A request whose hash differs from the model the client loaded fails with `SCHEMA_HASH_MISMATCH`. The field replaces `schema_hash`; the error code keeps its name
-- **PRT-2** `kind`: `one` and `all` read rows, `count` counts rows or groups, `group_count` returns grouped rows with `row_count`, `sum` and `avg` aggregate `agg`, `paginate` returns the page statement and a count statement, `insert`, `update`, and `delete` write rows, `restore` clears the soft delete column of one deleted row ([restore](#_1-5-restore)), and `restart_identity` restarts the identity of a table past its largest key ([load](#_1-6-load))
+- **PRT-2** `kind`: `one` and `all` read rows, `count` counts rows or groups, `group_count` returns grouped rows with `row_count`, `sum` and `avg` aggregate `agg`, `paginate` returns the page statement and a count statement, `lookahead_paginate` and `group_lookahead_paginate` return the one page statement of `all` and of `group_count` that reads one row past the page (INT-164), `insert`, `update`, and `delete` write rows, `restore` clears the soft delete column of one deleted row ([restore](#_1-5-restore)), and `restart_identity` restarts the identity of a table past its largest key ([load](#_1-6-load))
 - **PRT-3** `load`: `insert` writes rows with their stored keys: it takes a value for the identity column ([load](#_1-6-load))
 - **PRT-4** `set`: assignments of `insert` and `update`
 - **PRT-5** `rows`: parameters of each additional inserted row in the column order of `set`; every `set` item is then a value assignment and `on_duplicate` is not allowed
@@ -45,7 +45,7 @@ A request is decoded strictly in every client. A member that its object does not
 
 `Query` is the shape shared by the root, a join child, a relation child, and a subquery: `entity`, `columns`, `on` (join child only), `where`, `joins`, `relations`, `order`, `group_by`, `limit`, `force_index`, `lock`, and the relation options.
 
-`group_by` is valid only on the root of a `count` (the number of groups) and of a `group_count`; on any other kind, and in a join child, a relation child or a subquery, the request fails with `IR_INVALID`. A grouped row has no value for a column outside the group, so no other kind could name its output in all three databases.
+`group_by` is valid only on the root of a `count` (the number of groups), of a `group_count` and of a `group_lookahead_paginate`, which need it; on any other kind, and in a join child, a relation child or a subquery, the request fails with `IR_INVALID`. A grouped row has no value for a column outside the group, so no other kind could name its output in all three databases.
 
 ### 1.1 Columns
 
@@ -178,7 +178,7 @@ PostgreSQL identity does not advance past an explicit key, so without the restar
 
 ### 2.1 Relation steps
 
-- **PRT-38** Each relation has one `relation` step after its parent step; nested relations follow the same rule, and `paginate` orders the steps as main, count, relations: the count step follows the main step and holds its conditions and joins, without its order and its page limit.
+- **PRT-38** Each relation has one `relation` step after its parent step; nested relations follow the same rule, and `paginate` orders the steps as main, count, relations: the count step follows the main step and holds its conditions and joins, without its order and its page limit. `lookahead_paginate` and `group_lookahead_paginate` have no count step: the main step is the statement of `all` or of `group_count` with the order and the root limit, whose count the client sets to `perPage + 1`, followed by the relation steps of `lookahead_paginate`, which read the parents of the page without the extra row. A query without `order` is ordered by the primary key ascending for `lookahead_paginate` and by the `group_by` columns ascending for `group_lookahead_paginate`, in their order, and the lookahead kinds need the root `limit`, else `IR_INVALID` "%s needs limit".
 - **PRT-39** The client reads the parent keys of every parent row in order, removes rows with a null key, removes duplicates, and skips the statement when no key remains. With `if_parent`, only parents whose column equals the parameter are used.
 - **PRT-40** The `parent` slot is one placeholder that the client expands to the key list. The list is padded to a power of two by repeating the last key, so one prepared statement serves each size class. A list longer than the driver bind limit is split into chunks.
 - **PRT-40a** PHP-extension package `polyspec/orm-php-ext` expands the `parent` slot of a composite relation in its native classes, binding both key components of each row (PRT-40).

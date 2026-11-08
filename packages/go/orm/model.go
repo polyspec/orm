@@ -698,6 +698,70 @@ func GetsCount(c *Core) (*GroupRows, error) {
 	if err != nil {
 		return nil, err
 	}
+	return c.groupRows(ex, res)
+}
+
+// GetsLookaheadPage returns one page of the models of Gets and whether a next page exists, read by one statement that
+// reads one row past the page and counts nothing (INT-164).
+func GetsLookaheadPage[T Model](c *Core, page, perPage int) (*LookaheadPage[T], error) {
+	ex, q, r, err := c.lookaheadRequest("lookahead_paginate", page, perPage)
+	if err != nil {
+		return nil, err
+	}
+	res, hasNext, err := lookahead(ex, r, perPage)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := q.assemble(ex, r, res, res.plan.Steps[0].Assemble)
+	if err != nil {
+		return nil, err
+	}
+	items, err := typedCollection[T](c.ent.collection(rows))
+	if err != nil {
+		return nil, err
+	}
+	return &LookaheadPage[T]{Items: items, Page: page, PerPage: perPage, HasNext: hasNext}, nil
+}
+
+// GetsCountLookaheadPage returns one page of the group rows of GetsCount and whether a next page exists, read by one
+// statement that reads one group past the page and counts nothing (INT-164).
+func GetsCountLookaheadPage(c *Core, page, perPage int) (*GroupLookaheadPage, error) {
+	ex, _, r, err := c.lookaheadRequest("group_lookahead_paginate", page, perPage)
+	if err != nil {
+		return nil, err
+	}
+	res, hasNext, err := lookahead(ex, r, perPage)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := c.groupRows(ex, res)
+	if err != nil {
+		return nil, err
+	}
+	return &GroupLookaheadPage{Items: rows, Page: page, PerPage: perPage, HasNext: hasNext}, nil
+}
+
+// lookaheadRequest checks the arguments of a lookahead page and builds its request of kind, whose root limit reads one
+// row past the page.
+func (c *Core) lookaheadRequest(kind string, page, perPage int) (executor, *Core, *request, error) {
+	c.ensureStatement()
+	if page < 1 || perPage < 1 {
+		return nil, nil, nil, configErr("getsLookaheadPage requires a positive page and perPage")
+	}
+	if c.limit != nil {
+		return nil, nil, nil, configErr("getsLookaheadPage cannot be combined with limit")
+	}
+	ex, err := c.terminal()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	q := c.Clone()
+	q.limit = &ir.Limit{Offset: (page - 1) * perPage, Count: perPage + 1}
+	return ex, q, q.build(kind), nil
+}
+
+// groupRows is the group rows of the main step of a group_count or a group_lookahead_paginate result.
+func (c *Core) groupRows(ex executor, res *result) (*GroupRows, error) {
 	if len(res.plan.Steps) == 0 || res.plan.Steps[0].Assemble == nil {
 		return nil, codecErr(CodeInternal, "group count has no result declaration")
 	}

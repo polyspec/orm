@@ -17,10 +17,12 @@ classDiagram
         get()
         gets()
         getsCount()
+        getsCountLookaheadPage()
         getCount()
         getSum()
         getAvg()
         getsPage()
+        getsLookaheadPage()
         getPagePlanSteps()
         getQuery()
         create()
@@ -146,6 +148,18 @@ classDiagram
         Integer totalCount
         Integer totalPages
     }
+    class LookaheadPage {
+        Boolean hasNext
+        Collection items
+        Integer page
+        Integer perPage
+    }
+    class GroupLookaheadPage {
+        Boolean hasNext
+        GroupRows items
+        Integer page
+        Integer perPage
+    }
     class Utils {
         Db db
         lock()
@@ -243,6 +257,7 @@ classDiagram
     AesUtils --> AESRotationStatus : returns status
     Collection o-- Model : contains ordered models
     Page *-- Collection : contains items
+    LookaheadPage *-- Collection : contains items
     Model *-- Collection : contains relations
     Generator --> Model : emits
 ```
@@ -262,6 +277,8 @@ classDiagram
 | TransactionFlow | Private. The transaction of the current execution flow; models without a connection use it. Internal: Begin, savepoint, commit and rollback are private; Db.transaction is their public entry (docs/spec/interfaces.md §6). |
 | Collection | Ordered models keyed by primary key, keyName, or fetchKey. |
 | Page | The rows and counts of getsPage. |
+| LookaheadPage | The models of getsLookaheadPage and whether a next page exists. |
+| GroupLookaheadPage | The group rows of getsCountLookaheadPage and whether a next page exists. |
 | Utils | Connection utilities; lock and local values need an active transaction. |
 | SchemaUtils | Registers the set of a generated schema on the connection without reading the database; installs the set with the client DDL renderer, verifies the database and registers the set; upgrades an installed set by the tables and the null or defaulted columns that the database lacks, without registering it. |
 | AesUtils | Reports and rotates AES key versions of a model table. |
@@ -323,6 +340,7 @@ A shared behavior is complete only when every runtime has an exact executable ca
 | AesUtils | AESRotationStatus | returns status |
 | Collection | Model | contains ordered models |
 | Page | Collection | contains items |
+| LookaheadPage | Collection | contains items |
 | Model | Collection | contains relations |
 | Generator | Model | emits |
 
@@ -393,6 +411,14 @@ An underscore in a diagram type name separates nested types. The table defines t
 | Page.perPage | `Integer` |
 | Page.totalCount | `Integer` |
 | Page.totalPages | `Integer` |
+| LookaheadPage.hasNext | `Boolean` |
+| LookaheadPage.items | `Collection` |
+| LookaheadPage.page | `Integer` |
+| LookaheadPage.perPage | `Integer` |
+| GroupLookaheadPage.hasNext | `Boolean` |
+| GroupLookaheadPage.items | `GroupRows` |
+| GroupLookaheadPage.page | `Integer` |
+| GroupLookaheadPage.perPage | `Integer` |
 | Utils.db | `Db` |
 | SchemaUtils.db | `Db` |
 | AesUtils.db | `Db` |

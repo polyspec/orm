@@ -3579,6 +3579,7 @@ class _ChainBuild:
             if "column" in aggregate:
                 model.core.aggregate(aggregate["agg"], aggregate["column"])
             model.core.group_by.extend(aggregate.get("group_by", []))
+        model.core.group_by.extend(q.get("group_by", []))
         for join in q.get("joins", []):
             child = _new_core_model(self.context, join["model"])
             inner = _ChainBuild(self.context, self.outer)
@@ -3718,7 +3719,7 @@ def _chain_built(step: dict, context: dict) -> Model:
     )
     build = _ChainBuild(context)
     build.db = db
-    paged = step.get("page") is True
+    paged = step.get("page") is True or step.get("lookahead") is True
     build.query(model, step, not paged and "offset" not in step)
     if not paged and "offset" in step and "limit" in step:
         limit = step["limit"]
@@ -3825,6 +3826,10 @@ def _table_model_query(step: dict, context: dict) -> dict:
             )
         else:
             limit = step["limit"]
+            if limit["offset"] % limit["count"] != 0:
+                raise AssertionError(
+                    "a plan needs an offset that is a multiple of its count"
+                )
             steps = model.get_page_plan_steps(
                 limit["offset"] // limit["count"] + 1, limit["count"]
             )
@@ -3848,6 +3853,36 @@ def _table_model_query(step: dict, context: dict) -> dict:
             ]
         }
     aggregate = step.get("aggregate")
+    if step.get("lookahead") is True:
+        # INT-164: the lookahead page of the limit of the step, of models or of the group rows of an aggregate of count.
+        limit = step.get("limit") or {}
+        offset, count = limit.get("offset"), limit.get("count")
+        if (
+            type(offset) is not int
+            or type(count) is not int
+            or count <= 0
+            or offset % count != 0
+        ):
+            raise AssertionError(
+                "a lookahead page needs a limit whose count is above 0 and whose offset is a multiple of the count"
+            )
+        number = offset // count + 1
+        if aggregate is not None:
+            group_page = model.gets_count_lookahead_page(number, count)
+            items = _plain_json(group_page.items.to_array())
+        else:
+            group_page = model.gets_lookahead_page(number, count)
+            items = [_key_json(key) for key in group_page.items.keys()]
+        return {
+            "json": _plain_json(
+                {
+                    "items": items,
+                    "page": group_page.page,
+                    "per_page": group_page.per_page,
+                    "has_next": group_page.has_next,
+                }
+            )
+        }
     if aggregate is not None:
         if aggregate["agg"] == "sum":
             return {"json": model.get_sum()}
@@ -3871,6 +3906,10 @@ def _table_model_query(step: dict, context: dict) -> dict:
         offset = step.get("offset", 0)
         if isinstance(limit, dict):
             offset += limit.get("offset", 0)
+        if "plan_page" not in step and offset % count != 0:
+            raise AssertionError(
+                "a page needs an offset that is a multiple of its count"
+            )
         page = (
             model.gets_page(step["plan_page"]["page"], step["plan_page"]["per_page"])
             if "plan_page" in step
@@ -4336,7 +4375,17 @@ def _related_rows(parent: Model, table: str, many: bool) -> list:
 
 
 # The request kinds that the name reads covers (FCV-4, hook.install).
-READ_KINDS = ("one", "all", "count", "group_count", "sum", "avg", "paginate")
+READ_KINDS = (
+    "one",
+    "all",
+    "count",
+    "group_count",
+    "sum",
+    "avg",
+    "paginate",
+    "lookahead_paginate",
+    "group_lookahead_paginate",
+)
 
 
 def _kind_matches(kinds, kind: str) -> bool:

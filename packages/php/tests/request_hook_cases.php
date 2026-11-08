@@ -45,7 +45,8 @@ function requestHookModels(): void
     require_once "$work/models/bootstrap.php";
 }
 
-const READ_KINDS = ['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate'];
+const READ_KINDS = ['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate', 'lookahead_paginate',
+    'group_lookahead_paginate'];
 
 function hookCheck(bool $ok, string $message): void
 {

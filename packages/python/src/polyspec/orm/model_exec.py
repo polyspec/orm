@@ -16,6 +16,7 @@ from polyspec.orm.database import (
     key_of_values,
     key_value,
     page_plan_steps,
+    lookahead as lookahead_query,
     paginate as paginate_query,
     query,
     row_key,
@@ -949,8 +950,6 @@ def _in_transaction(conn, fn):
 
 def gets_count(c: Core):
     """Returns the group values and the checked row count, without incomplete model rows."""
-    from polyspec.orm.group_rows import GroupRow, GroupRows
-
     ex = _terminal(c)
     request = c.build("group_count")
     if request.error is not None:
@@ -958,6 +957,13 @@ def gets_count(c: Core):
     if request.external:
         raise OrmError(codes.CONFIG, "group count cannot return relations")
     result = query(ex, request.finish(), request.params)
+    return _group_rows(ex, c, result)
+
+
+def _group_rows(ex, c: Core, result: dict):
+    """The group rows of the main step of a group_count or a group_lookahead_paginate result."""
+    from polyspec.orm.group_rows import GroupRow, GroupRows
+
     columns = (result["plan"]["steps"][0].get("assemble") or {}).get("columns")
     if not columns:
         raise OrmError(codes.INTERNAL, "group count has no result declaration")
@@ -1060,6 +1066,55 @@ def _page_request(c: Core, page: int, per_page: int):
     if request.error is not None:
         raise request.error
     return ex, q, request
+
+
+def _lookahead_request(c: Core, kind: str, page: int, per_page: int):
+    """Checks the arguments of a lookahead page and builds its request of kind, whose root limit reads one row past
+    the page (INT-164)."""
+    if (
+        isinstance(page, bool)
+        or isinstance(per_page, bool)
+        or not isinstance(page, int)
+        or not isinstance(per_page, int)
+        or page < 1
+        or per_page < 1
+    ):
+        raise OrmError(
+            codes.CONFIG, "getsLookaheadPage requires a positive page and perPage"
+        )
+    if c.limit is not None:
+        raise OrmError(codes.CONFIG, "getsLookaheadPage cannot be combined with limit")
+    ex = _terminal(c)
+    q = c.clone()
+    q.limit = {"offset": (page - 1) * per_page, "count": per_page + 1}
+    request = q.build(kind)
+    if request.error is not None:
+        raise request.error
+    return ex, q, request
+
+
+def lookahead_page_of(c: Core, page: int, per_page: int):
+    """Returns one page of the matching rows and whether a next page exists, read by one statement (INT-164)."""
+    from polyspec.orm.model import LookaheadPage
+
+    ex, q, request = _lookahead_request(c, "lookahead_paginate", page, per_page)
+    result = lookahead_query(ex, request.finish(), request.params, per_page)
+    items = _assemble(q, ex, request.external, result["result"])
+    return LookaheadPage(items, page, per_page, result["has_next"])
+
+
+def group_lookahead_page_of(c: Core, page: int, per_page: int):
+    """Returns one page of the group rows of gets_count and whether a next page exists, read by one statement
+    (INT-164)."""
+    from polyspec.orm.model import GroupLookaheadPage
+
+    ex, _, request = _lookahead_request(c, "group_lookahead_paginate", page, per_page)
+    if request.external:
+        raise OrmError(codes.CONFIG, "group count cannot return relations")
+    result = lookahead_query(ex, request.finish(), request.params, per_page)
+    return GroupLookaheadPage(
+        _group_rows(ex, c, result["result"]), page, per_page, result["has_next"]
+    )
 
 
 def page_plan_steps_of(c: Core, page: int, per_page: int) -> list[dict]:

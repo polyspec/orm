@@ -3762,7 +3762,8 @@ final class Recipe
     }
 
     /** The request ops of FCV-4 (T334-3-4): the same semantics as the Go core (packages/go/internal/recipe/requests.go). */
-    private const READS = ['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate'];
+    private const READS = ['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate', 'lookahead_paginate',
+        'group_lookahead_paginate'];
 
     /** The class that the PHP generator gives a table of the fixture (FCV-4): a relation read needs one class per table. */
     private static function modelClass(array $context, string $table): string
@@ -4464,6 +4465,9 @@ final class Recipe
                 $model->{'groupBy' . self::pascal($column)}();
             }
         }
+        foreach ($q['group_by'] ?? [] as $column) {
+            $model->{'groupBy' . self::pascal($column)}();
+        }
         foreach ($q['joins'] ?? [] as $join) {
             $child = self::chainModel($join['model'], $context);
             $inner = self::chainState($build->outer);
@@ -4581,7 +4585,7 @@ final class Recipe
             : self::tableModel($s['model'], $db, $context);
         $build = self::chainState();
         $build->db = $db;
-        $paged = ($s['page'] ?? false) === true;
+        $paged = ($s['page'] ?? false) === true || ($s['lookahead'] ?? false) === true;
         self::chainQuery($model, $s, $build, $context, !$paged && !isset($s['offset']));
         if (!$paged && isset($s['offset'], $s['limit'])) {
             $model->limit($s['offset'], is_int($s['limit']) ? $s['limit'] : $s['limit']['count']);
@@ -4966,6 +4970,34 @@ final class Recipe
         Assert::fail("OP_UNKNOWN {$s['op']}");
     }
 
+    /**
+     * getsLookaheadPage, or getsCountLookaheadPage with an aggregate of count, on the page of the limit of the step:
+     * the keys of the models or the group rows, the page, its size and whether a next page exists (INT-164).
+     *
+     * @return array{items: list<mixed>, page: int, per_page: int, has_next: bool}
+     */
+    private static function chainLookahead(Model $model, RecipeStep $s, bool $grouped): array
+    {
+        $limit = $s['limit'] ?? null;
+        if (
+            !is_array($limit) || !is_int($limit['offset'] ?? null) || !is_int($limit['count'] ?? null)
+            || $limit['count'] <= 0 || $limit['offset'] % $limit['count'] !== 0
+        ) {
+            Assert::fail(
+                'a lookahead page needs a limit whose count is above 0 and whose offset is a multiple of the count'
+            );
+        }
+        $number = intdiv($limit['offset'], $limit['count']) + 1;
+        if ($grouped) {
+            $page = $model->getsCountLookaheadPage($number, $limit['count']);
+            $items = self::plainArray($page->items->toArray());
+        } else {
+            $page = $model->getsLookaheadPage($number, $limit['count']);
+            $items = $page->items->keys();
+        }
+        return ['items' => $items, 'page' => $page->page, 'per_page' => $page->perPage, 'has_next' => $page->hasNext];
+    }
+
     /** The terminal of a model.query: gets, or the terminal of its aggregate, its page or its compile. */
     private static function chainGets(RecipeStep $s, array $context): array
     {
@@ -4983,6 +5015,9 @@ final class Recipe
             return ['json' => $model->getQuery()];
         }
         if (($s['plan'] ?? false) === true) {
+            if (!isset($s['plan_page']) && $s['limit']['offset'] % $s['limit']['count'] !== 0) {
+                Assert::fail('a plan needs an offset that is a multiple of its count');
+            }
             $steps = isset($s['plan_page'])
                 ? $model->getPagePlanSteps($s['plan_page']['page'], $s['plan_page']['per_page'])
                 : $model->getPagePlanSteps(
@@ -4999,6 +5034,9 @@ final class Recipe
             }, $steps)];
         }
         $aggregate = $s['aggregate'] ?? null;
+        if (($s['lookahead'] ?? false) === true) {
+            return ['json' => self::chainLookahead($model, $s, $aggregate !== null)];
+        }
         if (isset($s['group_value'])) {
             $groups = $model->getsCount()->all();
             if ($groups === []) {
@@ -5022,6 +5060,9 @@ final class Recipe
                 Assert::fail('a page needs a limit count above 0');
             }
             $offset = ($s['offset'] ?? 0) + (is_array($limit) ? ($limit['offset'] ?? 0) : 0);
+            if (!isset($s['plan_page']) && $offset % $count !== 0) {
+                Assert::fail('a page needs an offset that is a multiple of its count');
+            }
             $page = isset($s['plan_page'])
                 ? $model->getsPage($s['plan_page']['page'], $s['plan_page']['per_page'])
                 : $model->getsPage(intdiv($offset, $count) + 1, $count);

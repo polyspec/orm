@@ -1852,6 +1852,59 @@ abstract class Model implements \JsonSerializable, ModelMetadata
             throw new OrmException(Code::CONFIG, 'group count cannot return relations');
         }
         [$plan, $result] = $db->select($frame, $request);
+        return $this->groupRowsOf($db, $plan, $result);
+    }
+
+    /**
+     * One page of the models of gets and whether a next page exists, read by one statement that reads one row past
+     * the page and counts nothing (INT-164).
+     *
+     * @return LookaheadPage<static>
+     */
+    public function getsLookaheadPage(int $page, int $perPage): LookaheadPage
+    {
+        [$db, $frame, $q, $r] = $this->lookaheadRequest('lookahead_paginate', $page, $perPage);
+        [$plan, $result, $hasNext] = $db->lookahead($frame, $r, $perPage);
+        return new LookaheadPage($q->assemble($db, $r, $plan, $result), $page, $perPage, $hasNext);
+    }
+
+    /**
+     * One page of the group rows of getsCount and whether a next page exists, read by one statement that reads one
+     * group past the page and counts nothing (INT-164).
+     */
+    public function getsCountLookaheadPage(int $page, int $perPage): GroupLookaheadPage
+    {
+        [$db, $frame, , $r] = $this->lookaheadRequest('group_lookahead_paginate', $page, $perPage);
+        if ($r->external !== []) {
+            throw new OrmException(Code::CONFIG, 'group count cannot return relations');
+        }
+        [$plan, $result, $hasNext] = $db->lookahead($frame, $r, $perPage);
+        return new GroupLookaheadPage($this->groupRowsOf($db, $plan, $result), $page, $perPage, $hasNext);
+    }
+
+    /**
+     * The arguments of a lookahead page checked and its request of kind built, whose root limit reads one row past
+     * the page.
+     *
+     * @return array{0: Db, 1: ?TxFrame, 2: static, 3: Request}
+     */
+    private function lookaheadRequest(string $kind, int $page, int $perPage): array
+    {
+        if ($page < 1 || $perPage < 1) {
+            throw new OrmException(Code::CONFIG, 'getsLookaheadPage requires a positive page and perPage');
+        }
+        if ($this->limit !== null) {
+            throw new OrmException(Code::CONFIG, 'getsLookaheadPage cannot be combined with limit');
+        }
+        [$db, $frame] = $this->executor();
+        $q = clone $this;
+        $q->limit = ['offset' => ($page - 1) * $perPage, 'count' => $perPage + 1];
+        return [$db, $frame, $q, $q->build($kind, $db)];
+    }
+
+    /** The group rows of the main step of a group_count or a group_lookahead_paginate result. */
+    private function groupRowsOf(Db $db, array $plan, array $result): GroupRows
+    {
         $columns = $plan['steps'][0]['assemble']['columns'] ?? null;
         if (!is_array($columns)) {
             throw new OrmException(Code::INTERNAL, 'group count has no result declaration');

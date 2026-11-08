@@ -378,7 +378,7 @@ markdown connection too. flowmark's [operations](https://github.com/polyspec/flo
 - **DIA-155** `one`, `all`, `count`, `group_count`, `sum`, `avg` — Result: as on SQLite.
 - **DIA-156** ordering — Result: as on SQLite: NULL before every value ascending and after every value descending.
 - **DIA-157** `group_by` — Result: as on SQLite, by orm's rule.
-- **DIA-158** `paginate` — Result: as on SQLite; a statement reads one consistent corpus.
+- **DIA-158** `paginate`, `lookahead_paginate`, `group_lookahead_paginate` — Result: as on SQLite; a statement reads one consistent corpus.
 - **DIA-159** `insert` (single and multi-row) — Result: as on SQLite; Rule: the `key_prefix` key and the `order` column are
   the corpus's to assign, so an insert may leave them out (PRT-73).
 - **DIA-160** `update` — Result: as on SQLite; Rule: a `COMMIT` that finds a file changed outside the engine since the

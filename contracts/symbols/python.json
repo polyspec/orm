@@ -683,6 +683,10 @@
     "exported": true,
     "signature": "def key_value(value)"
   },
+  "packages/python/src/polyspec/orm/database.py::lookahead": {
+    "exported": true,
+    "signature": "def lookahead(ex: Executor, request: dict, params, per_page: int)"
+  },
   "packages/python/src/polyspec/orm/database.py::page_plan_steps": {
     "exported": true,
     "signature": "def page_plan_steps(ex: Executor, request: dict, params) -\u003e list[dict]"
@@ -3555,6 +3559,46 @@
     "exported": true,
     "signature": "class EntityDef"
   },
+  "packages/python/src/polyspec/orm/model.py::GroupLookaheadPage": {
+    "exported": true,
+    "signature": "class GroupLookaheadPage"
+  },
+  "packages/python/src/polyspec/orm/model.py::GroupLookaheadPage#field.has_next": {
+    "exported": true,
+    "signature": "bool"
+  },
+  "packages/python/src/polyspec/orm/model.py::GroupLookaheadPage#field.items": {
+    "exported": true,
+    "signature": "'GroupRows'"
+  },
+  "packages/python/src/polyspec/orm/model.py::GroupLookaheadPage#field.page": {
+    "exported": true,
+    "signature": "int"
+  },
+  "packages/python/src/polyspec/orm/model.py::GroupLookaheadPage#field.per_page": {
+    "exported": true,
+    "signature": "int"
+  },
+  "packages/python/src/polyspec/orm/model.py::LookaheadPage": {
+    "exported": true,
+    "signature": "class LookaheadPage"
+  },
+  "packages/python/src/polyspec/orm/model.py::LookaheadPage#field.has_next": {
+    "exported": true,
+    "signature": "bool"
+  },
+  "packages/python/src/polyspec/orm/model.py::LookaheadPage#field.items": {
+    "exported": true,
+    "signature": "'Collection'"
+  },
+  "packages/python/src/polyspec/orm/model.py::LookaheadPage#field.page": {
+    "exported": true,
+    "signature": "int"
+  },
+  "packages/python/src/polyspec/orm/model.py::LookaheadPage#field.per_page": {
+    "exported": true,
+    "signature": "int"
+  },
   "packages/python/src/polyspec/orm/model.py::Model": {
     "exported": true,
     "signature": "class Model"
@@ -3662,6 +3706,14 @@
   "packages/python/src/polyspec/orm/model.py::Model.gets_count": {
     "exported": true,
     "signature": "def gets_count(self) -\u003e GroupRows"
+  },
+  "packages/python/src/polyspec/orm/model.py::Model.gets_count_lookahead_page": {
+    "exported": true,
+    "signature": "def gets_count_lookahead_page(self, page: int, per_page: int) -\u003e GroupLookaheadPage"
+  },
+  "packages/python/src/polyspec/orm/model.py::Model.gets_lookahead_page": {
+    "exported": true,
+    "signature": "def gets_lookahead_page(self, page: int, per_page: int) -\u003e LookaheadPage[Self]"
   },
   "packages/python/src/polyspec/orm/model.py::Model.gets_page": {
     "exported": true,
@@ -3791,9 +3843,17 @@
     "exported": true,
     "signature": "def gets_count(c: Core)"
   },
+  "packages/python/src/polyspec/orm/model_exec.py::group_lookahead_page_of": {
+    "exported": true,
+    "signature": "def group_lookahead_page_of(c: Core, page: int, per_page: int)"
+  },
   "packages/python/src/polyspec/orm/model_exec.py::load": {
     "exported": true,
     "signature": "def load(c: Core, kind: str) -\u003e Collection"
+  },
+  "packages/python/src/polyspec/orm/model_exec.py::lookahead_page_of": {
+    "exported": true,
+    "signature": "def lookahead_page_of(c: Core, page: int, per_page: int)"
   },
   "packages/python/src/polyspec/orm/model_exec.py::page_of": {
     "exported": true,

@@ -1261,6 +1261,37 @@ func paginate(ex executor, r *request) (*result, int64, error) {
 	return res, total, nil
 }
 
+// lookahead runs the one page statement of a lookahead page, whose limit reads one row past the page: hasNext is whether
+// that row came, and the row is dropped before the relation steps read the parents of the page (INT-164).
+func lookahead(ex executor, r *request, perPage int) (*result, bool, error) {
+	done, err := ex.enter()
+	if err != nil {
+		return nil, false, err
+	}
+	defer done()
+	if err := preparePage(ex, r); err != nil {
+		return nil, false, err
+	}
+	d, ctx := ex.base(), ex.context()
+	c, err := d.plan(r)
+	if err != nil {
+		return nil, false, err
+	}
+	main, err := runSelect(ctx, ex, c, &c.plan.Steps[0], r, nil)
+	if err != nil {
+		return nil, false, err
+	}
+	hasNext := len(main) > perPage
+	if hasNext {
+		main = main[:perPage]
+	}
+	res, err := runRelations(ctx, ex, c, r, main)
+	if err != nil {
+		return nil, false, err
+	}
+	return res, hasNext, nil
+}
+
 // write runs an insert, update, delete, or restore and returns the key of the
 // inserted row and the affected row count: the generated identity on a SQL
 // database, the key_prefix key that a corpus allocated on a markdown connection.

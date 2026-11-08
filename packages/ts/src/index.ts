@@ -40,7 +40,7 @@ export {
   renderDbspec,
 } from './dbspec/index.js';
 export type * from './dbspec/index.js';
-export type { ModelClass, Page } from './model.js';
+export type { GroupLookaheadPage, LookaheadPage, ModelClass, Page } from './model.js';
 export { CORE, Core } from './core.js';
 export type { EntityDef, ModelLike, SetSpec } from './core.js';
 export type { ChainKey } from './names.js';

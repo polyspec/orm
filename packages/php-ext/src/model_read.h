@@ -30,6 +30,8 @@ ZEND_METHOD(Polyspec_Orm_Model, getAvg);
 ZEND_METHOD(Polyspec_Orm_Model, aggregate);
 ZEND_METHOD(Polyspec_Orm_Model, aggregateNumber);
 ZEND_METHOD(Polyspec_Orm_Model, getsPage);
+ZEND_METHOD(Polyspec_Orm_Model, getsLookaheadPage);
+ZEND_METHOD(Polyspec_Orm_Model, getsCountLookaheadPage);
 ZEND_METHOD(Polyspec_Orm_Model, getPagePlanSteps);
 
 #endif

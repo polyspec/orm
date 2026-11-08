@@ -246,7 +246,7 @@ rows, err := model.Product().Connect(slave1).
 
 ## 6. Order and range
 
-- **DSL-99** `orderBy<Col>Asc()`, `orderBy<Col>Desc()`, and chains such as `orderBySeqDescAndNameAsc()` set the order. `orderByRandom()` orders rows randomly with the dialect function. `groupBy<Col>()` sets grouping on `getsCount()` and on group counts; on any other read it is `IR_INVALID`. `limit(offset, count)` sets the range.
+- **DSL-99** `orderBy<Col>Asc()`, `orderBy<Col>Desc()`, and chains such as `orderBySeqDescAndNameAsc()` set the order. `orderByRandom()` orders rows randomly with the dialect function. `groupBy<Col>()` sets grouping on `getsCount()`, on `getsCountLookaheadPage()` (INT-164) and on group counts; on any other read it is `IR_INVALID`. `limit(offset, count)` sets the range.
 
 ## 7. Writes
 
@@ -354,7 +354,7 @@ await master.transaction(async () => { … }, { isolation: 'serializable', readO
 
 ## 9. Reserved names
 
-- **DSL-127** The generator rejects a column whose method name matches a reserved method (`and`, `or`, `get`, `gets`, `getsPage`, `getQuery`, `limit`, `alias`, `connect`, `create`, `creates`, `update`, `delete`, `restore`, `save`, `on`) or starts with a reserved prefix (`and`, `or`, `get`, `set`, `new`, `plus`, `minus`, `orderBy`, `groupBy`, `tuple`, or an operator). A column named `random` is rejected because `orderByRandom()` is reserved.
+- **DSL-127** The generator rejects a column whose method name matches a reserved method (`and`, `or`, `get`, `gets`, `getsPage`, `getsLookaheadPage`, `getsCountLookaheadPage`, `getQuery`, `limit`, `alias`, `connect`, `create`, `creates`, `update`, `delete`, `restore`, `save`, `on`) or starts with a reserved prefix (`and`, `or`, `get`, `set`, `new`, `plus`, `minus`, `orderBy`, `groupBy`, `tuple`, or an operator). A column named `random` is rejected because `orderByRandom()` is reserved.
 
 - **DSL-128** The names attached to a row form one name space: real columns, columns added with `addColumn<Name>(fn)` or `addColumn<Col>Alias<Name>(fn)`, relation result names, and `new<Name>` names. A duplicate name in this space is rejected. Go and Rust reject it during generation; PHP and TypeScript return `CONFIG`. Two relations to the same table therefore need different aliases, and a subquery column needs a name that is not a real column.
 

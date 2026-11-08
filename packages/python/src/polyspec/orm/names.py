@@ -441,6 +441,8 @@ RESERVED_COLUMNS = frozenset(
         "get",
         "gets",
         "gets_page",
+        "gets_lookahead_page",
+        "gets_count_lookahead_page",
         "get_page_plan_steps",
         "get_query",
         "limit",

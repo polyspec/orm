@@ -1808,7 +1808,8 @@ static bool validate_request(vctx *c, zval *rz, HashTable *r)
         return fail("SCHEMA_HASH_MISMATCH", "client %s, engine %s", mh != NULL ? sv(c, mh) : "", hash);
     }
     const char *kind = str(c, r, "kind", "");
-    const char *kinds[] = {"one", "all", "count", "group_count", "sum", "avg", "paginate", "insert", "update", "delete", "restore", "restart_identity"};
+    const char *kinds[] = {"one", "all", "count", "group_count", "sum", "avg", "paginate", "lookahead_paginate",
+        "group_lookahead_paginate", "insert", "update", "delete", "restore", "restart_identity"};
     if (!IN(kind, kinds)) {
         return fail(IR_INVALID, "unknown kind \"%s\"", kind);
     }
@@ -1853,10 +1854,13 @@ static bool validate_request(vctx *c, zval *rz, HashTable *r)
             return fail("OPERATOR_NOT_ALLOWED", "%s on %s.%s (%s)", kind, entity, agg, str(c, cc, "type", ""));
         }
     }
-    if (streq(kind, "group_count") && !has_group_by(r)) {
-        return fail(IR_INVALID, "group_count needs group_by");
+    if ((streq(kind, "group_count") || streq(kind, "group_lookahead_paginate")) && !has_group_by(r)) {
+        return fail(IR_INVALID, "%s needs group_by", kind);
     }
-    if (has_group_by(r) && !streq(kind, "count") && !streq(kind, "group_count")) {
+    if ((streq(kind, "lookahead_paginate") || streq(kind, "group_lookahead_paginate")) && !has(r, "limit")) {
+        return fail(IR_INVALID, "%s needs limit", kind);
+    }
+    if (has_group_by(r) && !streq(kind, "count") && !streq(kind, "group_count") && !streq(kind, "group_lookahead_paginate")) {
         return fail(IR_INVALID, "group_by is only valid on count or group_count, not %s", kind);
     }
     HashTable *set = ha(orm_hash_value(r, "set", sizeof("set") - 1, true));

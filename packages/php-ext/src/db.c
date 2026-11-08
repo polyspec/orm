@@ -3521,6 +3521,53 @@ static bool paginate_impl(zval *self, zval *frame, zval *r, zval *out)
     return with_read_plan(self, frame, r, out, paginate_plan);
 }
 
+/* Db::lookahead: the one page statement of a lookahead page, whose limit reads one row past the page; hasNext is whether
+ * that row came, and the row is dropped before the relation steps read the parents of the page (INT-164). */
+static bool lookahead_impl(zval *self, zval *frame, zval *r, zend_long per_page, zval *out)
+{
+    zval plan;
+    if (!prepare_read(self, frame, r, &plan, NULL)) {
+        return false;
+    }
+    zval main, res;
+    bool ok = query_rows(self, aidx(aget(&plan, "steps"), 0), rd(r, "params"), NULL, NULL, &main);
+    if (!ok) {
+        zval_ptr_dtor(&plan);
+        return false;
+    }
+    bool has_next = per_page >= 0 && acount(&main) > per_page;
+    if (has_next) {
+        zval kept;
+        array_init_size(&kept, (uint32_t)per_page);
+        zend_long n = 0;
+        zval *row;
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL(main), row)
+        {
+            if (n++ == per_page) {
+                break;
+            }
+            Z_TRY_ADDREF_P(row);
+            zend_hash_next_index_insert(Z_ARRVAL(kept), row);
+        }
+        ZEND_HASH_FOREACH_END();
+        zval_ptr_dtor(&main);
+        ZVAL_COPY_VALUE(&main, &kept);
+    }
+    ok = relations_of(self, &plan, rd(r, "params"), &main, &res);
+    zval_ptr_dtor(&main);
+    if (ok) {
+        array_init(out);
+        push(out, &plan);
+        push(out, &res);
+        zval hn;
+        ZVAL_BOOL(&hn, has_next);
+        zend_hash_next_index_insert(Z_ARRVAL_P(out), &hn);
+        zval_ptr_dtor(&res);
+    }
+    zval_ptr_dtor(&plan);
+    return ok;
+}
+
 static bool binds_audit(zval *step)
 {
     zval *bs = aget(step, "bind_slots");
@@ -4625,6 +4672,20 @@ ZEND_METHOD(Polyspec_Orm_Db, paginate)
         Z_PARAM_OBJECT_OF_CLASS(r, cls("Polyspec\\Orm\\Request"))
     ZEND_PARSE_PARAMETERS_END();
     if (!paginate_impl(ZEND_THIS, frame, r, return_value)) {
+        RETURN_THROWS();
+    }
+}
+
+ZEND_METHOD(Polyspec_Orm_Db, lookahead)
+{
+    zval *frame, *r;
+    zend_long per_page;
+    ZEND_PARSE_PARAMETERS_START(3, 3)
+        Z_PARAM_ZVAL(frame)
+        Z_PARAM_OBJECT_OF_CLASS(r, cls("Polyspec\\Orm\\Request"))
+        Z_PARAM_LONG(per_page)
+    ZEND_PARSE_PARAMETERS_END();
+    if (!lookahead_impl(ZEND_THIS, frame, r, per_page, return_value)) {
         RETURN_THROWS();
     }
 }

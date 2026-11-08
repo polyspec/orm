@@ -5979,6 +5979,10 @@
     "exported": false,
     "signature": "func(a *plan.Assemble, columns []string) []plan.KeyRef"
   },
+  "packages/go/engine/planner/planner.go::lookaheadQuery": {
+    "exported": false,
+    "signature": "func(ent *runtimemodel.Entity, r *ir.Request) *ir.Query"
+  },
   "packages/go/engine/planner/planner.go::managedColumn": {
     "exported": false,
     "signature": "type managedColumn struct { column string value func(*builder) string }"
@@ -6531,6 +6535,14 @@
     "exported": true,
     "signature": "receiver=*AccountModel func() (*orm.GroupRows, error)"
   },
+  "packages/go/model/account.go::AccountModel.GetsCountLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*AccountModel func(page, perPage int) (*orm.GroupLookaheadPage, error)"
+  },
+  "packages/go/model/account.go::AccountModel.GetsLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*AccountModel func(page, perPage int) (*orm.LookaheadPage[*AccountModel], error)"
+  },
   "packages/go/model/account.go::AccountModel.GetsPage": {
     "exported": true,
     "signature": "receiver=*AccountModel func(page, perPage int) (*orm.Page[*AccountModel], error)"
@@ -6847,6 +6859,14 @@
     "exported": true,
     "signature": "receiver=*AccountProjectModel func() (*orm.GroupRows, error)"
   },
+  "packages/go/model/account_project.go::AccountProjectModel.GetsCountLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*AccountProjectModel func(page, perPage int) (*orm.GroupLookaheadPage, error)"
+  },
+  "packages/go/model/account_project.go::AccountProjectModel.GetsLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*AccountProjectModel func(page, perPage int) (*orm.LookaheadPage[*AccountProjectModel], error)"
+  },
   "packages/go/model/account_project.go::AccountProjectModel.GetsPage": {
     "exported": true,
     "signature": "receiver=*AccountProjectModel func(page, perPage int) (*orm.Page[*AccountProjectModel], error)"
@@ -7154,6 +7174,14 @@
   "packages/go/model/audit_record.go::AuditRecordModel.GetsCount": {
     "exported": true,
     "signature": "receiver=*AuditRecordModel func() (*orm.GroupRows, error)"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.GetsCountLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func(page, perPage int) (*orm.GroupLookaheadPage, error)"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.GetsLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func(page, perPage int) (*orm.LookaheadPage[*AuditRecordModel], error)"
   },
   "packages/go/model/audit_record.go::AuditRecordModel.GetsPage": {
     "exported": true,
@@ -7478,6 +7506,14 @@
   "packages/go/model/audited_note.go::AuditedNoteModel.GetsCount": {
     "exported": true,
     "signature": "receiver=*AuditedNoteModel func() (*orm.GroupRows, error)"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.GetsCountLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(page, perPage int) (*orm.GroupLookaheadPage, error)"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.GetsLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(page, perPage int) (*orm.LookaheadPage[*AuditedNoteModel], error)"
   },
   "packages/go/model/audited_note.go::AuditedNoteModel.GetsPage": {
     "exported": true,
@@ -7882,6 +7918,14 @@
   "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GetsCount": {
     "exported": true,
     "signature": "receiver=*AuditedNoteHistoryModel func() (*orm.GroupRows, error)"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GetsCountLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(page, perPage int) (*orm.GroupLookaheadPage, error)"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GetsLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(page, perPage int) (*orm.LookaheadPage[*AuditedNoteHistoryModel], error)"
   },
   "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GetsPage": {
     "exported": true,
@@ -8934,6 +8978,14 @@
   "packages/go/model/author.go::AuthorModel.GetsCount": {
     "exported": true,
     "signature": "receiver=*AuthorModel func() (*orm.GroupRows, error)"
+  },
+  "packages/go/model/author.go::AuthorModel.GetsCountLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func(page, perPage int) (*orm.GroupLookaheadPage, error)"
+  },
+  "packages/go/model/author.go::AuthorModel.GetsLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func(page, perPage int) (*orm.LookaheadPage[*AuthorModel], error)"
   },
   "packages/go/model/author.go::AuthorModel.GetsPage": {
     "exported": true,
@@ -10335,6 +10387,14 @@
     "exported": true,
     "signature": "receiver=*BindCellModel func() (*orm.GroupRows, error)"
   },
+  "packages/go/model/bind_cell.go::BindCellModel.GetsCountLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*BindCellModel func(page, perPage int) (*orm.GroupLookaheadPage, error)"
+  },
+  "packages/go/model/bind_cell.go::BindCellModel.GetsLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*BindCellModel func(page, perPage int) (*orm.LookaheadPage[*BindCellModel], error)"
+  },
   "packages/go/model/bind_cell.go::BindCellModel.GetsPage": {
     "exported": true,
     "signature": "receiver=*BindCellModel func(page, perPage int) (*orm.Page[*BindCellModel], error)"
@@ -10747,6 +10807,14 @@
     "exported": true,
     "signature": "receiver=*ClockCellModel func() (*orm.GroupRows, error)"
   },
+  "packages/go/model/clock_cell.go::ClockCellModel.GetsCountLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*ClockCellModel func(page, perPage int) (*orm.GroupLookaheadPage, error)"
+  },
+  "packages/go/model/clock_cell.go::ClockCellModel.GetsLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*ClockCellModel func(page, perPage int) (*orm.LookaheadPage[*ClockCellModel], error)"
+  },
   "packages/go/model/clock_cell.go::ClockCellModel.GetsPage": {
     "exported": true,
     "signature": "receiver=*ClockCellModel func(page, perPage int) (*orm.Page[*ClockCellModel], error)"
@@ -11155,6 +11223,14 @@
     "exported": true,
     "signature": "receiver=*CompositeAccountModel func() (*orm.GroupRows, error)"
   },
+  "packages/go/model/composite_account.go::CompositeAccountModel.GetsCountLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*CompositeAccountModel func(page, perPage int) (*orm.GroupLookaheadPage, error)"
+  },
+  "packages/go/model/composite_account.go::CompositeAccountModel.GetsLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*CompositeAccountModel func(page, perPage int) (*orm.LookaheadPage[*CompositeAccountModel], error)"
+  },
   "packages/go/model/composite_account.go::CompositeAccountModel.GetsPage": {
     "exported": true,
     "signature": "receiver=*CompositeAccountModel func(page, perPage int) (*orm.Page[*CompositeAccountModel], error)"
@@ -11518,6 +11594,14 @@
   "packages/go/model/composite_membership.go::CompositeMembershipModel.GetsCount": {
     "exported": true,
     "signature": "receiver=*CompositeMembershipModel func() (*orm.GroupRows, error)"
+  },
+  "packages/go/model/composite_membership.go::CompositeMembershipModel.GetsCountLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*CompositeMembershipModel func(page, perPage int) (*orm.GroupLookaheadPage, error)"
+  },
+  "packages/go/model/composite_membership.go::CompositeMembershipModel.GetsLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*CompositeMembershipModel func(page, perPage int) (*orm.LookaheadPage[*CompositeMembershipModel], error)"
   },
   "packages/go/model/composite_membership.go::CompositeMembershipModel.GetsPage": {
     "exported": true,
@@ -11899,6 +11983,14 @@
     "exported": true,
     "signature": "receiver=*DayCellModel func() (*orm.GroupRows, error)"
   },
+  "packages/go/model/day_cell.go::DayCellModel.GetsCountLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*DayCellModel func(page, perPage int) (*orm.GroupLookaheadPage, error)"
+  },
+  "packages/go/model/day_cell.go::DayCellModel.GetsLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*DayCellModel func(page, perPage int) (*orm.LookaheadPage[*DayCellModel], error)"
+  },
   "packages/go/model/day_cell.go::DayCellModel.GetsPage": {
     "exported": true,
     "signature": "receiver=*DayCellModel func(page, perPage int) (*orm.Page[*DayCellModel], error)"
@@ -12263,6 +12355,14 @@
     "exported": true,
     "signature": "receiver=*HexCellModel func() (*orm.GroupRows, error)"
   },
+  "packages/go/model/hex_cell.go::HexCellModel.GetsCountLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*HexCellModel func(page, perPage int) (*orm.GroupLookaheadPage, error)"
+  },
+  "packages/go/model/hex_cell.go::HexCellModel.GetsLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*HexCellModel func(page, perPage int) (*orm.LookaheadPage[*HexCellModel], error)"
+  },
   "packages/go/model/hex_cell.go::HexCellModel.GetsPage": {
     "exported": true,
     "signature": "receiver=*HexCellModel func(page, perPage int) (*orm.Page[*HexCellModel], error)"
@@ -12595,6 +12695,14 @@
     "exported": true,
     "signature": "receiver=*IpHexCellModel func() (*orm.GroupRows, error)"
   },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.GetsCountLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func(page, perPage int) (*orm.GroupLookaheadPage, error)"
+  },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.GetsLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func(page, perPage int) (*orm.LookaheadPage[*IpHexCellModel], error)"
+  },
   "packages/go/model/ip_hex_cell.go::IpHexCellModel.GetsPage": {
     "exported": true,
     "signature": "receiver=*IpHexCellModel func(page, perPage int) (*orm.Page[*IpHexCellModel], error)"
@@ -12902,6 +13010,14 @@
   "packages/go/model/note_reader.go::NoteReaderModel.GetsCount": {
     "exported": true,
     "signature": "receiver=*NoteReaderModel func() (*orm.GroupRows, error)"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.GetsCountLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func(page, perPage int) (*orm.GroupLookaheadPage, error)"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.GetsLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func(page, perPage int) (*orm.LookaheadPage[*NoteReaderModel], error)"
   },
   "packages/go/model/note_reader.go::NoteReaderModel.GetsPage": {
     "exported": true,
@@ -13315,6 +13431,14 @@
     "exported": true,
     "signature": "receiver=*ProjectModel func() (*orm.GroupRows, error)"
   },
+  "packages/go/model/project.go::ProjectModel.GetsCountLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*ProjectModel func(page, perPage int) (*orm.GroupLookaheadPage, error)"
+  },
+  "packages/go/model/project.go::ProjectModel.GetsLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*ProjectModel func(page, perPage int) (*orm.LookaheadPage[*ProjectModel], error)"
+  },
   "packages/go/model/project.go::ProjectModel.GetsPage": {
     "exported": true,
     "signature": "receiver=*ProjectModel func(page, perPage int) (*orm.Page[*ProjectModel], error)"
@@ -13626,6 +13750,14 @@
   "packages/go/model/service.go::ServiceModel.GetsCount": {
     "exported": true,
     "signature": "receiver=*ServiceModel func() (*orm.GroupRows, error)"
+  },
+  "packages/go/model/service.go::ServiceModel.GetsCountLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*ServiceModel func(page, perPage int) (*orm.GroupLookaheadPage, error)"
+  },
+  "packages/go/model/service.go::ServiceModel.GetsLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*ServiceModel func(page, perPage int) (*orm.LookaheadPage[*ServiceModel], error)"
   },
   "packages/go/model/service.go::ServiceModel.GetsPage": {
     "exported": true,
@@ -13970,6 +14102,14 @@
   "packages/go/model/service_member.go::ServiceMemberModel.GetsCount": {
     "exported": true,
     "signature": "receiver=*ServiceMemberModel func() (*orm.GroupRows, error)"
+  },
+  "packages/go/model/service_member.go::ServiceMemberModel.GetsCountLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*ServiceMemberModel func(page, perPage int) (*orm.GroupLookaheadPage, error)"
+  },
+  "packages/go/model/service_member.go::ServiceMemberModel.GetsLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*ServiceMemberModel func(page, perPage int) (*orm.LookaheadPage[*ServiceMemberModel], error)"
   },
   "packages/go/model/service_member.go::ServiceMemberModel.GetsPage": {
     "exported": true,
@@ -14355,6 +14495,14 @@
     "exported": true,
     "signature": "receiver=*ServiceRegionModel func() (*orm.GroupRows, error)"
   },
+  "packages/go/model/service_region.go::ServiceRegionModel.GetsCountLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*ServiceRegionModel func(page, perPage int) (*orm.GroupLookaheadPage, error)"
+  },
+  "packages/go/model/service_region.go::ServiceRegionModel.GetsLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*ServiceRegionModel func(page, perPage int) (*orm.LookaheadPage[*ServiceRegionModel], error)"
+  },
   "packages/go/model/service_region.go::ServiceRegionModel.GetsPage": {
     "exported": true,
     "signature": "receiver=*ServiceRegionModel func(page, perPage int) (*orm.Page[*ServiceRegionModel], error)"
@@ -14695,6 +14843,14 @@
     "exported": true,
     "signature": "receiver=*SharedNoteModel func() (*orm.GroupRows, error)"
   },
+  "packages/go/model/shared_note.go::SharedNoteModel.GetsCountLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func(page, perPage int) (*orm.GroupLookaheadPage, error)"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.GetsLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func(page, perPage int) (*orm.LookaheadPage[*SharedNoteModel], error)"
+  },
   "packages/go/model/shared_note.go::SharedNoteModel.GetsPage": {
     "exported": true,
     "signature": "receiver=*SharedNoteModel func(page, perPage int) (*orm.Page[*SharedNoteModel], error)"
@@ -15030,6 +15186,14 @@
   "packages/go/model/soft_link.go::SoftLinkModel.GetsCount": {
     "exported": true,
     "signature": "receiver=*SoftLinkModel func() (*orm.GroupRows, error)"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.GetsCountLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(page, perPage int) (*orm.GroupLookaheadPage, error)"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.GetsLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(page, perPage int) (*orm.LookaheadPage[*SoftLinkModel], error)"
   },
   "packages/go/model/soft_link.go::SoftLinkModel.GetsPage": {
     "exported": true,
@@ -15395,6 +15559,14 @@
     "exported": true,
     "signature": "receiver=*SoftRecordModel func() (*orm.GroupRows, error)"
   },
+  "packages/go/model/soft_record.go::SoftRecordModel.GetsCountLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*SoftRecordModel func(page, perPage int) (*orm.GroupLookaheadPage, error)"
+  },
+  "packages/go/model/soft_record.go::SoftRecordModel.GetsLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*SoftRecordModel func(page, perPage int) (*orm.LookaheadPage[*SoftRecordModel], error)"
+  },
   "packages/go/model/soft_record.go::SoftRecordModel.GetsPage": {
     "exported": true,
     "signature": "receiver=*SoftRecordModel func(page, perPage int) (*orm.Page[*SoftRecordModel], error)"
@@ -15730,6 +15902,14 @@
   "packages/go/model/task.go::TaskModel.GetsCount": {
     "exported": true,
     "signature": "receiver=*TaskModel func() (*orm.GroupRows, error)"
+  },
+  "packages/go/model/task.go::TaskModel.GetsCountLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*TaskModel func(page, perPage int) (*orm.GroupLookaheadPage, error)"
+  },
+  "packages/go/model/task.go::TaskModel.GetsLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*TaskModel func(page, perPage int) (*orm.LookaheadPage[*TaskModel], error)"
   },
   "packages/go/model/task.go::TaskModel.GetsPage": {
     "exported": true,
@@ -16079,6 +16259,14 @@
     "exported": true,
     "signature": "receiver=*TimeCellModel func() (*orm.GroupRows, error)"
   },
+  "packages/go/model/time_cell.go::TimeCellModel.GetsCountLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*TimeCellModel func(page, perPage int) (*orm.GroupLookaheadPage, error)"
+  },
+  "packages/go/model/time_cell.go::TimeCellModel.GetsLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*TimeCellModel func(page, perPage int) (*orm.LookaheadPage[*TimeCellModel], error)"
+  },
   "packages/go/model/time_cell.go::TimeCellModel.GetsPage": {
     "exported": true,
     "signature": "receiver=*TimeCellModel func(page, perPage int) (*orm.Page[*TimeCellModel], error)"
@@ -16418,6 +16606,14 @@
   "packages/go/model/upsert_cell.go::UpsertCellModel.GetsCount": {
     "exported": true,
     "signature": "receiver=*UpsertCellModel func() (*orm.GroupRows, error)"
+  },
+  "packages/go/model/upsert_cell.go::UpsertCellModel.GetsCountLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*UpsertCellModel func(page, perPage int) (*orm.GroupLookaheadPage, error)"
+  },
+  "packages/go/model/upsert_cell.go::UpsertCellModel.GetsLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*UpsertCellModel func(page, perPage int) (*orm.LookaheadPage[*UpsertCellModel], error)"
   },
   "packages/go/model/upsert_cell.go::UpsertCellModel.GetsPage": {
     "exported": true,
@@ -16763,6 +16959,14 @@
     "exported": true,
     "signature": "receiver=*UserModel func() (*orm.GroupRows, error)"
   },
+  "packages/go/model/user.go::UserModel.GetsCountLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*UserModel func(page, perPage int) (*orm.GroupLookaheadPage, error)"
+  },
+  "packages/go/model/user.go::UserModel.GetsLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*UserModel func(page, perPage int) (*orm.LookaheadPage[*UserModel], error)"
+  },
   "packages/go/model/user.go::UserModel.GetsPage": {
     "exported": true,
     "signature": "receiver=*UserModel func(page, perPage int) (*orm.Page[*UserModel], error)"
@@ -17066,6 +17270,14 @@
   "packages/go/model/uuid_cell.go::UuidCellModel.GetsCount": {
     "exported": true,
     "signature": "receiver=*UuidCellModel func() (*orm.GroupRows, error)"
+  },
+  "packages/go/model/uuid_cell.go::UuidCellModel.GetsCountLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*UuidCellModel func(page, perPage int) (*orm.GroupLookaheadPage, error)"
+  },
+  "packages/go/model/uuid_cell.go::UuidCellModel.GetsLookaheadPage": {
+    "exported": true,
+    "signature": "receiver=*UuidCellModel func(page, perPage int) (*orm.LookaheadPage[*UuidCellModel], error)"
   },
   "packages/go/model/uuid_cell.go::UuidCellModel.GetsPage": {
     "exported": true,
@@ -18539,6 +18751,26 @@
     "exported": true,
     "signature": "receiver=*Core func(column, text string, precision int) (string, error)"
   },
+  "packages/go/orm/collection.go::GroupLookaheadPage": {
+    "exported": true,
+    "signature": "type GroupLookaheadPage struct { Items *GroupRows Page int PerPage int HasNext bool }"
+  },
+  "packages/go/orm/collection.go::GroupLookaheadPage#field.HasNext": {
+    "exported": true,
+    "signature": "bool"
+  },
+  "packages/go/orm/collection.go::GroupLookaheadPage#field.Items": {
+    "exported": true,
+    "signature": "*GroupRows"
+  },
+  "packages/go/orm/collection.go::GroupLookaheadPage#field.Page": {
+    "exported": true,
+    "signature": "int"
+  },
+  "packages/go/orm/collection.go::GroupLookaheadPage#field.PerPage": {
+    "exported": true,
+    "signature": "int"
+  },
   "packages/go/orm/collection.go::Key": {
     "exported": true,
     "signature": "type Key struct { tag byte data string i int64 bits uint64 time time.Time }"
@@ -18574,6 +18806,26 @@
   "packages/go/orm/collection.go::KeyOf": {
     "exported": true,
     "signature": "func(v any) (Key, error)"
+  },
+  "packages/go/orm/collection.go::LookaheadPage": {
+    "exported": true,
+    "signature": "type LookaheadPage[T Model] struct { Items *Collection[T] Page int PerPage int HasNext bool }"
+  },
+  "packages/go/orm/collection.go::LookaheadPage#field.HasNext": {
+    "exported": true,
+    "signature": "bool"
+  },
+  "packages/go/orm/collection.go::LookaheadPage#field.Items": {
+    "exported": true,
+    "signature": "*Collection[T]"
+  },
+  "packages/go/orm/collection.go::LookaheadPage#field.Page": {
+    "exported": true,
+    "signature": "int"
+  },
+  "packages/go/orm/collection.go::LookaheadPage#field.PerPage": {
+    "exported": true,
+    "signature": "int"
   },
   "packages/go/orm/collection.go::NewCollection": {
     "exported": true,
@@ -20015,6 +20267,10 @@
     "exported": false,
     "signature": "func(cell, param any) (bool, error)"
   },
+  "packages/go/orm/exec.go::lookahead": {
+    "exported": false,
+    "signature": "func(ex executor, r *request, perPage int) (*result, bool, error)"
+  },
   "packages/go/orm/exec.go::newCached": {
     "exported": false,
     "signature": "func(key uint64, p *plan.Plan) *cached"
@@ -20907,6 +21163,10 @@
     "exported": false,
     "signature": "receiver=*Core func(d *DB) (*runtimemodel.Entity, error)"
   },
+  "packages/go/orm/model.go::Core.groupRows": {
+    "exported": false,
+    "signature": "receiver=*Core func(ex executor, res *result) (*GroupRows, error)"
+  },
   "packages/go/orm/model.go::Core.joinChild": {
     "exported": false,
     "signature": "receiver=*Core func(name string) *Core"
@@ -20918,6 +21178,10 @@
   "packages/go/orm/model.go::Core.load": {
     "exported": false,
     "signature": "receiver=*Core func(kind string) (*collection, error)"
+  },
+  "packages/go/orm/model.go::Core.lookaheadRequest": {
+    "exported": false,
+    "signature": "receiver=*Core func(kind string, page, perPage int) (executor, *Core, *request, error)"
   },
   "packages/go/orm/model.go::Core.pageRequest": {
     "exported": false,
@@ -20978,6 +21242,14 @@
   "packages/go/orm/model.go::GetsCount": {
     "exported": true,
     "signature": "func(c *Core) (*GroupRows, error)"
+  },
+  "packages/go/orm/model.go::GetsCountLookaheadPage": {
+    "exported": true,
+    "signature": "func(c *Core, page, perPage int) (*GroupLookaheadPage, error)"
+  },
+  "packages/go/orm/model.go::GetsLookaheadPage": {
+    "exported": true,
+    "signature": "func[T Model](c *Core, page, perPage int) (*LookaheadPage[T], error)"
   },
   "packages/go/orm/model.go::GetsPage": {
     "exported": true,

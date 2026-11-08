@@ -831,6 +831,10 @@
     "exported": true,
     "signature": "public function listener(): ?Closure"
   },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::lookahead": {
+    "exported": true,
+    "signature": "public function lookahead(?Polyspec\\Orm\\TxFrame $frame, Polyspec\\Orm\\Request $r, int $perPage): array"
+  },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::nextTransaction": {
     "exported": true,
     "signature": "public function nextTransaction(): int"
@@ -2763,6 +2767,30 @@
     "exported": true,
     "signature": "public function __construct(array $items=[]): "
   },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\GroupLookaheadPage": {
+    "exported": true,
+    "signature": "final readonly class Polyspec\\Orm\\GroupLookaheadPage extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\GroupLookaheadPage::$hasNext": {
+    "exported": true,
+    "signature": "public readonly bool"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\GroupLookaheadPage::$items": {
+    "exported": true,
+    "signature": "public readonly Polyspec\\Orm\\GroupRows"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\GroupLookaheadPage::$page": {
+    "exported": true,
+    "signature": "public readonly int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\GroupLookaheadPage::$perPage": {
+    "exported": true,
+    "signature": "public readonly int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\GroupLookaheadPage::__construct": {
+    "exported": true,
+    "signature": "public function __construct(Polyspec\\Orm\\GroupRows $items, int $page, int $perPage, bool $hasNext): "
+  },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\GroupRow": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\GroupRow extends  implements JsonSerializable uses "
@@ -3439,6 +3467,30 @@
     "exported": true,
     "signature": "public function valid(): bool"
   },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\LookaheadPage": {
+    "exported": true,
+    "signature": "final readonly class Polyspec\\Orm\\LookaheadPage extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\LookaheadPage::$hasNext": {
+    "exported": true,
+    "signature": "public readonly bool"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\LookaheadPage::$items": {
+    "exported": true,
+    "signature": "public readonly Polyspec\\Orm\\Collection"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\LookaheadPage::$page": {
+    "exported": true,
+    "signature": "public readonly int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\LookaheadPage::$perPage": {
+    "exported": true,
+    "signature": "public readonly int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\LookaheadPage::__construct": {
+    "exported": true,
+    "signature": "public function __construct(Polyspec\\Orm\\Collection $items, int $page, int $perPage, bool $hasNext): "
+  },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\MarkdownSession": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\MarkdownSession extends  implements  uses "
@@ -3842,6 +3894,14 @@
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::getsCount": {
     "exported": true,
     "signature": "public function getsCount(): Polyspec\\Orm\\GroupRows"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::getsCountLookaheadPage": {
+    "exported": true,
+    "signature": "public function getsCountLookaheadPage(int $page, int $perPage): Polyspec\\Orm\\GroupLookaheadPage"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::getsLookaheadPage": {
+    "exported": true,
+    "signature": "public function getsLookaheadPage(int $page, int $perPage): Polyspec\\Orm\\LookaheadPage"
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::getsPage": {
     "exported": true,

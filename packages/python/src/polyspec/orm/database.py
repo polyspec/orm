@@ -3211,6 +3211,22 @@ def paginate(ex: Executor, request: dict, params):
     return _guarded(ex, work)
 
 
+def lookahead(ex: Executor, request: dict, params, per_page: int):
+    """Runs the one page statement of a lookahead page, whose limit reads one row past the page: has_next is whether
+    that row came, and the row is dropped before the relation steps read the parents of the page (INT-164)."""
+    request, params = _hooked(ex.db, request, params)
+
+    def work():
+        _check_lock(ex, request)
+        cached = ex.db.plan(request)
+        main = _select(ex, cached, cached["plan"]["steps"][0], params)
+        has_next = len(main) > per_page
+        result = _relations(ex, cached, params, main[:per_page])
+        return {"result": result, "has_next": has_next}
+
+    return _guarded(ex, work)
+
+
 def write(ex: Executor, request: dict, params, after_hook=None):
     """Runs insert, update, delete, and restore, and returns the key of the inserted row and the affected row count: in SQL databases the generated
     identity, or the key_prefix key that a corpus allocated on a markdown connection. 'request' and 'params' are the executed

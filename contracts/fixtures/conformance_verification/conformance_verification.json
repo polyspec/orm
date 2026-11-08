@@ -1,6 +1,7 @@
 {
  "$schema": "../../../scripts/features/schema/recipe.schema.json",
  "requirements": [
+  "INT-164",
   "PRT-69",
   "COD-1",
   "INT-163",
@@ -17496,6 +17497,2325 @@
           ]
          }
         ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "lookahead_page",
+   "requirements": [
+    "INT-164",
+    "PRT-2",
+    "PRT-38",
+    "DSL-67",
+    "DSL-99",
+    "DIA-158"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "columns": [],
+     "order": [
+      {
+       "column": "seq",
+       "dir": "asc"
+      }
+     ],
+     "lookahead": true,
+     "limit": {
+      "offset": 0,
+      "count": 4
+     },
+     "expect": {
+      "mysql": {
+       "json": {
+        "items": [
+         6,
+         106,
+         206,
+         306
+        ],
+        "page": 1,
+        "per_page": 4,
+        "has_next": true
+       }
+      },
+      "postgres": {
+       "json": {
+        "items": [
+         6,
+         106,
+         206,
+         306
+        ],
+        "page": 1,
+        "per_page": 4,
+        "has_next": true
+       }
+      },
+      "sqlite": {
+       "json": {
+        "items": [
+         6,
+         106,
+         206,
+         306
+        ],
+        "page": 1,
+        "per_page": 4,
+        "has_next": true
+       }
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "columns": [],
+     "order": [
+      {
+       "column": "seq",
+       "dir": "asc"
+      }
+     ],
+     "lookahead": true,
+     "limit": {
+      "offset": 30,
+      "count": 10
+     },
+     "expect": {
+      "mysql": {
+       "json": {
+        "items": [
+         90106,
+         90206,
+         95006,
+         95106,
+         95206,
+         99506,
+         99606,
+         99706,
+         99806,
+         99906
+        ],
+        "page": 4,
+        "per_page": 10,
+        "has_next": false
+       }
+      },
+      "postgres": {
+       "json": {
+        "items": [
+         90106,
+         90206,
+         95006,
+         95106,
+         95206,
+         99506,
+         99606,
+         99706,
+         99806,
+         99906
+        ],
+        "page": 4,
+        "per_page": 10,
+        "has_next": false
+       }
+      },
+      "sqlite": {
+       "json": {
+        "items": [
+         90106,
+         90206,
+         95006,
+         95106,
+         95206,
+         99506,
+         99606,
+         99706,
+         99806,
+         99906
+        ],
+        "page": 4,
+        "per_page": 10,
+        "has_next": false
+       }
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "columns": [],
+     "order": [
+      {
+       "column": "seq",
+       "dir": "asc"
+      }
+     ],
+     "lookahead": true,
+     "limit": {
+      "offset": 40,
+      "count": 10
+     },
+     "expect": {
+      "mysql": {
+       "json": {
+        "items": [],
+        "page": 5,
+        "per_page": 10,
+        "has_next": false
+       }
+      },
+      "postgres": {
+       "json": {
+        "items": [],
+        "page": 5,
+        "per_page": 10,
+        "has_next": false
+       }
+      },
+      "sqlite": {
+       "json": {
+        "items": [],
+        "page": 5,
+        "per_page": 10,
+        "has_next": false
+       }
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "columns": [],
+     "lookahead": true,
+     "limit": {
+      "offset": 4,
+      "count": 4
+     },
+     "expect": {
+      "mysql": {
+       "json": {
+        "items": [
+         406,
+         506,
+         606,
+         706
+        ],
+        "page": 2,
+        "per_page": 4,
+        "has_next": true
+       }
+      },
+      "postgres": {
+       "json": {
+        "items": [
+         406,
+         506,
+         606,
+         706
+        ],
+        "page": 2,
+        "per_page": 4,
+        "has_next": true
+       }
+      },
+      "sqlite": {
+       "json": {
+        "items": [
+         406,
+         506,
+         606,
+         706
+        ],
+        "page": 2,
+        "per_page": 4,
+        "has_next": true
+       }
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "aggregate": {
+      "agg": "count",
+      "group_by": [
+       "service_seq",
+       "is_close"
+      ]
+     },
+     "order": [
+      {
+       "column": "service_seq",
+       "dir": "asc"
+      },
+      {
+       "column": "is_close",
+       "dir": "asc"
+      }
+     ],
+     "lookahead": true,
+     "limit": {
+      "offset": 0,
+      "count": 3
+     },
+     "expect": {
+      "mysql": {
+       "json": {
+        "items": [
+         {
+          "service_seq": 1,
+          "is_close": false,
+          "row_count": 1
+         },
+         {
+          "service_seq": 2,
+          "is_close": false,
+          "row_count": 1
+         },
+         {
+          "service_seq": 3,
+          "is_close": false,
+          "row_count": 1
+         }
+        ],
+        "page": 1,
+        "per_page": 3,
+        "has_next": true
+       }
+      },
+      "postgres": {
+       "json": {
+        "items": [
+         {
+          "service_seq": 1,
+          "is_close": false,
+          "row_count": 1
+         },
+         {
+          "service_seq": 2,
+          "is_close": false,
+          "row_count": 1
+         },
+         {
+          "service_seq": 3,
+          "is_close": false,
+          "row_count": 1
+         }
+        ],
+        "page": 1,
+        "per_page": 3,
+        "has_next": true
+       }
+      },
+      "sqlite": {
+       "json": {
+        "items": [
+         {
+          "service_seq": 1,
+          "is_close": false,
+          "row_count": 1
+         },
+         {
+          "service_seq": 2,
+          "is_close": false,
+          "row_count": 1
+         },
+         {
+          "service_seq": 3,
+          "is_close": false,
+          "row_count": 1
+         }
+        ],
+        "page": 1,
+        "per_page": 3,
+        "has_next": true
+       }
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "aggregate": {
+      "agg": "count",
+      "group_by": [
+       "service_seq",
+       "is_close"
+      ]
+     },
+     "order": [
+      {
+       "column": "service_seq",
+       "dir": "asc"
+      },
+      {
+       "column": "is_close",
+       "dir": "asc"
+      }
+     ],
+     "lookahead": true,
+     "limit": {
+      "offset": 6,
+      "count": 3
+     },
+     "expect": {
+      "mysql": {
+       "json": {
+        "items": [
+         {
+          "service_seq": 44,
+          "is_close": false,
+          "row_count": 1
+         },
+         {
+          "service_seq": 100,
+          "is_close": false,
+          "row_count": 7
+         },
+         {
+          "service_seq": 100,
+          "is_close": true,
+          "row_count": 2
+         }
+        ],
+        "page": 3,
+        "per_page": 3,
+        "has_next": false
+       }
+      },
+      "postgres": {
+       "json": {
+        "items": [
+         {
+          "service_seq": 44,
+          "is_close": false,
+          "row_count": 1
+         },
+         {
+          "service_seq": 100,
+          "is_close": false,
+          "row_count": 7
+         },
+         {
+          "service_seq": 100,
+          "is_close": true,
+          "row_count": 2
+         }
+        ],
+        "page": 3,
+        "per_page": 3,
+        "has_next": false
+       }
+      },
+      "sqlite": {
+       "json": {
+        "items": [
+         {
+          "service_seq": 44,
+          "is_close": false,
+          "row_count": 1
+         },
+         {
+          "service_seq": 100,
+          "is_close": false,
+          "row_count": 7
+         },
+         {
+          "service_seq": 100,
+          "is_close": true,
+          "row_count": 2
+         }
+        ],
+        "page": 3,
+        "per_page": 3,
+        "has_next": false
+       }
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "aggregate": {
+      "agg": "count",
+      "group_by": [
+       "service_seq",
+       "is_close"
+      ]
+     },
+     "order": [
+      {
+       "column": "service_seq",
+       "dir": "asc"
+      },
+      {
+       "column": "is_close",
+       "dir": "asc"
+      }
+     ],
+     "lookahead": true,
+     "limit": {
+      "offset": 9,
+      "count": 3
+     },
+     "expect": {
+      "mysql": {
+       "json": {
+        "items": [],
+        "page": 4,
+        "per_page": 3,
+        "has_next": false
+       }
+      },
+      "postgres": {
+       "json": {
+        "items": [],
+        "page": 4,
+        "per_page": 3,
+        "has_next": false
+       }
+      },
+      "sqlite": {
+       "json": {
+        "items": [],
+        "page": 4,
+        "per_page": 3,
+        "has_next": false
+       }
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "aggregate": {
+      "agg": "count",
+      "group_by": [
+       "service_seq",
+       "is_close"
+      ]
+     },
+     "lookahead": true,
+     "limit": {
+      "offset": 3,
+      "count": 3
+     },
+     "expect": {
+      "mysql": {
+       "json": {
+        "items": [
+         {
+          "service_seq": 7,
+          "is_close": false,
+          "row_count": 33
+         },
+         {
+          "service_seq": 7,
+          "is_close": true,
+          "row_count": 7
+         },
+         {
+          "service_seq": 43,
+          "is_close": true,
+          "row_count": 1
+         }
+        ],
+        "page": 2,
+        "per_page": 3,
+        "has_next": true
+       }
+      },
+      "postgres": {
+       "json": {
+        "items": [
+         {
+          "service_seq": 7,
+          "is_close": false,
+          "row_count": 33
+         },
+         {
+          "service_seq": 7,
+          "is_close": true,
+          "row_count": 7
+         },
+         {
+          "service_seq": 43,
+          "is_close": true,
+          "row_count": 1
+         }
+        ],
+        "page": 2,
+        "per_page": 3,
+        "has_next": true
+       }
+      },
+      "sqlite": {
+       "json": {
+        "items": [
+         {
+          "service_seq": 7,
+          "is_close": false,
+          "row_count": 33
+         },
+         {
+          "service_seq": 7,
+          "is_close": true,
+          "row_count": 7
+         },
+         {
+          "service_seq": 43,
+          "is_close": true,
+          "row_count": 1
+         }
+        ],
+        "page": 2,
+        "per_page": 3,
+        "has_next": true
+       }
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "aggregate": {
+      "agg": "count"
+     },
+     "lookahead": true,
+     "limit": {
+      "offset": 0,
+      "count": 2
+     },
+     "expect": {
+      "mysql": {
+       "error": "IR_INVALID",
+       "message": "IR_INVALID: group_lookahead_paginate needs group_by"
+      },
+      "postgres": {
+       "error": "IR_INVALID",
+       "message": "IR_INVALID: group_lookahead_paginate needs group_by"
+      },
+      "sqlite": {
+       "error": "IR_INVALID",
+       "message": "IR_INVALID: group_lookahead_paginate needs group_by"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "group_by": [
+      "is_close"
+     ],
+     "order": [
+      {
+       "column": "is_close",
+       "dir": "asc"
+      }
+     ],
+     "page": true,
+     "limit": {
+      "offset": 0,
+      "count": 2
+     },
+     "expect": {
+      "mysql": {
+       "error": "IR_INVALID",
+       "message": "IR_INVALID: group_by is only valid on count or group_count, not paginate"
+      },
+      "postgres": {
+       "error": "IR_INVALID",
+       "message": "IR_INVALID: group_by is only valid on count or group_count, not paginate"
+      },
+      "sqlite": {
+       "error": "IR_INVALID",
+       "message": "IR_INVALID: group_by is only valid on count or group_count, not paginate"
+      }
+     }
+    },
+    {
+     "op": "events.subscribe",
+     "connection": "db",
+     "as": "events"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "columns": [],
+     "lookahead": true,
+     "limit": {
+      "offset": 4,
+      "count": 4
+     },
+     "expect": {
+      "mysql": {
+       "json": {
+        "items": [
+         406,
+         506,
+         606,
+         706
+        ],
+        "page": 2,
+        "per_page": 4,
+        "has_next": true
+       }
+      },
+      "postgres": {
+       "json": {
+        "items": [
+         406,
+         506,
+         606,
+         706
+        ],
+        "page": 2,
+        "per_page": 4,
+        "has_next": true
+       }
+      },
+      "sqlite": {
+       "json": {
+        "items": [
+         406,
+         506,
+         606,
+         706
+        ],
+        "page": 2,
+        "per_page": 4,
+        "has_next": true
+       }
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "aggregate": {
+      "agg": "count",
+      "group_by": [
+       "service_seq",
+       "is_close"
+      ]
+     },
+     "lookahead": true,
+     "limit": {
+      "offset": 3,
+      "count": 3
+     },
+     "expect": {
+      "mysql": {
+       "json": {
+        "items": [
+         {
+          "service_seq": 7,
+          "is_close": false,
+          "row_count": 33
+         },
+         {
+          "service_seq": 7,
+          "is_close": true,
+          "row_count": 7
+         },
+         {
+          "service_seq": 43,
+          "is_close": true,
+          "row_count": 1
+         }
+        ],
+        "page": 2,
+        "per_page": 3,
+        "has_next": true
+       }
+      },
+      "postgres": {
+       "json": {
+        "items": [
+         {
+          "service_seq": 7,
+          "is_close": false,
+          "row_count": 33
+         },
+         {
+          "service_seq": 7,
+          "is_close": true,
+          "row_count": 7
+         },
+         {
+          "service_seq": 43,
+          "is_close": true,
+          "row_count": 1
+         }
+        ],
+        "page": 2,
+        "per_page": 3,
+        "has_next": true
+       }
+      },
+      "sqlite": {
+       "json": {
+        "items": [
+         {
+          "service_seq": 7,
+          "is_close": false,
+          "row_count": 33
+         },
+         {
+          "service_seq": 7,
+          "is_close": true,
+          "row_count": 7
+         },
+         {
+          "service_seq": 43,
+          "is_close": true,
+          "row_count": 1
+         }
+        ],
+        "page": 2,
+        "per_page": 3,
+        "has_next": true
+       }
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "events",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq` FROM `author` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` ASC LIMIT ?, ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "7"
+              },
+              {
+               "int": "4"
+              },
+              {
+               "int": "5"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": true
+            }
+           ],
+           [
+            "error",
+            {
+             "null": true
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT `a`.`service_seq` AS `a__service_seq`, `a`.`is_close` AS `a__is_close`, COUNT(*) AS `a__row_count` FROM `author` AS `a` GROUP BY `a`.`service_seq`, `a`.`is_close` ORDER BY `a`.`service_seq` ASC, `a`.`is_close` ASC LIMIT ?, ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "3"
+              },
+              {
+               "int": "4"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": true
+            }
+           ],
+           [
+            "error",
+            {
+             "null": true
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\" FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = $1 ORDER BY \"a\".\"seq\" ASC LIMIT $2 OFFSET $3"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "7"
+              },
+              {
+               "int": "5"
+              },
+              {
+               "int": "4"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": true
+            }
+           ],
+           [
+            "error",
+            {
+             "null": true
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"is_close\" AS \"a__is_close\", COUNT(*) AS \"a__row_count\" FROM \"author\" AS \"a\" GROUP BY \"a\".\"service_seq\", \"a\".\"is_close\" ORDER BY \"a\".\"service_seq\" ASC, \"a\".\"is_close\" ASC LIMIT $1 OFFSET $2"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "4"
+              },
+              {
+               "int": "3"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": true
+            }
+           ],
+           [
+            "error",
+            {
+             "null": true
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\" FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = ? ORDER BY \"a\".\"seq\" ASC LIMIT ? OFFSET ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "7"
+              },
+              {
+               "int": "5"
+              },
+              {
+               "int": "4"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": true
+            }
+           ],
+           [
+            "error",
+            {
+             "null": true
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"is_close\" AS \"a__is_close\", COUNT(*) AS \"a__row_count\" FROM \"author\" AS \"a\" GROUP BY \"a\".\"service_seq\", \"a\".\"is_close\" ORDER BY \"a\".\"service_seq\" ASC, \"a\".\"is_close\" ASC LIMIT ? OFFSET ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "4"
+              },
+              {
+               "int": "3"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": true
+            }
+           ],
+           [
+            "error",
+            {
+             "null": true
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "op": "events.subscribe",
+     "connection": "db",
+     "as": "relation_events"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "columns": [],
+     "order": [
+      {
+       "column": "seq",
+       "dir": "asc"
+      }
+     ],
+     "relations": [
+      {
+       "model": "User",
+       "match": [
+        [
+         "user_seq",
+         "seq"
+        ]
+       ],
+       "columns": []
+      }
+     ],
+     "lookahead": true,
+     "limit": {
+      "offset": 0,
+      "count": 2
+     },
+     "expect": {
+      "mysql": {
+       "json": {
+        "items": [
+         6,
+         106
+        ],
+        "page": 1,
+        "per_page": 2,
+        "has_next": true
+       }
+      },
+      "postgres": {
+       "json": {
+        "items": [
+         6,
+         106
+        ],
+        "page": 1,
+        "per_page": 2,
+        "has_next": true
+       }
+      },
+      "sqlite": {
+       "json": {
+        "items": [
+         6,
+         106
+        ],
+        "page": 1,
+        "per_page": 2,
+        "has_next": true
+       }
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "relation_events",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq` FROM `author` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` ASC LIMIT ?, ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "7"
+              },
+              {
+               "int": "0"
+              },
+              {
+               "int": "3"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": true
+            }
+           ],
+           [
+            "error",
+            {
+             "null": true
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT `a`.`seq` AS `a__seq` FROM `user` AS `a` WHERE `a`.`seq` IN (?, ?)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "7"
+              },
+              {
+               "int": "107"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "user"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": true
+            }
+           ],
+           [
+            "error",
+            {
+             "null": true
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\" FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = $1 ORDER BY \"a\".\"seq\" ASC LIMIT $2 OFFSET $3"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "7"
+              },
+              {
+               "int": "3"
+              },
+              {
+               "int": "0"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": true
+            }
+           ],
+           [
+            "error",
+            {
+             "null": true
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\" FROM \"user\" AS \"a\" WHERE \"a\".\"seq\" IN ($1, $2)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "7"
+              },
+              {
+               "int": "107"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "user"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": true
+            }
+           ],
+           [
+            "error",
+            {
+             "null": true
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\" FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = ? ORDER BY \"a\".\"seq\" ASC LIMIT ? OFFSET ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "7"
+              },
+              {
+               "int": "3"
+              },
+              {
+               "int": "0"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": true
+            }
+           ],
+           [
+            "error",
+            {
+             "null": true
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\" FROM \"user\" AS \"a\" WHERE \"a\".\"seq\" IN (?, ?)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "7"
+              },
+              {
+               "int": "107"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "user"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": true
+            }
+           ],
+           [
+            "error",
+            {
+             "null": true
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "lookahead_page_by_column",
+   "requirements": [
+    "INT-164",
+    "DSL-99"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "aggregate": {
+      "agg": "count",
+      "group_by": [
+       "user_seq"
+      ]
+     },
+     "order": [
+      {
+       "column": "user_seq",
+       "dir": "asc"
+      }
+     ],
+     "lookahead": true,
+     "limit": {
+      "offset": 0,
+      "count": 20
+     },
+     "expect": {
+      "mysql": {
+       "json": {
+        "items": [
+         {
+          "user_seq": 1,
+          "row_count": 1
+         },
+         {
+          "user_seq": 2,
+          "row_count": 1
+         },
+         {
+          "user_seq": 3,
+          "row_count": 1
+         },
+         {
+          "user_seq": 7,
+          "row_count": 3
+         },
+         {
+          "user_seq": 43,
+          "row_count": 1
+         },
+         {
+          "user_seq": 44,
+          "row_count": 1
+         },
+         {
+          "user_seq": 100,
+          "row_count": 5
+         },
+         {
+          "user_seq": 107,
+          "row_count": 3
+         },
+         {
+          "user_seq": 200,
+          "row_count": 1
+         },
+         {
+          "user_seq": 207,
+          "row_count": 3
+         },
+         {
+          "user_seq": 300,
+          "row_count": 1
+         },
+         {
+          "user_seq": 307,
+          "row_count": 1
+         },
+         {
+          "user_seq": 400,
+          "row_count": 1
+         },
+         {
+          "user_seq": 407,
+          "row_count": 1
+         },
+         {
+          "user_seq": 500,
+          "row_count": 1
+         },
+         {
+          "user_seq": 507,
+          "row_count": 1
+         },
+         {
+          "user_seq": 607,
+          "row_count": 1
+         },
+         {
+          "user_seq": 707,
+          "row_count": 1
+         },
+         {
+          "user_seq": 807,
+          "row_count": 1
+         },
+         {
+          "user_seq": 907,
+          "row_count": 1
+         }
+        ],
+        "page": 1,
+        "per_page": 20,
+        "has_next": true
+       }
+      },
+      "postgres": {
+       "json": {
+        "items": [
+         {
+          "user_seq": 1,
+          "row_count": 1
+         },
+         {
+          "user_seq": 2,
+          "row_count": 1
+         },
+         {
+          "user_seq": 3,
+          "row_count": 1
+         },
+         {
+          "user_seq": 7,
+          "row_count": 3
+         },
+         {
+          "user_seq": 43,
+          "row_count": 1
+         },
+         {
+          "user_seq": 44,
+          "row_count": 1
+         },
+         {
+          "user_seq": 100,
+          "row_count": 5
+         },
+         {
+          "user_seq": 107,
+          "row_count": 3
+         },
+         {
+          "user_seq": 200,
+          "row_count": 1
+         },
+         {
+          "user_seq": 207,
+          "row_count": 3
+         },
+         {
+          "user_seq": 300,
+          "row_count": 1
+         },
+         {
+          "user_seq": 307,
+          "row_count": 1
+         },
+         {
+          "user_seq": 400,
+          "row_count": 1
+         },
+         {
+          "user_seq": 407,
+          "row_count": 1
+         },
+         {
+          "user_seq": 500,
+          "row_count": 1
+         },
+         {
+          "user_seq": 507,
+          "row_count": 1
+         },
+         {
+          "user_seq": 607,
+          "row_count": 1
+         },
+         {
+          "user_seq": 707,
+          "row_count": 1
+         },
+         {
+          "user_seq": 807,
+          "row_count": 1
+         },
+         {
+          "user_seq": 907,
+          "row_count": 1
+         }
+        ],
+        "page": 1,
+        "per_page": 20,
+        "has_next": true
+       }
+      },
+      "sqlite": {
+       "json": {
+        "items": [
+         {
+          "user_seq": 1,
+          "row_count": 1
+         },
+         {
+          "user_seq": 2,
+          "row_count": 1
+         },
+         {
+          "user_seq": 3,
+          "row_count": 1
+         },
+         {
+          "user_seq": 7,
+          "row_count": 3
+         },
+         {
+          "user_seq": 43,
+          "row_count": 1
+         },
+         {
+          "user_seq": 44,
+          "row_count": 1
+         },
+         {
+          "user_seq": 100,
+          "row_count": 5
+         },
+         {
+          "user_seq": 107,
+          "row_count": 3
+         },
+         {
+          "user_seq": 200,
+          "row_count": 1
+         },
+         {
+          "user_seq": 207,
+          "row_count": 3
+         },
+         {
+          "user_seq": 300,
+          "row_count": 1
+         },
+         {
+          "user_seq": 307,
+          "row_count": 1
+         },
+         {
+          "user_seq": 400,
+          "row_count": 1
+         },
+         {
+          "user_seq": 407,
+          "row_count": 1
+         },
+         {
+          "user_seq": 500,
+          "row_count": 1
+         },
+         {
+          "user_seq": 507,
+          "row_count": 1
+         },
+         {
+          "user_seq": 607,
+          "row_count": 1
+         },
+         {
+          "user_seq": 707,
+          "row_count": 1
+         },
+         {
+          "user_seq": 807,
+          "row_count": 1
+         },
+         {
+          "user_seq": 907,
+          "row_count": 1
+         }
+        ],
+        "page": 1,
+        "per_page": 20,
+        "has_next": true
+       }
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "aggregate": {
+      "agg": "count",
+      "group_by": [
+       "user_seq"
+      ]
+     },
+     "order": [
+      {
+       "column": "user_seq",
+       "dir": "asc"
+      }
+     ],
+     "lookahead": true,
+     "limit": {
+      "offset": 20,
+      "count": 20
+     },
+     "expect": {
+      "mysql": {
+       "json": {
+        "items": [
+         {
+          "user_seq": 1007,
+          "row_count": 1
+         },
+         {
+          "user_seq": 1107,
+          "row_count": 1
+         },
+         {
+          "user_seq": 1207,
+          "row_count": 1
+         },
+         {
+          "user_seq": 1307,
+          "row_count": 1
+         },
+         {
+          "user_seq": 1407,
+          "row_count": 1
+         },
+         {
+          "user_seq": 1507,
+          "row_count": 1
+         },
+         {
+          "user_seq": 1607,
+          "row_count": 1
+         },
+         {
+          "user_seq": 1707,
+          "row_count": 1
+         },
+         {
+          "user_seq": 1807,
+          "row_count": 1
+         },
+         {
+          "user_seq": 1907,
+          "row_count": 1
+         },
+         {
+          "user_seq": 2007,
+          "row_count": 1
+         },
+         {
+          "user_seq": 2107,
+          "row_count": 1
+         },
+         {
+          "user_seq": 2207,
+          "row_count": 1
+         },
+         {
+          "user_seq": 2307,
+          "row_count": 1
+         },
+         {
+          "user_seq": 2407,
+          "row_count": 1
+         },
+         {
+          "user_seq": 2507,
+          "row_count": 1
+         },
+         {
+          "user_seq": 2907,
+          "row_count": 1
+         },
+         {
+          "user_seq": 3907,
+          "row_count": 1
+         },
+         {
+          "user_seq": 4507,
+          "row_count": 1
+         },
+         {
+          "user_seq": 4607,
+          "row_count": 1
+         }
+        ],
+        "page": 2,
+        "per_page": 20,
+        "has_next": true
+       }
+      },
+      "postgres": {
+       "json": {
+        "items": [
+         {
+          "user_seq": 1007,
+          "row_count": 1
+         },
+         {
+          "user_seq": 1107,
+          "row_count": 1
+         },
+         {
+          "user_seq": 1207,
+          "row_count": 1
+         },
+         {
+          "user_seq": 1307,
+          "row_count": 1
+         },
+         {
+          "user_seq": 1407,
+          "row_count": 1
+         },
+         {
+          "user_seq": 1507,
+          "row_count": 1
+         },
+         {
+          "user_seq": 1607,
+          "row_count": 1
+         },
+         {
+          "user_seq": 1707,
+          "row_count": 1
+         },
+         {
+          "user_seq": 1807,
+          "row_count": 1
+         },
+         {
+          "user_seq": 1907,
+          "row_count": 1
+         },
+         {
+          "user_seq": 2007,
+          "row_count": 1
+         },
+         {
+          "user_seq": 2107,
+          "row_count": 1
+         },
+         {
+          "user_seq": 2207,
+          "row_count": 1
+         },
+         {
+          "user_seq": 2307,
+          "row_count": 1
+         },
+         {
+          "user_seq": 2407,
+          "row_count": 1
+         },
+         {
+          "user_seq": 2507,
+          "row_count": 1
+         },
+         {
+          "user_seq": 2907,
+          "row_count": 1
+         },
+         {
+          "user_seq": 3907,
+          "row_count": 1
+         },
+         {
+          "user_seq": 4507,
+          "row_count": 1
+         },
+         {
+          "user_seq": 4607,
+          "row_count": 1
+         }
+        ],
+        "page": 2,
+        "per_page": 20,
+        "has_next": true
+       }
+      },
+      "sqlite": {
+       "json": {
+        "items": [
+         {
+          "user_seq": 1007,
+          "row_count": 1
+         },
+         {
+          "user_seq": 1107,
+          "row_count": 1
+         },
+         {
+          "user_seq": 1207,
+          "row_count": 1
+         },
+         {
+          "user_seq": 1307,
+          "row_count": 1
+         },
+         {
+          "user_seq": 1407,
+          "row_count": 1
+         },
+         {
+          "user_seq": 1507,
+          "row_count": 1
+         },
+         {
+          "user_seq": 1607,
+          "row_count": 1
+         },
+         {
+          "user_seq": 1707,
+          "row_count": 1
+         },
+         {
+          "user_seq": 1807,
+          "row_count": 1
+         },
+         {
+          "user_seq": 1907,
+          "row_count": 1
+         },
+         {
+          "user_seq": 2007,
+          "row_count": 1
+         },
+         {
+          "user_seq": 2107,
+          "row_count": 1
+         },
+         {
+          "user_seq": 2207,
+          "row_count": 1
+         },
+         {
+          "user_seq": 2307,
+          "row_count": 1
+         },
+         {
+          "user_seq": 2407,
+          "row_count": 1
+         },
+         {
+          "user_seq": 2507,
+          "row_count": 1
+         },
+         {
+          "user_seq": 2907,
+          "row_count": 1
+         },
+         {
+          "user_seq": 3907,
+          "row_count": 1
+         },
+         {
+          "user_seq": 4507,
+          "row_count": 1
+         },
+         {
+          "user_seq": 4607,
+          "row_count": 1
+         }
+        ],
+        "page": 2,
+        "per_page": 20,
+        "has_next": true
+       }
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "aggregate": {
+      "agg": "count",
+      "group_by": [
+       "user_seq"
+      ]
+     },
+     "order": [
+      {
+       "column": "user_seq",
+       "dir": "asc"
+      }
+     ],
+     "lookahead": true,
+     "limit": {
+      "offset": 40,
+      "count": 20
+     },
+     "expect": {
+      "mysql": {
+       "json": {
+        "items": [
+         {
+          "user_seq": 4707,
+          "row_count": 1
+         },
+         {
+          "user_seq": 4807,
+          "row_count": 1
+         },
+         {
+          "user_seq": 4907,
+          "row_count": 2
+         }
+        ],
+        "page": 3,
+        "per_page": 20,
+        "has_next": false
+       }
+      },
+      "postgres": {
+       "json": {
+        "items": [
+         {
+          "user_seq": 4707,
+          "row_count": 1
+         },
+         {
+          "user_seq": 4807,
+          "row_count": 1
+         },
+         {
+          "user_seq": 4907,
+          "row_count": 2
+         }
+        ],
+        "page": 3,
+        "per_page": 20,
+        "has_next": false
+       }
+      },
+      "sqlite": {
+       "json": {
+        "items": [
+         {
+          "user_seq": 4707,
+          "row_count": 1
+         },
+         {
+          "user_seq": 4807,
+          "row_count": 1
+         },
+         {
+          "user_seq": 4907,
+          "row_count": 2
+         }
+        ],
+        "page": 3,
+        "per_page": 20,
+        "has_next": false
+       }
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "aggregate": {
+      "agg": "count",
+      "group_by": [
+       "user_seq"
+      ]
+     },
+     "order": [
+      {
+       "column": "user_seq",
+       "dir": "asc"
+      }
+     ],
+     "lookahead": true,
+     "limit": {
+      "offset": 60,
+      "count": 20
+     },
+     "expect": {
+      "mysql": {
+       "json": {
+        "items": [],
+        "page": 4,
+        "per_page": 20,
+        "has_next": false
+       }
+      },
+      "postgres": {
+       "json": {
+        "items": [],
+        "page": 4,
+        "per_page": 20,
+        "has_next": false
+       }
+      },
+      "sqlite": {
+       "json": {
+        "items": [],
+        "page": 4,
+        "per_page": 20,
+        "has_next": false
        }
       }
      }
@@ -84511,6 +86831,8 @@
       "external_read",
       "subqueries",
       "aggregates",
+      "lookahead_page",
+      "lookahead_page_by_column",
       "empty_reads",
       "audit_lazy",
       "functions",
@@ -84606,6 +86928,8 @@
       "external_read",
       "subqueries",
       "aggregates",
+      "lookahead_page",
+      "lookahead_page_by_column",
       "empty_reads",
       "audit_lazy",
       "functions",
@@ -84701,6 +87025,8 @@
       "external_read",
       "subqueries",
       "aggregates",
+      "lookahead_page",
+      "lookahead_page_by_column",
       "empty_reads",
       "audit_lazy",
       "functions",
@@ -84796,6 +87122,8 @@
       "external_read",
       "subqueries",
       "aggregates",
+      "lookahead_page",
+      "lookahead_page_by_column",
       "empty_reads",
       "audit_lazy",
       "functions",

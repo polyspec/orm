@@ -430,7 +430,7 @@ function joinedRefs(g: Group, seen: Set<string>): void {
   }
 }
 
-const kinds = new Set(['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate', 'insert', 'update', 'delete', 'restore', 'restart_identity']);
+const kinds = new Set(['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate', 'lookahead_paginate', 'group_lookahead_paginate', 'insert', 'update', 'delete', 'restore', 'restart_identity']);
 
 function hasGroupBy(q: RequestQuery): boolean {
   return (q.group_by ?? []).length > 0;
@@ -589,8 +589,9 @@ export function validate(m: RuntimeModel, r: Request): void {
     const c = columnOf(ent, r.agg ?? '') ?? fail(codes.COLUMN_UNKNOWN, `${r.entity}.${r.agg ?? ''}`);
     if (!numericTypes.has(c.type)) fail(codes.OPERATOR_NOT_ALLOWED, `${r.kind} on ${r.entity}.${r.agg} (${c.type})`);
   }
-  if (r.kind === 'group_count' && !hasGroupBy(r)) fail(codes.IR_INVALID, 'group_count needs group_by');
-  if (hasGroupBy(r) && r.kind !== 'count' && r.kind !== 'group_count') fail(codes.IR_INVALID, `group_by is only valid on count or group_count, not ${r.kind}`);
+  if ((r.kind === 'group_count' || r.kind === 'group_lookahead_paginate') && !hasGroupBy(r)) fail(codes.IR_INVALID, `${r.kind} needs group_by`);
+  if ((r.kind === 'lookahead_paginate' || r.kind === 'group_lookahead_paginate') && r.limit === undefined) fail(codes.IR_INVALID, `${r.kind} needs limit`);
+  if (hasGroupBy(r) && r.kind !== 'count' && r.kind !== 'group_count' && r.kind !== 'group_lookahead_paginate') fail(codes.IR_INVALID, `group_by is only valid on count or group_count, not ${r.kind}`);
   if (r.kind === 'insert' || r.kind === 'update' || r.kind === 'restore') {
     if ((r.set ?? []).length === 0 && r.kind !== 'restore') fail(codes.IR_INVALID, `${r.kind} needs set[]`);
     for (const a of r.set ?? []) {

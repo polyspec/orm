@@ -58,8 +58,9 @@ final class Generator
     private const RESERVED_PREFIXES = ['and', 'or', 'get', 'set', 'new', 'plus', 'minus', 'order_by',
         'group_by', 'tuple', 'gt', 'lt', 'ge', 'le', 'eq', 'ne', 'lk', 'lb', 'between',
         'fulltext'];
-    private const RESERVED_COLUMNS = ['and', 'or', 'not', 'get', 'gets', 'gets_page', 'get_query', 'limit',
-        'alias', 'connect', 'create', 'creates', 'update', 'delete', 'restore', 'save', 'on', 'random'];
+    private const RESERVED_COLUMNS = ['and', 'or', 'not', 'get', 'gets', 'gets_page', 'gets_lookahead_page',
+        'gets_count_lookahead_page', 'get_query', 'limit', 'alias', 'connect', 'create', 'creates', 'update', 'delete',
+        'restore', 'save', 'on', 'random'];
 
     /** Generates the model of $m into $outDir and changes the files generated before. */
     public static function generate(RuntimeModel $m, string $outDir, string $namespace, array $scan = []): void

@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces-model -->
-<!-- source-sha256: 96d83bef5289456b51663c5cb7f5b0857e27494ab9f8f0bc3c194715e4388fcf -->
+<!-- source-sha256: 86bb6d220a0ce3878b5910fbe5d0920e905596c0d16251cbd0917ac2c1c6d5f9 -->
 # 공통 구성요소
 
 <!-- contracts/interfaces.json에서 생성됨. 직접 수정하지 않는다. -->
@@ -18,10 +18,12 @@ classDiagram
         get()
         gets()
         getsCount()
+        getsCountLookaheadPage()
         getCount()
         getSum()
         getAvg()
         getsPage()
+        getsLookaheadPage()
         getPagePlanSteps()
         getQuery()
         create()
@@ -147,6 +149,18 @@ classDiagram
         Integer totalCount
         Integer totalPages
     }
+    class LookaheadPage {
+        Boolean hasNext
+        Collection items
+        Integer page
+        Integer perPage
+    }
+    class GroupLookaheadPage {
+        Boolean hasNext
+        GroupRows items
+        Integer page
+        Integer perPage
+    }
     class Utils {
         Db db
         lock()
@@ -244,6 +258,7 @@ classDiagram
     AesUtils --> AESRotationStatus : returns status
     Collection o-- Model : contains ordered models
     Page *-- Collection : contains items
+    LookaheadPage *-- Collection : contains items
     Model *-- Collection : contains relations
     Generator --> Model : emits
 ```
@@ -263,6 +278,8 @@ classDiagram
 | TransactionFlow | 비공개다. 현재 실행 흐름의 transaction이며 연결 없는 model이 사용한다. 내부: begin, savepoint, commit, rollback은 비공개다. 그 공개 입구는 Db.transaction이다(docs/spec/interfaces.md §6). |
 | Collection | primary key, keyName, fetchKey로 key를 정한 순서 있는 model 목록이다. |
 | Page | getsPage의 행과 개수다. |
+| LookaheadPage | getsLookaheadPage의 model과 다음 페이지가 있는지 여부다. |
+| GroupLookaheadPage | getsCountLookaheadPage의 group 행과 다음 페이지가 있는지 여부다. |
 | Utils | 연결 유틸리티다. lock과 local 값은 진행 중인 transaction이 필요하다. |
 | SchemaUtils | generated schema의 set을 데이터베이스를 읽지 않고 연결에 등록한다. client DDL 렌더러로 set을 설치하고 데이터베이스를 확인한 뒤 set을 등록한다. 설치된 set을 데이터베이스에 없는 table과 null이거나 default가 있는 column만큼 upgrade하며, set을 등록하지 않는다. |
 | AesUtils | model 테이블의 AES key version을 조회하고 회전한다. |
@@ -324,6 +341,7 @@ Host-native API는 해당 host의 공개 primitive 형식으로만 선언하며 
 | AesUtils | AESRotationStatus | 상태 반환 |
 | Collection | Model | 순서 있는 model 포함 |
 | Page | Collection | 항목 포함 |
+| LookaheadPage | Collection | 항목 포함 |
 | Model | Collection | relation 포함 |
 | Generator | Model | 생성 |
 
@@ -394,6 +412,14 @@ Host-native API는 해당 host의 공개 primitive 형식으로만 선언하며 
 | Page.perPage | `Integer` |
 | Page.totalCount | `Integer` |
 | Page.totalPages | `Integer` |
+| LookaheadPage.hasNext | `Boolean` |
+| LookaheadPage.items | `Collection` |
+| LookaheadPage.page | `Integer` |
+| LookaheadPage.perPage | `Integer` |
+| GroupLookaheadPage.hasNext | `Boolean` |
+| GroupLookaheadPage.items | `GroupRows` |
+| GroupLookaheadPage.page | `Integer` |
+| GroupLookaheadPage.perPage | `Integer` |
 | Utils.db | `Db` |
 | SchemaUtils.db | `Db` |
 | AesUtils.db | `Db` |

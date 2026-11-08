@@ -39,11 +39,11 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:bc888358151f5d0054f1b1b58eb4dbf17cf48ef8bc58920b640569370a60726c",
-    "php": "sha256:014205393e84b48c2a8ed5c052d8a8a8447f19b45a2b4671daab965010ae5fee",
-    "rust": "sha256:d2339a1269934f6503ecdccfe1070da8cf522872dd775ea3d41e8043487a8b95",
-    "typescript": "sha256:484ecb348887144776db039266dbcee8f3fc62ef6951675ec94c84827e5cb675",
-    "python": "sha256:6489b78c64a79a84ce760c77ff3e295ad1472a4357e18f286fe1b0299242fa1a"
+    "go": "sha256:540c670eea3d4d2013fae9b45e2490f0f028925d73fdca850c65767a05f0096c",
+    "php": "sha256:e3064dc7a5aa805e6073681865c6b98a1f29f239ca3ca25c5c7cd10c2e6d00cb",
+    "rust": "sha256:b9d4db8a2de70077ea3a80f7203d576d6ae749f48cabf9153e4d68d119121a2d",
+    "typescript": "sha256:d36560ae3e271e6f9fae996a6be6f3339680a49c8cab7ec64878f4ae619e7273",
+    "python": "sha256:037cac1a571086527a56691981d40e8becb6a1d42a75caf3040c9dd08c19fec9"
   },
   "native_surfaces": [
     {
@@ -208,7 +208,7 @@
         "packages/php-ext/src"
       ],
       "symbols": "contracts/symbols/php-extension.json",
-      "symbol_hash": "sha256:b487437ee5644cb00edf0cceab4ccdd3b53780364c92b3d5feb06f6f500289c3",
+      "symbol_hash": "sha256:ce9e5b8ada283040d2779f3f9cce6ac3537974358ff98e96713b5d54fbb22791",
       "rules": [
         "Model.connect",
         "Model.and",
@@ -221,10 +221,12 @@
         "Model.get",
         "Model.gets",
         "Model.getsCount",
+        "Model.getsCountLookaheadPage",
         "Model.getCount",
         "Model.getSum",
         "Model.getAvg",
         "Model.getsPage",
+        "Model.getsLookaheadPage",
         "Model.getPagePlanSteps",
         "Model.getQuery",
         "Model.create",
@@ -339,10 +341,12 @@
         "get",
         "gets",
         "getsCount",
+        "getsCountLookaheadPage",
         "getCount",
         "getSum",
         "getAvg",
         "getsPage",
+        "getsLookaheadPage",
         "getPagePlanSteps",
         "getQuery",
         "create",
@@ -552,6 +556,30 @@
       "methods": [],
       "ownership": "The rows and counts of getsPage.",
       "ownership_ko": "getsPage의 행과 개수다."
+    },
+    {
+      "id": "LookaheadPage",
+      "fields": {
+        "items": "Collection",
+        "page": "Integer",
+        "perPage": "Integer",
+        "hasNext": "Boolean"
+      },
+      "methods": [],
+      "ownership": "The models of getsLookaheadPage and whether a next page exists.",
+      "ownership_ko": "getsLookaheadPage의 model과 다음 페이지가 있는지 여부다."
+    },
+    {
+      "id": "GroupLookaheadPage",
+      "fields": {
+        "items": "GroupRows",
+        "page": "Integer",
+        "perPage": "Integer",
+        "hasNext": "Boolean"
+      },
+      "methods": [],
+      "ownership": "The group rows of getsCountLookaheadPage and whether a next page exists.",
+      "ownership_ko": "getsCountLookaheadPage의 group 행과 다음 페이지가 있는지 여부다."
     },
     {
       "id": "Utils",
@@ -1248,6 +1276,46 @@
       }
     },
     {
+      "id": "Model.getsLookaheadPage",
+      "for": "entity",
+      "inputs": [
+        "PagePerPage"
+      ],
+      "output": "LookaheadPage<Model>",
+      "errors": [
+        "CONFIG",
+        "IR_INVALID",
+        "driver or codec error"
+      ],
+      "state": "The model is not changed; the same model can run again",
+      "native": {
+        "go": {
+          "symbol": "packages/go/model/{entity}.go::{Entity}Model.GetsLookaheadPage",
+          "signature": "receiver=*{Entity}Model func(page, perPage int) (*orm.LookaheadPage[*{Entity}Model], error)"
+        },
+        "php": {
+          "symbol": "packages/php/src/Model.php::Polyspec\\Orm\\Model::getsLookaheadPage",
+          "signature": "public function getsLookaheadPage(int $page, int $perPage): Polyspec\\Orm\\LookaheadPage"
+        },
+        "rust": {
+          "symbol": "packages/rust/build/src/fixed.rs.txt::T::gets_lookahead_page",
+          "signature": "pub async fn gets_lookahead_page(&self, page: u32, per_page: u32) -> polyspec_orm::Result<polyspec_orm::LookaheadPage<Self>>"
+        },
+        "typescript": {
+          "symbol": "packages/ts/src/model.ts::Model.getsLookaheadPage",
+          "signature": "public async getsLookaheadPage(page: number, perPage: number): Promise<LookaheadPage<this>>"
+        },
+        "python": {
+          "symbol": "packages/python/src/polyspec/orm/model.py::Model.gets_lookahead_page",
+          "signature": "def gets_lookahead_page(self, page: int, per_page: int) -> LookaheadPage[Self]"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::getsLookaheadPage",
+          "signature": "public function getsLookaheadPage(int $page, int $perPage): Polyspec\\Orm\\LookaheadPage"
+        }
+      }
+    },
+    {
       "id": "Model.getPagePlanSteps",
       "for": "entity",
       "inputs": [
@@ -1285,6 +1353,46 @@
         "php-extension": {
           "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::getPagePlanSteps",
           "signature": "public function getPagePlanSteps(int $page, int $perPage): array"
+        }
+      }
+    },
+    {
+      "id": "Model.getsCountLookaheadPage",
+      "for": "entity",
+      "inputs": [
+        "PagePerPage"
+      ],
+      "output": "GroupLookaheadPage",
+      "errors": [
+        "CONFIG",
+        "IR_INVALID",
+        "driver or codec error"
+      ],
+      "state": "The model is not changed; the same model can run again",
+      "native": {
+        "go": {
+          "symbol": "packages/go/model/{entity}.go::{Entity}Model.GetsCountLookaheadPage",
+          "signature": "receiver=*{Entity}Model func(page, perPage int) (*orm.GroupLookaheadPage, error)"
+        },
+        "php": {
+          "symbol": "packages/php/src/Model.php::Polyspec\\Orm\\Model::getsCountLookaheadPage",
+          "signature": "public function getsCountLookaheadPage(int $page, int $perPage): Polyspec\\Orm\\GroupLookaheadPage"
+        },
+        "rust": {
+          "symbol": "packages/rust/build/src/fixed.rs.txt::T::gets_count_lookahead_page",
+          "signature": "pub async fn gets_count_lookahead_page(&self, page: u32, per_page: u32) -> polyspec_orm::Result<polyspec_orm::GroupLookaheadPage>"
+        },
+        "typescript": {
+          "symbol": "packages/ts/src/model.ts::Model.getsCountLookaheadPage",
+          "signature": "public async getsCountLookaheadPage(page: number, perPage: number): Promise<GroupLookaheadPage>"
+        },
+        "python": {
+          "symbol": "packages/python/src/polyspec/orm/model.py::Model.gets_count_lookahead_page",
+          "signature": "def gets_count_lookahead_page(self, page: int, per_page: int) -> GroupLookaheadPage"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::getsCountLookaheadPage",
+          "signature": "public function getsCountLookaheadPage(int $page, int $perPage): Polyspec\\Orm\\GroupLookaheadPage"
         }
       }
     },
@@ -4139,6 +4247,13 @@
       "role_ko": "항목 포함"
     },
     {
+      "from": "LookaheadPage",
+      "kind": "*--",
+      "to": "Collection",
+      "role": "contains items",
+      "role_ko": "항목 포함"
+    },
+    {
       "from": "Model",
       "kind": "*--",
       "to": "Collection",
@@ -4618,6 +4733,108 @@
             "totalPages",
             "page",
             "perPage"
+          ]
+        }
+      }
+    },
+    {
+      "id": "LookaheadPage",
+      "for": "once",
+      "native": {
+        "go": {
+          "symbol": "packages/go/orm/collection.go::LookaheadPage",
+          "fields": [
+            "Items",
+            "Page",
+            "PerPage",
+            "HasNext"
+          ]
+        },
+        "php": {
+          "symbol": "packages/php/src/LookaheadPage.php::Polyspec\\Orm\\LookaheadPage",
+          "fields": [
+            "items",
+            "page",
+            "perPage",
+            "hasNext"
+          ]
+        },
+        "rust": {
+          "symbol": "packages/rust/orm/src/collection.rs::LookaheadPage",
+          "fields": [
+            "items",
+            "page",
+            "per_page",
+            "has_next"
+          ]
+        },
+        "typescript": {
+          "symbol": "packages/ts/src/model.ts::LookaheadPage",
+          "fields": [
+            "items",
+            "page",
+            "perPage",
+            "hasNext"
+          ]
+        },
+        "python": {
+          "symbol": "packages/python/src/polyspec/orm/model.py::LookaheadPage",
+          "fields": [
+            "items",
+            "page",
+            "per_page",
+            "has_next"
+          ]
+        }
+      }
+    },
+    {
+      "id": "GroupLookaheadPage",
+      "for": "once",
+      "native": {
+        "go": {
+          "symbol": "packages/go/orm/collection.go::GroupLookaheadPage",
+          "fields": [
+            "Items",
+            "Page",
+            "PerPage",
+            "HasNext"
+          ]
+        },
+        "php": {
+          "symbol": "packages/php/src/GroupLookaheadPage.php::Polyspec\\Orm\\GroupLookaheadPage",
+          "fields": [
+            "items",
+            "page",
+            "perPage",
+            "hasNext"
+          ]
+        },
+        "rust": {
+          "symbol": "packages/rust/orm/src/collection.rs::GroupLookaheadPage",
+          "fields": [
+            "items",
+            "page",
+            "per_page",
+            "has_next"
+          ]
+        },
+        "typescript": {
+          "symbol": "packages/ts/src/model.ts::GroupLookaheadPage",
+          "fields": [
+            "items",
+            "page",
+            "perPage",
+            "hasNext"
+          ]
+        },
+        "python": {
+          "symbol": "packages/python/src/polyspec/orm/model.py::GroupLookaheadPage",
+          "fields": [
+            "items",
+            "page",
+            "per_page",
+            "has_next"
           ]
         }
       }

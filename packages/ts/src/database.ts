@@ -1496,6 +1496,22 @@ export async function paginate(ex: Executor, given: Request, givenParams: readon
   });
 }
 
+/**
+ * Runs the one page statement of a lookahead page, whose limit reads one row past the page: hasNext is whether that row
+ * came, and the row is dropped before the relation steps read the parents of the page (INT-164).
+ */
+export async function lookahead(ex: Executor, given: Request, givenParams: readonly unknown[], perPage: number): Promise<{ result: Result; hasNext: boolean }> {
+  const { request, params } = hooked(ex, given, givenParams);
+  return guarded(ex, async () => {
+    checkLock(ex, request);
+    const cached = await ex.db.plan(request);
+    const rows = await select(ex, cached, mainStep(cached.plan), params);
+    const hasNext = rows.length > perPage;
+    const result = await relations(ex, cached, params, hasNext ? rows.slice(0, perPage) : rows);
+    return { result, hasNext };
+  });
+}
+
 /** A write's key, affected row count, and the request with its parameters as the request hook of the handle left them. */
 export interface Written extends Hooked { key: number | string | null; affected: number; }
 

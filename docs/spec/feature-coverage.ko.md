@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: 72605d7ae78b792cf23639a97acfa4e4b6920e4e4446d4d52e6e35a1fb52063d -->
+<!-- source-sha256: 26f0c8abe8e2db0bf971d2ebde59fd0a9b861d0a0b8767ffeb8537e7f6e7bda7 -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 테스트 명령을 선언한다. 그 명령은 자기 recipe의 entry(FCV-12)이거나 FCV-2의 네이티브 테스트다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-unit-check`가 실패한다.
@@ -361,7 +361,7 @@
   - T334-3-5 1b 단계의 query field와 op. 각 field는 그것을 지정하는 op에서 선택 사항이며 추가만 된다. 각 field는 API unit의 공개 호출에 대응하며, 어떤 field도 SQL을 담지 않는다.
   - `model.get_by`는 `key`(키 조회, GetBy) 또는 `where`(predicate와 terminal Get) 중 정확히 하나를 받는다. `columns`(이름 목록 또는 `"all"`), `expect`(행 0개 또는 1개의 `{"rows": [...]}` 또는 `{"error": <code>}`), `as`, `lock`, `limit`은 두 형식 모두에서 선택 사항이다. API unit: client-query-base(INT-26); DSL-59.
   - `model.query`는 `where`, `order`, `columns`(이름 목록 또는 모델의 모든 열을 고르는 `"all"`, DSL-72)를 선택 사항으로 받으며, `as`는 결과를 묶으므로 `as`가 있으면 `expect`는 선택 사항이다. API unit: client-query-base(INT-20부터 INT-26까지).
-  - `model.query`의 `page: true`는 table path에서 `getsPage`를 호출한다. 그 `expect`는 `{"json": {"keys": [...], "total": <정수>, "pages": <정수>, "page": <정수>, "per_page": <정수>}}`이고 step이 `items`를 지정하면 `items`를 함께 담으며, 또는 `{"rows": [...], "total": <정수>}`이다. generated model fixture의 recipe는 `page`를 지정하지 않는다. 그 `model.query`의 expect는 행을 비교하고, generated `GetsPage`는 각 언어의 native로 검증한다. API unit: client-page(INT-64).
+  - `model.query`의 `page: true`는 table path에서 `getsPage`를 호출한다. 그 `expect`는 `{"json": {"keys": [...], "total": <정수>, "pages": <정수>, "page": <정수>, "per_page": <정수>}}`이고 step이 `items`를 지정하면 `items`를 함께 담으며, 또는 `{"rows": [...], "total": <정수>}`이다. generated model fixture의 recipe는 `page`를 지정하지 않는다. 그 `model.query`의 expect는 행을 비교하고, generated `GetsPage`는 각 언어의 native로 검증한다. API unit: client-page(INT-64). `limit`과 함께인 `model.query`의 `lookahead: true`는 그 limit의 페이지로 `getsLookaheadPage`를 호출하고, step에 `count`의 `aggregate`가 있으면 `getsCountLookaheadPage`를 호출한다. 그 `expect`는 `{"json": {"items": [...], "page": <정수>, "per_page": <정수>, "has_next": <boolean>}}`이며 `items`는 model의 key 또는 group 행의 `toArray` map이다(INT-71). `model.query`의 `group_by`는 컬럼 이름의 목록이며, 각 이름마다 체인에 `groupBy`를 호출하므로 `page: true`가 group 체인에서 `getsPage`를 호출하게 한다. API unit: client-lookahead-page(INT-164).
   - `model.count`는 `model.query`와 같이 `joins`를 받는다. API unit: conformance_verification-sqlite(DSL-90부터 DSL-93까지).
   - join의 `on`은 join이 model relation을 따를 때 선택 사항이다. `as`는 필수이며 `kind`의 기본값은 `inner`다. API unit: conformance_verification-sqlite(DSL-90, DSL-91).
   - predicate의 key와 `expr`의 column은 joined alias의 `alias.column`일 수 있다. API unit: conformance_verification-sqlite(DSL-91, DSL-92), client-utils-set-local(INT-51).
@@ -390,7 +390,7 @@
     - `{"action": "record", "kinds": K}`는 일치하는 요청마다 `{"kind": <kind>, "entity": <table>}`을 기록한다.
     - `{"action": "record_param", "kinds": K, "column": C}`는 일치하는 요청의 Set에서 C의 각 대입마다 `{"kind": <kind>, "entity": <table>, "param": <value>}`를 기록한다. `param`은 hook이 읽은 바인딩 값이다(INT-78).
     - `{"action": "fail", "kinds": K, "error": CODE}`는 일치하는 요청을 오류 코드 CODE로 실패시킨다.
-    K는 요청 종류의 목록(`one`, `all`, `count`, `group_count`, `sum`, `avg`, `paginate`, `insert`, `update`, `delete`, `restore`)이거나 이름 `reads`(앞의 일곱), `reads+restore`(같은 것과 `restore`), `every` 중 하나이다.
+    K는 요청 종류의 목록(`one`, `all`, `count`, `group_count`, `sum`, `avg`, `paginate`, `lookahead_paginate`, `group_lookahead_paginate`, `insert`, `update`, `delete`, `restore`)이거나 이름 `reads`(앞의 아홉), `reads+restore`(같은 것과 `restore`), `every` 중 하나이다.
   - `hook.records {}`는 field가 없다. expect는 실행된 순서대로 `kind`와 `entity`, `record_param` action이면 `param`도 가진 객체의 `{"value": [<record>, ...]}`, 또는 entity별 기록 수 `{"counts": {<entity>: <정수>}}`이다.
   - `model.restore {connection, model, values, columns?}`는 `values`로 설정한 모델(키가 가리키는 soft delete된 행)에 `Restore`를 호출한다(INT-38). expect는 없거나 `{"error": <code>}`이고, `columns`가 있으면 `Restore`가 돌려준 행의 해당 컬럼인 `{"rows": [[<value>, ...]]}`이다.
   - 표 모델의 `model.update {connection, model, key, set}`는 읽기 없이 새 모델에 키와 대입을 설정하고 `Update`를 호출하므로, 어떤 행도 가리키지 않는 키는 일치하는 행이 없는 update다. `model.connect`는 `audit_source`를 받는다. `{"values": {<column>: <value>}}`는 이 값을 돌려주는 source이고, `{"fail": true}`는 자기 오류로 트랜잭션을 실패시키는 source이며 expect는 이를 `CALLBACK`으로 적는다(CFG-8). 없으면 연결에 audit source가 없다.
