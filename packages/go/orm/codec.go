@@ -74,64 +74,78 @@ func Decode(styles []string, raw any) (StyledValue, error) {
 	if len(b) == 0 && len(styles) > 0 && styles[len(styles)-1] != "base64" {
 		return StyledValue{}, codecErr(CodeCodecDecode, "styled cell is empty")
 	}
-	var v any = b
-	for i := len(styles) - 1; i >= 0; i-- {
-		cur, ok := v.([]byte)
-		if !ok {
-			return StyledValue{}, codecErr(CodeCodecDecode, "style %s after a decoded value", styles[i])
-		}
-		var err error
-		switch styles[i] {
-		case "gz":
-			r, e := zlib.NewReader(bytes.NewReader(cur))
-			if e != nil {
-				return StyledValue{}, codecCause(CodeCodecDecode, "gz: bad zlib stream", e)
-			}
-			v, err = io.ReadAll(r)
-			closeErr := r.Close()
-			if err != nil {
-				return StyledValue{}, codecCause(CodeCodecDecode, "gz: bad zlib stream", err)
-			}
-			if closeErr != nil {
-				return StyledValue{}, codecCause(CodeCodecDecode, "gz: bad zlib stream", closeErr)
-			}
-		case "base64":
-			// A stored cell is decoded only in the form the encoder writes: whitespace, line breaks, missing padding, or non-zero
-			// padding bits is CODEC_DECODE (docs/spec/codec.md). Go's decoder skips \r and \n, so they are rejected separately.
-			if bytes.ContainsAny(cur, "\r\n") {
-				return StyledValue{}, codecErr(CodeCodecDecode, "base64: bad input")
-			}
-			v, err = base64.StdEncoding.Strict().DecodeString(string(cur))
-			if err != nil {
-				return StyledValue{}, codecCause(CodeCodecDecode, "base64: bad input", err)
-			}
-		case "serialize":
-			v, err = phpUnserialize(cur)
-			if err != nil {
-				return StyledValue{}, err
-			}
-		case "yaml":
-			v, err = yamlDecode(cur)
-			if err != nil {
-				return StyledValue{}, err
-			}
-		case "ordered_json":
-			v, err = orderedjson.ParseBytes(cur)
-			if err != nil {
-				return StyledValue{}, codecCause(CodeCodecDecode, "json: the cell is not JSON", err)
-			}
-		default:
-			return StyledValue{}, codecErr(CodeCodecUnsupported, "style %s", styles[i])
+	// The byte stages apply in reverse; a value stage is only the first style (style-first), so it applies last.
+	value := ""
+	if len(styles) > 0 {
+		switch styles[0] {
+		case "serialize", "yaml", "ordered_json":
+			value, styles = styles[0], styles[1:]
 		}
 	}
-	// If the first stage is gz or base64, the value is the text that stage received.
-	if raw, ok := v.([]byte); ok {
-		if !utf8.Valid(raw) {
+	for i := len(styles) - 1; i >= 0; i-- {
+		var err error
+		if styles[i] == "gz" {
+			b, err = gunzipCell(b)
+		} else {
+			b, err = base64Cell(b)
+		}
+		if err != nil {
+			return StyledValue{}, err
+		}
+	}
+	var v any
+	var err error
+	switch value {
+	case "serialize":
+		v, err = phpUnserialize(b)
+	case "yaml":
+		v, err = yamlDecode(b)
+	case "ordered_json":
+		v, err = orderedjson.ParseBytes(b)
+		if err != nil {
+			err = codecCause(CodeCodecDecode, "json: the cell is not JSON", err)
+		}
+	default:
+		// With no value stage, the value is the text that the first gz or base64 stage received, or the cell itself.
+		if !utf8.Valid(b) {
 			return StyledValue{}, codecErr(CodeCodecDecode, "decoded text is not valid UTF-8")
 		}
-		return Value(string(raw)), nil
+		return Value(string(b)), nil
+	}
+	if err != nil {
+		return StyledValue{}, err
 	}
 	return Value(v), nil
+}
+
+// gunzipCell is the text of a zlib stream of COD-12.
+func gunzipCell(cur []byte) ([]byte, error) {
+	r, err := zlib.NewReader(bytes.NewReader(cur))
+	if err != nil {
+		return nil, codecCause(CodeCodecDecode, "gz: bad zlib stream", err)
+	}
+	out, err := io.ReadAll(r)
+	closeErr := r.Close()
+	if err != nil {
+		return nil, codecCause(CodeCodecDecode, "gz: bad zlib stream", err)
+	}
+	if closeErr != nil {
+		return nil, codecCause(CodeCodecDecode, "gz: bad zlib stream", closeErr)
+	}
+	return out, nil
+}
+
+// base64Cell decodes a stored cell only in the form the encoder writes: whitespace, line breaks, missing padding, or
+// non-zero padding bits is CODEC_DECODE (docs/spec/codec.md). Go's decoder skips \r and \n, so they are rejected separately.
+func base64Cell(cur []byte) ([]byte, error) {
+	if bytes.ContainsAny(cur, "\r\n") {
+		return nil, codecErr(CodeCodecDecode, "base64: bad input")
+	}
+	out, err := base64.StdEncoding.Strict().DecodeString(string(cur))
+	if err != nil {
+		return nil, codecCause(CodeCodecDecode, "base64: bad input", err)
+	}
+	return out, nil
 }
 
 // Encode turns a value into the stored representation (string, or []byte for gz).
@@ -147,43 +161,32 @@ func Encode(styles []string, v StyledValue) (any, error) {
 	}
 	value := v.value
 	if len(styles) == 0 {
-		cur, err := firstStageText("an empty stage list", value)
-		return string(cur), err
+		cur, err := firstStageText("an empty stage list", "", value)
+		if err != nil {
+			return nil, err
+		}
+		return string(cur), nil
 	}
 	var cur []byte
 	var err error
 	for i, st := range styles {
 		switch st {
 		case "serialize":
+			if err := commonValue("serialize", value); err != nil {
+				return nil, err
+			}
 			var sb strings.Builder
 			if err := phpSerialize(&sb, value); err != nil {
 				return nil, err
 			}
 			cur = []byte(sb.String())
 		case "yaml":
-			if err := commonValue(value); err != nil {
+			if cur, err = yamlEncode(value); err != nil {
 				return nil, err
-			}
-			var doc goyaml.Node
-			err := doc.Encode(yamlFloats(value))
-			if err == nil {
-				yamlQuoteBreaks(&doc)
-				cur, err = goyaml.Marshal(&doc)
-			}
-			if err != nil {
-				return nil, codecCause(CodeCodecEncode, "yaml: the value has no YAML text", err)
-			}
-			if _, err := yamlDecode(cur); err != nil {
-				return nil, codecCause(CodeCodecEncode, "yaml: the written text does not read back as the value", err)
 			}
 		case "ordered_json":
 			ordered, err := orderedJSONValue(value)
 			if err != nil {
-				// The ordered-json library returns its own errors, such as a text that is not UTF-8 (COD-14).
-				var coded *ir.Error
-				if !errors.As(err, &coded) {
-					return nil, codecCause(CodeCodecEncode, "json: the value has no JSON text", err)
-				}
 				return nil, err
 			}
 			raw, err := orderedJSONCompact(ordered)
@@ -193,45 +196,76 @@ func Encode(styles []string, v StyledValue) (any, error) {
 			cur = []byte(raw)
 		case "base64":
 			if i == 0 {
-				if cur, err = firstStageText("a first "+st+" stage", value); err != nil {
+				if cur, err = firstStageText("a first base64 stage", "base64: ", value); err != nil {
 					return nil, err
 				}
 			}
 			cur = []byte(base64.StdEncoding.EncodeToString(cur))
-		case "gz":
+		default:
+			// checkCodecStyles leaves gz as the only other style.
 			if i == 0 {
-				if cur, err = firstStageText("a first "+st+" stage", value); err != nil {
+				if cur, err = firstStageText("a first gz stage", "gz: ", value); err != nil {
 					return nil, err
 				}
 			}
-			var buf bytes.Buffer
-			w, err := zlib.NewWriterLevel(&buf, zlib.BestCompression)
-			if err != nil {
-				return nil, codecCause(CodeCodecEncode, "gz: the compression failed", err)
-			}
-			if _, err := w.Write(cur); err != nil {
-				return nil, codecCause(CodeCodecEncode, "gz: the compression failed", err)
-			}
-			if err := w.Close(); err != nil {
-				return nil, codecCause(CodeCodecEncode, "gz: the compression failed", err)
+			if cur, err = gzipText(cur); err != nil {
+				return nil, err
 			}
 			if i == len(styles)-1 {
-				return buf.Bytes(), nil
+				return cur, nil
 			}
-			cur = buf.Bytes()
-		default:
-			return nil, codecErr(CodeCodecUnsupported, "style %s", st)
 		}
 	}
 	return string(cur), nil
 }
 
+// gzipText is the zlib stream of COD-12 of cur.
+func gzipText(cur []byte) ([]byte, error) {
+	var buf bytes.Buffer
+	w, err := zlib.NewWriterLevel(&buf, zlib.BestCompression)
+	if err != nil {
+		return nil, codecCause(CodeCodecEncode, "gz: the compression failed", err)
+	}
+	if _, err := w.Write(cur); err != nil {
+		return nil, codecCause(CodeCodecEncode, "gz: the compression failed", err)
+	}
+	if err := w.Close(); err != nil {
+		return nil, codecCause(CodeCodecEncode, "gz: the compression failed", err)
+	}
+	return buf.Bytes(), nil
+}
+
+// yamlEncode writes a value of the common value model as one YAML document and reads the text back (COD-29).
+func yamlEncode(value any) ([]byte, error) {
+	if err := commonValue("yaml", value); err != nil {
+		return nil, err
+	}
+	var doc goyaml.Node
+	err := doc.Encode(yamlFloats(value))
+	var cur []byte
+	if err == nil {
+		yamlQuoteBreaks(&doc)
+		cur, err = goyaml.Marshal(&doc)
+	}
+	if err != nil {
+		return nil, codecCause(CodeCodecEncode, "yaml: the value has no YAML text", err)
+	}
+	if _, err := yamlDecode(cur); err != nil {
+		return nil, codecCause(CodeCodecEncode, "yaml: the written text does not read back as the value", err)
+	}
+	return cur, nil
+}
+
 // firstStageText is the value that the first stage, gz or base64, encodes, and that an empty stage list writes as it is.
-// Those receive bytes, so the value must be a string.
-func firstStageText(stage string, value any) ([]byte, error) {
+// Those receive bytes, so the value must be a string (text-kind), and a string that is UTF-8 (text-unicode), whose rule
+// text starts with prefix.
+func firstStageText(stage, prefix string, value any) ([]byte, error) {
 	s, ok := value.(string)
 	if !ok {
 		return nil, codecErr(CodeCodecEncode, "%s takes a string value", stage)
+	}
+	if !utf8.ValidString(s) {
+		return nil, codecErr(CodeCodecEncode, "%sthe text is not a sequence of Unicode scalar values", prefix)
 	}
 	return []byte(s), nil
 }
@@ -295,31 +329,63 @@ func yamlFloats(value any) any {
 
 // yamlDecode reads one YAML 1.2 document. goccy/go-yaml reads U+0085 as content, as YAML 1.2
 // rules (5.4), where yaml.v3 reads it as a line break; its AST keeps each scalar's source text
-// and style, so the plain scalars resolve by the core schema below.
+// and style, so the plain scalars resolve by the core schema below. The parser is told to keep a
+// repeated key, which yamlMapping refuses in the order of the nodes (COD-70).
 func yamlDecode(b []byte) (any, error) {
 	b, err := yamlStream(b)
 	if err != nil {
 		return nil, err
 	}
-	file, err := yamlparser.ParseBytes(b, 0)
+	file, err := yamlparser.ParseBytes(b, 0, yamlparser.AllowDuplicateMapKey())
 	if err != nil {
+		if yamlCollectionKey(err) {
+			return nil, codecCause(CodeCodecDecode, "yaml: map keys must be scalar strings", err)
+		}
 		return nil, codecCause(CodeCodecDecode, "yaml: the stream does not parse", err)
 	}
-	switch len(file.Docs) {
+	// The parser gives the directives of a document (%YAML, %TAG) as a document of their own before it.
+	docs := make([]*ast.DocumentNode, 0, len(file.Docs))
+	for _, doc := range file.Docs {
+		if _, directive := doc.Body.(*ast.DirectiveNode); !directive {
+			docs = append(docs, doc)
+		}
+	}
+	switch len(docs) {
 	case 0:
 		return nil, codecErr(CodeCodecDecode, "yaml: no document")
 	case 1:
 	default:
 		return nil, codecErr(CodeCodecDecode, "yaml: multiple documents are not supported")
 	}
-	if doc := file.Docs[0]; doc.Body == nil {
+	if doc := docs[0]; doc.Body == nil {
 		// A stream without content has no document; `---` alone is a null document.
 		if doc.Start == nil {
 			return nil, codecErr(CodeCodecDecode, "yaml: no document")
 		}
 		return nil, nil
 	}
-	return yamlNode(file.Docs[0].Body)
+	return yamlNode(docs[0].Body)
+}
+
+// yamlCollectionKey reports whether the parser refused the stream at a key that is a collection, which goccy/go-yaml does
+// not read: the token it refuses is the ':' after the end of a flow sequence or map, or a block sequence entry right after
+// an explicit key '?'.
+func yamlCollectionKey(err error) bool {
+	var syntax interface{ GetToken() *token.Token }
+	if !errors.As(err, &syntax) {
+		return false
+	}
+	tk := syntax.GetToken()
+	if tk == nil || tk.Prev == nil {
+		return false
+	}
+	switch tk.Type {
+	case token.MappingValueType:
+		return tk.Prev.Type == token.SequenceEndType || tk.Prev.Type == token.MappingEndType
+	case token.SequenceEntryType:
+		return tk.Prev.Type == token.MappingKeyType
+	}
+	return false
 }
 
 // yamlStream applies the stream rules of YAML 1.2 that the parser does not (COD-13): the stream is UTF-8, a byte order
@@ -350,13 +416,9 @@ func yamlPrintable(r rune) bool {
 	return r >= 0xA0 && r <= 0xD7FF || r >= 0xE000 && r <= 0xFFFD || r >= 0x10000 && r <= 0x10FFFF
 }
 
-func yamlLine(node ast.Node) int {
-	if t := node.GetToken(); t != nil && t.Position != nil {
-		return t.Position.Line
-	}
-	return 0
-}
-
+// yamlNode is the value of a node of a document body. Each node kind of goccy/go-yaml is handled: the scalars, the
+// collections and the anchor, alias and tag forms that a rule refuses; a document, a directive, a comment, a sequence entry
+// or an explicit key that the parser gives as a value is a stream that does not parse, whose cause names the kind (COD-72).
 func yamlNode(node ast.Node) (any, error) {
 	switch n := node.(type) {
 	case *ast.SequenceNode:
@@ -374,21 +436,22 @@ func yamlNode(node ast.Node) (any, error) {
 	case *ast.MappingValueNode:
 		return yamlMapping([]*ast.MappingValueNode{n})
 	case *ast.TagNode:
-		return nil, codecErr(CodeCodecDecode, "yaml: explicit tags are not supported at line %d", yamlLine(n))
+		return nil, codecErr(CodeCodecDecode, "yaml: explicit tags are not supported")
 	case *ast.AliasNode:
-		return nil, codecErr(CodeCodecDecode, "yaml: aliases are not supported at line %d", yamlLine(n))
+		return nil, codecErr(CodeCodecDecode, "yaml: aliases are not supported")
 	case *ast.AnchorNode:
-		return nil, codecErr(CodeCodecDecode, "yaml: anchors are not supported at line %d", yamlLine(n))
+		return nil, codecErr(CodeCodecDecode, "yaml: anchors are not supported")
 	case *ast.LiteralNode:
 		return n.Value.Value, nil
-	}
-	if text, plain, ok := yamlScalar(node); ok {
+	case *ast.NullNode, *ast.BoolNode, *ast.IntegerNode, *ast.FloatNode, *ast.InfinityNode, *ast.NanNode, *ast.StringNode,
+		*ast.MergeKeyNode:
+		text, plain := yamlScalar(n.GetToken())
 		if plain {
-			return yamlCoreScalar(text, yamlLine(node))
+			return yamlCoreScalar(text)
 		}
 		return text, nil
 	}
-	return nil, codecErr(CodeCodecDecode, "yaml: the node at line %d is not supported", yamlLine(node))
+	return nil, codecCause(CodeCodecDecode, "yaml: the stream does not parse", fmt.Errorf("a %s node in a document body", node.Type()))
 }
 
 func yamlMapping(values []*ast.MappingValueNode) (map[string]any, error) {
@@ -399,7 +462,7 @@ func yamlMapping(values []*ast.MappingValueNode) (map[string]any, error) {
 			return nil, err
 		}
 		if _, exists := out[key]; exists {
-			return nil, codecErr(CodeCodecDecode, "yaml: duplicate map key at line %d", yamlLine(item.Key))
+			return nil, codecErr(CodeCodecDecode, "yaml: duplicate map key")
 		}
 		value, err := yamlNode(item.Value)
 		if err != nil {
@@ -410,36 +473,26 @@ func yamlMapping(values []*ast.MappingValueNode) (map[string]any, error) {
 	return out, nil
 }
 
-// yamlScalar returns a scalar's text and whether it is plain, whose tag the reader resolves.
-// The AST types goccy/go-yaml gives plain scalars follow its own resolution, so only the
-// source text and the style are used.
-func yamlScalar(node ast.Node) (string, bool, bool) {
-	switch n := node.(type) {
-	case *ast.LiteralNode:
-		return n.Value.Value, false, true
-	case ast.ScalarNode:
-		t := n.GetToken()
-		if t == nil {
-			return "", false, false
-		}
-		switch t.Type {
-		case token.SingleQuoteType, token.DoubleQuoteType:
-			return t.Value, false, true
-		}
-		return t.Value, true, true
+// yamlScalar returns the text of a scalar's token and whether it is plain, whose tag the reader resolves. The AST types
+// goccy/go-yaml gives plain scalars follow its own resolution, so only the source text and the style are used.
+func yamlScalar(t *token.Token) (string, bool) {
+	switch t.Type {
+	case token.SingleQuoteType, token.DoubleQuoteType:
+		return t.Value, false
 	}
-	return "", false, false
+	return t.Value, true
 }
 
 var (
-	yamlCoreInt   = regexp.MustCompile(`^(?:[-+]?[0-9]+|0o[0-7]+|0x[0-9a-fA-F]+)$`)
-	yamlCoreFloat = regexp.MustCompile(`^(?:[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?|[-+]?\.(?:inf|Inf|INF)|\.(?:nan|NaN|NAN))$`)
+	yamlCoreInt       = regexp.MustCompile(`^(?:[-+]?[0-9]+|0o[0-7]+|0x[0-9a-fA-F]+)$`)
+	yamlCoreFloat     = regexp.MustCompile(`^[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?$`)
+	yamlCoreNonFinite = regexp.MustCompile(`^(?:[-+]?\.(?:inf|Inf|INF)|\.(?:nan|NaN|NAN))$`)
 )
 
 // yamlCoreScalar resolves a plain scalar by the tags of the YAML 1.2 core schema (YAML 1.2.2,
 // 10.3.2): null, bool, int and float by their regular expressions, and str otherwise. An
 // integer outside int64 and a float that is not finite are outside the common value model.
-func yamlCoreScalar(text string, line int) (any, error) {
+func yamlCoreScalar(text string) (any, error) {
 	switch text {
 	case "", "~", "null", "Null", "NULL":
 		return nil, nil
@@ -461,13 +514,16 @@ func yamlCoreScalar(text string, line int) (any, error) {
 			value, err = strconv.ParseInt(text, 10, 64)
 		}
 		if err != nil {
-			return nil, codecErr(CodeCodecDecode, "yaml: integer at line %d is outside the i64 range", line)
+			return nil, codecCause(CodeCodecDecode, "yaml: integer is outside the i64 range", err)
 		}
 		return value, nil
+	case yamlCoreNonFinite.MatchString(text):
+		return nil, codecErr(CodeCodecDecode, "yaml: number is not finite")
 	case yamlCoreFloat.MatchString(text):
+		// The form is a float of the core schema, which ParseFloat reads, so its only failure is a float beyond the f64 range.
 		value, err := strconv.ParseFloat(text, 64)
-		if err != nil || math.IsNaN(value) || math.IsInf(value, 0) {
-			return nil, codecErr(CodeCodecDecode, "yaml: non-finite or invalid float at line %d", line)
+		if err != nil {
+			return nil, codecCause(CodeCodecDecode, "yaml: number is not finite", err)
 		}
 		return value, nil
 	}
@@ -479,26 +535,30 @@ func yamlMapKey(node ast.Node) (string, error) {
 	if explicit, ok := node.(*ast.MappingKeyNode); ok {
 		node = explicit.Value
 	}
-	line := yamlLine(node)
 	var value any
-	var err error
-	switch node.(type) {
-	case *ast.TagNode, *ast.AnchorNode, *ast.AliasNode:
-		// yamlNode refuses each of these forms.
-		_, err = yamlNode(node)
-		return "", err
-	default:
-		text, plain, ok := yamlScalar(node)
-		switch {
-		case !ok:
-			return "", codecErr(CodeCodecDecode, "yaml: map keys must be scalar strings at line %d", line)
-		case plain:
-			value, err = yamlCoreScalar(text, line)
-		default:
-			value = text
+	switch n := node.(type) {
+	case *ast.SequenceNode, *ast.MappingNode, *ast.MappingValueNode:
+		return "", codecErr(CodeCodecDecode, "yaml: map keys must be scalar strings")
+	case *ast.LiteralNode:
+		value = n.Value.Value
+	case *ast.NullNode, *ast.BoolNode, *ast.IntegerNode, *ast.FloatNode, *ast.InfinityNode, *ast.NanNode, *ast.StringNode,
+		*ast.MergeKeyNode:
+		text, plain := yamlScalar(n.GetToken())
+		value = text
+		if plain && !yamlCoreInt.MatchString(text) && (yamlCoreFloat.MatchString(text) || yamlCoreNonFinite.MatchString(text)) {
+			// A float key, finite or not, is a key that the core schema reads as a float.
+			return "", codecErr(CodeCodecDecode, "yaml: map keys must be strings or integers")
 		}
-	}
-	if err != nil {
+		if plain {
+			var err error
+			if value, err = yamlCoreScalar(text); err != nil {
+				return "", err
+			}
+		}
+	default:
+		// yamlNode refuses a tag, an anchor and an alias by their rules, and a kind that is not a key as a stream that does
+		// not parse.
+		_, err := yamlNode(node)
 		return "", err
 	}
 	switch v := value.(type) {
@@ -507,30 +567,54 @@ func yamlMapKey(node ast.Node) (string, error) {
 	case int64:
 		return strconv.FormatInt(v, 10), nil
 	}
-	return "", codecErr(CodeCodecDecode, "yaml: map keys must be strings or integers at line %d", line)
+	return "", codecErr(CodeCodecDecode, "yaml: map keys must be strings or integers")
 }
 
 // ---- PHP serialize format ----
 
-// commonValue refuses a value outside the common value model of COD-16 before a yaml stage writes it, as phpSerialize
-// refuses it while it writes: yaml.v3 writes bytes and other Go values in forms of its own (COD-63).
-func commonValue(v any) error {
+// commonValue refuses, in the order of its nodes, a value that a first serialize or yaml stage, named by stage, does not
+// write (COD-70): an ordered-json value, a string that is not UTF-8, a float that is not finite, an integer outside the i64
+// range, and any other value outside the common value model of COD-16, such as bytes or a map whose keys are not strings
+// (COD-63), which yaml.v3 would write in forms of its own. A map is read in the order of its sorted keys.
+func commonValue(stage string, v any) error {
 	switch x := v.(type) {
-	case nil, bool, int, int32, int64, float64, string:
+	case nil, bool, int, int32, int64:
+	case uint64:
+		if x > math.MaxInt64 {
+			return codecErr(CodeCodecEncode, "%s: integer is outside the i64 range", stage)
+		}
+	case float64:
+		if math.IsNaN(x) || math.IsInf(x, 0) {
+			return codecErr(CodeCodecEncode, "%s: number is not finite", stage)
+		}
+	case string:
+		if !utf8.ValidString(x) {
+			return codecErr(CodeCodecEncode, "%s: the text is not a sequence of Unicode scalar values", stage)
+		}
+	case *orderedjson.Value:
+		return codecErr(CodeCodecEncode, "%s: an ordered-json value is written only by the ordered_json stage", stage)
 	case []any:
 		for _, item := range x {
-			if err := commonValue(item); err != nil {
+			if err := commonValue(stage, item); err != nil {
 				return err
 			}
 		}
 	case map[string]any:
-		for _, item := range x {
-			if err := commonValue(item); err != nil {
+		keys := make([]string, 0, len(x))
+		for k := range x {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			if err := commonValue(stage, k); err != nil {
+				return err
+			}
+			if err := commonValue(stage, x[k]); err != nil {
 				return err
 			}
 		}
 	default:
-		return codecErr(CodeCodecEncode, "yaml: the value is not a codec value")
+		return codecErr(CodeCodecEncode, "%s: the value is not a codec value", stage)
 	}
 	return nil
 }
@@ -551,6 +635,8 @@ func phpSerialize(sb *strings.Builder, v any) error {
 		sb.WriteString("i:" + strconv.FormatInt(int64(x), 10) + ";")
 	case int64:
 		sb.WriteString("i:" + strconv.FormatInt(x, 10) + ";")
+	case uint64:
+		sb.WriteString("i:" + strconv.FormatUint(x, 10) + ";")
 	case float64:
 		sb.WriteString("d:" + phpFloat(x) + ";")
 	case string:
@@ -601,17 +687,9 @@ func phpIntKey(k string) (int64, bool) {
 }
 
 // phpFloat formats like PHP's serialize_precision=-1: shortest round-trip,
-// integral values without a fraction ("d:2;"), exponent form as "1.0E+25".
+// integral values without a fraction ("d:2;"), exponent form as "1.0E+25". commonValue has refused a float that is not
+// finite.
 func phpFloat(f float64) string {
-	if math.IsInf(f, 1) {
-		return "INF"
-	}
-	if math.IsInf(f, -1) {
-		return "-INF"
-	}
-	if math.IsNaN(f) {
-		return "NAN"
-	}
 	// PHP writes the shortest digits (serialize_precision -1) in the exponent form when the decimal exponent is below -4
 	// or above 16, and in fixed notation otherwise (zend_gcvt with precision 17).
 	s := strconv.FormatFloat(f, 'e', -1, 64)
@@ -641,7 +719,7 @@ func phpUnserialize(b []byte) (any, error) {
 		return nil, err
 	}
 	if p.i != len(b) {
-		return nil, codecErr(CodeCodecDecode, "serialize: trailing data at %d", p.i)
+		return nil, p.fail("trailing data")
 	}
 	return v, nil
 }
@@ -651,8 +729,9 @@ type phpParser struct {
 	i int
 }
 
+// fail is the error of a serialize rule; its text names no position (COD-70).
 func (p *phpParser) fail(msg string) error {
-	return codecErr(CodeCodecDecode, "serialize: %s at %d", msg, p.i)
+	return codecErr(CodeCodecDecode, "serialize: %s", msg)
 }
 
 func (p *phpParser) expect(c byte) error {
@@ -663,8 +742,16 @@ func (p *phpParser) expect(c byte) error {
 	return nil
 }
 
-// length reads the length that a serialized string or array of kind what
-// carries after its kind letter, the colon before it included.
+var (
+	phpDigits = regexp.MustCompile(`^[0-9]+$`)
+	phpInt    = regexp.MustCompile(`^[+-]?[0-9]+$`)
+	// phpFloatForm is the d field of the PHP grammar: an optional sign, digits with an optional fraction or a fraction, and
+	// an optional exponent.
+	phpFloatForm = regexp.MustCompile(`^[+-]?(?:[0-9]+|[0-9]*\.[0-9]+|[0-9]+\.[0-9]*)(?:[eE][+-]?[0-9]+)?$`)
+)
+
+// length reads the length that a serialized string or array of kind what carries after its kind letter, the colon before
+// it included: digits only. A length beyond int is past the end of any cell.
 func (p *phpParser) length(what string) (int, error) {
 	if err := p.expect(':'); err != nil {
 		return 0, err
@@ -673,9 +760,13 @@ func (p *phpParser) length(what string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	n, err := strconv.Atoi(ls)
-	if err != nil || n < 0 {
+	if !phpDigits.MatchString(ls) {
 		return 0, p.fail("bad " + what + " length")
+	}
+	// Digits only, so the one failure of Atoi is a length beyond int.
+	n, err := strconv.Atoi(ls)
+	if errors.Is(err, strconv.ErrRange) {
+		n = math.MaxInt
 	}
 	return n, nil
 }
@@ -688,6 +779,43 @@ func (p *phpParser) until(c byte) (string, error) {
 	s := string(p.b[p.i : p.i+j])
 	p.i += j + 1
 	return s, nil
+}
+
+// scalar is the value of a b, i or d field s.
+func (p *phpParser) scalar(t byte, s string) (any, error) {
+	switch t {
+	case 'b':
+		switch s {
+		case "0":
+			return false, nil
+		case "1":
+			return true, nil
+		}
+		return nil, p.fail("bad bool")
+	case 'i':
+		if !phpInt.MatchString(s) {
+			return nil, p.fail("bad int")
+		}
+		n, err := strconv.ParseInt(s, 10, 64)
+		if err != nil {
+			return nil, codecCause(CodeCodecDecode, "serialize: integer is outside the i64 range", err)
+		}
+		return n, nil
+	}
+	// A float of the common value model is finite (COD-16), so INF, -INF, NAN and a float beyond the f64 range are not
+	// values.
+	switch s {
+	case "NAN", "INF", "-INF":
+		return nil, p.fail("non-finite float")
+	}
+	if !phpFloatForm.MatchString(s) {
+		return nil, p.fail("bad float")
+	}
+	f, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return nil, codecCause(CodeCodecDecode, "serialize: non-finite float", err)
+	}
+	return f, nil
 }
 
 func (p *phpParser) value() (any, error) {
@@ -707,29 +835,7 @@ func (p *phpParser) value() (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		switch t {
-		case 'b':
-			switch s {
-			case "0":
-				return false, nil
-			case "1":
-				return true, nil
-			}
-			return nil, p.fail("bad bool")
-		case 'i':
-			n, err := strconv.ParseInt(s, 10, 64)
-			if err != nil {
-				return nil, p.fail("bad int")
-			}
-			return n, nil
-		default:
-			// A float of the common value model is finite (COD-16), so INF, -INF and NAN are not values.
-			f, err := strconv.ParseFloat(s, 64)
-			if err != nil || math.IsNaN(f) || math.IsInf(f, 0) {
-				return nil, p.fail("bad float")
-			}
-			return f, nil
-		}
+		return p.scalar(t, s)
 	case 's':
 		n, err := p.length("string")
 		if err != nil {
@@ -738,15 +844,18 @@ func (p *phpParser) value() (any, error) {
 		if err := p.expect('"'); err != nil {
 			return nil, err
 		}
-		if p.i+n > len(p.b) {
+		if n > len(p.b)-p.i {
 			return nil, p.fail("string overruns input")
 		}
-		s := string(p.b[p.i : p.i+n])
+		s := p.b[p.i : p.i+n]
+		if !utf8.Valid(s) {
+			return nil, p.fail("string is not valid UTF-8")
+		}
 		p.i += n
 		if err := p.expect('"'); err != nil {
 			return nil, err
 		}
-		return s, p.expect(';')
+		return string(s), p.expect(';')
 	case 'a':
 		n, err := p.length("array")
 		if err != nil {
@@ -755,8 +864,10 @@ func (p *phpParser) value() (any, error) {
 		if err := p.expect('{'); err != nil {
 			return nil, err
 		}
-		keys := make([]string, 0, n)
-		vals := make([]any, 0, n)
+		// Each entry takes bytes of the cell, so the cell bounds the space to reserve.
+		size := min(n, len(p.b)-p.i)
+		keys := make([]string, 0, size)
+		vals := make([]any, 0, size)
 		sequential := true
 		for k := 0; k < n; k++ {
 			kv, err := p.value()
@@ -789,7 +900,7 @@ func (p *phpParser) value() (any, error) {
 		if sequential {
 			return vals, nil
 		}
-		m := make(map[string]any, n)
+		m := make(map[string]any, len(keys))
 		for k := range keys {
 			m[keys[k]] = vals[k]
 		}

@@ -11,6 +11,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"math/big"
@@ -671,6 +672,7 @@ func check(raw json.RawMessage, r result, styles []string) error {
 		MessageHolds string          `json:"message_holds"`
 		BytesPrefix  string          `json:"bytes_prefix_hex"`
 		BytesLength  int             `json:"bytes_length"`
+		LibraryCause bool            `json:"library_cause"`
 	}
 	if err := decodeOutcome(raw, &outcome); err != nil {
 		return err
@@ -678,6 +680,10 @@ func check(raw json.RawMessage, r result, styles []string) error {
 	if outcome.Error != "" {
 		if got := orm.ErrorCode(r.err); got != outcome.Error {
 			return fmt.Errorf("error %q (%w), want %s", got, r.err, outcome.Error)
+		}
+		// library_cause: the error keeps the failure of the library that its rule meets as its cause (COD-71).
+		if outcome.LibraryCause && errors.Unwrap(r.err) == nil {
+			return fmt.Errorf("error %q has no cause, want the failure of the library", r.err.Error())
 		}
 		// message is the whole text of the error, its code included (INT-163).
 		if outcome.Message != "" && r.err.Error() != outcome.Message {
@@ -759,8 +765,9 @@ func compareCell(want node, cell any) error {
 	return nil
 }
 
-// node is a recipe wrapper as a tree: its kind (int, float, text, bool, nil, null, bytes_hex, array, object, and the time
-// forms), its text, and its items or members in order.
+// node is a recipe wrapper as a tree: its kind (int, float, text, bool, nil, null, bytes_hex, array, object, map_entries,
+// and the time forms), its text, and its items or members in order. The entries of a map_entries wrapper are its items in
+// pairs, each key followed by its value.
 type node struct {
 	kind    string
 	text    string
@@ -773,22 +780,29 @@ type member struct {
 	value node
 }
 
-// holdsBytes is whether the value is bytes or a list or a map that holds bytes at any depth.
-func holdsBytes(n node) bool {
-	if n.kind == "bytes_hex" {
-		return true
+// hasOrderedValue is whether the value is an ordered-json value: a value whose every node has a JSON text, which bytes, a
+// text that is not UTF-8, a float that is not finite and a map whose keys need not be strings have not, nested no deeper
+// than the levels that the ordered-json parser reads.
+func hasOrderedValue(n node, depth int) bool {
+	switch n.kind {
+	case "bytes_hex", "text_hex", "f64", "map_entries":
+		return false
+	case "array", "object":
+		if depth+1 > orderedjson.MaxDepth {
+			return false
+		}
 	}
 	for _, item := range n.items {
-		if holdsBytes(item) {
-			return true
+		if !hasOrderedValue(item, depth+1) {
+			return false
 		}
 	}
 	for _, m := range n.members {
-		if holdsBytes(m.value) {
-			return true
+		if !hasOrderedValue(m.value, depth+1) {
+			return false
 		}
 	}
-	return false
+	return true
 }
 
 func (n node) String() string {
@@ -890,6 +904,22 @@ func wrapper(raw json.RawMessage) (node, error) {
 				n.members = append(n.members, member{k, child})
 			}
 			return n, nil
+		case "map_entries":
+			var pairs [][2]json.RawMessage
+			if err := json.Unmarshal(body, &pairs); err != nil {
+				return node{}, err
+			}
+			n := node{kind: kind}
+			for _, pair := range pairs {
+				for _, part := range pair {
+					child, err := wrapper(part)
+					if err != nil {
+						return node{}, err
+					}
+					n.items = append(n.items, child)
+				}
+			}
+			return n, nil
 		case "bool":
 			var b bool
 			if err := json.Unmarshal(body, &b); err != nil {
@@ -982,9 +1012,18 @@ func styledArgument(raw json.RawMessage, styles []string, bound map[string]resul
 		}
 		return orm.Value(ref), nil
 	}
-	// An ordered_json wrapper is the ordered-json value of its value, whatever the stages (FCV-4).
+	// An ordered_json wrapper is the ordered-json value of its value, whatever the stages, and styled_unset is the styled
+	// value that is neither SQL NULL nor a value (FCV-4).
 	var probe map[string]json.RawMessage
-	if json.Unmarshal(raw, &probe) == nil && len(probe) == 1 && probe["ordered_json"] != nil {
+	isOne := json.Unmarshal(raw, &probe) == nil && len(probe) == 1
+	if isOne && probe["styled_unset"] != nil {
+		var unset bool
+		if err := json.Unmarshal(probe["styled_unset"], &unset); err != nil || !unset {
+			return orm.StyledValue{}, fmt.Errorf("a styled_unset wrapper is {\"styled_unset\": true}: %s", raw)
+		}
+		return orm.StyledValue{}, nil
+	}
+	if isOne && probe["ordered_json"] != nil {
 		inner, err := wrapper(probe["ordered_json"])
 		if err != nil {
 			return orm.StyledValue{}, err
@@ -998,8 +1037,9 @@ func styledArgument(raw json.RawMessage, styles []string, bound map[string]resul
 	if n.kind == "null" {
 		return orm.SqlNull(), nil
 	}
-	// Bytes have no JSON text, so a value that holds bytes reaches an ordered_json stage as the value it is (COD-63).
-	if slices.Contains(styles, "ordered_json") && !holdsBytes(n) {
+	// A value that is no ordered-json value, such as one that holds bytes, reaches an ordered_json stage as the Go value it
+	// is (COD-63, COD-70).
+	if slices.Contains(styles, "ordered_json") && hasOrderedValue(n, 0) {
 		return orderedValue(n)
 	}
 	v, err := toGo(n)
@@ -1079,6 +1119,21 @@ func toGo(n node) (any, error) {
 		return string(b), err
 	case "bytes_hex":
 		return hex.DecodeString(n.text)
+	case "map_entries":
+		// A Go map whose keys need not be strings (FCV-4).
+		out := make(map[any]any, len(n.items)/2)
+		for i := 0; i+1 < len(n.items); i += 2 {
+			k, err := toGo(n.items[i])
+			if err != nil {
+				return nil, err
+			}
+			v, err := toGo(n.items[i+1])
+			if err != nil {
+				return nil, err
+			}
+			out[k] = v
+		}
+		return out, nil
 	case "array":
 		out := make([]any, len(n.items))
 		for i, item := range n.items {
