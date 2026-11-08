@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 // The native read of a date column (T293): a stored value that no date form reads throws the CODEC_DECODE
 // OrmException "day_cell.day: date cell is not a date" that the PHP library throws (COD-1, COD-61), on a row read and
-// on a grouped value, and a text that the library reads in one of its fallback forms reads natively too. Each case
+// on a grouped value, and so does a date text that is not YYYY-MM-DD, which the library refuses too. Each case
 // stores its value in a SQLite file through PDO, since the model writes only valid dates.
 
 namespace Polyspec\Orm\Extension\Tests;
@@ -38,13 +38,9 @@ final class InvalidDateReadNativeTest extends TestCase
     }
 
     // Requirements: COD-61.
-    public function testTextDateOfAFallbackFormReads(): void
+    public function testTextDateThatIsNotYyyyMmDdThrowsTheDecodeError(): void
     {
-        self::withDay('2026-1-1', static function ($db): void {
-            $day = self::readDay($db);
-            self::assertInstanceOf(\DateTimeImmutable::class, $day);
-            self::assertSame('2026-01-01 00:00:00', $day->format('Y-m-d H:i:s'));
-        });
+        self::assertReadRefuses('2026-1-1', static fn ($db) => self::readDay($db));
     }
 
     // Requirements: COD-61.
