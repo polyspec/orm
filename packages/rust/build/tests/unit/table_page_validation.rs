@@ -9,7 +9,16 @@ fn page_assembly_refuses_prepared_columns_that_differ_from_the_descriptor() {
     let metadata = TableMetadata {
         table: TableRef { namespace: "main".into(), name: "fixture".into() },
         kind: TableKind::Table,
-        columns: vec![super::table_column::plain_column("a", "INTEGER", false)],
+        columns: vec![crate::catalog::TableColumnMetadata {
+            name: "a".into(),
+            native_type: "INTEGER".into(),
+            nullable: false,
+            generated: false,
+            automatic_key: false,
+            default_expression: None,
+            expression_default: false,
+            check_precision: None,
+        }],
         primary_key: vec!["a".into()],
         reliable_row_identity: true,
     };

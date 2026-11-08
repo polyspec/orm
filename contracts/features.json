@@ -3376,7 +3376,6 @@
       ],
       "fixtures": [
         "packages/php/tests/coverage_cases.php",
-        "packages/rust/tests/tests/all/common/mod.rs",
         "packages/ts/tests/coverage_case.mjs",
         "tests/generator/php-scan-vectors.json",
         "packages/python/tests/coverage_case.py"
@@ -4109,7 +4108,6 @@
             "packages/rust/schema/tests/cases/dbspec_runtime.rs",
             "packages/rust/schema/tests/cases/dbspec_model.rs",
             "contracts/fixtures/bench/bench.dbs",
-            "packages/rust/schema/tests/common/vector_file.rs",
             "tests/dbspec/ddl.json",
             "tests/dbspec/plan-cases.json",
             "tests/dbspec/plans-physical.json",
@@ -7545,8 +7543,7 @@
         "docs/operations/perf-raw-go-native.txt",
         "docs/operations/perf-raw-rust-native.txt",
         "docs/operations/perf-raw-rust-native-2.txt",
-        "packages/php/tests/coverage_cases.php",
-        "packages/rust/tests/tests/all/common/mod.rs"
+        "packages/php/tests/coverage_cases.php"
       ],
       "tests": [
         "packages/go/bench/dsn_test.go",
@@ -7876,7 +7873,6 @@
       "fixtures": [
         "tests/conformance/vectors.json",
         "packages/php/tests/coverage_cases.php",
-        "packages/rust/tests/tests/all/common/mod.rs",
         "packages/ts/tests/coverage_case.mjs",
         "tests/markdown/cases.json",
         "tests/markdown/corpus/dbspec/conformance.dbs",
@@ -8333,7 +8329,6 @@
         }
       ],
       "fixtures": [
-        "packages/rust/tests/tests/all/common/mod.rs"
       ],
       "tests": [
         "packages/rust/build/tests/cases/lock_probe/mod.rs",
@@ -9796,16 +9791,6 @@
       "command": "php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenTestSupportTest.php"
     },
     {
-      "id": "rust-dbspec-json-lines",
-      "paths": [
-        "packages/rust/schema/tests/common/json_lines.rs"
-      ],
-      "tests": [
-        "packages/rust/tests/tests/all/dbspec_mermaid_none.rs"
-      ],
-      "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mts rust-dbspec-lines-helper --cwd packages/rust -- \"$LEASE\" run \"$CARGO_LEASES\" exclusive --wait -- cargo test --no-run -p polyspec-orm-tests --test all --locked --offline"
-    },
-    {
       "id": "dbspec-vector-line-join",
       "paths": [
         "tests/dbspec/join.mjs"
@@ -10132,8 +10117,6 @@
     {
       "id": "rust-test-helpers",
       "paths": [
-        "packages/rust/tests/tests/all/common/mod.rs",
-        "packages/rust/build/tests/common/*.rs",
         "packages/rust/build/tests/cases/common/*.rs",
         "packages/rust/build/tests/cases/lib.rs",
         "packages/rust/orm/tests/cases/common/*.rs",
