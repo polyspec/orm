@@ -1506,7 +1506,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm"
-version = "0.0.22"
+version = "0.0.23"
 dependencies = [
  "aes-gcm",
  "base64",
@@ -1541,7 +1541,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-build"
-version = "0.0.22"
+version = "0.0.23"
 dependencies = [
  "bigdecimal",
  "futures-util",
@@ -1564,7 +1564,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-build-cases"
-version = "0.0.22"
+version = "0.0.23"
 dependencies = [
  "chrono",
  "futures-util",
@@ -1583,7 +1583,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-case-clock"
-version = "0.0.22"
+version = "0.0.23"
 dependencies = [
  "polyspec-orm-testcase",
  "rustix",
@@ -1591,7 +1591,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-case-database"
-version = "0.0.22"
+version = "0.0.23"
 dependencies = [
  "polyspec-orm",
  "polyspec-orm-testcase",
@@ -1602,7 +1602,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-cases"
-version = "0.0.22"
+version = "0.0.23"
 dependencies = [
  "chrono",
  "futures-util",
@@ -1622,7 +1622,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-schema"
-version = "0.0.22"
+version = "0.0.23"
 dependencies = [
  "jsonschema",
  "polyspec-orm-case-clock",
@@ -1637,7 +1637,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-schema-cases"
-version = "0.0.22"
+version = "0.0.23"
 dependencies = [
  "jsonschema",
  "polyspec-orm-case-clock",
@@ -1649,7 +1649,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-test-support"
-version = "0.0.22"
+version = "0.0.23"
 dependencies = [
  "polyspec-orm",
  "polyspec-orm-case-clock",
@@ -1660,7 +1660,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-testcase"
-version = "0.0.22"
+version = "0.0.23"
 dependencies = [
  "libtest-mimic",
  "tokio",
@@ -1668,7 +1668,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-testcase-cases"
-version = "0.0.22"
+version = "0.0.23"
 dependencies = [
  "polyspec-orm-testcase",
  "tokio",
@@ -1676,7 +1676,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-tests"
-version = "0.0.22"
+version = "0.0.23"
 dependencies = [
  "chrono",
  "cpu-time",

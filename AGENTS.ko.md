@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: a816fb8a4572528c71171232ac22d6c48e7367d6e43b3d4700bc348f712bb4d0 -->
+<!-- source-sha256: 5974db5a0a4f65d38e33867121bfbaf1f88c884bf882d1a2dd30733fdb6da93b -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -209,7 +209,7 @@
   Enforced by: none, polling, timer, symbolic link를 검사하는 도구가 없다
 - Own: 경로는 선언적으로(추적 파일에 이름을 적어) 또는 발견(discovery)으로(문서나 script가 밝힌 발견 규칙에 따라) 정하며, 상대 경로로 정하지 않는다.
   Enforced by: none, code가 경로를 해석하는 방식을 읽는 검사가 없다
-- Own: 하나의 `0.0.22` 버전을 개발한다. 공개 클라이언트는 드라이버 인자를 따로 받지 않고 URI scheme이 데이터베이스를 선택하는 DSN URI 하나를 받는다. 실행 시 orm은 클라이언트 라이브러리뿐이며 계획과 실행은 그것을 부르는 프로세스 안에서 이뤄진다.
+- Own: 하나의 `0.0.23` 버전을 개발한다. 공개 클라이언트는 드라이버 인자를 따로 받지 않고 URI scheme이 데이터베이스를 선택하는 DSN URI 하나를 받는다. 실행 시 orm은 클라이언트 라이브러리뿐이며 계획과 실행은 그것을 부르는 프로세스 안에서 이뤄진다.
   Enforced by: none, kit K812 이후 version을 읽는 검사가 없다. package manager가 그것을 해석한다
 - Own: 각 dbspec parser는 `identity` 컬럼이 유일한 기본 키 컬럼이고 type이 `i64`가 아니면 거부한다. 여섯 dbspec 구현은 동일한 허용·거부 스키마 사례를 실행한다.
   Enforced by: `make conformance-check`

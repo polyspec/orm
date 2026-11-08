@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+## 0.0.23
+
 - orm pins ordered-json at 0.0.22 in every ecosystem, and each lock is refreshed by its own package manager (T401).
 - Tests: the Rust suite of the workspace is one test program, `all`, in polyspec-orm-tests: each former test program is a module whose trials are `<module>::<name>`, the groups run one after another with a line per group and a final count, the tests of each package stay in its test case crate tests/cases, and a Make target selects its tests with `--test all -- <module>::` (T375). The markdown recipe tests are modules of the program too.
 - A catalog connection gives the connection of a committed mutation to its next session in Rust, Go, TypeScript and Python (INT-106b to INT-106e), so the seed rows of a recipe case write on one connection: the Rust recipe conformance_verification on PostgreSQL opens 1,465 connections for its 90 cases where it opened 15,959, and Go, TypeScript and Python fall alike; a markdown session goes back to its pool the same way, through the new `MarkdownLease::keep` (T366).
