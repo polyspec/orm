@@ -342,6 +342,63 @@
         {
           "type": "object",
           "required": [
+            "text_code_points"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "text_code_points": {
+              "description": "A host string of these Unicode code points, a lone surrogate allowed (FCV-4); only the runtimes whose host string holds a lone surrogate, TypeScript and Python, run it.",
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1114111
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "map_entries"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "map_entries": {
+              "description": "A host map of these key and value pairs, whose keys need not be strings (FCV-4); only the runtimes whose codec value holds such a map, Go and Python, run it.",
+              "type": "array",
+              "items": {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "$ref": "#/$defs/value"
+                  },
+                  {
+                    "$ref": "#/$defs/value"
+                  }
+                ],
+                "minItems": 2,
+                "maxItems": 2
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "undefined"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "undefined": {
+              "description": "The undefined value of TypeScript, as a member value (FCV-4); only TypeScript runs it.",
+              "const": true
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
             "bool"
           ],
           "additionalProperties": false,
@@ -628,7 +685,7 @@
       ]
     },
     "encodeArgument": {
-      "description": "The value of codec.encode: an argument, or an ordered_json wrapper, the ordered-json value of its value whatever the stages (FCV-4).",
+      "description": "The value of codec.encode: an argument, an ordered_json wrapper, the ordered-json value of its value whatever the stages, or a styled_unset wrapper, the styled value that is neither SQL NULL nor a value (FCV-4).",
       "oneOf": [
         {
           "$ref": "#/$defs/argument"
@@ -642,6 +699,19 @@
           "properties": {
             "ordered_json": {
               "$ref": "#/$defs/value"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "styled_unset"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "styled_unset": {
+              "description": "A styled value that is neither SQL NULL nor a value (FCV-4); only the runtimes whose styled value has that state, Go and Python, run it.",
+              "const": true
             }
           }
         }

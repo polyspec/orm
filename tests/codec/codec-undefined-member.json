@@ -1,0 +1,136 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "COD-70"
+  ],
+  "cases": [
+    {
+      "id": "member_that_is_undefined",
+      "requirements": [
+        "COD-70"
+      ],
+      "steps": [
+        {
+          "op": "codec.encode",
+          "styles": [
+            "ordered_json"
+          ],
+          "value": {
+            "object": [
+              [
+                "a",
+                {
+                  "undefined": true
+                }
+              ]
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: json: a member is undefined"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "ordered_json"
+          ],
+          "value": {
+            "object": [
+              [
+                "a",
+                {
+                  "int": "1"
+                }
+              ],
+              [
+                "b",
+                {
+                  "undefined": true
+                }
+              ]
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: json: a member is undefined"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "ordered_json"
+          ],
+          "value": {
+            "array": [
+              {
+                "object": [
+                  [
+                    "a",
+                    {
+                      "undefined": true
+                    }
+                  ]
+                ]
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: json: a member is undefined"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize"
+          ],
+          "value": {
+            "object": [
+              [
+                "a",
+                {
+                  "undefined": true
+                }
+              ]
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: serialize: the value is not a codec value"
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "yaml"
+          ],
+          "value": {
+            "object": [
+              [
+                "a",
+                {
+                  "undefined": true
+                }
+              ]
+            ]
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: yaml: the value is not a codec value"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

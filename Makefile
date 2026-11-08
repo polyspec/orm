@@ -2656,14 +2656,17 @@ codec-check/python: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_bytes_value_none
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_non_finite_value_none
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_json_depth_none
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_lone_surrogate_none
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_map_keys_none
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_styled_unset_none
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_ordered_json_text
 codec-check/go:
-	$(GO_TEST) ./packages/go/orm -run '^(TestRecipeCodecNone|TestRecipeCodecIntegerBeyondI64None|TestRecipeCodecBytesValueNone|TestRecipeCodecNonFiniteValueNone|TestRecipeCodecJsonDepthNone|TestRecipeCodecRawTextNone|TestOrderedJSONRefusesATextThatIsNotUnicode)$$' -count=1
+	$(GO_TEST) ./packages/go/orm -run '^(TestRecipeCodecNone|TestRecipeCodecIntegerBeyondI64None|TestRecipeCodecBytesValueNone|TestRecipeCodecNonFiniteValueNone|TestRecipeCodecJsonDepthNone|TestRecipeCodecRawTextNone|TestRecipeCodecMapKeysNone|TestRecipeCodecStyledUnsetNone|TestOrderedJSONRefusesATextThatIsNotUnicode)$$' -count=1
 codec-check/rust: lease-tool
 	cd packages/rust && $(CARGO_TEST) codec-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test all -- codec_none:: codec_integer_beyond_i64_none::
 codec-check/typescript: typescript-current
 	$(READ_TYPESCRIPT)
-	$(NODE) --test packages/ts/tests/codec-none.test.mjs packages/ts/tests/codec-integer-beyond-i64-none.test.mjs packages/ts/tests/codec-bytes-value-none.test.mjs packages/ts/tests/codec-non-finite-value-none.test.mjs packages/ts/tests/codec-json-depth-none.test.mjs
+	$(NODE) --test packages/ts/tests/codec-none.test.mjs packages/ts/tests/codec-integer-beyond-i64-none.test.mjs packages/ts/tests/codec-bytes-value-none.test.mjs packages/ts/tests/codec-non-finite-value-none.test.mjs packages/ts/tests/codec-json-depth-none.test.mjs packages/ts/tests/codec-lone-surrogate-none.test.mjs packages/ts/tests/codec-undefined-member-none.test.mjs
 codec-check/php: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecRecipeTest.php
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecBytesValueRecipeTest.php

@@ -1,5 +1,5 @@
 <!-- doc-id: tests-codec-readme -->
-<!-- source-sha256: caadfe3d00db1a91d5ce92d3cff2752a9dbeac0abd3b908c85383d54f531cc15 -->
+<!-- source-sha256: f35c55aa30177648728e17ae35d8a583f0fd5bbf278414b1d4a6abd78e9bd612 -->
 # 코덱 recipe
 
 `codec.json`은 `docs/spec/feature-coverage.md`(FCV-2~FCV-4)의 코덱 recipe다. 각 case는 database 없이 공개 코덱 호출
@@ -19,8 +19,18 @@
 그 곁에서, 한 runtime의 값이 담지 못하는 case는 그 입력을 값으로 담는 runtime의 recipe가 담는다(`docs/spec/codec.md`
 COD-70): `codec-bytes-value.json`(bytes, Rust를 뺀 모든 runtime), `codec-integer-beyond-i64.json`(i64를 넘는 정수, PHP와
 PHP 확장을 뺀 모든 runtime), `codec-non-finite-value.json`(유한하지 않은 float, Rust를 뺀 모든 runtime),
-`codec-raw-text.json`(byte가 UTF-8이 아닌 문자열, Go, PHP, PHP 확장), `codec-json-depth.json`(256 단계보다 깊이 중첩된
-값, recipe loader가 serde_json의 recursion 한도에서 멈추는 Rust를 뺀 모든 runtime).
+`codec-raw-text.json`(byte가 UTF-8이 아닌 문자열, Go, PHP, PHP 확장), `codec-lone-surrogate.json`(짝 없는 surrogate를
+가진 문자열, TypeScript와 Python), `codec-map-keys.json`(key가 문자열이 아닌 map, Go와 Python),
+`codec-styled-unset.json`(unset인 styled 값, Go와 Python), `codec-undefined-member.json`(undefined인 member,
+TypeScript), `codec-json-depth.json`(256 단계보다 깊이 중첩된 값, 모든 runtime).
+
+`ordered_json`에서 Unicode scalar 값의 열이 아닌 text를 검사하는 native test는 이제 `codec-raw-text.json`과
+`codec-lone-surrogate.json`이 담는 case를 담으므로, 그 recipe가 각 runtime에서 green이 되면 제거한다: Go
+`TestOrderedJSONRefusesATextThatIsNotUnicode`(`packages/go/orm/codec_test.go`), PHP
+`CodecOrderedJsonTextTest`(`packages/php/tests/CodecOrderedJsonTextTest.php`)와 그 PHP 확장 짝
+`CodecOrderedJsonTextExtensionTest`, TypeScript `codec/ordered-json-text-is-unicode`
+(`packages/ts/tests/codec-errors.test.mjs`), Python `test_ordered_json_refuses_a_text_that_is_not_unicode`
+(`packages/python/tests/test_codec_ordered_json_text.py`).
 
 `make codec-check`는 여섯 entry를 각각 별도 part로 실행하므로, 실패한 part가 그 클라이언트를 가리킨다.
 

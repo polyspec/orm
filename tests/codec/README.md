@@ -18,9 +18,19 @@ meets; no client's output is the reference of another.
 Beside it, a recipe of the runtimes whose values hold its input holds the cases that a value of one runtime cannot hold
 (`docs/spec/codec.md` COD-70): `codec-bytes-value.json` (bytes, every runtime but Rust), `codec-integer-beyond-i64.json`
 (an integer beyond i64, every runtime but PHP and the PHP extension), `codec-non-finite-value.json` (a float that is not
-finite, every runtime but Rust), `codec-raw-text.json` (a string whose bytes are not UTF-8, Go, PHP and the PHP extension)
-and `codec-json-depth.json` (a value nested deeper than 256 levels, every runtime but Rust, whose recipe loader stops at the
-recursion limit of serde_json).
+finite, every runtime but Rust), `codec-raw-text.json` (a string whose bytes are not UTF-8, Go, PHP and the PHP extension),
+`codec-lone-surrogate.json` (a string with a lone surrogate, TypeScript and Python), `codec-map-keys.json` (a map whose
+keys are not strings, Go and Python), `codec-styled-unset.json` (an unset styled value, Go and Python),
+`codec-undefined-member.json` (an undefined member, TypeScript) and `codec-json-depth.json` (a value nested deeper than 256
+levels, every runtime).
+
+The native tests of a text that is not a sequence of Unicode scalar values under `ordered_json` hold cases that
+`codec-raw-text.json` and `codec-lone-surrogate.json` now hold, and are removed once those recipes are green in their
+runtimes: Go `TestOrderedJSONRefusesATextThatIsNotUnicode` (`packages/go/orm/codec_test.go`), PHP
+`CodecOrderedJsonTextTest` (`packages/php/tests/CodecOrderedJsonTextTest.php`) and its PHP extension twin
+`CodecOrderedJsonTextExtensionTest`, TypeScript `codec/ordered-json-text-is-unicode`
+(`packages/ts/tests/codec-errors.test.mjs`) and Python `test_ordered_json_refuses_a_text_that_is_not_unicode`
+(`packages/python/tests/test_codec_ordered_json_text.py`).
 
 `make codec-check` runs the six entries, each as its own part, so a part that fails names its client.
 

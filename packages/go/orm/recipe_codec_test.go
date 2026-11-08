@@ -44,3 +44,15 @@ func TestRecipeCodecRawTextNone(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	recipe.Run(t, "../../../tests/codec/codec-raw-text.json", recipe.None)
 }
+
+// TestRecipeCodecMapKeysNone runs tests/codec/codec-map-keys.json: a map key that is not a string is refused (COD-70).
+func TestRecipeCodecMapKeysNone(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	recipe.Run(t, "../../../tests/codec/codec-map-keys.json", recipe.None)
+}
+
+// TestRecipeCodecStyledUnsetNone runs tests/codec/codec-styled-unset.json: a styled value that is neither SQL NULL nor a value is refused (COD-70).
+func TestRecipeCodecStyledUnsetNone(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	recipe.Run(t, "../../../tests/codec/codec-styled-unset.json", recipe.None)
+}

@@ -19284,6 +19284,54 @@
           }
         }
       ]
+    },
+    {
+      "id": "yaml_directive_document",
+      "requirements": [
+        "COD-29",
+        "COD-70"
+      ],
+      "steps": [
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "%YAML 1.2\n---\na\n"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "text": "a"
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "%YAML 1.2\n---\na: 1\n"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "object": [
+                  [
+                    "a",
+                    {
+                      "int": "1"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        }
+      ]
     }
   ]
 }
