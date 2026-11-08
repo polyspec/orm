@@ -7671,6 +7671,14 @@
     "exported": true,
     "signature": "pub async fn creates \u003c M : Model \u003e (m : \u0026 M , rows : Vec \u003c M \u003e , batch : usize) -\u003e Result \u003c u64 \u003e"
   },
+  "packages/rust/orm/src/model.rs::datetime_precision": {
+    "exported": false,
+    "signature": " fn datetime_precision (c : \u0026 Core , name : \u0026 str) -\u003e Result \u003c Option \u003c u8 \u003e \u003e"
+  },
+  "packages/rust/orm/src/model.rs::datetime_text": {
+    "exported": false,
+    "signature": " fn datetime_text (t : \u0026 chrono :: NaiveDateTime , precision : u8) -\u003e String"
+  },
   "packages/rust/orm/src/model.rs::delete": {
     "exported": true,
     "signature": "pub async fn delete \u003c M : Model \u003e (m : \u0026 M , recursive : bool) -\u003e Result \u003c () \u003e"
@@ -7862,10 +7870,6 @@
   "packages/rust/orm/src/model.rs::select": {
     "exported": false,
     "signature": " async fn select (ex : \u0026 Executor , conn : \u0026 Option \u003c Db \u003e , req : \u0026 mut Req) -\u003e Result \u003c QueryResult \u003e"
-  },
-  "packages/rust/orm/src/model.rs::six_fraction_digits": {
-    "exported": false,
-    "signature": " fn six_fraction_digits (text : \u0026 str) -\u003e String"
   },
   "packages/rust/orm/src/model.rs::split_read_plan": {
     "exported": false,

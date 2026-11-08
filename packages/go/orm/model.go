@@ -1686,7 +1686,7 @@ func (c *Core) pairs() []pair {
 		if v, ok := c.ent.Value(c.self, name); ok {
 			add(name, c.columnArrayValue(name, v))
 		} else if t, ok := st.extra[name].(time.Time); ok && st.extraDate[name] {
-			add(name, temporalText(t, "date"))
+			add(name, temporalText(t, "date", 0))
 		} else {
 			add(name, c.columnArrayValue(name, st.extra[name]))
 		}
@@ -1707,15 +1707,6 @@ func (c *Core) pairs() []pair {
 	return out
 }
 
-// columnType returns the dbspec type of a column of the model, or "" when the
-// schema does not declare it.
-func (c *Core) columnType(name string) string {
-	if f := c.columnField(name); f != nil {
-		return f.Type
-	}
-	return ""
-}
-
 // columnField returns the runtime model field of a column of the model, or nil when the schema does not declare it.
 func (c *Core) columnField(name string) *runtimemodel.Field {
 	if c.ent == nil || c.ent.Schema == nil {
@@ -1732,48 +1723,39 @@ func (c *Core) columnField(name string) *runtimemodel.Field {
 	return e.Field(name)
 }
 
-// columnArrayValue writes a column value of the array form. A date, datetime
-// and time column each has one temporal form, the runtime value model text of
-// docs/spec/protocol.md section 5 (Read): YYYY-MM-DD, YYYY-MM-DD HH:MM:SS.ffffff and
-// HH:MM:SS.ffffff.
+// columnArrayValue writes a column value of the array form. A date, datetime(p) and time(p) column each has one
+// temporal form, the text of docs/spec/protocol.md PRT-69: YYYY-MM-DD, and YYYY-MM-DD HH:MM:SS and HH:MM:SS with exactly
+// p fraction digits. A time column holds that text, as its getter returns it; a datetime column holds its time.Time.
 func (c *Core) columnArrayValue(name string, v any) any {
-	typ := c.columnType(name)
+	f := c.columnField(name)
+	if f == nil {
+		return arrayValue(v)
+	}
 	switch x := v.(type) {
 	case time.Time:
-		return temporalText(x, typ)
+		return temporalText(x, f.Type, f.Precision)
 	case *time.Time:
 		if x == nil {
 			return nil
 		}
-		return temporalText(*x, typ)
-	case string:
-		if typ == "time" || typ == "datetime" {
-			return sixFractionDigits(x)
-		}
+		return temporalText(*x, f.Type, f.Precision)
 	}
 	return arrayValue(v)
 }
 
-// sixFractionDigits writes the text of a time or datetime column with six fraction digits, the
-// value model form of every column precision, zeros past the declared precision. The text comes from
-// the database with the column precision, so the zeros are added here.
-func sixFractionDigits(text string) string {
-	dot := strings.IndexByte(text, '.')
-	if dot < 0 {
-		return text + ".000000"
+// temporalText writes a time value in the form of its column type, with the precision digits of the column.
+func temporalText(t time.Time, typ string, precision int) string {
+	fraction := ""
+	if precision > 0 {
+		fraction = "." + strings.Repeat("0", precision)
 	}
-	return text[:dot+1] + (text[dot+1:] + "000000")[:6]
-}
-
-// temporalText writes a time value in the form of its column type.
-func temporalText(t time.Time, typ string) string {
 	switch typ {
 	case "date":
 		return t.Format(time.DateOnly)
 	case "time":
-		return t.Format("15:04:05.000000")
+		return t.Format("15:04:05" + fraction)
 	}
-	return t.Format("2006-01-02 15:04:05.000000")
+	return t.Format("2006-01-02 15:04:05" + fraction)
 }
 
 func arrayValue(v any) any {

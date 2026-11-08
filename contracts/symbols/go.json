@@ -20895,10 +20895,6 @@
     "exported": false,
     "signature": "receiver=*Core func(name string) *runtimemodel.Field"
   },
-  "packages/go/orm/model.go::Core.columnType": {
-    "exported": false,
-    "signature": "receiver=*Core func(name string) string"
-  },
   "packages/go/orm/model.go::Core.delete": {
     "exported": false,
     "signature": "receiver=*Core func(recursive []bool) error"
@@ -21239,13 +21235,9 @@
     "exported": false,
     "signature": "receiver=*rowState func(name string, v any, cascade, flat bool)"
   },
-  "packages/go/orm/model.go::sixFractionDigits": {
-    "exported": false,
-    "signature": "func(text string) string"
-  },
   "packages/go/orm/model.go::temporalText": {
     "exported": false,
-    "signature": "func(t time.Time, typ string) string"
+    "signature": "func(t time.Time, typ string, precision int) string"
   },
   "packages/go/orm/model.go::titled": {
     "exported": false,
