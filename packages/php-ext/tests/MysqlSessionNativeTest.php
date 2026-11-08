@@ -9,6 +9,7 @@ use Polyspec\Orm\Orm;
 use ReflectionMethod;
 use RuntimeException;
 
+#[\PHPUnit\Framework\Attributes\Medium]
 final class MysqlSessionNativeTest extends TestCase
 {
     // Requirements: CFG-7.

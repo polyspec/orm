@@ -7,6 +7,7 @@ namespace Polyspec\Orm\Tests;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Func;
 
+#[\PHPUnit\Framework\Attributes\Small]
 final class FuncSourceAdapterTest extends TestCase
 {
     public function testCallbackLoweringKeepsArgumentOrderAndShape(): void

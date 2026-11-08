@@ -7,6 +7,7 @@ namespace Polyspec\Orm\Tests;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Dbspec\Dbspec;
 
+#[\PHPUnit\Framework\Attributes\Small]
 final class DbspecRulesNativeTest extends TestCase
 {
     // Requirements: DBS-32, DBS-36, DBS-38, DBS-39, DBS-42, DBS-43, DBS-46, DBS-48, DBS-50, DBS-58.

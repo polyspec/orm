@@ -13,6 +13,7 @@ use Polyspec\Orm\Db;
 use Polyspec\Orm\OrmException;
 use RuntimeException;
 
+#[\PHPUnit\Framework\Attributes\Medium]
 class SqliteRowLockRestoreTest extends TestCase
 {
     // Requirements: INT-49.

@@ -10,6 +10,7 @@ use Polyspec\Orm\Dbspec\CatalogTable;
 use Polyspec\Orm\Dbspec\ColumnType;
 use PHPUnit\Framework\TestCase;
 
+#[\PHPUnit\Framework\Attributes\Small]
 final class DbspecCatalogChecksTest extends TestCase
 {
     public function testCatalogCheckDecodesOrRecordsItsFailure(): void

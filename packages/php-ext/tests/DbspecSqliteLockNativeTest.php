@@ -9,6 +9,7 @@ use Polyspec\Orm\Dbspec\PlanApply;
 use Polyspec\Orm\Tests\DbspecSqliteLockCases;
 use ReflectionMethod;
 
+#[\PHPUnit\Framework\Attributes\Small]
 final class DbspecSqliteLockNativeTest extends TestCase
 {
     // Requirements: PLN-89, PLN-90.

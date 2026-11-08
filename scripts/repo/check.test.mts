@@ -144,6 +144,16 @@ caseTest('the stress case of the dbspec_apply recipe runs under the 120 second d
   for (const [path, hold] of holds) assert.match(text(path), hold, path);
 });
 
+caseTest('every PHPUnit test class declares its size, so a deadline ends only a stalled case', COMPUTE, () => {
+  // An unsized class takes defaultTimeLimit, 1 second of wall-clock time under enforceTimeLimit, which a case under load exceeds
+  // on its own work; a size gives it the deadline of its kind in phpunit.xml.dist (60, 120 or 300 seconds).
+  const unsized = [...trackedAll].filter(path => /^packages\/php(?:-ext)?\/tests\/.*Test\.php$/.test(path)).filter(path => {
+    const source = text(path);
+    return /^(?:final )?class \w+Test\b/m.test(source) && !/^#\[(?:\\PHPUnit\\Framework\\Attributes\\)?(?:Small|Medium|Large)\]\s*\n(?:#\[.*\]\s*\n|\/\/.*\n)*(?:final )?class /m.test(source);
+  });
+  assert.deepEqual(unsized, []);
+});
+
 const readScript = (path: string) => scriptTexts.get(path) ?? (trackedAll.has(path) && !path.endsWith('.mts') ? text(path) : undefined);
 const trackedTexts = (paths: string[]) => Object.fromEntries(paths.map((path: string) => [path, text(path)]));
 

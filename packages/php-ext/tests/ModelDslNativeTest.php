@@ -10,6 +10,7 @@ use Polyspec\Orm\Model;
 use Polyspec\Orm\OrmException;
 use Polyspec\Orm\Registry;
 
+#[\PHPUnit\Framework\Attributes\Small]
 final class ModelDslNativeTest extends TestCase
 {
     public function testRelationMatchKeepsNamedKeysInTheRelationIr(): void

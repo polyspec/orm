@@ -15,6 +15,7 @@ use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use RuntimeException;
 
+#[\PHPUnit\Framework\Attributes\Medium]
 final class OrmExceptionNativeTest extends TestCase
 {
     public function testOrmConnectionFactoryIsProvidedByTheExtension(): void

@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\OrmException;
 
+#[\PHPUnit\Framework\Attributes\Medium]
 final class DatabaseTestAssertionsTest extends TestCase
 {
     use DatabaseTestAssertions;

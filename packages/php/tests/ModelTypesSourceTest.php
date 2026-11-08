@@ -9,6 +9,7 @@ use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\PendingTime;
 use Polyspec\Orm\Request;
 
+#[\PHPUnit\Framework\Attributes\Small]
 final class ModelTypesSourceTest extends TestCase
 {
     use ModelTypesWeakCallerCases;

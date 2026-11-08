@@ -15,6 +15,7 @@ use Polyspec\Orm\Tests\TransactionFailureCases;
 use ReflectionClass;
 
 // Requirements: INT-67, INT-72, DIA-181, PLN-17.
+#[\PHPUnit\Framework\Attributes\Medium]
 final class TransactionFailureNativeTest extends TestCase
 {
     use TransactionFailureCases;

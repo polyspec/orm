@@ -12,6 +12,7 @@ use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\Schema;
 use PHPUnit\Framework\TestCase;
 
+#[\PHPUnit\Framework\Attributes\Small]
 final class RegistrySchemaNativeTest extends TestCase
 {
     public function testNativeOriginsAndReadonlySchemaRoundTrip(): void

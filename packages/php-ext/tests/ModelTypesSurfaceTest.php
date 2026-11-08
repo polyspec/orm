@@ -15,6 +15,7 @@ use Polyspec\Orm\Request;
 use Polyspec\Orm\StyledValue;
 use Polyspec\Orm\Tests\ModelTypesWeakCallerCases;
 
+#[\PHPUnit\Framework\Attributes\Large]
 final class ModelTypesSurfaceTest extends TestCase
 {
     use ModelTypesWeakCallerCases;

@@ -14,6 +14,7 @@ use Polyspec\Orm\OrmException;
 use ReflectionClass;
 use WeakReference;
 
+#[\PHPUnit\Framework\Attributes\Large]
 final class ModelNativeTest extends TestCase
 {
     use DatabaseTestAssertions;

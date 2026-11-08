@@ -9,6 +9,7 @@ namespace Polyspec\Orm\Extension\Tests;
 
 use PHPUnit\Framework\TestCase;
 
+#[\PHPUnit\Framework\Attributes\Small]
 final class StatementEventSurfaceTest extends TestCase
 {
     public function testExtensionProvidesStatementEvent(): void

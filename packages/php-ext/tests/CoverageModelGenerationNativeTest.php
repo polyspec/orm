@@ -10,6 +10,7 @@ use Polyspec\Orm\OrmException;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 
+#[\PHPUnit\Framework\Attributes\Small]
 final class CoverageModelGenerationNativeTest extends TestCase
 {
     // Requirements: DBS-104, DBS-111, DBS-112, DBS-120, INT-66.
