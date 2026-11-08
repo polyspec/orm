@@ -57,6 +57,9 @@ function registerRecipeCase(recipeCase, database, deadline, body) {
   });
 }
 
+// The ops that read the ordered-json value of the recipe (runRecipe).
+const LITERAL_OPS = new Set(['ir.validate', 'markdown.send', 'model.assign']);
+
 // runRecipe registers every case of the recipe at path, relative to the repository root, on database. A database other than
 // none runs each case on a case database of its own (databaseRecipe), and the entry awaits the registration.
 export function runRecipe(path, database) {
@@ -64,9 +67,12 @@ export function runRecipe(path, database) {
   const text = readFileSync(resolve(root, path), 'utf8');
   checkKeys(path, text);
   const recipe = JSON.parse(text);
-  const literal = parseJson(text);
-  // The recipe as wrappers, so that an expect's integers are compared by their digits (not by a JavaScript number).
-  const wrapped = fromJson(literal);
+  // The recipe as its ordered-json value, so that a request keeps its number literals and an expect's integers are
+  // compared by their digits (not by a JavaScript number), read only for the ops that read them: an ordered-json value
+  // holds 256 levels, and a recipe value of COD-70 json-depth is nested deeper than that.
+  const literal = recipe.cases.some(recipeCase => recipeCase.steps.some(step => LITERAL_OPS.has(step.op))) ? parseJson(text) : undefined;
+  // The recipe as wrappers.
+  const wrapped = literal === undefined ? undefined : fromJson(literal);
   // An ir.validate step checks its request against the schema of the recipe, which the recipe names relative to its own file.
   const schema = recipe.schema === undefined ? undefined : validationModel(resolve(root, dirname(path), recipe.schema));
   const dir = resolve(root, dirname(path));
@@ -285,6 +291,8 @@ function run(step, bound, database) {
     if (code !== expect.error) throw new Error(`error ${code || 'none'} (${result.error ?? result.value}), want ${expect.error}`);
     // message is the whole text of the error, its code included (INT-163).
     if (expect.message !== undefined && result.error.message !== expect.message) throw new Error(`error message ${JSON.stringify(result.error.message)}, want ${JSON.stringify(expect.message)}`);
+    // library_cause: the error keeps the failure of the library that its rule meets as its cause (COD-71).
+    if (expect.library_cause === true && !(result.error.cause instanceof Error)) throw new Error(`the error ${JSON.stringify(result.error.message)} keeps no library cause`);
     return;
   }
   if (result.error !== undefined) throw new Error(`unexpected error ${result.error}`);
@@ -417,8 +425,12 @@ function reference(name, bound) {
   return result.value;
 }
 
-// holdsBytes is whether the recipe value is bytes or a list or a map that holds bytes at any depth.
-const holdsBytes = raw => 'bytes_hex' in raw || (raw.array ?? []).some(holdsBytes) || (raw.object ?? []).some(([, item]) => holdsBytes(item));
+// holdsHostValue is whether the recipe value is, or holds at any depth, a value that has no JSON text: bytes, a non-finite
+// float, a string with a lone surrogate or an undefined member (FCV-4).
+const HOST_VALUES = ['bytes_hex', 'f64', 'text_code_points', 'undefined'];
+const holdsHostValue = raw => HOST_VALUES.some(kind => kind in raw) || (raw.array ?? []).some(holdsHostValue) || (raw.object ?? []).some(([, item]) => holdsHostValue(item));
+// nesting is the number of levels of lists and maps of a recipe value; an ordered-json value holds 256 (COD-70 json-depth).
+const nesting = raw => ('array' in raw || 'object' in raw ? 1 + Math.max(0, ...(raw.array ?? []).map(nesting), ...(raw.object ?? []).map(([, item]) => nesting(item))) : 0);
 
 // styledArgument is the styled value an encode takes: SQL NULL for null, an ordered-json value for an ordered_json stage,
 // so that its member order and number text are those of the recipe, and the common value model otherwise.
@@ -430,8 +442,9 @@ function styledArgument(raw, styles, bound) {
   if ('null' in raw) return StyledValue.sqlNull();
   // An ordered_json wrapper is the ordered-json value of its value, whatever the stages (FCV-4).
   if ('ordered_json' in raw) return StyledValue.value(parseJson(jsonText(raw.ordered_json)));
-  // Bytes have no JSON text, so a value that holds bytes reaches an ordered_json stage as the value it is (COD-63).
-  if (styles.includes('ordered_json') && !holdsBytes(raw)) return StyledValue.value(parseJson(jsonText(raw)));
+  // A value with no JSON text, or nested deeper than an ordered-json value holds, reaches an ordered_json stage as the
+  // value it is (COD-63, COD-70).
+  if (styles.includes('ordered_json') && !holdsHostValue(raw) && nesting(raw) <= 256) return StyledValue.value(parseJson(jsonText(raw)));
   return StyledValue.value(toValue(raw));
 }
 
@@ -456,6 +469,9 @@ function toValue(w) {
   // Number reads NaN, Infinity and -Infinity, the three non-finite values of the f64 wrapper.
   if ('f64' in w) return Number(w.f64);
   if ('text' in w) return w.text;
+  // A string of those code points, a lone surrogate among them (FCV-4).
+  if ('text_code_points' in w) return String.fromCodePoint(...w.text_code_points);
+  if ('undefined' in w) return undefined;
   if ('bytes_hex' in w) return Buffer.from(w.bytes_hex, 'hex');
   if ('array' in w) return w.array.map(toValue);
   if ('object' in w) return Object.fromEntries(w.object.map(([key, value]) => [key, toValue(value)]));

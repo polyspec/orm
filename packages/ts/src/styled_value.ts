@@ -3,8 +3,14 @@ import { present } from './present.js';
 import { OrmError } from './runtime_error.js';
 import * as codes from './codes.js';
 
+let readStored: (value: StyledValue) => unknown;
+
 /** The SQL NULL state or an encoded value of a styled column. */
 export class StyledValue<T = unknown> {
+  static {
+    readStored = value => value.stored;
+  }
+
   private constructor(public readonly kind: 'sql-null' | 'value', private readonly stored?: T) {}
 
   public static sqlNull<T>(): StyledValue<T> { return new StyledValue<T>('sql-null'); }
@@ -24,6 +30,16 @@ export class StyledValue<T = unknown> {
     if (!(value instanceof OrderedJsonValue)) return { kind: 'value', value };
     return { kind: 'value', value: orderedJsonOutput(value) };
   }
+}
+
+/**
+ * The value that a styled value holds, as it was given: the codec stages refuse a value by their own rules of COD-70, so
+ * an encode reads it without the checks of payload.
+ *
+ * @internal
+ */
+export function storedValue(value: StyledValue): unknown {
+  return readStored(value);
 }
 
 function assertNoOmittedValue(value: unknown, ancestors: Set<object>, depth: number): void {

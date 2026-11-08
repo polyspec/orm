@@ -35,25 +35,12 @@ caseTest('codec/malformed-json-and-yaml', COMPUTE, () => {
 });
 
 caseTest('invalid UTF-8 in JSON and YAML returns CODEC_DECODE', COMPUTE, () => {
-  for (const style of ['ordered_json', 'yaml']) {
+  for (const [style, message] of [['ordered_json', 'json: the cell is not JSON'], ['yaml', 'yaml: the stream is not UTF-8']]) {
     const error = thrown(() => decode([style], new Uint8Array([0xff])));
     assert(error instanceof CodecError);
     assert.equal(error.code, 'CODEC_DECODE');
-    assert.equal(error.message, 'CODEC_DECODE: decoded text is not valid UTF-8');
+    assert.equal(error.message, `CODEC_DECODE: ${message}`);
     assert(error.cause instanceof TypeError);
-  }
-});
-
-caseTest('JSON and YAML rethrow an existing CodecError by identity', COMPUTE, () => {
-  const originalDecode = TextDecoder.prototype.decode;
-  const sentinel = new CodecError('CODEC_DECODE', 'UTF-8 boundary sentinel');
-  try {
-    TextDecoder.prototype.decode = () => { throw sentinel; };
-    for (const style of ['ordered_json', 'yaml']) {
-      assert.equal(thrown(() => decode([style], new Uint8Array([0x61]))), sentinel);
-    }
-  } finally {
-    TextDecoder.prototype.decode = originalDecode;
   }
 });
 
@@ -75,16 +62,6 @@ caseTest('codec/javascript-inputs', COMPUTE, () => {
     assert.equal(error?.code, 'CODEC_ENCODE', String(value));
   }
   const error = thrown(() => encode(['serialize'], StyledValue.value(parseJson('{}'))));
-  assert(error instanceof CodecError);
-  assert.equal(error.code, 'CODEC_ENCODE');
-});
-
-// A text that is not a sequence of Unicode scalar values, such as a lone surrogate, is no JSON text (RFC 8259, 8.1), so an
-// ordered_json stage returns CODEC_ENCODE for it; a recipe text is a JSON string, which holds Unicode only, so each client
-// tests this.
-// Requirements: COD-64 (docs/spec).
-caseTest('codec/ordered-json-text-is-unicode', COMPUTE, () => {
-  const error = thrown(() => encode(['ordered_json'], StyledValue.value('\ud800')));
   assert(error instanceof CodecError);
   assert.equal(error.code, 'CODEC_ENCODE');
 });
