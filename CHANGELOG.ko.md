@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1eee00fb84d3915f60012405b29bf53878afaa04a871bfe72b034c12b1ea142b -->
+<!-- source-sha256: fb352e80316317a6ff1631996db7c61da21c823095e743a7d439ca9acf786afb -->
 # 변경 이력
 
 ## Unreleased
+
+## 0.0.25
 
 - orm은 kit 0.0.102를 채택한다 (T410).
 - Tests: interface check는 선언의 기록 사본과 비교하지 않는다 (T409): check가 실행마다 읽은 선언을 contracts/interfaces.json의 규칙과 비교하고, 같은 추출에서 쓴 사본은 그 밖의 것을 잡지 못했으므로 contracts/symbols, `--record`, `make interface-record`, contracts/interfaces.json의 symbol hash를 없앤다. private 선언의 변경은 더 이상 CI를 실패시키지 않는다. PHP suite guard는 load한 확장에서 class 목록을 읽고, Python natives test는 extractor에서 signature를 읽는다.
