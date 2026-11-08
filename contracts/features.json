@@ -7131,7 +7131,7 @@
         "packages/go/bindmessages/bind_messages_test.go",
         "packages/php/tests/BindMessagesRawTextRecipeTest.php",
         "packages/php-ext/tests/BindMessagesRawTextRecipeTestExtensionTest.php",
-        "packages/go/orm/recipe_public_interface_signed_test.go",
+        "packages/go/bindmessages/recipe_public_interface_signed_test.go",
         "packages/php/tests/PublicInterfaceSignedRecipeTest.php",
         "packages/ts/tests/public_interface_signed-none.test.mjs",
         "tests/interfaces/contracts/generate.go",

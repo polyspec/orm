@@ -1,4 +1,4 @@
-package orm_test
+package bindmessages_test
 
 import (
 	"errors"
