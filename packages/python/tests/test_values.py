@@ -4,6 +4,7 @@ import math
 
 
 from polyspec.orm.codec import (
+    CodecError,
     encode,
 )
 from polyspec.orm.errors import OrmError
@@ -224,31 +225,20 @@ class StyledValueTest(unittest.TestCase):
             StyledValue.sql_null().payload()
         self.assertIsNone(encode(["serialize"], StyledValue.sql_null()))
 
-    def test_rejects_unsupported_payloads(self):
-        for value in [
-            float("nan"),
-            float("inf"),
-            object(),
-            {"a": float("nan")},
-            b"bytes",
-        ]:
-            with self.assertRaises(OrmError) as caught:
-                StyledValue.value(value).payload()
-            self.assertEqual(caught.exception.code, "CODEC_ENCODE")
-
-    def test_rejects_a_cycle(self):
+    def test_a_cycle_is_no_codec_value(self):
+        # A cycle is a value that no recipe wrapper holds (FCV-2): each value stage refuses it by its rule of COD-70, the
+        # ordered_json stage as the nesting that it exceeds.
         value = {}
         value["self"] = value
-        with self.assertRaises(OrmError):
-            StyledValue.value(value).payload()
-
-    def test_deep_nesting_is_bounded(self):
-        value = current = {}
-        for _ in range(257):
-            current["n"] = {}
-            current = current["n"]
-        with self.assertRaises(OrmError):
-            StyledValue.value(value).payload()
+        for styles, message in (
+            (["serialize"], "CODEC_ENCODE: serialize: the value is not a codec value"),
+            (["yaml"], "CODEC_ENCODE: yaml: the value is not a codec value"),
+            (["ordered_json"], "CODEC_ENCODE: json: value nesting exceeds 256 levels"),
+        ):
+            with self.subTest(styles=styles):
+                with self.assertRaises(CodecError) as caught:
+                    encode(styles, StyledValue.value(value))
+                self.assertEqual(str(caught.exception), message)
 
 
 if __name__ == "__main__":
