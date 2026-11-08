@@ -29,7 +29,8 @@
     "COD-40",
     "COD-41",
     "PLN-15",
-    "DIA-32"
+    "DIA-32",
+    "COD-70"
   ],
   "cases": [
     {
@@ -7626,7 +7627,8 @@
         "COD-14",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -7639,7 +7641,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: a first base64 stage takes a string value"
             }
           }
         }
@@ -7653,7 +7656,8 @@
         "COD-14",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -7666,7 +7670,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: a first base64 stage takes a string value"
             }
           }
         }
@@ -7680,7 +7685,8 @@
         "COD-14",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -7693,7 +7699,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: a first base64 stage takes a string value"
             }
           }
         }
@@ -7707,7 +7714,8 @@
         "COD-14",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -7720,7 +7728,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: a first base64 stage takes a string value"
             }
           }
         }
@@ -7734,7 +7743,8 @@
         "COD-14",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -7747,7 +7757,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: a first base64 stage takes a string value"
             }
           }
         }
@@ -7761,7 +7772,8 @@
         "COD-14",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -7774,7 +7786,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: a first base64 stage takes a string value"
             }
           }
         }
@@ -7974,7 +7987,8 @@
         "COD-14",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -7987,7 +8001,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: a first base64 stage takes a string value"
             }
           }
         }
@@ -8001,7 +8016,8 @@
         "COD-14",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -8030,7 +8046,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: a first base64 stage takes a string value"
             }
           }
         }
@@ -8044,7 +8061,8 @@
         "COD-14",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -8105,7 +8123,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: a first base64 stage takes a string value"
             }
           }
         }
@@ -8119,7 +8138,8 @@
         "COD-14",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -8145,7 +8165,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: a first base64 stage takes a string value"
             }
           }
         }
@@ -8159,7 +8180,8 @@
         "COD-14",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -8191,7 +8213,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: a first base64 stage takes a string value"
             }
           }
         }
@@ -8205,7 +8228,8 @@
         "COD-14",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -8288,7 +8312,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: a first base64 stage takes a string value"
             }
           }
         }
@@ -8357,7 +8382,8 @@
         "COD-14",
         "COD-36",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -8370,7 +8396,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: a first gz stage takes a string value"
             }
           }
         }
@@ -8384,7 +8411,8 @@
         "COD-14",
         "COD-36",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -8397,7 +8425,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: a first gz stage takes a string value"
             }
           }
         }
@@ -8411,7 +8440,8 @@
         "COD-14",
         "COD-36",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -8424,7 +8454,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: a first gz stage takes a string value"
             }
           }
         }
@@ -8438,7 +8469,8 @@
         "COD-14",
         "COD-36",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -8451,7 +8483,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: a first gz stage takes a string value"
             }
           }
         }
@@ -8465,7 +8498,8 @@
         "COD-14",
         "COD-36",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -8478,7 +8512,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: a first gz stage takes a string value"
             }
           }
         }
@@ -8492,7 +8527,8 @@
         "COD-14",
         "COD-36",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -8505,7 +8541,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: a first gz stage takes a string value"
             }
           }
         }
@@ -8684,7 +8721,8 @@
         "COD-14",
         "COD-36",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -8697,7 +8735,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: a first gz stage takes a string value"
             }
           }
         }
@@ -8711,7 +8750,8 @@
         "COD-14",
         "COD-36",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -8740,7 +8780,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: a first gz stage takes a string value"
             }
           }
         }
@@ -8754,7 +8795,8 @@
         "COD-14",
         "COD-36",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -8815,7 +8857,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: a first gz stage takes a string value"
             }
           }
         }
@@ -8829,7 +8872,8 @@
         "COD-14",
         "COD-36",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -8855,7 +8899,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: a first gz stage takes a string value"
             }
           }
         }
@@ -8869,7 +8914,8 @@
         "COD-14",
         "COD-36",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -8901,7 +8947,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: a first gz stage takes a string value"
             }
           }
         }
@@ -8915,7 +8962,8 @@
         "COD-14",
         "COD-36",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -8998,7 +9046,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: a first gz stage takes a string value"
             }
           }
         }
@@ -9010,7 +9059,8 @@
         "COD-3",
         "COD-38",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -9024,7 +9074,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: ip: the text is not an address"
             }
           }
         }
@@ -9036,7 +9087,8 @@
         "COD-3",
         "COD-38",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -9050,7 +9102,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: ip: the text is not an address"
             }
           }
         }
@@ -9062,7 +9115,8 @@
         "COD-3",
         "COD-38",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -9076,7 +9130,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: ip: the text is not an address"
             }
           }
         }
@@ -9088,7 +9143,8 @@
         "COD-3",
         "COD-38",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -9102,7 +9158,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: ip: the text is not an address"
             }
           }
         }
@@ -9114,7 +9171,8 @@
         "COD-3",
         "COD-38",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -9128,7 +9186,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: ip: the text is not an address"
             }
           }
         }
@@ -9140,7 +9199,8 @@
         "COD-3",
         "COD-38",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -9154,7 +9214,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: ip: the text is not an address"
             }
           }
         }
@@ -9166,7 +9227,8 @@
         "COD-3",
         "COD-38",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -9180,7 +9242,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: ip: the text is not an address"
             }
           }
         }
@@ -9192,7 +9255,8 @@
         "COD-3",
         "COD-38",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -9206,7 +9270,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: ip: the text is not an address"
             }
           }
         }
@@ -9218,7 +9283,8 @@
         "COD-3",
         "COD-38",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -9232,7 +9298,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: ip: the text is not an address"
             }
           }
         }
@@ -9244,7 +9311,8 @@
         "COD-3",
         "COD-38",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -9258,7 +9326,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: ip: the text is not an address"
             }
           }
         }
@@ -9270,7 +9339,8 @@
         "COD-3",
         "COD-38",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -9284,7 +9354,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: ip: the text is not an address"
             }
           }
         }
@@ -9296,7 +9367,8 @@
         "COD-3",
         "COD-38",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -9310,7 +9382,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: ip: the text is not an address"
             }
           }
         }
@@ -10055,7 +10128,8 @@
         "COD-34",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -10069,7 +10143,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: base64: bad input"
             }
           }
         }
@@ -10086,7 +10161,8 @@
         "COD-34",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -10100,7 +10176,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: base64: bad input"
             }
           }
         }
@@ -10117,7 +10194,8 @@
         "COD-34",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -10131,7 +10209,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: base64: bad input"
             }
           }
         }
@@ -10148,7 +10227,8 @@
         "COD-34",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -10162,7 +10242,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: base64: bad input"
             }
           }
         }
@@ -10179,7 +10260,8 @@
         "COD-34",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -10193,7 +10275,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: base64: bad input"
             }
           }
         }
@@ -10210,7 +10293,8 @@
         "COD-34",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -10224,7 +10308,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: base64: bad input"
             }
           }
         }
@@ -10241,7 +10326,8 @@
         "COD-34",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -10255,7 +10341,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: base64: bad input"
             }
           }
         }
@@ -10272,7 +10359,8 @@
         "COD-34",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -10286,7 +10374,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: base64: bad input"
             }
           }
         }
@@ -10303,7 +10392,8 @@
         "COD-34",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -10317,7 +10407,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: base64: bad input"
             }
           }
         }
@@ -10334,7 +10425,8 @@
         "COD-34",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -10348,7 +10440,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: base64: bad input"
             }
           }
         }
@@ -10365,7 +10458,8 @@
         "COD-34",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -10379,7 +10473,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: base64: bad input"
             }
           }
         }
@@ -10396,7 +10491,8 @@
         "COD-34",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -10410,7 +10506,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: base64: bad input"
             }
           }
         }
@@ -10427,7 +10524,8 @@
         "COD-34",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -10441,7 +10539,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: base64: bad input"
             }
           }
         }
@@ -10458,7 +10557,8 @@
         "COD-34",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -10472,7 +10572,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: base64: bad input"
             }
           }
         }
@@ -10489,7 +10590,8 @@
         "COD-34",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -10503,7 +10605,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: base64: bad input"
             }
           }
         }
@@ -10520,7 +10623,8 @@
         "COD-34",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -10534,7 +10638,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: base64: bad input"
             }
           }
         }
@@ -10551,7 +10656,8 @@
         "COD-34",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -10565,7 +10671,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: base64: bad input"
             }
           }
         }
@@ -10582,7 +10689,8 @@
         "COD-34",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -10596,7 +10704,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: base64: bad input"
             }
           }
         }
@@ -10613,7 +10722,8 @@
         "COD-34",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -10627,7 +10737,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: base64: bad input"
             }
           }
         }
@@ -10644,7 +10755,8 @@
         "COD-34",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -10658,7 +10770,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: base64: bad input"
             }
           }
         }
@@ -10675,7 +10788,8 @@
         "COD-34",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -10689,7 +10803,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: base64: bad input"
             }
           }
         }
@@ -10706,7 +10821,8 @@
         "COD-34",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -10720,7 +10836,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: base64: bad input"
             }
           }
         }
@@ -10737,7 +10854,8 @@
         "COD-34",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -10751,7 +10869,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: base64: bad input"
             }
           }
         }
@@ -10823,7 +10942,8 @@
         "COD-14",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -10836,7 +10956,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: decoded text is not valid UTF-8"
             }
           }
         }
@@ -10850,7 +10971,8 @@
         "COD-14",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -10863,7 +10985,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: decoded text is not valid UTF-8"
             }
           }
         }
@@ -10880,7 +11003,8 @@
         "COD-34",
         "COD-37",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -10894,7 +11018,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: unexpected end"
             }
           }
         }
@@ -10908,7 +11033,8 @@
         "COD-14",
         "COD-36",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -10921,7 +11047,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: decoded text is not valid UTF-8"
             }
           }
         }
@@ -10935,7 +11062,8 @@
         "COD-14",
         "COD-36",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -10948,7 +11076,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: styled cell is empty"
             }
           }
         }
@@ -10990,7 +11119,8 @@
         "COD-37",
         "COD-39",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -11004,7 +11134,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: hex: odd length or non-hex input"
             }
           }
         }
@@ -11017,7 +11148,8 @@
         "COD-37",
         "COD-39",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -11031,7 +11163,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: hex: odd length or non-hex input"
             }
           }
         }
@@ -11073,7 +11206,8 @@
         "COD-37",
         "COD-39",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -11087,7 +11221,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: hex: odd length or non-hex input"
             }
           }
         }
@@ -11100,7 +11235,8 @@
         "COD-37",
         "COD-39",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -11114,7 +11250,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: hex: odd length or non-hex input"
             }
           }
         }
@@ -11127,7 +11264,8 @@
         "COD-37",
         "COD-39",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -11141,7 +11279,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: hex: odd length or non-hex input"
             }
           }
         }
@@ -11183,7 +11322,8 @@
         "COD-37",
         "COD-39",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -11197,7 +11337,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: hex: odd length or non-hex input"
             }
           }
         }
@@ -11210,7 +11351,8 @@
         "COD-37",
         "COD-39",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -11224,7 +11366,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: hex: odd length or non-hex input"
             }
           }
         }
@@ -11237,7 +11380,8 @@
         "COD-37",
         "COD-39",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -11251,7 +11395,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: hex: odd length or non-hex input"
             }
           }
         }
@@ -11264,7 +11409,8 @@
         "COD-37",
         "COD-39",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -11278,7 +11424,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: hex: odd length or non-hex input"
             }
           }
         }
@@ -11291,7 +11438,8 @@
         "COD-37",
         "COD-39",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -11305,7 +11453,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: hex: odd length or non-hex input"
             }
           }
         }
@@ -11318,7 +11467,8 @@
         "COD-37",
         "COD-39",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -11332,7 +11482,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: hex: odd length or non-hex input"
             }
           }
         }
@@ -11345,7 +11496,8 @@
         "COD-37",
         "COD-39",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -11359,7 +11511,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: hex: odd length or non-hex input"
             }
           }
         }
@@ -11515,7 +11668,8 @@
         "COD-29",
         "COD-35",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -11528,7 +11682,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: anchors are not supported"
             }
           }
         }
@@ -11542,7 +11697,8 @@
         "COD-29",
         "COD-35",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -11555,7 +11711,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: anchors are not supported"
             }
           }
         }
@@ -11569,7 +11726,8 @@
         "COD-29",
         "COD-35",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -11582,7 +11740,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: explicit tags are not supported"
             }
           }
         }
@@ -11596,7 +11755,8 @@
         "COD-29",
         "COD-35",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -11609,7 +11769,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: explicit tags are not supported"
             }
           }
         }
@@ -11623,7 +11784,8 @@
         "COD-29",
         "COD-35",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -11636,7 +11798,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: styled cell is empty"
             }
           }
         }
@@ -11650,7 +11813,8 @@
         "COD-29",
         "COD-35",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -11663,7 +11827,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: no document"
             }
           }
         }
@@ -11677,7 +11842,8 @@
         "COD-29",
         "COD-35",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -11690,7 +11856,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: map keys must be strings or integers"
             }
           }
         }
@@ -11704,7 +11871,8 @@
         "COD-29",
         "COD-35",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -11717,7 +11885,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: map keys must be strings or integers"
             }
           }
         }
@@ -11731,7 +11900,8 @@
         "COD-29",
         "COD-35",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -11744,7 +11914,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: map keys must be strings or integers"
             }
           }
         }
@@ -11758,7 +11929,8 @@
         "COD-29",
         "COD-35",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -11771,7 +11943,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: map keys must be strings or integers"
             }
           }
         }
@@ -11967,7 +12140,8 @@
         "COD-31",
         "COD-33",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -11980,7 +12154,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: styled cell is empty"
             }
           }
         }
@@ -12056,7 +12231,8 @@
         "COD-37",
         "COD-39",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -12071,7 +12247,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message": "CONFIG: secret aes not configured"
             }
           }
         }
@@ -12086,7 +12263,8 @@
         "COD-37",
         "COD-39",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -12101,7 +12279,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message": "CONFIG: secret aes not configured"
             }
           }
         }
@@ -12145,7 +12324,8 @@
         "COD-3",
         "COD-8",
         "COD-40",
-        "PLN-15"
+        "PLN-15",
+        "COD-70"
       ],
       "steps": [
         {
@@ -12156,7 +12336,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message": "CONFIG: secret blind_index not configured"
             }
           }
         }
@@ -12166,7 +12347,8 @@
       "id": "blind_index_vector",
       "requirements": [
         "COD-4",
-        "COD-8"
+        "COD-8",
+        "COD-70"
       ],
       "steps": [
         {
@@ -12219,7 +12401,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message": "CONFIG: secret blind_index not configured"
             }
           }
         }
@@ -12229,7 +12412,8 @@
       "id": "aes_envelope_without_hex",
       "requirements": [
         "COD-5",
-        "COD-6"
+        "COD-6",
+        "COD-70"
       ],
       "steps": [
         {
@@ -12288,7 +12472,8 @@
           "key": "bench-salt",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: aes: authentication failed"
             }
           }
         },
@@ -12303,7 +12488,8 @@
           "key": "other-key",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: aes: authentication failed"
             }
           }
         }
@@ -12313,7 +12499,8 @@
       "id": "ip_packs_and_reads",
       "requirements": [
         "COD-3",
-        "COD-38"
+        "COD-38",
+        "COD-70"
       ],
       "steps": [
         {
@@ -12481,7 +12668,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: ip: the text is not an address"
             }
           }
         }
@@ -12495,7 +12683,8 @@
         "COD-34",
         "COD-35",
         "COD-37",
-        "COD-41"
+        "COD-41",
+        "COD-70"
       ],
       "steps": [
         {
@@ -12538,7 +12727,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: styled cell is empty"
             }
           }
         },
@@ -12552,7 +12742,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED"
+              "error": "CODEC_UNSUPPORTED",
+              "message": "CODEC_UNSUPPORTED: serialize: objects and references are not supported"
             }
           }
         },
@@ -12566,7 +12757,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: unexpected end"
             }
           }
         },
@@ -12612,7 +12804,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: duplicate map key"
             }
           }
         },
@@ -12626,7 +12819,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: multiple documents are not supported"
             }
           }
         },
@@ -12640,7 +12834,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: anchors are not supported"
             }
           }
         },
@@ -12654,7 +12849,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: aliases are not supported"
             }
           }
         },
@@ -12668,7 +12864,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: explicit tags are not supported"
             }
           }
         },
@@ -12682,7 +12879,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: number is not finite"
             }
           }
         },
@@ -12696,7 +12894,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: map keys must be strings or integers"
             }
           }
         },
@@ -12710,7 +12909,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: map keys must be scalar strings"
             }
           }
         },
@@ -12724,7 +12924,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED"
+              "error": "CODEC_UNSUPPORTED",
+              "message": "CODEC_UNSUPPORTED: serialize: objects and references are not supported"
             }
           }
         },
@@ -12738,7 +12939,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED"
+              "error": "CODEC_UNSUPPORTED",
+              "message": "CODEC_UNSUPPORTED: serialize: objects and references are not supported"
             }
           }
         },
@@ -12752,7 +12954,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED"
+              "error": "CODEC_UNSUPPORTED",
+              "message": "CODEC_UNSUPPORTED: serialize: objects and references are not supported"
             }
           }
         }
@@ -12762,7 +12965,8 @@
       "id": "serialize_strings_hold_type_letters",
       "requirements": [
         "COD-10",
-        "COD-34"
+        "COD-34",
+        "COD-70"
       ],
       "steps": [
         {
@@ -12811,7 +13015,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED"
+              "error": "CODEC_UNSUPPORTED",
+              "message": "CODEC_UNSUPPORTED: serialize: objects and references are not supported"
             }
           }
         }
@@ -13416,7 +13621,8 @@
         "COD-13",
         "COD-16",
         "COD-29",
-        "COD-66"
+        "COD-66",
+        "COD-70"
       ],
       "steps": [
         {
@@ -13429,7 +13635,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: integer is outside the i64 range"
             }
           }
         },
@@ -13443,7 +13650,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: integer is outside the i64 range"
             }
           }
         },
@@ -13457,7 +13665,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: number is not finite"
             }
           }
         },
@@ -13471,7 +13680,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: number is not finite"
             }
           }
         },
@@ -13485,7 +13695,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: number is not finite"
             }
           }
         },
@@ -13499,7 +13710,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: number is not finite"
             }
           }
         },
@@ -13513,7 +13725,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: map keys must be scalar strings"
             }
           }
         },
@@ -13527,7 +13740,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: map keys must be scalar strings"
             }
           }
         },
@@ -13541,7 +13755,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: map keys must be strings or integers"
             }
           }
         },
@@ -13555,7 +13770,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: map keys must be strings or integers"
             }
           }
         },
@@ -13569,7 +13785,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: map keys must be strings or integers"
             }
           }
         },
@@ -13583,7 +13800,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: map keys must be strings or integers"
             }
           }
         },
@@ -13597,7 +13815,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: map keys must be strings or integers"
             }
           }
         },
@@ -13611,7 +13830,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: explicit tags are not supported"
             }
           }
         },
@@ -13625,7 +13845,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: explicit tags are not supported"
             }
           }
         },
@@ -13639,7 +13860,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: explicit tags are not supported"
             }
           }
         },
@@ -13653,7 +13875,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: anchors are not supported"
             }
           }
         },
@@ -13667,7 +13890,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: anchors are not supported"
             }
           }
         },
@@ -13681,7 +13905,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: duplicate map key"
             }
           }
         },
@@ -13695,7 +13920,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: duplicate map key"
             }
           }
         },
@@ -13709,7 +13935,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: multiple documents are not supported"
             }
           }
         },
@@ -13723,7 +13950,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: the stream does not parse"
             }
           }
         },
@@ -13737,7 +13965,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: the stream is not UTF-8"
             }
           }
         },
@@ -13751,7 +13980,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: the stream holds a character that is not printable"
             }
           }
         },
@@ -13765,7 +13995,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: the stream holds a character that is not printable"
             }
           }
         },
@@ -13779,7 +14010,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: the stream holds a character that is not printable"
             }
           }
         },
@@ -13793,7 +14025,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: the stream holds a character that is not printable"
             }
           }
         },
@@ -13807,7 +14040,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: the stream holds a character that is not printable"
             }
           }
         },
@@ -13821,7 +14055,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: the stream holds a character that is not printable"
             }
           }
         }
@@ -14367,7 +14602,8 @@
       "id": "serialize_refused_scalars",
       "requirements": [
         "COD-10",
-        "COD-16"
+        "COD-16",
+        "COD-70"
       ],
       "steps": [
         {
@@ -14380,7 +14616,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: bad bool"
             }
           }
         },
@@ -14394,7 +14631,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: non-finite float"
             }
           }
         },
@@ -14408,7 +14646,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: non-finite float"
             }
           }
         },
@@ -14422,7 +14661,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: non-finite float"
             }
           }
         }
@@ -14433,7 +14673,8 @@
       "requirements": [
         "COD-14",
         "COD-37",
-        "COD-39"
+        "COD-39",
+        "COD-70"
       ],
       "steps": [
         {
@@ -14446,7 +14687,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: base64: bad input"
             }
           }
         },
@@ -14461,7 +14703,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: hex: odd length or non-hex input"
             }
           }
         }
@@ -14998,7 +15241,8 @@
       "id": "encode_style_errors",
       "requirements": [
         "COD-14",
-        "COD-35"
+        "COD-35",
+        "COD-70"
       ],
       "steps": [
         {
@@ -15012,7 +15256,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED"
+              "error": "CODEC_UNSUPPORTED",
+              "message": "CODEC_UNSUPPORTED: yaml must be the first style"
             }
           }
         },
@@ -15026,7 +15271,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED"
+              "error": "CODEC_UNSUPPORTED",
+              "message": "CODEC_UNSUPPORTED: style filepart"
             }
           }
         },
@@ -15041,7 +15287,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED"
+              "error": "CODEC_UNSUPPORTED",
+              "message": "CODEC_UNSUPPORTED: serialize must be the first style"
             }
           }
         },
@@ -15056,7 +15303,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED"
+              "error": "CODEC_UNSUPPORTED",
+              "message": "CODEC_UNSUPPORTED: serialize must be the first style"
             }
           }
         },
@@ -15071,7 +15319,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED"
+              "error": "CODEC_UNSUPPORTED",
+              "message": "CODEC_UNSUPPORTED: ordered_json must be the first style"
             }
           }
         },
@@ -15086,7 +15335,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED"
+              "error": "CODEC_UNSUPPORTED",
+              "message": "CODEC_UNSUPPORTED: ordered_json must be the first style"
             }
           }
         },
@@ -15101,7 +15351,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED"
+              "error": "CODEC_UNSUPPORTED",
+              "message": "CODEC_UNSUPPORTED: serialize must be the first style"
             }
           }
         },
@@ -15116,7 +15367,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED"
+              "error": "CODEC_UNSUPPORTED",
+              "message": "CODEC_UNSUPPORTED: ordered_json must be the first style"
             }
           }
         }
@@ -15753,7 +16005,8 @@
         "COD-10",
         "COD-16",
         "COD-29",
-        "COD-40"
+        "COD-40",
+        "COD-70"
       ],
       "steps": [
         {
@@ -15798,7 +16051,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: integer is outside the i64 range"
             }
           }
         },
@@ -16199,7 +16453,8 @@
       "requirements": [
         "COD-1",
         "COD-4",
-        "COD-41"
+        "COD-41",
+        "COD-70"
       ],
       "steps": [
         {
@@ -16263,7 +16518,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: host input must be text or bytes"
             }
           }
         },
@@ -16278,7 +16534,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: host input must be text or bytes"
             }
           }
         },
@@ -16293,7 +16550,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: host input must be text or bytes"
             }
           }
         },
@@ -16318,7 +16576,8 @@
           "key": "blind-key",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: blind index input must be text or bytes"
             }
           }
         }
@@ -16434,7 +16693,8 @@
     {
       "id": "ordered_json_text_is_utf8",
       "requirements": [
-        "COD-14"
+        "COD-14",
+        "COD-70"
       ],
       "steps": [
         {
@@ -16447,7 +16707,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: json: the cell is not JSON"
             }
           }
         },
@@ -16461,7 +16722,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: json: the cell is not JSON"
             }
           }
         },
@@ -16476,7 +16738,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: json: the cell is not JSON"
             }
           }
         }
@@ -16486,7 +16749,8 @@
       "id": "host_stage_errors",
       "requirements": [
         "COD-5",
-        "COD-37"
+        "COD-37",
+        "COD-70"
       ],
       "steps": [
         {
@@ -16552,7 +16816,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: hex: odd length or non-hex input"
             }
           }
         },
@@ -16567,7 +16832,8 @@
           "key": "key-v1",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: aes: unsupported ciphertext format"
             }
           }
         },
@@ -16582,7 +16848,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED"
+              "error": "CODEC_UNSUPPORTED",
+              "message": "CODEC_UNSUPPORTED: host style serialize"
             }
           }
         },
@@ -16597,7 +16864,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED"
+              "error": "CODEC_UNSUPPORTED",
+              "message": "CODEC_UNSUPPORTED: host style yaml"
             }
           }
         },
@@ -16610,7 +16878,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: host style list is empty"
             }
           }
         }
@@ -16622,7 +16891,8 @@
         "COD-14",
         "COD-31",
         "COD-37",
-        "COD-41"
+        "COD-41",
+        "COD-70"
       ],
       "steps": [
         {
@@ -16675,7 +16945,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: decoded text is not valid UTF-8"
             }
           }
         },
@@ -16739,7 +17010,8 @@
     {
       "id": "ordered_json_value_stages",
       "requirements": [
-        "COD-16"
+        "COD-16",
+        "COD-70"
       ],
       "steps": [
         {
@@ -16854,7 +17126,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: serialize: an ordered-json value is written only by the ordered_json stage"
             }
           }
         },
@@ -16883,7 +17156,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: yaml: an ordered-json value is written only by the ordered_json stage"
             }
           }
         },
@@ -16912,7 +17186,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: a first gz stage takes a string value"
             }
           }
         },
@@ -16941,7 +17216,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: a first base64 stage takes a string value"
             }
           }
         },
@@ -16968,7 +17244,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: an empty stage list takes a string value"
             }
           }
         }
@@ -16978,7 +17255,8 @@
       "id": "aes_envelope_form",
       "requirements": [
         "COD-5",
-        "DIA-32"
+        "DIA-32",
+        "COD-70"
       ],
       "steps": [
         {
@@ -17026,7 +17304,8 @@
           "key": "other-key",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: aes: authentication failed"
             }
           }
         }
@@ -17128,7 +17407,8 @@
       "id": "aes_tamper_positions",
       "requirements": [
         "COD-6",
-        "COD-41"
+        "COD-41",
+        "COD-70"
       ],
       "steps": [
         {
@@ -17142,7 +17422,8 @@
           "key": "bench-salt",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: aes: authentication failed"
             }
           }
         },
@@ -17157,7 +17438,8 @@
           "key": "bench-salt",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: aes: authentication failed"
             }
           }
         },
@@ -17172,7 +17454,8 @@
           "key": "bench-salt",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: aes: authentication failed"
             }
           }
         },
@@ -17203,7 +17486,8 @@
           "key": "bench-salt",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: aes: truncated v2 envelope"
             }
           }
         },
@@ -17219,7 +17503,8 @@
           "key": "k",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: aes: unsupported ciphertext format"
             }
           }
         },
@@ -17235,7 +17520,8 @@
           "key": "k",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: hex: odd length or non-hex input"
             }
           }
         },
@@ -17251,7 +17537,8 @@
           "key": "k",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: aes: unsupported ciphertext format"
             }
           }
         },
@@ -17267,7 +17554,8 @@
           "key": "k",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: aes: unsupported ciphertext format"
             }
           }
         }
@@ -17278,7 +17566,8 @@
       "requirements": [
         "COD-3",
         "COD-38",
-        "COD-41"
+        "COD-41",
+        "COD-70"
       ],
       "steps": [
         {
@@ -17394,7 +17683,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED"
+              "error": "CODEC_UNSUPPORTED",
+              "message": "CODEC_UNSUPPORTED: host style gz"
             }
           }
         },
@@ -17409,7 +17699,8 @@
           "key": "k",
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED"
+              "error": "CODEC_UNSUPPORTED",
+              "message": "CODEC_UNSUPPORTED: host style unknown"
             }
           }
         }
@@ -17419,7 +17710,8 @@
       "id": "ip_addresses_read_back",
       "requirements": [
         "COD-3",
-        "COD-38"
+        "COD-38",
+        "COD-70"
       ],
       "steps": [
         {
@@ -17603,7 +17895,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: ip: the text is not an address"
             }
           }
         },
@@ -17618,7 +17911,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_ENCODE"
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: ip: the text is not an address"
             }
           }
         },
@@ -17644,7 +17938,8 @@
     {
       "id": "hex_stage_of_a_text",
       "requirements": [
-        "COD-3"
+        "COD-3",
+        "COD-70"
       ],
       "steps": [
         {
@@ -17692,7 +17987,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: hex: odd length or non-hex input"
             }
           }
         }
@@ -17702,7 +17998,8 @@
       "id": "aes_without_a_key_on_any_cell",
       "requirements": [
         "COD-5",
-        "COD-37"
+        "COD-37",
+        "COD-70"
       ],
       "steps": [
         {
@@ -17716,7 +18013,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message": "CONFIG: secret aes not configured"
             }
           }
         },
@@ -17731,7 +18029,8 @@
           "key": "",
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message": "CONFIG: secret aes not configured"
             }
           }
         }
@@ -17960,7 +18259,8 @@
         "COD-12",
         "COD-14",
         "COD-35",
-        "COD-37"
+        "COD-37",
+        "COD-70"
       ],
       "steps": [
         {
@@ -17973,7 +18273,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: styled cell is empty"
             }
           }
         },
@@ -17988,7 +18289,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: base64: bad input"
             }
           }
         },
@@ -18003,7 +18305,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: base64: bad input"
             }
           }
         },
@@ -18018,7 +18321,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_DECODE"
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: base64: bad input"
             }
           }
         },
@@ -18060,7 +18364,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED"
+              "error": "CODEC_UNSUPPORTED",
+              "message": "CODEC_UNSUPPORTED: style unknown"
             }
           }
         },
@@ -18074,7 +18379,8 @@
           },
           "expect": {
             "none": {
-              "error": "CODEC_UNSUPPORTED"
+              "error": "CODEC_UNSUPPORTED",
+              "message": "CODEC_UNSUPPORTED: style unknown"
             }
           }
         },
@@ -18128,6 +18434,831 @@
             "none": {
               "value": {
                 "text": "payload"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "cells_are_text_or_bytes",
+      "requirements": [
+        "COD-70"
+      ],
+      "steps": [
+        {
+          "op": "codec.decode",
+          "styles": [
+            "ordered_json"
+          ],
+          "raw": {
+            "int": "1"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: cell is not bytes"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [],
+          "raw": {
+            "int": "1"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: cell is not bytes"
+            }
+          }
+        },
+        {
+          "op": "codec.host_decode",
+          "styles": [
+            "hex"
+          ],
+          "raw": {
+            "int": "1"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: cell is not bytes"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "serialize_refused_forms",
+      "requirements": [
+        "COD-10",
+        "COD-34",
+        "COD-67",
+        "COD-70"
+      ],
+      "steps": [
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "N"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: expected ;"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "N:"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: expected ;"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "N;x"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: trailing data"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "x:1;"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: unknown type"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "i:5"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: expected ;"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "b:;"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: bad bool"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "i:;"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: bad int"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "i: 1;"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: bad int"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "i:1_0;"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: bad int"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "i:1.5;"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: bad int"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "bytes_hex": "693aff3b"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: bad int"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "i:-9223372036854775809;"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: integer is outside the i64 range"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "d:;"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: bad float"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "d: 1;"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: bad float"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "d:1_0;"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: bad float"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "d:0x10;"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: bad float"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "d:inf;"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: bad float"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "d:Infinity;"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: bad float"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "d:1e400;"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: non-finite float"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "s::\"\";"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: bad string length"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "s:-1:\"\";"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: bad string length"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "s:+0:\"\";"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: bad string length"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "s:5:\"ab\";"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: string overruns input"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "s:1:\"ab\";"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: expected \""
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "bytes_hex": "733a313a22ff223b"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: string is not valid UTF-8"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "a::{}"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: bad array length"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "a:-1:{}"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: bad array length"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "a:0:[]"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: expected {"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "a:1:{N;N;}"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: array key must be int or string"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "a:1:{d:1.5;N;}"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: array key must be int or string"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "a:1:{a:0:{}N;}"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: array key must be int or string"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "a:1:{i:9223372036854775808;N;}"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: integer is outside the i64 range"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize"
+          ],
+          "raw": {
+            "text": "a:1:{i:0;N;"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: serialize: expected }"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "serialize_false_under_byte_stages",
+      "requirements": [
+        "COD-10",
+        "COD-14",
+        "COD-70"
+      ],
+      "steps": [
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize",
+            "gz"
+          ],
+          "value": {
+            "bool": false
+          },
+          "as": "gz_false"
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize",
+            "gz"
+          ],
+          "raw": {
+            "ref": "gz_false"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "bool": false
+              }
+            }
+          }
+        },
+        {
+          "op": "codec.encode",
+          "styles": [
+            "serialize",
+            "base64"
+          ],
+          "value": {
+            "bool": false
+          },
+          "as": "base64_false"
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "serialize",
+            "base64"
+          ],
+          "raw": {
+            "ref": "base64_false"
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "bool": false
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "gz_reads_only_zlib",
+      "requirements": [
+        "COD-12",
+        "COD-70"
+      ],
+      "steps": [
+        {
+          "op": "codec.decode",
+          "styles": [
+            "gz"
+          ],
+          "raw": {
+            "bytes_hex": "1f8b08000000000002ff4b040043beb7e801000000"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: gz: bad zlib stream"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "yaml_aliases_and_order",
+      "requirements": [
+        "COD-29",
+        "COD-70"
+      ],
+      "steps": [
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "*a\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: aliases are not supported"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "a: [1, *missing]\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: aliases are not supported"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "a: 1\nb: !!int 2\nc: &x 3\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: explicit tags are not supported"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "a: .inf\nb: 9223372036854775808\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: number is not finite"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "a: 9223372036854775808\na: 1\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: integer is outside the i64 range"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "host_refusals",
+      "requirements": [
+        "COD-1",
+        "COD-38",
+        "COD-69",
+        "COD-70"
+      ],
+      "steps": [
+        {
+          "op": "codec.host_encode",
+          "styles": [
+            "ip"
+          ],
+          "value": {
+            "bytes_hex": "ff"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "error": "CODEC_ENCODE",
+              "message": "CODEC_ENCODE: ip: the text is not an address"
+            }
+          }
+        },
+        {
+          "op": "codec.host_encode",
+          "styles": [
+            "blind_index"
+          ],
+          "value": {
+            "text": "x"
+          },
+          "key": "k",
+          "expect": {
+            "none": {
+              "error": "CODEC_UNSUPPORTED",
+              "message": "CODEC_UNSUPPORTED: host style blind_index"
+            }
+          }
+        },
+        {
+          "op": "codec.host_decode",
+          "styles": [
+            "unknown",
+            "hex"
+          ],
+          "raw": {
+            "text": "zz"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "error": "CODEC_UNSUPPORTED",
+              "message": "CODEC_UNSUPPORTED: host style unknown"
+            }
+          }
+        },
+        {
+          "op": "codec.host_decode",
+          "styles": [
+            "blind_index"
+          ],
+          "raw": {
+            "text": "x"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "error": "CODEC_UNSUPPORTED",
+              "message": "CODEC_UNSUPPORTED: host style blind_index"
+            }
+          }
+        },
+        {
+          "op": "codec.host_decode",
+          "styles": [
+            "hex"
+          ],
+          "raw": {
+            "text": "FF"
+          },
+          "key": "",
+          "expect": {
+            "none": {
+              "value": {
+                "bytes_hex": "ff"
               }
             }
           }
