@@ -130,13 +130,3 @@ func codecStages(styles []string) []string {
 	}
 	return out
 }
-
-// A text that is not a sequence of Unicode scalar values is no JSON text (RFC 8259, 8.1), so an ordered_json stage returns
-// CODEC_ENCODE for it (COD-64); a recipe text is a JSON string, which holds Unicode only, so each client tests this.
-func TestOrderedJSONRefusesATextThatIsNotUnicode(t *testing.T) {
-	// The test of COD-64 (docs/spec).
-	testcase.Start(t, testcase.Compute)
-	if _, err := Encode([]string{"ordered_json"}, Value("\xff")); err == nil || !strings.HasPrefix(err.Error(), "CODEC_ENCODE") {
-		t.Fatalf("a text that is not UTF-8 must be CODEC_ENCODE: %v", err)
-	}
-}

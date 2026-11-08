@@ -19193,6 +19193,120 @@
       ]
     },
     {
+      "id": "yaml_collection_key_order",
+      "requirements": [
+        "COD-29",
+        "COD-70"
+      ],
+      "steps": [
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "a: .inf\n[b]: c\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: number is not finite"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "&x [b]: c\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: anchors are not supported"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "a: 1\na: 2\n[b]: c\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: duplicate map key"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "a: *x\n[b]: c\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: aliases are not supported"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "? a: 1\n: b\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: map keys must be scalar strings"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "[b]: .inf\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: map keys must be scalar strings"
+            }
+          }
+        },
+        {
+          "op": "codec.decode",
+          "styles": [
+            "yaml"
+          ],
+          "raw": {
+            "text": "? - a\n: >\n  b\n"
+          },
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: yaml: map keys must be scalar strings"
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "host_refusals",
       "requirements": [
         "COD-1",

@@ -14,13 +14,14 @@ import (
 	"net/netip"
 	"strings"
 	"sync"
+	"unicode/utf8"
 )
 
 var aesV2Prefix = []byte("ORM-AES2\x00")
 
 // AESEncrypt returns the authenticated v2 envelope used by every client.
 func AESEncrypt(plain []byte, key string) ([]byte, error) {
-	gcm, err := aesGCM(key)
+	gcm, err := aesGCM(key, CodeCodecEncode, "aes: the encryption failed")
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +40,7 @@ func AESDecrypt(ciphertext []byte, key string) ([]byte, error) {
 	if len(ciphertext) < len(aesV2Prefix) || !bytes.HasPrefix(ciphertext, aesV2Prefix) {
 		return nil, codecErr(CodeCodecDecode, "aes: unsupported ciphertext format")
 	}
-	gcm, err := aesGCM(key)
+	gcm, err := aesGCM(key, CodeCodecDecode, "aes: authentication failed")
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +51,7 @@ func AESDecrypt(ciphertext []byte, key string) ([]byte, error) {
 	nonce := ciphertext[start : start+gcm.NonceSize()]
 	plain, err := gcm.Open(nil, nonce, ciphertext[start+gcm.NonceSize():], aesV2Prefix)
 	if err != nil {
-		return nil, codecErr(CodeCodecDecode, "aes: authentication failed")
+		return nil, codecCause(CodeCodecDecode, "aes: authentication failed", err)
 	}
 	return plain, nil
 }
@@ -58,7 +59,9 @@ func AESDecrypt(ciphertext []byte, key string) ([]byte, error) {
 // aesCiphers caches the AEAD of each key; an AEAD is safe for concurrent use.
 var aesCiphers sync.Map
 
-func aesGCM(key string) (cipher.AEAD, error) {
+// aesGCM is the AEAD of key. A failure of the cipher library is the error of the rule of the call, code and text, with the
+// failure as its cause (COD-71): aes-encrypt on write and aes-auth on read.
+func aesGCM(key, code, text string) (cipher.AEAD, error) {
 	if v, ok := aesCiphers.Load(key); ok {
 		aead, ok := v.(cipher.AEAD)
 		if !ok {
@@ -68,11 +71,11 @@ func aesGCM(key string) (cipher.AEAD, error) {
 	}
 	block, err := aes.NewCipher(aesV2Key(key))
 	if err != nil {
-		return nil, err
+		return nil, codecCause(code, text, err)
 	}
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
-		return nil, err
+		return nil, codecCause(code, text, err)
 	}
 	aesCiphers.Store(key, gcm)
 	return gcm, nil
@@ -100,11 +103,11 @@ func BlindIndex(v any, key string) (string, error) {
 	var plain []byte
 	switch x := v.(type) {
 	case string:
+		if !utf8.ValidString(x) {
+			return "", codecErr(CodeCodecEncode, "blind index input is not a sequence of Unicode scalar values")
+		}
 		plain = []byte(x)
 	case []byte:
-		if x == nil {
-			return "", nil
-		}
 		plain = x
 	default:
 		return "", codecErr(CodeCodecEncode, "blind index input must be text or bytes")
@@ -140,12 +143,8 @@ func HostEncode(v any, styles []string, aesKey string) (any, error) {
 	if len(styles) == 0 {
 		return nil, codecErr(CodeCodecEncode, "host style list is empty")
 	}
-	for _, st := range styles {
-		switch st {
-		case "aes", "hex", "ip":
-		default:
-			return nil, codecErr(CodeCodecUnsupported, "host style %s", st)
-		}
+	if err := checkHostStyles(styles); err != nil {
+		return nil, err
 	}
 	if v == nil {
 		return nil, nil
@@ -153,6 +152,9 @@ func HostEncode(v any, styles []string, aesKey string) (any, error) {
 	var cur []byte
 	switch x := v.(type) {
 	case string:
+		if !utf8.ValidString(x) {
+			return nil, codecErr(CodeCodecEncode, "host input is not a sequence of Unicode scalar values")
+		}
 		cur = []byte(x)
 	case []byte:
 		if x == nil {
@@ -174,12 +176,11 @@ func HostEncode(v any, styles []string, aesKey string) (any, error) {
 			}
 		case "hex":
 			cur = []byte(strings.ToUpper(hex.EncodeToString(cur)))
-		case "ip":
+		default:
+			// checkHostStyles leaves ip as the only other style.
 			if cur, err = packIP(string(cur)); err != nil {
 				return nil, err
 			}
-		default:
-			return nil, codecErr(CodeCodecUnsupported, "host style %s", st)
 		}
 	}
 	if last := styles[len(styles)-1]; last == "hex" {
@@ -193,6 +194,9 @@ func HostEncode(v any, styles []string, aesKey string) (any, error) {
 // decodes only in the form HostEncode writes; anything else, surrounding white
 // space included, is CODEC_DECODE (docs/spec/codec.md).
 func HostDecode(raw any, styles []string, aesKey string) (any, error) {
+	if err := checkHostStyles(styles); err != nil {
+		return nil, err
+	}
 	var cur []byte
 	switch x := raw.(type) {
 	case nil:
@@ -223,17 +227,28 @@ func HostDecode(raw any, styles []string, aesKey string) (any, error) {
 			if cur, err = AESDecrypt(cur, aesKey); err != nil {
 				return nil, err
 			}
-		case "ip":
+		default:
+			// checkHostStyles leaves ip as the only other style.
 			s, err := unpackIP(cur)
 			if err != nil {
 				return nil, err
 			}
 			return s, nil
-		default:
-			return nil, codecErr(CodeCodecUnsupported, "host style %s", styles[i])
 		}
 	}
 	return string(cur), nil
+}
+
+// checkHostStyles refuses a style other than aes, hex and ip before the value or the cell is read (host-style).
+func checkHostStyles(styles []string) error {
+	for _, st := range styles {
+		switch st {
+		case "aes", "hex", "ip":
+		default:
+			return codecErr(CodeCodecUnsupported, "host style %s", st)
+		}
+	}
+	return nil
 }
 
 // splitHost separates the executor codec stages (docs/spec/codec.md) from the
