@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: dafc2e2b904793db9d12ec7a5b6345148959762242b3272e8c56a49725fe8e48 -->
+<!-- source-sha256: 7d82e3b5d177c3a08cb217d4590cf2dd8062103015c43f5053acaa8a1831f5ad -->
 # 변경 이력
 
 ## Unreleased
 
+- orm은 모든 생태계에서 ordered-json을 0.0.22로 고정하며, 각 lock은 자기 package manager로 갱신한다 (T401).
 - Tests: workspace의 Rust suite는 polyspec-orm-tests의 test program 하나 `all`이다. 예전 test program은 각각 trial이 `<module>::<name>`인 module이고, group은 차례로 실행되며 group마다 한 줄과 마지막 개수를 쓴다. 각 package의 시험은 그 test case crate tests/cases에 남고, Make target은 `--test all -- <module>::`로 시험을 고른다 (T375). markdown recipe 시험도 이 program의 module이다.
 - catalog 연결은 Rust, Go, TypeScript, Python에서 commit된 변경의 연결을 다음 session에 넘긴다 (INT-106b에서 INT-106e). 그래서 recipe 사례의 seed 행이 연결 하나로 쓰인다: PostgreSQL의 Rust recipe conformance_verification은 사례 90개에 연결 15,959개를 열던 것이 1,465개를 열고, Go, TypeScript, Python도 같이 준다. markdown session도 새 `MarkdownLease::keep`으로 같은 방식으로 pool에 돌아간다 (T366).
 - PHP: packages/php/tests와 packages/php-ext/tests의 모든 PHPUnit test class가 size를 선언하므로, 시간 제한은 멈춘 case의 기한(60, 120, 300초)이고 어떤 case도 부하에서 PHPUnit이 size 없는 class에 주는 1초로 실패하지 않는다 (T393).
