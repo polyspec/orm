@@ -17,9 +17,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/goccy/go-yaml/ast"
-	yamlparser "github.com/goccy/go-yaml/parser"
-	"github.com/goccy/go-yaml/token"
+	"github.com/min-0-max/go-yaml/ast"
+	yamlparser "github.com/min-0-max/go-yaml/parser"
+	"github.com/min-0-max/go-yaml/token"
 	orderedjson "github.com/polyspec/ordered-json/packages/go"
 	"github.com/polyspec/orm/packages/go/engine/ir"
 	goyaml "go.yaml.in/yaml/v3"
@@ -327,10 +327,11 @@ func yamlFloats(value any) any {
 	return value
 }
 
-// yamlDecode reads one YAML 1.2 document. goccy/go-yaml reads U+0085 as content, as YAML 1.2
-// rules (5.4), where yaml.v3 reads it as a line break; its AST keeps each scalar's source text
-// and style, so the plain scalars resolve by the core schema below. The parser is told to keep a
-// repeated key, which yamlMapping refuses in the order of the nodes (COD-70).
+// yamlDecode reads one YAML 1.2 document with the fork github.com/min-0-max/go-yaml of goccy/go-yaml, which reads
+// U+0085 as content, as YAML 1.2 rules (5.4), where yaml.v3 reads it as a line break, and reads a key that is a
+// collection as its node (6.9, 8.2.2), which goccy/go-yaml refuses. Its AST keeps each scalar's source text and style, so
+// the plain scalars resolve by the core schema below. The parser is told to keep a repeated key, so that yamlMapping
+// refuses each node, a collection key included, in the order of the nodes (COD-70).
 func yamlDecode(b []byte) (any, error) {
 	b, err := yamlStream(b)
 	if err != nil {
@@ -338,9 +339,6 @@ func yamlDecode(b []byte) (any, error) {
 	}
 	file, err := yamlparser.ParseBytes(b, 0, yamlparser.AllowDuplicateMapKey())
 	if err != nil {
-		if yamlCollectionKey(err) {
-			return nil, codecCause(CodeCodecDecode, "yaml: map keys must be scalar strings", err)
-		}
 		return nil, codecCause(CodeCodecDecode, "yaml: the stream does not parse", err)
 	}
 	// The parser gives the directives of a document (%YAML, %TAG) as a document of their own before it.
@@ -365,27 +363,6 @@ func yamlDecode(b []byte) (any, error) {
 		return nil, nil
 	}
 	return yamlNode(docs[0].Body)
-}
-
-// yamlCollectionKey reports whether the parser refused the stream at a key that is a collection, which goccy/go-yaml does
-// not read: the token it refuses is the ':' after the end of a flow sequence or map, or a block sequence entry right after
-// an explicit key '?'.
-func yamlCollectionKey(err error) bool {
-	var syntax interface{ GetToken() *token.Token }
-	if !errors.As(err, &syntax) {
-		return false
-	}
-	tk := syntax.GetToken()
-	if tk == nil || tk.Prev == nil {
-		return false
-	}
-	switch tk.Type {
-	case token.MappingValueType:
-		return tk.Prev.Type == token.SequenceEndType || tk.Prev.Type == token.MappingEndType
-	case token.SequenceEntryType:
-		return tk.Prev.Type == token.MappingKeyType
-	}
-	return false
 }
 
 // yamlStream applies the stream rules of YAML 1.2 that the parser does not (COD-13): the stream is UTF-8, a byte order
@@ -416,7 +393,7 @@ func yamlPrintable(r rune) bool {
 	return r >= 0xA0 && r <= 0xD7FF || r >= 0xE000 && r <= 0xFFFD || r >= 0x10000 && r <= 0x10FFFF
 }
 
-// yamlNode is the value of a node of a document body. Each node kind of goccy/go-yaml is handled: the scalars, the
+// yamlNode is the value of a node of a document body. Each node kind of the YAML library is handled: the scalars, the
 // collections and the anchor, alias and tag forms that a rule refuses; a document, a directive, a comment, a sequence entry
 // or an explicit key that the parser gives as a value is a stream that does not parse, whose cause names the kind (COD-72).
 func yamlNode(node ast.Node) (any, error) {
@@ -474,7 +451,7 @@ func yamlMapping(values []*ast.MappingValueNode) (map[string]any, error) {
 }
 
 // yamlScalar returns the text of a scalar's token and whether it is plain, whose tag the reader resolves. The AST types
-// goccy/go-yaml gives plain scalars follow its own resolution, so only the source text and the style are used.
+// the YAML library gives plain scalars follow its own resolution, so only the source text and the style are used.
 func yamlScalar(t *token.Token) (string, bool) {
 	switch t.Type {
 	case token.SingleQuoteType, token.DoubleQuoteType:
