@@ -1,11 +1,11 @@
 <!-- doc-id: packages-orm-php-readme -->
-<!-- source-sha256: 4670cc7a8ec60b62839434028b7d07851ad2ed37730159f6da009b86a4380a5e -->
+<!-- source-sha256: cdc8b764b7dc70b57e6ea39a128cffef7ffd1ca499728893123078311c2dc5ed -->
 # orm — PHP 클라이언트
 
 PHP 클라이언트: PDO 호환 드라이버(`pdo_mysql`, `pdo_pgsql`과 `ext-pgsql`, `pdo_sqlite`) 위의 생성 모델(`Polyspec\Orm\Tests\Model\Author`, …). PostgreSQL 연결에는 `pdo_pgsql`과 `ext-pgsql`이 모두 필요하며, 취소에는 `ext-pgsql`의 protocol API를 쓴다. 라이브러리가
 SQL을 직접 조립한다. 문장 모양마다 dbspec 문서 묶음의 runtime model(docs/spec/dbspec.md)로 검증하고, 한 번 계획하며,
 크기가 제한된 process 내부 plan cache에 보관한다. 옆에서 실행되는 service나
-extension은 없다. PHP 8.4 이상. Version 0.0.23. DSN의 scheme이 PDO driver를 고르므로
+extension은 없다. PHP 8.4 이상. Version 0.0.24. DSN의 scheme이 PDO driver를 고르므로
 `composer.json`은 세 가지 중 어느 것도 require하지 않고 각각을 suggest한다. `scripts/php-without-mysql.sh`는
 `.github/runner`의 Linux runner에서 SQLite로 `php -n`에 필요한 extension만 두고 client를 실행해,
 공유 module인 `mysqlnd`, `pdo_mysql`, `mysqli`가 load되지 않게 한다.

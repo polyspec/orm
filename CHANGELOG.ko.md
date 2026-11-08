@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b852001ea977bc28ea0b3e923c7bc3e4fd0d31d38d9c50a165bf01946863fb02 -->
+<!-- source-sha256: d37915df6ff7456dca31660887593b15a648c7e6b186c87ae0941d559b7c8d0a -->
 # 변경 이력
 
 ## Unreleased
+
+## 0.0.24
 
 - Go: 공개 module은 자기가 담지 않은 package를 import하지 않으므로, release의 소비자에서 `go mod tidy`가 통과한다 (INT-138, T405). signed limit의 시험 `TestRecipePublicInterfaceSignedNone`이 package orm에서 생성되고 추적되지 않는 bindmodel을 import했으므로, orm을 import하는 모든 소비자의 `go mod tidy`가 `module github.com/polyspec/orm/packages/go@v0.0.23 ... does not contain package .../bindmodel`로 실패했다. 이 시험은 bind model의 다른 recipe 옆인 bindmessages에서 실행된다. `TestExternalModuleCanImportClient`는 이제 packages/go의 추적 파일로 소비자 module을 만들고, contracts/interfaces.json의 Go root에 `go mod tidy`와 `go build`를 실행한다.
 

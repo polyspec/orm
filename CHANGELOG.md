@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+## 0.0.24
+
 - Go: the published module imports no package that it does not contain, so `go mod tidy` passes in a consumer of the release (INT-138, T405). The test of the signed limit, `TestRecipePublicInterfaceSignedNone`, imported the generated and untracked bindmodel from the package orm, so every consumer that imported orm failed `go mod tidy` with `module github.com/polyspec/orm/packages/go@v0.0.23 ... does not contain package .../bindmodel`; it runs in bindmessages beside the other recipes of the bind models. `TestExternalModuleCanImportClient` now builds a consumer module against the tracked files of packages/go and runs `go mod tidy` and `go build` on the Go roots of contracts/interfaces.json.
 
 ## 0.0.23
