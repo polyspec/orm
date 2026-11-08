@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c482571343328e364082ea2722704281fb4fc923d5e2ba3aab84eae8dc3825de -->
+<!-- source-sha256: 592821b5923955e3d28a51c1ab97918f6cdd34ecbd10485835aa72655e0bd29b -->
 # 변경 이력
 
 ## Unreleased
 
+- CI: 한 runtime의 job은 그 runtime의 part만 실행하고, runtime 이름이 없는 job은 많아야 한 runtime의 part를 실행한다. conformance-refusal-check, native-error-cause-check, testcase-check는 각 part가 그 runtime의 group에서 실행되고, repository 검사는 다른 runtime의 part에 닿는 group을 실패시킨다 (T388).
 - CI: 독립 native 검사와 setup을 runtime group에 배치하고 전용 target이 실행하는 native case를 전체 실행에서 제외하며 여러 group이 호출하는 검사를 탐지하고 generator module을 각 검사 대신 설치 단계에서 준비한다 (T388).
 - orm은 parity를 지우는 kit 0.0.101을 채택한다(T400): contracts/implementations.json은 여섯 구현을 root, test glob, support 파일, internal 시험과 함께 선언하고, 그 inventory의 모든 test 파일은 자기 runtime의 target에서 실행된다. PHP, TypeScript, Python 파일은 각자 CI group을 가진 새 suite-php-check, suite-typescript-check, suite-python-check에서, Go, Rust, PHP extension은 예전처럼 client target에서 실행된다. config/parity.json, parity job과 gate, divergence-check, test-markers-check, recipe의 key cases_on을 지우고, recipe schema는 ir.param_uses와 planner.columns의 expect를 적는다. feature unit 없는 FCV-2 native 규칙의 검사는 보류된 row T400-1이다.
 - orm은 0.0.98의 동작을 유지한 채 kit 0.0.99를 채택한다(T399): 각 recipe는 0.0.98이 기본으로 정하던 값을 넘기고, kit-check은 gate에서 빠지며, config/duplication.json과 config/generated.json은 0.0.98이 고정한 값을 선언한다. build-go, build-ts, build-rust는 run-long 아래에서 실행되고 build-rust는 공유 Rust target 폴더에 그 lease 아래에서 빌드한다. 전에는 0.0.98이 둘 다 없이 runtime-targets 안에서 실행했다.

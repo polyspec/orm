@@ -241,15 +241,69 @@
         "**/*.yaml"
       ]
     },
-    "testcase-check": {
+    "testcase-check/go": {
       "scope": "owner",
       "needs": [
         "go",
-        "rust"
+        "node-modules"
       ],
       "inputs": [
         "scripts/schema/binaries.schema.json",
         "packages/go/testcase/**",
+        "scripts/json/**",
+        "tests/testcase.mts",
+        "tests/errors.mts",
+        "scripts/harness/testcase.test.mts",
+        "tests/go-test.mts",
+        "scripts/harness/go-test.test.mts",
+        "tests/cargo-test.mts",
+        "scripts/harness/cargo-test.test.mts",
+        "tests/run-long.mts",
+        "tests/environment.mts"
+      ]
+    },
+    "testcase-check/node": {
+      "scope": "owner",
+      "needs": [],
+      "inputs": [
+        "scripts/schema/binaries.schema.json",
+        "scripts/json/**",
+        "tests/testcase.mts",
+        "tests/errors.mts",
+        "scripts/harness/testcase.test.mts",
+        "tests/go-test.mts",
+        "scripts/harness/go-test.test.mts",
+        "tests/cargo-test.mts",
+        "scripts/harness/cargo-test.test.mts",
+        "tests/run-long.mts",
+        "tests/environment.mts"
+      ]
+    },
+    "testcase-check/runners": {
+      "scope": "owner",
+      "needs": [],
+      "inputs": [
+        "scripts/schema/binaries.schema.json",
+        "scripts/json/**",
+        "tests/testcase.mts",
+        "tests/errors.mts",
+        "scripts/harness/testcase.test.mts",
+        "tests/go-test.mts",
+        "scripts/harness/go-test.test.mts",
+        "tests/cargo-test.mts",
+        "scripts/harness/cargo-test.test.mts",
+        "tests/run-long.mts",
+        "tests/environment.mts"
+      ]
+    },
+    "testcase-check/rust": {
+      "scope": "owner",
+      "needs": [
+        "rust",
+        "node-modules"
+      ],
+      "inputs": [
+        "scripts/schema/binaries.schema.json",
         "scripts/json/**",
         "tests/testcase.mts",
         "tests/errors.mts",
@@ -2176,14 +2230,12 @@
         "packages/php-ext/src/codec.c"
       ]
     },
-    "native-error-cause-check": {
+    "native-error-cause-check/php-extension": {
       "scope": "owner",
       "needs": [
         "go",
-        "rust",
         "php",
         "composer",
-        "python",
         "node-modules",
         "php-extension-tools"
       ],
@@ -2191,30 +2243,83 @@
         "Makefile",
         "docs/spec/protocol.md",
         "docs/spec/protocol.ko.md",
-        "packages/go/orm/driver_error_test.go",
-        "packages/go/orm/driver_error_internal_test.go",
-        "packages/php/src/Db.php",
-        "packages/php/src/Model.php",
-        "packages/php/src/OrmException.php",
-        "packages/php/tests/MarkdownTest.php",
-        "packages/php/tests/NativeCellReadTest.php",
-        "packages/php/tests/OrmExceptionLockWaitTest.php",
         "packages/php-ext/src/db.c",
         "packages/php-ext/src/model_read.c",
         "packages/php-ext/tests/ModelStreamReadTest.php",
         "packages/php-ext/tests/OrmExceptionNativeTest.php",
-        "packages/python/tests/test_driver_cells.py",
-        "packages/python/src/polyspec/orm/driver_cells.py",
-        "packages/python/tests/test_driver_errors.py",
-        "packages/python/tests/test_markdown.py",
+        "contracts/implementations.json"
+      ]
+    },
+    "native-error-cause-check/rust": {
+      "scope": "owner",
+      "needs": [
+        "rust",
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "docs/spec/protocol.md",
+        "docs/spec/protocol.ko.md",
         "packages/rust/orm/src/lib.rs",
         "packages/rust/orm/src/row.rs",
+        "contracts/implementations.json"
+      ]
+    },
+    "native-error-cause-check/typescript-driver": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "docs/spec/protocol.md",
+        "docs/spec/protocol.ko.md",
         "packages/ts/tests/driver-integer-param.mjs",
         "packages/ts/tests/driver-error-lock-wait.mjs",
         "packages/ts/src/codec.ts",
         "packages/ts/src/database.ts",
         "packages/ts/src/driver.ts",
         "packages/ts/src/model.ts",
+        "contracts/implementations.json"
+      ]
+    },
+    "native-error-cause-check/python-driver": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "python",
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "docs/spec/protocol.md",
+        "docs/spec/protocol.ko.md",
+        "packages/python/tests/test_driver_cells.py",
+        "packages/python/src/polyspec/orm/driver_cells.py",
+        "packages/python/tests/test_driver_errors.py",
+        "packages/python/tests/test_markdown.py",
+        "contracts/implementations.json"
+      ]
+    },
+    "native-error-cause-check/php": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "php",
+        "composer",
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "docs/spec/protocol.md",
+        "docs/spec/protocol.ko.md",
+        "packages/php/src/Db.php",
+        "packages/php/src/Model.php",
+        "packages/php/src/OrmException.php",
+        "packages/php/tests/MarkdownTest.php",
+        "packages/php/tests/NativeCellReadTest.php",
+        "packages/php/tests/OrmExceptionLockWaitTest.php",
         "contracts/implementations.json"
       ]
     },
@@ -4269,17 +4374,34 @@
         "packages/rust/tests/src/conformance.rs"
       ]
     },
-    "conformance-refusal-check": {
+    "conformance-refusal-check/go": {
       "scope": "owner",
       "needs": [
         "go",
+        "node-modules"
+      ],
+      "inputs": [
+        "packages/go/model/refusal_test.go"
+      ]
+    },
+    "conformance-refusal-check/typescript": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "node-modules"
+      ],
+      "inputs": [
+        "packages/ts/tests/refusal-before-request.mjs",
+        "packages/ts/tests/tsc-diagnostics.mjs"
+      ]
+    },
+    "conformance-refusal-check/rust-fixtures": {
+      "scope": "owner",
+      "needs": [
         "rust",
         "node-modules"
       ],
       "inputs": [
-        "packages/go/model/refusal_test.go",
-        "packages/ts/tests/refusal-before-request.mjs",
-        "packages/ts/tests/tsc-diagnostics.mjs",
         "packages/rust/testing/compiler-fixtures/cases.json"
       ]
     },

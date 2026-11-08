@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: a816fb8a4572528c71171232ac22d6c48e7367d6e43b3d4700bc348f712bb4d0 -->
+<!-- source-sha256: 05f6e155c7d69b7b630c4cf81e01c4e79a13e54dfedec5672723f5563b216223 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -190,11 +190,11 @@
 - Own: 완료 결과 없이 미완료 항목 수를 늘리기 전에 진행 중인 작업을 완료한다. 지속 적용할 개발 규칙은 이 파일에 두고 구체 산출물과 증거는 체크리스트에 둔다. 체크리스트 검사는 번호 없는 정책·상태 서술을 거부한다.
   Enforced by: `make docs-check`
 - Own: Go, PHP, PHP-extension, Rust, TypeScript, Python은 하나의 동작 계약을 공유한다. 데이터베이스 의존 기능은 모든 클라이언트의 MySQL, PostgreSQL, SQLite 실행 증거가 필요하다. 데이터베이스 비의존 기능은 모든 클라이언트의 동등한 실행 사례가 필요하다. 환경 부재나 실행되지 않은 사례는 실패다.
-  Enforced by: `make conformance-check`
+  Enforced by: `make conformance-recipe-vectors-unit`, `make conformance-result-check/go`, `make conformance-result-check/php`, `make conformance-result-check/typescript`, `make conformance-result-check/python`, `make conformance-generated-methods-check/go`, `make conformance-fixed-clock-check/go`, `make conformance-generated-methods-check/typescript`, `make conformance-fixed-clock-check/typescript`, `make conformance-generated-methods-check/python`, `make conformance-fixed-clock-check/python`, `make conformance-generated-methods-check/php`, `make conformance-fixed-clock-check/php`, `make conformance-generated-methods-check/php-extension`, `make conformance-fixed-clock-check/php-extension`, `make conformance-generated-methods-check/rust`, `make conformance-fixed-clock-check/rust`
 - Own: 모든 적합성 출력에 선언된 벡터만 정확히 들어 있고 각 결과가 같을 때만 적합성 기대값을 기록한다. 거부된 기록은 기대값 파일을 변경하지 않는다.
-  Enforced by: `make conformance-check`
+  Enforced by: `make conformance-recipe-vectors-unit`
 - Own: 적합성 비교와 기록은 비어 있지 않고 중복 없는 벡터 이름 및 각 데이터베이스 기대값 파일에서 정확히 같은 벡터 이름을 요구한다. 누락되거나 추가된 이름은 오류다.
-  Enforced by: `make conformance-check`
+  Enforced by: `make conformance-recipe-vectors-unit`
 - Own: 공통 계획·방언·스키마·오류 동작은 `packages/go/engine/*`, `packages/go/cmd/orm-gen`, 계약 문서에서 정의한다. 클라이언트 동작은 소유하는 `packages/<runtime>/*` 폴더에 구현하고 공통 검증은 `tests/*`, `schema/*`, `scripts/*`에 둔다. 지원하는 모든 클라이언트에서 필요한 실행 사례가 통과하기 전에는 기능을 완료하지 않는다.
   Enforced by: `make feature-verify-other`
 - Own: 기능 coverage 증거는 현재 검사에서 실행한 명령의 종료 상태와 그 entry가 쓴 `CASE <id> [<database>] PASS` 줄에서 얻는다(docs/spec/feature-coverage.md FCV-12). 이름만 있는 테스트 파일이나 저장된 출력은 실행 증거가 아니다. 기능의 검증 명령이 그 recipe를 실행하고, `make feature-coverage-of/<id>`가 기능 하나의 coverage를 읽으며, reader의 변경 반례 테스트는 `make feature-unit-check`에서 실행한다. `make orm-check`는 검증 명령을 각 명령이 선언한 `shard`(cargo로 Rust를 build하고 실행하는 명령은 `rust`)에 따라 `make feature-verify-rust`와 `make feature-verify-other`에서 실행하고, `make feature-check`는 그 둘을 `make feature-performance-check`와 함께 실행한다.
@@ -212,7 +212,7 @@
 - Own: 하나의 `0.0.22` 버전을 개발한다. 공개 클라이언트는 드라이버 인자를 따로 받지 않고 URI scheme이 데이터베이스를 선택하는 DSN URI 하나를 받는다. 실행 시 orm은 클라이언트 라이브러리뿐이며 계획과 실행은 그것을 부르는 프로세스 안에서 이뤄진다.
   Enforced by: none, kit K812 이후 version을 읽는 검사가 없다. package manager가 그것을 해석한다
 - Own: 각 dbspec parser는 `identity` 컬럼이 유일한 기본 키 컬럼이고 type이 `i64`가 아니면 거부한다. 여섯 dbspec 구현은 동일한 허용·거부 스키마 사례를 실행한다.
-  Enforced by: `make conformance-check`
+  Enforced by: `make conformance-recipe-vectors-unit`, `make conformance-result-check/go`, `make conformance-result-check/php`, `make conformance-result-check/typescript`, `make conformance-result-check/python`, `make conformance-generated-methods-check/go`, `make conformance-fixed-clock-check/go`, `make conformance-generated-methods-check/typescript`, `make conformance-fixed-clock-check/typescript`, `make conformance-generated-methods-check/python`, `make conformance-fixed-clock-check/python`, `make conformance-generated-methods-check/php`, `make conformance-fixed-clock-check/php`, `make conformance-generated-methods-check/php-extension`, `make conformance-fixed-clock-check/php-extension`, `make conformance-generated-methods-check/rust`, `make conformance-fixed-clock-check/rust`
 - Own: SQLite 실제 스키마 가져오기는 `INTEGER PRIMARY KEY AUTOINCREMENT`만 부호 있는 `i64` 자동 키로 바꾸고 일반 `INTEGER`는 `i32`로 유지한다.
   Enforced by: `make dbspec-introspect-check`
 - Own: 모든 변환은 idempotent하다. parse한 canonical source를 emit하면 byte 단위로 같고, 같은 입력으로 operation을 반복하면 같은 결과와 상태가 된다.
@@ -230,7 +230,7 @@
 - Own: 생성 typed 모델 필드는 비공개다. 조회하거나 대입하지 않은 필드 접근은 `COLUMN_UNSELECTED`로 실패하며 그룹 개수는 일부 필드만 채운 모델 대신 전용 결과를 쓴다.
   Enforced by: `make go-model-check`
 - Own: 그룹 결과는 선택한 각 컬럼의 선언된 값 타입을 보존한다. 불리언 그룹 컬럼은 모든 데이터베이스에서 불리언을 반환하며 저장된 불리언 값이 잘못되면 숫자나 기본값으로 바꾸지 않고 실패한다.
-  Enforced by: `make conformance-check`
+  Enforced by: `make conformance-recipe-vectors-unit`, `make conformance-result-check/go`, `make conformance-result-check/php`, `make conformance-result-check/typescript`, `make conformance-result-check/python`, `make conformance-generated-methods-check/go`, `make conformance-fixed-clock-check/go`, `make conformance-generated-methods-check/typescript`, `make conformance-fixed-clock-check/typescript`, `make conformance-generated-methods-check/python`, `make conformance-fixed-clock-check/python`, `make conformance-generated-methods-check/php`, `make conformance-fixed-clock-check/php`, `make conformance-generated-methods-check/php-extension`, `make conformance-fixed-clock-check/php-extension`, `make conformance-generated-methods-check/rust`, `make conformance-fixed-clock-check/rust`
 - Own: 영문과 국문 문서를 동등하게 유지한다. 기록은 이 저장소의 동작을 설명하며 외부 출처의 이력을 담지 않는다.
   Enforced by: `make docs-check`
 

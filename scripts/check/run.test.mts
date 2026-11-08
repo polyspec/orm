@@ -110,7 +110,7 @@ caseTest('the suite targets and the comparison declare every client and fixture 
   for (const [runtime, required] of Object.entries({ go: ['go'], rust: ['rust'], php: ['php', 'composer'], 'php-extension': ['php', 'composer', 'php-extension-tools'], python: ['python'], typescript: [] })) {
     for (const part of ['generated-methods', 'fixed-clock']) {
       const target = `conformance-${part}-check/${runtime}`;
-      const comparison = inputs.targets[target];
+      const comparison: unknown = inputs.targets[target];
       if (!isRecord(comparison) || !isStringArray(comparison.needs)) throw new Error(`${target} has no needs list`);
       for (const need of ['node-modules', 'databases', ...required])
         assert.ok(comparison.needs.includes(need), `${target} independently declares ${need}`);

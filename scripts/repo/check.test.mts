@@ -89,11 +89,16 @@ caseTest('code generation downloads only in explicit installation and packaging 
       }
       const installer = runtime === 'php-extension' ? 'orm-install-php-extension-tools' : runtime === 'typescript' ? 'orm-install-typescript-runtime' : `orm-install-${runtime}`;
       assert.match(text('Makefile'), new RegExp(`^${installer}: ${runtime === 'typescript' ? 'orm-install-go-lease ' : ''}orm-install-codes-${runtime}$`, 'm'));
-      const release = JSON.parse(text('config/release.json')) as { packages: { directory: string; generated?: { target?: string }[] }[] };
+      const release: unknown = JSON.parse(text('config/release.json'));
+      const packages: unknown[] = typeof release === 'object' && release !== null && 'packages' in release && Array.isArray(release.packages) ? release.packages : [];
+      const generatedTargets = (directory: string): unknown[] => packages.flatMap((entry: unknown) =>
+        typeof entry === 'object' && entry !== null && 'directory' in entry && entry.directory === directory && 'generated' in entry && Array.isArray(entry.generated)
+          ? entry.generated.map((generated: unknown) => typeof generated === 'object' && generated !== null && 'target' in generated ? generated.target : undefined)
+          : []);
       if (runtime === 'typescript') {
         assert.match(text('Makefile'), /^release-build: orm-install-go-lease orm-install-codes-typescript\n\t\$\(MAKE\) --no-print-directory typescript-build editor-build$/m);
         for (const target of ['release-assets', 'release-candidate-assets']) assert.match(text('Makefile'), new RegExp(`^${target}: release-build$`, 'm'));
-      } else assert.ok(release.packages.find(entry => entry.directory === `packages/${runtime === 'php-extension' ? 'php-ext' : runtime}`)?.generated?.some(entry => entry.target === (runtime === 'php-extension' ? 'orm-install-php-ext-sources' : `orm-install-codes-${runtime}`)),
+      } else assert.ok(generatedTargets(`packages/${runtime === 'php-extension' ? 'php-ext' : runtime}`).includes(runtime === 'php-extension' ? 'orm-install-php-ext-sources' : `orm-install-codes-${runtime}`),
         `${runtime} packaging prepares the generator modules before generating code`);
       writeFileSync(log, '');
       const failed = spawnSync('make', ['--no-print-directory', `orm-install-codes-${runtime}`, `GO=${go}`, 'GO_VERSION=stub', `GENERATE_ONCE=${generate}`],
@@ -890,6 +895,29 @@ caseTest('CI rejects a declared check reached again through a prerequisite or re
     'CHILDREN = check\nparent-check: $(addprefix child-,$(CHILDREN))\nchild-%:\n',
   ]) assert.deepEqual(ciCheckTargetErrors(workflow, base + rules), [error]);
   assert.deepEqual(ciCheckTargetErrors(workflow, base + 'parent-check: setup\nchild-check: setup\nsetup:\n'), []);
+});
+
+caseTest('the CI job of a runtime runs only that runtime, and a job of no runtime runs at most one', COMPUTE, () => {
+  const workflow = `jobs:\n  test:\n    strategy:\n      matrix:\n        group: [python, client_db_go, static]\n    steps:\n      - run: make check-run GROUP=\${{ matrix.group }}\n`;
+  const make = (python: string, go: string, statics: string, rules: string) =>
+    `CHECK_TARGETS = ${[python, go, statics].join(' ')}\nCI_GROUPS = python client_db_go static\nCI_TARGETS_python = ${python}\nCI_TARGETS_client_db_go = ${go}\nCI_TARGETS_static = ${statics}\n${rules}`;
+  const leaves = 'a-check/python:\na-check/go:\nb-check/node:\nb-check/rust-fixtures:\nc-check/ts:\nc-check/php-extension:\n';
+  // Each part in the group of its runtime, and a runtime-free part in the static group.
+  assert.deepEqual(ciCheckTargetErrors(workflow, make('a-check/python', 'a-check/go', 'b-check/node', leaves)), []);
+  // A part of another runtime, named or reached through an aggregate or a recursive make.
+  assert.deepEqual(ciCheckTargetErrors(workflow, make('a-check/python a-check/go', 'b-check/node', 'c-check/ts', leaves)), [
+    'CI group python runs python and reaches a-check/go of go; move it to the group of go',
+  ]);
+  assert.deepEqual(ciCheckTargetErrors(workflow, make('a-check', 'b-check/node', 'c-check/ts', `${leaves}a-check: a-check/python a-check/go\n`)), [
+    'CI group python runs python and reaches a-check/go of go; move it to the group of go',
+  ]);
+  assert.deepEqual(ciCheckTargetErrors(workflow, make('a-check', 'b-check/node', 'c-check/ts', `${leaves}a-check:\n\t+$(MAKE) --no-print-directory -k a-check/python b-check/rust-fixtures\n`)), [
+    'CI group python runs python and reaches b-check/rust-fixtures of rust; move it to the group of rust',
+  ]);
+  // The group of no runtime may hold the parts of one runtime, not of two.
+  assert.deepEqual(ciCheckTargetErrors(workflow, make('a-check/python', 'a-check/go', 'c-check/ts c-check/php-extension', leaves)), [
+    'CI group static runs no single runtime and reaches the parts of php-extension, typescript: c-check/php-extension c-check/ts; move each part to the group of its runtime',
+  ]);
 });
 
 caseTest('a CI group set that omits, repeats or adds a target of CHECK_TARGETS fails', COMPUTE, () => {

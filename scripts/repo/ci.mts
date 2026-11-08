@@ -169,8 +169,8 @@ export function jobOverlapErrors(makefile: string): string[] {
   return [...owners].filter(([, runs]) => runs.length > 1).map(([target, runs]) => `${target} runs in ${runs.join(' and ')}; every target runs in one CI job`);
 }
 
-/** Checks declared targets reached through other targets, including recursive make recipes. */
-export function ciNestedTargetErrors(makefile: string): string[] {
+// ciReach returns, for each CI group, every target its CI_TARGETS_<group> reaches through prerequisites and recursive make recipes.
+export function ciReach(makefile: string): Map<string, Set<string>> {
   const { groups, targets } = ciGroups(makefile);
   const variables = makeVariables(makefile);
   const expanded = (value: string) => expandFunctions(expand(value, variables));
@@ -183,34 +183,76 @@ export function ciNestedTargetErrors(makefile: string): string[] {
       rules.set(name, rule);
     }
   }
-  const owners = new Map<string, Set<string>>();
+  const all = new Set(checkTargets(makefile));
+  const reach = new Map<string, Set<string>>();
   for (const group of groups) {
     const pending = [...(targets[group] ?? [])];
     const seen = new Set<string>();
     for (let name = pending.pop(); name !== undefined; name = pending.pop()) {
       if (seen.has(name)) continue;
       seen.add(name);
-      const jobs = owners.get(name) ?? new Set<string>();
-      jobs.add(group);
-      owners.set(name, jobs);
       const rule = rules.get(name);
       if (!rule) continue;
       pending.push(...rule.prerequisites);
       for (const recipe of rule.commands) {
         if (!recipe.includes('$(MAKE)') && !recipe.includes('make ')) continue;
         for (const command of commands(expanded(recipe.replaceAll('$(MAKE)', 'make')), 'make')) {
-          if (command.name === 'make') pending.push(...command.args.filter(argument => rules.has(argument) || checkTargets(makefile).includes(argument)));
+          if (command.name === 'make') pending.push(...command.args.filter(argument => rules.has(argument) || all.has(argument)));
         }
       }
     }
+    reach.set(group, seen);
   }
+  return reach;
+}
+
+/** Checks declared targets reached through other targets, including recursive make recipes. */
+export function ciNestedTargetErrors(makefile: string): string[] {
+  const { groups, targets } = ciGroups(makefile);
+  const reach = ciReach(makefile);
   return checkTargets(makefile).flatMap(target => {
-    const reached = [...(owners.get(target) ?? [])];
+    const reached = groups.filter(group => reach.get(group)?.has(target));
     const direct = groups.filter(group => targets[group]?.includes(target));
     return reached.length > 1 && direct.length <= 1
       ? [`CI groups ${reached.join(', ')} reach ${target} through their target dependencies; assign each check to one group and remove the repeated invocation`]
       : [];
   });
+}
+
+// RUNTIMES are the runtimes a CI group or a target part is named for; php-extension comes before php so that it matches first.
+const RUNTIMES = ['php-extension', 'php', 'typescript', 'python', 'go', 'rust'] as const;
+type Runtime = (typeof RUNTIMES)[number];
+
+// groupRuntime is the runtime a CI group runs: the group python, or a group whose name ends with _<runtime> (client_db_php_extension).
+export function groupRuntime(group: string): Runtime | undefined {
+  return RUNTIMES.find(runtime => group === runtime.replace('-', '_') || group.endsWith(`_${runtime.replace('-', '_')}`));
+}
+
+// targetRuntime is the runtime a target part is named for: the last part of `<check>/<part>` is a runtime, its short form ts, or a
+// runtime followed by `-` (generator-consumer-check/rust-emission, native-error-cause-check/typescript-driver).
+export function targetRuntime(target: string): Runtime | undefined {
+  if (!target.includes('/')) return undefined;
+  const part = target.slice(target.lastIndexOf('/') + 1);
+  if (part === 'ts' || part.startsWith('ts-')) return 'typescript';
+  return RUNTIMES.find(runtime => part === runtime || part.startsWith(`${runtime}-`));
+}
+
+// ciRuntimeErrors returns one error for each part of a runtime that a CI group of another runtime reaches: the job of a runtime runs
+// only that runtime. A group named for a runtime reaches no part named for another, and a group named for none reaches the parts of
+// at most one runtime.
+export function ciRuntimeErrors(makefile: string): string[] {
+  const errors: string[] = [];
+  for (const [group, reached] of ciReach(makefile)) {
+    const own = groupRuntime(group);
+    const parts = [...reached].flatMap(target => { const runtime = targetRuntime(target); return runtime === undefined ? [] : [[target, runtime] as const]; });
+    if (own !== undefined) {
+      for (const [target, runtime] of parts) if (runtime !== own) errors.push(`CI group ${group} runs ${own} and reaches ${target} of ${runtime}; move it to the group of ${runtime}`);
+    } else {
+      const runtimes = [...new Set(parts.map(([, runtime]) => runtime))].sort();
+      if (runtimes.length > 1) errors.push(`CI group ${group} runs no single runtime and reaches the parts of ${runtimes.join(', ')}: ${parts.map(([target]) => target).sort().join(' ')}; move each part to the group of its runtime`);
+    }
+  }
+  return errors;
 }
 
 // ciGroupErrors returns one error at each place where the CI groups do not split CHECK_TARGETS. For a job that runs GROUP_CHECK,
@@ -251,6 +293,7 @@ export function ciGroupErrors(workflow: string, makefile: string): string[] {
   }
   for (const [target, runs] of owners) if (!all.includes(target)) errors.push(`CI group ${runs.join(', ')} runs ${target}, which is not a target of CHECK_TARGETS`);
   errors.push(...ciNestedTargetErrors(makefile));
+  errors.push(...ciRuntimeErrors(makefile));
   return errors;
 }
 

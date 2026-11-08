@@ -8,6 +8,7 @@ import { dirname, relative, resolve } from 'node:path';
 import { GO_LANE_PACKAGES, GO_LANE_SKIP, GO_DIRECT_CHECKS, goLaneSkip, poolerRecipeCommands, poolerRecipeTests, rustOwnedElsewhereSkipArguments, rustDirectRecipeSkipArguments, rustPoolerThreadArguments, rustTargetPoolSize } from './client-db-test.mts';
 import { readTree } from './features/recipe-runners.mts';
 import { phpScope, readTree as readNamesTree } from './features/test-names.mts';
+import { parseRecipeCases } from './json/formats.mts';
 import { ciGroups } from './repo/ci.mts';
 import { makeTargets } from './repo/testcases.mts';
 import { COMMANDS as PERF_COMMANDS } from './perf-test.mts';
@@ -153,7 +154,8 @@ caseTest('Rust direct conformance skips exact recipe cases and keeps the pooler 
   assert.ok(args.every((value, index) => index % 2 === 1 || value === '--skip'));
   assert.equal(new Set(symbols).size, symbols.length);
   assert.deepEqual(rustDirectRecipeSkipArguments(root, true), []);
-  const recipe = JSON.parse(readFileSync(resolve(root, 'contracts/fixtures/conformance_verification/conformance_verification.json'), 'utf8')) as { cases: { id: string; only?: string[] }[] };
+  const recipeFile = resolve(root, 'contracts/fixtures/conformance_verification/conformance_verification.json');
+  const recipe = parseRecipeCases(readFileSync(recipeFile, 'utf8'), recipeFile);
   const makefile = readFileSync(resolve(root, 'Makefile'), 'utf8');
   const command = /^conformance-verification-check\/rust:[^\n]*\n\t([^\n]+)/m.exec(makefile)?.[1] ?? '';
   for (const database of ['mysql', 'postgres', 'sqlite', 'markdown']) {
