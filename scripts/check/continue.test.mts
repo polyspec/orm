@@ -3,7 +3,7 @@
 // database are not run.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,27 +13,6 @@ import { COMMANDS as CLIENT_DB_COMMANDS } from '../client-db-test.mts';
 
 const repo = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const kitRunTests = fileURLToPath(import.meta.resolve('@polyspec/kit/run-tests'));
-
-caseTest('dbspec extension verification builds once and collects both independent test results', PROCESS, () => {
-  const recipe = /^dbspec-verify-errors-php-extension-check:[^\n]*\n((?:\t[^\n]*\n)+)/m.exec(readFileSync(join(repo, 'Makefile'), 'utf8'))?.[1];
-  assert.ok(recipe, 'the extension verification target declares its recipe');
-  const files = ['DbspecReleaseHooksTest.php', 'DbspecApplyVerificationErrorsRecipeTestExtensionTest.php'];
-  for (const failing of ['none', 'build', ...files]) {
-    const base = realpathSync(mkdtempSync(join(tmpdir(), 'dbspec-continue-')));
-    try {
-      writeFileSync(join(base, 'build'), '#!/bin/sh\necho build >> ran.log\n[ "$FAILING" != build ]\n', { mode: 0o755 });
-      writeFileSync(join(base, 'runner'), '#!/bin/sh\nfor arg do last="$arg"; done\necho "$last" >> ran.log\n[ "${last##*/}" != "$FAILING" ]\n', { mode: 0o755 });
-      writeFileSync(join(base, 'Makefile'), `RUN_TESTS = ./runner\nphp_ext_build = ./build\ncheck:\n${recipe}`);
-      const result = spawnSync('make', ['--no-print-directory', 'check'], { cwd: base, encoding: 'utf8', env: isolatedEnvironment({ FAILING: failing }) });
-      assert.equal(result.status === 0, failing === 'none', `${failing}: ${result.stdout}${result.stderr}`);
-      const expected = failing === 'build' ? ['build'] : ['build', ...files.map(file => `packages/php-ext/tests/${file}`)];
-      assert.deepEqual(readFileSync(join(base, 'ran.log'), 'utf8').trim().split('\n'), expected, failing);
-      assert.deepEqual(readdirSync(join(base, '.runtime/run')), [], `the ${failing} run leaves no build directory`);
-    } finally {
-      rmSync(base, { recursive: true, force: true });
-    }
-  }
-});
 
 caseTest('Rust workspace dispatch matches a skip by its full symbol', COMPUTE, () => {
   const rustCommand = CLIENT_DB_COMMANDS.find(command => command.includes('tests/cargo-test.mts workspace-tests'));

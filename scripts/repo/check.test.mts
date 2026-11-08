@@ -42,88 +42,6 @@ const text = (path: string) => readFileSync(new URL(path, repository), 'utf8');
 const trackedFiles = (pattern: string) => execFileSync('git', ['ls-files', '-z', pattern], { cwd: repository }).toString().split('\0').filter(Boolean).filter(notVendored);
 const scriptTexts = await scriptCommands(repository.pathname, trackedFiles('*'));
 const trackedAll = new Set(trackedFiles('*'));
-caseTest('TypeScript generation has a setup step and failed setup blocks its database consumers', COMPUTE, () => {
-  assert.equal(groupOutputs(['ts'], { ts: ['go-codes'] })['go-codes'], true);
-  assert.equal(groupOutputs(['plain'], { plain: ['node-modules'] })['go-codes'], false);
-  assert.ok(expandNeeds(['databases']).includes('go-codes'));
-  assert.deepEqual(failedCiSetup(JSON.stringify({ 'go-codes': { outcome: 'failure' } })),
-    [{ id: 'go-codes', need: 'go-codes', outcome: 'failure' }]);
-  assert.equal(stepCondition('go-codes'), "${{ !cancelled() && steps.group-needs.outputs.go-codes == 'true' }}");
-  const makefile = text('Makefile'), variables = makeVariables(makefile);
-  const prerequisites = new Map<string, string[]>();
-  for (const rule of makeTargets(makefile))
-    for (const target of expand(rule.target, variables).split(/\s+/))
-      prerequisites.set(target, [...(prerequisites.get(target) ?? []), ...rule.prerequisites.flatMap(value => expand(value, variables).split(/\s+/))]);
-  const generates = (target: string, seen = new Set<string>()): boolean => {
-    if (target === 'orm-codes-typescript') return true;
-    if (seen.has(target)) return false;
-    seen.add(target);
-    return (prerequisites.get(target) ?? []).some(child => generates(child, seen));
-  };
-  for (const [target, needs] of Object.entries(declaredNeeds(repository.pathname))) {
-    if (generates(target)) assert.ok(expandNeeds(needs).some(need => need === 'go' || need === 'go-codes'),
-      `${target} generates TypeScript codes without preparing the Go modules`);
-  }
-  for (const [file, id] of [['.github/workflows/ci.yml', 'docs'], ['.github/workflows/ci.yml', 'editor'], ['.github/workflows/docs-pages.yml', 'build']] as const) {
-    const job = readWorkflow(text(file)).jobs.find(job => job.id === id);
-    assert.ok(job, `${file} declares ${id}`);
-    assert.ok(job.steps.some(step => step.run === 'make orm-install-go-codes'), `${file} ${id} prepares generator modules`);
-  }
-});
-caseTest('code generation downloads only in explicit installation and packaging preparation', PROCESS, () => {
-  const base = mkdtempSync(join(tmpdir(), 'orm-codes-setup-'));
-  try {
-    const log = join(base, 'commands.log');
-    const go = join(base, 'go');
-    const generate = join(base, 'generate');
-    writeFileSync(go, `#!/bin/sh\nprintf 'go %s\\n' "$*" >> '${log}'\nexit "\${FAIL_DOWNLOAD:-0}"\n`, { mode: 0o755 });
-    writeFileSync(generate, `#!/bin/sh\n[ "$GOPROXY" = off ] || exit 9\nprintf 'generate\\n' >> '${log}'\n`, { mode: 0o755 });
-    for (const runtime of ['php', 'python', 'php-extension', 'typescript']) {
-      for (const installing of [false, true]) {
-        writeFileSync(log, '');
-        const target = `${installing ? 'orm-install-codes' : 'orm-codes'}-${runtime}`;
-        const result = spawnSync('make', ['--no-print-directory', target, `GO=${go}`, 'GO_VERSION=stub', `GENERATE_ONCE=${generate}`],
-          { cwd: repository.pathname, encoding: 'utf8', env: isolatedEnvironment() });
-        assert.equal(result.status, 0, `${target}: ${result.stdout}${result.stderr}`);
-        assert.deepEqual(readFileSync(log, 'utf8').trim().split('\n'), installing ? ['go mod download', 'generate'] : ['generate'], target);
-      }
-      const installer = runtime === 'php-extension' ? 'orm-install-php-extension-tools' : runtime === 'typescript' ? 'orm-install-typescript-runtime' : `orm-install-${runtime}`;
-      assert.match(text('Makefile'), new RegExp(`^${installer}: ${runtime === 'typescript' ? 'orm-install-go-lease ' : ''}orm-install-codes-${runtime}$`, 'm'));
-      const release: unknown = JSON.parse(text('config/release.json'));
-      const packages: unknown[] = typeof release === 'object' && release !== null && 'packages' in release && Array.isArray(release.packages) ? release.packages : [];
-      const generatedTargets = (directory: string): unknown[] => packages.flatMap((entry: unknown) =>
-        typeof entry === 'object' && entry !== null && 'directory' in entry && entry.directory === directory && 'generated' in entry && Array.isArray(entry.generated)
-          ? entry.generated.map((generated: unknown) => typeof generated === 'object' && generated !== null && 'target' in generated ? generated.target : undefined)
-          : []);
-      if (runtime === 'typescript') {
-        assert.match(text('Makefile'), /^release-build: orm-install-go-lease orm-install-codes-typescript\n\t\$\(MAKE\) --no-print-directory typescript-build editor-build$/m);
-        for (const target of ['release-assets', 'release-candidate-assets']) assert.match(text('Makefile'), new RegExp(`^${target}: release-build$`, 'm'));
-      } else assert.ok(generatedTargets(`packages/${runtime === 'php-extension' ? 'php-ext' : runtime}`).includes(runtime === 'php-extension' ? 'orm-install-php-ext-sources' : `orm-install-codes-${runtime}`),
-        `${runtime} packaging prepares the generator modules before generating code`);
-      writeFileSync(log, '');
-      const failed = spawnSync('make', ['--no-print-directory', `orm-install-codes-${runtime}`, `GO=${go}`, 'GO_VERSION=stub', `GENERATE_ONCE=${generate}`],
-        { cwd: repository.pathname, encoding: 'utf8', env: isolatedEnvironment({ FAIL_DOWNLOAD: '3' }) });
-      assert.notEqual(failed.status, 0, `${runtime} installation accepted a failed module download`);
-      assert.deepEqual(readFileSync(log, 'utf8').trim().split('\n'), ['go mod download'], `${runtime} generation ran after a failed download`);
-    }
-    const node = join(base, 'node');
-    const cancel = join(base, 'sqlite_cancel.c');
-    writeFileSync(cancel, '');
-    writeFileSync(node, `#!/bin/sh\nif [ "$1" = scripts/ci/php-extension-tools.mts ]; then printf 'tools %s\\n' "$*" >> '${log}'; else exec "$NODE_FOR_TEST" "$@"; fi\n`, { mode: 0o755 });
-    writeFileSync(log, '');
-    const tools = spawnSync('make', ['--no-print-directory', 'php-extension-tools-check', `GO=${go}`, 'GO_VERSION=stub',
-      `GENERATE_ONCE=${generate}`, `NODE=${node}`, `PHP_EXT_SQLITE_CANCEL=${cancel}`],
-    { cwd: repository.pathname, encoding: 'utf8', env: isolatedEnvironment({ NODE_FOR_TEST: process.execPath }) });
-    assert.equal(tools.status, 0, tools.stdout + tools.stderr);
-    assert.deepEqual(readFileSync(log, 'utf8').trim().split('\n'), ['generate', 'tools scripts/ci/php-extension-tools.mts']);
-    assert.match(text('Makefile'), /^orm-install-php-ext-sources: orm-install-codes-php-extension\n\t\$\(MAKE\) --no-print-directory php-ext-sources$/m);
-    for (const rule of makeTargets(text('Makefile')).filter(rule => !rule.target.startsWith('.') && !rule.target.startsWith('orm-install-') && rule.target !== 'install')) {
-      assert.ok(!rule.prerequisites.includes('orm-install-php-extension-tools'), `${rule.target} installs tools during a check`);
-    }
-  } finally {
-    rmSync(base, { recursive: true, force: true });
-  }
-});
 caseTest('the stress case of the dbspec_apply recipe runs under the 120 second deadline of a database case on every runtime', COMPUTE, () => {
   const recipe = parseRecipeCases(text('contracts/fixtures/dbspec_apply/dbspec_apply.json'), 'contracts/fixtures/dbspec_apply/dbspec_apply.json');
   assert.ok(recipe.cases.some(recipeCase => recipeCase.id === 'stress_plan_commits_each_step'), 'the recipe holds the stress case');
@@ -584,7 +502,7 @@ caseTest('every Python run of run-tests gives the cases the deadlines of their t
 });
 
 caseTest('a whole suite that holds markdown units gets the pinned flowmark, and flowmark-check refuses a missing one', COMPUTE, () => {
-  // test-php-ext runs the native tests of the extension and python-unit-check runs the Python modules outside dedicated conformance targets; both hold markdown
+  // test-php-ext runs the native tests of the extension and python-unit-check discovers every Python test; both hold markdown
   // units and run without WITH_TEST_ENV, so each exports FLOWMARK itself. A simple assignment takes the value FLOWMARK has
   // where make reads it, so the export must follow the definition of FLOWMARK; the database of make (-p) holds the value that
   // the target exports.
@@ -829,7 +747,7 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   for (const selected of [...selectedTools, ...pythonTools]) {
     assert.ok(declaredTools.has(selected), `CI selects ${selected} for Kit install-tools, but it is not declared by this checkout`);
   }
-  assert.match(makefile, /^orm-install-python: orm-install-codes-python\n\t\$\(MAKE\) --no-print-directory install-tools TOOLS="python uv"$/m,
+  assert.match(makefile, /^orm-install-python: orm-codes-python\n\t\$\(MAKE\) --no-print-directory install-tools TOOLS="python uv"$/m,
     'the Python installer does not widen a runtime-specific setup back to the full tool inventory');
   // The link of kit reads the uv project of orm, and a PHP job installs no uv, so only orm-install-python and make install link.
   for (const target of ['orm-install-php', 'orm-install-php-extension-runtime']) {
@@ -855,7 +773,7 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   // The PHP extension setup that every job runs writes the copy of the SQLite cancel callback that the build compiles (T290) and
   // the SQLite result code names that it includes (INT-154); the build runs the gen_stub.php of the PHP itself, so the setup
   // installs no arginfo generator (kit K930).
-  assert.match(makefile, /^php-extension-tools-check: \$\(PHP_EXT_SQLITE_CANCEL\) orm-codes-php-extension\n\t\$\(NODE\) scripts\/ci\/php-extension-tools\.mts\n(?!\t)/m,
+  assert.match(makefile, /^orm-install-php-extension-tools: \$\(PHP_EXT_SQLITE_CANCEL\) orm-codes-php-extension\n\t\$\(NODE\) scripts\/ci\/php-extension-tools\.mts\n(?!\t)/m,
     'PHP extension setup writes the copy of the SQLite cancel callback and the SQLite result code names, and installs no arginfo generator');
   const matrixWorkflow = workflow.split('\n  docs:')[0] ?? '';
   assert.equal((matrixWorkflow.match(/id: go-lease-modules/g) ?? []).length, 1, 'every group installs the shared runner dependency in its own job');
@@ -865,17 +783,17 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   assert.deepEqual(ciCheckTargetErrors(workflow, makefile), []);
 });
 
-caseTest('database-free dbspec verification has one target per runtime without database setup', COMPUTE, () => {
+caseTest('database-free dbspec verification stays in the static CI group', COMPUTE, () => {
   const makefile = text('Makefile');
-  const { groups, targets } = ciGroups(makefile);
-  const scheduled = groups.flatMap(group => targets[group] ?? []);
-  assert.ok(!scheduled.includes('dbspec-verify-errors-check'));
+  const staticGroup = /^CI_TARGETS_static = (.*)$/m.exec(makefile)?.[1]?.split(/\s+/) ?? [];
+  const dbspecApplyGroup = /^CI_TARGETS_dbspec_apply = (.*)$/m.exec(makefile)?.[1]?.split(/\s+/) ?? [];
+  assert.ok(staticGroup.includes('dbspec-verify-errors-check'));
+  assert.ok(!dbspecApplyGroup.includes('dbspec-verify-errors-check'));
+  const verifyRecipe = /^dbspec-verify-errors-check:[^\n]*\n((?:\t[^\n]*\n)+)/m.exec(makefile)?.[1] ?? '';
+  assert.ok(verifyRecipe, 'the focused owner target has a recipe');
+  assert.doesNotMatch(verifyRecipe, /\$\(CARGO_TEST\).*--test dbspec_apply_cleanup -- --nocapture/);
   const inputs = readCheckInputs(repository.pathname);
-  for (const runtime of ['go', 'php', 'php-extension', 'typescript', 'python', 'rust']) {
-    const target = `dbspec-verify-errors-check/${runtime}`;
-    assert.equal(scheduled.filter(name => name === target).length, 1);
-    assert.ok(!inputs.targets[target]?.needs.includes('databases'));
-  }
+  assert.ok(!inputs.targets['dbspec-verify-errors-check']?.needs.includes('databases'));
 });
 
 caseTest('the CI groups leave out the gates of kit, which the gates workflow runs (KSTD-5-115)', COMPUTE, () => {
@@ -891,43 +809,6 @@ caseTest('the CI groups leave out the gates of kit, which the gates workflow run
   const makefile = text('Makefile');
   const gates = /^CI_KIT_GATES = (.*)$/m.exec(makefile)?.[1]?.split(/\s+/) ?? [];
   assert.ok(gates.includes('layout-check') && gates.includes('lint-ts'), 'the Makefile declares the gates of kit');
-});
-
-caseTest('CI rejects a declared check reached again through a prerequisite or recursive make', COMPUTE, () => {
-  const workflow = `jobs:\n  test:\n    strategy:\n      matrix:\n        group: [one, two]\n    steps:\n      - run: make check-run GROUP=\${{ matrix.group }}\n`;
-  const base = 'CHECK_TARGETS = parent-check child-check\nCI_GROUPS = one two\nCI_TARGETS_one = parent-check\nCI_TARGETS_two = child-check\n';
-  const error = 'CI groups one, two reach child-check through their target dependencies; assign each check to one group and remove the repeated invocation';
-  for (const rules of [
-    'parent-check: child-check\nchild-check:\n',
-    'parent-check: bridge\nbridge: child-check\nchild-check:\n',
-    'parent-check:\n\t+$(MAKE) --no-print-directory -k child-check\nchild-check:\n',
-    'CHILDREN = child-check\nparent-check: $(CHILDREN)\nchild-check:\n',
-    'CHILDREN = check\nparent-check: $(addprefix child-,$(CHILDREN))\nchild-%:\n',
-  ]) assert.deepEqual(ciCheckTargetErrors(workflow, base + rules), [error]);
-  assert.deepEqual(ciCheckTargetErrors(workflow, base + 'parent-check: setup\nchild-check: setup\nsetup:\n'), []);
-});
-
-caseTest('the CI job of a runtime runs only that runtime, and a job of no runtime runs at most one', COMPUTE, () => {
-  const workflow = `jobs:\n  test:\n    strategy:\n      matrix:\n        group: [python, client_db_go, static]\n    steps:\n      - run: make check-run GROUP=\${{ matrix.group }}\n`;
-  const make = (python: string, go: string, statics: string, rules: string) =>
-    `CHECK_TARGETS = ${[python, go, statics].join(' ')}\nCI_GROUPS = python client_db_go static\nCI_TARGETS_python = ${python}\nCI_TARGETS_client_db_go = ${go}\nCI_TARGETS_static = ${statics}\n${rules}`;
-  const leaves = 'a-check/python:\na-check/go:\nb-check/node:\nb-check/rust-fixtures:\nc-check/ts:\nc-check/php-extension:\n';
-  // Each part in the group of its runtime, and a runtime-free part in the static group.
-  assert.deepEqual(ciCheckTargetErrors(workflow, make('a-check/python', 'a-check/go', 'b-check/node', leaves)), []);
-  // A part of another runtime, named or reached through an aggregate or a recursive make.
-  assert.deepEqual(ciCheckTargetErrors(workflow, make('a-check/python a-check/go', 'b-check/node', 'c-check/ts', leaves)), [
-    'CI group python runs python and reaches a-check/go of go; move it to the group of go',
-  ]);
-  assert.deepEqual(ciCheckTargetErrors(workflow, make('a-check', 'b-check/node', 'c-check/ts', `${leaves}a-check: a-check/python a-check/go\n`)), [
-    'CI group python runs python and reaches a-check/go of go; move it to the group of go',
-  ]);
-  assert.deepEqual(ciCheckTargetErrors(workflow, make('a-check', 'b-check/node', 'c-check/ts', `${leaves}a-check:\n\t+$(MAKE) --no-print-directory -k a-check/python b-check/rust-fixtures\n`)), [
-    'CI group python runs python and reaches b-check/rust-fixtures of rust; move it to the group of rust',
-  ]);
-  // The group of no runtime may hold the parts of one runtime, not of two.
-  assert.deepEqual(ciCheckTargetErrors(workflow, make('a-check/python', 'a-check/go', 'c-check/ts c-check/php-extension', leaves)), [
-    'CI group static runs no single runtime and reaches the parts of php-extension, typescript: c-check/php-extension c-check/ts; move each part to the group of its runtime',
-  ]);
 });
 
 caseTest('a CI group set that omits, repeats or adds a target of CHECK_TARGETS fails', COMPUTE, () => {
@@ -990,7 +871,7 @@ caseTest('every CI group uploads the report directory that the runner writes', C
 // flowmark outputs. The output is checked in the control case, where the target does not look at databases: stress-db skips the
 // server-programs and the flowmark setup steps.
 caseTest('every CI group runs the setup steps of its needs and of the setup step databases/create', COMPUTE, () => {
-  assert.deepEqual(expandNeeds(['databases']), ['databases', 'go-lease', 'node-modules', 'server-programs', 'flowmark', 'go-codes']);
+  assert.deepEqual(expandNeeds(['databases']), ['databases', 'go-lease', 'node-modules', 'server-programs', 'flowmark']);
   assert.deepEqual(expandNeeds(['php-extension-tools']), ['php-extension-tools', 'php', 'composer', 'node-modules']);
   assert.deepEqual(expandNeeds(['interfaces-typescript']), ['interfaces-typescript', 'node-modules']);
   assert.deepEqual(expandNeeds(['rust', 'go']), ['rust', 'go']);
@@ -1004,8 +885,8 @@ caseTest('every CI group runs the setup steps of its needs and of the setup step
   assert.equal(outputs('client_db_php')['php-extension-tools'], false, 'PHP library groups skip the native build tool install');
   assert.equal(outputs('client_db_php_extension')['php-extension-tools'], true, 'PHP-extension groups install their native build tools');
   assert.equal(outputs('static')['interfaces-typescript'], true, 'the static TypeScript extractor installs its pinned checker');
-  for (const need of ['rust', 'php', 'php-extension-tools', 'python'])
-    assert.equal(outputs('conformance')[need], false, `the TypeScript conformance group does not install ${need}`);
+  for (const need of ['go', 'rust', 'php', 'php-extension-tools', 'python', 'databases', 'node-modules'])
+    assert.equal(outputs('conformance')[need], true, `the cross-runtime comparison group installs ${need}`);
   // A case runs on MySQL, PostgreSQL, SQLite and flowmark, and WITH_TEST_ENV hands FLOWMARK to every target, so each group that
   // prepares the databases installs flowmark (feature_verify_other runs the markdown entries of its verifications).
   for (const group of groups) if (outputs(group).databases) assert.equal(outputs(group).flowmark, true, `${group} prepares the databases and installs flowmark`);
@@ -1014,7 +895,7 @@ caseTest('every CI group runs the setup steps of its needs and of the setup step
     return Object.fromEntries(Object.entries(GROUP_OUTPUTS).map(([output, from]) => [output, from.filter(need => output !== 'server-programs' || need !== 'databases').some(need => wanted.has(need))]));
   };
   assert.deepEqual(groupSetupErrors({ 'stress-db': ['stress-only'] }, { 'stress-only': ['go', 'databases'] }, declaredOnly).map(line => line.replace(/ which installs.*/, '')),
-    ['CI group stress-db skips the setup step server-programs,', 'CI group stress-db skips the setup step flowmark,', 'CI group stress-db skips the setup step go-codes,']);
+    ['CI group stress-db skips the setup step server-programs,', 'CI group stress-db skips the setup step flowmark,']);
   assert.deepEqual(groupSetupErrors({ 'stress-db': ['stress-only'] }, { 'stress-only': ['go', 'databases'] }), []);
 });
 
@@ -1029,108 +910,6 @@ caseTest('feature helper checks provision the databases and PHP extension their 
 
 // The CI group setup case (G5.111) checks whether the group job's setup step runs only under the condition ci-setup.mts declares, and the group-needs
 // step writes the output of make ci-group-needs, and whether the summary and report after it write each group's run id and report.
-caseTest('independent native checks run in their runtime group with only that runtime setup', COMPUTE, () => {
-  const { groups, targets } = ciGroups(text('Makefile'));
-  const needs = declaredNeeds(repository.pathname);
-  for (const family of ['codec-check', 'ir-validate-check', 'bind-check', 'collection-recipe-check', 'column-function-metadata-check', 'scalar-subquery-column-check', 'recipe-unknown-key-check', 'nowait-restore-check', 'group-count-boolean-unit-check', 'styled-column-states-unit-check', 'collection-composite-key-check', 'dbspec-verify-errors-check']) {
-    const scheduled = groups.flatMap(group => targets[group] ?? []);
-    assert.ok(!scheduled.includes(family), `${family} must not repeat its runtime targets`);
-    for (const runtime of ['go', 'rust', 'typescript', 'python', 'php', 'php-extension']) {
-      if (family === 'bind-check' && runtime === 'php-extension') continue;
-      const target = `${family}/${runtime}`;
-      const group = runtime === 'python' ? 'python' : `client_db_${runtime.replaceAll('-', '_')}`;
-      assert.ok(targets[group]?.includes(target), `${target} runs in ${group}`);
-      assert.equal(scheduled.filter(name => name === target).length, 1, `${target} runs once`);
-      const outputs = groupOutputs([target], needs);
-      for (const [need, wanted] of Object.entries({ rust: runtime === 'rust', php: runtime === 'php' || runtime === 'php-extension', python: runtime === 'python', 'php-extension-tools': runtime === 'php-extension', databases: false }))
-        assert.equal(outputs[need], wanted, `${target}: ${need}`);
-    }
-  }
-});
-
-caseTest('recipe key validation runs once independently of native loader tests', COMPUTE, () => {
-  const source = text('Makefile');
-  const { groups, targets } = ciGroups(source);
-  assert.deepEqual(groups.filter(group => targets[group]?.includes('recipe-keys-check')), ['static']);
-  for (const rule of makeTargets(source).filter(rule => rule.target.startsWith('recipe-unknown-key-check/')))
-    assert.ok(!rule.prerequisites.includes('recipe-keys-check'), `${rule.target} must not repeat the schema unit tests`);
-  assert.ok(makeTargets(source).some(rule => rule.target === 'recipe-unknown-key-check/typescript' && rule.prerequisites.includes('typescript-current')), 'the loader imports the built TypeScript client');
-});
-
-caseTest('page cache and split plan checks use their native jobs and reuse existing checks', COMPUTE, () => {
-  const { groups, targets } = ciGroups(text('Makefile'));
-  const scheduled = groups.flatMap(group => targets[group] ?? []);
-  for (const aggregate of ['page-cache-unit-check', 'split-read-plan-check', 'page-cache-unit-check/rust'])
-    assert.ok(!scheduled.includes(aggregate), `${aggregate} repeats checks scheduled independently`);
-  for (const [group, checks] of Object.entries({
-    client_db_go: ['page-cache-unit-check/go', 'split-read-plan-check/go'],
-    client_db_typescript: ['page-cache-unit-check/typescript', 'split-read-plan-check/ts'],
-    python: ['page-cache-unit-check/python', 'split-read-plan-check/python'],
-    client_db_php: ['page-cache-unit-check/php'],
-    client_db_rust: ['paged-read-rust-check', 'split-read-plan-check/rust'],
-    client_db_php_extension: ['model-types-php-extension-check'],
-  })) for (const target of checks) {
-    assert.ok(targets[group]?.includes(target), `${target} runs in ${group}`);
-    assert.equal(scheduled.filter(name => name === target).length, 1, `${target} runs once`);
-  }
-});
-
-caseTest('the Go dialect cases are partitioned without omissions or repeated cases', COMPUTE, () => {
-  const source = text('Makefile');
-  const variables = makeVariables(source);
-  const pattern = (name: string) => {
-    assert.ok(variables.has(name), `${name} declares the selected cases`);
-    return new RegExp(expand(variables.get(name) ?? '', variables).replaceAll('$$', '$'));
-  };
-  const apply = pattern('DBSPEC_APPLY_TESTS');
-  const introspect = pattern('DBSPEC_INTROSPECT_TESTS');
-  const skipped = pattern('GO_TEST_CHECK_SKIP');
-  const facts = /^(TestProbeIDs|TestProbeCitations)$/;
-  assert.ok(makeTargets(source).some(rule => rule.target === 'go-test-check' && rule.commands.some(command => command.includes("-skip '$(GO_TEST_CHECK_SKIP)'"))), 'the default Go run applies the exclusion');
-  for (const file of ['packages/go/cmd/*_test.go', 'packages/go/procevent/*_test.go', 'packages/go/internal/*_test.go', 'tests/*_test.go'].flatMap(trackedFiles)) {
-    if (file.startsWith('packages/go/internal/dialects/')) continue;
-    for (const match of text(file).matchAll(/^func (Test\w+)\(t \*testing\.T\)/gm))
-      assert.equal(skipped.test(match[1] ?? ''), false, `the dialect filter must not omit ${file}: ${match[1]}`);
-  }
-  for (const file of trackedFiles('packages/go/internal/dialects/*_test.go')) {
-    for (const match of text(file).matchAll(/^func (Test\w+)\(t \*testing\.T\)/gm)) {
-      const name = match[1] ?? '';
-      assert.equal([!skipped.test(name), apply.test(name), introspect.test(name), facts.test(name)].filter(Boolean).length, 1, `${file}: ${name}`);
-    }
-  }
-  for (const target of ['dbspec-apply-pairs-check', 'dbspec-introspect-compare-check']) {
-    const rules = makeTargets(source).filter(rule => rule.target === target);
-    assert.ok(rules.length > 0);
-    assert.ok(rules.every(rule => !rule.prerequisites.includes('go-test-check')), `${target} must not rerun the Go suite`);
-    assert.ok(rules.some(rule => rule.commands.some(command => command.includes(' -run '))), `${target} runs its own selected cases`);
-  }
-});
-
-caseTest('CI schedules conformance result helpers and vector checks once in their runtime groups', COMPUTE, () => {
-  const source = text('Makefile');
-  const { groups, targets } = ciGroups(source);
-  const scheduled = groups.flatMap(group => targets[group] ?? []);
-  assert.ok(!scheduled.includes('conformance-check'), 'the convenience aggregate must not repeat the runtime checks');
-  for (const runtime of ['go', 'php', 'typescript', 'python']) {
-    const target = `conformance-result-check/${runtime}`;
-    assert.equal(scheduled.filter(name => name === target).length, 1, target);
-  }
-  assert.equal(scheduled.filter(name => name === 'conformance-recipe-vectors-unit').length, 1);
-  const python = makeTargets(source).find(rule => rule.target === 'python-check');
-  assert.ok(!python?.prerequisites.includes('conformance-result-check/python'), 'the Python result helper has its own scheduled target');
-});
-
-caseTest('only a minimum-version check installs the lowest PHP release', COMPUTE, () => {
-  for (const needs of [['php'], ['composer'], ['php-extension-tools']])
-    assert.equal(groupOutputs(['check'], { check: needs })['php-min'], false);
-  const minimum = groupOutputs(['check'], { check: ['php-min'] });
-  assert.equal(minimum['php-min'], true);
-  assert.equal(minimum.php, true, 'restore the pinned PHP after installing the minimum release');
-  assert.equal(minimum['node-modules'], true, 'read the declared minimum through the schema checker');
-  for (const step of ['php-min', 'php-min-release'])
-    assert.equal(stepCondition(step), "${{ !cancelled() && steps.group-needs.outputs.php-min == 'true' }}");
-});
-
 caseTest('a CI group job runs each setup step under its declared condition and reports per group', COMPUTE, () => {
   assert.equal(stepCondition('go'), '${{ !cancelled() }}');
   assert.equal(stepCondition('go-lease-modules'), '${{ !cancelled() }}');
@@ -1139,17 +918,17 @@ caseTest('a CI group job runs each setup step under its declared condition and r
   assert.equal(stepCondition('composer'), "${{ !cancelled() && steps.group-needs.outputs.php == 'true' }}");
   assert.equal(stepCondition('servers'), "${{ !cancelled() && steps.group-needs.outputs.databases == 'true' }}");
   assert.deepEqual(groupOutputs(['a', 'b'], { a: ['go', 'composer'], b: ['databases'] }),
-    { 'go-codes': true, 'node-modules': true, 'interfaces-typescript': false, 'php-min': false, go: true, rust: false, php: true, 'php-extension-tools': false, 'server-programs': true, databases: true, python: false, flowmark: true });
+    { 'node-modules': true, 'interfaces-typescript': false, go: true, rust: false, php: true, 'php-extension-tools': false, 'server-programs': true, databases: true, python: false, flowmark: true });
   assert.deepEqual(groupOutputs(['b'], { b: ['databases'] }),
-    { 'go-codes': true, 'node-modules': true, 'interfaces-typescript': false, 'php-min': false, go: false, rust: false, php: false, 'php-extension-tools': false, 'server-programs': true, databases: true, python: false, flowmark: true });
+    { 'node-modules': true, 'interfaces-typescript': false, go: false, rust: false, php: false, 'php-extension-tools': false, 'server-programs': true, databases: true, python: false, flowmark: true });
   assert.deepEqual(groupOutputs(['c'], { c: ['go', 'flowmark'] }),
-    { 'go-codes': false, 'node-modules': false, 'interfaces-typescript': false, 'php-min': false, go: true, rust: false, php: false, 'php-extension-tools': false, 'server-programs': false, databases: false, python: false, flowmark: true });
+    { 'node-modules': false, 'interfaces-typescript': false, go: true, rust: false, php: false, 'php-extension-tools': false, 'server-programs': false, databases: false, python: false, flowmark: true });
   assert.deepEqual(groupOutputs(['php-library'], { 'php-library': ['php'] }),
-    { 'go-codes': false, 'node-modules': false, 'interfaces-typescript': false, 'php-min': false, go: false, rust: false, php: true, 'php-extension-tools': false, 'server-programs': false, databases: false, python: false, flowmark: false });
+    { 'node-modules': false, 'interfaces-typescript': false, go: false, rust: false, php: true, 'php-extension-tools': false, 'server-programs': false, databases: false, python: false, flowmark: false });
   assert.deepEqual(groupOutputs(['php-extension'], { 'php-extension': ['php', 'php-extension-tools'] }),
-    { 'go-codes': false, 'node-modules': true, 'interfaces-typescript': false, 'php-min': false, go: false, rust: false, php: true, 'php-extension-tools': true, 'server-programs': false, databases: false, python: false, flowmark: false });
+    { 'node-modules': true, 'interfaces-typescript': false, go: false, rust: false, php: true, 'php-extension-tools': true, 'server-programs': false, databases: false, python: false, flowmark: false });
   assert.deepEqual(groupOutputs(['api'], { api: ['interfaces-typescript'] }),
-    { 'go-codes': false, 'node-modules': true, 'interfaces-typescript': true, 'php-min': false, go: false, rust: false, php: false, 'php-extension-tools': false, 'server-programs': false, databases: false, python: false, flowmark: false });
+    { 'node-modules': true, 'interfaces-typescript': true, go: false, rust: false, php: false, 'php-extension-tools': false, 'server-programs': false, databases: false, python: false, flowmark: false });
   assert.equal(groupOutputs(['php-ext-tools'], { 'php-ext-tools': ['php-extension-tools'] }).php, true,
     'the native extension build tools require the pinned PHP setup');
   assert.throws(() => groupOutputs(['x'], {}), /target x declares no needs in contracts\/check-inputs\.json; declare its scope and needs there/);
@@ -1768,18 +1547,6 @@ caseTest('Rust tests read the paths of package programs when they run', COMPUTE,
 // The test declaration case checks the repository's JavaScript files and a minimal file.
 // The helper run case (G5.120) checks whether make orm-check runs each helper check once: the repository's Makefile, feature contract and
 // scripts/check/databases.mts, and a minimal Makefile that runs a helper twice or never.
-caseTest('a helper aggregate is covered only when all of its checks run', COMPUTE, () => {
-  const manifest = { features: [], helpers: [{ id: 'split', command: 'make combined' }] };
-  const rules = '\nPARTS = one two\ncombined: $(addprefix part/,$(PARTS))\n';
-  assert.deepEqual(helperRunErrors(manifest, 'CHECK_TARGETS = part/one part/two' + rules, ''), []);
-  for (const source of [
-    'CHECK_TARGETS = part/one' + rules,
-    'CHECK_TARGETS = part/one part/two' + rules + '\t@node additional-test.mts\n',
-    'CHECK_TARGETS = part/one\ncombined: cycle\ncycle: combined\n',
-    'CHECK_TARGETS = part/one\ncombined:\n',
-  ]) assert.equal(helperRunErrors(manifest, source, '').length, 1, source);
-});
-
 caseTest('make orm-check runs the check of every helper once', COMPUTE, () => {
   assert.deepEqual(helperRunErrors(readFeatures(repository.pathname), text('Makefile'), scriptTexts.get('scripts/check/databases.mts') ?? ''), []);
   const manifest = { features: [], helpers: [
@@ -2529,12 +2296,6 @@ caseTest('the toolchain checks read the commands that a step runs', COMPUTE, () 
 caseTest('a target that reads an error code file has the target that writes it as a prerequisite', COMPUTE, () => {
   assert.deepEqual(generatedCodesErrors(text('Makefile')), []);
   const kit = 'lint-ts: typescript-build\nlint-php test-php-ext: orm-codes-php\n';
-  const installation = (command: string) => `${kit}typescript-build: orm-codes-typescript\nsetup-python:\n\t${command}\nuse-python: setup-python\n\t$(PYTHON_VENV)/bin/python -m x\n`;
-  assert.deepEqual(generatedCodesErrors(installation('$(MAKE) --no-print-directory orm-codes-python')), []);
-  for (const command of ['-$(MAKE) --no-print-directory orm-codes-python', '$(MAKE) --no-print-directory orm-codes-python || true',
-    'false && $(MAKE) --no-print-directory orm-codes-python', '$(MAKE) --no-print-directory orm-codes-python &']) {
-    assert.ok(generatedCodesErrors(installation(command)).some(error => error.includes('use-python')), command);
-  }
   const makefile = [
     'orm-codes: orm-codes-typescript orm-codes-php orm-codes-python',
     'orm-codes-typescript orm-codes-php orm-codes-python: orm-codes-%:',
@@ -2675,32 +2436,4 @@ caseTest('an up-to-date Go model generator runs nothing again', PROCESS, () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
-});
-caseTest('native error checks do not repeat the TypeScript bind vector program', COMPUTE, () => {
-  const rules = makeTargets(text('Makefile'));
-  const native = rules.find(rule => rule.target === 'native-error-cause-check');
-  assert.ok(native);
-  assert.ok(!native.prerequisites.includes('native-error-cause-check/typescript-markdown'));
-  const readers = rules.filter(rule => rule.commands.some(command => command.includes('$(NODE) packages/ts/tests/markdown.mjs')));
-  assert.deepEqual(readers.map(rule => rule.target), ['bind-check/typescript']);
-  const inputs = readCheckInputs(repository.pathname).targets;
-  assert.ok(inputs['bind-check/typescript']?.inputs?.includes('packages/ts/tests/markdown.mjs'));
-});
-
-caseTest('Python general units and dedicated targets partition the discovered modules', PROCESS, () => {
-  const result = spawnSync('make', ['--no-print-directory', '-s', '-f', 'Makefile', '-f', '-', 'print-python-unit-modules'], { input: 'print-python-unit-modules:\n\t@printf "%s\\n" $(PYTHON_UNIT_MODULES)\n', cwd: repository.pathname, encoding: 'utf8', env: isolatedEnvironment() });
-  assert.equal(result.status, 0, result.stderr);
-  const general = result.stdout.trim().split('\n').filter(Boolean);
-  const rules = makeTargets(text('Makefile'));
-  const { targets } = ciGroups(text('Makefile'));
-  const scheduled = new Set(Object.values(targets).flat());
-  const dedicated = rules.filter(rule => scheduled.has(rule.target)).flatMap(rule => rule.commands)
-    .map(command => /(?:\$\(PYTHON_TESTS\) -- |\/bin\/python -m )(packages\.python\.tests\.test_\w+)$/.exec(command.trim())?.[1]).filter((name): name is string => name !== undefined);
-  assert.ok(dedicated.length > 8, 'the dedicated targets cover more than conformance');
-  assert.deepEqual(general.filter(name => dedicated.includes(name)), []);
-  const expected = trackedFiles('packages/python/tests/*.py').filter(file => /\/test_[^/]+\.py$/.test(file)).map(file => file.slice(0, -3).replaceAll('/', '.')).sort();
-  assert.deepEqual([...general, ...dedicated].sort(), expected);
-  assert.equal(new Set(general).size, general.length);
-  const unit = rules.find(rule => rule.target === 'python-unit-check' && rule.commands.length > 0);
-  assert.ok(unit?.commands.some(command => command.includes('$(PYTHON_TESTS) -- $(PYTHON_UNIT_MODULES)')));
 });

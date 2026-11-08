@@ -24,8 +24,6 @@ export const CI_SETUP: Record<string, string | null> = {
   'go-lease-modules': 'go-lease',
   // The full Go workspace modules and generated models are installed only for groups that declare Go work.
   'go-modules': 'go',
-  // The generator's modules are separate from Go client tests and model generation.
-  'go-codes': 'go-codes',
   'interfaces-typescript': 'interfaces-typescript',
   rust: 'rust',
   'rust-cache': null,
@@ -56,17 +54,15 @@ export const RUNNER_STEPS = ['checkout', 'node'];
 // are prepared by the CI setup steps. Local runs have no CI setup steps, so those needs are always treated as prepared.
 export const NEEDS = ['databases', 'mysql-privilege-server', ...new Set(Object.values(CI_SETUP).filter(Boolean).filter(need => need !== 'databases'))];
 
-// GROUP_OUTPUTS maps each output that step group-needs writes to the need that makes that output true. Only php-min installs the lowest
-// PHP release; php restores .php-version and installs Composer. PHP extension build tools have their own need so library-only checks skip them. server-programs is the program make orm-test-servers uses to start the servers, and node-modules is
+// GROUP_OUTPUTS maps each output that step group-needs writes to the need that makes that output true. php installs two PHP releases (the lowest
+// release and .php-version) together with Composer; PHP extension build tools have their own need so library-only checks skip them. server-programs is the program make orm-test-servers uses to start the servers, and node-modules is
 // a dependency of the TypeScript client that make databases-create builds, so databases needs both of them as well.
 export const GROUP_OUTPUTS: Record<string, string[]> = {
   'node-modules': ['node-modules', 'databases'],
   'interfaces-typescript': ['interfaces-typescript'],
   go: ['go'],
-  'go-codes': ['go-codes'],
   rust: ['rust'],
   php: ['php', 'php-min', 'composer'],
-  'php-min': ['php-min'],
   'php-extension-tools': ['php-extension-tools'],
   'server-programs': ['server-programs', 'databases'],
   databases: ['databases'],
@@ -88,9 +84,8 @@ export const STEP_OUTPUT: Record<string, string | null> = {
   'rust-crates': 'rust',
   'go-lease-modules': null,
   'go-modules': 'go',
-  'go-codes': 'go-codes',
-  'php-min': 'php-min',
-  'php-min-release': 'php-min',
+  'php-min': 'php',
+  'php-min-release': 'php',
   php: 'php',
   'php-bootstrap': 'php',
   composer: 'php',
@@ -113,10 +108,10 @@ export const stepCondition = (id: string): string => STEP_OUTPUT[id]
 // and is managed by the Go lease runner, whose sole external dependency is installed by go-lease, and databases.mts sets up the bench database (scripts/bench-db.mts) and
 // the decimal database through the TypeScript client, which make databases-create builds. A case runs on MySQL, PostgreSQL,
 // SQLite and flowmark, and WITH_TEST_ENV hands every target FLOWMARK, so databases installs flowmark too. So a target that
-// needs databases also needs these needs (expandNeeds), including go-codes for the generated TypeScript constants.
+// needs databases also needs these needs (expandNeeds).
 // php-min reads that release through scripts/php/php-min.mts, and that script reads composer.json as its schema, so it needs node_modules.
 export const SETUP_NEEDS: Record<string, string[]> = {
-  databases: ['go-lease', 'node-modules', 'server-programs', 'flowmark', 'go-codes'],
+  databases: ['go-lease', 'node-modules', 'server-programs', 'flowmark'],
   'mysql-privilege-server': ['databases'],
   'php-min': ['node-modules'],
   'php-extension-tools': ['php', 'composer', 'node-modules'],

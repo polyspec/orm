@@ -106,18 +106,12 @@ caseTest('the suite targets and the comparison declare every client and fixture 
     if (!isRecord(declared) || !isStringArray(declared.needs)) throw new Error(`${name} has no needs list`);
     assert.deepEqual([declared.scope, declared.needs], ['suite', needs], name);
   }
-  assert.equal(Object.hasOwn(inputs.targets, 'conformance-check'), false, 'the convenience aggregate is not another suite target');
-  for (const [runtime, required] of Object.entries({ go: ['go'], rust: ['rust'], php: ['php', 'composer'], 'php-extension': ['php', 'composer', 'php-extension-tools'], python: ['python'], typescript: [] })) {
-    for (const part of ['generated-methods', 'fixed-clock']) {
-      const target = `conformance-${part}-check/${runtime}`;
-      const comparison: unknown = inputs.targets[target];
-      if (!isRecord(comparison) || !isStringArray(comparison.needs)) throw new Error(`${target} has no needs list`);
-      for (const need of ['node-modules', 'databases', ...required])
-        assert.ok(comparison.needs.includes(need), `${target} independently declares ${need}`);
-    }
-  }
+  const comparison = inputs.targets['conformance-check'];
+  if (!isRecord(comparison) || !isStringArray(comparison.needs)) throw new Error('conformance-check has no needs list');
+  for (const need of ['go', 'rust', 'php', 'php-extension-tools', 'python', 'databases', 'node-modules'])
+    assert.ok(comparison.needs.includes(need), `the cross-runtime comparison independently declares ${need}`);
   assert.ok(expandNeeds(['databases']).includes('server-programs'));
-  assert.deepEqual(SETUP_NEEDS['databases'], ['go-lease', 'node-modules', 'server-programs', 'flowmark', 'go-codes']);
+  assert.deepEqual(SETUP_NEEDS['databases'], ['go-lease', 'node-modules', 'server-programs', 'flowmark']);
   // flowmark is the fourth database of a case, and WITH_TEST_ENV hands every target FLOWMARK, so databases installs it.
   assert.ok(expandNeeds(['databases']).includes('flowmark'));
   assert.ok(expandNeeds(['databases']).includes('go-lease'));
