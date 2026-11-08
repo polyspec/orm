@@ -27,7 +27,7 @@ const DATABASES = ['mysql', 'postgres', 'sqlite'] as const;
  * decimal round trip on each database (scripts/decimal-physical-check.mts, --dialect), the markdown conformance cases
  * against the flowmark server (make markdown-conformance-check/<runtime>), the PHP query cancellation cases, which load the
  * SQLite cancellation helper that make php-query-cancellation-check builds first, and the TypeScript interface recipe, which
- * reads the TypeScript extractor that the owner of public_interface in contracts/features.json runs with.
+ * reads the TypeScript extractor that make public-interface-typescript-check requires (CI group client_db_typescript).
  */
 export const OWNED_ELSEWHERE: Record<string, string> = {
   ...Object.fromEntries((['php', 'typescript', 'python'] as const).flatMap(runtime =>
@@ -39,7 +39,7 @@ export const OWNED_ELSEWHERE: Record<string, string> = {
   'packages/ts/tests/markdown_conformance.mjs': 'Makefile',
   'packages/python/tests/markdown_conformance.py': 'Makefile',
   'packages/php/tests/QueryCancellationTest.php': 'Makefile',
-  'packages/ts/tests/public_interface-none.test.mjs': 'contracts/features.json',
+  'packages/ts/tests/public_interface-none.test.mjs': 'Makefile',
 };
 
 /** suiteTests is the test files of `lane` that its suite runs, in byte order. */

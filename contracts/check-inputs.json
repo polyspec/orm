@@ -784,6 +784,23 @@
         "packages/rust/orm/src/model.rs"
       ]
     },
+    "public-interface-typescript-check": {
+      "scope": "owner",
+      "needs": [
+        "node-modules",
+        "interfaces-typescript",
+        "go-lease"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/ts/tests/public_interface-none.test.mjs",
+        "packages/ts/tests/recipe.mjs",
+        "contracts/fixtures/public_interface/public_interface.json",
+        "contracts/interfaces.json",
+        "tests/interfaces/check/*.mts",
+        "packages/ts/testing/interfaces/typescript.mts"
+      ]
+    },
     "interface-typescript-extractor-check": {
       "scope": "owner",
       "needs": [
