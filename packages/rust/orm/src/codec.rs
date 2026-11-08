@@ -333,12 +333,31 @@ impl<'input> SpannedEventReceiver<'input> for YamlReader {
             YamlEvent::SequenceEnd | YamlEvent::MappingEnd => match self.frames.pop() {
                 Some(YamlFrame::Sequence(items)) => self.place(Value::Array(items)),
                 Some(YamlFrame::Mapping { map, .. }) => self.place(Value::Object(map)),
-                None => self.fail("collection end without a start"),
+                // saphyr-parser balances every end with its start, so no stream reaches this guard; it states yaml-parse,
+                // with what it found as the cause (COD-72).
+                None => self.refuse("the stream does not parse", Some(Box::new(YamlReaderFault("a collection end without a start")))),
             },
             YamlEvent::Nothing | YamlEvent::StreamStart | YamlEvent::StreamEnd | YamlEvent::DocumentEnd => {}
         }
     }
 }
+
+/// What a guard of the reader found that the parser should have refused; it is the cause of the yaml-parse error.
+#[derive(Debug)]
+struct YamlReaderFault(&'static str);
+
+impl std::fmt::Display for YamlReaderFault {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.0)
+    }
+}
+
+impl std::error::Error for YamlReaderFault {}
+
+/// The report of saphyr-parser for an alias whose anchor is not in the stream, the one way the library tells it. The text
+/// is the library's, so the unit test `yaml_unknown_anchor_report_is_the_locked_library_text` pins it against the locked
+/// saphyr-parser version: a library that changes it turns that test red instead of turning an alias into yaml-parse.
+const YAML_UNKNOWN_ANCHOR: &str = "while parsing node, found unknown anchor";
 
 /// The failure that found a refused plain scalar.
 type YamlCause = Box<dyn std::error::Error + Send + Sync + 'static>;
@@ -370,7 +389,9 @@ fn yaml_core_scalar(text: String) -> std::result::Result<Value, YamlScalarRefusa
             // .inf and .nan are YAML floats that are not finite; Rust reads them without the dot.
             let float = match text.trim_start_matches(['+', '-']).strip_prefix('.') {
                 Some(word) if word.eq_ignore_ascii_case("inf") || word.eq_ignore_ascii_case("nan") => return Err(("number is not finite", None)),
-                _ => text.parse::<f64>().map_err(|error| ("float is not a number", Some(Box::new(error) as YamlCause)))?,
+                // YAML_CORE_FLOAT admits only forms that Rust reads as f64, so no scalar reaches this guard; it states
+                // yaml-parse, with the failure of the read as the cause (COD-72).
+                _ => text.parse::<f64>().map_err(|error| ("the stream does not parse", Some(Box::new(error) as YamlCause)))?,
             };
             match serde_json::Number::from_f64(float) {
                 Some(number) => Value::Number(number),
@@ -404,9 +425,7 @@ fn yaml_decode(bytes: &[u8]) -> Result<Value> {
         // parse breaks is the error (COD-70).
         (Some(error), _) => Err(error),
         // saphyr-parser refuses an alias whose anchor is not in the stream before it reports the alias as an event.
-        (None, Err(error)) if error.info() == "while parsing node, found unknown anchor" => {
-            Err(err_cause(CODEC_DECODE, "yaml: aliases are not supported", error))
-        }
+        (None, Err(error)) if error.info() == YAML_UNKNOWN_ANCHOR => Err(err_cause(CODEC_DECODE, "yaml: aliases are not supported", error)),
         (None, Err(error)) => Err(err_cause(CODEC_DECODE, "yaml: the stream does not parse", error)),
         (None, Ok(())) if reader.documents == 0 => Err(err(CODEC_DECODE, "yaml: no document")),
         (None, Ok(())) => Ok(reader.value.unwrap_or(Value::Null)),
