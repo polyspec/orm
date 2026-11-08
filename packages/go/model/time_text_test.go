@@ -15,12 +15,14 @@ func TestTimeSetterRecordsBadText(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {
 		before := must(model.TimeCell().Connect(db).GetCount())
-		_, err := model.TimeCell().Connect(db).SetAt("bad1").SetAt("bad2").Create()
+		// The first bad set stays the error of the statement although a later set of the same column is good; the
+		// error names the column and no value (INT-163).
+		_, err := model.TimeCell().Connect(db).SetAt("bad1").SetAt("2026-06-01 12:34:56").Create()
 		if orm.ErrorCode(err) != orm.CodeCodecEncode {
 			t.Fatalf("Create code = %q, want %q (err %v)", orm.ErrorCode(err), orm.CodeCodecEncode, err)
 		}
-		if msg := err.Error(); !contains(msg, "column at") || !contains(msg, "bad1") || contains(msg, "bad2") {
-			t.Fatalf("Create error %q does not name the first bad set", msg)
+		if msg, want := err.Error(), "CODEC_ENCODE: time_cell.at: datetime value is not a datetime"; msg != want || contains(msg, "bad1") {
+			t.Fatalf("Create error %q, want %q", msg, want)
 		}
 		if after := must(model.TimeCell().Connect(db).GetCount()); after != before {
 			t.Fatalf("rows changed from %d to %d", before, after)

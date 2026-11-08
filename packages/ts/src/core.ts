@@ -423,10 +423,13 @@ export class Core {
       }
       if (field.type === 'date' || field.type === 'time' || field.type === 'datetime') {
         // The setter checks the text of its column, a nonzero fraction digit past p among it, and the bind layer checks
-        // it again (DBS-121); a text the column does not hold is refused by its column, naming no value (INT-163).
+        // it again (DBS-121); a text the column does not hold is refused by its column, naming no value (INT-163). The check
+        // reads a text with an offset in the fixed zone +00:00, since the setter has no connection; the bind converts it to the
+        // zone of its connection. Any other failure is not a refusal of the text and keeps its own code.
         try {
-          timeValue(value, field.type, 'UTC', field.precision);
+          timeValue(value, field.type, '+00:00', field.precision);
         } catch (error) {
+          if (!(error instanceof OrmError) || error.code !== codes.CODEC_ENCODE) throw error;
           throw new OrmError(codes.CODEC_ENCODE, `${this.ent.entity.name}.${column}: ${field.type} value is not a ${field.type}`, error);
         }
       }

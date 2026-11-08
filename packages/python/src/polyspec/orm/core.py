@@ -510,12 +510,16 @@ class Core:
         """The setter checks the text of a date, time or datetime column, a nonzero fraction digit past p among it, and
         the bind layer checks it again (DBS-121); a text the column does not hold is refused by its column, naming no
         value (INT-163). A text of the value form outside 0001-01-01 to 9999-12-31 is left to the range rule of the bind
-        layer (PRT-32a), since no Python date holds it."""
+        layer (PRT-32a), since no Python date holds it. The check reads a text with an offset in the fixed zone +00:00,
+        since the setter has no connection; the bind converts it to the zone of its connection. Any other failure is not
+        a refusal of the text and keeps its own code."""
         from polyspec.orm.database import _time_text_outside_range, time_value
 
         try:
-            time_value(value, field.type, "UTC", field.precision)
+            time_value(value, field.type, "+00:00", field.precision)
         except OrmError as error:
+            if error.code != codes.CODEC_ENCODE:
+                raise
             if _time_text_outside_range(value, field.type, field.precision):
                 return
             raise OrmError(
