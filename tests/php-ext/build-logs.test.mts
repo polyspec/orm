@@ -69,12 +69,12 @@ writeFileSync(process.env.KIT_CLI_PROOF, JSON.stringify({ file: import.meta.file
       assert.equal(result.status, 0, result.stderr);
       const proof = readCliProof(proofPath);
       assert.equal(proof.file, realpathSync(kitScript));
-      assert.deepEqual(proof.args.slice(0, 3), ['build', '--output', expectedOutput]);
-      assert.equal(proof.args[3], '--configure-arg');
+      const layout = ['build', '--extension', 'packages/php-ext', '--build-dir', 'var/php-ext', '--skip', 'vendor', '--skip', 'node_modules', '--library', 'packages/php', '--output', expectedOutput, '--configure-arg'];
+      assert.deepEqual(proof.args.slice(0, layout.length), layout);
       if (mode === 'release') {
-        assert.deepEqual(proof.args.slice(4), ['--disable-polyspec-orm-native-test']);
+        assert.deepEqual(proof.args.slice(layout.length), ['--disable-polyspec-orm-native-test']);
       } else {
-        assert.deepEqual(proof.args.slice(4), [
+        assert.deepEqual(proof.args.slice(layout.length), [
           '--enable-polyspec-orm-native-test',
           '--source-copy',
           'packages/php-ext/testing/native/module.c',

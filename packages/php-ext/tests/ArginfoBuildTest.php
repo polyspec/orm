@@ -112,6 +112,16 @@ JS);
             self::assertSame(
                 [
                     'build',
+                    '--extension',
+                    'packages/php-ext',
+                    '--build-dir',
+                    'var/php-ext',
+                    '--skip',
+                    'vendor',
+                    '--skip',
+                    'node_modules',
+                    '--library',
+                    'packages/php',
                     '--output',
                     $root . '/polyspec_orm.so',
                     '--configure-arg',
