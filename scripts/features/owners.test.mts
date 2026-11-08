@@ -230,7 +230,7 @@ caseTest('a change across the four clients selects no full-suite target', 5000, 
   const nativeTargets = runtimes.map(runtime => `client-db-${runtime}-check`);
   for (const target of [...nativeTargets, ...runtimes.map(runtime => `client-pooler-${runtime}-check`), 'case-database-check', 'conformance-check', 'feature-verify-rust', 'feature-verify-other', 'go-test-check'])
     assert.equal(inputs[target]?.scope, 'suite', `${target} is not a full-suite target`);
-  // The sources recorded by contracts/interfaces.json and contracts/symbols/*.json are inputs to the interface check.
+  // The sources named by contracts/interfaces.json are inputs to the interface check.
   const owners = await selectOwners(manifest, root, t42);
   assert.deepEqual(ids(owners), ['statement_events', 'interface_contract']);
   assert.deepEqual(selected(owners.slice(0, 1)), [

@@ -12,7 +12,6 @@ function componentManifest(components: Component[], ...rules: string[]): Manifes
   return {
     version: 1,
     languages: { go: {}, php: {}, rust: {}, typescript: {}, python: {} },
-    symbol_hashes: { go: '', php: '', rust: '', typescript: '', python: '' },
     prohibited_symbols: ['multi_statement'],
     sequences: [{ id: 's' }],
     components,

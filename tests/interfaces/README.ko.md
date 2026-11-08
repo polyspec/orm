@@ -1,5 +1,5 @@
 <!-- doc-id: tests-interfaces-readme -->
-<!-- source-sha256: 37e74ba01fdcb83df46d95fbfa034eb9c9ae5971910590b96d83a8836f0059cc -->
+<!-- source-sha256: 2511262c061b52b2bb3bc2ff38dd5c02fb07fd19920ff07170b6837f20fed395 -->
 # 공통 인터페이스 검사
 
 [contracts/interfaces.json](../../contracts/interfaces.json)이 인터페이스 구조를 정의한다. [인터페이스 구조 문서](../../docs/spec/interfaces.ko.md)와 함께 변경한다.
@@ -10,8 +10,8 @@
 - 모델 규칙은 생성된 Go 모델, PHP와 TypeScript 기반 클래스, 고정 모델 메서드를 담은 Rust `polyspec-orm-build` 템플릿을 읽는다.
 - 소유자 규칙은 `Page`와 `AESRotationStatus`의 선언되지 않은 필드를 거부한다.
 - 레코드 규칙은 request 레코드 20개의 모든 필드와 중첩 타입을 각 선언된 표현에서 대조한다. PHP 레코드 선언은 `Validator::RECORDS`에서 읽는다.
-- 네이티브 심볼 스냅샷은 공개 및 내부 선언 변경을 보고한다. 매니페스트의 SHA-256 값은 검토하지 않은 스냅샷 교체를 차단한다.
-- `contracts/implementations.json`은 여섯 구현을 선언한다. PHP extension은 문서화된 Dbspec 일부를 구현하며 전체 ORM client는 아니다. Native 선언 스냅샷에는 `Stats`, `OrmException`, `AesKeyring`, `AesRotationStatus`, `AesUtils`, `PrivilegeUtils`, `Utils`, `Orm`도 포함된다. `php-extension` contract는 `Dbspec` 규칙과 `DbspecDiagnostic`, `DbspecManifest` owner를 구현한다. 선언은 stub에서 읽어 `contracts/symbols/php-extension.json` 및 hash와 비교한다. extension이 목록에 넣지 않은 규칙이나 owner에는 adapter가 없어야 한다. load한 extension이 stub과 같은 선언을 갖는지는 `make dbspec-php-extension-check`가 확인한다.
+- 실행마다 소스에서 네이티브 선언을 읽는다. 기록해 둔 선언 사본과 비교하지 않는다.
+- `contracts/implementations.json`은 여섯 구현을 선언한다. PHP extension은 문서화된 Dbspec 일부를 구현하며 전체 ORM client는 아니다. `php-extension` contract는 `Dbspec` 규칙과 `DbspecDiagnostic`, `DbspecManifest` owner를 구현한다. 선언은 stub에서 읽는다. extension이 목록에 넣지 않은 규칙이나 owner에는 adapter가 없어야 한다. load한 extension이 stub과 같은 선언을 갖는지는 `make dbspec-php-extension-check`가 확인한다.
 - 실행 순서 규칙은 conformance 벡터의 결과와 statement 수를 비교한다.
 - 메서드 규칙의 오류 표기와 기록된 `errors` 순서는 `docs/spec/errors.yaml`의 코드와 일치해야 한다. 네이티브 드라이버 오류 범주는 명시적으로 남긴다.
 - 금지 심볼은 취소와 커서 페이지처럼 삭제되었거나 지원하지 않는 동작을 거부한다.
@@ -40,10 +40,10 @@ sequence는 자기가 보내는 statement의 kind를 순서대로 적고, utilit
 make go-models
 make php-models
 npm run typescript:build
-ORM_PYTHON=packages/python/.venv/bin/python node tests/interfaces/check/main.mts --generate --record --self-test
+ORM_PYTHON=packages/python/.venv/bin/python node tests/interfaces/check/main.mts --generate --self-test
 ```
 
-`--record`는 검토할 파일을 작성한다. 소스 diff를 검토하고 매니페스트 해시를 갱신한다. CI는 `--record`와 `--generate`를 사용하지 않으며 생성 파일, 도표, 심볼 스냅샷, 실행 계약이 다르면 실패한다.
+CI는 `--generate`를 사용하지 않으며 생성 파일, 도표, 실행 계약이 다르면 실패한다.
 
 `--language`는 선언과 레코드 검사를 그것이 지정한 클라이언트로 제한한다. 모든 클라이언트의 검사나 conformance 실행을 대체하지 않는다. PHP 배열은 선언한 request 모양과 대조한다. 함수 본문과 각 오류 또는 상태 전이의 동작에는 실행 사례가 필요하다.
 

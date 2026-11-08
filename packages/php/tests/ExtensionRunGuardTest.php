@@ -62,18 +62,6 @@ final class ExtensionRunGuardTest extends TestCase
         self::assertSame([], librarySourcesLoaded(['/r/packages/php/tests/Db.php'], '/r/packages/php/src/', $classes));
     }
 
-    // Requirements: PRT-18.
-    public function testDeclaredClassesAreTheClassKeysOfTheRecord(): void
-    {
-        self::assertSame(
-            ['Polyspec\\Orm\\Db' => true],
-            extensionClasses([
-                'packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db' => [],
-                'packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::connect' => [],
-            ])
-        );
-    }
-
     private static function source(): string
     {
         $source = realpath(dirname(__DIR__) . '/src');
@@ -84,9 +72,10 @@ final class ExtensionRunGuardTest extends TestCase
     /** @return array{int, string} the exit status and the stderr of a child that guards $source and loads $load */
     private static function child(string $source, ?string $load): array
     {
-        $symbols = dirname(__DIR__, 3) . '/contracts/symbols/php-extension.json';
+        // The child runs without the extension, so it guards two classes that the extension registers.
+        $classes = ['Polyspec\\Orm\\AesRotationStatus', 'Polyspec\\Orm\\Db'];
         $code = 'require ' . var_export(__DIR__ . '/extension_run_guard.php', true) . '; guardExtensionRun('
-            . var_export($source, true) . ', ' . var_export($symbols, true) . ');'
+            . var_export($source, true) . ', ' . var_export($classes, true) . ');'
             . ($load === null ? '' : ' require_once ' . var_export($load, true) . ';');
         $process = proc_open([PHP_BINARY, '-n', '-r', $code], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
         self::assertIsResource($process, 'php -n did not start');

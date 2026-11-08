@@ -7192,7 +7192,6 @@
             "packages/python/pyproject.toml",
             "packages/python/uv.lock",
             "contracts/interfaces.json",
-            "contracts/symbols/*.json",
             "scripts/schema/interface*.json"
           ]
         },
@@ -7204,7 +7203,6 @@
             "tests/interfaces/check/*.mts",
             "packages/php/testing/interfaces/php.php",
             "contracts/interfaces.json",
-            "contracts/symbols/php-extension.json",
             "scripts/schema/interface*.json"
           ]
         },
@@ -7369,8 +7367,7 @@
             "inputs": [
               "tests/interfaces/check/*.mts",
               "packages/go/internal/symbols/*.go",
-              "contracts/interfaces.json",
-              "contracts/symbols/go.json"
+              "contracts/interfaces.json"
             ],
             "commands": {
               "none": [
@@ -7392,7 +7389,6 @@
               "tests/interfaces/check/*.mts",
               "packages/go/internal/symbols/*.go",
               "contracts/interfaces.json",
-              "contracts/symbols/php.json",
               "packages/php/testing/interfaces/php.php",
               "packages/php/tests/GoSerializationTest.php"
             ],
@@ -7416,7 +7412,6 @@
               "tests/interfaces/check/*.mts",
               "packages/go/internal/symbols/*.go",
               "contracts/interfaces.json",
-              "contracts/symbols/rust.json",
               "packages/rust/testing/interfaces/**"
             ],
             "commands": {
@@ -7438,7 +7433,6 @@
               "tests/interfaces/check/*.mts",
               "packages/go/internal/symbols/*.go",
               "contracts/interfaces.json",
-              "contracts/symbols/typescript.json",
               "packages/ts/testing/interfaces/typescript.mts"
             ],
             "commands": {
@@ -7459,7 +7453,6 @@
             "inputs": [
               "tests/interfaces/check/*.mts",
               "contracts/interfaces.json",
-              "contracts/symbols/python.json",
               "packages/python/testing/interfaces/python.py",
               "packages/python/tests/test_orm_gen.py",
               "packages/python/tests/test_driver_cells.py",
@@ -7487,7 +7480,6 @@
             ],
             "inputs": [
               "contracts/interfaces.json",
-              "contracts/symbols/php-extension.json",
               "packages/php-ext/tests/ModelNativeTest.php",
               "tests/interfaces/check/*.mts"
             ],

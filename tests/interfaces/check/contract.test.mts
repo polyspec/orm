@@ -233,23 +233,22 @@ caseTest('PHP extension extraction does not load the client autoloader', PROCESS
   }
 });
 
-// Checks that it accepts the stub with the PHP extension (php-extension) check recorded, and rejects a stub that differs from the common contract, an adapter the extension does not write,
-// or a different symbol snapshot. Each case copies the stub and snapshot into a temporary root and changes them there.
+// Checks that it accepts the stub of the PHP extension (php-extension), and rejects a stub that differs from the common contract and an adapter the extension does not list.
+// Each case copies the stub into a temporary root and changes it there.
 caseTest('the extension declarations are checked against the contract', PROCESS, async ({ signal }) => {
   requirePhp();
   const m = readManifest(join(root, 'contracts/interfaces.json'));
   const e = m.extensions?.['php-extension'];
   assert.ok(e, 'contracts/interfaces.json declares no php-extension');
   // The extension has one stub (S10), the one the cases change.
-  const stubRoot = e.roots?.[0] ?? '', stubPath = join(stubRoot, 'polyspec_orm.stub.php'), symbolsPath = e.symbols ?? '';
-  const stub = readFileSync(join(root, stubPath), 'utf8'), snapshot = readFileSync(join(root, symbolsPath), 'utf8');
-  // check verifies the extension in the temporary root where the stub and snapshot were changed. extract runs php.php in that root, so it is kept in the same place.
-  const check = async (stubSource: string, snapshotSource: string, manifest: Manifest): Promise<string> => {
+  const stubRoot = e.roots?.[0] ?? '', stubPath = join(stubRoot, 'polyspec_orm.stub.php');
+  const stub = readFileSync(join(root, stubPath), 'utf8');
+  // check verifies the extension in the temporary root where the stub was changed. extract runs php.php in that root, so it is kept in the same place.
+  const check = async (stubSource: string, manifest: Manifest): Promise<string> => {
     const dir = mkdtempSync(join(tmpdir(), 'orm-interface-test-'));
     try {
       for (const [path, content] of [
         [stubPath, stubSource],
-        [symbolsPath, snapshotSource],
         ['packages/php/testing/interfaces/php.php', readFileSync(join(root, 'packages/php/testing/interfaces/php.php'), 'utf8')],
         ['packages/php/tests/autoload.php', '<?php namespace Polyspec\\Orm; class Registry {}'],
       ] as const) {
@@ -257,7 +256,7 @@ caseTest('the extension declarations are checked against the contract', PROCESS,
         writeFileSync(join(dir, path), content);
       }
       const extension = manifest.extensions?.['php-extension'] ?? {};
-      await checkExtension(dir, 'php-extension', extension, manifest, undefined, false, signal, () => {});
+      await checkExtension(dir, 'php-extension', extension, manifest, undefined, signal, () => {});
       return '';
     } catch (error) {
       return error instanceof Error ? error.message : String(error);
@@ -265,8 +264,8 @@ caseTest('the extension declarations are checked against the contract', PROCESS,
       rmSync(dir, { recursive: true, force: true });
     }
   };
-  assert.equal(await check(stub, snapshot, m), '', 'the recorded stub and snapshot are refused');
-  const mutations: Record<string, { stub?: string; snapshot?: string; manifest?: (m: Manifest) => Manifest; want: string }> = {
+  assert.equal(await check(stub, m), '', 'the stub is refused');
+  const mutations: Record<string, { stub?: string; manifest?: (m: Manifest) => Manifest; want: string }> = {
     'a return type that differs from the contract': {
       stub: stub.replace('public static function emit(Document $document): string', 'public static function emit(Document $document): ?string'),
       want: 'php-extension/Dbspec.emit',
@@ -285,10 +284,9 @@ caseTest('the extension declarations are checked against the contract', PROCESS,
       }),
       want: 'Model.gets has a php-extension adapter that the extension does not list',
     },
-    'a snapshot that differs from the declarations': { snapshot: snapshot.replace('public readonly int', 'public readonly string'), want: 'php-extension: changed' },
   };
   for (const [name, mutation] of Object.entries(mutations)) {
-    const message = await check(mutation.stub ?? stub, mutation.snapshot ?? snapshot, mutation.manifest ? mutation.manifest(m) : m);
+    const message = await check(mutation.stub ?? stub, mutation.manifest ? mutation.manifest(m) : m);
     assert.ok(message.includes(mutation.want), `${name}: want an error with ${JSON.stringify(mutation.want)}, got ${JSON.stringify(message)}`);
   }
 });

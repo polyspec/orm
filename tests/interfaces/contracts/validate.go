@@ -30,7 +30,7 @@ func implementationLanguages() []string {
 // outputs maps a common result to the native return type of each language and
 // of each extension (an implementation of part of the contract, declared under
 // extensions). A native signature can change only together with this table, so
-// a recorded symbol snapshot cannot silently change the common API.
+// a declaration cannot silently change the common API.
 var outputs = map[string]map[string]string{
 	"Chain":                {"go": "*{Entity}Model", "php": "static", "rust": "Self", "typescript": "this", "python": "Self"},
 	"Model":                {"go": "(*{Entity}Model,error)", "php": "static", "rust": "polyspec_orm::Result<Self>", "typescript": "Promise<this>", "python": "Self"},

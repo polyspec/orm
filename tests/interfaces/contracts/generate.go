@@ -51,8 +51,6 @@ type extension struct {
 	Description string   `json:"description"`
 	Syntax      string   `json:"syntax"`
 	Roots       []string `json:"roots"`
-	Symbols     string   `json:"symbols"`
-	SymbolHash  string   `json:"symbol_hash"`
 	Rules       []string `json:"rules"`
 	Owners      []string `json:"owners"`
 }

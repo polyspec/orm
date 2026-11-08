@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b0dfd9a96b811d9f5a3a3db0687c98363285bb1cf88c59a9248330117748c262 -->
+<!-- source-sha256: a5cb0249f3833aea13f1d5543cc3f1cdd058d6d22863a958d3aff3b45cb090de -->
 # 변경 이력
 
 ## Unreleased
 
+- Tests: interface check는 선언의 기록 사본과 비교하지 않는다 (T409): check가 실행마다 읽은 선언을 contracts/interfaces.json의 규칙과 비교하고, 같은 추출에서 쓴 사본은 그 밖의 것을 잡지 못했으므로 contracts/symbols, `--record`, `make interface-record`, contracts/interfaces.json의 symbol hash를 없앤다. private 선언의 변경은 더 이상 CI를 실패시키지 않는다. PHP suite guard는 load한 확장에서 class 목록을 읽고, Python natives test는 extractor에서 signature를 읽는다.
 - orm-gen `--scan`은 Go, TypeScript, Python, PHP, Rust에서 import한 class를 각 언어의 checker가 그 binding을 해석하는 대로 해석한다 (DSL-151, T408): hand-written module이 model 이름으로 선언한 type은 그 module의 type이므로 그 호출을 선언하지도 거부하지도 않고, module이 set의 model에서 re-export한 class는 그 model이다. TypeScript는 hand-written module에서 import한 모든 class를 이름으로 받아, `./calls.ts`에서 import한 interface `Module`이 `Module.submit is not a model method`로 생성을 멈췄고, Rust는 scan의 어떤 module을 거친 path도 이름으로 받았다. Go는 type alias를 model로 풀지 못했고, Python과 Rust는 set의 class의 re-export(`from ..model.models import Product`, `pub use`)를 따라가지 않았다. recipe generator_scan이 여섯 runtime에서 두 형태를 모두 담는다.
 
 ## 0.0.24

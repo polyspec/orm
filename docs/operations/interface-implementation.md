@@ -33,7 +33,7 @@ case uses the same generated models through a one-slot PgBouncer connection.
 | IF-21 ~ IF-24 | The `write_cycle`, `now_defaults`, `creates_and_save`, `delete_recursive`, and `restore` vectors check dirty writes, clock defaults, upserts, optimistic updates, recursive deletes, and the restore of a soft-deleted row |
 | IF-25 ~ IF-27 | The owner rules fix the five `Page` fields and the four `AESRotationStatus` fields in every language. The client model tests check keyed collections and pages |
 | IF-28 ~ IF-31 | 80 codec vectors, the AES vectors, and the `aes_values`, `aes_status`, `get_query`, and `errors` vectors check codecs, key versions, masked binds, and error codes |
-| IF-33 | The manifest generates the component diagram. `make interface-check` checks the diagram, the symbol snapshots, and the source mutations |
+| IF-33 | The manifest generates the component diagram. `make interface-check` checks the diagram and the source mutations |
 | IF-34 | PHP and TypeScript resolve only names that follow the chain rules; the Go and Rust generators reject other names before the build |
 
 Structure checks compare the common methods and stored fields first, then report missing, added, and changed native declarations. A SHA-256 value of each symbol list is fixed in `contracts/interfaces.json`; changing declarations without updating the specification fails. `owners` restricts the fields of `Page` and `AESRotationStatus`, so updating only the symbol list cannot add a state field to them. Language-version syntax such as PHP's default readonly setter form is normalized; explicit access changes remain visible. Seven source-change counterexamples per language are checked.

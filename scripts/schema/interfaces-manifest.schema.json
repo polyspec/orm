@@ -10,10 +10,9 @@
       "type": "object",
       "additionalProperties": {
         "type": "object",
-        "properties": { "roots": { "$ref": "#/$defs/strings" }, "symbols": { "type": "string" } }
+        "properties": { "roots": { "$ref": "#/$defs/strings" } }
       }
     },
-    "symbol_hashes": { "$ref": "#/$defs/stringMap" },
     "extensions": {
       "type": "object",
       "additionalProperties": {
@@ -22,8 +21,6 @@
           "description": { "type": "string" },
           "syntax": { "type": "string" },
           "roots": { "$ref": "#/$defs/strings" },
-          "symbols": { "type": "string" },
-          "symbol_hash": { "type": "string" },
           "rules": { "$ref": "#/$defs/strings" },
           "owners": { "$ref": "#/$defs/strings" }
         }

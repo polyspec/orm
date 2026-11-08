@@ -1,5 +1,5 @@
 <!-- doc-id: plans-editor-stack -->
-<!-- source-sha256: 7ab3059d74f1fbb9b8ce7d8831f47ba23f02ebdd23a9a0bb300caf1423e50df4 -->
+<!-- source-sha256: 126570b4c80fc71b8b097bf0bbf67bcd79bec996f4837f085d9e2ee753ecbe44 -->
 # 계획: 표준으로서의 dbspec editor stack
 
 [English](editor-stack.md)
@@ -262,7 +262,6 @@ Cause, Acceptance, 그리고 `docs/spec/editor.md`에 있다.
     python-check, dbspec-compare-check에서 실행된다.
   - interface 기록:
     - 모든 언어에 mapping을 가진 interfaces 규칙 `Dbspec.analyze`와 `Dbspec.format`;
-    - symbol snapshot과 hash;
     - 여섯 runtime이 실행하는 recipe case;
     - `schema_definition` test;
     - php-extension 규칙 목록과 stub;

@@ -7,43 +7,31 @@
         "packages/go/orm",
         "packages/go/model",
         "packages/go/engine"
-      ],
-      "symbols": "contracts/symbols/go.json"
+      ]
     },
     "php": {
       "roots": [
         "packages/php/src",
         "packages/php/gen"
-      ],
-      "symbols": "contracts/symbols/php.json"
+      ]
     },
     "rust": {
       "roots": [
         "packages/rust/orm/src",
         "packages/rust/build/src",
         "packages/rust/schema/src"
-      ],
-      "symbols": "contracts/symbols/rust.json"
+      ]
     },
     "typescript": {
       "roots": [
         "packages/ts/src"
-      ],
-      "symbols": "contracts/symbols/typescript.json"
+      ]
     },
     "python": {
       "roots": [
         "packages/python/src"
-      ],
-      "symbols": "contracts/symbols/python.json"
+      ]
     }
-  },
-  "symbol_hashes": {
-    "go": "sha256:9efc8bae7a282ac5a6c23b04073df92e1cef4f14d016f841fe7b5c443e2c6ccd",
-    "php": "sha256:291af2ee163a5f43003f10cd6fc85f7b93ba9ae1e23bd25c3d53ec47c942cf7e",
-    "rust": "sha256:b9b1b67df9d065708b9b51488ba4245d9c4b051fd34c9236e8fbc53c9eb36dce",
-    "typescript": "sha256:e48f010989ba7ef4422da50ee57b18995c5afc1305d4341dcc34324746ce1139",
-    "python": "sha256:611f27a7d95a2c80d7f8b8e03af7412060bb3939a87fad8ef00db2857ade8839"
   },
   "native_surfaces": [
     {
@@ -206,8 +194,6 @@
       "roots": [
         "packages/php-ext/src"
       ],
-      "symbols": "contracts/symbols/php-extension.json",
-      "symbol_hash": "sha256:a3f1cd176b0c44ef136ab10ab77ba584cbe6120165a2f16c62d32fc771dfb649",
       "rules": [
         "Model.connect",
         "Model.and",

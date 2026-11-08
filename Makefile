@@ -2163,7 +2163,6 @@ php-extension-context-prepare:
 	$(NODE) scripts/check/job-context.mts prepare php-ext
 php-extension-context-cleanup:
 	$(NODE) scripts/check/job-context.mts cleanup php-ext
-# The API phase checks the API units and symbol snapshots; independent binding phases read those tracked declarations.
 # The servers and bench DSNs of a run are in its TEST_ENV file (run-databases writes it; its lines are export NAME='value',
 # scripts/check/databases.mts environmentFile). Export every variable of it into make itself, as the CI contexts export the run env
 # (scripts/check/job-context.mts), so the tests that kit starts from make, such as the native suite of test-php-ext,
@@ -2252,12 +2251,6 @@ interface-typescript-check:
 interface-check/self-test: php-vendor-check lease-tool typescript-current interface-typescript-check python-venv-check
 	$(READ_TYPESCRIPT)
 	ORM_PYTHON=$(PYTHON_VENV)/bin/python PATH="$(HOME)/.cargo/bin:$(PATH)" $(NODE) tests/interfaces/check/main.mts --self-test
-
-# interface-record writes the symbol snapshots and manifest hashes that interface-check compares, with the same checker and leases; LANGUAGE=<name> records one language.
-.PHONY: interface-record
-interface-record: php-vendor-check lease-tool typescript-current interface-typescript-check python-venv-check
-	$(READ_TYPESCRIPT)
-	ORM_PYTHON=$(PYTHON_VENV)/bin/python PATH="$(HOME)/.cargo/bin:$(PATH)" $(NODE) tests/interfaces/check/main.mts --record $(if $(LANGUAGE),-language $(LANGUAGE),)
 
 # go-model-check fails when the Go models that orm-install-go wrote differ from what the entries of GO_MODELS_FILE generate (orm-gen gen --check).
 go-model-check:

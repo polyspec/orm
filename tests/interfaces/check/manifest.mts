@@ -14,7 +14,7 @@ export type Symbols = Record<string, Symbol>;
 
 /** mark is a symbol for comparison that does not consider public visibility (owner fields, records). */
 export const mark = (signature: string, exported = true): Symbol => ({ signature, exported });
-type Language = { roots?: string[]; symbols?: string };
+type Language = { roots?: string[] };
 export type Native = { symbol?: string; signature?: string };
 export type Rule = {
   id?: string; for?: string; inputs?: string[]; output?: string; errors?: string[]; state?: string;
@@ -28,11 +28,10 @@ type BehaviorAdapter = {
 export type BehaviorContract = { id?: string; completion_item?: string; adapters?: Record<string, BehaviorAdapter> };
 /**
  * Extension is what implements part of the contract outside the five client languages (extensions in contracts/interfaces.json, PHP extension
- * polyspec_orm). Its declarations are read from roots by a syntax language's extractor, only rules and owners are checked, and it holds its symbol snapshot and its hash
- * separately.
+ * polyspec_orm). Its declarations are read from roots by a syntax language's extractor, and only rules and owners are checked.
  */
 export type Extension = {
-  description?: string; syntax?: string; roots?: string[]; symbols?: string; symbol_hash?: string; rules?: string[]; owners?: string[];
+  description?: string; syntax?: string; roots?: string[]; rules?: string[]; owners?: string[];
 };
 export type Component = {
   id?: string; fields?: Record<string, string>; methods?: string[]; ownership?: string; ownership_ko?: string; internal?: string; internal_ko?: string;
@@ -59,7 +58,6 @@ export type Manifest = {
   version?: number;
   schema?: string;
   languages?: Record<string, Language>;
-  symbol_hashes?: Record<string, string>;
   extensions?: Record<string, Extension>;
   prohibited_symbols?: string[];
   rules?: Rule[];
@@ -97,7 +95,7 @@ const size = (value: object | undefined): number => (value === undefined ? 0 : O
 
 /** validateManifest checks the manifest's own structure before any language or file is read. */
 export function validateManifest(m: Manifest): void {
-  if (m.version !== 1 || size(m.languages) !== 5 || size(m.symbol_hashes) !== 5 || (m.prohibited_symbols ?? []).length === 0
+  if (m.version !== 1 || size(m.languages) !== 5 || (m.prohibited_symbols ?? []).length === 0
     || (m.components ?? []).length === 0 || (m.sequences ?? []).length === 0) {
     throw new Error('invalid interface manifest');
   }

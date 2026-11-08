@@ -9,8 +9,8 @@ The checker verifies these requirements:
 - Model rules read the generated Go models, the PHP and TypeScript base classes, and the Rust `polyspec-orm-build` template of the fixed model methods.
 - Owner rules reject undeclared fields of `Page` and `AESRotationStatus`.
 - Record rules compare every field and nested type of the 20 request records in each declared representation. PHP record declarations come from `Validator::RECORDS`.
-- Native symbol snapshots report public and internal declaration changes. SHA-256 values in the manifest prevent an unchecked snapshot replacement.
-- `contracts/implementations.json` declares six implementations. The PHP extension implements a documented Dbspec subset; it is not a full ORM client. Its native declaration snapshot also includes `Stats`, `OrmException`, `AesKeyring`, `AesRotationStatus`, `AesUtils`, `PrivilegeUtils`, `Utils`, and `Orm`. The `php-extension` contract implements the `Dbspec` rules and the `DbspecDiagnostic` and `DbspecManifest` owners. Its declarations are read from its stub and compared with `contracts/symbols/php-extension.json` and its hash; a rule or owner that the extension does not list must not have its adapter. `make dbspec-php-extension-check` checks that the loaded extension declares what the stub declares.
+- Each run reads the native declarations from the sources; no recorded copy of them is compared.
+- `contracts/implementations.json` declares six implementations. The PHP extension implements a documented Dbspec subset; it is not a full ORM client. The `php-extension` contract implements the `Dbspec` rules and the `DbspecDiagnostic` and `DbspecManifest` owners. Its declarations are read from its stub; a rule or owner that the extension does not list must not have its adapter. `make dbspec-php-extension-check` checks that the loaded extension declares what the stub declares.
 - Sequence rules compare the results and statement counts of conformance vectors.
 - Error labels in method rules and the recorded `errors` sequence must match the codes in `docs/spec/errors.yaml`. Native driver error categories remain explicit.
 - Prohibited symbols reject removed or unsupported operations such as cancellation and cursor pages.
@@ -39,10 +39,10 @@ Regenerate the contract outputs after an interface change:
 make go-models
 make php-models
 npm run typescript:build
-ORM_PYTHON=packages/python/.venv/bin/python node tests/interfaces/check/main.mts --generate --record --self-test
+ORM_PYTHON=packages/python/.venv/bin/python node tests/interfaces/check/main.mts --generate --self-test
 ```
 
-`--record` writes review candidates. Review the source diff and update the manifest hash. CI does not use `--record` or `--generate`; it fails when generated files, diagrams, symbol snapshots, or execution contracts differ.
+CI does not use `--generate`; it fails when generated files, diagrams, or execution contracts differ.
 
 `--language` limits declaration and record checks to the client it names. It does not replace the check of every client or conformance runs. PHP arrays are checked against the declared request shape; function bodies and the behavior of each error or state transition require executable cases.
 

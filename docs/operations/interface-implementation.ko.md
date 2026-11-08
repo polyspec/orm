@@ -1,5 +1,5 @@
 <!-- doc-id: interface-implementation -->
-<!-- source-sha256: bd91cbd96005fa68ab78eb9274f73ec3c9467529cfa9a6ff1747773ee5093a76 -->
+<!-- source-sha256: 373025c23b77833bf5f1f1d69b82d68d6e10abad1e8df231ce6721bfd9ab857e -->
 # 공통 인터페이스 구현 대조표
 
 기준: [공통 인터페이스 v1](../spec/interfaces.md), [기계 명세](../../contracts/interfaces.json), [생성 도표](../spec/interfaces-model.md). 재현 명령과 검사 범위는 [검사 안내](../../tests/interfaces/README.md)에 있다.
@@ -33,7 +33,7 @@ PostgreSQL·MySQL·SQLite 사례가 이 호출을 실행하고, pooler 사례는
 | IF-21 ~ IF-24 | `write_cycle`, `now_defaults`, `creates_and_save`, `delete_recursive`, `restore` 벡터가 변경 필드 쓰기, 시각 기본값, upsert, 낙관적 갱신, 재귀 삭제, soft delete한 행의 restore를 검사한다 |
 | IF-25 ~ IF-27 | owner 규칙이 모든 언어에서 `Page` 필드 5개와 `AESRotationStatus` 필드 4개를 고정한다. client 모델 테스트가 key 컬렉션과 페이지를 검사한다 |
 | IF-28 ~ IF-31 | 코덱 벡터 80개, AES 벡터, `aes_values`, `aes_status`, `get_query`, `errors` 벡터가 코덱, key version, 마스킹된 bind, 오류 코드를 검사한다 |
-| IF-33 | 매니페스트에서 구성요소 도표를 생성한다. `make interface-check`가 도표, 심볼 스냅샷, 소스 변이를 검사한다 |
+| IF-33 | 매니페스트에서 구성요소 도표를 생성한다. `make interface-check`가 도표와 소스 변이를 검사한다 |
 | IF-34 | PHP와 TypeScript는 체인 규칙을 따르는 이름만 해석하고, Go와 Rust 생성기는 다른 이름을 빌드 전에 거부한다 |
 
 구조 검사는 공통 메서드와 저장 필드를 먼저 대조하고, 네이티브 선언의 누락·추가·변경을 보고한다. 심볼 목록마다 SHA-256 값을 `contracts/interfaces.json`에 고정하므로 명세를 갱신하지 않고 선언을 바꾸면 실패한다. `owners`는 `Page`와 `AESRotationStatus`의 필드를 제한하므로 심볼 목록만 다시 기록해도 상태 필드를 추가할 수 없다. PHP의 기본 readonly setter 표기처럼 언어 버전이 자동으로 추가하는 표현은 정규화하며 명시적인 접근 제한 변경은 보존한다. 언어마다 소스 변경 반례 7개를 검사한다.

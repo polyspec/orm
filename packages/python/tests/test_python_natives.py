@@ -1,15 +1,18 @@
 # The python native entries of the entity rules of contracts/interfaces.json: each names a symbol of
-# the Python snapshot (contracts/symbols/python.json), its signature equals that snapshot value
+# the Python client as the extractor of the interface check reads it, its signature equals that value
 # without spaces, and its parameters and return type are the python entries of the common input and
 # output tables of tests/interfaces/contracts/validate.go, as tests/interfaces/contracts/validate.go and tests/interfaces/check require
 # of the native entries of the other clients.
 import json
 import re
+import subprocess
+import sys
 import unittest
 from pathlib import Path
 from packages.python.tests import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
+EXTRACTOR = ROOT / "packages" / "python" / "testing" / "interfaces" / "python.py"
 
 
 def compact(text: str) -> str:
@@ -30,11 +33,18 @@ def python_table(validate: str, name: str) -> dict:
 
 
 def signatures():
-    """The signature of each symbol of the Python snapshot; the snapshot also holds the exported flag of each."""
-    snapshot = json.loads(
-        (ROOT / "contracts" / "symbols" / "python.json").read_text(encoding="utf-8")
+    """The signature of each symbol of the Python client, as the extractor of the interface check reads it."""
+    result = subprocess.run(
+        [sys.executable, str(EXTRACTOR), str(ROOT), "packages/python/src"],
+        capture_output=True,
+        text=True,
+        check=False,
     )
-    return {key: value["signature"] for key, value in snapshot.items()}
+    if result.returncode != 0:
+        raise AssertionError(
+            f"the Python extractor exited {result.returncode}: {result.stderr}"
+        )
+    return {key: value["signature"] for key, value in json.loads(result.stdout).items()}
 
 
 def python_parts(signature: str):
@@ -51,7 +61,7 @@ def python_parts(signature: str):
 
 
 class InterfaceSnapshotTest(unittest.TestCase):
-    """The snapshot and the tables that the rules of contracts/interfaces.json are checked against."""
+    """The declarations and the tables that the rules of contracts/interfaces.json are checked against."""
 
     def setUp(self):
         self.manifest = json.loads(

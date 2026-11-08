@@ -2004,8 +2004,8 @@ final class Recipe
     private const INTERFACE_CHECK_DEADLINE = 280.0;
 
     /**
-     * Runs one interface.symbols step (FCV-4): the interface check of this client from the repository root, and in the
-     * extension the reflection of every exported symbol (INT-17, INT-18, INT-19, INT-57, INT-61, INT-64).
+     * Runs one interface.symbols step (FCV-4): the interface check of this client from the repository root
+     * (INT-17, INT-18, INT-19, INT-57, INT-61, INT-64).
      */
     private static function interfaceSymbolsStep(): void
     {
@@ -2017,64 +2017,6 @@ final class Recipe
             self::INTERFACE_CHECK_DEADLINE
         );
         Assert::assertSame(0, $status, "interface check exited $status: $stderr$stdout");
-        if ($extension) {
-            self::extensionSymbolsAreInternal();
-        }
-    }
-
-    /** Every symbol that contracts/symbols/php-extension.json exports is registered and internal to polyspec_orm. */
-    private static function extensionSymbolsAreInternal(): void
-    {
-        $symbols = json_decode(
-            (string) file_get_contents(dirname(__DIR__, 3) . '/contracts/symbols/php-extension.json'),
-            true,
-            512,
-            JSON_THROW_ON_ERROR
-        );
-        foreach ($symbols as $key => $symbol) {
-            if (!$symbol['exported']) {
-                continue;
-            }
-            $name = substr($key, strpos($key, '::') + 2);
-            $memberAt = strrpos($name, '::');
-            if ($memberAt === false) {
-                $registered = class_exists($name, false)
-                    || interface_exists($name, false)
-                    || trait_exists($name, false);
-                Assert::assertTrue($registered, "$name was not registered by polyspec_orm");
-                $class = new \ReflectionClass($name);
-                Assert::assertTrue($class->isInternal(), "$name is not internal");
-                Assert::assertSame('polyspec_orm', $class->getExtensionName(), "$name is not owned by polyspec_orm");
-                continue;
-            }
-
-            $className = substr($name, 0, $memberAt);
-            $member = substr($name, $memberAt + 2);
-            $registered = class_exists($className, false)
-                || interface_exists($className, false)
-                || trait_exists($className, false);
-            Assert::assertTrue($registered, "$className was not registered by polyspec_orm");
-            $class = new \ReflectionClass($className);
-            if (str_starts_with($member, '$')) {
-                $property = $class->getProperty(substr($member, 1));
-                Assert::assertTrue($property->getDeclaringClass()->isInternal(), "$className::$member is not internal");
-                continue;
-            }
-            if (str_starts_with($symbol['signature'], 'public const')) {
-                $constant = $class->getReflectionConstant($member);
-                Assert::assertNotFalse($constant, "$className::$member is missing");
-                Assert::assertTrue($constant->getDeclaringClass()->isInternal(), "$className::$member is not internal");
-                continue;
-            }
-
-            $method = $class->getMethod($member);
-            Assert::assertTrue($method->isInternal(), "$className::$member is not internal");
-            Assert::assertSame(
-                'polyspec_orm',
-                $method->getExtensionName(),
-                "$className::$member is not owned by polyspec_orm"
-            );
-        }
     }
 
     /**

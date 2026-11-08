@@ -28,8 +28,8 @@ caseTest('JSON is written as Go encoding/json writes it', COMPUTE, () => {
 });
 
 caseTest('the options are read as Go flag reads them', COMPUTE, () => {
-  assert.deepEqual(goFlags(['-record', '--self-test', '-language', 'php', '-root=a', '--root', 'b', '-generate=false', 'rest', '-root', 'x']),
-    ['--record', '--self-test', '--language=php', '--root=a', '--root=b']);
+  assert.deepEqual(goFlags(['-generate', '--self-test', '-language', 'php', '-root=a', '--root', 'b', '-generate=false', 'rest', '-root', 'x']),
+    ['--generate', '--self-test', '--language=php', '--root=a', '--root=b']);
   assert.throws(() => goFlags(['-nope']), /flag provided but not defined: -nope/);
   assert.throws(() => goFlags(['-language']), /flag needs an argument: -language/);
 });

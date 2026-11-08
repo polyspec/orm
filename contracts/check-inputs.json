@@ -614,9 +614,7 @@
         "packages/rust/orm/src/lib.rs",
         "docs/spec/protocol.md",
         "docs/spec/protocol.ko.md",
-        "packages/rust/README.md",
-        "contracts/symbols/php.json",
-        "contracts/symbols/rust.json"
+        "packages/rust/README.md"
       ]
     },
     "php-min-check": {

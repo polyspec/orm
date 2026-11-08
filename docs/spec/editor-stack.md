@@ -294,7 +294,6 @@ text lives in T128's Cause and Acceptance, plus `docs/spec/editor.md`.
     dbspec-php-extension, dbspec-rust, python-check and dbspec-compare-check.
   - requirements:
     - interfaces rules `Dbspec.analyze` and `Dbspec.format`, with a mapping in every language;
-    - the symbol snapshots and hashes;
     - the recipe cases that the six runtimes run;
     - the `schema_definition` tests;
     - the php-extension rules list and stubs;

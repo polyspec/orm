@@ -48,32 +48,6 @@ class PythonExtractorTest(unittest.TestCase):
                 for key, value in json.loads(result.stdout).items()
             }
 
-    def test_public_names_match_the_symbol_file(self):
-        # The contract contracts/symbols/python.json lists the public surface of the Python client. A module-level
-        # helper that another module of the package imports is internal, so its name starts with `_`.
-        root = Path(__file__).resolve().parents[3]
-        result = subprocess.run(
-            [sys.executable, str(EXTRACTOR), str(root), "packages/python/src"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        self.assertEqual(result.returncode, 0, result.stderr)
-        got = set(json.loads(result.stdout))
-        want = set(
-            json.loads(
-                (root / "contracts/symbols/python.json").read_text(encoding="utf-8")
-            )
-        )
-        self.assertEqual(
-            sorted(got - want),
-            [],
-            "public names outside the contract; prefix an internal helper with _",
-        )
-        self.assertEqual(
-            sorted(want - got), [], "contract names that the client does not declare"
-        )
-
     def test_setuptools_excluded_packages_are_not_public_symbols(self):
         with tempfile.TemporaryDirectory(prefix="interfaces-python-package-") as root:
             project = Path(root) / "packages" / "client"
