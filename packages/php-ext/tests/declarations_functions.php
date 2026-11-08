@@ -49,6 +49,7 @@ const CLIENT_CLASSES = [
     'Polyspec\\Orm\\Collection',
     'Polyspec\\Orm\\StyledValue',
     'Polyspec\\Orm\\Page',
+    'Polyspec\\Orm\\LookaheadPage',
     'Polyspec\\Orm\\Func',
     'Polyspec\\Orm\\Model',
     'Polyspec\\Orm\\Chain',
@@ -57,6 +58,7 @@ const CLIENT_CLASSES = [
     'Polyspec\\Orm\\RuntimeModel',
     'Polyspec\\Orm\\GroupRow',
     'Polyspec\\Orm\\GroupRows',
+    'Polyspec\\Orm\\GroupLookaheadPage',
     'Polyspec\\Orm\\ModelMetadata'
 ];
 
