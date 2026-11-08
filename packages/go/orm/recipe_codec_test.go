@@ -26,3 +26,21 @@ func TestRecipeCodecBytesValueNone(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	recipe.Run(t, "../../../tests/codec/codec-bytes-value.json", recipe.None)
 }
+
+// TestRecipeCodecNonFiniteValueNone runs tests/codec/codec-non-finite-value.json: a float that is not finite is refused (COD-70).
+func TestRecipeCodecNonFiniteValueNone(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	recipe.Run(t, "../../../tests/codec/codec-non-finite-value.json", recipe.None)
+}
+
+// TestRecipeCodecJsonDepthNone runs tests/codec/codec-json-depth.json: a value nested deeper than 256 levels is refused (COD-70).
+func TestRecipeCodecJsonDepthNone(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	recipe.Run(t, "../../../tests/codec/codec-json-depth.json", recipe.None)
+}
+
+// TestRecipeCodecRawTextNone runs tests/codec/codec-raw-text.json: a string whose bytes are not UTF-8 is refused (COD-64, COD-70).
+func TestRecipeCodecRawTextNone(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	recipe.Run(t, "../../../tests/codec/codec-raw-text.json", recipe.None)
+}

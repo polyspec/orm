@@ -754,6 +754,10 @@
             "driver_cause": {
               "description": "The error keeps the error of the driver as its cause (Go errors.Unwrap, PHP getPrevious, TypeScript cause, Python __cause__, Rust source).",
               "const": true
+            },
+            "library_cause": {
+              "description": "The codec error keeps the failure of the library that its rule meets as its cause (COD-71; Go errors.Unwrap, PHP getPrevious, TypeScript cause, Python __cause__, Rust source).",
+              "const": true
             }
           }
         },

@@ -30,7 +30,8 @@
     "COD-41",
     "PLN-15",
     "DIA-32",
-    "COD-70"
+    "COD-70",
+    "COD-71"
   ],
   "cases": [
     {
@@ -12296,7 +12297,8 @@
         "COD-40",
         "PLN-15",
         "COD-6",
-        "COD-41"
+        "COD-41",
+        "COD-71"
       ],
       "steps": [
         {
@@ -12312,7 +12314,8 @@
           "expect": {
             "none": {
               "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: aes: authentication failed"
+              "message": "CODEC_DECODE: aes: authentication failed",
+              "library_cause": true
             }
           }
         }
@@ -12413,7 +12416,8 @@
       "requirements": [
         "COD-5",
         "COD-6",
-        "COD-70"
+        "COD-70",
+        "COD-71"
       ],
       "steps": [
         {
@@ -12473,7 +12477,8 @@
           "expect": {
             "none": {
               "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: aes: authentication failed"
+              "message": "CODEC_DECODE: aes: authentication failed",
+              "library_cause": true
             }
           }
         },
@@ -12489,7 +12494,8 @@
           "expect": {
             "none": {
               "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: aes: authentication failed"
+              "message": "CODEC_DECODE: aes: authentication failed",
+              "library_cause": true
             }
           }
         }
@@ -12684,7 +12690,8 @@
         "COD-35",
         "COD-37",
         "COD-41",
-        "COD-70"
+        "COD-70",
+        "COD-71"
       ],
       "steps": [
         {
@@ -12698,7 +12705,8 @@
           "expect": {
             "none": {
               "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: json: the cell is not JSON"
+              "message": "CODEC_DECODE: json: the cell is not JSON",
+              "library_cause": true
             }
           }
         },
@@ -12713,7 +12721,8 @@
           "expect": {
             "none": {
               "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse"
+              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "library_cause": true
             }
           }
         },
@@ -12774,7 +12783,8 @@
           "expect": {
             "none": {
               "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: gz: bad zlib stream"
+              "message": "CODEC_DECODE: gz: bad zlib stream",
+              "library_cause": true
             }
           }
         },
@@ -13622,7 +13632,8 @@
         "COD-16",
         "COD-29",
         "COD-66",
-        "COD-70"
+        "COD-70",
+        "COD-71"
       ],
       "steps": [
         {
@@ -13951,7 +13962,8 @@
           "expect": {
             "none": {
               "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: yaml: the stream does not parse"
+              "message": "CODEC_DECODE: yaml: the stream does not parse",
+              "library_cause": true
             }
           }
         },
@@ -17256,7 +17268,8 @@
       "requirements": [
         "COD-5",
         "DIA-32",
-        "COD-70"
+        "COD-70",
+        "COD-71"
       ],
       "steps": [
         {
@@ -17305,7 +17318,8 @@
           "expect": {
             "none": {
               "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: aes: authentication failed"
+              "message": "CODEC_DECODE: aes: authentication failed",
+              "library_cause": true
             }
           }
         }
@@ -17408,7 +17422,8 @@
       "requirements": [
         "COD-6",
         "COD-41",
-        "COD-70"
+        "COD-70",
+        "COD-71"
       ],
       "steps": [
         {
@@ -17423,7 +17438,8 @@
           "expect": {
             "none": {
               "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: aes: authentication failed"
+              "message": "CODEC_DECODE: aes: authentication failed",
+              "library_cause": true
             }
           }
         },
@@ -17439,7 +17455,8 @@
           "expect": {
             "none": {
               "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: aes: authentication failed"
+              "message": "CODEC_DECODE: aes: authentication failed",
+              "library_cause": true
             }
           }
         },
@@ -17455,7 +17472,8 @@
           "expect": {
             "none": {
               "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: aes: authentication failed"
+              "message": "CODEC_DECODE: aes: authentication failed",
+              "library_cause": true
             }
           }
         },
@@ -19068,7 +19086,8 @@
       "id": "gz_reads_only_zlib",
       "requirements": [
         "COD-12",
-        "COD-70"
+        "COD-70",
+        "COD-71"
       ],
       "steps": [
         {
@@ -19082,7 +19101,8 @@
           "expect": {
             "none": {
               "error": "CODEC_DECODE",
-              "message": "CODEC_DECODE: gz: bad zlib stream"
+              "message": "CODEC_DECODE: gz: bad zlib stream",
+              "library_cause": true
             }
           }
         }

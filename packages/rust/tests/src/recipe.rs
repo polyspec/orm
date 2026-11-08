@@ -1044,6 +1044,13 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
             Ok(_) => Ok(()),
         };
     };
+    // A key of the outcome that this op does not read is a finding, as in the other runners (FCV-4).
+    if let Some(unread) = expect
+        .as_object()
+        .and_then(|fields| fields.keys().find(|key| !["error", "message", "bytes_prefix_hex", "bytes_length", "value"].contains(&key.as_str())))
+    {
+        return Err(format!("the helper did not read expect.{unread} of {op}"));
+    }
     if let Some(code) = expect["error"].as_str() {
         // message is the whole text of the error, its code included (INT-163).
         let whole = expect["message"].as_str();

@@ -1,5 +1,5 @@
 <!-- doc-id: tests-codec-readme -->
-<!-- source-sha256: caa7c7989c562b317c6c5c9b5c5bbe76c6461a6cddb48d2e54855ba7d7d7e2b8 -->
+<!-- source-sha256: caadfe3d00db1a91d5ce92d3cff2752a9dbeac0abd3b908c85383d54f531cc15 -->
 # 코덱 recipe
 
 `codec.json`은 `docs/spec/feature-coverage.md`(FCV-2~FCV-4)의 코덱 recipe다. 각 case는 database 없이 공개 코덱 호출
@@ -15,6 +15,12 @@
 | TypeScript | `packages/ts/tests/codec-none.test.mjs` |
 | Python | `packages/python/tests/test_codec_none.py` |
 | Rust | `packages/rust/tests`의 test `codec_none` |
+
+그 곁에서, 한 runtime의 값이 담지 못하는 case는 그 입력을 값으로 담는 runtime의 recipe가 담는다(`docs/spec/codec.md`
+COD-70): `codec-bytes-value.json`(bytes, Rust를 뺀 모든 runtime), `codec-integer-beyond-i64.json`(i64를 넘는 정수, PHP와
+PHP 확장을 뺀 모든 runtime), `codec-non-finite-value.json`(유한하지 않은 float, Rust를 뺀 모든 runtime),
+`codec-raw-text.json`(byte가 UTF-8이 아닌 문자열, Go, PHP, PHP 확장), `codec-json-depth.json`(256 단계보다 깊이 중첩된
+값, recipe loader가 serde_json의 recursion 한도에서 멈추는 Rust를 뺀 모든 runtime).
 
 `make codec-check`는 여섯 entry를 각각 별도 part로 실행하므로, 실패한 part가 그 클라이언트를 가리킨다.
 

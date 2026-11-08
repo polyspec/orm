@@ -2654,21 +2654,29 @@ codec-check/python: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_none
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_integer_beyond_i64_none
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_bytes_value_none
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_non_finite_value_none
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_json_depth_none
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_ordered_json_text
 codec-check/go:
-	$(GO_TEST) ./packages/go/orm -run '^(TestRecipeCodecNone|TestRecipeCodecIntegerBeyondI64None|TestRecipeCodecBytesValueNone|TestOrderedJSONRefusesATextThatIsNotUnicode)$$' -count=1
+	$(GO_TEST) ./packages/go/orm -run '^(TestRecipeCodecNone|TestRecipeCodecIntegerBeyondI64None|TestRecipeCodecBytesValueNone|TestRecipeCodecNonFiniteValueNone|TestRecipeCodecJsonDepthNone|TestRecipeCodecRawTextNone|TestOrderedJSONRefusesATextThatIsNotUnicode)$$' -count=1
 codec-check/rust: lease-tool
 	cd packages/rust && $(CARGO_TEST) codec-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test all -- codec_none:: codec_integer_beyond_i64_none::
 codec-check/typescript: typescript-current
 	$(READ_TYPESCRIPT)
-	$(NODE) --test packages/ts/tests/codec-none.test.mjs packages/ts/tests/codec-integer-beyond-i64-none.test.mjs packages/ts/tests/codec-bytes-value-none.test.mjs
+	$(NODE) --test packages/ts/tests/codec-none.test.mjs packages/ts/tests/codec-integer-beyond-i64-none.test.mjs packages/ts/tests/codec-bytes-value-none.test.mjs packages/ts/tests/codec-non-finite-value-none.test.mjs packages/ts/tests/codec-json-depth-none.test.mjs
 codec-check/php: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecRecipeTest.php
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecBytesValueRecipeTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecNonFiniteValueRecipeTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecJsonDepthRecipeTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecRawTextRecipeTest.php
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecOrderedJsonTextTest.php
 codec-check/php-extension: php-vendor-check build-php-ext
 	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CodecRecipeTestExtensionTest.php
 	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CodecBytesValueRecipeExtensionTest.php
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CodecNonFiniteValueRecipeExtensionTest.php
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CodecJsonDepthRecipeExtensionTest.php
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CodecRawTextRecipeExtensionTest.php
 	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CodecOrderedJsonTextExtensionTest.php
 
 # ir-validate-check runs the request validation recipe, tests/ir/validate.json, in each runtime (FCV-3): each part runs the entry of its

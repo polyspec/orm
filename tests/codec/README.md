@@ -15,6 +15,13 @@ meets; no client's output is the reference of another.
 | Python | `packages/python/tests/test_codec_none.py` |
 | Rust | the test `codec_none` of `packages/rust/tests` |
 
+Beside it, a recipe of the runtimes whose values hold its input holds the cases that a value of one runtime cannot hold
+(`docs/spec/codec.md` COD-70): `codec-bytes-value.json` (bytes, every runtime but Rust), `codec-integer-beyond-i64.json`
+(an integer beyond i64, every runtime but PHP and the PHP extension), `codec-non-finite-value.json` (a float that is not
+finite, every runtime but Rust), `codec-raw-text.json` (a string whose bytes are not UTF-8, Go, PHP and the PHP extension)
+and `codec-json-depth.json` (a value nested deeper than 256 levels, every runtime but Rust, whose recipe loader stops at the
+recursion limit of serde_json).
+
 `make codec-check` runs the six entries, each as its own part, so a part that fails names its client.
 
 Compression is not byte-deterministic across implementations, so an encode step with a `gz` stage binds its cell (`as`)
