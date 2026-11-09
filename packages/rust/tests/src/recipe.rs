@@ -179,10 +179,13 @@ pub fn connect_dsn(dsn: Option<&str>, database: &str, case_dsn: &str, socket: Op
             Ok(if query.is_empty() { format!("{server}/{name}") } else { format!("{server}/{name}?{query}") })
         }
         Some("case-socket") => {
-            if database != "mysql" {
+            // MariaDB is a server of the MySQL dialect (DIA-200), with a socket of its own.
+            if database != "mysql" && database != "mariadb" {
                 return Err(format!("dsn case-socket needs mysql, not {database}"));
             }
-            let socket = socket.filter(|s| !s.is_empty()).ok_or("dsn case-socket: ORM_TEST_MYSQL_SOCKET is unset; run make orm-test-servers")?;
+            let socket = socket
+                .filter(|s| !s.is_empty())
+                .ok_or_else(|| format!("dsn case-socket: ORM_TEST_{}_SOCKET is unset; run make orm-test-servers", database.to_uppercase()))?;
             let not_mysql = || format!("dsn case-socket: the case DSN {case_dsn} is not a mysql DSN");
             let rest = case_dsn.strip_prefix("mysql://").ok_or_else(not_mysql)?;
             let (user, rest) = rest.split_once('@').ok_or_else(not_mysql)?;
@@ -2878,6 +2881,25 @@ mod database {
     const DATABASES: [&str; 3] = ["mysql", "postgres", "sqlite"];
     /// The database of the markdown suite of a recipe, a corpus that flowmark serves (FCV-3).
     const MARKDOWN: &str = "markdown";
+    /// The database of the MariaDB suite of a recipe, a server of the MySQL dialect (DIA-200, FCV-3).
+    const MARIADB: &str = "mariadb";
+
+    /// The SQL dialect of a database: a corpus runs SQL in SQLite's (DIA-185), and MariaDB in MySQL's (DIA-200).
+    fn dialect_of(database: &str) -> &str {
+        match database {
+            MARKDOWN => "sqlite",
+            MARIADB => "mysql",
+            other => other,
+        }
+    }
+
+    /// The variable that an env: DSN of a step names on `database`: on MariaDB, ORM_TEST_MYSQL_ names ORM_TEST_MARIADB_ (FCV-3).
+    fn server_variable(name: &str, database: &str) -> String {
+        match name.strip_prefix("ORM_TEST_MYSQL_") {
+            Some(rest) if database == MARIADB => format!("ORM_TEST_MARIADB_{rest}"),
+            _ => name.to_owned(),
+        }
+    }
     /// The message of the error that a transaction callback returns when its op has fail: true.
     const CALLBACK_FAILED: &str = "statement events recipe callback failed";
     /// The expect code of that callback error; it is not an orm error code.
@@ -3080,7 +3102,7 @@ mod database {
 
     fn trials_of(entry: &str, path: &str, database: &str, models: Models, written_order: bool) -> Vec<polyspec_orm_testcase::Trial> {
         let markdown = database == MARKDOWN;
-        assert!(markdown || DATABASES.contains(&database), "recipe {path}: unknown database {database}");
+        assert!(markdown || database == MARIADB || DATABASES.contains(&database), "recipe {path}: unknown database {database}");
         let (root, text) = super::recipe_text(path);
         let (mut recipe, ordered) = read_recipe(&root.join(path), &text);
         // serde_json sorts the keys of an object, so the order of the seed tables comes from the document (seed_order).
@@ -3224,16 +3246,18 @@ mod database {
     }
 
     /// Whether a case or step with the list `only` runs on `database`. A corpus speaks SQLite's dialect, so what names sqlite
-    /// names it too (DIA-185).
+    /// names it too (DIA-185), and MariaDB is a server of the MySQL dialect, so what names mysql names it too (DIA-200).
     fn on_database(only: &Value, database: &str) -> bool {
-        only.as_array().is_none_or(|only| only.iter().any(|name| name.as_str() == Some(database) || (database == MARKDOWN && name.as_str() == Some("sqlite"))))
+        only.as_array().is_none_or(|only| {
+            only.iter().any(|name| name.as_str() == Some(database) || (database != dialect_of(database) && name.as_str() == Some(dialect_of(database))))
+        })
     }
 
-    /// The key of a value that names its text by database: a corpus runs SQL in SQLite's dialect (DIA-185), so it reads the
-    /// SQLite entry unless the value states its own.
+    /// The key of a value that names its text by database: a corpus and a MariaDB server read the entry of their dialect
+    /// unless the value states its own (FCV-3).
     fn dialect_key<'v>(database: &'v str, entries: &Value) -> &'v str {
-        if database == MARKDOWN && entries.get(MARKDOWN).is_none() {
-            return "sqlite";
+        if entries.get(database).is_none() {
+            return dialect_of(database);
         }
         database
     }
@@ -4444,7 +4468,10 @@ mod database {
                     }
                     ("case", None) => context.dsn.clone(),
                     (text, _) => match text.strip_prefix("env:") {
-                        Some(name) => std::env::var(name).map_err(|error| fault(format!("dsn.connect: {name}: {error}; run make orm-test-servers")))?,
+                        Some(name) => {
+                            let name = server_variable(name, context.database);
+                            std::env::var(&name).map_err(|error| fault(format!("dsn.connect: {name}: {error}; run make orm-test-servers")))?
+                        }
                         None => text.to_owned(),
                     },
                 };
@@ -4481,7 +4508,7 @@ mod database {
                 crate::recipe_reads::read(step, "dsn")["dsn"].as_str(),
                 context.database,
                 &context.dsn,
-                std::env::var_os("ORM_TEST_MYSQL_SOCKET").as_deref().and_then(std::ffi::OsStr::to_str),
+                std::env::var_os(server_variable("ORM_TEST_MYSQL_SOCKET", context.database)).as_deref().and_then(std::ffi::OsStr::to_str),
             )
             .map_err(Failure::Step)?;
             if let Some(ms) = crate::recipe_reads::read(step, "statement_timeout_ms")["statement_timeout_ms"].as_u64() {
@@ -4538,7 +4565,7 @@ mod database {
         let mut resolved = if context.models.table_path() { step.clone() } else { resolve_model_step(step, context).map_err(Failure::Step)? };
         // Each flow of transaction.deadlock opens its own connection on its own thread.
         if op == "transaction.deadlock" {
-            let socket = std::env::var_os("ORM_TEST_MYSQL_SOCKET");
+            let socket = std::env::var_os(server_variable("ORM_TEST_MYSQL_SOCKET", context.database));
             let dsn = super::connect_dsn(None, context.database, &context.dsn, socket.as_deref().and_then(std::ffi::OsStr::to_str)).map_err(Failure::Step)?;
             resolved["dsn"] = json!(dsn);
         }
@@ -5022,7 +5049,7 @@ mod database {
     /// value, as text, with want, and a NULL or absent value fails it (DIA-113).
     async fn ddl_behavior(step: &Value, database: &str, dsn: &str, dir: &Path) -> Result<(), String> {
         // A corpus runs the statements of SQLite (DIA-185).
-        let database = if database == MARKDOWN { "sqlite" } else { database };
+        let database = dialect_of(database);
         use sqlx::{ConnectOptions as _, Connection as _};
         let path = dir.join(crate::recipe_reads::read(step, "vectors")["vectors"].as_str().unwrap_or_default());
         let vectors: Value =
@@ -5066,7 +5093,7 @@ mod database {
     /// the target is read again and no table or column named dbspec$ remains.
     async fn plan_physical(step: &Value, database: &str, dsn: &str, dir: &Path) -> Result<(), String> {
         // A corpus runs the statements of SQLite (DIA-185).
-        let database = if database == MARKDOWN { "sqlite" } else { database };
+        let database = dialect_of(database);
         use dbspec::Dialect;
         use sqlx::{ConnectOptions as _, Connection as _};
         let json_file = |path: &Path| -> Result<Value, String> {
@@ -5254,7 +5281,7 @@ mod database {
     /// the number of catalog queries, which the expect of the database compares (DIA-133, DIA-198).
     async fn introspect_step(step: &Value, database: &str, dsn: &str, dir: &Path) -> Result<usize, String> {
         // A corpus runs the statements of SQLite (DIA-185).
-        let database = if database == MARKDOWN { "sqlite" } else { database };
+        let database = dialect_of(database);
         use dbspec::Dialect;
         use sqlx::{ConnectOptions as _, Connection as _};
         let (texts, vector) = introspect_source(step, dir)?;
@@ -5359,7 +5386,7 @@ mod database {
         let source = Db::connect(&session, 1, Config::default()).await.map_err(|e| e.to_string())?;
         let awaited = match source.pool() {
             Pool::Postgres(pool) => postgres_barrier(pool).await,
-            Pool::MySql(pool) => mysql_replica_wait(pool).await,
+            Pool::MySql(pool) => mysql_replica_wait(pool, context.database).await,
             Pool::Sqlite(_) | Pool::Markdown(_) => Err("replica.await runs on a server database".to_owned()),
         };
         source.close().await;
@@ -5381,16 +5408,24 @@ mod database {
         tx.commit().await.map_err(|e| format!("barrier commit: {e}"))
     }
 
-    /// The wait of `await_replica` on MySQL.
-    async fn mysql_replica_wait(pool: &sqlx::MySqlPool) -> Result<(), String> {
-        let replica = std::env::var("ORM_TEST_MYSQL_REPLICA_DSN").map_err(|error| {
-            format!("replica.await: ORM_TEST_MYSQL_REPLICA_DSN is required ({error}); run make orm-test-servers, which starts the databases and writes it")
-        })?;
-        let row = sqlx::query("SHOW BINARY LOG STATUS").fetch_one(pool).await.map_err(|e| format!("binary log status: {e}"))?;
+    /// The wait of `await_replica` on MySQL and MariaDB, which names the two SHOW BINLOG STATUS and MASTER_POS_WAIT.
+    async fn mysql_replica_wait(pool: &sqlx::MySqlPool, database: &str) -> Result<(), String> {
+        let mariadb = database == MARIADB;
+        let variable = server_variable("ORM_TEST_MYSQL_REPLICA_DSN", database);
+        let replica = std::env::var(&variable)
+            .map_err(|error| format!("replica.await: {variable} is required ({error}); run make orm-test-servers, which starts the databases and writes it"))?;
+        let row = sqlx::query(if mariadb { "SHOW BINLOG STATUS" } else { "SHOW BINARY LOG STATUS" })
+            .fetch_one(pool)
+            .await
+            .map_err(|e| format!("binary log status: {e}"))?;
         let file: String = sqlx::Row::get(&row, 0);
         let position: u64 = sqlx::Row::get(&row, 1);
         let target = sqlx::MySqlPool::connect(&replica).await.map_err(|e| format!("replica wait connection: {e}"))?;
-        let waited: Result<Option<i64>, _> = sqlx::query_scalar("SELECT SOURCE_POS_WAIT(?, ?, 60)").bind(&file).bind(position).fetch_one(&target).await;
+        let waited: Result<Option<i64>, _> = sqlx::query_scalar(if mariadb { "SELECT MASTER_POS_WAIT(?, ?, 60)" } else { "SELECT SOURCE_POS_WAIT(?, ?, 60)" })
+            .bind(&file)
+            .bind(position)
+            .fetch_one(&target)
+            .await;
         target.close().await;
         match waited.map_err(|e| format!("replica wait: {e}"))? {
             Some(n) if n >= 0 => Ok(()),
@@ -5416,6 +5451,15 @@ mod database {
                 let query = format!("SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = '{table}' AND l.pid <> pg_backend_pid() LIMIT 1");
                 match sqlx::query_scalar::<_, i32>(sqlx::AssertSqlSafe(query)).fetch_one(pool).await {
                     Ok(pid) => sqlx::query("SELECT pg_terminate_backend($1, 5000)").bind(pid).execute(pool).await.map(|_| ()),
+                    Err(error) => Err(error),
+                }
+            }
+            // MariaDB has no performance_schema.data_locks: the session is the one of the case database, other than this one,
+            // whose InnoDB transaction holds a table lock (information_schema.INNODB_TRX).
+            Pool::MySql(pool) if context.database == MARIADB => {
+                let query = "SELECT t.trx_mysql_thread_id FROM information_schema.INNODB_TRX t JOIN information_schema.PROCESSLIST p ON p.ID = t.trx_mysql_thread_id WHERE p.DB = DATABASE() AND p.ID <> CONNECTION_ID() AND t.trx_tables_locked > 0 LIMIT 1";
+                match sqlx::query_scalar::<_, u64>(query).fetch_one(pool).await {
+                    Ok(id) => sqlx::raw_sql(sqlx::AssertSqlSafe(format!("KILL {id}"))).execute(pool).await.map(|_| ()),
                     Err(error) => Err(error),
                 }
             }

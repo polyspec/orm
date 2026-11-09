@@ -12,16 +12,19 @@ pub mod fulltext_dispatch;
 #[path = "model_writes/dispatch.rs"]
 pub mod model_writes_dispatch;
 
+mod aes_rotation_mariadb;
 mod aes_rotation_markdown;
 mod aes_rotation_mysql;
 mod aes_rotation_postgres;
 mod aes_rotation_sqlite;
+mod audit_triggers_mariadb;
 mod audit_triggers_markdown;
 mod audit_triggers_mysql;
 mod audit_triggers_postgres;
 mod audit_triggers_sqlite;
 mod bind_messages;
 mod canonical_none;
+mod catalog_connection_mariadb;
 mod catalog_connection_markdown;
 mod catalog_connection_mysql;
 mod catalog_connection_postgres;
@@ -34,23 +37,28 @@ mod codec_integer_beyond_i64_none;
 mod codec_json_depth_none;
 mod codec_none;
 mod collection_none;
+mod complex_query_mariadb;
 mod complex_query_markdown;
 mod complex_query_mysql;
 mod complex_query_postgres;
 mod complex_query_sqlite;
+mod composite_keys_mariadb;
 mod composite_keys_markdown;
 mod composite_keys_mysql;
 mod composite_keys_postgres;
 mod composite_keys_sqlite;
 mod conformance_runner;
+mod conformance_verification_mariadb;
 mod conformance_verification_markdown;
 mod conformance_verification_mysql;
 mod conformance_verification_postgres;
 mod conformance_verification_sqlite;
+mod connection_pool_mariadb;
 mod connection_pool_markdown;
 mod connection_pool_mysql;
 mod connection_pool_postgres;
 mod connection_pool_sqlite;
+mod constraints_and_relations_mariadb;
 mod constraints_and_relations_markdown;
 mod constraints_and_relations_mysql;
 mod constraints_and_relations_postgres;
@@ -58,11 +66,13 @@ mod constraints_and_relations_sqlite;
 mod coverage_model_generation;
 mod coverage_performance_gate;
 mod dbspec_add_tables_steps_none;
+mod dbspec_apply_mariadb;
 mod dbspec_apply_markdown;
 mod dbspec_apply_mysql;
 mod dbspec_apply_postgres;
 mod dbspec_apply_sqlite;
 mod dbspec_apply_verification_errors_none;
+mod dbspec_introspect_mariadb;
 mod dbspec_introspect_markdown;
 mod dbspec_introspect_messages_none;
 mod dbspec_introspect_mysql;
@@ -77,12 +87,14 @@ mod dbspec_plan_comparisons_none;
 mod dbspec_plan_invalid_none;
 mod dbspec_plan_parse_none;
 mod dbspec_read_set_none;
+mod dbspec_render_physical_mariadb;
 mod dbspec_render_physical_markdown;
 mod dbspec_render_physical_mysql;
 mod dbspec_render_physical_postgres;
 mod dbspec_render_physical_sqlite;
 mod dbspec_render_statements_none;
 mod dbspec_rules_recipe_none;
+mod dbspec_set_decimal_mariadb;
 mod dbspec_set_decimal_markdown;
 mod dbspec_set_decimal_mysql;
 mod dbspec_set_decimal_postgres;
@@ -91,17 +103,20 @@ mod dbspec_show_create_introspect_none;
 mod decimal_physical;
 mod default_select_set_none;
 mod dsl_none;
+mod dsn_connection_mariadb;
 mod dsn_connection_markdown;
 mod dsn_connection_mysql;
 mod dsn_connection_postgres;
 mod dsn_connection_sqlite;
 mod dsn_reject_none;
 mod example_dsn;
+mod external_audit_mariadb;
 mod external_audit_markdown;
 mod external_audit_mysql;
 mod external_audit_postgres;
 mod external_audit_sqlite;
 mod files_none;
+mod fulltext_search_recipe_mariadb;
 mod fulltext_search_recipe_markdown;
 mod fulltext_search_recipe_mysql;
 mod fulltext_search_recipe_postgres;
@@ -109,6 +124,7 @@ mod fulltext_search_recipe_sqlite;
 mod generator_none;
 mod generator_scan_none;
 mod hashes_none;
+mod immutable_write_mariadb;
 mod immutable_write_markdown;
 mod immutable_write_mysql;
 mod immutable_write_postgres;
@@ -118,28 +134,35 @@ mod invalid_none;
 mod ir_validate_none;
 mod markdown_conformance;
 mod markdown_session;
+mod model_queries_chain_mariadb;
 mod model_queries_chain_markdown;
 mod model_queries_chain_mysql;
 mod model_queries_chain_postgres;
 mod model_queries_chain_sqlite;
+mod model_queries_mariadb;
 mod model_queries_markdown;
 mod model_queries_mysql;
 mod model_queries_postgres;
 mod model_queries_sqlite;
+mod model_socket_mariadb;
 mod model_socket_mysql;
+mod model_writes_chain_mariadb;
 mod model_writes_chain_markdown;
 mod model_writes_chain_mysql;
 mod model_writes_chain_postgres;
 mod model_writes_chain_sqlite;
+mod model_writes_mariadb;
 mod model_writes_markdown;
 mod model_writes_mysql;
 mod model_writes_postgres;
 mod model_writes_sqlite;
 mod normalize_none;
+mod parameter_chunking_mariadb;
 mod parameter_chunking_markdown;
 mod parameter_chunking_mysql;
 mod parameter_chunking_postgres;
 mod parameter_chunking_sqlite;
+mod performance_gate_mariadb;
 mod performance_gate_markdown;
 mod performance_gate_mysql;
 mod performance_gate_postgres;
@@ -148,6 +171,7 @@ mod planner_compile_none;
 mod positions_none;
 mod public_interface_none;
 mod recipe_keys;
+mod request_hook_mariadb;
 mod request_hook_markdown;
 mod request_hook_mysql;
 mod request_hook_postgres;
@@ -156,24 +180,29 @@ mod result_chains;
 mod runtime_model_entities_none;
 mod runtime_model_plans_none;
 mod schema_definition_none;
+mod schema_install_mariadb;
 mod schema_install_markdown;
 mod schema_install_mysql;
 mod schema_install_postgres;
 mod schema_install_sqlite;
 mod set_parse_none;
 mod sets_none;
+mod statement_events_mariadb;
 mod statement_events_markdown;
 mod statement_events_mysql;
 mod statement_events_postgres;
 mod statement_events_sqlite;
+mod statement_runner_mariadb;
 mod statement_runner_markdown;
 mod statement_runner_mysql;
 mod statement_runner_postgres;
 mod statement_runner_sqlite;
+mod transactions_mariadb;
 mod transactions_markdown;
 mod transactions_mysql;
 mod transactions_postgres;
 mod transactions_sqlite;
+mod utils_recipe_mariadb;
 mod utils_recipe_markdown;
 mod utils_recipe_mysql;
 mod utils_recipe_postgres;
@@ -217,16 +246,19 @@ fn main() {
         polyspec_orm_testcase::Group::new("was_inserted", polyspec_orm_cases::was_inserted::trials),
         polyspec_orm_testcase::Group::new("zone", polyspec_orm_cases::zone::trials),
         polyspec_orm_testcase::Group::new("aes_rotation_mysql", aes_rotation_mysql::trials),
+        polyspec_orm_testcase::Group::new("aes_rotation_mariadb", aes_rotation_mariadb::trials),
         polyspec_orm_testcase::Group::new("aes_rotation_postgres", aes_rotation_postgres::trials),
         polyspec_orm_testcase::Group::new("aes_rotation_sqlite", aes_rotation_sqlite::trials),
         polyspec_orm_testcase::Group::new("aes_rotation_markdown", aes_rotation_markdown::trials),
         polyspec_orm_testcase::Group::new("audit_triggers_mysql", audit_triggers_mysql::trials),
+        polyspec_orm_testcase::Group::new("audit_triggers_mariadb", audit_triggers_mariadb::trials),
         polyspec_orm_testcase::Group::new("audit_triggers_postgres", audit_triggers_postgres::trials),
         polyspec_orm_testcase::Group::new("audit_triggers_sqlite", audit_triggers_sqlite::trials),
         polyspec_orm_testcase::Group::new("audit_triggers_markdown", audit_triggers_markdown::trials),
         polyspec_orm_testcase::Group::new("bind_messages", bind_messages::trials),
         polyspec_orm_testcase::Group::new("canonical_none", canonical_none::trials),
         polyspec_orm_testcase::Group::new("catalog_connection_mysql", catalog_connection_mysql::trials),
+        polyspec_orm_testcase::Group::new("catalog_connection_mariadb", catalog_connection_mariadb::trials),
         polyspec_orm_testcase::Group::new("catalog_connection_postgres", catalog_connection_postgres::trials),
         polyspec_orm_testcase::Group::new("catalog_connection_sqlite", catalog_connection_sqlite::trials),
         polyspec_orm_testcase::Group::new("catalog_connection_markdown", catalog_connection_markdown::trials),
@@ -239,23 +271,28 @@ fn main() {
         polyspec_orm_testcase::Group::new("codec_none", codec_none::trials),
         polyspec_orm_testcase::Group::new("collection_none", collection_none::trials),
         polyspec_orm_testcase::Group::new("complex_query_mysql", complex_query_mysql::trials),
+        polyspec_orm_testcase::Group::new("complex_query_mariadb", complex_query_mariadb::trials),
         polyspec_orm_testcase::Group::new("complex_query_postgres", complex_query_postgres::trials),
         polyspec_orm_testcase::Group::new("complex_query_sqlite", complex_query_sqlite::trials),
         polyspec_orm_testcase::Group::new("complex_query_markdown", complex_query_markdown::trials),
         polyspec_orm_testcase::Group::new("composite_keys_mysql", composite_keys_mysql::trials),
+        polyspec_orm_testcase::Group::new("composite_keys_mariadb", composite_keys_mariadb::trials),
         polyspec_orm_testcase::Group::new("composite_keys_postgres", composite_keys_postgres::trials),
         polyspec_orm_testcase::Group::new("composite_keys_sqlite", composite_keys_sqlite::trials),
         polyspec_orm_testcase::Group::new("composite_keys_markdown", composite_keys_markdown::trials),
         polyspec_orm_testcase::Group::new("conformance_runner", conformance_runner::trials),
         polyspec_orm_testcase::Group::new("conformance_verification_mysql", conformance_verification_mysql::trials),
+        polyspec_orm_testcase::Group::new("conformance_verification_mariadb", conformance_verification_mariadb::trials),
         polyspec_orm_testcase::Group::new("conformance_verification_postgres", conformance_verification_postgres::trials),
         polyspec_orm_testcase::Group::new("conformance_verification_sqlite", conformance_verification_sqlite::trials),
         polyspec_orm_testcase::Group::new("conformance_verification_markdown", conformance_verification_markdown::trials),
         polyspec_orm_testcase::Group::new("connection_pool_mysql", connection_pool_mysql::trials),
+        polyspec_orm_testcase::Group::new("connection_pool_mariadb", connection_pool_mariadb::trials),
         polyspec_orm_testcase::Group::new("connection_pool_postgres", connection_pool_postgres::trials),
         polyspec_orm_testcase::Group::new("connection_pool_sqlite", connection_pool_sqlite::trials),
         polyspec_orm_testcase::Group::new("connection_pool_markdown", connection_pool_markdown::trials),
         polyspec_orm_testcase::Group::new("constraints_and_relations_mysql", constraints_and_relations_mysql::trials),
+        polyspec_orm_testcase::Group::new("constraints_and_relations_mariadb", constraints_and_relations_mariadb::trials),
         polyspec_orm_testcase::Group::new("constraints_and_relations_postgres", constraints_and_relations_postgres::trials),
         polyspec_orm_testcase::Group::new("constraints_and_relations_sqlite", constraints_and_relations_sqlite::trials),
         polyspec_orm_testcase::Group::new("constraints_and_relations_markdown", constraints_and_relations_markdown::trials),
@@ -263,12 +300,14 @@ fn main() {
         polyspec_orm_testcase::Group::new("coverage_performance_gate", coverage_performance_gate::trials),
         polyspec_orm_testcase::Group::new("dbspec_add_tables_steps_none", dbspec_add_tables_steps_none::trials),
         polyspec_orm_testcase::Group::new("dbspec_apply_mysql", dbspec_apply_mysql::trials),
+        polyspec_orm_testcase::Group::new("dbspec_apply_mariadb", dbspec_apply_mariadb::trials),
         polyspec_orm_testcase::Group::new("dbspec_apply_postgres", dbspec_apply_postgres::trials),
         polyspec_orm_testcase::Group::new("dbspec_apply_sqlite", dbspec_apply_sqlite::trials),
         polyspec_orm_testcase::Group::new("dbspec_apply_markdown", dbspec_apply_markdown::trials),
         polyspec_orm_testcase::Group::new("dbspec_apply_verification_errors_none", dbspec_apply_verification_errors_none::trials),
         polyspec_orm_testcase::Group::new("dbspec_introspect_messages_none", dbspec_introspect_messages_none::trials),
         polyspec_orm_testcase::Group::new("dbspec_introspect_mysql", dbspec_introspect_mysql::trials),
+        polyspec_orm_testcase::Group::new("dbspec_introspect_mariadb", dbspec_introspect_mariadb::trials),
         polyspec_orm_testcase::Group::new("dbspec_introspect_postgres", dbspec_introspect_postgres::trials),
         polyspec_orm_testcase::Group::new("dbspec_introspect_sqlite", dbspec_introspect_sqlite::trials),
         polyspec_orm_testcase::Group::new("dbspec_introspect_markdown", dbspec_introspect_markdown::trials),
@@ -282,12 +321,14 @@ fn main() {
         polyspec_orm_testcase::Group::new("dbspec_plan_parse_none", dbspec_plan_parse_none::trials),
         polyspec_orm_testcase::Group::new("dbspec_read_set_none", dbspec_read_set_none::trials),
         polyspec_orm_testcase::Group::new("dbspec_render_physical_mysql", dbspec_render_physical_mysql::trials),
+        polyspec_orm_testcase::Group::new("dbspec_render_physical_mariadb", dbspec_render_physical_mariadb::trials),
         polyspec_orm_testcase::Group::new("dbspec_render_physical_postgres", dbspec_render_physical_postgres::trials),
         polyspec_orm_testcase::Group::new("dbspec_render_physical_sqlite", dbspec_render_physical_sqlite::trials),
         polyspec_orm_testcase::Group::new("dbspec_render_physical_markdown", dbspec_render_physical_markdown::trials),
         polyspec_orm_testcase::Group::new("dbspec_render_statements_none", dbspec_render_statements_none::trials),
         polyspec_orm_testcase::Group::new("dbspec_rules_recipe_none", dbspec_rules_recipe_none::trials),
         polyspec_orm_testcase::Group::new("dbspec_set_decimal_mysql", dbspec_set_decimal_mysql::trials),
+        polyspec_orm_testcase::Group::new("dbspec_set_decimal_mariadb", dbspec_set_decimal_mariadb::trials),
         polyspec_orm_testcase::Group::new("dbspec_set_decimal_postgres", dbspec_set_decimal_postgres::trials),
         polyspec_orm_testcase::Group::new("dbspec_set_decimal_sqlite", dbspec_set_decimal_sqlite::trials),
         polyspec_orm_testcase::Group::new("dbspec_set_decimal_markdown", dbspec_set_decimal_markdown::trials),
@@ -296,17 +337,20 @@ fn main() {
         polyspec_orm_testcase::Group::new("default_select_set_none", default_select_set_none::trials),
         polyspec_orm_testcase::Group::new("dsl_none", dsl_none::trials),
         polyspec_orm_testcase::Group::new("dsn_connection_mysql", dsn_connection_mysql::trials),
+        polyspec_orm_testcase::Group::new("dsn_connection_mariadb", dsn_connection_mariadb::trials),
         polyspec_orm_testcase::Group::new("dsn_connection_postgres", dsn_connection_postgres::trials),
         polyspec_orm_testcase::Group::new("dsn_connection_sqlite", dsn_connection_sqlite::trials),
         polyspec_orm_testcase::Group::new("dsn_connection_markdown", dsn_connection_markdown::trials),
         polyspec_orm_testcase::Group::new("dsn_reject_none", dsn_reject_none::trials),
         polyspec_orm_testcase::Group::new("example_dsn", example_dsn::trials),
         polyspec_orm_testcase::Group::new("external_audit_mysql", external_audit_mysql::trials),
+        polyspec_orm_testcase::Group::new("external_audit_mariadb", external_audit_mariadb::trials),
         polyspec_orm_testcase::Group::new("external_audit_postgres", external_audit_postgres::trials),
         polyspec_orm_testcase::Group::new("external_audit_sqlite", external_audit_sqlite::trials),
         polyspec_orm_testcase::Group::new("external_audit_markdown", external_audit_markdown::trials),
         polyspec_orm_testcase::Group::new("files_none", files_none::trials),
         polyspec_orm_testcase::Group::new("fulltext_search_recipe_mysql", fulltext_search_recipe_mysql::trials),
+        polyspec_orm_testcase::Group::new("fulltext_search_recipe_mariadb", fulltext_search_recipe_mariadb::trials),
         polyspec_orm_testcase::Group::new("fulltext_search_recipe_postgres", fulltext_search_recipe_postgres::trials),
         polyspec_orm_testcase::Group::new("fulltext_search_recipe_sqlite", fulltext_search_recipe_sqlite::trials),
         polyspec_orm_testcase::Group::new("fulltext_search_recipe_markdown", fulltext_search_recipe_markdown::trials),
@@ -314,6 +358,7 @@ fn main() {
         polyspec_orm_testcase::Group::new("generator_scan_none", generator_scan_none::trials),
         polyspec_orm_testcase::Group::new("hashes_none", hashes_none::trials),
         polyspec_orm_testcase::Group::new("immutable_write_mysql", immutable_write_mysql::trials),
+        polyspec_orm_testcase::Group::new("immutable_write_mariadb", immutable_write_mariadb::trials),
         polyspec_orm_testcase::Group::new("immutable_write_postgres", immutable_write_postgres::trials),
         polyspec_orm_testcase::Group::new("immutable_write_sqlite", immutable_write_sqlite::trials),
         polyspec_orm_testcase::Group::new("immutable_write_markdown", immutable_write_markdown::trials),
@@ -323,28 +368,35 @@ fn main() {
         polyspec_orm_testcase::Group::new("markdown_conformance", markdown_conformance::trials).in_order().after(markdown_conformance::release),
         polyspec_orm_testcase::Group::new("markdown_session", markdown_session::trials),
         polyspec_orm_testcase::Group::new("model_queries_chain_mysql", model_queries_chain_mysql::trials),
+        polyspec_orm_testcase::Group::new("model_queries_chain_mariadb", model_queries_chain_mariadb::trials),
         polyspec_orm_testcase::Group::new("model_queries_chain_postgres", model_queries_chain_postgres::trials),
         polyspec_orm_testcase::Group::new("model_queries_chain_sqlite", model_queries_chain_sqlite::trials),
         polyspec_orm_testcase::Group::new("model_queries_chain_markdown", model_queries_chain_markdown::trials),
         polyspec_orm_testcase::Group::new("model_queries_mysql", model_queries_mysql::trials),
+        polyspec_orm_testcase::Group::new("model_queries_mariadb", model_queries_mariadb::trials),
         polyspec_orm_testcase::Group::new("model_queries_postgres", model_queries_postgres::trials),
         polyspec_orm_testcase::Group::new("model_queries_sqlite", model_queries_sqlite::trials),
         polyspec_orm_testcase::Group::new("model_queries_markdown", model_queries_markdown::trials),
         polyspec_orm_testcase::Group::new("model_socket_mysql", model_socket_mysql::trials),
+        polyspec_orm_testcase::Group::new("model_socket_mariadb", model_socket_mariadb::trials),
         polyspec_orm_testcase::Group::new("model_writes_chain_mysql", model_writes_chain_mysql::trials),
+        polyspec_orm_testcase::Group::new("model_writes_chain_mariadb", model_writes_chain_mariadb::trials),
         polyspec_orm_testcase::Group::new("model_writes_chain_postgres", model_writes_chain_postgres::trials),
         polyspec_orm_testcase::Group::new("model_writes_chain_sqlite", model_writes_chain_sqlite::trials),
         polyspec_orm_testcase::Group::new("model_writes_chain_markdown", model_writes_chain_markdown::trials),
         polyspec_orm_testcase::Group::new("model_writes_mysql", model_writes_mysql::trials),
+        polyspec_orm_testcase::Group::new("model_writes_mariadb", model_writes_mariadb::trials),
         polyspec_orm_testcase::Group::new("model_writes_postgres", model_writes_postgres::trials),
         polyspec_orm_testcase::Group::new("model_writes_sqlite", model_writes_sqlite::trials),
         polyspec_orm_testcase::Group::new("model_writes_markdown", model_writes_markdown::trials),
         polyspec_orm_testcase::Group::new("normalize_none", normalize_none::trials),
         polyspec_orm_testcase::Group::new("parameter_chunking_mysql", parameter_chunking_mysql::trials),
+        polyspec_orm_testcase::Group::new("parameter_chunking_mariadb", parameter_chunking_mariadb::trials),
         polyspec_orm_testcase::Group::new("parameter_chunking_postgres", parameter_chunking_postgres::trials),
         polyspec_orm_testcase::Group::new("parameter_chunking_sqlite", parameter_chunking_sqlite::trials),
         polyspec_orm_testcase::Group::new("parameter_chunking_markdown", parameter_chunking_markdown::trials),
         polyspec_orm_testcase::Group::new("performance_gate_mysql", performance_gate_mysql::trials),
+        polyspec_orm_testcase::Group::new("performance_gate_mariadb", performance_gate_mariadb::trials),
         polyspec_orm_testcase::Group::new("performance_gate_postgres", performance_gate_postgres::trials),
         polyspec_orm_testcase::Group::new("performance_gate_sqlite", performance_gate_sqlite::trials),
         polyspec_orm_testcase::Group::new("performance_gate_markdown", performance_gate_markdown::trials),
@@ -353,6 +405,7 @@ fn main() {
         polyspec_orm_testcase::Group::new("public_interface_none", public_interface_none::trials),
         polyspec_orm_testcase::Group::new("recipe_keys", recipe_keys::trials),
         polyspec_orm_testcase::Group::new("request_hook_mysql", request_hook_mysql::trials),
+        polyspec_orm_testcase::Group::new("request_hook_mariadb", request_hook_mariadb::trials),
         polyspec_orm_testcase::Group::new("request_hook_postgres", request_hook_postgres::trials),
         polyspec_orm_testcase::Group::new("request_hook_sqlite", request_hook_sqlite::trials),
         polyspec_orm_testcase::Group::new("request_hook_markdown", request_hook_markdown::trials),
@@ -361,24 +414,29 @@ fn main() {
         polyspec_orm_testcase::Group::new("runtime_model_plans_none", runtime_model_plans_none::trials),
         polyspec_orm_testcase::Group::new("schema_definition_none", schema_definition_none::trials),
         polyspec_orm_testcase::Group::new("schema_install_mysql", schema_install_mysql::trials),
+        polyspec_orm_testcase::Group::new("schema_install_mariadb", schema_install_mariadb::trials),
         polyspec_orm_testcase::Group::new("schema_install_postgres", schema_install_postgres::trials),
         polyspec_orm_testcase::Group::new("schema_install_sqlite", schema_install_sqlite::trials),
         polyspec_orm_testcase::Group::new("schema_install_markdown", schema_install_markdown::trials),
         polyspec_orm_testcase::Group::new("set_parse_none", set_parse_none::trials),
         polyspec_orm_testcase::Group::new("sets_none", sets_none::trials),
         polyspec_orm_testcase::Group::new("statement_events_mysql", statement_events_mysql::trials),
+        polyspec_orm_testcase::Group::new("statement_events_mariadb", statement_events_mariadb::trials),
         polyspec_orm_testcase::Group::new("statement_events_postgres", statement_events_postgres::trials),
         polyspec_orm_testcase::Group::new("statement_events_sqlite", statement_events_sqlite::trials),
         polyspec_orm_testcase::Group::new("statement_events_markdown", statement_events_markdown::trials),
         polyspec_orm_testcase::Group::new("statement_runner_mysql", statement_runner_mysql::trials),
+        polyspec_orm_testcase::Group::new("statement_runner_mariadb", statement_runner_mariadb::trials),
         polyspec_orm_testcase::Group::new("statement_runner_postgres", statement_runner_postgres::trials),
         polyspec_orm_testcase::Group::new("statement_runner_sqlite", statement_runner_sqlite::trials),
         polyspec_orm_testcase::Group::new("statement_runner_markdown", statement_runner_markdown::trials),
         polyspec_orm_testcase::Group::new("transactions_mysql", transactions_mysql::trials),
+        polyspec_orm_testcase::Group::new("transactions_mariadb", transactions_mariadb::trials),
         polyspec_orm_testcase::Group::new("transactions_postgres", transactions_postgres::trials),
         polyspec_orm_testcase::Group::new("transactions_sqlite", transactions_sqlite::trials),
         polyspec_orm_testcase::Group::new("transactions_markdown", transactions_markdown::trials),
         polyspec_orm_testcase::Group::new("utils_recipe_mysql", utils_recipe_mysql::trials),
+        polyspec_orm_testcase::Group::new("utils_recipe_mariadb", utils_recipe_mariadb::trials),
         polyspec_orm_testcase::Group::new("utils_recipe_postgres", utils_recipe_postgres::trials),
         polyspec_orm_testcase::Group::new("utils_recipe_sqlite", utils_recipe_sqlite::trials),
         polyspec_orm_testcase::Group::new("utils_recipe_markdown", utils_recipe_markdown::trials),

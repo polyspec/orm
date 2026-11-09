@@ -5366,6 +5366,13 @@
         "python",
         "mariadb-server"
       ]
+    },
+    "mariadb-recipes-check/rust": {
+      "scope": "suite",
+      "needs": [
+        "rust",
+        "mariadb-server"
+      ]
     }
   },
   "paths": {

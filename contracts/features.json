@@ -168,6 +168,7 @@
         "packages/rust/tests/tests/all/connection_pool_postgres.rs",
         "packages/rust/tests/tests/all/connection_pool_sqlite.rs",
         "packages/rust/tests/tests/all/connection_pool_markdown.rs",
+        "packages/rust/tests/tests/all/connection_pool_mariadb.rs",
         "packages/go/orm/sqlite_crashed_holder_test.go",
         "packages/go/bindmessages/bind_messages_test.go",
         "packages/go/orm/recipe_model_socket_test.go",
@@ -198,11 +199,13 @@
         "packages/python/tests/test_dsn_connection_markdown.py",
         "packages/python/tests/test_dsn_connection_mariadb.py",
         "packages/rust/tests/tests/all/dsn_connection_markdown.rs",
+        "packages/rust/tests/tests/all/dsn_connection_mariadb.rs",
         "packages/php-ext/tests/DsnConnectionMariadbRecipeTestExtensionTest.php",
         "packages/php-ext/tests/ModelSocketMariadbRecipeTestExtensionTest.php",
         "packages/php/tests/DsnConnectionMariadbRecipeTest.php",
         "packages/php/tests/ModelSocketMariadbRecipeTest.php",
         "packages/python/tests/test_model_socket_mariadb.py",
+        "packages/rust/tests/tests/all/model_socket_mariadb.rs",
         "packages/ts/tests/model_socket-mariadb.test.mjs"
       ],
       "docs": [
@@ -1001,7 +1004,9 @@
         "packages/python/tests/test_model_queries_markdown.py",
         "packages/python/tests/test_model_queries_mariadb.py",
         "packages/rust/tests/tests/all/model_queries_chain_markdown.rs",
+        "packages/rust/tests/tests/all/model_queries_chain_mariadb.rs",
         "packages/rust/tests/tests/all/model_queries_markdown.rs",
+        "packages/rust/tests/tests/all/model_queries_mariadb.rs",
         "packages/php-ext/tests/ModelQueriesChainMariadbRecipeTestExtensionTest.php",
         "packages/php-ext/tests/ModelQueriesMariadbRecipeTestExtensionTest.php",
         "packages/php/tests/ModelQueriesChainMariadbRecipeTest.php",
@@ -1819,7 +1824,9 @@
         "packages/python/tests/test_model_writes_markdown.py",
         "packages/python/tests/test_model_writes_mariadb.py",
         "packages/rust/tests/tests/all/model_writes_chain_markdown.rs",
+        "packages/rust/tests/tests/all/model_writes_chain_mariadb.rs",
         "packages/rust/tests/tests/all/model_writes_markdown.rs",
+        "packages/rust/tests/tests/all/model_writes_mariadb.rs",
         "packages/php-ext/tests/ModelWritesChainMariadbRecipeTestExtensionTest.php",
         "packages/php-ext/tests/ModelWritesMariadbRecipeTestExtensionTest.php",
         "packages/php-ext/tests/RawTextMariadbRecipeTestExtensionTest.php",
@@ -2462,7 +2469,9 @@
         "packages/python/tests/test_utils_recipe_markdown.py",
         "packages/python/tests/test_utils_recipe_mariadb.py",
         "packages/rust/tests/tests/all/transactions_markdown.rs",
+        "packages/rust/tests/tests/all/transactions_mariadb.rs",
         "packages/rust/tests/tests/all/utils_recipe_markdown.rs",
+        "packages/rust/tests/tests/all/utils_recipe_mariadb.rs",
         "packages/php-ext/tests/TransactionsMariadbRecipeTestExtensionTest.php",
         "packages/php-ext/tests/UtilsMariadbRecipeTestExtensionTest.php",
         "packages/php/tests/TransactionsMariadbRecipeTest.php",
@@ -3118,6 +3127,7 @@
         "packages/python/tests/test_statement_events_markdown.py",
         "packages/python/tests/test_statement_events_mariadb.py",
         "packages/rust/tests/tests/all/statement_events_markdown.rs",
+        "packages/rust/tests/tests/all/statement_events_mariadb.rs",
         "packages/php-ext/tests/StatementEventsMariadbRecipeTestExtensionTest.php",
         "packages/php/tests/StatementEventsMariadbRecipeTest.php"
       ],
@@ -4051,8 +4061,11 @@
         "packages/python/tests/test_render_physical_markdown.py",
         "packages/python/tests/test_render_physical_mariadb.py",
         "packages/rust/tests/tests/all/dbspec_apply_markdown.rs",
+        "packages/rust/tests/tests/all/dbspec_apply_mariadb.rs",
         "packages/rust/tests/tests/all/dbspec_introspect_markdown.rs",
+        "packages/rust/tests/tests/all/dbspec_introspect_mariadb.rs",
         "packages/rust/tests/tests/all/dbspec_render_physical_markdown.rs",
+        "packages/rust/tests/tests/all/dbspec_render_physical_mariadb.rs",
         "packages/php-ext/tests/DbspecApplyMariadbRecipeTestExtensionTest.php",
         "packages/php-ext/tests/DbspecIntrospectMariadbRecipeTestExtensionTest.php",
         "packages/php-ext/tests/DbspecRenderPhysicalMariadbRecipeTestExtensionTest.php",
@@ -4634,7 +4647,9 @@
         "packages/python/tests/test_set_decimal_markdown.py",
         "packages/python/tests/test_set_decimal_mariadb.py",
         "packages/rust/tests/tests/all/dbspec_set_decimal_markdown.rs",
+        "packages/rust/tests/tests/all/dbspec_set_decimal_mariadb.rs",
         "packages/rust/tests/tests/all/schema_install_markdown.rs",
+        "packages/rust/tests/tests/all/schema_install_mariadb.rs",
         "packages/php-ext/tests/DbspecSetDecimalMariadbRecipeTestExtensionTest.php",
         "packages/php-ext/tests/SchemaInstallMariadbRecipeTestExtensionTest.php",
         "packages/php/tests/DbspecSetDecimalMariadbRecipeTest.php",
@@ -5368,6 +5383,7 @@
         "packages/python/tests/test_composite_keys_markdown.py",
         "packages/python/tests/test_composite_keys_mariadb.py",
         "packages/rust/tests/tests/all/composite_keys_markdown.rs",
+        "packages/rust/tests/tests/all/composite_keys_mariadb.rs",
         "packages/php-ext/tests/CompositeKeysMariadbRecipeTestExtensionTest.php",
         "packages/php/tests/CompositeKeysMariadbRecipeTest.php"
       ],
@@ -5717,7 +5733,8 @@
         "packages/ts/tests/aes_rotation-mariadb.test.mjs",
         "packages/python/tests/test_aes_rotation_markdown.py",
         "packages/python/tests/test_aes_rotation_mariadb.py",
-        "packages/rust/tests/tests/all/aes_rotation_markdown.rs"
+        "packages/rust/tests/tests/all/aes_rotation_markdown.rs",
+        "packages/rust/tests/tests/all/aes_rotation_mariadb.rs"
       ],
       "docs": [
         "docs/spec/codec.md",
@@ -6011,7 +6028,8 @@
         "packages/ts/tests/parameter_chunking-mariadb.test.mjs",
         "packages/python/tests/test_parameter_chunking_markdown.py",
         "packages/python/tests/test_parameter_chunking_mariadb.py",
-        "packages/rust/tests/tests/all/parameter_chunking_markdown.rs"
+        "packages/rust/tests/tests/all/parameter_chunking_markdown.rs",
+        "packages/rust/tests/tests/all/parameter_chunking_mariadb.rs"
       ],
       "docs": [
         "docs/spec/protocol.md",
@@ -6341,7 +6359,9 @@
         "packages/python/tests/test_immutable_write_markdown.py",
         "packages/python/tests/test_immutable_write_mariadb.py",
         "packages/rust/tests/tests/all/constraints_and_relations_markdown.rs",
+        "packages/rust/tests/tests/all/constraints_and_relations_mariadb.rs",
         "packages/rust/tests/tests/all/immutable_write_markdown.rs",
+        "packages/rust/tests/tests/all/immutable_write_mariadb.rs",
         "packages/php-ext/tests/ConstraintsAndRelationsMariadbRecipeTestExtensionTest.php",
         "packages/php-ext/tests/ImmutableWriteMariadbRecipeTestExtensionTest.php",
         "packages/php/tests/ConstraintsAndRelationsMariadbRecipeTest.php",
@@ -6839,7 +6859,9 @@
         "packages/python/tests/test_external_audit_markdown.py",
         "packages/python/tests/test_external_audit_mariadb.py",
         "packages/rust/tests/tests/all/audit_triggers_markdown.rs",
+        "packages/rust/tests/tests/all/audit_triggers_mariadb.rs",
         "packages/rust/tests/tests/all/external_audit_markdown.rs",
+        "packages/rust/tests/tests/all/external_audit_mariadb.rs",
         "packages/php-ext/tests/AuditTriggersMariadbRecipeTestExtensionTest.php",
         "packages/php-ext/tests/ExternalAuditMariadbRecipeTestExtensionTest.php",
         "packages/php/tests/AuditTriggersMariadbRecipeTest.php",
@@ -7689,6 +7711,7 @@
         "packages/python/tests/test_performance_gate_markdown.py",
         "packages/python/tests/test_performance_gate_mariadb.py",
         "packages/rust/tests/tests/all/performance_gate_markdown.rs",
+        "packages/rust/tests/tests/all/performance_gate_mariadb.rs",
         "packages/php-ext/tests/PerformanceGateMariadbRecipeTestExtensionTest.php",
         "packages/php/tests/PerformanceGateMariadbRecipeTest.php"
       ],
@@ -8038,6 +8061,7 @@
         "packages/python/tests/test_conformance_verification_markdown.py",
         "packages/python/tests/test_conformance_verification_mariadb.py",
         "packages/rust/tests/tests/all/conformance_verification_markdown.rs",
+        "packages/rust/tests/tests/all/conformance_verification_mariadb.rs",
         "packages/php-ext/tests/ConformanceVerificationDynamicMariadbRecipeTestExtensionTest.php",
         "packages/php/tests/ConformanceVerificationDynamicMariadbRecipeTest.php"
       ],
@@ -8509,6 +8533,7 @@
         "packages/python/tests/test_catalog_connection_markdown.py",
         "packages/python/tests/test_catalog_connection_mariadb.py",
         "packages/rust/tests/tests/all/catalog_connection_markdown.rs",
+        "packages/rust/tests/tests/all/catalog_connection_mariadb.rs",
         "packages/php-ext/tests/CatalogConnectionMariadbRecipeTestExtensionTest.php",
         "packages/php/tests/CatalogConnectionMariadbRecipeTest.php"
       ],
@@ -8940,7 +8965,8 @@
         "packages/ts/tests/request_hook-mariadb.test.mjs",
         "packages/python/tests/test_request_hook_markdown.py",
         "packages/python/tests/test_request_hook_mariadb.py",
-        "packages/rust/tests/tests/all/request_hook_markdown.rs"
+        "packages/rust/tests/tests/all/request_hook_markdown.rs",
+        "packages/rust/tests/tests/all/request_hook_mariadb.rs"
       ],
       "docs": [
         "docs/operations/usage.md",
@@ -9303,7 +9329,9 @@
         "packages/python/tests/test_fulltext_search_recipe_markdown.py",
         "packages/python/tests/test_fulltext_search_recipe_mariadb.py",
         "packages/rust/tests/tests/all/complex_query_markdown.rs",
+        "packages/rust/tests/tests/all/complex_query_mariadb.rs",
         "packages/rust/tests/tests/all/fulltext_search_recipe_markdown.rs",
+        "packages/rust/tests/tests/all/fulltext_search_recipe_mariadb.rs",
         "packages/php-ext/tests/FulltextSearchMariadbRecipeTestExtensionTest.php",
         "packages/php/tests/FulltextSearchMariadbRecipeTest.php"
       ],
@@ -9630,6 +9658,7 @@
         "packages/python/tests/test_statement_runner_markdown.py",
         "packages/python/tests/test_statement_runner_mariadb.py",
         "packages/rust/tests/tests/all/statement_runner_markdown.rs",
+        "packages/rust/tests/tests/all/statement_runner_mariadb.rs",
         "packages/php-ext/tests/StatementRunnerMariadbRecipeTestExtensionTest.php",
         "packages/php/tests/StatementRunnerMariadbRecipeTest.php"
       ],

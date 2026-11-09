@@ -57,12 +57,14 @@ pub fn with_database(dsn: &str, name: &str) -> String {
 }
 
 impl CaseDatabase {
-    /// Creates a new database for `driver` ("sqlite", "mysql", "postgres"). MySQL and PostgreSQL
-    /// are created using ORM_TEST_<DRIVER>_DSN as the management connection.
+    /// Creates a new database for `driver` ("sqlite", "mysql", "mariadb", "postgres"). MySQL, MariaDB and PostgreSQL
+    /// are created using ORM_TEST_<DRIVER>_DSN as the management connection. MariaDB is a server of the MySQL dialect
+    /// (DIA-200), so its database has the driver mysql.
     pub async fn create(driver: &str) -> CaseDatabase {
         let (driver, var) = match driver {
             "sqlite" => ("sqlite", None),
             "mysql" => ("mysql", Some("ORM_TEST_MYSQL_DSN")),
+            "mariadb" => ("mysql", Some("ORM_TEST_MARIADB_DSN")),
             "postgres" => ("postgres", Some("ORM_TEST_POSTGRES_DSN")),
             other => panic!("case database: unknown driver {other:?}"),
         };

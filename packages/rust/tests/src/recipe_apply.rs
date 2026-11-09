@@ -149,6 +149,8 @@ struct State {
     plans: HashMap<String, Plan>,
     sessions: HashMap<String, Conn>,
     step: usize,
+    /// Whether the case runs on MariaDB, a server of the MySQL dialect whose direct server is its own (DIA-200, FCV-3).
+    mariadb: bool,
 }
 
 /// The apply ops of one case; [`ApplyOps::close`] ends its connections before the case database is dropped.
@@ -166,9 +168,15 @@ impl ApplyOps {
             self.runtime = Some(built);
         }
         let runtime = self.runtime.as_ref().ok_or("the runtime of the apply ops")?;
+        self.state.mariadb = database == "mariadb";
         let state = &mut self.state;
         // A corpus runs the statements of SQLite and reads its entries (DIA-185); its DSN names the corpus.
-        let database = if database == "markdown" { "sqlite" } else { database };
+        let database = match database {
+            "markdown" => "sqlite",
+            // MariaDB is a server of the MySQL dialect (DIA-200).
+            "mariadb" => "mysql",
+            other => other,
+        };
         // The case runs on a runtime of its own, and a runtime starts no other inside it, so the op has a thread.
         std::thread::scope(|scope| {
             scope.spawn(|| runtime.block_on(run_op(state, step, database, dsn))).join().map_err(|panic| crate::recipe::panicked("an apply op", &*panic))?
@@ -224,13 +232,14 @@ fn name_of(dsn: &str) -> &str {
 }
 
 /// The direct connection to the database of the case DSN, with the rules of a new connection.
-async fn direct(database: &str, dsn: &str) -> Result<Conn, String> {
+async fn direct(database: &str, mariadb: bool, dsn: &str) -> Result<Conn, String> {
     let name = name_of(dsn);
     let (mut session, rule) = match database {
         "mysql" => {
-            let server = required("ORM_TEST_MYSQL_SERVER_DSN")?;
+            let variable = if mariadb { "ORM_TEST_MARIADB_SERVER_DSN" } else { "ORM_TEST_MYSQL_SERVER_DSN" };
+            let server = required(variable)?;
             let ConnectOptions::MySql(options) = parse_dsn(&server).map_err(|e| e.to_string())?.options else {
-                return Err("ORM_TEST_MYSQL_SERVER_DSN is not mysql://".to_owned());
+                return Err(format!("{variable} is not mysql://"));
             };
             let connection = MySqlConnection::connect_with(&options.database(name)).await.map_err(|e| e.to_string())?;
             (Conn::MySql(connection), "SET time_zone = '+00:00'")
@@ -325,8 +334,11 @@ async fn op_body(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
             Ok(json!({}))
         }
         "dbspec.connect" => {
-            let session =
-                if crate::recipe_reads::read(step, "through")["through"] == "pooler" { through_pooler(dsn).await? } else { direct(database, dsn).await? };
+            let session = if crate::recipe_reads::read(step, "through")["through"] == "pooler" {
+                through_pooler(dsn).await?
+            } else {
+                direct(database, state.mariadb, dsn).await?
+            };
             state.sessions.insert(name.to_owned(), session);
             Ok(json!({}))
         }
@@ -370,7 +382,7 @@ async fn op_body(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
 /// The nested steps of dbspec.other_database, on a new connection to the other database that ends with them.
 async fn other_steps(state: &mut State, step: &Value, database: &str, other: &str) -> Result<(), String> {
     let name = crate::recipe_reads::read(step, "as")["as"].as_str().unwrap_or_default();
-    state.sessions.insert(name.to_owned(), direct(database, other).await?);
+    state.sessions.insert(name.to_owned(), direct(database, state.mariadb, other).await?);
     let mut result = Ok(());
     for nested in crate::recipe_reads::read(step, "steps")["steps"].as_array().into_iter().flatten() {
         if skipped(nested, database) {
