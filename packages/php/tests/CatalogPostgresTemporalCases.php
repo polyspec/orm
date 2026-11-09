@@ -54,7 +54,7 @@ final class CatalogPostgresTemporalCases
             Assert::fail('an unreadable bytea stream was read');
         } catch (OrmException $error) {
             Assert::assertSame(Code::CATALOG_VALUE, $error->code_);
-            Assert::assertSame('CATALOG_VALUE: column 2: the driver could not decode the value', $error->getMessage());
+            Assert::assertSame('CATALOG_VALUE: the driver could not decode the value', $error->getMessage());
             Assert::assertInstanceOf(\RuntimeException::class, $error->getPrevious());
             Assert::assertSame(CatalogUnreadableStream::FAILURE, $error->getPrevious()->getMessage());
         }
