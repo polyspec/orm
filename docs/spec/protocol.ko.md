@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 1e73776f4ce64ed9fc0576a3c54d75391fd4a4163ebc95ebda1352658687b507 -->
+<!-- source-sha256: d52d1d4300c752930817e1dce1878bb3a8576bd13bc9740596c5d8e78a4eb4ed -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `packages/go/engine/ir/ir.go`와 `packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -31,7 +31,7 @@
 }
 ```
 
-요청에는 값이 들어가지 않는다. 모든 값은 클라이언트가 가진 매개변수 목록의 위치이며, `n_params`는 그 목록의 길이다. 따라서 plan은 값과 무관하다. 공개 `limit(offset, count)` 호출은 정수 literal을 받는다. canonicalization은 루트 query의 페이지 limit만 정확한 `{"offset_p": N, "count_p": M}` 쌍으로 바꾸고 offset과 count를 `i64` 매개변수로 추가한다. 전체 매개변수 순회는 `columns.fn`의 출력 이름 정렬 순, `columns.sub`의 출력 이름 정렬 순과 각 subquery의 재귀 순회, `on`, `where`, 배열 순서대로 join과 재귀 순회, 배열 순서대로 relation과 재귀 순회, order 함수, 루트 페이지 offset과 count, `if_parent.p`, 요청 `set`, `on_duplicate`, `rows`, `optimistic.p`, 원래 순서의 미사용 매개변수 순이다. MySQL은 offset, count 순으로 렌더링하고 bind하며 PostgreSQL과 SQLite는 count, offset 순으로 렌더링하고 bind한다. 잘못된 쌍이나 범위를 벗어난 인덱스는 `IR_INVALID`이다. null, boolean, text, 소수 또는 공통 안전 정수 범위를 벗어난 bind 값은 `CODEC_ENCODE`이고, 음수 offset이나 0 이하 count는 `IR_INVALID`이다. 공개 builder에 잘못된 limit을 주면 `CONFIG`다. 모든 plan-cache 조회 전에 검증한다. 스칼라 컬럼 subquery는 count 1의 literal limit을 유지하고, 암시적 `one` limit은 `LIMIT 1`이며 `paginate`의 count 문장에는 페이지 bind가 없다.
+요청에는 값이 들어가지 않는다. 모든 값은 클라이언트가 가진 매개변수 목록의 위치이며, `n_params`는 그 목록의 길이다. 따라서 plan은 값과 무관하다. 공개 `limit(offset, count)` 호출은 정수 literal을 받는다. canonicalization은 루트 query의 페이지 limit만 정확한 `{"offset_p": N, "count_p": M}` 쌍으로 바꾸고 offset과 count를 `i64` 매개변수로 추가한다. 전체 매개변수 순회는 `columns.sub`의 출력 이름 정렬 순과 각 subquery의 재귀 순회, `on`, `where`, 배열 순서대로 join과 재귀 순회, 배열 순서대로 relation과 재귀 순회, 루트 페이지 offset과 count, `if_parent.p`, 요청 `set`, `on_duplicate`, `rows`, `optimistic.p`, 원래 순서의 미사용 매개변수 순이다. column 함수는 매개변수를 받지 않으므로 `columns.fn`, `order`, predicate의 `fn`에 있는 함수는 자리를 갖지 않는다. MySQL은 offset, count 순으로 렌더링하고 bind하며 PostgreSQL과 SQLite는 count, offset 순으로 렌더링하고 bind한다. 잘못된 쌍이나 범위를 벗어난 인덱스는 `IR_INVALID`이다. null, boolean, text, 소수 또는 공통 안전 정수 범위를 벗어난 bind 값은 `CODEC_ENCODE`이고, 음수 offset이나 0 이하 count는 `IR_INVALID`이다. 공개 builder에 잘못된 limit을 주면 `CONFIG`다. 모든 plan-cache 조회 전에 검증한다. 스칼라 컬럼 subquery는 count 1의 literal limit을 유지하고, 암시적 `one` limit은 `LIMIT 1`이며 `paginate`의 count 문장에는 페이지 bind가 없다.
 
 모든 클라이언트는 요청을 엄격하게 decode한다. 최상위나 어떤 객체(`ref`, `pred`, item, group, order item, `limit`, join, relation, 할당) 안에서든 그 객체가 정의하지 않은 member는 `IR_INVALID`이고, JSON type이 틀린 member도 그렇다: 문자열이 아닌 `column`, `agg`, `entity`, `op`, 정수가 아닌 매개변수 위치나 개수(`0.0`이나 `1e1`처럼 literal이 정수가 아닌 수도 포함한다. TypeScript는 literal을 지키는 ordered-json으로 요청 text를 읽는다), 배열이 아닌 목록 member, 객체가 아닌 객체 member가 그 예다. `sum`과 `avg`는 column을 `agg`에 적으므로 `sum` 요청의 `column`은 정의되지 않은 member다. 이 형태 검사는 다른 모든 규칙보다 먼저 하므로, type이 틀린 이름의 요청은 `COLUMN_UNKNOWN`이나 `ENTITY_UNKNOWN`이 아니라 `IR_INVALID`로 실패한다. null인 member는 없는 것과 같다. `tests/ir/validate.json`(`shape-*` case)이 이 사례를 담고, Go, PHP, Rust, TypeScript, Python이 이를 실행한다.
 

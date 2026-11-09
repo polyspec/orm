@@ -121,8 +121,8 @@ def _pred(c: _Canon, p: dict) -> dict:
             q["ps"] = c.list(p["ps"])
         else:
             q["ps"] = c.ints(p["ps"])
-    if p.get("fn") is not None:
-        q["fn"] = _func(c, p["fn"])
+    # A column function takes no parameter (column_function_arity of engine/dialect.py), so of the functions only a value
+    # function holds slots.
     if p.get("value") is not None:
         q["value"] = _func(c, p["value"])
     if p.get("sub") is not None:
@@ -156,14 +156,6 @@ def _query_into(c: _Canon, q: dict, out: dict, root: bool = False) -> None:
     """Walks the query fields in the order the Go client walks them, writing the canonical values into out."""
     if q.get("columns") is not None:
         cols = dict(q["columns"])
-        if q["columns"].get("fn") is not None:
-            cols["fn"] = {
-                name: {
-                    **q["columns"]["fn"][name],
-                    "fn": _func(c, q["columns"]["fn"][name].get("fn")),
-                }
-                for name in sorted(q["columns"]["fn"])
-            }
         if q["columns"].get("sub") is not None:
             cols["sub"] = {
                 name: _sub(c, q["columns"]["sub"][name])
@@ -193,11 +185,6 @@ def _query_into(c: _Canon, q: dict, out: dict, root: bool = False) -> None:
                 "query": _query(c, r["query"]) if r.get("query") is not None else None,
             }
             for r in q["relations"]
-        ]
-    if q.get("order") is not None:
-        out["order"] = [
-            {**o, "fn": _func(c, o["fn"])} if o.get("fn") is not None else o
-            for o in q["order"]
         ]
     if q.get("limit") is not None:
         limit = q["limit"]

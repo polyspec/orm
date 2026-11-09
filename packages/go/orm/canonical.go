@@ -247,7 +247,8 @@ func (c *canonicalizer) pred(p *ir.Pred) *ir.Pred {
 	} else {
 		v.Ps = c.ints(p.Ps)
 	}
-	v.Fn = c.fn(p.Fn)
+	// A column function takes no parameter (dialect.ColumnFunctionArity), so of the functions only a value function
+	// holds slots.
 	v.Value = c.fn(p.Value)
 	v.Sub = c.sub(p.Sub)
 	if p.Ref != nil {
@@ -263,15 +264,7 @@ func (c *canonicalizer) query(q ir.Query, root bool) ir.Query {
 	if q.Columns != nil {
 		cols := *q.Columns
 		cols.Add, cols.Remove = slices.Clone(q.Columns.Add), slices.Clone(q.Columns.Remove)
-		cols.Fn, cols.Sub = nil, nil
-		if q.Columns.Fn != nil {
-			cols.Fn = make(map[string]ir.ColFunc, len(q.Columns.Fn))
-			for _, k := range slices.Sorted(maps.Keys(q.Columns.Fn)) {
-				v := q.Columns.Fn[k]
-				v.Fn = *c.fn(&v.Fn)
-				cols.Fn[k] = v
-			}
-		}
+		cols.Fn, cols.Sub = maps.Clone(q.Columns.Fn), nil
 		if q.Columns.Sub != nil {
 			cols.Sub = make(map[string]*ir.Sub, len(q.Columns.Sub))
 			for _, k := range slices.Sorted(maps.Keys(q.Columns.Sub)) {
@@ -305,13 +298,7 @@ func (c *canonicalizer) query(q ir.Query, root bool) ir.Query {
 			out.Relations[i] = &v
 		}
 	}
-	if q.Order != nil {
-		out.Order = make([]ir.Order, len(q.Order))
-		for i, o := range q.Order {
-			o.Fn = c.fn(o.Fn)
-			out.Order[i] = o
-		}
-	}
+	out.Order = slices.Clone(q.Order)
 	out.GroupBy = slices.Clone(q.GroupBy)
 	if q.Limit != nil {
 		l := *q.Limit

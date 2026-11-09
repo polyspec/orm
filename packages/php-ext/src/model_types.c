@@ -382,11 +382,12 @@ static bool request_assoc(request_walk *walk, HashTable *input, zval *output)
         keys_in_order(&keys, input, query_order, order_count);
     }
     if (!is_query) {
-        /* A predicate or an assignment (a map with a string column) is walked in Go's field order (canonical.go pred and assign). */
+        /* A predicate or an assignment (a map with a string column) is walked in Go's field order (canonical.go pred and assign);
+           a column function takes no parameter, so its field fn holds no slot. */
         zval *column_value = zend_hash_str_find(input, "column", sizeof("column") - 1);
         if (column_value != NULL) ZVAL_DEREF(column_value);
         if (column_value != NULL && Z_TYPE_P(column_value) == IS_STRING) {
-            static const char *predicate_order[] = {"p", "plus_p", "minus_p", "ps", "fn", "value", "sub"};
+            static const char *predicate_order[] = {"p", "plus_p", "minus_p", "ps", "value", "sub"};
             keys_in_order(&keys, input, predicate_order, sizeof(predicate_order) / sizeof(predicate_order[0]));
         }
     }

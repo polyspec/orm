@@ -115,7 +115,8 @@ impl Canonicalizer {
         let mut v = p.clone();
         v.p = p.p.map(|x| self.index(x));
         v.ps = if (p.op == "in" || p.op == "not_in") && p.sub.is_none() { self.list(&p.ps) } else { self.ints(&p.ps) };
-        v.r#fn = p.r#fn.as_ref().map(|f| self.func(f));
+        // A column function takes no parameter (engine/validate.rs refuses one), so of the functions only a value
+        // function holds slots.
         v.value = p.value.as_ref().map(|f| self.func(f));
         v.sub = p.sub.as_ref().map(|s| self.sub(s));
         v
@@ -127,7 +128,6 @@ impl Canonicalizer {
         let mut out = q.clone();
         if let Some(cols) = &q.columns {
             let mut c = cols.clone();
-            c.r#fn = cols.r#fn.iter().map(|(k, f)| (k.clone(), ir::ColFunc { column: f.column.clone(), r#fn: self.func(&f.r#fn) })).collect();
             c.sub = cols.sub.iter().map(|(k, s)| (k.clone(), self.sub(s))).collect();
             out.columns = Some(c);
         }
@@ -148,15 +148,6 @@ impl Canonicalizer {
             .map(|rel| {
                 let mut v = rel.clone();
                 v.query = Box::new(self.query(&rel.query, false));
-                v
-            })
-            .collect();
-        out.order = q
-            .order
-            .iter()
-            .map(|o| {
-                let mut v = o.clone();
-                v.r#fn = o.r#fn.as_ref().map(|f| self.func(f));
                 v
             })
             .collect();
