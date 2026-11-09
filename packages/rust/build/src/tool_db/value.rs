@@ -1,5 +1,5 @@
 //! The refusals of a catalog conversion of a driver value: one code and one text per rule of docs/spec/interfaces.md
-//! "Catalog value rules" (INT-165 to INT-185), and the 1-based position of the column whose value breaks it.
+//! "Catalog value rules" (INT-165 to INT-186), and the 1-based position of the column whose value breaks it.
 
 use polyspec_orm::codes::{CATALOG_VALUE, GRID_TEMPORAL_PRECISION, GRID_TEMPORAL_VALUE};
 
@@ -44,6 +44,8 @@ pub const FRACTION_PAST_PRECISION: Rule = Rule { code: GRID_TEMPORAL_PRECISION, 
 pub const NATIVE_PRECISION: Rule = Rule { code: GRID_TEMPORAL_PRECISION, text: "native type declares more than 6 fraction digits" };
 /// INT-182
 pub const BOOLEAN: Rule = Rule { code: CATALOG_VALUE, text: "a boolean column holds a value that is not a boolean" };
+/// INT-186
+pub const OUTPUT_SETTING_CHANGED: Rule = Rule { code: CATALOG_VALUE, text: "the query changed a setting that the output of its values depends on" };
 
 /// A value that a catalog conversion refuses by one rule, at the 1-based position of its column. A driver or library failure
 /// (INT-172) names no column and keeps that failure as its source.
@@ -57,6 +59,10 @@ pub struct ValueRefusal {
 impl ValueRefusal {
     pub fn new(rule: Rule, column: usize) -> Self {
         Self { rule, column: Some(column), source: None }
+    }
+    /// A refusal of the read as a whole, which names no column (INT-186).
+    pub(crate) fn of_read(rule: Rule) -> Self {
+        Self { rule, column: None, source: None }
     }
     /// INT-172: the failure of the driver or of a library, kept as the source. It names no column, since a driver of one runtime
     /// (Go database/sql) does not tell which column it failed to decode.

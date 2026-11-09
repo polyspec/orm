@@ -287,6 +287,9 @@ pub(super) async fn begin_session(connection: &mut Conn, begin: &str) -> Result<
         // a text it remembers names a statement that the server has released.
         connection.forget_statements().await.map_err(|error| error.to_string())?;
         connection.exec("DEALLOCATE ALL", &[]).await.map_err(|error| error.to_string())?;
+        // The output of every cell kind is its exact text under these settings, and each read of cells compares the settings
+        // of its rows with those read here (INT-186).
+        connection.fix_output_settings().await.map_err(|error| error.to_string())?;
     }
     Ok(())
 }
