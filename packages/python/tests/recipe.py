@@ -3668,6 +3668,12 @@ class _ChainBuild:
             model.core.index = q["force_index"]
         if "key_by" in q:
             model.core.key_name = q["key_by"]
+        # possible outside a relation is refused at the build of its request (DSL-85).
+        for column, value in q.get("possible", {}).items():
+            model.core.possible = {
+                "column": column,
+                "value": _chain_value(value, self.context),
+            }
 
     def relation(self, relation: dict) -> Model:
         """The child model of a relation."""
@@ -3678,11 +3684,6 @@ class _ChainBuild:
             child.core.matches.append({"left": left, "right": right})
         if "alias" in relation:
             child.core.alias = _snake_of(relation["alias"])
-        for column, value in relation.get("possible", {}).items():
-            child.core.possible = {
-                "column": column,
-                "value": _chain_value(value, self.context),
-            }
         if relation.get("parent_node") is True:
             child.parent_node()
         _ChainBuild(self.context, self.outer).query(child, relation)

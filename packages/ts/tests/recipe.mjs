@@ -1962,6 +1962,8 @@ class ChainBuild {
     if (q.lock !== undefined) m[CORE].lock = q.lock;
     if (q.force_index !== undefined) m[CORE].index = q.force_index;
     if (q.key_by !== undefined) m[CORE].keyName = q.key_by;
+    // possible outside a relation is refused at the build of its request (DSL-85).
+    for (const [column, value] of Object.entries(q.possible ?? {})) m[CORE].possible = { column, value: chainValue(value, this.context) };
   }
 
   /** The child model of a relation. */
@@ -1970,7 +1972,6 @@ class ChainBuild {
     if (r.connection !== undefined) child.connect(refOf(r.connection, this.context));
     for (const [left, right] of r.match ?? []) child[CORE].matches.push({ left, right });
     if (r.alias !== undefined) child[CORE].alias = snakeOf(r.alias);
-    for (const [column, value] of Object.entries(r.possible ?? {})) child[CORE].possible = { column, value: chainValue(value, this.context) };
     if (r.parent_node === true) child.parentNode();
     new ChainBuild(this.context, this.outer).query(child, r);
     if (r.group_limit > 0) child.groupLimit(r.group_limit);

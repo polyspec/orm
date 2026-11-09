@@ -669,6 +669,8 @@ ZEND_METHOD(Polyspec_Orm_Model, attachExternal)
         if (EG(exception) != NULL) { zval_ptr_dtor(&values); zval_ptr_dtor(&seen); zval_ptr_dtor(&by_key); RETURN_THROWS(); }
         zval empty; array_init(&empty); model_state_property_set(model_state_of(Z_OBJ(clone)), "matches", &empty); zval_ptr_dtor(&empty);
         zval alias; ZVAL_EMPTY_STRING(&alias); model_state_property_set(model_state_of(Z_OBJ(clone)), "alias", &alias); zval_ptr_dtor(&alias);
+        /* The parents above are the ones that possible<Col>() keeps, so the statement of the child has no possible. */
+        zval no_possible; ZVAL_NULL(&no_possible); model_state_property_set(model_state_of(Z_OBJ(clone)), "possible", &no_possible);
         zval *matches = model_state_property(model_state_of(Z_OBJ_P(ZEND_THIS)), "matches"); zval rights; array_init(&rights);
         if (matches != NULL) ZVAL_DEREF(matches);
         if (matches != NULL && Z_TYPE_P(matches) == IS_ARRAY) ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(matches), zval *match) { ZVAL_DEREF(match); zval *right=Z_TYPE_P(match)==IS_ARRAY?zend_hash_str_find(Z_ARRVAL_P(match),"right",sizeof("right")-1):NULL; if(right!=NULL){ZVAL_DEREF(right);zval c;ZVAL_COPY(&c,right);add_next_index_zval(&rights,&c);} } ZEND_HASH_FOREACH_END();

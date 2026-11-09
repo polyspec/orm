@@ -89719,6 +89719,57 @@
    ]
   },
   {
+   "id": "possible_outside_a_relation_is_refused",
+   "requirements": [
+    "DSL-85"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "possible": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "order": [
+      {
+       "column": "seq",
+       "dir": "asc"
+      }
+     ],
+     "pick": [
+      "seq"
+     ],
+     "expect": {
+      "mysql": {
+       "error": "CONFIG",
+       "message_suffix": "possible applies only to a relation child"
+      },
+      "postgres": {
+       "error": "CONFIG",
+       "message_suffix": "possible applies only to a relation child"
+      },
+      "sqlite": {
+       "error": "CONFIG",
+       "message_suffix": "possible applies only to a relation child"
+      }
+     }
+    }
+   ]
+  },
+  {
    "id": "identity_execute_load_then_restart",
    "requirements": [
     "PRT-2",

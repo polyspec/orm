@@ -593,6 +593,8 @@ async function attachExternal(parents: Core[], rel: { many: boolean; child: Core
     const q = ch.clone();
     q.matches = [];
     q.alias = '';
+    // The parents above are the ones that possible<Col>() keeps, so the statement of the child has no possible.
+    q.possible = undefined;
     // A composite key filters the whole child key column as a tuple.
     const rights = ch.matches.map(k => k.right);
     const keys: ChainKey[] = rights.length === 1

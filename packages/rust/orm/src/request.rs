@@ -159,6 +159,9 @@ pub(crate) fn build(c: &Core, kind: &str) -> Req {
         r.fail(e);
         return r;
     }
+    if no_possible(&mut r, c).is_none() {
+        return r;
+    }
     let mut f = Frame::new(c, None);
     let mut joins = HashSet::new();
     if let Some(q) = query(&mut r, c, &mut f, &mut joins, true) {
@@ -193,6 +196,16 @@ pub(crate) fn validate_page_params(r: &ir::Request, params: &[Param]) -> crate::
     Ok(())
 }
 
+/// Refuses possible_<col>() on a model that is no relation child, the root of a request, a join child or a subquery model,
+/// which has no parent row to compare (DSL-85); None when it refused.
+fn no_possible(r: &mut Req, c: &Core) -> Option<()> {
+    if c.possible.is_some() {
+        r.fail(config("possible applies only to a relation child"));
+        return None;
+    }
+    Some(())
+}
+
 fn query(r: &mut Req, c: &Core, f: &mut Frame<'_>, joins: &mut HashSet<String>, root_page: bool) -> Option<ir::Query> {
     if let Some(e) = c.err() {
         r.fail(e);
@@ -217,6 +230,7 @@ fn query(r: &mut Req, c: &Core, f: &mut Frame<'_>, joins: &mut HashSet<String>, 
             return None;
         }
         let on = if let Some(on) = &j.child.on { Some(group(r, on, &j.child, f)?) } else { None };
+        no_possible(r, &j.child)?;
         let mut child = query(r, &j.child, f, joins, false)?;
         child.on = on;
         q.joins.push(ir::Join { rel: last_segment(&path), kind: j.kind.to_owned(), query: Box::new(child), left: j.left.clone(), right: j.right.clone() });
@@ -442,6 +456,7 @@ fn subquery(r: &mut Req, c: &Core, outer: u64, scalar: bool) -> Option<ir::Sub> 
         r.fail(config("a subquery model cannot load relations"));
         return None;
     }
+    no_possible(r, c)?;
     let mut f = Frame::new(c, Some(outer));
     let mut joins = HashSet::new();
     let mut q = query(r, c, &mut f, &mut joins, false)?;

@@ -5744,6 +5744,10 @@
                   "$ref": "#/$defs/join"
                 }
               },
+              "possible": {
+                "description": "possible<Col>(value) on the model of the query, which is no relation child and refuses it at the build of the request (DSL-85).",
+                "$ref": "#/$defs/predicate"
+              },
               "relations": {
                 "type": "array",
                 "items": {

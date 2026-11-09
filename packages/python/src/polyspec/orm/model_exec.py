@@ -365,6 +365,8 @@ def _attach_external(parents: list, rel: dict) -> None:
         q = ch.clone()
         q.matches = []
         q.alias = ""
+        # The parents above are the ones that possible<Col>() keeps, so the statement of the child has no possible.
+        q.possible = None
         # A composite key filters the child key columns as a whole tuple.
         rights = [k["right"] for k in ch.matches]
         keys = (

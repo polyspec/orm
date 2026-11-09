@@ -4544,6 +4544,10 @@ final class Recipe
         if (isset($q['key_by'])) {
             $model->{'keyName' . self::pascal($q['key_by'])}();
         }
+        // possible outside a relation is refused at the build of its request (DSL-85).
+        foreach ($q['possible'] ?? [] as $column => $value) {
+            $model->{'possible' . self::pascal((string) $column)}(self::chainValue($value, $context));
+        }
         if (isset($q['lock'])) {
             $model->{match ($q['lock']) {
                 'update' => 'forUpdate',
@@ -4566,9 +4570,6 @@ final class Recipe
         }
         if (isset($relation['alias'])) {
             $child->{'alias' . self::pascal($relation['alias'])}();
-        }
-        foreach ($relation['possible'] ?? [] as $column => $value) {
-            $child->{'possible' . self::pascal((string) $column)}(self::chainValue($value, $context));
         }
         if (($relation['parent_node'] ?? false) === true) {
             $child->parentNode();

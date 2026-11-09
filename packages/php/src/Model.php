@@ -1152,6 +1152,10 @@ abstract class Model implements \JsonSerializable, ModelMetadata
     private function build(string $kind, Db $db): Request
     {
         $r = new Request($kind, static::manifestHash());
+        // possible<Col>() applies only to a relation child, which has a parent row to compare (DSL-85).
+        if ($this->possible !== null) {
+            throw new OrmException(Code::CONFIG, 'possible applies only to a relation child');
+        }
         $frame = new Frame($this, null);
         $r->ir += $this->query($r, $frame);
         return $r;
@@ -1188,6 +1192,9 @@ abstract class Model implements \JsonSerializable, ModelMetadata
                 throw new OrmException(Code::CONFIG, "join result name $name is used twice; use alias<Name>()");
             }
             $r->names[$path] = true;
+            if ($child->possible !== null) {
+                throw new OrmException(Code::CONFIG, 'possible applies only to a relation child');
+            }
             $childQuery = $child->query($r, $f);
             if ($child->on !== null) {
                 $childQuery['on'] = $child->groupIr($child->on, $r, $f);
@@ -1312,6 +1319,9 @@ abstract class Model implements \JsonSerializable, ModelMetadata
         }
         if ($this->relations !== []) {
             throw new OrmException(Code::CONFIG, 'a subquery model cannot load relations');
+        }
+        if ($this->possible !== null) {
+            throw new OrmException(Code::CONFIG, 'possible applies only to a relation child');
         }
         $q = $this->query($r, new Frame($this, $outer));
         unset($q['columns']);
@@ -1764,6 +1774,8 @@ abstract class Model implements \JsonSerializable, ModelMetadata
             $q = clone $this;
             $q->matches = [];
             $q->alias = '';
+            // The parents above are the ones that possible<Col>() keeps, so the statement of the child has no possible.
+            $q->possible = null;
             $rights = array_column($this->matches, 'right');
             // A composite key filters the whole child key column as a tuple.
             $match = count($rights) === 1

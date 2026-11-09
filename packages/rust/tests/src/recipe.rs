@@ -6213,6 +6213,10 @@ mod tables {
             if let Some(column) = crate::recipe_reads::read(q, "key_by")["key_by"].as_str() {
                 core.key_name(column);
             }
+            // possible outside a relation is refused at the build of its request (DSL-85).
+            for (column, value) in members(&crate::recipe_reads::read(q, "possible")["possible"]) {
+                core.possible(column, param(value)?);
+            }
             Ok(())
         }
 
@@ -6237,9 +6241,6 @@ mod tables {
             }
             if let Some(alias) = relation["alias"].as_str() {
                 child.set_alias(alias);
-            }
-            for (column, value) in members(&relation["possible"]) {
-                child.possible(column, param(value)?);
             }
             if relation["parent_node"].as_bool() == Some(true) {
                 child.parent_node();

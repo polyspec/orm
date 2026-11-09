@@ -191,7 +191,7 @@ $orders = (new Order)->connect($slave1)
 - **DSL-82** `match<L>With<R>()` — Effect: parent column `L` equals child column `R`; a composite key calls one per component, in key order, e.g. `matchTenantIdWithTenantId().matchAccountIdWithAccountId()`
 - **DSL-83** `alias<Name>()` — Effect: result name of the relation
 - **DSL-84** `parentNode()` — Effect: merge child columns into the parent row
-- **DSL-85** `possible<Col>(value)` — Effect: load the child only when the parent column equals the value
+- **DSL-85** `possible<Col>(value)` — Effect: load the child only when the parent column equals the value. It applies only to a relation child, which has a parent row to compare: on the root of a request, a join child or a subquery model the request is `CONFIG` (`possible applies only to a relation child`) at its build in every runtime, before any statement, rather than ignored. The case `possible_outside_a_relation_is_refused` of the recipe `conformance_verification` holds it
 - **DSL-86** `groupLimit(count)` — Effect: limit child rows per parent key
 - **DSL-87** `deleteLock()` — Effect: exclude the relation from recursive delete
 

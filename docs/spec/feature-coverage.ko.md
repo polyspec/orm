@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: 4ad9a82f61437125a3ef4f07173cad1d9aa539ee15a3ace99e03ba45fa6c9594 -->
+<!-- source-sha256: 1e0e903de648505bad7276cc96725de24a25feda4f002997b787a72b362934a9 -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 테스트 명령을 선언한다. 그 명령은 자기 recipe의 entry(FCV-12)이거나 FCV-2의 네이티브 테스트다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-unit-check`가 실패한다.
@@ -428,6 +428,7 @@
   - `model.query`의 `aggregate`는 `{"agg": "sum" | "avg" | "count", "column": <name>, "group_by": [<name>, ...]}`이며, 결과는 group마다 값 하나를 갖는다. API unit: client-model-terminal-read(INT-29).
   - `model.query`의 `joins`는 `[{"model": <name>, "on": <predicate>, "kind": "inner" | "left", "as": <name>}]`이며, soft delete된 join 행은 그 `ON` 조건에서 제외된다(DBS-67). table path의 relation은 `connection`도 받으며, 이는 child가 연결할 bound connection이다(PLN-42). API unit: conformance_verification-sqlite.
   - `model.query`의 `relations`는 `[{"model": <name>, "match": [[<parent column>, <child column>], ...], "as": <name>, "group_limit": <정수>, "key_by": <column>, "possible": <predicate>, "parent_node": <boolean>, "flatten": <boolean>, "delete_lock": <boolean>}]`이며, 각각 root의 relation 하나다. API unit: client-query-relation(INT-87)과 DIA-167.
+  - `model.query`와 relation의 `possible`은 `{<column>: <value>}`이며, 그 model에 대한 `possible<Col>(value)` 호출이다. `model.query`의 root에서는 요청을 만들 때 거부된다(DSL-85). API: DSL-85.
   - `model.get_by`, `model.query`, `model.delete`의 `lock`은 `"share"` 또는 `"update"`이며, transaction 안에서만 허용된다. API unit: client-utils-lock(INT-50).
   - `model.query`의 `compile: true`는 실행하지 않고 각 database에서 그 문장이 보낼 SQL 텍스트와 바인드 값을 돌려준다. 그 expect는 database마다 `{"value": {"text": <sql>, "binds": [<value>, ...]}}`다. API: DSL-65와 DSL-68(getQuery).
   - `model.update`의 `restore: true`와 `model.create`의 `restore_or_create: true`(F11). API unit: restore-soft-deleted-row(INT-38).

@@ -562,6 +562,7 @@
       "plan_count",
       "plan_page",
       "plan_sql",
+      "possible",
       "relation",
       "relations",
       "remove_columns",

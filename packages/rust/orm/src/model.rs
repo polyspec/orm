@@ -772,6 +772,8 @@ async fn attach_external(parents: &mut [Box<dyn AnyModel>], rel: &RelSpec) -> Re
         let mut q = (**ch).clone();
         q.matches.clear();
         q.alias.clear();
+        // The parents above are the ones that possible_<col>() keeps, so the statement of the child has no possible.
+        q.possible = None;
         let rights: Vec<&'static str> = ch.matches.iter().map(|&(_, right)| right).collect();
         // A composite key filters on the whole child key column set as a tuple.
         let spec = if rights.len() == 1 {

@@ -747,9 +747,16 @@ class BuiltRequest:
         self.ir["n_params"] = len(self.params)
         return self.ir
 
-    def query(self, c: "Core", f: Frame, path: str):
+    def query(self, c: "Core", f: Frame, path: str, relation_child: bool = False):
+        """The query of a model; possible<Col>() is refused on a model that is no relation child, which has no parent
+        row to compare (DSL-85)."""
         if c.error:
             self.fail(c.error)
+            return None
+        if c.possible is not None and not relation_child:
+            self.fail(
+                OrmError(codes.CONFIG, "possible applies only to a relation child")
+            )
             return None
         if c.where.pending != "":
             self.fail(
@@ -843,7 +850,7 @@ class BuiltRequest:
 
     def _relation(self, relation) -> dict | None:
         ch = relation["child"]
-        q = self.query(ch, Frame(ch, None), "")
+        q = self.query(ch, Frame(ch, None), "", relation_child=True)
         if q is None:
             return None
         if ch.limit is not None:

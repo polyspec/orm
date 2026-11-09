@@ -93,6 +93,9 @@ func (c *Core) build(kind string) *request {
 		r.fail(c.err)
 		return r
 	}
+	if r.notRelationChild(c) {
+		return r
+	}
 	f := newFrame(c, nil)
 	q := r.query(c, f, "")
 	if q != nil {
@@ -121,6 +124,9 @@ func (r *request) query(c *Core, f *frame, path string) *ir.Query {
 			return nil
 		}
 		r.joins[childPath] = j.child
+		if r.notRelationChild(j.child) {
+			return nil
+		}
 		child := r.query(j.child, f, childPath)
 		if child == nil {
 			return nil
@@ -173,6 +179,16 @@ func (r *request) query(c *Core, f *frame, path string) *ir.Query {
 	}
 	q.GroupBy = slices.Clone(c.groupBy)
 	return q
+}
+
+// notRelationChild refuses possible<Col>() on a model that is no relation child, the root of a request, a join child
+// or a subquery model, which has no parent row to compare (DSL-85), and reports whether it refused.
+func (r *request) notRelationChild(c *Core) bool {
+	if c.possible == nil {
+		return false
+	}
+	r.fail(configErr("possible applies only to a relation child"))
+	return true
 }
 
 // relation renders a relation child as its own statement.
@@ -418,6 +434,9 @@ func (r *request) subquery(m Model, outer *Core, scalar bool) *ir.Sub {
 	}
 	if len(c.relations) > 0 {
 		r.fail(configErr("a subquery model cannot load relations"))
+		return nil
+	}
+	if r.notRelationChild(c) {
 		return nil
 	}
 	f := newFrame(c, outer)

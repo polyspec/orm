@@ -557,7 +557,8 @@ func attachExternal(parents []*Core, rel relSpec) error {
 	byKey := map[Key][]entry{}
 	if len(values) > 0 {
 		q := ch.Clone()
-		q.matches, q.alias = nil, ""
+		// The parents above are the ones that possible<Col>() keeps, so the statement of the child has no possible.
+		q.matches, q.alias, q.possible = nil, "", nil
 		match := condNode{pred: &predSpec{column: ch.matches[0].Right, op: "in", value: values, list: true}}
 		if len(ch.matches) > 1 {
 			// A composite key filters the whole child key column as a tuple.

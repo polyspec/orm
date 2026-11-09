@@ -1,5 +1,5 @@
 <!-- doc-id: dsl -->
-<!-- source-sha256: f10a1105db28bfaf96d368b5dccff99bf3101d63fcb89cdb0d9ffb7a19e27427 -->
+<!-- source-sha256: a852396593358c4d22cf458510a411b0d9b3cfe9f5deb5f392ea2f85b74a6288 -->
 # DSL
 
 이 문서는 [설계 계획](plan.md)이 정한 쿼리 문법을 정의한다. 클라이언트 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록하며, 이 문서와 일치하지 않는 클라이언트는 미완료 상태다.
@@ -192,7 +192,7 @@ $orders = (new Order)->connect($slave1)
 - **DSL-82** `match<L>With<R>()` — 동작: 부모 컬럼 `L`과 자식 컬럼 `R`이 같음. composite key는 성분마다 key 순서대로 한 번씩 부른다. 예: `matchTenantIdWithTenantId().matchAccountIdWithAccountId()`
 - **DSL-83** `alias<Name>()` — 동작: 관계 결과 명칭
 - **DSL-84** `parentNode()` — 동작: 자식 컬럼을 부모 행에 병합
-- **DSL-85** `possible<Col>(value)` — 동작: 부모 컬럼이 값과 같을 때만 자식 조회
+- **DSL-85** `possible<Col>(value)` — 동작: 부모 컬럼이 값과 같을 때만 자식 조회. 비교할 부모 행이 있는 relation 자식에만 적용된다. 요청의 root, join 자식이나 subquery 모델에서는 무시되지 않고, 모든 런타임에서 어떤 statement보다 먼저 요청을 만들 때 `CONFIG`(`possible applies only to a relation child`)이다. recipe `conformance_verification`의 case `possible_outside_a_relation_is_refused`가 이를 지킨다
 - **DSL-86** `groupLimit(count)` — 동작: 부모 키별 자식 행 수 제한
 - **DSL-87** `deleteLock()` — 동작: 재귀 삭제에서 관계 제외
 

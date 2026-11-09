@@ -131,6 +131,7 @@ type chainStep struct {
 	From            string                     `json:"from"`
 	Pick            []string                   `json:"pick"`
 	KeyBy           string                     `json:"key_by"`
+	Possible        json.RawMessage            `json:"possible"`
 	OrderedText     string                     `json:"ordered_text"`
 	Get             string                     `json:"get"`
 	ArrayText       string                     `json:"array_text"`
@@ -212,6 +213,25 @@ func chainCore(model string, c *databaseContext) *orm.Core {
 
 // chainValue is the native argument of a value wrapper: orm.Null for SQL NULL, the list of an array, and an object as the
 // styled value of a column.
+// possible calls possible<Col>() on the model for each member of raw, {<column>: <value>}, in its order.
+func possible(core *orm.Core, raw json.RawMessage, c *databaseContext) error {
+	if len(raw) == 0 {
+		return nil
+	}
+	members, err := orderedMembers(raw)
+	if err != nil {
+		return err
+	}
+	for _, member := range members {
+		value, err := chainValue(member.value, c)
+		if err != nil {
+			return err
+		}
+		core.Possible(member.key, value)
+	}
+	return nil
+}
+
 func chainValue(raw json.RawMessage, c *databaseContext) (any, error) {
 	var entries map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &entries); err == nil {
@@ -866,18 +886,8 @@ func (b *chainBuild) relation(r chainRelation) (*orm.Core, error) {
 	if r.Alias != "" {
 		child.Alias(r.Alias)
 	}
-	if len(r.Possible) > 0 {
-		members, err := orderedMembers(r.Possible)
-		if err != nil {
-			return nil, err
-		}
-		for _, member := range members {
-			value, err := chainValue(member.value, b.c)
-			if err != nil {
-				return nil, err
-			}
-			child.Possible(member.key, value)
-		}
+	if err := possible(child, r.Possible, b.c); err != nil {
+		return nil, err
 	}
 	if r.ParentNode {
 		child.ParentNode()
@@ -1138,6 +1148,10 @@ func chainBuilt(s chainStep, db *orm.DB, c *databaseContext) (*orm.Core, error) 
 	}
 	if s.k("key_by").KeyBy != "" {
 		core.KeyName(s.k("key_by").KeyBy)
+	}
+	// possible of the root is refused at the build of its request (DSL-85).
+	if err := possible(core, s.k("possible").Possible, c); err != nil {
+		return nil, err
 	}
 	if len(s.k("relation").Relation) > 0 {
 		var r chainRelation
