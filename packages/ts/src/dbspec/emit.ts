@@ -24,7 +24,6 @@ const SETTING_ORDER: readonly DbspecSetting['kind'][] = [
   'navigation',
   'markdown',
   'store',
-  'key_prefix',
   'title',
   'body',
   'order',
@@ -71,11 +70,6 @@ function settingKey(setting: DbspecSetting): string {
   return '';
 }
 
-/** A string literal in canonical form: quoted, with each quote doubled. */
-function quoted(value: string): string {
-  return `'${value.replaceAll("'", "''")}'`;
-}
-
 function settingText(setting: DbspecSetting, t: DbspecTable, view: View): string {
   switch (setting.kind) {
     case 'entity':
@@ -102,8 +96,6 @@ function settingText(setting: DbspecSetting, t: DbspecTable, view: View): string
       if (setting.storage === 'document') return `store document ${setting.shape ?? ''}${shard}`;
       return `store block ${setting.foreignKey ?? ''} ${setting.shape ?? ''}${shard}`;
     }
-    case 'key_prefix':
-      return `key_prefix ${quoted(setting.prefix)}`;
     case 'title':
     case 'body':
     case 'order':

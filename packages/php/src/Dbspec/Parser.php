@@ -44,11 +44,11 @@ final class Parser
     /** Codec stages that produce text; the others produce bytes. */
     private const TEXT_STAGES = ['hex', 'base64', 'ordered_json', 'yaml', 'serialize'];
     /** The keyword of markdown storage settings. The cursor reads it (storageLine). */
-    private const STORAGE_KEYWORDS = ['markdown', 'store', 'key_prefix', 'title', 'body', 'order', 'checkbox'];
+    private const STORAGE_KEYWORDS = ['markdown', 'store', 'title', 'body', 'order', 'checkbox'];
     /**
      * A storage keyword written only once per table. Repeating it is a setting error at the keyword's position.
      */
-    private const ONCE_STORAGE = ['store', 'key_prefix', 'title', 'body', 'order', 'checkbox'];
+    private const ONCE_STORAGE = ['store', 'title', 'body', 'order', 'checkbox'];
     /** The codec stages, the fixed words after a codec column (docs/spec/dbspec.md "Keep, move or remove"; R12). */
     private const CODEC_STAGES = ['ordered_json', 'aes', 'hex', 'gz', 'base64', 'serialize', 'yaml', 'ip'];
     /** A character of valid UTF-8, or one invalid byte (R15): the code points of a line. */
@@ -175,8 +175,6 @@ final class Parser
     private array $failedColumns = [];
     /** Column lines of the table that had a syntax error (Go's failedLines). */
     private int $failedLines = 0;
-    /** Primary key lines of the table that were read (Go keeps every one). */
-    private int $primaryKeyLines = 0;
     /** The first lex error of the current line: [column, message], or null. */
     private ?array $lexError = null;
     private ?Diagram $diagram = null;
@@ -1089,7 +1087,6 @@ final class Parser
         $this->failedNames = [];
         $this->failedColumns = [];
         $this->failedLines = 0;
-        $this->primaryKeyLines = 0;
     }
 
     private function tableLine(): void
@@ -1405,7 +1402,6 @@ final class Parser
             $this->failKey(true);
             return;
         }
-        $this->primaryKeyLines++;
         if ($this->table->primaryKey !== null) {
             $this->error('key', $this->line, $first[1], 'a table has exactly one primary key');
             return;
@@ -2268,9 +2264,6 @@ final class Parser
                     }
                     $this->checkStoreShard($arguments, $line, isset($kinds['order']));
                     break;
-                case 'key_prefix':
-                    $this->checkKeyPrefix($line, $at);
-                    break;
                 case 'title':
                 case 'body':
                     $this->requireTextColumn(
@@ -2777,8 +2770,8 @@ final class Parser
     // ---------------------------------------------------- storage settings
 
     /**
-     * Reads one markdown storage setting line (`markdown`, `store`, `key_prefix`, `title`, `body`,
-     * `order`, `checkbox`) by the cursor. As in Go's settingsLine,
+     * Reads one markdown storage setting line (`markdown`, `store`, `title`, `body`, `order`,
+     * `checkbox`) by the cursor. As in Go's settingsLine,
      * the line ends at the first syntax error. The rules for the whole table are checked when the table closes.
      */
     private function storageLine(string $keyword, int $at): void
@@ -2827,12 +2820,6 @@ final class Parser
     private function storageArguments(string $keyword): array
     {
         switch ($keyword) {
-            case 'markdown':
-            case 'title':
-            case 'body':
-            case 'order':
-            case 'checkbox':
-                return [$this->cursorWord('a column name')];
             case 'store':
                 $kind = $this->cursorOneOf('`files`, `document` or `block`', ['files', 'document', 'block']);
                 $arguments = [$kind];
@@ -2852,7 +2839,7 @@ final class Parser
                 }
                 return $arguments;
             default:
-                return [$this->cursorQuoted('a key prefix in quotes')];
+                return [$this->cursorWord('a column name')];
         }
     }
 
@@ -2887,28 +2874,6 @@ final class Parser
             throw $this->cursorFail($what);
         }
         return $this->take('keyword');
-    }
-
-    /**
-     * A string literal. The value is the text between the quotes; a doubled quote is read as one character.
-     *
-     * @return array{0:string,1:int}
-     */
-    private function cursorQuoted(string $what): array
-    {
-        $token = $this->tokens[$this->cursor] ?? null;
-        if ($token === null || strlen($token[0]) < 2 || $token[0][0] !== "'") {
-            throw $this->cursorFail($what);
-        }
-        $this->cursor++;
-        return [self::literalValue($token[0]), $token[1]];
-    }
-
-    /** The value of a default literal token: for a string, the text without quotes; otherwise the token as is. */
-    private static function literalValue(string $text): string
-    {
-        return $text !== '' && $text[0] === "'" && strlen($text) >= 2
-            ? str_replace("''", "'", substr($text, 1, -1)) : $text;
     }
 
     private static function isNumber(string $token): bool
@@ -2996,28 +2961,6 @@ final class Parser
         }
         if ($order) {
             $this->error('setting', $line, $shard[1], 'store shard is rejected on a table with order');
-        }
-    }
-
-    /** `key_prefix` requires a single-column primary key of varchar type. */
-    private function checkKeyPrefix(int $line, int $at): void
-    {
-        if ($this->failedPrimary) {
-            return;
-        }
-        $primary = $this->table->primaryKey;
-        if ($this->primaryKeyLines !== 1 || $primary === null || count($primary->columns) !== 1) {
-            $this->error('setting', $line, $at, 'key_prefix needs a single-column primary key');
-            return;
-        }
-        $definition = $this->columns[$primary->columns[0]] ?? null;
-        if ($definition !== null && $definition->type->name !== 'invalid' && $definition->type->name !== 'varchar') {
-            $this->error(
-                'setting',
-                $line,
-                $at,
-                "key_prefix needs a varchar primary key, not {$definition->type->text()}"
-            );
         }
     }
 

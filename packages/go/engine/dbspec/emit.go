@@ -125,8 +125,6 @@ func (s *settingsNode) model() *Settings {
 				store.Shard = &StoreShard{Column: rest[1], Period: rest[2]}
 			}
 			out.Store = store
-		case "key_prefix":
-			out.KeyPrefix = &KeyPrefixSetting{Comments: line.comments, Prefix: args[0]}
 		case "title":
 			out.Title = &ColumnSetting{Comments: line.comments, Column: args[0]}
 		case "body":
@@ -274,7 +272,7 @@ func (s *Settings) empty() bool {
 	return s.Entity == nil && s.Updated == nil && s.SoftDelete == nil && s.SelectExplicit == nil &&
 		len(s.Codecs) == 0 && s.AESVersion == nil && len(s.BlindIndexes) == 0 && len(s.Navigations) == 0 &&
 		s.Immutable == nil && s.Audit == nil && len(s.Marks) == 0 &&
-		s.Store == nil && s.KeyPrefix == nil && s.Title == nil && s.Body == nil && s.Order == nil && s.Checkbox == nil
+		s.Store == nil && s.Title == nil && s.Body == nil && s.Order == nil && s.Checkbox == nil
 }
 
 func (e *emitter) settings(t *Table, s *Settings) {
@@ -342,9 +340,6 @@ func (e *emitter) mappingSettings(s *Settings) {
 			text += " shard " + st.Shard.Column + " " + st.Shard.Period
 		}
 		e.line(2, st.Comments, text)
-	}
-	if k := s.KeyPrefix; k != nil {
-		e.line(2, k.Comments, "key_prefix "+quote(k.Prefix))
 	}
 	if s.Title != nil {
 		e.line(2, s.Title.Comments, "title "+s.Title.Column)

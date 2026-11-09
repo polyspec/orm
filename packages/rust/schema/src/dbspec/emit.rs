@@ -2,7 +2,6 @@
 //! line ends, sorted constraint and setting lines, comments before the line
 //! they are attached to.
 
-use super::literal::quote;
 use super::model::*;
 
 /// What an emission writes: the canonical text, the manifest text without
@@ -206,7 +205,6 @@ fn setting_text(setting: &Setting, table: &Table, view: View) -> String {
                 None => head,
             }
         }
-        Setting::KeyPrefix(prefix) => format!("key_prefix {}", quote(&prefix.text)),
         Setting::Title(column) => format!("title {}", column.text),
         Setting::Body(column) => format!("body {}", column.text),
         Setting::Order(column) => format!("order {}", column.text),

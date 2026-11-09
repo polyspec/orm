@@ -1080,12 +1080,8 @@ func (c *Core) Create() (Model, error) {
 	if err != nil {
 		return nil, err
 	}
-	// These are the columns that write the received key: identity, or the key_prefix key that a corpus allocated to a
-	// primary key the request did not supply.
+	// The column that writes the received key is the identity.
 	assignedKey := ent.Identity
-	if _, allocated := id.(string); assignedKey == "" && allocated && ent.KeyPrefix != "" && !slices.ContainsFunc(c.sets, func(s setSpec) bool { return s.column == ent.PK[0] }) {
-		assignedKey = ent.PK[0]
-	}
 	if assignedKey != "" {
 		st.addName(assignedKey)
 		assigned, err := c.ent.Assign(m.self, assignedKey, id)

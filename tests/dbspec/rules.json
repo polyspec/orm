@@ -8712,7 +8712,6 @@
             "  primary key (id)",
             "  settings {",
             "    store document list",
-            "    key_prefix 'T'",
             "    title title",
             "    body body",
             "    order position",
@@ -8747,7 +8746,6 @@
                 "  primary key (id)",
                 "  settings {",
                 "    store document list",
-                "    key_prefix 'T'",
                 "    title title",
                 "    body body",
                 "    order position",
@@ -8914,45 +8912,6 @@
               "diagnostics": [
                 {
                   "column": 17,
-                  "line": 12,
-                  "rule": "setting"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "markdown-storage-key-prefix-integer-key",
-      "requirements": [
-        "ORES-19"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.format",
-          "text": [
-            "dbspec 1 shop",
-            "",
-            "table tickets {",
-            "  id i64 identity",
-            "  title varchar(255)",
-            "  body text",
-            "  position i64",
-            "  status varchar(16)",
-            "  reason varchar(200) null",
-            "  primary key (id)",
-            "  settings {",
-            "    key_prefix 'T'",
-            "  }",
-            "}",
-            ""
-          ],
-          "expect": {
-            "none": {
-              "diagnostics": [
-                {
-                  "column": 5,
                   "line": 12,
                   "rule": "setting"
                 }
@@ -9222,15 +9181,15 @@
         {
           "op": "dbspec.set",
           "owned": [
-            "dbspec 1 shop\n\ntable tickets {\n  id varchar(32)\n  title varchar(255)\n  body text\n  position i64\n  status varchar(1)\n  reason varchar(200) null\n  primary key (id)\n  settings {\n    store document list\n    key_prefix 'T'\n    title title\n    body body\n    order position\n    checkbox status\n  }\n}\n\ntable ticket_history {\n  id i64 identity\n  ticket_id varchar(32)\n  from_status varchar(16)\n  to_status varchar(16)\n  changed_at datetime(6)\n  reason varchar(200) null\n  primary key (id)\n  index ix_ticket_history_ticket (ticket_id)\n  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict\n}\n"
+            "dbspec 1 shop\n\ntable tickets {\n  id varchar(32)\n  title varchar(255)\n  body text\n  position i64\n  status varchar(1)\n  reason varchar(200) null\n  primary key (id)\n  settings {\n    store document list\n    title title\n    body body\n    order position\n    checkbox status\n  }\n}\n\ntable ticket_history {\n  id i64 identity\n  ticket_id varchar(32)\n  from_status varchar(16)\n  to_status varchar(16)\n  changed_at datetime(6)\n  reason varchar(200) null\n  primary key (id)\n  index ix_ticket_history_ticket (ticket_id)\n  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict\n}\n"
           ],
           "expect": {
             "none": {
               "manifest": {
-                "manifest_text": "dbspec 1 shop\n\ntable tickets {\n  id varchar(32)\n  title varchar(255)\n  body text\n  position i64\n  status varchar(1)\n  reason varchar(200) null\n  primary key (id)\n  settings {\n    store document list\n    key_prefix 'T'\n    title title\n    body body\n    order position\n    checkbox status\n  }\n}\n\ntable ticket_history {\n  id i64 identity\n  ticket_id varchar(32)\n  from_status varchar(16)\n  to_status varchar(16)\n  changed_at datetime(6)\n  reason varchar(200) null\n  primary key (id)\n  index ix_ticket_history_ticket (ticket_id)\n  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict\n}\n",
-                "schema_text": "dbspec 1 schema\n\ntable ticket_history {\n  id i64 identity\n  ticket_id varchar(32)\n  from_status varchar(16)\n  to_status varchar(16)\n  changed_at datetime(6)\n  reason varchar(200) null\n  primary key (id)\n  index ix_ticket_history_ticket (ticket_id)\n  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict\n}\n\ntable tickets {\n  id varchar(32)\n  title varchar(255)\n  body text\n  position i64\n  status varchar(1)\n  reason varchar(200) null\n  primary key (id)\n}\n",
-                "manifest_hash": "sha256:f5ca1c17353c904fc0dd7b7db969b3c142ce47bec712b642cb48a91ab7f8a6d0",
-                "schema_hash": "sha256:d7afe9dfe539173417cf4de89d6ff3af6d80372092bd5a2cfc15edcb45f7bd16"
+                "manifest_hash": "sha256:c14fd68fd8c47d6513d39d82bf03e3b7e5336e14d932d528acfba56f2c40311c",
+                "manifest_text": "dbspec 1 shop\n\ntable tickets {\n  id varchar(32)\n  title varchar(255)\n  body text\n  position i64\n  status varchar(1)\n  reason varchar(200) null\n  primary key (id)\n  settings {\n    store document list\n    title title\n    body body\n    order position\n    checkbox status\n  }\n}\n\ntable ticket_history {\n  id i64 identity\n  ticket_id varchar(32)\n  from_status varchar(16)\n  to_status varchar(16)\n  changed_at datetime(6)\n  reason varchar(200) null\n  primary key (id)\n  index ix_ticket_history_ticket (ticket_id)\n  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict\n}\n",
+                "schema_hash": "sha256:d7afe9dfe539173417cf4de89d6ff3af6d80372092bd5a2cfc15edcb45f7bd16",
+                "schema_text": "dbspec 1 schema\n\ntable ticket_history {\n  id i64 identity\n  ticket_id varchar(32)\n  from_status varchar(16)\n  to_status varchar(16)\n  changed_at datetime(6)\n  reason varchar(200) null\n  primary key (id)\n  index ix_ticket_history_ticket (ticket_id)\n  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict\n}\n\ntable tickets {\n  id varchar(32)\n  title varchar(255)\n  body text\n  position i64\n  status varchar(1)\n  reason varchar(200) null\n  primary key (id)\n}\n"
               }
             }
           }
@@ -9238,15 +9197,15 @@
         {
           "op": "dbspec.set",
           "owned": [
-            "dbspec 1 shop\n\ntable tickets {\n  id varchar(32)\n  title varchar(255)\n  body text\n  position i64\n  status varchar(1)\n  reason varchar(200) null\n  primary key (id)\n  settings {\n    store document table\n    key_prefix 'T'\n    title title\n    body body\n    order position\n    checkbox status\n  }\n}\n\ntable ticket_history {\n  id i64 identity\n  ticket_id varchar(32)\n  from_status varchar(16)\n  to_status varchar(16)\n  changed_at datetime(6)\n  reason varchar(200) null\n  primary key (id)\n  index ix_ticket_history_ticket (ticket_id)\n  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict\n}\n"
+            "dbspec 1 shop\n\ntable tickets {\n  id varchar(32)\n  title varchar(255)\n  body text\n  position i64\n  status varchar(1)\n  reason varchar(200) null\n  primary key (id)\n  settings {\n    store document table\n    title title\n    body body\n    order position\n    checkbox status\n  }\n}\n\ntable ticket_history {\n  id i64 identity\n  ticket_id varchar(32)\n  from_status varchar(16)\n  to_status varchar(16)\n  changed_at datetime(6)\n  reason varchar(200) null\n  primary key (id)\n  index ix_ticket_history_ticket (ticket_id)\n  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict\n}\n"
           ],
           "expect": {
             "none": {
               "manifest": {
-                "manifest_text": "dbspec 1 shop\n\ntable tickets {\n  id varchar(32)\n  title varchar(255)\n  body text\n  position i64\n  status varchar(1)\n  reason varchar(200) null\n  primary key (id)\n  settings {\n    store document table\n    key_prefix 'T'\n    title title\n    body body\n    order position\n    checkbox status\n  }\n}\n\ntable ticket_history {\n  id i64 identity\n  ticket_id varchar(32)\n  from_status varchar(16)\n  to_status varchar(16)\n  changed_at datetime(6)\n  reason varchar(200) null\n  primary key (id)\n  index ix_ticket_history_ticket (ticket_id)\n  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict\n}\n",
-                "schema_text": "dbspec 1 schema\n\ntable ticket_history {\n  id i64 identity\n  ticket_id varchar(32)\n  from_status varchar(16)\n  to_status varchar(16)\n  changed_at datetime(6)\n  reason varchar(200) null\n  primary key (id)\n  index ix_ticket_history_ticket (ticket_id)\n  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict\n}\n\ntable tickets {\n  id varchar(32)\n  title varchar(255)\n  body text\n  position i64\n  status varchar(1)\n  reason varchar(200) null\n  primary key (id)\n}\n",
-                "manifest_hash": "sha256:d8f5c76c3c1da765018fd3b91fbebe526173b41988f38833c3eaad58fe3cb376",
-                "schema_hash": "sha256:d7afe9dfe539173417cf4de89d6ff3af6d80372092bd5a2cfc15edcb45f7bd16"
+                "manifest_hash": "sha256:e68968c7ca64b324f6c419d6e7f16a31a5c28745b4232ff44d6f23d16b305d5a",
+                "manifest_text": "dbspec 1 shop\n\ntable tickets {\n  id varchar(32)\n  title varchar(255)\n  body text\n  position i64\n  status varchar(1)\n  reason varchar(200) null\n  primary key (id)\n  settings {\n    store document table\n    title title\n    body body\n    order position\n    checkbox status\n  }\n}\n\ntable ticket_history {\n  id i64 identity\n  ticket_id varchar(32)\n  from_status varchar(16)\n  to_status varchar(16)\n  changed_at datetime(6)\n  reason varchar(200) null\n  primary key (id)\n  index ix_ticket_history_ticket (ticket_id)\n  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict\n}\n",
+                "schema_hash": "sha256:d7afe9dfe539173417cf4de89d6ff3af6d80372092bd5a2cfc15edcb45f7bd16",
+                "schema_text": "dbspec 1 schema\n\ntable ticket_history {\n  id i64 identity\n  ticket_id varchar(32)\n  from_status varchar(16)\n  to_status varchar(16)\n  changed_at datetime(6)\n  reason varchar(200) null\n  primary key (id)\n  index ix_ticket_history_ticket (ticket_id)\n  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict\n}\n\ntable tickets {\n  id varchar(32)\n  title varchar(255)\n  body text\n  position i64\n  status varchar(1)\n  reason varchar(200) null\n  primary key (id)\n}\n"
               }
             }
           }

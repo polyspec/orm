@@ -1,17 +1,17 @@
 <!-- doc-id: tests-markdown-readme -->
-<!-- source-sha256: 5301481ae008a673c79e539855ec3f77bd2040102c1a7fb311af709acfbbbd03 -->
+<!-- source-sha256: d2e1bd5eecef711867dcb4aa14df9a1a10e00f99a79e29d17fd818784a8a0059 -->
 # Markdown corpus 적합성
 
 markdown 연결은 flowmark server가 corpus에서 문장에 답하는 SQLite 연결이다([dialect](../../docs/spec/dialects.ko.md)).
-recipe는 다른 모든 데이터베이스처럼 그 위에서 실행되고, 이 case들은 corpus에만 있는 것을 다룬다: document, `key_prefix`
-key, 대소문자를 가리지 않고 unique한 key, engine 밖에서 편집된 파일, corpus가 install하는 catalog. 각 클라이언트는
+recipe는 다른 모든 데이터베이스처럼 그 위에서 실행되고, 이 case들은 corpus에만 있는 것을 다룬다: document,
+대소문자를 가리지 않고 unique한 key, engine 밖에서 편집된 파일, corpus가 install하는 catalog. 각 클라이언트는
 flowmark server가 제공하는 corpus 하나에서 `cases.json`의 case를 실행하고, case마다 결과를 그 `expect`와 비교한다.
 
 | 파일 | 역할 |
 |---|---|
 | `cases.json` | case ID의 순서와 각 case의 기대 결과. case를 선언하는 유일한 곳이다 |
 | `session.json` | session 메시지의 recipe(PRT-66). 각 step은 database 없이 replies로 답하는 listener에서 실행된다(`make markdown-session-check`, FCV-4 `markdown.session`) |
-| `corpus/dbspec/dbspec-set.json`, `corpus/dbspec/conformance.dbs` | catalog set과 corpus: `people`(`key_prefix`, soft delete column, 수정 시각 column, unique key를 가진 `document` table), `tasks`(`people`로 가는 foreign key), `logs`(`identity` key), `codec_rows`(base64 codec과 명시 선택 payload) |
+| `corpus/dbspec/dbspec-set.json`, `corpus/dbspec/conformance.dbs` | catalog set과 corpus: `people`(text key, soft delete column과 수정 시각 column을 가진 `document` table), `tasks`(`people`로 가는 foreign key), `logs`(`identity` key), `codec_rows`(base64 codec과 명시 선택 payload) |
 | `catalogs/aes.dbs`, `catalogs/audit.dbs` | `aes` column과 `audit` setting의 catalog이며, `install_aes`와 `install_audit`가 각자의 새 corpus에서 set의 유일한 document로 install하고 `{"error": null}`, 또는 `flowmark install`이 출력한 code를 `{"error": <code>}`로 답한다 |
 | `flowmark.version` | case를 실행하는 `flowmark`의 `github.com/polyspec/flowmark/packages/go` Go module 판 |
 | `packages/go/markdownmodel` | catalog에서 생성한 Go model과 Go 실행기 `TestMarkdownConformance` |

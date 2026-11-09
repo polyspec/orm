@@ -1126,8 +1126,8 @@ pub(crate) fn validate_host_value(styles: &[String], value: &Param) -> Result<()
     Ok(())
 }
 
-/// Runs insert, update, delete, and restore, and returns the key of the inserted row and the number of changed rows: on SQL databases
-/// the generated identity, or on a markdown connection the key_prefix key that the corpus allocated, a text. Null if there is no key.
+/// Runs insert, update, delete, and restore, and returns the key of the inserted row, the generated identity, and the number of
+/// changed rows. Null if there is no key.
 async fn write(ex: &Executor, conn: &Option<Db>, req: &mut Req) -> Result<(Val, u64)> {
     write_after_hook(ex, conn, req, |_| Ok(())).await
 }
@@ -1193,11 +1193,8 @@ pub(crate) fn binds_audit(st: &crate::plan::Step) -> bool {
 async fn sql_write(ex: &Executor, st: &crate::plan::Step, req: &Req) -> Result<(Val, u64)> {
     if req.ir.kind == "insert" && st.sql.contains(" RETURNING ") {
         let rows = ex.query(st, &req.params, Vec::new()).await?;
-        // The returned key is the identity, an integer, or the key_prefix key that a corpus allocated, a text (PRT-73).
-        return Ok(match first_cell(&rows, ex.db().inner.zone)? {
-            Val::Str(key) => (Val::Str(key), 1),
-            other => (Val::I64(other.as_i64()?), 1),
-        });
+        // The returned key is the identity, an integer.
+        return Ok((Val::I64(first_cell(&rows, ex.db().inner.zone)?.as_i64()?), 1));
     }
     let (id, affected) = ex.execute(st, &req.params).await?;
     // An upsert writes one row: MySQL counts 2 for the one that updates, PostgreSQL and SQLite 1.
@@ -1262,17 +1259,10 @@ pub async fn create<M: Model>(m: &mut M) -> Result<M> {
             _ => {}
         }
     }
-    // The column that takes the received key: identity, or the key_prefix key that a corpus allocated to a primary key the
-    // request did not supply (PRT-73).
-    let assigned_key = match (&ent.identity, ent.primary_key.as_slice()) {
-        (Some(identity), _) => Some(identity),
-        (None, [pk]) if matches!(key, Val::Str(_)) && ent.key_prefix.is_some() && !c.sets.iter().any(|s| &s.column == pk) => Some(pk),
-        _ => None,
-    };
-    if let Some(column) = assigned_key {
+    // The column that takes the received key is the identity.
+    if let Some(column) = &ent.identity {
         st.add_name(column);
-        let value = if ent.identity.is_some() { Val::I64(key.as_i64()?) } else { key };
-        assign_model(&mut out, column, value)?;
+        assign_model(&mut out, column, Val::I64(key.as_i64()?))?;
     }
     st.loaded = true;
     for pk in &ent.primary_key {

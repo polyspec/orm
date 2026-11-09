@@ -328,8 +328,6 @@ pub enum Setting {
         shape: Option<Name>,
         shard: Option<StoreShard>,
     },
-    /// `key_prefix '<prefix>'`. The name holds the prefix without its quotes.
-    KeyPrefix(Name),
     Title(Name),
     Body(Name),
     Order(Name),
@@ -411,13 +409,12 @@ impl Setting {
             Setting::Navigation(..) => 7,
             Setting::Markdown(_) => 8,
             Setting::Store { .. } => 9,
-            Setting::KeyPrefix(_) => 10,
-            Setting::Title(_) => 11,
-            Setting::Body(_) => 12,
-            Setting::Order(_) => 13,
-            Setting::Checkbox(_) => 14,
-            Setting::Immutable => 15,
-            Setting::Audit { .. } => 16,
+            Setting::Title(_) => 10,
+            Setting::Body(_) => 11,
+            Setting::Order(_) => 12,
+            Setting::Checkbox(_) => 13,
+            Setting::Immutable => 14,
+            Setting::Audit { .. } => 15,
         }
     }
 

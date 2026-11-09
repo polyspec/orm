@@ -637,7 +637,6 @@ impl<'s, 'd> TableRules<'s, 'd> {
                         self.store_shard(kind, shard, order);
                     }
                 }
-                Setting::KeyPrefix(_) => self.key_prefix(line.pos),
                 Setting::Title(name) | Setting::Body(name) => self.text_column(name),
                 Setting::Order(name) => self.order(name),
                 Setting::Checkbox(name) => self.checkbox(name),
@@ -669,30 +668,6 @@ impl<'s, 'd> TableRules<'s, 'd> {
             && !self.own.unresolved.is_some_and(|u| u.contains(name.text.as_str()))
         {
             self.report(name.pos, "setting", format!("foreign key '{}' is not a foreign key of the table", name.text));
-        }
-    }
-
-    /// `key_prefix` needs a varchar primary key of one column; a failed primary key line reports nothing.
-    fn key_prefix(&mut self, at: Pos) {
-        let table = self.own.table;
-        if self.own.failed_keys.primary {
-            return;
-        }
-        let single = match table.primary.as_slice() {
-            [key] => match key.columns.as_slice() {
-                [column] => Some(column),
-                _ => None,
-            },
-            _ => None,
-        };
-        let Some(column) = single else {
-            self.report(at, "setting", "key_prefix needs a single-column primary key");
-            return;
-        };
-        if let Some(c) = table.column(&column.text) {
-            if !matches!(c.ty, Type::Varchar(_)) {
-                self.report(at, "setting", format!("key_prefix needs a varchar primary key, not {}", c.ty.render()));
-            }
         }
     }
 

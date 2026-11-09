@@ -38,6 +38,7 @@
                 "project",
                 "account_project",
                 "task",
+                "ranked_task",
                 "hex_cell",
                 "time_cell",
                 "clock_cell",

@@ -3535,15 +3535,15 @@
         {
           "op": "dbspec.set",
           "owned": [
-            "dbspec 1 wiki\n\ntable page {\n  id varchar(64)\n  title varchar(191)\n  body text\n  sort_order i32\n  state varchar(1)\n  primary key (id)\n  settings {\n    markdown body\n    store files\n    key_prefix 'page-'\n    title title\n    body body\n    order sort_order\n    checkbox state\n  }\n}\n\ntable page_history {\n  history_id i64 identity\n  page_id varchar(64)\n  from_state varchar(16)\n  to_state varchar(16)\n  changed_at datetime(6)\n  sort_order i32 null\n  primary key (history_id)\n  index ix_page_history_page (page_id)\n  foreign key fk_page_history_page (page_id) references page (id) on delete restrict on update restrict\n}\n\ntable section {\n  id varchar(64)\n  page_id varchar(64)\n  body text\n  primary key (id)\n  index ix_section_page (page_id)\n  foreign key fk_section_page (page_id) references page (id) on delete restrict on update restrict\n  settings {\n    store block fk_section_page list\n  }\n}\n\ntable ledger {\n  id varchar(64)\n  amount i64\n  primary key (id)\n  settings {\n    store document table\n  }\n}\n"
+            "dbspec 1 wiki\n\ntable page {\n  id varchar(64)\n  title varchar(191)\n  body text\n  sort_order i32\n  state varchar(1)\n  primary key (id)\n  settings {\n    markdown body\n    store files\n    title title\n    body body\n    order sort_order\n    checkbox state\n  }\n}\n\ntable page_history {\n  history_id i64 identity\n  page_id varchar(64)\n  from_state varchar(16)\n  to_state varchar(16)\n  changed_at datetime(6)\n  sort_order i32 null\n  primary key (history_id)\n  index ix_page_history_page (page_id)\n  foreign key fk_page_history_page (page_id) references page (id) on delete restrict on update restrict\n}\n\ntable section {\n  id varchar(64)\n  page_id varchar(64)\n  body text\n  primary key (id)\n  index ix_section_page (page_id)\n  foreign key fk_section_page (page_id) references page (id) on delete restrict on update restrict\n  settings {\n    store block fk_section_page list\n  }\n}\n\ntable ledger {\n  id varchar(64)\n  amount i64\n  primary key (id)\n  settings {\n    store document table\n  }\n}\n"
           ],
           "expect": {
             "none": {
               "manifest": {
-                "manifest_text": "dbspec 1 wiki\n\ntable page {\n  id varchar(64)\n  title varchar(191)\n  body text\n  sort_order i32\n  state varchar(1)\n  primary key (id)\n  settings {\n    markdown body\n    store files\n    key_prefix 'page-'\n    title title\n    body body\n    order sort_order\n    checkbox state\n  }\n}\n\ntable page_history {\n  history_id i64 identity\n  page_id varchar(64)\n  from_state varchar(16)\n  to_state varchar(16)\n  changed_at datetime(6)\n  sort_order i32 null\n  primary key (history_id)\n  index ix_page_history_page (page_id)\n  foreign key fk_page_history_page (page_id) references page (id) on delete restrict on update restrict\n}\n\ntable section {\n  id varchar(64)\n  page_id varchar(64)\n  body text\n  primary key (id)\n  index ix_section_page (page_id)\n  foreign key fk_section_page (page_id) references page (id) on delete restrict on update restrict\n  settings {\n    store block fk_section_page list\n  }\n}\n\ntable ledger {\n  id varchar(64)\n  amount i64\n  primary key (id)\n  settings {\n    store document table\n  }\n}\n",
-                "schema_text": "dbspec 1 schema\n\ntable ledger {\n  id varchar(64)\n  amount i64\n  primary key (id)\n}\n\ntable page {\n  id varchar(64)\n  title varchar(191)\n  body text\n  sort_order i32\n  state varchar(1)\n  primary key (id)\n}\n\ntable page_history {\n  history_id i64 identity\n  page_id varchar(64)\n  from_state varchar(16)\n  to_state varchar(16)\n  changed_at datetime(6)\n  sort_order i32 null\n  primary key (history_id)\n  index ix_page_history_page (page_id)\n  foreign key fk_page_history_page (page_id) references page (id) on delete restrict on update restrict\n}\n\ntable section {\n  id varchar(64)\n  page_id varchar(64)\n  body text\n  primary key (id)\n  index ix_section_page (page_id)\n  foreign key fk_section_page (page_id) references page (id) on delete restrict on update restrict\n}\n",
-                "manifest_hash": "sha256:3bcabb6db49887495d0861b85e1ffaac61b137a9fecbe8e4027d7b2abf4c592c",
-                "schema_hash": "sha256:3ed9bb77f8937282af8942ded73eb6f3aa8a6fafc367a3a9f444ca0ce94d08f5"
+                "manifest_hash": "sha256:151326f114737a178d1d2328e7890463b1a9fc1c13ae8cf0870c7f2551c4c142",
+                "manifest_text": "dbspec 1 wiki\n\ntable page {\n  id varchar(64)\n  title varchar(191)\n  body text\n  sort_order i32\n  state varchar(1)\n  primary key (id)\n  settings {\n    markdown body\n    store files\n    title title\n    body body\n    order sort_order\n    checkbox state\n  }\n}\n\ntable page_history {\n  history_id i64 identity\n  page_id varchar(64)\n  from_state varchar(16)\n  to_state varchar(16)\n  changed_at datetime(6)\n  sort_order i32 null\n  primary key (history_id)\n  index ix_page_history_page (page_id)\n  foreign key fk_page_history_page (page_id) references page (id) on delete restrict on update restrict\n}\n\ntable section {\n  id varchar(64)\n  page_id varchar(64)\n  body text\n  primary key (id)\n  index ix_section_page (page_id)\n  foreign key fk_section_page (page_id) references page (id) on delete restrict on update restrict\n  settings {\n    store block fk_section_page list\n  }\n}\n\ntable ledger {\n  id varchar(64)\n  amount i64\n  primary key (id)\n  settings {\n    store document table\n  }\n}\n",
+                "schema_hash": "sha256:3ed9bb77f8937282af8942ded73eb6f3aa8a6fafc367a3a9f444ca0ce94d08f5",
+                "schema_text": "dbspec 1 schema\n\ntable ledger {\n  id varchar(64)\n  amount i64\n  primary key (id)\n}\n\ntable page {\n  id varchar(64)\n  title varchar(191)\n  body text\n  sort_order i32\n  state varchar(1)\n  primary key (id)\n}\n\ntable page_history {\n  history_id i64 identity\n  page_id varchar(64)\n  from_state varchar(16)\n  to_state varchar(16)\n  changed_at datetime(6)\n  sort_order i32 null\n  primary key (history_id)\n  index ix_page_history_page (page_id)\n  foreign key fk_page_history_page (page_id) references page (id) on delete restrict on update restrict\n}\n\ntable section {\n  id varchar(64)\n  page_id varchar(64)\n  body text\n  primary key (id)\n  index ix_section_page (page_id)\n  foreign key fk_section_page (page_id) references page (id) on delete restrict on update restrict\n}\n"
               }
             }
           }
@@ -3563,7 +3563,6 @@
             "  settings {",
             "    markdown body",
             "    store files",
-            "    key_prefix 'page-'",
             "    title title",
             "    body body",
             "    order sort_order",
@@ -3827,845 +3826,833 @@
                 [
                   13,
                   4,
-                  14,
-                  "setting"
-                ],
-                [
-                  13,
-                  15,
-                  22,
-                  "string"
-                ],
-                [
-                  14,
-                  4,
                   9,
                   "setting"
                 ],
                 [
-                  14,
+                  13,
                   10,
                   15,
                   "name"
                 ],
                 [
-                  15,
+                  14,
                   4,
                   8,
                   "setting"
                 ],
                 [
-                  15,
+                  14,
                   9,
                   13,
                   "name"
                 ],
                 [
-                  16,
+                  15,
                   4,
                   9,
                   "setting"
                 ],
                 [
-                  16,
+                  15,
                   10,
                   20,
                   "name"
                 ],
                 [
-                  17,
+                  16,
                   4,
                   12,
                   "setting"
                 ],
                 [
-                  17,
+                  16,
                   13,
                   18,
                   "name"
                 ],
                 [
-                  18,
+                  17,
                   2,
                   3,
                   "punctuation"
                 ],
                 [
-                  19,
+                  18,
                   0,
                   1,
                   "punctuation"
                 ],
                 [
-                  21,
+                  20,
                   0,
                   5,
                   "keyword"
                 ],
                 [
-                  21,
+                  20,
                   6,
                   18,
                   "name"
                 ],
                 [
-                  21,
+                  20,
                   19,
                   20,
                   "punctuation"
                 ],
                 [
-                  22,
+                  21,
                   2,
                   12,
                   "name"
                 ],
                 [
-                  22,
+                  21,
                   13,
                   16,
                   "type"
                 ],
                 [
-                  22,
+                  21,
                   17,
                   25,
                   "keyword"
                 ],
                 [
-                  23,
+                  22,
                   2,
                   9,
                   "name"
                 ],
                 [
-                  23,
+                  22,
                   10,
                   17,
                   "type"
                 ],
                 [
-                  23,
+                  22,
                   17,
                   18,
                   "punctuation"
                 ],
                 [
-                  23,
+                  22,
                   18,
                   20,
                   "number"
                 ],
                 [
-                  23,
+                  22,
                   20,
                   21,
                   "punctuation"
                 ],
                 [
-                  24,
+                  23,
                   2,
                   12,
                   "name"
                 ],
                 [
-                  24,
+                  23,
                   13,
                   20,
                   "type"
                 ],
                 [
-                  24,
+                  23,
                   20,
                   21,
                   "punctuation"
                 ],
                 [
-                  24,
+                  23,
                   21,
                   23,
                   "number"
                 ],
                 [
-                  24,
+                  23,
                   23,
                   24,
                   "punctuation"
                 ],
                 [
-                  25,
+                  24,
                   2,
                   10,
                   "name"
                 ],
                 [
-                  25,
+                  24,
                   11,
                   18,
                   "type"
                 ],
                 [
-                  25,
+                  24,
                   18,
                   19,
                   "punctuation"
                 ],
                 [
-                  25,
+                  24,
                   19,
                   21,
                   "number"
                 ],
                 [
+                  24,
+                  21,
+                  22,
+                  "punctuation"
+                ],
+                [
+                  25,
+                  2,
+                  12,
+                  "name"
+                ],
+                [
+                  25,
+                  13,
+                  21,
+                  "type"
+                ],
+                [
                   25,
                   21,
                   22,
                   "punctuation"
                 ],
                 [
-                  26,
-                  2,
-                  12,
-                  "name"
-                ],
-                [
-                  26,
-                  13,
-                  21,
-                  "type"
-                ],
-                [
-                  26,
-                  21,
-                  22,
-                  "punctuation"
-                ],
-                [
-                  26,
+                  25,
                   22,
                   23,
                   "number"
                 ],
                 [
-                  26,
+                  25,
                   23,
                   24,
                   "punctuation"
                 ],
                 [
-                  27,
+                  26,
                   2,
                   12,
                   "name"
                 ],
                 [
-                  27,
+                  26,
                   13,
                   16,
                   "type"
                 ],
                 [
-                  27,
+                  26,
                   17,
                   21,
                   "keyword"
                 ],
                 [
-                  28,
+                  27,
                   2,
                   9,
                   "keyword"
                 ],
                 [
-                  28,
+                  27,
                   10,
                   13,
                   "keyword"
                 ],
                 [
-                  28,
+                  27,
                   14,
                   15,
                   "punctuation"
                 ],
                 [
-                  28,
+                  27,
                   15,
                   25,
                   "name"
                 ],
                 [
-                  28,
+                  27,
                   25,
                   26,
                   "punctuation"
                 ],
                 [
-                  29,
+                  28,
                   2,
                   7,
                   "keyword"
                 ],
                 [
-                  29,
+                  28,
                   8,
                   28,
                   "name"
                 ],
                 [
-                  29,
+                  28,
                   29,
                   30,
                   "punctuation"
                 ],
                 [
-                  29,
+                  28,
                   30,
                   37,
                   "name"
                 ],
                 [
-                  29,
+                  28,
                   37,
                   38,
                   "punctuation"
                 ],
                 [
-                  30,
+                  29,
                   2,
                   9,
                   "keyword"
                 ],
                 [
-                  30,
+                  29,
                   10,
                   13,
                   "keyword"
                 ],
                 [
-                  30,
+                  29,
                   14,
                   34,
                   "name"
                 ],
                 [
-                  30,
+                  29,
                   35,
                   36,
                   "punctuation"
                 ],
                 [
-                  30,
+                  29,
                   36,
                   43,
                   "name"
                 ],
                 [
-                  30,
+                  29,
                   43,
                   44,
                   "punctuation"
                 ],
                 [
-                  30,
+                  29,
                   45,
                   55,
                   "keyword"
                 ],
                 [
-                  30,
+                  29,
                   56,
                   60,
                   "name"
                 ],
                 [
-                  30,
+                  29,
                   61,
                   62,
                   "punctuation"
                 ],
                 [
-                  30,
+                  29,
                   62,
                   64,
                   "name"
                 ],
                 [
-                  30,
+                  29,
                   64,
                   65,
                   "punctuation"
                 ],
                 [
-                  30,
+                  29,
                   66,
                   68,
                   "keyword"
                 ],
                 [
-                  30,
+                  29,
                   69,
                   75,
                   "keyword"
                 ],
                 [
-                  30,
+                  29,
                   76,
                   84,
                   "keyword"
                 ],
                 [
-                  30,
+                  29,
                   85,
                   87,
                   "keyword"
                 ],
                 [
-                  30,
+                  29,
                   88,
                   94,
                   "keyword"
                 ],
                 [
-                  30,
+                  29,
                   95,
                   103,
                   "keyword"
                 ],
                 [
-                  31,
+                  30,
                   0,
                   1,
                   "punctuation"
                 ],
                 [
-                  33,
+                  32,
                   0,
                   5,
                   "keyword"
                 ],
                 [
-                  33,
+                  32,
                   6,
                   13,
                   "name"
                 ],
                 [
-                  33,
+                  32,
                   14,
                   15,
                   "punctuation"
                 ],
                 [
-                  34,
+                  33,
                   2,
                   4,
                   "name"
                 ],
                 [
-                  34,
+                  33,
                   5,
                   12,
                   "type"
                 ],
                 [
-                  34,
+                  33,
                   12,
                   13,
                   "punctuation"
                 ],
                 [
-                  34,
+                  33,
                   13,
                   15,
                   "number"
                 ],
                 [
-                  34,
+                  33,
                   15,
                   16,
                   "punctuation"
                 ],
                 [
-                  35,
+                  34,
                   2,
                   9,
                   "name"
                 ],
                 [
-                  35,
+                  34,
                   10,
                   17,
                   "type"
                 ],
                 [
-                  35,
+                  34,
                   17,
                   18,
                   "punctuation"
                 ],
                 [
-                  35,
+                  34,
                   18,
                   20,
                   "number"
                 ],
                 [
-                  35,
+                  34,
                   20,
                   21,
                   "punctuation"
                 ],
                 [
-                  36,
+                  35,
                   2,
                   6,
                   "name"
                 ],
                 [
-                  36,
+                  35,
                   7,
                   11,
                   "type"
                 ],
                 [
-                  37,
+                  36,
                   2,
                   9,
                   "keyword"
                 ],
                 [
-                  37,
+                  36,
                   10,
                   13,
                   "keyword"
                 ],
                 [
-                  37,
+                  36,
                   14,
                   15,
                   "punctuation"
                 ],
                 [
-                  37,
+                  36,
                   15,
                   17,
                   "name"
                 ],
                 [
-                  37,
+                  36,
                   17,
                   18,
                   "punctuation"
                 ],
                 [
-                  38,
+                  37,
                   2,
                   7,
                   "keyword"
                 ],
                 [
-                  38,
+                  37,
                   8,
                   23,
                   "name"
                 ],
                 [
-                  38,
+                  37,
                   24,
                   25,
                   "punctuation"
                 ],
                 [
-                  38,
+                  37,
                   25,
                   32,
                   "name"
                 ],
                 [
-                  38,
+                  37,
                   32,
                   33,
                   "punctuation"
                 ],
                 [
-                  39,
+                  38,
                   2,
                   9,
                   "keyword"
                 ],
                 [
-                  39,
+                  38,
                   10,
                   13,
                   "keyword"
                 ],
                 [
-                  39,
+                  38,
                   14,
                   29,
                   "name"
                 ],
                 [
-                  39,
+                  38,
                   30,
                   31,
                   "punctuation"
                 ],
                 [
-                  39,
+                  38,
                   31,
                   38,
                   "name"
                 ],
                 [
-                  39,
+                  38,
                   38,
                   39,
                   "punctuation"
                 ],
                 [
-                  39,
+                  38,
                   40,
                   50,
                   "keyword"
                 ],
                 [
-                  39,
+                  38,
                   51,
                   55,
                   "name"
                 ],
                 [
-                  39,
+                  38,
                   56,
                   57,
                   "punctuation"
                 ],
                 [
-                  39,
+                  38,
                   57,
                   59,
                   "name"
                 ],
                 [
-                  39,
+                  38,
                   59,
                   60,
                   "punctuation"
                 ],
                 [
-                  39,
+                  38,
                   61,
                   63,
                   "keyword"
                 ],
                 [
-                  39,
+                  38,
                   64,
                   70,
                   "keyword"
                 ],
                 [
-                  39,
+                  38,
                   71,
                   79,
                   "keyword"
                 ],
                 [
-                  39,
+                  38,
                   80,
                   82,
                   "keyword"
                 ],
                 [
-                  39,
+                  38,
                   83,
                   89,
                   "keyword"
                 ],
                 [
-                  39,
+                  38,
                   90,
                   98,
                   "keyword"
                 ],
                 [
-                  40,
+                  39,
                   2,
                   10,
                   "keyword"
                 ],
                 [
-                  40,
+                  39,
                   11,
                   12,
                   "punctuation"
                 ],
                 [
-                  41,
+                  40,
                   4,
                   9,
                   "setting"
                 ],
                 [
-                  41,
+                  40,
                   10,
                   15,
                   "keyword"
                 ],
                 [
-                  41,
+                  40,
                   16,
                   31,
                   "name"
                 ],
                 [
-                  41,
+                  40,
                   32,
                   36,
                   "keyword"
                 ],
                 [
-                  42,
+                  41,
                   2,
                   3,
                   "punctuation"
                 ],
                 [
-                  43,
+                  42,
                   0,
                   1,
                   "punctuation"
                 ],
                 [
-                  45,
+                  44,
                   0,
                   5,
                   "keyword"
                 ],
                 [
-                  45,
+                  44,
                   6,
                   12,
                   "name"
                 ],
                 [
-                  45,
+                  44,
                   13,
                   14,
                   "punctuation"
                 ],
                 [
-                  46,
+                  45,
                   2,
                   4,
                   "name"
                 ],
                 [
-                  46,
+                  45,
                   5,
                   12,
                   "type"
                 ],
                 [
-                  46,
+                  45,
                   12,
                   13,
                   "punctuation"
                 ],
                 [
-                  46,
+                  45,
                   13,
                   15,
                   "number"
                 ],
                 [
-                  46,
+                  45,
                   15,
                   16,
                   "punctuation"
                 ],
                 [
-                  47,
+                  46,
                   2,
                   8,
                   "name"
                 ],
                 [
-                  47,
+                  46,
                   9,
                   12,
                   "type"
                 ],
                 [
-                  48,
+                  47,
                   2,
                   9,
                   "keyword"
                 ],
                 [
-                  48,
+                  47,
                   10,
                   13,
                   "keyword"
                 ],
                 [
-                  48,
+                  47,
                   14,
                   15,
                   "punctuation"
                 ],
                 [
-                  48,
+                  47,
                   15,
                   17,
                   "name"
                 ],
                 [
-                  48,
+                  47,
                   17,
                   18,
                   "punctuation"
                 ],
                 [
-                  49,
+                  48,
                   2,
                   10,
                   "keyword"
                 ],
                 [
-                  49,
+                  48,
                   11,
                   12,
                   "punctuation"
                 ],
                 [
-                  50,
+                  49,
                   4,
                   9,
                   "setting"
                 ],
                 [
-                  50,
+                  49,
                   10,
                   18,
                   "keyword"
                 ],
                 [
-                  50,
+                  49,
                   19,
                   24,
                   "keyword"
                 ],
                 [
-                  51,
+                  50,
                   2,
                   3,
                   "punctuation"
                 ],
                 [
-                  52,
+                  51,
                   0,
                   1,
                   "punctuation"

@@ -166,7 +166,6 @@ type ISetting = { readonly kw: Tk; readonly comments: string[] } & (
       /** `shard <column> <period>`: the shard keyword token, the column and the period, or null without the clause. */
       readonly shard: { readonly at: Tk; readonly column: Tk; readonly period: Tk } | null;
     }
-  | { readonly kind: 'key_prefix'; readonly prefix: Tk }
   | { readonly kind: 'title' | 'body' | 'order' | 'checkbox'; readonly column: Tk }
 );
 
@@ -1448,13 +1447,6 @@ class DocumentParser {
         entry = parsed;
         break;
       }
-      case 'key_prefix': {
-        const prefix = toks[1];
-        if (prefix === undefined || prefix.k !== K.Str) return this.syntax(toks, 1, line, 'expected a key prefix in quotes');
-        if (toks.length > 2) return this.syntax(toks, 2, line, 'expected the end of the line');
-        entry = { kw, comments, kind: 'key_prefix', prefix };
-        break;
-      }
       case 'title':
       case 'order':
       case 'body': {
@@ -2210,9 +2202,6 @@ class DocumentParser {
           if (s.storage.t === 'block' && s.foreignKey !== null) this.checkForeignKeyName(table, s.foreignKey);
           this.checkStoreShard(table, s, entries.some(e => e.kind === 'order'));
           break;
-        case 'key_prefix':
-          this.checkKeyPrefix(table, s);
-          break;
         case 'title':
         case 'body':
           this.checkTextColumn(table, s);
@@ -2257,20 +2246,6 @@ class DocumentParser {
   private checkForeignKeyName(table: ITable, tok: Tk): void {
     if (!this.ref(tok) || table.failed.has(tok.t)) return;
     if (!table.fks.some(f => f.name.t === tok.t)) this.at('setting', tok, `foreign key ${tok.t} is not a foreign key of the table`);
-  }
-
-  /** The primary key is one varchar column. */
-  private checkKeyPrefix(table: ITable, s: Extract<ISetting, { kind: 'key_prefix' }>): void {
-    if (table.failedPrimary) return;
-    const pk = table.pks;
-    if (pk.length !== 1 || present(pk[0], 'pk[0]').cols.length !== 1) {
-      this.at('setting', s.kw, 'key_prefix needs a single-column primary key');
-      return;
-    }
-    const c = table.colMap.get(present(present(pk[0], 'pk[0]').cols[0], 'pk[0].cols[0]').tok.t);
-    if (c !== undefined && c.type !== null && c.type.kind !== 'varchar') {
-      this.at('setting', s.kw, `key_prefix needs a varchar primary key, not ${typeText(c.type)}`);
-    }
   }
 
   /** The title and body columns are non-null varchar or text columns. */
@@ -2716,9 +2691,6 @@ function settingOf(s: ISetting): DbspecSetting {
         shape: s.shape === null ? null : oneOf(SHAPES, s.shape.t, 'the store shape'),
         shard: s.shard === null ? null : { column: s.shard.column.t, period: oneOf(PERIODS, s.shard.period.t, 'the shard period') },
       };
-      break;
-    case 'key_prefix':
-      setting = { comments, kind: s.kind, prefix: stringValue(s.prefix) };
       break;
     case 'title':
     case 'body':

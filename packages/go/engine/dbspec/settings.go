@@ -106,8 +106,6 @@ func (v *validator) setting(t *tableNode, s *settingNode, aesColumns map[string]
 		v.foreignKeyName(t, s.args[0])
 	case "store":
 		v.store(t, s)
-	case "key_prefix":
-		v.keyPrefix(t, s)
 	case "title", "body":
 		v.textColumn(t, s)
 	case "order":
@@ -176,20 +174,6 @@ func (v *validator) store(t *tableNode, s *settingNode) {
 	}
 	if slices.ContainsFunc(t.settings.lines, func(l *settingNode) bool { return l.keyword.text == "order" }) {
 		v.add(RuleSetting, shard, "store shard is rejected on a table with order")
-	}
-}
-
-// keyPrefix checks that the primary key is a single varchar column.
-func (v *validator) keyPrefix(t *tableNode, s *settingNode) {
-	if t.failedPK {
-		return
-	}
-	if len(t.primaryKeys) != 1 || len(t.primaryKeys[0].columns) != 1 {
-		v.add(RuleSetting, s.keyword, "key_prefix needs a single-column primary key")
-		return
-	}
-	if c := t.column(t.primaryKeys[0].columns[0].text); c != nil && c.typ.valid && c.typ.typ.Kind != TypeVarchar {
-		v.add(RuleSetting, s.keyword, "key_prefix needs a varchar primary key, not %s", c.typ.typ)
 	}
 }
 

@@ -178,7 +178,6 @@ type Settings struct {
 	Audit           *AuditSetting
 	Marks           []MarkSetting
 	Store           *StoreSetting
-	KeyPrefix       *KeyPrefixSetting
 	Title           *ColumnSetting
 	Body            *ColumnSetting
 	Order           *ColumnSetting
@@ -202,12 +201,6 @@ type StoreSetting struct {
 type StoreShard struct {
 	Column string
 	Period string
-}
-
-// KeyPrefixSetting is `key_prefix '<p>'`: the assignment prefix of a character primary key.
-type KeyPrefixSetting struct {
-	Comments []string
-	Prefix   string
 }
 
 // MarkSetting is `markdown <column>`: a manifest-only mark of a prose column.

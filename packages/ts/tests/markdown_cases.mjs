@@ -48,18 +48,18 @@ async function installCatalog(s, name) {
 /** A function that runs the case for each id in cases.json and returns the result value that README defines. A thrown OrmError becomes {"error": code} with its code. */
 export const conformanceCases = {
   insert_one: async s => {
-    const m = await new People().connect(s.db).setName('Ann').setEmail('ann@example.com').setAge(30).setScore('1.50').create();
+    const m = await new People().connect(s.db).setId('P1').setName('Ann').setEmail('ann@example.com').setAge(30).setScore('1.50').create();
     return { id: m.getId() };
   },
   insert_rows: async s => {
-    const bob = new People().setName('Bob').setEmail('bob@example.com').setAge(25).setScore('2.00');
-    const cara = new People().setName('Cara').setEmail(null).setAge(null).setScore('0.50');
+    const bob = new People().setId('P2').setName('Bob').setEmail('bob@example.com').setAge(25).setScore('2.00');
+    const cara = new People().setId('P3').setName('Cara').setEmail(null).setAge(null).setScore('0.50');
     return new People().connect(s.db).creates([bob, cara], 2);
   },
   insert_rows_tasks: async s => new Tasks().connect(s.db).creates([
-    new Tasks().setOwner('P1').setTitle('write spec').setPoints(3).setDue('2026-10-01'),
-    new Tasks().setOwner('P1').setTitle('review').setPoints(5).setDue(null),
-    new Tasks().setOwner('P2').setTitle('ship').setPoints(8).setDue('2026-10-05'),
+    new Tasks().setId('T1').setOwner('P1').setTitle('write spec').setPoints(3).setDue('2026-10-01'),
+    new Tasks().setId('T2').setOwner('P1').setTitle('review').setPoints(5).setDue(null),
+    new Tasks().setId('T3').setOwner('P2').setTitle('ship').setPoints(8).setDue('2026-10-05'),
   ], 3),
   insert_identity: async s => {
     const m = await new Logs().connect(s.db).setTask('T1').setNote('started').create();
@@ -133,7 +133,7 @@ export const conformanceCases = {
     return stale.setAge(27).update(true);
   },
   insert_on_duplicate: async s => {
-    const m = await new People().connect(s.db).setName('Ann B').setEmail('ann@example.com')
+    const m = await new People().connect(s.db).setId('P1').setName('Ann B')
       .duplication(new People().setName('Ann B')).create();
     const read = await new People().connect(s.db).id('P1').get();
     return { created: m.getId(), name: read.getName() };

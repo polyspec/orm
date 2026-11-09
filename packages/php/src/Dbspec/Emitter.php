@@ -113,7 +113,6 @@ final class Emitter
     {
         return match ($setting->kind) {
             'select_explicit' => 'select explicit ' . implode(' ', $setting->arguments),
-            'key_prefix' => 'key_prefix ' . self::quote($setting->arguments[0]),
             'store' => self::store($setting->arguments),
             // Schema text is decided by database state, so the columns not recorded are written as an exclude
             // list in column order. Other views write the list they were given as is.
@@ -140,12 +139,6 @@ final class Emitter
             $line .= ' shard ' . implode(' ', array_slice($arguments, $count));
         }
         return $line;
-    }
-
-    /** A string literal in canonical text: the value between single quotes, with each quote written twice. */
-    private static function quote(string $value): string
-    {
-        return "'" . str_replace("'", "''", $value) . "'";
     }
 
     /** @param list<string> $comments */

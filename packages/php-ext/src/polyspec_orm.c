@@ -1886,14 +1886,11 @@ ZEND_METHOD(Polyspec_Orm_Validator, conflictKey)
 ZEND_METHOD(Polyspec_Orm_Planner, __construct)
 {
     zval *model, *dialect;
-    bool assigns = false;
-    ZEND_PARSE_PARAMETERS_START(2, 3)
+    ZEND_PARSE_PARAMETERS_START(2, 2)
         Z_PARAM_OBJECT(model)
         Z_PARAM_OBJECT(dialect)
-        Z_PARAM_OPTIONAL
-        Z_PARAM_BOOL(assigns)
     ZEND_PARSE_PARAMETERS_END();
-    planner_construct(ZEND_THIS, model, dialect, assigns);
+    planner_construct(ZEND_THIS, model, dialect);
 }
 
 ZEND_METHOD(Polyspec_Orm_Planner, compile)
@@ -2881,7 +2878,7 @@ static PHP_MINIT_FUNCTION(polyspec_orm)
     static const zend_long arity[] = {2, 1, 1, 1};
     static const char *const actions[] = {"restrict", "cascade", "set_null"};
     static const char *const kinds[] = {"entity", "updated", "soft_delete", "select_explicit", "codec", "aes_version", "blind_index", "navigation", "markdown", "store",
-        "key_prefix", "title", "body", "order", "checkbox", "immutable", "audit"};
+        "title", "body", "order", "checkbox", "immutable", "audit"};
     static const char *const stages[] = {"ordered_json", "aes", "hex", "gz", "base64", "serialize", "yaml", "ip"};
     static const char *const store_kinds[] = {"files", "document", "block"};
     static const zend_long store_arguments[] = {1, 2, 3};

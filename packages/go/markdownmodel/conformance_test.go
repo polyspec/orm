@@ -242,18 +242,18 @@ var errStop = errors.New("stop")
 func conformanceCases() map[string]caseFunc {
 	return map[string]caseFunc{
 		"insert_one": func(s *served) (any, error) {
-			score, err := markdownmodel.People().Connect(s.db).SetName("Ann").SetEmail(ptr("ann@example.com")).SetAge(ptr(int32(30))).SetScore("1.50")
+			score, err := markdownmodel.People().Connect(s.db).SetId("P1").SetName("Ann").SetEmail(ptr("ann@example.com")).SetAge(ptr(int32(30))).SetScore("1.50")
 			if err != nil {
 				return nil, err
 			}
 			return conformanceInsertedID(score.Create())
 		},
 		"insert_rows": func(s *served) (any, error) {
-			bob, err := markdownmodel.People().SetName("Bob").SetEmail(ptr("bob@example.com")).SetAge(ptr(int32(25))).SetScore("2.00")
+			bob, err := markdownmodel.People().SetId("P2").SetName("Bob").SetEmail(ptr("bob@example.com")).SetAge(ptr(int32(25))).SetScore("2.00")
 			if err != nil {
 				return nil, err
 			}
-			cara, err := markdownmodel.People().SetName("Cara").SetEmail(nil).SetAge(nil).SetScore("0.50")
+			cara, err := markdownmodel.People().SetId("P3").SetName("Cara").SetEmail(nil).SetAge(nil).SetScore("0.50")
 			if err != nil {
 				return nil, err
 			}
@@ -261,9 +261,9 @@ func conformanceCases() map[string]caseFunc {
 		},
 		"insert_rows_tasks": func(s *served) (any, error) {
 			rows := []*markdownmodel.TasksModel{
-				markdownmodel.Tasks().SetOwner("P1").SetTitle("write spec").SetPoints(3).SetDue(day("2026-10-01")),
-				markdownmodel.Tasks().SetOwner("P1").SetTitle("review").SetPoints(5).SetDue(nil),
-				markdownmodel.Tasks().SetOwner("P2").SetTitle("ship").SetPoints(8).SetDue(day("2026-10-05")),
+				markdownmodel.Tasks().SetId("T1").SetOwner("P1").SetTitle("write spec").SetPoints(3).SetDue(day("2026-10-01")),
+				markdownmodel.Tasks().SetId("T2").SetOwner("P1").SetTitle("review").SetPoints(5).SetDue(nil),
+				markdownmodel.Tasks().SetId("T3").SetOwner("P2").SetTitle("ship").SetPoints(8).SetDue(day("2026-10-05")),
 			}
 			return markdownmodel.Tasks().Connect(s.db).Creates(rows, len(rows))
 		},
@@ -478,7 +478,7 @@ func conformanceCases() map[string]caseFunc {
 			return stale.SetAge(ptr(int32(27))).Update(true)
 		},
 		"insert_on_duplicate": func(s *served) (any, error) {
-			m, err := markdownmodel.People().Connect(s.db).SetName("Ann B").SetEmail(ptr("ann@example.com")).
+			m, err := markdownmodel.People().Connect(s.db).SetId("P1").SetName("Ann B").
 				Duplication(markdownmodel.People().SetName("Ann B")).Create()
 			if err != nil {
 				return nil, err

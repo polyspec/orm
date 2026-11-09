@@ -622,7 +622,7 @@ class _Setting:
         self.tables = fields.get("tables")
         # The exclude and include lists of audit. A setting that writes both is rejected by the check.
         self.lists = fields.get("lists", ())
-        # Tokens of the markdown, store, key_prefix, title, body, order, and checkbox lines.
+        # Tokens of the markdown, store, title, body, order, and checkbox lines.
         self.args = fields.get("args", ())
 
 
@@ -799,7 +799,6 @@ FORM_SETTINGS = frozenset(
     {
         "markdown",
         "store",
-        "key_prefix",
         "title",
         "body",
         "order",
@@ -869,11 +868,6 @@ class _Cursor:
             tok = self.next()
             _mark(tok, "keyword")
             return tok, True
-        return None, self.fail(what)
-
-    def quoted(self, what: str):
-        if self.more() and self.toks[self.i].k == STR:
-            return self.next(), True
         return None, self.fail(what)
 
     def value(self, what: str):
@@ -1791,7 +1785,7 @@ class DocumentParser:
         self._settings_block.entries.append(entry)
 
     def _form_setting(self, toks, line: int, comments):
-        """Reads markdown, store, key_prefix, title, body, order, and checkbox lines as Go's settingsLine does.
+        """Reads markdown, store, title, body, order, and checkbox lines as Go's settingsLine does.
         Returns _Setting if the line matches, otherwise None (the error was reported)."""
         c = _Cursor(self, toks, line, self.lines[line - 1])
         kw = c.next()
@@ -1830,10 +1824,6 @@ class DocumentParser:
                     )
                     if ok:
                         args.append(period)
-        elif kw.t == "key_prefix":
-            prefix, ok = c.quoted("a key prefix in quotes")
-            if ok:
-                args.append(prefix)
         if not ok or not c.done():
             return None
         return _Setting(kw, comments, kw.t, args=tuple(args))
@@ -2755,8 +2745,6 @@ class DocumentParser:
             if s.args[0].t == "block":
                 self._foreign_key_name(table, s.args[1])
             self._store_shard(table, s)
-        elif kind == "key_prefix":
-            self._key_prefix(table, s)
         elif kind in ("title", "body"):
             c = self._column_ref(table, s.args[0])
             if c is not None and (
@@ -2811,20 +2799,6 @@ class DocumentParser:
                 "setting",
                 tok,
                 f'foreign key "{tok.t}" is not a foreign key of the table',
-            )
-
-    def _key_prefix(self, table: _Table, s: _Setting) -> None:
-        if table.failed_primary:
-            return
-        if len(table.pks) != 1 or len(table.pks[0].cols) != 1:
-            self._at("setting", s.kw, "key_prefix needs a single-column primary key")
-            return
-        c = table.col_map.get(table.pks[0].cols[0].tok.t)
-        if c is not None and c.type is not None and c.type.kind != "varchar":
-            self._at(
-                "setting",
-                s.kw,
-                f"key_prefix needs a varchar primary key, not {type_text(c.type)}",
             )
 
     def _order(self, table: _Table, s: _Setting) -> None:
@@ -3435,21 +3409,19 @@ class DocumentParser:
         )
 
     def _form_setting_of(self, s: _Setting) -> DbspecSetting:
-        a = [t.t if t.k != STR else string_value(t) for t in s.args]
+        a = [t.t for t in s.args]
         base = {"kind": s.kind, "comments": tuple(s.comments)}
         if s.kind in ("markdown", "title", "body", "order", "checkbox"):
             return DbspecSetting(column=a[0], **base)
-        if s.kind == "store":
-            at = STORE_ARGUMENTS[a[0]]
-            return DbspecSetting(
-                form=a[0],
-                foreign_key=a[1] if a[0] == "block" else "",
-                shape=a[at - 1] if a[0] != "files" else "",
-                shard=DbspecStoreShard(a[at + 1], a[at + 2]) if len(a) > at else None,
-                **base,
-            )
-        # key_prefix
-        return DbspecSetting(prefix=a[0], **base)
+        # store
+        at = STORE_ARGUMENTS[a[0]]
+        return DbspecSetting(
+            form=a[0],
+            foreign_key=a[1] if a[0] == "block" else "",
+            shape=a[at - 1] if a[0] != "files" else "",
+            shard=DbspecStoreShard(a[at + 1], a[at + 2]) if len(a) > at else None,
+            **base,
+        )
 
     @property
     def halted(self) -> bool:

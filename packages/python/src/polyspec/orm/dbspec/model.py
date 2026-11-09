@@ -202,12 +202,11 @@ class DbspecSetting:
     tables: tuple | None = None
     exclude: tuple | None = None
     include: tuple | None = None
-    # For markdown, store, key_prefix, title, body, order, and checkbox only. The kind of store is form.
+    # For markdown, store, title, body, order, and checkbox only. The kind of store is form.
     form: str = ""
     shape: str = ""
     # store only: None if there is no shard clause.
     shard: DbspecStoreShard | None = None
-    prefix: str = ""
 
 
 @dataclass(frozen=True)

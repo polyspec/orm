@@ -1408,7 +1408,6 @@ impl Parser {
             }),
             (Kind::Word, "markdown") => self.name(&mut cursor).map(Setting::Markdown),
             (Kind::Word, "store") => self.store(&mut cursor),
-            (Kind::Word, "key_prefix") => self.quoted(&mut cursor).map(Setting::KeyPrefix),
             (Kind::Word, "title") => self.name(&mut cursor).map(Setting::Title),
             (Kind::Word, "body") => self.name(&mut cursor).map(Setting::Body),
             (Kind::Word, "order") => self.name(&mut cursor).map(Setting::Order),
@@ -1497,20 +1496,6 @@ impl Parser {
                 cursor.next();
                 self.mark(t, Class::Keyword);
                 Some(Name { text: t.text.to_owned(), pos: t.pos })
-            }
-            _ => {
-                self.syntax(cursor);
-                None
-            }
-        }
-    }
-
-    /// A string literal; the name holds its text without the quotes.
-    fn quoted(&mut self, cursor: &mut Cursor) -> Option<Name> {
-        match cursor.peek() {
-            Some(t) if t.kind == Kind::Str => {
-                cursor.next();
-                Some(Name { text: t.string_value(), pos: t.pos })
             }
             _ => {
                 self.syntax(cursor);

@@ -154,7 +154,6 @@ var (
 	pkID             = []string{"  primary key (id)"}
 	markdownSettings = []string{
 		"store document list",
-		"key_prefix 'T'",
 		"title title",
 		"body body",
 		"order position",
@@ -162,7 +161,7 @@ var (
 	}
 )
 
-// TestMarkdownStorageSetting: the storage, key, title, body, order, and checkbox settings of markdown storage are parsed, emitted canonically, and reach the settings model.
+// TestMarkdownStorageSetting: the storage, title, body, order, and checkbox settings of markdown storage are parsed, emitted canonically, and reach the settings model.
 func TestMarkdownStorageSetting(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	text := joinLines(markdownDoc(markdownColumns, pkID, markdownSettings...), false)
@@ -171,9 +170,9 @@ func TestMarkdownStorageSetting(t *testing.T) {
 	if s.Store == nil || s.Store.Kind != "document" || s.Store.Shape != "list" {
 		t.Fatalf("store: %+v", s.Store)
 	}
-	if s.KeyPrefix == nil || s.KeyPrefix.Prefix != "T" || s.Title == nil || s.Title.Column != "title" ||
+	if s.Title == nil || s.Title.Column != "title" ||
 		s.Body == nil || s.Body.Column != "body" || s.Order == nil || s.Order.Column != "position" {
-		t.Fatalf("key, title, body or order: %+v %+v %+v %+v", s.KeyPrefix, s.Title, s.Body, s.Order)
+		t.Fatalf("title, body or order: %+v %+v %+v", s.Title, s.Body, s.Order)
 	}
 	if s.Checkbox == nil || s.Checkbox.Column != "status" {
 		t.Fatalf("checkbox: %+v", s.Checkbox)

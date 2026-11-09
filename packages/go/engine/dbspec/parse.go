@@ -455,14 +455,6 @@ func (c *cursor) oneOf(what string, words ...string) (token, bool) {
 	return token{}, c.fail(what)
 }
 
-// quoted reads one string literal; its text is the value without the quotes.
-func (c *cursor) quoted(what string) (token, bool) {
-	if c.more() && c.tokens[c.i].kind == tokenString {
-		return c.next(), true
-	}
-	return token{}, c.fail(what)
-}
-
 // optional consumes the keyword text when it comes next.
 func (c *cursor) optional(text string) *token {
 	if c.peekIs(tokenWord, text) {
@@ -1078,12 +1070,6 @@ func (p *parser) settingsLine(c *cursor) {
 					line.args = append(line.args, period)
 				}
 			}
-		}
-	case "key_prefix":
-		var prefix token
-		prefix, ok = c.quoted("a key prefix in quotes")
-		if ok {
-			line.args = append(line.args, prefix)
 		}
 	case "title", "body", "order", "checkbox":
 		ok = arg("a column name")

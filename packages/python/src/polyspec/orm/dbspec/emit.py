@@ -33,7 +33,6 @@ _SETTING_ORDER = (
     "navigation",
     "markdown",
     "store",
-    "key_prefix",
     "title",
     "body",
     "order",
@@ -86,11 +85,6 @@ def _audit_line(setting, kind: str, columns) -> str:
     return f"{head} {kind} ({', '.join(columns)})"
 
 
-def quote(value: str) -> str:
-    """A single-quoted string literal: a single quote inside it is written as two."""
-    return "'" + value.replace("'", "''") + "'"
-
-
 def _setting_key(setting) -> str:
     if setting.kind in ("codec", "blind_index", "markdown"):
         key = setting.column
@@ -130,8 +124,6 @@ def _setting_text(setting, table: DbspecTable, view: str) -> str:
         if setting.form == "block":
             return f"store block {setting.foreign_key} {setting.shape}{shard}"
         return f"store document {setting.shape}{shard}"
-    if kind == "key_prefix":
-        return f"key_prefix {quote(setting.prefix)}"
     if kind in ("title", "body", "order", "checkbox"):
         return f"{kind} {setting.column}"
     # Schema text is determined by database state, so columns that are not recorded are listed

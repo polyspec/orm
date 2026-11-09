@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: daa05c9b2d5f0236e7b3b3bf3da53a1425bea68142bfe794ff5e811dcb63e4c8 -->
+<!-- source-sha256: 4536af96886cdc8fe3ab149091f14cfbd3dd7fb169f68ecc9d764537c4e5ff42 -->
 # dbspec
 
 [English](dbspec.md)
@@ -230,9 +230,8 @@ predicate는 다음 중 하나다.
 - **DBS-74** `markdown <column>`: column이 markdown 산문을 담는다. column마다 반복 가능하고 임의의 nullability varchar 또는 text column에 쓴다. database는 이를 위해 아무것도 render하지 않고 문서를 소유한 도구가 읽는다 (Hash: manifest)
 - **DBS-75** `store files`, `store document list|table`, `store block <foreign key> list|table`: table의 markdown corpus 저장이다. `files`는 행마다 file 하나를, `document`는 모든 행을 문서 하나에, `block`은 지정한 foreign key가 가리키는 부모 행 안에 행을 쓴다. `list`나 `table`이 모양이다. table마다 정확히 하나를 쓴다 (Hash: manifest)
 - **DBS-76** `store files shard <column> <period>`, `store document list|table shard <column> <period>`: 저장의 시간 shard다. corpus는 column의 기간마다 행을 따로 둔다. column은 non-null `date` 또는 `datetime` column이고 기간은 `year`, `month` 또는 `day`다. `store block` table, self foreign key가 있는 table, `order`가 있는 table은 이를 거부한다. SQL backend는 이를 무시한다: 아무것도 render하지 않고 introspection도 복원하지 않는다 (Hash: manifest)
-- **DBS-77** `key_prefix '<p>'`: executor가 varchar primary key를 `<p><n + 1>`로 할당한다. n은 그 꼴 key 가운데 가장 큰 10진 suffix다. primary key는 varchar column 하나여야 한다 (Hash: manifest)
 - **DBS-78** `title <column>`, `body <column>`: 행의 제목과 본문이다. 각각 non-null varchar 또는 text column이다 (Hash: manifest)
-- **DBS-79** `order <column>`: 형제 행 사이의 위치이며 executor가 할당한다. default가 없고 어떤 key, index, check에도 없는 non-null `i32` 또는 `i64` column이다 (Hash: manifest)
+- **DBS-79** `order <column>`: 형제 행 묶음의 행을 쓰는 순서다. markdown corpus는 그 column의 순서로 행을 쓴다. application은 그 column을 다른 정수처럼 쓰며, 아무것도 그 값을 할당하지 않는다: 그 column을 생략한 insert는 default 없는 다른 non-null column처럼 `IR_INVALID`다. column은 default가 없고 어떤 key, index, check에도 없는 non-null `i32` 또는 `i64` column이다 (Hash: manifest)
 - **DBS-80** `checkbox <column>`: list 행이 task marker의 괄호 사이에 쓰는 column이다. `varchar(1)` column은 `[<value>]`로, `bool` column은 0이면 GFM의 체크하지 않은 task box `[ ]`, 1이면 체크한 box `[x]`로 쓴다. column은 nullable이어도 된다. 다른 type의 column은 그 column에서 `setting` error다. table마다 `checkbox` 줄은 하나다. state별 형태 `checkbox <column> <state> '<glyph>'`는 문법의 형태가 아니어서 그 state에서 `syntax` error이고, `state_machine` 줄도 문법의 형태가 아니어서 알 수 없는 setting이다: 흔한 database 어디도 state machine을 갖지 않는다 (Hash: manifest)
 - **DBS-84** `immutable`: database가 생성된 row trigger로 table row의 `UPDATE`와 `DELETE`를 거부한다. `TRUNCATE`는 포함하지 않는다. `cascade`나 `set_null` foreign key의 자식 table에서는 거부된다 (Hash: schema)
 - **DBS-85** `audit into <history table> column <column> references <table> action <history column> previous <history column> [tables <table> (<record column>, <name column>)] [exclude (<column>, ...) | include (<column>, ...)]`: 생성된 row trigger가 모든 `INSERT`와 `UPDATE`의 기록하는 column을 이력 table에 복사하고, `tables`가 있으면 audit 기록마다 감사 대상 table을 기록한다. [Audit](#audit) 참조 (Hash: schema)

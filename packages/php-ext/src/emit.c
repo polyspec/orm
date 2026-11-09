@@ -8,7 +8,7 @@
 /* Canonical order: mapping settings (markdown through checkbox) come before immutable and audit. */
 static const char *const setting_kinds[] = {
     "entity", "updated", "soft_delete", "select_explicit", "codec", "aes_version", "blind_index", "navigation", "markdown", "store",
-    "key_prefix", "title", "body", "order", "checkbox", "immutable", "audit", NULL,
+    "title", "body", "order", "checkbox", "immutable", "audit", NULL,
 };
 
 static int kind_rank(str kind)
@@ -81,9 +81,6 @@ static str setting_text(const setting *s, const table *t, dbs_view view)
             return setting_audit_line(s, "include", s->include);
         }
         return setting_audit_line(s, "exclude", s->exclude);
-    }
-    if (str_eqc(s->kind, "key_prefix")) {
-        return fmt("key_prefix %S", literal_quote(s->args.v[0]));
     }
     /* For store, if the shard clause's column and period follow the kind's arguments, `shard` is written before them (Setting::STORE_ARGUMENTS). */
     size_t shard = s->args.n;

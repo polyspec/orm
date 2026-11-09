@@ -20,7 +20,7 @@ final class Setting
 {
     public const KINDS = [
         'entity', 'updated', 'soft_delete', 'select_explicit', 'codec', 'aes_version', 'blind_index',
-        'navigation', 'markdown', 'store', 'key_prefix', 'title', 'body', 'order', 'checkbox',
+        'navigation', 'markdown', 'store', 'title', 'body', 'order', 'checkbox',
         'immutable', 'audit'
     ];
     public const CODEC_STAGES = ['ordered_json', 'aes', 'hex', 'gz', 'base64', 'serialize', 'yaml', 'ip'];

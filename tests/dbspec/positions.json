@@ -271,7 +271,6 @@
             "  settings {",
             "    markdown body",
             "    store files",
-            "    key_prefix 'page-'",
             "    title title",
             "    body body",
             "    order sort_order",
@@ -316,342 +315,333 @@
             "none": {
               "positions": [
                 {
+                  "column": 10,
                   "kind": "document",
+                  "line": 1,
                   "path": [
                     "wiki"
-                  ],
-                  "line": 1,
-                  "column": 10
+                  ]
                 },
                 {
+                  "column": 7,
                   "kind": "table",
+                  "line": 3,
                   "path": [
                     "page"
-                  ],
-                  "line": 3,
-                  "column": 7
+                  ]
                 },
                 {
+                  "column": 3,
                   "kind": "column",
+                  "line": 4,
                   "path": [
                     "page",
                     "id"
-                  ],
-                  "line": 4,
-                  "column": 3
+                  ]
                 },
                 {
+                  "column": 3,
                   "kind": "column",
+                  "line": 5,
                   "path": [
                     "page",
                     "title"
-                  ],
-                  "line": 5,
-                  "column": 3
+                  ]
                 },
                 {
+                  "column": 3,
                   "kind": "column",
+                  "line": 6,
                   "path": [
                     "page",
                     "body"
-                  ],
-                  "line": 6,
-                  "column": 3
+                  ]
                 },
                 {
+                  "column": 3,
                   "kind": "column",
+                  "line": 7,
                   "path": [
                     "page",
                     "sort_order"
-                  ],
-                  "line": 7,
-                  "column": 3
+                  ]
                 },
                 {
+                  "column": 3,
                   "kind": "column",
+                  "line": 8,
                   "path": [
                     "page",
                     "state"
-                  ],
-                  "line": 8,
-                  "column": 3
+                  ]
                 },
                 {
+                  "column": 3,
                   "kind": "constraint",
+                  "line": 9,
                   "path": [
                     "page",
                     "primary key"
-                  ],
-                  "line": 9,
-                  "column": 3
+                  ]
                 },
                 {
+                  "column": 5,
                   "kind": "setting",
+                  "line": 11,
                   "path": [
                     "page",
                     "markdown",
                     "body"
-                  ],
-                  "line": 11,
-                  "column": 5
+                  ]
                 },
                 {
+                  "column": 5,
                   "kind": "setting",
+                  "line": 12,
                   "path": [
                     "page",
                     "store"
-                  ],
-                  "line": 12,
-                  "column": 5
+                  ]
                 },
                 {
+                  "column": 5,
                   "kind": "setting",
-                  "path": [
-                    "page",
-                    "key_prefix"
-                  ],
                   "line": 13,
-                  "column": 5
-                },
-                {
-                  "kind": "setting",
                   "path": [
                     "page",
                     "title"
-                  ],
-                  "line": 14,
-                  "column": 5
+                  ]
                 },
                 {
+                  "column": 5,
                   "kind": "setting",
+                  "line": 14,
                   "path": [
                     "page",
                     "body"
-                  ],
-                  "line": 15,
-                  "column": 5
+                  ]
                 },
                 {
+                  "column": 5,
                   "kind": "setting",
+                  "line": 15,
                   "path": [
                     "page",
                     "order"
-                  ],
-                  "line": 16,
-                  "column": 5
+                  ]
                 },
                 {
+                  "column": 5,
                   "kind": "setting",
+                  "line": 16,
                   "path": [
                     "page",
                     "checkbox"
-                  ],
-                  "line": 17,
-                  "column": 5
+                  ]
                 },
                 {
+                  "column": 7,
                   "kind": "table",
+                  "line": 20,
                   "path": [
                     "page_history"
-                  ],
-                  "line": 21,
-                  "column": 7
+                  ]
                 },
                 {
+                  "column": 3,
                   "kind": "column",
+                  "line": 21,
                   "path": [
                     "page_history",
                     "history_id"
-                  ],
-                  "line": 22,
-                  "column": 3
+                  ]
                 },
                 {
+                  "column": 3,
                   "kind": "column",
+                  "line": 22,
                   "path": [
                     "page_history",
                     "page_id"
-                  ],
-                  "line": 23,
-                  "column": 3
+                  ]
                 },
                 {
+                  "column": 3,
                   "kind": "column",
+                  "line": 23,
                   "path": [
                     "page_history",
                     "from_state"
-                  ],
-                  "line": 24,
-                  "column": 3
+                  ]
                 },
                 {
+                  "column": 3,
                   "kind": "column",
+                  "line": 24,
                   "path": [
                     "page_history",
                     "to_state"
-                  ],
-                  "line": 25,
-                  "column": 3
+                  ]
                 },
                 {
+                  "column": 3,
                   "kind": "column",
+                  "line": 25,
                   "path": [
                     "page_history",
                     "changed_at"
-                  ],
-                  "line": 26,
-                  "column": 3
+                  ]
                 },
                 {
+                  "column": 3,
                   "kind": "column",
+                  "line": 26,
                   "path": [
                     "page_history",
                     "sort_order"
-                  ],
-                  "line": 27,
-                  "column": 3
+                  ]
                 },
                 {
+                  "column": 3,
                   "kind": "constraint",
+                  "line": 27,
                   "path": [
                     "page_history",
                     "primary key"
-                  ],
-                  "line": 28,
-                  "column": 3
+                  ]
                 },
                 {
+                  "column": 9,
                   "kind": "constraint",
+                  "line": 28,
                   "path": [
                     "page_history",
                     "ix_page_history_page"
-                  ],
-                  "line": 29,
-                  "column": 9
+                  ]
                 },
                 {
+                  "column": 15,
                   "kind": "constraint",
+                  "line": 29,
                   "path": [
                     "page_history",
                     "fk_page_history_page"
-                  ],
-                  "line": 30,
-                  "column": 15
+                  ]
                 },
                 {
+                  "column": 7,
                   "kind": "table",
+                  "line": 32,
                   "path": [
                     "section"
-                  ],
-                  "line": 33,
-                  "column": 7
+                  ]
                 },
                 {
+                  "column": 3,
                   "kind": "column",
+                  "line": 33,
                   "path": [
                     "section",
                     "id"
-                  ],
-                  "line": 34,
-                  "column": 3
+                  ]
                 },
                 {
+                  "column": 3,
                   "kind": "column",
+                  "line": 34,
                   "path": [
                     "section",
                     "page_id"
-                  ],
-                  "line": 35,
-                  "column": 3
+                  ]
                 },
                 {
+                  "column": 3,
                   "kind": "column",
+                  "line": 35,
                   "path": [
                     "section",
                     "body"
-                  ],
-                  "line": 36,
-                  "column": 3
+                  ]
                 },
                 {
+                  "column": 3,
                   "kind": "constraint",
+                  "line": 36,
                   "path": [
                     "section",
                     "primary key"
-                  ],
-                  "line": 37,
-                  "column": 3
+                  ]
                 },
                 {
+                  "column": 9,
                   "kind": "constraint",
+                  "line": 37,
                   "path": [
                     "section",
                     "ix_section_page"
-                  ],
-                  "line": 38,
-                  "column": 9
+                  ]
                 },
                 {
+                  "column": 15,
                   "kind": "constraint",
+                  "line": 38,
                   "path": [
                     "section",
                     "fk_section_page"
-                  ],
-                  "line": 39,
-                  "column": 15
+                  ]
                 },
                 {
+                  "column": 5,
                   "kind": "setting",
+                  "line": 40,
                   "path": [
                     "section",
                     "store"
-                  ],
-                  "line": 41,
-                  "column": 5
+                  ]
                 },
                 {
+                  "column": 7,
                   "kind": "table",
+                  "line": 44,
                   "path": [
                     "ledger"
-                  ],
-                  "line": 45,
-                  "column": 7
+                  ]
                 },
                 {
+                  "column": 3,
                   "kind": "column",
+                  "line": 45,
                   "path": [
                     "ledger",
                     "id"
-                  ],
-                  "line": 46,
-                  "column": 3
+                  ]
                 },
                 {
+                  "column": 3,
                   "kind": "column",
+                  "line": 46,
                   "path": [
                     "ledger",
                     "amount"
-                  ],
-                  "line": 47,
-                  "column": 3
+                  ]
                 },
                 {
+                  "column": 3,
                   "kind": "constraint",
+                  "line": 47,
                   "path": [
                     "ledger",
                     "primary key"
-                  ],
-                  "line": 48,
-                  "column": 3
+                  ]
                 },
                 {
+                  "column": 5,
                   "kind": "setting",
+                  "line": 49,
                   "path": [
                     "ledger",
                     "store"
-                  ],
-                  "line": 50,
-                  "column": 5
+                  ]
                 }
               ]
             }

@@ -181,8 +181,7 @@ typedef struct parser {
     VEC(daudit_rec) deferred_audits;
     VEC(drecord_rec) deferred_records;
     smap failed_primary_tables;
-    /* Number of primary key lines read (Go keeps all lines) and number of column lines with syntax errors (Go's failedLines). */
-    zend_long pk_lines;
+    /* Number of column lines with syntax errors (Go's failedLines). */
     zend_long failed_lines;
     /* First lex error of the line: column and message. */
     bool lex_failed;
@@ -1001,7 +1000,6 @@ static void open_table(parser *p)
     p->failed_names = (smap){0};
     p->failed_primary = false;
     p->failed_lines = 0;
-    p->pk_lines = 0;
 }
 
 static ctype *intern_type(parser *p, str name, const zend_long *params, size_t np)
@@ -1346,7 +1344,6 @@ static void primary_key_line(parser *p)
         fail_key(p, true);
         return;
     }
-    p->pk_lines++;
     if (p->table->pk != NULL) {
         error(p, "key", p->line, first.column, SL("a table has exactly one primary key"));
         return;
@@ -1620,12 +1617,6 @@ static bool string_text(str s)
     return s.n >= 2 && s.s[0] == '\'' && s.s[s.n - 1] == '\'';
 }
 
-/* The value of a string literal: removes the outer quotes and changes '' to '. */
-static str string_value(str s)
-{
-    return str_replace(str_sub(s, 1, s.n - 2), "''", "'");
-}
-
 static bool sc_more(const scursor *c)
 {
     return c->i < c->t->n;
@@ -1652,17 +1643,6 @@ static bool sc_name(scursor *c, str what, token *out)
 {
     if (sc_more(c) && name_text(c->t->v[c->i].text)) {
         *out = c->t->v[c->i++];
-        return true;
-    }
-    return sc_fail(c, what);
-}
-
-static bool sc_quoted(scursor *c, str what, token *out)
-{
-    if (sc_more(c) && string_text(c->t->v[c->i].text)) {
-        *out = c->t->v[c->i];
-        out->text = string_value(out->text);
-        c->i++;
         return true;
     }
     return sc_fail(c, what);
@@ -1696,67 +1676,59 @@ static bool take_name(scursor *c, str what, tokens *args)
     return true;
 }
 
-/* Reads the arguments of the markdown, store, key_prefix, title, body, order, and checkbox lines in the same order as Go's settingsLine. */
+/* Reads the arguments of the markdown, store, title, body, order, and checkbox lines in the same order as Go's settingsLine. */
 static bool new_setting_args(scursor *c, str keyword, tokens *args)
 {
     if (str_eqc(keyword, "markdown") || str_eqc(keyword, "title") || str_eqc(keyword, "body") || str_eqc(keyword, "order")
         || str_eqc(keyword, "checkbox")) {
         return take_name(c, SL("a column name"), args) && sc_end(c);
     }
-    if (str_eqc(keyword, "store")) {
-        static const char *const kinds[] = {"files", "document", "block"};
-        static const char *const shapes[] = {"list", "table"};
-        token kind;
-        if (!sc_oneof(c, SL("`files`, `document` or `block`"), kinds, 3, &kind)) {
-            return false;
-        }
-        PUSH(*args, kind);
-        if (str_eqc(kind.text, "block") && !take_name(c, SL("a foreign key name"), args)) {
-            return false;
-        }
-        if (!str_eqc(kind.text, "files")) {
-            token shape;
-            if (!sc_oneof(c, SL("`list` or `table`"), shapes, 2, &shape)) {
-                return false;
-            }
-            PUSH(*args, shape);
-        }
-        /* The shard clause is also read in a block: shard in a block table is a setting error. The `shard` token is kept for its position. */
-        if (sc_is(c, "shard")) {
-            static const char *const periods[] = {"year", "month", "day"};
-            mark_token(c->p, &c->t->v[c->i], "keyword");
-            PUSH(*args, c->t->v[c->i]);
-            c->i++;
-            if (!take_name(c, SL("the shard column"), args)) {
-                return false;
-            }
-            token period;
-            if (!sc_oneof(c, SL("`year`, `month` or `day`"), periods, 3, &period)) {
-                return false;
-            }
-            PUSH(*args, period);
-        }
-        return sc_end(c);
-    }
-    /* key_prefix */
-    token prefix;
-    if (!sc_quoted(c, SL("a key prefix in quotes"), &prefix)) {
+    /* store */
+    static const char *const kinds[] = {"files", "document", "block"};
+    static const char *const shapes[] = {"list", "table"};
+    token kind;
+    if (!sc_oneof(c, SL("`files`, `document` or `block`"), kinds, 3, &kind)) {
         return false;
     }
-    PUSH(*args, prefix);
+    PUSH(*args, kind);
+    if (str_eqc(kind.text, "block") && !take_name(c, SL("a foreign key name"), args)) {
+        return false;
+    }
+    if (!str_eqc(kind.text, "files")) {
+        token shape;
+        if (!sc_oneof(c, SL("`list` or `table`"), shapes, 2, &shape)) {
+            return false;
+        }
+        PUSH(*args, shape);
+    }
+    /* The shard clause is also read in a block: shard in a block table is a setting error. The `shard` token is kept for its position. */
+    if (sc_is(c, "shard")) {
+        static const char *const periods[] = {"year", "month", "day"};
+        mark_token(c->p, &c->t->v[c->i], "keyword");
+        PUSH(*args, c->t->v[c->i]);
+        c->i++;
+        if (!take_name(c, SL("the shard column"), args)) {
+            return false;
+        }
+        token period;
+        if (!sc_oneof(c, SL("`year`, `month` or `day`"), periods, 3, &period)) {
+            return false;
+        }
+        PUSH(*args, period);
+    }
     return sc_end(c);
 }
 
 /* A key of a kind this line may use only once. markdown is checked separately, by its column. */
 static bool once_kind(str kind)
 {
-    return str_eqc(kind, "store") || str_eqc(kind, "key_prefix") || str_eqc(kind, "title") || str_eqc(kind, "body") || str_eqc(kind, "order")
+    return str_eqc(kind, "store") || str_eqc(kind, "title") || str_eqc(kind, "body") || str_eqc(kind, "order")
         || str_eqc(kind, "checkbox");
 }
 
 static bool new_setting_kind(str keyword)
 {
-    return str_eqc(keyword, "markdown") || str_eqc(keyword, "store") || str_eqc(keyword, "key_prefix") || str_eqc(keyword, "title")
+    return str_eqc(keyword, "markdown") || str_eqc(keyword, "store") || str_eqc(keyword, "title")
         || str_eqc(keyword, "body") || str_eqc(keyword, "order") || str_eqc(keyword, "checkbox");
 }
 
@@ -2284,22 +2256,6 @@ static void foreign_key_ref(parser *p, zend_long line, const token *t)
     }
 }
 
-static void key_prefix_check(parser *p, zend_long line, zend_long at)
-{
-    if (p->failed_primary) {
-        return;
-    }
-    table *t = p->table;
-    if (p->pk_lines != 1 || t->pk == NULL || t->pk->columns.n != 1) {
-        error(p, "setting", line, at, SL("key_prefix needs a single-column primary key"));
-        return;
-    }
-    column *c = smap_get(p->columns, t->pk->columns.v[0]);
-    if (c != NULL && col_valid(c) && !str_eqc(c->type->name, "varchar")) {
-        error(p, "setting", line, at, fmt("key_prefix needs a varchar primary key, not %S", ctype_text(c->type)));
-    }
-}
-
 /* Checks whether the expression text references the column named name: yes, if a word outside string literals is the same. */
 static bool expression_mentions(str s, str name)
 {
@@ -2541,8 +2497,6 @@ static void check_settings(parser *p, bool changed_by_foreign_keys)
                 foreign_key_ref(p, line, &a->v[1]);
             }
             store_shard_check(p, s, smap_has(&kinds, SL("order")));
-        } else if (str_eqc(kind, "key_prefix")) {
-            key_prefix_check(p, line, at);
         } else if (str_eqc(kind, "order")) {
             order_check(p, s);
         } else if (str_eqc(kind, "checkbox")) {

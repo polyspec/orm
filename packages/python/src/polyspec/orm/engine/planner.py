@@ -212,10 +212,9 @@ def _validate_aes_assignments(ent: Entity, assignments, require_complete: bool) 
             )
 
 
-def _validate_required_assignments(ent: Entity, assignments, assigns: bool) -> None:
+def _validate_required_assignments(ent: Entity, assignments) -> None:
     """Insert gives values to all required columns: those that are NOT NULL without a default,
-    that are neither identity nor columns the planner writes (AES key version, audit column), nor, on a
-    database that assigns them, the key_prefix key and the order position.
+    that are neither identity nor columns the planner writes (AES key version, audit column).
     A column left out of the values takes the database default."""
     for col in ent.fields:
         if (
@@ -226,17 +225,7 @@ def _validate_required_assignments(ent: Entity, assignments, assigns: bool) -> N
             or _assigned(assignments, col.name)
         ):
             continue
-        if assigns and (
-            (_allocated_key(ent) and col.name == ent.primary_key[0])
-            or col.name == ent.order
-        ):
-            continue
         _fail(codes.IR_INVALID, f"required column {ent.name}.{col.name} is not set")
-
-
-def _allocated_key(ent: Entity) -> bool:
-    """Whether a database that assigns keys allocates the key of ent: a key_prefix setting over one primary key column."""
-    return ent.key_prefix != "" and len(ent.primary_key) == 1
 
 
 def _add_blind_index_assignments(ent: Entity, assignments) -> list:
@@ -334,12 +323,9 @@ class _Scope:
 
 
 class Planner:
-    def __init__(self, m: RuntimeModel, d, assigns: bool = False):
+    def __init__(self, m: RuntimeModel, d):
         self.m = m
         self.d = d
-        # assigns says that the database assigns the key_prefix key and the order position of a row that an insert
-        # leaves them out of, as a flowmark corpus does.
-        self.assigns = assigns
 
     def _entity(self, name: str) -> Entity:
         entity = entity_of(self.m, name)
@@ -1188,7 +1174,7 @@ class Planner:
         input_set = r.get("set") or []
         assignments = _add_blind_index_assignments(ent, input_set)
         _validate_aes_assignments(ent, assignments, False)
-        _validate_required_assignments(ent, assignments, self.assigns)
+        _validate_required_assignments(ent, assignments)
         load = r.get("load") is True
         # load writes the row with its stored key as is, so it takes and requires the identity column's value.
         if (
@@ -1285,9 +1271,6 @@ class Planner:
             sql += self.d.upsert(_conflict_target(ent, assignments), ", ".join(sets))
         if self.d.insert_returning_id and ent.identity != "":
             sql += f" RETURNING {self.d.quote(ent.identity)}"
-        elif self.assigns and _allocated_key(ent):
-            # The key that the database allocated, or the key of the row an upsert met.
-            sql += f" RETURNING {self.d.quote(ent.primary_key[0])}"
         return {
             "role": "main",
             "sql": sql,
