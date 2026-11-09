@@ -86,3 +86,57 @@ caseTest('codec/to-json-forms', COMPUTE, () => {
   class Shaped { toJSON() { return { b: [1], a: parseJson('1.50') }; } }
   assert.equal(encode(['ordered_json'], StyledValue.value([new Shaped()])), '[{"b":[1],"a":1.50}]');
 });
+
+// The frames of stack that a call needs, given back one at a time from the bottom of a stack that the test exhausted: the
+// call runs at the deepest frame where it meets no RangeError, or a regular expression that cannot compile for want of
+// stack, and the count is how many frames were given back first.
+function framesNeeded(call) {
+  let unwound = 0;
+  let outcome;
+  const dive = () => {
+    try {
+      dive();
+    } catch (error) {
+      if (!(error instanceof RangeError)) throw error;
+    }
+    if (outcome !== undefined) return;
+    unwound++;
+    try {
+      outcome = { value: call() };
+    } catch (error) {
+      if (error instanceof RangeError || (error instanceof SyntaxError && String(error.message).includes('Stack overflow'))) return;
+      outcome = { error };
+    }
+  };
+  dive();
+  return { unwound, outcome };
+}
+
+// The YAML reader reads its productions on a stack in the heap (COD-74 to COD-80): a stream of 256 levels, flow or block,
+// needs no more of the caller's stack than a scalar, and a list at level 257 is the nesting rule, so no depth of the
+// caller decides where it fails (COD-70). A reader that recursed once a level would need 256 frames more.
+// Requirements: COD-70, COD-80.
+caseTest('codec/yaml-reader-needs-no-stack-per-level', COMPUTE, () => {
+  const deepest = value => {
+    let level = 0;
+    for (let node = value; Array.isArray(node) || (node !== null && typeof node === 'object'); level++) node = Array.isArray(node) ? node[0] : Object.values(node)[0];
+    return level;
+  };
+  const streams = [
+    ['flow sequences', `${'['.repeat(256)}${']'.repeat(256)}`, 256],
+    ['flow mappings', `${'{a: '.repeat(256)}b${'}'.repeat(256)}`, 256],
+    ['block sequences', `${Array.from({ length: 256 }, (_, i) => `${' '.repeat(i)}-`).join('\n')} a\n`, 256],
+    ['block mappings', `${Array.from({ length: 256 }, (_, i) => `${' '.repeat(i)}k:`).join('\n')} a\n`, 256],
+    ['flow sequences at level 257', `${'['.repeat(257)}${']'.repeat(257)}`, 'CODEC_DECODE: yaml: value nesting exceeds 256 levels'],
+  ];
+  const read = stream => () => decode(['yaml'], stream);
+  // The first calls compile the code and the regular expressions of the reader, which takes stack of its own.
+  for (let round = 0; round < 2; round++) for (const [, stream] of [['scalar', 'a'], ...streams]) framesNeeded(read(stream));
+  const scalar = framesNeeded(read('a')).unwound;
+  for (const [name, stream, want] of streams) {
+    const { unwound, outcome } = framesNeeded(read(stream));
+    if (typeof want === 'number') assert.equal(deepest(outcome?.value?.payload()), want, name);
+    else assert.equal(outcome?.error?.message, want, name);
+    assert(unwound <= scalar + 64, `${name} needs ${unwound} frames of the caller's stack, a scalar ${scalar}`);
+  }
+});

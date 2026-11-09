@@ -700,6 +700,7 @@
       ],
       "inputs": [
         "packages/ts/src/codec.ts",
+        "packages/ts/src/yaml_reader.ts",
         "packages/ts/tests/codec-errors.test.mjs"
       ]
     },
@@ -1316,6 +1317,7 @@
         "packages/php/tests/RecipeCases.php",
         "packages/php-ext/tests/CodecRecipeTestExtensionTest.php",
         "packages/ts/tests/codec-none.test.mjs",
+        "packages/ts/src/yaml_reader.ts",
         "packages/ts/tests/recipe.mjs",
         "packages/python/tests/test_codec_none.py",
         "packages/python/tests/recipe.py",
@@ -3405,6 +3407,7 @@
         "packages/php/tests/NativeFixtureVectors.php",
         "packages/ts/src/styled_value.ts",
         "packages/ts/src/codec.ts",
+        "packages/ts/src/yaml_reader.ts",
         "packages/ts/src/model.ts",
         "packages/ts/tests/styled-value.mjs",
         "packages/ts/tests/styled-value-features.mjs",
