@@ -89082,18 +89082,14 @@
        "tables": [
         "typed_value"
        ],
-       "sql": {
-        "postgres": "UPDATE \"typed_value\" SET \"ratio\" = 'NaN' WHERE \"seq\" = 1"
-       }
+       "sql": "UPDATE typed_value SET ratio = 'NaN' WHERE seq = 1"
       },
       {
        "kind": "update",
        "tables": [
         "typed_value"
        ],
-       "sql": {
-        "postgres": "UPDATE \"typed_value\" SET \"ratio\" = 'Infinity' WHERE \"seq\" = 2"
-       }
+       "sql": "UPDATE typed_value SET ratio = 'Infinity' WHERE seq = 2"
       }
      ]
     },
