@@ -19,10 +19,28 @@
 # long operation, which the runner logs line by line and judges by its exit
 # code, with no deadline; only a test case inside a suite has its own
 # deadline. make repo-check fails a workflow with timeout-minutes.
+# A push whose every changed path is a document that only the document checks read starts no run (T418): paths-ignore lists
+# DOCUMENT_PATHS of scripts/repo/ci.mts, and documents.yml runs those checks on every push. GitHub starts the run when any
+# changed path of the whole push matches no pattern, so a code change pushed with documents runs every job, and a version
+# commit changes VERSION, so it runs every job and the release takes its run. Past 3000 changed files GitHub does not
+# evaluate the filter; documents.yml fails such a push (make diff-size-check). make repo-check requires this list and fails a
+# listed document that a check outside DOCUMENT_CHECKS of the Makefile reads. A manual run runs every job.
 name: ci
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'CHANGELOG*.md'
+      - 'CODE_OF_CONDUCT*.md'
+      - 'CONTRIBUTING*.md'
+      - 'PRINCIPLES*.md'
+      - 'README*.md'
+      - 'SECURITY*.md'
+      - 'docs/plans/check-recipes/**'
+      - 'docs/plans/cross-verification/**'
+      - 'docs/plans/execution/**'
+      - 'docs/plans/kit-standard/plan.md'
+      - 'docs/plans/kit-standard/*.ko.md'
   workflow_dispatch:
 
 # A new run cancels the run before it on the same ref: the runners are few, and only the run of the newest head

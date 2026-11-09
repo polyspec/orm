@@ -2586,6 +2586,19 @@ docs-build: orm-codes-typescript
 docs-ci:
 	$(NODE) scripts/check/run.mts --job-summary - docs-verify-idempotent docs-site-check
 
+# DOCUMENT_CHECKS are the checks that read the documents that ci.yml ignores (DOCUMENT_PATHS of scripts/repo/ci.mts, T418), which
+# documents.yml runs on every push; ci.yml runs them too, so the run that a release takes holds them. make repo-check fails a
+# document of DOCUMENT_PATHS that a target outside them reads. documents-ci runs them as the make orm-check runner, as docs-ci
+# does, without a test server, and runs the next target even when one fails.
+DOCUMENT_CHECKS = layout-check docs-check rules-check docs-rules-check docs-implementation-count-check docs-verify-idempotent docs-site-check
+documents-ci:
+	$(NODE) scripts/check/run.mts --job-summary - $(DOCUMENT_CHECKS)
+
+# diff-size-check fails a push whose diff holds more than the 3000 files over which GitHub evaluates the paths-ignore of ci.yml
+# (scripts/repo/diff-size.mts); documents.yml runs it with the event of GITHUB_EVENT_NAME and GITHUB_EVENT_PATH.
+diff-size-check:
+	$(NODE) scripts/repo/diff-size.mts
+
 orm-docs-check: orm-codes-typescript
 	$(NPM) run docs:check
 

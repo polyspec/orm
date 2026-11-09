@@ -168,6 +168,11 @@ from kit and holds as its own; this file states only the rules of orm.
 - Own: `.github/workflows/ci.yml` holds every check of the repository and runs on a push to `main` and on
   a manual run; its last job `ci-passed` runs after the jobs `test` (one job per CI group) and `docs`,
   also after a failed one, and passes only when every one of them succeeded (`make ci-passed`).
+  A push whose every changed path is a document of its `paths-ignore` (`DOCUMENT_PATHS` of `scripts/repo/ci.mts`) starts
+  no run of it; `.github/workflows/documents.yml` runs the checks of `DOCUMENT_CHECKS` of the Makefile on every push to
+  `main` and fails a push of more than 3000 files, past which GitHub does not evaluate a path filter. A document that a
+  check outside `DOCUMENT_CHECKS` reads is never ignored, and a version commit changes VERSION, so it runs every job and
+  its run is the one that a release takes; `[skip ci]` is not used, since it reads the head commit of a push alone.
   `.github/workflows/docs-pages.yml` only builds and deploys the site of `main`.
   Enforced by: `make repo-check`
 - Own: `make orm-check` runs the guard of kit (`full-run`) before any step: it refuses while a

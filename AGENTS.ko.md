@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: 695ef8b2d87398465f9d9e5db0d98a9a2b28a7d39f2fdc9afcb9be28e476c156 -->
+<!-- source-sha256: d8f6eba1a9d135c3cc7c5b9019fd2ae920889e4ad7832d6b800784a14b568add -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -141,7 +141,12 @@
   Enforced by: none, review에서의 판단이다
 - Own: `.github/workflows/ci.yml`이 저장소의 모든 검사를 가지고 `main`으로의 push와 수동 실행에서 실행된다. 마지막 job
   `ci-passed`는 job `test`(CI group마다 job 하나)와 `docs`가 실패해도 그 뒤에 실행되고 그 모두가 성공했을 때만
-  통과한다(`make ci-passed`). `.github/workflows/docs-pages.yml`은 `main`의 site를 build하고 deploy만 한다.
+  통과한다(`make ci-passed`). 바뀐 모든 경로가 그 `paths-ignore`(`scripts/repo/ci.mts`의 `DOCUMENT_PATHS`)의 문서인
+  push는 그 run을 시작하지 않는다. `.github/workflows/documents.yml`은 `main`으로의 모든 push에서 Makefile의
+  `DOCUMENT_CHECKS` 검사를 실행하고, GitHub가 path filter를 평가하지 않는 3000개를 넘는 파일의 push를 실패시킨다.
+  `DOCUMENT_CHECKS` 밖의 검사가 읽는 문서는 무시하지 않으며, version commit은 VERSION을 바꾸므로 모든 job을 실행하고
+  그 run이 release가 받는 run이다. `[skip ci]`는 push의 head commit만 읽으므로 쓰지 않는다.
+  `.github/workflows/docs-pages.yml`은 `main`의 site를 build하고 deploy만 한다.
   Enforced by: `make repo-check`
 - Own: `make orm-check`는 어떤 단계보다 먼저 kit의 guard(`full-run`)를 실행한다: 체크리스트 항목(하위 항목 포함)이
   `[~]`인 동안, 추적하는 file에 commit하지 않은 변경이 있는 동안, Git hook이 설치되지 않은 동안, 그리고
