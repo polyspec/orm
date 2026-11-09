@@ -2392,7 +2392,8 @@ func jsonString(v any) string {
 	return string(text)
 }
 
-// normalized compares NULL by its nullness: an expect names the parameter type of NULL, and a result has none.
+// normalized compares NULL by its nullness: an expect names the parameter type of NULL, and a result has none. A float or
+// an f64 wrapper is compared by its binary64 value, not its text, so 2, 2.0 and "2" are one value (FCV-4).
 func normalized(value any) any {
 	switch v := value.(type) {
 	case []any:
@@ -2405,6 +2406,9 @@ func normalized(value any) any {
 		if _, ok := v["null"]; ok && len(v) == 1 {
 			return map[string]any{"null": true}
 		}
+		if f, ok := floatWrapper(v); ok {
+			return map[string]any{"f64": f}
+		}
 		out := make(map[string]any, len(v))
 		for key, item := range v {
 			out[key] = normalized(item)
@@ -2412,6 +2416,44 @@ func normalized(value any) any {
 		return out
 	}
 	return value
+}
+
+// floatWrapper is the binary64 value of a float or an f64 wrapper as one text: the shortest text that reads back as the
+// value, or NaN, Infinity or -Infinity. ok is false for any other value.
+func floatWrapper(v map[string]any) (string, bool) {
+	if len(v) != 1 {
+		return "", false
+	}
+	var item any
+	for key, member := range v {
+		if key != "float" && key != "f64" {
+			return "", false
+		}
+		item = member
+	}
+	var x float64
+	switch number := item.(type) {
+	case float64:
+		x = number
+	case string:
+		parsed, err := toGo(node{kind: "f64", text: number})
+		f, isFloat := parsed.(float64)
+		if err != nil || !isFloat {
+			return "", false
+		}
+		x = f
+	default:
+		return "", false
+	}
+	switch {
+	case math.IsNaN(x):
+		return "NaN", true
+	case math.IsInf(x, 1):
+		return "Infinity", true
+	case math.IsInf(x, -1):
+		return "-Infinity", true
+	}
+	return strconv.FormatFloat(x, 'g', -1, 64), true
 }
 
 // inspectedSchema is the schema argument of schema.exists and schema.installed: the name, or that of the database, where

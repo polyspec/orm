@@ -19,6 +19,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -1047,6 +1048,9 @@ func jsonText(n node) (string, error) {
 	return "", fmt.Errorf("the wrapper %s has no JSON text", n.kind)
 }
 
+// finiteF64 is the form of a finite f64 wrapper (scripts/features/schema/recipe.schema.json).
+var finiteF64 = regexp.MustCompile(`^-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?$`)
+
 // toGo is the Go value of a wrapper in the common value model of COD-16.
 func toGo(n node) (any, error) {
 	switch n.kind {
@@ -1070,7 +1074,11 @@ func toGo(n node) (any, error) {
 		case "-Infinity":
 			return math.Inf(-1), nil
 		}
-		return nil, fmt.Errorf("an f64 wrapper is NaN, Infinity or -Infinity, not %q", n.text)
+		// A finite f64 is a decimal number, as a float wrapper writes it; a runner compares it by its value.
+		if !finiteF64.MatchString(n.text) {
+			return nil, fmt.Errorf("an f64 wrapper is NaN, Infinity, -Infinity or a decimal number, not %q", n.text)
+		}
+		return strconv.ParseFloat(n.text, 64)
 	case "text":
 		return n.text, nil
 	case "text_hex":
