@@ -210,21 +210,7 @@ fn setting_text(setting: &Setting, table: &Table, view: View) -> String {
         Setting::Title(column) => format!("title {}", column.text),
         Setting::Body(column) => format!("body {}", column.text),
         Setting::Order(column) => format!("order {}", column.text),
-        Setting::Checkbox { column, state, glyph } => format!("checkbox {} {} {}", column.text, state.text, quote(&glyph.text)),
-        Setting::StateMachine { column, line } => {
-            let head = format!("state_machine {} ", column.text);
-            let requires = |list: &[Name]| if list.is_empty() { String::new() } else { format!(" require ({})", names(list)) };
-            match line {
-                StateLine::Initial(state) => format!("{head}initial {}", state.text),
-                StateLine::Terminal(state, list) => format!("{head}terminal {}{}", state.text, requires(list)),
-                StateLine::Transition { from, to, requires: list } => format!("{head}{} -> {}{}", from.text, to.text, requires(list)),
-                StateLine::History(h) => format!("{head}history {} row {} from {} to {} at {}", h.table.text, h.row.text, h.from.text, h.to.text, h.at.text),
-                // The count of a valid document is a positive integer; its text is kept when it is not one.
-                StateLine::Limit { state, count } => {
-                    format!("{head}limit {} {}", state.text, count.text.parse::<i64>().map_or_else(|_| count.text.clone(), |n| n.to_string()))
-                }
-            }
-        }
+        Setting::Checkbox(column) => format!("checkbox {}", column.text),
         Setting::Immutable => "immutable".into(),
         Setting::Audit { into, column, references, action, previous, tables, lists } => {
             // The schema text is determined by the database state, so the columns that are not recorded are passed as an exclude

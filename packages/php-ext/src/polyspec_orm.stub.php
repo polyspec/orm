@@ -190,10 +190,8 @@ final class Setting
     public array $comments;
     public ?array $exclude;
     public ?array $include;
-    public ?string $form;
-    public ?array $requires;
 
-    public function __construct(string $kind, array $arguments, array $comments = [], ?array $exclude = null, ?array $include = null, ?string $form = null, ?array $requires = null) {}
+    public function __construct(string $kind, array $arguments, array $comments = [], ?array $exclude = null, ?array $include = null) {}
 
     public function records(string $column): bool {}
 

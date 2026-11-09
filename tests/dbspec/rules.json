@@ -49,7 +49,6 @@
     "DBS-134",
     "DBS-135",
     "DBS-141",
-    "DBS-73",
     "DBS-74",
     "ORES-19"
   ],
@@ -5802,7 +5801,7 @@
       ]
     },
     {
-      "id": "analyze-class-state-machine-transition-and-its-form-words",
+      "id": "analyze-class-refused-state-machine-line",
       "requirements": [
         "DBS-134",
         "DBS-135"
@@ -5899,13 +5898,13 @@
                   5,
                   18,
                   20,
-                  "name"
+                  "word"
                 ],
                 [
                   5,
                   21,
                   22,
-                  "name"
+                  "word"
                 ],
                 [
                   5,
@@ -5923,13 +5922,13 @@
                   5,
                   26,
                   27,
-                  "name"
+                  "word"
                 ],
                 [
                   5,
                   28,
                   35,
-                  "keyword"
+                  "word"
                 ],
                 [
                   5,
@@ -5941,7 +5940,7 @@
                   5,
                   37,
                   38,
-                  "name"
+                  "word"
                 ],
                 [
                   5,
@@ -5959,19 +5958,19 @@
                   6,
                   18,
                   20,
-                  "name"
+                  "word"
                 ],
                 [
                   6,
                   21,
                   28,
-                  "keyword"
+                  "word"
                 ],
                 [
                   6,
                   29,
                   30,
-                  "name"
+                  "word"
                 ],
                 [
                   7,
@@ -8616,191 +8615,6 @@
       ]
     },
     {
-      "id": "state-machine-column-type",
-      "requirements": [
-        "DBS-73"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.format",
-          "text": [
-            "dbspec 1 shop",
-            "",
-            "table jobs {",
-            "  id i64 identity",
-            "  status i32",
-            "  primary key (id)",
-            "  settings {",
-            "    state_machine status waiting -> doing",
-            "  }",
-            "}"
-          ],
-          "expect": {
-            "none": {
-              "diagnostics": [
-                {
-                  "column": 19,
-                  "line": 8,
-                  "rule": "setting"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "state-machine-terminal-exit",
-      "requirements": [
-        "DBS-73"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.format",
-          "text": [
-            "dbspec 1 shop",
-            "",
-            "table jobs {",
-            "  id i64 identity",
-            "  status varchar(16)",
-            "  primary key (id)",
-            "  settings {",
-            "    state_machine status waiting -> doing",
-            "    state_machine status terminal done",
-            "    state_machine status done -> waiting",
-            "  }",
-            "}"
-          ],
-          "expect": {
-            "none": {
-              "diagnostics": [
-                {
-                  "column": 5,
-                  "line": 10,
-                  "rule": "setting"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "state-machine-require-column",
-      "requirements": [
-        "DBS-73"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.format",
-          "text": [
-            "dbspec 1 shop",
-            "",
-            "table jobs {",
-            "  id i64 identity",
-            "  status varchar(16)",
-            "  primary key (id)",
-            "  settings {",
-            "    state_machine status waiting -> doing require (nope)",
-            "  }",
-            "}"
-          ],
-          "expect": {
-            "none": {
-              "diagnostics": [
-                {
-                  "column": 52,
-                  "line": 8,
-                  "rule": "setting"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "state-machine-two-columns",
-      "requirements": [
-        "DBS-73"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.format",
-          "text": [
-            "dbspec 1 shop",
-            "",
-            "table jobs {",
-            "  id i64 identity",
-            "  status varchar(16)",
-            "  phase varchar(16)",
-            "  primary key (id)",
-            "  settings {",
-            "    state_machine status waiting -> doing",
-            "    state_machine phase ready -> running",
-            "  }",
-            "}"
-          ],
-          "expect": {
-            "none": {
-              "diagnostics": [
-                {
-                  "column": 19,
-                  "line": 10,
-                  "rule": "setting"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "stable-state-machine-setting",
-      "requirements": [
-        "DBS-73"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.format",
-          "text": [
-            "dbspec 1 shop",
-            "",
-            "table jobs {",
-            "  id i64 identity",
-            "  status varchar(16)",
-            "  evidence text null",
-            "  primary key (id)",
-            "  settings {",
-            "    state_machine status waiting -> doing",
-            "    state_machine status doing -> done require (evidence)",
-            "    state_machine status terminal done require (evidence)",
-            "  }",
-            "}"
-          ],
-          "expect": {
-            "none": {
-              "text": [
-                "dbspec 1 shop",
-                "",
-                "table jobs {",
-                "  id i64 identity",
-                "  status varchar(16)",
-                "  evidence text null",
-                "  primary key (id)",
-                "  settings {",
-                "    state_machine status waiting -> doing",
-                "    state_machine status doing -> done require (evidence)",
-                "    state_machine status terminal done require (evidence)",
-                "  }",
-                "}"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
       "id": "markdown-on-integer-column",
       "requirements": [
         "DBS-74"
@@ -8893,7 +8707,7 @@
             "  title varchar(255)",
             "  body text",
             "  position i64",
-            "  status varchar(16)",
+            "  status varchar(1)",
             "  reason varchar(200) null",
             "  primary key (id)",
             "  settings {",
@@ -8902,15 +8716,7 @@
             "    title title",
             "    body body",
             "    order position",
-            "    checkbox status waiting '-'",
-            "    checkbox status doing '/'",
-            "    checkbox status done 'x'",
-            "    state_machine status initial waiting",
-            "    state_machine status waiting -> doing",
-            "    state_machine status doing -> done require (reason)",
-            "    state_machine status terminal done",
-            "    state_machine status history ticket_history row ticket_id from from_status to to_status at changed_at",
-            "    state_machine status limit doing 3",
+            "    checkbox status",
             "  }",
             "}",
             "",
@@ -8936,7 +8742,7 @@
                 "  title varchar(255)",
                 "  body text",
                 "  position i64",
-                "  status varchar(16)",
+                "  status varchar(1)",
                 "  reason varchar(200) null",
                 "  primary key (id)",
                 "  settings {",
@@ -8945,15 +8751,7 @@
                 "    title title",
                 "    body body",
                 "    order position",
-                "    checkbox status waiting '-'",
-                "    checkbox status doing '/'",
-                "    checkbox status done 'x'",
-                "    state_machine status initial waiting",
-                "    state_machine status waiting -> doing",
-                "    state_machine status doing -> done require (reason)",
-                "    state_machine status terminal done",
-                "    state_machine status history ticket_history row ticket_id from from_status to to_status at changed_at",
-                "    state_machine status limit doing 3",
+                "    checkbox status",
                 "  }",
                 "}",
                 "",
@@ -8967,49 +8765,6 @@
                 "  primary key (id)",
                 "  index ix_ticket_history_ticket (ticket_id)",
                 "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
-                "}"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "stable-state-machine-keyword-states",
-      "requirements": [
-        "DBS-73"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.format",
-          "text": [
-            "dbspec 1 shop",
-            "",
-            "table jobs {",
-            "  id i64 identity",
-            "  status varchar(16)",
-            "  primary key (id)",
-            "  settings {",
-            "    state_machine status initial -> waiting",
-            "    state_machine status limit -> history",
-            "    state_machine status initial initial",
-            "  }",
-            "}"
-          ],
-          "expect": {
-            "none": {
-              "text": [
-                "dbspec 1 shop",
-                "",
-                "table jobs {",
-                "  id i64 identity",
-                "  status varchar(16)",
-                "  primary key (id)",
-                "  settings {",
-                "    state_machine status initial -> waiting",
-                "    state_machine status limit -> history",
-                "    state_machine status initial initial",
-                "  }",
                 "}"
               ]
             }
@@ -9459,872 +9214,6 @@
       ]
     },
     {
-      "id": "markdown-storage-checkbox-outside-state-set",
-      "requirements": [
-        "ORES-19"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.format",
-          "text": [
-            "dbspec 1 shop",
-            "",
-            "table tickets {",
-            "  id varchar(32)",
-            "  title varchar(255)",
-            "  body text",
-            "  position i64",
-            "  status varchar(16)",
-            "  reason varchar(200) null",
-            "  primary key (id)",
-            "  settings {",
-            "    checkbox status waiting '-'",
-            "    checkbox status doing '/'",
-            "    checkbox status done 'x'",
-            "    checkbox status paused '~'",
-            "    state_machine status initial waiting",
-            "    state_machine status waiting -> doing",
-            "    state_machine status doing -> done require (reason)",
-            "    state_machine status terminal done",
-            "  }",
-            "}",
-            "",
-            "table ticket_history {",
-            "  id i64 identity",
-            "  ticket_id varchar(32)",
-            "  from_status varchar(16)",
-            "  to_status varchar(16)",
-            "  changed_at datetime(6)",
-            "  reason varchar(200) null",
-            "  primary key (id)",
-            "  index ix_ticket_history_ticket (ticket_id)",
-            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
-            "}"
-          ],
-          "expect": {
-            "none": {
-              "diagnostics": [
-                {
-                  "column": 21,
-                  "line": 15,
-                  "rule": "setting"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "markdown-storage-checkbox-missing-state",
-      "requirements": [
-        "ORES-19"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.format",
-          "text": [
-            "dbspec 1 shop",
-            "",
-            "table tickets {",
-            "  id varchar(32)",
-            "  title varchar(255)",
-            "  body text",
-            "  position i64",
-            "  status varchar(16)",
-            "  reason varchar(200) null",
-            "  primary key (id)",
-            "  settings {",
-            "    checkbox status waiting '-'",
-            "    checkbox status doing '/'",
-            "    state_machine status initial waiting",
-            "    state_machine status waiting -> doing",
-            "    state_machine status doing -> done require (reason)",
-            "    state_machine status terminal done",
-            "  }",
-            "}",
-            "",
-            "table ticket_history {",
-            "  id i64 identity",
-            "  ticket_id varchar(32)",
-            "  from_status varchar(16)",
-            "  to_status varchar(16)",
-            "  changed_at datetime(6)",
-            "  reason varchar(200) null",
-            "  primary key (id)",
-            "  index ix_ticket_history_ticket (ticket_id)",
-            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
-            "}"
-          ],
-          "expect": {
-            "none": {
-              "diagnostics": [
-                {
-                  "column": 5,
-                  "line": 12,
-                  "rule": "setting"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "markdown-storage-checkbox-repeated-glyph",
-      "requirements": [
-        "ORES-19"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.format",
-          "text": [
-            "dbspec 1 shop",
-            "",
-            "table tickets {",
-            "  id varchar(32)",
-            "  title varchar(255)",
-            "  body text",
-            "  position i64",
-            "  status varchar(16)",
-            "  reason varchar(200) null",
-            "  primary key (id)",
-            "  settings {",
-            "    checkbox status waiting '-'",
-            "    checkbox status doing '-'",
-            "    checkbox status done 'x'",
-            "    state_machine status initial waiting",
-            "    state_machine status waiting -> doing",
-            "    state_machine status doing -> done require (reason)",
-            "    state_machine status terminal done",
-            "  }",
-            "}",
-            "",
-            "table ticket_history {",
-            "  id i64 identity",
-            "  ticket_id varchar(32)",
-            "  from_status varchar(16)",
-            "  to_status varchar(16)",
-            "  changed_at datetime(6)",
-            "  reason varchar(200) null",
-            "  primary key (id)",
-            "  index ix_ticket_history_ticket (ticket_id)",
-            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
-            "}"
-          ],
-          "expect": {
-            "none": {
-              "diagnostics": [
-                {
-                  "column": 27,
-                  "line": 13,
-                  "rule": "setting"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "markdown-storage-checkbox-glyph-length",
-      "requirements": [
-        "ORES-19"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.format",
-          "text": [
-            "dbspec 1 shop",
-            "",
-            "table tickets {",
-            "  id varchar(32)",
-            "  title varchar(255)",
-            "  body text",
-            "  position i64",
-            "  status varchar(16)",
-            "  reason varchar(200) null",
-            "  primary key (id)",
-            "  settings {",
-            "    checkbox status waiting '--'",
-            "    checkbox status doing '/'",
-            "    checkbox status done 'x'",
-            "    state_machine status initial waiting",
-            "    state_machine status waiting -> doing",
-            "    state_machine status doing -> done require (reason)",
-            "    state_machine status terminal done",
-            "  }",
-            "}",
-            "",
-            "table ticket_history {",
-            "  id i64 identity",
-            "  ticket_id varchar(32)",
-            "  from_status varchar(16)",
-            "  to_status varchar(16)",
-            "  changed_at datetime(6)",
-            "  reason varchar(200) null",
-            "  primary key (id)",
-            "  index ix_ticket_history_ticket (ticket_id)",
-            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
-            "}"
-          ],
-          "expect": {
-            "none": {
-              "diagnostics": [
-                {
-                  "column": 29,
-                  "line": 12,
-                  "rule": "setting"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "markdown-storage-checkbox-without-machine",
-      "requirements": [
-        "ORES-19"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.format",
-          "text": [
-            "dbspec 1 shop",
-            "",
-            "table tickets {",
-            "  id varchar(32)",
-            "  title varchar(255)",
-            "  body text",
-            "  position i64",
-            "  status varchar(16)",
-            "  reason varchar(200) null",
-            "  primary key (id)",
-            "  settings {",
-            "    checkbox status waiting '-'",
-            "  }",
-            "}",
-            "",
-            "table ticket_history {",
-            "  id i64 identity",
-            "  ticket_id varchar(32)",
-            "  from_status varchar(16)",
-            "  to_status varchar(16)",
-            "  changed_at datetime(6)",
-            "  reason varchar(200) null",
-            "  primary key (id)",
-            "  index ix_ticket_history_ticket (ticket_id)",
-            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
-            "}"
-          ],
-          "expect": {
-            "none": {
-              "diagnostics": [
-                {
-                  "column": 14,
-                  "line": 12,
-                  "rule": "setting"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "markdown-storage-initial-terminal",
-      "requirements": [
-        "ORES-19"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.format",
-          "text": [
-            "dbspec 1 shop",
-            "",
-            "table tickets {",
-            "  id varchar(32)",
-            "  title varchar(255)",
-            "  body text",
-            "  position i64",
-            "  status varchar(16)",
-            "  reason varchar(200) null",
-            "  primary key (id)",
-            "  settings {",
-            "    state_machine status initial done",
-            "    state_machine status terminal done",
-            "  }",
-            "}",
-            "",
-            "table ticket_history {",
-            "  id i64 identity",
-            "  ticket_id varchar(32)",
-            "  from_status varchar(16)",
-            "  to_status varchar(16)",
-            "  changed_at datetime(6)",
-            "  reason varchar(200) null",
-            "  primary key (id)",
-            "  index ix_ticket_history_ticket (ticket_id)",
-            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
-            "}"
-          ],
-          "expect": {
-            "none": {
-              "diagnostics": [
-                {
-                  "column": 5,
-                  "line": 12,
-                  "rule": "setting"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "markdown-storage-default-not-initial",
-      "requirements": [
-        "ORES-19"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.format",
-          "text": [
-            "dbspec 1 shop",
-            "",
-            "table tickets {",
-            "  id varchar(32)",
-            "  title varchar(255)",
-            "  body text",
-            "  position i64",
-            "  status varchar(16) default 'doing'",
-            "  reason varchar(200) null",
-            "  primary key (id)",
-            "  settings {",
-            "    state_machine status initial waiting",
-            "    state_machine status waiting -> doing",
-            "    state_machine status doing -> done require (reason)",
-            "    state_machine status terminal done",
-            "  }",
-            "}",
-            "",
-            "table ticket_history {",
-            "  id i64 identity",
-            "  ticket_id varchar(32)",
-            "  from_status varchar(16)",
-            "  to_status varchar(16)",
-            "  changed_at datetime(6)",
-            "  reason varchar(200) null",
-            "  primary key (id)",
-            "  index ix_ticket_history_ticket (ticket_id)",
-            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
-            "}"
-          ],
-          "expect": {
-            "none": {
-              "diagnostics": [
-                {
-                  "column": 30,
-                  "line": 8,
-                  "rule": "setting"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "markdown-storage-history-missing-table",
-      "requirements": [
-        "ORES-19"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.format",
-          "text": [
-            "dbspec 1 shop",
-            "",
-            "table tickets {",
-            "  id varchar(32)",
-            "  title varchar(255)",
-            "  body text",
-            "  position i64",
-            "  status varchar(16)",
-            "  reason varchar(200) null",
-            "  primary key (id)",
-            "  settings {",
-            "    state_machine status history nope row ticket_id from from_status to to_status at changed_at",
-            "    state_machine status initial waiting",
-            "    state_machine status waiting -> doing",
-            "    state_machine status doing -> done require (reason)",
-            "    state_machine status terminal done",
-            "  }",
-            "}",
-            "",
-            "table ticket_history {",
-            "  id i64 identity",
-            "  ticket_id varchar(32)",
-            "  from_status varchar(16)",
-            "  to_status varchar(16)",
-            "  changed_at datetime(6)",
-            "  reason varchar(200) null",
-            "  primary key (id)",
-            "  index ix_ticket_history_ticket (ticket_id)",
-            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
-            "}"
-          ],
-          "expect": {
-            "none": {
-              "diagnostics": [
-                {
-                  "column": 34,
-                  "line": 12,
-                  "rule": "setting"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "markdown-storage-history-extra-column",
-      "requirements": [
-        "ORES-19"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.format",
-          "text": [
-            "dbspec 1 shop",
-            "",
-            "table tickets {",
-            "  id varchar(32)",
-            "  title varchar(255)",
-            "  body text",
-            "  position i64",
-            "  status varchar(16)",
-            "  reason varchar(200) null",
-            "  primary key (id)",
-            "  settings {",
-            "    state_machine status history ticket_history row ticket_id from from_status to to_status at changed_at",
-            "    state_machine status initial waiting",
-            "    state_machine status waiting -> doing",
-            "    state_machine status doing -> done require (reason)",
-            "    state_machine status terminal done",
-            "  }",
-            "}",
-            "",
-            "table ticket_history {",
-            "  id i64 identity",
-            "  ticket_id varchar(32)",
-            "  from_status varchar(16)",
-            "  to_status varchar(16)",
-            "  changed_at datetime(6)",
-            "  reason varchar(200) null",
-            "  note varchar(10) null",
-            "  primary key (id)",
-            "  index ix_ticket_history_ticket (ticket_id)",
-            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
-            "}"
-          ],
-          "expect": {
-            "none": {
-              "diagnostics": [
-                {
-                  "column": 34,
-                  "line": 12,
-                  "rule": "setting"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "markdown-storage-history-at-precision",
-      "requirements": [
-        "ORES-19"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.format",
-          "text": [
-            "dbspec 1 shop",
-            "",
-            "table tickets {",
-            "  id varchar(32)",
-            "  title varchar(255)",
-            "  body text",
-            "  position i64",
-            "  status varchar(16)",
-            "  reason varchar(200) null",
-            "  primary key (id)",
-            "  settings {",
-            "    state_machine status history ticket_history row ticket_id from from_status to to_status at changed_at",
-            "    state_machine status initial waiting",
-            "    state_machine status waiting -> doing",
-            "    state_machine status doing -> done require (reason)",
-            "    state_machine status terminal done",
-            "  }",
-            "}",
-            "",
-            "table ticket_history {",
-            "  id i64 identity",
-            "  ticket_id varchar(32)",
-            "  from_status varchar(16)",
-            "  to_status varchar(16)",
-            "  changed_at datetime(3)",
-            "  reason varchar(200) null",
-            "  primary key (id)",
-            "  index ix_ticket_history_ticket (ticket_id)",
-            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
-            "}"
-          ],
-          "expect": {
-            "none": {
-              "diagnostics": [
-                {
-                  "column": 34,
-                  "line": 12,
-                  "rule": "setting"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "markdown-storage-history-from-type",
-      "requirements": [
-        "ORES-19"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.format",
-          "text": [
-            "dbspec 1 shop",
-            "",
-            "table tickets {",
-            "  id varchar(32)",
-            "  title varchar(255)",
-            "  body text",
-            "  position i64",
-            "  status varchar(16)",
-            "  reason varchar(200) null",
-            "  primary key (id)",
-            "  settings {",
-            "    state_machine status history ticket_history row ticket_id from from_status to to_status at changed_at",
-            "    state_machine status initial waiting",
-            "    state_machine status waiting -> doing",
-            "    state_machine status doing -> done require (reason)",
-            "    state_machine status terminal done",
-            "  }",
-            "}",
-            "",
-            "table ticket_history {",
-            "  id i64 identity",
-            "  ticket_id varchar(32)",
-            "  from_status varchar(8)",
-            "  to_status varchar(16)",
-            "  changed_at datetime(6)",
-            "  reason varchar(200) null",
-            "  primary key (id)",
-            "  index ix_ticket_history_ticket (ticket_id)",
-            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
-            "}"
-          ],
-          "expect": {
-            "none": {
-              "diagnostics": [
-                {
-                  "column": 34,
-                  "line": 12,
-                  "rule": "setting"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "markdown-storage-history-missing-required-column",
-      "requirements": [
-        "ORES-19"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.format",
-          "text": [
-            "dbspec 1 shop",
-            "",
-            "table tickets {",
-            "  id varchar(32)",
-            "  title varchar(255)",
-            "  body text",
-            "  position i64",
-            "  status varchar(16)",
-            "  reason varchar(200) null",
-            "  primary key (id)",
-            "  settings {",
-            "    state_machine status history ticket_history row ticket_id from from_status to to_status at changed_at",
-            "    state_machine status initial waiting",
-            "    state_machine status waiting -> doing",
-            "    state_machine status doing -> done require (reason)",
-            "    state_machine status terminal done",
-            "  }",
-            "}",
-            "",
-            "table ticket_history {",
-            "  id i64 identity",
-            "  ticket_id varchar(32)",
-            "  from_status varchar(16)",
-            "  to_status varchar(16)",
-            "  changed_at datetime(6)",
-            "  primary key (id)",
-            "  index ix_ticket_history_ticket (ticket_id)",
-            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
-            "}"
-          ],
-          "expect": {
-            "none": {
-              "diagnostics": [
-                {
-                  "column": 34,
-                  "line": 12,
-                  "rule": "setting"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "markdown-storage-history-repeated",
-      "requirements": [
-        "ORES-19"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.format",
-          "text": [
-            "dbspec 1 shop",
-            "",
-            "table tickets {",
-            "  id varchar(32)",
-            "  title varchar(255)",
-            "  body text",
-            "  position i64",
-            "  status varchar(16)",
-            "  reason varchar(200) null",
-            "  primary key (id)",
-            "  settings {",
-            "    state_machine status history ticket_history row ticket_id from from_status to to_status at changed_at",
-            "    state_machine status history ticket_history row ticket_id from from_status to to_status at changed_at",
-            "    state_machine status initial waiting",
-            "    state_machine status waiting -> doing",
-            "    state_machine status doing -> done require (reason)",
-            "    state_machine status terminal done",
-            "  }",
-            "}",
-            "",
-            "table ticket_history {",
-            "  id i64 identity",
-            "  ticket_id varchar(32)",
-            "  from_status varchar(16)",
-            "  to_status varchar(16)",
-            "  changed_at datetime(6)",
-            "  reason varchar(200) null",
-            "  primary key (id)",
-            "  index ix_ticket_history_ticket (ticket_id)",
-            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
-            "}"
-          ],
-          "expect": {
-            "none": {
-              "diagnostics": [
-                {
-                  "column": 5,
-                  "line": 13,
-                  "rule": "setting"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "markdown-storage-limit-outside-state-set",
-      "requirements": [
-        "ORES-19"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.format",
-          "text": [
-            "dbspec 1 shop",
-            "",
-            "table tickets {",
-            "  id varchar(32)",
-            "  title varchar(255)",
-            "  body text",
-            "  position i64",
-            "  status varchar(16)",
-            "  reason varchar(200) null",
-            "  primary key (id)",
-            "  settings {",
-            "    state_machine status limit paused 3",
-            "    state_machine status initial waiting",
-            "    state_machine status waiting -> doing",
-            "    state_machine status doing -> done require (reason)",
-            "    state_machine status terminal done",
-            "  }",
-            "}",
-            "",
-            "table ticket_history {",
-            "  id i64 identity",
-            "  ticket_id varchar(32)",
-            "  from_status varchar(16)",
-            "  to_status varchar(16)",
-            "  changed_at datetime(6)",
-            "  reason varchar(200) null",
-            "  primary key (id)",
-            "  index ix_ticket_history_ticket (ticket_id)",
-            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
-            "}"
-          ],
-          "expect": {
-            "none": {
-              "diagnostics": [
-                {
-                  "column": 32,
-                  "line": 12,
-                  "rule": "setting"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "markdown-storage-limit-zero-count",
-      "requirements": [
-        "ORES-19"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.format",
-          "text": [
-            "dbspec 1 shop",
-            "",
-            "table tickets {",
-            "  id varchar(32)",
-            "  title varchar(255)",
-            "  body text",
-            "  position i64",
-            "  status varchar(16)",
-            "  reason varchar(200) null",
-            "  primary key (id)",
-            "  settings {",
-            "    state_machine status limit doing 0",
-            "    state_machine status initial waiting",
-            "    state_machine status waiting -> doing",
-            "    state_machine status doing -> done require (reason)",
-            "    state_machine status terminal done",
-            "  }",
-            "}",
-            "",
-            "table ticket_history {",
-            "  id i64 identity",
-            "  ticket_id varchar(32)",
-            "  from_status varchar(16)",
-            "  to_status varchar(16)",
-            "  changed_at datetime(6)",
-            "  reason varchar(200) null",
-            "  primary key (id)",
-            "  index ix_ticket_history_ticket (ticket_id)",
-            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
-            "}"
-          ],
-          "expect": {
-            "none": {
-              "diagnostics": [
-                {
-                  "column": 38,
-                  "line": 12,
-                  "rule": "setting"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "markdown-storage-limit-repeated-state",
-      "requirements": [
-        "ORES-19"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.format",
-          "text": [
-            "dbspec 1 shop",
-            "",
-            "table tickets {",
-            "  id varchar(32)",
-            "  title varchar(255)",
-            "  body text",
-            "  position i64",
-            "  status varchar(16)",
-            "  reason varchar(200) null",
-            "  primary key (id)",
-            "  settings {",
-            "    state_machine status limit doing 3",
-            "    state_machine status limit doing 4",
-            "    state_machine status initial waiting",
-            "    state_machine status waiting -> doing",
-            "    state_machine status doing -> done require (reason)",
-            "    state_machine status terminal done",
-            "  }",
-            "}",
-            "",
-            "table ticket_history {",
-            "  id i64 identity",
-            "  ticket_id varchar(32)",
-            "  from_status varchar(16)",
-            "  to_status varchar(16)",
-            "  changed_at datetime(6)",
-            "  reason varchar(200) null",
-            "  primary key (id)",
-            "  index ix_ticket_history_ticket (ticket_id)",
-            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
-            "}"
-          ],
-          "expect": {
-            "none": {
-              "diagnostics": [
-                {
-                  "column": 32,
-                  "line": 13,
-                  "rule": "setting"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
       "id": "markdown-storage-setting-is-in-the-manifest-hash-only",
       "requirements": [
         "ORES-19"
@@ -10333,15 +9222,15 @@
         {
           "op": "dbspec.set",
           "owned": [
-            "dbspec 1 shop\n\ntable tickets {\n  id varchar(32)\n  title varchar(255)\n  body text\n  position i64\n  status varchar(16)\n  reason varchar(200) null\n  primary key (id)\n  settings {\n    store document list\n    key_prefix 'T'\n    title title\n    body body\n    order position\n    checkbox status waiting '-'\n    checkbox status doing '/'\n    checkbox status done 'x'\n    state_machine status initial waiting\n    state_machine status waiting -> doing\n    state_machine status doing -> done require (reason)\n    state_machine status terminal done\n    state_machine status history ticket_history row ticket_id from from_status to to_status at changed_at\n    state_machine status limit doing 3\n  }\n}\n\ntable ticket_history {\n  id i64 identity\n  ticket_id varchar(32)\n  from_status varchar(16)\n  to_status varchar(16)\n  changed_at datetime(6)\n  reason varchar(200) null\n  primary key (id)\n  index ix_ticket_history_ticket (ticket_id)\n  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict\n}\n"
+            "dbspec 1 shop\n\ntable tickets {\n  id varchar(32)\n  title varchar(255)\n  body text\n  position i64\n  status varchar(1)\n  reason varchar(200) null\n  primary key (id)\n  settings {\n    store document list\n    key_prefix 'T'\n    title title\n    body body\n    order position\n    checkbox status\n  }\n}\n\ntable ticket_history {\n  id i64 identity\n  ticket_id varchar(32)\n  from_status varchar(16)\n  to_status varchar(16)\n  changed_at datetime(6)\n  reason varchar(200) null\n  primary key (id)\n  index ix_ticket_history_ticket (ticket_id)\n  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict\n}\n"
           ],
           "expect": {
             "none": {
               "manifest": {
-                "manifest_text": "dbspec 1 shop\n\ntable tickets {\n  id varchar(32)\n  title varchar(255)\n  body text\n  position i64\n  status varchar(16)\n  reason varchar(200) null\n  primary key (id)\n  settings {\n    store document list\n    key_prefix 'T'\n    title title\n    body body\n    order position\n    checkbox status waiting '-'\n    checkbox status doing '/'\n    checkbox status done 'x'\n    state_machine status initial waiting\n    state_machine status waiting -> doing\n    state_machine status doing -> done require (reason)\n    state_machine status terminal done\n    state_machine status history ticket_history row ticket_id from from_status to to_status at changed_at\n    state_machine status limit doing 3\n  }\n}\n\ntable ticket_history {\n  id i64 identity\n  ticket_id varchar(32)\n  from_status varchar(16)\n  to_status varchar(16)\n  changed_at datetime(6)\n  reason varchar(200) null\n  primary key (id)\n  index ix_ticket_history_ticket (ticket_id)\n  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict\n}\n",
-                "schema_text": "dbspec 1 schema\n\ntable ticket_history {\n  id i64 identity\n  ticket_id varchar(32)\n  from_status varchar(16)\n  to_status varchar(16)\n  changed_at datetime(6)\n  reason varchar(200) null\n  primary key (id)\n  index ix_ticket_history_ticket (ticket_id)\n  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict\n}\n\ntable tickets {\n  id varchar(32)\n  title varchar(255)\n  body text\n  position i64\n  status varchar(16)\n  reason varchar(200) null\n  primary key (id)\n}\n",
-                "manifest_hash": "sha256:2834cf62ac62d099b78762400041894e82dac4350a0c45b75454a1eabe5cca08",
-                "schema_hash": "sha256:45d2bed1e8c1e4a1894e0e7b70fe39a7765887a46d72db384b113c649d255048"
+                "manifest_text": "dbspec 1 shop\n\ntable tickets {\n  id varchar(32)\n  title varchar(255)\n  body text\n  position i64\n  status varchar(1)\n  reason varchar(200) null\n  primary key (id)\n  settings {\n    store document list\n    key_prefix 'T'\n    title title\n    body body\n    order position\n    checkbox status\n  }\n}\n\ntable ticket_history {\n  id i64 identity\n  ticket_id varchar(32)\n  from_status varchar(16)\n  to_status varchar(16)\n  changed_at datetime(6)\n  reason varchar(200) null\n  primary key (id)\n  index ix_ticket_history_ticket (ticket_id)\n  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict\n}\n",
+                "schema_text": "dbspec 1 schema\n\ntable ticket_history {\n  id i64 identity\n  ticket_id varchar(32)\n  from_status varchar(16)\n  to_status varchar(16)\n  changed_at datetime(6)\n  reason varchar(200) null\n  primary key (id)\n  index ix_ticket_history_ticket (ticket_id)\n  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict\n}\n\ntable tickets {\n  id varchar(32)\n  title varchar(255)\n  body text\n  position i64\n  status varchar(1)\n  reason varchar(200) null\n  primary key (id)\n}\n",
+                "manifest_hash": "sha256:f5ca1c17353c904fc0dd7b7db969b3c142ce47bec712b642cb48a91ab7f8a6d0",
+                "schema_hash": "sha256:d7afe9dfe539173417cf4de89d6ff3af6d80372092bd5a2cfc15edcb45f7bd16"
               }
             }
           }
@@ -10349,15 +9238,15 @@
         {
           "op": "dbspec.set",
           "owned": [
-            "dbspec 1 shop\n\ntable tickets {\n  id varchar(32)\n  title varchar(255)\n  body text\n  position i64\n  status varchar(16)\n  reason varchar(200) null\n  primary key (id)\n  settings {\n    store document table\n    key_prefix 'T'\n    title title\n    body body\n    order position\n    checkbox status waiting '-'\n    checkbox status doing '/'\n    checkbox status done 'x'\n    state_machine status initial waiting\n    state_machine status waiting -> doing\n    state_machine status doing -> done require (reason)\n    state_machine status terminal done\n    state_machine status history ticket_history row ticket_id from from_status to to_status at changed_at\n    state_machine status limit doing 3\n  }\n}\n\ntable ticket_history {\n  id i64 identity\n  ticket_id varchar(32)\n  from_status varchar(16)\n  to_status varchar(16)\n  changed_at datetime(6)\n  reason varchar(200) null\n  primary key (id)\n  index ix_ticket_history_ticket (ticket_id)\n  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict\n}\n"
+            "dbspec 1 shop\n\ntable tickets {\n  id varchar(32)\n  title varchar(255)\n  body text\n  position i64\n  status varchar(1)\n  reason varchar(200) null\n  primary key (id)\n  settings {\n    store document table\n    key_prefix 'T'\n    title title\n    body body\n    order position\n    checkbox status\n  }\n}\n\ntable ticket_history {\n  id i64 identity\n  ticket_id varchar(32)\n  from_status varchar(16)\n  to_status varchar(16)\n  changed_at datetime(6)\n  reason varchar(200) null\n  primary key (id)\n  index ix_ticket_history_ticket (ticket_id)\n  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict\n}\n"
           ],
           "expect": {
             "none": {
               "manifest": {
-                "manifest_text": "dbspec 1 shop\n\ntable tickets {\n  id varchar(32)\n  title varchar(255)\n  body text\n  position i64\n  status varchar(16)\n  reason varchar(200) null\n  primary key (id)\n  settings {\n    store document table\n    key_prefix 'T'\n    title title\n    body body\n    order position\n    checkbox status waiting '-'\n    checkbox status doing '/'\n    checkbox status done 'x'\n    state_machine status initial waiting\n    state_machine status waiting -> doing\n    state_machine status doing -> done require (reason)\n    state_machine status terminal done\n    state_machine status history ticket_history row ticket_id from from_status to to_status at changed_at\n    state_machine status limit doing 3\n  }\n}\n\ntable ticket_history {\n  id i64 identity\n  ticket_id varchar(32)\n  from_status varchar(16)\n  to_status varchar(16)\n  changed_at datetime(6)\n  reason varchar(200) null\n  primary key (id)\n  index ix_ticket_history_ticket (ticket_id)\n  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict\n}\n",
-                "schema_text": "dbspec 1 schema\n\ntable ticket_history {\n  id i64 identity\n  ticket_id varchar(32)\n  from_status varchar(16)\n  to_status varchar(16)\n  changed_at datetime(6)\n  reason varchar(200) null\n  primary key (id)\n  index ix_ticket_history_ticket (ticket_id)\n  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict\n}\n\ntable tickets {\n  id varchar(32)\n  title varchar(255)\n  body text\n  position i64\n  status varchar(16)\n  reason varchar(200) null\n  primary key (id)\n}\n",
-                "manifest_hash": "sha256:605ba3fc88d2933e91d3ef52bc68d30164e49bb962c9b1442e37f9c80d5e8e10",
-                "schema_hash": "sha256:45d2bed1e8c1e4a1894e0e7b70fe39a7765887a46d72db384b113c649d255048"
+                "manifest_text": "dbspec 1 shop\n\ntable tickets {\n  id varchar(32)\n  title varchar(255)\n  body text\n  position i64\n  status varchar(1)\n  reason varchar(200) null\n  primary key (id)\n  settings {\n    store document table\n    key_prefix 'T'\n    title title\n    body body\n    order position\n    checkbox status\n  }\n}\n\ntable ticket_history {\n  id i64 identity\n  ticket_id varchar(32)\n  from_status varchar(16)\n  to_status varchar(16)\n  changed_at datetime(6)\n  reason varchar(200) null\n  primary key (id)\n  index ix_ticket_history_ticket (ticket_id)\n  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict\n}\n",
+                "schema_text": "dbspec 1 schema\n\ntable ticket_history {\n  id i64 identity\n  ticket_id varchar(32)\n  from_status varchar(16)\n  to_status varchar(16)\n  changed_at datetime(6)\n  reason varchar(200) null\n  primary key (id)\n  index ix_ticket_history_ticket (ticket_id)\n  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict\n}\n\ntable tickets {\n  id varchar(32)\n  title varchar(255)\n  body text\n  position i64\n  status varchar(1)\n  reason varchar(200) null\n  primary key (id)\n}\n",
+                "manifest_hash": "sha256:d8f5c76c3c1da765018fd3b91fbebe526173b41988f38833c3eaad58fe3cb376",
+                "schema_hash": "sha256:d7afe9dfe539173417cf4de89d6ff3af6d80372092bd5a2cfc15edcb45f7bd16"
               }
             }
           }

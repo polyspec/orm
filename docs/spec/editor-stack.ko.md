@@ -1,5 +1,5 @@
 <!-- doc-id: plans-editor-stack -->
-<!-- source-sha256: 126570b4c80fc71b8b097bf0bbf67bcd79bec996f4837f085d9e2ee753ecbe44 -->
+<!-- source-sha256: a420b990147c2c7fa9cb04e51db0e80af3a10a8eb47ed54723e814af883b1d83 -->
 # 계획: 표준으로서의 dbspec editor stack
 
 [English](editor-stack.md)
@@ -207,9 +207,9 @@ Cause, Acceptance, 그리고 `docs/spec/editor.md`에 있다.
   - 발견: parser는 한 machine의 반복된 `initial <state>`, 반복된 `terminal <state>`, 반복된
     `<from> -> <to>`를 `require` 목록이 달라도 아무 말 없이 받아들인다(parse.ts:2249-2284;
     `docs/spec/dbspec.md:164,172`). 그것들을 거부하는 vector가 없다.
-  - **ORES-56** 판정: 그런 반복은 뒤쪽 줄의 keyword 위치에서 `setting` 오류이며, `require` 목록은 판정에 관여하지
+  - 판정: 그런 반복은 뒤쪽 줄의 keyword 위치에서 `setting` 오류이며, `require` 목록은 판정에 관여하지
     않는다. 근거: 반복은 의미를 더하지 않으며, `require` 목록이 다른 반복은 문서가 품어서는 안 되는
-    모순이다.
+    모순이다. state machine이 문법에서 빠지면서(`T416`) 이 판정도 함께 빠졌다.
   - `docs/spec/dbspec.md`(+ko)와 각 runtime의 parser 검사.
   - `cases.json`의 거부 vector 세 개. 모든 runtime에서 `dbspec-compare-check`로 실행된다.
   - changelog 항목이 새로 거부되는 입력을 기록한다.
@@ -228,27 +228,21 @@ Cause, Acceptance, 그리고 `docs/spec/editor.md`에 있다.
       지켜진다. header의 `document`는 `path` `[<document>]`이며 이름 token 위치다.
     - **ORES-60** `path`는 감싸는 이름들 다음에 선언 자신의 이름이다. 예: column은 `["users", "email"]`, diagram
       항목은 `["main", "users"]`. setting은 자기 이름이 없고 형식이 서로 너무 달라 "대상"을 정의할 수
-      없다(`entity`, `select explicit`, `navigation`, `state_machine`, `immutable` …). 그래서 그 `path`는
+      없다(`entity`, `select explicit`, `navigation`, `store`, `immutable` …). 그래서 그 `path`는
       `[<table>, <keyword>, ...identity]`다. identity는 runtime model의 순서가 아니라 명세 자신의 반복
-      규칙(dbspec.md:150)에서 온다. model은 서로 다르기 때문이다: Go는 `state_machine` 줄을 한
-      struct에 접어 넣는다(`model.go:167-188`).
+      규칙(dbspec.md:150)에서 온다. model은 서로 다르기 때문이다.
       - **ORES-61** `codec`, `markdown`: column;
       - **ORES-62** `navigation`: foreign key;
       - **ORES-63** `blind_index`: AES column;
-      - **ORES-64** `checkbox`: column과 state;
-      - **ORES-65** `state_machine`: 줄의 형식과 피연산자 — `["transition", from, to]`, `["terminal", state]`,
-        `["initial", state]`, `["history"]`, `["limit", state]`. column은 뺀다. table 하나가 machine
-        하나를 가지기 때문이다(parse.ts:2257).
       - **ORES-66** 많아야 한 번 나오는 setting: 없음.
-      각 identity는 유일하다: 그 반복은 `setting` 오류이며, 오늘 받아들여지는 세 state machine 형식에
-      대해서는 T128-3s가 이것을 참으로 만든다. identity 표는 `docs/spec/dbspec.md`(+ko)에 적는다.
+      각 identity는 유일하다: 그 반복은 `setting` 오류다. identity 표는 `docs/spec/dbspec.md`(+ko)에 적는다.
     - **ORES-67** 반복되는 setting(dbspec.md:150)은 줄마다 항목 하나이며 source 순서를 따르고 각자의 identity를
       가진다. 아무것도 합치거나 버리지 않는다.
     - **ORES-68** 위치는 선언의 이름 token이거나 setting의 keyword다.
     - **ORES-69** 이름 없는 선언인 primary key(dbspec.md:99, "exactly one per table, unnamed")는 `path`
       `[<table>, "primary key"]`이며 그 `primary` keyword 위치다.
-    - 모양은 `docs/spec/dbspec.md`(+ko)에 적는다. vector는 반복된 `codec`, `checkbox`, 다섯 `state_machine`
-      형식 각각, `use` table, diagram 항목, primary key, document 이름을 담는다.
+    - 모양은 `docs/spec/dbspec.md`(+ko)에 적는다. vector는 반복된 `codec`, `checkbox`,
+      `use` table, diagram 항목, primary key, document 이름을 담는다.
   - **ORES-70** introspection, Mermaid import, emit, compare, diff, render, hash는 위치를 받지도 내지도 않는다.
   - **ORES-71** 모든 runtime의 parse 결과는 같은 모양이며, kind마다 모든 runtime이 같은 vector로 검사한다.
   - cases.json의 vector, interfaces, symbol 연결, `docs/spec/dbspec.md`(+ko)의 서술이 필요하다.

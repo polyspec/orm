@@ -5,7 +5,7 @@ use super::check_type::{type_check, CheckLiterals};
 use super::model::*;
 use super::names::renderer_name;
 use super::parser::{name_problem, well_formed, DefaultToken, Diag, FailedKeys, Syntax};
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 
 const MAX_KEY_COLUMNS: usize = 16;
 const MAX_KEY_VARCHAR: u32 = 640;
@@ -35,11 +35,6 @@ struct TableScope<'s, 'd> {
 }
 
 impl<'s, 'd> TableScope<'s, 'd> {
-    /// A column whose line failed, which the rules that name it report nothing about.
-    fn failed(&self, name: &str) -> bool {
-        self.unresolved.is_some_and(|u| u.contains(name))
-    }
-
     /// A column whose line parsed but whose type is invalid: `Some(nullable)` for such a column.
     fn typeless(&self, name: &str) -> Option<bool> {
         self.typeless.and_then(|t| t.get(name).copied())
@@ -559,8 +554,6 @@ impl<'s, 'd> TableRules<'s, 'd> {
                 Setting::Navigation(key, _, _) => navigations.insert(key.text.as_str()),
                 Setting::BlindIndex(aes, _) => blind_indexes.insert(aes.text.as_str()),
                 Setting::Markdown(column) => markdowns.insert(column.text.as_str()),
-                // state_machine and checkbox lines repeat by design; their consistency is checked per table.
-                Setting::StateMachine { .. } | Setting::Checkbox { .. } => true,
                 other => kinds.insert(other.rank()),
             };
             if !first {
@@ -647,14 +640,7 @@ impl<'s, 'd> TableRules<'s, 'd> {
                 Setting::KeyPrefix(_) => self.key_prefix(line.pos),
                 Setting::Title(name) | Setting::Body(name) => self.text_column(name),
                 Setting::Order(name) => self.order(name),
-                Setting::Checkbox { .. } => {}
-                Setting::StateMachine { column, line: state } => {
-                    let requires: &[Name] = match state {
-                        StateLine::Terminal(_, requires) | StateLine::Transition { requires, .. } => requires,
-                        StateLine::Initial(_) | StateLine::History(_) | StateLine::Limit { .. } => &[],
-                    };
-                    self.state_machine_column(column, requires);
-                }
+                Setting::Checkbox(name) => self.checkbox(name),
                 Setting::Immutable => {
                     if changes_rows {
                         self.report(line.pos, "setting", "immutable is rejected on a child of a cascade or set_null foreign key");
@@ -668,7 +654,6 @@ impl<'s, 'd> TableRules<'s, 'd> {
                 }
             }
         }
-        self.state_machine_consistency(settings);
     }
 
     /// The `default` value token of a column of this table, when its line parsed.
@@ -750,238 +735,12 @@ impl<'s, 'd> TableRules<'s, 'd> {
         }
     }
 
-    /// The column of a `state_machine` line is a non-null varchar or text column, and its `require`
-    /// columns exist.
-    fn state_machine_column(&mut self, column: &Name, requires: &[Name]) {
-        if let Some(c) = self.setting_column(column) {
-            if !matches!(c.ty, Type::Varchar(_) | Type::Text) || c.nullable {
-                self.report(column.pos, "setting", "state_machine needs a non-null varchar or text column");
-            }
-        }
-        for name in requires {
-            self.setting_column(name);
-        }
-    }
-
-    /// Checks the `state_machine` and `checkbox` lines of the table between them (docs/spec/dbspec.md,
-    /// "Settings"): one column, the initial and terminal states, the transition lines, history and
-    /// limit lines, the default of the state column and the checkboxes.
-    fn state_machine_consistency(&mut self, settings: &Settings) {
-        let table = self.own.table;
-        let mut column: Option<&str> = None;
-        let mut states = BTreeSet::new();
-        let mut initials = HashSet::new();
-        let mut terminals = HashSet::new();
-        let mut lines: Vec<(Pos, &StateLine)> = Vec::new();
-        let mut limits: Vec<(&Name, &Name)> = Vec::new();
-        let mut requires: Vec<&Name> = Vec::new();
-        let mut history: Option<&History> = None;
-        // The identity of each initial, terminal and transition line: its form and states, never its require list.
-        let mut seen: HashSet<(&str, &str, &str)> = HashSet::new();
-        for line in &settings.lines {
-            let Setting::StateMachine { column: name, line: state } = &line.setting else { continue };
-            match column {
-                None => column = Some(name.text.as_str()),
-                Some(first) if first != name.text => {
-                    self.report(name.pos, "setting", format!("state_machine repeats for '{}'; a table holds one machine", name.text));
-                }
-                Some(_) => {}
-            }
-            // A line of another column already reports that a table holds one machine; it is no line of this one.
-            if column == Some(name.text.as_str()) {
-                let identity = match state {
-                    StateLine::Initial(s) => Some((("initial", s.text.as_str(), ""), format!("initial {}", s.text))),
-                    StateLine::Terminal(s, _) => Some((("terminal", s.text.as_str(), ""), format!("terminal {}", s.text))),
-                    StateLine::Transition { from, to, .. } => {
-                        Some((("transition", from.text.as_str(), to.text.as_str()), format!("{} -> {}", from.text, to.text)))
-                    }
-                    _ => None,
-                };
-                if let Some((key, what)) = identity {
-                    if !seen.insert(key) {
-                        self.report(line.pos, "setting", format!("state_machine repeats {what}"));
-                        continue;
-                    }
-                }
-            }
-            match state {
-                StateLine::History(h) => match history {
-                    Some(_) => self.report(line.pos, "setting", "state_machine repeats history"),
-                    None => history = Some(h),
-                },
-                StateLine::Limit { state, count } => limits.push((state, count)),
-                StateLine::Initial(s) => {
-                    initials.insert(s.text.as_str());
-                    states.insert(s.text.as_str());
-                    lines.push((line.pos, state));
-                }
-                StateLine::Terminal(s, list) => {
-                    terminals.insert(s.text.as_str());
-                    states.insert(s.text.as_str());
-                    requires.extend(list);
-                    lines.push((line.pos, state));
-                }
-                StateLine::Transition { from, to, requires: list } => {
-                    states.insert(from.text.as_str());
-                    states.insert(to.text.as_str());
-                    requires.extend(list);
-                    lines.push((line.pos, state));
-                }
-            }
-        }
-        for (pos, state) in &lines {
-            match state {
-                StateLine::Initial(s) if terminals.contains(s.text.as_str()) => {
-                    self.report(*pos, "setting", format!("an initial state '{}' is also terminal", s.text));
-                }
-                StateLine::Transition { from, .. } if terminals.contains(from.text.as_str()) => {
-                    self.report(*pos, "setting", format!("a transition leaves the terminal state '{}'", from.text));
-                }
-                _ => {}
-            }
-        }
-        self.limits(&limits, &states);
-        let state_column = column.and_then(|name| table.column(name));
-        if let Some(h) = history {
-            self.history(h, state_column, &requires);
-        }
-        if let (Some(name), Some(_)) = (column, state_column) {
-            if let Some(default) = self.default_of(name) {
-                if !initials.contains(default.text.as_str()) {
-                    self.report(default.pos, "setting", format!("the default '{}' of the state column is not an initial state", default.text));
-                }
-            }
-        }
-        self.checkboxes(column, &states, settings);
-    }
-
-    /// Each `limit` line names a state of the state set once and a positive row count.
-    fn limits(&mut self, limits: &[(&Name, &Name)], states: &BTreeSet<&str>) {
-        let mut seen = HashSet::new();
-        for (state, count) in limits {
-            if !states.contains(state.text.as_str()) {
-                self.report(state.pos, "setting", format!("limit names state '{}' outside the state set", state.text));
-            } else if seen.contains(state.text.as_str()) {
-                self.report(state.pos, "setting", format!("limit repeats for state '{}'", state.text));
-            }
-            seen.insert(state.text.as_str());
-            if count.text.parse::<i64>().map_or(true, |n| n < 1) {
-                self.report(count.pos, "setting", format!("limit needs a positive row count, not {}", count.text));
-            }
-        }
-    }
-
-    /// The `history` line: its table is a table of this document or a used one, with a foreign key of
-    /// `row` to this table, the state type for `from` and `to`, datetime(6) for `at`, and a nullable
-    /// column of the type of each required column. The table has no other column and declares no
-    /// title or body. Every mismatch is reported at the history table name.
-    fn history(&mut self, history: &History, state: Option<&Column>, requires: &[&Name]) {
-        let name = &history.table;
-        if !well_formed(&name.text) {
-            return;
-        }
-        let scope = self.scope;
-        let Some(other) = scope.table(&name.text) else {
-            self.report(name.pos, "setting", format!("history table '{}' is not a table of this document or a used table", name.text));
-            return;
-        };
-        let Some(state) = state else { return };
-        let owner = self.own.table.name.text.as_str();
-        let row = history.row.text.as_str();
-        let linked = other.table.foreign_keys.iter().any(|f| f.columns.len() == 1 && f.columns[0].text == row && f.table.text == owner);
-        if !linked {
-            self.report(name.pos, "setting", format!("history table '{}' has no foreign key of '{row}' to table '{owner}'", name.text));
-        }
-        let mut named: HashSet<&str> = HashSet::from([row]);
-        for (column, want) in [(&history.from, state.ty), (&history.to, state.ty), (&history.at, Type::DateTime(6))] {
-            named.insert(column.text.as_str());
-            match other.table.column(&column.text) {
-                Some(c) if c.ty != want => {
-                    self.report(name.pos, "setting", format!("history column '{}' has type {}, not {}", column.text, c.ty.render(), want.render()));
-                }
-                Some(_) => {}
-                None if !other.failed(&column.text) => {
-                    self.report(name.pos, "setting", format!("history table '{}' has no column '{}'", name.text, column.text));
-                }
-                None => {}
-            }
-        }
-        for required in requires {
-            named.insert(required.text.as_str());
-            let Some(c) = self.own.table.column(&required.text) else { continue };
-            match other.table.column(&required.text) {
-                None if !other.failed(&required.text) => {
-                    self.report(name.pos, "setting", format!("history table '{}' has no column '{}' of the required column", name.text, required.text));
-                }
-                Some(hc) if !hc.nullable || hc.ty != c.ty => {
-                    self.report(name.pos, "setting", format!("history column '{}' is not a nullable {} column", required.text, c.ty.render()));
-                }
-                _ => {}
-            }
-        }
-        for key in &other.table.primary {
-            named.extend(key.columns.iter().map(|c| c.text.as_str()));
-        }
-        for column in &other.table.columns {
-            if !named.contains(column.name.text.as_str()) {
-                self.report(
-                    name.pos,
-                    "setting",
-                    format!("history table '{}' has column '{}', which the history line does not name", name.text, column.name.text),
-                );
-            }
-        }
-        if let Some(settings) = &other.table.settings {
-            for line in &settings.lines {
-                if matches!(line.setting, Setting::Title(_) | Setting::Body(_)) {
-                    self.report(name.pos, "setting", format!("history table '{}' declares a title or body, which a history table does not", name.text));
-                }
-            }
-        }
-    }
-
-    /// The `checkbox` lines name the column of the machine, one of its states each, once per state, with one
-    /// character glyphs that differ, and every state of the machine has one.
-    fn checkboxes(&mut self, column: Option<&str>, states: &BTreeSet<&str>, settings: &Settings) {
-        let boxes: Vec<(Pos, &Name, &Name, &Name)> = settings
-            .lines
-            .iter()
-            .filter_map(|l| match &l.setting {
-                Setting::Checkbox { column, state, glyph } => Some((l.pos, column, state, glyph)),
-                _ => None,
-            })
-            .collect();
-        let Some(&(first_pos, first_column, _, _)) = boxes.first() else { return };
-        let Some(column) = column else {
-            self.report(first_column.pos, "setting", format!("checkbox needs a state_machine on column '{}'", first_column.text));
-            return;
-        };
-        let mut covered = HashSet::new();
-        let mut glyphs = HashSet::new();
-        for &(_, name, state, glyph) in &boxes {
-            if self.setting_column(name).is_none() {
-                continue;
-            }
-            if name.text != column {
-                self.report(name.pos, "setting", format!("checkbox names column '{}', but the state_machine column is '{column}'", name.text));
-                continue;
-            }
-            if !states.contains(state.text.as_str()) {
-                self.report(state.pos, "setting", format!("checkbox names state '{}' outside the state set", state.text));
-            } else if covered.contains(state.text.as_str()) {
-                self.report(state.pos, "setting", format!("checkbox repeats for state '{}'", state.text));
-            }
-            covered.insert(state.text.as_str());
-            if glyph.text.chars().count() != 1 {
-                self.report(glyph.pos, "setting", "a checkbox glyph is one character");
-            } else if glyphs.contains(glyph.text.as_str()) {
-                self.report(glyph.pos, "setting", format!("checkbox glyph '{}' repeats", glyph.text));
-            }
-            glyphs.insert(glyph.text.as_str());
-        }
-        for state in states {
-            if !covered.contains(state) {
-                self.report(first_pos, "setting", format!("checkbox does not cover state '{state}'"));
+    /// `checkbox` names the column whose value a list row writes between the brackets of its task marker: a
+    /// varchar(1) column, written as its value, or a bool column, written as the unchecked and the checked task box.
+    fn checkbox(&mut self, name: &Name) {
+        if let Some(column) = self.setting_column(name) {
+            if !matches!(column.ty, Type::Bool | Type::Varchar(1)) {
+                self.report(name.pos, "setting", format!("checkbox needs a varchar(1) or bool column, not {}", column.ty.render()));
             }
         }
     }

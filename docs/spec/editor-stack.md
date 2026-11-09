@@ -228,9 +228,10 @@ text lives in T128's Cause and Acceptance, plus `docs/spec/editor.md`.
   - Found: the parser accepts, silently, a repeated `initial <state>`, a repeated
     `terminal <state>` and a repeated `<from> -> <to>` of one machine, even with different
     `require` lists (parse.ts:2249-2284; `docs/spec/dbspec.md:164,172`). No vector rejects them.
-  - **ORES-56** Ruling: such a repeat is a `setting` error at the later line's keyword, and the `require`
+  - Ruling: such a repeat is a `setting` error at the later line's keyword, and the `require`
     lists play no part. Ground: a repeat adds no meaning, and a repeat with a different `require`
-    list is a contradiction the document must not hold.
+    list is a contradiction the document must not hold. The state machine left the grammar
+    (`T416`), and this ruling with it.
   - In `docs/spec/dbspec.md` (+ko), and the parser check in each runtime.
   - Three rejecting vectors in `cases.json`, run in every runtime through
     `dbspec-compare-check`.
@@ -255,19 +256,14 @@ text lives in T128's Cause and Acceptance, plus `docs/spec/editor.md`.
     - **ORES-60** `path` is the enclosing names, then the declaration's own name. For example:
       `["users", "email"]` for a column; `["main", "users"]` for a diagram entry. A setting has no name of its own, and its
       forms differ too much for a "target" to be defined (`entity`, `select explicit`,
-      `navigation`, `state_machine`, `immutable` …). So its `path` is `[<table>, <keyword>, ...identity]`. The identity comes from the spec's
+      `navigation`, `store`, `immutable` …). So its `path` is `[<table>, <keyword>, ...identity]`. The identity comes from the spec's
       own repeat rule (dbspec.md:150), never from the order of a runtime's model, because the
-      models differ: Go folds `state_machine` lines into one struct (`model.go:167-188`).
+      models differ.
       - **ORES-61** `codec`, `markdown`: the column;
       - **ORES-62** `navigation`: the foreign key;
       - **ORES-63** `blind_index`: the AES column;
-      - **ORES-64** `checkbox`: the column and the state;
-      - **ORES-65** `state_machine`: the line's form and operands — `["transition", from, to]`,
-        `["terminal", state]`, `["initial", state]`, `["history"]`, `["limit", state]`. The
-        column is left out, because a table holds one machine (parse.ts:2257).
       - **ORES-66** a setting that appears at most once: nothing.
-      Each identity is unique: a repeat of it is the `setting` error, which T128-3s makes true
-      for the three state-machine forms that are accepted today. The identity table is stated
+      Each identity is unique: a repeat of it is the `setting` error. The identity table is stated
       in `docs/spec/dbspec.md` (+ko).
     - **ORES-67** A setting that repeats (dbspec.md:150) is one entry per line, in source order, each with
       its own identity. Nothing is merged or dropped.
@@ -276,7 +272,7 @@ text lives in T128's Cause and Acceptance, plus `docs/spec/editor.md`.
       unnamed"), has `path` `[<table>, "primary key"]` and the position of its `primary`
       keyword.
     - The shape is stated in `docs/spec/dbspec.md` (+ko). The vectors include a repeated `codec`, a
-      `checkbox`, each of the five `state_machine` forms, a `use` table, a diagram entry, the
+      `checkbox`, a `use` table, a diagram entry, the
       primary key and the document name.
   - **ORES-70** Introspection, Mermaid import, emit, compare, diff, render and the hashes neither take nor
     produce positions.

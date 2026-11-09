@@ -169,8 +169,6 @@ type settingNode struct {
 	// lists are the exclude and include lists of audit. A setting that writes both
 	// is rejected by the check.
 	lists []columnList
-	// form is the kind of a state_machine line: transition, terminal, initial, history, or limit.
-	form string
 }
 
 // columnList is `exclude (<column>, ...)` or `include (<column>, ...)`.
@@ -442,25 +440,6 @@ func (c *cursor) punct(text string) bool {
 		return true
 	}
 	return c.fail("'" + text + "'")
-}
-
-// arrow consumes `->`, which the lexer writes as two operator tokens.
-func (c *cursor) arrow() bool {
-	if c.peekIs(tokenOperator, "-") && c.i+1 < len(c.tokens) && c.tokens[c.i+1].is(tokenOperator, ">") {
-		c.i += 2
-		return true
-	}
-	return c.fail("'->'")
-}
-
-// formAhead reports whether a keyword's letters are followed by something other than a transition's from state:
-// if a transition arrow `->` follows, those letters are a state name.
-func (c *cursor) formAhead(text string) bool {
-	if !c.peekIs(tokenWord, text) {
-		return false
-	}
-	next := c.i + 1
-	return next >= len(c.tokens) || !c.tokens[next].is(tokenOperator, "-")
 }
 
 // action reads a foreign key action; restrict, cascade and set_null are keywords.
@@ -1106,59 +1085,8 @@ func (p *parser) settingsLine(c *cursor) {
 		if ok {
 			line.args = append(line.args, prefix)
 		}
-	case "title", "body", "order":
+	case "title", "body", "order", "checkbox":
 		ok = arg("a column name")
-	case "checkbox":
-		ok = arg("the state column") && arg("a state name")
-		if ok {
-			var glyph token
-			glyph, ok = c.quoted("a glyph in quotes")
-			if ok {
-				line.args = append(line.args, glyph)
-			}
-		}
-	case "state_machine":
-		ok = arg("the state column")
-		switch {
-		case !ok:
-		case c.formAhead("initial"):
-			c.take(classKeyword)
-			line.form = "initial"
-			ok = arg("a state name")
-		case c.formAhead("terminal"):
-			c.take(classKeyword)
-			line.form = "terminal"
-			ok = arg("a state name")
-		case c.formAhead("history"):
-			c.take(classKeyword)
-			line.form = "history"
-			ok = arg("the history table") && c.keyword("row") && arg("the foreign key column") &&
-				c.keyword("from") && arg("the from column") && c.keyword("to") && arg("the to column") &&
-				c.keyword("at") && arg("the at column")
-		case c.formAhead("limit"):
-			c.take(classKeyword)
-			line.form = "limit"
-			ok = arg("a state name")
-			if ok {
-				var count token
-				count, ok = c.value("a row count", false)
-				if ok {
-					line.args = append(line.args, count)
-				}
-			}
-		default:
-			line.form = "transition"
-			ok = arg("the from state") && c.arrow() && arg("the to state")
-		}
-		if ok && (line.form == "transition" || line.form == "terminal") && c.peekIs(tokenWord, "require") {
-			require := c.take(classKeyword)
-			list := columnList{keyword: require}
-			list.columns, _, ok = c.names(false)
-			line.lists = append(line.lists, list)
-		}
-		if ok && c.more() && c.lexErr == nil {
-			ok = c.fail("the end of the line")
-		}
 	case "audit":
 		ok = c.keyword("into") && arg("the history table") &&
 			c.keyword("column") && arg("the audit column") &&

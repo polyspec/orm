@@ -202,24 +202,12 @@ class DbspecSetting:
     tables: tuple | None = None
     exclude: tuple | None = None
     include: tuple | None = None
-    # For markdown, store, key_prefix, title, body, order, checkbox, and state_machine only. The kind of store is form,
-    # and the forms of state_machine are initial, terminal, transition, history, and limit.
+    # For markdown, store, key_prefix, title, body, order, and checkbox only. The kind of store is form.
     form: str = ""
     shape: str = ""
     # store only: None if there is no shard clause.
     shard: DbspecStoreShard | None = None
     prefix: str = ""
-    glyph: str = ""
-    state: str = ""
-    from_state: str = ""
-    to_state: str = ""
-    requires: tuple = ()
-    history: str = ""
-    row: str = ""
-    from_column: str = ""
-    to_column: str = ""
-    at_column: str = ""
-    count: str = ""
 
 
 @dataclass(frozen=True)

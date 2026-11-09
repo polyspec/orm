@@ -258,8 +258,6 @@ typedef struct {
     strs args;
     strs comments;
     strs *exclude, *include; /* NULL means there is no list */
-    str form;                /* Shape of the state_machine line; other settings are SNULL */
-    strs *requires;          /* require list of state_machine; NULL if none */
 } setting;
 
 typedef VEC(setting *) settingv;

@@ -20,12 +20,6 @@ const RESERVED: [&str; 21] = [
     "or", "not", "in", "between", "is",
 ];
 
-/// Whether the keyword `text` comes next and is not the from state of a transition: a word followed by
-/// `->` is a state name.
-fn form_ahead(cursor: &Cursor, text: &str) -> bool {
-    cursor.peek_is(text) && !cursor.tokens.get(cursor.at + 1).is_some_and(|t| t.is("-"))
-}
-
 /// A name that matches `[a-z][a-z0-9_]*`, is not reserved and has at most 63 bytes.
 pub(crate) fn well_formed(text: &str) -> bool {
     name_format(text) && text.len() <= MAX_NAME_BYTES
@@ -72,12 +66,11 @@ pub(crate) struct Declaration {
     pub setting: Option<SettingWords>,
 }
 
-/// The keyword of a setting line as written, and the words that its repeat identity is made of: the
-/// form of a state_machine line and its names, in the order of the line.
+/// The keyword of a setting line as written, and the words that its repeat identity is made of, in the
+/// order of the line.
 #[derive(Clone, Debug)]
 pub(crate) struct SettingWords {
     pub keyword: String,
-    pub form: String,
     pub args: Vec<String>,
 }
 
@@ -102,35 +95,24 @@ pub(crate) struct Syntax {
     pub marks: Marks,
 }
 
-/// The form and the names of a setting that its repeat identity is made of (docs/spec/dbspec.md "Settings"): the
-/// column of codec and markdown, the foreign key of navigation, the AES column and the column of blind_index,
-/// the column and state of checkbox, and the form, column and states of a state_machine line. Other settings
-/// have no identity and no words.
-fn setting_words(setting: &Setting) -> (String, Vec<String>) {
+/// The names of a setting that its repeat identity is made of (docs/spec/dbspec.md "Settings"): the column of
+/// codec and markdown, the foreign key of navigation, and the AES column and the column of blind_index. Other
+/// settings have no identity and no words.
+fn setting_words(setting: &Setting) -> Vec<String> {
     let text = |name: &Name| name.text.clone();
     match setting {
-        Setting::Codec(column, _) | Setting::Markdown(column) => (String::new(), vec![text(column)]),
-        Setting::Navigation(key, child, parent) => (String::new(), vec![text(key), text(child), text(parent)]),
-        Setting::BlindIndex(aes, column) => (String::new(), vec![text(aes), text(column)]),
-        Setting::Checkbox { column, state, .. } => (String::new(), vec![text(column), text(state)]),
-        Setting::StateMachine { column, line } => match line {
-            StateLine::Initial(state) => ("initial".to_owned(), vec![text(column), text(state)]),
-            StateLine::Terminal(state, _) => ("terminal".to_owned(), vec![text(column), text(state)]),
-            StateLine::Transition { from, to, .. } => ("transition".to_owned(), vec![text(column), text(from), text(to)]),
-            StateLine::History(_) => ("history".to_owned(), vec![text(column)]),
-            StateLine::Limit { state, count } => ("limit".to_owned(), vec![text(column), text(state), text(count)]),
-        },
-        _ => (String::new(), Vec::new()),
+        Setting::Codec(column, _) | Setting::Markdown(column) => vec![text(column)],
+        Setting::Navigation(key, child, parent) => vec![text(key), text(child), text(parent)],
+        Setting::BlindIndex(aes, column) => vec![text(aes), text(column)],
+        _ => Vec::new(),
     }
 }
 
-/// The value token of a column `default`: its column, its position and its text, which is a string
-/// without its quotes. Validation reads it for the rules that compare a state column's default.
+/// A column `default` whose value token parsed, by its column. Validation reads it for the rule that an
+/// `order` column has no default.
 #[derive(Clone, Debug)]
 pub(crate) struct DefaultToken {
     pub column: String,
-    pub pos: Pos,
-    pub text: String,
 }
 
 /// Key and index lines of a table that failed: their columns are unknown, so
@@ -957,12 +939,8 @@ impl Parser {
             default = Some((value_pos, value));
         }
         self.end(cursor)?;
-        if let Some((pos, Some(value))) = &default {
-            let text = match value {
-                Value::Number { negative: true, text } => format!("-{text}"),
-                Value::Number { negative: false, text } | Value::Word(text) | Value::Str(text) => text.clone(),
-            };
-            self.table_defaults.push(DefaultToken { column: name.text.clone(), pos: *pos, text });
+        if let Some((_, Some(_))) = &default {
+            self.table_defaults.push(DefaultToken { column: name.text.clone() });
         }
         if let Some(pos) = identity {
             let mut problems = Vec::new();
@@ -1434,13 +1412,7 @@ impl Parser {
             (Kind::Word, "title") => self.name(&mut cursor).map(Setting::Title),
             (Kind::Word, "body") => self.name(&mut cursor).map(Setting::Body),
             (Kind::Word, "order") => self.name(&mut cursor).map(Setting::Order),
-            (Kind::Word, "checkbox") => (|| {
-                let column = self.name(&mut cursor)?;
-                let state = self.name(&mut cursor)?;
-                let glyph = self.quoted(&mut cursor)?;
-                Some(Setting::Checkbox { column, state, glyph })
-            })(),
-            (Kind::Word, "state_machine") => self.state_machine(&mut cursor),
+            (Kind::Word, "checkbox") => self.name(&mut cursor).map(Setting::Checkbox),
             (Kind::Word, "immutable") => Some(Setting::Immutable),
             (Kind::Word, "audit") => (|| {
                 self.expect(&mut cursor, "into")?;
@@ -1488,13 +1460,13 @@ impl Parser {
         if self.end(&cursor).is_none() {
             return;
         }
-        let (form, args) = setting_words(&setting);
+        let args = setting_words(&setting);
         let table = self.table_name();
         self.declarations.push(Declaration {
             kind: "setting",
             path: vec![table],
             pos: keyword.pos,
-            setting: Some(SettingWords { keyword: keyword.text.to_owned(), form, args }),
+            setting: Some(SettingWords { keyword: keyword.text.to_owned(), args }),
         });
         if let Some(settings) = self.settings_target() {
             settings.lines.push(SettingLine { comments, pos: keyword.pos, setting });
@@ -1516,91 +1488,6 @@ impl Parser {
             None
         };
         Some(Setting::Store { kind, foreign, shape, shard })
-    }
-
-    /// `state_machine <column> ...`: the form is read after the column, as the keywords `initial`,
-    /// `terminal`, `history` and `limit` only when no `->` follows them (a state named like one of them).
-    fn state_machine(&mut self, cursor: &mut Cursor) -> Option<Setting> {
-        let column = self.name(cursor)?;
-        let line = if form_ahead(cursor, "initial") {
-            self.take_keyword(cursor);
-            StateLine::Initial(self.name(cursor)?)
-        } else if form_ahead(cursor, "terminal") {
-            self.take_keyword(cursor);
-            let state = self.name(cursor)?;
-            StateLine::Terminal(state, self.requires(cursor)?)
-        } else if form_ahead(cursor, "history") {
-            self.take_keyword(cursor);
-            let table = self.name(cursor)?;
-            self.expect(cursor, "row")?;
-            let row = self.name(cursor)?;
-            self.expect(cursor, "from")?;
-            let from = self.name(cursor)?;
-            self.expect(cursor, "to")?;
-            let to = self.name(cursor)?;
-            self.expect(cursor, "at")?;
-            let at = self.name(cursor)?;
-            StateLine::History(History { table, row, from, to, at })
-        } else if form_ahead(cursor, "limit") {
-            self.take_keyword(cursor);
-            let state = self.name(cursor)?;
-            StateLine::Limit { state, count: self.row_count(cursor)? }
-        } else {
-            let from = self.name(cursor)?;
-            self.arrow(cursor)?;
-            let to = self.name(cursor)?;
-            StateLine::Transition { from, to, requires: self.requires(cursor)? }
-        };
-        Some(Setting::StateMachine { column, line })
-    }
-
-    /// `require (<column>, ...)` when it comes next; the empty list otherwise.
-    fn requires(&mut self, cursor: &mut Cursor) -> Option<Vec<Name>> {
-        if !cursor.peek_is("require") {
-            return Some(Vec::new());
-        }
-        self.take_keyword(cursor);
-        Some(self.column_list(cursor, false)?.into_iter().map(|(name, _)| name).collect())
-    }
-
-    /// `->`, which the lexer writes as the two operator tokens `-` and `>`.
-    fn arrow(&mut self, cursor: &mut Cursor) -> Option<()> {
-        let next_is_greater = cursor.tokens.get(cursor.at + 1).is_some_and(|t| t.is(">"));
-        if cursor.peek_is("-") && next_is_greater {
-            cursor.at += 2;
-            Some(())
-        } else {
-            self.syntax(cursor);
-            None
-        }
-    }
-
-    /// The row count of a `limit` line: a number token, or `-` and a number, which is read as the
-    /// negative text. Its value is checked by validation.
-    fn row_count(&mut self, cursor: &mut Cursor) -> Option<Name> {
-        if cursor.peek_is("-") {
-            let minus = cursor.next()?;
-            return match cursor.peek() {
-                Some(number) if number.kind == Kind::Number => {
-                    cursor.next();
-                    Some(Name { text: format!("-{}", number.text), pos: minus.pos })
-                }
-                _ => {
-                    self.syntax(cursor);
-                    None
-                }
-            };
-        }
-        match cursor.peek() {
-            Some(t) if matches!(t.kind, Kind::Word | Kind::Number) => {
-                cursor.next();
-                Some(Name { text: t.text.to_owned(), pos: t.pos })
-            }
-            _ => {
-                self.syntax(cursor);
-                None
-            }
-        }
     }
 
     /// A word that is one of `words`; the word is returned as a name.

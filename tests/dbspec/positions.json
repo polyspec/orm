@@ -12,8 +12,6 @@
     "ORES-61",
     "ORES-62",
     "ORES-63",
-    "ORES-64",
-    "ORES-65",
     "ORES-66",
     "ORES-67",
     "ORES-68",
@@ -268,7 +266,7 @@
             "  title varchar(191)",
             "  body text",
             "  sort_order i32",
-            "  state varchar(16)",
+            "  state varchar(1)",
             "  primary key (id)",
             "  settings {",
             "    markdown body",
@@ -277,15 +275,7 @@
             "    title title",
             "    body body",
             "    order sort_order",
-            "    checkbox state todo '.'",
-            "    checkbox state doing '~'",
-            "    checkbox state done 'x'",
-            "    state_machine state initial todo",
-            "    state_machine state todo -> doing",
-            "    state_machine state doing -> done require (sort_order)",
-            "    state_machine state terminal done",
-            "    state_machine state history page_history row page_id from from_state to to_state at changed_at",
-            "    state_machine state limit doing 3",
+            "    checkbox state",
             "  }",
             "}",
             "",
@@ -454,100 +444,9 @@
                   "kind": "setting",
                   "path": [
                     "page",
-                    "checkbox",
-                    "state",
-                    "todo"
+                    "checkbox"
                   ],
                   "line": 17,
-                  "column": 5
-                },
-                {
-                  "kind": "setting",
-                  "path": [
-                    "page",
-                    "checkbox",
-                    "state",
-                    "doing"
-                  ],
-                  "line": 18,
-                  "column": 5
-                },
-                {
-                  "kind": "setting",
-                  "path": [
-                    "page",
-                    "checkbox",
-                    "state",
-                    "done"
-                  ],
-                  "line": 19,
-                  "column": 5
-                },
-                {
-                  "kind": "setting",
-                  "path": [
-                    "page",
-                    "state_machine",
-                    "initial",
-                    "todo"
-                  ],
-                  "line": 20,
-                  "column": 5
-                },
-                {
-                  "kind": "setting",
-                  "path": [
-                    "page",
-                    "state_machine",
-                    "transition",
-                    "todo",
-                    "doing"
-                  ],
-                  "line": 21,
-                  "column": 5
-                },
-                {
-                  "kind": "setting",
-                  "path": [
-                    "page",
-                    "state_machine",
-                    "transition",
-                    "doing",
-                    "done"
-                  ],
-                  "line": 22,
-                  "column": 5
-                },
-                {
-                  "kind": "setting",
-                  "path": [
-                    "page",
-                    "state_machine",
-                    "terminal",
-                    "done"
-                  ],
-                  "line": 23,
-                  "column": 5
-                },
-                {
-                  "kind": "setting",
-                  "path": [
-                    "page",
-                    "state_machine",
-                    "history"
-                  ],
-                  "line": 24,
-                  "column": 5
-                },
-                {
-                  "kind": "setting",
-                  "path": [
-                    "page",
-                    "state_machine",
-                    "limit",
-                    "doing"
-                  ],
-                  "line": 25,
                   "column": 5
                 },
                 {
@@ -555,7 +454,7 @@
                   "path": [
                     "page_history"
                   ],
-                  "line": 29,
+                  "line": 21,
                   "column": 7
                 },
                 {
@@ -564,7 +463,7 @@
                     "page_history",
                     "history_id"
                   ],
-                  "line": 30,
+                  "line": 22,
                   "column": 3
                 },
                 {
@@ -573,7 +472,7 @@
                     "page_history",
                     "page_id"
                   ],
-                  "line": 31,
+                  "line": 23,
                   "column": 3
                 },
                 {
@@ -582,7 +481,7 @@
                     "page_history",
                     "from_state"
                   ],
-                  "line": 32,
+                  "line": 24,
                   "column": 3
                 },
                 {
@@ -591,7 +490,7 @@
                     "page_history",
                     "to_state"
                   ],
-                  "line": 33,
+                  "line": 25,
                   "column": 3
                 },
                 {
@@ -600,7 +499,7 @@
                     "page_history",
                     "changed_at"
                   ],
-                  "line": 34,
+                  "line": 26,
                   "column": 3
                 },
                 {
@@ -609,7 +508,7 @@
                     "page_history",
                     "sort_order"
                   ],
-                  "line": 35,
+                  "line": 27,
                   "column": 3
                 },
                 {
@@ -618,7 +517,7 @@
                     "page_history",
                     "primary key"
                   ],
-                  "line": 36,
+                  "line": 28,
                   "column": 3
                 },
                 {
@@ -627,7 +526,7 @@
                     "page_history",
                     "ix_page_history_page"
                   ],
-                  "line": 37,
+                  "line": 29,
                   "column": 9
                 },
                 {
@@ -636,7 +535,7 @@
                     "page_history",
                     "fk_page_history_page"
                   ],
-                  "line": 38,
+                  "line": 30,
                   "column": 15
                 },
                 {
@@ -644,7 +543,7 @@
                   "path": [
                     "section"
                   ],
-                  "line": 41,
+                  "line": 33,
                   "column": 7
                 },
                 {
@@ -653,7 +552,7 @@
                     "section",
                     "id"
                   ],
-                  "line": 42,
+                  "line": 34,
                   "column": 3
                 },
                 {
@@ -662,7 +561,7 @@
                     "section",
                     "page_id"
                   ],
-                  "line": 43,
+                  "line": 35,
                   "column": 3
                 },
                 {
@@ -671,7 +570,7 @@
                     "section",
                     "body"
                   ],
-                  "line": 44,
+                  "line": 36,
                   "column": 3
                 },
                 {
@@ -680,7 +579,7 @@
                     "section",
                     "primary key"
                   ],
-                  "line": 45,
+                  "line": 37,
                   "column": 3
                 },
                 {
@@ -689,7 +588,7 @@
                     "section",
                     "ix_section_page"
                   ],
-                  "line": 46,
+                  "line": 38,
                   "column": 9
                 },
                 {
@@ -698,7 +597,7 @@
                     "section",
                     "fk_section_page"
                   ],
-                  "line": 47,
+                  "line": 39,
                   "column": 15
                 },
                 {
@@ -707,7 +606,7 @@
                     "section",
                     "store"
                   ],
-                  "line": 49,
+                  "line": 41,
                   "column": 5
                 },
                 {
@@ -715,7 +614,7 @@
                   "path": [
                     "ledger"
                   ],
-                  "line": 53,
+                  "line": 45,
                   "column": 7
                 },
                 {
@@ -724,7 +623,7 @@
                     "ledger",
                     "id"
                   ],
-                  "line": 54,
+                  "line": 46,
                   "column": 3
                 },
                 {
@@ -733,7 +632,7 @@
                     "ledger",
                     "amount"
                   ],
-                  "line": 55,
+                  "line": 47,
                   "column": 3
                 },
                 {
@@ -742,7 +641,7 @@
                     "ledger",
                     "primary key"
                   ],
-                  "line": 56,
+                  "line": 48,
                   "column": 3
                 },
                 {
@@ -751,7 +650,7 @@
                     "ledger",
                     "store"
                   ],
-                  "line": 58,
+                  "line": 50,
                   "column": 5
                 }
               ]

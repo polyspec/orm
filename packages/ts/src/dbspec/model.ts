@@ -101,22 +101,6 @@ export interface DbspecStoreShard {
   readonly period: 'year' | 'month' | 'day';
 }
 
-/** One `state_machine` line after the column: an initial or terminal state, a transition, a history row or a row limit. */
-export type DbspecStateLine =
-  | { readonly form: 'initial'; readonly state: string }
-  | { readonly form: 'terminal'; readonly state: string; readonly requires: readonly string[] | null }
-  | { readonly form: 'transition'; readonly from: string; readonly to: string; readonly requires: readonly string[] | null }
-  | {
-      readonly form: 'history';
-      readonly table: string;
-      readonly row: string;
-      readonly from: string;
-      readonly to: string;
-      readonly at: string;
-    }
-  /** count is the canonical decimal text of the positive row count. */
-  | { readonly form: 'limit'; readonly state: string; readonly count: string };
-
 export type DbspecSetting = { readonly comments: readonly string[] } & (
   | { readonly kind: 'entity'; readonly name: string }
   | { readonly kind: 'updated' | 'soft_delete' | 'aes_version'; readonly column: string }
@@ -137,9 +121,7 @@ export type DbspecSetting = { readonly comments: readonly string[] } & (
       readonly shard: DbspecStoreShard | null;
     }
   | { readonly kind: 'key_prefix'; readonly prefix: string }
-  | { readonly kind: 'title' | 'body' | 'order'; readonly column: string }
-  | { readonly kind: 'checkbox'; readonly column: string; readonly state: string; readonly glyph: string }
-  | { readonly kind: 'state_machine'; readonly column: string; readonly line: DbspecStateLine }
+  | { readonly kind: 'title' | 'body' | 'order' | 'checkbox'; readonly column: string }
   | { readonly kind: 'immutable' }
   | {
       readonly kind: 'audit';

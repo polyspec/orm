@@ -1,8 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2912b22d16758aa33f1636a597a6cb524d319759c27a9aca3509c9abb3c731f0 -->
+<!-- source-sha256: 9a598b7a09245c0baf0706481d58eda0de6495e6c9da1f53378b93695020ace0 -->
 # 변경 이력
 
 ## Unreleased
+
+- PHP extension은 `markdown`, `title`, `body`, `order`, `checkbox` 줄의 column 뒤에 오는 token을 다른 모든 runtime처럼 그 token에서 `syntax` error로 거부한다. 전에는 그 줄을 받아들이고 token을 버렸다 (DBS-63, T416).
+- Breaking: dbspec은 state machine을 갖지 않으며, `checkbox`는 그 column의 값을 보여 준다 (DBS-63, DBS-80, T416). `state_machine` setting은 `initial`, `terminal`, 전환, `history`, `limit` 줄과 그 검사와 함께 모든 runtime의 문법에서 빠진다 (DBS-73, DBS-81, DBS-82, DBS-83은 철회한다). `state_machine` 줄은 알 수 없는 setting이어서 그 keyword에서 `setting` error다. MySQL, PostgreSQL, SQLite 어디도 state machine을 갖지 않기 때문이다. `checkbox <column>`은 table의 column 하나를 가리키며, list 행은 그 값을 task marker의 괄호 사이에 쓴다: `varchar(1)` column은 그 값으로, `bool` column은 GFM의 체크하지 않은 task box와 체크한 task box로 쓴다. 다른 type의 column은 그 column에서 `setting` error이고, 두 번째 `checkbox` 줄은 반복이며, state별 형태 `checkbox <column> <state> '<glyph>'`는 그 state에서 `syntax` error다. 둘 중 하나를 선언했던 문서의 manifest hash는 그 text와 함께 바뀐다.
 
 ## 0.0.27
 

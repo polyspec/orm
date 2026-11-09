@@ -333,17 +333,8 @@ pub enum Setting {
     Title(Name),
     Body(Name),
     Order(Name),
-    /// `checkbox <column> <state> '<glyph>'`. The glyph name holds the glyph without its quotes.
-    Checkbox {
-        column: Name,
-        state: Name,
-        glyph: Name,
-    },
-    /// One line of `state_machine <column> ...`.
-    StateMachine {
-        column: Name,
-        line: StateLine,
-    },
+    /// `checkbox <column>`: the varchar(1) or bool column that a list row writes between the brackets of its task marker.
+    Checkbox(Name),
     Immutable,
     /// `lists` are the exclude and include lists. A valid document has at most one (docs/spec/dbspec.md "Audit").
     /// `column` is the column holding the primary key of the audit record table `references`.
@@ -365,31 +356,6 @@ pub struct AuditTables {
     pub table: Name,
     pub record: Name,
     pub name: Name,
-}
-
-/// A line of a `state_machine` setting after its column.
-#[derive(Clone, Debug)]
-pub enum StateLine {
-    /// `initial <state>`.
-    Initial(Name),
-    /// `terminal <state> [require (<column>, ...)]`.
-    Terminal(Name, Vec<Name>),
-    /// `<from> -> <to> [require (<column>, ...)]`.
-    Transition { from: Name, to: Name, requires: Vec<Name> },
-    /// `history <table> row <column> from <column> to <column> at <column>`.
-    History(History),
-    /// `limit <state> <count>`. The count keeps its token text, which is a positive integer when valid.
-    Limit { state: Name, count: Name },
-}
-
-/// The history line of a state machine: the history table and its columns.
-#[derive(Clone, Debug)]
-pub struct History {
-    pub table: Name,
-    pub row: Name,
-    pub from: Name,
-    pub to: Name,
-    pub at: Name,
 }
 
 /// The `shard <column> <period>` clause of store: `keyword` is `shard`, and the column is a non-null date or datetime
@@ -449,12 +415,9 @@ impl Setting {
             Setting::Title(_) => 11,
             Setting::Body(_) => 12,
             Setting::Order(_) => 13,
-            Setting::Checkbox { .. } => 14,
-            Setting::StateMachine { line: StateLine::History(_), .. } => 16,
-            Setting::StateMachine { line: StateLine::Limit { .. }, .. } => 17,
-            Setting::StateMachine { .. } => 15,
-            Setting::Immutable => 18,
-            Setting::Audit { .. } => 19,
+            Setting::Checkbox(_) => 14,
+            Setting::Immutable => 15,
+            Setting::Audit { .. } => 16,
         }
     }
 

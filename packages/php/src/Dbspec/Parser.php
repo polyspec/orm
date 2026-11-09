@@ -44,12 +44,11 @@ final class Parser
     /** Codec stages that produce text; the others produce bytes. */
     private const TEXT_STAGES = ['hex', 'base64', 'ordered_json', 'yaml', 'serialize'];
     /** The keyword of markdown storage settings. The cursor reads it (storageLine). */
-    private const STORAGE_KEYWORDS = ['markdown', 'store', 'key_prefix', 'title', 'body', 'order', 'checkbox',
-        'state_machine'];
+    private const STORAGE_KEYWORDS = ['markdown', 'store', 'key_prefix', 'title', 'body', 'order', 'checkbox'];
     /**
      * A storage keyword written only once per table. Repeating it is a setting error at the keyword's position.
      */
-    private const ONCE_STORAGE = ['store', 'key_prefix', 'title', 'body', 'order'];
+    private const ONCE_STORAGE = ['store', 'key_prefix', 'title', 'body', 'order', 'checkbox'];
     /** The codec stages, the fixed words after a codec column (docs/spec/dbspec.md "Keep, move or remove"; R12). */
     private const CODEC_STAGES = ['ordered_json', 'aes', 'hex', 'gz', 'base64', 'serialize', 'yaml', 'ip'];
     /** A character of valid UTF-8, or one invalid byte (R15): the code points of a line. */
@@ -178,10 +177,6 @@ final class Parser
     private int $failedLines = 0;
     /** Primary key lines of the table that were read (Go keeps every one). */
     private int $primaryKeyLines = 0;
-    /**
-     * @var array<string, list<string>> per table, the title and body lines that parsed, duplicates included
-     */
-    private array $parsedTitleBody = [];
     /** The first lex error of the current line: [column, message], or null. */
     private ?array $lexError = null;
     private ?Diagram $diagram = null;
@@ -199,13 +194,6 @@ final class Parser
     private array $deferredAuditRecords = [];
     /** @var array<string, true> Tables whose primary key line failed */
     private array $failedPrimaryTables = [];
-    /** @var list<array> The history table of a state_machine history line, checked after the last line */
-    private array $deferredHistories = [];
-    /**
-     * @var array<string, array{0: string, 1: int, 2: int}> column => [default value, line, column], only the
-     *     first declaration of a column
-     */
-    private array $defaultValues = [];
     /** @var int The position of the next token that the cursor reading the setting line will read */
     private int $cursor = 0;
     /**
@@ -448,23 +436,15 @@ final class Parser
     /**
      * The identity of a setting line that the repeat rule makes unique, as docs/spec/dbspec.md
      * "Declaration positions" states it: the column of codec, markdown, navigation and
-     * blind_index, the column and state of checkbox, and for state_machine the form and states
-     * (the column is left out). Every other setting has no identity.
+     * blind_index. Every other setting has no identity.
      *
      * @param list<array{0: string, 1: int}> $arguments
      * @return list<string>
      */
-    private static function settingIdentity(string $keyword, ?string $form, array $arguments): array
+    private static function settingIdentity(string $keyword, array $arguments): array
     {
-        $texts = array_map(static fn(array $a): string => $a[0], $arguments);
         return match ($keyword) {
-            'codec', 'markdown', 'navigation', 'blind_index' => [$texts[0]],
-            'checkbox' => [$texts[0], $texts[1]],
-            'state_machine' => match ($form) {
-                'transition' => ['transition', $texts[1], $texts[2]],
-                'history' => ['history'],
-                default => [$form, $texts[1]],
-            },
+            'codec', 'markdown', 'navigation', 'blind_index' => [$arguments[0][0]],
             default => [],
         };
     }
@@ -551,7 +531,6 @@ final class Parser
         $this->checkAuditRecords();
         $this->checkAuditTables();
         $this->checkAuditHistories();
-        $this->checkStateHistories();
     }
 
     /**
@@ -1106,7 +1085,6 @@ final class Parser
         $this->tableChecks = [];
         $this->tableSettings = [];
         $this->settingKeys = [];
-        $this->defaultValues = [];
         $this->failedPrimary = false;
         $this->failedNames = [];
         $this->failedColumns = [];
@@ -1318,9 +1296,6 @@ final class Parser
             $this->columns[$name[0]] = $column;
             if ($type === null) {
                 $this->invalidTypes[$name[0]] = true;
-            }
-            if ($default !== null) {
-                $this->defaultValues[$name[0]] = [self::literalValue($default[1][0]), $this->line, $default[1][1]];
             }
         }
         $this->table->columns[] = $column;
@@ -1844,8 +1819,8 @@ final class Parser
         );
         if (!$this->detachedBlock) {
             $this->declare('setting', [$this->table->name, $keyword,
-                ...self::settingIdentity($keyword, null, $arguments)], [$keyword, $at]);
-            $this->tableSettings[] = [$kind, $arguments, $this->line, $at, $lists, null];
+                ...self::settingIdentity($keyword, $arguments)], [$keyword, $at]);
+            $this->tableSettings[] = [$kind, $arguments, $this->line, $at, $lists];
         }
     }
 
@@ -2330,17 +2305,18 @@ final class Parser
                         );
                     }
                     break;
-                case 'state_machine':
-                    $this->requireTextColumn(
-                        $arguments[0],
-                        $line,
-                        $kind,
-                        'state_machine needs a non-null varchar or text column'
-                    );
-                    foreach ($lists as [, $columns]) {
-                        foreach ($columns as $token) {
-                            $this->columnRef($token, $line, $kind);
-                        }
+                case 'checkbox':
+                    $definition = $this->columnRef($arguments[0], $line, $kind);
+                    if (
+                        $definition !== null && $definition->type->name !== 'invalid'
+                        && $definition->type->name !== 'bool' && $definition->type->text() !== 'varchar(1)'
+                    ) {
+                        $this->error(
+                            'setting',
+                            $line,
+                            $arguments[0][1],
+                            "checkbox needs a varchar(1) or bool column, not {$definition->type->text()}"
+                        );
                     }
                     break;
                 case 'audit':
@@ -2380,7 +2356,6 @@ final class Parser
                     break;
             }
         }
-        $this->checkStateMachine();
     }
 
     // ------------------------------------------------------- cross-table checks
@@ -2803,14 +2778,14 @@ final class Parser
 
     /**
      * Reads one markdown storage setting line (`markdown`, `store`, `key_prefix`, `title`, `body`,
-     * `order`, `checkbox`, `state_machine`) by the cursor. As in Go's settingsLine,
+     * `order`, `checkbox`) by the cursor. As in Go's settingsLine,
      * the line ends at the first syntax error. The rules for the whole table are checked when the table closes.
      */
     private function storageLine(string $keyword, int $at): void
     {
         $this->cursor = 1;
         try {
-            [$arguments, $form, $lists] = $this->storageArguments($keyword);
+            $arguments = $this->storageArguments($keyword);
             if (isset($this->tokens[$this->cursor])) {
                 throw $this->cursorFail('the end of the line');
             }
@@ -2818,9 +2793,6 @@ final class Parser
             return;
         }
         if (!$this->detachedBlock) {
-            if ($keyword === 'title' || $keyword === 'body') {
-                $this->parsedTitleBody[$this->table->name][] = $keyword;
-            }
             if ($keyword === 'markdown' || in_array($keyword, self::ONCE_STORAGE, true)) {
                 $key = $keyword === 'markdown' ? "markdown {$arguments[0][0]}" : $keyword;
                 if (isset($this->settingKeys[$key])) {
@@ -2831,7 +2803,6 @@ final class Parser
                 $this->settingKeys[$key] = true;
             }
         }
-        $requires = $lists === [] ? null : array_map(static fn(array $a): string => $a[0], $lists[0][1]);
         $names = $arguments;
         if ($keyword === 'store' && count($names) > Setting::STORE_ARGUMENTS[$names[0][0]]) {
             array_splice($names, Setting::STORE_ARGUMENTS[$names[0][0]], 1);
@@ -2840,24 +2811,18 @@ final class Parser
             $keyword,
             array_map(static fn(array $a): string => $a[0], $names),
             $this->takeComments(),
-            null,
-            null,
-            $form,
-            $requires,
         );
         if (!$this->detachedBlock) {
             $this->declare('setting', [$this->table->name, $keyword,
-                ...self::settingIdentity($keyword, $form, $arguments)], [$keyword, $at]);
-            $this->tableSettings[] = [$keyword, $arguments, $this->line, $at, $lists, $form];
+                ...self::settingIdentity($keyword, $arguments)], [$keyword, $at]);
+            $this->tableSettings[] = [$keyword, $arguments, $this->line, $at, []];
         }
     }
 
     /**
-     * From the cursor, reads the arguments of the storage setting, then reads the line form and the `require` list
-     * (only on transition and terminal lines).
+     * From the cursor, reads the arguments of the storage setting.
      *
-     * @return array{0: list<array{0:string,1:int}>, 1: ?string,
-     *     2: list<array{0: array{0:string,1:int}, 1: list<array{0:string,1:int}>}>}
+     * @return list<array{0:string,1:int}>
      */
     private function storageArguments(string $keyword): array
     {
@@ -2866,7 +2831,8 @@ final class Parser
             case 'title':
             case 'body':
             case 'order':
-                return [[$this->cursorWord('a column name')], null, []];
+            case 'checkbox':
+                return [$this->cursorWord('a column name')];
             case 'store':
                 $kind = $this->cursorOneOf('`files`, `document` or `block`', ['files', 'document', 'block']);
                 $arguments = [$kind];
@@ -2884,89 +2850,9 @@ final class Parser
                     $arguments[] = $this->cursorWord('the shard column');
                     $arguments[] = $this->cursorOneOf('`year`, `month` or `day`', ['year', 'month', 'day']);
                 }
-                return [$arguments, null, []];
-            case 'key_prefix':
-                return [[$this->cursorQuoted('a key prefix in quotes')], null, []];
-            case 'checkbox':
-                $column = $this->cursorWord('the state column');
-                $state = $this->cursorWord('a state name');
-                $glyph = $this->cursorQuoted('a glyph in quotes');
-                return [[$column, $state, $glyph], null, []];
+                return $arguments;
             default:
-                return $this->machineArguments();
-        }
-    }
-
-    /**
-     * Reads the state_machine line after the column: initial, terminal, history, limit, or
-     * transition line, the same way as Go's settingsLine reads it.
-     *
-     * @return array{0: list<array{0:string,1:int}>, 1: string,
-     *     2: list<array{0: array{0:string,1:int}, 1: list<array{0:string,1:int}>}>}
-     */
-    private function machineArguments(): array
-    {
-        $arguments = [$this->cursorWord('the state column')];
-        foreach (['initial', 'terminal'] as $form) {
-            if ($this->formAhead($form)) {
-                $this->take('keyword');
-                $arguments[] = $this->cursorWord('a state name');
-                return [$arguments, $form, $form === 'terminal' ? $this->optionalRequire() : []];
-            }
-        }
-        if ($this->formAhead('history')) {
-            $this->take('keyword');
-            $arguments[] = $this->cursorWord('the history table');
-            $this->cursorKeyword('row');
-            $arguments[] = $this->cursorWord('the foreign key column');
-            $this->cursorKeyword('from');
-            $arguments[] = $this->cursorWord('the from column');
-            $this->cursorKeyword('to');
-            $arguments[] = $this->cursorWord('the to column');
-            $this->cursorKeyword('at');
-            $arguments[] = $this->cursorWord('the at column');
-            return [$arguments, 'history', []];
-        }
-        if ($this->formAhead('limit')) {
-            $this->take('keyword');
-            $arguments[] = $this->cursorWord('a state name');
-            $arguments[] = $this->cursorValue('a row count');
-            return [$arguments, 'limit', []];
-        }
-        $arguments[] = $this->cursorWord('the from state');
-        $this->cursorArrow();
-        $arguments[] = $this->cursorWord('the to state');
-        return [$arguments, 'transition', $this->optionalRequire()];
-    }
-
-    /**
-     * If `require (<column>, ...)` comes next, reads it: one list, identified by its keyword token.
-     *
-     * @return list<array{0: array{0:string,1:int}, 1: list<array{0:string,1:int}>}>
-     */
-    private function optionalRequire(): array
-    {
-        $keyword = $this->tokens[$this->cursor] ?? null;
-        if ($keyword === null || $keyword[0] !== 'require') {
-            return [];
-        }
-        $this->take('keyword');
-        if (($this->tokens[$this->cursor][0] ?? null) !== '(') {
-            throw $this->cursorFail('`(`');
-        }
-        $this->cursor++;
-        $columns = [];
-        while (true) {
-            $columns[] = $this->cursorWord('a column name');
-            $next = $this->tokens[$this->cursor][0] ?? null;
-            if ($next === ')') {
-                $this->cursor++;
-                return [[$keyword, $columns]];
-            }
-            if ($next !== ',') {
-                throw $this->cursorFail('`,` or `)`');
-            }
-            $this->cursor++;
+                return [$this->cursorQuoted('a key prefix in quotes')];
         }
     }
 
@@ -2991,14 +2877,6 @@ final class Parser
             throw $this->cursorFail($what);
         }
         return $this->take('name');
-    }
-
-    private function cursorKeyword(string $text): void
-    {
-        if (($this->tokens[$this->cursor][0] ?? null) !== $text) {
-            throw $this->cursorFail("`$text`");
-        }
-        $this->take('keyword');
     }
 
     /** @param list<string> $words @return array{0:string,1:int} A token that is one of the list */
@@ -3026,45 +2904,6 @@ final class Parser
         return [self::literalValue($token[0]), $token[1]];
     }
 
-    /** A row count: a word, a decimal number, or a minus before a number. @return array{0:string,1:int} */
-    private function cursorValue(string $what): array
-    {
-        $token = $this->tokens[$this->cursor] ?? null;
-        if ($token !== null && $token[0] === '-') {
-            $this->cursor++;
-            $number = $this->tokens[$this->cursor] ?? null;
-            if ($number === null || !self::isNumber($number[0])) {
-                throw $this->cursorFail('a number after `-`');
-            }
-            $this->cursor++;
-            return ['-' . $number[0], $token[1]];
-        }
-        if ($token === null || !(self::isWord($token[0]) || self::isNumber($token[0]))) {
-            throw $this->cursorFail($what);
-        }
-        $this->markValue($token);
-        $this->cursor++;
-        return $token;
-    }
-
-    private function cursorArrow(): void
-    {
-        if (
-            ($this->tokens[$this->cursor][0] ?? null) !== '-'
-            || ($this->tokens[$this->cursor + 1][0] ?? null) !== '>'
-        ) {
-            throw $this->cursorFail('`->`');
-        }
-        $this->cursor += 2;
-    }
-
-    /** Whether the keyword $text comes next and is not the from state of a transition (no `->` follows). */
-    private function formAhead(string $text): bool
-    {
-        return ($this->tokens[$this->cursor][0] ?? null) === $text
-            && ($this->tokens[$this->cursor + 1][0] ?? null) !== '-';
-    }
-
     /** The value of a default literal token: for a string, the text without quotes; otherwise the token as is. */
     private static function literalValue(string $text): string
     {
@@ -3075,17 +2914,6 @@ final class Parser
     private static function isNumber(string $token): bool
     {
         return preg_match('/^[0-9]+(?:\.[0-9]+)?$/D', $token) === 1;
-    }
-
-    /** Checks whether a row count is a positive decimal int64 (as Go's strconv.ParseInt with n >= 1). */
-    private static function positiveCount(string $text): bool
-    {
-        if (preg_match('/^[0-9]+$/D', $text) !== 1) {
-            return false;
-        }
-        $digits = ltrim($text, '0');
-        return $digits !== '' && (strlen($digits) < 19
-            || (strlen($digits) === 19 && strcmp($digits, '9223372036854775807') <= 0));
     }
 
     /**
@@ -3215,252 +3043,6 @@ final class Parser
             }
         }
         return in_array($column, $checkColumns, true);
-    }
-
-    /**
-     * Checks the table's state_machine lines together (Go's stateMachineConsistency): one column,
-     * the initial and terminal states, transitions leaving a terminal state, the limit line, the history line
-     * (checked after the last line), the state column's default, and the checkbox line.
-     */
-    private function checkStateMachine(): void
-    {
-        $column = '';
-        $states = [];
-        $initials = [];
-        $terminals = [];
-        $lines = [];
-        $limits = [];
-        $history = null;
-        $requires = [];
-        // The identity of each initial, terminal and transition line: its form and states, never its require list.
-        $seen = [];
-        foreach ($this->tableSettings as [$kind, $arguments, $line, $at, $lists, $form]) {
-            if ($kind !== 'state_machine') {
-                continue;
-            }
-            if ($column === '') {
-                $column = $arguments[0][0];
-            } elseif ($arguments[0][0] !== $column) {
-                $this->error(
-                    'setting',
-                    $line,
-                    $arguments[0][1],
-                    "state_machine repeats for `{$arguments[0][0]}`; a table holds one machine"
-                );
-            }
-            if ($form === 'history') {
-                if ($history !== null) {
-                    $this->error('setting', $line, $at, 'state_machine repeats history');
-                    continue;
-                }
-                $history = [$line, $arguments];
-            } elseif ($form === 'limit') {
-                $limits[] = [$line, $arguments];
-            } else {
-                // A line of another column already reports that a table holds one machine; it is no line of this one.
-                if ($arguments[0][0] === $column) {
-                    [$key, $what] = $form === 'transition'
-                        ? ["transition {$arguments[1][0]} {$arguments[2][0]}",
-                            "{$arguments[1][0]} -> {$arguments[2][0]}"]
-                        : ["{$form} {$arguments[1][0]}", "{$form} {$arguments[1][0]}"];
-                    if (isset($seen[$key])) {
-                        $this->error('setting', $line, $at, "state_machine repeats {$what}");
-                        continue;
-                    }
-                    $seen[$key] = true;
-                }
-                $lines[] = [$line, $arguments, $form, $at];
-                foreach ($lists as [, $columns]) {
-                    array_push($requires, ...$columns);
-                }
-                if ($form === 'initial') {
-                    $initials[$arguments[1][0]] = true;
-                    $states[$arguments[1][0]] = true;
-                } elseif ($form === 'terminal') {
-                    $terminals[$arguments[1][0]] = true;
-                    $states[$arguments[1][0]] = true;
-                } else {
-                    $states[$arguments[1][0]] = true;
-                    $states[$arguments[2][0]] = true;
-                }
-            }
-        }
-        foreach ($lines as [$line, $arguments, $form, $at]) {
-            if ($form === 'initial' && isset($terminals[$arguments[1][0]])) {
-                $this->error('setting', $line, $at, "an initial state `{$arguments[1][0]}` is also terminal");
-            } elseif ($form === 'transition' && isset($terminals[$arguments[1][0]])) {
-                $this->error('setting', $line, $at, "a transition leaves the terminal state `{$arguments[1][0]}`");
-            }
-        }
-        $seen = [];
-        foreach ($limits as [$line, $arguments]) {
-            $state = $arguments[1];
-            if (!isset($states[$state[0]])) {
-                $this->error('setting', $line, $state[1], "limit names state `{$state[0]}` outside the state set");
-            } elseif (isset($seen[$state[0]])) {
-                $this->error('setting', $line, $state[1], "limit repeats for state `{$state[0]}`");
-            }
-            $seen[$state[0]] = true;
-            if (!self::positiveCount($arguments[2][0])) {
-                $this->error(
-                    'setting',
-                    $line,
-                    $arguments[2][1],
-                    "limit needs a positive row count, not {$arguments[2][0]}"
-                );
-            }
-        }
-        $definition = $column === '' ? null : ($this->columns[$column] ?? null);
-        if ($history !== null) {
-            [$line, $arguments] = $history;
-            if ($this->name($arguments[1], $line)) {
-                $this->deferredHistories[] = [$this->table, $line, $arguments, $definition, $requires, $this->columns];
-            }
-        }
-        if ($definition !== null && isset($this->defaultValues[$column])) {
-            [$text, $line, $at] = $this->defaultValues[$column];
-            if (!isset($initials[$text])) {
-                $this->error('setting', $line, $at, "the default `$text` of the state column is not an initial state");
-            }
-        }
-        $this->checkCheckboxes($column, $states);
-    }
-
-    /**
-     * Checks the checkbox lines (Go's checkboxes): names the state_machine column,
-     * covers each state once with a one-letter glyph, and the glyphs must differ.
-     *
-     * @param array<string, true> $states The state set of the machine
-     */
-    private function checkCheckboxes(string $column, array $states): void
-    {
-        $boxes = [];
-        foreach ($this->tableSettings as [$kind, $arguments, $line, $at]) {
-            if ($kind === 'checkbox') {
-                $boxes[] = [$line, $arguments, $at];
-            }
-        }
-        if ($boxes === []) {
-            return;
-        }
-        [$firstLine, $firstArguments, $firstAt] = $boxes[0];
-        if ($column === '') {
-            $this->error(
-                'setting',
-                $firstLine,
-                $firstArguments[0][1],
-                "checkbox needs a state_machine on column `{$firstArguments[0][0]}`"
-            );
-            return;
-        }
-        $covered = [];
-        $glyphs = [];
-        foreach ($boxes as [$line, $arguments]) {
-            if ($this->columnRef($arguments[0], $line, 'checkbox') === null) {
-                continue;
-            }
-            if ($arguments[0][0] !== $column) {
-                $this->error('setting', $line, $arguments[0][1], "checkbox names column `{$arguments[0][0]}`, "
-                    . "but the state_machine column is `$column`");
-                continue;
-            }
-            $state = $arguments[1];
-            if (!isset($states[$state[0]])) {
-                $this->error('setting', $line, $state[1], "checkbox names state `{$state[0]}` outside the state set");
-            } elseif (isset($covered[$state[0]])) {
-                $this->error('setting', $line, $state[1], "checkbox repeats for state `{$state[0]}`");
-            }
-            $covered[$state[0]] = true;
-            $glyph = $arguments[2];
-            if (mb_strlen($glyph[0], 'UTF-8') !== 1) {
-                $this->error('setting', $line, $glyph[1], 'a checkbox glyph is one character');
-            } elseif (isset($glyphs[$glyph[0]])) {
-                $this->error('setting', $line, $glyph[1], "checkbox glyph `{$glyph[0]}` repeats");
-            }
-            $glyphs[$glyph[0]] = true;
-        }
-        foreach (array_keys($states) as $state) {
-            if (!isset($covered[$state])) {
-                $this->error('setting', $firstLine, $firstAt, "checkbox does not cover state `$state`");
-            }
-        }
-    }
-
-    /**
-     * Checks the history table of a state_machine history line (Go's history). It is checked after the last line,
-     * and it must be a table of this document or of a used document. Its row columns that point at the machine's
-     * table must
-     * have a foreign key; the from and to columns are state type, and the at column is datetime(6).
-     * Each needed column must have a nullable copy, and no column that the line does not name may exist.
-     * It declares no title or body.
-     */
-    private function checkStateHistories(): void
-    {
-        foreach ($this->deferredHistories as [$machine, $line, $arguments, $state, $requires, $columns]) {
-            [, $tableToken, $rowToken, $fromToken, $toToken, $atToken] = $arguments;
-            $name = $tableToken[0];
-            $entry = $this->settingTable($tableToken, $line, 'history table');
-            if ($entry === null) {
-                continue;
-            }
-            if ($entry['table'] === null || $state === null || $state->type->name === 'invalid') {
-                continue;
-            }
-            $history = $entry['table'];
-            $historyColumns = $entry['columns'];
-            $foreignKey = false;
-            foreach ($history->foreignKeys as $candidate) {
-                $foreignKey = $foreignKey || ($candidate->columns === [$rowToken[0]]
-                    && $candidate->table === $machine->name);
-            }
-            if (!$foreignKey) {
-                $this->error('setting', $line, $tableToken[1], "history table `$name` has no foreign key of "
-                    . "`{$rowToken[0]}` to table `{$machine->name}`");
-            }
-            $named = [$rowToken[0] => true];
-            $stateType = $state->type->text();
-            foreach ([[$fromToken, $stateType], [$toToken, $stateType], [$atToken, 'datetime(6)']] as [$ref, $want]) {
-                $named[$ref[0]] = true;
-                $column = $historyColumns[$ref[0]] ?? null;
-                if ($column === null) {
-                    $this->error('setting', $line, $tableToken[1], "history table `$name` has no column `{$ref[0]}`");
-                } elseif ($column->type->name !== 'invalid' && $column->type->text() !== $want) {
-                    $this->error('setting', $line, $tableToken[1], "history column `{$ref[0]}` has type "
-                        . "{$column->type->text()}, not $want");
-                }
-            }
-            foreach ($requires as $ref) {
-                $named[$ref[0]] = true;
-                $required = $columns[$ref[0]] ?? null;
-                $copy = $historyColumns[$ref[0]] ?? null;
-                if ($required === null || $required->type->name === 'invalid') {
-                    continue;
-                }
-                if ($copy === null) {
-                    $this->error('setting', $line, $tableToken[1], "history table `$name` has no column "
-                        . "`{$ref[0]}` of the required column");
-                } elseif (
-                    !$copy->nullable || ($copy->type->name !== 'invalid'
-                    && $copy->type->text() !== $required->type->text())
-                ) {
-                    $this->error('setting', $line, $tableToken[1], "history column `{$ref[0]}` is not a nullable "
-                        . "{$required->type->text()} column");
-                }
-            }
-            foreach ($history->primaryKey?->columns ?? [] as $column) {
-                $named[$column] = true;
-            }
-            foreach ($history->columns as $column) {
-                if (!isset($named[$column->name])) {
-                    $this->error('setting', $line, $tableToken[1], "history table `$name` has column "
-                        . "`{$column->name}`, which the history line does not name");
-                }
-            }
-            foreach ($this->parsedTitleBody[$history->name] ?? [] as $kind) {
-                $this->error('setting', $line, $tableToken[1], "history table `$name` declares $kind, which a history "
-                    . "table does not");
-            }
-        }
     }
 
     /** @return ?array{table: ?Table, columns: array, headerFailed?: bool} */

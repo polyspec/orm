@@ -21,8 +21,7 @@ MANIFEST = "manifest"
 SCHEMA = "schema"
 
 # Order of the settings lines (mappingSettings in engine/dbspec/emit.go, then immutable and audit). Within the same kind,
-# lines are sorted by key (codec and blind_index by column, navigation by foreign key, markdown by column), and state_machine
-# is written split into lines, history, and limit, in that order.
+# lines are sorted by key (codec and blind_index by column, navigation by foreign key, markdown by column).
 _SETTING_ORDER = (
     "entity",
     "updated",
@@ -39,7 +38,6 @@ _SETTING_ORDER = (
     "body",
     "order",
     "checkbox",
-    "state_machine",
     "immutable",
     "audit",
 )
@@ -93,17 +91,14 @@ def quote(value: str) -> str:
     return "'" + value.replace("'", "''") + "'"
 
 
-def _setting_key(setting) -> tuple:
+def _setting_key(setting) -> str:
     if setting.kind in ("codec", "blind_index", "markdown"):
         key = setting.column
     elif setting.kind == "navigation":
         key = setting.foreign_key
     else:
         key = ""
-    part = 0
-    if setting.kind == "state_machine":
-        part = {"history": 1, "limit": 2}.get(setting.form, 0)
-    return key, part
+    return key
 
 
 def _setting_text(setting, table: DbspecTable, view: str) -> str:
@@ -137,26 +132,8 @@ def _setting_text(setting, table: DbspecTable, view: str) -> str:
         return f"store document {setting.shape}{shard}"
     if kind == "key_prefix":
         return f"key_prefix {quote(setting.prefix)}"
-    if kind in ("title", "body", "order"):
+    if kind in ("title", "body", "order", "checkbox"):
         return f"{kind} {setting.column}"
-    if kind == "checkbox":
-        return f"checkbox {setting.column} {setting.state} {quote(setting.glyph)}"
-    if kind == "state_machine":
-        head = f"state_machine {setting.column} "
-        if setting.form == "history":
-            return (
-                f"{head}history {setting.history} row {setting.row} from {setting.from_column} "
-                f"to {setting.to_column} at {setting.at_column}"
-            )
-        if setting.form == "limit":
-            return f"{head}limit {setting.state} {setting.count}"
-        if setting.form in ("initial", "terminal"):
-            text = f"{head}{setting.form} {setting.state}"
-        else:
-            text = f"{head}{setting.from_state} -> {setting.to_state}"
-        if setting.requires:
-            text += f" require ({', '.join(setting.requires)})"
-        return text
     # Schema text is determined by database state, so columns that are not recorded are listed
     # in the exclude list in column order. Other views write the list as written.
     if view == SCHEMA:

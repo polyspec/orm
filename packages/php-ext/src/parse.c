@@ -135,31 +135,8 @@ typedef struct {
     bool failed_keys;
 } drecord_rec;
 
-typedef VEC(tsetting_rec *) tsettingv;
-
-/* Record that checks the history line of state_machine. The record table is found at the end of the document, so the check is deferred until then. */
-typedef struct {
-    str owner;
-    column *state;
-    tokens args;
-    tokens requires;
-    columnv required;
-    zend_long line;
-} dstate_rec;
-
-/* Token of the default value and its line. */
-typedef struct {
-    token value;
-    zend_long line;
-} tdefault;
 
 enum { S_TOP, S_TABLE, S_SETTINGS, S_DIAGRAM };
-
-/* Table name and kind of title or body setting lines that passed the syntax check (Go also counts lines it dropped under the once rule). */
-typedef struct {
-    str table;
-    str kind;
-} rawtb_rec;
 
 typedef struct parser {
     const smap *documents;
@@ -204,8 +181,6 @@ typedef struct parser {
     VEC(daudit_rec) deferred_audits;
     VEC(drecord_rec) deferred_records;
     smap failed_primary_tables;
-    /* Title and body lines that passed the syntax check (including lines dropped under the once rule, as in Go's h.settings.lines). */
-    VEC(rawtb_rec) raw_title_body;
     /* Number of primary key lines read (Go keeps all lines) and number of column lines with syntax errors (Go's failedLines). */
     zend_long pk_lines;
     zend_long failed_lines;
@@ -215,8 +190,6 @@ typedef struct parser {
     str lex_message;
     /* Name of the failed column and foreign key line (Go failedName). Created anew for each table. */
     smap failed_names;
-    /* column name => tdefault, the default value of the first column. */
-    smap defaults;
     /* Class of read tokens: "line:index" => class. The classes of a line are discarded for a line with a syntax error and in the body of an open block (R1, R20). */
     smap marks;
     /* Set of lines that use only lexical classes ("line" => TRUEP). */
@@ -229,7 +202,6 @@ typedef struct parser {
     bool table_failed;
     bool settings_failed;
     bool diagram_failed;
-    VEC(dstate_rec) deferred_states;
     /* Declaration positions of a successful parse (run sorts them by line and column). */
     dposv decls;
 
@@ -300,27 +272,13 @@ static void declare(parser *p, str kind, zend_long line, zend_long column, strs 
     PUSH(p->decls, d);
 }
 
-/* Identifying arguments of a setting (docs/spec/dbspec.md "Declaration positions"): for codec, markdown, navigation, and blind_index, the first argument,
- * for checkbox, column and state; for state_machine, form and state (column excluded); the rest have none. */
-static void declare_setting(parser *p, str keyword, zend_long column, str form, const strs *args)
+/* Identifying arguments of a setting (docs/spec/dbspec.md "Declaration positions"): for codec, markdown, navigation, and blind_index, the first argument;
+ * the rest have none. */
+static void declare_setting(parser *p, str keyword, zend_long column, const strs *args)
 {
     strs path = path2(p->table->name, keyword);
     if (str_eqc(keyword, "codec") || str_eqc(keyword, "markdown") || str_eqc(keyword, "navigation") || str_eqc(keyword, "blind_index")) {
         PUSH(path, args->v[0]);
-    } else if (str_eqc(keyword, "checkbox")) {
-        PUSH(path, args->v[0]);
-        PUSH(path, args->v[1]);
-    } else if (str_eqc(keyword, "state_machine")) {
-        if (str_eqc(form, "transition")) {
-            PUSH(path, SL("transition"));
-            PUSH(path, args->v[1]);
-            PUSH(path, args->v[2]);
-        } else if (str_eqc(form, "history")) {
-            PUSH(path, SL("history"));
-        } else {
-            PUSH(path, form);
-            PUSH(path, args->v[1]);
-        }
     }
     declare(p, SL("setting"), p->line, column, path);
 }
@@ -1041,7 +999,6 @@ static void open_table(parser *p)
     p->identities = (typeof(p->identities)){0};
     p->setting_keys = (smap){0};
     p->failed_names = (smap){0};
-    p->defaults = (smap){0};
     p->failed_primary = false;
     p->failed_lines = 0;
     p->pk_lines = 0;
@@ -1331,12 +1288,6 @@ static void column_line(parser *p)
         if (type == NULL) {
             smap_set(&p->invalid_types, name->text, TRUEP);
         }
-        if (has_default && value.text.n > 0) {
-            tdefault *d = dbs_alloc(sizeof *d);
-            d->value = value;
-            d->line = p->line;
-            smap_set(&p->defaults, name->text, d);
-        }
     }
     PUSH(p->table->columns, c);
     declare(p, SL("column"), p->line, name->column, path2(p->table->name, name->text));
@@ -1625,7 +1576,7 @@ static bool audit_list_tokens(parser *p, const tokens *t, audit_lists *out)
     return true;
 }
 
-/* ----------------------------------------------- markdown, store, and state machine settings */
+/* ----------------------------------------------- markdown, store, and mapping settings */
 
 /* Like Go's cursor, reads the tokens of a line in order. The first failure is one syntax error, and the rest of the line is not read. */
 typedef struct {
@@ -1685,12 +1636,6 @@ static bool sc_is(const scursor *c, const char *text)
     return sc_more(c) && str_eqc(c->t->v[c->i].text, text);
 }
 
-/* Checks whether the keyword letters are followed by a transition's from state: if `-` follows, those letters are a state name. */
-static bool sc_form_ahead(const scursor *c, const char *word)
-{
-    return sc_is(c, word) && !(c->i + 1 < c->t->n && str_eqc(c->t->v[c->i + 1].text, "-"));
-}
-
 static bool sc_fail(scursor *c, str expected)
 {
     if (sc_more(c)) {
@@ -1701,16 +1646,6 @@ static bool sc_fail(scursor *c, str expected)
         error(c->p, "syntax", c->p->line, end_column(c->p), fmt("line ends, expected %S", expected));
     }
     return false;
-}
-
-static bool sc_keyword(scursor *c, const char *text)
-{
-    if (sc_is(c, text)) {
-        mark_token(c->p, &c->t->v[c->i], "keyword");
-        c->i++;
-        return true;
-    }
-    return sc_fail(c, fmt("`%s`", text));
 }
 
 static bool sc_name(scursor *c, str what, token *out)
@@ -1745,35 +1680,6 @@ static bool sc_oneof(scursor *c, str what, const char *const *words, size_t n, t
     return sc_fail(c, what);
 }
 
-static bool sc_arrow(scursor *c)
-{
-    if (sc_is(c, "-") && c->i + 1 < c->t->n && str_eqc(c->t->v[c->i + 1].text, ">")) {
-        c->i += 2;
-        return true;
-    }
-    return sc_fail(c, SL("`->`"));
-}
-
-/* A row count token: a negative number is two tokens, `-` and a number; otherwise it is one name token. */
-static bool sc_count(scursor *c, token *out)
-{
-    if (sc_is(c, "-")) {
-        token minus = c->t->v[c->i];
-        if (c->i + 1 < c->t->n && number_text(c->t->v[c->i + 1].text)) {
-            c->i += 2;
-            *out = (token){fmt("-%S", c->t->v[c->i - 1].text), minus.column, 0, 0};
-            return true;
-        }
-        c->i++;
-        return sc_fail(c, SL("a number after `-`"));
-    }
-    if (!sc_name(c, SL("a row count"), out)) {
-        return false;
-    }
-    mark_value(c->p, out);
-    return true;
-}
-
 static bool sc_end(scursor *c)
 {
     return !sc_more(c) || sc_fail(c, SL("the end of the line"));
@@ -1790,52 +1696,12 @@ static bool take_name(scursor *c, str what, tokens *args)
     return true;
 }
 
-/* Format word of a state_machine line. The check determines the line's kind from the word in this position. */
-static void take_form(tokens *args, str form)
-{
-    PUSH(*args, ((token){form, 0, 0, 0}));
-}
-
-/* Appends the require list `(name, ...)` after args. */
-static bool take_requires(scursor *c, tokens *args)
-{
-    if (!sc_is(c, "(")) {
-        return sc_fail(c, SL("`(`"));
-    }
-    c->i++;
-    for (;;) {
-        if (!take_name(c, SL("a column name"), args)) {
-            return false;
-        }
-        if (sc_is(c, ")")) {
-            c->i++;
-            return true;
-        }
-        if (!sc_is(c, ",")) {
-            return sc_fail(c, SL("`,` or `)`"));
-        }
-        c->i++;
-    }
-}
-
-/* Terminal and transition lines may use a require list, and the line must end after it. */
-static bool state_tail(scursor *c, tokens *args)
-{
-    if (sc_is(c, "require")) {
-        mark_token(c->p, &c->t->v[c->i], "keyword");
-        c->i++;
-        if (!take_requires(c, args)) {
-            return false;
-        }
-    }
-    return sc_end(c);
-}
-
-/* Reads the arguments of the markdown, store, key_prefix, title, body, order, checkbox, and state_machine lines in the same order as Go's settingsLine. */
+/* Reads the arguments of the markdown, store, key_prefix, title, body, order, and checkbox lines in the same order as Go's settingsLine. */
 static bool new_setting_args(scursor *c, str keyword, tokens *args)
 {
-    if (str_eqc(keyword, "markdown") || str_eqc(keyword, "title") || str_eqc(keyword, "body") || str_eqc(keyword, "order")) {
-        return take_name(c, SL("a column name"), args);
+    if (str_eqc(keyword, "markdown") || str_eqc(keyword, "title") || str_eqc(keyword, "body") || str_eqc(keyword, "order")
+        || str_eqc(keyword, "checkbox")) {
+        return take_name(c, SL("a column name"), args) && sc_end(c);
     }
     if (str_eqc(keyword, "store")) {
         static const char *const kinds[] = {"files", "document", "block"};
@@ -1872,125 +1738,35 @@ static bool new_setting_args(scursor *c, str keyword, tokens *args)
         }
         return sc_end(c);
     }
-    if (str_eqc(keyword, "key_prefix")) {
-        token prefix;
-        if (!sc_quoted(c, SL("a key prefix in quotes"), &prefix)) {
-            return false;
-        }
-        PUSH(*args, prefix);
-        return sc_end(c);
-    }
-    if (str_eqc(keyword, "checkbox")) {
-        if (!take_name(c, SL("the state column"), args) || !take_name(c, SL("a state name"), args)) {
-            return false;
-        }
-        token glyph;
-        if (!sc_quoted(c, SL("a glyph in quotes"), &glyph)) {
-            return false;
-        }
-        PUSH(*args, glyph);
-        return sc_end(c);
-    }
-    /* state_machine: the column, the format word, and the format's arguments. */
-    if (!take_name(c, SL("the state column"), args)) {
+    /* key_prefix */
+    token prefix;
+    if (!sc_quoted(c, SL("a key prefix in quotes"), &prefix)) {
         return false;
     }
-    if (sc_form_ahead(c, "initial")) {
-        mark_token(c->p, &c->t->v[c->i], "keyword");
-        c->i++;
-        take_form(args, SL("initial"));
-        return take_name(c, SL("a state name"), args) && sc_end(c);
-    }
-    if (sc_form_ahead(c, "terminal")) {
-        mark_token(c->p, &c->t->v[c->i], "keyword");
-        c->i++;
-        take_form(args, SL("terminal"));
-        return take_name(c, SL("a state name"), args) && state_tail(c, args);
-    }
-    if (sc_form_ahead(c, "history")) {
-        mark_token(c->p, &c->t->v[c->i], "keyword");
-        c->i++;
-        take_form(args, SL("history"));
-        return take_name(c, SL("the history table"), args) && sc_keyword(c, "row") && take_name(c, SL("the foreign key column"), args)
-            && sc_keyword(c, "from") && take_name(c, SL("the from column"), args) && sc_keyword(c, "to")
-            && take_name(c, SL("the to column"), args) && sc_keyword(c, "at") && take_name(c, SL("the at column"), args) && sc_end(c);
-    }
-    if (sc_form_ahead(c, "limit")) {
-        mark_token(c->p, &c->t->v[c->i], "keyword");
-        c->i++;
-        take_form(args, SL("limit"));
-        if (!take_name(c, SL("a state name"), args)) {
-            return false;
-        }
-        token count;
-        if (!sc_count(c, &count)) {
-            return false;
-        }
-        PUSH(*args, count);
-        return sc_end(c);
-    }
-    take_form(args, SL("transition"));
-    return take_name(c, SL("the from state"), args) && sc_arrow(c) && take_name(c, SL("the to state"), args) && state_tail(c, args);
+    PUSH(*args, prefix);
+    return sc_end(c);
 }
 
-/* Reads an integer string as strconv.ParseInt(text, 10, 64) does. There is one sign, and exceeding the range is a failure. */
-static bool parse_count(str s, zend_long *out)
-{
-    size_t i = 0;
-    bool negative = false;
-    if (i < s.n && (s.s[i] == '-' || s.s[i] == '+')) {
-        negative = s.s[i] == '-';
-        i++;
-    }
-    if (i == s.n) {
-        return false;
-    }
-    uint64_t limit = negative ? (uint64_t)INT64_MAX + 1 : (uint64_t)INT64_MAX, acc = 0;
-    for (; i < s.n; i++) {
-        if (!digitc(s.s[i])) {
-            return false;
-        }
-        uint64_t d = (uint64_t)(s.s[i] - '0');
-        if (acc > (limit - d) / 10) {
-            return false;
-        }
-        acc = acc * 10 + d;
-    }
-    *out = (zend_long)(negative ? (uint64_t)0 - acc : acc);
-    return true;
-}
-
-/* A key of a kind this line may use only once. The kinds for state_machine, checkbox, and markdown are checked separately. */
+/* A key of a kind this line may use only once. markdown is checked separately, by its column. */
 static bool once_kind(str kind)
 {
-    return str_eqc(kind, "store") || str_eqc(kind, "key_prefix") || str_eqc(kind, "title") || str_eqc(kind, "body") || str_eqc(kind, "order");
+    return str_eqc(kind, "store") || str_eqc(kind, "key_prefix") || str_eqc(kind, "title") || str_eqc(kind, "body") || str_eqc(kind, "order")
+        || str_eqc(kind, "checkbox");
 }
 
 static bool new_setting_kind(str keyword)
 {
     return str_eqc(keyword, "markdown") || str_eqc(keyword, "store") || str_eqc(keyword, "key_prefix") || str_eqc(keyword, "title")
-        || str_eqc(keyword, "body") || str_eqc(keyword, "order") || str_eqc(keyword, "checkbox") || str_eqc(keyword, "state_machine");
+        || str_eqc(keyword, "body") || str_eqc(keyword, "order") || str_eqc(keyword, "checkbox");
 }
 
-/* Number of tokens used by the format of a state_machine line (including the column and format word, up to the require list). */
 /* Number of tokens before the shard clause for each store kind (including the kind; Setting::STORE_ARGUMENTS). */
 static size_t store_arguments(str kind)
 {
     return str_eqc(kind, "files") ? 1 : str_eqc(kind, "document") ? 2 : 3;
 }
 
-static size_t machine_fixed(str form)
-{
-    if (str_eqc(form, "history")) {
-        return 7;
-    }
-    if (str_eqc(form, "limit") || str_eqc(form, "transition")) {
-        return 4;
-    }
-    return 3;
-}
-
-/* One setting line of a new kind. args are the tokens the check uses, and the setting's argument is their text (a limit's row count is a standard decimal). */
+/* One setting line of a new kind. args are the tokens the check uses, and the setting's argument is their text. */
 static void new_setting(parser *p, token keyword)
 {
     scursor c = {p, &p->t, 1};
@@ -2000,10 +1776,6 @@ static void new_setting(parser *p, token keyword)
     }
     str kind = keyword.text;
     if (!p->detached_block) {
-        if (str_eqc(kind, "title") || str_eqc(kind, "body")) {
-            rawtb_rec raw = {p->table->name, kind};
-            PUSH(p->raw_title_body, raw);
-        }
         if (once_kind(kind) || str_eqc(kind, "markdown")) {
             str key = str_eqc(kind, "markdown") ? fmt("markdown %S", args.v[0].text) : kind;
             if (smap_has(&p->setting_keys, key)) {
@@ -2017,32 +1789,16 @@ static void new_setting(parser *p, token keyword)
     setting *s = dbs_alloc(sizeof *s);
     s->kind = kind;
     s->comments = take_comments(p);
-    if (str_eqc(kind, "state_machine")) {
-        /* The arguments of a setting are the column and the format's arguments; the format is form, and the require list is requires (PHP client Setting). */
-        size_t fixed = machine_fixed(args.v[1].text);
-        PUSH(s->args, args.v[0].text);
-        for (size_t i = 2; i < fixed; i++) {
+    /* The `shard` token of store is not an argument: the arguments are the column and period after the kind's arguments. */
+    size_t shard = str_eqc(kind, "store") ? store_arguments(args.v[0].text) : args.n;
+    for (size_t i = 0; i < args.n; i++) {
+        if (i != shard) {
             PUSH(s->args, args.v[i].text);
-        }
-        s->form = args.v[1].text;
-        if (args.n > fixed) {
-            s->requires = dbs_alloc(sizeof(strs));
-            for (size_t i = fixed; i < args.n; i++) {
-                PUSH(*s->requires, args.v[i].text);
-            }
-        }
-    } else {
-        /* The `shard` token of store is not an argument: the arguments are the column and period after the kind's arguments. */
-        size_t shard = str_eqc(kind, "store") ? store_arguments(args.v[0].text) : args.n;
-        for (size_t i = 0; i < args.n; i++) {
-            if (i != shard) {
-                PUSH(s->args, args.v[i].text);
-            }
         }
     }
     PUSH(p->settings_block->list, s);
     if (!p->detached_block) {
-        declare_setting(p, kind, keyword.column, s->form, &s->args);
+        declare_setting(p, kind, keyword.column, &s->args);
         audit_lists none = {0};
         PUSH(p->table_settings, ((tsetting_rec){kind, args, p->line, keyword.column, none}));
     }
@@ -2229,7 +1985,7 @@ static void settings_line(parser *p)
     }
     PUSH(p->settings_block->list, s);
     if (!p->detached_block) {
-        declare_setting(p, keyword, at, SNULL, &s->args);
+        declare_setting(p, keyword, at, &s->args);
         PUSH(p->table_settings, ((tsetting_rec){kind, args, p->line, at, lists}));
     }
 }
@@ -2662,256 +2418,18 @@ static void text_setting_check(parser *p, const tsetting_rec *s)
     }
 }
 
-/* Checks the column and require list of one state machine line. */
-static void state_line_check(parser *p, const tsetting_rec *s)
+/* The column whose value a list row writes between the brackets of its task marker: a varchar(1) column, written as its
+ * value, or a bool column, written as the unchecked and the checked task box of GFM. Nullability is free. */
+static void checkbox_check(parser *p, const tsetting_rec *s)
 {
-    const tokens *a = &s->args;
-    column *c = column_ref(p, SL("state_machine"), s->line, &a->v[0]);
-    if (c != NULL && ((col_valid(c) && !text_type(c)) || c->nullable)) {
-        error(p, "setting", s->line, a->v[0].column, SL("state_machine needs a non-null varchar or text column"));
-    }
-    size_t fixed = str_eqc(a->v[1].text, "transition") ? 4 : str_eqc(a->v[1].text, "terminal") ? 3 : a->n;
-    for (size_t k = fixed; k < a->n; k++) {
-        column_ref(p, SL("state_machine"), s->line, &a->v[k]);
-    }
-}
-
-static void limits_check(parser *p, const tsettingv *limits, const smap *states)
-{
-    smap seen = {0};
-    for (size_t i = 0; i < limits->n; i++) {
-        const tsetting_rec *s = limits->v[i];
-        const token *state = &s->args.v[2], *count = &s->args.v[3];
-        if (!smap_has(states, state->text)) {
-            error(p, "setting", s->line, state->column, fmt("limit names state `%S` outside the state set", state->text));
-        } else if (smap_has(&seen, state->text)) {
-            error(p, "setting", s->line, state->column, fmt("limit repeats for state `%S`", state->text));
-        }
-        smap_set(&seen, state->text, TRUEP);
-        zend_long n = 0;
-        if (!parse_count(count->text, &n) || n < 1) {
-            error(p, "setting", s->line, count->column, fmt("limit needs a positive row count, not %S", count->text));
-        }
-    }
-}
-
-static void checkboxes_check(parser *p, const tsettingv *boxes, bool has_column, str column_name, const smap *states)
-{
-    if (boxes->n == 0) {
+    const token *name = &s->args.v[0];
+    column *c = column_ref(p, s->kind, s->line, name);
+    if (c == NULL || !col_valid(c)) {
         return;
     }
-    const tsetting_rec *first = boxes->v[0];
-    if (!has_column) {
-        error(p, "setting", first->line, first->args.v[0].column, fmt("checkbox needs a state_machine on column `%S`", first->args.v[0].text));
-        return;
-    }
-    smap covered = {0}, glyphs = {0};
-    for (size_t i = 0; i < boxes->n; i++) {
-        const tsetting_rec *b = boxes->v[i];
-        const token *col = &b->args.v[0], *state = &b->args.v[1], *glyph = &b->args.v[2];
-        if (column_ref(p, SL("checkbox"), b->line, col) == NULL) {
-            continue;
-        }
-        if (!str_eq(col->text, column_name)) {
-            error(p, "setting", b->line, col->column, fmt("checkbox names column `%S`, but the state_machine column is `%S`", col->text, column_name));
-            continue;
-        }
-        if (!smap_has(states, state->text)) {
-            error(p, "setting", b->line, state->column, fmt("checkbox names state `%S` outside the state set", state->text));
-        } else if (smap_has(&covered, state->text)) {
-            error(p, "setting", b->line, state->column, fmt("checkbox repeats for state `%S`", state->text));
-        }
-        smap_set(&covered, state->text, TRUEP);
-        if (utf8_length(glyph->text) != 1) {
-            error(p, "setting", b->line, glyph->column, SL("a checkbox glyph is one character"));
-        } else if (smap_has(&glyphs, glyph->text)) {
-            error(p, "setting", b->line, glyph->column, fmt("checkbox glyph `%S` repeats", glyph->text));
-        }
-        smap_set(&glyphs, glyph->text, TRUEP);
-    }
-    strs names = {0};
-    smap_keys_sorted(states, &names);
-    for (size_t k = 0; k < names.n; k++) {
-        if (!smap_has(&covered, names.v[k])) {
-            error(p, "setting", first->line, first->at, fmt("checkbox does not cover state `%S`", names.v[k]));
-        }
-    }
-}
-
-/* Checks the state_machine lines across lines: one column per table; mutual consistency of initial, transitions, and terminal; limit,
- * history records (checked at the end of the document), the default of the state column, and checkbox lines. */
-static void state_machine_check(parser *p)
-{
-    bool has_column = false;
-    str column_name = SL("");
-    smap states = {0}, initials = {0}, terminals = {0};
-    /* The identity of each initial, terminal and transition line: its form and states, never its require list. */
-    smap seen = {0};
-    tsettingv lines = {0}, limits = {0}, boxes = {0};
-    tsetting_rec *history = NULL;
-    tokens requires = {0};
-    for (size_t i = 0; i < p->table_settings.n; i++) {
-        tsetting_rec *s = &p->table_settings.v[i];
-        if (str_eqc(s->kind, "checkbox")) {
-            PUSH(boxes, s);
-            continue;
-        }
-        if (!str_eqc(s->kind, "state_machine")) {
-            continue;
-        }
-        const tokens *a = &s->args;
-        if (!has_column) {
-            has_column = true;
-            column_name = a->v[0].text;
-        } else if (!str_eq(a->v[0].text, column_name)) {
-            error(p, "setting", s->line, a->v[0].column, fmt("state_machine repeats for `%S`; a table holds one machine", a->v[0].text));
-        }
-        if (str_eqc(a->v[1].text, "history")) {
-            if (history != NULL) {
-                error(p, "setting", s->line, s->at, SL("state_machine repeats history"));
-                continue;
-            }
-            history = s;
-        } else if (str_eqc(a->v[1].text, "limit")) {
-            PUSH(limits, s);
-        } else {
-            /* A line of another column already reports that a table holds one machine; it is no line of this one. */
-            if (str_eq(a->v[0].text, column_name)) {
-                bool transition = str_eqc(a->v[1].text, "transition");
-                str key = transition ? fmt("transition %S %S", a->v[2].text, a->v[3].text) : fmt("%S %S", a->v[1].text, a->v[2].text);
-                if (smap_has(&seen, key)) {
-                    str what = transition ? fmt("%S -> %S", a->v[2].text, a->v[3].text) : key;
-                    error(p, "setting", s->line, s->at, fmt("state_machine repeats %S", what));
-                    continue;
-                }
-                smap_set(&seen, key, TRUEP);
-            }
-            PUSH(lines, s);
-            size_t fixed = str_eqc(a->v[1].text, "transition") ? 4 : 3;
-            for (size_t k = fixed; k < a->n; k++) {
-                PUSH(requires, a->v[k]);
-            }
-            if (str_eqc(a->v[1].text, "transition")) {
-                smap_set(&states, a->v[2].text, TRUEP);
-                smap_set(&states, a->v[3].text, TRUEP);
-            } else {
-                smap_set(&states, a->v[2].text, TRUEP);
-                if (str_eqc(a->v[1].text, "initial")) {
-                    smap_set(&initials, a->v[2].text, TRUEP);
-                } else {
-                    smap_set(&terminals, a->v[2].text, TRUEP);
-                }
-            }
-        }
-    }
-    for (size_t i = 0; i < lines.n; i++) {
-        const tsetting_rec *s = lines.v[i];
-        const token *state = &s->args.v[2];
-        if (str_eqc(s->args.v[1].text, "initial") && smap_has(&terminals, state->text)) {
-            error(p, "setting", s->line, s->at, fmt("an initial state `%S` is also terminal", state->text));
-        }
-        if (str_eqc(s->args.v[1].text, "transition") && smap_has(&terminals, state->text)) {
-            error(p, "setting", s->line, s->at, fmt("a transition leaves the terminal state `%S`", state->text));
-        }
-    }
-    limits_check(p, &limits, &states);
-    if (history != NULL) {
-        column *state = has_column ? smap_get(p->columns, column_name) : NULL;
-        dstate_rec r = {0};
-        r.owner = p->table->name;
-        r.state = state != NULL && col_valid(state) ? state : NULL;
-        r.args = history->args;
-        r.requires = requires;
-        r.line = history->line;
-        for (size_t k = 0; k < requires.n; k++) {
-            PUSH(r.required, (column *)smap_get(p->columns, requires.v[k].text));
-        }
-        PUSH(p->deferred_states, r);
-    }
-    if (has_column) {
-        tdefault *d = smap_get(&p->defaults, column_name);
-        if (d != NULL) {
-            str value = string_text(d->value.text) ? string_value(d->value.text) : d->value.text;
-            if (!smap_has(&initials, value)) {
-                error(p, "setting", d->line, d->value.column, fmt("the default `%S` of the state column is not an initial state", value));
-            }
-        }
-    }
-    checkboxes_check(p, &boxes, has_column, column_name, &states);
-}
-
-/* At the end of the document, checks the record table of history lines. The record table is a table of this document or of a document it wrote. */
-static void check_state_histories(parser *p)
-{
-    for (size_t i = 0; i < p->deferred_states.n; i++) {
-        dstate_rec *r = &p->deferred_states.v[i];
-        const token *name = &r->args.v[2], *row = &r->args.v[3];
-        if (!name_tok(p, name)) {
-            continue;
-        }
-        tentry *entry = smap_get(&p->tables, name->text);
-        if (entry == NULL) {
-            error(p, "setting", r->line, name->column, fmt("history table `%S` is not a table of this document or a used table", name->text));
-            continue;
-        }
-        if (r->state == NULL) {
-            continue;
-        }
-        table *h = entry->table;
-        smap *hcols = entry->columns;
-        bool fk = false;
-        for (size_t k = 0; k < h->fks.n; k++) {
-            const fkey *f = h->fks.v[k];
-            fk = fk || (f->columns.n == 1 && str_eq(f->columns.v[0], row->text) && str_eq(f->table, r->owner));
-        }
-        if (!fk) {
-            error(p, "setting", r->line, name->column, fmt("history table `%S` has no foreign key of `%S` to table `%S`", name->text, row->text, r->owner));
-        }
-        smap named = {0};
-        smap_set(&named, row->text, TRUEP);
-        ctype *datetime = ctype_new(SL("datetime"), (zend_long[]){6}, 1);
-        const token *typed[3] = {&r->args.v[4], &r->args.v[5], &r->args.v[6]};
-        const ctype *wants[3] = {r->state->type, r->state->type, datetime};
-        for (int k = 0; k < 3; k++) {
-            smap_set(&named, typed[k]->text, TRUEP);
-            column *c = smap_get(hcols, typed[k]->text);
-            if (c == NULL) {
-                error(p, "setting", r->line, name->column, fmt("history table `%S` has no column `%S`", name->text, typed[k]->text));
-            } else if (col_valid(c) && !ctype_same(c->type, wants[k])) {
-                error(p, "setting", r->line, name->column, fmt("history column `%S` has type %S, not %S", typed[k]->text, ctype_text(c->type), ctype_text(wants[k])));
-            }
-        }
-        for (size_t k = 0; k < r->requires.n; k++) {
-            const token *ref = &r->requires.v[k];
-            smap_set(&named, ref->text, TRUEP);
-            column *c = r->required.v[k];
-            if (c == NULL || !col_valid(c)) {
-                continue;
-            }
-            column *hc = smap_get(hcols, ref->text);
-            if (hc == NULL) {
-                error(p, "setting", r->line, name->column, fmt("history table `%S` has no column `%S` of the required column", name->text, ref->text));
-            } else if (!hc->nullable || (col_valid(hc) && !ctype_same(hc->type, c->type))) {
-                error(p, "setting", r->line, name->column, fmt("history column `%S` is not a nullable %S column", ref->text, ctype_text(c->type)));
-            }
-        }
-        if (h->pk != NULL) {
-            for (size_t k = 0; k < h->pk->columns.n; k++) {
-                smap_set(&named, h->pk->columns.v[k], TRUEP);
-            }
-        }
-        for (size_t k = 0; k < h->columns.n; k++) {
-            str column_name = h->columns.v[k]->name;
-            if (!smap_has(&named, column_name)) {
-                error(p, "setting", r->line, name->column, fmt("history table `%S` has column `%S`, which the history line does not name", name->text, column_name));
-            }
-        }
-        for (size_t k = 0; k < p->raw_title_body.n; k++) {
-            const rawtb_rec *raw = &p->raw_title_body.v[k];
-            if (str_eq(raw->table, name->text)) {
-                error(p, "setting", r->line, name->column, fmt("history table `%S` declares %S, which a history table does not", name->text, raw->kind));
-            }
-        }
+    const ctype *type = c->type;
+    if (!str_eqc(type->name, "bool") && !(str_eqc(type->name, "varchar") && type->p[0] == 1)) {
+        error(p, "setting", s->line, name->column, fmt("checkbox needs a varchar(1) or bool column, not %S", ctype_text(type)));
     }
 }
 
@@ -3027,8 +2545,8 @@ static void check_settings(parser *p, bool changed_by_foreign_keys)
             key_prefix_check(p, line, at);
         } else if (str_eqc(kind, "order")) {
             order_check(p, s);
-        } else if (str_eqc(kind, "state_machine")) {
-            state_line_check(p, s);
+        } else if (str_eqc(kind, "checkbox")) {
+            checkbox_check(p, s);
         } else if (str_eqc(kind, "immutable")) {
             if (changed_by_foreign_keys) {
                 error(p, "setting", line, at, SL("setting `immutable` is rejected on a child of a cascade or set_null foreign key"));
@@ -3055,7 +2573,6 @@ static void check_settings(parser *p, bool changed_by_foreign_keys)
             claim_generated(p, line, at, dbs_renderer_name(p->table->name, SL("audit_delete")), GSRC("table %S setting audit", p->table->name, SNULL));
         }
     }
-    state_machine_check(p);
 }
 
 static bool prefix_equal(const strs *columns, const strs *fk)
@@ -3547,7 +3064,6 @@ static void read_source(parser *p, str source)
     check_audit_records(p);
     check_audit_tables(p);
     check_audit_histories(p);
-    check_state_histories(p);
 }
 
 typedef struct {

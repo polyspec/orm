@@ -99,23 +99,12 @@ final class Emitter
 
     /**
      * The order of two settings of the same kind: codec, blind_index, navigation, and markdown are ordered by column or
-     * foreign key name; state_machine lines keep declaration order, with the history line and limit line in that order
-     * (Go's emitter writes in that order). The rest keep declaration order.
+     * foreign key name. The rest keep declaration order.
      */
     private static function within(Setting $a, Setting $b): int
     {
         return match ($a->kind) {
             'codec', 'blind_index', 'navigation', 'markdown' => strcmp($a->arguments[0], $b->arguments[0]),
-            'state_machine' => self::machineRank($a) <=> self::machineRank($b),
-            default => 0,
-        };
-    }
-
-    private static function machineRank(Setting $setting): int
-    {
-        return match ($setting->form) {
-            'history' => 1,
-            'limit' => 2,
             default => 0,
         };
     }
@@ -125,9 +114,6 @@ final class Emitter
         return match ($setting->kind) {
             'select_explicit' => 'select explicit ' . implode(' ', $setting->arguments),
             'key_prefix' => 'key_prefix ' . self::quote($setting->arguments[0]),
-            'checkbox' => "checkbox {$setting->arguments[0]} {$setting->arguments[1]} "
-                . self::quote($setting->arguments[2]),
-            'state_machine' => self::machine($setting),
             'store' => self::store($setting->arguments),
             // Schema text is decided by database state, so the columns not recorded are written as an exclude
             // list in column order. Other views write the list they were given as is.
@@ -154,25 +140,6 @@ final class Emitter
             $line .= ' shard ' . implode(' ', array_slice($arguments, $count));
         }
         return $line;
-    }
-
-    /** One state_machine line: a transition, an initial or terminal state, history or limit. */
-    private static function machine(Setting $setting): string
-    {
-        $column = $setting->arguments[0];
-        $rest = array_slice($setting->arguments, 1);
-        $text = match ($setting->form) {
-            'initial' => "state_machine $column initial {$rest[0]}",
-            'terminal' => "state_machine $column terminal {$rest[0]}",
-            'history' => "state_machine $column history {$rest[0]} row {$rest[1]} "
-                . "from {$rest[2]} to {$rest[3]} at {$rest[4]}",
-            'limit' => "state_machine $column limit {$rest[0]} " . ltrim($rest[1], '0'),
-            default => "state_machine $column {$rest[0]} -> {$rest[1]}",
-        };
-        if ($setting->requires !== null && $setting->requires !== []) {
-            $text .= ' require (' . implode(', ', $setting->requires) . ')';
-        }
-        return $text;
     }
 
     /** A string literal in canonical text: the value between single quotes, with each quote written twice. */
