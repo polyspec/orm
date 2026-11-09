@@ -1,6 +1,6 @@
 import sqlite3
 import unittest
-from datetime import date, time, timedelta, timezone
+from datetime import date, datetime, time, timezone
 from decimal import Decimal
 from types import SimpleNamespace
 from uuid import UUID
@@ -11,10 +11,11 @@ from polyspec.orm.catalog import (
     CatalogColumn,
     CatalogRowSnapshot,
     CatalogTableMetadata,
+    _MYSQL_DATE,
     _MYSQL_TIME,
-    _mysql_catalog_value,
-    _mysql_time_value,
     _check_value,
+    _grid_cell,
+    _mysql_decoders,
     _cell_key,
     _Session,
     _lock_original_row,
@@ -84,44 +85,10 @@ class CatalogMutationHelperTest(unittest.TestCase):
         finally:
             connection.close()
 
-    # The MySQL TIME text of read_only_query; the cells of a described table are in test_catalog_described_temporal.py.
-    def test_mysql_catalog_time_text_keeps_precision(self):
-        self.assertEqual(
-            _mysql_catalog_value(
-                timedelta(hours=12, minutes=34, seconds=56), _MYSQL_TIME, 0
-            ),
-            "12:34:56",
-        )
-        self.assertEqual(
-            _mysql_catalog_value(
-                timedelta(hours=12, minutes=34, seconds=56, microseconds=123000),
-                _MYSQL_TIME,
-                3,
-            ),
-            "12:34:56.123",
-        )
-        self.assertEqual(
-            _mysql_catalog_value(
-                timedelta(hours=12, minutes=34, seconds=56, microseconds=123456),
-                _MYSQL_TIME,
-                6,
-            ),
-            "12:34:56.123456",
-        )
-        self.assertIsNone(_mysql_catalog_value(None, _MYSQL_TIME, 6))
-        for invalid in (timedelta(seconds=-1), timedelta(days=1)):
-            with self.subTest(value=invalid):
-                with self.assertRaises(OrmError) as raised:
-                    _mysql_time_value(invalid, 6)
-                self.assertEqual(raised.exception.code, codes.CATALOG_VALUE)
-        with self.assertRaises(OrmError) as precision:
-            _mysql_time_value(timedelta(microseconds=1), 0)
-        self.assertEqual(precision.exception.code, codes.CATALOG_VALUE)
-
     # The plain cells of read_only_query; the cells of a described table are in test_catalog_described_temporal.py.
     def test_postgres_time_cells_keep_native_value(self):
         value = time(12, 34, 56, 123000)
-        self.assertIs(_check_value(value), value)
+        self.assertIs(_check_value(value, 1), value)
         self.assertEqual(_cell_key(value), "h12:34:56.123000")
         with self.assertRaises(OrmError) as snapshot:
             _cell_key(time(12, 34, 56, tzinfo=timezone.utc))
@@ -130,17 +97,126 @@ class CatalogMutationHelperTest(unittest.TestCase):
     def test_date_and_uuid_cells_read_as_their_dbspec_text(self):
         # A date and a uuid read from a described table are the text forms of their dbspec types, which the cell key
         # and the snapshot read as text.
-        self.assertEqual(_check_value(date(2024, 2, 29)), "2024-02-29")
-        self.assertEqual(_check_value(date(1, 1, 1)), "0001-01-01")
+        self.assertEqual(_check_value(date(2024, 2, 29), 1), "2024-02-29")
+        self.assertEqual(_check_value(date(1, 1, 1), 1), "0001-01-01")
         self.assertEqual(
-            _check_value(UUID("0F8FAD5B-D9CB-469F-A165-70867728950E")),
+            _check_value(UUID("0F8FAD5B-D9CB-469F-A165-70867728950E"), 1),
             "0f8fad5b-d9cb-469f-a165-70867728950e",
         )
-        self.assertEqual(_cell_key(_check_value(date(2024, 2, 29))), "s10:2024-02-29")
+        self.assertEqual(
+            _cell_key(_check_value(date(2024, 2, 29), 1)), "s10:2024-02-29"
+        )
         # A decimal cell arrives as text from the driver conversions of the catalog sessions; a Decimal object stays refused.
         with self.assertRaises(OrmError) as decimal:
-            _check_value(Decimal("1.50"))
-        self.assertEqual(decimal.exception.code, codes.CATALOG_VALUE)
+            _check_value(Decimal("1.50"), 4)
+        self.assertEqual(
+            str(decimal.exception), "CATALOG_VALUE: column 4: unsupported driver value"
+        )
+
+    # Requirements: INT-171
+    # INT-171 (FCV-2): no database sends a driver value that is not the host form of its column type, so the values are
+    # injected at the conversion of the driver values of each dialect.
+    def test_a_driver_value_of_another_host_form_is_refused(self):
+        cases = [
+            ("a SQLite value of no storage class", object(), "sqlite", None, None),
+            (
+                "a MySQL TIME of another time kind",
+                time(1, 2, 3),
+                "mysql",
+                _MYSQL_TIME,
+                None,
+            ),
+            (
+                "a MySQL date with a time of day",
+                datetime(2024, 2, 29, 1),
+                "mysql",
+                _MYSQL_DATE,
+                None,
+            ),
+            (
+                "a PostgreSQL integer text that is no integer",
+                b"1.5",
+                "postgres",
+                20,
+                "integer",
+            ),
+            (
+                "a PostgreSQL integer beyond 64 bits",
+                b"9223372036854775808",
+                "postgres",
+                20,
+                "integer",
+            ),
+            (
+                "a PostgreSQL float text that is no number",
+                b"one",
+                "postgres",
+                701,
+                "float64",
+            ),
+            (
+                "a PostgreSQL time with a seventh fraction digit",
+                b"12:34:56.1234567",
+                "postgres",
+                1083,
+                "time",
+            ),
+        ]
+        for name, value, dialect, code, cls in cases:
+            with self.subTest(case=name):
+                with self.assertRaises(OrmError) as raised:
+                    _grid_cell(value, dialect, code, False, 3, cls)
+                self.assertEqual(
+                    str(raised.exception),
+                    "CATALOG_VALUE: column 3: unsupported driver value",
+                )
+                self.assertIsNone(raised.exception.__cause__)
+
+    # Requirements: INT-172
+    # INT-172 (FCV-2): no database sends a value that its driver cannot decode, so the failure is injected at the decoding
+    # of each dialect; the failure is the cause of the refusal.
+    def test_a_value_the_driver_cannot_decode_keeps_its_failure(self):
+        def converter(data):
+            raise ValueError("no value")
+
+        result = SimpleNamespace(converters=[("utf-8", None), (None, converter)])
+        _mysql_decoders(result)
+        cases = [
+            (
+                "a MySQL text that is not UTF-8",
+                lambda: result.converters[0][1](b"\xff"),
+                1,
+                UnicodeDecodeError,
+            ),
+            (
+                "a MySQL converter that fails",
+                lambda: result.converters[1][1](b"1"),
+                2,
+                ValueError,
+            ),
+            (
+                "a PostgreSQL text that is not UTF-8",
+                lambda: _grid_cell(b"\xff", "postgres", 25, False, 2, "text"),
+                2,
+                UnicodeDecodeError,
+            ),
+            (
+                "a PostgreSQL bytea of no bytea form",
+                lambda: _grid_cell(b"\\x0", "postgres", 17, False, 5, "binary"),
+                5,
+                ValueError,
+            ),
+        ]
+        for name, call, position, failure in cases:
+            with self.subTest(case=name):
+                with self.assertRaises(OrmError) as raised:
+                    call()
+                self.assertEqual(
+                    str(raised.exception),
+                    f"CATALOG_VALUE: column {position}: the driver could not decode the value",
+                )
+                self.assertIsInstance(raised.exception.__cause__, failure)
+                self.assertIs(raised.exception.cause, raised.exception.__cause__)
 
     def test_locks_and_validates_unchanged_original_row_before_mysql_safety(self):
         descriptor = metadata()
