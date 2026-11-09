@@ -5212,6 +5212,80 @@
           }
         }
       ]
+    },
+    {
+      "id": "a_server_error_number_is_read_by_the_table_of_its_server",
+      "requirements": [
+        "DIA-201",
+        "INT-150"
+      ],
+      "install": false,
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "conn"
+        },
+        {
+          "op": "utils.run",
+          "connection": "conn",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": "CREATE TABLE ck_probe (n INT, CONSTRAINT ck_probe_n CHECK (n > 0))"
+            }
+          ]
+        },
+        {
+          "op": "utils.run",
+          "connection": "conn",
+          "statements": [
+            {
+              "kind": "insert",
+              "tables": [],
+              "sql": "INSERT INTO ck_probe (n) VALUES (0)"
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "error": "CONSTRAINT"
+            },
+            "postgres": {
+              "error": "CONSTRAINT"
+            },
+            "sqlite": {
+              "error": "CONSTRAINT"
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "conn",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "CREATE TABLE ae_probe (n INT) AUTOEXTEND_SIZE=1M",
+                "postgres": "CREATE TABLE ae_probe (n INT) WITH (fillfactor = 1)",
+                "sqlite": "CREATE TABLE ae_probe (n INT) WITHOUT ROWID"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "error": "DRIVER"
+            },
+            "postgres": {
+              "error": "DRIVER"
+            },
+            "sqlite": {
+              "error": "DRIVER"
+            }
+          }
+        }
+      ]
     }
   ]
 }

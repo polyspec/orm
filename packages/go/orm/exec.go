@@ -420,7 +420,7 @@ func (d *DB) Execute(st *plan.Step, params []any) error {
 	}
 	result, err := stmt.ExecContext(ctx, args...)
 	_, err = d.execAgain(ctx, ex.transaction() == nil, st.SQL, args, result, err)
-	return d.modelDone(ex, st, st.SQL, args, masks, start, mapDriverErrContext(err, ctx))
+	return d.modelDone(ex, st, st.SQL, args, masks, start, mapDriverErrContext(err, ctx, d.server))
 }
 
 // modelDone publishes the event of a model statement and returns the error
@@ -872,14 +872,14 @@ func runSelect(ctx context.Context, ex executor, c *cached, st *plan.Step, r *re
 	}
 	rows, err := stmt.QueryContext(ctx, args...)
 	rows, endAgain, err := d.queryAgain(ctx, ex.transaction() == nil, sqlText, args, rows, err)
-	err = mapDriverErrContext(err, ctx)
+	err = mapDriverErrContext(err, ctx, ex.base().server)
 	if err != nil {
 		return nil, d.modelDone(ex, st, sqlText, args, masks, start, err)
 	}
 	if endAgain != nil {
 		defer func() {
 			if endErr := endAgain(nil); endErr != nil && retErr == nil {
-				retErr = mapDriverErrContext(endErr, ctx)
+				retErr = mapDriverErrContext(endErr, ctx, ex.base().server)
 			}
 		}()
 	}
@@ -900,7 +900,7 @@ func runSelect(ctx context.Context, ex executor, c *cached, st *plan.Step, r *re
 	var decodeErr error
 	for rows.Next() {
 		if err = rows.Scan(ptrs...); err != nil {
-			err = mapDriverErrContext(err, ctx)
+			err = mapDriverErrContext(err, ctx, ex.base().server)
 			break
 		}
 		// The first row gets its own slice; later rows share chunks of
@@ -923,10 +923,10 @@ func runSelect(ctx context.Context, ex executor, c *cached, st *plan.Step, r *re
 		out = append(out, vals)
 	}
 	if err == nil {
-		err = mapDriverErrContext(rows.Err(), ctx)
+		err = mapDriverErrContext(rows.Err(), ctx, ex.base().server)
 	}
 	if closeErr := rows.Close(); err == nil {
-		err = mapDriverErrContext(closeErr, ctx)
+		err = mapDriverErrContext(closeErr, ctx, ex.base().server)
 	}
 	if err := d.modelDone(ex, st, sqlText, args, masks, start, err); err != nil {
 		return nil, err
@@ -1202,7 +1202,7 @@ func scanOne(ctx context.Context, ex executor, c *cached, st *plan.Step, r *requ
 		return nil, d.modelDone(ex, st, st.SQL, args, masks, start, err)
 	}
 	err = stmt.QueryRowContext(ctx, args...).Scan(&v)
-	err = mapDriverErrContext(d.scanAgain(ctx, ex.transaction() == nil, st.SQL, args, err, &v), ctx)
+	err = mapDriverErrContext(d.scanAgain(ctx, ex.transaction() == nil, st.SQL, args, err, &v), ctx, ex.base().server)
 	if err := d.modelDone(ex, st, st.SQL, args, masks, start, err); err != nil {
 		return nil, err
 	}
@@ -1357,7 +1357,7 @@ func writeAfterHook(ex executor, r *request, after func(*request) error) (key an
 		// The returned key is the identity, an integer, or the key_prefix key that a corpus allocated, a text.
 		var returned any
 		err = stmt.QueryRowContext(ctx, args...).Scan(&returned)
-		err = mapDriverErrContext(d.scanAgain(ctx, ex.transaction() == nil, st.SQL, args, err, &returned), ctx)
+		err = mapDriverErrContext(d.scanAgain(ctx, ex.transaction() == nil, st.SQL, args, err, &returned), ctx, ex.base().server)
 		if err := d.modelDone(ex, st, st.SQL, args, masks, start, err); err != nil {
 			return nil, 0, err
 		}
@@ -1371,13 +1371,13 @@ func writeAfterHook(ex executor, r *request, after func(*request) error) (key an
 	}
 	res, err := stmt.ExecContext(ctx, args...)
 	res, err = d.execAgain(ctx, ex.transaction() == nil, st.SQL, args, res, err)
-	err = mapDriverErrContext(err, ctx)
+	err = mapDriverErrContext(err, ctx, ex.base().server)
 	if err := d.modelDone(ex, st, st.SQL, args, masks, start, err); err != nil {
 		return nil, 0, err
 	}
 	affected, err = res.RowsAffected()
 	if err != nil {
-		return nil, 0, mapDriverErr(err)
+		return nil, 0, mapDriverErr(err, ex.base().server)
 	}
 	if r.ir.Kind == "insert" && len(r.ir.OnDuplicate) > 0 {
 		// An upsert writes one row: MySQL counts 2 for the one that updates, PostgreSQL and SQLite 1.
@@ -1388,7 +1388,7 @@ func writeAfterHook(ex executor, r *request, after func(*request) error) (key an
 	if r.ir.Kind == "insert" && len(r.ir.Rows) == 0 && d.driver != "postgres" {
 		lastID, err = res.LastInsertId()
 		if err != nil {
-			return nil, 0, mapDriverErr(err)
+			return nil, 0, mapDriverErr(err, ex.base().server)
 		}
 	}
 	if r.ir.Kind == "update" && r.ir.Optimistic != nil && affected == 0 {

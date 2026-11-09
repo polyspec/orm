@@ -423,6 +423,9 @@ func mysqlProbes() []Probe {
 			e.Exec("CREATE TABLE t (a int, CONSTRAINT ck CHECK (a > 0))", "INSERT INTO t VALUES (NULL), (1)")
 			e.Fails("INSERT INTO t VALUES (0)", "3819")
 		}),
+		p("check.number_4025_not_a_check", "4025 is not a CHECK fault on MySQL: it refuses an AUTOEXTEND_SIZE out of range", func(e *Env) {
+			e.Fails("CREATE TABLE t (a int) AUTOEXTEND_SIZE=1M", "4025")
+		}),
 		p("check.not_enforced_option", "CHECK ... NOT ENFORCED is stored and not applied", func(e *Env) {
 			e.Exec("CREATE TABLE t (a int, CONSTRAINT ck CHECK (a > 0) NOT ENFORCED)", "INSERT INTO t VALUES (0)")
 			e.Want("SELECT ENFORCED FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = DATABASE() AND CONSTRAINT_NAME = 'ck'", "NO")

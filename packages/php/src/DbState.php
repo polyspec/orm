@@ -37,6 +37,11 @@ final class DbState
      * @var (\Closure(): \PDO)|null
      */
     public ?\Closure $listener = null;
+    /**
+     * The server of a mysql connection, mysql or mariadb, which Orm::connect reads once by VERSION() and never by the
+     * handshake (docs/spec/dialects.md DIA-201); it selects the table of the error numbers.
+     */
+    public string $server = 'mysql';
     /** The test fault that Polyspec\Orm\Testing\Faults::failNextRollback sets. Only that test entry point sets it. */
     public bool $rollbackFault = false;
     /**

@@ -182,6 +182,11 @@ func mariadbFacts() []Probe {
 			e.Exec("CREATE TABLE t (a int, CONSTRAINT ck CHECK (a > 0))", "INSERT INTO t VALUES (NULL), (1)")
 			e.Fails("INSERT INTO t VALUES (0)", "4025")
 		}),
+		p("check.number_4025_not_a_check", "4025 is the CHECK fault on MariaDB, which has no AUTOEXTEND_SIZE (1064)", func(e *Env) {
+			e.Fails("CREATE TABLE t (a int) AUTOEXTEND_SIZE=1M", "1064")
+			e.Exec("CREATE TABLE u (a int, CONSTRAINT ck CHECK (a > 0))")
+			e.Fails("INSERT INTO u VALUES (0)", "4025")
+		}),
 		p("check.not_enforced_option", "MariaDB has no NOT ENFORCED CHECK (1064), and TABLE_CONSTRAINTS has no ENFORCED column (1054)", func(e *Env) {
 			e.Fails("CREATE TABLE t (a int, CONSTRAINT ck CHECK (a > 0) NOT ENFORCED)", "1064")
 			e.Fails("SELECT ENFORCED FROM information_schema.TABLE_CONSTRAINTS", "1054")

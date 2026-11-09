@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 2dd0023af3b5cbff0c3c65d7752af32b340a549e5ebed40a2a2d9d0c5c63cb90 -->
+<!-- source-sha256: 930bb12f153370de62a8d2d80d10635c0ce6d3d63d986a7d95377f92da8a1ab1 -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -17,6 +17,16 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
      같고, 다른 결과를 낼 문보다 먼저 거부한다. 조용한 차이는 없다.
   4. server 자신의 답에 있는 차이(server error의 문구, introspect한 type 이름 등)는 그 server에서 그 case의 결과이며, recipe는
      그것을 case의 `mariadb` expect로 적는다(FCV-3).
+
+- **DIA-201** server와 그 error 번호 — MySQL 8.4 / MariaDB 11.8 (probe `mysql.env.server`,
+  `mariadb.env.server`): `mysql` dialect의 클라이언트는 연결할 때 한 번 `SELECT VERSION()`으로 server를 읽는다.
+  `-MariaDB`를 담은 version은 MariaDB이고 그 밖은 MySQL이며, pool의 모든 연결은 그 pool의 server를 읽는다. 두 server는
+  서로 다른 error에 같은 번호를 주므로 공통 표가 없다(DIA-200, 규칙 2). 4025는 MariaDB의 CHECK 위반(SQLSTATE 23000)이고
+  MySQL에서는 범위 밖의 `AUTOEXTEND_SIZE`(HY000)이며, MySQL의 CHECK 위반은 3819다(probe
+  `mysql.check.number_4025_not_a_check`, `mariadb.check.number_4025_not_a_check`). 그래서 server error 번호는 그 연결의
+  server의 표([errors](errors.yaml))로 읽으며 모든 runtime에서 같다. MySQL은 3819를 `CONSTRAINT`로 바꾸고 4025는 `DRIVER`
+  error로 두며, MariaDB는 4025를 `CONSTRAINT`로, statement timeout인 1969를 `CANCELED`로 바꾼다. MySQL의 idle 연결 끊김인
+  4031은 MySQL에서만 `CONNECTION_LOST`다(statement runner case `a_server_error_number_is_read_by_the_table_of_its_server`).
 
 - **DIA-1** identifiers — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.index.primary_name_reserved`): `` `x` ``; PostgreSQL 12+: `"x"`; SQLite 3.46+: `"x"`
 - **DIA-2** placeholders — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.like.ascii_fold_replace`): `?`; PostgreSQL 12+: `$n` (the executor renumbers when it expands a `parent` slot to N values); SQLite 3.46+: `?`

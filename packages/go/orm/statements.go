@@ -31,7 +31,7 @@ func (r runner) exec(ctx context.Context, kind string, tables []string, sqlText 
 	}
 	res, err := r.q.ExecContext(ctx, sqlText, args...)
 	res, err = r.d.execAgain(ctx, r.outside(), sqlText, args, res, err)
-	return res, r.d.statementDone(kind, tables, r.tx, sqlText, args, start, mapDriverErrContext(err, ctx))
+	return res, r.d.statementDone(kind, tables, r.tx, sqlText, args, start, mapDriverErrContext(err, ctx, r.d.server))
 }
 
 // scan runs a statement that returns one row and reads that row into dest.
@@ -41,7 +41,7 @@ func (r runner) scan(ctx context.Context, kind string, tables []string, sqlText 
 		return r.d.statementDone(kind, tables, r.tx, sqlText, args, start, err)
 	}
 	err := r.q.QueryRowContext(ctx, sqlText, args...).Scan(dest...)
-	err = mapDriverErrContext(r.d.scanAgain(ctx, r.outside(), sqlText, args, err, dest...), ctx)
+	err = mapDriverErrContext(r.d.scanAgain(ctx, r.outside(), sqlText, args, err, dest...), ctx, r.d.server)
 	return r.d.statementDone(kind, tables, r.tx, sqlText, args, start, err)
 }
 
@@ -67,7 +67,7 @@ func (o *observed) QueryContext(ctx context.Context, query string, args ...any) 
 	rows, err := o.r.q.QueryContext(ctx, query, args...)
 	rows, o.endAgain, err = o.r.d.queryAgain(ctx, o.r.outside(), query, args, rows, err)
 	if err != nil {
-		return nil, o.r.d.statementDone(o.kind, o.tables(query), o.r.tx, query, args, o.start, mapDriverErrContext(err, ctx))
+		return nil, o.r.d.statementDone(o.kind, o.tables(query), o.r.tx, query, args, o.start, mapDriverErrContext(err, ctx, o.r.d.server))
 	}
 	return rows, nil
 }
@@ -78,7 +78,7 @@ func (o *observed) QueryEnded(query string, err error) error {
 		err = o.endAgain(err)
 		o.endAgain = nil
 	}
-	return o.r.d.statementDone(o.kind, o.tables(query), o.r.tx, query, nil, o.start, mapDriverErrContext(err, o.ctx))
+	return o.r.d.statementDone(o.kind, o.tables(query), o.r.tx, query, nil, o.start, mapDriverErrContext(err, o.ctx, o.r.d.server))
 }
 
 func (o *observed) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
@@ -102,7 +102,7 @@ func (r runner) rows(ctx context.Context, kind string, tables []string, sqlText 
 	rs, err := r.q.QueryContext(ctx, sqlText, args...)
 	rs, endAgain, err := r.d.queryAgain(ctx, r.outside(), sqlText, args, rs, err)
 	if err != nil {
-		return r.d.statementDone(kind, tables, r.tx, sqlText, args, start, mapDriverErrContext(err, ctx))
+		return r.d.statementDone(kind, tables, r.tx, sqlText, args, start, mapDriverErrContext(err, ctx, r.d.server))
 	}
 	var eachErr error
 	for rs.Next() {
@@ -117,7 +117,7 @@ func (r runner) rows(ctx context.Context, kind string, tables []string, sqlText 
 	if endAgain != nil {
 		err = endAgain(err)
 	}
-	if err := r.d.statementDone(kind, tables, r.tx, sqlText, args, start, mapDriverErrContext(err, ctx)); err != nil {
+	if err := r.d.statementDone(kind, tables, r.tx, sqlText, args, start, mapDriverErrContext(err, ctx, r.d.server)); err != nil {
 		return err
 	}
 	return eachErr

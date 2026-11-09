@@ -45,7 +45,9 @@ final class OrmException extends \RuntimeException
      * Reports a driver error with the code the error catalog names for it,
      * and every other driver error with DRIVER. The exception keeps the driver
      * message and the driver error as its previous exception. $pdo is the
-     * connection the error came from.
+     * connection the error came from. $driver is mysql, mariadb, postgres or
+     * sqlite: a mysql connection names its server, which numbers its errors
+     * (DIA-201).
      */
     public static function fromDriver(\PDOException $e, string $driver, \PDO $pdo): self
     {
@@ -82,6 +84,7 @@ final class OrmException extends \RuntimeException
                 is_int($num) && ($num & 0xff) === 8 => Code::READ_ONLY,
                 default => Code::DRIVER,
             },
+            'mariadb' => self::mariadbCode($num, $state),
             default => self::mysqlCode($num, $state),
         };
         // A SQLite message ends with the name of the extended result code (INT-154).
@@ -99,10 +102,30 @@ final class OrmException extends \RuntimeException
             $num === 1451 || $num === 1452 => Code::FOREIGN_KEY,
             $num === 1205 || $num === 1317 || $num === 3024 => Code::CANCELED,
             $num === 1290 || $num === 1792 => Code::READ_ONLY,
-            $num === 3819 || $num === 4025 => Code::CONSTRAINT,
+            // MySQL's 4025 is ER_INNODB_AUTOEXTEND_SIZE_OUT_OF_RANGE, which is DRIVER (DIA-201).
+            $num === 3819 => Code::CONSTRAINT,
             // 2006 (server has gone away) and 2013 (lost connection during query) mean the client lost the
             // connection, and 4031 means the server ended an idle connection.
             $num === 2006 || $num === 2013 || $num === 4031 => Code::CONNECTION_LOST,
+            default => Code::DRIVER,
+        };
+    }
+
+    /**
+     * The code of a MariaDB error by its error number, or by its SQLSTATE when the number is not known (DIA-201):
+     * MariaDB numbers its errors above 1999 otherwise than MySQL. It has no 3572, 3819, 3024 or 4031 of MySQL; its
+     * 4025 is ER_CONSTRAINT_FAILED and its 1969 ER_STATEMENT_TIMEOUT.
+     */
+    private static function mariadbCode(?int $num, string $state): string
+    {
+        return match (true) {
+            $num === 1213 || $state === '40001' => Code::DEADLOCK,
+            $num === 1062 || ($num === null && $state === '23000') => Code::DUPLICATE_KEY,
+            $num === 1451 || $num === 1452 => Code::FOREIGN_KEY,
+            $num === 1205 || $num === 1317 || $num === 1969 => Code::CANCELED,
+            $num === 1290 || $num === 1792 => Code::READ_ONLY,
+            $num === 4025 => Code::CONSTRAINT,
+            $num === 2006 || $num === 2013 => Code::CONNECTION_LOST,
             default => Code::DRIVER,
         };
     }

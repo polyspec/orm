@@ -51,6 +51,7 @@ ZEND_DLEXPORT int sqlite3_extension_init(sqlite3 *database, char **error, const 
 
 typedef bool (*dbs_transaction_callback)(zval *connection, void *context, zval *result);
 
+static zval *error_driver(zval *self);
 static void set_masked(zval *masks, zend_long idx, const char *s);
 static zval *active_for(zval *db);
 static bool finish_tx(zval *self, zval *frame, bool commit);
@@ -739,7 +740,7 @@ static bool send_op(zval *self, bool control, op_fn op, void *ctx, done_fn done,
             if (Z_TYPE(signal) != IS_UNDEF) zval_ptr_dtor(&signal);
             return false;
         }
-        ZVAL_COPY(&driver, rd(self, "driver"));
+        ZVAL_COPY(&driver, error_driver(self));
         bool made;
         if (cancelled) {
             made = cancellation_exception(&pe, &err);
@@ -4065,6 +4066,15 @@ ZEND_METHOD(Polyspec_Orm_Db, pdo)
 }
 
 /* Maps a PDO error using this connection's driver and handle for both the public method and transaction cleanup. */
+/* The driver name that OrmException::fromDriver reads an error by: a mysql connection names its server, whose table maps its
+ * error numbers (DIA-201). */
+static zval *error_driver(zval *self)
+{
+    zval *driver = rd(self, "driver");
+    if (Z_TYPE_P(driver) == IS_STRING && zend_string_equals_literal(Z_STR_P(driver), "mysql")) return rd(rd(self, "state"), "server");
+    return driver;
+}
+
 static bool map_driver_error(zval *self, zval *error, zval *out)
 {
     zval pdo, args[3];
@@ -4073,7 +4083,7 @@ static bool map_driver_error(zval *self, zval *error, zval *out)
         return false;
     }
     ZVAL_COPY(&args[0], error);
-    ZVAL_COPY(&args[1], rd(self, "driver"));
+    ZVAL_COPY(&args[1], error_driver(self));
     ZVAL_COPY(&args[2], &pdo);
     bool ok = scall("Polyspec\\Orm\\OrmException::fromDriver", out, 3, args);
     for (int i = 0; i < 3; i++) {
@@ -4131,7 +4141,7 @@ ZEND_METHOD(Polyspec_Orm_Db, close)
                     zval dargs[3], derr, pdo;
                     if (handle_pdo(self, &pdo)) {
                         ZVAL_COPY(&dargs[0], &pe);
-                        ZVAL_COPY(&dargs[1], rd(self, "driver"));
+                        ZVAL_COPY(&dargs[1], error_driver(self));
                         ZVAL_COPY(&dargs[2], &pdo);
                         if (scall("Polyspec\\Orm\\OrmException::fromDriver", &derr, 3, dargs)) {
                             ZVAL_COPY_VALUE(&err, &derr);
@@ -4219,6 +4229,20 @@ ZEND_METHOD(Polyspec_Orm_Db, withCancellation)
     wr(&copy, "cancellationSlot", &slot);
     zval_ptr_dtor(&slot);
     RETURN_COPY_VALUE(&copy);
+}
+
+/* Records the server of a mysql connection, which Orm::connect reads by VERSION() (DIA-201). */
+ZEND_METHOD(Polyspec_Orm_Db, setServer)
+{
+    zend_string *server;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_STR(server)
+    ZEND_PARSE_PARAMETERS_END();
+    zval value;
+    ZVAL_STR_COPY(&value, server);
+    wr(rd(ZEND_THIS, "state"), "server", &value);
+    zval_ptr_dtor(&value);
+    RETURN_NULL();
 }
 
 ZEND_METHOD(Polyspec_Orm_Db, setReconnect)

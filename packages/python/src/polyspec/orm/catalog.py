@@ -1447,6 +1447,8 @@ class _Session:
         self.dialect = dialect
         self.wrapper = wrapper
         self.raw = wrapper.connection
+        # The server of a mysql connection, which maps its error numbers (DIA-201).
+        self.server = getattr(wrapper, "server", "mysql")
         if dialect == "sqlite":
             self.raw.text_factory = _sqlite_text
         self.abandoned = False
@@ -1660,7 +1662,7 @@ class _Session:
             if not _is_driver_error(self.dialect, error):
                 raise
             lost = self.dialect == "postgres" and bool(self.raw.closed)
-            _raise_driver_error(self.dialect, error, lost)
+            _raise_driver_error(self.dialect, error, lost, self.server)
         finally:
             if self.abandoned:
                 pass

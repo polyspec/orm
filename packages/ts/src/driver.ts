@@ -105,13 +105,13 @@ function seconds(started: number): number { return (performance.now() - started)
  *
  * @internal
  */
-export async function observed<T>(name: DriverName, sql: string, done: StatementDone, origin: SentOrigin, work: () => Promise<T> | T): Promise<T> {
+export async function observed<T>(name: DriverName, sql: string, done: StatementDone, origin: SentOrigin, work: () => Promise<T> | T, server?: MySqlServer): Promise<T> {
   const started = performance.now();
   let result: T;
   try {
     result = await work();
   } catch (error) {
-    const mapped = driverError(name, error);
+    const mapped = driverError(name, error, server);
     done(sql, seconds(started), mapped, origin);
     throw mapped;
   }
@@ -198,14 +198,28 @@ export function sqliteBusy(name: DriverName, error: unknown): boolean {
  * PostgreSQL treats class 08 (connection exception) and the codes sent when the server ends a session
  * 57P01 (admin_shutdown), 57P02 (crash_shutdown), and 57P05 (idle_session_timeout) as lost connections.
  */
-function connectionLost(name: DriverName, source: { code: string | undefined; errno: number | undefined; fatal: boolean }): boolean {
+function connectionLost(name: DriverName, source: { code: string | undefined; errno: number | undefined; fatal: boolean }, server: MySqlServer): boolean {
   if (name === 'mysql') {
-    return source.errno === 4031 || (source.fatal === true && (source.code === undefined || source.code === 'PROTOCOL_CONNECTION_LOST' || source.code === 'ECONNRESET' || source.code === 'EPIPE'));
+    // 4031 is MySQL's ER_CLIENT_INTERACTION_TIMEOUT; MariaDB's 4031 is a trigger error (DIA-201).
+    return (server === 'mysql' && source.errno === 4031) || (source.fatal === true && (source.code === undefined || source.code === 'PROTOCOL_CONNECTION_LOST' || source.code === 'ECONNRESET' || source.code === 'EPIPE'));
   }
   return name === 'postgres' && typeof source.code === 'string' && (source.code.startsWith('08') || source.code === '57P01' || source.code === '57P02' || source.code === '57P05');
 }
 
-export function driverError(name: DriverName, error: unknown): OrmError {
+/** The server of a mysql connection, which the connection reads once by VERSION() (DIA-201). */
+export type MySqlServer = 'mysql' | 'mariadb';
+
+/**
+ * The codes of the error numbers of each server of the mysql dialect (DIA-201): MariaDB numbers its errors above 1999
+ * otherwise than MySQL, so a number is read by the table of its server. MySQL's 4025 is ER_INNODB_AUTOEXTEND_SIZE_OUT_OF_RANGE
+ * and MariaDB's ER_CONSTRAINT_FAILED; MariaDB has no 3572, 3819 or 3024 and reports a statement timeout as 1969.
+ */
+const MYSQL_CODES: Record<MySqlServer, ReadonlyMap<number, string>> = {
+  mysql: new Map([[3572, codes.LOCK_NOT_AVAILABLE], [1205, codes.CANCELED], [1317, codes.CANCELED], [3024, codes.CANCELED], [1062, codes.DUPLICATE_KEY], [1451, codes.FOREIGN_KEY], [1452, codes.FOREIGN_KEY], [1213, codes.DEADLOCK], [1290, codes.READ_ONLY], [1792, codes.READ_ONLY], [3819, codes.CONSTRAINT]]),
+  mariadb: new Map([[1205, codes.CANCELED], [1317, codes.CANCELED], [1969, codes.CANCELED], [1062, codes.DUPLICATE_KEY], [1451, codes.FOREIGN_KEY], [1452, codes.FOREIGN_KEY], [1213, codes.DEADLOCK], [1290, codes.READ_ONLY], [1792, codes.READ_ONLY], [4025, codes.CONSTRAINT]]),
+};
+
+export function driverError(name: DriverName, error: unknown, server: MySqlServer = 'mysql'): OrmError {
   if (error instanceof OrmError) return error;
   const driverCode = property(error, 'code');
   const errcode = property(error, 'errcode');
@@ -220,28 +234,29 @@ export function driverError(name: DriverName, error: unknown): OrmError {
   // A SQLite message ends with the name of its extended result code (INT-154).
   const suffix = name === 'sqlite' && source.errcode !== undefined ? sqliteResultCodeSuffix(source.errcode) : '';
   const message = (typeof text === 'string' ? text : errorText(error)) + suffix;
-  if (connectionLost(name, source)) return new OrmError(codes.CONNECTION_LOST, `${name}: ${message}`, error);
+  if (connectionLost(name, source, server)) return new OrmError(codes.CONNECTION_LOST, `${name}: ${message}`, error);
   // A certificate that the CA or the host of ssl-mode=VERIFY_IDENTITY refuses is CONFIG (CFG-16).
   if (name === 'mysql' && source.code !== undefined && /CERT|UNABLE_TO_VERIFY|SELF_SIGNED|HANDSHAKE_SSL_ERROR/.test(source.code)) {
     return new OrmError(codes.CONFIG, `mysql TLS connection failed: ${message}`, error);
   }
-  const lockNotAvailable = source.code === 'ER_LOCK_NOWAIT' || source.errcode === 3572 || source.code === '55P03';
-  // MySQL 1205 (a lock wait timeout) is the expiry of the write bound of CFG-6, and MySQL 1317/3024, PostgreSQL 57014,
-  // and SQLite 9 all report a statement that was stopped before it finished; SQLite BUSY reports a lock that
+  // A mysql error is read by its number in the table of its server (DIA-201).
+  if (name === 'mysql') return new OrmError(source.errno === undefined ? codes.DRIVER : MYSQL_CODES[server].get(source.errno) ?? codes.DRIVER, `${name}: ${message}`, error);
+  const lockNotAvailable = source.code === '55P03';
+  // PostgreSQL 57014 and SQLite 9 report a statement that was stopped before it finished; SQLite BUSY reports a lock that
   // another connection still held when busy_timeout ended.
-  if (source.code === 'ER_LOCK_WAIT_TIMEOUT' || source.code === 'ER_QUERY_INTERRUPTED' || source.code === 'ER_QUERY_TIMEOUT' || source.code === '57014' || source.errcode === 9 || sqliteBusy(name, error)) {
+  if (source.code === '57014' || source.errcode === 9 || sqliteBusy(name, error)) {
     return new OrmError(codes.CANCELED, `${name}: ${message}`, error);
   }
-  const duplicate = source.code === 'ER_DUP_ENTRY' || source.code === '23505' || source.errcode === 2067 || source.errcode === 1555;
-  const foreignKey = source.code === 'ER_NO_REFERENCED_ROW_2' || source.code === 'ER_ROW_IS_REFERENCED_2' || source.code === '23503' || source.errcode === 787 ||
+  const duplicate = source.code === '23505' || source.errcode === 2067 || source.errcode === 1555;
+  const foreignKey = source.code === '23503' || source.errcode === 787 ||
     // SQLite reports an FK violation of a RESTRICT action as CONSTRAINT_TRIGGER (1811). The 1811 of a trigger RAISE is DRIVER.
     (source.errcode === 1811 && message.includes('FOREIGN KEY constraint failed'));
-  const deadlock = source.code === 'ER_LOCK_DEADLOCK' || source.code === '40P01' || source.code === '40001';
-  // MySQL 1290/1792, PostgreSQL 25006, and SQLite READONLY (8) with its
-  // extended codes report a write the read-only server or connection rejects.
-  const readOnly = source.code === 'ER_OPTION_PREVENTS_STATEMENT' || source.code === 'ER_CANT_EXECUTE_IN_READ_ONLY_TRANSACTION' || source.code === '25006' || (typeof source.errcode === 'number' && (source.errcode & 0xff) === 8);
-  // MySQL 3819/4025, PostgreSQL 23514, and SQLite CONSTRAINT_CHECK (275) report a CHECK violation.
-  const constraint = source.code === 'ER_CHECK_CONSTRAINT_VIOLATED' || source.code === 'ER_CONSTRAINT_FAILED' || source.code === '23514' || source.errcode === 275;
+  const deadlock = source.code === '40P01' || source.code === '40001';
+  // PostgreSQL 25006 and SQLite READONLY (8) with its extended codes report a write the read-only server or connection
+  // rejects.
+  const readOnly = source.code === '25006' || (typeof source.errcode === 'number' && (source.errcode & 0xff) === 8);
+  // PostgreSQL 23514 and SQLite CONSTRAINT_CHECK (275) report a CHECK violation.
+  const constraint = source.code === '23514' || source.errcode === 275;
   // Every other driver error, such as a write that a trigger refuses, is DRIVER.
   const code = lockNotAvailable ? codes.LOCK_NOT_AVAILABLE : duplicate ? codes.DUPLICATE_KEY : foreignKey ? codes.FOREIGN_KEY : deadlock ? codes.DEADLOCK : readOnly ? codes.READ_ONLY : constraint ? codes.CONSTRAINT : codes.DRIVER;
   return new OrmError(code, `${name}: ${message}`, error);
@@ -409,18 +424,22 @@ interface CoreQuery {
 }
 
 /** Stops the statement running on connection from another connection of the pool. */
-async function mysqlKill(pool: MySqlPool, connection: MySqlConnection, done: StatementDone): Promise<void> {
+async function mysqlKill(pool: MySqlPool, connection: MySqlConnection, done: StatementDone, server: MySqlServer): Promise<void> {
   const id = connection.threadId;
   const sql = `KILL QUERY ${Number(id)}`;
-  await observed('mysql', sql, done, 'kill', () => pool.query(sql));
+  await observed('mysql', sql, done, 'kill', () => pool.query(sql), server);
 }
 
-/** The failure of the session setup that runs on each new MySQL connection. */
-interface SessionSetup { error?: unknown; }
+/**
+ * The failure of the session setup that runs on each new MySQL connection, and the server that the setup read by VERSION(),
+ * never by the handshake (DIA-201). The setup runs ahead of every statement of its connection, so the server is known when a
+ * statement settles.
+ */
+interface SessionSetup { error?: unknown; server: MySqlServer; }
 
 function sessionError(setup: SessionSetup): OrmError | undefined {
   if (setup.error === undefined) return undefined;
-  return driverError('mysql', setup.error);
+  return driverError('mysql', setup.error, setup.server);
 }
 
 class MySqlPoolDriver implements DriverPool {
@@ -435,22 +454,22 @@ class MySqlPoolDriver implements DriverPool {
     );
   }
   public async execute(sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined, done: StatementDone): Promise<DriverResult> {
-    if (signal === undefined) return observed(this.name, sql, done, 'statement', () => this.checked(mysqlExecute(this.pool, sql, params)));
+    if (signal === undefined) return observed(this.name, sql, done, 'statement', () => this.checked(mysqlExecute(this.pool, sql, params)), this.setup.server);
     // A cancellable statement holds its own connection, so KILL QUERY names
     // the thread that runs it.
     let connection: MySqlConnection;
-    try { connection = await this.checked(this.pool.getConnection()); } catch (error) { throw driverError(this.name, error); }
+    try { connection = await this.checked(this.pool.getConnection()); } catch (error) { throw driverError(this.name, error, this.setup.server); }
     try {
-      return await cancellable(this.name, signal, () => mysqlKill(this.pool, connection, done),
-        observed(this.name, sql, done, 'statement', () => this.checked(mysqlExecute(connection, sql, params))));
+      return await cancellable(this.name, signal, () => mysqlKill(this.pool, connection, done, this.setup.server),
+        observed(this.name, sql, done, 'statement', () => this.checked(mysqlExecute(connection, sql, params)), this.setup.server));
     } finally {
       connection.release();
     }
   }
   public async reserve(): Promise<DriverSession> {
     let connection: MySqlConnection;
-    try { connection = await this.checked(this.pool.getConnection()); } catch (error) { throw driverError(this.name, error); }
-    return new MySqlSession(connection, this.pool);
+    try { connection = await this.checked(this.pool.getConnection()); } catch (error) { throw driverError(this.name, error, this.setup.server); }
+    return new MySqlSession(connection, this.pool, this.setup.server);
   }
   public stats(): PoolStats {
     const open = numberProperty(property(this.pool.pool, '_allConnections'), 'length', 'the connections of a mysql2 pool');
@@ -462,16 +481,16 @@ class MySqlPoolDriver implements DriverPool {
 
 class MySqlSession implements DriverSession {
   public readonly name = 'mysql' as const;
-  public constructor(private readonly connection: MySqlConnection, private readonly pool: MySqlPool) {}
+  public constructor(private readonly connection: MySqlConnection, private readonly pool: MySqlPool, private readonly server: MySqlServer) {}
   public execute(sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined, done: StatementDone): Promise<DriverResult> {
-    const work = observed(this.name, sql, done, 'statement', () => mysqlExecute(this.connection, sql, params));
-    return signal === undefined ? work : cancellable(this.name, signal, () => mysqlKill(this.pool, this.connection, done), work);
+    const work = observed(this.name, sql, done, 'statement', () => mysqlExecute(this.connection, sql, params), this.server);
+    return signal === undefined ? work : cancellable(this.name, signal, () => mysqlKill(this.pool, this.connection, done, this.server), work);
   }
   public control(sql: string, params: readonly DriverValue[], done: StatementDone): Promise<DriverResult> {
-    return observed(this.name, sql, done, 'statement', () => mysqlControl(this.connection, sql, params));
+    return observed(this.name, sql, done, 'statement', () => mysqlControl(this.connection, sql, params), this.server);
   }
   public scan(sql: string, params: readonly DriverValue[], sink: RowSink, done: StatementDone): Promise<void> {
-    return observed(this.name, sql, done, 'statement', () => mysqlScan(this.connection, sql, params, sink));
+    return observed(this.name, sql, done, 'statement', () => mysqlScan(this.connection, sql, params, sink), this.server);
   }
   public release(discard: boolean): void {
     // A discarded connection can still have rows in flight (a streamed result that stopped early). mysql2's destroy ends the stream
@@ -1024,7 +1043,7 @@ function mysqlCorePool(pool: MySqlPool): MySqlCorePool {
 }
 
 interface MySqlCoreConnection {
-  query(sql: string, done: (error: unknown) => void): void;
+  query(sql: string, done: (error: unknown, rows?: unknown) => void): void;
   destroy(): void;
 }
 
@@ -1093,9 +1112,15 @@ export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, stat
         ...(exact ? { typeCast: (field: { type?: string | number; string(): string | null; buffer(): Buffer | null }, next: () => unknown) => (field.type === 'FLOAT' ? field.string() : field.type === 'GEOMETRY' ? field.buffer() : next()) } : {}),
         maxPreparedStatements: statementCacheSize,
       });
-      const setup: SessionSetup = {};
+      const setup: SessionSetup = { server: 'mysql' };
       const core = mysqlCorePool(created);
       core.on('connection', connection => {
+        // The server is read by VERSION() (DIA-201).
+        connection.query('SELECT VERSION() AS version', (error: unknown, rows?: unknown) => {
+          if (error) { setup.error = error; return; }
+          const version = Array.isArray(rows) ? property(rows[0], 'version') : undefined;
+          setup.server = typeof version === 'string' && version.includes('-MariaDB') ? 'mariadb' : 'mysql';
+        });
         // MySQL bounds SELECT statements with max_execution_time.
         const zone = `SET time_zone = '+00:00', sql_mode = '${MYSQL_SQL_MODE}'`;
         const session = statementTimeoutMs > 0 ? `${zone}, SESSION max_execution_time = ${statementTimeoutMs}` : zone;

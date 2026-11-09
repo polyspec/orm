@@ -143,6 +143,8 @@ impl Db {
     /// Publishes the event of a finished statement and returns the result the operation receives: if a subscriber
     /// fails, it is SUBSCRIBER; otherwise it is the statement's result.
     pub(crate) fn statement_done<T>(&self, s: Sent<'_>, start: Instant, result: Result<T>) -> Result<T> {
+        // A mysql error number is read by the table of the connection's server (DIA-201).
+        let result = result.map_err(|e| e.for_server(self.inner.server));
         let subscribers = &self.inner.subscribers;
         if !subscribers.observed() {
             return result;

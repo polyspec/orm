@@ -107,10 +107,10 @@ func (d *DB) Listen(channel string) (*Subscription, error) {
 	ctx := d.context()
 	conn, err := open(ctx, d.m.native)
 	if err != nil {
-		return nil, mapDriverErrContext(err, ctx)
+		return nil, mapDriverErrContext(err, ctx, d.server)
 	}
 	if err := conn.Exec(ctx, "LISTEN "+quoteIdent(channel)); err != nil {
-		err = mapDriverErrContext(err, ctx)
+		err = mapDriverErrContext(err, ctx, d.server)
 		if cerr := conn.Close(); cerr != nil {
 			return nil, errors.Join(err, cerr)
 		}
@@ -131,7 +131,7 @@ func (s *Subscription) Receive() (Notification, error) {
 	}
 	n, err := s.conn.WaitNotification(s.ctx)
 	if err != nil {
-		mapped := mapDriverErrContext(err, s.ctx)
+		mapped := mapDriverErrContext(err, s.ctx, "")
 		if ErrorCode(mapped) == CodeCanceled {
 			if closeErr := s.Close(); closeErr != nil {
 				mapped = errors.Join(mapped, closeErr)
@@ -168,7 +168,7 @@ func (s *Subscription) Unlisten(channel string) error {
 		return nil
 	}
 	if err := s.conn.Exec(context.Background(), "UNLISTEN "+quoteIdent(channel)); err != nil {
-		return mapDriverErr(err)
+		return mapDriverErr(err, "")
 	}
 	delete(s.channels, channel)
 	return nil
@@ -186,7 +186,7 @@ func (s *Subscription) Close() error {
 	var errs []error
 	if len(s.channels) > 0 {
 		if err := s.conn.Exec(context.Background(), "UNLISTEN *"); err != nil {
-			errs = append(errs, mapDriverErr(err))
+			errs = append(errs, mapDriverErr(err, ""))
 		}
 	}
 	if err := s.conn.Close(); err != nil {

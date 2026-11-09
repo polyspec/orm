@@ -109,7 +109,7 @@ func (t *txConn) stmt(ctx context.Context, sqlText string) (*sql.Stmt, error) {
 	}
 	st, err := t.conn.PrepareContext(ctx, sqlText)
 	if err != nil {
-		return nil, mapDriverErrContext(err, ctx)
+		return nil, mapDriverErrContext(err, ctx, t.db.server)
 	}
 	if t.stmts == nil {
 		t.stmts = map[string]*sql.Stmt{}
@@ -625,7 +625,7 @@ func (d *DB) begin(o txOptions) (*txConn, error) {
 	conn, err := d.sql.Conn(ctx)
 	if err != nil {
 		cancel()
-		return nil, mapDriverErr(err)
+		return nil, mapDriverErr(err, d.server)
 	}
 	t := &txConn{db: d, conn: conn, ctx: ctx, cancel: cancel, readOnly: o.readOnly, isolation: o.isolation, number: d.nextTransaction()}
 	// Statements that open a transaction (docs/operations/usage.md "Statement events"). If any one of them

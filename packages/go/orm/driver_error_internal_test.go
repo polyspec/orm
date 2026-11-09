@@ -18,7 +18,7 @@ var errServerCanceled = errors.New("PostgreSQL canceled the active statement")
 func mapCanceledDriverError() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	return mapDriverErrContext(&ir.Error{Code: CodeCanceled, Msg: errServerCanceled.Error(), Cause: errServerCanceled}, ctx)
+	return mapDriverErrContext(&ir.Error{Code: CodeCanceled, Msg: errServerCanceled.Error(), Cause: errServerCanceled}, ctx, "")
 }
 
 func TestMapDriverErrorContextPreservesBothCauses(t *testing.T) {

@@ -21,6 +21,17 @@ Executors still see the same plan shape: steps, bind slots, assemble.
      introspected type, is the result of the case on that server, which its recipe states as the `mariadb` expect of the
      case (FCV-3).
 
+- **DIA-201** The server and its error numbers — MySQL 8.4 / MariaDB 11.8 (probes `mysql.env.server`,
+  `mariadb.env.server`): a client of the `mysql` dialect reads the server once when it connects, by `SELECT VERSION()`;
+  a version that contains `-MariaDB` is MariaDB and any other is MySQL, and every connection of a pool reads the server
+  of its pool. The two servers give one number to different errors, so no common table exists (DIA-200, rule 2): 4025 is
+  the CHECK fault of MariaDB (SQLSTATE 23000) and an `AUTOEXTEND_SIZE` out of range on MySQL (HY000), whose CHECK fault
+  is 3819 (probes `mysql.check.number_4025_not_a_check`, `mariadb.check.number_4025_not_a_check`). A server error number
+  is therefore read by the table of the server of its connection ([errors](errors.yaml)), the same in every runtime:
+  MySQL maps 3819 to `CONSTRAINT` and leaves 4025 a `DRIVER` error, MariaDB maps 4025 to `CONSTRAINT` and 1969, its
+  statement timeout, to `CANCELED`; 4031, the idle disconnect of MySQL, is `CONNECTION_LOST` on MySQL alone (statement
+  runner case `a_server_error_number_is_read_by_the_table_of_its_server`).
+
 - **DIA-1** identifiers — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.index.primary_name_reserved`): `` `x` ``; PostgreSQL 12+: `"x"`; SQLite 3.46+: `"x"`
 - **DIA-2** placeholders — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.like.ascii_fold_replace`): `?`; PostgreSQL 12+: `$n` (the executor renumbers when it expands a `parent` slot to N values); SQLite 3.46+: `?`
 - **DIA-3** LIMIT — MySQL 8.0.2+: `LIMIT off, n`; PostgreSQL 12+: `LIMIT n OFFSET off`; SQLite 3.46+: `LIMIT n OFFSET off`

@@ -155,11 +155,11 @@ pub const DEADLOCK: &str = "DEADLOCK";
 pub const DUPLICATE_KEY: &str = "DUPLICATE_KEY";
 /// driver: MySQL 1451/1452 / PostgreSQL 23503 / SQLite 787, and SQLite 1811 "FOREIGN KEY constraint failed" of a RESTRICT action
 pub const FOREIGN_KEY: &str = "FOREIGN_KEY";
-/// driver: MySQL 3819/4025 / PostgreSQL 23514 / SQLite 275
+/// driver: MySQL 3819 / MariaDB 4025 / PostgreSQL 23514 / SQLite 275; a mysql error number is read by the table of its server (DIA-201)
 pub const CONSTRAINT: &str = "CONSTRAINT";
 /// driver: a write rejected because the server or connection is read-only: MySQL 1290/1792 / PostgreSQL 25006 / SQLite 8 and its extended codes
 pub const READ_ONLY: &str = "READ_ONLY";
-/// driver: the server ended the connection or the connection broke (a killed session, a restart, an idle limit): MySQL 2006/2013/4031 / PostgreSQL SQLSTATE class 08 and 57P01/57P02/57P05, or a client library error on a connection that is no longer open; SQLite has no server connection
+/// driver: the server ended the connection or the connection broke (a killed session, a restart, an idle limit): MySQL 2006/2013, and 4031 of MySQL alone / PostgreSQL SQLSTATE class 08 and 57P01/57P02/57P05, or a client library error on a connection that is no longer open; SQLite has no server connection
 pub const CONNECTION_LOST: &str = "CONNECTION_LOST";
 /// driver: any other driver error, such as a connection that the server refuses (CFG-1), or a write that a trigger refuses: MySQL 1644 / PostgreSQL P0001 / SQLite 1811 of a trigger RAISE, and SQLite LOCKED (6, 262), which SQLite reports for no row-lock deadlock
 pub const DRIVER: &str = "DRIVER";

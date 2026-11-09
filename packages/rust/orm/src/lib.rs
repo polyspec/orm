@@ -124,18 +124,58 @@ fn mysql_code(number: u16) -> Option<&'static str> {
         1451 | 1452 => codes::FOREIGN_KEY,
         1205 | 1317 | 3024 => codes::CANCELED,
         1290 | 1792 => codes::READ_ONLY,
-        3819 | 4025 => codes::CONSTRAINT,
+        // MySQL's 4025 is ER_INNODB_AUTOEXTEND_SIZE_OUT_OF_RANGE, which is DRIVER (DIA-201).
+        3819 => codes::CONSTRAINT,
         // ER_CLIENT_INTERACTION_TIMEOUT: the server ended an idle connection.
         4031 => codes::CONNECTION_LOST,
         _ => return None,
     })
 }
 
+/// The catalog code of a MariaDB error number (DIA-201), which MariaDB numbers otherwise than MySQL above 1999: it has no
+/// 3572, 3819, 3024 or 4031 of MySQL; its 4025 is ER_CONSTRAINT_FAILED and its 1969 ER_STATEMENT_TIMEOUT.
+fn mariadb_code(number: u16) -> Option<&'static str> {
+    Some(match number {
+        1213 => codes::DEADLOCK,
+        1062 => codes::DUPLICATE_KEY,
+        1451 | 1452 => codes::FOREIGN_KEY,
+        1205 | 1317 | 1969 => codes::CANCELED,
+        1290 | 1792 => codes::READ_ONLY,
+        4025 => codes::CONSTRAINT,
+        _ => return None,
+    })
+}
+
+/// The server of a mysql connection, which the connection reads once by `VERSION()` (DIA-201).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum MySqlServer {
+    MySql,
+    MariaDb,
+}
+
+impl Error {
+    /// The error with the code that the table of its server gives a MySQL error number (DIA-201): `From<sqlx::Error>` reads
+    /// a number by MySQL's table, so on MariaDB a database error of a mysql connection is read again by MariaDB's.
+    pub(crate) fn for_server(self, server: MySqlServer) -> Error {
+        if server != MySqlServer::MariaDb {
+            return self;
+        }
+        match self {
+            Error::Driver { code: _, msg, source: sqlx::Error::Database(d) } if d.try_downcast_ref::<sqlx::mysql::MySqlDatabaseError>().is_some() => {
+                let m = d.try_downcast_ref::<sqlx::mysql::MySqlDatabaseError>().expect("a MySQL database error");
+                let code = mariadb_code(m.number()).or((m.code() == Some("40001")).then_some(codes::DEADLOCK)).unwrap_or(codes::DRIVER);
+                Error::Driver { code: code.into(), msg, source: sqlx::Error::Database(d) }
+            }
+            other => other,
+        }
+    }
+}
+
 /// Driver errors: the codes the catalog names (docs/spec/errors.yaml, origin driver) map to a
 /// shared code keeping the driver's message — MySQL 1213 / SQLSTATE 40001 → DEADLOCK, 1062 →
 /// DUPLICATE_KEY; PostgreSQL 40P01 / 40001 → DEADLOCK, 23505 → DUPLICATE_KEY, 23503 → FOREIGN_KEY; SQLite LOCKED
 /// (6, primary code of any extended form) → DEADLOCK, 2067 / 1555 (CONSTRAINT_UNIQUE / _PRIMARYKEY) →
-/// DUPLICATE_KEY, 787 and the 1811 "FOREIGN KEY constraint failed" of a RESTRICT action → FOREIGN_KEY. A CHECK violation — MySQL 3819 / 4025, PostgreSQL 23514, SQLite 275 — maps
+/// DUPLICATE_KEY, 787 and the 1811 "FOREIGN KEY constraint failed" of a RESTRICT action → FOREIGN_KEY. A CHECK violation — MySQL 3819 (MariaDB 4025, read by `Error::for_server`), PostgreSQL 23514, SQLite 275 — maps
 /// to CONSTRAINT. A statement stopped before it finished — MySQL 1317 / 3024,
 /// PostgreSQL 57014, SQLite 9, and SQLite BUSY (5, any extended form: another connection held the lock
 /// when busy_timeout ended) — maps to CANCELED. A write the read-only server or connection rejects —

@@ -18,6 +18,20 @@ caseTest('driver-error/sqlite-locked/sqlite', COMPUTE, () => {
   assert.match(mapped.message, /sqlite: database table is locked/);
 });
 
+// Requirements: DIA-201. A mysql error number is read by the table of its server: MySQL's 4025 is an InnoDB option error and
+// MariaDB's a failed CHECK, and MySQL's 3572, 3819, 3024 and 4031 name no MariaDB condition.
+caseTest('driver-error/number-by-server/mysql', COMPUTE, () => {
+  const error = errno => Object.assign(new Error(`error ${errno}`), { errno });
+  for (const [errno, mysql, mariadb] of [
+    [4025, 'DRIVER', 'CONSTRAINT'], [3819, 'CONSTRAINT', 'DRIVER'], [3572, 'LOCK_NOT_AVAILABLE', 'DRIVER'], [3024, 'CANCELED', 'DRIVER'],
+    [4031, 'CONNECTION_LOST', 'DRIVER'], [1969, 'DRIVER', 'CANCELED'], [1062, 'DUPLICATE_KEY', 'DUPLICATE_KEY'], [1452, 'FOREIGN_KEY', 'FOREIGN_KEY'],
+    [1213, 'DEADLOCK', 'DEADLOCK'], [1290, 'READ_ONLY', 'READ_ONLY'], [1205, 'CANCELED', 'CANCELED'],
+  ]) {
+    assert.equal(driverError('mysql', error(errno), 'mysql').code, mysql, `mysql ${errno}`);
+    assert.equal(driverError('mysql', error(errno), 'mariadb').code, mariadb, `mariadb ${errno}`);
+  }
+});
+
 async function withReservedSqliteSession(file, exercise) {
   const directory = mkdtempSync(join(tmpdir(), 'orm-ts-sqlite-cancel-'));
   const dsn = `sqlite://${join(directory, file)}`;

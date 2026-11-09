@@ -656,24 +656,36 @@ def _driver_limit(driver: str) -> int:
 # The table of driver error codes (docs/spec/protocol.md "Errors", docs/spec/errors.yaml). It uses the same conditions as driverError in the TypeScript client
 # (packages/ts/src/driver.ts) and OrmException::fromDriver in the PHP client. A driver error that is not in the table
 # is DRIVER. A write rejected by an audit or immutable trigger is also DRIVER.
-_MYSQL_CODES = {
-    # 2006 (server has gone away) and 2013 (lost connection during query) mean the client lost the connection, and 4031
-    # means the server ended an idle connection.
+# A mysql error number is read by the table of its server, which the connection reads once by VERSION() (DIA-201): MariaDB
+# numbers its errors above 1999 otherwise than MySQL. MySQL's 4025 is ER_INNODB_AUTOEXTEND_SIZE_OUT_OF_RANGE and MariaDB's
+# ER_CONSTRAINT_FAILED; MariaDB has no 3572, 3819, 3024 or 4031 of MySQL and reports a statement timeout as 1969.
+_MYSQL_SHARED_CODES = {
+    # 2006 (server has gone away) and 2013 (lost connection during query) mean the client lost the connection.
     2006: codes.CONNECTION_LOST,
     2013: codes.CONNECTION_LOST,
-    4031: codes.CONNECTION_LOST,
-    3572: codes.LOCK_NOT_AVAILABLE,
     1205: codes.CANCELED,
     1317: codes.CANCELED,
-    3024: codes.CANCELED,
     1062: codes.DUPLICATE_KEY,
     1451: codes.FOREIGN_KEY,
     1452: codes.FOREIGN_KEY,
     1213: codes.DEADLOCK,
     1290: codes.READ_ONLY,
     1792: codes.READ_ONLY,
-    3819: codes.CONSTRAINT,
-    4025: codes.CONSTRAINT,
+}
+_MYSQL_CODES = {
+    "mysql": {
+        **_MYSQL_SHARED_CODES,
+        # 4031 means the server ended an idle connection.
+        4031: codes.CONNECTION_LOST,
+        3572: codes.LOCK_NOT_AVAILABLE,
+        3024: codes.CANCELED,
+        3819: codes.CONSTRAINT,
+    },
+    "mariadb": {
+        **_MYSQL_SHARED_CODES,
+        1969: codes.CANCELED,
+        4025: codes.CONSTRAINT,
+    },
 }
 _POSTGRES_CODES = {
     # 57P01 (admin_shutdown), 57P02 (crash_shutdown), and 57P05 (idle_session_timeout) are sent when the server ends a session.
@@ -727,7 +739,7 @@ def _postgres_code(sqlstate, lost: bool) -> str:
 
 
 def _driver_error(
-    driver: str, error: BaseException, lost: bool = False
+    driver: str, error: BaseException, lost: bool = False, server: str = "mysql"
 ) -> BaseException:
     """Converts a driver error to an OrmError with the catalog's code. The message is `<driver>: <driver message>`, and
     the cause is the driver error. A non-driver error is returned as is. lost tells whether the PostgreSQL connection was closed after the error
@@ -751,7 +763,7 @@ def _driver_error(
         code = (
             codes.CONNECTION_LOST
             if isinstance(error, pymysql.err.InterfaceError)
-            else _MYSQL_CODES.get(number, codes.DRIVER)
+            else _MYSQL_CODES[server].get(number, codes.DRIVER)
         )
         return OrmError(code, f"mysql: {message}", error)
     import psycopg
@@ -768,9 +780,12 @@ def _is_driver_error(driver: str, error: Exception) -> bool:
     return _driver_error(driver, error) is not error
 
 
-def _raise_driver_error(driver: str, error: Exception, lost: bool = False):
-    """Call inside an except clause: a driver error is re-raised as an ORM error, and any other error is re-raised as is."""
-    mapped = _driver_error(driver, error, lost)
+def _raise_driver_error(
+    driver: str, error: Exception, lost: bool = False, server: str = "mysql"
+):
+    """Call inside an except clause: a driver error is re-raised as an ORM error, and any other error is re-raised as is.
+    server is the server of a mysql connection (DIA-201)."""
+    mapped = _driver_error(driver, error, lost, server)
     if mapped is error:
         raise error
     raise mapped from error
@@ -934,6 +949,10 @@ class _MysqlConnection:
             if not _is_driver_error("mysql", error):
                 raise
             _raise_driver_error("mysql", error)
+        # The server is read once by VERSION(), never by the handshake (DIA-201); an error before it is read is MySQL's.
+        self.server = "mysql"
+        version = self.execute("SELECT VERSION()", [])["rows"][0][0]
+        self.server = "mariadb" if "-MariaDB" in str(version) else "mysql"
         # The session settings are one statement: MySQL bounds SELECT statements with max_execution_time.
         self.execute(
             f"SET time_zone = '+00:00', sql_mode = '{MYSQL_SQL_MODE}'"
@@ -956,7 +975,7 @@ class _MysqlConnection:
         except Exception as error:
             if not _is_driver_error("mysql", error):
                 raise
-            _raise_driver_error("mysql", error)
+            _raise_driver_error("mysql", error, server=self.server)
         finally:
             cursor.close()
         return {"rows": rows, "insert_id": insert_id, "affected": affected}

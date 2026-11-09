@@ -829,6 +829,7 @@ final class DbState
     public int $stmtRetained = 0;
     public bool $closed = false;
     public ?\Closure $listener = null;
+    public string $server = 'mysql';
     public bool $rollbackFault = false;
     public ?OrmException $statementFault = null;
     public ?\DateTimeImmutable $fixedClock = null;
@@ -1383,11 +1384,11 @@ final class Code
     public const string DUPLICATE_KEY = 'DUPLICATE_KEY';
     /** driver: MySQL 1451/1452 / PostgreSQL 23503 / SQLite 787, and SQLite 1811 "FOREIGN KEY constraint failed" of a RESTRICT action */
     public const string FOREIGN_KEY = 'FOREIGN_KEY';
-    /** driver: MySQL 3819/4025 / PostgreSQL 23514 / SQLite 275 */
+    /** driver: MySQL 3819 / MariaDB 4025 / PostgreSQL 23514 / SQLite 275; a mysql error number is read by the table of its server (DIA-201) */
     public const string CONSTRAINT = 'CONSTRAINT';
     /** driver: a write rejected because the server or connection is read-only: MySQL 1290/1792 / PostgreSQL 25006 / SQLite 8 and its extended codes */
     public const string READ_ONLY = 'READ_ONLY';
-    /** driver: the server ended the connection or the connection broke (a killed session, a restart, an idle limit): MySQL 2006/2013/4031 / PostgreSQL SQLSTATE class 08 and 57P01/57P02/57P05, or a client library error on a connection that is no longer open; SQLite has no server connection */
+    /** driver: the server ended the connection or the connection broke (a killed session, a restart, an idle limit): MySQL 2006/2013, and 4031 of MySQL alone / PostgreSQL SQLSTATE class 08 and 57P01/57P02/57P05, or a client library error on a connection that is no longer open; SQLite has no server connection */
     public const string CONNECTION_LOST = 'CONNECTION_LOST';
     /** driver: any other driver error, such as a connection that the server refuses (CFG-1), or a write that a trigger refuses: MySQL 1644 / PostgreSQL P0001 / SQLite 1811 of a trigger RAISE, and SQLite LOCKED (6, 262), which SQLite reports for no row-lock deadlock */
     public const string DRIVER = 'DRIVER';
@@ -1414,6 +1415,7 @@ final class OrmException extends \RuntimeException
     public static function fromDriver(\PDOException $e, string $driver, \PDO $pdo): OrmException {}
 
     private static function mysqlCode(?int $num, string $state): string {}
+    private static function mariadbCode(?int $num, string $state): string {}
     private static function postgresCode(string $state): string {}
 }
 
@@ -1681,6 +1683,8 @@ final class Db
     public function subscribe(\Closure $subscriber): \Closure {}
     /** @internal */
     public function setListener(\Closure $open): void {}
+    /** @internal */
+    public function setServer(string $server): void {}
     /** @internal */
     public function setReconnect(\Closure $open): void {}
     /** @internal */

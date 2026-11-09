@@ -173,6 +173,8 @@ type catalogSession struct {
 	ctx     context.Context
 	conn    *sql.Conn
 	dialect string
+	// server is the server of a mysql connection, which reads an error number by its table (DIA-201); empty elsewhere.
+	server string
 	// rollbacks learns that SQLite rolled the transaction back by itself; it is nil on MySQL and PostgreSQL.
 	rollbacks *rollbackWatch
 	// settings are the values of the PostgreSQL output settings when the transaction began (INT-186); nil elsewhere.
@@ -240,23 +242,23 @@ func (c *CatalogConnection) begin(ctx context.Context, readOnly bool) (*catalogS
 		conn, err = c.db.sql.Conn(ctx)
 	}
 	if err != nil {
-		return nil, mapDriverErrContext(err, ctx)
+		return nil, mapDriverErrContext(err, ctx, c.db.server)
 	}
-	s := &catalogSession{catalog: c, ctx: ctx, conn: conn, dialect: c.dialect}
+	s := &catalogSession{catalog: c, ctx: ctx, conn: conn, dialect: c.dialect, server: c.db.server}
 	if readOnly && c.dialect == "sqlite" {
 		if _, err := conn.ExecContext(ctx, "PRAGMA query_only=ON"); err != nil {
-			return nil, s.discard(mapDriverErrContext(err, ctx))
+			return nil, s.discard(mapDriverErrContext(err, ctx, c.db.server))
 		}
 	}
 	if readOnly && c.dialect == "mysql" {
 		// At REPEATABLE READ the information schema answers from the snapshot of the transaction, so a descriptor read after
 		// the rows could not differ from the one read before them (INT-121).
 		if _, err := conn.ExecContext(ctx, "SET TRANSACTION ISOLATION LEVEL READ COMMITTED"); err != nil {
-			return nil, s.discard(mapDriverErrContext(err, ctx))
+			return nil, s.discard(mapDriverErrContext(err, ctx, c.db.server))
 		}
 	}
 	if _, err := conn.ExecContext(ctx, catalogBegin(c.dialect, readOnly)); err != nil {
-		return nil, s.discard(mapDriverErrContext(err, ctx))
+		return nil, s.discard(mapDriverErrContext(err, ctx, c.db.server))
 	}
 	if c.dialect == "postgres" {
 		// A catalog session runs after schema changes by design, and through PgBouncer a Parse of a text that the server connection
@@ -265,7 +267,7 @@ func (c *CatalogConnection) begin(ctx context.Context, readOnly bool) (*catalogS
 		// A connection from the pool may hold statements of an earlier session: the driver forgets them on the client too, or
 		// the next use of a text it remembers would name a statement that the server has released.
 		if err := c.db.deallocate(ctx, conn); err != nil {
-			return nil, s.discard(mapDriverErrContext(err, ctx))
+			return nil, s.discard(mapDriverErrContext(err, ctx, c.db.server))
 		}
 		if _, err := s.queryRaw(catalogFixedOutputSettings, nil, 2, catalogMetadataBytes); err != nil {
 			return nil, s.end(err)
@@ -315,7 +317,7 @@ func (s *catalogSession) discard(err error) error {
 	// database/sql closes a connection whose Raw callback reports driver.ErrBadConn, and Raw returns that error: it is the
 	// expected result, so only any other error is joined.
 	if rawErr := s.conn.Raw(func(any) error { return driver.ErrBadConn }); rawErr != nil && !errors.Is(rawErr, driver.ErrBadConn) {
-		err = errors.Join(err, mapDriverErr(rawErr))
+		err = errors.Join(err, mapDriverErr(rawErr, s.server))
 	}
 	if s.dialect == "mysql" {
 		s.catalog.reopenUntil.Store(time.Now().Add(2 * time.Second).UnixNano())
@@ -328,7 +330,7 @@ func (s *catalogSession) discard(err error) error {
 func (s *catalogSession) release() error {
 	err := s.rollbacks.stop(s.conn)
 	if closeErr := s.conn.Close(); closeErr != nil {
-		err = errors.Join(err, mapDriverErr(closeErr))
+		err = errors.Join(err, mapDriverErr(closeErr, s.server))
 	}
 	return err
 }
@@ -345,7 +347,7 @@ func (s *catalogSession) end(err error) error {
 		return s.discard(err)
 	}
 	if _, rollbackErr := s.conn.ExecContext(s.ctx, "ROLLBACK"); rollbackErr != nil {
-		mapped := mapDriverErrContext(rollbackErr, s.ctx)
+		mapped := mapDriverErrContext(rollbackErr, s.ctx, s.server)
 		err = errors.Join(err, &ir.Error{
 			Code:  CodeRowRollbackFailed,
 			Msg:   fmt.Sprintf("rollback: %v", mapped),
@@ -405,7 +407,7 @@ func catalogWrite[T any](ctx context.Context, c *CatalogConnection, fn func(s *c
 		return zero, s.end(err)
 	}
 	if _, err := s.conn.ExecContext(ctx, "COMMIT"); err != nil {
-		mapped := mapDriverErrContext(err, ctx)
+		mapped := mapDriverErrContext(err, ctx, c.db.server)
 		switch ErrorCode(mapped) {
 		case CodeDuplicateKey, CodeForeignKey, CodeConstraint, CodeDeadlock:
 			return zero, s.end(catalogErr(catalogCodeCommitReject, "native commit rejected: %v", mapped))
@@ -504,7 +506,7 @@ func (s *catalogSession) querySized(query string, args []any, maxRows int, maxBy
 	defer cancel()
 	rows, err := s.conn.QueryContext(qctx, query, args...)
 	if err != nil {
-		return catalogRaw{}, mapDriverErrContext(err, s.ctx)
+		return catalogRaw{}, mapDriverErrContext(err, s.ctx, s.server)
 	}
 	stopped := false
 	defer func() {
@@ -524,16 +526,16 @@ func (s *catalogSession) querySized(query string, args []any, maxRows int, maxBy
 			return
 		}
 		if closeErr := rows.Close(); closeErr != nil {
-			raw, err = catalogRaw{}, errors.Join(err, mapDriverErrContext(closeErr, s.ctx))
+			raw, err = catalogRaw{}, errors.Join(err, mapDriverErrContext(closeErr, s.ctx, s.server))
 		}
 	}()
 	names, err := rows.Columns()
 	if err != nil {
-		return catalogRaw{}, mapDriverErr(err)
+		return catalogRaw{}, mapDriverErr(err, s.server)
 	}
 	columnTypes, err := rows.ColumnTypes()
 	if err != nil {
-		return catalogRaw{}, mapDriverErr(err)
+		return catalogRaw{}, mapDriverErr(err, s.server)
 	}
 	if len(names) < settings || len(columnTypes) != len(names) {
 		return catalogRaw{}, catalogErr(catalogCodeMetadata, "the read returned %d columns", len(names))
@@ -584,7 +586,7 @@ func (s *catalogSession) querySized(query string, args []any, maxRows int, maxBy
 		raw.rows = append(raw.rows, values)
 	}
 	if err := rows.Err(); err != nil {
-		return catalogRaw{}, mapDriverErrContext(err, s.ctx)
+		return catalogRaw{}, mapDriverErrContext(err, s.ctx, s.server)
 	}
 	return raw, nil
 }
@@ -593,11 +595,11 @@ func (s *catalogSession) querySized(query string, args []any, maxRows int, maxBy
 func (s *catalogSession) exec(query string, args []any) (int64, error) {
 	result, err := s.conn.ExecContext(s.ctx, query, args...)
 	if err != nil {
-		return 0, mapDriverErrContext(err, s.ctx)
+		return 0, mapDriverErrContext(err, s.ctx, s.server)
 	}
 	affected, err := result.RowsAffected()
 	if err != nil {
-		return 0, mapDriverErr(err)
+		return 0, mapDriverErr(err, s.server)
 	}
 	return affected, nil
 }

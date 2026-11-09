@@ -351,6 +351,9 @@ pub(crate) struct DbInner {
     pub(crate) listen: Option<sqlx::postgres::PgConnectOptions>,
     /// The dialect the connection plans for: SQLite's on a markdown connection, whose server runs SQL in SQLite's dialect (DIA-185).
     pub(crate) dialect: Option<Dialect>,
+    /// The server of a mysql connection, read once by `VERSION()` when the connection opens, never by the handshake (DIA-201);
+    /// MySQL on every other database.
+    pub(crate) server: crate::MySqlServer,
     pub(crate) cfg: Config,
     pub(crate) zone: Zone,
     plans: Mutex<HashMap<u64, Arc<Plan>>>,
@@ -671,12 +674,25 @@ impl Db {
                 Pool::Sqlite(pool)
             }
         };
+        // The server is read once by VERSION(), never by the handshake, whose version a pooler may state for itself (DIA-201).
+        let server = match &pool {
+            Pool::MySql(p) => {
+                let version: String = sqlx::query_scalar("SELECT VERSION()").fetch_one(p).await?;
+                if version.contains("-MariaDB") {
+                    crate::MySqlServer::MariaDb
+                } else {
+                    crate::MySqlServer::MySql
+                }
+            }
+            _ => crate::MySqlServer::MySql,
+        };
         let db = Db {
             inner: Arc::new(DbInner {
                 id: NEXT_DB.fetch_add(1, Ordering::Relaxed),
                 pool,
                 listen,
                 dialect,
+                server,
                 cfg,
                 zone: parsed.zone,
                 plans: Mutex::new(HashMap::new()),
@@ -986,7 +1002,8 @@ impl Db {
         r: Result<T>,
     ) -> Result<T> {
         if !self.inner.subscribers.observed() {
-            return r;
+            // A mysql error number is read by the table of the connection's server (DIA-201), observed or not.
+            return r.map_err(|e| e.for_server(self.inner.server));
         }
         let binds = shown();
         let tables = origin.tables.unwrap_or(&st.tables);

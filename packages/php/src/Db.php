@@ -136,6 +136,12 @@ final class Db
         $this->state->listener = $open;
     }
 
+    /** @internal Records the server of a mysql connection, which Orm::connect reads by VERSION() (DIA-201). */
+    public function setServer(string $server): void
+    {
+        $this->state->server = $server;
+    }
+
     /** @internal Installs the private opener used after a cancellation ends the physical server connection. */
     public function setReconnect(\Closure $open): void
     {
@@ -183,7 +189,9 @@ final class Db
     /** @internal Reports this connection's driver error as a code of the error catalog. */
     public function driverError(\PDOException $e): OrmException
     {
-        return OrmException::fromDriver($e, $this->driver, $this->handle());
+        // A mysql error number is read by the table of its server (DIA-201).
+        $driver = $this->driver === 'mysql' ? $this->state->server : $this->driver;
+        return OrmException::fromDriver($e, $driver, $this->handle());
     }
 
     /** The operations outside the query syntax. */

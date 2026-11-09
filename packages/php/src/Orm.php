@@ -92,6 +92,10 @@ final class Orm
                 )
                 : \PDO::connect($pdoDsn, $user, $password, $options);
             $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+            // The server of a mysql connection is read once by VERSION(), never by the handshake, whose version a
+            // pooler may state for itself (DIA-201).
+            $version = $driver === 'mysql' ? (string) $pdo->query('SELECT VERSION()')->fetchColumn() : '';
+            $server = str_contains($version, '-MariaDB') ? 'mariadb' : 'mysql';
             if ($driver === 'sqlite') {
                 // The driver reports the extended result code, whose name ends the message of an error (INT-154).
                 $pdo->setAttribute(\Pdo\Sqlite::ATTR_EXTENDED_RESULT_CODES, true);
@@ -115,6 +119,7 @@ final class Orm
         }
         $db = new Db($pdo, $driver, $config, new \DateTimeZone('UTC'));
         if ($driver === 'mysql') {
+            $db->setServer($server);
             $open = static fn(): \PDO => \PDO::connect($pdoDsn, $user, $password, $options);
             $db->setReconnect($open);
             $openControl = static fn(): \PDO => \PDO::connect($pdoDsn, $user, $password, $options);

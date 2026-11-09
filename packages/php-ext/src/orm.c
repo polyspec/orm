@@ -1244,6 +1244,27 @@ static bool orm_connect_sql(zend_string *dsn, zval *config, zval *out, bool list
         zval_ptr_dtor(&pdo); goto fail;
     }
     for (int i = 0; i < 4; i++) zval_ptr_dtor(&ctor[i]);
+    if (zend_string_equals_literal(Z_STR_P(driver), "mysql")) {
+        /* The server of a mysql connection is read once by VERSION(), never by the handshake, whose version a pooler may
+         * state for itself (DIA-201). */
+        zval query, statement, version, server, set_result;
+        ZVAL_STRING(&query, "SELECT VERSION()");
+        bool read = pdo_call(&pdo, "query", &statement, 1, &query, NULL);
+        zval_ptr_dtor(&query);
+        if (read) {
+            read = pdo_call(&statement, "fetchColumn", &version, 0, NULL, NULL);
+            zval_ptr_dtor(&statement);
+        }
+        if (!read) { zval_ptr_dtor(out); goto pdo_fail; }
+        zend_string *text = zval_get_string(&version);
+        zval_ptr_dtor(&version);
+        ZVAL_STRING(&server, strstr(ZSTR_VAL(text), "-MariaDB") != NULL ? "mariadb" : "mysql");
+        zend_string_release(text);
+        bool set = pdo_call(out, "setServer", &set_result, 1, &server, NULL);
+        zval_ptr_dtor(&server);
+        if (set) zval_ptr_dtor(&set_result);
+        if (!set) { zval_ptr_dtor(out); zval_ptr_dtor(&pdo); goto fail; }
+    }
     if (!listener && (zend_string_equals_literal(Z_STR_P(driver), "mysql") || zend_string_equals_literal(Z_STR_P(driver), "postgres"))
         && !orm_store_cancellation_callbacks(out, &pdo, dsn, config, Z_STR_P(driver))) {
         zval_ptr_dtor(out);

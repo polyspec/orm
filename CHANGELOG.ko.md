@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a6ef1c449db48d708ab9ebebd6655c5e9d9417d0583b0dec06fcbc74aeae4205 -->
+<!-- source-sha256: 42a7218d1cb2fb6fda7306adbd6809f6ff97414e8e5a4921d490555fd7aea8af -->
 # 변경 이력
 
 ## Unreleased
 
 - MariaDB 11.8.6이 MySQL dialect의 서버인 database `mariadb`로 database 검사에 들어온다(DIA-200, FCV-3). `make orm-install-mariadb`는 MariaDB Foundation의 source release를 version과 sha256으로 고정해 build하고(`scripts/mariadb-build.mts`), `make orm-test-mariadb`는 primary, 읽기 전용 replica, trust-function-creators를 끈 privilege probe server, primary 앞의 ProxySQL을 MySQL TLS case의 TLS 파일과 함께 띄운 뒤 `.runtime/servers/mariadb.env`(`ORM_TEST_MARIADB_*`)를 쓴다. mysql의 모든 recipe entry는 여섯 runtime에 mariadb entry를 가진다. mariadb entry는 recipe가 따로 적지 않으면 `mysql` entry를 읽고, step이 `ORM_TEST_MYSQL_`을 가리키는 곳에서는 `ORM_TEST_MARIADB_` 서버를 읽는다. `make mariadb-recipes-check/<runtime>`이 이 entry를 실행하고, CI group `mariadb_<runtime>`은 MySQL package 대신 Ubuntu MariaDB package를 설치한다(`make orm-install-server-programs MARIADB=true`).
 - PHP extension: `utils()->schema()`가 database를 읽는 catalog query가 `PDOException`으로 실패하면, 그 연결의 `driverError`가 대응시킨 `OrmException`으로 statement event에 발행된다. extension이 이 method를 static으로 불렀기 때문에 모든 database에서 `Error: Invalid callback Polyspec\Orm\Db::driverError, non-static method`가 났다.
+- Breaking: mysql 연결의 server error 번호는 그 server의 표로 읽으며 모든 runtime에서 같다(DIA-201). 각 클라이언트는 연결할 때 한 번 `SELECT VERSION()`으로 server를 읽고, `-MariaDB`를 담은 version은 MariaDB다. MySQL에서 4025는 더 이상 `CONSTRAINT`가 아니라 `DRIVER`다. MySQL은 그 번호를 범위 밖의 `AUTOEXTEND_SIZE`에 주기 때문이다. MySQL의 CHECK 위반 3819는 그대로 `CONSTRAINT`다. MariaDB에서 CHECK 위반인 4025는 `CONSTRAINT`, statement timeout인 1969는 `CANCELED`이며, 4031은 MySQL에서만 `CONNECTION_LOST`다. Statement runner case `a_server_error_number_is_read_by_the_table_of_its_server`가 모든 database에서 돈다.
 
 ## 0.0.27
 

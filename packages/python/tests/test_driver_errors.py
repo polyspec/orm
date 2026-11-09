@@ -231,7 +231,6 @@ class ServerDriverErrorTest(unittest.TestCase):
             "Check constraint 'ck_parent_amount' is violated.",
             "CONSTRAINT",
         ),
-        (pymysql.err.OperationalError, 4025, "CONSTRAINT `ck` failed", "CONSTRAINT"),
         (
             pymysql.err.OperationalError,
             1213,
@@ -335,9 +334,10 @@ class ServerDriverErrorTest(unittest.TestCase):
         ("42601", 'syntax error at or near "SELEC"', "DRIVER"),
     )
 
-    def run_mysql(self, error):
+    def run_mysql(self, error, server="mysql"):
         connection = _MysqlConnection.__new__(_MysqlConnection)
         connection.connection = _Connection(error)
+        connection.server = server
         with self.assertRaises(OrmError) as caught:
             connection.execute("INSERT INTO `parent` (`name`) VALUES (?)", ["a"])
         return caught.exception
@@ -358,6 +358,29 @@ class ServerDriverErrorTest(unittest.TestCase):
                 self.assertEqual(error.code, code)
                 self.assertIs(error.cause, driver_error)
                 self.assertEqual(str(error), f"{code}: mysql: {message}")
+
+    # Requirements: DIA-201. A mysql error number is read by the table of its server: MySQL's 4025 is an InnoDB option error
+    # and MariaDB's a failed CHECK, and MySQL's 3572, 3819, 3024 and 4031 name no MariaDB condition.
+    def test_a_mysql_error_number_is_read_by_the_table_of_its_server(self):
+        for number, mysql, mariadb in [
+            (4025, "DRIVER", "CONSTRAINT"),
+            (3819, "CONSTRAINT", "DRIVER"),
+            (3572, "LOCK_NOT_AVAILABLE", "DRIVER"),
+            (3024, "CANCELED", "DRIVER"),
+            (4031, "CONNECTION_LOST", "DRIVER"),
+            (1969, "DRIVER", "CANCELED"),
+            (1062, "DUPLICATE_KEY", "DUPLICATE_KEY"),
+            (1452, "FOREIGN_KEY", "FOREIGN_KEY"),
+            (1213, "DEADLOCK", "DEADLOCK"),
+            (1290, "READ_ONLY", "READ_ONLY"),
+            (1205, "CANCELED", "CANCELED"),
+        ]:
+            for server, code in (("mysql", mysql), ("mariadb", mariadb)):
+                with self.subTest(number=number, server=server):
+                    driver_error = mysql_error(
+                        pymysql.err.OperationalError, number, "m"
+                    )
+                    self.assertEqual(self.run_mysql(driver_error, server).code, code)
 
     def test_a_statement_on_a_closed_mysql_connection_is_connection_lost(self):
         driver_error = pymysql.err.InterfaceError(0, "")
