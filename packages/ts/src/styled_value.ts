@@ -8,33 +8,36 @@ let readStored: (value: StyledValue) => unknown;
 /** The SQL NULL state or an encoded value of a styled column. */
 export class StyledValue<T = unknown> {
   static {
-    readStored = value => value.stored;
+    readStored = value => value.stored?.value;
   }
 
-  private constructor(public readonly kind: 'sql-null' | 'value', private readonly stored?: T) {}
+  /** stored holds the value of the value variant, and SQL NULL has none. */
+  private constructor(public readonly kind: 'sql-null' | 'value', private readonly stored?: { readonly value: T }) {}
 
   public static sqlNull<T>(): StyledValue<T> { return new StyledValue<T>('sql-null'); }
-  public static value<T>(value: T): StyledValue<T> { return new StyledValue<T>('value', value); }
+  public static value<T>(value: T): StyledValue<T> { return new StyledValue<T>('value', { value }); }
 
+  /**
+   * The value of the value variant, returned unchecked: every encode of it checks it, and the JSON output refuses what
+   * JSON cannot write; SQL NULL is the one refusal (COD-73).
+   */
   public payload(): T {
-    if (this.kind === 'sql-null') throw new OrmError(codes.CODEC_DECODE, 'SQL NULL has no styled value');
-    const stored = this.stored;
-    assertNoOmittedValue(stored, new Set(), 0);
-    if (stored === undefined) throw new OrmError(codes.CODEC_DECODE, 'styled value has no payload');
-    return stored;
+    if (this.stored === undefined) throw new OrmError(codes.CODEC_DECODE, 'SQL NULL has no styled value');
+    return this.stored.value;
   }
 
   public toJSON(): { kind: 'sql-null' } | { kind: 'value'; value: unknown } {
     if (this.kind === 'sql-null') return { kind: 'sql-null' };
     const value = this.payload();
+    checkJsonOutput(value, '');
     if (!(value instanceof OrderedJsonValue)) return { kind: 'value', value };
     return { kind: 'value', value: orderedJsonOutput(value) };
   }
 }
 
 /**
- * The value that a styled value holds, as it was given: the codec stages refuse a value by their own rules of COD-70, so
- * an encode reads it without the checks of payload.
+ * The value that a styled value holds, as it was given, undefined for SQL NULL: the codec stages refuse a value by their
+ * own rules of COD-70.
  *
  * @internal
  */
@@ -42,48 +45,53 @@ export function storedValue(value: StyledValue): unknown {
   return readStored(value);
 }
 
-function assertNoOmittedValue(value: unknown, ancestors: Set<object>, depth: number): void {
-  if (depth > 256) throw new OrmError(codes.CODEC_ENCODE, 'styled value nesting exceeds 256 levels');
-  if (value === undefined || typeof value === 'function' || typeof value === 'symbol') {
-    throw new OrmError(codes.CODEC_ENCODE, `styled value contains ${typeof value}`);
-  }
-  if (typeof value === 'number' && !Number.isFinite(value)) throw new OrmError(codes.CODEC_ENCODE, 'styled value contains a non-finite number');
-  if (value === null || typeof value !== 'object' || value instanceof OrderedJsonValue) return;
-  if (ancestors.has(value)) throw new OrmError(codes.CODEC_ENCODE, 'styled value contains a cycle');
-  ancestors.add(value);
-  const prototype: unknown = Object.getPrototypeOf(value);
-  if (!Array.isArray(value) && prototype !== Object.prototype && prototype !== null) {
-    const writer = (value as { toJSON?: unknown }).toJSON;
-    if (typeof writer !== 'function') throw new OrmError(codes.CODEC_ENCODE, 'styled value object has no JSON representation');
-    assertNoOmittedValue(writer.call(value), ancestors, depth + 1);
-    ancestors.delete(value);
-    return;
-  }
-  if (Array.isArray(value)) {
-    for (const key of Reflect.ownKeys(value)) {
-      if (key === 'length') continue;
-      if (typeof key !== 'string' || !/^(0|[1-9][0-9]*)$/.test(key) || Number(key) >= value.length
-        || !Object.getOwnPropertyDescriptor(value, key)?.enumerable) {
-        throw new OrmError(codes.CODEC_ENCODE, `styled value array member ${String(key)} would be omitted`);
-      }
+/**
+ * Refuses a value that JSON.stringify would write as another value or leave out, as CODEC_ENCODE with the place of the
+ * output before the text (COD-16, COD-26): payload() returns the stored value unchecked (COD-73), so the JSON output
+ * refuses by its own rule a number that is not finite, which JSON.stringify writes as null, and undefined, a function, a
+ * symbol, a missing array index, a member that is not an enumerable string-keyed property, an object without a JSON
+ * form and a cycle, which it leaves out, writes as null or as another object, or cannot write. A bigint is an exact
+ * integer of the output, and an ordered-json value is written as its stored text.
+ *
+ * @internal
+ */
+export function checkJsonOutput(value: unknown, place: string): void {
+  const refused = (what: string): OrmError => new OrmError(codes.CODEC_ENCODE, `${place}JSON output cannot write ${what}`);
+  const visit = (node: unknown, ancestors: Set<object>): void => {
+    if (node === null || typeof node === 'boolean' || typeof node === 'string' || typeof node === 'bigint') return;
+    if (typeof node === 'number') {
+      if (!Number.isFinite(node)) throw refused('a number that is not finite');
+      return;
     }
-    for (let index = 0; index < value.length; index++) {
-      if (!Object.hasOwn(value, index)) throw new OrmError(codes.CODEC_ENCODE, `styled value array index ${index} is missing`);
-      assertNoOmittedValue(value[index], ancestors, depth + 1);
-    }
-  } else {
-    for (const name of Reflect.ownKeys(value)) {
-      if (typeof name !== 'string' || !Object.getOwnPropertyDescriptor(value, name)?.enumerable) {
-        throw new OrmError(codes.CODEC_ENCODE, `styled value member ${String(name)} would be omitted`);
+    if (typeof node !== 'object' || ancestors.has(node)) throw refused('a value that JSON has no form for');
+    if (node instanceof OrderedJsonValue) return;
+    ancestors.add(node);
+    const prototype: unknown = Object.getPrototypeOf(node);
+    if (Array.isArray(node)) {
+      for (const key of Reflect.ownKeys(node)) {
+        if (key === 'length') continue;
+        if (typeof key !== 'string' || !/^(0|[1-9][0-9]*)$/.test(key) || !Object.getOwnPropertyDescriptor(node, key)?.enumerable) {
+          throw refused('a value that JSON has no form for');
+        }
       }
-      try { assertNoOmittedValue(Reflect.get(value, name), ancestors, depth + 1); }
-      catch (error) {
-        if (error instanceof OrmError && error.code === codes.CODEC_ENCODE) throw new OrmError(codes.CODEC_ENCODE, `styled value member ${JSON.stringify(name)}: ${error.message}`);
-        throw error;
+      for (let index = 0; index < node.length; index++) {
+        if (!Object.hasOwn(node, index)) throw refused('a value that JSON has no form for');
+        visit(node[index], ancestors);
       }
+    } else if (prototype === Object.prototype || prototype === null) {
+      for (const name of Reflect.ownKeys(node)) {
+        if (typeof name !== 'string' || !Object.getOwnPropertyDescriptor(node, name)?.enumerable) throw refused('a value that JSON has no form for');
+        visit(Reflect.get(node, name), ancestors);
+      }
+    } else {
+      // An object of a class is written as the value that its toJSON returns.
+      const writer: unknown = Reflect.get(node, 'toJSON');
+      if (typeof writer !== 'function') throw refused('a value that JSON has no form for');
+      visit(Reflect.apply(writer, node, []), ancestors);
     }
-  }
-  ancestors.delete(value);
+    ancestors.delete(node);
+  };
+  visit(value, new Set());
 }
 
 /** The exact JSON.stringify representation of an ordered-json value. */

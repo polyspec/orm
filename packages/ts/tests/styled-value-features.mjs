@@ -28,7 +28,7 @@ function rejectsLostOutput(label, read) {
   try { read(); throw new Error(`${label}: input was silently omitted`); }
   catch (error) { if (error.code !== 'CODEC_ENCODE') throw error; }
 }
-// Requirements: COD-21.
+// Requirements: COD-21, COD-73.
 await suite.run('styled-value/lost-output', COMPUTE, () => {
   rejectsLostOutput('styled toJSON', () => orm.StyledValue.value({ missing: undefined }).toJSON());
   rejectsLostOutput('nested styled JSON.stringify', () => JSON.stringify(orm.StyledValue.value({ nested: { missing: undefined } })));
@@ -52,7 +52,8 @@ await suite.run('styled-value/lost-output', COMPUTE, () => {
   const document = { present: 1 };
   const author = new orm.Author().setJsonSetting(orm.StyledValue.value(document));
   document.missing = undefined;
-  rejectsLostOutput('model array', () => author.toArray());
+  // The array form holds the value that payload() returns unchecked (COD-27, COD-73); the JSON output refuses it.
+  if (author.toArray().json_setting.value !== document) throw new Error('model array: the array form is not the stored value');
   rejectsLostOutput('model JSON value', () => author.toJSON());
   rejectsLostOutput('model JSON text', () => author.toJSONText());
 });

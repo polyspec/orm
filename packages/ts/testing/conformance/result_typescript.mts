@@ -20,8 +20,10 @@ export function resultValue(value: unknown): unknown {
   if (typeof value === 'bigint') return resultValue(parse(value.toString()));
   if (typeof value === 'function' || typeof value === 'symbol') throw new Error('non-JSON conformance result');
   if (value instanceof StyledValue) {
+    // The JSON output of the styled value refuses what JSON cannot write (COD-73) before the result reads its payload.
+    const json = value.toJSON();
     if (value.kind === 'value') resultValue(value.payload());
-    return value.toJSON();
+    return json;
   }
   if (value instanceof JsonValue) {
     const json = StyledValue.value(value).toJSON();

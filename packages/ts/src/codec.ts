@@ -2,9 +2,9 @@ import { deflateSync, inflateSync } from 'node:zlib';
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'node:crypto';
 import { isIP } from 'node:net';
 import { isUtf8 } from 'node:buffer';
-import { Value as JsonValue, parse as orderedJsonParse, stringify as orderedJsonStringify } from '@polyspec/ordered-json';
+import { ParseError as JsonParseError, Value as JsonValue, parse as orderedJsonParse, parseBytes as orderedJsonParseBytes, stringify as orderedJsonStringify } from '@polyspec/ordered-json';
 import { Document, isAlias, isScalar, isSeq, parseAllDocuments, visit } from 'yaml';
-import type { ParsedNode } from 'yaml';
+import type { Alias, ParsedNode } from 'yaml';
 import { present } from './present.js';
 import { StyledValue, storedValue } from './styled_value.js';
 import * as codes from './codes.js';
@@ -199,6 +199,35 @@ function string(value: Uint8Array, rule: string): string {
   }
 }
 
+/** The nesting that the ordered-json parser reads, and that every value stage reads and writes (COD-70). */
+const MAX_LEVELS = 256;
+
+/** Whether the ordered-json parser refused a text for its nesting. */
+function nestingRefused(error: unknown): boolean {
+  return error instanceof JsonParseError && error.kind === 'maximum_depth_exceeded';
+}
+
+/**
+ * The ordered-json value of a cell (COD-70 `json-cell`, `json-depth-read`), with the failure of the parser as its cause
+ * (COD-71). The bytes are met in their order, so a cell that is not UTF-8 is `json-depth-read` when the text before its
+ * first byte that is not UTF-8 already nests deeper than 256 levels.
+ */
+function decodeJson(cell: Uint8Array): JsonValue {
+  try {
+    return orderedJsonParseBytes(cell);
+  } catch (error) {
+    if (nestingRefused(error)) throw new CodecError(codes.CODEC_DECODE, 'json: value nesting exceeds 256 levels', { cause: error });
+    if (error instanceof JsonParseError && error.kind === 'invalid_utf8') {
+      try {
+        orderedJsonParse(text.decode(cell.subarray(0, error.offset)));
+      } catch (prefix) {
+        if (nestingRefused(prefix)) throw new CodecError(codes.CODEC_DECODE, 'json: value nesting exceeds 256 levels', { cause: prefix });
+      }
+    }
+    throw new CodecError(codes.CODEC_DECODE, 'json: the cell is not JSON', { cause: error });
+  }
+}
+
 function decodeBase64(value: Uint8Array): Uint8Array {
   // Decode a stored cell only in the form the encoder writes: whitespace, line breaks, missing padding, and non-zero padding bits are
   // rejected with CODEC_DECODE (docs/spec/codec.md). Re-encoding must give the same text, which is the encoder's form. The bytes must be read unchanged, so
@@ -265,14 +294,8 @@ export function decode(styles: readonly string[], raw: string | Uint8Array | nul
         return StyledValue.value(new PhpParser(current).parse());
       case 'yaml':
         return StyledValue.value(decodeYaml(current));
-      case 'ordered_json': {
-        const source = string(current, 'json: the cell is not JSON');
-        try {
-          return StyledValue.value(orderedJsonParse(source));
-        } catch (error) {
-          throw new CodecError(codes.CODEC_DECODE, 'json: the cell is not JSON', { cause: error });
-        }
-      }
+      case 'ordered_json':
+        return StyledValue.value(decodeJson(current));
       default:
         throw new CodecError(codes.CODEC_UNSUPPORTED, `style ${style}`);
     }
@@ -387,11 +410,12 @@ function yamlText(value: CodecValue): string {
  */
 function commonValue(value: unknown, style: 'serialize' | 'yaml'): CodecValue {
   if (value instanceof JsonValue) throw new CodecError(codes.CODEC_ENCODE, `${style}: an ordered-json value is written only by the ordered_json stage`);
-  checkCommonValue(value, style, new Set());
+  checkCommonValue(value, style, new Set(), 1);
   return value;
 }
 
-function checkCommonValue(value: unknown, style: 'serialize' | 'yaml', ancestors: Set<object>): asserts value is CodecValue {
+/** Checks a node that a list or a map at `level` would be, the outermost one at level 1 (COD-70). */
+function checkCommonValue(value: unknown, style: 'serialize' | 'yaml', ancestors: Set<object>, level: number): asserts value is CodecValue {
   const refused = (rule: string): CodecError => new CodecError(codes.CODEC_ENCODE, `${style}: ${rule}`);
   if (value === null || typeof value === 'boolean') return;
   if (typeof value === 'bigint') {
@@ -406,19 +430,24 @@ function checkCommonValue(value: unknown, style: 'serialize' | 'yaml', ancestors
     if (LONE_SURROGATE.test(value)) throw refused('the text is not a sequence of Unicode scalar values');
     return;
   }
+  if (typeof value !== 'object') throw refused('the value is not a codec value');
+  const list = Array.isArray(value);
+  const proto: unknown = Object.getPrototypeOf(value);
+  // Only a list and a plain map are lists and maps of the model; the nesting rule of a level comes before the rules of
+  // the node (COD-70).
+  if (!list && proto !== Object.prototype && proto !== null) throw refused('the value is not a codec value');
+  if (level > MAX_LEVELS) throw refused('value nesting exceeds 256 levels');
   // A list or a map whose members a stage would leave out, a cycle among them, is no value of the model.
-  if (typeof value !== 'object' || ancestors.has(value) || Object.getOwnPropertySymbols(value).length > 0) throw refused('the value is not a codec value');
+  if (ancestors.has(value) || Object.getOwnPropertySymbols(value).length > 0) throw refused('the value is not a codec value');
   ancestors.add(value);
-  if (Array.isArray(value)) {
+  if (list) {
     if (Object.keys(value).length !== value.length) throw refused('the value is not a codec value');
-    for (const item of value) checkCommonValue(item, style, ancestors);
+    for (const item of value) checkCommonValue(item, style, ancestors, level + 1);
   } else {
-    const proto: unknown = Object.getPrototypeOf(value);
-    if (proto !== Object.prototype && proto !== null) throw refused('the value is not a codec value');
     if (Object.getOwnPropertyNames(value).length !== Object.keys(value).length) throw refused('the value is not a codec value');
     for (const [key, item] of sortedEntries(value)) {
       if (LONE_SURROGATE.test(key)) throw refused('the text is not a sequence of Unicode scalar values');
-      checkCommonValue(item, style, ancestors);
+      checkCommonValue(item, style, ancestors, level + 1);
     }
   }
   ancestors.delete(value);
@@ -483,9 +512,35 @@ function jsonString(text: string): string {
   return JSON.stringify(text);
 }
 
-/** The JSON text of a value, each node checked in its order (COD-70). */
+/** The levels of the lists and maps of a JSON text, the outermost one level 1. */
+function jsonTextLevels(source: string): number {
+  let levels = 0;
+  let open = 0;
+  let inString = false;
+  let escaped = false;
+  for (const c of source) {
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (c === '\\') escaped = true;
+      else if (c === '"') inString = false;
+    } else if (c === '"') inString = true;
+    else if (c === '[' || c === '{') levels = Math.max(levels, ++open);
+    else if (c === ']' || c === '}') open--;
+  }
+  return levels;
+}
+
+/**
+ * The JSON text of a value, each node checked in its order (COD-70). depth is the number of lists and maps around the
+ * node, so a list or a map is at level depth + 1, and the lists and maps of an ordered-json value at its place count from
+ * there.
+ */
 function jsonText(value: unknown, depth: number): string {
-  if (value instanceof JsonValue) return storedJsonText(value);
+  if (value instanceof JsonValue) {
+    const stored = storedJsonText(value);
+    if (depth + jsonTextLevels(stored) > MAX_LEVELS) throw new CodecError(codes.CODEC_ENCODE, 'json: value nesting exceeds 256 levels');
+    return stored;
+  }
   if (value === null) return 'null';
   switch (typeof value) {
     case 'boolean': return value ? 'true' : 'false';
@@ -497,23 +552,23 @@ function jsonText(value: unknown, depth: number): string {
     case 'object': break;
     default: throw new CodecError(codes.CODEC_ENCODE, 'json: the value is not a JSON value');
   }
-  // depth is the number of lists and maps around this one, and the ordered-json parser reads 256 levels.
-  if (depth >= 256) throw new CodecError(codes.CODEC_ENCODE, 'json: value nesting exceeds 256 levels');
-  // A list or a map whose members the text would leave out is no JSON value.
-  if (Object.getOwnPropertySymbols(value).length > 0) throw new CodecError(codes.CODEC_ENCODE, 'json: the value is not a JSON value');
-  if (Array.isArray(value)) {
-    if (Object.keys(value).length !== value.length) throw new CodecError(codes.CODEC_ENCODE, 'json: the value is not a JSON value');
-    return `[${(value as unknown[]).map(item => jsonText(item, depth + 1)).join(',')}]`;
-  }
-  if (value instanceof Uint8Array) throw new CodecError(codes.CODEC_ENCODE, 'json: the value is not a JSON value');
+  const list = Array.isArray(value);
   const proto: unknown = Object.getPrototypeOf(value);
-  if (proto !== Object.prototype && proto !== null) {
+  if (!list && proto !== Object.prototype && proto !== null) {
     const toJSON = (value as { toJSON?: unknown }).toJSON;
-    if (typeof toJSON !== 'function') {
+    if (value instanceof Uint8Array || typeof toJSON !== 'function') {
       throw new CodecError(codes.CODEC_ENCODE, 'json: the value is not a JSON value');
     }
     // The JSON form of the object stands at its place.
     return jsonText(toJSON.call(value), depth);
+  }
+  // The nesting rule of a list or a map comes before its own rules (COD-70).
+  if (depth >= MAX_LEVELS) throw new CodecError(codes.CODEC_ENCODE, 'json: value nesting exceeds 256 levels');
+  // A list or a map whose members the text would leave out is no JSON value.
+  if (Object.getOwnPropertySymbols(value).length > 0) throw new CodecError(codes.CODEC_ENCODE, 'json: the value is not a JSON value');
+  if (list) {
+    if (Object.keys(value).length !== value.length) throw new CodecError(codes.CODEC_ENCODE, 'json: the value is not a JSON value');
+    return `[${(value as unknown[]).map(item => jsonText(item, depth + 1)).join(',')}]`;
   }
   if (Object.getOwnPropertyNames(value).length !== Object.keys(value).length) throw new CodecError(codes.CODEC_ENCODE, 'json: the value is not a JSON value');
   const members: string[] = [];
@@ -540,12 +595,13 @@ function decodeYaml(current: Uint8Array): CodecValue {
   if (YAML_NOT_PRINTABLE.test(stream)) throw new CodecError(codes.CODEC_DECODE, 'yaml: the stream holds a character that is not printable');
   const documents = yamlDocuments(stream);
   // A stream without a document (empty, or comments only) is not a YAML value.
-  if (documents.length === 0) throw yamlRule('no document');
-  if (documents.length > 1) throw yamlRule('multiple documents are not supported');
-  const document = present(documents[0], 'the one YAML document');
-  const value = yamlValue(document.contents);
+  const document = documents[0];
+  if (document === undefined) throw yamlRule('no document');
+  // Each document is met before the next, so the rules of the first come before the start of a second (COD-70).
+  const value = yamlValue(document.contents, 1);
   const failure = document.errors[0] ?? document.warnings[0];
   if (failure !== undefined) throw new CodecError(codes.CODEC_DECODE, 'yaml: the stream does not parse', { cause: failure });
+  if (documents.length > 1) throw yamlRule('multiple documents are not supported');
   return value;
 }
 
@@ -567,35 +623,43 @@ function yamlRule(rule: string): CodecError {
 }
 
 /**
- * The value of a node of a YAML document, its nodes read in their order: an alias, an anchor and an explicit tag, the
- * core tags included, are refused (the parser sets a node's anchor and tag only when the text writes them), an integer
- * is within i64 and a float is finite. A key comes before its value: a collection is no key, a plain key that the core
- * schema reads as a boolean, a null or a float is no key, and an integral key is its decimal string, so two keys of one
- * string are duplicates (COD-29). The parsed nodes are the four kinds of the library and the empty node, each handled.
+ * The value of a node of a YAML document, its nodes read in their order, each node where it starts (COD-70): first an
+ * alias, an anchor and an explicit tag, the core tags included (the parser sets a node's anchor and tag only when the
+ * text writes them), then the nesting rule of its level, where a sequence or a mapping at `level` is refused past 256
+ * levels, then its own rules: an integer is within i64 and a float is finite. A key comes before its value: a collection
+ * is no key, a plain key that the core schema reads as a boolean, a null or a float is no key, and an integral key is its
+ * decimal string, so two keys of one string are duplicates (COD-29). The parsed nodes are the four kinds of the library
+ * and the empty node, each handled.
  */
-function yamlValue(node: ParsedNode | null): CodecValue {
+function yamlValue(node: ParsedNode | null, level: number): CodecValue {
   if (node === null) return null;
-  if (isAlias(node)) throw yamlRule('aliases are not supported');
-  if (node.anchor !== undefined) throw yamlRule('anchors are not supported');
-  if (node.tag !== undefined) throw yamlRule('explicit tags are not supported');
+  yamlNodeStart(node, level);
   if (isScalar(node)) return yamlScalar(node.value);
-  if (isSeq(node)) return node.items.map(yamlValue);
+  if (isSeq(node)) return node.items.map(item => yamlValue(item, level + 1));
   const members: { [key: string]: CodecValue } = {};
   const seen = new Set<string>();
   for (const pair of node.items) {
     const key = pair.key;
-    if (!isScalar(key)) throw yamlRule(isAlias(key) ? 'aliases are not supported' : 'map keys must be scalar strings');
-    if (key.anchor !== undefined) throw yamlRule('anchors are not supported');
-    if (key.tag !== undefined) throw yamlRule('explicit tags are not supported');
+    if (key !== null) yamlNodeStart(key, level + 1);
+    if (!isScalar(key)) throw yamlRule('map keys must be scalar strings');
     const name: unknown = key.value;
     if (typeof name !== 'string' && typeof name !== 'bigint') throw yamlRule('map keys must be strings or integers');
     if (typeof name === 'bigint' && !i64(name)) throw yamlRule('integer is outside the i64 range');
     const text = String(name);
     if (seen.has(text)) throw yamlRule('duplicate map key');
     seen.add(text);
-    Object.defineProperty(members, text, { value: yamlValue(pair.value), enumerable: true, writable: true, configurable: true });
+    Object.defineProperty(members, text, { value: yamlValue(pair.value, level + 1), enumerable: true, writable: true, configurable: true });
   }
   return members;
+}
+
+/** The rules of a node that are met where it starts: an alias, its anchor, its tag, and for a sequence or a mapping the
+ * nesting rule of its level. */
+function yamlNodeStart(node: ParsedNode, level: number): asserts node is Exclude<ParsedNode, Alias.Parsed> {
+  if (isAlias(node)) throw yamlRule('aliases are not supported');
+  if (node.anchor !== undefined) throw yamlRule('anchors are not supported');
+  if (node.tag !== undefined) throw yamlRule('explicit tags are not supported');
+  if (!isScalar(node) && level > MAX_LEVELS) throw yamlRule('value nesting exceeds 256 levels');
 }
 
 /** The value of a scalar of the core schema read with intAsBigInt: a null, a boolean, a string, a bigint or a number. */
@@ -663,6 +727,8 @@ const PHP_FLOAT = /^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$/;
  */
 class PhpParser {
   private index = 0;
+  /** The number of a fields around the value being read. */
+  private depth = 0;
 
   public constructor(private readonly input: Uint8Array) {}
 
@@ -749,6 +815,8 @@ class PhpParser {
       case 's':
         return this.string();
       case 'a':
+        // The nesting rule of a level is met where its a field starts, before its length (COD-70).
+        if (this.depth >= MAX_LEVELS) this.fail('value nesting exceeds 256 levels');
         return this.array();
       case 'O':
       case 'C':
@@ -767,15 +835,22 @@ class PhpParser {
     const count = Number(field);
     this.expect(123);
     const entries: Array<[string, CodecValue]> = [];
+    // An integer key is its decimal string, so i:1; and s:1:"1"; are one key (COD-70 `serialize-duplicate`).
+    const seen = new Set<string>();
     let sequential = true;
+    this.depth++;
     for (let index = 0; index < count; index++) {
       // A key is an int or a string, told by its type letter before its field is read.
       const type = this.type();
       if (type !== 'i' && type !== 's') this.fail('array key must be int or string');
       const key = type === 'i' ? this.int() : this.string();
+      const name = String(key);
+      if (seen.has(name)) this.fail('duplicate array key');
+      seen.add(name);
       if (typeof key !== 'bigint' || key !== BigInt(index)) sequential = false;
-      entries.push([String(key), this.value()]);
+      entries.push([name, this.value()]);
     }
+    this.depth--;
     this.expect(125);
     if (sequential) return entries.map(([, value]) => value);
     return Object.fromEntries(entries);

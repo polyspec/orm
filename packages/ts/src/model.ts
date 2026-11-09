@@ -9,7 +9,7 @@ import type { Assemble, Request } from './ir.js';
 import { columnName, parseChain, parseOrder, snake, splitPair, upperFirst, type ChainKey } from './names.js';
 import { present } from './present.js';
 import { OrmError } from './runtime_error.js';
-import { StyledValue, orderedJsonOutput } from './styled_value.js';
+import { StyledValue, checkJsonOutput, orderedJsonOutput } from './styled_value.js';
 import { normalizeDecimal } from './decimal.js';
 import { decimalFromScaled } from './decimal.js';
 import { GroupRow, GroupRows } from './group_rows.js';
@@ -1122,9 +1122,13 @@ function jsonValue(value: unknown): unknown {
   return exactIntegers(arrayValue(value));
 }
 
-/** JSON has no bytes, so the JSON output refuses a bytes value and names its entity and column (COD-26). */
+/**
+ * JSON has no bytes, so the JSON output refuses a bytes value and names its entity and column (COD-26); the value of a
+ * styled column, which payload() returns unchecked, is refused where JSON would write it as another value (COD-73).
+ */
 function jsonColumn(c: Core, name: string, value: unknown): unknown {
   if (value instanceof Uint8Array) throw new OrmError(codes.CODEC_ENCODE, `${c.ent.entity.name}.${name}: JSON output cannot write bytes`);
+  if (value instanceof StyledValue && value.kind === 'value') checkJsonOutput(value.payload(), `${c.ent.entity.name}.${name}: `);
   return value;
 }
 

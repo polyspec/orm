@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
-import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
+import { ParseError as JsonParseError, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { CodecError, StyledValue, decode, encode } from '../dist/index.js';
 
 function thrown(operation) {
@@ -34,13 +34,17 @@ caseTest('codec/malformed-json-and-yaml', COMPUTE, () => {
   }
 });
 
+// The cause is the failure of the reader of the bytes: the ordered-json parser of the cell, the UTF-8 decoder of a stream.
 caseTest('invalid UTF-8 in JSON and YAML returns CODEC_DECODE', COMPUTE, () => {
-  for (const [style, message] of [['ordered_json', 'json: the cell is not JSON'], ['yaml', 'yaml: the stream is not UTF-8']]) {
+  for (const [style, message, cause] of [
+    ['ordered_json', 'json: the cell is not JSON', error => error instanceof JsonParseError && error.kind === 'invalid_utf8'],
+    ['yaml', 'yaml: the stream is not UTF-8', error => error instanceof TypeError],
+  ]) {
     const error = thrown(() => decode([style], new Uint8Array([0xff])));
     assert(error instanceof CodecError);
     assert.equal(error.code, 'CODEC_DECODE');
     assert.equal(error.message, `CODEC_DECODE: ${message}`);
-    assert(error.cause instanceof TypeError);
+    assert(cause(error.cause), String(error.cause));
   }
 });
 
