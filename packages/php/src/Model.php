@@ -442,6 +442,13 @@ abstract class Model implements \JsonSerializable, ModelMetadata
             if (!$col['nullable'] && $value->kind === 'sql-null') {
                 throw new OrmException(Code::CODEC_ENCODE, "$column does not accept SQL NULL");
             }
+            // The setter encodes the value by the codec stages of its column, without the host stages, and fails at the
+            // call with the error of the first rule that the value meets, before the model changes (COD-73); the write
+            // encodes it again.
+            Codec::encode(array_values(array_filter(
+                $col['codec'],
+                static fn(string $s): bool => !Codec::isHostStyle($s),
+            )), $value);
         }
         $stored = $value;
         if (in_array($col['type'], ['date', 'time', 'datetime'], true) && $value !== null) {

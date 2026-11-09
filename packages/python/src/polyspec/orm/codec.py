@@ -9,9 +9,10 @@ import json
 import math
 import os
 import re
+import sys
 import zlib
+from concurrent.futures import ThreadPoolExecutor
 
-from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from polyspec.ordered_json import (
     Value as OrderedJson,
@@ -38,6 +39,39 @@ __all__ = [
 _I64_MIN = -(1 << 63)
 _I64_MAX = (1 << 63) - 1
 _AES_PREFIX = b"ORM-AES2\x00"
+
+
+# The Python frames that a value stage takes at most for a value or a cell of 256 levels and for the refusal at the level
+# 257 (COD-70), as (decode, encode), measured with a margin of 50 frames: the yaml writer of ruamel.yaml takes about
+# three frames a level, the serialize walks two, and the ordered-json parser none. A call whose caller leaves fewer frames
+# under the recursion limit runs on a thread started for it (_on_own_stack), so that what a value stage returns or
+# refuses never depends on the depth of its caller (COD-71), and a RecursionError never escapes it.
+# test_codec_stack_depth.py holds each at the boundary.
+_STAGE_FRAMES = {
+    "ordered_json": (100, 570),
+    "serialize": (570, 570),
+    "yaml": (330, 830),
+}
+
+
+def _on_own_stack(frames: int, call, *args):
+    # call(*args) where at least frames Python frames are free under the recursion limit: on the caller's stack when it
+    # has them, which sys._getframe finds in C without walking the frames in Python, and otherwise on a thread started for
+    # the call, whose stack starts empty. Its future hands back the result, or raises the exception that call raised,
+    # which keeps its own cause. The value stages read no state of the thread that runs them: _php_float reads no decimal
+    # context.
+    try:
+        sys._getframe(max(sys.getrecursionlimit() - frames, 0))
+    except ValueError:
+        return call(*args)
+    with ThreadPoolExecutor(1, thread_name_prefix="polyspec-orm-codec") as worker:
+        return worker.submit(call, *args).result()
+
+
+# A failure of the process, not of an input: memory exhausted, or the Python stack exhausted, which _on_own_stack keeps
+# from a value stage. Every other exception that a library call of the codec raises is the rule of that call, with the
+# exception as its cause (COD-71), so none escapes raw.
+_RESOURCE_FAILURES = (MemoryError, RecursionError)
 
 
 class CodecError(Exception):
@@ -96,7 +130,9 @@ def _pack_ip(value: bytes) -> bytes:
     # COD-70, which keeps the failure of the library as its cause (COD-71).
     try:
         address = ipaddress.ip_address(value.decode("utf-8"))
-    except (UnicodeDecodeError, ValueError) as error:
+    except _RESOURCE_FAILURES:
+        raise
+    except Exception as error:
         raise CodecError(
             codes.CODEC_ENCODE, "ip: the text is not an address"
         ) from error
@@ -132,7 +168,9 @@ def host_encode(value, styles, aes_key: str):
                 encrypted = AESGCM(_aes_v2_key(aes_key)).encrypt(
                     nonce, current, _AES_PREFIX
                 )
-            except (NotImplementedError, OSError, OverflowError, ValueError) as error:
+            except _RESOURCE_FAILURES:
+                raise
+            except Exception as error:
                 raise CodecError(
                     codes.CODEC_ENCODE, "aes: the encryption failed"
                 ) from error
@@ -188,7 +226,9 @@ def host_decode(raw, styles, aes_key: str):
                 current = AESGCM(_aes_v2_key(aes_key)).decrypt(
                     nonce, sealed, _AES_PREFIX
                 )
-            except (InvalidTag, OverflowError, ValueError) as error:
+            except _RESOURCE_FAILURES:
+                raise
+            except Exception as error:
                 raise CodecError(
                     codes.CODEC_DECODE, "aes: authentication failed"
                 ) from error
@@ -243,7 +283,12 @@ def _decode_base64(data: bytes) -> bytes:
     return decoded
 
 
-def _codec_value(value, stage: str, ancestors: set):
+# The arrays and objects that a value of a value stage holds at most (COD-70): json-depth, json-depth-read,
+# serialize-depth, serialize-depth-write, yaml-depth and yaml-depth-write.
+_MAX_NESTING = 256
+
+
+def _codec_value(value, stage: str, ancestors: set, level: int = 0):
     # The common value model of COD-16 that serialize and yaml write (stage): None, bool, a str of Unicode scalar values,
     # an int within i64, a finite float, a list, and a dict with str keys, returned as its plain value, so that a subclass
     # such as an OrderedDict or an IntEnum is written as the value it holds. Each node is checked in its order, and each
@@ -273,18 +318,24 @@ def _codec_value(value, stage: str, ancestors: set):
             f"{stage}: an ordered-json value is written only by the ordered_json stage",
         )
     refused = CodecError(codes.CODEC_ENCODE, f"{stage}: the value is not a codec value")
+    # level is the number of lists and dicts that hold the value: one at the level 257 is refused before the cycle check
+    # and before its items (serialize-depth-write and yaml-depth-write).
+    if isinstance(value, (list, dict)) and level >= _MAX_NESTING:
+        raise CodecError(
+            codes.CODEC_ENCODE, f"{stage}: value nesting exceeds 256 levels"
+        )
     if not isinstance(value, (list, dict)) or id(value) in ancestors:
         raise refused
     ancestors.add(id(value))
     if isinstance(value, list):
-        plain = [_codec_value(item, stage, ancestors) for item in value]
+        plain = [_codec_value(item, stage, ancestors, level + 1) for item in value]
     else:
         plain = {}
         for key, item in value.items():
             if not isinstance(key, str):
                 raise refused
             _utf8(key, stage)
-            plain[str(key)] = _codec_value(item, stage, ancestors)
+            plain[str(key)] = _codec_value(item, stage, ancestors, level + 1)
     ancestors.discard(id(value))
     return plain
 
@@ -302,8 +353,13 @@ def _php_float(value: float) -> str:
     # signed exponent when the decimal exponent is below -4 or above 16, and in fixed notation otherwise (zend_gcvt with
     # precision 17); a mantissa of one digit is followed by .0.
     sign = "-" if math.copysign(1.0, value) < 0 else ""
-    _, digits, exponent = decimal.Decimal(repr(abs(value))).normalize().as_tuple()
-    text = "".join(map(str, digits))
+    # The digits of repr without their trailing zeros, which a Decimal made from a string holds exactly; normalize() would
+    # round them by the decimal context of the thread, which a caller may change.
+    _, digits, exponent = decimal.Decimal(repr(abs(value))).as_tuple()
+    text = "".join(map(str, digits)).rstrip("0")
+    exponent += len(digits) - len(text)
+    if text == "":
+        text, exponent = "0", 0
     point = len(text) + exponent
     if point - 1 < -4 or point - 1 > 16:
         mantissa = f"{text[0]}.{text[1:] or '0'}"
@@ -319,6 +375,10 @@ def php_serialize(value) -> str:
     """Encodes a codec value in PHP serialize syntax. A Python int is written with i:, and a float with
     d: (the same as PHP integer and float notation). A value outside the common value model is CODEC_ENCODE by its rule
     of COD-70."""
+    return _on_own_stack(_STAGE_FRAMES["serialize"][1], _php_serialize_value, value)
+
+
+def _php_serialize_value(value) -> str:
     return _php_serialize(_codec_value(value, "serialize", set()))
 
 
@@ -358,7 +418,7 @@ class _PhpParser:
         self._index = 0
 
     def parse(self):
-        value = self._value()
+        value = self._value(0)
         if self._index != len(self._data):
             self._fail("trailing data")
         return value
@@ -390,7 +450,8 @@ class _PhpParser:
         self._index += 1
         return result
 
-    def _value(self):
+    def _value(self, level: int):
+        # level is the number of arrays that hold the value.
         kind = chr(self._byte())
         if kind == "N":
             self._expect(59)
@@ -445,7 +506,10 @@ class _PhpParser:
             self._expect(59)
             return value
         if kind == "a":
-            return self._array()
+            # An array at the level 257 is refused where it opens, before its length (serialize-depth of COD-70).
+            if level >= _MAX_NESTING:
+                self._fail("value nesting exceeds 256 levels")
+            return self._array(level + 1)
         if kind in ("O", "C", "r", "R"):
             raise CodecError(
                 codes.CODEC_UNSUPPORTED,
@@ -453,7 +517,7 @@ class _PhpParser:
             )
         self._fail("unknown type")
 
-    def _array(self):
+    def _array(self, level: int):
         self._expect(58)
         count = self._until(58)
         if _DIGITS.fullmatch(count) is None:
@@ -461,14 +525,21 @@ class _PhpParser:
         count = int(count)
         self._expect(123)
         entries = []
+        seen = set()
         sequential = True
         for index in range(count):
-            key = self._value()
+            key = self._value(level)
             if not isinstance(key, (int, str)) or isinstance(key, bool):
                 self._fail("array key must be int or string")
             if not isinstance(key, int) or key != index:
                 sequential = False
-            entries.append((str(key), self._value()))
+            # PHP holds i:1 and s:1:"1" as one key, and i:-0 and i:01 as the key 0 and 1, so the key is its text after
+            # the int is read; a repeated key is refused where it repeats, before its value (serialize-duplicate).
+            text = str(key)
+            if text in seen:
+                self._fail("duplicate array key")
+            seen.add(text)
+            entries.append((text, self._value(level)))
         self._expect(125)
         if sequential:
             return [value for _, value in entries]
@@ -510,7 +581,7 @@ def _json_text(value, depth: int) -> str:
     # Builds ordered-json syntax text from a plain value. Object members keep their insertion order. Each node is checked
     # in its order by the rules of COD-70: json-depth, text-unicode, json-non-finite, json-key and json-value. depth is
     # the number of arrays and objects that hold the value, and the parser reads 256 levels of them.
-    if isinstance(value, (list, dict)) and depth >= 256:
+    if isinstance(value, (list, dict)) and depth >= _MAX_NESTING:
         raise CodecError(codes.CODEC_ENCODE, "json: value nesting exceeds 256 levels")
     if isinstance(value, OrderedJson):
         return _stored_json_text(value)
@@ -553,10 +624,16 @@ def _json_text(value, depth: int) -> str:
 def ordered_json_value(value) -> OrderedJson:
     """Converts a plain value to an ordered-json value. Object members keep their order, and a value outside the JSON
     value model is CODEC_ENCODE by its rule of COD-70."""
+    return _on_own_stack(_STAGE_FRAMES["ordered_json"][1], _ordered_json_value, value)
+
+
+def _ordered_json_value(value) -> OrderedJson:
     text = _json_text(value, 0)
     try:
         return ordered_json_parse(text)
-    except (TypeError, ValueError) as error:
+    except _RESOURCE_FAILURES:
+        raise
+    except Exception as error:
         raise CodecError(
             codes.CODEC_ENCODE, "json: the value has no JSON text"
         ) from error
@@ -628,8 +705,12 @@ def _yaml_refuse_marks(tree, node, key: bool):
         raise CodecError(codes.CODEC_DECODE, "yaml: explicit tags are not supported")
 
 
-def _yaml_node(tree, node):
+def _yaml_node(tree, node, level: int):
+    # level is the number of maps and sequences that hold the node: one at the level 257 is refused after its anchor and
+    # tag and before its children (yaml-depth of COD-70).
     _yaml_refuse_marks(tree, node, False)
+    if (tree.is_map(node) or tree.is_seq(node)) and level >= _MAX_NESTING:
+        raise CodecError(codes.CODEC_DECODE, "yaml: value nesting exceeds 256 levels")
     if tree.is_map(node):
         mapping = {}
         for child in ryml.children(tree, node):
@@ -647,10 +728,12 @@ def _yaml_node(tree, node):
                 )
             if key in mapping:
                 raise CodecError(codes.CODEC_DECODE, "yaml: duplicate map key")
-            mapping[key] = _yaml_node(tree, child)
+            mapping[key] = _yaml_node(tree, child, level + 1)
         return mapping
     if tree.is_seq(node):
-        return [_yaml_node(tree, child) for child in ryml.children(tree, node)]
+        return [
+            _yaml_node(tree, child, level + 1) for child in ryml.children(tree, node)
+        ]
     # Every other node of a rapidyaml tree holds a value: a scalar, or an alias (COD-72 enumerates the node kinds).
     if tree.is_val_ref(node):
         raise CodecError(codes.CODEC_DECODE, "yaml: aliases are not supported")
@@ -669,6 +752,89 @@ _YAML_NOT_PRINTABLE = re.compile(
 _RYML_CONTAINER_KEY = "ryml trees cannot handle containers as keys"
 
 
+class _ContainerKey(Exception):
+    """The walk of _yaml_rules_before_container_key reached a collection in the position of a key."""
+
+
+def _yaml_event_node(event, events, level: int, key: bool):
+    # One node of the event stream and the events of its children, checked by the rules of _yaml_node in the same order:
+    # an alias, then the anchor and the tag, then a collection key (yaml-key-collection), the nesting and the children.
+    # Returns the resolved value of a scalar, which the key rules read.
+    if isinstance(event, ruamel.yaml.events.AliasEvent):
+        raise CodecError(codes.CODEC_DECODE, "yaml: aliases are not supported")
+    if event.anchor is not None:
+        raise CodecError(codes.CODEC_DECODE, "yaml: anchors are not supported")
+    if event.tag is not None:
+        raise CodecError(codes.CODEC_DECODE, "yaml: explicit tags are not supported")
+    if isinstance(event, ruamel.yaml.events.ScalarEvent):
+        return _yaml_scalar(event.value, event.style is None)
+    if key:
+        raise _ContainerKey()
+    if level >= _MAX_NESTING:
+        raise CodecError(codes.CODEC_DECODE, "yaml: value nesting exceeds 256 levels")
+    if isinstance(event, ruamel.yaml.events.SequenceStartEvent):
+        for child in events:
+            if isinstance(child, ruamel.yaml.events.SequenceEndEvent):
+                return None
+            _yaml_event_node(child, events, level + 1, False)
+        return None
+    seen = set()
+    for child in events:
+        if isinstance(child, ruamel.yaml.events.MappingEndEvent):
+            return None
+        name = _yaml_event_node(child, events, level + 1, True)
+        if type(name) is int:
+            name = str(name)
+        if not isinstance(name, str):
+            raise CodecError(
+                codes.CODEC_DECODE, "yaml: map keys must be strings or integers"
+            )
+        if name in seen:
+            raise CodecError(codes.CODEC_DECODE, "yaml: duplicate map key")
+        seen.add(name)
+        _yaml_event_node(next(events), events, level + 1, False)
+    return None
+
+
+def _yaml_rules_before_container_key(text: str) -> None:
+    # rapidyaml refuses a collection as a key while it parses, so its tree never holds the nodes met before that key,
+    # whose rules come first (COD-70: a node is met where it starts). This walk meets them in the event stream of
+    # ruamel.yaml, the library that writes the yaml stage, and raises the first rule that applies; it returns at the
+    # collection key, and when ruamel.yaml refuses the stream before it, so that rapidyaml's verdict stands. It runs only
+    # on a stream that rapidyaml has read up to that key. ruamel.yaml takes U+0085, U+2028 and U+2029 as line breaks
+    # (YAML 1.1) where rapidyaml reads content (YAML 1.2, 5.4), so each is first replaced by a private-use character
+    # that the text does not hold, which both read as content: the replacement is one to one, so the equality of keys
+    # and the core resolution of a plain scalar, which no such character matches, are those of the original text.
+    for mark in _YAML_1_1_BREAKS:
+        if mark in text:
+            free = next(
+                chr(code) for code in range(0xE000, 0xF900) if chr(code) not in text
+            )
+            text = text.replace(mark, free)
+    events = iter(ruamel.yaml.YAML(typ="safe", pure=True).parse(text))
+    try:
+        for event in events:
+            if isinstance(event, ruamel.yaml.events.DocumentStartEvent):
+                _yaml_event_node(next(events), events, 0, False)
+                # The end of the first document, then the start of a second one, which is met before its nodes.
+                next(events)
+                if isinstance(next(events), ruamel.yaml.events.DocumentStartEvent):
+                    raise CodecError(
+                        codes.CODEC_DECODE, "yaml: multiple documents are not supported"
+                    )
+                return
+    except _ContainerKey, ruamel.yaml.YAMLError, StopIteration:
+        return
+    except (CodecError, *_RESOURCE_FAILURES):
+        raise
+    except Exception as error:
+        # ruamel.yaml fails with an exception that is no YAMLError, such as the AssertionError of a %YAML directive
+        # whose minor version is not 1 or 2: the rule yaml-parse, with that exception as its cause (COD-71).
+        raise CodecError(
+            codes.CODEC_DECODE, "yaml: the stream does not parse"
+        ) from error
+
+
 def _decode_yaml(data: bytes):
     # The stream rules come before the parse (COD-70): yaml-utf8, then yaml-printable.
     try:
@@ -684,22 +850,37 @@ def _decode_yaml(data: bytes):
         tree = ryml.parse_in_arena(data)
         root = tree.root_id()
         if tree.is_stream(root):
+            # The first document is met before the second, so its rules come first (COD-70).
             documents = list(ryml.children(tree, root))
+            value = _yaml_node(tree, documents[0], 0) if documents else None
             if len(documents) != 1:
                 raise CodecError(
                     codes.CODEC_DECODE, "yaml: multiple documents are not supported"
                 )
-            root = documents[0]
-        elif not (tree.has_val(root) or tree.is_map(root) or tree.is_seq(root)):
+            return value
+        if not (tree.has_val(root) or tree.is_map(root) or tree.is_seq(root)):
             # A stream without a document (empty, or comments only) is not a YAML value.
             raise CodecError(codes.CODEC_DECODE, "yaml: no document")
-        return _yaml_node(tree, root)
+        return _yaml_node(tree, root, 0)
     except ryml.ExceptionBasic as error:
         # str() of a rapidyaml exception is empty; its message is the attribute msg.
         if error.msg == _RYML_CONTAINER_KEY:
+            try:
+                _yaml_rules_before_container_key(text)
+            except CodecError as rule:
+                # A rule met before the key: a rule of a node, which the tree path raises with no cause, or yaml-parse
+                # with the failure of ruamel.yaml as its cause; neither takes the failure of rapidyaml as its context.
+                raise rule from rule.__cause__
             raise CodecError(
                 codes.CODEC_DECODE, "yaml: map keys must be scalar strings"
             ) from error
+        raise CodecError(
+            codes.CODEC_DECODE, "yaml: the stream does not parse"
+        ) from error
+    except (CodecError, *_RESOURCE_FAILURES):
+        raise
+    except Exception as error:
+        # Any other failure of rapidyaml is the rule yaml-parse (COD-71).
         raise CodecError(
             codes.CODEC_DECODE, "yaml: the stream does not parse"
         ) from error
@@ -735,7 +916,9 @@ def _yaml_dump(value) -> str:
     out = io.StringIO()
     try:
         dumper.dump(value, out)
-    except (ruamel.yaml.YAMLError, TypeError, ValueError) as error:
+    except _RESOURCE_FAILURES:
+        raise
+    except Exception as error:
         raise CodecError(
             codes.CODEC_ENCODE, "yaml: the value has no YAML text"
         ) from error
@@ -784,6 +967,12 @@ def decode(styles, raw):
     is an ordered-json value (keeping member order and number literals); if there is no value stage,
     it is the text of the bytes."""
     _check_styles(styles)
+    if styles and styles[0] in _STAGE_FRAMES:
+        return _on_own_stack(_STAGE_FRAMES[styles[0]][0], _decode, styles, raw)
+    return _decode(styles, raw)
+
+
+def _decode(styles, raw):
     if raw is None:
         return StyledValue.sql_null()
     current = _cell_bytes(raw)
@@ -799,7 +988,9 @@ def decode(styles, raw):
             # A zlib stream of COD-12 only: the window bits 15 refuse a gzip stream, which gz-stream refuses too.
             try:
                 current = zlib.decompress(current, 15)
-            except zlib.error as error:
+            except _RESOURCE_FAILURES:
+                raise
+            except Exception as error:
                 raise CodecError(codes.CODEC_DECODE, "gz: bad zlib stream") from error
         elif style == "base64":
             current = _decode_base64(current)
@@ -810,10 +1001,17 @@ def decode(styles, raw):
             value = _decode_yaml(current)
             has_value = True
         else:
-            # A cell that is not UTF-8 is no JSON text (json-cell).
+            # A cell that is not UTF-8 is no JSON text (json-cell). The parser refuses an array or object at the
+            # level 257 where it opens, before its contents, which is json-depth-read; any other failure is json-cell.
             try:
                 value = ordered_json_parse(current.decode("utf-8"))
-            except (TypeError, ValueError) as error:
+            except _RESOURCE_FAILURES:
+                raise
+            except Exception as error:
+                if getattr(error, "kind", None) == "maximum_depth_exceeded":
+                    raise CodecError(
+                        codes.CODEC_DECODE, "json: value nesting exceeds 256 levels"
+                    ) from error
                 raise CodecError(
                     codes.CODEC_DECODE, "json: the cell is not JSON"
                 ) from error
@@ -827,6 +1025,12 @@ def encode(styles, state: StyledValue):
     """Encodes a value through the codec stages in write order. The ordered_json stage
     takes an ordered-json or plain value. If the first stage is gz or base64, the value is text."""
     _check_styles(styles)
+    if styles and styles[0] in _STAGE_FRAMES:
+        return _on_own_stack(_STAGE_FRAMES[styles[0]][1], _encode, styles, state)
+    return _encode(styles, state)
+
+
+def _encode(styles, state: StyledValue):
     # A StyledValue is SQL NULL or a value; one that is neither, such as one that no constructor made, is styled-unset.
     kind = getattr(state, "kind", None)
     if kind == "sql-null":
@@ -836,12 +1040,12 @@ def encode(styles, state: StyledValue):
     transformed = state.payload()
     first = styles[0] if styles else ""
     if first == "serialize":
-        current = _utf8(php_serialize(transformed), "serialize")
+        current = _utf8(_php_serialize_value(transformed), "serialize")
     elif first == "yaml":
         current = _yaml_dump(transformed).encode("utf-8")
     elif first == "ordered_json":
         if not isinstance(transformed, OrderedJson):
-            transformed = ordered_json_value(transformed)
+            transformed = _ordered_json_value(transformed)
         current = _stored_json_text(transformed).encode("utf-8")
     else:
         if not isinstance(transformed, str):
@@ -854,7 +1058,9 @@ def encode(styles, state: StyledValue):
         elif style == "gz":
             try:
                 current = zlib.compress(current, 9)
-            except (OverflowError, zlib.error) as error:
+            except _RESOURCE_FAILURES:
+                raise
+            except Exception as error:
                 raise CodecError(
                     codes.CODEC_ENCODE, "gz: the compression failed"
                 ) from error

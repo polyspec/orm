@@ -743,7 +743,7 @@ func (x *T) ForShareNoWait() *T { x.m.Lock("share_nowait"); return x }
 			fmt.Fprintf(&b, "// Get%s returns %s.\nfunc (x *%s) Get%s() (%s, error) {\n\tif !x.m.Selected(%q) { var zero %s; return zero, orm.ColumnUnselected(%q) }\n\treturn x.%s, nil\n}\n\n", p, c.Name, t, p, ft, c.Name, ft, c.Name, f)
 		}
 		if gt == "orm.StyledValue" {
-			fmt.Fprintf(&b, "// Set%s sets %s.\nfunc (x *%s) Set%s(v orm.StyledValue) (*%s, error) {\n\tnormalized, err := orm.NormalizeStyled(%#v, %t, v)\n\tif err != nil { return nil, err }\n\tx.%s = normalized\n\tx.m.Set(%q, normalized)\n\treturn x, nil\n}\n\n", p, c.Name, t, p, t, clientStyles(c), c.Null, f, c.Name)
+			fmt.Fprintf(&b, "// Set%s sets %s.\nfunc (x *%s) Set%s(v orm.StyledValue) (*%s, error) {\n\tnormalized, err := orm.NormalizeStyled(%q, %#v, %t, v)\n\tif err != nil { return nil, err }\n\tx.%s = normalized\n\tx.m.Set(%q, normalized)\n\treturn x, nil\n}\n\n", p, c.Name, t, p, t, c.Name, clientStyles(c), c.Null, f, c.Name)
 		} else if (c.Type == "date" || c.Type == "datetime") && len(c.Codec) == 0 {
 			// The setter takes the text form and keeps the parsed time in the typed field; a text that is not a
 			// time is the statement's error (T189).
