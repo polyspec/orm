@@ -17,9 +17,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/min-0-max/go-yaml/ast"
-	yamlparser "github.com/min-0-max/go-yaml/parser"
-	"github.com/min-0-max/go-yaml/token"
 	orderedjson "github.com/polyspec/ordered-json/packages/go"
 	"github.com/polyspec/orm/packages/go/engine/ir"
 	goyaml "go.yaml.in/yaml/v3"
@@ -250,22 +247,25 @@ func gzipText(cur []byte) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// yamlEncode writes a value of the common value model as one YAML document and reads the text back (COD-29).
+// yamlEncode writes a value of the common value model as one YAML document with go.yaml.in/yaml/v3 and reads the text back
+// with the reader of COD-74 (COD-29, yaml-read-back).
 func yamlEncode(value any) ([]byte, error) {
 	if err := commonValue("yaml", value, 0); err != nil {
 		return nil, err
 	}
-	var doc goyaml.Node
-	err := doc.Encode(yamlFloats(value))
-	var cur []byte
-	if err == nil {
-		yamlQuoteBreaks(&doc)
-		cur, err = goyaml.Marshal(&doc)
-	}
+	node, err := yamlWriteNode(value)
 	if err != nil {
 		return nil, codecCause(CodeCodecEncode, "yaml: the value has no YAML text", err)
 	}
-	if _, err := yamlDecode(cur); err != nil {
+	cur, err := goyaml.Marshal(node)
+	if err != nil {
+		return nil, codecCause(CodeCodecEncode, "yaml: the value has no YAML text", err)
+	}
+	got, err := yamlDecode(cur)
+	if err == nil && !yamlSameValue(value, got) {
+		err = errors.New("the written text reads back as another value")
+	}
+	if err != nil {
 		return nil, codecCause(CodeCodecEncode, "yaml: the written text does not read back as the value", err)
 	}
 	return cur, nil
@@ -299,91 +299,79 @@ func NormalizeStyled(column string, styles []string, nullable bool, v StyledValu
 	return Decode(styles, stored)
 }
 
-// yamlQuoteBreaks double-quotes each string scalar, a key or a value, that holds U+0085, U+2028 or U+2029 (COD-29): yaml.v3
-// escapes them there, and elsewhere counts them as line breaks, as YAML 1.1 does, and pads the text after one.
-//
-// It also writes the string << as a double-quoted string: yaml.v3 tags it !!merge, the merge key of YAML 1.1, which YAML 1.2
-// does not have (COD-29).
-func yamlQuoteBreaks(node *goyaml.Node) {
-	if node.Kind == goyaml.ScalarNode && node.Tag == "!!merge" {
-		node.Tag = "!!str"
-		node.Style = goyaml.DoubleQuotedStyle
+// yamlWriteNode is the yaml.v3 node of a value that commonValue passed, built here rather than by Node.Encode, which reads
+// its own text back with the parser of yaml.v3 and refuses some strings that it writes. Each scalar has the tag of its kind,
+// so that yaml.v3 quotes a string that would read back as another kind, the string << included, which yaml.v3 would
+// otherwise read as the merge key of YAML 1.1 (COD-29). A float keeps a fraction or an exponent, so that it reads back as a
+// float and not as an integer: yaml.v3 writes the float 2.0 as 2. A string is double-quoted where yaml.v3 would write it
+// in a form that YAML 1.2.2 reads as another string: one that holds U+0085, U+2028 or U+2029, which yaml.v3 counts as line
+// breaks, as YAML 1.1 does, and one that starts with white space or a line break, which yaml.v3 writes as a block scalar
+// with an indentation indicator counted from column 0, where YAML 1.2.2 counts it from the parent of the document node at
+// -1 (COD-78). The keys of a map are written in their sorted order.
+func yamlWriteNode(value any) (*goyaml.Node, error) {
+	scalar := func(tag, text string) (*goyaml.Node, error) {
+		return &goyaml.Node{Kind: goyaml.ScalarNode, Tag: tag, Value: text}, nil
 	}
-	if node.Kind == goyaml.ScalarNode && node.Tag == "!!str" && strings.ContainsAny(node.Value, "\u0085\u2028\u2029") {
-		node.Style = goyaml.DoubleQuotedStyle
-	}
-	for _, child := range node.Content {
-		yamlQuoteBreaks(child)
-	}
-}
-
-// yamlFloats is value with each float as a YAML scalar node whose text keeps a fraction or an exponent, so that it reads back
-// as a float and not as an integer (COD-29): yaml.v3 writes the float 2.0 as 2, which the YAML 1.2 core schema reads as an int.
-func yamlFloats(value any) any {
 	switch x := value.(type) {
+	case nil:
+		return scalar("!!null", "null")
+	case bool:
+		return scalar("!!bool", strconv.FormatBool(x))
+	case int:
+		return scalar("!!int", strconv.Itoa(x))
+	case int32:
+		return scalar("!!int", strconv.FormatInt(int64(x), 10))
+	case int64:
+		return scalar("!!int", strconv.FormatInt(x, 10))
+	case uint64:
+		return scalar("!!int", strconv.FormatUint(x, 10))
 	case float64:
 		text := strconv.FormatFloat(x, 'g', -1, 64)
 		if !strings.ContainsAny(text, ".eEn") {
 			text += ".0"
 		}
-		return &goyaml.Node{Kind: goyaml.ScalarNode, Tag: "!!float", Value: text}
+		return scalar("!!float", text)
+	case string:
+		node := &goyaml.Node{Kind: goyaml.ScalarNode, Tag: "!!str", Value: x}
+		if strings.ContainsAny(x, "\u0085\u2028\u2029") || x != "" && strings.ContainsRune(" \t\n\r", rune(x[0])) {
+			node.Style = goyaml.DoubleQuotedStyle
+		}
+		return node, nil
 	case []any:
-		out := make([]any, len(x))
-		for i, item := range x {
-			out[i] = yamlFloats(item)
+		node := &goyaml.Node{Kind: goyaml.SequenceNode, Tag: "!!seq"}
+		for _, item := range x {
+			child, err := yamlWriteNode(item)
+			if err != nil {
+				return nil, err
+			}
+			node.Content = append(node.Content, child)
 		}
-		return out
+		return node, nil
 	case map[string]any:
-		out := make(map[string]any, len(x))
-		for k, item := range x {
-			out[k] = yamlFloats(item)
+		keys := make([]string, 0, len(x))
+		for k := range x {
+			keys = append(keys, k)
 		}
-		return out
+		sort.Strings(keys)
+		node := &goyaml.Node{Kind: goyaml.MappingNode, Tag: "!!map"}
+		for _, k := range keys {
+			key, err := yamlWriteNode(k)
+			if err != nil {
+				return nil, err
+			}
+			child, err := yamlWriteNode(x[k])
+			if err != nil {
+				return nil, err
+			}
+			node.Content = append(node.Content, key, child)
+		}
+		return node, nil
 	}
-	return value
+	// commonValue passes no other value; one that reaches here is refused, not written as something else.
+	return nil, fmt.Errorf("the Go value %T has no YAML node", value)
 }
 
-// yamlDecode reads one YAML 1.2 document with the fork github.com/min-0-max/go-yaml of goccy/go-yaml, which reads
-// U+0085 as content, as YAML 1.2 rules (5.4), where yaml.v3 reads it as a line break, and reads a key that is a
-// collection as its node (6.9, 8.2.2), which goccy/go-yaml refuses. Its AST keeps each scalar's source text and style, so
-// the plain scalars resolve by the core schema below. The parser is told to keep a repeated key, so that yamlMapping
-// refuses each node, a collection key included, in the order of the nodes (COD-70).
-func yamlDecode(b []byte) (any, error) {
-	b, err := yamlStream(b)
-	if err != nil {
-		return nil, err
-	}
-	file, err := yamlparser.ParseBytes(b, 0, yamlparser.AllowDuplicateMapKey())
-	if err != nil {
-		return nil, codecCause(CodeCodecDecode, "yaml: the stream does not parse", err)
-	}
-	// The parser gives the directives of a document (%YAML, %TAG) as a document of their own before it.
-	docs := make([]*ast.DocumentNode, 0, len(file.Docs))
-	for _, doc := range file.Docs {
-		if _, directive := doc.Body.(*ast.DirectiveNode); !directive {
-			docs = append(docs, doc)
-		}
-	}
-	if len(docs) == 0 {
-		return nil, codecErr(CodeCodecDecode, "yaml: no document")
-	}
-	// Each document is met before the next, so the nodes of the first are read before a second document is refused.
-	var value any
-	if doc := docs[0]; doc.Body == nil {
-		// A stream without content has no document; `---` alone is a null document.
-		if doc.Start == nil && len(docs) == 1 {
-			return nil, codecErr(CodeCodecDecode, "yaml: no document")
-		}
-	} else if value, err = yamlNode(doc.Body, 0); err != nil {
-		return nil, err
-	}
-	if len(docs) > 1 {
-		return nil, codecErr(CodeCodecDecode, "yaml: multiple documents are not supported")
-	}
-	return value, nil
-}
-
-// yamlStream applies the stream rules of YAML 1.2 that the parser does not (COD-13): the stream is UTF-8, a byte order
+// yamlStream applies the stream rules of YAML 1.2 before the reader reads the stream (COD-75): the stream is UTF-8, a byte order
 // mark may start it (5.2) and appears nowhere else, and every character is printable (5.1). It returns the stream without
 // its byte order mark.
 func yamlStream(b []byte) ([]byte, error) {
@@ -409,86 +397,6 @@ func yamlPrintable(r rune) bool {
 		return false
 	}
 	return r >= 0xA0 && r <= 0xD7FF || r >= 0xE000 && r <= 0xFFFD || r >= 0x10000 && r <= 0x10FFFF
-}
-
-// yamlNode is the value of a node of a document body. Each node kind of the YAML library is handled: the scalars, the
-// collections and the anchor, alias and tag forms that a rule refuses; a document, a directive, a comment, a sequence entry
-// or an explicit key that the parser gives as a value is a stream that does not parse, whose cause names the kind (COD-72).
-//
-// depth is the number of sequences and mappings around node; a sequence or a mapping at level 257 is refused where it
-// starts, before the nodes inside it (yaml-depth).
-func yamlNode(node ast.Node, depth int) (any, error) {
-	switch n := node.(type) {
-	case *ast.SequenceNode:
-		if depth+1 > maxNesting {
-			return nil, errNesting(CodeCodecDecode, "yaml")
-		}
-		out := make([]any, len(n.Values))
-		for i, item := range n.Values {
-			var err error
-			out[i], err = yamlNode(item, depth+1)
-			if err != nil {
-				return nil, err
-			}
-		}
-		return out, nil
-	case *ast.MappingNode:
-		if depth+1 > maxNesting {
-			return nil, errNesting(CodeCodecDecode, "yaml")
-		}
-		return yamlMapping(n.Values, depth+1)
-	case *ast.MappingValueNode:
-		if depth+1 > maxNesting {
-			return nil, errNesting(CodeCodecDecode, "yaml")
-		}
-		return yamlMapping([]*ast.MappingValueNode{n}, depth+1)
-	case *ast.TagNode:
-		return nil, codecErr(CodeCodecDecode, "yaml: explicit tags are not supported")
-	case *ast.AliasNode:
-		return nil, codecErr(CodeCodecDecode, "yaml: aliases are not supported")
-	case *ast.AnchorNode:
-		return nil, codecErr(CodeCodecDecode, "yaml: anchors are not supported")
-	case *ast.LiteralNode:
-		return n.Value.Value, nil
-	case *ast.NullNode, *ast.BoolNode, *ast.IntegerNode, *ast.FloatNode, *ast.InfinityNode, *ast.NanNode, *ast.StringNode,
-		*ast.MergeKeyNode:
-		text, plain := yamlScalar(n.GetToken())
-		if plain {
-			return yamlCoreScalar(text)
-		}
-		return text, nil
-	}
-	return nil, codecCause(CodeCodecDecode, "yaml: the stream does not parse", fmt.Errorf("a %s node in a document body", node.Type()))
-}
-
-// yamlMapping is the map of the entries of a mapping at level depth, each key read before its value.
-func yamlMapping(values []*ast.MappingValueNode, depth int) (map[string]any, error) {
-	out := make(map[string]any, len(values))
-	for _, item := range values {
-		key, err := yamlMapKey(item.Key, depth)
-		if err != nil {
-			return nil, err
-		}
-		if _, exists := out[key]; exists {
-			return nil, codecErr(CodeCodecDecode, "yaml: duplicate map key")
-		}
-		value, err := yamlNode(item.Value, depth)
-		if err != nil {
-			return nil, err
-		}
-		out[key] = value
-	}
-	return out, nil
-}
-
-// yamlScalar returns the text of a scalar's token and whether it is plain, whose tag the reader resolves. The AST types
-// the YAML library gives plain scalars follow its own resolution, so only the source text and the style are used.
-func yamlScalar(t *token.Token) (string, bool) {
-	switch t.Type {
-	case token.SingleQuoteType, token.DoubleQuoteType:
-		return t.Value, false
-	}
-	return t.Value, true
 }
 
 var (
@@ -536,51 +444,6 @@ func yamlCoreScalar(text string) (any, error) {
 		return value, nil
 	}
 	return text, nil
-}
-
-// yamlMapKey is the key of an entry of a mapping at level depth; a collection key is at the next level, so one at level
-// 257 is its nesting rule before yaml-key-collection.
-func yamlMapKey(node ast.Node, depth int) (string, error) {
-	// An explicit key (? key) is the key it holds; a collection there is refused below as any collection key is.
-	if explicit, ok := node.(*ast.MappingKeyNode); ok {
-		node = explicit.Value
-	}
-	var value any
-	switch n := node.(type) {
-	case *ast.SequenceNode, *ast.MappingNode, *ast.MappingValueNode:
-		if depth+1 > maxNesting {
-			return "", errNesting(CodeCodecDecode, "yaml")
-		}
-		return "", codecErr(CodeCodecDecode, "yaml: map keys must be scalar strings")
-	case *ast.LiteralNode:
-		value = n.Value.Value
-	case *ast.NullNode, *ast.BoolNode, *ast.IntegerNode, *ast.FloatNode, *ast.InfinityNode, *ast.NanNode, *ast.StringNode,
-		*ast.MergeKeyNode:
-		text, plain := yamlScalar(n.GetToken())
-		value = text
-		if plain && !yamlCoreInt.MatchString(text) && (yamlCoreFloat.MatchString(text) || yamlCoreNonFinite.MatchString(text)) {
-			// A float key, finite or not, is a key that the core schema reads as a float.
-			return "", codecErr(CodeCodecDecode, "yaml: map keys must be strings or integers")
-		}
-		if plain {
-			var err error
-			if value, err = yamlCoreScalar(text); err != nil {
-				return "", err
-			}
-		}
-	default:
-		// yamlNode refuses a tag, an anchor and an alias by their rules, and a kind that is not a key as a stream that does
-		// not parse.
-		_, err := yamlNode(node, depth)
-		return "", err
-	}
-	switch v := value.(type) {
-	case string:
-		return v, nil
-	case int64:
-		return strconv.FormatInt(v, 10), nil
-	}
-	return "", codecErr(CodeCodecDecode, "yaml: map keys must be strings or integers")
 }
 
 // ---- PHP serialize format ----
