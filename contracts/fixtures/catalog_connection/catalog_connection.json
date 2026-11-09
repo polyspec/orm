@@ -16062,6 +16062,115 @@
       ]
     },
     {
+      "id": "catalog_value_sqlite_untyped_real",
+      "requirements": [
+        "INT-152",
+        "INT-165",
+        "INT-183",
+        "INT-184"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "a column with no declared type keeps the storage class of each value, an integral REAL included",
+          "sql": "CREATE TABLE value_rule_untyped (id INTEGER PRIMARY KEY, v)"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "the REAL 2.0 and the integer 3",
+          "sql": "INSERT INTO value_rule_untyped VALUES (1, 2.0), (2, 3)"
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "sqlite"
+          ],
+          "table": "value_rule_untyped",
+          "limit": 2,
+          "offset": 0,
+          "columns": [
+            "v"
+          ],
+          "expect": {
+            "sqlite": {
+              "columns": [
+                "id",
+                "v"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "f64_bits": "4611686018427387904"
+                  }
+                ],
+                [
+                  {
+                    "int": "3"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "sqlite"
+          ],
+          "sql": "SELECT v FROM value_rule_untyped ORDER BY id",
+          "expect": {
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "f64_bits": "4611686018427387904"
+                  }
+                ],
+                [
+                  {
+                    "int": "3"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "only": [
+            "sqlite"
+          ],
+          "sql": "SELECT v FROM value_rule_untyped ORDER BY id",
+          "expect": {
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "f64": "2"
+                  }
+                ],
+                [
+                  {
+                    "int": "3"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "catalog_value_sqlite_fraction",
       "requirements": [
         "INT-165",

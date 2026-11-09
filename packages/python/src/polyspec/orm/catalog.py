@@ -182,11 +182,12 @@ def _text(value) -> str:
     return value
 
 
-def _check_value(value):
+def _check_value(value, position: int):
     """Checks the plain driver values accepted by a catalog row result and returns the value of the result. A date and a
     uuid, which the drivers return as objects, are the text forms of their dbspec types (DBS-121): YYYY-MM-DD and the
-    lower-case canonical uuid text."""
-    if value is None or isinstance(value, (bool, int, str, bytes, datetime)):
+    lower-case canonical uuid text. A float is the float of the runtime, a non-finite one included (INT-183). Any other
+    host value is refused at its 1-based column position (INT-171)."""
+    if value is None or isinstance(value, (bool, int, float, str, bytes, datetime)):
         return value
     if isinstance(value, date):
         return value.isoformat()
@@ -194,43 +195,7 @@ def _check_value(value):
         return str(value)
     if isinstance(value, datetime_time) and value.tzinfo is None:
         return value
-    if isinstance(value, float):
-        if math.isnan(value) or math.isinf(value):
-            raise _error(codes.CATALOG_VALUE, "non-finite float value")
-        return value
-    raise _error(codes.CATALOG_VALUE, "unsupported driver value")
-
-
-def _mysql_time_value(value, precision: int) -> str:
-    """A PyMySQL TIME result as its exact dbspec time text at the server's declared precision."""
-    if not isinstance(value, timedelta):
-        raise _error(
-            codes.CATALOG_VALUE,
-            "unsupported driver value",
-        )
-    micros = (value.days * 86400 + value.seconds) * 1000000 + value.microseconds
-    if not 0 <= micros < 86400 * 1000000:
-        raise _error(codes.CATALOG_VALUE, "time outside 00:00:00 to 23:59:59.999999")
-    if not 0 <= precision <= 6:
-        raise _error(codes.CATALOG_VALUE, f"invalid MySQL TIME precision {precision}")
-    if micros % 10 ** (6 - precision) != 0:
-        raise _error(codes.CATALOG_VALUE, "time exceeds its declared precision")
-    seconds, fraction = divmod(micros, 1000000)
-    clock = f"{seconds // 3600:02d}:{seconds // 60 % 60:02d}:{seconds % 60:02d}"
-    return (
-        clock
-        if precision == 0
-        else f"{clock}.{fraction:06d}"[: len(clock) + precision + 1]
-    )
-
-
-def _mysql_catalog_value(value, code, precision: int):
-    """Decodes MySQL TIME driver values to canonical text; other values keep their native form."""
-    if value is None:
-        return None
-    if code == _MYSQL_TIME:
-        return _mysql_time_value(value, precision)
-    return _check_value(value)
+    raise _driver_value(position)
 
 
 # A read of a described table returns the dbspec text of each date, time and datetime cell with exactly the declared
@@ -241,14 +206,6 @@ _MYSQL_TIME_TYPE = re.compile(r"time(?:\(([0-6])\))?")
 _MYSQL_DATETIME_TYPE = re.compile(r"datetime(?:\(([0-6])\))?")
 _POSTGRES_TIME_TYPE = re.compile(r"time(?:\(([0-6])\))? without time zone")
 _POSTGRES_TIMESTAMP_TYPE = re.compile(r"timestamp(?:\(([0-6])\))? without time zone")
-_DESCRIBED_DATE_TEXT = re.compile(r"([0-9]{4})-([0-9]{2})-([0-9]{2})")
-_DESCRIBED_TIME_TEXT = re.compile(
-    r"([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.([0-9]{1,6}))?"
-)
-_DESCRIBED_DATETIME_TEXT = re.compile(r"([0-9]{4}-[0-9]{2}-[0-9]{2}) ([0-9:.]+)")
-# MySQL TIMESTAMP and PostgreSQL timestamptz and timetz follow a time zone, which dbspec declares for no column (INT-103).
-_MYSQL_ZONED_TYPE = re.compile(r"timestamp(?:\([0-6]\))?")
-_POSTGRES_ZONED_TYPE = re.compile(r"(?:timestamp|time)(?:\([0-6]\))? with time zone")
 _CHECK_OPENING = re.compile(r"CHECK\s*\(", re.IGNORECASE)
 _CHECK_GLOB = re.compile(r"GLOB '((?:\[0-9\])*)'")
 _CHECK_WHOLE_TEMPORAL = re.compile(r"IS (time|datetime)\(")
@@ -287,147 +244,6 @@ def _temporal_kind(column: CatalogColumn, dialect: str):
                 return kind, 0, False
             return kind, column.check_precision, True
     return None
-
-
-def _temporal_value_error(column: CatalogColumn, reason: str) -> OrmError:
-    return _error(codes.GRID_TEMPORAL_VALUE, f"column {column.name!r}: {reason}")
-
-
-def _described_date(text: str, column: CatalogColumn) -> str:
-    """A dbspec date YYYY-MM-DD, a calendar date from 0001-01-01 to 9999-12-31."""
-    match = _DESCRIBED_DATE_TEXT.fullmatch(text)
-    if match is None:
-        raise _temporal_value_error(column, "the text is not a dbspec date")
-    try:
-        date(*(int(part) for part in match.groups()))
-    except ValueError:
-        raise _temporal_value_error(
-            column,
-            "the text is outside 0001-01-01 to 9999-12-31 or is not a calendar date",
-        ) from None
-    return text
-
-
-def _described_clock(text: str, column: CatalogColumn) -> tuple:
-    """A dbspec time HH:MM:SS with up to six fraction digits within 00:00:00 to 23:59:59.999999, as its six-digit text
-    and the number of fraction digits it has."""
-    match = _DESCRIBED_TIME_TEXT.fullmatch(text)
-    if match is None:
-        raise _temporal_value_error(column, "the text is not a dbspec time")
-    hour, minute, second = (int(part) for part in match.groups()[:3])
-    if hour > 23 or minute > 59 or second > 59:
-        raise _temporal_value_error(
-            column, "the text is outside 00:00:00 to 23:59:59.999999"
-        )
-    fraction = match.group(4) or ""
-    return f"{text[:8]}.{fraction.ljust(6, '0')}", len(fraction)
-
-
-def _described_text(text: str, kind: str, column: CatalogColumn) -> tuple:
-    """Checks that text is in the dbspec form of its kind; returns its text with six fraction digits (a date as it is)
-    and its number of fraction digits."""
-    if kind == "date":
-        return _described_date(text, column), 0
-    if kind == "time":
-        return _described_clock(text, column)
-    match = _DESCRIBED_DATETIME_TEXT.fullmatch(text)
-    if match is None:
-        raise _temporal_value_error(column, "the text is not a dbspec datetime")
-    clock, digits = _described_clock(match.group(2), column)
-    return f"{_described_date(match.group(1), column)} {clock}", digits
-
-
-def _described_boolean(value, column: CatalogColumn, dialect: str):
-    """A boolean column read as a bool by its column type (DIA-29): a MySQL tinyint(1) and a SQLite BOOLEAN arrive as the
-    integer 0 or 1, a PostgreSQL boolean already as a bool. Any other value of such a column fails; any other column keeps
-    its value."""
-    native = column.native_type.strip().lower()
-    is_boolean = native == "tinyint(1)" if dialect == "mysql" else native == "boolean"
-    if not is_boolean or value is None or isinstance(value, bool):
-        return value
-    if isinstance(value, int) and value in (0, 1):
-        return value == 1
-    raise _error(
-        codes.CATALOG_VALUE,
-        f"column {column.name!r} holds a value that is not a boolean",
-    )
-
-
-def _described_temporal(value, column: CatalogColumn, dialect: str):
-    """The catalog value of one driver value of a described column: the dbspec text of a date, time or datetime column
-    with exactly its declared precision, and every other value as it is. A value outside the dbspec form fails with
-    GRID_TEMPORAL_VALUE; a non-zero digit past p, or on SQLite fraction digits other than the CHECK precision, or than 0
-    with no CHECK, fails with GRID_TEMPORAL_PRECISION. A value of a column that follows a time zone fails with
-    CATALOG_VALUE."""
-    if value is None:
-        return value
-    zoned = {"mysql": _MYSQL_ZONED_TYPE, "postgres": _POSTGRES_ZONED_TYPE}.get(dialect)
-    if zoned is not None and zoned.fullmatch(column.native_type.strip().lower()):
-        raise _error(
-            codes.CATALOG_VALUE,
-            f"column {column.name!r} of type {column.native_type} follows a time zone, which dbspec does not declare",
-        )
-    temporal = _temporal_kind(column, dialect)
-    if temporal is None:
-        return value
-    kind, precision, declared = temporal
-    if dialect == "sqlite":
-        if not isinstance(value, str):
-            raise _temporal_value_error(
-                column, f"holds a value that is not a dbspec {kind}"
-            )
-        _, digits = _described_text(value, kind, column)
-        if kind == "date":
-            return value
-        if not declared:
-            # INT-103 and DIA-24: a SQLite DATETIME or TIME with no CHECK has precision 0.
-            precision = 0
-        if digits != precision:
-            raise _error(
-                codes.GRID_TEMPORAL_PRECISION,
-                f"column {column.name!r} holds a fraction whose digits are not the {precision} that its dbspec CHECK fixes",
-            )
-        return value
-    if isinstance(value, str):
-        text, _ = _described_text(value, kind, column)
-    elif isinstance(value, datetime):
-        if kind != "datetime" or value.tzinfo is not None:
-            raise _temporal_value_error(
-                column,
-                f"a {'zoned ' if value.tzinfo else ''}datetime value of a {kind} column",
-            )
-        text = (
-            f"{value.year:04d}-{value.month:02d}-{value.day:02d} "
-            f"{value.hour:02d}:{value.minute:02d}:{value.second:02d}.{value.microsecond:06d}"
-        )
-    elif isinstance(value, date):
-        if kind != "date":
-            raise _temporal_value_error(column, f"a date value of a {kind} column")
-        text = f"{value.year:04d}-{value.month:02d}-{value.day:02d}"
-    elif isinstance(value, timedelta):
-        if kind != "time":
-            raise _temporal_value_error(column, f"a time value of a {kind} column")
-        micros = (value.days * 86400 + value.seconds) * 1000000 + value.microseconds
-        if not 0 <= micros < 86400 * 1000000:
-            raise _temporal_value_error(
-                column, "time outside 00:00:00 to 23:59:59.999999"
-            )
-        seconds, fraction = divmod(micros, 1000000)
-        text = f"{seconds // 3600:02d}:{seconds // 60 % 60:02d}:{seconds % 60:02d}.{fraction:06d}"
-    else:
-        raise _temporal_value_error(
-            column, f"holds a value that is not a dbspec {kind}"
-        )
-    if kind == "date":
-        return text
-    # text has six fraction digits here; it keeps exactly p of them.
-    dot = text.rindex(".")
-    if text[dot + 1 + precision :].strip("0"):
-        raise _error(
-            codes.GRID_TEMPORAL_PRECISION,
-            f"column {column.name!r}: a {kind} value has a non-zero digit past its {precision} fraction digits",
-        )
-    return text[:dot] if precision == 0 else text[: dot + 1 + precision]
 
 
 def _check_precision(table_sql: str, column: str):
@@ -537,6 +353,10 @@ def _cell_key(cell) -> str:
         if math.isnan(cell) or math.isinf(cell):
             raise _error(codes.ROW_SNAPSHOT_INVALID, "non-finite float cell")
         return "f" + struct.pack(">d", cell).hex()
+    if isinstance(cell, GridCell) and cell.kind in ("float32", "float64"):
+        # A float cell of a described read keys as the double that holds it, so a Float32 cell equals the float written
+        # to it; its bits key a non-finite value too (INT-183).
+        return "f" + struct.pack(">d", _cell_float(cell)).hex()
     if isinstance(cell, str):
         return f"s{len(cell.encode())}:{cell}"
     if isinstance(cell, bytes):
@@ -976,27 +796,20 @@ class GridCell:
     _MYSQL_TIME,
     _MYSQL_DATETIME,
 ) = 4, 5, 7, 10, 11, 12
+# The MySQL NEWDATE field type, which a server may report for a DATE result.
+_MYSQL_NEWDATE = 14
 _MYSQL_DECIMAL, _MYSQL_NEWDECIMAL, _MYSQL_UNSIGNED_FLAG = 0, 246, 32
 # The MySQL YEAR field type, which a YEAR() result has: it has no grid cell (the spec's unsupported types).
 _MYSQL_YEAR = 13
-_PG_FLOAT4, _PG_FLOAT8, _PG_NUMERIC, _PG_DATE, _PG_TIME, _PG_TIMESTAMP = (
-    700,
-    701,
-    1700,
-    1082,
-    1083,
-    1114,
-)
-_PG_TIMESTAMPTZ, _PG_TIMETZ = 1184, 1266
+# The PostgreSQL type OIDs of real and of the temporal types that a plain query reads as text; _PG_CLASSES holds the
+# class of every OID with a cell.
+_PG_FLOAT4, _PG_DATE, _PG_TIME, _PG_TIMESTAMP = 700, 1082, 1083, 1114
 _PG_TEXT_TEMPORAL = ("date", "time", "timestamp")
 # The native type codes whose value a query read gives as the text of its grid cell (INT-153).
 _QUERY_TEMPORAL = {
     "mysql": (_MYSQL_DATE, _MYSQL_TIME, _MYSQL_DATETIME),
     "postgres": (_PG_DATE, _PG_TIME, _PG_TIMESTAMP),
 }
-_DATE_TEXT = re.compile(r"(\d{4})-(\d{2})-(\d{2})")
-_TIME_TEXT = re.compile(r"(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?")
-
 
 # The rows that a PostgreSQL cursor fetches in one round trip.
 _PG_CHUNK = 256
@@ -1018,68 +831,6 @@ def _stream_rows(cursor, cursor_name):
             return
 
 
-def _plain_float(value, code, dialect: str):
-    """A PostgreSQL real value is the float32 that the server holds, widened to a double, as the Go and Rust runtimes read it."""
-    if dialect == "postgres" and code == _PG_FLOAT4 and isinstance(value, float):
-        return struct.unpack("<f", struct.pack("<f", value))[0]
-    return value
-
-
-def _refuse(message: str):
-    return _error(codes.CATALOG_VALUE, f"unsupported grid value: {message}")
-
-
-def _refuse_temporal(message: str):
-    """A date, time or datetime grid value that is outside its range or whose text is not one (GRID_TEMPORAL_VALUE)."""
-    return _error(codes.GRID_TEMPORAL_VALUE, f"unsupported grid value: {message}")
-
-
-def _float32_bits(value: float) -> int:
-    return struct.unpack(">I", struct.pack(">f", value))[0]
-
-
-def _float64_bits(value: float) -> int:
-    return struct.unpack(">Q", struct.pack(">d", value))[0]
-
-
-def _date_text(year: int, month: int, day: int) -> str:
-    """dbspec date YYYY-MM-DD: a calendar date from 0001-01-01 to 9999-12-31."""
-    try:
-        date(year, month, day)
-    except ValueError:
-        raise _refuse_temporal("date outside 0001-01-01 to 9999-12-31") from None
-    return f"{year:04d}-{month:02d}-{day:02d}"
-
-
-def _time_text(hour: int, minute: int, second: int, micro: int) -> str:
-    """dbspec time HH:MM:SS.ffffff: a time of day from 00:00:00 to 23:59:59.999999."""
-    if hour > 23 or minute > 59 or second > 59:
-        raise _refuse_temporal("time outside 00:00:00 to 23:59:59.999999")
-    return f"{hour:02d}:{minute:02d}:{second:02d}.{micro:06d}"
-
-
-def _pg_text_date(text: str) -> GridCell:
-    match = _DATE_TEXT.fullmatch(text)
-    if match is None:
-        raise _refuse_temporal("date is not YYYY-MM-DD")
-    return GridCell("date", _date_text(*(int(part) for part in match.groups())))
-
-
-def _pg_text_time(text: str) -> str:
-    match = _TIME_TEXT.fullmatch(text)
-    if match is None:
-        raise _refuse_temporal("time is not HH:MM:SS")
-    hour, minute, second = (int(part) for part in match.groups()[:3])
-    fraction = (match.group(4) or "").ljust(6, "0")
-    return _time_text(hour, minute, second, int(fraction or "0"))
-
-
-def _pg_text_datetime(text: str) -> GridCell:
-    day, _, clock = text.partition(" ")
-    date_part = _pg_text_date(day).value
-    return GridCell("datetime", f"{date_part} {_pg_text_time(clock)}")
-
-
 def _budget_size(value) -> int:
     """The bytes that one cell counts against a result budget (INT-115): the UTF-8 bytes of a text, decimal or temporal
     cell, the length of a binary cell and 8 for every other cell, None included."""
@@ -1090,83 +841,548 @@ def _budget_size(value) -> int:
     return 8
 
 
-def _grid_cell(value, dialect: str, code, unsigned: bool) -> GridCell:
-    """The grid cell of one driver value. code is the native type code of the column (MySQL field type, PostgreSQL type OID;
-    None for SQLite) and unsigned tells a MySQL UNSIGNED integer column."""
-    if value is None:
-        return GridCell("null")
-    if dialect == "mysql":
+# The catalog value rules (docs/spec/interfaces.md INT-165 to INT-185): each rule has one code and one text, the same in
+# every runtime. A refusal is `<CODE>: column <n>: <text>`, n the 1-based position of the column in the result (a described
+# read selects the columns of its table in physical order), and its text names no value, no column label and no driver
+# type.
+_YEAR_TEXT = "MySQL YEAR has no grid cell"
+_TIMESTAMP_TEXT = "MySQL TIMESTAMP follows a time zone"
+_ZONED_TEXT = "PostgreSQL timestamptz and timetz are unsupported"
+_NUMERIC_TEXT = "PostgreSQL numeric is not finite"
+_NATIVE_TEXT = "unsupported native type"
+_DRIVER_VALUE_TEXT = "unsupported driver value"
+_DECODE_TEXT = "the driver could not decode the value"
+_DATE_RANGE_TEXT = "date outside 0001-01-01 to 9999-12-31"
+_CALENDAR_TEXT = "date is not a calendar date"
+_TIME_RANGE_TEXT = "time outside 00:00:00 to 23:59:59.999999"
+_FORM_TEXT = {
+    "date": "the stored value is not a dbspec date",
+    "time": "the stored value is not a dbspec time",
+    "datetime": "the stored value is not a dbspec datetime",
+}
+_CHECK_DIGITS_TEXT = "the fraction digits are not the count that its dbspec CHECK fixes"
+_PRECISION_TEXT = "temporal value has more fraction digits than its precision"
+_NATIVE_PRECISION_TEXT = "native type declares more than 6 fraction digits"
+_BOOLEAN_TEXT = "a boolean column holds a value that is not a boolean"
+
+
+def _value_error(code: str, position: int, text: str) -> OrmError:
+    return _error(code, f"column {position}: {text}")
+
+
+def _driver_value(position: int) -> OrmError:
+    """INT-171: a driver value that is not the host form of a value of its column type."""
+    return _value_error(codes.CATALOG_VALUE, position, _DRIVER_VALUE_TEXT)
+
+
+def _decode_failure(position: int, failure: BaseException) -> OrmError:
+    """INT-172: a value that the driver or a library fails to decode; the failure is the cause (__cause__ and cause)."""
+    return _error(codes.CATALOG_VALUE, f"column {position}: {_DECODE_TEXT}", failure)
+
+
+def _temporal_error(position: int, text: str) -> OrmError:
+    return _value_error(codes.GRID_TEMPORAL_VALUE, position, text)
+
+
+def _float32_bits(value: float) -> int:
+    return struct.unpack(">I", struct.pack(">f", value))[0]
+
+
+def _float64_bits(value: float) -> int:
+    return struct.unpack(">Q", struct.pack(">d", value))[0]
+
+
+def _cell_float(cell: GridCell) -> float:
+    """The float of a float cell, a Float32 widened to the double that holds it exactly."""
+    if cell.kind == "float32":
+        return struct.unpack(">f", struct.pack(">I", cell.value))[0]
+    return struct.unpack(">d", struct.pack(">Q", cell.value))[0]
+
+
+def _calendar(year: int, month: int, day: int, position: int) -> str:
+    """A dbspec date YYYY-MM-DD: its year from 1 to 9999 (INT-173), then a day of the calendar (INT-174)."""
+    if not 1 <= year <= 9999:
+        raise _temporal_error(position, _DATE_RANGE_TEXT)
+    try:
+        date(year, month, day)
+    except ValueError:
+        raise _temporal_error(position, _CALENDAR_TEXT) from None
+    return f"{year:04d}-{month:02d}-{day:02d}"
+
+
+def _clock(hour: int, minute: int, second: int, micro: int, position: int) -> str:
+    """A dbspec time HH:MM:SS.ffffff of six fraction digits, from 00:00:00 to 23:59:59.999999 (INT-175)."""
+    if hour > 23 or minute > 59 or second > 59:
+        raise _temporal_error(position, _TIME_RANGE_TEXT)
+    return f"{hour:02d}:{minute:02d}:{second:02d}.{micro:06d}"
+
+
+def _micros_clock(value: timedelta, position: int) -> str:
+    """A MySQL TIME, which pymysql reads as a timedelta, as its dbspec time of six fraction digits (INT-175)."""
+    micros = (value.days * 86400 + value.seconds) * 1000000 + value.microseconds
+    if not 0 <= micros < 86400 * 1000000:
+        raise _temporal_error(position, _TIME_RANGE_TEXT)
+    seconds, fraction = divmod(micros, 1000000)
+    return _clock(seconds // 3600, seconds // 60 % 60, seconds % 60, fraction, position)
+
+
+# pymysql returns the text of a MySQL DATE or DATETIME that is no Python date, such as the zero date 0000-00-00 or a date
+# that ALLOW_INVALID_DATES stores (2024-02-30).
+_MYSQL_TEMPORAL_TEXT = re.compile(
+    r"([0-9]{4})-([0-9]{2})-([0-9]{2})(?: ([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.([0-9]{1,6}))?)?"
+)
+
+
+def _mysql_temporal_text(text: str, kind: str, position: int) -> str:
+    match = _MYSQL_TEMPORAL_TEXT.fullmatch(text)
+    if match is None or (match.group(4) is None) != (kind == "date"):
+        raise _driver_value(position)
+    year, month, day = (int(part) for part in match.groups()[:3])
+    day_text = _calendar(year, month, day, position)
+    if kind == "date":
+        return day_text
+    hour, minute, second = (int(part) for part in match.groups()[3:6])
+    fraction = int((match.group(7) or "").ljust(6, "0"))
+    return f"{day_text} {_clock(hour, minute, second, fraction, position)}"
+
+
+# The PostgreSQL text of a date, a time and a timestamp (DateStyle ISO): a year of four or more digits, a BC era, and the
+# infinities of date and timestamp.
+_PG_DATE_TEXT = re.compile(r"([0-9]{4,})-([0-9]{2})-([0-9]{2})( BC)?")
+_PG_TIME_TEXT = re.compile(r"([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.([0-9]{1,6}))?")
+_PG_TIMESTAMP_TEXT = re.compile(r"([0-9]{4,})-([0-9]{2})-([0-9]{2}) ([0-9:.]+)( BC)?")
+_PG_INFINITIES = ("infinity", "-infinity")
+
+
+def _pg_date(text: str, position: int) -> str:
+    if text in _PG_INFINITIES:
+        raise _temporal_error(position, _DATE_RANGE_TEXT)
+    match = _PG_DATE_TEXT.fullmatch(text)
+    if match is None:
+        raise _driver_value(position)
+    if match.group(4):
+        raise _temporal_error(position, _DATE_RANGE_TEXT)
+    return _calendar(*(int(part) for part in match.groups()[:3]), position)
+
+
+def _pg_time(text: str, position: int) -> str:
+    match = _PG_TIME_TEXT.fullmatch(text)
+    if match is None:
+        raise _driver_value(position)
+    hour, minute, second = (int(part) for part in match.groups()[:3])
+    fraction = int((match.group(4) or "").ljust(6, "0"))
+    return _clock(hour, minute, second, fraction, position)
+
+
+def _pg_timestamp(text: str, position: int) -> str:
+    if text in _PG_INFINITIES:
+        raise _temporal_error(position, _DATE_RANGE_TEXT)
+    match = _PG_TIMESTAMP_TEXT.fullmatch(text)
+    if match is None:
+        raise _driver_value(position)
+    if match.group(5):
+        raise _temporal_error(position, _DATE_RANGE_TEXT)
+    day_text = _calendar(*(int(part) for part in match.groups()[:3]), position)
+    return f"{day_text} {_pg_time(match.group(4), position)}"
+
+
+# The cell class of a PostgreSQL type OID (INT-185): a type of its own cell kind, a text type whose output no session
+# setting changes (oid among them), timestamptz and timetz (INT-168), or "native", a type that has no cell (INT-170). An
+# OID that is not here is read from pg_type: a base type that INT-185 does not name, such as citext, is "native", an enum
+# is text, a domain takes the class of its base type, and an array, a range, a multirange or a composite is text when
+# every element or field is of an integer, decimal, boolean or text class.
+_PG_CLASSES = {
+    16: "boolean",
+    17: "binary",
+    18: "text",
+    19: "text",
+    20: "integer",
+    21: "integer",
+    23: "integer",
+    25: "text",
+    26: "text",
+    114: "text",
+    142: "text",
+    650: "text",
+    700: "float32",
+    701: "float64",
+    774: "text",
+    829: "text",
+    869: "text",
+    1042: "text",
+    1043: "text",
+    1082: "date",
+    1083: "time",
+    1114: "datetime",
+    1184: "zoned",
+    1266: "zoned",
+    1560: "text",
+    1562: "text",
+    1700: "decimal",
+    2950: "text",
+    3220: "text",
+    3614: "text",
+    3615: "text",
+    3802: "text",
+}
+_PG_ELEMENT_CLASSES = ("integer", "decimal", "boolean", "text")
+_PG_TYPE_SQL = (
+    "SELECT t.typtype::text,t.typcategory::text,t.typelem::int8,t.typbasetype::int8,t.typrelid::int8,"
+    "COALESCE(r.rngsubtype,0)::int8,COALESCE(m.rngtypid,0)::int8 FROM pg_type t "
+    "LEFT JOIN pg_range r ON r.rngtypid=t.oid LEFT JOIN pg_range m ON m.rngmultitypid=t.oid WHERE t.oid=$1::int8::oid"
+)
+_PG_FIELDS_SQL = "SELECT atttypid::int8 FROM pg_attribute WHERE attrelid=$1::int8::oid AND attnum>0 AND NOT attisdropped ORDER BY attnum"
+_PG_INTEGER_TEXT = re.compile(r"-?[0-9]+")
+_PG_FLOAT_TEXT = re.compile(
+    r"-?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][-+]?[0-9]+)?|NaN|-?Infinity"
+)
+_PG_DECIMAL_TEXT = re.compile(r"-?[0-9]+(?:\.[0-9]+)?")
+_PG_NON_FINITE = ("NaN", "Infinity", "-Infinity")
+
+
+_BYTEA_ESCAPE = re.compile(rb"\\\\|\\[0-3][0-7]{2}|[^\\]")
+
+
+def _pg_bytea(raw: bytes) -> bytes:
+    """The bytes of a bytea text in the hex form or the escape form of bytea_output. A text of neither form raises
+    ValueError; libpq would read it without an error into other bytes."""
+    if raw.startswith(b"\\x"):
+        return bytes.fromhex(raw[2:].decode("ascii"))
+    parts = _BYTEA_ESCAPE.findall(raw)
+    if sum(len(part) for part in parts) != len(raw):
+        raise ValueError("the bytea text is neither of the hex nor of the escape form")
+    return b"".join(
+        b"\\"
+        if part == b"\\\\"
+        else bytes([int(part[1:], 8)])
+        if len(part) == 4
+        else part
+        for part in parts
+    )
+
+
+def _pg_cell(raw, cls: str, position: int) -> GridCell:
+    """The grid cell of the text that PostgreSQL writes for a value of the class cls: the raw bytes of a catalog read, or
+    the text of a temporal value of a plain query."""
+    if cls == "zoned":
+        raise _value_error(codes.CATALOG_VALUE, position, _ZONED_TEXT)
+    if cls == "native":
+        raise _value_error(codes.CATALOG_VALUE, position, _NATIVE_TEXT)
+    if isinstance(raw, str):
+        text = raw
+    elif isinstance(raw, bytes):
+        if cls == "binary":
+            return GridCell("binary", _pg_bytea(raw))
+        text = raw.decode("utf-8")
+    else:
+        raise _driver_value(position)
+    if cls == "integer":
+        if (
+            _PG_INTEGER_TEXT.fullmatch(text) is None
+            or not -(1 << 63) <= int(text) < 1 << 63
+        ):
+            raise _driver_value(position)
+        return GridCell("integer", int(text))
+    if cls in ("float32", "float64"):
+        if _PG_FLOAT_TEXT.fullmatch(text) is None:
+            raise _driver_value(position)
+        if cls == "float32":
+            return GridCell("float32", _float32_bits(float(text)))
+        return GridCell("float64", _float64_bits(float(text)))
+    if cls == "decimal":
+        if text in _PG_NON_FINITE:
+            raise _value_error(codes.CATALOG_VALUE, position, _NUMERIC_TEXT)
+        if _PG_DECIMAL_TEXT.fullmatch(text) is None:
+            raise _driver_value(position)
+        return GridCell("decimal", text)
+    if cls == "boolean":
+        if text not in ("t", "f"):
+            raise _driver_value(position)
+        return GridCell("boolean", text == "t")
+    if cls == "date":
+        return GridCell("date", _pg_date(text, position))
+    if cls == "time":
+        return GridCell("time", _pg_time(text, position))
+    if cls == "datetime":
+        return GridCell("datetime", _pg_timestamp(text, position))
+    if cls == "text":
+        return GridCell("text", text)
+    raise _driver_value(position)
+
+
+# MySQL field types (pymysql.constants.FIELD_TYPE) and the cell of each (INT-185). TIMESTAMP and YEAR keep their rules
+# (INT-167, INT-166); BIT and GEOMETRY are bytes cells; JSON, ENUM and SET are text cells, which pymysql reports as JSON and
+# STRING; a string or blob type is a text cell, or a bytes cell when its character set is binary.
+_MYSQL_INTEGERS = (1, 2, 3, 8, 9)
+_MYSQL_STRINGS = (15, 245, 247, 248, 249, 250, 251, 252, 253, 254)
+_MYSQL_BYTES = (16, 255)
+
+
+def _mysql_cell(value, code, unsigned: bool, position: int) -> GridCell:
+    if code == _MYSQL_YEAR:
+        raise _value_error(codes.CATALOG_VALUE, position, _YEAR_TEXT)
+    if code == _MYSQL_TIMESTAMP:
+        raise _value_error(codes.CATALOG_VALUE, position, _TIMESTAMP_TEXT)
+    if code in _MYSQL_INTEGERS:
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise _driver_value(position)
+        return GridCell("unsigned" if unsigned else "integer", value)
+    if code in (_MYSQL_FLOAT, _MYSQL_DOUBLE):
+        if not isinstance(value, float):
+            raise _driver_value(position)
         if code == _MYSQL_FLOAT:
             return GridCell("float32", _float32_bits(value))
-        if code == _MYSQL_DOUBLE:
-            return GridCell("float64", _float64_bits(value))
-        if code == _MYSQL_TIMESTAMP:
-            raise _refuse("MySQL TIMESTAMP follows a time zone")
-        if code == _MYSQL_YEAR:
-            raise _refuse("MySQL YEAR has no grid cell")
-        if (
-            code == _MYSQL_DATE
-            and isinstance(value, date)
-            and not isinstance(value, datetime)
-        ):
-            return GridCell("date", _date_text(value.year, value.month, value.day))
-        if code == _MYSQL_DATETIME and isinstance(value, datetime):
+        return GridCell("float64", _float64_bits(value))
+    if code in (_MYSQL_DECIMAL, _MYSQL_NEWDECIMAL):
+        if not isinstance(value, str):
+            raise _driver_value(position)
+        return GridCell("decimal", value)
+    if code in (_MYSQL_DATE, _MYSQL_NEWDATE):
+        if isinstance(value, str):
+            return GridCell("date", _mysql_temporal_text(value, "date", position))
+        if not isinstance(value, date) or isinstance(value, datetime):
+            raise _driver_value(position)
+        return GridCell("date", _calendar(value.year, value.month, value.day, position))
+    if code == _MYSQL_DATETIME:
+        if isinstance(value, str):
             return GridCell(
-                "datetime",
-                f"{_date_text(value.year, value.month, value.day)} "
-                f"{_time_text(value.hour, value.minute, value.second, value.microsecond)}",
+                "datetime", _mysql_temporal_text(value, "datetime", position)
             )
-        if code == _MYSQL_TIME and isinstance(value, timedelta):
-            micros = (value.days * 86400 + value.seconds) * 1000000 + value.microseconds
-            if not 0 <= micros < 86400 * 1000000:
-                raise _refuse_temporal("time outside 00:00:00 to 23:59:59.999999")
-            clock = micros // 1000000
-            return GridCell(
-                "time",
-                _time_text(
-                    clock // 3600, clock // 60 % 60, clock % 60, micros % 1000000
-                ),
-            )
-        if code in (_MYSQL_DATE, _MYSQL_DATETIME) and isinstance(value, str):
-            # pymysql returns a date outside 0001-01-01 to 9999-12-31, such as the zero date, as its text (INT-103).
-            raise _refuse_temporal("MySQL date outside 0001-01-01 to 9999-12-31")
-        if code in (_MYSQL_DECIMAL, _MYSQL_NEWDECIMAL) and isinstance(value, str):
-            return GridCell("decimal", value)
-        if isinstance(value, int) and not isinstance(value, bool) and unsigned:
-            return GridCell("unsigned", value)
-    elif dialect == "postgres":
-        if code == _PG_FLOAT4:
-            return GridCell("float32", _float32_bits(value))
-        if code == _PG_FLOAT8:
-            return GridCell("float64", _float64_bits(value))
-        if code == _PG_NUMERIC and isinstance(value, str):
-            # PostgreSQL writes NaN and the infinities of numeric as text.
-            if value == "NaN" or "Infinity" in value:
-                raise _refuse("PostgreSQL numeric is not finite")
-            return GridCell("decimal", value)
-        if code in (_PG_TIMESTAMPTZ, _PG_TIMETZ):
-            raise _refuse("PostgreSQL timestamptz and timetz are unsupported")
-        if code == _PG_DATE and isinstance(value, str):
-            if value.startswith("infinity") or value.startswith("-infinity"):
-                raise _refuse_temporal("PostgreSQL infinity")
-            return _pg_text_date(value)
-        if code == _PG_TIME and isinstance(value, str):
-            return GridCell("time", _pg_text_time(value))
-        if code == _PG_TIMESTAMP and isinstance(value, str):
-            if "infinity" in value:
-                raise _refuse_temporal("PostgreSQL infinity")
-            return _pg_text_datetime(value)
+        if not isinstance(value, datetime) or value.tzinfo is not None:
+            raise _driver_value(position)
+        day_text = _calendar(value.year, value.month, value.day, position)
+        clock = _clock(
+            value.hour, value.minute, value.second, value.microsecond, position
+        )
+        return GridCell("datetime", f"{day_text} {clock}")
+    if code == _MYSQL_TIME:
+        if not isinstance(value, timedelta):
+            raise _driver_value(position)
+        return GridCell("time", _micros_clock(value, position))
+    if code in _MYSQL_STRINGS:
+        if isinstance(value, str):
+            return GridCell("text", value)
+        if isinstance(value, bytes) and code != 245:
+            return GridCell("binary", value)
+        raise _driver_value(position)
+    if code in _MYSQL_BYTES:
+        if not isinstance(value, bytes):
+            raise _driver_value(position)
+        return GridCell("binary", value)
+    raise _value_error(codes.CATALOG_VALUE, position, _NATIVE_TEXT)
+
+
+def _sqlite_cell(value, position: int) -> GridCell:
+    """A SQLite value is the cell of its storage class (INT-152, INT-183): a REAL is a Float64 cell."""
     if isinstance(value, bool):
-        return GridCell("boolean", value)
+        raise _driver_value(position)
     if isinstance(value, int):
-        return GridCell("unsigned" if unsigned else "integer", value)
+        return GridCell("integer", value)
     if isinstance(value, float):
         return GridCell("float64", _float64_bits(value))
     if isinstance(value, str):
         return GridCell("text", value)
     if isinstance(value, bytes):
         return GridCell("binary", value)
-    raise _refuse(f"the driver value has no cell of column type {code}")
+    raise _driver_value(position)
+
+
+def _grid_cell(
+    value, dialect: str, code, unsigned: bool, position: int, cls=None
+) -> GridCell:
+    """The grid cell of one driver value at its 1-based column position. code is the native type code of the column
+    (MySQL field type, PostgreSQL type OID; None for SQLite), unsigned tells a MySQL UNSIGNED integer column, and cls is
+    the cell class of a PostgreSQL column. A NULL is a null cell under every rule. A failure of a library to decode the
+    value is INT-172, with the failure as its cause."""
+    if value is None:
+        return GridCell("null")
+    try:
+        if dialect == "mysql":
+            return _mysql_cell(value, code, unsigned, position)
+        if dialect == "postgres":
+            return _pg_cell(value, cls, position)
+        return _sqlite_cell(value, position)
+    except OrmError:
+        raise
+    except Exception as failure:
+        raise _decode_failure(position, failure) from failure
+
+
+# The declared precision p of a described MySQL or PostgreSQL time or datetime column, from its native type, with the
+# default of INT-101 when the type names none; a p above 6 or not a number is refused (INT-181).
+_DESCRIBED_PRECISION = {
+    ("mysql", "time"): (re.compile(r"time(?:\((.*)\))?"), 0),
+    ("mysql", "datetime"): (re.compile(r"datetime(?:\((.*)\))?"), 0),
+    ("postgres", "time"): (re.compile(r"time(?:\((.*)\))? without time zone"), 6),
+    ("postgres", "datetime"): (
+        re.compile(r"timestamp(?:\((.*)\))? without time zone"),
+        6,
+    ),
+}
+
+
+def _at_precision(
+    text: str, kind: str, column: CatalogColumn, dialect: str, position: int
+) -> str:
+    """The dbspec text of six fraction digits of a described time or datetime cell with exactly the p digits of its
+    column; a non-zero digit past p is refused (INT-180)."""
+    pattern, default = _DESCRIBED_PRECISION[(dialect, kind)]
+    match = pattern.fullmatch(column.native_type.strip().lower())
+    declared = None if match is None else match.group(1)
+    if match is None or (declared is not None and not declared.isdigit()):
+        raise _value_error(
+            codes.GRID_TEMPORAL_PRECISION, position, _NATIVE_PRECISION_TEXT
+        )
+    precision = default if declared is None else int(declared)
+    if precision > 6:
+        raise _value_error(
+            codes.GRID_TEMPORAL_PRECISION, position, _NATIVE_PRECISION_TEXT
+        )
+    dot = text.rindex(".")
+    if text[dot + 1 + precision :].strip("0"):
+        raise _value_error(codes.GRID_TEMPORAL_PRECISION, position, _PRECISION_TEXT)
+    return text[:dot] if precision == 0 else text[: dot + 1 + precision]
+
+
+# The dbspec forms of a stored SQLite text of a described DATE, TIME and DATETIME column (INT-176 to INT-178).
+_SQLITE_FORMS = {
+    "date": re.compile(r"([0-9]{4})-([0-9]{2})-([0-9]{2})"),
+    "time": re.compile(r"([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.([0-9]{1,6}))?"),
+    "datetime": re.compile(
+        r"([0-9]{4})-([0-9]{2})-([0-9]{2}) ([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.([0-9]{1,6}))?"
+    ),
+}
+
+
+def _sqlite_described(value, column: CatalogColumn, position: int):
+    """A value of a described SQLite column. A BOOLEAN holds 0 or 1 (INT-182). A DATE, TIME or DATETIME holds a text of
+    its dbspec form (INT-176 to INT-178) within its range (INT-173 to INT-175), a TIME or DATETIME with exactly the
+    fraction digits of its CHECK, 0 when it has none (INT-179). Any other column keeps the storage class of its value
+    (INT-184), a REAL as a Float64 cell."""
+    native = column.native_type.strip()
+    if native.lower() == "boolean":
+        if isinstance(value, int) and not isinstance(value, bool) and value in (0, 1):
+            return value == 1
+        raise _value_error(codes.CATALOG_VALUE, position, _BOOLEAN_TEXT)
+    kind = {"DATE": "date", "TIME": "time", "DATETIME": "datetime"}.get(native.upper())
+    if kind is None:
+        cell = _sqlite_cell(value, position)
+        return cell if cell.kind == "float64" else cell.value
+    match = _SQLITE_FORMS[kind].fullmatch(value) if isinstance(value, str) else None
+    if match is None:
+        raise _temporal_error(position, _FORM_TEXT[kind])
+    parts = match.groups()
+    if kind != "time":
+        _calendar(int(parts[0]), int(parts[1]), int(parts[2]), position)
+        parts = parts[3:]
+    if kind == "date":
+        return value
+    _clock(int(parts[0]), int(parts[1]), int(parts[2]), 0, position)
+    digits = len(parts[3] or "")
+    if digits != (column.check_precision or 0):
+        raise _value_error(codes.GRID_TEMPORAL_PRECISION, position, _CHECK_DIGITS_TEXT)
+    return value
+
+
+def _described_value(
+    value, column: CatalogColumn, dialect: str, code, position: int, cls=None
+):
+    """The catalog value of one driver value of a described column at its 1-based position: a float as its bits cell
+    (INT-183), a date, time or datetime as its dbspec text with the declared precision of its column (INT-103), a MySQL
+    tinyint(1) as a boolean (INT-182), and every other value in the form of its grid cell. The rules of the grid cell
+    hold here too."""
+    if value is None:
+        return None
+    try:
+        if dialect == "sqlite":
+            return _sqlite_described(value, column, position)
+        if dialect == "mysql" and column.native_type.strip().lower() == "tinyint(1)":
+            if (
+                isinstance(value, int)
+                and not isinstance(value, bool)
+                and value in (0, 1)
+            ):
+                return value == 1
+            raise _value_error(codes.CATALOG_VALUE, position, _BOOLEAN_TEXT)
+    except OrmError:
+        raise
+    except Exception as failure:
+        raise _decode_failure(position, failure) from failure
+    cell = _grid_cell(value, dialect, code, False, position, cls)
+    if cell.kind in ("float32", "float64"):
+        return cell
+    if cell.kind in ("time", "datetime"):
+        return _at_precision(cell.value, cell.kind, column, dialect, position)
+    return cell.value
+
+
+def _query_value(value, dialect: str, code, position: int):
+    """A value of a plain read-only query: a MySQL or PostgreSQL date, time or datetime is the text of its grid cell
+    (INT-153), a PostgreSQL real is the float32 that the server holds, widened to a double, as the Go and Rust runtimes
+    read it, and any other value is a checked plain value."""
+    if value is None:
+        return None
+    if code in _QUERY_TEMPORAL.get(dialect, ()):
+        return _grid_cell(
+            value, dialect, code, False, position, _PG_CLASSES.get(code)
+        ).value
+    if dialect == "postgres" and code == _PG_FLOAT4 and isinstance(value, float):
+        value = struct.unpack("<f", struct.pack("<f", value))[0]
+    return _check_value(value, position)
+
+
+_PG_RAW_LOADER = None
+_PG_LOADED_OIDS: tuple = ()
+
+
+def _pg_raw_loader():
+    """The psycopg loader that keeps the bytes of the text of a value, which the conversion of a catalog read decodes."""
+    global _PG_RAW_LOADER
+    if _PG_RAW_LOADER is None:
+        from psycopg.adapt import Loader
+
+        class RawLoader(Loader):
+            def load(self, data):
+                return bytes(data)
+
+        _PG_RAW_LOADER = RawLoader
+    return _PG_RAW_LOADER
+
+
+def _pg_loaded_oids() -> tuple:
+    """Every OID that psycopg has a loader for, its arrays and the unknown OID 0, so that a catalog read loads none."""
+    global _PG_LOADED_OIDS
+    if not _PG_LOADED_OIDS:
+        from psycopg.postgres import types as pg_types
+
+        oids = {0}
+        for info in pg_types:
+            oids.add(info.oid)
+            if info.array_oid:
+                oids.add(info.array_oid)
+        _PG_LOADED_OIDS = tuple(sorted(oids))
+    return _PG_LOADED_OIDS
+
+
+def _mysql_decoders(result) -> None:
+    """Makes each decoder of a pymysql result a decoder of one column, so that a value that pymysql or a converter fails to
+    decode is the failure of that column, with the failure as its cause (INT-172)."""
+
+    def column(position: int, encoding, converter):
+        def decode(data):
+            try:
+                if encoding is not None:
+                    data = data.decode(encoding)
+                return data if converter is None else converter(data)
+            except Exception as failure:
+                raise _decode_failure(position, failure) from failure
+
+        return decode
+
+    result.converters = [
+        (None, column(position, encoding, converter))
+        for position, (encoding, converter) in enumerate(result.converters, start=1)
+    ]
 
 
 def _sqlite_text(value: bytes):
@@ -1203,6 +1419,13 @@ class _Session:
         and datetime cells become their dbspec text at the declared precision of their column. A query read gives a MySQL or
         PostgreSQL date, time or datetime as the text of its grid cell (INT-153). With keep, the first keep
         rows are converted and kept, and a row after them is not converted: past reports it, as the sentinel row of a page."""
+        # A float cell of a described read, such as a key of a snapshot, binds as its float.
+        params = [
+            _cell_float(value)
+            if isinstance(value, GridCell) and value.kind in ("float32", "float64")
+            else value
+            for value in params
+        ]
         if self.dialect == "sqlite":
             text, args = sql, tuple(params)
         elif self.dialect == "mysql":
@@ -1231,10 +1454,16 @@ class _Session:
         stopped = False
         past = False
         try:
-            if (grid or described is not None or query) and self.dialect == "postgres":
-                # Grid cells and the cells of a described table read PostgreSQL date, time and timestamp values as their
-                # text, so that 24:00:00 and infinity are seen as the server writes them, as the Rust grid reads them.
-                # psycopg is imported only by such a PostgreSQL read.
+            catalog = grid or described is not None
+            if catalog and self.dialect == "postgres":
+                # A grid or described read takes the bytes of the text that PostgreSQL writes for each value, and the
+                # conversion reads each by the cell class of its column (INT-185), so that a decoding failure is the
+                # failure of one column (INT-172). psycopg is imported only by such a PostgreSQL read.
+                for oid in _pg_loaded_oids():
+                    cursor.adapters.register_loader(oid, _pg_raw_loader())
+            elif query and self.dialect == "postgres":
+                # A plain query reads PostgreSQL date, time and timestamp values as their text, so that 24:00:00 and
+                # infinity are seen as the server writes them, as the Rust grid reads them.
                 from psycopg.postgres import types as pg_types
                 from psycopg.types.string import TextLoader
 
@@ -1251,15 +1480,21 @@ class _Session:
                 type_codes = [column[1] for column in cursor.description]
                 if described is not None:
                     _same_names(names, described.columns)
-                if grid and self.dialect == "mysql":
-                    # pymysql exposes the UNSIGNED flag only on the private result of a cursor: Cursor.description has no
-                    # flags, and no public pymysql API reports them. The attribute is read here, for grid queries only.
+                classes = [None] * len(names)
+                if catalog and self.dialect == "mysql":
+                    # pymysql exposes the UNSIGNED flag and the decoders of a result only on the private result of a
+                    # cursor: Cursor.description has no flags, and no public pymysql API reports them. The attributes are
+                    # read here, for grid and described reads only.
                     unsigned = [
                         bool(field_.flags & _MYSQL_UNSIGNED_FLAG)
                         for field_ in cursor._result.fields
                     ]
+                    _mysql_decoders(cursor._result)
                 else:
                     unsigned = [False] * len(names)
+                if catalog and self.dialect == "postgres":
+                    memo: dict = {}
+                    classes = [self._pg_class(oid, memo, 0) for oid in type_codes]
                 for row in _stream_rows(cursor, cursor_name):
                     if keep is not None and len(rows) == keep:
                         past = True
@@ -1268,53 +1503,43 @@ class _Session:
                         raise _error(
                             codes.CATALOG_LIMIT, f"result has more than {max_rows} rows"
                         )
-                    converted = (
+                    if grid:
                         # A grid cell is made as its row is read, so the budget counts the cell (INT-115): the text of a
                         # decimal or temporal cell, not the driver value it came from.
-                        [
-                            _grid_cell(
-                                value, self.dialect, type_codes[index], unsigned[index]
-                            )
-                            for index, value in enumerate(row)
-                        ]
-                        if grid
-                        else [
-                            _check_value(
-                                _described_boolean(
-                                    _described_temporal(
-                                        value, described.columns[index], self.dialect
-                                    ),
-                                    described.columns[index],
-                                    self.dialect,
-                                )
-                            )
-                            for index, value in enumerate(row)
-                        ]
-                        if described is not None
-                        else [
-                            _mysql_catalog_value(
-                                value,
-                                type_codes[index],
-                                cursor.description[index][5] or 0,
-                            )
-                            if self.dialect == "mysql"
-                            and type_codes[index] == _MYSQL_TIME
-                            else _check_value(
-                                _plain_float(value, type_codes[index], self.dialect)
-                            )
-                            for index, value in enumerate(row)
-                        ]
-                    )
-                    if query:
                         converted = [
                             _grid_cell(
-                                row[index], self.dialect, type_codes[index], False
-                            ).value
-                            if row[index] is not None
-                            and type_codes[index]
-                            in _QUERY_TEMPORAL.get(self.dialect, ())
-                            else value
-                            for index, value in enumerate(converted)
+                                value,
+                                self.dialect,
+                                type_codes[index],
+                                unsigned[index],
+                                index + 1,
+                                classes[index],
+                            )
+                            for index, value in enumerate(row)
+                        ]
+                    elif described is not None:
+                        converted = [
+                            _described_value(
+                                value,
+                                described.columns[index],
+                                self.dialect,
+                                type_codes[index],
+                                index + 1,
+                                classes[index],
+                            )
+                            for index, value in enumerate(row)
+                        ]
+                    elif query:
+                        converted = [
+                            _query_value(
+                                value, self.dialect, type_codes[index], index + 1
+                            )
+                            for index, value in enumerate(row)
+                        ]
+                    else:
+                        converted = [
+                            _check_value(value, index + 1)
+                            for index, value in enumerate(row)
                         ]
                     for value in converted:
                         budget += _budget_size(
@@ -1348,6 +1573,46 @@ class _Session:
             else:
                 cursor.close()
         return _Raw(names, rows, affected, type_codes, unsigned, insert_id, past)
+
+    def _pg_class(self, oid, memo: dict, depth: int) -> str:
+        """The cell class of a PostgreSQL type OID (INT-185), read from pg_type when it is not a type of _PG_CLASSES."""
+        if oid in _PG_CLASSES:
+            return _PG_CLASSES[oid]
+        if oid in memo:
+            return memo[oid]
+        # A type that names itself through its elements has no cell, and neither has one nested deeper than a catalog reads.
+        memo[oid] = "native"
+        if depth > 16 or not isinstance(oid, int):
+            return "native"
+        rows = self.run(_PG_TYPE_SQL, [oid]).rows
+        cls = "native"
+        if len(rows) == 1:
+            typtype, category, element, base, relation, subtype, range_type = rows[0]
+
+            def elements(oids) -> str:
+                each = [self._pg_class(item, memo, depth + 1) for item in oids]
+                return (
+                    "text"
+                    if each and all(item in _PG_ELEMENT_CLASSES for item in each)
+                    else "native"
+                )
+
+            if typtype == "e":
+                cls = "text"
+            elif typtype == "d":
+                cls = self._pg_class(base, memo, depth + 1)
+            elif category == "A" and element:
+                cls = elements([element])
+            elif typtype == "r":
+                cls = elements([subtype])
+            elif typtype == "m":
+                cls = elements([range_type])
+            elif typtype == "c":
+                cls = elements(
+                    [row[0] for row in self.run(_PG_FIELDS_SQL, [relation]).rows]
+                )
+        memo[oid] = cls
+        return cls
 
     def _stop_read(self, cursor, cursor_name) -> None:
         """Ends a read that a budget stopped on the server: MySQL kills the running statement by its thread id on a
@@ -1897,8 +2162,8 @@ class CatalogConnection:
     ) -> CatalogQueryResult:
         """Runs one read query and returns typed GridCell values, as the Rust grid reads them: float cells as IEEE-754 bits,
         MySQL UNSIGNED integers as unsigned cells, DECIMAL as plain text, date, time and datetime as dbspec text with six
-        fraction digits, binary as bytes and NULL as a null cell. MySQL TIMESTAMP, PostgreSQL timestamptz and timetz, and
-        values outside the dbspec ranges fail with CATALOG_VALUE."""
+        fraction digits, binary as bytes and NULL as a null cell. A value that breaks a catalog value rule (INT-165) fails
+        with the code and the text of its rule and the position of its column."""
         return self._query(query, params, max_rows, max_bytes, grid=True)
 
     def _query(
