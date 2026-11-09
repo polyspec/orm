@@ -4709,7 +4709,9 @@ _DATABASE_OPS = {
     "events.fail_subscriber": _op_events_fail_subscriber,
     "db.execute": lambda step, context: _op_db_execute(step, context),
     "fault.next_rollback": lambda step, context: _op_fault_next_rollback(step, context),
-    "fault.next_statement": lambda step, context: _op_fault_next_statement(step, context),
+    "fault.next_statement": lambda step, context: _op_fault_next_statement(
+        step, context
+    ),
     "events.stop_failing": _op_events_stop,
     "events.unsubscribe": _op_events_stop,
     "utils.run": _op_utils_run,

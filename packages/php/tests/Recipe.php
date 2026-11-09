@@ -3289,8 +3289,9 @@ final class Recipe
                 $stop = self::connectionOf($s, $context)->subscribe($recording->receive(...));
                 return ['bind' => new RecipeSubscription($stop, $recording)];
             case 'db.execute':
-                // db.execute (INT-76, DSL-113): compiles the request against the schema that the step names relative to the
-                // recipe, for the dialect of the database of the case (SQLite for markdown, FCV-3), and runs the first step.
+                // db.execute (INT-76, DSL-113): compiles the request against the schema that the step names relative to
+                // the recipe, for the dialect of the database of the case (SQLite for markdown, FCV-3), and runs the
+                // first step.
                 $schema = realpath($context['dir'] . '/' . $s['schema']);
                 if ($schema === false) {
                     Assert::fail("db.execute: the schema {$s['schema']} is missing");
@@ -3299,7 +3300,8 @@ final class Recipe
                     Assert::fail('db.execute: the request already holds manifest_hash');
                 }
                 $model = RuntimeModel::build(RuntimeModel::files([$schema]));
-                $plan = (new Engine($model, self::dialectOf($context), 8))->compile($s['request'] + ['manifest_hash' => $model->manifestHash]);
+                $plan = (new Engine($model, self::dialectOf($context), 8))
+                    ->compile($s['request'] + ['manifest_hash' => $model->manifestHash]);
                 self::connectionOf($s, $context)->execute(
                     $plan['steps'][0],
                     array_map(static fn(array $raw): mixed => self::toValue($raw), $s['params'] ?? []),
@@ -3311,7 +3313,11 @@ final class Recipe
                 return [];
             case 'fault.next_statement':
                 require_once dirname(__DIR__) . '/testing/Faults.php';
-                \Polyspec\Orm\Testing\Faults::failNextStatement(self::connectionOf($s, $context), $s['code'], $s['message']);
+                \Polyspec\Orm\Testing\Faults::failNextStatement(
+                    self::connectionOf($s, $context),
+                    $s['code'],
+                    $s['message'],
+                );
                 return [];
             case 'events.fail_subscriber':
                 $kind = $s['kind'];
