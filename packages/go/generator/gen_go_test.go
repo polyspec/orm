@@ -270,7 +270,7 @@ table typed {
 		"fDay time.Time", "fStamp *time.Time", "fAmount string", "fRatio float64",
 		"fFlag bool", "fBlob []byte", "fAddress *string", "fSecret string",
 		"fPacked orm.StyledValue", "fEncoded orm.StyledValue", "fDoc orm.StyledValue",
-		"orm.AsInt16(v)", "orm.AsTimeText(v, 3)", `orm.NormalizeStyled([]string{"gz"}, true, v)`,
+		"orm.AsInt16(v)", "orm.AsTimeText(v, 3)", `orm.NormalizeStyled("packed", []string{"gz"}, true, v)`,
 		// The setters of date, time and datetime take the text form, never the native value (T189).
 		"func (x *TypedModel) SetDay(v string) *TypedModel",
 		"func (x *TypedModel) SetStamp(v *string) *TypedModel",
