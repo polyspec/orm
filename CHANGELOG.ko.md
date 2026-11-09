@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- model.rs의 Rust 시험 gets_page_emits_root_count_then_relation_statement_events를 지운다(T400-1): 모든 runtime이 실행하는 recipe complex_query의 case product_search_page가 그 단언을 모두 담는다(CPX-2): page 행 query, 그다음 count query, 그다음 relation마다 query 하나, 그리고 검색이 돌려주는 page.
 - FCV-2가 code_catalog.rs의 Rust `trials`(INT-65)를 그 이유와 함께 이름 짓는다(T400-1): 각 runtime은 오류 code를 자기 언어의 source로 선언하고 그 시험은 그 선언을 생성된 catalog와 대조하므로, 그것이 읽는 source를 담는 recipe 값이 없다.
 - Rust coverage_dsn.rs를 지운다(T400-1): 그 단언은 각각 모든 runtime이 실행하는 recipe `dsn_connection`의 사례 `dsn_connection`의 step이다. 알 수 없는 scheme의 DSN은 `CONFIG`이고, 각 database의 DSN은 그 database의 driver로 연결되어 statement를 실행한다.
 - `make recipe-runners-check`는 conformance 본문의 runner program을 FCV-15의 vector runner(scripts/features/recipe-runners.mts의 `VECTOR_RUNNERS`)로 읽으며, source가 아닌 선언된 runner는 finding이다(T400-1): 생성 메서드 본문과 고정 시계 본문은 모든 runtime이 실행하는 사례이므로 FCV-2는 더 이상 이를 native라 하지 않는다. FCV-2 검사는 `native_trials!`가 없는 Rust 사례 파일의 harness 함수 `trials`를 그 native 시험으로 읽어, compiler_fixtures.rs의 compile fixture를 이름 짓고 Rust vector suite를 드러낸다. statement-runner 줄은 Go와 Rust compiler가 그 사용을 거부한다는 이유로 Go, PHP, PHP extension, Python의 거부 시험을 이름 짓고, 다른 줄이 시험을 이름 짓는 planner 줄은 지운다.
