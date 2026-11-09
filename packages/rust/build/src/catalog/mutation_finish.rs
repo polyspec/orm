@@ -70,7 +70,3 @@ fn explicitly_rejected(error: &sqlx::Error) -> bool {
 #[cfg(test)]
 #[path = "../../tests/unit/mutation_commit.rs"]
 mod tests;
-
-#[cfg(test)]
-#[path = "../../tests/unit/mutation_connection.rs"]
-mod connection_tests;

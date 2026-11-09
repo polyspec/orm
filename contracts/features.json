@@ -8313,7 +8313,6 @@
         "packages/rust/build/tests/cases/tool_values.rs",
         "packages/rust/build/tests/cases/typed_binds.rs",
         "packages/rust/build/tests/unit/mutation_commit.rs",
-        "packages/rust/build/tests/unit/mutation_connection.rs",
         "packages/rust/build/tests/unit/mutation_safety.rs",
         "packages/rust/build/tests/unit/read_only_disposal.rs",
         "packages/rust/build/tests/unit/read_only_policy.rs",
@@ -8345,10 +8344,7 @@
         "packages/rust/build/src/catalog/row_snapshot.rs",
         "packages/rust/build/src/tool_db.rs",
         "packages/go/orm/catalog_mutation_test.go",
-        "packages/go/orm/catalog_mutation_connection_test.go",
         "packages/go/orm/catalog_values_test.go",
-        "packages/ts/tests/catalog-mutation-connection.test.mjs",
-        "packages/python/tests/test_catalog_mutation_connection.py",
         "packages/go/orm/catalog_temporal_test.go",
         "packages/go/orm/catalog_page_validation_test.go",
         "packages/php/tests/CatalogPageValidationTest.php",
@@ -8404,36 +8400,11 @@
           ]
         },
         {
-          "id": "catalog-mutation-connection-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestCommittedCatalogMutationsShareOneConnection$' -count=1",
-          "shard": "other",
-          "inputs": [
-            "packages/go/orm/catalog_mutation_connection_test.go"
-          ]
-        },
-        {
-          "id": "catalog-mutation-connection-typescript",
-          "command": "node --conditions=orm-test --test packages/ts/tests/catalog-mutation-connection.test.mjs",
-          "shard": "other",
-          "inputs": [
-            "packages/ts/tests/catalog-mutation-connection.test.mjs"
-          ]
-        },
-        {
-          "id": "catalog-mutation-connection-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_catalog_mutation_connection",
-          "shard": "other",
-          "inputs": [
-            "packages/python/tests/test_catalog_mutation_connection.py"
-          ]
-        },
-        {
           "id": "catalog-lib-rust",
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts catalog-lib-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib -- catalog:: tool_db:: generate::",
           "shard": "rust",
           "inputs": [
             "packages/rust/build/tests/unit/mutation_commit.rs",
-            "packages/rust/build/tests/unit/mutation_connection.rs",
             "packages/rust/build/tests/unit/mutation_safety.rs",
             "packages/rust/build/tests/unit/read_only_disposal.rs",
             "packages/rust/build/tests/unit/read_only_policy.rs",

@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- catalog의 commit된 insert는 모든 runtime에서 서버 연결 하나에서 쓰고, 거부된 insert 뒤에도 다음 insert는 commit된다: MySQL과 PostgreSQL에서 recipe catalog_connection의 case committed_mutations_share_one_connection이다(T400-1, INT-106c, INT-157). 이를 지키던 Go, Python, Rust, TypeScript의 native 시험은 지운다.
 - catalog의 거부된 PostgreSQL multirange 읽기는 모든 runtime에서 session에 prepared statement를 남기지 않고 session은 계속 읽는다: recipe catalog_connection의 case catalog_value_multirange가 거부 뒤에 pg_prepared_statements와 일반 행을 읽는다(T400-1, INT-185). Rust 시험 a_refused_multirange_read_leaves_no_prepared_statement_on_its_session은 지운다.
 - 나뉜 root IN 읽기의 statement는 모든 runtime이 모든 database에서 실행하는 recipe parameter_chunking의 case root_in_split_statements다(T400-1, PLN-44, PRT-76, CPX-4): 서로 다른 값 601개는 bind 1024개로 채워지고, SQLite는 512개와 128개의 statement 둘로, MySQL과 PostgreSQL은 statement 하나로 읽으며, 각 row는 한 번 읽힌다. PRT-76은 bind limit을 넘는 채운 목록의 분할을 적는다. PHP 확장 시험 test_root_in_chunks_use_native_model_queries_and_reject_unmergeable_pages는 지운다.
 - 정수이거나 YYYY-MM-DD가 아닌 텍스트인 SQLite의 저장 date는 모든 runtime이 실행하는 recipe conformance_verification의 case invalid_stored_dates_sqlite다(T400-1, COD-1, COD-61): 각각의 row 읽기와 그룹 값은 CODEC_DECODE day_cell.day: date cell is not a date로 실패한다. 이를 홀로 지키던 PHP 확장 시험 InvalidDateReadNativeTest.php는 지운다.
