@@ -1,5 +1,5 @@
 //! The refusals of a catalog conversion of a driver value: one code and one text per rule of docs/spec/interfaces.md
-//! "Catalog value rules" (INT-165 to INT-185), and the 1-based position of the column whose value breaks it.
+//! "Catalog value rules" (INT-165 to INT-186), and the 1-based position of the column whose value breaks it.
 
 use polyspec_orm::codes::{CATALOG_VALUE, GRID_TEMPORAL_PRECISION, GRID_TEMPORAL_VALUE};
 
@@ -44,23 +44,30 @@ pub const FRACTION_PAST_PRECISION: Rule = Rule { code: GRID_TEMPORAL_PRECISION, 
 pub const NATIVE_PRECISION: Rule = Rule { code: GRID_TEMPORAL_PRECISION, text: "native type declares more than 6 fraction digits" };
 /// INT-182
 pub const BOOLEAN: Rule = Rule { code: CATALOG_VALUE, text: "a boolean column holds a value that is not a boolean" };
+/// INT-186
+pub const OUTPUT_SETTING_CHANGED: Rule = Rule { code: CATALOG_VALUE, text: "the query changed a setting that the output of its values depends on" };
 
 /// A value that a catalog conversion refuses by one rule, at the 1-based position of its column. A driver or library failure
-/// (INT-172) keeps that failure as its source.
+/// (INT-172) names no column and keeps that failure as its source.
 #[derive(Debug)]
 pub struct ValueRefusal {
     rule: Rule,
-    column: usize,
+    column: Option<usize>,
     source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
 }
 
 impl ValueRefusal {
     pub fn new(rule: Rule, column: usize) -> Self {
-        Self { rule, column, source: None }
+        Self { rule, column: Some(column), source: None }
     }
-    /// INT-172: the failure of the driver or of a library, kept as the source.
-    pub fn undecodable(column: usize, source: impl Into<Box<dyn std::error::Error + Send + Sync + 'static>>) -> Self {
-        Self { rule: UNDECODABLE, column, source: Some(source.into()) }
+    /// A refusal of the read as a whole, which names no column (INT-186).
+    pub(crate) fn of_read(rule: Rule) -> Self {
+        Self { rule, column: None, source: None }
+    }
+    /// INT-172: the failure of the driver or of a library, kept as the source. It names no column, since a driver of one runtime
+    /// (Go database/sql) does not tell which column it failed to decode.
+    pub fn undecodable(source: impl Into<Box<dyn std::error::Error + Send + Sync + 'static>>) -> Self {
+        Self { rule: UNDECODABLE, column: None, source: Some(source.into()) }
     }
     pub fn rule(&self) -> Rule {
         self.rule
@@ -68,8 +75,8 @@ impl ValueRefusal {
     pub fn code(&self) -> &'static str {
         self.rule.code
     }
-    /// The 1-based position of the column.
-    pub fn column(&self) -> usize {
+    /// The 1-based position of the column, or None for INT-172, which names none.
+    pub fn column(&self) -> Option<usize> {
         self.column
     }
     /// The failure of the driver or of a library that the refusal keeps (INT-172).
@@ -80,7 +87,10 @@ impl ValueRefusal {
 
 impl std::fmt::Display for ValueRefusal {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: column {}: {}", self.rule.code, self.column, self.rule.text)
+        match self.column {
+            Some(column) => write!(f, "{}: column {column}: {}", self.rule.code, self.rule.text),
+            None => write!(f, "{}: {}", self.rule.code, self.rule.text),
+        }
     }
 }
 
@@ -134,12 +144,14 @@ pub(crate) fn at_column(error: sqlx::Error, index: usize) -> sqlx::Error {
     match error {
         sqlx::Error::Decode(inner) => match inner.downcast::<ValueRefusal>() {
             Ok(mut refusal) => {
-                refusal.column = column;
+                if refusal.column.is_some() {
+                    refusal.column = Some(column);
+                }
                 sqlx::Error::Decode(refusal)
             }
-            Err(inner) => sqlx::Error::Decode(Box::new(ValueRefusal::undecodable(column, sqlx::Error::Decode(inner)))),
+            Err(inner) => sqlx::Error::Decode(Box::new(ValueRefusal::undecodable(sqlx::Error::Decode(inner)))),
         },
-        other => sqlx::Error::Decode(Box::new(ValueRefusal::undecodable(column, other))),
+        other => sqlx::Error::Decode(Box::new(ValueRefusal::undecodable(other))),
     }
 }
 

@@ -2,7 +2,7 @@
 //! values, and statements run as written.
 
 use sqlx::pool::PoolConnection;
-use sqlx::{AssertSqlSafe, Column, Executor, MySql, Postgres, Row, SqlSafeStr, Sqlite, Statement, TypeInfo, ValueRef};
+use sqlx::{AssertSqlSafe, Column, Executor, MySql, Row, SqlSafeStr, Sqlite, Statement, TypeInfo, ValueRef};
 
 use futures_util::TryStreamExt;
 use polyspec_orm::db::Pool;
@@ -12,6 +12,7 @@ mod grid;
 mod limits;
 mod params;
 pub(crate) mod pg_describe;
+mod pg_output;
 pub(crate) mod pg_text;
 mod result;
 pub mod value;
@@ -20,6 +21,7 @@ pub use grid::{GridCell, GridQueryResult};
 pub use limits::QueryLimits;
 pub(crate) use params::decimal_valid;
 pub use params::{ParamType, P};
+pub use pg_output::PgSession;
 pub use result::{QueryColumn, QueryResult};
 
 pub(crate) fn validate_params(values: &[P], dialect: &str) -> Result<(), sqlx::Error> {
@@ -327,11 +329,14 @@ macro_rules! query_cell_pg {
 /// Checks the budget of one fetched row, converts its cells and keeps them in `rows`.
 macro_rules! push_row {
     ($row:ident, $budget:expr, $rows:ident, $cell:ident) => {
+        push_row!($row, $budget, $rows, $cell, $row.columns().len())
+    };
+    ($row:ident, $budget:expr, $rows:ident, $cell:ident, $width:expr) => {
         $budget.check_row_count($rows.len())?;
         // A conversion that fails names the position of its column, and a failure of the driver is kept as its cause (INT-165,
         // INT-172).
         let convert = |i: usize| -> Result<_, sqlx::Error> { $cell!(&$row, i) };
-        let values = (0..$row.columns().len()).map(|i| convert(i).map_err(|error| value::at_column(error, i))).collect::<Result<Vec<_>, sqlx::Error>>()?;
+        let values = (0..$width).map(|i| convert(i).map_err(|error| value::at_column(error, i))).collect::<Result<Vec<_>, sqlx::Error>>()?;
         $budget.add_row(&values, $rows.len())?;
         $rows.push(values);
     };
@@ -347,6 +352,39 @@ macro_rules! fetch_result {
         let mut rows = Vec::new();
         while let Some(row) = stream.try_next().await? {
             push_row!(row, $budget, rows, $cell);
+        }
+        Ok($result { columns, rows })
+    }};
+}
+
+/// The result of a statement on a PostgreSQL session. In a catalog session the statement runs in the CTE that carries the output
+/// settings of each row, which are checked before the row is converted and are no columns of the result, and the settings are
+/// checked once more after the rows (INT-186).
+macro_rules! fetch_pg_result {
+    ($conn:expr, $sql:expr, $params:expr, $budget:expr, $cell:ident, $result:ident) => {{
+        let connection = $conn;
+        let statement_length = $sql.0.len();
+        let baseline = connection.baseline();
+        let (sql, carried) = match &baseline {
+            Some(_) => (AssertSqlSafe(pg_output::carrying(&$sql.0)), pg_output::SETTING_COUNT),
+            None => ($sql, 0),
+        };
+        let statement = prepare_query!(connection, sql, $params, postgres);
+        let width = statement.columns().len().saturating_sub(carried);
+        let columns = result::columns(statement_length, statement.columns()[..width].iter().map(|column| (column.name(), column.type_info().name())))?;
+        let q = binds::postgres(statement.query(), $params)?;
+        let mut rows = Vec::new();
+        {
+            let mut stream = q.fetch(&mut **connection);
+            while let Some(row) = stream.try_next().await? {
+                if let Some(baseline) = &baseline {
+                    pg_output::check_row(&row, width, baseline)?;
+                }
+                push_row!(row, $budget, rows, $cell, width);
+            }
+        }
+        if let Some(baseline) = &baseline {
+            pg_output::check_after(&mut **connection, baseline).await?;
         }
         Ok($result { columns, rows })
     }};
@@ -419,11 +457,18 @@ macro_rules! fetch_cursor_result {
     ($conn:expr, $sql:expr, $budget:expr, $cell:ident, $result:ident) => {{
         let (connection, text) = ($conn, $sql.0);
         let statement_length = text.len();
+        // In a catalog session the statement carries the output settings of each row (INT-186).
+        let baseline = connection.baseline();
+        let (text, carried) = match &baseline {
+            Some(_) => (pg_output::carrying(&text), pg_output::SETTING_COUNT),
+            None => (text, 0),
+        };
         let statement = match (&mut **connection).prepare(AssertSqlSafe(text.clone()).into_sql_str()).await {
             Ok(statement) => statement,
             Err(error) => return Err(pg_describe::refusal(&mut **connection, &text, &[], error).await),
         };
-        let columns = result::columns(statement_length, statement.columns().iter().map(|column| (column.name(), column.type_info().name())))?;
+        let width = statement.columns().len().saturating_sub(carried);
+        let columns = result::columns(statement_length, statement.columns()[..width].iter().map(|column| (column.name(), column.type_info().name())))?;
         let cursor = format!("orm_read_{}", CURSOR_SEQUENCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed));
         sqlx::query(AssertSqlSafe(format!("DECLARE {cursor} NO SCROLL CURSOR FOR {text}"))).execute(&mut **connection).await?;
         let mut rows = Vec::new();
@@ -431,7 +476,10 @@ macro_rules! fetch_cursor_result {
             let mut fetched = 0usize;
             let mut stream = sqlx::query(AssertSqlSafe(format!("FETCH FORWARD {PG_CURSOR_CHUNK} FROM {cursor}"))).fetch(&mut **connection);
             while let Some(row) = stream.try_next().await? {
-                push_row!(row, $budget, rows, $cell);
+                if let Some(baseline) = &baseline {
+                    pg_output::check_row(&row, width, baseline)?;
+                }
+                push_row!(row, $budget, rows, $cell, width);
                 fetched += 1;
             }
             if fetched < PG_CURSOR_CHUNK {
@@ -439,6 +487,9 @@ macro_rules! fetch_cursor_result {
             }
         }
         sqlx::query(AssertSqlSafe(format!("CLOSE {cursor}"))).execute(&mut **connection).await?;
+        if let Some(baseline) = &baseline {
+            pg_output::check_after(&mut **connection, baseline).await?;
+        }
         Ok($result { columns, rows })
     }};
 }
@@ -450,7 +501,7 @@ macro_rules! plain_result_of {
     ($conn:expr, $sql:ident, $params:ident, $budget:ident, $mysql_cell:ident, $pg_cell:ident) => {
         match $conn {
             Conn::MySql(c) => fetch_result!(c, $sql, $params, $budget, $mysql_cell, QueryResult, mysql),
-            Conn::Postgres(c) => fetch_result!(c, $sql, $params, $budget, $pg_cell, QueryResult, postgres),
+            Conn::Postgres(c) => fetch_pg_result!(c, $sql, $params, $budget, $pg_cell, QueryResult),
             Conn::Sqlite(c) => fetch_result!(c, $sql, $params, $budget, cell, QueryResult, sqlite),
             Conn::Markdown(c) => markdown_result!(c, $sql, $params, $budget, markdown_cell, QueryResult),
         }
@@ -462,7 +513,7 @@ macro_rules! grid_result_of {
     ($conn:expr, $sql:ident, $params:ident, $budget:ident) => {
         match $conn {
             Conn::MySql(c) => fetch_result!(c, $sql, $params, $budget, grid_mysql, GridQueryResult, mysql),
-            Conn::Postgres(c) => fetch_result!(c, $sql, $params, $budget, grid_pg, GridQueryResult, postgres),
+            Conn::Postgres(c) => fetch_pg_result!(c, $sql, $params, $budget, grid_pg, GridQueryResult),
             Conn::Sqlite(c) => fetch_result!(c, $sql, $params, $budget, grid_sqlite, GridQueryResult, sqlite),
             Conn::Markdown(c) => markdown_result!(c, $sql, $params, $budget, markdown_grid_cell, GridQueryResult),
         }
@@ -489,7 +540,8 @@ macro_rules! prepare_query {
 /// One reserved connection of a pool.
 pub enum Conn {
     MySql(PoolConnection<MySql>),
-    Postgres(PoolConnection<Postgres>),
+    /// A reserved PostgreSQL connection with the output settings of its catalog session (INT-186).
+    Postgres(PgSession),
     Sqlite(PoolConnection<Sqlite>),
     /// A session of a markdown connection, whose server runs SQL in SQLite's dialect (DIA-185).
     Markdown(MarkdownLease),
@@ -524,7 +576,7 @@ impl Conn {
     pub(crate) fn discard_on_drop(&mut self) {
         match self {
             Self::MySql(c) => c.close_on_drop(),
-            Self::Postgres(c) => c.close_on_drop(),
+            Self::Postgres(c) => c.pooled().close_on_drop(),
             Self::Sqlite(c) => c.close_on_drop(),
             Self::Markdown(c) => c.discard(),
         }
@@ -534,9 +586,17 @@ impl Conn {
     pub(crate) async fn return_to_pool(mut self) {
         match &mut self {
             Self::MySql(c) => c.return_to_pool().await,
-            Self::Postgres(c) => c.return_to_pool().await,
+            Self::Postgres(c) => c.pooled().return_to_pool().await,
             Self::Sqlite(c) => c.return_to_pool().await,
             Self::Markdown(c) => c.keep(),
+        }
+    }
+    /// Fixes the output settings of the PostgreSQL transaction that has just begun and reads the seven that a catalog read
+    /// compares (INT-186); other connections have none.
+    pub(crate) async fn fix_output_settings(&mut self) -> Result<(), sqlx::Error> {
+        match self {
+            Self::Postgres(c) => c.fix_output().await,
+            _ => Ok(()),
         }
     }
     /// Forgets the named statements of a PostgreSQL connection, on the server and in its statement cache.
@@ -551,7 +611,7 @@ impl Conn {
     pub(crate) fn close_now(self) {
         match self {
             Self::MySql(c) => drop(c.detach()),
-            Self::Postgres(c) => drop(c.detach()),
+            Self::Postgres(c) => drop(c.into_pooled().detach()),
             Self::Sqlite(c) => drop(c.detach()),
             Self::Markdown(mut c) => c.discard(),
         }
@@ -559,7 +619,7 @@ impl Conn {
     pub async fn acquire(pool: &Pool) -> Result<Conn, sqlx::Error> {
         Ok(match pool {
             Pool::MySql(p) => Conn::MySql(p.acquire().await?),
-            Pool::Postgres(p) => Conn::Postgres(p.acquire().await?),
+            Pool::Postgres(p) => Conn::Postgres(PgSession::new(p.acquire().await?)),
             Pool::Sqlite(p) => Conn::Sqlite(p.acquire().await?),
             Pool::Markdown(p) => Conn::Markdown(p.acquire().await?),
         })
