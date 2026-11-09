@@ -2148,7 +2148,7 @@ final class SchemaUtils
 final class RuntimeModel
 {
     /** @internal */
-    public const int FORMAT = 1;
+    public const int FORMAT = 2;
     public readonly string $manifestHash;
     public readonly string $manifestText;
     public readonly array $entities;

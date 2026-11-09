@@ -35,7 +35,7 @@ final class RuntimeModel
      *
      * @internal
      */
-    public const FORMAT = 1;
+    public const FORMAT = 2;
 
     /**
      * @param array<string, array> $entities entity name => entity

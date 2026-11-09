@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 72828248bc8ac9a2c03dbb1540ef4c7cdc214f2e48510a946eaea511679d2dff -->
+<!-- source-sha256: e87f95b918b77a975ab154200a599e8b3ff9990de455a7d4f96a5584481de00e -->
 # 변경 이력
 
 ## Unreleased
@@ -16,6 +16,7 @@
 - Breaking: dbspec은 state machine을 갖지 않으며, `task_marker`는 그 column의 값을 보여 준다 (DBS-63, DBS-80, T416). `state_machine` setting은 `initial`, `terminal`, 전환, `history`, `limit` 줄과 그 검사와 함께 모든 runtime의 문법에서 빠진다 (DBS-73, DBS-81, DBS-82, DBS-83은 철회한다). `state_machine` 줄은 알 수 없는 setting이어서 그 keyword에서 `setting` error다. MySQL, PostgreSQL, SQLite 어디도 state machine을 갖지 않기 때문이다. GFM의 task list item marker에서 이름을 딴 `task_marker <column>`이 `checkbox`를 대신한다: table의 column 하나를 가리키며, list 행은 그 값을 task list item marker의 괄호 사이에 쓴다: `varchar(1)` column은 그 값으로, `bool` column은 GFM의 체크하지 않은 checkbox와 체크한 checkbox로 쓴다. 다른 type의 column은 그 column에서 `setting` error이고, 두 번째 `task_marker` 줄은 반복이며, state별 형태 `task_marker <column> <state> '<glyph>'`는 그 state에서 `syntax` error다. `checkbox` 줄은 알 수 없는 setting이어서 그 keyword에서 `setting` error다. 둘 중 하나를 선언했던 문서의 manifest hash는 그 text와 함께 바뀐다.
 - T418: AGENTS가 아닌 루트 문서와 어떤 코드 검사도 읽지 않는 plan만 바꾸는 `main`으로의 push는 CI run을 시작하지 않는다. 새 documents workflow가 모든 push에서 문서 검사를 실행하고, GitHub가 path filter를 평가하지 않는 3000개를 넘는 파일의 push를 실패시킨다. contracts/check-inputs.json은 repo-check가 AGENTS.md와 AGENTS.ko.md를, feature-unit-check가 kit-standard의 checklist를 읽는다고 선언한다.
 - T418: `make release-tag`는 `.github/workflows/ci.yml`의 성공한 push run이나 수동 run만 받으며, `documents.yml`이나 `docs-pages.yml` 같은 다른 workflow의 run, 다른 event의 run이나 성공하지 않은 run, 그리고 run이 시작한 release에서는 다른 commit의 run을 이유와 함께 거부한다.
+- PHP와 PHP extension은 `RuntimeModel::FORMAT`을 1에서 2로 올린다. T417로 `RuntimeModel::build`가 만드는 entity에서 key_prefix, order, assigned column이 빠졌기 때문이다: format 1로 생성된 집합의 parse된 entity는 쓰지 않고, DBS-177과 DBS-178이 적은 대로 process가 manifest를 parse한다 (T417). Tests: `OrmGenParsedModelTest`의 `testTheFormatNamesWhatBuildMakes`가 format 2의 fingerprint를 가진다 (red: format 1에서 bench 집합의 fingerprint가 달랐다).
 
 ## 0.0.27
 
