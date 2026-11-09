@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: 06ac8e5999be2b300feb65baf21966f0cef4abc0de05530946243e0f47ca67a5 -->
+<!-- source-sha256: 92d719bf5fde162da4092ea1395fcb217b693f64a774b4f31c5db1696d47bc0c -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 테스트 명령을 선언한다. 그 명령은 자기 recipe의 entry(FCV-12)이거나 FCV-2의 네이티브 테스트다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-unit-check`가 실패한다.
@@ -217,7 +217,6 @@
   - `packages/rust/build/tests/cases/tool_limits.rs`의 `tool_sqlite_file_name_is_the_path`는 native 시험으로 남는다: 비공개 단계나 대역 driver, session, pool에 닿으며, 어떤 public 호출도 이 값으로 그 단계에 닿지 않는다.
   - `packages/rust/build/tests/unit/mutation_safety.rs`의 `rust_duplicate_row_mutations_choose_the_declared_dialect_transaction`, `rust_duplicate_row_mutations_share_cancellation_and_key_preflight`는 native 시험으로 남는다: 비공개 단계나 대역 driver, session, pool에 닿으며, 어떤 public 호출도 이 값으로 그 단계에 닿지 않는다.
   - `packages/rust/build/tests/unit/typed_bind_validation.rs`의 `decimal_parse_preserves_native_cause_message`, `mysql_and_postgres_share_typed_binding_with_unsigned_policy`, `parameter_kind_is_shared_by_validation_and_postgres_type_selection`, `temporal_parse_preserves_native_cause_message`는 native 시험으로 남는다: 비공개 단계나 대역 driver, session, pool에 닿으며, 어떤 public 호출도 이 값으로 그 단계에 닿지 않는다.
-  - `packages/rust/orm/src/canonical.rs`의 `plan_cache_predicate_fn_parameter_order`는 native 시험으로 남는다: 비공개 단계나 대역 driver, session, pool에 닿으며, 어떤 public 호출도 이 값으로 그 단계에 닿지 않는다.
   - `packages/rust/orm/src/db/sqlite_version_tests.rs`의 `rejects_malformed_components_as_internal_with_the_raw_value`는 native 시험으로 남는다: 비공개 단계나 대역 driver, session, pool에 닿으며, 어떤 public 호출도 이 값으로 그 단계에 닿지 않는다.
   - `packages/rust/orm/src/dbspec/apply.rs`의 `command_entrypoints_share_sqlite_lock_lifecycle_for_empty_plan_chain`, `invalid_pragma_values_preserve_parse_errors`, `lock_setup_failure_keeps_error_when_unlock_fails`는 native 시험으로 남는다: 비공개 단계나 대역 driver, session, pool에 닿으며, 어떤 public 호출도 이 값으로 그 단계에 닿지 않는다.
   - `packages/rust/orm/src/lib.rs`의 `result_code_names_match_the_table`는 native 시험으로 남는다: 이 언어만의 표면을 읽는다: 언어의 타입이나 값, reflection, 생성된 member, 언어의 compiler나 analyser가 보고하는 것이다.

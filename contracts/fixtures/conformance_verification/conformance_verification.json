@@ -84242,6 +84242,4009 @@
    ]
   },
   {
+   "id": "plan_cache_reads_each_request_with_its_values",
+   "requirements": [
+    "CPX-4"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "events.subscribe",
+     "connection": "db",
+     "as": "events"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "User",
+     "columns": [
+      "name"
+     ],
+     "add_columns": [
+      {
+       "expr": {
+        "sub": {
+         "model": "Author",
+         "columns": [
+          "name"
+         ],
+         "where": {
+          "seq": {
+           "le": {
+            "int": "100"
+           }
+          }
+         },
+         "order": [
+          {
+           "column": "seq",
+           "dir": "desc"
+          }
+         ],
+         "limit": {
+          "offset": 0,
+          "count": 1
+         }
+        }
+       },
+       "as": "z_low"
+      },
+      {
+       "expr": {
+        "sub": {
+         "model": "Author",
+         "columns": [
+          "name"
+         ],
+         "where": {
+          "seq": {
+           "le": {
+            "int": "10"
+           }
+          }
+         },
+         "order": [
+          {
+           "column": "seq",
+           "dir": "desc"
+          }
+         ],
+         "limit": {
+          "offset": 0,
+          "count": 1
+         }
+        }
+       },
+       "as": "a_low"
+      }
+     ],
+     "joins": [
+      {
+       "model": "ServiceMember",
+       "as": "member",
+       "match": [
+        "seq",
+        "user_seq"
+       ],
+       "on": {
+        "service_seq": {
+         "int": "7"
+        }
+       },
+       "where": {
+        "seq": {
+         "ge": {
+          "int": "100"
+         }
+        }
+       },
+       "columns": []
+      }
+     ],
+     "where": {
+      "seq": {
+       "le": {
+        "int": "500"
+       }
+      }
+     },
+     "relations": [
+      {
+       "model": "Author",
+       "many": true,
+       "match": [
+        [
+         "seq",
+         "user_seq"
+        ]
+       ],
+       "alias": "Works",
+       "possible": {
+        "name": {
+         "text": "user-307"
+        }
+       },
+       "where": {
+        "service_seq": {
+         "int": "7"
+        }
+       },
+       "columns": [
+        "name"
+       ],
+       "order": [
+        {
+         "column": "seq",
+         "dir": "asc"
+        }
+       ]
+      }
+     ],
+     "order": [
+      {
+       "column": "seq",
+       "dir": "asc"
+      }
+     ],
+     "limit": {
+      "offset": 1,
+      "count": 3
+     },
+     "pick": [
+      "seq",
+      "name",
+      "a_low",
+      "z_low",
+      "works"
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "seq": 207,
+         "name": "user-207",
+         "a_low": "author-6",
+         "z_low": "author-99",
+         "works": []
+        },
+        {
+         "seq": 307,
+         "name": "user-307",
+         "a_low": "author-6",
+         "z_low": "author-99",
+         "works": [
+          {
+           "name": "author-306",
+           "seq": 306,
+           "service_member_seq": 307,
+           "service_region_seq": 7,
+           "service_seq": 7,
+           "user_seq": 307
+          }
+         ]
+        },
+        {
+         "seq": 407,
+         "name": "user-407",
+         "a_low": "author-6",
+         "z_low": "author-99",
+         "works": []
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "seq": 207,
+         "name": "user-207",
+         "a_low": "author-6",
+         "z_low": "author-99",
+         "works": []
+        },
+        {
+         "seq": 307,
+         "name": "user-307",
+         "a_low": "author-6",
+         "z_low": "author-99",
+         "works": [
+          {
+           "name": "author-306",
+           "seq": 306,
+           "service_member_seq": 307,
+           "service_region_seq": 7,
+           "service_seq": 7,
+           "user_seq": 307
+          }
+         ]
+        },
+        {
+         "seq": 407,
+         "name": "user-407",
+         "a_low": "author-6",
+         "z_low": "author-99",
+         "works": []
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "seq": 207,
+         "name": "user-207",
+         "a_low": "author-6",
+         "z_low": "author-99",
+         "works": []
+        },
+        {
+         "seq": 307,
+         "name": "user-307",
+         "a_low": "author-6",
+         "z_low": "author-99",
+         "works": [
+          {
+           "name": "author-306",
+           "seq": 306,
+           "service_member_seq": 307,
+           "service_region_seq": 7,
+           "service_seq": 7,
+           "user_seq": 307
+          }
+         ]
+        },
+        {
+         "seq": 407,
+         "name": "user-407",
+         "a_low": "author-6",
+         "z_low": "author-99",
+         "works": []
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "User",
+     "columns": [
+      "name"
+     ],
+     "add_columns": [
+      {
+       "expr": {
+        "sub": {
+         "model": "Author",
+         "columns": [
+          "name"
+         ],
+         "where": {
+          "seq": {
+           "le": {
+            "int": "3"
+           }
+          }
+         },
+         "order": [
+          {
+           "column": "seq",
+           "dir": "desc"
+          }
+         ],
+         "limit": {
+          "offset": 0,
+          "count": 1
+         }
+        }
+       },
+       "as": "a_low"
+      },
+      {
+       "expr": {
+        "sub": {
+         "model": "Author",
+         "columns": [
+          "name"
+         ],
+         "where": {
+          "seq": {
+           "le": {
+            "int": "1000"
+           }
+          }
+         },
+         "order": [
+          {
+           "column": "seq",
+           "dir": "desc"
+          }
+         ],
+         "limit": {
+          "offset": 0,
+          "count": 1
+         }
+        }
+       },
+       "as": "z_low"
+      }
+     ],
+     "joins": [
+      {
+       "model": "ServiceMember",
+       "as": "member",
+       "match": [
+        "seq",
+        "user_seq"
+       ],
+       "on": {
+        "service_seq": {
+         "int": "100"
+        }
+       },
+       "where": {
+        "seq": {
+         "ge": {
+          "int": "1"
+         }
+        }
+       },
+       "columns": []
+      }
+     ],
+     "where": {
+      "seq": {
+       "le": {
+        "int": "400"
+       }
+      }
+     },
+     "relations": [
+      {
+       "model": "Author",
+       "many": true,
+       "match": [
+        [
+         "seq",
+         "user_seq"
+        ]
+       ],
+       "alias": "Works",
+       "possible": {
+        "name": {
+         "text": "user-200"
+        }
+       },
+       "where": {
+        "service_seq": {
+         "int": "100"
+        }
+       },
+       "columns": [
+        "name"
+       ],
+       "order": [
+        {
+         "column": "seq",
+         "dir": "asc"
+        }
+       ]
+      }
+     ],
+     "order": [
+      {
+       "column": "seq",
+       "dir": "asc"
+      }
+     ],
+     "limit": {
+      "offset": 1,
+      "count": 2
+     },
+     "pick": [
+      "seq",
+      "name",
+      "a_low",
+      "z_low",
+      "works"
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "seq": 200,
+         "name": "user-200",
+         "a_low": "author-2",
+         "z_low": "author-906",
+         "works": [
+          {
+           "name": "author-199",
+           "seq": 199,
+           "service_member_seq": 200,
+           "service_region_seq": 10,
+           "service_seq": 100,
+           "user_seq": 200
+          }
+         ]
+        },
+        {
+         "seq": 300,
+         "name": "user-300",
+         "a_low": "author-2",
+         "z_low": "author-906",
+         "works": []
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "seq": 200,
+         "name": "user-200",
+         "a_low": "author-2",
+         "z_low": "author-906",
+         "works": [
+          {
+           "name": "author-199",
+           "seq": 199,
+           "service_member_seq": 200,
+           "service_region_seq": 10,
+           "service_seq": 100,
+           "user_seq": 200
+          }
+         ]
+        },
+        {
+         "seq": 300,
+         "name": "user-300",
+         "a_low": "author-2",
+         "z_low": "author-906",
+         "works": []
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "seq": 200,
+         "name": "user-200",
+         "a_low": "author-2",
+         "z_low": "author-906",
+         "works": [
+          {
+           "name": "author-199",
+           "seq": 199,
+           "service_member_seq": 200,
+           "service_region_seq": 10,
+           "service_seq": 100,
+           "user_seq": 200
+          }
+         ]
+        },
+        {
+         "seq": 300,
+         "name": "user-300",
+         "a_low": "author-2",
+         "z_low": "author-906",
+         "works": []
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "events",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, (SELECT `s1`.`name` FROM `author` AS `s1` WHERE `s1`.`seq` <= ? ORDER BY `s1`.`seq` DESC LIMIT 0, 1) AS `a__a_low`, (SELECT `s2`.`name` FROM `author` AS `s2` WHERE `s2`.`seq` <= ? ORDER BY `s2`.`seq` DESC LIMIT 0, 1) AS `a__z_low`, `service_member_model`.`seq` AS `service_member_model__seq`, `service_member_model`.`service_seq` AS `service_member_model__service_seq`, `service_member_model`.`user_seq` AS `service_member_model__user_seq` FROM `user` AS `a` INNER JOIN `service_member` AS `service_member_model` ON `a`.`seq` = `service_member_model`.`user_seq` AND `service_member_model`.`service_seq` = ? WHERE `a`.`seq` <= ? AND (`service_member_model`.`seq` >= ?) ORDER BY `a`.`seq` ASC LIMIT ?, ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "10"
+              },
+              {
+               "int": "100"
+              },
+              {
+               "int": "7"
+              },
+              {
+               "int": "500"
+              },
+              {
+               "int": "100"
+              },
+              {
+               "int": "1"
+              },
+              {
+               "int": "3"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              },
+              {
+               "text": "service_member"
+              },
+              {
+               "text": "user"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`name` AS `a__name` FROM `author` AS `a` WHERE `a`.`user_seq` IN (?) AND (`a`.`service_seq` = ?) ORDER BY `a`.`seq` ASC"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "307"
+              },
+              {
+               "int": "7"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, (SELECT `s1`.`name` FROM `author` AS `s1` WHERE `s1`.`seq` <= ? ORDER BY `s1`.`seq` DESC LIMIT 0, 1) AS `a__a_low`, (SELECT `s2`.`name` FROM `author` AS `s2` WHERE `s2`.`seq` <= ? ORDER BY `s2`.`seq` DESC LIMIT 0, 1) AS `a__z_low`, `service_member_model`.`seq` AS `service_member_model__seq`, `service_member_model`.`service_seq` AS `service_member_model__service_seq`, `service_member_model`.`user_seq` AS `service_member_model__user_seq` FROM `user` AS `a` INNER JOIN `service_member` AS `service_member_model` ON `a`.`seq` = `service_member_model`.`user_seq` AND `service_member_model`.`service_seq` = ? WHERE `a`.`seq` <= ? AND (`service_member_model`.`seq` >= ?) ORDER BY `a`.`seq` ASC LIMIT ?, ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "3"
+              },
+              {
+               "int": "1000"
+              },
+              {
+               "int": "100"
+              },
+              {
+               "int": "400"
+              },
+              {
+               "int": "1"
+              },
+              {
+               "int": "1"
+              },
+              {
+               "int": "2"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              },
+              {
+               "text": "service_member"
+              },
+              {
+               "text": "user"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`name` AS `a__name` FROM `author` AS `a` WHERE `a`.`user_seq` IN (?) AND (`a`.`service_seq` = ?) ORDER BY `a`.`seq` ASC"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "200"
+              },
+              {
+               "int": "100"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", (SELECT \"s1\".\"name\" FROM \"author\" AS \"s1\" WHERE \"s1\".\"seq\" <= $1 ORDER BY \"s1\".\"seq\" DESC LIMIT 1 OFFSET 0) AS \"a__a_low\", (SELECT \"s2\".\"name\" FROM \"author\" AS \"s2\" WHERE \"s2\".\"seq\" <= $2 ORDER BY \"s2\".\"seq\" DESC LIMIT 1 OFFSET 0) AS \"a__z_low\", \"service_member_model\".\"seq\" AS \"service_member_model__seq\", \"service_member_model\".\"service_seq\" AS \"service_member_model__service_seq\", \"service_member_model\".\"user_seq\" AS \"service_member_model__user_seq\" FROM \"user\" AS \"a\" INNER JOIN \"service_member\" AS \"service_member_model\" ON \"a\".\"seq\" = \"service_member_model\".\"user_seq\" AND \"service_member_model\".\"service_seq\" = $3 WHERE \"a\".\"seq\" <= $4 AND (\"service_member_model\".\"seq\" >= $5) ORDER BY \"a\".\"seq\" ASC LIMIT $6 OFFSET $7"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "10"
+              },
+              {
+               "int": "100"
+              },
+              {
+               "int": "7"
+              },
+              {
+               "int": "500"
+              },
+              {
+               "int": "100"
+              },
+              {
+               "int": "3"
+              },
+              {
+               "int": "1"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              },
+              {
+               "text": "service_member"
+              },
+              {
+               "text": "user"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"name\" AS \"a__name\" FROM \"author\" AS \"a\" WHERE \"a\".\"user_seq\" IN ($1) AND (\"a\".\"service_seq\" = $2) ORDER BY \"a\".\"seq\" ASC"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "307"
+              },
+              {
+               "int": "7"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", (SELECT \"s1\".\"name\" FROM \"author\" AS \"s1\" WHERE \"s1\".\"seq\" <= $1 ORDER BY \"s1\".\"seq\" DESC LIMIT 1 OFFSET 0) AS \"a__a_low\", (SELECT \"s2\".\"name\" FROM \"author\" AS \"s2\" WHERE \"s2\".\"seq\" <= $2 ORDER BY \"s2\".\"seq\" DESC LIMIT 1 OFFSET 0) AS \"a__z_low\", \"service_member_model\".\"seq\" AS \"service_member_model__seq\", \"service_member_model\".\"service_seq\" AS \"service_member_model__service_seq\", \"service_member_model\".\"user_seq\" AS \"service_member_model__user_seq\" FROM \"user\" AS \"a\" INNER JOIN \"service_member\" AS \"service_member_model\" ON \"a\".\"seq\" = \"service_member_model\".\"user_seq\" AND \"service_member_model\".\"service_seq\" = $3 WHERE \"a\".\"seq\" <= $4 AND (\"service_member_model\".\"seq\" >= $5) ORDER BY \"a\".\"seq\" ASC LIMIT $6 OFFSET $7"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "3"
+              },
+              {
+               "int": "1000"
+              },
+              {
+               "int": "100"
+              },
+              {
+               "int": "400"
+              },
+              {
+               "int": "1"
+              },
+              {
+               "int": "2"
+              },
+              {
+               "int": "1"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              },
+              {
+               "text": "service_member"
+              },
+              {
+               "text": "user"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"name\" AS \"a__name\" FROM \"author\" AS \"a\" WHERE \"a\".\"user_seq\" IN ($1) AND (\"a\".\"service_seq\" = $2) ORDER BY \"a\".\"seq\" ASC"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "200"
+              },
+              {
+               "int": "100"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", (SELECT \"s1\".\"name\" FROM \"author\" AS \"s1\" WHERE \"s1\".\"seq\" <= ? ORDER BY \"s1\".\"seq\" DESC LIMIT 1 OFFSET 0) AS \"a__a_low\", (SELECT \"s2\".\"name\" FROM \"author\" AS \"s2\" WHERE \"s2\".\"seq\" <= ? ORDER BY \"s2\".\"seq\" DESC LIMIT 1 OFFSET 0) AS \"a__z_low\", \"service_member_model\".\"seq\" AS \"service_member_model__seq\", \"service_member_model\".\"service_seq\" AS \"service_member_model__service_seq\", \"service_member_model\".\"user_seq\" AS \"service_member_model__user_seq\" FROM \"user\" AS \"a\" INNER JOIN \"service_member\" AS \"service_member_model\" ON \"a\".\"seq\" = \"service_member_model\".\"user_seq\" AND \"service_member_model\".\"service_seq\" = ? WHERE \"a\".\"seq\" <= ? AND (\"service_member_model\".\"seq\" >= ?) ORDER BY \"a\".\"seq\" ASC LIMIT ? OFFSET ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "10"
+              },
+              {
+               "int": "100"
+              },
+              {
+               "int": "7"
+              },
+              {
+               "int": "500"
+              },
+              {
+               "int": "100"
+              },
+              {
+               "int": "3"
+              },
+              {
+               "int": "1"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              },
+              {
+               "text": "service_member"
+              },
+              {
+               "text": "user"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"name\" AS \"a__name\" FROM \"author\" AS \"a\" WHERE \"a\".\"user_seq\" IN (?) AND (\"a\".\"service_seq\" = ?) ORDER BY \"a\".\"seq\" ASC"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "307"
+              },
+              {
+               "int": "7"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", (SELECT \"s1\".\"name\" FROM \"author\" AS \"s1\" WHERE \"s1\".\"seq\" <= ? ORDER BY \"s1\".\"seq\" DESC LIMIT 1 OFFSET 0) AS \"a__a_low\", (SELECT \"s2\".\"name\" FROM \"author\" AS \"s2\" WHERE \"s2\".\"seq\" <= ? ORDER BY \"s2\".\"seq\" DESC LIMIT 1 OFFSET 0) AS \"a__z_low\", \"service_member_model\".\"seq\" AS \"service_member_model__seq\", \"service_member_model\".\"service_seq\" AS \"service_member_model__service_seq\", \"service_member_model\".\"user_seq\" AS \"service_member_model__user_seq\" FROM \"user\" AS \"a\" INNER JOIN \"service_member\" AS \"service_member_model\" ON \"a\".\"seq\" = \"service_member_model\".\"user_seq\" AND \"service_member_model\".\"service_seq\" = ? WHERE \"a\".\"seq\" <= ? AND (\"service_member_model\".\"seq\" >= ?) ORDER BY \"a\".\"seq\" ASC LIMIT ? OFFSET ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "3"
+              },
+              {
+               "int": "1000"
+              },
+              {
+               "int": "100"
+              },
+              {
+               "int": "400"
+              },
+              {
+               "int": "1"
+              },
+              {
+               "int": "2"
+              },
+              {
+               "int": "1"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              },
+              {
+               "text": "service_member"
+              },
+              {
+               "text": "user"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"name\" AS \"a__name\" FROM \"author\" AS \"a\" WHERE \"a\".\"user_seq\" IN (?) AND (\"a\".\"service_seq\" = ?) ORDER BY \"a\".\"seq\" ASC"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "200"
+              },
+              {
+               "int": "100"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "plan_cache_writes_each_request_with_its_values",
+   "requirements": [
+    "CPX-4"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "events.subscribe",
+     "connection": "db",
+     "as": "events"
+    },
+    {
+     "op": "model.duplicate_create",
+     "connection": "db",
+     "model": "UpsertCell",
+     "values": {
+      "code": {
+       "text": "pc-1"
+      },
+      "label": {
+       "text": "first"
+      }
+     },
+     "duplication": {
+      "label": {
+       "text": "again"
+      }
+     }
+    },
+    {
+     "op": "model.duplicate_create",
+     "connection": "db",
+     "model": "UpsertCell",
+     "values": {
+      "code": {
+       "text": "pc-1"
+      },
+      "label": {
+       "text": "unused"
+      }
+     },
+     "duplication": {
+      "label": {
+       "text": "second"
+      }
+     }
+    },
+    {
+     "op": "model.duplicate_create",
+     "connection": "db",
+     "model": "UpsertCell",
+     "values": {
+      "code": {
+       "text": "pc-2"
+      },
+      "label": {
+       "text": "third"
+      }
+     },
+     "duplication": {
+      "label": {
+       "text": "unused"
+      }
+     }
+    },
+    {
+     "op": "model.creates",
+     "connection": "db",
+     "model": "UpsertCell",
+     "rows": [
+      {
+       "code": {
+        "text": "pc-3"
+       },
+       "label": {
+        "text": "l3"
+       }
+      },
+      {
+       "code": {
+        "text": "pc-4"
+       },
+       "label": {
+        "text": "l4"
+       }
+      }
+     ],
+     "batch": 2,
+     "expect": {
+      "mysql": {
+       "json": 2
+      },
+      "postgres": {
+       "json": 2
+      },
+      "sqlite": {
+       "json": 2
+      }
+     }
+    },
+    {
+     "op": "model.creates",
+     "connection": "db",
+     "model": "UpsertCell",
+     "rows": [
+      {
+       "code": {
+        "text": "pc-5"
+       },
+       "label": {
+        "text": "l5"
+       }
+      },
+      {
+       "code": {
+        "text": "pc-6"
+       },
+       "label": {
+        "text": "l6"
+       }
+      }
+     ],
+     "batch": 2,
+     "expect": {
+      "mysql": {
+       "json": 2
+      },
+      "postgres": {
+       "json": 2
+      },
+      "sqlite": {
+       "json": 2
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "UpsertCell",
+     "where": {
+      "code": {
+       "array": [
+        {
+         "text": "pc-1"
+        },
+        {
+         "text": "pc-2"
+        },
+        {
+         "text": "pc-3"
+        },
+        {
+         "text": "pc-4"
+        },
+        {
+         "text": "pc-5"
+        },
+        {
+         "text": "pc-6"
+        }
+       ]
+      }
+     },
+     "order": [
+      {
+       "column": "code",
+       "dir": "asc"
+      }
+     ],
+     "pick": [
+      "code",
+      "label"
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "code": "pc-1",
+         "label": "second"
+        },
+        {
+         "code": "pc-2",
+         "label": "third"
+        },
+        {
+         "code": "pc-3",
+         "label": "l3"
+        },
+        {
+         "code": "pc-4",
+         "label": "l4"
+        },
+        {
+         "code": "pc-5",
+         "label": "l5"
+        },
+        {
+         "code": "pc-6",
+         "label": "l6"
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "code": "pc-1",
+         "label": "second"
+        },
+        {
+         "code": "pc-2",
+         "label": "third"
+        },
+        {
+         "code": "pc-3",
+         "label": "l3"
+        },
+        {
+         "code": "pc-4",
+         "label": "l4"
+        },
+        {
+         "code": "pc-5",
+         "label": "l5"
+        },
+        {
+         "code": "pc-6",
+         "label": "l6"
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "code": "pc-1",
+         "label": "second"
+        },
+        {
+         "code": "pc-2",
+         "label": "third"
+        },
+        {
+         "code": "pc-3",
+         "label": "l3"
+        },
+        {
+         "code": "pc-4",
+         "label": "l4"
+        },
+        {
+         "code": "pc-5",
+         "label": "l5"
+        },
+        {
+         "code": "pc-6",
+         "label": "l6"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "42"
+      }
+     },
+     "columns": [
+      "seq",
+      "name",
+      "updated_ts"
+     ],
+     "as": "first_row"
+    },
+    {
+     "op": "model.update",
+     "connection": "db",
+     "row": "first_row",
+     "set": {
+      "name": {
+       "text": "pc-a"
+      }
+     },
+     "optimistic": true
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "43"
+      }
+     },
+     "columns": [
+      "seq",
+      "name",
+      "updated_ts"
+     ],
+     "as": "second_row"
+    },
+    {
+     "op": "model.update",
+     "connection": "db",
+     "row": "second_row",
+     "set": {
+      "name": {
+       "text": "pc-b"
+      }
+     },
+     "optimistic": true
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "array": [
+        {
+         "int": "42"
+        },
+        {
+         "int": "43"
+        }
+       ]
+      }
+     },
+     "order": [
+      {
+       "column": "seq",
+       "dir": "asc"
+      }
+     ],
+     "pick": [
+      "seq",
+      "name"
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "seq": 42,
+         "name": "pc-a"
+        },
+        {
+         "seq": 43,
+         "name": "pc-b"
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "seq": 42,
+         "name": "pc-a"
+        },
+        {
+         "seq": 43,
+         "name": "pc-b"
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "seq": 42,
+         "name": "pc-a"
+        },
+        {
+         "seq": 43,
+         "name": "pc-b"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "events",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO `upsert_cell` (`code`, `label`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `label` = ?, `seq` = LAST_INSERT_ID(`seq`)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "pc-1"
+              },
+              {
+               "text": "first"
+              },
+              {
+               "text": "again"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "upsert_cell"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO `upsert_cell` (`code`, `label`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `label` = ?, `seq` = LAST_INSERT_ID(`seq`)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "pc-1"
+              },
+              {
+               "text": "unused"
+              },
+              {
+               "text": "second"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "upsert_cell"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO `upsert_cell` (`code`, `label`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `label` = ?, `seq` = LAST_INSERT_ID(`seq`)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "pc-2"
+              },
+              {
+               "text": "third"
+              },
+              {
+               "text": "unused"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "upsert_cell"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "START TRANSACTION"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "begin"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": []
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO `upsert_cell` (`code`, `label`) VALUES (?, ?), (?, ?)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "pc-3"
+              },
+              {
+               "text": "l3"
+              },
+              {
+               "text": "pc-4"
+              },
+              {
+               "text": "l4"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "upsert_cell"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "COMMIT"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "commit"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": []
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "START TRANSACTION"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "begin"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": []
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "2"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO `upsert_cell` (`code`, `label`) VALUES (?, ?), (?, ?)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "pc-5"
+              },
+              {
+               "text": "l5"
+              },
+              {
+               "text": "pc-6"
+              },
+              {
+               "text": "l6"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "upsert_cell"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "2"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "COMMIT"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "commit"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": []
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "2"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`code` AS `a__code`, `a`.`label` AS `a__label` FROM `upsert_cell` AS `a` WHERE `a`.`code` IN (?, ?, ?, ?, ?, ?, ?, ?) ORDER BY `a`.`code` ASC"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "pc-1"
+              },
+              {
+               "text": "pc-2"
+              },
+              {
+               "text": "pc-3"
+              },
+              {
+               "text": "pc-4"
+              },
+              {
+               "text": "pc-5"
+              },
+              {
+               "text": "pc-6"
+              },
+              {
+               "text": "pc-6"
+              },
+              {
+               "text": "pc-6"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "upsert_cell"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`name` AS `a__name`, `a`.`updated_ts` AS `a__updated_ts` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "42"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "UPDATE `author` SET `name` = ?, `updated_ts` = CURRENT_TIMESTAMP(6) WHERE `author`.`seq` = ? AND `author`.`updated_ts` = ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "pc-a"
+              },
+              {
+               "int": "42"
+              },
+              {
+               "text": "2026-01-01 00:00:00.000000"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "update"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`name` AS `a__name`, `a`.`updated_ts` AS `a__updated_ts` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "43"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "UPDATE `author` SET `name` = ?, `updated_ts` = CURRENT_TIMESTAMP(6) WHERE `author`.`seq` = ? AND `author`.`updated_ts` = ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "pc-b"
+              },
+              {
+               "int": "43"
+              },
+              {
+               "text": "2026-01-01 00:00:00.000000"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "update"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`seq` IN (?, ?) ORDER BY `a`.`seq` ASC"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "42"
+              },
+              {
+               "int": "43"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO \"upsert_cell\" (\"code\", \"label\") VALUES ($1, $2) ON CONFLICT (\"code\") DO UPDATE SET \"label\" = $3 RETURNING \"seq\""
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "pc-1"
+              },
+              {
+               "text": "first"
+              },
+              {
+               "text": "again"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "upsert_cell"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO \"upsert_cell\" (\"code\", \"label\") VALUES ($1, $2) ON CONFLICT (\"code\") DO UPDATE SET \"label\" = $3 RETURNING \"seq\""
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "pc-1"
+              },
+              {
+               "text": "unused"
+              },
+              {
+               "text": "second"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "upsert_cell"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO \"upsert_cell\" (\"code\", \"label\") VALUES ($1, $2) ON CONFLICT (\"code\") DO UPDATE SET \"label\" = $3 RETURNING \"seq\""
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "pc-2"
+              },
+              {
+               "text": "third"
+              },
+              {
+               "text": "unused"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "upsert_cell"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "BEGIN"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "begin"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": []
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO \"upsert_cell\" (\"code\", \"label\") VALUES ($1, $2), ($3, $4)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "pc-3"
+              },
+              {
+               "text": "l3"
+              },
+              {
+               "text": "pc-4"
+              },
+              {
+               "text": "l4"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "upsert_cell"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "COMMIT"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "commit"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": []
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "BEGIN"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "begin"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": []
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "2"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO \"upsert_cell\" (\"code\", \"label\") VALUES ($1, $2), ($3, $4)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "pc-5"
+              },
+              {
+               "text": "l5"
+              },
+              {
+               "text": "pc-6"
+              },
+              {
+               "text": "l6"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "upsert_cell"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "2"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "COMMIT"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "commit"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": []
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "2"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"code\" AS \"a__code\", \"a\".\"label\" AS \"a__label\" FROM \"upsert_cell\" AS \"a\" WHERE \"a\".\"code\" IN ($1, $2, $3, $4, $5, $6, $7, $8) ORDER BY \"a\".\"code\" ASC"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "pc-1"
+              },
+              {
+               "text": "pc-2"
+              },
+              {
+               "text": "pc-3"
+              },
+              {
+               "text": "pc-4"
+              },
+              {
+               "text": "pc-5"
+              },
+              {
+               "text": "pc-6"
+              },
+              {
+               "text": "pc-6"
+              },
+              {
+               "text": "pc-6"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "upsert_cell"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"updated_ts\" AS \"a__updated_ts\" FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = $1 LIMIT 1 OFFSET 0"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "42"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "UPDATE \"author\" SET \"name\" = $1, \"updated_ts\" = $2 WHERE \"author\".\"seq\" = $3 AND \"author\".\"updated_ts\" = $4"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "pc-a"
+              },
+              {
+               "text": "$NOW"
+              },
+              {
+               "int": "42"
+              },
+              {
+               "text": "2026-01-01 00:00:00.000000"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "update"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"updated_ts\" AS \"a__updated_ts\" FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = $1 LIMIT 1 OFFSET 0"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "43"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "UPDATE \"author\" SET \"name\" = $1, \"updated_ts\" = $2 WHERE \"author\".\"seq\" = $3 AND \"author\".\"updated_ts\" = $4"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "pc-b"
+              },
+              {
+               "text": "$NOW"
+              },
+              {
+               "int": "43"
+              },
+              {
+               "text": "2026-01-01 00:00:00.000000"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "update"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"created_ts\" AS \"a__created_ts\", \"a\".\"updated_ts\" AS \"a__updated_ts\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"target_club_reader_count\" AS \"a__target_club_reader_count\", \"a\".\"success_count\" AS \"a__success_count\", \"a\".\"reader_count\" AS \"a__reader_count\", \"a\".\"read_count\" AS \"a__read_count\", \"a\".\"photo_url\" AS \"a__photo_url\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"start_dt\" AS \"a__start_dt\", \"a\".\"end_dt\" AS \"a__end_dt\", \"a\".\"uuid\" AS \"a__uuid\", \"a\".\"is_single_work\" AS \"a__is_single_work\", \"a\".\"like_count\" AS \"a__like_count\", \"a\".\"aes_hex_email\" AS \"a__aes_hex_email\", \"a\".\"aes_hex_phone\" AS \"a__aes_hex_phone\", \"a\".\"price\" AS \"a__price\", \"a\".\"aes_key_version\" AS \"a__aes_key_version\" FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" IN ($1, $2) ORDER BY \"a\".\"seq\" ASC"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "42"
+              },
+              {
+               "int": "43"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO \"upsert_cell\" (\"code\", \"label\") VALUES (?, ?) ON CONFLICT (\"code\") DO UPDATE SET \"label\" = ? RETURNING \"seq\""
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "pc-1"
+              },
+              {
+               "text": "first"
+              },
+              {
+               "text": "again"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "upsert_cell"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO \"upsert_cell\" (\"code\", \"label\") VALUES (?, ?) ON CONFLICT (\"code\") DO UPDATE SET \"label\" = ? RETURNING \"seq\""
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "pc-1"
+              },
+              {
+               "text": "unused"
+              },
+              {
+               "text": "second"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "upsert_cell"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO \"upsert_cell\" (\"code\", \"label\") VALUES (?, ?) ON CONFLICT (\"code\") DO UPDATE SET \"label\" = ? RETURNING \"seq\""
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "pc-2"
+              },
+              {
+               "text": "third"
+              },
+              {
+               "text": "unused"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "upsert_cell"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "CREATE TABLE IF NOT EXISTS \"orm__row_lock\" (\"id\" INTEGER PRIMARY KEY CHECK (\"id\" = 1))"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "utility"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "orm__row_lock"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "BEGIN IMMEDIATE"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "begin"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": []
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO \"upsert_cell\" (\"code\", \"label\") VALUES (?, ?), (?, ?)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "pc-3"
+              },
+              {
+               "text": "l3"
+              },
+              {
+               "text": "pc-4"
+              },
+              {
+               "text": "l4"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "upsert_cell"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "COMMIT"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "commit"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": []
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "BEGIN IMMEDIATE"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "begin"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": []
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "2"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO \"upsert_cell\" (\"code\", \"label\") VALUES (?, ?), (?, ?)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "pc-5"
+              },
+              {
+               "text": "l5"
+              },
+              {
+               "text": "pc-6"
+              },
+              {
+               "text": "l6"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "upsert_cell"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "2"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "COMMIT"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "commit"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": []
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "2"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"code\" AS \"a__code\", \"a\".\"label\" AS \"a__label\" FROM \"upsert_cell\" AS \"a\" WHERE \"a\".\"code\" IN (?, ?, ?, ?, ?, ?, ?, ?) ORDER BY \"a\".\"code\" ASC"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "pc-1"
+              },
+              {
+               "text": "pc-2"
+              },
+              {
+               "text": "pc-3"
+              },
+              {
+               "text": "pc-4"
+              },
+              {
+               "text": "pc-5"
+              },
+              {
+               "text": "pc-6"
+              },
+              {
+               "text": "pc-6"
+              },
+              {
+               "text": "pc-6"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "upsert_cell"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"updated_ts\" AS \"a__updated_ts\" FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT 1 OFFSET 0"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "42"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "UPDATE \"author\" SET \"name\" = ?, \"updated_ts\" = ? WHERE \"author\".\"seq\" = ? AND \"author\".\"updated_ts\" = ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "pc-a"
+              },
+              {
+               "text": "$NOW"
+              },
+              {
+               "int": "42"
+              },
+              {
+               "text": "2026-01-01 00:00:00.000000"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "update"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"updated_ts\" AS \"a__updated_ts\" FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT 1 OFFSET 0"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "43"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "UPDATE \"author\" SET \"name\" = ?, \"updated_ts\" = ? WHERE \"author\".\"seq\" = ? AND \"author\".\"updated_ts\" = ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "pc-b"
+              },
+              {
+               "text": "$NOW"
+              },
+              {
+               "int": "43"
+              },
+              {
+               "text": "2026-01-01 00:00:00.000000"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "update"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"created_ts\" AS \"a__created_ts\", \"a\".\"updated_ts\" AS \"a__updated_ts\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"target_club_reader_count\" AS \"a__target_club_reader_count\", \"a\".\"success_count\" AS \"a__success_count\", \"a\".\"reader_count\" AS \"a__reader_count\", \"a\".\"read_count\" AS \"a__read_count\", \"a\".\"photo_url\" AS \"a__photo_url\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"start_dt\" AS \"a__start_dt\", \"a\".\"end_dt\" AS \"a__end_dt\", \"a\".\"uuid\" AS \"a__uuid\", \"a\".\"is_single_work\" AS \"a__is_single_work\", \"a\".\"like_count\" AS \"a__like_count\", \"a\".\"aes_hex_email\" AS \"a__aes_hex_email\", \"a\".\"aes_hex_phone\" AS \"a__aes_hex_phone\", \"a\".\"price\" AS \"a__price\", \"a\".\"aes_key_version\" AS \"a__aes_key_version\" FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" IN (?, ?) ORDER BY \"a\".\"seq\" ASC"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "42"
+              },
+              {
+               "int": "43"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
    "id": "identity_execute_load_then_restart",
    "requirements": [
     "PRT-2",

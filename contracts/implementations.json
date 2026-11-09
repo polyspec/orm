@@ -379,7 +379,6 @@
         "packages/php/tests/RecipeCases.php",
         "packages/php/tests/SqliteRecipeTestCase.php",
         "packages/php/tests/DatabaseRecipeTestCase.php",
-        "packages/php/tests/PlanCacheCompositeCases.php",
         "packages/php/tests/RecipeRecording.php",
         "packages/php/tests/RecipeSubscription.php",
         "packages/php/tests/RecipeModel.php",

@@ -2363,12 +2363,12 @@ relation-parent-bind-rust-check: lease-tool
 paged-read-rust-check: lease-tool
 	cd packages/rust && $(CARGO_TEST) paged-read-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --lib paged_ -- --test-threads=1 --nocapture
 
-# Runs the database-independent page-cache and exact parameter-walk units in all six implementations.
+# Runs the database-independent page-cache units in all six implementations.
 .PHONY: page-cache-unit-check
 .PHONY: page-cache-unit-check/go page-cache-unit-check/php page-cache-unit-check/typescript page-cache-unit-check/python page-cache-unit-check/rust
 page-cache-unit-check: lease-tool php-vendor-check php-models python-venv-check typescript-read model-types-php-extension-check page-cache-unit-check/go page-cache-unit-check/php page-cache-unit-check/typescript page-cache-unit-check/python page-cache-unit-check/rust
 page-cache-unit-check/go:
-	$(GO_TEST) ./packages/go/orm -run '^(TestPlanCachePagedReadBindsPageValues|TestCanonicalizeCompositeRequestParameterWalk)$$' -count=1
+	$(GO_TEST) ./packages/go/orm -run '^TestPlanCachePagedReadBindsPageValues$$' -count=1
 page-cache-unit-check/php: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/PlanCacheBoundTest.php
 page-cache-unit-check/typescript: typescript-current
