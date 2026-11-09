@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 3918477d55f38fa2826bd78cf04363bbeddcc1e4d385134f61f79b533c98d8fd -->
+<!-- source-sha256: 1203bdea224b2b62fbd0800af281c6785e717a3ba39f282b5e72bcb189399a81 -->
 # 변경 이력
 
 ## Unreleased
 
+- scripts/features/coverage.mts --case는 선택한 case를 그것을 적은 entry가 있는 데이터베이스에서 실행하고, MySQL과 PostgreSQL의 case의 SQLite 자리처럼 case가 실행되지 않는 데이터베이스의 자리는 보고하지 않는다. 어떤 entry도 선택한 case를 적지 않은 부분은 실패한다(T400-1, FCV-6).
 - catalog의 commit된 insert는 모든 runtime에서 서버 연결 하나에서 쓰고, 거부된 insert 뒤에도 다음 insert는 commit된다: MySQL과 PostgreSQL에서 recipe catalog_connection의 case committed_mutations_share_one_connection이다(T400-1, INT-106c, INT-157). 이를 지키던 Go, Python, Rust, TypeScript의 native 시험은 지운다.
 - catalog의 거부된 PostgreSQL multirange 읽기 뒤에도 모든 runtime에서 catalog는 계속 읽는다: recipe catalog_connection의 case catalog_value_multirange가 거부 뒤에 일반 행을 읽는다(T400-1, INT-185). 모든 catalog session이 DEALLOCATE ALL로 시작하므로(CFG-28) 다음 session의 어떤 읽기도 거부된 읽기의 statement를 볼 수 없어 pg_prepared_statements는 읽지 않는다. 한 tool_db connection에서 그것을 읽는 Rust 시험 a_refused_multirange_read_leaves_no_prepared_statement_on_its_session는 FCV-2 줄과 함께 native로 남는다.
 - 나뉜 root IN 읽기의 statement는 모든 runtime이 모든 database에서 실행하는 recipe parameter_chunking의 case root_in_split_statements다(T400-1, PLN-44, PRT-76, CPX-4): 서로 다른 값 601개는 bind 1024개로 채워지고, SQLite는 512개와 128개의 statement 둘로, MySQL과 PostgreSQL은 statement 하나로 읽으며, 각 row는 한 번 읽힌다. PRT-76은 bind limit을 넘는 채운 목록의 분할을 적는다. PHP 확장 시험 test_root_in_chunks_use_native_model_queries_and_reject_unmergeable_pages는 지운다.
