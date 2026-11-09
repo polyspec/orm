@@ -25,6 +25,15 @@ import (
 	goyaml "go.yaml.in/yaml/v3"
 )
 
+// maxNesting is the number of nested lists and maps that every value stage reads and writes; a list or a map at the next
+// level is refused by the nesting rule of its stage (COD-70).
+const maxNesting = 256
+
+// errNesting is the refusal of a list or a map at level maxNesting+1 by the stage named by stage.
+func errNesting(code, stage string) error {
+	return codecErr(code, "%s: value nesting exceeds %d levels", stage, maxNesting)
+}
+
 func codecErr(code, format string, a ...any) error {
 	return &ir.Error{Code: code, Msg: fmt.Sprintf(format, a...)}
 }
@@ -103,7 +112,13 @@ func Decode(styles []string, raw any) (StyledValue, error) {
 	case "ordered_json":
 		v, err = orderedjson.ParseBytes(b)
 		if err != nil {
-			err = codecCause(CodeCodecDecode, "json: the cell is not JSON", err)
+			// The parser reads the cell in its order and refuses a list or a map at level 257 where it starts (json-depth-read).
+			var parseErr *orderedjson.ParseError
+			if errors.As(err, &parseErr) && parseErr.Kind() == "maximum_depth_exceeded" {
+				err = codecCause(CodeCodecDecode, fmt.Sprintf("json: value nesting exceeds %d levels", orderedjson.MaxDepth), err)
+			} else {
+				err = codecCause(CodeCodecDecode, "json: the cell is not JSON", err)
+			}
 		}
 	default:
 		// With no value stage, the value is the text that the first gz or base64 stage received, or the cell itself.
@@ -172,7 +187,7 @@ func Encode(styles []string, v StyledValue) (any, error) {
 	for i, st := range styles {
 		switch st {
 		case "serialize":
-			if err := commonValue("serialize", value); err != nil {
+			if err := commonValue("serialize", value, 0); err != nil {
 				return nil, err
 			}
 			var sb strings.Builder
@@ -237,7 +252,7 @@ func gzipText(cur []byte) ([]byte, error) {
 
 // yamlEncode writes a value of the common value model as one YAML document and reads the text back (COD-29).
 func yamlEncode(value any) ([]byte, error) {
-	if err := commonValue("yaml", value); err != nil {
+	if err := commonValue("yaml", value, 0); err != nil {
 		return nil, err
 	}
 	var doc goyaml.Node
@@ -270,11 +285,12 @@ func firstStageText(stage, prefix string, value any) ([]byte, error) {
 	return []byte(s), nil
 }
 
-// NormalizeStyled validates a generated setter input and returns its decoded
-// value model so an in-memory model matches a row read from storage.
-func NormalizeStyled(styles []string, nullable bool, v StyledValue) (StyledValue, error) {
+// NormalizeStyled validates the input of the setter of the styled column named column and returns its decoded value model,
+// so that an in-memory model matches a row read from storage. SQL NULL on a column that is not nullable is refused with the
+// name of the column, and any other value fails with the first rule of COD-70 that it meets (COD-73).
+func NormalizeStyled(column string, styles []string, nullable bool, v StyledValue) (StyledValue, error) {
 	if v.kind == 1 && !nullable {
-		return StyledValue{}, codecErr(CodeCodecEncode, "SQL NULL is not allowed for this column")
+		return StyledValue{}, codecErr(CodeCodecEncode, "%s does not accept SQL NULL", column)
 	}
 	stored, err := Encode(styles, v)
 	if err != nil {
@@ -348,21 +364,23 @@ func yamlDecode(b []byte) (any, error) {
 			docs = append(docs, doc)
 		}
 	}
-	switch len(docs) {
-	case 0:
+	if len(docs) == 0 {
 		return nil, codecErr(CodeCodecDecode, "yaml: no document")
-	case 1:
-	default:
-		return nil, codecErr(CodeCodecDecode, "yaml: multiple documents are not supported")
 	}
+	// Each document is met before the next, so the nodes of the first are read before a second document is refused.
+	var value any
 	if doc := docs[0]; doc.Body == nil {
 		// A stream without content has no document; `---` alone is a null document.
-		if doc.Start == nil {
+		if doc.Start == nil && len(docs) == 1 {
 			return nil, codecErr(CodeCodecDecode, "yaml: no document")
 		}
-		return nil, nil
+	} else if value, err = yamlNode(doc.Body, 0); err != nil {
+		return nil, err
 	}
-	return yamlNode(docs[0].Body)
+	if len(docs) > 1 {
+		return nil, codecErr(CodeCodecDecode, "yaml: multiple documents are not supported")
+	}
+	return value, nil
 }
 
 // yamlStream applies the stream rules of YAML 1.2 that the parser does not (COD-13): the stream is UTF-8, a byte order
@@ -396,22 +414,34 @@ func yamlPrintable(r rune) bool {
 // yamlNode is the value of a node of a document body. Each node kind of the YAML library is handled: the scalars, the
 // collections and the anchor, alias and tag forms that a rule refuses; a document, a directive, a comment, a sequence entry
 // or an explicit key that the parser gives as a value is a stream that does not parse, whose cause names the kind (COD-72).
-func yamlNode(node ast.Node) (any, error) {
+//
+// depth is the number of sequences and mappings around node; a sequence or a mapping at level 257 is refused where it
+// starts, before the nodes inside it (yaml-depth).
+func yamlNode(node ast.Node, depth int) (any, error) {
 	switch n := node.(type) {
 	case *ast.SequenceNode:
+		if depth+1 > maxNesting {
+			return nil, errNesting(CodeCodecDecode, "yaml")
+		}
 		out := make([]any, len(n.Values))
 		for i, item := range n.Values {
 			var err error
-			out[i], err = yamlNode(item)
+			out[i], err = yamlNode(item, depth+1)
 			if err != nil {
 				return nil, err
 			}
 		}
 		return out, nil
 	case *ast.MappingNode:
-		return yamlMapping(n.Values)
+		if depth+1 > maxNesting {
+			return nil, errNesting(CodeCodecDecode, "yaml")
+		}
+		return yamlMapping(n.Values, depth+1)
 	case *ast.MappingValueNode:
-		return yamlMapping([]*ast.MappingValueNode{n})
+		if depth+1 > maxNesting {
+			return nil, errNesting(CodeCodecDecode, "yaml")
+		}
+		return yamlMapping([]*ast.MappingValueNode{n}, depth+1)
 	case *ast.TagNode:
 		return nil, codecErr(CodeCodecDecode, "yaml: explicit tags are not supported")
 	case *ast.AliasNode:
@@ -431,17 +461,18 @@ func yamlNode(node ast.Node) (any, error) {
 	return nil, codecCause(CodeCodecDecode, "yaml: the stream does not parse", fmt.Errorf("a %s node in a document body", node.Type()))
 }
 
-func yamlMapping(values []*ast.MappingValueNode) (map[string]any, error) {
+// yamlMapping is the map of the entries of a mapping at level depth, each key read before its value.
+func yamlMapping(values []*ast.MappingValueNode, depth int) (map[string]any, error) {
 	out := make(map[string]any, len(values))
 	for _, item := range values {
-		key, err := yamlMapKey(item.Key)
+		key, err := yamlMapKey(item.Key, depth)
 		if err != nil {
 			return nil, err
 		}
 		if _, exists := out[key]; exists {
 			return nil, codecErr(CodeCodecDecode, "yaml: duplicate map key")
 		}
-		value, err := yamlNode(item.Value)
+		value, err := yamlNode(item.Value, depth)
 		if err != nil {
 			return nil, err
 		}
@@ -507,7 +538,9 @@ func yamlCoreScalar(text string) (any, error) {
 	return text, nil
 }
 
-func yamlMapKey(node ast.Node) (string, error) {
+// yamlMapKey is the key of an entry of a mapping at level depth; a collection key is at the next level, so one at level
+// 257 is its nesting rule before yaml-key-collection.
+func yamlMapKey(node ast.Node, depth int) (string, error) {
 	// An explicit key (? key) is the key it holds; a collection there is refused below as any collection key is.
 	if explicit, ok := node.(*ast.MappingKeyNode); ok {
 		node = explicit.Value
@@ -515,6 +548,9 @@ func yamlMapKey(node ast.Node) (string, error) {
 	var value any
 	switch n := node.(type) {
 	case *ast.SequenceNode, *ast.MappingNode, *ast.MappingValueNode:
+		if depth+1 > maxNesting {
+			return "", errNesting(CodeCodecDecode, "yaml")
+		}
 		return "", codecErr(CodeCodecDecode, "yaml: map keys must be scalar strings")
 	case *ast.LiteralNode:
 		value = n.Value.Value
@@ -535,7 +571,7 @@ func yamlMapKey(node ast.Node) (string, error) {
 	default:
 		// yamlNode refuses a tag, an anchor and an alias by their rules, and a kind that is not a key as a stream that does
 		// not parse.
-		_, err := yamlNode(node)
+		_, err := yamlNode(node, depth)
 		return "", err
 	}
 	switch v := value.(type) {
@@ -552,8 +588,10 @@ func yamlMapKey(node ast.Node) (string, error) {
 // commonValue refuses, in the order of its nodes, a value that a first serialize or yaml stage, named by stage, does not
 // write (COD-70): an ordered-json value, a string that is not UTF-8, a float that is not finite, an integer outside the i64
 // range, and any other value outside the common value model of COD-16, such as bytes or a map whose keys are not strings
-// (COD-63), which yaml.v3 would write in forms of its own. A map is read in the order of its sorted keys.
-func commonValue(stage string, v any) error {
+// (COD-63), which yaml.v3 would write in forms of its own, and a list or a map at level 257, where it starts, before the
+// nodes inside it (serialize-depth-write, yaml-depth-write); depth is the number of lists and maps around v. A map is read
+// in the order of its sorted keys.
+func commonValue(stage string, v any, depth int) error {
 	switch x := v.(type) {
 	case nil, bool, int, int32, int64:
 	case uint64:
@@ -571,22 +609,28 @@ func commonValue(stage string, v any) error {
 	case *orderedjson.Value:
 		return codecErr(CodeCodecEncode, "%s: an ordered-json value is written only by the ordered_json stage", stage)
 	case []any:
+		if depth+1 > maxNesting {
+			return errNesting(CodeCodecEncode, stage)
+		}
 		for _, item := range x {
-			if err := commonValue(stage, item); err != nil {
+			if err := commonValue(stage, item, depth+1); err != nil {
 				return err
 			}
 		}
 	case map[string]any:
+		if depth+1 > maxNesting {
+			return errNesting(CodeCodecEncode, stage)
+		}
 		keys := make([]string, 0, len(x))
 		for k := range x {
 			keys = append(keys, k)
 		}
 		sort.Strings(keys)
 		for _, k := range keys {
-			if err := commonValue(stage, k); err != nil {
+			if err := commonValue(stage, k, depth+1); err != nil {
 				return err
 			}
-			if err := commonValue(stage, x[k]); err != nil {
+			if err := commonValue(stage, x[k], depth+1); err != nil {
 				return err
 			}
 		}
@@ -691,7 +735,7 @@ func phpFloat(f float64) string {
 
 func phpUnserialize(b []byte) (any, error) {
 	p := &phpParser{b: b}
-	v, err := p.value()
+	v, err := p.value(0)
 	if err != nil {
 		return nil, err
 	}
@@ -795,7 +839,11 @@ func (p *phpParser) scalar(t byte, s string) (any, error) {
 	return f, nil
 }
 
-func (p *phpParser) value() (any, error) {
+// value reads the field at p.i, inside depth arrays: an a field is one level, and one at level 257 is refused at its letter,
+// before its length and the fields inside it (serialize-depth). A key is read before its value, and a key that repeats an
+// earlier key of its array, an integer key and a string key of the same text included, is refused before its value
+// (serialize-duplicate).
+func (p *phpParser) value(depth int) (any, error) {
 	if p.i >= len(p.b) {
 		return nil, p.fail("unexpected end")
 	}
@@ -834,6 +882,9 @@ func (p *phpParser) value() (any, error) {
 		}
 		return string(s), p.expect(';')
 	case 'a':
+		if depth+1 > maxNesting {
+			return nil, errNesting(CodeCodecDecode, "serialize")
+		}
 		n, err := p.length("array")
 		if err != nil {
 			return nil, err
@@ -846,8 +897,9 @@ func (p *phpParser) value() (any, error) {
 		keys := make([]string, 0, size)
 		vals := make([]any, 0, size)
 		sequential := true
+		seen := make(map[string]struct{}, size)
 		for k := 0; k < n; k++ {
-			kv, err := p.value()
+			kv, err := p.value(depth + 1)
 			if err != nil {
 				return nil, err
 			}
@@ -864,7 +916,11 @@ func (p *phpParser) value() (any, error) {
 			default:
 				return nil, p.fail("array key must be int or string")
 			}
-			v, err := p.value()
+			if _, repeated := seen[key]; repeated {
+				return nil, p.fail("duplicate array key")
+			}
+			seen[key] = struct{}{}
+			v, err := p.value(depth + 1)
 			if err != nil {
 				return nil, err
 			}

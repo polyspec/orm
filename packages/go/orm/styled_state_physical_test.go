@@ -49,6 +49,7 @@ func TestStyledFixturePhysicalCells(t *testing.T) {
 			StoredText *string        `json:"stored_text"`
 			Output     map[string]any `json:"output"`
 			Error      string         `json:"error"`
+			Message    string         `json:"message"`
 		} `json:"cases"`
 	}
 	if err := json.Unmarshal(data, &fixture); err != nil {
@@ -98,8 +99,18 @@ func TestStyledFixturePhysicalCells(t *testing.T) {
 					t.Fatalf("unknown fixture input kind %q", tc.Input.Kind)
 				}
 				if tc.ID == "nonnull_sql_null" {
-					if _, err := orm.NormalizeStyled([]string{"json"}, false, input); orm.ErrorCode(err) != orm.CodeCodecEncode {
+					if _, err := orm.NormalizeStyled(column, []string{"json"}, false, input); orm.ErrorCode(err) != orm.CodeCodecEncode {
 						t.Fatalf("non-null setter error = %v", err)
+					}
+					return
+				}
+				if tc.Message != "" {
+					// The write encodes the value again and fails with the text of the setter before any statement (COD-73).
+					c := newRow()
+					c.Set("json_required", orm.Value(nil))
+					c.Set(column, input)
+					if _, err := c.Create(); err == nil || err.Error() != tc.Message {
+						t.Fatalf("write error = %v; want %s", err, tc.Message)
 					}
 					return
 				}

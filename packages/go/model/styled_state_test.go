@@ -59,10 +59,10 @@ func TestGeneratedStyledGetterAndSetterStates(t *testing.T) {
 	}
 	checkStyledOutput(t, row, `{"json_setting":{"kind":"value","value":null}}`)
 
-	if _, err := orm.NormalizeStyled([]string{"ordered_json"}, false, orm.SqlNull()); err == nil || !strings.Contains(err.Error(), orm.CodeCodecEncode) {
+	if _, err := orm.NormalizeStyled("json_setting", []string{"ordered_json"}, false, orm.SqlNull()); err == nil || err.Error() != "CODEC_ENCODE: json_setting does not accept SQL NULL" {
 		t.Fatalf("non-null SQL NULL setter validation = %v", err)
 	}
-	if _, err := orm.NormalizeStyled([]string{"ordered_json"}, false, orm.Value(nil)); err != nil {
+	if _, err := orm.NormalizeStyled("json_setting", []string{"ordered_json"}, false, orm.Value(nil)); err != nil {
 		t.Fatalf("non-null encoded null rejected: %v", err)
 	}
 }

@@ -1,10 +1,10 @@
 # Query-building state: the query being built, and the state of a row that was read. The Model chain fills this
 # and the planner turns it into IR (docs/spec/protocol.md).
 from polyspec.orm import codes
-from polyspec.orm.codec import CodecError, host_encode
+from polyspec.orm.codec import CodecError, encode, host_encode
 from polyspec.orm.engine.model import Field, field_of
 from polyspec.orm.errors import OrmError
-from polyspec.orm.names import ChainKey
+from polyspec.orm.names import ChainKey, client_styles
 from polyspec.orm.styled_value import StyledValue
 from polyspec.orm.values import ColumnFunction, ValueFunction, _function_ir
 
@@ -540,6 +540,14 @@ class Core:
                 raise OrmError(codes.CODEC_ENCODE, f"{column} requires StyledValue")
             if not field.nullable and value.kind == "sql-null":
                 raise OrmError(codes.CODEC_ENCODE, f"{column} does not accept SQL NULL")
+            # The value is encoded by the codec stages of the column without the host stages, so a value that the
+            # write would refuse fails here, before the model changes, with the error of COD-70 (COD-73).
+            try:
+                encode(client_styles(field), value)
+            except CodecError as error:
+                raise OrmError(
+                    error.code, str(error).partition(": ")[2], error
+                ) from error
         elif value is not None:
             if "ip" in field.stages:
                 try:
