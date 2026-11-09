@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 6e4fbae1b9058c35f9e46e713c471d24c45e9c82c7377ce0220669483b738c9c -->
+<!-- source-sha256: a03345d628cb08628a3d3bae5769405b4e3c57848c09b5f200b84e9cadc5da8f -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -562,6 +562,7 @@ prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메
 | **INT-180** | MySQL, PostgreSQL | 기술된 컬럼의 시각이나 datetime | 선언된 정밀도 p 뒤에 0이 아닌 숫자가 있다 | `GRID_TEMPORAL_PRECISION` | `temporal value has more fraction digits than its precision` | 어떤 데이터베이스도 보내지 않는다. 데이터베이스는 값을 컬럼의 p로 반올림한다. 모든 runtime은 셀의 p 자리를 쓰는 곳에서 이것을 검사하여, 어떤 숫자도 모르게 버려지지 않게 한다 |
 | **INT-181** | MySQL, PostgreSQL | 기술된 시각이나 datetime 컬럼의 native 타입 | 정밀도가 6보다 크거나 수가 아니다 | `GRID_TEMPORAL_PRECISION` | `native type declares more than 6 fraction digits` | 어떤 데이터베이스도 선언하지 않는다. MySQL은 6보다 큰 정밀도를 거부하고(DIA-54), PostgreSQL은 6으로 줄인다. native 타입에서 p를 읽는 모든 runtime이 이것을 검사한다 |
 | **INT-182** | MySQL, PostgreSQL, SQLite | 기술된 boolean 컬럼: MySQL `tinyint(1)`, PostgreSQL과 SQLite `boolean` | 값이 boolean도 0이나 1도 아니다 | `CATALOG_VALUE` | `a boolean column holds a value that is not a boolean` | 모든 runtime. PostgreSQL boolean은 true와 false만 담는다 |
+| **INT-186** | PostgreSQL | 그리드 조회, 일반 읽기 전용 조회, 기술된 읽기의 모든 값(INT-165) | 행을 읽은 뒤, INT-185에 따라 셀의 출력이 따르는 설정(`DateStyle`, `IntervalStyle`, `TimeZone`, `extra_float_digits`, `bytea_output`, `lc_monetary`, `search_path`)의 값이 그 읽기의 트랜잭션이 시작할 때의 값과 다르다. 문장이 `set_config`를 부를 때가 그렇다 | `CATALOG_VALUE` | 컬럼 없는 `the query changed a setting that the output of its values depends on` | 모든 runtime은 그 읽기 전체를 거부한다: 한 runtime의 driver(node-postgres)는 결과의 모든 컬럼을 한 형식으로 읽고, 서버는 설정의 local 변경을 알리지 않으므로(ParameterStatus 없음) 어떤 runtime도 그런 값을 똑같이 읽을 수 없다. 모든 runtime은 그런 읽기를 각각 그 session의 트랜잭션 하나 안에서 실행하고(그리드 조회, 일반 조회, 테이블 페이지, 행 조회는 읽기 전용 트랜잭션, 삽입이나 갱신의 재읽기는 쓰기 트랜잭션), 그 트랜잭션 안에서 일곱 설정의 `current_setting`을 시작할 때와 행을 읽은 뒤 트랜잭션이 끝나기 전에 다시 읽는다: local 설정(`is_local`이 true인 `set_config`)은 트랜잭션이 끝나면 되돌아가고, 검사는 끝에서 설정을 읽으므로 설정을 되돌리는 문장은 거부되지 않는다. 값을 텍스트로 읽는 runtime이 그 타입의 ISO 형식이 아닌 날짜, 시각, timestamp 텍스트를 만나면 곧바로 이 규칙으로 읽기를 거부한다 |
 
 - **INT-183** 부동소수점 값은 그리드 조회와 기술된 테이블의 모든 읽기에서 bits 셀이다: 4바이트 float는 `Float32` 셀, 8바이트 float는 `Float64` 셀이며, 부호 있는 0, NaN, Infinity, -Infinity도 그렇고 어느 것도 거부되지 않는다(INT-102). SQLite REAL은 `Float64` 셀이며 `Float32` 셀이 아니다. 일반 읽기 전용 조회는 runtime의 float를 돌려주며, 유한하지 않은 값도 그렇다. PostgreSQL `real`과 `double precision`은 그런 값을 모두 담고 SQLite REAL은 무한대를 담는다. MySQL은 유한하지 않은 float를 입력에서 거부한다.
 - **INT-184** SQLite에서 어떤 변환도 컬럼이 선언한 타입 때문에 값을 거부하지 않는다(INT-152): `INT` 컬럼의 텍스트는 텍스트 셀이고 `FLOAT` 컬럼의 REAL은 float이며, `TIME(3)`처럼 정밀도를 붙여 선언한 컬럼은 dbspec 시간 컬럼이 아니므로, `TIMESTAMP` 컬럼의 것처럼 저장된 텍스트를 검사 없이 돌려준다(INT-103), 시간이 아닌 텍스트(`abc` 같은 것)는 텍스트 셀이다.
