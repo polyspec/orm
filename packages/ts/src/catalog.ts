@@ -1268,18 +1268,81 @@ function catalogKind(dialect: DriverName, native: string): CatalogTableKind {
   throw err(CODE_KIND, `relation kind "${native}" of ${dialect}`);
 }
 
+/** The PostgreSQL settings that the output of a cell depends on by INT-185, as the columns of current_setting (INT-186). */
+const POSTGRES_OUTPUT_SETTINGS = "current_setting('DateStyle'), current_setting('IntervalStyle'), current_setting('TimeZone'), " +
+  "current_setting('extra_float_digits'), current_setting('bytea_output'), current_setting('lc_monetary'), current_setting('search_path')";
+
+/** The number of the PostgreSQL output settings that each row of a read of cells carries (INT-186). */
+const POSTGRES_OUTPUT_SETTING_COUNT = 7;
+
+/**
+ * Sets, for the transaction of a PostgreSQL session, the output settings under which the output of every cell kind is its exact text
+ * (INT-186): ISO leaves the order of date input as it was.
+ */
+const POSTGRES_FIXED_OUTPUT_SQL = "SELECT set_config('DateStyle', 'ISO', true), set_config('extra_float_digits', '1', true), set_config('bytea_output', 'hex', true)";
+
+/** The refusal of a read whose statement changed an output setting: it names no column, since it refuses the read as a whole (INT-186). */
+function settingChanged(): OrmError {
+  return err(CODE_VALUE, 'the query changed a setting that the output of its values depends on');
+}
+
+/**
+ * The statement of a PostgreSQL read of cells, so that each row carries the output settings under which the server writes it (INT-186):
+ * a MATERIALIZED CTE keeps a plan of its own, so the outer projection of a row runs right before the server sends that row and runs its
+ * output functions. The one trailing semicolon that a read query may hold (validateReadOnly) cannot stand inside the CTE.
+ */
+function postgresSettingsRead(sql: string): string {
+  let end = sql.length;
+  queryWords(sql, 'postgres', at => { end = at; });
+  return `WITH catalog_read AS MATERIALIZED (\n${sql.slice(0, end)}\n) SELECT catalog_read.*, ${POSTGRES_OUTPUT_SETTINGS} FROM catalog_read`;
+}
+
 /** A bound session: one pooled connection inside one transaction. It is discarded when it ends without an acknowledged COMMIT, so a session setting never returns to the pool. */
 class Session {
   /** Set when a read stopped a statement before its end: the connection then holds rows that were not read, and only a discard is safe. */
   public stopped = false;
 
+  /** The PostgreSQL output settings when the transaction began (INT-186); undefined on MySQL and SQLite. */
+  private settings: string[] | undefined;
+
   public constructor(public readonly dialect: DriverName, private readonly session: DriverSession) {}
+
+  /** Fixes the PostgreSQL output settings for the transaction and reads the seven of INT-186 as the baseline of every read of cells. */
+  public async fixOutputSettings(): Promise<void> {
+    await this.control(POSTGRES_FIXED_OUTPUT_SQL);
+    this.settings = await this.outputSettings();
+  }
+
+  /** The values of the PostgreSQL output settings in the transaction of the session. */
+  private async outputSettings(): Promise<string[]> {
+    const { rows } = await this.rawRows(`SELECT ${POSTGRES_OUTPUT_SETTINGS}`, [], 1, METADATA_BYTES);
+    const [row] = rows;
+    const settings = (row ?? []).filter((value): value is string => typeof value === 'string');
+    if (rows.length !== 1 || row?.length !== POSTGRES_OUTPUT_SETTING_COUNT || settings.length !== POSTGRES_OUTPUT_SETTING_COUNT) {
+      throw err(CODE_METADATA, 'current_setting returned no single row of settings');
+    }
+    return settings;
+  }
+
+  /**
+   * Refuses a PostgreSQL session whose output settings, read after its rows and before its transaction ends, differ from their values
+   * when the transaction began (INT-186): a change that no row carries, as in a result of no rows. A local setting reverts when the
+   * transaction ends, so the check runs inside it.
+   */
+  public async settingsUnchanged(): Promise<void> {
+    const baseline = this.settings;
+    if (baseline === undefined) return;
+    const now = await this.outputSettings();
+    if (now.some((value, index) => value !== baseline[index])) throw settingChanged();
+  }
 
   /**
    * Streams one statement and converts each row as it arrives. The stream stops at the first row past maxRows or past maxBytes, and
    * the read then fails with CATALOG_LIMIT; no row past the budget is converted or kept. Each cell is counted by its converted size
    * (sizeOf and gridSize). A conversion error stops the stream and is thrown after it. With keep, the first keep rows are
-   * converted and the row after them is not: the stream stops there and past reports it, as the sentinel row of a page does.
+   * converted and the row after them is not: the stream stops there and past reports it, as the sentinel row of a page does. A read of
+   * cells (cells) on PostgreSQL runs as postgresSettingsRead and refuses a row whose output settings differ from the baseline before any
+   * of its values is converted (INT-186); the columns of the settings are no columns of the result and count against no budget.
    */
   public async collect<T>(
     sql: string,
@@ -1288,8 +1351,12 @@ class Session {
     maxBytes: number,
     convert: (value: unknown, column: DriverColumn, index: number) => { cell: T; size: number },
     keep?: number,
+    cells = true,
   ): Promise<{ columns: DriverColumn[]; rows: T[][]; past: boolean }> {
     const bound = checkParams(params, CODE_PARAM);
+    const baseline = cells ? this.settings : undefined;
+    const width = baseline === undefined ? 0 : POSTGRES_OUTPUT_SETTING_COUNT;
+    const statement = baseline === undefined ? sql : postgresSettingsRead(sql);
     const out: { columns: DriverColumn[]; rows: T[][]; past: boolean } = { columns: [], rows: [], past: false };
     let bytes = 0;
     let overflow: string | undefined;
@@ -1332,9 +1399,25 @@ class Session {
         out.rows.push(cells);
         return true;
     };
-    await this.session.scan(sql, bound, {
-      columns: columns => { out.columns = columns; },
-      row: values => {
+    await this.session.scan(statement, bound, {
+      columns: columns => {
+        if (columns.length < width) {
+          failure = err(CODE_METADATA, 'the read returned fewer columns than its output settings');
+          return;
+        }
+        out.columns = width === 0 ? columns : columns.slice(0, -width);
+      },
+      row: received => {
+        if (failure !== undefined) return false;
+        let values = received;
+        if (baseline !== undefined) {
+          const settings = received.slice(-width);
+          if (settings.some((value, index) => value !== baseline[index])) {
+            failure = settingChanged();
+            return false;
+          }
+          values = received.slice(0, -width);
+        }
         if (this.dialect === 'sqlite' && values.some(value => typeof value === 'string' && value.includes('\uFFFD'))) {
           lossy = true;
           return false;
@@ -1417,7 +1500,7 @@ class Session {
 
   /** Reads the rows of a statement with each value as it is, counted by its size. */
   public async rawRows(sql: string, params: readonly unknown[], maxRows: number, maxBytes: number): Promise<{ columns: DriverColumn[]; rows: unknown[][] }> {
-    return this.collect<unknown>(sql, params, maxRows, maxBytes, value => ({ cell: value, size: sizeOf(value) }));
+    return this.collect<unknown>(sql, params, maxRows, maxBytes, value => ({ cell: value, size: sizeOf(value) }), undefined, false);
   }
 
   /** Runs a statement that returns no rows and returns the number of rows it changed. */
@@ -1454,12 +1537,15 @@ class Session {
     this.session.release(discard);
   }
 
-  /** Reads the rows of a plain query: each value by the native type of its column, a temporal value as the text of its grid cell (INT-153). */
-  public async plainRows(sql: string, params: readonly unknown[], maxRows: number, maxBytes: number): Promise<{ columns: DriverColumn[]; rows: CatalogValue[][] }> {
+  /**
+   * Reads the rows of a plain query: each value by the native type of its column, a temporal value as the text of its grid cell
+   * (INT-153). A read of cells (cells) checks the output settings of each row (INT-186); a read of metadata does not.
+   */
+  public async plainRows(sql: string, params: readonly unknown[], maxRows: number, maxBytes: number, cells = false): Promise<{ columns: DriverColumn[]; rows: CatalogValue[][] }> {
     return this.collect<CatalogValue>(sql, params, maxRows, maxBytes, (value, column) => {
       const cell = plainValue(value, column, this.dialect);
       return { cell, size: sizeOf(cell) };
-    });
+    }, undefined, cells);
   }
 
   /** Reads one table descriptor: the kind, the columns, the key in constraint order and the identity flag. */
@@ -1691,6 +1777,8 @@ export class CatalogConnection {
       // holds never reaches the server, so a plan from before the change would fail or keep its old parameter types. The transaction holds
       // that server connection for the whole session (CFG-28).
       if (this.dialect === 'postgres') await session.control('DEALLOCATE ALL');
+      // Every read of cells checks its rows against the output settings that the transaction begins with (INT-186).
+      if (this.dialect === 'postgres') await session.fixOutputSettings();
     } catch (error) {
       this.discard(session);
       throw driverError(this.dialect, error);
@@ -1704,6 +1792,7 @@ export class CatalogConnection {
     let value: T;
     try {
       value = await work(session);
+      await session.settingsUnchanged();
     } catch (error) {
       throw await this.endSession(session, error);
     }
@@ -1719,6 +1808,7 @@ export class CatalogConnection {
     try {
       if (this.dialect === 'mysql') await session.mysqlPartialRevokesOff();
       value = await work(session);
+      await session.settingsUnchanged();
     } catch (error) {
       throw await this.endSession(session, error);
     }
@@ -1835,7 +1925,7 @@ export class CatalogConnection {
   public async readOnlyQuery(query: string, params: readonly unknown[], limits: CatalogQueryLimits = {}): Promise<CatalogQueryResult> {
     const { maxRows, maxBytes } = this.queryBudget(query, params, limits);
     return this.read(async session => {
-      const { columns, rows } = await session.plainRows(query, params, maxRows, maxBytes);
+      const { columns, rows } = await session.plainRows(query, params, maxRows, maxBytes, true);
       return { columns: columns.map(column => column.name), rows };
     }).catch(refusedWrite);
   }
