@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c1c88b90895cabdd11fd5a85a87be63785d5348b398137b5b57a1705939f2b1c -->
+<!-- source-sha256: 7a278e876b82d21afcc1fc38db9ca122bc0a56ea39f9d2ac648a267e21438734 -->
 # 변경 이력
 
 ## Unreleased
+
+- Breaking: PHP와 PHP extension은 catalog 값을 catalog value 규칙(INT-165~INT-185, XV32)으로 읽는다. 어긴 규칙은 `CODE: column <n>: <text>`이며, n은 query에서는 결과의 1-based column, 기술된 읽기에서는 기술된 column 중 그 column의 위치다. 값은 행 순서로, 한 행 안에서는 column 순서로 검사한다. 바뀐 text는 다음과 같다. `CATALOG_VALUE: unsupported grid value: <reason>`은 `MySQL YEAR has no grid cell`, `MySQL TIMESTAMP follows a time zone`, `PostgreSQL timestamptz and timetz are unsupported`, `PostgreSQL numeric is not finite`, `unsupported native type`, `unsupported driver value`, `the driver could not decode the value` 중 하나가 되고, 마지막은 읽기 실패를 previous exception으로 지닌다. `GRID_TEMPORAL_VALUE: unsupported grid value: <reason>`은 `date outside 0001-01-01 to 9999-12-31`, `date is not a calendar date`, `time outside 00:00:00 to 23:59:59.999999`, `the stored value is not a dbspec date`·`time`·`datetime` 중 하나가 된다. `GRID_TEMPORAL_PRECISION: temporal value has more fraction digits than its precision <p>`는 precision을 쓰지 않으며, fraction 자릿수가 dbspec CHECK가 정한 수(CHECK가 없으면 0)와 다른 SQLite time·datetime은 `GRID_TEMPORAL_PRECISION: column <n>: the fraction digits are not the count that its dbspec CHECK fixes`이고, fraction 자릿수가 6을 넘는 native type은 `native type declares more than 6 fraction digits`다. `CATALOG_VALUE: a boolean column holds a value that is not a boolean`은 column을 붙이고, PHP extension 읽기의 `TABLE_METADATA_INVALID: expected an integer`는 `CATALOG_VALUE: column <n>: unsupported driver value`가 된다. SQLite REAL은 float32가 아니라 Float64 cell과 float64 값이며, SQLite는 column이 선언한 type 때문에 값을 거부하지 않는다. MySQL BIT와 spatial 값은 bytes, JSON·ENUM·SET은 text다. PostgreSQL type은 OID로 class를 정한다: INT-185의 text type, base type을 따르는 domain, integer·numeric·boolean·text 요소의 array·range·multirange·composite는 text이고, interval·money·jsonpath·citext 같은 다른 type은 거부한다. 거부되는 type의 NULL은 null cell이다. 두 runtime의 PostgreSQL 연결은 이제 시작할 때 `client_encoding`을 UTF8로 정한다. 전에는 server나 환경의 기본값을 따랐다. MySQL은 이미 `charset=utf8mb4`로 연결했다. PHP recipe runner는 `float`·`f64` wrapper를 binary64 값으로 비교한다.
 
 ## 0.0.26
 

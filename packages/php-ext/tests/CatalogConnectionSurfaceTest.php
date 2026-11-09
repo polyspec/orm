@@ -38,6 +38,26 @@ final class CatalogConnectionSurfaceTest extends TestCase
         );
     }
 
+    // Requirements: INT-165, INT-171. No server sends a datetime text for a date column.
+    public function testNativeDescribedPostgresDriverValueOfNoConversionIsRefused(): void
+    {
+        CatalogPostgresTemporalCases::assertUnsupportedDriverValue(
+            static function (CatalogPostgresTemporalPdo $pdo): Catalog {
+                return self::catalogWith(new Db($pdo, 'postgres', new Config(), new DateTimeZone('UTC')), 'postgres');
+            },
+        );
+    }
+
+    // Requirements: INT-165, INT-172. No server sends a bytea stream that cannot be read.
+    public function testNativeDescribedPostgresUndecodableDriverValueKeepsItsCause(): void
+    {
+        CatalogPostgresTemporalCases::assertUndecodableDriverValue(
+            static function (CatalogPostgresTemporalPdo $pdo): Catalog {
+                return self::catalogWith(new Db($pdo, 'postgres', new Config(), new DateTimeZone('UTC')), 'postgres');
+            },
+        );
+    }
+
     public function testNativeTablePageIndexesColumnsAndReportsUnknownName(): void
     {
         $columns = [

@@ -325,8 +325,11 @@ static void cat_limit_throw(int kind, zend_long max_rows, zend_long max_bytes)
     }
 }
 
-/* The column names and the upper-case native type names of an executed statement. */
-static bool cat_statement_columns(zval *st, zval *names, zval *types)
+static bool cat_parse_int(zval *v, zend_long *out);
+
+/* The column names and the upper-case native type names of an executed statement, and with oids the PostgreSQL type OID of
+ * each column, null on the other databases (Catalog::oidOf). */
+static bool cat_statement_columns(zval *st, zval *names, zval *types, zval *oids)
 {
     zval count;
     if (!pdo_call(st, "columnCount", &count, 0, NULL, NULL)) return false;
@@ -342,6 +345,12 @@ static bool cat_statement_columns(zval *st, zval *names, zval *types)
         add_next_index_str(names, name != NULL && Z_TYPE_P(name) == IS_STRING ? zend_string_copy(Z_STR_P(name)) : ZSTR_EMPTY_ALLOC());
         zend_string *type = native != NULL && Z_TYPE_P(native) == IS_STRING ? zend_string_toupper(Z_STR_P(native)) : ZSTR_EMPTY_ALLOC();
         add_next_index_str(types, type);
+        if (oids != NULL) {
+            zval *oid = Z_TYPE(meta) == IS_ARRAY ? zend_hash_str_find(Z_ARRVAL(meta), "pgsql:oid", 9) : NULL;
+            zend_long id;
+            if (oid != NULL && Z_TYPE_P(oid) != IS_NULL && cat_parse_int(oid, &id)) add_next_index_long(oids, id);
+            else add_next_index_null(oids);
+        }
         zval_ptr_dtor(&meta);
     }
     zval_ptr_dtor(&count);
@@ -409,13 +418,20 @@ static bool cat_convert_bound(zval *rows, zval *row, zval *types, const char *di
     return true;
 }
 
-/* A PostgreSQL read without parameters through a cursor, in chunks of 256 rows: a budget stop leaves the rest of the
- * result unread and closes the cursor. With convert, each row is converted as it is read and the byte budget counts its
- * cells (INT-115), the text of a decimal or temporal grid cell rather than the driver value it came from. */
+static bool cat_pg_classes(zval *db, zval *pdo, zval *oids, zval *classes);
+
+/* A PostgreSQL read without parameters through a cursor, in chunks of 256 rows (Catalog::cursorRead): a budget stop leaves the
+ * rest of the result unread and closes the cursor. With convert, each row is converted as it is read and the byte budget counts
+ * its cells (INT-115), the text of a decimal or temporal grid cell rather than the driver value it came from. Each chunk is read
+ * whole before its rows are converted: the columns are described after the first chunk is read, and with classify the class of
+ * each column replaces its type in types (cat_pg_classes), whose lookups run statements that end the chunk's statement. oids,
+ * when given, gets the type OID of each column. */
 static bool cat_cursor_query(zval *db, zval *pdo, const char *sql, zend_long max_rows, zend_long max_bytes,
-                             zval *names, zval *types, zval *rows, cat_row_convert convert)
+                             zval *names, zval *types, zval *rows, cat_row_convert convert, zval *oids, bool classify)
 {
-    zval q, r;
+    zval q, r, local;
+    array_init(&local);
+    zval *ids = oids != NULL ? oids : &local;
     zend_string *declare = zend_strpprintf(0, "DECLARE %s NO SCROLL CURSOR FOR %s", CAT_CURSOR, sql);
     ZVAL_STR(&q, declare);
     bool ok = pdo_call(pdo, "exec", &r, 1, &q, NULL);
@@ -426,7 +442,7 @@ static bool cat_cursor_query(zval *db, zval *pdo, const char *sql, zend_long max
     zend_long fetched = CAT_CURSOR_CHUNK;
     bool described = false;
     while (fetched == CAT_CURSOR_CHUNK) {
-        zval fq, st, mode;
+        zval fq, st, mode, chunk;
         zend_string *fetch_sql = zend_strpprintf(0, "FETCH FORWARD %d FROM %s", CAT_CURSOR_CHUNK, CAT_CURSOR);
         ZVAL_STR(&fq, fetch_sql);
         ok = pdo_call(pdo, "prepare", &st, 1, &fq, NULL);
@@ -438,53 +454,86 @@ static bool cat_cursor_query(zval *db, zval *pdo, const char *sql, zend_long max
             goto driver_cursor;
         }
         zval_ptr_dtor(&r);
+        ZVAL_LONG(&mode, CAT_PDO_FETCH_NUM);
+        ok = pdo_call(&st, "fetchAll", &chunk, 1, &mode, NULL);
+        if (!ok) {
+            zval_ptr_dtor(&st);
+            goto driver_cursor;
+        }
         if (!described) {
-            if (!cat_statement_columns(&st, names, types)) {
+            ok = cat_statement_columns(&st, names, types, ids);
+            if (!ok) {
+                zval_ptr_dtor(&chunk);
                 zval_ptr_dtor(&st);
                 goto driver_cursor;
             }
             described = true;
-        }
-        fetched = 0;
-        ZVAL_LONG(&mode, CAT_PDO_FETCH_NUM);
-        for (;;) {
-            zval row;
-            ok = pdo_call(&st, "fetch", &row, 1, &mode, NULL);
-            if (!ok) {
+            zval classes;
+            if (classify && !cat_pg_classes(db, pdo, ids, &classes)) {
+                /* The lookup error is the one reported and stays pending through the close. */
+                zval_ptr_dtor(&chunk);
                 zval_ptr_dtor(&st);
-                goto driver_cursor;
+                cat_cursor_close_keep(pdo);
+                zval_ptr_dtor(&local);
+                zval_ptr_dtor(names);
+                zval_ptr_dtor(types);
+                zval_ptr_dtor(rows);
+                return false;
             }
-            if (Z_TYPE(row) == IS_FALSE) break;
-            fetched++;
-            int limit;
+            if (classify) {
+                zval_ptr_dtor(types);
+                ZVAL_COPY_VALUE(types, &classes);
+            }
+        }
+        fetched = (zend_long)zend_hash_num_elements(Z_ARRVAL(chunk));
+        int limit = 0;
+        bool failed = false;
+        zval *kept;
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL(chunk), kept) {
+            zval row;
+            ZVAL_COPY(&row, kept);
             if (convert == NULL) {
                 limit = cat_bound_row(rows, &row, max_rows, max_bytes, &budget);
             } else if (!cat_convert_bound(rows, &row, types, "postgres", convert, max_rows, max_bytes, &budget, &limit)) {
-                /* The conversion error is the one reported and stays pending through the close; names and rows stay the
-                 * caller's, as after a read. */
-                zval_ptr_dtor(&st);
-                cat_cursor_close_keep(pdo);
-                zval_ptr_dtor(types);
-                return false;
+                failed = true;
+                break;
             }
-            if (limit != 0) {
-                zval_ptr_dtor(&st);
-                cat_cursor_close_quiet(pdo);
-                cat_limit_throw(limit, max_rows, max_bytes);
-                return false;
-            }
-        }
+            if (limit != 0) break;
+        } ZEND_HASH_FOREACH_END();
+        zval_ptr_dtor(&chunk);
         zval_ptr_dtor(&st);
+        if (failed) {
+            /* The conversion error is the one reported and stays pending through the close; names and rows stay the caller's,
+             * as after a read. */
+            cat_cursor_close_keep(pdo);
+            zval_ptr_dtor(&local);
+            zval_ptr_dtor(types);
+            return false;
+        }
+        if (limit != 0) {
+            cat_cursor_close_quiet(pdo);
+            zval_ptr_dtor(&local);
+            cat_limit_throw(limit, max_rows, max_bytes);
+            return false;
+        }
     }
+    zval_ptr_dtor(&local);
     ZVAL_STRING(&q, "CLOSE " CAT_CURSOR);
     ok = pdo_call(pdo, "exec", &r, 1, &q, NULL);
     zval_ptr_dtor(&q);
-    if (!ok) goto driver;
+    if (!ok) {
+        cat_driver_error(db);
+        zval_ptr_dtor(names);
+        zval_ptr_dtor(types);
+        zval_ptr_dtor(rows);
+        return false;
+    }
     zval_ptr_dtor(&r);
     return true;
 driver_cursor:
     cat_cursor_close_keep(pdo);
 driver:
+    zval_ptr_dtor(&local);
     cat_driver_error(db);
     zval_ptr_dtor(names);
     zval_ptr_dtor(types);
@@ -517,7 +566,7 @@ static bool cat_bind_typed(zval *st, zval *args)
  * streams its rows unbuffered, and a budget stop kills it by its connection id; a PostgreSQL statement without parameters
  * reads through a cursor. */
 static bool cat_query_body(zval *db, zval *pdo, const char *sql, zval *args, zend_long max_rows, zend_long max_bytes,
-                           zval *names, zval *types, zval *rows, cat_row_convert convert);
+                           zval *names, zval *types, zval *rows, cat_row_convert convert, zval *oids);
 
 /* A PostgreSQL statement with parameters is rewritten: PDO binds only ? placeholders, so each $n becomes ? and its parameter
  * follows in the order of the placeholders (a repeated $n binds its value again). */
@@ -563,9 +612,30 @@ static bool cat_has_pg_placeholder(const char *sql)
     return false;
 }
 
-/* A bounded result as the PHP client's query(), with the PostgreSQL placeholders of a statement with parameters rewritten. */
+static bool cat_query_rewritten(zval *db, zval *pdo, const char *sql, zval *args, zend_long max_rows, zend_long max_bytes,
+                                zval *names, zval *types, zval *rows, cat_row_convert convert, zval *oids);
+
+/* A bounded result as the PHP client's query(). oids, when given, gets the PostgreSQL type OID of each column
+ * (cat_statement_columns), an array that the caller releases after a read that succeeds. */
+static bool cat_query_oids(zval *db, zval *pdo, const char *sql, zval *args, zend_long max_rows, zend_long max_bytes,
+                           zval *names, zval *types, zval *rows, cat_row_convert convert, zval *oids)
+{
+    if (oids != NULL) array_init(oids);
+    bool ok = cat_query_rewritten(db, pdo, sql, args, max_rows, max_bytes, names, types, rows, convert, oids);
+    if (!ok && oids != NULL) zval_ptr_dtor(oids);
+    return ok;
+}
+
+/* A bounded result as the PHP client's query(), with no type OIDs. */
 static bool cat_query(zval *db, zval *pdo, const char *sql, zval *args, zend_long max_rows, zend_long max_bytes,
                       zval *names, zval *types, zval *rows, cat_row_convert convert)
+{
+    return cat_query_oids(db, pdo, sql, args, max_rows, max_bytes, names, types, rows, convert, NULL);
+}
+
+/* A bounded result with the PostgreSQL placeholders of a statement with parameters rewritten. */
+static bool cat_query_rewritten(zval *db, zval *pdo, const char *sql, zval *args, zend_long max_rows, zend_long max_bytes,
+                                zval *names, zval *types, zval *rows, cat_row_convert convert, zval *oids)
 {
     array_init(names);
     array_init(types);
@@ -581,7 +651,7 @@ static bool cat_query(zval *db, zval *pdo, const char *sql, zval *args, zend_lon
     bool postgres = Z_TYPE(driver) == IS_STRING && zend_string_equals_literal(Z_STR_P(&driver), "postgres");
     zval_ptr_dtor(&driver);
     if (!postgres || zend_hash_num_elements(Z_ARRVAL_P(args)) == 0 || !cat_has_pg_placeholder(sql)) {
-        return cat_query_body(db, pdo, sql, args, max_rows, max_bytes, names, types, rows, convert);
+        return cat_query_body(db, pdo, sql, args, max_rows, max_bytes, names, types, rows, convert, oids);
     }
     zend_string *source = zend_string_init(sql, strlen(sql), 0);
     zend_string *rewritten = NULL;
@@ -594,14 +664,14 @@ static bool cat_query(zval *db, zval *pdo, const char *sql, zval *args, zend_lon
         zval_ptr_dtor(rows);
         return false;
     }
-    bool ok = cat_query_body(db, pdo, ZSTR_VAL(rewritten), &rewritten_args, max_rows, max_bytes, names, types, rows, convert);
+    bool ok = cat_query_body(db, pdo, ZSTR_VAL(rewritten), &rewritten_args, max_rows, max_bytes, names, types, rows, convert, oids);
     zend_string_release(rewritten);
     zval_ptr_dtor(&rewritten_args);
     return ok;
 }
 
 static bool cat_query_body(zval *db, zval *pdo, const char *sql, zval *args, zend_long max_rows, zend_long max_bytes,
-                           zval *names, zval *types, zval *rows, cat_row_convert convert)
+                           zval *names, zval *types, zval *rows, cat_row_convert convert, zval *oids)
 {
     zval driver;
     if (!pdo_call(db, "driver", &driver, 0, NULL, NULL)) goto driver;
@@ -610,7 +680,7 @@ static bool cat_query_body(zval *db, zval *pdo, const char *sql, zval *args, zen
     zval_ptr_dtor(&driver);
     /* A cursor holds a read, never a write: an insert with no assignment has no argument either (INT-123). */
     if (postgres && zend_hash_num_elements(Z_ARRVAL_P(args)) == 0 && strncmp(sql, "INSERT ", 7) != 0) {
-        return cat_cursor_query(db, pdo, sql, max_rows, max_bytes, names, types, rows, convert);
+        return cat_cursor_query(db, pdo, sql, max_rows, max_bytes, names, types, rows, convert, oids, false);
     }
     zend_long connection_id = 0;
     if (mysql && !cat_mysql_connection_id(pdo, &connection_id)) goto driver;
@@ -630,7 +700,7 @@ static bool cat_query_body(zval *db, zval *pdo, const char *sql, zval *args, zen
     }
     if (!ok) goto driver_st;
     zval_ptr_dtor(&r);
-    if (!cat_statement_columns(&st, names, types)) goto driver_st;
+    if (!cat_statement_columns(&st, names, types, oids)) goto driver_st;
     zend_long budget = 0;
     for (;;) {
         zval mode, row;
@@ -883,61 +953,6 @@ static void cat_quote(smart_str *out, zend_string *name, const char *dialect)
 }
 
 static bool cat_bytes_value(zval *v, zval *out);
-
-static bool cat_cell_value(zval *v, zend_string *type, const char *dialect, zval *out)
-{
-    /* PDO reads a PostgreSQL bytea as a stream (INT-107). */
-    if (Z_TYPE_P(v) == IS_RESOURCE) {
-        return cat_bytes_value(v, out);
-    }
-    if (Z_TYPE_P(v) != IS_STRING) {
-        if (Z_TYPE_P(v) == IS_DOUBLE && (strcmp(ZSTR_VAL(type), "REAL") == 0 || strcmp(ZSTR_VAL(type), "FLOAT") == 0
-                || strcmp(ZSTR_VAL(type), "FLOAT4") == 0)) {
-            ZVAL_DOUBLE(out, (double)(float)Z_DVAL_P(v));
-            return true;
-        }
-        ZVAL_COPY(out, v);
-        return true;
-    }
-    /* A value that is not valid UTF-8 is its bytes: a database tool shows the cell (INT-153). */
-    if (!cat_utf8_valid(Z_STRVAL_P(v), Z_STRLEN_P(v))) {
-        ZVAL_COPY(out, v);
-        return true;
-    }
-    const char *t = ZSTR_VAL(type);
-    bool integer = strcmp(t, "LONG") == 0 || strcmp(t, "LONGLONG") == 0 || strcmp(t, "SHORT") == 0 || strcmp(t, "TINY") == 0
-        || strcmp(t, "INT24") == 0 || strcmp(t, "YEAR") == 0;
-    if (!integer && strstr(t, "POINT") == NULL && strstr(t, "BLOB") == NULL && strstr(t, "BINARY") == NULL
-        && strstr(t, "BYTEA") == NULL && strstr(t, "DECIMAL") == NULL && strstr(t, "NUMERIC") == NULL
-        && strstr(t, "MONEY") == NULL && strcmp(t, "NEWDECIMAL") != 0 && strstr(t, "INT") != NULL) {
-        integer = true;
-    }
-    if (integer) {
-        zend_long n;
-        if (!cat_parse_int(v, &n)) {
-            /* SQLite keeps a text that is not an integer as stored, in an INTEGER column too (INT-152);
-             * a BIGINT UNSIGNED reaches past zend_long as its digits (DIA-39). */
-            if (strcmp(dialect, "sqlite") == 0
-                || (Z_TYPE_P(v) == IS_STRING && Z_STRLEN_P(v) > 0
-                    && strspn(Z_STRVAL_P(v), "0123456789") == Z_STRLEN_P(v))) {
-                ZVAL_COPY(out, v);
-                return true;
-            }
-            db_throw_orm("TABLE_METADATA_INVALID", "expected an integer");
-            return false;
-        }
-        ZVAL_LONG(out, n);
-        return true;
-    }
-    if (strstr(t, "BLOB") != NULL || strstr(t, "BINARY") != NULL || strstr(t, "BYTEA") != NULL || strstr(t, "DECIMAL") != NULL
-        || strstr(t, "NUMERIC") != NULL || strstr(t, "MONEY") != NULL || strcmp(t, "NEWDECIMAL") == 0) {
-        ZVAL_COPY(out, v);
-        return true;
-    }
-    ZVAL_COPY(out, v);
-    return true;
-}
-
 
 /* The quoted identifier of the dialect, with its quote mark doubled inside it (Catalog::quote). */
 
@@ -1480,32 +1495,6 @@ static bool cat_param(zval *v)
     }
 }
 
-/* Converts the cells of a bounded result with the native type of each column (Catalog::convertRows). */
-static bool cat_convert_rows(zval *rows, zval *types, const char *dialect, zval *out)
-{
-    array_init(out);
-    zval *row;
-    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(rows), row) {
-        zval converted;
-        array_init(&converted);
-        zend_ulong i = 0;
-        zval *cell;
-        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(row), cell) {
-            zval *t = zend_hash_index_find(Z_ARRVAL_P(types), i);
-            zval v;
-            if (t == NULL || Z_TYPE_P(t) != IS_STRING || !cat_cell_value(cell, Z_STR_P(t), dialect, &v)) {
-                zval_ptr_dtor(&converted);
-                zval_ptr_dtor(out);
-                return false;
-            }
-            add_next_index_zval(&converted, &v);
-            i++;
-        } ZEND_HASH_FOREACH_END();
-        add_next_index_zval(out, &converted);
-    } ZEND_HASH_FOREACH_END();
-    return true;
-}
-
 /* ---- cell keys and revisions ----------------------------------------------------------------------------------------------- */
 
 /* The canonical text of one cell: its type and its exact value (Catalog::cellKey). A float compares by its bits. */
@@ -1695,7 +1684,7 @@ static void cat_column_names(zval *metadata, zval *out)
 
 /* The page of a table in primary-key order, read in an open read session (Catalog::tablePage). */
 static bool cat_named_result(zval *names, zval *rows, zval *out);
-static bool cat_described_rows(zval *rows, zval *metadata, const char *dialect);
+static bool cat_described_rows(zval *db, zval *pdo, zval *raw, zval *oids, zval *metadata, const char *dialect, zval *out);
 static bool cat_code_is(zend_object *error, const char *name);
 
 static bool cat_table_page(zval *db, const char *dialect, zval *pdo, zend_string *ns, zend_string *name, zend_long limit, zend_long offset, zval *out)
@@ -1740,9 +1729,9 @@ static bool cat_table_page(zval *db, const char *dialect, zval *pdo, zend_string
     smart_str_append_long(&sql, offset);
     smart_str_0(&sql);
 
-    zval args, names, types, rows;
+    zval args, names, types, rows, oids;
     array_init(&args);
-    bool ok = cat_query(db, pdo, ZSTR_VAL(sql.s), &args, limit + 1, CAT_PAGE_BYTES, &names, &types, &rows, NULL);
+    bool ok = cat_query_oids(db, pdo, ZSTR_VAL(sql.s), &args, limit + 1, CAT_PAGE_BYTES, &names, &types, &rows, NULL, &oids);
     zval_ptr_dtor(&args);
     smart_str_free(&sql);
     if (!ok) {
@@ -1775,6 +1764,7 @@ static bool cat_table_page(zval *db, const char *dialect, zval *pdo, zend_string
     zval_ptr_dtor(&names);
     if (!same_names) {
         zval_ptr_dtor(&rows);
+        zval_ptr_dtor(&oids);
         zval_ptr_dtor(&metadata);
         db_throw_orm("TABLE_PAGE_METADATA_CHANGED", "prepared columns differ from descriptor");
         return false;
@@ -1782,6 +1772,7 @@ static bool cat_table_page(zval *db, const char *dialect, zval *pdo, zend_string
     zval again;
     if (!cat_describe(db, dialect, pdo, ns, name, &again)) {
         zval_ptr_dtor(&rows);
+        zval_ptr_dtor(&oids);
         zval_ptr_dtor(&metadata);
         return false;
     }
@@ -1789,17 +1780,11 @@ static bool cat_table_page(zval *db, const char *dialect, zval *pdo, zend_string
     zval_ptr_dtor(&again);
     if (!unchanged) {
         zval_ptr_dtor(&rows);
+        zval_ptr_dtor(&oids);
         zval_ptr_dtor(&metadata);
         db_throw_orm("TABLE_PAGE_METADATA_CHANGED", "descriptor changed during read");
         return false;
     }
-    /* The native type of each column converts its cells. */
-    zval native_types;
-    array_init(&native_types);
-    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(columns), column) {
-        zval nrv, *native = catalog_prop(column, "nativeType", &nrv);
-        add_next_index_str(&native_types, zend_string_copy(Z_STR_P(native)));
-    } ZEND_HASH_FOREACH_END();
     /* The sentinel row is cut before conversion, so a value past the page is never read. */
     bool has_more = zend_hash_num_elements(Z_ARRVAL(rows)) > (uint32_t)limit;
     zval kept;
@@ -1814,8 +1799,9 @@ static bool cat_table_page(zval *db, const char *dialect, zval *pdo, zend_string
     } ZEND_HASH_FOREACH_END();
     zval_ptr_dtor(&rows);
     zval converted;
-    ok = cat_convert_rows(&kept, &native_types, dialect, &converted) && cat_described_rows(&converted, &metadata, dialect);
-    zval_ptr_dtor(&native_types);
+    /* The native type of each column converts its cells. */
+    ok = cat_described_rows(db, pdo, &kept, &oids, &metadata, dialect, &converted);
+    zval_ptr_dtor(&oids);
     zval_ptr_dtor(&kept);
     if (!ok) {
         zval_ptr_dtor(&metadata);
@@ -1855,111 +1841,198 @@ static bool cat_table_page(zval *db, const char *dialect, zval *pdo, zend_string
 
 /* ---- grid cells (SCH-6a) ---------------------------------------------------------------------------------------------------- */
 
-static void cat_refuse(const char *message)
+/* ---- catalog value rules (docs/spec/interfaces.md "Catalog value rules", INT-165 to INT-185) ----------------------------- */
+
+#define CAT_RULE_MYSQL_YEAR "MySQL YEAR has no grid cell"
+#define CAT_RULE_MYSQL_TIMESTAMP "MySQL TIMESTAMP follows a time zone"
+#define CAT_RULE_POSTGRES_ZONED "PostgreSQL timestamptz and timetz are unsupported"
+#define CAT_RULE_POSTGRES_NUMERIC "PostgreSQL numeric is not finite"
+#define CAT_RULE_NATIVE_TYPE "unsupported native type"
+#define CAT_RULE_DRIVER_VALUE "unsupported driver value"
+#define CAT_RULE_DRIVER_DECODE "the driver could not decode the value"
+#define CAT_RULE_DATE_RANGE "date outside 0001-01-01 to 9999-12-31"
+#define CAT_RULE_CALENDAR_DATE "date is not a calendar date"
+#define CAT_RULE_TIME_RANGE "time outside 00:00:00 to 23:59:59.999999"
+#define CAT_RULE_SQLITE_DATE "the stored value is not a dbspec date"
+#define CAT_RULE_SQLITE_TIME "the stored value is not a dbspec time"
+#define CAT_RULE_SQLITE_DATETIME "the stored value is not a dbspec datetime"
+#define CAT_RULE_SQLITE_FRACTION "the fraction digits are not the count that its dbspec CHECK fixes"
+#define CAT_RULE_FRACTION_PAST_PRECISION "temporal value has more fraction digits than its precision"
+#define CAT_RULE_NATIVE_PRECISION "native type declares more than 6 fraction digits"
+#define CAT_RULE_BOOLEAN "a boolean column holds a value that is not a boolean"
+
+/* The rule that one value broke (Catalog::rule): its code, its text and the driver or library failure that it keeps (INT-172),
+ * until the caller, which knows the column, raises it with cat_rule_at. A conversion that fails with an exception of its own
+ * leaves no rule. */
+static struct {
+    const char *code;
+    const char *text;
+    zend_object *cause;
+} cat_broken;
+
+/* Records a broken rule; it returns false, the result of the conversion that breaks it. */
+static bool cat_rule(const char *code, const char *text)
 {
-    db_throw_orm("CATALOG_VALUE", "unsupported grid value: %s", message);
+    cat_broken.code = code;
+    cat_broken.text = text;
+    cat_broken.cause = NULL;
+    return false;
 }
 
-/* A date or time that the grid cannot state (GRID_TEMPORAL_VALUE, as Catalog::dateText and its siblings state). */
-static void cat_refuse_temporal(const char *message)
+/* Records a broken rule that keeps a failure as its cause, whose reference it takes. */
+static bool cat_rule_cause(const char *code, const char *text, zend_object *cause)
 {
-    db_throw_orm("GRID_TEMPORAL_VALUE", "unsupported grid value: %s", message);
+    cat_rule(code, text);
+    cat_broken.cause = cause;
+    return false;
 }
 
-/* A date of the dbspec form YYYY-MM-DD from 0001-01-01 to 9999-12-31 (Catalog::dateText). */
-static bool cat_date_text(const char *s, size_t n, zval *out)
+/* Raises the broken rule at the 1-based column n as `CODE: column n: text` with its cause (Catalog::atColumn); a failure that
+ * is no rule keeps its pending exception. It returns false. */
+static bool cat_rule_at(zend_long column)
 {
-    static const int days[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-    if (n != 10 || s[4] != '-' || s[7] != '-') {
-        cat_refuse_temporal("date is not YYYY-MM-DD");
+    if (cat_broken.code == NULL) return false;
+    if (EG(exception) != NULL) {
+        if (cat_broken.cause != NULL) OBJ_RELEASE(cat_broken.cause);
+        cat_broken.code = NULL;
+        cat_broken.cause = NULL;
         return false;
     }
-    int y = 0, m = 0, d = 0;
-    for (int i = 0; i < 10; i++) {
-        if (i == 4 || i == 7) continue;
-        if (!cat_digit(s[i])) {
-            cat_refuse_temporal("date is not YYYY-MM-DD");
-            return false;
-        }
-    }
-    y = (s[0] - '0') * 1000 + (s[1] - '0') * 100 + (s[2] - '0') * 10 + (s[3] - '0');
-    m = (s[5] - '0') * 10 + (s[6] - '0');
-    d = (s[8] - '0') * 10 + (s[9] - '0');
-    bool leap = (y % 4 == 0 && y % 100 != 0) || y % 400 == 0;
-    int last = (m == 2 && leap) ? 29 : (m >= 1 && m <= 12 ? days[m - 1] : 0);
-    if (y < 1 || m < 1 || m > 12 || d < 1 || d > last) {
-        cat_refuse_temporal("date outside 0001-01-01 to 9999-12-31");
-        return false;
-    }
-    ZVAL_STRINGL(out, s, n);
+    const char *code = cat_broken.code;
+    zend_object *cause = cat_broken.cause;
+    zend_string *message = zend_strpprintf(0, "column " ZEND_LONG_FMT ": %s", column, cat_broken.text);
+    cat_broken.code = NULL;
+    cat_broken.text = NULL;
+    cat_broken.cause = NULL;
+    orm_throw_exception_previous(code, message, cause);
+    zend_string_release(message);
+    return false;
+}
+
+/* The text of a driver value that the driver delivers as text (Catalog::driverText, INT-171). */
+static bool cat_driver_text(zval *v, const char **s, size_t *n)
+{
+    if (Z_TYPE_P(v) != IS_STRING) return cat_rule("CATALOG_VALUE", CAT_RULE_DRIVER_VALUE);
+    *s = Z_STRVAL_P(v);
+    *n = Z_STRLEN_P(v);
     return true;
 }
 
-/* A time of the dbspec form HH:MM:SS.ffffff from 00:00:00 to 23:59:59.999999 (Catalog::timeText). */
-static bool cat_time_text(const char *s, size_t n, zval *out)
+/* The count of ASCII digits at s, up to n. */
+static size_t cat_digits(const char *s, size_t n)
 {
     size_t i = 0;
-    size_t hd = 0;
-    while (i < n && cat_digit(s[i]) && hd < 3) { i++; hd++; }
-    if (hd < 2 || i >= n || s[i] != ':' || i + 6 > n || !cat_digit(s[i + 1]) || !cat_digit(s[i + 2]) || s[i + 3] != ':'
-        || !cat_digit(s[i + 4]) || !cat_digit(s[i + 5])) {
-        cat_refuse_temporal("time is not a time of day");
-        return false;
+    while (i < n && cat_digit(s[i])) i++;
+    return i;
+}
+
+/* The value of two digits. */
+static int cat_two(const char *s)
+{
+    return (s[0] - '0') * 10 + (s[1] - '0');
+}
+
+/* A date of the year 1 to 9999 (INT-173) that is a date of the calendar (INT-174), as YYYY-MM-DD (Catalog::calendarDate):
+ * year holds yn >= 4 digits. */
+static bool cat_calendar_date(const char *year, size_t yn, int month, int day, zval *out)
+{
+    static const int days[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    while (yn > 4 && *year == '0') {
+        year++;
+        yn--;
     }
-    int h = 0;
-    for (size_t k = 0; k < hd; k++) h = h * 10 + (s[k] - '0');
-    int mi = (s[i + 1] - '0') * 10 + (s[i + 2] - '0');
-    int se = (s[i + 4] - '0') * 10 + (s[i + 5] - '0');
-    size_t p = i + 6;
-    char frac[7] = "000000";
-    if (p < n) {
-        if (s[p] != '.') {
-            cat_refuse_temporal("time is not a time of day");
-            return false;
-        }
-        p++;
-        size_t fd = 0;
-        while (p < n && cat_digit(s[p]) && fd < 6) { frac[fd++] = s[p++]; }
-        if (fd == 0 || p != n) {
-            cat_refuse_temporal("time is not a time of day");
-            return false;
-        }
-    }
-    if (h > 23 || mi > 59 || se > 59) {
-        cat_refuse_temporal("time outside 00:00:00 to 23:59:59.999999");
-        return false;
-    }
-    zend_string *text = zend_strpprintf(0, "%02d:%02d:%02d.%s", h, mi, se, frac);
-    ZVAL_STR(out, text);
+    int y = 0;
+    for (size_t i = 0; i < yn && yn <= 4; i++) y = y * 10 + (year[i] - '0');
+    if (yn > 4 || y < 1) return cat_rule("GRID_TEMPORAL_VALUE", CAT_RULE_DATE_RANGE);
+    bool leap = (y % 4 == 0 && y % 100 != 0) || y % 400 == 0;
+    int last = month == 2 && leap ? 29 : month >= 1 && month <= 12 ? days[month - 1] : 0;
+    if (day < 1 || day > last) return cat_rule("GRID_TEMPORAL_VALUE", CAT_RULE_CALENDAR_DATE);
+    ZVAL_NEW_STR(out, zend_strpprintf(0, "%04d-%02d-%02d", y, month, day));
     return true;
 }
 
-/* A datetime of the dbspec form YYYY-MM-DD HH:MM:SS.ffffff (Catalog::dateTimeText). */
-static bool cat_datetime_text(const char *s, size_t n, zval *out)
+/* The dbspec date of a date that the server writes (Catalog::serverDate): YYYY-MM-DD, a PostgreSQL year past 9999 with more
+ * digits, a date before the year 1 with BC, and the infinities as words. A year outside 1 to 9999 is INT-173, checked before
+ * the calendar of INT-174, and any other text INT-171. */
+static bool cat_server_date(const char *s, size_t n, zval *out)
 {
-    const char *sp = memchr(s, ' ', n);
-    if (sp == NULL) {
-        cat_refuse_temporal("datetime has no date and time");
-        return false;
+    if ((n == 8 && memcmp(s, "infinity", 8) == 0) || (n == 9 && memcmp(s, "-infinity", 9) == 0)) {
+        return cat_rule("GRID_TEMPORAL_VALUE", CAT_RULE_DATE_RANGE);
+    }
+    size_t yn = cat_digits(s, n);
+    if (yn < 4 || yn + 6 > n || s[yn] != '-' || cat_digits(s + yn + 1, 2) != 2 || s[yn + 3] != '-'
+        || cat_digits(s + yn + 4, 2) != 2 || (yn + 6 != n && !(yn + 9 == n && memcmp(s + yn + 6, " BC", 3) == 0))) {
+        return cat_rule("CATALOG_VALUE", CAT_RULE_DRIVER_VALUE);
+    }
+    if (yn + 6 != n) return cat_rule("GRID_TEMPORAL_VALUE", CAT_RULE_DATE_RANGE);
+    return cat_calendar_date(s, yn, cat_two(s + yn + 1), cat_two(s + yn + 4), out);
+}
+
+/* The dbspec time HH:MM:SS.ffffff of a time that the server writes (Catalog::serverTime). A MySQL TIME past a day, of three
+ * hour digits or negative, and PostgreSQL 24:00:00 are INT-175; a text that is no time, or has a digit past six fraction
+ * digits, is INT-171. */
+static bool cat_server_time(const char *s, size_t n, zval *out)
+{
+    bool negative = n > 0 && s[0] == '-';
+    size_t i = negative ? 1 : 0;
+    size_t hd = cat_digits(s + i, n - i);
+    size_t p = i + hd;
+    if (hd < 2 || p + 6 > n || s[p] != ':' || cat_digits(s + p + 1, 2) != 2 || s[p + 3] != ':' || cat_digits(s + p + 4, 2) != 2) {
+        return cat_rule("CATALOG_VALUE", CAT_RULE_DRIVER_VALUE);
+    }
+    int minute = cat_two(s + p + 1), second = cat_two(s + p + 4);
+    size_t f = p + 6, fd = 0;
+    if (f < n) {
+        if (s[f] != '.') return cat_rule("CATALOG_VALUE", CAT_RULE_DRIVER_VALUE);
+        fd = cat_digits(s + f + 1, n - f - 1);
+        if (fd == 0 || f + 1 + fd != n) return cat_rule("CATALOG_VALUE", CAT_RULE_DRIVER_VALUE);
+    }
+    if (fd > 6 || minute > 59 || second > 59) return cat_rule("CATALOG_VALUE", CAT_RULE_DRIVER_VALUE);
+    zend_long hour = 0;
+    for (size_t k = i; k < p && hour <= 23; k++) hour = hour * 10 + (s[k] - '0');
+    if (negative || hour > 23) return cat_rule("GRID_TEMPORAL_VALUE", CAT_RULE_TIME_RANGE);
+    char fraction[7] = "000000";
+    if (fd > 0) memcpy(fraction, s + f + 1, fd);
+    ZVAL_NEW_STR(out, zend_strpprintf(0, "%02d:%02d:%02d.%s", (int)hour, minute, second, fraction));
+    return true;
+}
+
+/* The dbspec datetime of a datetime that the server writes (Catalog::serverDateTime); its date comes first. */
+static bool cat_server_datetime(const char *s, size_t n, zval *out)
+{
+    if ((n == 8 && memcmp(s, "infinity", 8) == 0) || (n == 9 && memcmp(s, "-infinity", 9) == 0)) {
+        return cat_rule("GRID_TEMPORAL_VALUE", CAT_RULE_DATE_RANGE);
+    }
+    size_t yn = cat_digits(s, n);
+    if (yn < 4 || yn + 7 > n || s[yn] != '-' || cat_digits(s + yn + 1, 2) != 2 || s[yn + 3] != '-'
+        || cat_digits(s + yn + 4, 2) != 2 || s[yn + 6] != ' ') {
+        return cat_rule("CATALOG_VALUE", CAT_RULE_DRIVER_VALUE);
+    }
+    const char *clock = s + yn + 7;
+    size_t cn = n - yn - 7;
+    bool bc = cn > 3 && memcmp(clock + cn - 3, " BC", 3) == 0;
+    if (bc) cn -= 3;
+    bool spaced = false;
+    for (size_t k = 0; k < cn; k++) spaced = spaced || (clock[k] != 0 && strchr(" \t\n\r\v\f", clock[k]) != NULL);
+    if (cn == 0 || spaced) {
+        return cat_rule("CATALOG_VALUE", CAT_RULE_DRIVER_VALUE);
     }
     zval date, time;
-    if (!cat_date_text(s, (size_t)(sp - s), &date)) return false;
-    if (!cat_time_text(sp + 1, n - (size_t)(sp - s) - 1, &time)) {
+    if (bc) return cat_rule("GRID_TEMPORAL_VALUE", CAT_RULE_DATE_RANGE);
+    if (!cat_calendar_date(s, yn, cat_two(s + yn + 1), cat_two(s + yn + 4), &date)) return false;
+    if (!cat_server_time(clock, cn, &time)) {
         zval_ptr_dtor(&date);
         return false;
     }
-    zend_string *text = zend_strpprintf(0, "%s %s", Z_STRVAL(date), Z_STRVAL(time));
+    ZVAL_NEW_STR(out, zend_strpprintf(0, "%s %s", Z_STRVAL(date), Z_STRVAL(time)));
     zval_ptr_dtor(&date);
     zval_ptr_dtor(&time);
-    ZVAL_STR(out, text);
     return true;
 }
 
-/* ---- described temporal cells (INT-103, INT-117) ---------------------------------------------------------------------------- */
-
 /*
- * The temporal kind of a native type of a described MySQL or PostgreSQL column (Catalog::temporalKind): 'd' for a date,
- * 't' for a time and 'x' for a datetime, by the first word of the type; 0 for every other type and every SQLite type.
+ * The temporal kind of a native type of a MySQL or PostgreSQL column (Catalog::temporalKind): 'd' for a date, 't' for a time
+ * and 'x' for a datetime, by the first word of the type; 0 for every other type and every SQLite type.
  */
 static char cat_temporal_kind(const char *dialect, const char *type)
 {
@@ -1972,58 +2045,61 @@ static char cat_temporal_kind(const char *dialect, const char *type)
     return 0;
 }
 
-/* A MySQL TIMESTAMP or a PostgreSQL timestamptz or timetz column (Catalog::isZonedColumn): the time zone it follows is one
- * that dbspec declares for no column (INT-103). */
-static bool cat_zoned_column(const char *dialect, const char *type)
+/* The dbspec text of a temporal server value of kind 'd', 't' or 'x'. */
+static bool cat_server_temporal(zval *v, char kind, zval *out)
 {
-    size_t n = strcspn(type, "( ");
-    bool stamp = n == 9 && zend_binary_strncasecmp(type, n, "TIMESTAMP", 9, 9) == 0;
-    bool clock = n == 4 && zend_binary_strncasecmp(type, n, "TIME", 4, 4) == 0;
-    const char *rest = type + n;
-    if (*rest == '(') {
-        if (rest[1] < '0' || rest[1] > '6' || rest[2] != ')') return false;
-        rest += 3;
-    }
-    if (strcmp(dialect, "mysql") == 0) return stamp && *rest == '\0';
-    return strcmp(dialect, "postgres") == 0 && (stamp || clock) && strcasecmp(rest, " with time zone") == 0;
+    const char *s;
+    size_t n;
+    if (!cat_driver_text(v, &s, &n)) return false;
+    return kind == 'd' ? cat_server_date(s, n, out) : kind == 't' ? cat_server_time(s, n, out) : cat_server_datetime(s, n, out);
 }
 
 /*
- * The fraction digits of a described temporal column (Catalog::declaredPrecision): the digits of the first "(n)" of its
- * native type, and otherwise the default of the database, 0 on MySQL and 6 on PostgreSQL.
+ * The fraction digits p of a described MySQL or PostgreSQL time or datetime column (Catalog::declaredTemporalPrecision): the
+ * digits of the first "(...)" of its native type, and otherwise the default of the database, 0 on MySQL and 6 on PostgreSQL.
+ * A precision above 6, or one that is not a number, is INT-181.
  */
-static zend_long cat_declared_precision(const char *dialect, const char *type)
+static bool cat_declared_temporal_precision(const char *dialect, const char *type, zend_long *out)
 {
-    for (const char *open = strchr(type, '('); open != NULL; open = strchr(open + 1, '(')) {
-        const char *p = open + 1;
-        zend_long digits = 0;
-        while (cat_digit(*p) && digits < 1000000) digits = digits * 10 + (*p++ - '0');
-        if (p > open + 1 && *p == ')') return digits;
+    const char *open = strchr(type, '(');
+    if (open == NULL) {
+        *out = strcmp(dialect, "postgres") == 0 ? 6 : 0;
+        return true;
     }
-    return strcmp(dialect, "postgres") == 0 ? 6 : 0;
+    const char *close = strchr(open, ')');
+    size_t length = close == NULL ? 0 : (size_t)(close - open - 1);
+    if (close == NULL || length == 0 || cat_digits(open + 1, length) != length) {
+        return cat_rule("GRID_TEMPORAL_PRECISION", CAT_RULE_NATIVE_PRECISION);
+    }
+    zend_long digits = 0;
+    for (size_t i = 0; i < length && digits <= 6; i++) digits = digits * 10 + (open[1 + i] - '0');
+    if (digits > 6) return cat_rule("GRID_TEMPORAL_PRECISION", CAT_RULE_NATIVE_PRECISION);
+    *out = digits;
+    return true;
 }
 
 /*
- * A temporal value of a described column in its declared precision p (Catalog::describedTemporal): exactly p fraction
- * digits, which drops the fraction when p is 0. A non-zero digit beyond p fails with GRID_TEMPORAL_PRECISION.
+ * A MySQL or PostgreSQL temporal value of a described column with exactly the p fraction digits of its column, which drops the
+ * fraction when p is 0 (Catalog::describedServerTemporal). A non-zero digit past p is INT-180.
  */
-static bool cat_described_temporal(zval *value, char kind, zend_long precision, zval *out)
+static bool cat_described_server_temporal(zval *value, char kind, const char *dialect, const char *type, zval *out)
 {
-    const char *s = Z_STRVAL_P(value);
-    size_t n = Z_STRLEN_P(value);
-    if (kind == 'd') return cat_date_text(s, n, out);
+    const char *s;
+    size_t n;
+    if (!cat_driver_text(value, &s, &n)) return false;
+    if (kind == 'd') return cat_server_date(s, n, out);
+    zend_long precision;
+    if (!cat_declared_temporal_precision(dialect, type, &precision)) return false;
     zval text;
-    if (!(kind == 't' ? cat_time_text(s, n, &text) : cat_datetime_text(s, n, &text))) return false;
+    if (!(kind == 't' ? cat_server_time(s, n, &text) : cat_server_datetime(s, n, &text))) return false;
     const char *t = Z_STRVAL(text);
     size_t length = Z_STRLEN(text);
     size_t dot = (size_t)((const char *)zend_memrchr(t, '.', length) - t);
-    size_t end = (size_t)precision > length - dot - 1 ? length : dot + 1 + (size_t)precision;
+    size_t end = dot + 1 + (size_t)precision;
     for (size_t i = end; i < length; i++) {
         if (t[i] != '0') {
-            db_throw_orm("GRID_TEMPORAL_PRECISION", "temporal value has more fraction digits than its precision " ZEND_LONG_FMT,
-                         precision);
             zval_ptr_dtor(&text);
-            return false;
+            return cat_rule("GRID_TEMPORAL_PRECISION", CAT_RULE_FRACTION_PAST_PRECISION);
         }
     }
     ZVAL_STRINGL(out, t, precision == 0 ? dot : end);
@@ -2032,21 +2108,57 @@ static bool cat_described_temporal(zval *value, char kind, zend_long precision, 
 }
 
 /*
- * Converts the converted rows of a read of a described table in place (Catalog::describedRows): a MySQL or PostgreSQL
- * date, time or timestamp cell becomes its dbspec text with exactly the fraction digits of its column. On failure the
- * rows are released, as cat_convert_rows releases its output.
+ * The stored value of a described SQLite DATE ('d'), TIME ('t') or DATETIME ('x') column, returned as it is stored
+ * (Catalog::sqliteTemporal): its form (INT-176 to INT-178) comes before its range (INT-173 to INT-175), and a time or a
+ * datetime has exactly the p fraction digits that its dbspec CHECK fixes, 0 when it has none (INT-179).
  */
-/* A boolean column by its native type: tinyint(1) on MySQL, boolean on PostgreSQL and SQLite (DIA-29). */
-static bool cat_is_bool_column(const char *dialect, const char *native)
+static bool cat_sqlite_temporal(zval *value, char kind, zend_long precision, zval *out)
 {
-    const char *want = strcmp(dialect, "mysql") == 0 ? "tinyint(1)" : "boolean";
-    return strcasecmp(native, want) == 0;
+    const char *form = kind == 'd' ? CAT_RULE_SQLITE_DATE : kind == 't' ? CAT_RULE_SQLITE_TIME : CAT_RULE_SQLITE_DATETIME;
+    if (Z_TYPE_P(value) != IS_STRING) return cat_rule("GRID_TEMPORAL_VALUE", form);
+    const char *s = Z_STRVAL_P(value);
+    size_t n = Z_STRLEN_P(value);
+    size_t clock = 0;
+    if (kind != 't') {
+        if (n < 10 || cat_digits(s, 4) != 4 || s[4] != '-' || cat_digits(s + 5, 2) != 2 || s[7] != '-' || cat_digits(s + 8, 2) != 2
+            || (kind == 'd' && n != 10) || (kind == 'x' && (n < 11 || s[10] != ' '))) {
+            return cat_rule("GRID_TEMPORAL_VALUE", form);
+        }
+        clock = 11;
+    }
+    size_t fd = 0;
+    if (kind != 'd') {
+        const char *c = s + clock;
+        size_t cn = n - clock;
+        if (cn < 8 || cat_digits(c, 2) != 2 || c[2] != ':' || cat_digits(c + 3, 2) != 2 || c[5] != ':' || cat_digits(c + 6, 2) != 2) {
+            return cat_rule("GRID_TEMPORAL_VALUE", form);
+        }
+        if (cn > 8) {
+            fd = cat_digits(c + 9, cn - 9);
+            if (c[8] != '.' || fd == 0 || fd > 6 || 9 + fd != cn) return cat_rule("GRID_TEMPORAL_VALUE", form);
+        }
+    }
+    if (kind != 't') {
+        zval date;
+        if (!cat_calendar_date(s, 4, cat_two(s + 5), cat_two(s + 8), &date)) return false;
+        zval_ptr_dtor(&date);
+    }
+    if (kind != 'd') {
+        const char *c = s + clock;
+        if (cat_two(c) > 23 || cat_two(c + 3) > 59 || cat_two(c + 6) > 59) {
+            return cat_rule("GRID_TEMPORAL_VALUE", CAT_RULE_TIME_RANGE);
+        }
+        if ((zend_long)fd != precision) return cat_rule("GRID_TEMPORAL_PRECISION", CAT_RULE_SQLITE_FRACTION);
+    }
+    ZVAL_COPY(out, value);
+    return true;
 }
 
-/* A value of a boolean column as a bool: an integer 0 or 1 becomes false or true, null and bools stay; any other value fails. */
+/* A value of a boolean column as a bool (Catalog::describedBoolean): an integer 0 or 1 becomes false or true; any other value is
+ * INT-182. */
 static bool cat_described_bool(zval *cell, zval *out)
 {
-    if (Z_TYPE_P(cell) == IS_NULL || Z_TYPE_P(cell) == IS_TRUE || Z_TYPE_P(cell) == IS_FALSE) {
+    if (Z_TYPE_P(cell) == IS_TRUE || Z_TYPE_P(cell) == IS_FALSE) {
         ZVAL_COPY(out, cell);
         return true;
     }
@@ -2054,181 +2166,57 @@ static bool cat_described_bool(zval *cell, zval *out)
         ZVAL_BOOL(out, Z_LVAL_P(cell) == 1);
         return true;
     }
-    db_throw_orm("CATALOG_VALUE", "a boolean column holds a value that is not a boolean");
-    return false;
+    return cat_rule("CATALOG_VALUE", CAT_RULE_BOOLEAN);
 }
 
-static bool cat_described_rows(zval *rows, zval *metadata, const char *dialect)
+/* Whether a text is the decimal digits of an unsigned 64-bit integer, with no sign and no leading zero
+ * (Catalog::isUnsignedDigits). */
+static bool cat_unsigned_digits(const char *s, size_t n)
 {
-    zval rv_cols, *columns = catalog_prop(metadata, "columns", &rv_cols);
-    zval described;
-    array_init(&described);
-    zval *row;
-    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(rows), row) {
-        zval out_row;
-        array_init(&out_row);
-        zend_ulong i = 0;
-        zval *cell;
-        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(row), cell) {
-            zval *column = zend_hash_index_find(Z_ARRVAL_P(columns), i++);
-            zval trv, *native = column == NULL ? NULL : catalog_prop(column, "nativeType", &trv);
-            if (native != NULL && Z_TYPE_P(native) == IS_STRING && Z_TYPE_P(cell) != IS_NULL && cat_zoned_column(dialect, Z_STRVAL_P(native))) {
-                cat_refuse("a column of this type follows a time zone");
-                zval_ptr_dtor(&out_row);
-                zval_ptr_dtor(&described);
-                zval_ptr_dtor(rows);
-                return false;
-            }
-            /* SQLite keeps a number in a temporal column, and a number is not in the dbspec form (INT-103). */
-            if (native != NULL && Z_TYPE_P(native) == IS_STRING && Z_TYPE_P(cell) != IS_NULL && Z_TYPE_P(cell) != IS_STRING
-                && strcmp(dialect, "sqlite") == 0
-                && (zend_string_equals_literal_ci(Z_STR_P(native), "DATE") || zend_string_equals_literal_ci(Z_STR_P(native), "TIME") || zend_string_equals_literal_ci(Z_STR_P(native), "DATETIME"))) {
-                cat_refuse_temporal("the stored value is not a dbspec temporal value");
-                zval_ptr_dtor(&out_row);
-                zval_ptr_dtor(&described);
-                zval_ptr_dtor(rows);
-                return false;
-            }
-            char kind = native != NULL && Z_TYPE_P(native) == IS_STRING && Z_TYPE_P(cell) == IS_STRING
-                ? cat_temporal_kind(dialect, Z_STRVAL_P(native)) : 0;
-            zend_long precision = kind != 0 ? cat_declared_precision(dialect, Z_STRVAL_P(native)) : 0;
-            if (kind == 0 && native != NULL && Z_TYPE_P(native) == IS_STRING && Z_TYPE_P(cell) == IS_STRING && strcmp(dialect, "sqlite") == 0
-                && (zend_string_equals_literal_ci(Z_STR_P(native), "DATE") || zend_string_equals_literal_ci(Z_STR_P(native), "TIME") || zend_string_equals_literal_ci(Z_STR_P(native), "DATETIME"))) {
-                kind = zend_string_equals_literal_ci(Z_STR_P(native), "DATE") ? 'd'
-                    : zend_string_equals_literal_ci(Z_STR_P(native), "TIME") ? 't' : 'x';
-                zval prv, *cp = catalog_prop(column, "checkPrecision", &prv);
-                precision = Z_TYPE_P(cp) == IS_LONG ? Z_LVAL_P(cp) : 0;
-            }
-            zval v;
-            if (native != NULL && Z_TYPE_P(native) == IS_STRING && cat_is_bool_column(dialect, Z_STRVAL_P(native))) {
-                /* A boolean column is read as a bool by its column type (DIA-29). */
-                if (!cat_described_bool(cell, &v)) {
-                    zval_ptr_dtor(&out_row);
-                    zval_ptr_dtor(&described);
-                    zval_ptr_dtor(rows);
-                    return false;
-                }
-            } else if (kind == 0) {
-                ZVAL_COPY(&v, cell);
-            } else if (!cat_described_temporal(cell, kind, precision, &v)) {
-                zval_ptr_dtor(&out_row);
-                zval_ptr_dtor(&described);
-                zval_ptr_dtor(rows);
-                return false;
-            }
-            add_next_index_zval(&out_row, &v);
-        } ZEND_HASH_FOREACH_END();
-        add_next_index_zval(&described, &out_row);
-    } ZEND_HASH_FOREACH_END();
-    zval_ptr_dtor(rows);
-    ZVAL_COPY_VALUE(rows, &described);
+    if (n == 0 || n > 20 || cat_digits(s, n) != n || (n > 1 && s[0] == '0')) return false;
+    return n < 20 || memcmp(s, "18446744073709551615", 20) <= 0;
+}
+
+/* The bytes of a MySQL BIT(bits) value, which PDO delivers as an integer: ceil(bits / 8) bytes, big-endian (Catalog::bitBytes). */
+static bool cat_bit_bytes(zval *v, zend_long bits, zval *out)
+{
+    if (Z_TYPE_P(v) == IS_STRING) {
+        ZVAL_COPY(out, v);
+        return true;
+    }
+    if (Z_TYPE_P(v) != IS_LONG || bits < 1 || bits > 64) return cat_rule("CATALOG_VALUE", CAT_RULE_DRIVER_VALUE);
+    size_t count = (size_t)(bits + 7) / 8;
+    uint64_t value = (uint64_t)Z_LVAL_P(v);
+    zend_string *bytes = zend_string_alloc(count, 0);
+    for (size_t i = 0; i < count; i++) ZSTR_VAL(bytes)[count - 1 - i] = (char)((value >> (8 * i)) & 0xff);
+    ZSTR_VAL(bytes)[count] = '\0';
+    ZVAL_NEW_STR(out, bytes);
     return true;
 }
 
-/* A text value of a cell, which the grid takes as a string (Catalog::gridText). */
-static bool cat_grid_text(zval *v, zval *out)
+/* The text of a decimal: plain digits with an optional sign and fraction (Catalog::decimalText, INT-171). */
+static bool cat_decimal_text(zval *v, zval *out)
 {
-    if (Z_TYPE_P(v) != IS_STRING) {
-        cat_refuse("expected text");
-        return false;
-    }
+    const char *s;
+    size_t n;
+    if (!cat_driver_text(v, &s, &n)) return false;
+    size_t i = n > 0 && s[0] == '-' ? 1 : 0;
+    size_t whole = cat_digits(s + i, n - i);
+    size_t at = i + whole;
+    bool ok = whole > 0 && (at == n || (s[at] == '.' && at + 1 < n && cat_digits(s + at + 1, n - at - 1) == n - at - 1));
+    if (!ok) return cat_rule("CATALOG_VALUE", CAT_RULE_DRIVER_VALUE);
     ZVAL_COPY(out, v);
     return true;
 }
 
-/* A float cell: the IEEE-754 bits of the value as hexadecimal, 8 digits for float32, 16 for float64. */
-static bool cat_float_cell(zval *v, bool single, zval *kind_out, zval *value_out)
+/* The text of a PostgreSQL numeric, which writes NaN and the infinities as words (Catalog::postgresNumeric, INT-169). */
+static bool cat_postgres_numeric(zval *v, zval *out)
 {
-    double d;
-    if (Z_TYPE_P(v) == IS_DOUBLE) d = Z_DVAL_P(v);
-    else if (Z_TYPE_P(v) == IS_LONG) d = (double)Z_LVAL_P(v);
-    else if (Z_TYPE_P(v) == IS_STRING && zend_string_equals_literal_ci(Z_STR_P(v), "NaN")) {
-        d = NAN;
+    if (Z_TYPE_P(v) == IS_STRING && (zend_string_equals_literal(Z_STR_P(v), "NaN") || zend_string_equals_literal(Z_STR_P(v), "Infinity")
+            || zend_string_equals_literal(Z_STR_P(v), "-Infinity"))) {
+        return cat_rule("CATALOG_VALUE", CAT_RULE_POSTGRES_NUMERIC);
     }
-    else if (Z_TYPE_P(v) == IS_STRING && is_numeric_string(Z_STRVAL_P(v), Z_STRLEN_P(v), NULL, NULL, 0)) d = zend_strtod(Z_STRVAL_P(v), NULL);
-    else {
-        cat_refuse("expected a number");
-        return false;
-    }
-    if (single) {
-        float f = (float)d;
-        uint32_t bits;
-        memcpy(&bits, &f, sizeof bits);
-        ZVAL_STRING(kind_out, "float32");
-        ZVAL_NEW_STR(value_out, zend_strpprintf(0, "%08x", bits));
-    } else {
-        uint64_t bits;
-        memcpy(&bits, &d, sizeof bits);
-        ZVAL_STRING(kind_out, "float64");
-        ZVAL_NEW_STR(value_out, zend_strpprintf(0, "%016llx", (unsigned long long)bits));
-    }
-    return true;
-}
-
-/* An integer cell: a PHP integer, or text that holds one. An UNSIGNED column is decimal digits, exact over the whole range. */
-static bool cat_integer_cell(zval *v, bool unsigned_, zval *kind_out, zval *value_out)
-{
-    if (Z_TYPE_P(v) == IS_LONG) {
-        if (unsigned_) {
-            ZVAL_STRING(kind_out, "unsigned");
-            ZVAL_NEW_STR(value_out, zend_strpprintf(0, "%llu", (unsigned long long)(uint64_t)Z_LVAL_P(v)));
-        } else {
-            ZVAL_STRING(kind_out, "integer");
-            ZVAL_LONG(value_out, Z_LVAL_P(v));
-        }
-        return true;
-    }
-    if (Z_TYPE_P(v) != IS_STRING) {
-        cat_refuse("expected an integer");
-        return false;
-    }
-    const char *p = Z_STRVAL_P(v);
-    size_t n = Z_STRLEN_P(v);
-    if (unsigned_) {
-        for (size_t i = 0; i < n; i++) {
-            if (!cat_digit(p[i])) {
-                cat_refuse("unsigned integer text is not digits");
-                return false;
-            }
-        }
-        if (n == 0) {
-            cat_refuse("unsigned integer text is empty");
-            return false;
-        }
-        ZVAL_STRINGL(kind_out, "unsigned", 8);
-        ZVAL_STRINGL(value_out, p, n);
-        return true;
-    }
-    zend_long n64 = 0;
-    if (n == 0 || is_numeric_string(p, n, &n64, NULL, 0) != IS_LONG) {
-        /* Digits beyond the signed range are an unsigned value, whatever the column reports. */
-        bool digits = n > 0;
-        for (size_t i = 0; digits && i < n; i++) digits = cat_digit(p[i]);
-        if (digits) {
-            ZVAL_STRINGL(kind_out, "unsigned", 8);
-            ZVAL_STRINGL(value_out, p, n);
-            return true;
-        }
-        cat_refuse("integer text is outside the signed 64-bit range");
-        return false;
-    }
-    ZVAL_STRING(kind_out, "integer");
-    ZVAL_LONG(value_out, n64);
-    return true;
-}
-
-/* A grid cell: the cell kind and its value, which the caller builds into a CatalogGridCell. Binary values are bytes; a text value
- * must be UTF-8. */
-static bool cat_bytes_or_text(zval *v, bool binary, zval *kind_out, zval *value_out)
-{
-    if (Z_TYPE_P(v) != IS_STRING) {
-        cat_refuse("expected text or binary data");
-        return false;
-    }
-    /* A value that is not valid UTF-8 is its bytes (INT-153). */
-    ZVAL_STRING(kind_out, binary || !cat_utf8_valid(Z_STRVAL_P(v), Z_STRLEN_P(v)) ? "binary" : "text");
-    ZVAL_COPY(value_out, v);
-    return true;
+    return cat_decimal_text(v, out);
 }
 
 /* Calls a method with any number of arguments (mysqli's bind_param takes its types and values as separate arguments). */
@@ -2247,30 +2235,58 @@ static bool cat_call_n(zval *obj, const char *name, zval *ret, uint32_t argc, zv
     return ok;
 }
 
-/* The PHP-level read of a bytea stream, or a binary string: its bytes. */
+/*
+ * The bytes of a binary driver value (Catalog::driverBytes). PDO reads a PostgreSQL bytea as a stream, which is read to its end
+ * here; a stream that cannot be read is INT-172 and keeps the failure of the read as its cause. PHP reports a failed read as a
+ * notice and an empty result, and a user stream as an exception, so either one is the failure: the notice of the read is
+ * silenced and read back as an ErrorException.
+ */
 static bool cat_bytes_value(zval *v, zval *out)
 {
     if (Z_TYPE_P(v) == IS_STRING) {
         ZVAL_COPY(out, v);
         return true;
     }
-    if (Z_TYPE_P(v) != IS_RESOURCE) {
-        cat_refuse("expected binary data");
-        return false;
-    }
-    zval stream = *v, data, close_ret;
+    if (Z_TYPE_P(v) != IS_RESOURCE) return cat_rule("CATALOG_VALUE", CAT_RULE_DRIVER_VALUE);
+    zval stream = *v, data, ignored, last;
     Z_TRY_ADDREF(stream);
+    if (scall("error_clear_last", &ignored, 0, NULL)) zval_ptr_dtor(&ignored);
+    int reporting = EG(error_reporting);
+    EG(error_reporting) = 0;
     zval args[1];
     ZVAL_COPY_VALUE(&args[0], &stream);
-    bool ok = scall("stream_get_contents", &data, 1, args);
-    zval fclose_args[1];
-    ZVAL_COPY_VALUE(&fclose_args[0], &stream);
-    scall("fclose", &close_ret, 1, fclose_args);
+    bool read = scall("stream_get_contents", &data, 1, args);
+    EG(error_reporting) = reporting;
+    zend_object *failure = EG(exception);
+    EG(exception) = NULL;
+    if (failure == NULL && scall("error_get_last", &last, 0, NULL)) {
+        zval *message = Z_TYPE(last) == IS_ARRAY ? zend_hash_str_find(Z_ARRVAL(last), "message", sizeof("message") - 1) : NULL;
+        zval *type = Z_TYPE(last) == IS_ARRAY ? zend_hash_str_find(Z_ARRVAL(last), "type", sizeof("type") - 1) : NULL;
+        if (message != NULL && Z_TYPE_P(message) == IS_STRING) {
+            zval cause, cause_args[3];
+            ZVAL_COPY(&cause_args[0], message);
+            ZVAL_LONG(&cause_args[1], 0);
+            ZVAL_LONG(&cause_args[2], type != NULL && Z_TYPE_P(type) == IS_LONG ? Z_LVAL_P(type) : E_NOTICE);
+            if (newobj("ErrorException", &cause, 3, cause_args)) failure = Z_OBJ(cause);
+            zval_ptr_dtor(&cause_args[0]);
+        }
+        zval_ptr_dtor(&last);
+    }
+    if (EG(exception) != NULL) zend_clear_exception();
+    zval close_args[1], close_ret;
+    ZVAL_COPY_VALUE(&close_args[0], &stream);
+    if (scall("fclose", &close_ret, 1, close_args)) zval_ptr_dtor(&close_ret);
     zval_ptr_dtor(&stream);
-    if (!ok || Z_TYPE(data) != IS_STRING) {
-        zval_ptr_dtor(&data);
-        cat_refuse("binary stream could not be read");
-        return false;
+    if (failure != NULL || !read || Z_TYPE(data) != IS_STRING) {
+        if (read) zval_ptr_dtor(&data);
+        if (failure == NULL) {
+            zval cause, cause_args[1];
+            ZVAL_STRING(&cause_args[0], "stream_get_contents failed");
+            if (newobj("UnexpectedValueException", &cause, 1, cause_args)) failure = Z_OBJ(cause);
+            zval_ptr_dtor(&cause_args[0]);
+            if (EG(exception) != NULL) zend_clear_exception();
+        }
+        return cat_rule_cause("CATALOG_VALUE", CAT_RULE_DRIVER_DECODE, failure);
     }
     ZVAL_COPY_VALUE(out, &data);
     return true;
@@ -2309,78 +2325,129 @@ static bool cat_grid_null_cell(zval *cell)
     return cat_grid_cell_object(&kind, &value, cell);
 }
 
-/* A PDO grid cell: typed by the native type of its PostgreSQL column, or by the value that SQLite holds for it (cat_grid_pdo). */
-static bool cat_grid_pdo_cell(zval *v, const char *dialect, const char *native, bool blob, zval *cell)
+/* The grid cell of a kind and a value whose conversion succeeded; a failed one leaves its rule or exception. */
+static bool cat_grid_made(bool ok, const char *kind_name, zval *value, zval *cell)
 {
-    if (Z_TYPE_P(v) == IS_NULL) {
-        return cat_grid_null_cell(cell);
-    }
-    zval kind, value;
-    bool ok;
-    ZVAL_NULL(&kind);
-    ZVAL_NULL(&value);
-    if (strcmp(dialect, "postgres") == 0 && strcmp(native, "FLOAT4") == 0) {
-        ok = cat_float_cell(v, true, &kind, &value);
-    } else if (strcmp(dialect, "postgres") == 0 && strcmp(native, "FLOAT8") == 0) {
-        ok = cat_float_cell(v, false, &kind, &value);
-    } else if (strcmp(dialect, "postgres") == 0 && strcmp(native, "NUMERIC") == 0) {
-        ZVAL_STRING(&kind, "decimal");
-        ok = cat_grid_text(v, &value);
-        /* PostgreSQL writes NaN and the infinities of numeric as text. */
-        if (ok && (strcmp(Z_STRVAL(value), "NaN") == 0 || strstr(Z_STRVAL(value), "Infinity") != NULL)) {
-            cat_refuse("PostgreSQL numeric is not finite");
-            ok = false;
-        }
-    } else if (strcmp(dialect, "postgres") == 0 && (strcmp(native, "TIMESTAMPTZ") == 0 || strcmp(native, "TIMETZ") == 0)) {
-        cat_refuse("PostgreSQL timestamptz and timetz are unsupported");
-        ok = false;
-    } else if (strcmp(dialect, "postgres") == 0 && strcmp(native, "DATE") == 0) {
-        ZVAL_STRING(&kind, "date");
-        zval text;
-        ok = cat_grid_text(v, &text) && cat_date_text(Z_STRVAL(text), Z_STRLEN(text), &value);
-        zval_ptr_dtor(&text);
-    } else if (strcmp(dialect, "postgres") == 0 && strcmp(native, "TIME") == 0) {
-        ZVAL_STRING(&kind, "time");
-        zval text;
-        ok = cat_grid_text(v, &text) && cat_time_text(Z_STRVAL(text), Z_STRLEN(text), &value);
-        zval_ptr_dtor(&text);
-    } else if (strcmp(dialect, "postgres") == 0 && strcmp(native, "TIMESTAMP") == 0) {
-        ZVAL_STRING(&kind, "datetime");
-        zval text;
-        ok = cat_grid_text(v, &text) && cat_datetime_text(Z_STRVAL(text), Z_STRLEN(text), &value);
-        zval_ptr_dtor(&text);
-    } else if (strcmp(dialect, "postgres") == 0 && (strcmp(native, "INT2") == 0 || strcmp(native, "INT4") == 0 || strcmp(native, "INT8") == 0)) {
-        ok = cat_integer_cell(v, false, &kind, &value);
-    } else if (strcmp(dialect, "postgres") == 0 && strcmp(native, "BYTEA") == 0) {
-        ZVAL_STRING(&kind, "binary");
-        ok = cat_bytes_value(v, &value);
-    } else if (Z_TYPE_P(v) == IS_TRUE || Z_TYPE_P(v) == IS_FALSE) {
-        ZVAL_STRING(&kind, "boolean");
-        ZVAL_COPY(&value, v);
-        ok = true;
-    } else if (Z_TYPE_P(v) == IS_LONG) {
-        ok = cat_integer_cell(v, false, &kind, &value);
-    } else if (Z_TYPE_P(v) == IS_DOUBLE) {
-        ok = cat_float_cell(v, false, &kind, &value);
-    } else if (Z_TYPE_P(v) == IS_STRING) {
-        ok = cat_bytes_or_text(v, blob, &kind, &value);
-    } else {
-        cat_refuse("unsupported driver value");
-        ok = false;
-    }
-    if (!ok) {
-        zval_ptr_dtor(&kind);
-        return false;
-    }
-    return cat_grid_cell_object(&kind, &value, cell);
+    if (!ok) return false;
+    zval kind;
+    ZVAL_STRING(&kind, kind_name);
+    return cat_grid_cell_object(&kind, value, cell);
 }
 
-/* The type number of the upper-cased name that pdo_mysql reports for a column, or -1 for a string type. */
+/* A float cell: the IEEE-754 bits of the value as hexadecimal, 8 digits for float32, 16 for float64 (Catalog::floatValue). */
+static bool cat_float_cell(zval *v, bool single, zval *cell)
+{
+    double d;
+    if (Z_TYPE_P(v) == IS_DOUBLE) d = Z_DVAL_P(v);
+    else if (Z_TYPE_P(v) == IS_LONG) d = (double)Z_LVAL_P(v);
+    else if (Z_TYPE_P(v) == IS_STRING && is_numeric_string(Z_STRVAL_P(v), Z_STRLEN_P(v), NULL, NULL, 0)) d = zend_strtod(Z_STRVAL_P(v), NULL);
+    else return cat_rule("CATALOG_VALUE", CAT_RULE_DRIVER_VALUE);
+    zval value;
+    if (single) {
+        float f = (float)d;
+        uint32_t bits;
+        memcpy(&bits, &f, sizeof bits);
+        ZVAL_NEW_STR(&value, zend_strpprintf(0, "%08x", bits));
+        return cat_grid_made(true, "float32", &value, cell);
+    }
+    uint64_t bits;
+    memcpy(&bits, &d, sizeof bits);
+    ZVAL_NEW_STR(&value, zend_strpprintf(0, "%016llx", (unsigned long long)bits));
+    return cat_grid_made(true, "float64", &value, cell);
+}
+
+/* An integer cell (Catalog::integerCell): a PHP integer, or text that holds one. An UNSIGNED column is decimal digits, exact over
+ * the whole range; text that is not the digits of a 64-bit integer is INT-171. */
+static bool cat_integer_cell(zval *v, bool unsigned_, zval *cell)
+{
+    zval value;
+    if (Z_TYPE_P(v) == IS_LONG) {
+        if (unsigned_) {
+            ZVAL_NEW_STR(&value, zend_strpprintf(0, "%llu", (unsigned long long)(uint64_t)Z_LVAL_P(v)));
+            return cat_grid_made(true, "unsigned", &value, cell);
+        }
+        ZVAL_LONG(&value, Z_LVAL_P(v));
+        return cat_grid_made(true, "integer", &value, cell);
+    }
+    if (Z_TYPE_P(v) != IS_STRING) return cat_rule("CATALOG_VALUE", CAT_RULE_DRIVER_VALUE);
+    const char *p = Z_STRVAL_P(v);
+    size_t n = Z_STRLEN_P(v);
+    zend_long n64 = 0;
+    if (!unsigned_ && n > 0 && is_numeric_string(p, n, &n64, NULL, 0) == IS_LONG) {
+        ZVAL_LONG(&value, n64);
+        return cat_grid_made(true, "integer", &value, cell);
+    }
+    /* Digits beyond the signed range are an unsigned value, whatever the column reports (INT-157). */
+    if (!cat_unsigned_digits(p, n)) return cat_rule("CATALOG_VALUE", CAT_RULE_DRIVER_VALUE);
+    ZVAL_STRINGL(&value, p, n);
+    return cat_grid_made(true, "unsigned", &value, cell);
+}
+
+/* A text cell; a value that is not valid UTF-8 is its bytes (Catalog::textCell, INT-153, INT-157). */
+static bool cat_text_cell(zval *v, zval *cell)
+{
+    if (Z_TYPE_P(v) != IS_STRING) return cat_rule("CATALOG_VALUE", CAT_RULE_DRIVER_VALUE);
+    zval value;
+    ZVAL_COPY(&value, v);
+    return cat_grid_made(true, cat_utf8_valid(Z_STRVAL_P(v), Z_STRLEN_P(v)) ? "text" : "binary", &value, cell);
+}
+
+/* A binary cell of the bytes of a driver value. */
+static bool cat_binary_cell(zval *v, zval *cell)
+{
+    zval value;
+    return cat_grid_made(cat_bytes_value(v, &value), "binary", &value, cell);
+}
+
+/* A temporal cell of kind 'd', 't' or 'x'. */
+static bool cat_temporal_cell(zval *v, char kind, zval *cell)
+{
+    zval value;
+    return cat_grid_made(cat_server_temporal(v, kind, &value), kind == 'd' ? "date" : kind == 't' ? "time" : "datetime", &value,
+                         cell);
+}
+
+/* The grid cell of one SQLite value, by its storage class (Catalog::sqliteGridCell): SQLite gives each value a class that is a
+ * cell kind (INT-170), and a REAL is a Float64 cell (INT-183). blob is a blob. */
+static bool cat_grid_sqlite_cell(zval *v, bool blob, zval *cell)
+{
+    if (Z_TYPE_P(v) == IS_NULL) return cat_grid_null_cell(cell);
+    if (Z_TYPE_P(v) == IS_LONG) return cat_integer_cell(v, false, cell);
+    if (Z_TYPE_P(v) == IS_DOUBLE) return cat_float_cell(v, false, cell);
+    return blob ? cat_binary_cell(v, cell) : cat_text_cell(v, cell);
+}
+
+/* The grid cell of one PostgreSQL value, by the class of its column type (Catalog::postgresGridCell, cat_pg_class). */
+static bool cat_grid_postgres_cell(zval *v, const char *class_, zval *cell)
+{
+    if (Z_TYPE_P(v) == IS_NULL) return cat_grid_null_cell(cell);
+    zval value;
+    if (strcmp(class_, "int") == 0) return cat_integer_cell(v, false, cell);
+    if (strcmp(class_, "float4") == 0) return cat_float_cell(v, true, cell);
+    if (strcmp(class_, "float8") == 0) return cat_float_cell(v, false, cell);
+    if (strcmp(class_, "numeric") == 0) return cat_grid_made(cat_postgres_numeric(v, &value), "decimal", &value, cell);
+    if (strcmp(class_, "bool") == 0) {
+        if (Z_TYPE_P(v) != IS_TRUE && Z_TYPE_P(v) != IS_FALSE) return cat_rule("CATALOG_VALUE", CAT_RULE_DRIVER_VALUE);
+        ZVAL_COPY(&value, v);
+        return cat_grid_made(true, "boolean", &value, cell);
+    }
+    if (strcmp(class_, "date") == 0) return cat_temporal_cell(v, 'd', cell);
+    if (strcmp(class_, "time") == 0) return cat_temporal_cell(v, 't', cell);
+    if (strcmp(class_, "timestamp") == 0) return cat_temporal_cell(v, 'x', cell);
+    if (strcmp(class_, "zoned") == 0) return cat_rule("CATALOG_VALUE", CAT_RULE_POSTGRES_ZONED);
+    if (strcmp(class_, "bytea") == 0) return cat_binary_cell(v, cell);
+    if (strcmp(class_, "text") == 0) return cat_text_cell(v, cell);
+    return cat_rule("CATALOG_VALUE", CAT_RULE_NATIVE_TYPE);
+}
+
+/* The type number of the upper-cased name that pdo_mysql reports for a column, or -1 for a name of no type with a cell. */
 static zend_long cat_mysql_type(const char *native)
 {
     static const struct { const char *name; zend_long type; } types[] = {
         {"DECIMAL", 0}, {"TINY", 1}, {"SHORT", 2}, {"LONG", 3}, {"FLOAT", 4}, {"DOUBLE", 5}, {"TIMESTAMP", 7}, {"LONGLONG", 8},
-        {"INT24", 9}, {"DATE", 10}, {"TIME", 11}, {"DATETIME", 12}, {"YEAR", 13}, {"NEWDECIMAL", 246},
+        {"INT24", 9}, {"DATE", 10}, {"TIME", 11}, {"DATETIME", 12}, {"YEAR", 13}, {"NEWDATE", 14}, {"VARCHAR", 15}, {"BIT", 16},
+        {"JSON", 245}, {"NEWDECIMAL", 246}, {"TINY_BLOB", 249}, {"MEDIUM_BLOB", 250}, {"LONG_BLOB", 251}, {"BLOB", 252},
+        {"VAR_STRING", 253}, {"STRING", 254}, {"GEOMETRY", 255},
     };
     for (size_t i = 0; i < sizeof(types) / sizeof(types[0]); i++) {
         if (strcmp(native, types[i].name) == 0) return types[i].type;
@@ -2388,52 +2455,611 @@ static zend_long cat_mysql_type(const char *native)
     return -1;
 }
 
-/* A MySQL grid cell from the type of its column, its UNSIGNED flag and its binary charset. */
-static bool cat_grid_mysql_cell(zval *v, zend_long type, bool unsigned_, bool binary, zval *cell)
+/* The grid cell of one MySQL value (Catalog::mysqlGridCell), from the type of its column, its UNSIGNED flag, its binary charset
+ * and the width of a BIT. */
+static bool cat_grid_mysql_cell(zval *v, zend_long type, bool unsigned_, bool binary, zend_long bits, zval *cell)
 {
-    if (Z_TYPE_P(v) == IS_NULL) {
-        return cat_grid_null_cell(cell);
+    if (Z_TYPE_P(v) == IS_NULL) return cat_grid_null_cell(cell);
+    zval value;
+    switch (type) {
+        case 4: return cat_float_cell(v, true, cell);
+        case 5: return cat_float_cell(v, false, cell);
+        case 7: return cat_rule("CATALOG_VALUE", CAT_RULE_MYSQL_TIMESTAMP);
+        case 13: return cat_rule("CATALOG_VALUE", CAT_RULE_MYSQL_YEAR);
+        case 10: case 14: return cat_temporal_cell(v, 'd', cell);
+        case 12: return cat_temporal_cell(v, 'x', cell);
+        case 11: return cat_temporal_cell(v, 't', cell);
+        case 0: case 246: return cat_grid_made(cat_decimal_text(v, &value), "decimal", &value, cell);
+        case 1: case 2: case 3: case 8: case 9: return cat_integer_cell(v, unsigned_, cell);
+        /* The server returns a bit value as a binary string and a geometry as its SRID and WKB (INT-185). */
+        case 16: return cat_grid_made(cat_bit_bytes(v, bits, &value), "binary", &value, cell);
+        case 255: return cat_binary_cell(v, cell);
+        case 245: return cat_text_cell(v, cell);
+        /* ENUM and SET columns arrive as STRING; a TEXT column arrives as BLOB, so the charset tells the two. */
+        case 15: case 249: case 250: case 251: case 252: case 253: case 254:
+            return binary ? cat_binary_cell(v, cell) : cat_text_cell(v, cell);
+        default: return cat_rule("CATALOG_VALUE", CAT_RULE_NATIVE_TYPE);
     }
-    zval kind, value;
-    bool ok;
-    ZVAL_NULL(&kind);
-    ZVAL_NULL(&value);
-    if (type == 4) { /* FLOAT */
-        ok = cat_float_cell(v, true, &kind, &value);
-    } else if (type == 5) { /* DOUBLE */
-        ok = cat_float_cell(v, false, &kind, &value);
-    } else if (type == 7) { /* TIMESTAMP */
-        cat_refuse("MySQL TIMESTAMP follows a time zone");
-        ok = false;
-    } else if (type == 10 || type == 11 || type == 12) { /* DATE, TIME, DATETIME */
-        zval text;
-        ok = cat_grid_text(v, &text);
-        if (ok) {
-            ok = type == 10 ? cat_date_text(Z_STRVAL(text), Z_STRLEN(text), &value)
-                : type == 11 ? cat_time_text(Z_STRVAL(text), Z_STRLEN(text), &value)
-                : cat_datetime_text(Z_STRVAL(text), Z_STRLEN(text), &value);
-            ZVAL_STRING(&kind, type == 10 ? "date" : type == 11 ? "time" : "datetime");
-        }
-        zval_ptr_dtor(&text);
-    } else if (type == 0 || type == 246) { /* DECIMAL, NEWDECIMAL */
-        ZVAL_STRING(&kind, "decimal");
-        ok = cat_grid_text(v, &value);
-    } else if (type == 13) { /* YEAR: an integer-valued MySQL type with no grid cell (INT-103) */
-        cat_refuse("MySQL YEAR has no grid cell");
-        ok = false;
-    } else if (type == 1 || type == 2 || type == 3 || type == 8 || type == 9) { /* TINY SHORT LONG LONGLONG INT24 */
-        ok = cat_integer_cell(v, unsigned_, &kind, &value);
-    } else {
-        /* The bytes of a column whose charset the server did not report are its binary value (INT-157). */
-        ok = cat_bytes_or_text(v, binary || (Z_TYPE_P(v) == IS_STRING && !cat_utf8_valid(Z_STRVAL_P(v), Z_STRLEN_P(v))), &kind, &value);
-    }
-    if (!ok) {
-        zval_ptr_dtor(&kind);
-        return false;
-    }
-    return cat_grid_cell_object(&kind, &value, cell);
 }
 
+/* ---- PostgreSQL type classes (INT-185) ---------------------------------------------------------------------------------------- */
+
+/* The class of a built-in PostgreSQL type by its OID (Catalog::PG_TYPE_CLASSES), or NULL for a type that is not built in. */
+static const char *cat_pg_builtin_class(zend_long oid)
+{
+    static const struct { zend_long oid; const char *class_; } classes[] = {
+        {16, "bool"}, {17, "bytea"}, {18, "text"}, {19, "text"}, {20, "int"}, {21, "int"}, {23, "int"}, {25, "text"}, {26, "text"},
+        {114, "text"}, {142, "text"}, {650, "text"}, {700, "float4"}, {701, "float8"}, {774, "text"}, {829, "text"},
+        {869, "text"}, {1042, "text"}, {1043, "text"}, {1082, "date"}, {1083, "time"}, {1114, "timestamp"}, {1184, "zoned"},
+        {1266, "zoned"}, {1560, "text"}, {1562, "text"}, {1700, "numeric"}, {2950, "text"}, {3220, "text"}, {3614, "text"},
+        {3615, "text"}, {3802, "text"},
+    };
+    for (size_t i = 0; i < sizeof(classes) / sizeof(classes[0]); i++) {
+        if (classes[i].oid == oid) return classes[i].class_;
+    }
+    return NULL;
+}
+
+/* The class of an array, a range or a composite of these element or field classes (Catalog::pgContainer): text when the text
+ * output of each is that of a type that no setting changes, refused otherwise. */
+static const char *cat_pg_container(const char *const *classes, size_t count)
+{
+    for (size_t i = 0; i < count; i++) {
+        if (strcmp(classes[i], "int") != 0 && strcmp(classes[i], "numeric") != 0 && strcmp(classes[i], "bool") != 0
+            && strcmp(classes[i], "text") != 0) {
+            return "refused";
+        }
+    }
+    return "text";
+}
+
+/* The rows of a catalog statement of PostgreSQL types with one integer argument. */
+static bool cat_pg_rows(zval *db, zval *pdo, const char *sql, zend_long argument, zval *rows)
+{
+    zval args, names, types;
+    array_init(&args);
+    add_next_index_long(&args, argument);
+    bool ok = cat_query(db, pdo, sql, &args, CAT_METADATA_ROWS, CAT_METADATA_BYTES, &names, &types, rows, NULL);
+    zval_ptr_dtor(&args);
+    if (ok) {
+        zval_ptr_dtor(&names);
+        zval_ptr_dtor(&types);
+    }
+    return ok;
+}
+
+/* The integer of a cell of a type row, or 0 for a NULL. */
+static zend_long cat_pg_long(zval *row, zend_ulong at)
+{
+    zval *v = zend_hash_index_find(Z_ARRVAL_P(row), at);
+    zend_long n = 0;
+    if (v != NULL && Z_TYPE_P(v) != IS_NULL) cat_parse_int(v, &n);
+    return n;
+}
+
+/*
+ * The class of a PostgreSQL type by its OID (Catalog::pgClass, INT-185): a built-in class, the class of the base type of a
+ * domain, text for an enum, and for an array, a range, a multirange or a composite the class of cat_pg_container; any other type
+ * is refused (INT-170). A type that is not built in is looked up in pg_type, in cache (oid => class) of the read; the lookup runs
+ * a statement, so the caller reads the rows of its own statement before.
+ */
+static bool cat_pg_class(zval *db, zval *pdo, zval *cache, zend_long oid, const char **out)
+{
+    const char *builtin = cat_pg_builtin_class(oid);
+    if (builtin != NULL) {
+        *out = builtin;
+        return true;
+    }
+    zval *cached = zend_hash_index_find(Z_ARRVAL_P(cache), (zend_ulong)oid);
+    if (cached != NULL) {
+        *out = (const char *)Z_PTR_P(cached);
+        return true;
+    }
+    /* A type that contains itself is refused. */
+    zval mark;
+    ZVAL_PTR(&mark, (void *)"refused");
+    zend_hash_index_update(Z_ARRVAL_P(cache), (zend_ulong)oid, &mark);
+    zval rows;
+    if (!cat_pg_rows(db, pdo,
+            "SELECT t.typtype::text, t.typcategory::text, t.typelem::int8, t.typbasetype::int8, t.typrelid::int8, "
+            "(SELECT r.rngsubtype::int8 FROM pg_range r WHERE r.rngtypid = t.oid OR r.rngmultitypid = t.oid) "
+            "FROM pg_type t WHERE t.oid = ?", oid, &rows)) {
+        return false;
+    }
+    zval *row = zend_hash_index_find(Z_ARRVAL(rows), 0);
+    zval *typtype = row != NULL && Z_TYPE_P(row) == IS_ARRAY ? zend_hash_index_find(Z_ARRVAL_P(row), 0) : NULL;
+    zval *category = row != NULL && Z_TYPE_P(row) == IS_ARRAY ? zend_hash_index_find(Z_ARRVAL_P(row), 1) : NULL;
+    char kind = typtype != NULL && Z_TYPE_P(typtype) == IS_STRING && Z_STRLEN_P(typtype) == 1 ? Z_STRVAL_P(typtype)[0] : 0;
+    bool array = category != NULL && Z_TYPE_P(category) == IS_STRING && zend_string_equals_literal(Z_STR_P(category), "A");
+    zval *subtype = kind != 0 ? zend_hash_index_find(Z_ARRVAL_P(row), 5) : NULL;
+    const char *class_ = "refused";
+    bool ok = true;
+    if (kind == 'e') {
+        class_ = "text";
+    } else if (kind == 'd') {
+        ok = cat_pg_class(db, pdo, cache, cat_pg_long(row, 3), &class_);
+    } else if (kind == 'b' && array && cat_pg_long(row, 2) != 0) {
+        const char *element;
+        ok = cat_pg_class(db, pdo, cache, cat_pg_long(row, 2), &element);
+        if (ok) class_ = cat_pg_container(&element, 1);
+    } else if ((kind == 'r' || kind == 'm') && subtype != NULL && Z_TYPE_P(subtype) != IS_NULL) {
+        const char *element;
+        ok = cat_pg_class(db, pdo, cache, cat_pg_long(row, 5), &element);
+        if (ok) class_ = cat_pg_container(&element, 1);
+    } else if (kind == 'c') {
+        zval fields;
+        ok = cat_pg_rows(db, pdo, "SELECT atttypid::int8 FROM pg_attribute WHERE attrelid = ? AND attnum > 0 AND NOT attisdropped",
+                         cat_pg_long(row, 4), &fields);
+        if (ok) {
+            uint32_t count = zend_hash_num_elements(Z_ARRVAL(fields));
+            const char **elements = ecalloc(count > 0 ? count : 1, sizeof(const char *));
+            uint32_t at = 0;
+            zval *field;
+            ZEND_HASH_FOREACH_VAL(Z_ARRVAL(fields), field) {
+                if (ok) ok = cat_pg_class(db, pdo, cache, cat_pg_long(field, 0), &elements[at++]);
+            } ZEND_HASH_FOREACH_END();
+            if (ok) class_ = cat_pg_container(elements, at);
+            efree(elements);
+            zval_ptr_dtor(&fields);
+        }
+    }
+    zval_ptr_dtor(&rows);
+    if (!ok) return false;
+    ZVAL_PTR(&mark, (void *)class_);
+    zend_hash_index_update(Z_ARRVAL_P(cache), (zend_ulong)oid, &mark);
+    *out = class_;
+    return true;
+}
+
+/* Whether each OID of a PostgreSQL result is that of a built-in type, whose class needs no lookup (Catalog::pgBuiltins). */
+static bool cat_pg_builtins(zval *oids)
+{
+    zval *oid;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(oids), oid) {
+        if (Z_TYPE_P(oid) != IS_LONG || cat_pg_builtin_class(Z_LVAL_P(oid)) == NULL) return false;
+    } ZEND_HASH_FOREACH_END();
+    return true;
+}
+
+/* The class of each column of a PostgreSQL result by its OID, as strings of a new array (Catalog::pgClasses); a column of no
+ * OID is refused. */
+static bool cat_pg_classes(zval *db, zval *pdo, zval *oids, zval *classes)
+{
+    zval cache;
+    array_init(&cache);
+    array_init(classes);
+    zval *oid;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(oids), oid) {
+        const char *class_ = "refused";
+        if (Z_TYPE_P(oid) == IS_LONG && !cat_pg_class(db, pdo, &cache, Z_LVAL_P(oid), &class_)) {
+            zval_ptr_dtor(&cache);
+            zval_ptr_dtor(classes);
+            return false;
+        }
+        add_next_index_string(classes, class_);
+    } ZEND_HASH_FOREACH_END();
+    zval_ptr_dtor(&cache);
+    return true;
+}
+
+/* ---- plain and described values ----------------------------------------------------------------------------------------------- */
+
+/* The class of a native type (Catalog::typeClass): 'i' an integer, 'f' a float, 'd' a decimal, 'b' bytes and 't' text, for
+ * the driver's type names of a result and the declared type text of a descriptor. */
+static char cat_type_class(const char *native)
+{
+    zend_string *source = zend_string_init(native, strlen(native), 0);
+    zend_string *upper = zend_string_toupper(source);
+    zend_string_release(source);
+    const char *t = ZSTR_VAL(upper);
+    char class_ = 't';
+    if (strcmp(t, "LONG") == 0 || strcmp(t, "LONGLONG") == 0 || strcmp(t, "SHORT") == 0 || strcmp(t, "TINY") == 0
+        || strcmp(t, "INT24") == 0 || strcmp(t, "YEAR") == 0) class_ = 'i';
+    else if (strcmp(t, "DOUBLE") == 0 || strcmp(t, "FLOAT") == 0) class_ = 'f';
+    else if (strcmp(t, "NEWDECIMAL") == 0) class_ = 'd';
+    else if (strstr(t, "BLOB") != NULL || strstr(t, "BINARY") != NULL || strstr(t, "BYTEA") != NULL) class_ = 'b';
+    else if (strstr(t, "DECIMAL") != NULL || strstr(t, "NUMERIC") != NULL || strstr(t, "MONEY") != NULL) class_ = 'd';
+    else if (strstr(t, "INT") != NULL && strstr(t, "POINT") == NULL) class_ = 'i';
+    else if (strstr(t, "FLOAT") != NULL || strstr(t, "DOUBLE") != NULL || strstr(t, "REAL") != NULL) class_ = 'f';
+    zend_string_release(upper);
+    return class_;
+}
+
+/* A float of a column: a single-precision MySQL or PostgreSQL column holds the float32 nearest to the driver's decimal; a
+ * SQLite REAL is a double, whatever its column declares (Catalog::storedFloat, INT-183, INT-184). */
+static double cat_stored_float(double value, const char *native, const char *dialect)
+{
+    if (strcmp(dialect, "sqlite") != 0 && (strcasecmp(native, "REAL") == 0 || strcasecmp(native, "FLOAT") == 0
+            || strcasecmp(native, "FLOAT4") == 0)) {
+        return (double)(float)value;
+    }
+    return value;
+}
+
+/* Whether a byte is one that PHP's trim and filter_var strip. */
+static bool cat_trimmed(char c)
+{
+    return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\v' || c == '\0';
+}
+
+/* The integer of a text as filter_var(FILTER_VALIDATE_INT) reads it: the surrounding whitespace dropped, an optional sign and
+ * the digits of a 64-bit integer with no leading zero. */
+static bool cat_filter_int(const char *s, size_t n, zend_long *out)
+{
+    while (n > 0 && cat_trimmed(*s)) {
+        s++;
+        n--;
+    }
+    while (n > 0 && cat_trimmed(s[n - 1])) n--;
+    bool negative = n > 0 && s[0] == '-';
+    size_t i = n > 0 && (s[0] == '-' || s[0] == '+') ? 1 : 0;
+    size_t digits = n - i;
+    if (digits == 0 || cat_digits(s + i, digits) != digits || (digits > 1 && s[i] == '0')) return false;
+    uint64_t limit = negative ? (uint64_t)ZEND_LONG_MAX + 1 : (uint64_t)ZEND_LONG_MAX, value = 0;
+    for (size_t k = i; k < n; k++) {
+        uint64_t digit = (uint64_t)(s[k] - '0');
+        if (value > (limit - digit) / 10) return false;
+        value = value * 10 + digit;
+    }
+    *out = negative ? (zend_long)(0 - value) : (zend_long)value;
+    return true;
+}
+
+/*
+ * The plain conversion of a driver value (Catalog::value): a host value that the conversion does not take for its column, or
+ * text that is not an integer or a float of its integer or float column, is INT-171; SQLite keeps the storage class of a value
+ * whatever its column declares (INT-184).
+ */
+static bool cat_plain_value(zval *v, const char *native, const char *dialect, zval *out)
+{
+    if (Z_TYPE_P(v) == IS_DOUBLE) {
+        ZVAL_DOUBLE(out, cat_stored_float(Z_DVAL_P(v), native, dialect));
+        return true;
+    }
+    if (Z_TYPE_P(v) == IS_NULL || Z_TYPE_P(v) == IS_TRUE || Z_TYPE_P(v) == IS_FALSE || Z_TYPE_P(v) == IS_LONG) {
+        ZVAL_COPY(out, v);
+        return true;
+    }
+    /* PDO reads a PostgreSQL bytea as a stream (INT-107). */
+    if (Z_TYPE_P(v) == IS_RESOURCE) return cat_bytes_value(v, out);
+    if (Z_TYPE_P(v) != IS_STRING) return cat_rule("CATALOG_VALUE", CAT_RULE_DRIVER_VALUE);
+    /* A value that is not valid UTF-8 is its bytes: a database tool shows the cell (INT-153). */
+    const char *s = Z_STRVAL_P(v);
+    size_t n = Z_STRLEN_P(v);
+    if (!cat_utf8_valid(s, n)) {
+        ZVAL_COPY(out, v);
+        return true;
+    }
+    bool sqlite = strcmp(dialect, "sqlite") == 0;
+    char class_ = cat_type_class(native);
+    if (class_ == 'i') {
+        zend_long integer;
+        if (cat_filter_int(s, n, &integer)) {
+            ZVAL_LONG(out, integer);
+            return true;
+        }
+        /* A BIGINT UNSIGNED reaches past PHP_INT_MAX as its digits; SQLite keeps a text in an INTEGER column. */
+        if (!sqlite && !cat_unsigned_digits(s, n)) return cat_rule("CATALOG_VALUE", CAT_RULE_DRIVER_VALUE);
+    } else if (class_ == 'f') {
+        zend_long l;
+        double d;
+        zend_uchar type = is_numeric_string(s, n, &l, &d, false);
+        if (type != 0) {
+            ZVAL_DOUBLE(out, cat_stored_float(type == IS_LONG ? (double)l : d, native, dialect));
+            return true;
+        }
+        if (!sqlite) return cat_rule("CATALOG_VALUE", CAT_RULE_DRIVER_VALUE);
+    }
+    ZVAL_COPY(out, v);
+    return true;
+}
+
+/* The catalog values of one row of a read query (Catalog::queryValue): a MySQL or PostgreSQL date, time or datetime is the
+ * text of its grid cell (INT-153), and any other value its plain conversion. A broken rule names its 1-based column. */
+static bool cat_query_row(zval *row, zval *types, const char *dialect, zval *cells)
+{
+    array_init(cells);
+    zend_ulong i = 0;
+    zval *value;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(row), value) {
+        zval *t = zend_hash_index_find(Z_ARRVAL_P(types), i++);
+        zval v;
+        if (t == NULL || Z_TYPE_P(t) != IS_STRING) {
+            db_throw_orm("TABLE_METADATA_INVALID", "a column has no native type");
+            zval_ptr_dtor(cells);
+            return false;
+        }
+        char kind = Z_TYPE_P(value) == IS_NULL ? 0 : cat_temporal_kind(dialect, Z_STRVAL_P(t));
+        bool ok = true;
+        if (Z_TYPE_P(value) == IS_NULL) ZVAL_NULL(&v);
+        else ok = kind != 0 ? cat_server_temporal(value, kind, &v) : cat_plain_value(value, Z_STRVAL_P(t), dialect, &v);
+        if (!ok) {
+            cat_rule_at((zend_long)i);
+            zval_ptr_dtor(cells);
+            return false;
+        }
+        add_next_index_zval(cells, &v);
+    } ZEND_HASH_FOREACH_END();
+    return true;
+}
+
+/* A native type as PHP's strtolower(trim()) writes it, which the caller releases. */
+static zend_string *cat_lower_trim(const char *native)
+{
+    size_t n = strlen(native);
+    while (n > 0 && (cat_trimmed(*native) || *native == '\x0b')) {
+        native++;
+        n--;
+    }
+    while (n > 0 && (cat_trimmed(native[n - 1]) || native[n - 1] == '\x0b')) n--;
+    zend_string *source = zend_string_init(native, n, 0);
+    zend_string *lower = zend_string_tolower(source);
+    zend_string_release(source);
+    return lower;
+}
+
+/*
+ * The class of a MySQL column type, as information_schema writes it (Catalog::mysqlColumnClass): a type of its own rule, a
+ * temporal kind, a boolean, BIT or spatial bytes (INT-185), plain for every other type of a cell, and refused for a type that
+ * has none (INT-170).
+ */
+static const char *cat_mysql_column_class(const char *native)
+{
+    static const char *const spatial[] = {"geometry", "point", "linestring", "polygon", "multipoint", "multilinestring",
+        "multipolygon", "geometrycollection", "geomcollection"};
+    static const char *const plain[] = {"tinyint", "smallint", "mediumint", "int", "integer", "bigint", "float", "double",
+        "decimal", "char", "varchar", "binary", "varbinary", "tinytext", "text", "mediumtext", "longtext", "tinyblob", "blob",
+        "mediumblob", "longblob", "enum", "set", "json"};
+    zend_string *type = cat_lower_trim(native);
+    const char *t = ZSTR_VAL(type);
+    size_t n = strcspn(t, "( ");
+    const char *class_ = "refused";
+    if (strcmp(t, "tinyint(1)") == 0) class_ = "bool";
+    else if (n == 4 && strncmp(t, "year", 4) == 0) class_ = "year";
+    else if (n == 9 && strncmp(t, "timestamp", 9) == 0) class_ = "mysql_timestamp";
+    else if (n == 4 && strncmp(t, "date", 4) == 0) class_ = "date";
+    else if (n == 4 && strncmp(t, "time", 4) == 0) class_ = "time";
+    else if (n == 8 && strncmp(t, "datetime", 8) == 0) class_ = "datetime";
+    else if (n == 3 && strncmp(t, "bit", 3) == 0) class_ = "bit";
+    else {
+        for (size_t i = 0; i < sizeof(spatial) / sizeof(spatial[0]); i++) {
+            if (strlen(spatial[i]) == n && strncmp(t, spatial[i], n) == 0) class_ = "spatial";
+        }
+        for (size_t i = 0; i < sizeof(plain) / sizeof(plain[0]); i++) {
+            if (strlen(plain[i]) == n && strncmp(t, plain[i], n) == 0) class_ = "plain";
+        }
+    }
+    zend_string_release(type);
+    return class_;
+}
+
+/*
+ * The class of a PostgreSQL column type that format_type writes for a built-in type (Catalog::pgColumnClass), or NULL for a
+ * type that it writes by its own name (an array, an enum, a domain, a range, a composite or any type of no built-in name).
+ */
+static const char *cat_pg_column_class(const char *native)
+{
+    static const struct { const char *type; const char *class_; } classes[] = {
+        {"smallint", "plain"}, {"integer", "plain"}, {"bigint", "plain"}, {"real", "plain"}, {"double precision", "plain"},
+        {"bytea", "plain"}, {"numeric", "numeric"}, {"boolean", "bool"}, {"date", "date"}, {"time without time zone", "time"},
+        {"timestamp without time zone", "datetime"}, {"time with time zone", "zoned"}, {"timestamp with time zone", "zoned"},
+        {"text", "plain"}, {"character varying", "plain"}, {"character", "plain"}, {"\"char\"", "plain"}, {"name", "plain"},
+        {"uuid", "plain"}, {"json", "plain"}, {"jsonb", "plain"}, {"xml", "plain"}, {"bit", "plain"}, {"bit varying", "plain"},
+        {"inet", "plain"}, {"cidr", "plain"}, {"macaddr", "plain"}, {"macaddr8", "plain"}, {"tsvector", "plain"},
+        {"tsquery", "plain"}, {"pg_lsn", "plain"}, {"oid", "plain"},
+    };
+    zend_string *lower = cat_lower_trim(native);
+    /* The type modifiers, as in numeric(10,2) or timestamp(3) without time zone, are dropped. */
+    smart_str type = {0};
+    const char *t = ZSTR_VAL(lower);
+    size_t n = ZSTR_LEN(lower);
+    for (size_t i = 0; i < n;) {
+        if (t[i] == '(') {
+            size_t j = i + 1, a = cat_digits(t + j, n - j);
+            j += a;
+            if (a > 0 && j < n && t[j] == ',') {
+                size_t b = cat_digits(t + j + 1, n - j - 1);
+                j = b > 0 ? j + 1 + b : i;
+            }
+            if (a > 0 && j > i && j < n && t[j] == ')') {
+                i = j + 1;
+                continue;
+            }
+        }
+        smart_str_appendc(&type, t[i++]);
+    }
+    smart_str_0(&type);
+    const char *class_ = NULL;
+    const char *written = type.s == NULL ? "" : ZSTR_VAL(type.s);
+    for (size_t i = 0; i < sizeof(classes) / sizeof(classes[0]); i++) {
+        if (strcmp(written, classes[i].type) == 0) class_ = classes[i].class_;
+    }
+    smart_str_free(&type);
+    zend_string_release(lower);
+    return class_;
+}
+
+/* The width n of a MySQL BIT(n), as information_schema writes it, or 0 (Catalog::declaredWidth). */
+static zend_long cat_declared_width(const char *native)
+{
+    zend_string *type = cat_lower_trim(native);
+    const char *t = ZSTR_VAL(type);
+    size_t n = ZSTR_LEN(type), digits = n > 5 ? cat_digits(t + 4, n - 4) : 0;
+    zend_long width = 0;
+    if (n > 5 && strncmp(t, "bit(", 4) == 0 && digits > 0 && 4 + digits == n - 1 && t[n - 1] == ')') {
+        for (size_t i = 0; i < digits && width <= 64; i++) width = width * 10 + (t[4 + i] - '0');
+    }
+    zend_string_release(type);
+    return width;
+}
+
+/* The conversion of the values of one described column (Catalog::describedReader). */
+typedef enum {
+    CAT_READ_PLAIN, CAT_READ_REFUSE, CAT_READ_BOOL, CAT_READ_BIT, CAT_READ_BYTES, CAT_READ_TEXT, CAT_READ_NUMERIC,
+    CAT_READ_SERVER_TEMPORAL, CAT_READ_SQLITE_TEMPORAL,
+} cat_read;
+
+typedef struct {
+    cat_read read;
+    const char *code;
+    const char *text;
+    char kind;
+    zend_long number;
+    const char *native;
+} cat_reader;
+
+/*
+ * The reader of one described column (Catalog::describedReader): the rule of its native type (INT-166 to INT-170, INT-185), a
+ * temporal value in its declared precision, a boolean (INT-182), and the plain conversion otherwise. On PostgreSQL a type that
+ * no type text names takes the class of its result OID (cat_pg_class); a column of no OID is refused.
+ */
+static bool cat_reader_of(zval *db, zval *pdo, zval *cache, const char *dialect, zval *column, zval *oid, cat_reader *reader)
+{
+    zval nrv, *native_v = catalog_prop(column, "nativeType", &nrv);
+    const char *native = Z_TYPE_P(native_v) == IS_STRING ? Z_STRVAL_P(native_v) : "";
+    memset(reader, 0, sizeof *reader);
+    reader->native = native;
+    if (strcmp(dialect, "sqlite") == 0) {
+        /* SQLite refuses no value for the type that its column declares (INT-184): only a dbspec temporal or boolean column
+         * has a rule of its own. */
+        zend_string *type = cat_lower_trim(native);
+        char kind = zend_string_equals_literal(type, "date") ? 'd' : zend_string_equals_literal(type, "time") ? 't'
+            : zend_string_equals_literal(type, "datetime") ? 'x' : 0;
+        bool boolean = zend_string_equals_literal(type, "boolean");
+        zend_string_release(type);
+        if (kind != 0) {
+            zval prv, *precision = catalog_prop(column, "checkPrecision", &prv);
+            reader->read = CAT_READ_SQLITE_TEMPORAL;
+            reader->kind = kind;
+            reader->number = Z_TYPE_P(precision) == IS_LONG ? Z_LVAL_P(precision) : 0;
+        } else {
+            reader->read = boolean ? CAT_READ_BOOL : CAT_READ_PLAIN;
+        }
+        return true;
+    }
+    const char *class_ = strcmp(dialect, "mysql") == 0 ? cat_mysql_column_class(native) : cat_pg_column_class(native);
+    if (class_ == NULL) {
+        class_ = "refused";
+        if (oid != NULL && Z_TYPE_P(oid) == IS_LONG && !cat_pg_class(db, pdo, cache, Z_LVAL_P(oid), &class_)) return false;
+    }
+    reader->read = CAT_READ_REFUSE;
+    reader->code = "CATALOG_VALUE";
+    if (strcmp(class_, "year") == 0) reader->text = CAT_RULE_MYSQL_YEAR;
+    else if (strcmp(class_, "mysql_timestamp") == 0) reader->text = CAT_RULE_MYSQL_TIMESTAMP;
+    else if (strcmp(class_, "zoned") == 0) reader->text = CAT_RULE_POSTGRES_ZONED;
+    else if (strcmp(class_, "refused") == 0) reader->text = CAT_RULE_NATIVE_TYPE;
+    else if (strcmp(class_, "bool") == 0) reader->read = CAT_READ_BOOL;
+    else if (strcmp(class_, "bit") == 0) {
+        reader->read = CAT_READ_BIT;
+        reader->number = cat_declared_width(native);
+    }
+    else if (strcmp(class_, "spatial") == 0) reader->read = CAT_READ_BYTES;
+    /* An enum, an array, a range or a composite of a text cell is the text that the server writes. */
+    else if (strcmp(class_, "text") == 0) reader->read = CAT_READ_TEXT;
+    else if (strcmp(class_, "numeric") == 0) reader->read = CAT_READ_NUMERIC;
+    else if (strcmp(class_, "date") == 0 || strcmp(class_, "time") == 0 || strcmp(class_, "datetime") == 0
+             || strcmp(class_, "timestamp") == 0) {
+        reader->read = CAT_READ_SERVER_TEMPORAL;
+        reader->kind = strcmp(class_, "date") == 0 ? 'd' : strcmp(class_, "time") == 0 ? 't' : 'x';
+    }
+    else reader->read = CAT_READ_PLAIN;
+    return true;
+}
+
+/* The value of one non-NULL cell of a described column by its reader; a broken rule is left for cat_rule_at. */
+static bool cat_read_value(cat_reader *reader, zval *cell, const char *dialect, zval *out)
+{
+    const char *s;
+    size_t n;
+    switch (reader->read) {
+        case CAT_READ_REFUSE: return cat_rule(reader->code, reader->text);
+        case CAT_READ_BOOL: return cat_described_bool(cell, out);
+        case CAT_READ_BIT: return cat_bit_bytes(cell, reader->number, out);
+        case CAT_READ_BYTES: return cat_bytes_value(cell, out);
+        case CAT_READ_TEXT:
+            if (!cat_driver_text(cell, &s, &n)) return false;
+            ZVAL_COPY(out, cell);
+            return true;
+        case CAT_READ_NUMERIC: return cat_postgres_numeric(cell, out);
+        case CAT_READ_SERVER_TEMPORAL: return cat_described_server_temporal(cell, reader->kind, dialect, reader->native, out);
+        case CAT_READ_SQLITE_TEMPORAL: return cat_sqlite_temporal(cell, reader->kind, reader->number, out);
+        default: return cat_plain_value(cell, reader->native, dialect, out);
+    }
+}
+
+/*
+ * Converts the rows of a read of a described table into *out (Catalog::describedRows): tablePage, the lookup by key and the rows
+ * of a write. Each value takes the conversion of its column (cat_reader_of), row by row and in column order within a row, so a
+ * broken rule names the first value that breaks one, by the position of its column among the described columns (INT-165).
+ * oids holds the PostgreSQL type OID of each result column, or is NULL. The raw rows stay the caller's.
+ */
+static bool cat_described_rows(zval *db, zval *pdo, zval *raw, zval *oids, zval *metadata, const char *dialect, zval *out)
+{
+    zval rv_cols, *columns = catalog_prop(metadata, "columns", &rv_cols);
+    uint32_t count = zend_hash_num_elements(Z_ARRVAL_P(columns));
+    cat_reader *readers = ecalloc(count > 0 ? count : 1, sizeof(cat_reader));
+    zval cache;
+    array_init(&cache);
+    uint32_t at = 0;
+    zval *column;
+    bool ok = true;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(columns), column) {
+        zval *oid = oids != NULL ? zend_hash_index_find(Z_ARRVAL_P(oids), at) : NULL;
+        if (ok) ok = cat_reader_of(db, pdo, &cache, dialect, column, oid, &readers[at]);
+        at++;
+    } ZEND_HASH_FOREACH_END();
+    zval_ptr_dtor(&cache);
+    array_init(out);
+    zval *row;
+    if (ok) {
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(raw), row) {
+            zval converted;
+            array_init(&converted);
+            uint32_t i = 0;
+            zval *cell;
+            ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(row), cell) {
+                zval v;
+                if (i >= count) {
+                    db_throw_orm("TABLE_METADATA_INVALID", "%u native types for more columns", (unsigned)count);
+                    ok = false;
+                    break;
+                }
+                if (Z_TYPE_P(cell) == IS_NULL) {
+                    ZVAL_NULL(&v);
+                } else if (!cat_read_value(&readers[i], cell, dialect, &v)) {
+                    cat_rule_at((zend_long)i + 1);
+                    ok = false;
+                    break;
+                }
+                add_next_index_zval(&converted, &v);
+                i++;
+            } ZEND_HASH_FOREACH_END();
+            if (!ok) {
+                zval_ptr_dtor(&converted);
+                break;
+            }
+            add_next_index_zval(out, &converted);
+        } ZEND_HASH_FOREACH_END();
+    }
+    efree(readers);
+    if (!ok) zval_ptr_dtor(out);
+    return ok;
+}
+
+/*
+ * The fraction digits of a temporal column that a write checks (Catalog::declaredPrecision): the digits of the first "(n)" of
+ * its native type, and otherwise the default of the database, 0 on MySQL and 6 on PostgreSQL.
+ */
+static zend_long cat_declared_precision(const char *dialect, const char *type)
+{
+    for (const char *open = strchr(type, '('); open != NULL; open = strchr(open + 1, '(')) {
+        const char *p = open + 1;
+        zend_long digits = 0;
+        while (cat_digit(*p) && digits < 1000000) digits = digits * 10 + (*p++ - '0');
+        if (p > open + 1 && *p == ')') return digits;
+    }
+    return strcmp(dialect, "postgres") == 0 ? 6 : 0;
+}
 
 /* The bytes that the cells of one row count against a result budget (INT-115): the bytes of a text, decimal, date, time,
  * datetime or binary grid cell and of a string value, and 8 for every other cell, null included. */
@@ -2482,34 +3108,35 @@ static bool cat_grid_cells_budget(zval *cells, zend_long max_bytes, zend_long *b
     return true;
 }
 
-/* The grid cells of one PostgreSQL row, by the native type of each column, as the buffered read converts them. */
+/* The grid cells of one PostgreSQL row, by the class of each column, which the cursor read puts in types (cat_pg_classes). */
 static bool cat_grid_postgres_row(zval *row, zval *types, const char *dialect, zval *cells)
 {
+    (void)dialect;
     array_init(cells);
     zend_ulong i = 0;
     zval *value;
     ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(row), value) {
-        zval *native = zend_hash_index_find(Z_ARRVAL_P(types), i);
+        zval *class_ = zend_hash_index_find(Z_ARRVAL_P(types), i++);
         zval cell;
-        if (!cat_grid_pdo_cell(value, dialect, Z_STRVAL_P(native), false, &cell)) {
+        if (!cat_grid_postgres_cell(value, class_ != NULL && Z_TYPE_P(class_) == IS_STRING ? Z_STRVAL_P(class_) : "refused", &cell)) {
+            cat_rule_at((zend_long)i);
             zval_ptr_dtor(cells);
             return false;
         }
         add_next_index_zval(cells, &cell);
-        i++;
     } ZEND_HASH_FOREACH_END();
     return true;
 }
 
-/* The PDO grid query of PostgreSQL and SQLite: one bounded statement, each cell typed by its column or by its value. */
-/* A PostgreSQL grid read without parameters: the cursor converts each row into its cells as it reads it, within the budget. */
+/* A PostgreSQL grid read without parameters: the cursor converts each row into its cells as it reads it, within the budget,
+ * by the class of each column, which it looks up after the rows of its first chunk are read. */
 static bool cat_grid_pdo_cursor(zval *db, zval *pdo, zval *sql, zend_long max_rows, zend_long max_bytes, zval *names, zval *rows)
 {
     zval types;
     array_init(&types);
     zval_ptr_dtor(rows);
     array_init(rows);
-    if (!cat_cursor_query(db, pdo, Z_STRVAL_P(sql), max_rows, max_bytes, names, &types, rows, cat_grid_postgres_row)) {
+    if (!cat_cursor_query(db, pdo, Z_STRVAL_P(sql), max_rows, max_bytes, names, &types, rows, cat_grid_postgres_row, NULL, true)) {
         return false;
     }
     zval_ptr_dtor(&types);
@@ -2518,6 +3145,30 @@ static bool cat_grid_pdo_cursor(zval *db, zval *pdo, zval *sql, zend_long max_ro
 
 static bool cat_grid_mysql(zval *db, zval *pdo, zval *sql, zval *args, zend_long max_rows, zend_long max_bytes, zval *names, zval *rows);
 
+/* Whether the SQLite value of a column of the current row is a blob, as its column metadata reports. */
+static bool cat_sqlite_blob(zval *db, zval *st, zend_ulong i, bool *blob)
+{
+    zval index, meta;
+    ZVAL_LONG(&index, (zend_long)i);
+    if (!pdo_call(st, "getColumnMeta", &meta, 1, &index, NULL)) {
+        cat_driver_error(db);
+        return false;
+    }
+    zval *flags = Z_TYPE(meta) == IS_ARRAY ? zend_hash_str_find(Z_ARRVAL(meta), "flags", 5) : NULL;
+    *blob = false;
+    if (flags != NULL && Z_TYPE_P(flags) == IS_ARRAY) {
+        zval *f;
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(flags), f) {
+            if (Z_TYPE_P(f) == IS_STRING && zend_string_equals_literal(Z_STR_P(f), "blob")) *blob = true;
+        } ZEND_HASH_FOREACH_END();
+    }
+    zval_ptr_dtor(&meta);
+    return true;
+}
+
+/* The PDO grid query of PostgreSQL and SQLite (Catalog::gridQuery): one bounded statement, each PostgreSQL cell typed by the
+ * class of its column (cat_pg_classes) and each SQLite cell by the storage class of its value. A lookup of a PostgreSQL type
+ * runs a statement, which ends this one, so the rows are read first when a column type is not built in. */
 static bool cat_grid_pdo_statement(zval *db, const char *dialect, zval *pdo, zval *sql, zval *args, zend_long max_rows, zend_long max_bytes,
                                    zval *names, zval *rows)
 {
@@ -2526,118 +3177,99 @@ static bool cat_grid_pdo_statement(zval *db, const char *dialect, zval *pdo, zva
     if (strcmp(dialect, "mysql") == 0) {
         return cat_grid_mysql(db, pdo, sql, args, max_rows, max_bytes, names, rows);
     }
-    if (strcmp(dialect, "postgres") == 0 && zend_hash_num_elements(Z_ARRVAL_P(args)) == 0) {
+    bool postgres = strcmp(dialect, "postgres") == 0;
+    if (postgres && zend_hash_num_elements(Z_ARRVAL_P(args)) == 0) {
         return cat_grid_pdo_cursor(db, pdo, sql, max_rows, max_bytes, names, rows);
     }
-    zval st, ret, count;
+    zval st, ret, types, oids, classes, buffered;
+    ZVAL_UNDEF(&classes);
+    ZVAL_UNDEF(&buffered);
+    array_init(&types);
+    array_init(&oids);
     bool ok = pdo_call(pdo, "prepare", &st, 1, sql, NULL);
-    if (!ok) {
-        cat_driver_error(db);
-        goto fail_names;
+    bool prepared = ok;
+    if (ok) {
+        ok = pdo_call(&st, "execute", &ret, 1, args, NULL);
+        if (ok) zval_ptr_dtor(&ret);
     }
-    ok = pdo_call(&st, "execute", &ret, 1, args, NULL);
-    if (!ok) {
-        cat_driver_error(db);
-        goto fail_st;
-    }
-    zval_ptr_dtor(&ret);
-    ok = pdo_call(&st, "columnCount", &count, 0, NULL, NULL);
-    if (!ok) {
-        cat_driver_error(db);
-        goto fail_st;
-    }
-    zend_long ncols = Z_LVAL(count);
-    zend_string **natives = ecalloc(ncols > 0 ? ncols : 1, sizeof(zend_string *));
-    for (zend_long i = 0; i < ncols; i++) {
-        zval index, meta;
-        ZVAL_LONG(&index, i);
-        if (!pdo_call(&st, "getColumnMeta", &meta, 1, &index, NULL)) {
-            cat_driver_error(db);
-            goto fail_natives;
+    if (ok) ok = cat_statement_columns(&st, names, &types, &oids);
+    if (!ok) cat_driver_error(db);
+    if (ok && postgres) {
+        if (!cat_pg_builtins(&oids)) {
+            zval mode;
+            ZVAL_LONG(&mode, CAT_PDO_FETCH_NUM);
+            ok = pdo_call(&st, "fetchAll", &buffered, 1, &mode, NULL);
+            if (!ok) {
+                ZVAL_UNDEF(&buffered);
+                cat_driver_error(db);
+            }
         }
-        zval *name = Z_TYPE(meta) == IS_ARRAY ? zend_hash_str_find(Z_ARRVAL(meta), "name", 4) : NULL;
-        zval *native = Z_TYPE(meta) == IS_ARRAY ? zend_hash_str_find(Z_ARRVAL(meta), "native_type", 11) : NULL;
-        add_next_index_str(names, name != NULL && Z_TYPE_P(name) == IS_STRING ? zend_string_copy(Z_STR_P(name)) : ZSTR_EMPTY_ALLOC());
-        natives[i] = native != NULL && Z_TYPE_P(native) == IS_STRING ? zend_string_toupper(Z_STR_P(native)) : ZSTR_EMPTY_ALLOC();
-        zval_ptr_dtor(&meta);
+        if (ok) ok = cat_pg_classes(db, pdo, &oids, &classes);
     }
     zend_long budget = 0;
-    for (;;) {
-        zval mode, row;
-        ZVAL_LONG(&mode, CAT_PDO_FETCH_NUM);
-        if (!pdo_call(&st, "fetch", &row, 1, &mode, NULL)) {
-            cat_driver_error(db);
-            goto fail_natives;
+    uint32_t next = 0;
+    while (ok) {
+        zval row;
+        if (Z_TYPE(buffered) == IS_ARRAY) {
+            zval *kept = zend_hash_index_find(Z_ARRVAL(buffered), next++);
+            if (kept == NULL) break;
+            ZVAL_COPY(&row, kept);
+        } else {
+            zval mode;
+            ZVAL_LONG(&mode, CAT_PDO_FETCH_NUM);
+            if (!pdo_call(&st, "fetch", &row, 1, &mode, NULL)) {
+                cat_driver_error(db);
+                ok = false;
+                break;
+            }
+            if (Z_TYPE(row) == IS_FALSE) break;
         }
-        if (Z_TYPE(row) == IS_FALSE) break;
-        if (!cat_grid_row_limit(rows, &row, max_rows)) goto fail_natives;
+        if (!cat_grid_row_limit(rows, &row, max_rows)) {
+            ok = false;
+            break;
+        }
         zval cells;
         array_init(&cells);
-        for (zend_ulong i = 0; i < zend_hash_num_elements(Z_ARRVAL(row)); i++) {
+        uint32_t count = zend_hash_num_elements(Z_ARRVAL(row));
+        for (uint32_t i = 0; ok && i < count; i++) {
             zval *value = zend_hash_index_find(Z_ARRVAL(row), i);
-            const char *native = ZSTR_VAL(natives[i]);
-            bool blob = false;
-            if (strcmp(dialect, "sqlite") == 0) {
-                /* SQLite types the value: the type of this row's value, and a blob by its flag. */
-                zval index, meta;
-                ZVAL_LONG(&index, (zend_long)i);
-                if (!pdo_call(&st, "getColumnMeta", &meta, 1, &index, NULL)) {
-                    cat_driver_error(db);
-                    zval_ptr_dtor(&cells);
-                    zval_ptr_dtor(&row);
-                    goto fail_natives;
-                }
-                zval *flags = Z_TYPE(meta) == IS_ARRAY ? zend_hash_str_find(Z_ARRVAL(meta), "flags", 5) : NULL;
-                zval *cell_native = Z_TYPE(meta) == IS_ARRAY ? zend_hash_str_find(Z_ARRVAL(meta), "native_type", 11) : NULL;
-                zend_string *cn = cell_native != NULL && Z_TYPE_P(cell_native) == IS_STRING ? zend_string_toupper(Z_STR_P(cell_native)) : NULL;
-                native = cn ? ZSTR_VAL(cn) : "";
-                if (flags != NULL && Z_TYPE_P(flags) == IS_ARRAY) {
-                    zval *f;
-                    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(flags), f) {
-                        if (Z_TYPE_P(f) == IS_STRING && zend_string_equals_literal(Z_STR_P(f), "blob")) blob = true;
-                    } ZEND_HASH_FOREACH_END();
-                }
-                zval cell;
-                bool made = cat_grid_pdo_cell(value, dialect, native, blob, &cell);
-                if (cn) zend_string_release(cn);
-                zval_ptr_dtor(&meta);
-                if (!made) {
-                    zval_ptr_dtor(&cells);
-                    zval_ptr_dtor(&row);
-                    goto fail_natives;
-                }
-                add_next_index_zval(&cells, &cell);
-                continue;
-            }
             zval cell;
-            if (!cat_grid_pdo_cell(value, dialect, native, blob, &cell)) {
-                zval_ptr_dtor(&cells);
-                zval_ptr_dtor(&row);
-                goto fail_natives;
+            if (postgres) {
+                zval *class_ = zend_hash_index_find(Z_ARRVAL(classes), i);
+                ok = cat_grid_postgres_cell(value, class_ != NULL ? Z_STRVAL_P(class_) : "refused", &cell);
+            } else {
+                /* SQLite reports whether each value is a blob. */
+                bool blob;
+                if (!cat_sqlite_blob(db, &st, i, &blob)) {
+                    ok = false;
+                    break;
+                }
+                ok = cat_grid_sqlite_cell(value, blob, &cell);
             }
-            add_next_index_zval(&cells, &cell);
+            if (ok) add_next_index_zval(&cells, &cell);
+            else cat_rule_at((zend_long)i + 1);
         }
         zval_ptr_dtor(&row);
-        if (!cat_grid_cells_budget(&cells, max_bytes, &budget)) goto fail_natives;
+        if (!ok) {
+            zval_ptr_dtor(&cells);
+            break;
+        }
+        if (!cat_grid_cells_budget(&cells, max_bytes, &budget)) {
+            ok = false;
+            break;
+        }
         add_next_index_zval(rows, &cells);
     }
-    for (zend_long i = 0; i < ncols; i++) zend_string_release(natives[i]);
-    efree(natives);
-    zval_ptr_dtor(&count);
-    zval_ptr_dtor(&st);
-    return true;
-fail_natives:
-    for (zend_long i = 0; i < ncols; i++) {
-        if (natives[i] != NULL) zend_string_release(natives[i]);
+    zval_ptr_dtor(&types);
+    zval_ptr_dtor(&oids);
+    if (Z_TYPE(classes) == IS_ARRAY) zval_ptr_dtor(&classes);
+    if (Z_TYPE(buffered) == IS_ARRAY) zval_ptr_dtor(&buffered);
+    if (prepared) zval_ptr_dtor(&st);
+    if (!ok) {
+        zval_ptr_dtor(names);
+        zval_ptr_dtor(rows);
     }
-    efree(natives);
-    zval_ptr_dtor(&count);
-fail_st:
-    zval_ptr_dtor(&st);
-fail_names:
-    zval_ptr_dtor(names);
-    zval_ptr_dtor(rows);
-    return false;
+    return ok;
 }
 
 /* Whether an OrmException has this code. */
@@ -2689,6 +3321,7 @@ typedef struct {
     zend_long type;
     bool unsigned_;
     bool binary;
+    zend_long bits;
 } cat_mysql_column;
 
 #define CAT_MYSQL_TYPES_TABLE "orm_grid_column_types"
@@ -2816,8 +3449,10 @@ static bool cat_mysql_grid_columns(zval *db, zval *pdo, zval *sql, zval *args, z
         const char *column_name = name != NULL && Z_TYPE_P(name) == IS_STRING ? Z_STRVAL_P(name) : "";
         add_next_index_string(names, column_name);
         zend_string *upper = native != NULL && Z_TYPE_P(native) == IS_STRING ? zend_string_toupper(Z_STR_P(native)) : ZSTR_EMPTY_ALLOC();
+        zval *len = Z_TYPE_P(meta) == IS_ARRAY ? zend_hash_str_find(Z_ARRVAL_P(meta), "len", 3) : NULL;
         cat_mysql_column *column = &(*columns)[at++];
         column->type = cat_mysql_type(ZSTR_VAL(upper));
+        column->bits = len != NULL && Z_TYPE_P(len) == IS_LONG ? Z_LVAL_P(len) : 0;
         zend_string_release(upper);
     } ZEND_HASH_FOREACH_END();
     zval_ptr_dtor(&metas);
@@ -2876,8 +3511,10 @@ static bool cat_grid_mysql(zval *db, zval *pdo, zval *sql, zval *args, zend_long
         array_init(&cells);
         for (zend_ulong i = 0; ok && i < zend_hash_num_elements(Z_ARRVAL(row)); i++) {
             zval cell;
-            ok = cat_grid_mysql_cell(zend_hash_index_find(Z_ARRVAL(row), i), columns[i].type, columns[i].unsigned_, columns[i].binary, &cell);
+            ok = cat_grid_mysql_cell(zend_hash_index_find(Z_ARRVAL(row), i), columns[i].type, columns[i].unsigned_, columns[i].binary,
+                                     columns[i].bits, &cell);
             if (ok) add_next_index_zval(&cells, &cell);
+            else cat_rule_at((zend_long)i + 1);
         }
         zval_ptr_dtor(&row);
         if (!ok) {
@@ -3365,22 +4002,19 @@ static bool cat_lookup(zval *db, const char *dialect, zval *pdo, zval *metadata,
     zval *columns = catalog_prop(metadata, "columns", &rv_cols);
     zval *ns = zend_hash_str_find(Z_ARRVAL_P(table), "namespace", 9);
     zval *tname = zend_hash_str_find(Z_ARRVAL_P(table), "name", 4);
-    zval names, native_types;
+    zval names;
     array_init(&names);
-    array_init(&native_types);
     smart_str sql = {0};
     smart_str_appends(&sql, "SELECT ");
     bool first = true;
     zval *column;
     ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(columns), column) {
-        zval nrv, trv;
+        zval nrv;
         zval *name = catalog_prop(column, "name", &nrv);
-        zval *native = catalog_prop(column, "nativeType", &trv);
         if (!first) smart_str_appendc(&sql, ',');
         first = false;
         cat_quote(&sql, Z_STR_P(name), dialect);
         add_next_index_str(&names, zend_string_copy(Z_STR_P(name)));
-        add_next_index_str(&native_types, zend_string_copy(Z_STR_P(native)));
     } ZEND_HASH_FOREACH_END();
     smart_str_appends(&sql, " FROM ");
     cat_quote(&sql, Z_STR_P(ns), dialect);
@@ -3394,13 +4028,12 @@ static bool cat_lookup(zval *db, const char *dialect, zval *pdo, zval *metadata,
         smart_str_appends(&sql, " FOR UPDATE");
     }
     smart_str_0(&sql);
-    zval got_names, got_types, raw;
-    bool ok = cat_query(db, pdo, ZSTR_VAL(sql.s), &key_args, 2, CAT_PAGE_BYTES, &got_names, &got_types, &raw, NULL);
+    zval got_names, got_types, raw, oids;
+    bool ok = cat_query_oids(db, pdo, ZSTR_VAL(sql.s), &key_args, 2, CAT_PAGE_BYTES, &got_names, &got_types, &raw, NULL, &oids);
     smart_str_free(&sql);
     zval_ptr_dtor(&key_args);
     if (!ok) {
         zval_ptr_dtor(&names);
-        zval_ptr_dtor(&native_types);
         return false;
     }
     zval_ptr_dtor(&got_types);
@@ -3409,14 +4042,14 @@ static bool cat_lookup(zval *db, const char *dialect, zval *pdo, zval *metadata,
     zval_ptr_dtor(&names);
     if (!same) {
         zval_ptr_dtor(&raw);
-        zval_ptr_dtor(&native_types);
+        zval_ptr_dtor(&oids);
         db_throw_orm("TABLE_PAGE_METADATA_CHANGED", "prepared columns differ from descriptor");
         return false;
     }
-    ok = cat_convert_rows(&raw, &native_types, dialect, rows);
+    ok = cat_described_rows(db, pdo, &raw, &oids, metadata, dialect, rows);
     zval_ptr_dtor(&raw);
-    zval_ptr_dtor(&native_types);
-    return ok && cat_described_rows(rows, metadata, dialect);
+    zval_ptr_dtor(&oids);
+    return ok;
 }
 
 /* A cell equal in type and exact value to another (Catalog::sameRow of one cell). */
@@ -3720,22 +4353,23 @@ static bool cat_check_current(zval *current, zval *original)
 /* A bounded insert-owned row read with the descriptor's exact projection (Catalog::query and Catalog::sameNames). */
 static bool cat_insert_rows(zval *db, const char *dialect, zval *pdo, zval *metadata, const char *sql, zval *args, zval *rows)
 {
-    zval names, types, raw, expected;
-    if (!cat_query(db, pdo, sql, args, 2, CAT_PAGE_BYTES, &names, &types, &raw, NULL)) return false;
+    zval names, types, raw, expected, oids;
+    if (!cat_query_oids(db, pdo, sql, args, 2, CAT_PAGE_BYTES, &names, &types, &raw, NULL, &oids)) return false;
+    zval_ptr_dtor(&types);
     cat_column_names(metadata, &expected);
     bool same = zend_compare(&names, &expected) == 0;
     zval_ptr_dtor(&expected);
     zval_ptr_dtor(&names);
     if (!same) {
-        zval_ptr_dtor(&types);
         zval_ptr_dtor(&raw);
+        zval_ptr_dtor(&oids);
         db_throw_orm("TABLE_PAGE_METADATA_CHANGED", "prepared columns differ from descriptor");
         return false;
     }
-    bool ok = cat_convert_rows(&raw, &types, dialect, rows);
-    zval_ptr_dtor(&types);
+    bool ok = cat_described_rows(db, pdo, &raw, &oids, metadata, dialect, rows);
     zval_ptr_dtor(&raw);
-    return ok && cat_described_rows(rows, metadata, dialect);
+    zval_ptr_dtor(&oids);
+    return ok;
 }
 
 /* The row selected by the MySQL key/default strategy after one insert. */
@@ -4814,38 +5448,6 @@ ZEND_METHOD(Polyspec_Orm_Catalog, rowSnapshotFromPage)
     if (made) {
         RETVAL_COPY_VALUE(&snapshot);
     }
-}
-
-/* The catalog values of one row of a read query: a MySQL or PostgreSQL date, time or datetime is the text of its grid cell
- * (INT-153), and any other value its plain conversion (Catalog::queryValue). */
-static bool cat_query_row(zval *row, zval *types, const char *dialect, zval *cells)
-{
-    array_init(cells);
-    zend_ulong i = 0;
-    zval *value;
-    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(row), value) {
-        zval *t = zend_hash_index_find(Z_ARRVAL_P(types), i++);
-        zval v;
-        if (t == NULL || Z_TYPE_P(t) != IS_STRING) {
-            db_throw_orm("TABLE_METADATA_INVALID", "a column has no native type");
-            zval_ptr_dtor(cells);
-            return false;
-        }
-        if (Z_TYPE_P(value) != IS_NULL && cat_temporal_kind(dialect, Z_STRVAL_P(t)) != 0) {
-            zval cell, rv;
-            if (!cat_grid_pdo_cell(value, dialect, Z_STRVAL_P(t), false, &cell)) {
-                zval_ptr_dtor(cells);
-                return false;
-            }
-            ZVAL_COPY(&v, catalog_prop(&cell, "value", &rv));
-            zval_ptr_dtor(&cell);
-        } else if (!cat_cell_value(value, Z_STR_P(t), dialect, &v)) {
-            zval_ptr_dtor(cells);
-            return false;
-        }
-        add_next_index_zval(cells, &v);
-    } ZEND_HASH_FOREACH_END();
-    return true;
 }
 
 ZEND_METHOD(Polyspec_Orm_Catalog, readOnlyQuery)

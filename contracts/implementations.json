@@ -393,6 +393,7 @@
         "packages/php/tests/RecipeIntrospect.php",
         "packages/php/tests/CatalogPostgresTemporalPdo.php",
         "packages/php/tests/CatalogPostgresTemporalCases.php",
+        "packages/php/tests/CatalogUnreadableStream.php",
         "packages/php/tests/RecipeKeys.php",
         "packages/php/tests/dbspec_cases.php",
         "packages/php/tests/RecipeGenerator.php"
