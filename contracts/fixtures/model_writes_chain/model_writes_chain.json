@@ -7,6 +7,7 @@
   "COD-16",
   "COD-26",
   "COD-38",
+  "COD-68",
   "DIA-154",
   "DIA-26",
   "DSL-104",
@@ -3018,6 +3019,108 @@
       },
       "sqlite": {
        "json": "{\"seq\":1,\"user_seq\":1,\"service_member_seq\":1,\"json_setting\":{\"kind\":\"value\",\"value\":{\"b\":1,\"1\":2,\"a\":1.50,\"e\":1E2,\"s\":\"\\u00e9\"}}}"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "model_json_output_writes_collections_and_related_rows",
+   "requirements": [
+    "COD-26",
+    "COD-68"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "columns": [
+      "name"
+     ],
+     "order": [
+      {
+       "column": "seq",
+       "dir": "asc"
+      }
+     ],
+     "json_output": true,
+     "expect": {
+      "mysql": {
+       "json": "[{\"seq\":1,\"user_seq\":1,\"service_member_seq\":1,\"name\":\"author-1\"}]"
+      },
+      "postgres": {
+       "json": "[{\"seq\":1,\"user_seq\":1,\"service_member_seq\":1,\"name\":\"author-1\"}]"
+      },
+      "sqlite": {
+       "json": "[{\"seq\":1,\"user_seq\":1,\"service_member_seq\":1,\"name\":\"author-1\"}]"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "seq": {
+       "int": "9"
+      }
+     },
+     "columns": [
+      "name"
+     ],
+     "json_output": true,
+     "expect": {
+      "mysql": {
+       "json": "[]"
+      },
+      "postgres": {
+       "json": "[]"
+      },
+      "sqlite": {
+       "json": "[]"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "User",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "relations": [
+      {
+       "model": "Author",
+       "many": true,
+       "match": [
+        [
+         "seq",
+         "user_seq"
+        ]
+       ],
+       "columns": [
+        "name"
+       ]
+      }
+     ],
+     "json_output": true,
+     "expect": {
+      "mysql": {
+       "json": "{\"seq\":1,\"name\":\"user-1\",\"author_models\":[{\"seq\":1,\"user_seq\":1,\"service_member_seq\":1,\"name\":\"author-1\"}]}"
+      },
+      "postgres": {
+       "json": "{\"seq\":1,\"name\":\"user-1\",\"author_models\":[{\"seq\":1,\"user_seq\":1,\"service_member_seq\":1,\"name\":\"author-1\"}]}"
+      },
+      "sqlite": {
+       "json": "{\"seq\":1,\"name\":\"user-1\",\"author_models\":[{\"seq\":1,\"user_seq\":1,\"service_member_seq\":1,\"name\":\"author-1\"}]}"
       }
      }
     }

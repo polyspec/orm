@@ -2146,6 +2146,7 @@ const TABLE_OPS = {
       return fields;
     }
     const rows = await m.gets();
+    if (s.json_output === true) return { json: rows.toJSONText() };
     const fields = { bind: rows, json: rows.values().map(row => rowJson(row, pick)) };
     if (wantsRows(s, context)) fields.rows = chainCells(rows.values(), s);
     return fields;

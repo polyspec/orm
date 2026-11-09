@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The JSON output of a collection, an empty collection and a related row is the case model_json_output_writes_collections_and_related_rows of the recipe model_writes_chain, which every runtime runs on every database (T400-1, COD-26, COD-68): model.query takes json_output in every recipe runner and returns the JSON text of the rows. The Python tests of test_model_json_text.py that the recipe holds are removed; the tests of Python values that no recipe value can write stay, with their FCV-2 lines.
 - The Rust pool tests pool_size and pool_idle_size_and_lifetime of zone.rs are removed (T400-1): the cases of the recipe connection_pool, which every client with a pool runs, hold the pool size, the idle size and the lifetime (CFG-4, CFG-5); the 30-minute lifetime that only a Rust pool keeps when pool_lifetime_ms is unset stays the native test pool_keeps_the_thirty_minute_lifetime_when_unset.
 - FCV-2 names the Rust composite_components_preserve_typed_identity_and_shared_encoding of collection_identity.rs beside the composite key tests of the other runtimes (T400-1): its components are the forms that no key column holds (PRT-35), as for them.
 - The Rust test fulltext_boolean_chain_preserves_columns_and_search_parameter of request.rs is removed (T400-1): the case chain_fulltext_boolean of the recipe fulltext_search, which every runtime runs, holds each of its assertions (DSL-33, PRT-75): the boolean full-text predicate over the columns of the index in their order, with the search text as its one parameter.

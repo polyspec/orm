@@ -5085,6 +5085,9 @@ final class Recipe
         } else {
             $rows = $model->gets();
         }
+        if (($s['json_output'] ?? false) === true) {
+            return ['json' => $rows->toJson()];
+        }
         $list = [];
         foreach ($rows as $row) {
             $list[] = self::chainRow($row, $pick);

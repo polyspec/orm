@@ -1252,6 +1252,9 @@ func chainGets(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
 	if err != nil {
 		return outcome{}, err
 	}
+	if s.k("json_output").JSONOutput {
+		return jsonOutputOutcome(rows)
+	}
 	value, err := chainRows(rows.Slice(), s.k("pick").Pick)
 	if err != nil {
 		return outcome{}, err

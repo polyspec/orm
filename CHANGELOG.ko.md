@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- collection, 빈 collection과 관계 행의 JSON 출력은 모든 runtime이 모든 database에서 실행하는 recipe model_writes_chain의 case model_json_output_writes_collections_and_related_rows다(T400-1, COD-26, COD-68): 모든 recipe runner의 model.query가 json_output을 받아 행의 JSON text를 돌려준다. recipe가 담는 test_model_json_text.py의 Python 시험은 지우고, recipe 값으로 쓸 수 없는 Python 값의 시험은 FCV-2 줄과 함께 남는다.
 - zone.rs의 Rust pool 시험 pool_size와 pool_idle_size_and_lifetime을 지운다(T400-1): pool이 있는 모든 client가 실행하는 recipe connection_pool의 case가 pool 크기, idle 크기와 lifetime을 담는다(CFG-4, CFG-5). pool_lifetime_ms가 없을 때 Rust pool만 지키는 30분 lifetime은 native 시험 pool_keeps_the_thirty_minute_lifetime_when_unset으로 남는다.
 - FCV-2가 collection_identity.rs의 Rust composite_components_preserve_typed_identity_and_shared_encoding을 다른 runtime의 composite key 시험 곁에 이름 짓는다(T400-1): 그 성분은 그것들처럼 어떤 key column도 담지 않는 형태다(PRT-35).
 - request.rs의 Rust 시험 fulltext_boolean_chain_preserves_columns_and_search_parameter를 지운다(T400-1): 모든 runtime이 실행하는 recipe fulltext_search의 case chain_fulltext_boolean이 그 단언을 모두 담는다(DSL-33, PRT-75): index의 column을 그 순서대로 쓰는 boolean full-text 조건과, 그 하나의 parameter인 검색어.

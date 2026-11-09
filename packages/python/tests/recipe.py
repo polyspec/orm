@@ -3985,6 +3985,8 @@ def _table_model_query(step: dict, context: dict) -> dict:
             fields["rows"] = _chain_cells(list(page["items"].values()), step)
         return fields
     rows = model.gets()
+    if step.get("json_output") is True:
+        return {"json": rows.to_json_text()}
     fields = {
         "bind": rows,
         "json": [_row_json(row, pick) for row in rows.values()],

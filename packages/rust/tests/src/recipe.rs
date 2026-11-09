@@ -6504,6 +6504,9 @@ mod tables {
                 return self.page(step, &root).await;
             }
             let rows = gets(&root).await.map_err(orm)?;
+            if crate::recipe_reads::read(step, "json_output")["json_output"] == json!(true) {
+                return Ok(json!({ "json": rows.to_json().map_err(orm)? }));
+            }
             let mut list = Vec::with_capacity(rows.len());
             for row in rows.models() {
                 list.push(row_json(row, &crate::recipe_reads::read(step, "pick")["pick"])?);
