@@ -396,6 +396,28 @@ pub fn audit_line(
 }
 
 impl Setting {
+    /// The keyword that starts the line of the setting.
+    pub(crate) fn keyword(&self) -> &'static str {
+        match self {
+            Setting::Entity(_) => "entity",
+            Setting::Updated(_) => "updated",
+            Setting::SoftDelete(_) => "soft_delete",
+            Setting::SelectExplicit(_) => "select",
+            Setting::Codec(..) => "codec",
+            Setting::AesVersion(_) => "aes_version",
+            Setting::BlindIndex(..) => "blind_index",
+            Setting::Navigation(..) => "navigation",
+            Setting::Markdown(_) => "markdown",
+            Setting::Store { .. } => "store",
+            Setting::Title(_) => "title",
+            Setting::Body(_) => "body",
+            Setting::Order(_) => "order",
+            Setting::TaskMarker(_) => "task_marker",
+            Setting::Immutable => "immutable",
+            Setting::Audit { .. } => "audit",
+        }
+    }
+
     /// The canonical position of the setting kind within a settings block.
     pub fn rank(&self) -> u8 {
         match self {

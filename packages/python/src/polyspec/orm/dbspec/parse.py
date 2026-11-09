@@ -1781,7 +1781,7 @@ class DocumentParser:
                 lists=tuple(lists),
             )
         else:
-            return self._at("setting", kw, f"{kw.t} is not a setting")
+            return self._at("setting", kw, f'setting "{kw.t}" is unknown')
         self._settings_block.entries.append(entry)
 
     def _form_setting(self, toks, line: int, comments):

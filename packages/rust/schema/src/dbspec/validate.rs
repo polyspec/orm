@@ -557,8 +557,14 @@ impl<'s, 'd> TableRules<'s, 'd> {
                 other => kinds.insert(other.rank()),
             };
             if !first {
-                // A repeated line is not checked, as the reference does.
-                self.report(line.pos, "setting", "the setting repeats");
+                // A repeated line is not checked, as the reference does. A setting that appears once names its keyword.
+                let message = match &line.setting {
+                    Setting::Codec(name, _) | Setting::BlindIndex(name, _) | Setting::Markdown(name) | Setting::Navigation(name, _, _) => {
+                        format!("{} repeats for \"{}\"", line.setting.keyword(), name.text)
+                    }
+                    other => format!("setting {} repeats", other.keyword()),
+                };
+                self.report(line.pos, "setting", message);
                 continue;
             }
             match &line.setting {

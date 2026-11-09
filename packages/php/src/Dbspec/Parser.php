@@ -1683,7 +1683,7 @@ final class Parser
             default => null,
         };
         if ($arity === null) {
-            $this->error('setting', $this->line, $at, "unknown setting `$keyword`");
+            $this->error('setting', $this->line, $at, "setting \"$keyword\" is unknown");
             return;
         }
         $arguments = array_slice($t, 1);
@@ -1782,7 +1782,7 @@ final class Parser
                     'setting',
                     $this->line,
                     $at,
-                    $perName ? "setting `$kind` repeats for `{$arguments[0][0]}`" : "setting `$keyword` repeats"
+                    $perName ? "$kind repeats for \"{$arguments[0][0]}\"" : "setting $keyword repeats"
                 );
                 return;
             }
@@ -2790,7 +2790,7 @@ final class Parser
                 $key = $keyword === 'markdown' ? "markdown {$arguments[0][0]}" : $keyword;
                 if (isset($this->settingKeys[$key])) {
                     $this->error('setting', $this->line, $at, $keyword === 'markdown'
-                        ? "setting `markdown` repeats for `{$arguments[0][0]}`" : "setting `$keyword` repeats");
+                        ? "markdown repeats for \"{$arguments[0][0]}\"" : "setting $keyword repeats");
                     return;
                 }
                 $this->settingKeys[$key] = true;
@@ -2850,7 +2850,9 @@ final class Parser
         if ($token === null) {
             $this->error('syntax', $this->line, $this->endColumn(), "line ends, expected $expected");
         } else {
-            $shown = $token[0][0] === "'" && strlen($token[0]) >= 2 ? "string {$token[0]}" : "`{$token[0]}`";
+            // A token is shown as Go's cursor shows it: a string by its value, any other token by its text, in quotes.
+            $shown = $token[0][0] === "'" && strlen($token[0]) >= 2
+                ? "string '" . str_replace("''", "'", substr($token[0], 1, -1)) . "'" : "'{$token[0]}'";
             $this->error('syntax', $this->line, $token[1], "unexpected $shown, expected $expected");
         }
         return new SettingFailure();

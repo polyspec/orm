@@ -1737,7 +1737,13 @@ fn check_refusal(text: &str, set: &BTreeMap<String, String>, want: &[Value]) -> 
         Err(errors) => errors,
     };
     for errors in [&parse_errors, &format_errors] {
-        let got = diagnostic_values(errors);
+        // The message is compared where the expected diagnostic states it.
+        let mut got = diagnostic_values(errors);
+        for (value, (error, expected)) in got.iter_mut().zip(errors.iter().zip(want)) {
+            if expected.get("message").is_some() {
+                value["message"] = Value::String(error.message.clone());
+            }
+        }
         if got.is_empty() || got != want {
             return Err(format!("diagnostics = {got:?}, want {want:?}"));
         }

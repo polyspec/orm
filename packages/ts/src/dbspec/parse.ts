@@ -1458,7 +1458,7 @@ class DocumentParser {
       }
       case 'task_marker': {
         const column = this.settingWord(toks, 1, line, 'a column name');
-        if (column === null || !this.end(toks, 2, line)) return;
+        if (column === null || !this.settingEnd(toks, 2, line)) return;
         entry = { kw, comments, kind: 'task_marker', column };
         break;
       }
@@ -1506,9 +1506,21 @@ class DocumentParser {
         break;
       }
       default:
-        return this.at('setting', kw, `${kw.t} is not a setting`);
+        return this.at('setting', kw, `setting "${kw.t}" is unknown`);
     }
     present(this.settingsBlock, 'this.settingsBlock').entries.push(entry);
+  }
+
+  /**
+   * The end of a setting line whose arguments are read: a token after them, such as the state of the per-state task_marker form, is
+   * a syntax error that shows the token as every runtime does (DBS-80), a string by its value and any other token by its text.
+   */
+  private settingEnd(toks: Tk[], i: number, line: number): boolean {
+    const tok = toks[i];
+    if (tok === undefined) return true;
+    const shown = tok.k === K.Str ? `string '${stringValue(tok)}'` : `'${tok.t}'`;
+    this.syntax(toks, i, line, `unexpected ${shown}, expected the end of the line`);
+    return false;
   }
 
   /** Reads a name-like word at i, or reports a syntax error there (or after the line) and returns null. */
@@ -2149,7 +2161,8 @@ class DocumentParser {
                 ? `markdown ${s.column.t}`
                 : s.kind;
       if (seen.has(key)) {
-        this.at('setting', s.kw, `setting ${key} repeats`);
+        // A setting that a table may hold once per name repeats for that name, as Go states it (DBS-80).
+        this.at('setting', s.kw, key === s.kind ? `setting ${key} repeats` : `${s.kind} repeats for "${key.slice(s.kind.length + 1)}"`);
         continue;
       }
       seen.add(key);

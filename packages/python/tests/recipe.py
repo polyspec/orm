@@ -551,12 +551,15 @@ def _created_tables(statements: list) -> list:
 
 
 def _same_diagnostics(want: list, got: list) -> None:
-    """Checks that got has the rule, line and column of each expected diagnostic, in order, and a message."""
-    _expect_equal(
-        [{"rule": d.rule, "line": d.line, "column": d.column} for d in got],
-        want,
-        "diagnostics",
-    )
+    """Checks that got has the rule, line and column of each expected diagnostic, in order, and a message: the message of
+    the expected diagnostic where it states one."""
+    rows = []
+    for i, d in enumerate(got):
+        row = {"rule": d.rule, "line": d.line, "column": d.column}
+        if i < len(want) and "message" in want[i]:
+            row["message"] = d.message
+        rows.append(row)
+    _expect_equal(rows, want, "diagnostics")
     for d in got:
         if not d.message:
             raise AssertionError(f"diagnostic {d.rule} has no message")

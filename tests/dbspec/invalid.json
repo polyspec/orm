@@ -115769,7 +115769,8 @@
                 {
                   "rule": "setting",
                   "line": 5,
-                  "column": 5
+                  "column": 5,
+                  "message": "setting \"state_machine\" is unknown"
                 }
               ]
             }
@@ -134805,7 +134806,8 @@
                 {
                   "rule": "setting",
                   "line": 9,
-                  "column": 17
+                  "column": 17,
+                  "message": "task_marker needs a varchar(1) or bool column, not varchar(16)"
                 }
               ]
             }
@@ -135030,7 +135032,8 @@
                 {
                   "rule": "setting",
                   "line": 9,
-                  "column": 17
+                  "column": 17,
+                  "message": "task_marker needs a varchar(1) or bool column, not i32"
                 }
               ]
             }
@@ -135447,7 +135450,8 @@
                 {
                   "rule": "setting",
                   "line": 11,
-                  "column": 5
+                  "column": 5,
+                  "message": "setting task_marker repeats"
                 }
               ]
             }
@@ -135672,6 +135676,289 @@
       ]
     },
     {
+      "id": "setting-repeated-for-its-column",
+      "requirements": [
+        "DBS-63",
+        "DBS-80"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table notes {",
+            "  id i64 identity",
+            "  title varchar(255)",
+            "  body text",
+            "  primary key (id)",
+            "  settings {",
+            "    store document list",
+            "    title title",
+            "    body body",
+            "    markdown body",
+            "    markdown body",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "setting",
+                  "line": 13,
+                  "column": 5,
+                  "message": "markdown repeats for \"body\""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table notes {",
+            "  id i64 identity",
+            "  title varchar(255)",
+            "  body text",
+            "  primary key (id)",
+            "  settings {",
+            "    store document list",
+            "    title title",
+            "    body body",
+            "    markdown body",
+            "    markdown body",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  3,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  3,
+                  6,
+                  11,
+                  "name"
+                ],
+                [
+                  3,
+                  12,
+                  13,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  2,
+                  4,
+                  "name"
+                ],
+                [
+                  4,
+                  5,
+                  8,
+                  "type"
+                ],
+                [
+                  4,
+                  9,
+                  17,
+                  "keyword"
+                ],
+                [
+                  5,
+                  2,
+                  7,
+                  "name"
+                ],
+                [
+                  5,
+                  8,
+                  15,
+                  "type"
+                ],
+                [
+                  5,
+                  15,
+                  16,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  16,
+                  19,
+                  "number"
+                ],
+                [
+                  5,
+                  19,
+                  20,
+                  "punctuation"
+                ],
+                [
+                  6,
+                  2,
+                  6,
+                  "name"
+                ],
+                [
+                  6,
+                  7,
+                  11,
+                  "type"
+                ],
+                [
+                  7,
+                  2,
+                  9,
+                  "keyword"
+                ],
+                [
+                  7,
+                  10,
+                  13,
+                  "keyword"
+                ],
+                [
+                  7,
+                  14,
+                  15,
+                  "punctuation"
+                ],
+                [
+                  7,
+                  15,
+                  17,
+                  "name"
+                ],
+                [
+                  7,
+                  17,
+                  18,
+                  "punctuation"
+                ],
+                [
+                  8,
+                  2,
+                  10,
+                  "keyword"
+                ],
+                [
+                  8,
+                  11,
+                  12,
+                  "punctuation"
+                ],
+                [
+                  9,
+                  4,
+                  9,
+                  "setting"
+                ],
+                [
+                  9,
+                  10,
+                  18,
+                  "keyword"
+                ],
+                [
+                  9,
+                  19,
+                  23,
+                  "keyword"
+                ],
+                [
+                  10,
+                  4,
+                  9,
+                  "setting"
+                ],
+                [
+                  10,
+                  10,
+                  15,
+                  "name"
+                ],
+                [
+                  11,
+                  4,
+                  8,
+                  "setting"
+                ],
+                [
+                  11,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  12,
+                  4,
+                  12,
+                  "setting"
+                ],
+                [
+                  12,
+                  13,
+                  17,
+                  "name"
+                ],
+                [
+                  13,
+                  4,
+                  12,
+                  "setting"
+                ],
+                [
+                  13,
+                  13,
+                  17,
+                  "name"
+                ],
+                [
+                  14,
+                  2,
+                  3,
+                  "punctuation"
+                ],
+                [
+                  15,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "task-marker-per-state-form",
       "requirements": [
         "DBS-80"
@@ -135698,7 +135985,8 @@
                 {
                   "rule": "syntax",
                   "line": 9,
-                  "column": 22
+                  "column": 22,
+                  "message": "unexpected 'todo', expected the end of the line"
                 }
               ]
             }
@@ -135936,12 +136224,14 @@
                 {
                   "rule": "setting",
                   "line": 9,
-                  "column": 5
+                  "column": 5,
+                  "message": "setting \"state_machine\" is unknown"
                 },
                 {
                   "rule": "setting",
                   "line": 10,
-                  "column": 5
+                  "column": 5,
+                  "message": "setting \"state_machine\" is unknown"
                 }
               ]
             }
@@ -136215,7 +136505,8 @@
                 {
                   "rule": "setting",
                   "line": 9,
-                  "column": 5
+                  "column": 5,
+                  "message": "setting \"checkbox\" is unknown"
                 }
               ]
             }
@@ -136888,7 +137179,8 @@
                 {
                   "rule": "setting",
                   "line": 7,
-                  "column": 5
+                  "column": 5,
+                  "message": "setting \"key_prefix\" is unknown"
                 }
               ]
             }

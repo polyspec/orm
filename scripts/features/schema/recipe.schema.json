@@ -7123,6 +7123,10 @@
                         },
                         "column": {
                           "type": "integer"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "The message of the diagnostic, which every runtime gives exactly; a diagnostic without it is compared by its rule and position."
                         }
                       }
                     }

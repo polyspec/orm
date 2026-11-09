@@ -176,12 +176,8 @@ func checkDBSpec(s step, dir, database string) error {
 		}
 	case "dbspec.format":
 		var want struct {
-			Text        textLines `json:"text"`
-			Diagnostics []struct {
-				Rule   string `json:"rule"`
-				Line   int    `json:"line"`
-				Column int    `json:"column"`
-			} `json:"diagnostics"`
+			Text        textLines           `json:"text"`
+			Diagnostics []refusalDiagnostic `json:"diagnostics"`
 		}
 		if err := json.Unmarshal(raw, &want); err != nil {
 			return err
@@ -533,11 +529,16 @@ func emitStable(text string, set map[string]string) (string, error) {
 
 // checkRefusal checks that parse refuses text with exactly the diagnostics of want, and that format returns no text
 // and the same diagnostics.
-func checkRefusal(text string, set map[string]string, want []struct {
-	Rule   string `json:"rule"`
-	Line   int    `json:"line"`
-	Column int    `json:"column"`
-}) error {
+// refusalDiagnostic is one expected diagnostic of a refused dbspec.format text: its rule and position, and its message where the
+// vector states it, which every runtime gives exactly.
+type refusalDiagnostic struct {
+	Rule    string  `json:"rule"`
+	Line    int     `json:"line"`
+	Column  int     `json:"column"`
+	Message *string `json:"message"`
+}
+
+func checkRefusal(text string, set map[string]string, want []refusalDiagnostic) error {
 	document, _, parsed := dbspec.Parse(text, set)
 	if document != nil {
 		return errors.New("Parse returned a document for an invalid source")
@@ -557,6 +558,9 @@ func checkRefusal(text string, set map[string]string, want []struct {
 			w := want[i]
 			if string(d.Rule) != w.Rule || d.Line != w.Line || d.Column != w.Column {
 				return fmt.Errorf("diagnostic %d = %s %d %d, want %+v", i, d.Rule, d.Line, d.Column, w)
+			}
+			if w.Message != nil && d.Message != *w.Message {
+				return fmt.Errorf("diagnostic %d message = %q, want %q", i, d.Message, *w.Message)
 			}
 		}
 	}

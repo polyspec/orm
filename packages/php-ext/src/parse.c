@@ -1631,7 +1631,9 @@ static bool sc_fail(scursor *c, str expected)
 {
     if (sc_more(c)) {
         const token *t = &c->t->v[c->i];
-        str shown = string_text(t->text) ? fmt("string %S", t->text) : fmt("`%S`", t->text);
+        /* A token is shown as Go's cursor shows it: a string by its value and any other token by its text, in quotes. */
+        str shown = string_text(t->text) ? fmt("string '%S'", str_replace(str_sub(t->text, 1, t->text.n - 2), "''", "'"))
+                                         : fmt("'%S'", t->text);
         error(c->p, "syntax", c->p->line, t->column, fmt("unexpected %S, expected %S", shown, expected));
     } else {
         error(c->p, "syntax", c->p->line, end_column(c->p), fmt("line ends, expected %S", expected));
@@ -1752,7 +1754,7 @@ static void new_setting(parser *p, token keyword)
             str key = str_eqc(kind, "markdown") ? fmt("markdown %S", args.v[0].text) : kind;
             if (smap_has(&p->setting_keys, key)) {
                 error(p, "setting", p->line, keyword.column, str_eqc(kind, "markdown")
-                    ? fmt("setting `markdown` repeats for `%S`", args.v[0].text) : fmt("setting `%S` repeats", kind));
+                    ? fmt("markdown repeats for \"%S\"", args.v[0].text) : fmt("setting %S repeats", kind));
                 return;
             }
             smap_set(&p->setting_keys, key, TRUEP);
@@ -1808,7 +1810,7 @@ static void settings_line(parser *p)
     } else if (str_eqc(keyword, "audit")) {
         min = max = 10;
     } else {
-        error(p, "setting", p->line, at, fmt("unknown setting `%S`", keyword));
+        error(p, "setting", p->line, at, fmt("setting \"%S\" is unknown", keyword));
         return;
     }
     tokens args = {0}, rest = {0};
@@ -1917,7 +1919,7 @@ static void settings_line(parser *p)
     str key = per_name ? fmt("%S %S", kind, args.v[0].text) : kind;
     if (!p->detached_block) {
         if (smap_has(&p->setting_keys, key)) {
-            error(p, "setting", p->line, at, per_name ? fmt("setting `%S` repeats for `%S`", kind, args.v[0].text) : fmt("setting `%S` repeats", keyword));
+            error(p, "setting", p->line, at, per_name ? fmt("%S repeats for \"%S\"", kind, args.v[0].text) : fmt("setting %S repeats", keyword));
             return;
         }
         smap_set(&p->setting_keys, key, TRUEP);

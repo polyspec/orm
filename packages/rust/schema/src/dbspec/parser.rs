@@ -544,6 +544,16 @@ impl Parser {
         }
     }
 
+    /// The end of a setting line whose arguments are read: a token after them, such as the state of the per-state task_marker
+    /// form, is a syntax error that shows the token as every runtime does (DBS-80), a string by its value and any other token by
+    /// its text.
+    fn setting_end(&mut self, cursor: &Cursor) -> Option<()> {
+        let Some(token) = cursor.peek() else { return Some(()) };
+        let shown = if token.kind == Kind::Str { format!("string '{}'", token.string_value()) } else { format!("'{}'", token.text) };
+        self.report(err(token.pos, "syntax", format!("unexpected {shown}, expected the end of the line")));
+        None
+    }
+
     fn end(&mut self, cursor: &Cursor) -> Option<()> {
         if cursor.peek().is_some() {
             self.syntax(cursor);
@@ -1451,12 +1461,13 @@ impl Parser {
                 Some(Setting::Audit { into, column, references, action, previous, tables, lists })
             })(),
             _ => {
-                self.report(err(keyword.pos, "setting", format!("unknown setting '{}'", keyword.text)));
+                self.report(err(keyword.pos, "setting", format!("setting \"{}\" is unknown", keyword.text)));
                 return;
             }
         };
         let Some(setting) = setting else { return };
-        if self.end(&cursor).is_none() {
+        let ended = if matches!(setting, Setting::TaskMarker(_)) { self.setting_end(&cursor) } else { self.end(&cursor) };
+        if ended.is_none() {
             return;
         }
         let args = setting_words(&setting);
