@@ -9,7 +9,9 @@ import json
 import math
 import os
 import re
+import sys
 import zlib
+from concurrent.futures import ThreadPoolExecutor
 
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -38,6 +40,33 @@ __all__ = [
 _I64_MIN = -(1 << 63)
 _I64_MAX = (1 << 63) - 1
 _AES_PREFIX = b"ORM-AES2\x00"
+
+
+# The Python frames that a value stage takes at most for a value or a cell of 256 levels and for the refusal at the level
+# 257 (COD-70), as (decode, encode), measured with a margin of 50 frames: the yaml writer of ruamel.yaml takes about
+# three frames a level, the serialize walks two, and the ordered-json parser none. A call whose caller leaves fewer frames
+# under the recursion limit runs on a thread started for it (_on_own_stack), so that what a value stage returns or
+# refuses never depends on the depth of its caller (COD-71), and a RecursionError never escapes it.
+# test_codec_stack_depth.py holds each at the boundary.
+_STAGE_FRAMES = {
+    "ordered_json": (100, 570),
+    "serialize": (570, 570),
+    "yaml": (330, 830),
+}
+
+
+def _on_own_stack(frames: int, call, *args):
+    # call(*args) where at least frames Python frames are free under the recursion limit: on the caller's stack when it
+    # has them, which sys._getframe finds in C without walking the frames in Python, and otherwise on a thread started for
+    # the call, whose stack starts empty. Its future hands back the result, or raises the exception that call raised,
+    # which keeps its own cause. The value stages read no state of the thread that runs them: _php_float reads no decimal
+    # context.
+    try:
+        sys._getframe(max(sys.getrecursionlimit() - frames, 0))
+    except ValueError:
+        return call(*args)
+    with ThreadPoolExecutor(1, thread_name_prefix="polyspec-orm-codec") as worker:
+        return worker.submit(call, *args).result()
 
 
 class CodecError(Exception):
@@ -313,8 +342,13 @@ def _php_float(value: float) -> str:
     # signed exponent when the decimal exponent is below -4 or above 16, and in fixed notation otherwise (zend_gcvt with
     # precision 17); a mantissa of one digit is followed by .0.
     sign = "-" if math.copysign(1.0, value) < 0 else ""
-    _, digits, exponent = decimal.Decimal(repr(abs(value))).normalize().as_tuple()
-    text = "".join(map(str, digits))
+    # The digits of repr without their trailing zeros, which a Decimal made from a string holds exactly; normalize() would
+    # round them by the decimal context of the thread, which a caller may change.
+    _, digits, exponent = decimal.Decimal(repr(abs(value))).as_tuple()
+    text = "".join(map(str, digits)).rstrip("0")
+    exponent += len(digits) - len(text)
+    if text == "":
+        text, exponent = "0", 0
     point = len(text) + exponent
     if point - 1 < -4 or point - 1 > 16:
         mantissa = f"{text[0]}.{text[1:] or '0'}"
@@ -330,6 +364,10 @@ def php_serialize(value) -> str:
     """Encodes a codec value in PHP serialize syntax. A Python int is written with i:, and a float with
     d: (the same as PHP integer and float notation). A value outside the common value model is CODEC_ENCODE by its rule
     of COD-70."""
+    return _on_own_stack(_STAGE_FRAMES["serialize"][1], _php_serialize_value, value)
+
+
+def _php_serialize_value(value) -> str:
     return _php_serialize(_codec_value(value, "serialize", set()))
 
 
@@ -575,6 +613,10 @@ def _json_text(value, depth: int) -> str:
 def ordered_json_value(value) -> OrderedJson:
     """Converts a plain value to an ordered-json value. Object members keep their order, and a value outside the JSON
     value model is CODEC_ENCODE by its rule of COD-70."""
+    return _on_own_stack(_STAGE_FRAMES["ordered_json"][1], _ordered_json_value, value)
+
+
+def _ordered_json_value(value) -> OrderedJson:
     text = _json_text(value, 0)
     try:
         return ordered_json_parse(text)
@@ -894,6 +936,12 @@ def decode(styles, raw):
     is an ordered-json value (keeping member order and number literals); if there is no value stage,
     it is the text of the bytes."""
     _check_styles(styles)
+    if styles and styles[0] in _STAGE_FRAMES:
+        return _on_own_stack(_STAGE_FRAMES[styles[0]][0], _decode, styles, raw)
+    return _decode(styles, raw)
+
+
+def _decode(styles, raw):
     if raw is None:
         return StyledValue.sql_null()
     current = _cell_bytes(raw)
@@ -942,6 +990,12 @@ def encode(styles, state: StyledValue):
     """Encodes a value through the codec stages in write order. The ordered_json stage
     takes an ordered-json or plain value. If the first stage is gz or base64, the value is text."""
     _check_styles(styles)
+    if styles and styles[0] in _STAGE_FRAMES:
+        return _on_own_stack(_STAGE_FRAMES[styles[0]][1], _encode, styles, state)
+    return _encode(styles, state)
+
+
+def _encode(styles, state: StyledValue):
     # A StyledValue is SQL NULL or a value; one that is neither, such as one that no constructor made, is styled-unset.
     kind = getattr(state, "kind", None)
     if kind == "sql-null":
@@ -951,12 +1005,12 @@ def encode(styles, state: StyledValue):
     transformed = state.payload()
     first = styles[0] if styles else ""
     if first == "serialize":
-        current = _utf8(php_serialize(transformed), "serialize")
+        current = _utf8(_php_serialize_value(transformed), "serialize")
     elif first == "yaml":
         current = _yaml_dump(transformed).encode("utf-8")
     elif first == "ordered_json":
         if not isinstance(transformed, OrderedJson):
-            transformed = ordered_json_value(transformed)
+            transformed = _ordered_json_value(transformed)
         current = _stored_json_text(transformed).encode("utf-8")
     else:
         if not isinstance(transformed, str):
