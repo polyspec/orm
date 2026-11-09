@@ -1,10 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a7547125bfd53039e55dba82ad418a9232c7bb1527ce8f92ad98d99b5f8efed2 -->
+<!-- source-sha256: c0d6e36b4f7f096917c4669da0e24a9324cdc353c98b403eb410e5707ecc5b84 -->
 # 변경 이력
 
 ## Unreleased
 
-- `make repo-check`는 config/parity.json을 대신한 contracts/implementations.json의 inventory로 FCV-2 규칙을 다시 검사한다(T400-1): contracts/features.json의 기능이나 helper가 나열하고 recipe를 실행하지 않는 inventory의 시험은 native test이며, 둘 이상의 구현의 시험을 나열하는 기능의 native test는 FCV-2의 한 줄이 In `<file>`, `<test>`로 그 파일과 시험을 이름 짓고 콜론 뒤에 이유를 밝히지 않으면 finding이다. native test를 하나도 이름 짓지 않거나 그 파일에 없는 시험을 이름 짓는 FCV-2의 줄도 finding이다(scripts/repo/native-tests.mts). config/parity.json의 unit을 유지하거나 파일 없이 시험을 이름 짓던 FCV-2의 줄은 그 시험을 파일과 함께 이름 짓는다(68줄에서 시험 381개). FCV-2는 또한 packages/rust/tests/tests/all/recipe_keys.rs로 옮긴 Rust recipe key 시험의 경로를 적는다.
+- `make repo-check`는 config/parity.json을 대신한 contracts/implementations.json의 inventory로 FCV-2 규칙을 다시 검사한다(T400-1): contracts/features.json의 기능이나 helper가 나열하고 recipe를 실행하지 않는 inventory의 시험은 native test이며, 둘 이상의 구현의 시험을 나열하는 기능의 native test는 FCV-2의 한 줄이 In `<file>`, `<test>`로 그 파일과 시험을 이름 짓고 콜론 뒤에 이유를 밝히지 않으면 finding이다. native test를 하나도 이름 짓지 않거나 그 파일에 없는 시험을 이름 짓는 FCV-2의 줄도 finding이다(scripts/repo/native-tests.mts). config/parity.json의 unit을 유지하거나 파일 없이 시험을 이름 짓던 FCV-2의 줄은 그 시험을 파일과 함께 이름 짓는다(68줄에서 시험 381개). FCV-2는 또한 packages/rust/tests/tests/all/recipe_keys.rs로 옮긴 Rust recipe key 시험의 경로를 적는다. FCV-2는 한 runtime만 가진 native test를 그 이유와 함께 적는다: generator, test 진입점의 packaging, 한 언어의 표면, 한 package의 요구사항을 지키는 시험 168개를 파일별 88줄과 그 기능의 5줄에 적는다.
 
 ## 0.0.27
 
