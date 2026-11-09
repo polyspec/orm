@@ -55,12 +55,14 @@ def connect_dsn(dsn, database, case_dsn, socket=None):
         return urlunsplit(urlsplit(replica)._replace(path=urlsplit(case_dsn).path))
     if dsn != "case-socket":
         return dsn
-    if database != "mysql":
+    # MariaDB is a server of the MySQL dialect (DIA-200), with a socket of its own.
+    if database not in ("mysql", "mariadb"):
         raise ValueError(f"dsn case-socket needs mysql, not {database}")
-    socket = socket if socket is not None else os.environ.get("ORM_TEST_MYSQL_SOCKET")
+    variable = f"ORM_TEST_{database.upper()}_SOCKET"
+    socket = socket if socket is not None else os.environ.get(variable)
     if not socket:
         raise ValueError(
-            "dsn case-socket: ORM_TEST_MYSQL_SOCKET is unset; run make orm-test-servers"
+            f"dsn case-socket: {variable} is unset; run make orm-test-servers"
         )
     match = re.match(r"^mysql://([^@/]+)@[^/]+/([^?]+)", case_dsn)
     if match is None:

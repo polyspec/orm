@@ -1,10 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 779b8374fcd9eadc8bd51491a70be5666d313f0f87af9556d7db64ec8218bf41 -->
+<!-- source-sha256: b991ff1abd14e7a9d823fa0b30c3e6389aeacb9edd0b5d756a5fc50dba85b030 -->
 # 변경 이력
 
 ## Unreleased
 
-- MariaDB 11.8.6이 MySQL dialect의 서버인 database `mariadb`로 database 검사에 들어온다(DIA-200, FCV-3). `make orm-install-mariadb`는 MariaDB Foundation의 source release를 version과 sha256으로 고정해 build하고(`scripts/mariadb-build.mts`), `make orm-test-mariadb`는 primary, 읽기 전용 replica, trust-function-creators를 끈 privilege probe server, primary 앞의 ProxySQL을 MySQL TLS case의 TLS 파일과 함께 띄운 뒤 `.runtime/servers/mariadb.env`(`ORM_TEST_MARIADB_*`)를 쓴다. mysql의 모든 recipe entry는 Go, TypeScript에 mariadb entry를 가진다. mariadb entry는 recipe가 따로 적지 않으면 `mysql` entry를 읽고, step이 `ORM_TEST_MYSQL_`을 가리키는 곳에서는 `ORM_TEST_MARIADB_` 서버를 읽는다. `make mariadb-recipes-check/<runtime>`이 이 entry를 실행하고, CI group `mariadb_<runtime>`은 MySQL package 대신 Ubuntu MariaDB package를 설치한다(`make orm-install-server-programs MARIADB=true`).
+- MariaDB 11.8.6이 MySQL dialect의 서버인 database `mariadb`로 database 검사에 들어온다(DIA-200, FCV-3). `make orm-install-mariadb`는 MariaDB Foundation의 source release를 version과 sha256으로 고정해 build하고(`scripts/mariadb-build.mts`), `make orm-test-mariadb`는 primary, 읽기 전용 replica, trust-function-creators를 끈 privilege probe server, primary 앞의 ProxySQL을 MySQL TLS case의 TLS 파일과 함께 띄운 뒤 `.runtime/servers/mariadb.env`(`ORM_TEST_MARIADB_*`)를 쓴다. mysql의 모든 recipe entry는 Go, TypeScript, Python에 mariadb entry를 가진다. mariadb entry는 recipe가 따로 적지 않으면 `mysql` entry를 읽고, step이 `ORM_TEST_MYSQL_`을 가리키는 곳에서는 `ORM_TEST_MARIADB_` 서버를 읽는다. `make mariadb-recipes-check/<runtime>`이 이 entry를 실행하고, CI group `mariadb_<runtime>`은 MySQL package 대신 Ubuntu MariaDB package를 설치한다(`make orm-install-server-programs MARIADB=true`).
 
 ## 0.0.27
 

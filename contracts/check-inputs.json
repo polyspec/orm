@@ -5342,6 +5342,13 @@
         "node-modules",
         "mariadb-server"
       ]
+    },
+    "mariadb-recipes-check/python": {
+      "scope": "suite",
+      "needs": [
+        "python",
+        "mariadb-server"
+      ]
     }
   },
   "paths": {

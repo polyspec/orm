@@ -35,6 +35,8 @@ _CONNECTION_RULES = {
 }
 _SERVER_ENV = {
     "mysql": "ORM_TEST_MYSQL_SERVER_DSN",
+    # MariaDB, a server of the MySQL dialect, is a server of its own (DIA-200, FCV-3).
+    "mariadb": "ORM_TEST_MARIADB_SERVER_DSN",
     "postgres": "ORM_TEST_POSTGRES_SERVER_DSN",
 }
 _COMMANDS = {
@@ -46,8 +48,8 @@ _COMMANDS = {
 
 
 def _dialect_of(database: str) -> str:
-    """The SQL dialect of a case database: a corpus runs SQL in SQLite's (DIA-185)."""
-    return "sqlite" if database == "markdown" else database
+    """The SQL dialect of a case database: a corpus runs SQL in SQLite's (DIA-185), MariaDB in MySQL's (DIA-200)."""
+    return {"markdown": "sqlite", "mariadb": "mysql"}.get(database, database)
 
 
 class _Stop(Exception):
@@ -110,7 +112,7 @@ def _direct(context: dict, dsn: str) -> _Session:
         server = _required(_SERVER_ENV[database])
         connection = (
             mysql_connect(server, name)
-            if database == "mysql"
+            if _dialect_of(database) == "mysql"
             else psycopg.connect(server, dbname=name, autocommit=True)
         )
     session = _Session(_dialect_of(database), connection)

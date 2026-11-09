@@ -16,7 +16,7 @@ def with_database(dsn: str, name: str) -> str:
 
 def admin_connection(dialect: str, dsn: str):
     """A connection to the server of dsn with no database selected, which creates and drops the case databases."""
-    if dialect == "mysql":
+    if dialect in ("mysql", "mariadb"):
         return mysql_connect(dsn)
     return psycopg.connect(dsn, autocommit=True)
 
@@ -27,7 +27,7 @@ def server_database(dialect: str, dsn: str, name: str):
     connection when the case ends."""
     admin = admin_connection(dialect, dsn)
     try:
-        if dialect == "mysql":
+        if dialect in ("mysql", "mariadb"):
             with admin.cursor() as cursor:
                 cursor.execute(f"CREATE DATABASE `{name}`")
         else:
@@ -35,7 +35,7 @@ def server_database(dialect: str, dsn: str, name: str):
         try:
             yield with_database(dsn, name)
         finally:
-            if dialect == "mysql":
+            if dialect in ("mysql", "mariadb"):
                 with admin.cursor() as cursor:
                     cursor.execute(f"DROP DATABASE `{name}`")
             else:

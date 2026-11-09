@@ -2534,26 +2534,42 @@ def _equal(got: dict, want: dict, ordered: bool) -> bool:
 
 
 # The database path (FCV-3 and FCV-4): each case runs on a case database of its own through the public catalog API.
-DATABASES = ("mysql", "postgres", "sqlite", "markdown")
+DATABASES = ("mysql", "postgres", "sqlite", "markdown", "mariadb")
+# The SQL dialect of a database that is not a dialect of its own: a corpus runs SQL in SQLite's (DIA-185), and MariaDB in
+# MySQL's (DIA-200).
+_DIALECT_OF = {"markdown": "sqlite", "mariadb": "mysql"}
 
 
 def _on_database(only, database: str) -> bool:
     """Whether a case or step with the list only runs on database: a corpus speaks SQLite's dialect, so what names
-    sqlite names it too (FCV-3)."""
-    return not only or database in only or (database == "markdown" and "sqlite" in only)
+    sqlite names it too, and MariaDB is a server of the MySQL dialect, so what names mysql names it too (FCV-3)."""
+    return (
+        not only
+        or database in only
+        or (database == "markdown" and "sqlite" in only)
+        or (database == "mariadb" and "mysql" in only)
+    )
 
 
 def _dialect_key(database: str, entries) -> str:
-    """The key of a value that names its text by database: a corpus runs SQL in SQLite's dialect (DIA-185), so it
-    reads the SQLite entry unless the value states its own."""
-    if database == "markdown" and "markdown" not in (entries or {}):
-        return "sqlite"
+    """The key of a value that names its text by database: a corpus and a MariaDB server read the entry of their
+    dialect unless the value states its own (FCV-3)."""
+    if database not in (entries or {}):
+        return _DIALECT_OF.get(database, database)
     return database
 
 
 def _dialect_of(context: dict) -> str:
-    """The SQL dialect of the case database: a corpus runs SQL in SQLite's (DIA-185)."""
-    return "sqlite" if context["database"] == "markdown" else context["database"]
+    """The SQL dialect of the case database."""
+    return _DIALECT_OF.get(context["database"], context["database"])
+
+
+def _server_variable(name: str, database: str) -> str:
+    """The variable that an env: DSN of a step names on database: on MariaDB, ORM_TEST_MYSQL_ names ORM_TEST_MARIADB_
+    (FCV-3)."""
+    if database == "mariadb" and name.startswith("ORM_TEST_MYSQL_"):
+        return "ORM_TEST_MARIADB_" + name[len("ORM_TEST_MYSQL_") :]
+    return name
 
 
 class DatabaseRecipeCase(VectorCase):
@@ -3086,17 +3102,25 @@ def _op_replica_await(step: dict, context: dict) -> dict:
                 f"synchronous_commit of the barrier transaction is {mode}"
             )
         return {}
-    replica = os.environ.get("ORM_TEST_MYSQL_REPLICA_DSN")
+    # MariaDB names the two SHOW BINLOG STATUS and MASTER_POS_WAIT.
+    variable = _server_variable("ORM_TEST_MYSQL_REPLICA_DSN", context["database"])
+    replica = os.environ.get(variable)
     if not replica:
         raise AssertionError(
-            "replica.await: ORM_TEST_MYSQL_REPLICA_DSN is required; run make orm-test-servers, which starts the databases and writes it"
+            f"replica.await: {variable} is required; run make orm-test-servers, which starts the databases and writes it"
         )
-    status = native_query("mysql", context["dsn"], ["SHOW BINARY LOG STATUS"])[0][0]
+    mariadb = context["database"] == "mariadb"
+    status = native_query(
+        "mysql",
+        context["dsn"],
+        ["SHOW BINLOG STATUS" if mariadb else "SHOW BINARY LOG STATUS"],
+    )[0][0]
     file, position = status["File"], int(status["Position"])
+    wait = "MASTER_POS_WAIT" if mariadb else "SOURCE_POS_WAIT"
     waited = native_query(
         "mysql",
         replica,
-        [f"SELECT SOURCE_POS_WAIT('{file}', {position}, 60) AS waited"],
+        [f"SELECT {wait}('{file}', {position}, 60) AS waited"],
     )[0][0]["waited"]
     if waited is None or int(waited) < 0:
         raise AssertionError(f"the replica did not reach {file}:{position}")
@@ -3203,6 +3227,10 @@ def _op_session_end(step: dict, context: dict) -> dict:
     query = (
         f"SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = '{table}' AND l.pid <> pg_backend_pid() LIMIT 1"
         if database == "postgres"
+        # MariaDB has no performance_schema.data_locks: the session is the one of the case database, other than this one,
+        # whose InnoDB transaction holds a table lock (information_schema.INNODB_TRX).
+        else "SELECT t.trx_mysql_thread_id FROM information_schema.INNODB_TRX t JOIN information_schema.PROCESSLIST p ON p.ID = t.trx_mysql_thread_id WHERE p.DB = DATABASE() AND p.ID <> CONNECTION_ID() AND t.trx_tables_locked > 0 LIMIT 1"
+        if database == "mariadb"
         else f"SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = '{table}' LIMIT 1"
     )
     rows = native_query(database, session, [query])[0]
@@ -3304,7 +3332,7 @@ def _op_dsn_connect(step: dict, context: dict) -> dict:
         if "query" in step:
             dsn += ("&" if "?" in dsn else "?") + step["query"]
     if dsn.startswith("env:"):
-        name = dsn[len("env:") :]
+        name = _server_variable(dsn[len("env:") :], context["database"])
         dsn = os.environ.get(name, "")
         if not dsn:
             raise AssertionError(
