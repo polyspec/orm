@@ -525,7 +525,6 @@ mod plan_cache_tests {
         collect: |_, _| unreachable!("the planner test collects no rows"),
     };
     const SEQ: ChainKey = ChainKey { conn: "", op: "", column: "seq", columns: &[], compare: "" };
-    const FULLTEXT_BOOLEAN_LABEL: ChainKey = ChainKey { conn: "", op: "fulltext_boolean", column: "", columns: &["label"], compare: "" };
 
     /// One IN statement over lists of 1 to 300 values: the shape key takes one value per power-of-two bucket
     /// (1, 2, 4 ... 512), so 300 lengths give at most ten distinct plan-cache keys.
@@ -600,25 +599,5 @@ mod plan_cache_tests {
         assert_eq!(sub_param("a_sub"), Some(0));
         assert_eq!(sub_param("z_sub"), Some(1));
         assert!(matches!(req.ir.query.limit, Some(ir::Limit::Params { offset_p: 2, count_p: 3 })));
-    }
-
-    #[test]
-    // Requirements: DSL-33, PRT-75.
-    fn fulltext_boolean_chain_preserves_columns_and_search_parameter() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let mut core = crate::core::Core::new(&PROBE);
-        core.chain("", &[FULLTEXT_BOOLEAN_LABEL], vec![Arg::Value(Value::One(Param::Str("alpha beta".into())))]);
-        let req = build(&core, "all");
-        assert!(req.error().is_none(), "{:?}", req.error());
-        assert_eq!(req.params, [Param::Str("alpha beta".into())]);
-        match &req.ir.query.where_.as_ref().expect("where").items[0] {
-            ir::Item::Pred { pred } => {
-                assert_eq!(pred.column, "");
-                assert_eq!(pred.op, "fulltext_boolean");
-                assert_eq!(pred.cols, ["label"]);
-                assert_eq!(pred.p, Some(0));
-            }
-            other => panic!("fulltext condition became {other:?}"),
-        }
     }
 }

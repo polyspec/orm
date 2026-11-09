@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- request.rs의 Rust 시험 fulltext_boolean_chain_preserves_columns_and_search_parameter를 지운다(T400-1): 모든 runtime이 실행하는 recipe fulltext_search의 case chain_fulltext_boolean이 그 단언을 모두 담는다(DSL-33, PRT-75): index의 column을 그 순서대로 쓰는 boolean full-text 조건과, 그 하나의 parameter인 검색어.
 - model.rs의 Rust 시험 gets_page_emits_root_count_then_relation_statement_events를 지운다(T400-1): 모든 runtime이 실행하는 recipe complex_query의 case product_search_page가 그 단언을 모두 담는다(CPX-2): page 행 query, 그다음 count query, 그다음 relation마다 query 하나, 그리고 검색이 돌려주는 page.
 - FCV-2가 code_catalog.rs의 Rust `trials`(INT-65)를 그 이유와 함께 이름 짓는다(T400-1): 각 runtime은 오류 code를 자기 언어의 source로 선언하고 그 시험은 그 선언을 생성된 catalog와 대조하므로, 그것이 읽는 source를 담는 recipe 값이 없다.
 - Rust coverage_dsn.rs를 지운다(T400-1): 그 단언은 각각 모든 runtime이 실행하는 recipe `dsn_connection`의 사례 `dsn_connection`의 step이다. 알 수 없는 scheme의 DSN은 `CONFIG`이고, 각 database의 DSN은 그 database의 driver로 연결되어 statement를 실행한다.

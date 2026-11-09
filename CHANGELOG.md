@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The Rust test fulltext_boolean_chain_preserves_columns_and_search_parameter of request.rs is removed (T400-1): the case chain_fulltext_boolean of the recipe fulltext_search, which every runtime runs, holds each of its assertions (DSL-33, PRT-75): the boolean full-text predicate over the columns of the index in their order, with the search text as its one parameter.
 - The Rust test gets_page_emits_root_count_then_relation_statement_events of model.rs is removed (T400-1): the case product_search_page of the recipe complex_query, which every runtime runs, holds each of its assertions (CPX-2): the page row query, then the count query, then one query per relation, and the page that the search returns.
 - FCV-2 names the Rust `trials` of code_catalog.rs (INT-65) with its reason (T400-1): each runtime declares the error codes as source of its own language and its test reads those declarations against the generated catalog, so no recipe value holds the source it reads.
 - The Rust coverage_dsn.rs is removed (T400-1): each of its assertions is a step of the case `dsn_connection` of the recipe `dsn_connection`, which every runtime runs: a DSN of an unknown scheme is `CONFIG`, and a DSN of each database connects to the driver of that database and runs a statement.
