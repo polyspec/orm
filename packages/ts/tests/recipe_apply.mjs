@@ -12,7 +12,8 @@ import { markdownSqlite } from './markdown_sqlite.mjs';
 const NOW = () => 1_700_000_000_000_000;
 // The statements that a client runs on a new direct connection.
 const CONNECTION_RULES = { mysql: ["SET time_zone = '+00:00'"], postgres: ["SET TimeZone = 'UTC'"], sqlite: ['PRAGMA foreign_keys = ON'] };
-const SERVER_ENV = { mysql: 'ORM_TEST_MYSQL_SERVER_DSN', postgres: 'ORM_TEST_POSTGRES_SERVER_DSN' };
+// The direct server of each database: MariaDB, a server of the MySQL dialect, is a server of its own (DIA-200, FCV-3).
+const SERVER_ENV = { mysql: 'ORM_TEST_MYSQL_SERVER_DSN', mariadb: 'ORM_TEST_MARIADB_SERVER_DSN', postgres: 'ORM_TEST_POSTGRES_SERVER_DSN' };
 const COMMANDS = { 'dbspec.apply': applyPlans, 'dbspec.recover': recoverPlans, 'dbspec.rollback': rollbackPlans, 'dbspec.finalize': finalizePlans };
 // What an on with stop throws from the event handler, so the code of the command is stopped.
 const STOP = new Error('the recipe stops the command');
@@ -23,8 +24,8 @@ function required(name) {
   return value;
 }
 
-/** The SQL dialect of a case database: a corpus runs SQL in SQLite's (DIA-185). */
-const dialectOf = database => (database === 'markdown' ? 'sqlite' : database);
+/** The SQL dialect of a case database: a corpus runs SQL in SQLite's (DIA-185), MariaDB in MySQL's (DIA-200). */
+const dialectOf = database => ({ markdown: 'sqlite', mariadb: 'mysql' })[database] ?? database;
 
 /** A driver connection with the form of statement each driver has: run returns the rows as arrays, close ends it. */
 async function open(database, target) {
@@ -54,7 +55,7 @@ async function open(database, target) {
     };
   }
   const dsn = relatedDsn(required(SERVER_ENV[database]), target.name);
-  if (database === 'mysql') {
+  if (dialectOf(database) === 'mysql') {
     const connection = await mysql.createConnection(mysqlTestOptions(dsn, target.name));
     return {
       connection,

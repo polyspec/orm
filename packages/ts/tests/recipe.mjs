@@ -524,24 +524,38 @@ function equal(got, want, ordered) {
 
 // The database path (FCV-3 and FCV-4): each case runs on a case database of its own through the public catalog API.
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
-const DATABASES = new Set(['mysql', 'postgres', 'sqlite', 'markdown']);
+const DATABASES = new Set(['mysql', 'postgres', 'sqlite', 'markdown', 'mariadb']);
 
-/** Whether a case or step with the list only runs on database: a corpus speaks SQLite's dialect, so what names sqlite names it too (FCV-3). */
+/**
+ * Whether a case or step with the list only runs on database: a corpus speaks SQLite's dialect, so what names sqlite names it
+ * too, and MariaDB is a server of the MySQL dialect, so what names mysql names it too (FCV-3, DIA-200).
+ */
 function onDatabase(only, database) {
-  return only === undefined || only.includes(database) || (database === 'markdown' && only.includes('sqlite'));
+  return only === undefined || only.includes(database) || (database === 'markdown' && only.includes('sqlite'))
+    || (database === 'mariadb' && only.includes('mysql'));
+}
+
+/** The SQL dialect of a database: a corpus runs SQL in SQLite's (DIA-185), and MariaDB in MySQL's (DIA-200). */
+function dialectOfDatabase(database) {
+  return { markdown: 'sqlite', mariadb: 'mysql' }[database] ?? database;
 }
 
 /**
- * The key of a value that names its text by database: a corpus runs SQL in SQLite's dialect (DIA-185), so it reads the SQLite
- * entry unless the value states its own.
+ * The key of a value that names its text by database: a corpus and a MariaDB server read the entry of their dialect unless the
+ * value states its own (FCV-3).
  */
 function dialectKey(database, entries) {
-  return database === 'markdown' && !Object.hasOwn(entries ?? {}, 'markdown') ? 'sqlite' : database;
+  return Object.hasOwn(entries ?? {}, database) ? database : dialectOfDatabase(database);
 }
 
-/** The SQL dialect of the case database: a corpus runs SQL in SQLite's (DIA-185). */
+/** The SQL dialect of the case database. */
 function dialectOf(context) {
-  return context.database === 'markdown' ? 'sqlite' : context.database;
+  return dialectOfDatabase(context.database);
+}
+
+/** The variable that an env: DSN of a step names on database: on MariaDB, ORM_TEST_MYSQL_ names ORM_TEST_MARIADB_ (FCV-3). */
+function serverVariable(name, database) {
+  return database === 'mariadb' && name.startsWith('ORM_TEST_MYSQL_') ? `ORM_TEST_MARIADB_${name.slice('ORM_TEST_MYSQL_'.length)}` : name;
 }
 
 /** Makes the directories of the corpus at root ones the process may only read, or writable again. */
@@ -761,8 +775,9 @@ const OPS = {
   // dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step.
   async 'dsn.connect'(s, context) {
     if (s.dsn.startsWith('env:')) {
-      const dsn = process.env[s.dsn.slice(4)];
-      if (!dsn) throw new Error(`dsn.connect: ${s.dsn.slice(4)} is unset; run make orm-test-servers`);
+      const variable = serverVariable(s.dsn.slice(4), context.database);
+      const dsn = process.env[variable];
+      if (!dsn) throw new Error(`dsn.connect: ${variable} is unset; run make orm-test-servers`);
       return { value: { text: await connectDriver(dsn, s.config) } };
     }
     if (s.dsn !== 'case') return { value: { text: await connectDriver(s.dsn, s.config) } };
@@ -970,10 +985,14 @@ const OPS = {
       if (mode !== 'remote_apply') throw new Error(`synchronous_commit of the barrier transaction is ${mode}`);
       return {};
     }
-    const replica = process.env.ORM_TEST_MYSQL_REPLICA_DSN;
-    if (!replica) throw new Error('replica.await: ORM_TEST_MYSQL_REPLICA_DSN is required; run make orm-test-servers, which starts the databases and writes it');
-    const [[status]] = await nativeQuery('mysql', context.dsn, ['SHOW BINARY LOG STATUS']);
-    const [[row]] = await nativeQuery('mysql', replica, [`SELECT SOURCE_POS_WAIT('${status.File}', ${Number(status.Position)}, 60) AS waited`]);
+    // MariaDB names the two SHOW BINLOG STATUS and MASTER_POS_WAIT.
+    const variable = serverVariable('ORM_TEST_MYSQL_REPLICA_DSN', context.database);
+    const replica = process.env[variable];
+    if (!replica) throw new Error(`replica.await: ${variable} is required; run make orm-test-servers, which starts the databases and writes it`);
+    const mariadb = context.database === 'mariadb';
+    const [[status]] = await nativeQuery('mysql', context.dsn, [mariadb ? 'SHOW BINLOG STATUS' : 'SHOW BINARY LOG STATUS']);
+    const wait = mariadb ? 'MASTER_POS_WAIT' : 'SOURCE_POS_WAIT';
+    const [[row]] = await nativeQuery('mysql', replica, [`SELECT ${wait}('${status.File}', ${Number(status.Position)}, 60) AS waited`]);
     if (row.waited === null || Number(row.waited) < 0) throw new Error(`the replica did not reach ${status.File}:${status.Position}`);
     return {};
   },
@@ -1033,12 +1052,16 @@ const OPS = {
     if (!server) throw new Error(`${variable} is required; run make orm-test-servers, which starts the databases and writes it`);
     const session = relatedDsn(server, new URL(context.dsn).pathname.slice(1));
     const postgres = context.database === 'postgres';
-    const [rows] = await nativeQuery(context.database, session, [postgres
+    // MariaDB has no performance_schema.data_locks: the session is the one of the case database, other than this one, whose InnoDB
+    // transaction holds a table lock (information_schema.INNODB_TRX).
+    const [rows] = await nativeQuery(dialectOf(context), session, [postgres
       ? `SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = '${s.table}' AND l.pid <> pg_backend_pid() LIMIT 1`
-      : `SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = '${s.table}' LIMIT 1`]);
+      : context.database === 'mariadb'
+        ? 'SELECT t.trx_mysql_thread_id FROM information_schema.INNODB_TRX t JOIN information_schema.PROCESSLIST p ON p.ID = t.trx_mysql_thread_id WHERE p.DB = DATABASE() AND p.ID <> CONNECTION_ID() AND t.trx_tables_locked > 0 LIMIT 1'
+        : `SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = '${s.table}' LIMIT 1`]);
     if (rows.length !== 1) throw new Error(`the transaction session holds a lock on ${s.table}: ${rows.length} rows`);
     const id = Number(Object.values(rows[0])[0]);
-    await nativeQuery(context.database, session, [postgres ? `SELECT pg_terminate_backend(${id}, 5000)` : `KILL ${id}`]);
+    await nativeQuery(dialectOf(context), session, [postgres ? `SELECT pg_terminate_backend(${id}, 5000)` : `KILL ${id}`]);
     return {};
   },
   // dbspec.ddl_behavior (FCV-4, DIA-113): on one native connection of the case database, the connection rules, the
@@ -1133,9 +1156,9 @@ async function runStep(rawStep, context) {
   if (!onDatabase(s.only, context.database)) return;
   if (s.expect !== undefined) {
     const only = s.only ?? context.caseOnly ?? ['mysql', 'postgres', 'sqlite'];
-    const servers = names => names.filter(each => each !== 'markdown').sort().join(',');
+    const servers = names => names.filter(each => each !== 'markdown' && each !== 'mariadb').sort().join(',');
     const named = Object.keys(s.expect);
-    if (servers(named) !== servers(only) || (named.includes('markdown') && !only.includes('sqlite'))) throw new Error(`the expect of ${s.op} names ${named.sort().join(',')}, want ${servers(only)}`);
+    if (servers(named) !== servers(only) || (named.includes('markdown') && !only.includes('sqlite')) || (named.includes('mariadb') && !only.includes('mysql'))) throw new Error(`the expect of ${s.op} names ${named.sort().join(',')}, want ${servers(only)}`);
   }
   const expected = rawStep.expect === undefined ? undefined : reads.outcome(resolveRefs(rawStep.expect[dialectKey(context.database, rawStep.expect)], context));
   let actual;

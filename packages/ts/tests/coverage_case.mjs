@@ -66,7 +66,8 @@ export async function nativeSession(driver, dsn) {
     const db = new DatabaseSync(decodeURIComponent(url.pathname));
     return { connection: db, query: async sql => db.prepare(sql).all(), close: async () => db.close() };
   }
-  if (driver === 'mysql') {
+  // MariaDB is a server of the MySQL dialect, reached with the MySQL driver (DIA-200).
+  if (driver === 'mysql' || driver === 'mariadb') {
     const conn = await require('mysql2/promise').createConnection({
       user: decodeURIComponent(url.username), password: decodeURIComponent(url.password),
       socketPath: url.searchParams.get('socket') ?? undefined, host: url.hostname,

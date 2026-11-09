@@ -53,13 +53,13 @@ export function postgresClient(dsn) {
   });
 }
 
-const adminEnv = { mysql: 'ORM_TEST_MYSQL_DSN', postgres: 'ORM_TEST_POSTGRES_DSN' };
+const adminEnv = { mysql: 'ORM_TEST_MYSQL_DSN', mariadb: 'ORM_TEST_MARIADB_DSN', postgres: 'ORM_TEST_POSTGRES_DSN' };
 
 /** Runs one statement with the admin DSN. The MySQL connection opens without a database. */
 async function admin(dialect, statement) {
   const dsn = process.env[adminEnv[dialect]];
   if (!dsn) throw new Error(`${adminEnv[dialect]} is required; run make orm-test-servers, which starts the databases and writes it; run the test through its make target, which reads the environment of make orm-test-servers`);
-  if (dialect === 'mysql') {
+  if (dialect === 'mysql' || dialect === 'mariadb') {
     const conn = await mysqlConnection(dsn, null);
     try { await conn.query(statement); } finally { await conn.end(); }
     return dsn;
@@ -93,13 +93,13 @@ export async function createCaseDatabase(dialect, step) {
     };
   }
   if (!(dialect in adminEnv)) throw new Error(`unknown dialect ${dialect}`);
-  const base = await admin(dialect, dialect === 'mysql' ? `CREATE DATABASE \`${name}\`` : `CREATE DATABASE "${name}"`);
+  const base = await admin(dialect, dialect !== 'postgres' ? `CREATE DATABASE \`${name}\`` : `CREATE DATABASE "${name}"`);
   step(`database ${name} created`);
   return {
     dialect, name, path: null, dsn: relatedDsn(base, name),
     async drop(report = step) {
       try {
-        await admin(dialect, dialect === 'mysql' ? `DROP DATABASE \`${name}\`` : `DROP DATABASE "${name}" WITH (FORCE)`);
+        await admin(dialect, dialect !== 'postgres' ? `DROP DATABASE \`${name}\`` : `DROP DATABASE "${name}" WITH (FORCE)`);
       } catch (error) { throw new Error(`drop database ${name}: ${error.message}`, { cause: error }); }
       report(`database ${name} dropped`);
     },
