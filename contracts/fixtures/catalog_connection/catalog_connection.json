@@ -15279,6 +15279,122 @@
       ]
     },
     {
+      "id": "catalog_value_multirange",
+      "requirements": [
+        "INT-165",
+        "INT-170",
+        "INT-185"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "only": [
+            "postgres"
+          ],
+          "reason": "a multirange is no dbspec type, so only the native driver creates it",
+          "sql": "CREATE TABLE value_rule_multirange (id BIGINT NOT NULL PRIMARY KEY, label TEXT NULL, m INT4MULTIRANGE NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "postgres"
+          ],
+          "reason": "a multirange and a NULL",
+          "sql": "INSERT INTO value_rule_multirange VALUES (1, 'a', '{[1,3),[5,7)}'), (2, 'b', NULL)"
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "postgres"
+          ],
+          "sql": "SELECT id, label, m FROM value_rule_multirange ORDER BY id",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 3: unsupported native type"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "postgres"
+          ],
+          "sql": "SELECT 1, NULL::int4multirange",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 2: unsupported native type"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "only": [
+            "postgres"
+          ],
+          "sql": "SELECT id, label, m FROM value_rule_multirange ORDER BY id",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 3: unsupported native type"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "only": [
+            "postgres"
+          ],
+          "sql": "SELECT 1, NULL::int4multirange",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 2: unsupported native type"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "postgres"
+          ],
+          "table": "value_rule_multirange",
+          "limit": 2,
+          "offset": 0,
+          "columns": [
+            "label",
+            "m"
+          ],
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 3: unsupported native type"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "postgres"
+          ],
+          "table": "value_rule_multirange",
+          "limit": 1,
+          "offset": 1,
+          "columns": [
+            "label",
+            "m"
+          ],
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE",
+              "message": "CATALOG_VALUE: column 3: unsupported native type"
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "catalog_value_text_types",
       "requirements": [
         "INT-165",
