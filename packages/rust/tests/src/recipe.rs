@@ -4006,6 +4006,30 @@ mod database {
                 context.subscriptions.insert(name, subscription);
                 Output::fields(json!({}))
             }
+            "db.execute" => {
+                // db.execute (INT-76, DSL-113): compiles the request against the schema that the step names relative to the
+                // recipe, for the dialect of the database of the case (SQLite for markdown, FCV-3), and runs its first step.
+                let db = connection_db(step, context).map_err(fault)?;
+                let schema = crate::recipe_reads::read(step, "schema")["schema"].as_str().unwrap_or_default().to_owned();
+                let manifest = super::ir_request::schema(&context.dir.join(&schema).to_string_lossy());
+                let request = crate::recipe_reads::read(step, "request")["request"].clone();
+                if request.get("manifest_hash").is_some() {
+                    return Err(fault("db.execute: the request already holds manifest_hash".to_owned()));
+                }
+                let input = super::ir_request::request(&request, &manifest.manifest_hash);
+                let dialect = match context.database {
+                    "mysql" => super::engine::Dialect::MySql,
+                    "postgres" => super::engine::Dialect::Postgres,
+                    _ => super::engine::Dialect::Sqlite,
+                };
+                let plan = super::engine::compile(&manifest, dialect, &input).map_err(|error| fault(error.to_string()))?;
+                let mut params = Vec::new();
+                for raw in crate::recipe_reads::read(step, "params")["params"].as_array().map(Vec::as_slice).unwrap_or_default() {
+                    params.push(super::tables::param(raw).map_err(fault)?);
+                }
+                db.execute(&plan.steps[0], &params).await.map_err(orm)?;
+                Output::fields(json!({}))
+            }
             "fault.next_rollback" => {
                 let db = connection_db(step, context).map_err(fault)?;
                 polyspec_orm::testing::fail_next_rollback(&db);
@@ -5643,6 +5667,7 @@ mod tables {
         create, creates, delete, get_avg, get_core, get_count, get_page_plan_steps, get_query, get_sum, gets, gets_count, gets_count_lookahead_page,
         gets_lookahead_page, gets_page, restore, restore_or_create, save, to_array, update,
     };
+    use polyspec_orm::ordered_json;
     use polyspec_orm::{AesKeyring, Collection, Config, Core, Db, Entity, Error as OrmError, Model, Param, RequestParams, Schema, Val};
     use serde_json::{json, Map, Value};
 
@@ -5667,7 +5692,6 @@ mod tables {
     thread_local! {
         /// The schema of the table recipe of the case on this thread. A database case runs on a thread of its own, and many
         /// table recipes run in one test program.
-    use polyspec_orm::ordered_json;
         static CURRENT: std::cell::Cell<Option<&'static Schema>> = const { std::cell::Cell::new(None) };
     }
 
@@ -6327,6 +6351,34 @@ mod tables {
         Ok(())
     }
 
+    /// The ordered-json value of a recipe value, built level by level by the builders of the library (Value::array,
+    /// Value::object and the scalar constructors), not by parsing a text: a builder that refuses a value returns its error.
+    fn ordered_of(inner: &Value) -> Result<ordered_json::Value, String> {
+        let built = |result: Result<ordered_json::Value, ordered_json::Error>| {
+            result.map_err(|error| format!("ordered_json: the value cannot be built: {error} (kind {})", error.kind()))
+        };
+        let (kind, body) = super::kind(inner)?;
+        match kind {
+            "null" | "nil" => Ok(ordered_json::Value::null()),
+            "bool" => Ok(ordered_json::Value::boolean(body.as_bool().ok_or_else(|| format!("{inner} is not a bool"))?)),
+            "int" | "float" => built(ordered_json::Value::number(body.as_str().ok_or_else(|| format!("{inner} has no number"))?)),
+            "text" => Ok(ordered_json::Value::string(body.as_str().ok_or_else(|| format!("{inner} has no text"))?)),
+            "array" => {
+                let items = body.as_array().into_iter().flatten().map(ordered_of).collect::<Result<Vec<_>, _>>()?;
+                built(ordered_json::Value::array(&items))
+            }
+            "object" => {
+                let mut members = ordered_json::OrderedMap::new();
+                for pair in body.as_array().into_iter().flatten() {
+                    let key = pair[0].as_str().ok_or_else(|| format!("{pair} has no member name"))?;
+                    built(members.insert(ordered_json::Value::string(key), ordered_of(&pair[1])?).map(|_| ordered_json::Value::null()))?;
+                }
+                built(ordered_json::Value::object(&members))
+            }
+            other => Err(format!("a {other} wrapper is not an ordered-json value")),
+        }
+    }
+
     /// Sets one column as the setter of a generated model does: the decimal is validated, a styled value goes through its
     /// codec, and the field holds what a read would.
     fn set_value(row: &mut TableRow, column: &str, raw: &Value) -> Result<(), String> {
@@ -6362,34 +6414,6 @@ mod tables {
                 row.core.set_ordered(column, ordered.clone());
                 row.values.insert(column.to_owned(), Val::Ordered(ordered));
             } else {
-    /// The ordered-json value of a recipe value, built level by level by the builders of the library (Value::array,
-    /// Value::object and the scalar constructors), not by parsing a text: a builder that refuses a value returns its error.
-    fn ordered_of(inner: &Value) -> Result<ordered_json::Value, String> {
-        let built = |result: Result<ordered_json::Value, ordered_json::Error>| {
-            result.map_err(|error| format!("ordered_json: the value cannot be built: {error} (kind {})", error.kind()))
-        };
-        let (kind, body) = super::kind(inner)?;
-        match kind {
-            "null" | "nil" => Ok(ordered_json::Value::null()),
-            "bool" => Ok(ordered_json::Value::boolean(body.as_bool().ok_or_else(|| format!("{inner} is not a bool"))?)),
-            "int" | "float" => built(ordered_json::Value::number(body.as_str().ok_or_else(|| format!("{inner} has no number"))?)),
-            "text" => Ok(ordered_json::Value::string(body.as_str().ok_or_else(|| format!("{inner} has no text"))?)),
-            "array" => {
-                let items = body.as_array().into_iter().flatten().map(ordered_of).collect::<Result<Vec<_>, _>>()?;
-                built(ordered_json::Value::array(&items))
-            }
-            "object" => {
-                let mut members = ordered_json::OrderedMap::new();
-                for pair in body.as_array().into_iter().flatten() {
-                    let key = pair[0].as_str().ok_or_else(|| format!("{pair} has no member name"))?;
-                    built(members.insert(ordered_json::Value::string(key), ordered_of(&pair[1])?).map(|_| ordered_json::Value::null()))?;
-                }
-                built(ordered_json::Value::object(&members))
-            }
-            other => Err(format!("a {other} wrapper is not an ordered-json value")),
-        }
-    }
-
                 let value = object_of(raw)?;
                 check(&value)?;
                 row.core.set_json(column, value.clone());
@@ -6397,6 +6421,15 @@ mod tables {
             }
             row.core.mark_field_ready(column);
             return Ok(());
+        }
+        if raw.get("null").is_some() && field.is_some_and(|field| field.styled_value() && !field.nullable) {
+            // The generated setter of a non-null styled column refuses StyledValue::SqlNull with the name of the column
+            // (COD-20, COD-73), before it changes the model.
+            return Err(orm(polyspec_orm::Error::Engine {
+                code: polyspec_orm::codes::CODEC_ENCODE.into(),
+                msg: format!("{column} does not accept SQL NULL"),
+                source: None,
+            }));
         }
         let mut value = param(raw)?;
         if let (Some(Type::Decimal(precision, scale)), Param::Str(text)) = (field.map(|field| field.ty), &value) {
@@ -6422,15 +6455,6 @@ mod tables {
         }
         let read = match &value {
             Param::Null => Val::Null,
-        if raw.get("null").is_some() && field.is_some_and(|field| field.styled_value() && !field.nullable) {
-            // The generated setter of a non-null styled column refuses StyledValue::SqlNull with the name of the column
-            // (COD-20, COD-73), before it changes the model.
-            return Err(orm(polyspec_orm::Error::Engine {
-                code: polyspec_orm::codes::CODEC_ENCODE.into(),
-                msg: format!("{column} does not accept SQL NULL"),
-                source: None,
-            }));
-        }
             Param::Bool(b) => Val::Bool(*b),
             Param::I64(n) => Val::I64(*n),
             Param::F64(n) => Val::F64(*n),
@@ -7117,6 +7141,12 @@ mod tables {
                             _ => Err(format!("ordered_text: the column {column} holds no ordered-json value")),
                         };
                     }
+                    if let Some(column) = crate::recipe_reads::read(step, "get")["get"].as_str() {
+                        // The generated getter (DBS-112) checks require_field, which is COLUMN_UNSELECTED for a column
+                        // neither loaded nor assigned.
+                        row.core.require_field(column).map_err(orm)?;
+                        return Ok(json!({ "json": row_json(&row, &json!([column]))?[column].clone() }));
+                    }
                     let fields = json!({ "json": row_json(&row, &crate::recipe_reads::read(step, "pick")["pick"])? });
                     if let Some(name) = crate::recipe_reads::read(step, "as")["as"].as_str() {
                         self.rows.insert(name.to_owned(), row);
@@ -7141,12 +7171,6 @@ mod tables {
             "text" | "decimal" | "datetime" | "date" | "time" | "uuid" => Param::Str(body.as_str().ok_or_else(|| format!("{wrapper} has no text"))?.to_owned()),
             "int" => Param::I64(body.as_str().ok_or_else(|| format!("{wrapper} has no digits"))?.parse().map_err(|e| format!("int {body}: {e}"))?),
             "bool" => Param::Bool(body.as_bool().ok_or_else(|| format!("{wrapper} is not a bool"))?),
-                    if let Some(column) = crate::recipe_reads::read(step, "get")["get"].as_str() {
-                        // The generated getter (DBS-112) checks require_field, which is COLUMN_UNSELECTED for a column
-                        // neither loaded nor assigned.
-                        row.core.require_field(column).map_err(orm)?;
-                        return Ok(json!({ "json": row_json(&row, &json!([column]))?[column].clone() }));
-                    }
             // Rust parses NaN, Infinity and -Infinity, the three non-finite values of the f64 wrapper.
             "float" | "f64" => Param::F64(body.as_str().ok_or_else(|| format!("{wrapper} has no number"))?.parse().map_err(|e| format!("float {body}: {e}"))?),
             "bytes_hex" => Param::Bytes(super::hex_bytes(body.as_str().ok_or_else(|| format!("{wrapper} has no hex"))?)?),

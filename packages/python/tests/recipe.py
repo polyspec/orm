@@ -4277,6 +4277,22 @@ def _op_events_subscribe(step: dict, context: dict) -> dict:
     return {"bind": _Subscription(stop, recording)}
 
 
+def _op_db_execute(step: dict, context: dict) -> dict:
+    """db.execute (INT-76, DSL-113): compiles the request against the schema that the step names relative to the recipe, for
+    the dialect of the database of the case (SQLite for markdown, FCV-3), and runs the first step of the plan with execute."""
+    model = _validation_model((context["dir"] / step["schema"]).resolve())
+    if "manifest_hash" in step["request"]:
+        raise AssertionError("db.execute: the request already holds manifest_hash")
+    request = dict(
+        json.loads(json.dumps(step["request"])), manifest_hash=model.manifest_hash
+    )
+    plan = Engine(model, _dialect_of(context)).compile(request)
+    _connection_of(step, context).execute(
+        plan["steps"][0], [_to_value(raw) for raw in step.get("params", [])]
+    )
+    return {}
+
+
 def _op_fault_next_rollback(step: dict, context: dict) -> dict:
     fail_next_rollback(_connection_of(step, context))
     return {}
@@ -4686,6 +4702,7 @@ _DATABASE_OPS = {
     "sql.release_connection": _op_release_connection,
     "events.subscribe": _op_events_subscribe,
     "events.fail_subscriber": _op_events_fail_subscriber,
+    "db.execute": lambda step, context: _op_db_execute(step, context),
     "fault.next_rollback": lambda step, context: _op_fault_next_rollback(step, context),
     "events.stop_failing": _op_events_stop,
     "events.unsubscribe": _op_events_stop,

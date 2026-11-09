@@ -191,7 +191,6 @@ fn main() {
         polyspec_orm_testcase::Group::new("dbspec_set_working_directory", polyspec_orm_schema_cases::dbspec_set_working_directory::trials),
         polyspec_orm_testcase::Group::new("form", polyspec_orm_testcase_cases::form::trials),
         polyspec_orm_testcase::Group::new("generate", polyspec_orm_build_cases::generate::trials),
-        polyspec_orm_testcase::Group::new("identity_load", polyspec_orm_cases::identity_load::trials).in_order(),
         polyspec_orm_testcase::Group::new("lock_probe_order", polyspec_orm_build_cases::lock_probe_order::trials),
         polyspec_orm_testcase::Group::new("mysql_tls", polyspec_orm_cases::mysql_tls::trials),
         polyspec_orm_testcase::Group::new("package_entry", polyspec_orm_cases::package_entry::trials),

@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 03b11b102bd608573e75775a941ee5372698187416c95b2da7f06b4640261a0c -->
+<!-- source-sha256: 4ca90f468a4f87797244833837d062e65d740b119a652cd851c8a0d1e8dbe446 -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `packages/go/engine/ir/ir.go`와 `packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -149,7 +149,7 @@ UPDATE `link` SET `note` = ?, `deleted_at` = NULL, `audit_seq` = ? WHERE `link`.
 - **PRT-29** PostgreSQL: `SELECT setval(pg_get_serial_sequence('"load_probe"', 'seq'), COALESCE(MAX("seq"), 0) + 1, false) FROM "load_probe"`
 - **PRT-30** SQLite: `UPDATE sqlite_sequence SET seq = (SELECT COALESCE(MAX("seq"), 0) FROM "load_probe") WHERE name = 'load_probe'`. 행을 받은 적이 없는 테이블은 `sqlite_sequence` 행이 없고, 그 다음 key는 이미 가장 큰 key 다음이다
 
-PostgreSQL identity는 명시한 key를 지나 나아가지 않으므로 다시 시작하지 않으면 다음 생성 key가 적재한 key와 충돌한다. MySQL과 SQLite는 명시한 key를 지나 counter를 옮기며, 다시 시작하면 모든 dialect가 같은 다음 key를 가진다. MySQL 문장은 DDL이라 열린 transaction을 commit하므로, 적재는 행을 commit한 뒤 다시 시작한다. 클라이언트는 둘 다 execute 호출로 실행한다([사용법](../operations/usage.ko.md#execute-a-compiled-statement)). 공유 case `contracts/fixtures/identity_load.json`이 MySQL, PostgreSQL, SQLite에서 문장, 오류, 적재 뒤의 key를 적는다.
+PostgreSQL identity는 명시한 key를 지나 나아가지 않으므로 다시 시작하지 않으면 다음 생성 key가 적재한 key와 충돌한다. MySQL과 SQLite는 명시한 key를 지나 counter를 옮기며, 다시 시작하면 모든 dialect가 같은 다음 key를 가진다. MySQL 문장은 DDL이라 열린 transaction을 commit하므로, 적재는 행을 commit한 뒤 다시 시작한다. 클라이언트는 둘 다 execute 호출로 실행한다([사용법](../operations/usage.ko.md#execute-a-compiled-statement)). `tests/planner/compile.json`의 case `load_*`, `insert_refuses_identity`, `restart_identity*`가 문장과 오류를, recipe `conformance_verification`의 case `identity_execute_*`가 적재 뒤의 key를 모든 runtime에서 모든 데이터베이스로 적는다.
 
 ## 2. Plan
 

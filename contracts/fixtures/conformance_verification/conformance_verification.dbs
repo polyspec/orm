@@ -310,3 +310,9 @@ table styled_cell {
     codec serialize_value serialize
   }
 }
+
+table load_probe {
+  seq i64 identity
+  label varchar(32)
+  primary key (seq)
+}

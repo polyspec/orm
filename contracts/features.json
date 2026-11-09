@@ -1351,11 +1351,8 @@
             "packages/php-ext/tests/CoverageNativeFixtureExtensionTest.php",
             "packages/php/tests/AggregateNumericTest.php",
             "packages/php/tests/DecimalModelTest.php",
-            "packages/php/tests/IdentityLoadTest.php",
             "packages/php/tests/case_database.php",
             "contracts/fixtures/aggregate_numeric.json",
-            "contracts/fixtures/identity_load.json",
-            "contracts/fixtures/identity_load.dbs",
             "packages/php/tests/NativeFixtureVectors.php"
           ]
         }
@@ -1607,7 +1604,6 @@
         "tests/conformance/vectors.json",
         "contracts/fixtures/clock.dbs",
         "contracts/fixtures/identity_load.dbs",
-        "contracts/fixtures/identity_load.json",
         "packages/php/tests/coverage_cases.php",
         "packages/ts/tests/coverage_case.mjs",
         "packages/python/tests/coverage_case.py",
@@ -1657,11 +1653,6 @@
         "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
         "packages/go/orm/assignment_propagation_test.go",
         "contracts/fixtures/clock.dbs",
-        "packages/go/orm/identity_load_test.go",
-        "packages/php/tests/IdentityLoadTest.php",
-        "packages/ts/tests/identity-load.mjs",
-        "packages/python/tests/identity_load.py",
-        "packages/rust/orm/tests/cases/identity_load.rs",
         "packages/python/tests/test_mysql_found_rows.py",
         "packages/python/tests/test_new_values.py",
         "packages/python/tests/test_sqlite.py",
@@ -1872,62 +1863,12 @@
           ]
         },
         {
-          "id": "identity-load-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestIdentityLoad$' -count=1",
-          "shard": "other",
-          "inputs": [
-            "packages/go/orm/identity_load_test.go",
-            "contracts/fixtures/identity_load.dbs",
-            "contracts/fixtures/identity_load.json"
-          ]
-        },
-        {
-          "id": "identity-load-php",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/IdentityLoadTest.php",
-          "shard": "other",
-          "inputs": [
-            "packages/php/tests/IdentityLoadTest.php",
-            "contracts/fixtures/identity_load.dbs",
-            "contracts/fixtures/identity_load.json"
-          ]
-        },
-        {
-          "id": "identity-load-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts identity-load-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- identity_load::",
-          "shard": "rust",
-          "inputs": [
-            "packages/rust/orm/tests/cases/identity_load.rs",
-            "contracts/fixtures/identity_load.dbs",
-            "contracts/fixtures/identity_load.json"
-          ]
-        },
-        {
           "id": "mysql-found-rows-python",
           "command": "packages/python/.venv/bin/python -m unittest packages.python.tests.test_mysql_found_rows",
           "shard": "other",
           "inputs": [
             "packages/python/tests/test_mysql_found_rows.py",
             "packages/python/src/polyspec/orm/database.py"
-          ]
-        },
-        {
-          "id": "identity-load-python",
-          "command": "make python-identity-load-check",
-          "shard": "other",
-          "inputs": [
-            "packages/python/tests/identity_load.py",
-            "contracts/fixtures/identity_load.dbs",
-            "contracts/fixtures/identity_load.json"
-          ]
-        },
-        {
-          "id": "identity-load-typescript",
-          "command": "node --conditions=orm-test packages/ts/tests/identity-load.mjs",
-          "shard": "other",
-          "inputs": [
-            "packages/ts/tests/identity-load.mjs",
-            "contracts/fixtures/identity_load.dbs",
-            "contracts/fixtures/identity_load.json"
           ]
         },
         {
@@ -7040,7 +6981,6 @@
         "packages/python/tests/test_placeholders.py",
         "packages/python/tests/test_clock_source.py",
         "packages/python/tests/test_values.py",
-        "packages/python/tests/identity_load.py",
         "packages/python/tests/test_sqlite_row_lock_restore.py",
         "packages/python/tests/test_rollback_fault.py",
         "packages/php-ext/tests/QueryCancellationNativeTest.php",
@@ -7345,7 +7285,6 @@
               "packages/python/tests/test_placeholders.py",
               "packages/python/tests/test_clock_source.py",
               "packages/python/tests/test_values.py",
-              "packages/python/tests/identity_load.py",
               "packages/python/tests/test_sqlite_row_lock_restore.py",
               "packages/python/tests/test_rollback_fault.py"
             ],

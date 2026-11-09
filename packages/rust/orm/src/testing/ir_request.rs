@@ -438,10 +438,11 @@ pub fn request(input: &Value, manifest_hash: &str) -> ir::Request {
             "rows",
             "optimistic",
             "agg",
+            "load",
         ],
     );
     let mut query_input = input.clone();
-    for key in ["ir_version", "kind", "n_params", "set", "on_duplicate", "rows", "optimistic", "agg"] {
+    for key in ["ir_version", "kind", "n_params", "set", "on_duplicate", "rows", "optimistic", "agg", "load"] {
         query_input.as_object_mut().expect("input object").remove(key);
     }
     let request = ir::Request {
@@ -454,6 +455,7 @@ pub fn request(input: &Value, manifest_hash: &str) -> ir::Request {
         on_duplicate: object.get("on_duplicate").map(|set| assigns(set, "input.on_duplicate")).unwrap_or_default(),
         rows: rows(object.get("rows")),
         agg: object.get("agg").map(|_| string(object, at, "agg")).unwrap_or_default(),
+        load: object.get("load").map(|load| load.as_bool().unwrap_or_else(|| panic!("{REJECTED}input.load: expected a bool"))).unwrap_or_default(),
         optimistic: object.get("optimistic").map(|o| {
             let o = members(o, "input.optimistic", &["column", "p"]);
             ir::Optimist {
@@ -461,7 +463,6 @@ pub fn request(input: &Value, manifest_hash: &str) -> ir::Request {
                 p: index(o.get("p").unwrap_or_else(|| panic!("{REJECTED}input.optimistic.p: expected a parameter index")), "input.optimistic.p"),
             }
         }),
-        ..Default::default()
     };
     let mut with_hash = normalized(input);
     with_hash["manifest_hash"] = json!(manifest_hash);

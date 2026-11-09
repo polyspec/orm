@@ -942,6 +942,7 @@
             "row.connect",
             "wait.start",
             "wait.at_least",
+            "db.execute",
             "fault.next_rollback",
             "query.search",
             "query.search_chain",
@@ -1164,6 +1165,9 @@
         },
         {
           "$ref": "#/$defs/ops/wait.at_least"
+        },
+        {
+          "$ref": "#/$defs/ops/db.execute"
         },
         {
           "$ref": "#/$defs/ops/fault.next_rollback"
@@ -3859,6 +3863,43 @@
           }
         }
       },
+      "db.execute": {
+        "description": "Compiles the request against the schema, for the dialect of the database of the case, and runs the first step of its plan with execute on the connection (INT-76, DSL-113).",
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "schema",
+          "request"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "db.execute"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "schema": {
+            "description": "The .dbs file of the request, named relative to the recipe; the case database holds its tables.",
+            "type": "string",
+            "minLength": 1
+          },
+          "request": {
+            "description": "The IR request without manifest_hash, which the runner takes from the schema.",
+            "type": "object"
+          },
+          "params": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/value"
+            }
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
       "fault.next_rollback": {
         "description": "Arms the rollback fault of the test entry point of the client on the connection (PRT-43 and its peers).",
         "type": "object",
@@ -5161,6 +5202,10 @@
                 "description": "The result is the text of the ordered-json value that the row holds in this column (DIA-26).",
                 "$ref": "#/$defs/name"
               },
+              "get": {
+                "description": "The result is what the generated getter of this column returns on the row, the value in the form of pick, or its error: COLUMN_UNSELECTED for a column that the row neither selected nor assigned (DBS-112, COD-32).",
+                "$ref": "#/$defs/name"
+              },
                             "array_text": {
                 "description": "The result is the compact text of the styled document of this column in the array form of the row, with its member order and number text (COD-27).",
                 "$ref": "#/$defs/name"
@@ -5201,10 +5246,6 @@
           {
             "type": "object",
             "required": [
-              },
-              "get": {
-                "description": "The result is what the generated getter of this column returns on the row, the value in the form of pick, or its error: COLUMN_UNSELECTED for a column that the row neither selected nor assigned (DBS-112, COD-32).",
-                "$ref": "#/$defs/name"
               "op",
               "connection",
               "model",
@@ -5218,6 +5259,10 @@
                             },
                             "ordered_text": {
                 "description": "The result is the text of the ordered-json value that the row holds in this column (DIA-26).",
+                "$ref": "#/$defs/name"
+              },
+              "get": {
+                "description": "The result is what the generated getter of this column returns on the row, the value in the form of pick, or its error: COLUMN_UNSELECTED for a column that the row neither selected nor assigned (DBS-112, COD-32).",
                 "$ref": "#/$defs/name"
               },
                             "array_text": {
@@ -5260,10 +5305,6 @@
           {
             "type": "object",
             "required": [
-              },
-              "get": {
-                "description": "The result is what the generated getter of this column returns on the row, the value in the form of pick, or its error: COLUMN_UNSELECTED for a column that the row neither selected nor assigned (DBS-112, COD-32).",
-                "$ref": "#/$defs/name"
               "op",
               "connection",
               "model"
@@ -5276,6 +5317,10 @@
                             },
                             "ordered_text": {
                 "description": "The result is the text of the ordered-json value that the row holds in this column (DIA-26).",
+                "$ref": "#/$defs/name"
+              },
+              "get": {
+                "description": "The result is what the generated getter of this column returns on the row, the value in the form of pick, or its error: COLUMN_UNSELECTED for a column that the row neither selected nor assigned (DBS-112, COD-32).",
                 "$ref": "#/$defs/name"
               },
                             "array_text": {
@@ -5318,10 +5363,6 @@
                 "items": {
                   "$ref": "#/$defs/name"
                 }
-              },
-              "get": {
-                "description": "The result is what the generated getter of this column returns on the row, the value in the form of pick, or its error: COLUMN_UNSELECTED for a column that the row neither selected nor assigned (DBS-112, COD-32).",
-                "$ref": "#/$defs/name"
               },
               "order": {
                 "$ref": "#/$defs/orderList"

@@ -1981,13 +1981,6 @@ python-statement-fault-check: python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.statement_fault
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_statement_fault_entry
 
-# python-identity-load-check runs the shared identity load cases (contracts/fixtures/identity_load.json)
-# with the Python client on SQLite, MySQL and PostgreSQL; it needs the database variables of make
-# orm-test-servers (WITH_TEST_ENV).
-.PHONY: python-identity-load-check
-python-identity-load-check: python-venv-check
-	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.identity_load
-
 # dialect-facts-check runs the citation tests of the schema dialect probes of packages/go/internal/dialects: each probe has an ID
 # and cites the dialect spec. The probes themselves (TestDialectFacts), which run against the MySQL and PostgreSQL servers of
 # TEST_ENV and a SQLite file per probe, are go tests of go-test-check, which builds what they need (T334-3-6-3).

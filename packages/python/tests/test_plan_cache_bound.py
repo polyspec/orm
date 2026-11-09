@@ -1,6 +1,5 @@
 # The plan cache holds one entry per bucketed IN-list shape: one statement run with lists of 1 to 300 values keeps at
 # most ten plans (the power-of-two buckets 1 to 512), and an IN parameter past the parameters is IR_INVALID.
-import json
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -13,11 +12,10 @@ from polyspec.orm.canonical import canonical_request
 from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
-FIXTURE = json.loads(
-    (ROOT / "contracts" / "fixtures" / "identity_load.json").read_text()
-)
 MODEL = model_of_documents(
-    parse_document_set([(ROOT / FIXTURE["fixture"]).read_text()])
+    parse_document_set(
+        [(ROOT / "contracts" / "fixtures" / "identity_load.dbs").read_text()]
+    )
 )
 
 

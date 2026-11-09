@@ -138,6 +138,8 @@ func statementOp(s databaseStep, c *databaseContext) (outcome, bool, error) {
 			return outcome{}, true, err
 		}
 		return outcome{api: &subscription{stop: stop}, fields: map[string]any{}}, true, nil
+	case "db.execute":
+		return outcome{fields: map[string]any{}}, true, executeRequest(s, c)
 	case "fault.next_rollback":
 		db, err := connectionOf(s, c)
 		if err != nil {

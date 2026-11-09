@@ -3288,6 +3288,23 @@ final class Recipe
                 $recording = new RecipeRecording();
                 $stop = self::connectionOf($s, $context)->subscribe($recording->receive(...));
                 return ['bind' => new RecipeSubscription($stop, $recording)];
+            case 'db.execute':
+                // db.execute (INT-76, DSL-113): compiles the request against the schema that the step names relative to the
+                // recipe, for the dialect of the database of the case (SQLite for markdown, FCV-3), and runs the first step.
+                $schema = realpath($context['dir'] . '/' . $s['schema']);
+                if ($schema === false) {
+                    Assert::fail("db.execute: the schema {$s['schema']} is missing");
+                }
+                if (array_key_exists('manifest_hash', $s['request'])) {
+                    Assert::fail('db.execute: the request already holds manifest_hash');
+                }
+                $model = RuntimeModel::build(RuntimeModel::files([$schema]));
+                $plan = (new Engine($model, self::dialectOf($context), 8))->compile($s['request'] + ['manifest_hash' => $model->manifestHash]);
+                self::connectionOf($s, $context)->execute(
+                    $plan['steps'][0],
+                    array_map(static fn(array $raw): mixed => self::toValue($raw), $s['params'] ?? []),
+                );
+                return [];
             case 'fault.next_rollback':
                 require_once dirname(__DIR__) . '/testing/Faults.php';
                 \Polyspec\Orm\Testing\Faults::failNextRollback(self::connectionOf($s, $context));
@@ -4822,6 +4839,12 @@ final class Recipe
                 if (isset($s['ordered_text']) && $row !== null) {
                     return ['json' => $row->{'get' . self::pascal($s['ordered_text'])}()->payload()->raw()];
                 }
+                if (isset($s['get']) && $row !== null) {
+                    // The generated getter (DBS-112), which is COLUMN_UNSELECTED for a column neither selected nor
+                    // assigned.
+                    $row->{'get' . self::pascal($s['get'])}();
+                    return ['json' => self::chainRow($row, [$s['get']])[$s['get']]];
+                }
                 $fields = ['json' => self::chainRow($row, $s['pick'] ?? null)];
                 return $row === null ? $fields : ['bind' => $row] + $fields;
             case 'model.create':
@@ -4839,12 +4862,6 @@ final class Recipe
                 return self::chainWrite($s, $context, static fn (Model $m): Model => $m->restore());
             case 'model.creates':
                 $db = self::connectionOf($s, $context);
-                if (isset($s['get']) && $row !== null) {
-                    // The generated getter (DBS-112), which is COLUMN_UNSELECTED for a column neither selected nor
-                    // assigned.
-                    $row->{'get' . self::pascal($s['get'])}();
-                    return ['json' => self::chainRow($row, [$s['get']])[$s['get']]];
-                }
                 $models = [];
                 if (isset($s['rows_sequence'])) {
                     $sequence = $s['rows_sequence'];

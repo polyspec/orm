@@ -116,14 +116,17 @@ type databaseStep struct {
 	Steps     []json.RawMessage          `json:"steps"`
 	// The fields of the dbspec apply ops (FCV-4): the lines of dbspec.plan, the pooler of dbspec.connect, and the chain, the
 	// counted event kind, the failure text and the nested steps of a command.
-	Lines   []string      `json:"lines"`
-	Through string        `json:"through"`
-	Plans   []string      `json:"plans"`
-	Count   []string      `json:"count"`
-	Detail  string        `json:"detail"`
-	Message string        `json:"message"`
-	Elapsed *applyElapsed `json:"elapsed"`
-	On      *applyOn      `json:"on"`
+	Lines   []string `json:"lines"`
+	Through string   `json:"through"`
+	Plans   []string `json:"plans"`
+	Count   []string `json:"count"`
+	Detail  string   `json:"detail"`
+	Message string   `json:"message"`
+	// Request and Params are the request of db.execute (INT-76) and the values of its parameters.
+	Request json.RawMessage   `json:"request"`
+	Params  []json.RawMessage `json:"params"`
+	Elapsed *applyElapsed     `json:"elapsed"`
+	On      *applyOn          `json:"on"`
 	// Statements are the statements of utils.run (INT-150), which its one frame runs in order.
 	// MessageContains is the text that the message of the expected error of schema.add_tables_and_columns holds.
 	MessageContains string           `json:"message_contains"`

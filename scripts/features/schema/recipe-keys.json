@@ -228,6 +228,14 @@
       "ms",
       "op"
     ],
+    "db.execute": [
+      "connection",
+      "expect",
+      "op",
+      "params",
+      "request",
+      "schema"
+    ],
     "fault.next_rollback": [
       "connection",
       "op"
@@ -500,6 +508,7 @@
       "connection",
       "expect",
       "from",
+      "get",
       "group_by",
       "joins",
       "json_output",
@@ -508,7 +517,6 @@
       "lock",
       "lookahead",
       "model",
-      "get",
       "op",
       "order",
       "ordered_text",

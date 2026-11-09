@@ -235,7 +235,14 @@
   "CPX-3",
   "CFG-10",
   "DBS-115",
-  "DIA-154"
+  "DIA-154",
+  "PRT-3",
+  "PRT-26",
+  "PRT-27",
+  "PRT-28",
+  "PRT-29",
+  "PRT-30",
+  "DSL-113"
  ],
  "fixture": "contracts/fixtures/conformance_verification/dbspec-set.json",
  "seed": {
@@ -84229,6 +84236,817 @@
       "sqlite": {
        "error": "CODEC_DECODE",
        "message": "CODEC_DECODE: author.json_setting: styled cell is empty"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "identity_execute_load_then_restart",
+   "requirements": [
+    "PRT-2",
+    "PRT-3",
+    "PRT-26",
+    "PRT-27",
+    "PRT-28",
+    "PRT-29",
+    "PRT-30",
+    "DSL-113"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "db.execute",
+     "connection": "db",
+     "schema": "conformance_verification.dbs",
+     "request": {
+      "entity": "load_probe",
+      "ir_version": 1,
+      "kind": "insert",
+      "load": true,
+      "n_params": 2,
+      "set": [
+       {
+        "column": "seq",
+        "p": 0
+       },
+       {
+        "column": "label",
+        "p": 1
+       }
+      ]
+     },
+     "params": [
+      {
+       "int": "7"
+      },
+      {
+       "text": "a"
+      }
+     ]
+    },
+    {
+     "op": "db.execute",
+     "connection": "db",
+     "schema": "conformance_verification.dbs",
+     "request": {
+      "entity": "load_probe",
+      "ir_version": 1,
+      "kind": "insert",
+      "load": true,
+      "n_params": 2,
+      "set": [
+       {
+        "column": "seq",
+        "p": 0
+       },
+       {
+        "column": "label",
+        "p": 1
+       }
+      ]
+     },
+     "params": [
+      {
+       "int": "3"
+      },
+      {
+       "text": "b"
+      }
+     ]
+    },
+    {
+     "op": "db.execute",
+     "connection": "db",
+     "schema": "conformance_verification.dbs",
+     "request": {
+      "entity": "load_probe",
+      "ir_version": 1,
+      "kind": "restart_identity",
+      "n_params": 0
+     },
+     "params": []
+    },
+    {
+     "op": "db.execute",
+     "connection": "db",
+     "schema": "conformance_verification.dbs",
+     "request": {
+      "entity": "load_probe",
+      "ir_version": 1,
+      "kind": "insert",
+      "n_params": 1,
+      "set": [
+       {
+        "column": "label",
+        "p": 0
+       }
+      ]
+     },
+     "params": [
+      {
+       "text": "c"
+      }
+     ]
+    },
+    {
+     "op": "utils.run",
+     "connection": "db",
+     "statements": [
+      {
+       "kind": "select",
+       "tables": [
+        "load_probe"
+       ],
+       "sql": {
+        "mysql": "SELECT `seq`, `label` FROM `load_probe` ORDER BY `seq`",
+        "postgres": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\"",
+        "sqlite": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\""
+       }
+      }
+     ],
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "int": "3"
+           },
+           {
+            "text": "b"
+           }
+          ]
+         },
+         {
+          "array": [
+           {
+            "int": "7"
+           },
+           {
+            "text": "a"
+           }
+          ]
+         },
+         {
+          "array": [
+           {
+            "int": "8"
+           },
+           {
+            "text": "c"
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "int": "3"
+           },
+           {
+            "text": "b"
+           }
+          ]
+         },
+         {
+          "array": [
+           {
+            "int": "7"
+           },
+           {
+            "text": "a"
+           }
+          ]
+         },
+         {
+          "array": [
+           {
+            "int": "8"
+           },
+           {
+            "text": "c"
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "int": "3"
+           },
+           {
+            "text": "b"
+           }
+          ]
+         },
+         {
+          "array": [
+           {
+            "int": "7"
+           },
+           {
+            "text": "a"
+           }
+          ]
+         },
+         {
+          "array": [
+           {
+            "int": "8"
+           },
+           {
+            "text": "c"
+           }
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "identity_execute_restart_after_delete",
+   "requirements": [
+    "PRT-2",
+    "PRT-3",
+    "PRT-26",
+    "PRT-27",
+    "PRT-28",
+    "PRT-29",
+    "PRT-30",
+    "DSL-113"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "db.execute",
+     "connection": "db",
+     "schema": "conformance_verification.dbs",
+     "request": {
+      "entity": "load_probe",
+      "ir_version": 1,
+      "kind": "insert",
+      "n_params": 1,
+      "set": [
+       {
+        "column": "label",
+        "p": 0
+       }
+      ]
+     },
+     "params": [
+      {
+       "text": "a"
+      }
+     ]
+    },
+    {
+     "op": "db.execute",
+     "connection": "db",
+     "schema": "conformance_verification.dbs",
+     "request": {
+      "entity": "load_probe",
+      "ir_version": 1,
+      "kind": "insert",
+      "n_params": 1,
+      "set": [
+       {
+        "column": "label",
+        "p": 0
+       }
+      ]
+     },
+     "params": [
+      {
+       "text": "b"
+      }
+     ]
+    },
+    {
+     "op": "db.execute",
+     "connection": "db",
+     "schema": "conformance_verification.dbs",
+     "request": {
+      "entity": "load_probe",
+      "ir_version": 1,
+      "kind": "insert",
+      "n_params": 1,
+      "set": [
+       {
+        "column": "label",
+        "p": 0
+       }
+      ]
+     },
+     "params": [
+      {
+       "text": "c"
+      }
+     ]
+    },
+    {
+     "op": "db.execute",
+     "connection": "db",
+     "schema": "conformance_verification.dbs",
+     "request": {
+      "entity": "load_probe",
+      "ir_version": 1,
+      "kind": "delete",
+      "n_params": 1,
+      "where": {
+       "items": [
+        {
+         "pred": {
+          "column": "seq",
+          "op": "eq",
+          "p": 0
+         }
+        }
+       ]
+      }
+     },
+     "params": [
+      {
+       "int": "3"
+      }
+     ]
+    },
+    {
+     "op": "db.execute",
+     "connection": "db",
+     "schema": "conformance_verification.dbs",
+     "request": {
+      "entity": "load_probe",
+      "ir_version": 1,
+      "kind": "restart_identity",
+      "n_params": 0
+     },
+     "params": []
+    },
+    {
+     "op": "db.execute",
+     "connection": "db",
+     "schema": "conformance_verification.dbs",
+     "request": {
+      "entity": "load_probe",
+      "ir_version": 1,
+      "kind": "insert",
+      "n_params": 1,
+      "set": [
+       {
+        "column": "label",
+        "p": 0
+       }
+      ]
+     },
+     "params": [
+      {
+       "text": "d"
+      }
+     ]
+    },
+    {
+     "op": "utils.run",
+     "connection": "db",
+     "statements": [
+      {
+       "kind": "select",
+       "tables": [
+        "load_probe"
+       ],
+       "sql": {
+        "mysql": "SELECT `seq`, `label` FROM `load_probe` ORDER BY `seq`",
+        "postgres": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\"",
+        "sqlite": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\""
+       }
+      }
+     ],
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "int": "1"
+           },
+           {
+            "text": "a"
+           }
+          ]
+         },
+         {
+          "array": [
+           {
+            "int": "2"
+           },
+           {
+            "text": "b"
+           }
+          ]
+         },
+         {
+          "array": [
+           {
+            "int": "3"
+           },
+           {
+            "text": "d"
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "int": "1"
+           },
+           {
+            "text": "a"
+           }
+          ]
+         },
+         {
+          "array": [
+           {
+            "int": "2"
+           },
+           {
+            "text": "b"
+           }
+          ]
+         },
+         {
+          "array": [
+           {
+            "int": "3"
+           },
+           {
+            "text": "d"
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "int": "1"
+           },
+           {
+            "text": "a"
+           }
+          ]
+         },
+         {
+          "array": [
+           {
+            "int": "2"
+           },
+           {
+            "text": "b"
+           }
+          ]
+         },
+         {
+          "array": [
+           {
+            "int": "3"
+           },
+           {
+            "text": "d"
+           }
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "identity_execute_restart_of_empty_table",
+   "requirements": [
+    "PRT-2",
+    "PRT-3",
+    "PRT-26",
+    "PRT-27",
+    "PRT-28",
+    "PRT-29",
+    "PRT-30",
+    "DSL-113"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "db.execute",
+     "connection": "db",
+     "schema": "conformance_verification.dbs",
+     "request": {
+      "entity": "load_probe",
+      "ir_version": 1,
+      "kind": "restart_identity",
+      "n_params": 0
+     },
+     "params": []
+    },
+    {
+     "op": "db.execute",
+     "connection": "db",
+     "schema": "conformance_verification.dbs",
+     "request": {
+      "entity": "load_probe",
+      "ir_version": 1,
+      "kind": "insert",
+      "n_params": 1,
+      "set": [
+       {
+        "column": "label",
+        "p": 0
+       }
+      ]
+     },
+     "params": [
+      {
+       "text": "a"
+      }
+     ]
+    },
+    {
+     "op": "utils.run",
+     "connection": "db",
+     "statements": [
+      {
+       "kind": "select",
+       "tables": [
+        "load_probe"
+       ],
+       "sql": {
+        "mysql": "SELECT `seq`, `label` FROM `load_probe` ORDER BY `seq`",
+        "postgres": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\"",
+        "sqlite": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\""
+       }
+      }
+     ],
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "int": "1"
+           },
+           {
+            "text": "a"
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "int": "1"
+           },
+           {
+            "text": "a"
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "int": "1"
+           },
+           {
+            "text": "a"
+           }
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "identity_execute_refuses_read",
+   "requirements": [
+    "PRT-2",
+    "PRT-3",
+    "PRT-26",
+    "PRT-27",
+    "PRT-28",
+    "PRT-29",
+    "PRT-30",
+    "DSL-113"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "db.execute",
+     "connection": "db",
+     "schema": "conformance_verification.dbs",
+     "request": {
+      "entity": "load_probe",
+      "ir_version": 1,
+      "kind": "all",
+      "n_params": 0
+     },
+     "params": [],
+     "expect": {
+      "mysql": {
+       "error": "IR_INVALID",
+       "message": "IR_INVALID: execute runs a statement without rows; the statement is a read"
+      },
+      "postgres": {
+       "error": "IR_INVALID",
+       "message": "IR_INVALID: execute runs a statement without rows; the statement is a read"
+      },
+      "sqlite": {
+       "error": "IR_INVALID",
+       "message": "IR_INVALID: execute runs a statement without rows; the statement is a read"
+      }
+     }
+    },
+    {
+     "op": "utils.run",
+     "connection": "db",
+     "statements": [
+      {
+       "kind": "select",
+       "tables": [
+        "load_probe"
+       ],
+       "sql": {
+        "mysql": "SELECT `seq`, `label` FROM `load_probe` ORDER BY `seq`",
+        "postgres": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\"",
+        "sqlite": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\""
+       }
+      }
+     ],
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": []
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": []
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": []
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "identity_execute_refuses_missing_parameter",
+   "requirements": [
+    "PRT-2",
+    "PRT-3",
+    "PRT-26",
+    "PRT-27",
+    "PRT-28",
+    "PRT-29",
+    "PRT-30",
+    "DSL-113"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "db.execute",
+     "connection": "db",
+     "schema": "conformance_verification.dbs",
+     "request": {
+      "entity": "load_probe",
+      "ir_version": 1,
+      "kind": "insert",
+      "load": true,
+      "n_params": 2,
+      "set": [
+       {
+        "column": "seq",
+        "p": 0
+       },
+       {
+        "column": "label",
+        "p": 1
+       }
+      ]
+     },
+     "params": [
+      {
+       "int": "7"
+      }
+     ],
+     "expect": {
+      "mysql": {
+       "error": "IR_INVALID",
+       "message": "IR_INVALID: bind slot 1 reads parameter 1, but execute has 1 parameters"
+      },
+      "postgres": {
+       "error": "IR_INVALID",
+       "message": "IR_INVALID: bind slot 1 reads parameter 1, but execute has 1 parameters"
+      },
+      "sqlite": {
+       "error": "IR_INVALID",
+       "message": "IR_INVALID: bind slot 1 reads parameter 1, but execute has 1 parameters"
+      }
+     }
+    },
+    {
+     "op": "utils.run",
+     "connection": "db",
+     "statements": [
+      {
+       "kind": "select",
+       "tables": [
+        "load_probe"
+       ],
+       "sql": {
+        "mysql": "SELECT `seq`, `label` FROM `load_probe` ORDER BY `seq`",
+        "postgres": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\"",
+        "sqlite": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\""
+       }
+      }
+     ],
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": []
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": []
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": []
+       }
       }
      }
     }
