@@ -2627,15 +2627,18 @@ fn encode(styles: &[String], raw: &Value, bound: &HashMap<String, Outcome>) -> R
         return Ok(codec::encode(&stages, StyledValue::SqlNull));
     }
     // An ordered_json wrapper is the ordered-json value of its value, whatever the stages (FCV-4).
+    // The text is parsed as a caller parses one, so `?` states a refusal of the library as its orm error (COD-81).
+    let ordered = |text: &str| -> polyspec_orm::Result<Param> {
+        let value = ordered_json::parse(text)?;
+        codec::encode_ordered(&stages, StyledValue::Value(&value))
+    };
     if let Some(inner) = raw.get("ordered_json") {
-        let value = ordered_json::parse(&json_text(inner)?).map_err(|e| e.to_string())?;
-        return Ok(codec::encode_ordered(&stages, StyledValue::Value(&value)));
+        return Ok(ordered(&json_text(inner)?));
     }
     // An ordered-json value holds at most the levels its parser reads, so a value nested deeper is the common value, the
     // one Rust value that holds it (COD-70 `json-depth`).
     if styles.iter().any(|s| s == "ordered_json") && depth(raw) <= ordered_json::MAX_DEPTH {
-        let value = ordered_json::parse(&json_text(raw)?).map_err(|e| e.to_string())?;
-        return Ok(codec::encode_ordered(&stages, StyledValue::Value(&value)));
+        return Ok(ordered(&json_text(raw)?));
     }
     Ok(codec::encode(&stages, StyledValue::Value(&to_value(raw)?)))
 }
@@ -6362,32 +6365,56 @@ mod tables {
         Ok(())
     }
 
-    /// The ordered-json value of a recipe value, built level by level by the builders of the library (Value::array,
-    /// Value::object and the scalar constructors), not by parsing a text: a builder that refuses a value returns its error.
-    fn ordered_of(inner: &Value) -> Result<ordered_json::Value, String> {
-        let built = |result: Result<ordered_json::Value, ordered_json::Error>| {
-            result.map_err(|error| format!("ordered_json: the value cannot be built: {error} (kind {})", error.kind()))
-        };
+    /// A recipe value read as the parts of an ordered-json value, so that the runner refuses a malformed wrapper before the
+    /// value is built.
+    enum OrderedParts {
+        Null,
+        Bool(bool),
+        Number(String),
+        Text(String),
+        Array(Vec<OrderedParts>),
+        Object(Vec<(String, OrderedParts)>),
+    }
+
+    /// The parts of a recipe value; a wrapper that is no ordered-json value is the runner's error.
+    fn ordered_parts(inner: &Value) -> Result<OrderedParts, String> {
         let (kind, body) = super::kind(inner)?;
-        match kind {
-            "null" | "nil" => Ok(ordered_json::Value::null()),
-            "bool" => Ok(ordered_json::Value::boolean(body.as_bool().ok_or_else(|| format!("{inner} is not a bool"))?)),
-            "int" | "float" => built(ordered_json::Value::number(body.as_str().ok_or_else(|| format!("{inner} has no number"))?)),
-            "text" => Ok(ordered_json::Value::string(body.as_str().ok_or_else(|| format!("{inner} has no text"))?)),
-            "array" => {
-                let items = body.as_array().into_iter().flatten().map(ordered_of).collect::<Result<Vec<_>, _>>()?;
-                built(ordered_json::Value::array(&items))
-            }
+        Ok(match kind {
+            "null" | "nil" => OrderedParts::Null,
+            "bool" => OrderedParts::Bool(body.as_bool().ok_or_else(|| format!("{inner} is not a bool"))?),
+            "int" | "float" => OrderedParts::Number(body.as_str().ok_or_else(|| format!("{inner} has no number"))?.to_owned()),
+            "text" => OrderedParts::Text(body.as_str().ok_or_else(|| format!("{inner} has no text"))?.to_owned()),
+            "array" => OrderedParts::Array(body.as_array().into_iter().flatten().map(ordered_parts).collect::<Result<_, _>>()?),
             "object" => {
-                let mut members = ordered_json::OrderedMap::new();
+                let mut members = Vec::new();
                 for pair in body.as_array().into_iter().flatten() {
                     let key = pair[0].as_str().ok_or_else(|| format!("{pair} has no member name"))?;
-                    built(members.insert(ordered_json::Value::string(key), ordered_of(&pair[1])?).map(|_| ordered_json::Value::null()))?;
+                    members.push((key.to_owned(), ordered_parts(&pair[1])?));
                 }
-                built(ordered_json::Value::object(&members))
+                OrderedParts::Object(members)
             }
-            other => Err(format!("a {other} wrapper is not an ordered-json value")),
-        }
+            other => return Err(format!("a {other} wrapper is not an ordered-json value")),
+        })
+    }
+
+    /// The ordered-json value of the parts, built level by level by the builders of the library (Value::array,
+    /// Value::object and the scalar constructors), not by parsing a text, as a caller does: a builder that refuses a value
+    /// returns its error, which `?` states as the orm error of its rule (COD-81).
+    fn ordered_of(parts: &OrderedParts) -> polyspec_orm::Result<ordered_json::Value> {
+        Ok(match parts {
+            OrderedParts::Null => ordered_json::Value::null(),
+            OrderedParts::Bool(value) => ordered_json::Value::boolean(*value),
+            OrderedParts::Number(literal) => ordered_json::Value::number(literal)?,
+            OrderedParts::Text(text) => ordered_json::Value::string(text),
+            OrderedParts::Array(items) => ordered_json::Value::array(&items.iter().map(ordered_of).collect::<polyspec_orm::Result<Vec<_>>>()?)?,
+            OrderedParts::Object(pairs) => {
+                let mut members = ordered_json::OrderedMap::new();
+                for (key, value) in pairs {
+                    members.insert(ordered_json::Value::string(key), ordered_of(value)?)?;
+                }
+                ordered_json::Value::object(&members)?
+            }
+        })
     }
 
     /// Sets one column as the setter of a generated model does: the decimal is validated, a styled value goes through its
@@ -6402,7 +6429,7 @@ mod tables {
             if field.is_some_and(|field| field.codec.first().is_some_and(|stage| stage == "ordered_json")) {
                 // The generated setter of an ordered_json column takes an ordered-json value, which the runner builds
                 // from the recipe value by the builders of the library, as a caller of the setter does (COD-73).
-                let ordered = ordered_of(inner)?;
+                let ordered = ordered_of(&ordered_parts(inner)?).map_err(orm)?;
                 polyspec_orm::codec::check_setter_ordered(&styles, &ordered).map_err(orm)?;
                 row.core.set_ordered(column, ordered.clone());
                 row.values.insert(column.to_owned(), Val::Ordered(ordered));
@@ -6420,7 +6447,8 @@ mod tables {
         if raw.get("object").is_some() {
             if field.is_some_and(|field| field.codec.first().is_some_and(|stage| stage == "ordered_json")) {
                 // The text of the wrapper keeps the member order, a repeated member and the number text (DIA-26).
-                let ordered = polyspec_orm::ordered_json::parse(&super::json_text(raw)?).map_err(|e| e.to_string())?;
+                let parsed = |text: &str| -> polyspec_orm::Result<polyspec_orm::ordered_json::Value> { Ok(polyspec_orm::ordered_json::parse(text)?) };
+                let ordered = parsed(&super::json_text(raw)?).map_err(orm)?;
                 polyspec_orm::codec::check_setter_ordered(&styles, &ordered).map_err(orm)?;
                 row.core.set_ordered(column, ordered.clone());
                 row.values.insert(column.to_owned(), Val::Ordered(ordered));

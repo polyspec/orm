@@ -24,6 +24,38 @@ fn err_cause(code: &str, msg: impl Into<String>, cause: impl std::error::Error +
     Error::Engine { code: code.into(), msg: msg.into(), source: Some(Box::new(cause)) }
 }
 
+/// An error of the ordered-json library that a caller meets while it builds, parses or reads an ordered-json value is the
+/// rule of COD-70 of the same fact, with the library error as its cause (docs/spec/codec.md COD-81, COD-71), so `?` in a
+/// function that returns [`Result`] states it as every runtime does. The match names every kind and has no other arm: a kind
+/// that the library adds fails this build until COD-81 states its rule.
+impl From<strict_json::Error> for Error {
+    fn from(error: strict_json::Error) -> Self {
+        use strict_json::ErrorKind;
+        let (code, text) = match error.kind() {
+            // A depth limit above 256 asks for a value nested deeper than the 256 levels of every stage (`json-depth`).
+            ErrorKind::MaximumDepthExceeded | ErrorKind::DepthLimitOutOfRange => (CODEC_ENCODE, "json: value nesting exceeds 256 levels"),
+            ErrorKind::NonStringKey => (CODEC_ENCODE, "json: member keys must be strings"),
+            ErrorKind::WrongKind => (CODEC_DECODE, "json: the value is not a string"),
+            // The library refuses the text of a value (`json-text`): a parse, a strict parse and a number literal.
+            ErrorKind::ExpectedValue
+            | ErrorKind::ExpectedDigit
+            | ErrorKind::ExpectedColon
+            | ErrorKind::ExpectedDelimiter
+            | ErrorKind::ExpectedObjectKey
+            | ErrorKind::InvalidEscape
+            | ErrorKind::InvalidUnicodeEscape
+            | ErrorKind::UnfinishedEscape
+            | ErrorKind::UnterminatedString
+            | ErrorKind::UnescapedControlCharacter
+            | ErrorKind::InvalidUtf8
+            | ErrorKind::TrailingInput
+            | ErrorKind::DuplicateObjectKey
+            | ErrorKind::InvalidNumberLiteral => (CODEC_ENCODE, "json: the value has no JSON text"),
+        };
+        err_cause(code, text, error)
+    }
+}
+
 /// The levels of nested lists and maps that every stage reads and writes; a list or a map at the next level is refused
 /// (COD-70 `json-depth`, `serialize-depth`, `yaml-depth` and their write rules).
 const NESTING_LEVELS: usize = 256;
@@ -68,7 +100,11 @@ pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
             "ordered_json" => {
                 value = Some(Val::Ordered(strict_json::parse_bytes(&cur).map_err(|error| {
                     // The ordered-json parser reads 256 levels and refuses the next one by its own kind (`json-depth-read`).
-                    let text = if error.kind() == "maximum_depth_exceeded" { "json: value nesting exceeds 256 levels" } else { "json: the cell is not JSON" };
+                    let text = if error.kind() == strict_json::ErrorKind::MaximumDepthExceeded {
+                        "json: value nesting exceeds 256 levels"
+                    } else {
+                        "json: the cell is not JSON"
+                    };
                     err_cause(CODEC_DECODE, text, error)
                 })?))
             }
