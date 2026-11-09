@@ -302,10 +302,14 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 			sb.WriteString("COUNT(*)")
 		}
 	case "sum":
-		sb.WriteString("COALESCE(" + p.aggregateSum(root, agg) + ", 0)")
+		sums := p.aggregateSums(root, agg)
+		for i, sum := range sums {
+			sums[i] = "COALESCE(" + sum + ", 0)"
+		}
+		sb.WriteString(strings.Join(sums, ", "))
 	case "avg":
 		// The executor divides the sum by the count of values, so the average is exact before its one conversion (DSL-161).
-		sb.WriteString(p.aggregateSum(root, agg) + ", COUNT(" + p.qcol(root, agg) + ")")
+		sb.WriteString(strings.Join(p.aggregateSums(root, agg), ", ") + ", COUNT(" + p.qcol(root, agg) + ")")
 	case "group_count":
 		if err := p.selectGroupCountList(b, &sb, root, asm, &idx, &outNames); err != nil {
 			return nil, err
@@ -1684,15 +1688,31 @@ func (p *Planner) columnFunction(b *builder, s *scope, column string, f *ir.Func
 	return out, nil
 }
 
-// aggregateSum renders the SUM of the column of a sum or an average. MySQL writes an infinite double as 0 in its text
+// aggregateSums renders the SUMs of the column of a sum or an average. MySQL writes an infinite double as 0 in its text
 // protocol, so on MySQL an f64 sum adds 0, which MySQL refuses with 1690 (SQLSTATE 22003) when the sum is not finite
-// (DIA-200).
-func (p *Planner) aggregateSum(root *scope, column string) string {
-	sum := "SUM(" + p.qcol(root, column) + ")"
-	if f := root.ent.Field(column); f != nil && f.Type == "f64" && p.D.Name() == "mysql" {
-		sum += " + 0"
+// (DIA-200). SQLite sums integers in i64 and refuses a sum past it, so on SQLite, and on markdown, which runs SQLite, the sum
+// of an exact column is the sum of its high 32 bits and the sum of its low 32 bits, which the executor combines (DIA-202).
+func (p *Planner) aggregateSums(root *scope, column string) []string {
+	q := p.qcol(root, column)
+	f := root.ent.Field(column)
+	if f != nil && p.D.Name() == "sqlite" && exactAggregate(f.Type) {
+		// A cell that is no integer makes the low sum 0.5, which no executor reads as an integer (DIA-202).
+		return []string{"SUM(" + q + " >> 32)", "CASE WHEN MAX(typeof(" + q + ") NOT IN ('integer', 'null')) THEN 0.5 ELSE SUM(" + q + " & 4294967295) END"}
 	}
-	return sum
+	if f != nil && f.Type == "f64" && p.D.Name() == "mysql" {
+		return []string{"SUM(" + q + ") + 0"}
+	}
+	return []string{"SUM(" + q + ")"}
+}
+
+// exactAggregate reports whether the sum and the average of a column of the type are exact (DSL-161): an integer or a
+// decimal column.
+func exactAggregate(columnType string) bool {
+	switch columnType {
+	case "i16", "i32", "i64", "decimal":
+		return true
+	}
+	return false
 }
 
 // subSelect renders a subquery for an IN list or a scalar column. The

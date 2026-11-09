@@ -962,12 +962,14 @@ pub async fn gets_page<M: Model>(m: &M, page: u32, per_page: u32) -> Result<Page
 }
 
 /// The cells of a scalar statement: one cell, or for an average the sum and the count of its values (DSL-161).
+/// The cells of a scalar statement: every cell of a sum or an average, whose sums are one cell or two (DIA-202) and an average
+/// the count after them; the one cell of every other.
 fn scalar_cells(rows: &[crate::row::DriverRow], kind: &str, zone: crate::db::Zone) -> Result<Vec<Val>> {
-    if kind != "avg" {
+    if kind != "avg" && kind != "sum" {
         return Ok(vec![first_cell(rows, zone)?]);
     }
-    let row = rows.first().ok_or_else(|| Error::internal("an average statement read no row"))?;
-    Ok(vec![crate::row::read_cell(row, 0, zone)?, crate::row::read_cell(row, 1, zone)?])
+    let row = rows.first().ok_or_else(|| Error::internal("a sum or average statement read no row"))?;
+    (0..row.len()).map(|i| crate::row::read_cell(row, i, zone)).collect()
 }
 
 async fn scalar(c: &Core, kind: &str) -> Result<Vec<Val>> {
@@ -1019,10 +1021,9 @@ pub async fn get_sum(c: &Core) -> Result<f64> {
     }
     let value = scalar(c, "sum").await.map_err(crate::aggregate::range_error)?;
     let field = aggregate_field(c)?;
-    match value.first() {
-        None => Err(Error::internal("a sum statement read no cell")),
-        Some(Val::Null) => Ok(0.0),
-        Some(v) => crate::aggregate::sum_value(&field.ty, v),
+    match crate::aggregate::sum_cell(&field.ty, &value)? {
+        Val::Null => Ok(0.0),
+        v => crate::aggregate::sum_value(&field.ty, &v),
     }
 }
 
@@ -1040,9 +1041,9 @@ pub async fn get_avg(c: &Core) -> Result<Option<f64>> {
     }
     let value = scalar(c, "avg").await.map_err(crate::aggregate::range_error)?;
     let field = aggregate_field(c)?;
-    match value.as_slice() {
-        [sum, count] => crate::aggregate::avg_value(&field.ty, sum, count),
-        _ => Err(Error::internal("an average statement read no sum and count")),
+    match value.split_last() {
+        Some((count, sums)) => crate::aggregate::avg_value(&field.ty, &crate::aggregate::sum_cell(&field.ty, sums)?, count),
+        None => Err(Error::internal("an average statement read no sum and count")),
     }
 }
 

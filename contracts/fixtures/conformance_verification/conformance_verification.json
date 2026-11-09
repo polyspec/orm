@@ -2,6 +2,7 @@
  "$schema": "../../../scripts/features/schema/recipe.schema.json",
  "requirements": [
   "INT-164",
+  "DIA-202",
   "DIA-200",
   "DSL-161",
   "DSL-66",
@@ -17266,7 +17267,7 @@
            [
             "sql",
             {
-             "text": "SELECT COALESCE(SUM(\"a\".\"read_count\"), 0) FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = ?"
+             "text": "SELECT COALESCE(SUM(\"a\".\"read_count\" >> 32), 0), COALESCE(CASE WHEN MAX(typeof(\"a\".\"read_count\") NOT IN ('integer', 'null')) THEN 0.5 ELSE SUM(\"a\".\"read_count\" & 4294967295) END, 0) FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = ?"
             }
            ],
            [
@@ -17314,7 +17315,7 @@
            [
             "sql",
             {
-             "text": "SELECT SUM(\"a\".\"like_count\"), COUNT(\"a\".\"like_count\") FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = ?"
+             "text": "SELECT SUM(\"a\".\"like_count\" >> 32), CASE WHEN MAX(typeof(\"a\".\"like_count\") NOT IN ('integer', 'null')) THEN 0.5 ELSE SUM(\"a\".\"like_count\" & 4294967295) END, COUNT(\"a\".\"like_count\") FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = ?"
             }
            ],
            [
@@ -21649,7 +21650,7 @@
            [
             "sql",
             {
-             "text": "SELECT COALESCE(SUM(\"a\".\"read_count\"), 0) FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = ?"
+             "text": "SELECT COALESCE(SUM(\"a\".\"read_count\" >> 32), 0), COALESCE(CASE WHEN MAX(typeof(\"a\".\"read_count\") NOT IN ('integer', 'null')) THEN 0.5 ELSE SUM(\"a\".\"read_count\" & 4294967295) END, 0) FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = ?"
             }
            ],
            [
@@ -21697,7 +21698,7 @@
            [
             "sql",
             {
-             "text": "SELECT SUM(\"a\".\"like_count\"), COUNT(\"a\".\"like_count\") FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = ?"
+             "text": "SELECT SUM(\"a\".\"like_count\" >> 32), CASE WHEN MAX(typeof(\"a\".\"like_count\") NOT IN ('integer', 'null')) THEN 0.5 ELSE SUM(\"a\".\"like_count\" & 4294967295) END, COUNT(\"a\".\"like_count\") FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = ?"
             }
            ],
            [
@@ -21789,7 +21790,7 @@
            [
             "sql",
             {
-             "text": "SELECT COALESCE(SUM(\"a\".\"price\"), 0) FROM \"author\" AS \"a\" WHERE \"a\".\"price\" IS NULL"
+             "text": "SELECT COALESCE(SUM(\"a\".\"price\" >> 32), 0), COALESCE(CASE WHEN MAX(typeof(\"a\".\"price\") NOT IN ('integer', 'null')) THEN 0.5 ELSE SUM(\"a\".\"price\" & 4294967295) END, 0) FROM \"author\" AS \"a\" WHERE \"a\".\"price\" IS NULL"
             }
            ],
            [
@@ -21833,7 +21834,7 @@
            [
             "sql",
             {
-             "text": "SELECT SUM(\"a\".\"price\"), COUNT(\"a\".\"price\") FROM \"author\" AS \"a\" WHERE \"a\".\"price\" IS NULL"
+             "text": "SELECT SUM(\"a\".\"price\" >> 32), CASE WHEN MAX(typeof(\"a\".\"price\") NOT IN ('integer', 'null')) THEN 0.5 ELSE SUM(\"a\".\"price\" & 4294967295) END, COUNT(\"a\".\"price\") FROM \"author\" AS \"a\" WHERE \"a\".\"price\" IS NULL"
             }
            ],
            [
@@ -57078,7 +57079,9 @@
   {
    "id": "added_sum_fractional",
    "requirements": [
-    "INT-160"
+    "INT-160",
+    "DIA-202",
+    "DSL-161"
    ],
    "steps": [
     {
@@ -57147,7 +57150,7 @@
      "reason": "the fractional value of that column",
      "sql": "INSERT INTO composite_account (tenant_id, account_id, name) VALUES (900, 1.5, 'a')"
     },
-        {
+    {
      "op": "model.query",
      "connection": "db",
      "model": "User",
@@ -57191,6 +57194,62 @@
       "sqlite": {
        "error": "CODEC_DECODE",
        "message": "CODEC_DECODE: user.total: i64 cell is not an exact integer in its range"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "where": {
+      "tenant_id": {
+       "int": "900"
+      }
+     },
+     "aggregate": {
+      "agg": "sum",
+      "column": "account_id"
+     },
+     "expect": {
+      "mysql": {
+       "error": "CODEC_DECODE",
+       "message_suffix": "aggregate scalar is not a finite number"
+      },
+      "postgres": {
+       "error": "CODEC_DECODE",
+       "message_suffix": "aggregate scalar is not a finite number"
+      },
+      "sqlite": {
+       "error": "CODEC_DECODE",
+       "message_suffix": "aggregate scalar is not a finite number"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "where": {
+      "tenant_id": {
+       "int": "900"
+      }
+     },
+     "aggregate": {
+      "agg": "avg",
+      "column": "account_id"
+     },
+     "expect": {
+      "mysql": {
+       "error": "CODEC_DECODE",
+       "message_suffix": "aggregate scalar is not a finite number"
+      },
+      "postgres": {
+       "error": "CODEC_DECODE",
+       "message_suffix": "aggregate scalar is not a finite number"
+      },
+      "sqlite": {
+       "error": "CODEC_DECODE",
+       "message_suffix": "aggregate scalar is not a finite number"
       }
      }
     }
@@ -89140,6 +89199,444 @@
      "expect": {
       "postgres": {
        "error": "CODEC_DECODE"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "aggregate_of_an_integer_column_past_the_i64_range_is_exact",
+   "requirements": [
+    "DSL-66",
+    "DSL-161",
+    "DIA-202"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TypedValue",
+     "values": {
+      "small": {
+       "int": "1"
+      },
+      "wide": {
+       "int": "1"
+      },
+      "ratio": {
+       "float": "1.25"
+      },
+      "active": {
+       "bool": true
+      },
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      },
+      "clock": {
+       "text": "10:20:30.500"
+      },
+      "day": {
+       "text": "2026-02-03"
+      },
+      "note": {
+       "text": "aggregate"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TypedValue",
+     "values": {
+      "small": {
+       "int": "2"
+      },
+      "wide": {
+       "int": "1"
+      },
+      "ratio": {
+       "float": "1.25"
+      },
+      "active": {
+       "bool": true
+      },
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      },
+      "clock": {
+       "text": "10:20:30.500"
+      },
+      "day": {
+       "text": "2026-02-03"
+      },
+      "note": {
+       "text": "aggregate"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TypedValue",
+     "values": {
+      "small": {
+       "int": "3"
+      },
+      "wide": {
+       "int": "1"
+      },
+      "ratio": {
+       "float": "1.25"
+      },
+      "active": {
+       "bool": true
+      },
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      },
+      "clock": {
+       "text": "10:20:30.500"
+      },
+      "day": {
+       "text": "2026-02-03"
+      },
+      "note": {
+       "text": "aggregate"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TypedValue",
+     "values": {
+      "small": {
+       "int": "4"
+      },
+      "wide": {
+       "int": "1"
+      },
+      "ratio": {
+       "float": "1.25"
+      },
+      "active": {
+       "bool": true
+      },
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      },
+      "clock": {
+       "text": "10:20:30.500"
+      },
+      "day": {
+       "text": "2026-02-03"
+      },
+      "note": {
+       "text": "aggregate"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TypedValue",
+     "values": {
+      "small": {
+       "int": "5"
+      },
+      "wide": {
+       "int": "1"
+      },
+      "ratio": {
+       "float": "1.25"
+      },
+      "active": {
+       "bool": true
+      },
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      },
+      "clock": {
+       "text": "10:20:30.500"
+      },
+      "day": {
+       "text": "2026-02-03"
+      },
+      "note": {
+       "text": "aggregate"
+      }
+     }
+    },
+    {
+     "op": "sql.exec",
+     "reason": "two values of the largest i64, whose sum leaves the i64 range",
+     "sql": "UPDATE typed_value SET wide = 9223372036854775807 WHERE seq IN (1, 2)"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "two values of the smallest i64, whose sum leaves the i64 range below it",
+     "sql": "UPDATE typed_value SET wide = -9223372036854775808 WHERE seq IN (3, 4)"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a value that brings a sum that passed the i64 range back into it",
+     "sql": "UPDATE typed_value SET wide = -9223372036854775807 WHERE seq = 5"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "TypedValue",
+     "where": {
+      "seq": {
+       "in": {
+        "array": [
+         {
+          "int": "1"
+         },
+         {
+          "int": "2"
+         }
+        ]
+       }
+      }
+     },
+     "aggregate": {
+      "agg": "sum",
+      "column": "wide"
+     },
+     "expect": {
+      "mysql": {
+       "json": 1.8446744073709552e+19
+      },
+      "postgres": {
+       "json": 1.8446744073709552e+19
+      },
+      "sqlite": {
+       "json": 1.8446744073709552e+19
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "TypedValue",
+     "where": {
+      "seq": {
+       "in": {
+        "array": [
+         {
+          "int": "1"
+         },
+         {
+          "int": "2"
+         }
+        ]
+       }
+      }
+     },
+     "aggregate": {
+      "agg": "avg",
+      "column": "wide"
+     },
+     "expect": {
+      "mysql": {
+       "json": 9.223372036854776e+18
+      },
+      "postgres": {
+       "json": 9.223372036854776e+18
+      },
+      "sqlite": {
+       "json": 9.223372036854776e+18
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "TypedValue",
+     "where": {
+      "seq": {
+       "in": {
+        "array": [
+         {
+          "int": "3"
+         },
+         {
+          "int": "4"
+         }
+        ]
+       }
+      }
+     },
+     "aggregate": {
+      "agg": "sum",
+      "column": "wide"
+     },
+     "expect": {
+      "mysql": {
+       "json": -1.8446744073709552e+19
+      },
+      "postgres": {
+       "json": -1.8446744073709552e+19
+      },
+      "sqlite": {
+       "json": -1.8446744073709552e+19
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "TypedValue",
+     "where": {
+      "seq": {
+       "in": {
+        "array": [
+         {
+          "int": "3"
+         },
+         {
+          "int": "4"
+         }
+        ]
+       }
+      }
+     },
+     "aggregate": {
+      "agg": "avg",
+      "column": "wide"
+     },
+     "expect": {
+      "mysql": {
+       "json": -9.223372036854776e+18
+      },
+      "postgres": {
+       "json": -9.223372036854776e+18
+      },
+      "sqlite": {
+       "json": -9.223372036854776e+18
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "TypedValue",
+     "where": {
+      "seq": {
+       "in": {
+        "array": [
+         {
+          "int": "1"
+         },
+         {
+          "int": "2"
+         },
+         {
+          "int": "5"
+         }
+        ]
+       }
+      }
+     },
+     "aggregate": {
+      "agg": "sum",
+      "column": "wide"
+     },
+     "expect": {
+      "mysql": {
+       "json": 9.223372036854776e+18
+      },
+      "postgres": {
+       "json": 9.223372036854776e+18
+      },
+      "sqlite": {
+       "json": 9.223372036854776e+18
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "TypedValue",
+     "where": {
+      "seq": {
+       "in": {
+        "array": [
+         {
+          "int": "1"
+         },
+         {
+          "int": "2"
+         },
+         {
+          "int": "3"
+         },
+         {
+          "int": "4"
+         }
+        ]
+       }
+      }
+     },
+     "aggregate": {
+      "agg": "sum",
+      "column": "wide"
+     },
+     "expect": {
+      "mysql": {
+       "json": -2
+      },
+      "postgres": {
+       "json": -2
+      },
+      "sqlite": {
+       "json": -2
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "TypedValue",
+     "where": {
+      "seq": {
+       "in": {
+        "array": [
+         {
+          "int": "1"
+         },
+         {
+          "int": "2"
+         },
+         {
+          "int": "3"
+         },
+         {
+          "int": "4"
+         }
+        ]
+       }
+      }
+     },
+     "aggregate": {
+      "agg": "avg",
+      "column": "wide"
+     },
+     "expect": {
+      "mysql": {
+       "json": -0.5
+      },
+      "postgres": {
+       "json": -0.5
+      },
+      "sqlite": {
+       "json": -0.5
       }
      }
     }

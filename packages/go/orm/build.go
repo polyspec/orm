@@ -27,6 +27,9 @@ type request struct {
 	// external lists, per parent model, the relations whose child has its
 	// own connection; they run as separate statements after the parents load.
 	external map[*Core][]relSpec
+	// sumCells is the number of sum cells of a sum or an average statement: 2 where the planner splits the sum of an exact
+	// column into its high and low 32 bits (DIA-202), 1 otherwise.
+	sumCells int
 }
 
 func (r *request) param(v any) int {

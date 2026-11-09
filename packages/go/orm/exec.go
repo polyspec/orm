@@ -1197,11 +1197,18 @@ func scanOne(ctx context.Context, ex executor, c *cached, st *plan.Step, r *requ
 	if err != nil {
 		return nil, d.modelDone(ex, st, st.SQL, args, masks, start, err)
 	}
-	// An average reads the sum and the count of its values (DSL-161); every other scalar statement reads one cell.
-	var v, n cell
-	dest := []any{&v}
-	if r.ir.Kind == "avg" {
-		dest = append(dest, &n)
+	// A sum reads its sums and an average its sums and the count of its values: two sums where the planner splits the sum of
+	// an exact column (DIA-202), one otherwise (DSL-161); every other scalar statement reads one cell.
+	cells := make([]cell, 1)
+	if r.ir.Kind == "sum" || r.ir.Kind == "avg" {
+		cells = make([]cell, r.sumCells)
+		if r.ir.Kind == "avg" {
+			cells = append(cells, cell{})
+		}
+	}
+	dest := make([]any, len(cells))
+	for i := range cells {
+		dest[i] = &cells[i]
 	}
 	if err := d.takeStatementFault(); err != nil {
 		return nil, d.modelDone(ex, st, st.SQL, args, masks, start, err)
@@ -1211,10 +1218,17 @@ func scanOne(ctx context.Context, ex executor, c *cached, st *plan.Step, r *requ
 	if err := d.modelDone(ex, st, st.SQL, args, masks, start, err); err != nil {
 		return nil, err
 	}
-	if r.ir.Kind == "avg" {
-		return avgCells{sum: v.v, count: n.v}, nil
+	switch r.ir.Kind {
+	case "sum":
+		return sumCell(cells)
+	case "avg":
+		sum, err := sumCell(cells[:len(cells)-1])
+		if err != nil {
+			return nil, err
+		}
+		return avgCells{sum: sum, count: cells[len(cells)-1].v}, nil
 	}
-	return v.v, nil
+	return cells[0].v, nil
 }
 
 // paginate runs the page statement with its relations and the count statement.

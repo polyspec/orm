@@ -52,6 +52,30 @@ fn exact_digits(value: &Val, scale: u32) -> Result<(bool, String)> {
     Ok((negative, trimmed.to_owned()))
 }
 
+/// The sum of the sum cells of a statement over a column of type `ty`: its one cell, or, for the two cells of the sum of the
+/// high 32 bits and the sum of the low 32 bits of an exact column on SQLite and markdown, the exact integer hi × 2^32 + lo
+/// (DIA-202), an integer cell where it fits i64 and its decimal text at the scale of the column past it; null when both are
+/// null, the sum of no value.
+pub(crate) fn sum_cell(ty: &Type, cells: &[Val]) -> Result<Val> {
+    match cells {
+        [cell] => Ok(cell.clone()),
+        [Val::Null, Val::Null] => Ok(Val::Null),
+        [Val::I64(hi), Val::I64(lo)] if *lo >= 0 => {
+            let sum = (i128::from(*hi) << 32) + i128::from(*lo);
+            if let Ok(n) = i64::try_from(sum) {
+                return Ok(Val::I64(n));
+            }
+            let scale = exact_scale(ty).ok_or_else(|| Error::internal("a split sum is over a column that is not exact"))? as usize;
+            let digits = format!("{:0>width$}", sum.unsigned_abs(), width = scale + 1);
+            let (whole, fraction) = digits.split_at(digits.len() - scale);
+            let sign = if sum < 0 { "-" } else { "" };
+            Ok(Val::Str(if scale == 0 { format!("{sign}{whole}") } else { format!("{sign}{whole}.{fraction}") }))
+        }
+        [_, _] => Err(refused()),
+        _ => Err(Error::internal("a sum statement read no sum")),
+    }
+}
+
 /// The nearest binary64 value of the digits × 10^-scale, ties to even; a value beyond the finite range is CODEC_DECODE
 /// (DSL-66).
 fn nearest_binary64(negative: bool, digits: &str, scale: u32) -> Result<f64> {

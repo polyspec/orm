@@ -3190,8 +3190,9 @@ def scalar(ex: Executor, request: dict, params):
         return cells(db._send_step(ex, step["sql"], step, params))
 
     def cells(result):
-        # An average reads the sum and the count of its values (DSL-161); every other scalar statement reads one cell.
-        if request["kind"] == "avg":
+        # A sum reads its sums and an average its sums and the count of its values (DSL-161, DIA-202); every other
+        # scalar statement reads one cell.
+        if request["kind"] in ("avg", "sum"):
             return tuple(result["rows"][0])
         return result["rows"][0][0] if result["rows"] else None
 

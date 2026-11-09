@@ -315,12 +315,19 @@ export class Planner {
   private qcol(s: Scope, col: string): string { return `${this.d.quote(s.alias)}.${this.d.quote(col)}`; }
 
   /**
-   * The SUM of the column of a sum or an average. MySQL writes an infinite double as 0 in its text protocol, so on MySQL an
-   * f64 sum adds 0, which MySQL refuses with 1690 (SQLSTATE 22003) when the sum is not finite (DIA-200).
+   * The SUMs of the column of a sum or an average. MySQL writes an infinite double as 0 in its text protocol, so on MySQL an
+   * f64 sum adds 0, which MySQL refuses with 1690 (SQLSTATE 22003) when the sum is not finite (DIA-200). SQLite sums integers
+   * in i64 and refuses a sum past it, so on SQLite, and on markdown, which runs SQLite, the sum of an exact column is the sum
+   * of its high 32 bits and the sum of its low 32 bits, which the executor combines (DIA-202).
    */
-  private aggregateSum(root: Scope, column: string): string {
-    const sum = `SUM(${this.qcol(root, column)})`;
-    return this.d.name === 'mysql' && columnOf(root.ent, column)?.type === 'f64' ? `${sum} + 0` : sum;
+  private aggregateSums(root: Scope, column: string): string[] {
+    const q = this.qcol(root, column);
+    const type = columnOf(root.ent, column)?.type;
+    if (this.d.name === 'sqlite' && (type === 'i16' || type === 'i32' || type === 'i64' || type === 'decimal')) {
+      // A cell that is no integer makes the low sum 0.5, which no executor reads as an integer (DIA-202).
+      return [`SUM(${q} >> 32)`, `CASE WHEN MAX(typeof(${q}) NOT IN ('integer', 'null')) THEN 0.5 ELSE SUM(${q} & 4294967295) END`];
+    }
+    return [this.d.name === 'mysql' && type === 'f64' ? `SUM(${q}) + 0` : `SUM(${q})`];
   }
 
   private qualified(s: Scope, columns: readonly string[]): string[] { return columns.map(c => this.qcol(s, c)); }
@@ -353,11 +360,11 @@ export class Planner {
         sql += groupCount ? '1' : 'COUNT(*)';
         break;
       case 'sum':
-        sql += `COALESCE(${this.aggregateSum(root, agg)}, 0)`;
+        sql += this.aggregateSums(root, agg).map(sum => `COALESCE(${sum}, 0)`).join(', ');
         break;
       case 'avg':
         // The executor divides the sum by the count of values, so the average is exact before its one conversion (DSL-161).
-        sql += `${this.aggregateSum(root, agg)}, COUNT(${this.qcol(root, agg)})`;
+        sql += `${this.aggregateSums(root, agg).join(', ')}, COUNT(${this.qcol(root, agg)})`;
         break;
       case 'group_count': {
         sql += this.selectGroupCountList(b, root, asm, idx, outNames);

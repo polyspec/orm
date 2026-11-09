@@ -45,9 +45,37 @@ func exactAggregate(field *runtimemodel.Field) bool {
 	return false
 }
 
-// exactSum reads the sum cell of an exact column as its sign and the digits of the sum times 10^scale: an integer cell is
-// that integer (SQLite and markdown store a decimal so, DIA-25), a text cell is a decimal of at most scale fraction digits.
+// splitSum reports whether the planner splits the sum of the column into the sums of its high and low 32 bits: an exact
+// column on SQLite and on markdown, which runs SQLite (DIA-202).
+func splitSum(driver string, field *runtimemodel.Field) bool {
+	return (driver == "sqlite" || driver == "markdown") && exactAggregate(field)
+}
+
+// sumCell is the sum of a sum or an average statement: its one cell, or the exact integer hi × 2^32 + lo of the two cells of a
+// split sum (DIA-202); SQL NULL, the sum of no value, stays nil.
+func sumCell(cells []cell) (any, error) {
+	if len(cells) == 1 {
+		return cells[0].v, nil
+	}
+	if cells[0].v == nil && cells[1].v == nil {
+		return nil, nil
+	}
+	hi, okHi := cells[0].v.(int64)
+	lo, okLo := cells[1].v.(int64)
+	if !okHi || !okLo {
+		return nil, aggregateRefusal()
+	}
+	sum := new(big.Int).Lsh(big.NewInt(hi), 32)
+	return sum.Add(sum, big.NewInt(lo)), nil
+}
+
+// exactSum reads the sum cell of an exact column as its sign and the digits of the sum times 10^scale: an integer cell, or
+// the integer of a split sum (DIA-202), is that integer (SQLite and markdown store a decimal so, DIA-25), a text cell is a
+// decimal of at most scale fraction digits.
 func exactSum(raw any, scale int) (bool, string, error) {
+	if n, ok := raw.(*big.Int); ok {
+		return n.Sign() < 0, new(big.Int).Abs(n).String(), nil
+	}
 	if n, ok := raw.(int64); ok {
 		digits := strconv.FormatInt(n, 10)
 		if n < 0 {

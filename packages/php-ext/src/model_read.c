@@ -1493,16 +1493,72 @@ static bool exact_sum_value(zval *raw, zend_long scale, bool scaled, zval *out)
     return ok;
 }
 
+/* split_sum_text writes the exact integer hi × 2^32 + lo of the two cells of a split sum as its decimal text (DIA-202). The
+ * integer is held as three 32-bit limbs of its magnitude, whose division by 10 keeps every intermediate below 2^36. */
+static void split_sum_text(zend_long hi, zend_long lo, smart_str *out)
+{
+    /* hi × 2^32 + lo = (hi + (lo >> 32)) × 2^32 + (lo & 0xffffffff), with lo >= 0. */
+    int64_t high = (int64_t)hi + (int64_t)((uint64_t)lo >> 32);
+    uint64_t low = (uint64_t)lo & 0xffffffffu;
+    bool negative = high < 0;
+    /* The magnitude of a negative high × 2^32 + low is (|high| - 1) × 2^32 + (2^32 - low), or |high| × 2^32 for low 0. */
+    uint64_t magnitude = negative ? (uint64_t)0 - (uint64_t)high : (uint64_t)high;
+    if (negative && low != 0) {
+        magnitude -= 1;
+        low = 0x100000000u - low;
+    }
+    uint32_t limbs[3] = {(uint32_t)(magnitude >> 32), (uint32_t)(magnitude & 0xffffffffu), (uint32_t)low};
+    char digits[40];
+    size_t n = 0;
+    do {
+        uint64_t rest = 0;
+        for (int i = 0; i < 3; i++) {
+            uint64_t acc = (rest << 32) | limbs[i];
+            limbs[i] = (uint32_t)(acc / 10);
+            rest = acc % 10;
+        }
+        digits[n++] = (char)('0' + rest);
+    } while (limbs[0] != 0 || limbs[1] != 0 || limbs[2] != 0);
+    if (negative) smart_str_appendc(out, '-');
+    while (n > 0) smart_str_appendc(out, digits[--n]);
+    smart_str_0(out);
+}
+
+/* sum_of is the sum of the sum cells of a statement, row[0] .. row[count - 1]: its one cell, or the exact integer of the two
+ * cells of a split sum as its decimal text (DIA-202); null when both are null, the sum of no value. */
+static bool sum_of(zval *row, uint32_t count, zval *out)
+{
+    zval *first = Z_TYPE_P(row) == IS_ARRAY ? zend_hash_index_find(Z_ARRVAL_P(row), 0) : NULL;
+    if (first == NULL) return read_throw("INTERNAL", "a sum statement read no row of sums");
+    if (count == 1) { ZVAL_COPY(out, first); return true; }
+    zval *second = zend_hash_index_find(Z_ARRVAL_P(row), 1);
+    if (second == NULL) return read_throw("INTERNAL", "a split sum read one of its two sums");
+    if (Z_TYPE_P(first) == IS_NULL && Z_TYPE_P(second) == IS_NULL) { ZVAL_NULL(out); return true; }
+    zend_long parts[2];
+    zval *cells[2] = {first, second};
+    for (int i = 0; i < 2; i++) {
+        double ignored;
+        if (Z_TYPE_P(cells[i]) == IS_LONG) {
+            parts[i] = Z_LVAL_P(cells[i]);
+        } else if (Z_TYPE_P(cells[i]) != IS_STRING || Z_STRLEN_P(cells[i]) == 0
+                   || is_numeric_string(Z_STRVAL_P(cells[i]), Z_STRLEN_P(cells[i]), &parts[i], &ignored, false) != IS_LONG) {
+            return read_throw("CODEC_DECODE", AGGREGATE_REFUSED);
+        }
+    }
+    if (parts[1] < 0) return read_throw("CODEC_DECODE", AGGREGATE_REFUSED);
+    smart_str text = {0};
+    split_sum_text(parts[0], parts[1], &text);
+    ZVAL_STR(out, text.s);
+    return true;
+}
+
 /* avg_value is the result of getAvg for the row of the sum and the count of the values of the column: null for no value; for
  * an exact column the exact sum divided by the count, rounded half away from zero to AVG_SCALE_EXTRA places beyond the scale
  * of the column and then converted once (DSL-66, DSL-161); for an f64 column the binary64 sum divided by the count, which is
  * the AVG of every database. The long division keeps its remainder below the count: ten additions of the remainder modulo the
  * count never leave the integer range. */
-static bool avg_value(zval *model, zval *row, bool exact, zend_long scale, bool scaled, zval *out)
+static bool avg_value(zval *model, zval *sum, zval *count_cell, bool exact, zend_long scale, bool scaled, zval *out)
 {
-    zval *sum = Z_TYPE_P(row) == IS_ARRAY ? zend_hash_index_find(Z_ARRVAL_P(row), 0) : NULL;
-    zval *count_cell = Z_TYPE_P(row) == IS_ARRAY ? zend_hash_index_find(Z_ARRVAL_P(row), 1) : NULL;
-    if (sum == NULL || count_cell == NULL) return read_throw("INTERNAL", "an average statement read no sum and count");
     zend_long count = -1;
     if (Z_TYPE_P(count_cell) == IS_LONG) {
         count = Z_LVAL_P(count_cell);
@@ -1638,14 +1694,24 @@ static bool read_aggregate(zval *model, const char *fn, zval *return_value)
     bool exact = read_string_is(type, "i16") || read_string_is(type, "i32") || read_string_is(type, "i64") || read_string_is(type, "decimal");
     zend_long column_scale = scale != NULL && Z_TYPE_P(scale) == IS_LONG ? Z_LVAL_P(scale) : 0;
     zval_ptr_dtor(&meta);
+    /* The row holds two sums where the planner splits the sum of an exact column (DIA-202), one otherwise, and for an average
+     * the count after them. */
+    uint32_t cells = Z_TYPE(result) == IS_ARRAY ? zend_hash_num_elements(Z_ARRVAL(result)) : 0;
+    uint32_t sums = strcmp(fn, "sum") == 0 ? cells : cells - 1;
+    if (cells == 0 || sums == 0 || sums > 2) { zval_ptr_dtor(&result); return read_throw("INTERNAL", "a sum or average statement read no row of sums"); }
+    zval sum;
+    if (!sum_of(&result, sums, &sum)) { zval_ptr_dtor(&result); return false; }
     bool done;
     if (strcmp(fn, "sum") == 0) {
-        if (Z_TYPE(result) == IS_NULL) { ZVAL_NULL(return_value); zval_ptr_dtor(&result); return true; }
-        done = exact ? exact_sum_value(&result, column_scale, scaled, return_value)
-                     : read_model_static_call(model, "aggregateNumber", return_value, 1, &result);
+        if (Z_TYPE(sum) == IS_NULL) { ZVAL_NULL(return_value); zval_ptr_dtor(&sum); zval_ptr_dtor(&result); return true; }
+        done = exact ? exact_sum_value(&sum, column_scale, scaled, return_value)
+                     : read_model_static_call(model, "aggregateNumber", return_value, 1, &sum);
     } else {
-        done = avg_value(model, &result, exact, column_scale, scaled, return_value);
+        zval *count_cell = zend_hash_index_find(Z_ARRVAL(result), sums);
+        done = count_cell != NULL ? avg_value(model, &sum, count_cell, exact, column_scale, scaled, return_value)
+                                  : read_throw("INTERNAL", "an average statement read no count");
     }
+    zval_ptr_dtor(&sum);
     zval_ptr_dtor(&result);
     return done;
 }

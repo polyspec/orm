@@ -643,9 +643,30 @@ async function aggregate(c: Core, fn: 'sum' | 'avg'): Promise<number | null> {
   }
   // The planner has checked the column, so the field of the model is there.
   const field = present(fieldOf(c.ent.entity, c.agg), `the aggregate column ${c.ent.entity.name}.${c.agg}`);
-  if (fn === 'sum') return value === null || value === undefined ? null : sumValue(field, value);
-  if (!Array.isArray(value)) throw new OrmError(codes.INTERNAL, 'an average statement read no sum and count');
-  return avgValue(field, value[0], value[1]);
+  if (!Array.isArray(value)) throw new OrmError(codes.INTERNAL, `a ${fn} statement read no row of sums`);
+  const cells: readonly unknown[] = value;
+  if (fn === 'sum') {
+    const sum = sumOf(cells);
+    return sum === null || sum === undefined ? null : sumValue(field, sum);
+  }
+  return avgValue(field, sumOf(cells.slice(0, -1)), cells.at(-1));
+}
+
+/**
+ * The sum of the sum cells of a statement: its one cell, or the exact integer hi × 2^32 + lo of the two cells of a split sum
+ * (DIA-202); null when both are null, the sum of no value.
+ */
+function sumOf(cells: readonly unknown[]): unknown {
+  if (cells.length === 1) return cells[0];
+  const [hi, lo] = cells;
+  if ((hi === null || hi === undefined) && (lo === null || lo === undefined)) return null;
+  const integer = (cell: unknown): bigint => {
+    if (typeof cell === 'bigint') return cell;
+    if (typeof cell === 'number' && Number.isSafeInteger(cell)) return BigInt(cell);
+    if (typeof cell === 'string' && /^-?[0-9]+$/.test(cell)) return BigInt(cell);
+    throw new OrmError(codes.CODEC_DECODE, aggregateRefused);
+  };
+  return (integer(hi) << 32n) + integer(lo);
 }
 
 /** The text of every refused sum or average scalar in every client (DSL-66). */

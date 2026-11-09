@@ -3498,8 +3498,10 @@ static bool scalar_of_impl(zval *self, zval *frame, zval *r, zval *out)
             }
         }
     } else {
-        /* An average reads the sum and the count of its values (DSL-161); every other scalar statement reads one cell. */
-        ok = scalar_of_step(self, step0, rd(r, "params"), is_str(aget(rd(r, "ir"), "kind"), "avg"), out);
+        /* A sum reads its sums and an average its sums and the count of its values (DSL-161, DIA-202); every other scalar
+         * statement reads one cell. */
+        zval *kind = aget(rd(r, "ir"), "kind");
+        ok = scalar_of_step(self, step0, rd(r, "params"), is_str(kind, "avg") || is_str(kind, "sum"), out);
     }
     zval_ptr_dtor(&parts);
     zval_ptr_dtor(&plan);

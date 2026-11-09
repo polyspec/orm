@@ -1185,9 +1185,12 @@ static zend_string *qcol(pctx *c, pscope *s, zend_string *col)
     return fmt(c, "%s.%s", ZSTR_VAL(a), ZSTR_VAL(q));
 }
 
-/* The SUM of the column of a sum or an average. MySQL writes an infinite double as 0 in its text protocol, so on MySQL an
- * f64 sum adds 0, which MySQL refuses with 1690 (SQLSTATE 22003) when the sum is not finite (DIA-200). */
-static zend_string *aggregate_sum(pctx *c, pscope *root, zend_string *column)
+/* The SUMs of the column of a sum or an average, joined by commas, each in COALESCE(..., 0) with coalesce. MySQL writes an
+ * infinite double as 0 in its text protocol, so on MySQL an f64 sum adds 0, which MySQL refuses with 1690 (SQLSTATE 22003)
+ * when the sum is not finite (DIA-200). SQLite sums integers in i64 and refuses a sum past it, so on SQLite, and on markdown,
+ * which runs SQLite, the sum of an exact column is the sum of its high 32 bits and the sum of its low 32 bits, which the
+ * executor combines (DIA-202). */
+static zend_string *aggregate_sums(pctx *c, pscope *root, zend_string *column, bool coalesce)
 {
     zend_string *qc = qcol(c, root, column);
     OKP(qc);
@@ -1195,9 +1198,19 @@ static zend_string *aggregate_sum(pctx *c, pscope *root, zend_string *column)
     if (!col_of(c, root->ent, column, &col)) return NULL;
     zend_string *name = dialect_name(c);
     OKP(name);
-    bool f64 = col != NULL && zend_string_equals_literal(gs(c, col, "type"), "f64");
-    if (f64 && zend_string_equals_literal(name, "mysql")) return fmt(c, "SUM(%s) + 0", ZSTR_VAL(qc));
-    return fmt(c, "SUM(%s)", ZSTR_VAL(qc));
+    zend_string *type = col != NULL ? gs(c, col, "type") : NULL;
+    bool f64 = type != NULL && zend_string_equals_literal(type, "f64");
+    bool exact = type != NULL && (zend_string_equals_literal(type, "i16") || zend_string_equals_literal(type, "i32")
+        || zend_string_equals_literal(type, "i64") || zend_string_equals_literal(type, "decimal"));
+    const char *open = coalesce ? "COALESCE(" : "", *close = coalesce ? ", 0)" : "";
+    if (exact && zend_string_equals_literal(name, "sqlite")) {
+        /* A cell that is no integer makes the low sum 0.5, which no executor reads as an integer (DIA-202). */
+        const char *q = ZSTR_VAL(qc);
+        return fmt(c, "%sSUM(%s >> 32)%s, %sCASE WHEN MAX(typeof(%s) NOT IN ('integer', 'null')) THEN 0.5 ELSE SUM(%s & 4294967295) END%s",
+            open, q, close, open, q, q, close);
+    }
+    if (f64 && zend_string_equals_literal(name, "mysql")) return fmt(c, "%sSUM(%s) + 0%s", open, ZSTR_VAL(qc), close);
+    return fmt(c, "%sSUM(%s)%s", open, ZSTR_VAL(qc), close);
 }
 
 /* The quoted columns of a list, qualified by the scope. */
@@ -2280,13 +2293,13 @@ static pstep *select_step(pctx *c, zval *steps, HashTable *q, const char *kind, 
     if (strcmp(kind, "count") == 0) {
         sel = groupCount ? fmt(c, "1") : fmt(c, "COUNT(*)");
     } else if (strcmp(kind, "sum") == 0) {
-        zend_string *sum = aggregate_sum(c, root, agg);
+        zend_string *sum = aggregate_sums(c, root, agg, true);
         OKP(sum);
-        sel = fmt(c, "COALESCE(%s, 0)", ZSTR_VAL(sum));
+        sel = sum;
     } else if (strcmp(kind, "avg") == 0) {
         /* The executor divides the sum by the count of values, so the average is exact before its one conversion
          * (DSL-161). */
-        zend_string *sum = aggregate_sum(c, root, agg);
+        zend_string *sum = aggregate_sums(c, root, agg, false);
         OKP(sum);
         zend_string *qc = qcol(c, root, agg);
         OKP(qc);

@@ -1289,8 +1289,9 @@ final class Db
             }
             return $total;
         }
-        // An average reads the sum and the count of its values (DSL-161); every other scalar statement reads one cell.
-        return $this->scalar($plan['steps'][0], $r->params, $r->ir['kind'] === 'avg');
+        // A sum reads its sums and an average its sums and the count of its values (DSL-161, DIA-202); every other
+        // scalar statement reads one cell.
+        return $this->scalar($plan['steps'][0], $r->params, in_array($r->ir['kind'], ['avg', 'sum'], true));
     }
 
     /** @internal @return array{0: array, 1: array, 2: int} */

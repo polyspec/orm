@@ -482,14 +482,22 @@ impl<'m> Planner<'m> {
         format!("{}.{}", self.d.quote(&s.alias), self.d.quote(col))
     }
 
-    /// The SUM of the column of a sum or an average. MySQL writes an infinite double as 0 in its text protocol, so on MySQL an
-    /// f64 sum adds 0, which MySQL refuses with 1690 (SQLSTATE 22003) when the sum is not finite (DIA-200).
-    fn aggregate_sum(&self, root: &Scope<'_>, column: &str) -> String {
-        let sum = format!("SUM({})", self.qcol(root, column));
-        if self.d.name() == "mysql" && root.ent.field(column).is_some_and(|f| f.ty == Type::F64) {
-            return format!("{sum} + 0");
+    /// The SUMs of the column of a sum or an average. MySQL writes an infinite double as 0 in its text protocol, so on MySQL an
+    /// f64 sum adds 0, which MySQL refuses with 1690 (SQLSTATE 22003) when the sum is not finite (DIA-200). SQLite sums
+    /// integers in i64 and refuses a sum past it, so on SQLite, and on markdown, which runs SQLite, the sum of an exact column
+    /// is the sum of its high 32 bits and the sum of its low 32 bits, which the executor combines (DIA-202).
+    fn aggregate_sums(&self, root: &Scope<'_>, column: &str) -> Vec<String> {
+        let q = self.qcol(root, column);
+        let ty = root.ent.field(column).map(|f| &f.ty);
+        let exact = matches!(ty, Some(Type::I16 | Type::I32 | Type::I64 | Type::Decimal(..)));
+        if exact && self.d.name() == "sqlite" {
+            // A cell that is no integer makes the low sum 0.5, which no executor reads as an integer (DIA-202).
+            return vec![format!("SUM({q} >> 32)"), format!("CASE WHEN MAX(typeof({q}) NOT IN ('integer', 'null')) THEN 0.5 ELSE SUM({q} & 4294967295) END")];
         }
-        sum
+        if self.d.name() == "mysql" && ty == Some(&Type::F64) {
+            return vec![format!("SUM({q}) + 0")];
+        }
+        vec![format!("SUM({q})")]
     }
 
     fn qualified(&self, s: &Scope<'_>, cols: &[String]) -> Vec<String> {
@@ -530,9 +538,12 @@ impl<'m> Planner<'m> {
         let group_count = kind == "count" && grouped;
         match kind {
             "count" => sb.push_str(if group_count { "1" } else { "COUNT(*)" }),
-            "sum" => sb.push_str(&format!("COALESCE({}, 0)", self.aggregate_sum(root, agg))),
+            "sum" => {
+                let sums: Vec<String> = self.aggregate_sums(root, agg).iter().map(|s| format!("COALESCE({s}, 0)")).collect();
+                sb.push_str(&sums.join(", "));
+            }
             // The executor divides the sum by the count of values, so the average is exact before its one conversion (DSL-161).
-            "avg" => sb.push_str(&format!("{}, COUNT({})", self.aggregate_sum(root, agg), self.qcol(root, agg))),
+            "avg" => sb.push_str(&format!("{}, COUNT({})", self.aggregate_sums(root, agg).join(", "), self.qcol(root, agg))),
             "group_count" => {
                 self.select_group_count_list(root, &mut sb, &mut asm, &mut out_names)?;
                 asm.key = asm.key_refs(&q.group_by)?;

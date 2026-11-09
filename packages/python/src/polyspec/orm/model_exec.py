@@ -524,8 +524,22 @@ def aggregate_of(c: Core, kind: str) -> float | None:
             f"{c.ent.entity.name}.{c.agg} is missing from a planned aggregate",
         )
     if kind == "sum":
-        return 0.0 if value is None else _sum_value(field, value)
-    return _avg_value(field, value)
+        total = _sum_of(value)
+        return 0.0 if total is None else _sum_value(field, total)
+    return _avg_value(field, (_sum_of(value[:-1]), value[-1]))
+
+
+def _sum_of(cells):
+    """The sum of the sum cells of a statement: its one cell, or the exact integer hi × 2^32 + lo of the two cells of a
+    split sum (DIA-202); None when both are None, the sum of no value."""
+    if len(cells) == 1:
+        return cells[0]
+    high, low = cells
+    if high is None and low is None:
+        return None
+    if any(isinstance(cell, bool) or not isinstance(cell, int) for cell in (high, low)):
+        raise OrmError(codes.CODEC_DECODE, _AGGREGATE_REFUSED)
+    return (high << 32) + low
 
 
 def _aggregate_range_error(error: OrmError) -> OrmError:

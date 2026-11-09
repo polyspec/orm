@@ -893,18 +893,22 @@ func (c *Core) aggregate(fn string) (any, *runtimemodel.Field, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	r := c.build(fn)
-	r.ir.Agg = c.agg
-	v, err := scalar(ex, r)
-	if err != nil {
-		return nil, nil, aggregateRangeErr(err)
-	}
-	// The planner has checked the column, so the field of the manifest is there.
 	ent, err := c.entityModel(ex.base())
 	if err != nil {
 		return nil, nil, err
 	}
 	field := ent.Field(c.agg)
+	r := c.build(fn)
+	r.ir.Agg = c.agg
+	r.sumCells = 1
+	if field != nil && splitSum(ex.base().driver, field) {
+		r.sumCells = 2
+	}
+	v, err := scalar(ex, r)
+	if err != nil {
+		return nil, nil, aggregateRangeErr(err)
+	}
+	// The planner has checked the column, so the field of the manifest is there.
 	if field == nil {
 		return nil, nil, codecErr(CodeInternal, "%s.%s is missing from a planned aggregate", c.ent.Name, c.agg)
 	}

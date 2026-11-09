@@ -2022,13 +2022,101 @@ abstract class Model implements \JsonSerializable, ModelMetadata
             ?? throw new OrmException(Code::INTERNAL, "{$this->agg} is missing from a planned aggregate");
         // SQLite and markdown hold a decimal as the integer value × 10^scale, and so its sum (DIA-25).
         $scaled = $db->dialect() === 'sqlite';
+        if (!is_array($value) || !array_is_list($value) || $value === []) {
+            throw new OrmException(Code::INTERNAL, "a $fn statement read no row of sums");
+        }
         if ($fn === 'sum') {
-            return $value === null ? null : self::sumValue($col, $value, $scaled);
+            $sum = self::sumOf($value);
+            return $sum === null ? null : self::sumValue($col, $sum, $scaled);
         }
-        if (!is_array($value)) {
-            throw new OrmException(Code::INTERNAL, 'an average statement read no sum and count');
+        $count = array_pop($value);
+        return self::avgValue($col, self::sumOf($value), $count, $scaled);
+    }
+
+    /**
+     * The sum of the sum cells of a statement: its one cell, or the exact integer hi × 2^32 + lo of the two cells of a
+     * split sum, as its decimal text (DIA-202); null when both are null, the sum of no value.
+     *
+     * @param list<mixed> $cells
+     */
+    private static function sumOf(array $cells): mixed
+    {
+        if (count($cells) === 1) {
+            return $cells[0];
         }
-        return self::avgValue($col, $value[0] ?? null, $value[1] ?? null, $scaled);
+        [$high, $low] = $cells;
+        if ($high === null && $low === null) {
+            return null;
+        }
+        $integer = static function (mixed $cell): int {
+            if (is_string($cell) && preg_match('/^-?[0-9]+$/D', $cell) === 1 && (string) (int) $cell === $cell) {
+                return (int) $cell;
+            }
+            return is_int($cell) ? $cell : throw new OrmException(Code::CODEC_DECODE, self::AGGREGATE_REFUSED);
+        };
+        $high = $integer($high);
+        $low = $integer($low);
+        // high × 2^32 = high × 65536 × 65536, each product of a digit and 65536 plus a carry is below 2^21.
+        $digits = self::scaleDigits((string) abs($high), 65536);
+        $digits = self::scaleDigits($digits, 65536);
+        if ($high >= 0) {
+            return self::addDigits($digits, (string) $low);
+        }
+        // high < 0 and low >= 0: high × 2^32 + low = -(|high| × 2^32 - low), and |high| × 2^32 >= 2^32 > low only when
+        // low is below it; otherwise the result is low - |high| × 2^32 >= 0.
+        $magnitude = self::subtractDigits($digits, (string) $low);
+        if ($magnitude === null) {
+            return self::subtractDigits((string) $low, $digits);
+        }
+        return $magnitude === '0' ? '0' : "-$magnitude";
+    }
+
+    /** The decimal digits times a factor below 2^31. */
+    private static function scaleDigits(string $digits, int $factor): string
+    {
+        $out = '';
+        $carry = 0;
+        for ($i = strlen($digits) - 1; $i >= 0; $i--) {
+            $product = (ord($digits[$i]) - 48) * $factor + $carry;
+            $out = (string) ($product % 10) . $out;
+            $carry = intdiv($product, 10);
+        }
+        $out = ($carry > 0 ? (string) $carry : '') . $out;
+        $out = ltrim($out, '0');
+        return $out === '' ? '0' : $out;
+    }
+
+    /** The sum of two decimal digit strings. */
+    private static function addDigits(string $a, string $b): string
+    {
+        $out = '';
+        $carry = 0;
+        for ($i = strlen($a) - 1, $j = strlen($b) - 1; $i >= 0 || $j >= 0 || $carry > 0; $i--, $j--) {
+            $digit = ($i >= 0 ? ord($a[$i]) - 48 : 0) + ($j >= 0 ? ord($b[$j]) - 48 : 0) + $carry;
+            $out = (string) ($digit % 10) . $out;
+            $carry = intdiv($digit, 10);
+        }
+        $out = ltrim($out, '0');
+        return $out === '' ? '0' : $out;
+    }
+
+    /** The difference a - b of two decimal digit strings, or null when b is greater than a. */
+    private static function subtractDigits(string $a, string $b): ?string
+    {
+        $a = ltrim($a, '0');
+        $b = ltrim($b, '0');
+        if (strlen($a) < strlen($b) || (strlen($a) === strlen($b) && strcmp($a, $b) < 0)) {
+            return null;
+        }
+        $out = '';
+        $borrow = 0;
+        for ($i = strlen($a) - 1, $j = strlen($b) - 1; $i >= 0; $i--, $j--) {
+            $digit = ord($a[$i]) - 48 - ($j >= 0 ? ord($b[$j]) - 48 : 0) - $borrow;
+            $borrow = $digit < 0 ? 1 : 0;
+            $out = (string) ($digit + 10 * $borrow) . $out;
+        }
+        $out = ltrim($out, '0');
+        return $out === '' ? '0' : $out;
     }
 
     /** The text of every refused sum or average scalar in every client (DSL-66). */
