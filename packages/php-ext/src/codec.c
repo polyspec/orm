@@ -1,9 +1,10 @@
 /*
  * Polyspec\Orm\Codec of the PHP library (packages/php/src/Codec.php) in C. The dispatch of the stages, the byte work (gz with
- * libz, base64 strictly as the encoder writes it, the ip packing), the reader of the serialize format, the value checks and the
- * error codes are made here, the same as Codec.php. The parsers and writers that the library itself calls are called through the
- * engine by the same public names: Polyspec\OrderedJson\parse (the ordered-json value), Purr\Yaml (the YAML node model, CoreSchema
- * and the Dumper), and serialize, json_encode, get_object_vars, random_bytes and openssl of PHP's own core. Each refusal is the rule
+ * libz, base64 strictly as the encoder writes it, the ip packing), the reader of the serialize format, the YAML reader of orm
+ * (docs/spec/codec.md COD-74 to COD-80), the value checks and the error codes are made here, the same as Codec.php. The parsers and
+ * writers that the library itself calls are called through the engine by the same public names: Polyspec\OrderedJson\parse (the
+ * ordered-json value), Purr\Yaml (the YAML node model and the Dumper, which only write), and serialize, json_encode,
+ * get_object_vars, random_bytes and openssl of PHP's own core. Each refusal is the rule
  * of COD-70 with its code and its one text, the same as Codec.php, and a failure of a library keeps its failure as the previous
  * exception (COD-71).
  */
@@ -454,233 +455,11 @@ static bool check_codec_value(const char *stage, zval *v)
     return rule == NULL || orm_failf("CODEC_ENCODE", "%s: %s", stage, rule);
 }
 
-/* ---- YAML: the node model of purr, its core schema and its Dumper ---- */
+/* ---- YAML: the reader of orm (docs/spec/codec.md COD-74 to COD-80), as the reader of Codec.php ---- */
 
 static bool yaml_rule(const char *rule)
 {
     return orm_failf("CODEC_DECODE", "yaml: %s", rule);
-}
-
-/* Codec.php yamlIntegerInRange: an integer of the core schema outside i64 is not a value of the common value model (COD-16); the
- * reader turns a decimal one into a float and wraps an octal or hexadecimal one, so the plain text is checked here. */
-static bool yaml_integer_in_range(zval *node)
-{
-    zval style, value;
-    if (!call_method(node, "getStyle", &style, 0, NULL)) {
-        return false;
-    }
-    bool plain = Z_TYPE(style) == IS_OBJECT && zend_string_equals_literal(Z_STR_P(zend_enum_fetch_case_name(Z_OBJ(style))), "Plain");
-    zval_ptr_dtor(&style);
-    if (!plain) {
-        return true;
-    }
-    if (!call_method(node, "getValue", &value, 0, NULL)) {
-        return false;
-    }
-    const char *s = Z_STRVAL(value);
-    size_t n = Z_STRLEN(value), i = 0, digits;
-    bool in_range = true, integer = false;
-    if (n > 2 && s[0] == '0' && (s[1] == 'o' || s[1] == 'x')) {
-        bool hex = s[1] == 'x';
-        for (i = 2; i < n && (hex ? isxdigit((unsigned char)s[i]) : (s[i] >= '0' && s[i] <= '7')); i++) {
-        }
-        if (i == n) {
-            integer = true;
-            for (i = 2; i + 1 < n && s[i] == '0'; i++) {
-            }
-            digits = n - i;
-            /* 2^63 - 1 is 21 octal digits, all 7, and 7fffffffffffffff. */
-            in_range = hex ? digits < 16 || (digits == 16 && s[i] >= '0' && s[i] <= '7') : digits <= 21;
-        }
-    } else {
-        size_t start = n > 0 && (s[0] == '+' || s[0] == '-') ? 1 : 0;
-        for (i = start; i < n && s[i] >= '0' && s[i] <= '9'; i++) {
-        }
-        if (i == n && n > start) {
-            integer = true;
-            for (i = start; i + 1 < n && s[i] == '0'; i++) {
-            }
-            digits = n - i;
-            const char *max = s[0] == '-' ? "9223372036854775808" : "9223372036854775807";
-            in_range = digits < 19 || (digits == 19 && memcmp(s + i, max, 19) <= 0);
-        }
-    }
-    zval_ptr_dtor(&value);
-    return !integer || in_range || yaml_rule("integer is outside the i64 range");
-}
-
-/* Codec::yamlProperties: the properties of a node that the codec refuses, an alias, an anchor and an explicit tag, in that order. */
-static bool yaml_properties(zval *node)
-{
-    bool yes;
-    IS_A(node, "Purr\\Yaml\\Node\\AliasNode", yes);
-    if (yes) {
-        return yaml_rule("aliases are not supported");
-    }
-    zval rv;
-    if (!call_method(node, "hasAnchor", &rv, 0, NULL)) {
-        return false;
-    }
-    bool anchored = Z_TYPE(rv) == IS_TRUE;
-    zval_ptr_dtor(&rv);
-    if (anchored) {
-        return yaml_rule("anchors are not supported");
-    }
-    if (!call_method(node, "findTag", &rv, 0, NULL)) {
-        return false;
-    }
-    bool tagged = Z_TYPE(rv) != IS_NULL;
-    zval_ptr_dtor(&rv);
-    return !tagged || yaml_rule("explicit tags are not supported");
-}
-
-/* The items of a purr list (a NodeList or a MappingEntryList) as a PHP list, as iterator_to_array($list, false). */
-static bool yaml_items(zval *node, const char *method, zval *items)
-{
-    zval list;
-    if (!call_method(node, method, &list, 0, NULL)) {
-        return false;
-    }
-    zval args[2];
-    ZVAL_COPY_VALUE(&args[0], &list);
-    ZVAL_FALSE(&args[1]);
-    bool ok = call_fn("iterator_to_array", items, 2, args);
-    zval_ptr_dtor(&list);
-    return ok;
-}
-
-/* Codec::yamlDepth: a sequence or a mapping inside a container at level depth past the 256 levels is yaml-depth. */
-static bool yaml_depth(zend_long depth)
-{
-    return depth + 1 <= DEPTH || yaml_rule(DEPTH_RULE);
-}
-
-/* Codec.php yamlNode: a purr node as a PHP value, with the rules of the codec. The node model of purrphp/yaml has four kinds (its
- * NodeVisitor): an alias, which yaml_properties refuses, a scalar, a sequence and a mapping, which is the last; a node of another
- * kind has no getEntries, and the failure of that call is yaml-parse (COD-72). A node is met where it starts (COD-70): its
- * properties, then the nesting rule of its level, depth being the level of its container, then its own rules, and a key before its
- * value. */
-static bool yaml_node(zval *node, zval *schema, zval *out, zend_long depth)
-{
-    bool yes;
-    if (!yaml_properties(node)) {
-        return false;
-    }
-
-    IS_A(node, "Purr\\Yaml\\Node\\ScalarNode", yes);
-    if (yes) {
-        if (!yaml_integer_in_range(node)) {
-            return false;
-        }
-        zval arg;
-        ZVAL_COPY(&arg, node);
-        bool ok = call_method(schema, "resolve", out, 1, &arg);
-        zval_ptr_dtor(&arg);
-        if (!ok) {
-            return false;
-        }
-        /* A float beyond the f64 range is read as INF, so the rule covers it with .inf and .nan (COD-16). */
-        if (Z_TYPE_P(out) == IS_DOUBLE && !zend_finite(Z_DVAL_P(out))) {
-            zval_ptr_dtor(out);
-            return yaml_rule("number is not finite");
-        }
-        return true;
-    }
-
-    if (!yaml_depth(depth)) {
-        return false;
-    }
-    IS_A(node, "Purr\\Yaml\\Node\\SequenceNode", yes);
-    if (yes) {
-        zval items;
-        if (!yaml_items(node, "getItems", &items)) {
-            return false;
-        }
-        array_init(out);
-        zval *item;
-        ZEND_HASH_FOREACH_VAL(Z_ARRVAL(items), item)
-        {
-            zval val;
-            if (!yaml_node(item, schema, &val, depth + 1)) {
-                zval_ptr_dtor(&items);
-                zval_ptr_dtor(out);
-                return false;
-            }
-            zend_hash_next_index_insert(Z_ARRVAL_P(out), &val);
-        }
-        ZEND_HASH_FOREACH_END();
-        zval_ptr_dtor(&items);
-        return true;
-    }
-
-    zval entries;
-    if (!yaml_items(node, "getEntries", &entries)) {
-        return false;
-    }
-    array_init(out);
-    zval *entry;
-    ZEND_HASH_FOREACH_VAL(Z_ARRVAL(entries), entry)
-    {
-        /* << is an ordinary key: YAML 1.2 has no merge key (COD-29). */
-        zval keynode, key, valnode, val;
-        bool sequence, mapping;
-        if (!call_method(entry, "getKey", &keynode, 0, NULL)) {
-            goto fail;
-        }
-        if (!is_instance(&keynode, "Purr\\Yaml\\Node\\SequenceNode", &sequence)
-            || !is_instance(&keynode, "Purr\\Yaml\\Node\\MappingNode", &mapping)) {
-            zval_ptr_dtor(&keynode);
-            goto fail;
-        }
-        if (sequence || mapping) {
-            if (yaml_properties(&keynode) && yaml_depth(depth + 1)) {
-                (void)yaml_rule("map keys must be scalar strings");
-            }
-            zval_ptr_dtor(&keynode);
-            goto fail;
-        }
-        bool read = yaml_node(&keynode, schema, &key, depth + 1);
-        zval_ptr_dtor(&keynode);
-        if (!read) {
-            goto fail;
-        }
-        if (Z_TYPE(key) != IS_STRING && Z_TYPE(key) != IS_LONG) {
-            zval_ptr_dtor(&key);
-            (void)yaml_rule("map keys must be strings or integers");
-            goto fail;
-        }
-        zval *exists = Z_TYPE(key) == IS_STRING ? zend_symtable_find(Z_ARRVAL_P(out), Z_STR(key))
-                                                : zend_hash_index_find(Z_ARRVAL_P(out), (zend_ulong)Z_LVAL(key));
-        if (exists != NULL) {
-            zval_ptr_dtor(&key);
-            (void)yaml_rule("duplicate map key");
-            goto fail;
-        }
-        if (!call_method(entry, "getValue", &valnode, 0, NULL)) {
-            zval_ptr_dtor(&key);
-            goto fail;
-        }
-        read = yaml_node(&valnode, schema, &val, depth + 1);
-        zval_ptr_dtor(&valnode);
-        if (!read) {
-            zval_ptr_dtor(&key);
-            goto fail;
-        }
-        if (Z_TYPE(key) == IS_STRING) {
-            zend_symtable_update(Z_ARRVAL_P(out), Z_STR(key), &val);
-        } else {
-            zend_hash_index_update(Z_ARRVAL_P(out), (zend_ulong)Z_LVAL(key), &val);
-        }
-        zval_ptr_dtor(&key);
-        continue;
-    fail:
-        zval_ptr_dtor(&entries);
-        zval_ptr_dtor(out);
-        return false;
-    }
-    ZEND_HASH_FOREACH_END();
-    zval_ptr_dtor(&entries);
-    return true;
 }
 
 /* Whether a character may appear in a YAML stream (YAML 1.2.2, 5.1, c-printable), as Codec::yamlStream. A byte order mark is
@@ -692,8 +471,8 @@ static bool yaml_printable(unsigned long cp)
     return (cp >= 0xA0 && cp <= 0xD7FF) || (cp >= 0xE000 && cp <= 0xFFFD) || (cp >= 0x10000 && cp <= 0x10FFFF);
 }
 
-/* The stream rules of YAML 1.2 that the reader does not apply, as Codec::yamlStream: the stream is UTF-8, a byte order mark
- * may start it and appears nowhere else, and every character is printable. */
+/* The stream rules of YAML 1.2 that hold before the reader reads the stream (COD-66, COD-75), as Codec::yamlStream: the stream
+ * is UTF-8, a byte order mark may start it and appears nowhere else, and every character is printable. */
 static bool yaml_stream(zend_string *text)
 {
     const unsigned char *s = (const unsigned char *)ZSTR_VAL(text);
@@ -714,76 +493,2248 @@ static bool yaml_stream(zend_string *text)
     return true;
 }
 
-/* The read of yamlDecode: one YAML document, read by purr and resolved by its core schema. A rule is a pending OrmException, and
- * a failure of the library is its own pending exception. */
-static bool yaml_read(zend_string *text, zval *out)
+/* Where a block node starts (s-l+block-node), Codec::Y_AT_*: on the next lines, after `-`, `?` or the `:` of an explicit entry,
+ * after the `:` of an implicit key, or after `---`. */
+#define Y_AT_LINES 0
+#define Y_AT_INDICATOR 1
+#define Y_AT_COLON 2
+#define Y_AT_DOCUMENT 3
+
+/* The frames of the reader, Codec::Y_*: the open collections, the pair of a flow sequence, and the rest of the line after a flow
+ * node of a block collection. */
+#define Y_BLOCK_SEQUENCE 1
+#define Y_BLOCK_MAPPING 2
+#define Y_FLOW_SEQUENCE 3
+#define Y_FLOW_MAPPING 4
+#define Y_PAIR 5
+#define Y_TRAIL 6
+
+/* What a step of the reader gives: a pending error, nothing yet, or a node read (a frame that ends). */
+#define Y_ERROR (-1)
+#define Y_NONE 0
+#define Y_DONE 1
+
+/* A frame of the reader, Codec::yamlFrame: its type, its state, its indentation, the array of a collection, the key of the open
+ * entry (a long or a string, or undef), whether that key is a JSON node, the place of a node that is no key, and whether the
+ * read ahead already knows the first key. */
+typedef struct {
+    int t;
+    int st;
+    zend_long m;
+    zval v;
+    zval k;
+    bool j;
+    zend_long f;
+    bool known;
+} yaml_frame;
+
+/* The node that the reader reads next: a block node of a collection indented by n (s-l+block-node) with flag for block-out and
+ * mode for where it starts, or a flow node whose lines are indented by n (ns-flow-node) with flag for a flow collection and
+ * mode for an implicit key, which is one line; key reads it by the rules of a key. */
+typedef struct {
+    bool set;
+    bool block;
+    zend_long n;
+    bool flag;
+    int mode;
+    bool key;
+} yaml_request;
+
+/* The state of one read: the stream after the byte order mark with its line breaks as LF, ended by a NUL that no stream holds
+ * (c-printable); the end of what the reader reads, which the read ahead and a node that is no key move; the place; the level
+ * of the open collections; the scratch text of a scalar; the explicit stack of the frames in heap memory; and the error. */
+typedef struct {
+    char *s;
+    zend_long len;
+    zend_long end;
+    bool trunc;
+    zend_long p;
+    zend_long level;
+    smart_str text;
+    yaml_frame *frames;
+    size_t count;
+    size_t cap;
+    const char *rule;
+    zend_long at;
+} yaml_reader;
+
+static void yaml_text_reset(yaml_reader *r)
+{
+    if (r->text.s != NULL) {
+        ZSTR_LEN(r->text.s) = 0;
+    }
+}
+
+static void yaml_repeat(smart_str *out, char c, zend_long n)
+{
+    for (zend_long i = 0; i < n; i++) {
+        smart_str_appendc(out, c);
+    }
+}
+
+/* A rule of the reader (COD-70), met where its node starts. */
+static bool yaml_fail_rule(yaml_reader *r, const char *rule)
+{
+    r->rule = rule;
+    return false;
+}
+
+/* yaml-parse at the byte at of the stream, Codec::yamlParseError. */
+static bool yaml_fail_parse(yaml_reader *r, zend_long at)
+{
+    r->rule = NULL;
+    r->at = at;
+    return false;
+}
+
+/* The character at p, or NUL at the end of what the reader reads, Codec::yamlAt. */
+static unsigned char yaml_at(const yaml_reader *r, zend_long p)
+{
+    return p < r->end ? (unsigned char)r->s[p] : '\0';
+}
+
+/* The character at p of the whole stream, $s[$p] of Codec.php, which ignores the end of what the reader reads. */
+static unsigned char yaml_ch(const yaml_reader *r, zend_long p)
+{
+    return p < r->len ? (unsigned char)r->s[p] : '\0';
+}
+
+/* Whether c is white space, a line break or the end, which an indicator is followed by (s-white, b-break). */
+static bool yaml_sep(unsigned char c)
+{
+    return c == '\0' || c == ' ' || c == '\t' || c == '\n';
+}
+
+/* Whether c is a flow indicator (c-flow-indicator [23]). */
+static bool yaml_flow_indicator(unsigned char c)
+{
+    return c == ',' || c == '[' || c == ']' || c == '{' || c == '}';
+}
+
+/* Whether c is one of the characters of set; the NUL of the end is none. */
+static bool yaml_one_of(unsigned char c, const char *set)
+{
+    return c != '\0' && strchr(set, c) != NULL;
+}
+
+/* Whether c is ns-plain-safe [127] to [129]: outside a flow collection any ns-char, inside none of the flow indicators. */
+static bool yaml_safe(unsigned char c, bool in)
+{
+    return !yaml_sep(c) && !(in && yaml_flow_indicator(c));
+}
+
+/* Whether a plain scalar starts at p (ns-plain-first [126]). */
+static bool yaml_plain_first(const yaml_reader *r, zend_long p, bool in)
+{
+    unsigned char c = yaml_at(r, p);
+    if (yaml_sep(c)) {
+        return false;
+    }
+    if (c == '-' || c == '?' || c == ':') {
+        return yaml_safe(yaml_at(r, p + 1), in);
+    }
+    return !yaml_one_of(c, "-?:,[]{}#&*!|>'\"%@`");
+}
+
+/* The number of bytes of the UTF-8 character whose first byte is c. */
+static zend_long yaml_char_length(unsigned char c)
+{
+    return c < 0x80 ? 1 : (c < 0xE0 ? 2 : (c < 0xF0 ? 3 : 4));
+}
+
+/* Whether c is one ASCII hexadecimal digit (YAML 1.2.2 [35] ns-hex-digit), by its ranges: isxdigit follows the locale. */
+static bool yaml_hex_digit(unsigned char c)
+{
+    return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+}
+
+/* Whether c is one ASCII letter or digit, of [38] ns-word-char with the "-" apart, by its ranges: isalnum follows the locale. */
+static bool yaml_word_char(unsigned char c)
+{
+    return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+}
+
+/* The place of the line break that ends the line of p, or the end. */
+static zend_long yaml_line_stop(const yaml_reader *r, zend_long p)
+{
+    zend_long from = p < r->end ? p : r->end;
+    const char *q = memchr(r->s + from, '\n', (size_t)(r->len - from));
+    return q == NULL || q - r->s > r->end ? r->end : q - r->s;
+}
+
+/* Whether a node of one line, as an implicit key is, ends at p of the stream: at the end of the stream, at the line break, or at
+ * a comment after white space, Codec::yamlLineEnds. */
+static bool yaml_line_ends(const yaml_reader *r, zend_long p)
+{
+    unsigned char c = yaml_ch(r, p);
+    return c == '\0' || c == '\n' || (c == '#' && p > 0 && (r->s[p - 1] == ' ' || r->s[p - 1] == '\t'));
+}
+
+/* The marker `---` or `...` that starts a line at p (c-forbidden [206]): its first character, or NUL. */
+static unsigned char yaml_marker(const yaml_reader *r, zend_long p)
+{
+    if (p + 3 <= r->end && (memcmp(r->s + p, "---", 3) == 0 || memcmp(r->s + p, "...", 3) == 0) && yaml_sep(yaml_at(r, p + 3))) {
+        return (unsigned char)r->s[p];
+    }
+    return '\0';
+}
+
+/* Moves from the start of a line past the empty lines and the comment lines (s-l-comments [79]) to the start of the next line
+ * that holds content, and returns the number of spaces that indent it, or -1 at the end. */
+static zend_long yaml_next_line(yaml_reader *r)
+{
+    const char *s = r->s;
+    zend_long end = r->end, p = r->p;
+    while (p < end) {
+        zend_long q = p;
+        while (q < end && s[q] == ' ') {
+            q++;
+        }
+        zend_long indent = q - p;
+        while (q < end && (s[q] == ' ' || s[q] == '\t')) {
+            q++;
+        }
+        if (q < end && s[q] == '#') {
+            q = yaml_line_stop(r, q);
+        }
+        if (q >= end) {
+            break;
+        }
+        if (s[q] == '\n') {
+            p = q + 1;
+            continue;
+        }
+        r->p = p;
+        return indent;
+    }
+    r->p = end;
+    return -1;
+}
+
+/* The rest of a line after a node or a marker (s-l-comments [79]): white space, a comment after white space, and the line break
+ * or the end; the reader then stands at the start of the next line. */
+static bool yaml_line_end(yaml_reader *r)
+{
+    const char *s = r->s;
+    zend_long end = r->end, p = r->p;
+    bool white = p == 0 || s[p - 1] == '\n';
+    while (p < end && (s[p] == ' ' || s[p] == '\t')) {
+        p++;
+        white = true;
+    }
+    if (p < end && s[p] == '#') {
+        if (!white) {
+            return yaml_fail_parse(r, p);
+        }
+        p = yaml_line_stop(r, p);
+    }
+    if (p < end && s[p] != '\n') {
+        return yaml_fail_parse(r, p);
+    }
+    r->p = p < end ? p + 1 : p;
+    return true;
+}
+
+/* The separation between the tokens of a flow collection (s-separate [80]): white space, comments after white space and line
+ * breaks; each line after the first that holds a token is indented by at least need spaces (s-flow-line-prefix [69]), and a
+ * marker starts none of them. */
+static bool yaml_flow_space(yaml_reader *r, zend_long need)
+{
+    const char *s = r->s;
+    zend_long end = r->end, p = r->p;
+    bool white = false;
+    while (true) {
+        while (p < end && (s[p] == ' ' || s[p] == '\t')) {
+            p++;
+            white = true;
+        }
+        if (p < end && s[p] == '#') {
+            if (!white) {
+                return yaml_fail_parse(r, p);
+            }
+            p = yaml_line_stop(r, p);
+        }
+        if (p >= end || s[p] != '\n') {
+            break;
+        }
+        p++;
+        bool token = false;
+        while (true) {
+            if (p >= end) {
+                token = true;
+                break;
+            }
+            if (yaml_marker(r, p) != '\0') {
+                return yaml_fail_parse(r, p);
+            }
+            zend_long q = p;
+            while (q < end && s[q] == ' ') {
+                q++;
+            }
+            zend_long t = q;
+            while (t < end && (s[t] == ' ' || s[t] == '\t')) {
+                t++;
+            }
+            if (t < end && s[t] == '#') {
+                t = yaml_line_stop(r, t);
+            }
+            if (t >= end) {
+                p = t;
+                token = true;
+                break;
+            }
+            if (s[t] == '\n') {
+                p = t + 1;
+                continue;
+            }
+            if (q - p < need) {
+                return yaml_fail_parse(r, t);
+            }
+            p = t;
+            token = true;
+            break;
+        }
+        if (token) {
+            break;
+        }
+    }
+    r->p = p;
+    return true;
+}
+
+/* The lines after a line break inside a quoted scalar (b-l-folded [74], l-empty [70]): the empty lines, which it counts, then
+ * the white space before the next text, whose line is indented by at least need spaces and is no marker. Returns the place of
+ * that text, or the place where the scalar leaves the grammar as -1 - place. */
+static zend_long yaml_quoted_lines(const yaml_reader *r, zend_long p, zend_long need, zend_long *breaks)
+{
+    const char *s = r->s;
+    zend_long end = r->end;
+    *breaks = 0;
+    while (true) {
+        if (p >= end || yaml_marker(r, p) != '\0') {
+            return -1 - p;
+        }
+        zend_long a = p;
+        while (a < end && s[a] == ' ') {
+            a++;
+        }
+        zend_long b = a;
+        while (b < end && (s[b] == ' ' || s[b] == '\t')) {
+            b++;
+        }
+        if (b < end && s[b] == '\n') {
+            if (b > a && a - p < need) {
+                return -1 - a;
+            }
+            (*breaks)++;
+            p = b + 1;
+            continue;
+        }
+        if (b >= end || a - p < need) {
+            return -1 - b;
+        }
+        return b;
+    }
+}
+
+/* The text of the escape \e of a double-quoted scalar (5.7) appended to out, or false for none. */
+static bool yaml_escape(unsigned char e, smart_str *out)
+{
+    switch (e) {
+        case '0': smart_str_appendc(out, '\0'); return true;
+        case 'a': smart_str_appendc(out, '\x07'); return true;
+        case 'b': smart_str_appendc(out, '\x08'); return true;
+        case 't':
+        case '\t': smart_str_appendc(out, '\t'); return true;
+        case 'n': smart_str_appendc(out, '\n'); return true;
+        case 'v': smart_str_appendc(out, '\x0B'); return true;
+        case 'f': smart_str_appendc(out, '\x0C'); return true;
+        case 'r': smart_str_appendc(out, '\r'); return true;
+        case 'e': smart_str_appendc(out, '\x1B'); return true;
+        case ' ':
+        case '"':
+        case '/':
+        case '\\': smart_str_appendc(out, (char)e); return true;
+        case 'N': smart_str_appendl(out, "\xC2\x85", 2); return true;
+        case '_': smart_str_appendl(out, "\xC2\xA0", 2); return true;
+        case 'L': smart_str_appendl(out, "\xE2\x80\xA8", 3); return true;
+        case 'P': smart_str_appendl(out, "\xE2\x80\xA9", 3); return true;
+        default: return false;
+    }
+}
+
+/* The UTF-8 bytes of the Unicode scalar value code appended to out, mb_chr of Codec.php. */
+static void yaml_append_code_point(smart_str *out, unsigned long code)
+{
+    if (code < 0x80) {
+        smart_str_appendc(out, (char)code);
+    } else if (code < 0x800) {
+        smart_str_appendc(out, (char)(0xC0 | (code >> 6)));
+        smart_str_appendc(out, (char)(0x80 | (code & 0x3F)));
+    } else if (code < 0x10000) {
+        smart_str_appendc(out, (char)(0xE0 | (code >> 12)));
+        smart_str_appendc(out, (char)(0x80 | ((code >> 6) & 0x3F)));
+        smart_str_appendc(out, (char)(0x80 | (code & 0x3F)));
+    } else {
+        smart_str_appendc(out, (char)(0xF0 | (code >> 18)));
+        smart_str_appendc(out, (char)(0x80 | ((code >> 12) & 0x3F)));
+        smart_str_appendc(out, (char)(0x80 | ((code >> 6) & 0x3F)));
+        smart_str_appendc(out, (char)(0x80 | (code & 0x3F)));
+    }
+}
+
+/* The white space and the line break at q of a quoted scalar, which fold (6.5): white space before more text is content, and a
+ * line break is a space or the empty lines after it; an implicit key is one line. Returns the place after them, or the place
+ * where the scalar leaves the grammar as -1 - place. */
+static zend_long yaml_quoted_white(yaml_reader *r, zend_long q, bool multi, zend_long need)
+{
+    const char *s = r->s;
+    zend_long end = r->end, w = q;
+    while (w < end && (s[w] == ' ' || s[w] == '\t')) {
+        w++;
+    }
+    if (w >= end || s[w] != '\n') {
+        smart_str_appendl(&r->text, s + q, (size_t)(w - q));
+        return w;
+    }
+    if (!multi) {
+        return -1 - w;
+    }
+    zend_long breaks = 0;
+    zend_long next = yaml_quoted_lines(r, w + 1, need, &breaks);
+    if (next < 0) {
+        return next;
+    }
+    if (breaks == 0) {
+        smart_str_appendc(&r->text, ' ');
+    } else {
+        yaml_repeat(&r->text, '\n', breaks);
+    }
+    return next;
+}
+
+/* A double-quoted scalar from its quote at *p ([107] to [116]) into the text of the reader, with the escapes of 5.7 and the
+ * folding of 6.5; an implicit key is one line. Returns -1 with *p after the closing quote, or the place where the scalar leaves
+ * the grammar. */
+static zend_long yaml_double_quoted(yaml_reader *r, zend_long *p, bool multi, zend_long need)
+{
+    const char *s = r->s;
+    zend_long end = r->end, q = *p + 1;
+    yaml_text_reset(r);
+    while (true) {
+        if (q >= end) {
+            return q;
+        }
+        unsigned char c = (unsigned char)s[q];
+        if (c == '"') {
+            *p = q + 1;
+            return -1;
+        }
+        if (c == '\\') {
+            unsigned char e = yaml_at(r, q + 1);
+            if (yaml_escape(e, &r->text)) {
+                q += 2;
+                continue;
+            }
+            if (e == 'x' || e == 'u' || e == 'U') {
+                zend_long digits = e == 'x' ? 2 : (e == 'u' ? 4 : 8);
+                unsigned long code = 0;
+                for (zend_long i = q + 2; i < q + 2 + digits; i++) {
+                    if (i >= end || !yaml_hex_digit((unsigned char)s[i])) {
+                        return i;
+                    }
+                    unsigned char d = (unsigned char)s[i];
+                    code = code * 16 + (unsigned long)(d <= '9' ? d - '0' : (d | 0x20) - 'a' + 10);
+                }
+                /* A surrogate and a number above U+10FFFF are no Unicode scalar value (COD-78). */
+                if ((code >= 0xD800 && code <= 0xDFFF) || code > 0x10FFFF) {
+                    return q;
+                }
+                yaml_append_code_point(&r->text, code);
+                q += 2 + digits;
+                continue;
+            }
+            if (e == '\n' && multi) {
+                /* An escaped line break joins the lines and keeps the white space before it (s-double-escaped). */
+                zend_long breaks = 0;
+                q = yaml_quoted_lines(r, q + 2, need, &breaks);
+                if (q < 0) {
+                    return -1 - q;
+                }
+                yaml_repeat(&r->text, '\n', breaks);
+                continue;
+            }
+            return q + 1;
+        }
+        if (c == ' ' || c == '\t' || c == '\n') {
+            q = yaml_quoted_white(r, q, multi, need);
+            if (q < 0) {
+                return -1 - q;
+            }
+            continue;
+        }
+        zend_long run = q;
+        while (run < end && !yaml_one_of((unsigned char)s[run], "\"\\ \t\n")) {
+            run++;
+        }
+        smart_str_appendl(&r->text, s + q, (size_t)(run - q));
+        q = run;
+    }
+}
+
+/* A single-quoted scalar from its quote at *p ([117] to [125]) into the text of the reader, whose one escape is '' and whose
+ * lines fold as 6.5 states; an implicit key is one line. Returns -1 with *p after the closing quote, or the place where the
+ * scalar leaves the grammar. */
+static zend_long yaml_single_quoted(yaml_reader *r, zend_long *p, bool multi, zend_long need)
+{
+    const char *s = r->s;
+    zend_long end = r->end, q = *p + 1;
+    yaml_text_reset(r);
+    while (true) {
+        if (q >= end) {
+            return q;
+        }
+        unsigned char c = (unsigned char)s[q];
+        if (c == '\'') {
+            if (yaml_at(r, q + 1) == '\'') {
+                smart_str_appendc(&r->text, '\'');
+                q += 2;
+                continue;
+            }
+            *p = q + 1;
+            return -1;
+        }
+        if (c == ' ' || c == '\t' || c == '\n') {
+            q = yaml_quoted_white(r, q, multi, need);
+            if (q < 0) {
+                return -1 - q;
+            }
+            continue;
+        }
+        zend_long run = q;
+        while (run < end && !yaml_one_of((unsigned char)s[run], "' \t\n")) {
+            run++;
+        }
+        smart_str_appendl(&r->text, s + q, (size_t)(run - q));
+        q = run;
+    }
+}
+
+/* A plain scalar from *p into the text of the reader, whose first character is ns-plain-first ([126] to [135]): it holds no `: `
+ * and no ` #`, inside a flow collection (in) no flow indicator, and, unless it is an implicit key, continues on the next lines
+ * indented by at least need spaces, which fold (6.5). Returns -1 with *p after its last character. In the read of a node that
+ * is no key (COD-80), a scalar that the reader cannot know to end before the place where the key leaves the grammar is not read
+ * whole, and that place is returned; a place where a node of one line ends, the end of its line or a comment, ends the scalar,
+ * which is then read whole. */
+static zend_long yaml_plain(yaml_reader *r, zend_long *p, bool in, bool multi, zend_long need)
+{
+    const char *s = r->s;
+    zend_long end = r->end, q = *p;
+    bool reached = false;
+    yaml_text_reset(r);
+    while (true) {
+        zend_long start = q;
+        q++;
+        while (true) {
+            if (q >= end) {
+                reached = true;
+                break;
+            }
+            unsigned char c = (unsigned char)s[q];
+            if (c == ' ' || c == '\t') {
+                zend_long w = q + 1;
+                while (w < end && (s[w] == ' ' || s[w] == '\t')) {
+                    w++;
+                }
+                if (w >= end) {
+                    reached = true;
+                    break;
+                }
+                unsigned char d = (unsigned char)s[w];
+                if (d == '\n' || d == '#' || (in && yaml_flow_indicator(d))) {
+                    break;
+                }
+                if (d == ':') {
+                    if (w + 1 >= end) {
+                        reached = true;
+                    }
+                    if (!yaml_safe(yaml_at(r, w + 1), in)) {
+                        break;
+                    }
+                }
+                q = w;
+                continue;
+            }
+            if (c == '\n' || (in && yaml_flow_indicator(c))) {
+                break;
+            }
+            if (c == ':') {
+                if (q + 1 >= end) {
+                    reached = true;
+                }
+                if (!yaml_safe(yaml_at(r, q + 1), in)) {
+                    break;
+                }
+            }
+            q++;
+        }
+        smart_str_appendl(&r->text, s + start, (size_t)(q - start));
+        if (!multi || reached) {
+            break;
+        }
+        zend_long w = q;
+        while (w < end && (s[w] == ' ' || s[w] == '\t')) {
+            w++;
+        }
+        if (w >= end || s[w] != '\n') {
+            break;
+        }
+        zend_long breaks = 0, line = w + 1, next = -1;
+        while (line < end && yaml_marker(r, line) == '\0') {
+            zend_long a = line;
+            while (a < end && s[a] == ' ') {
+                a++;
+            }
+            zend_long b = a;
+            while (b < end && (s[b] == ' ' || s[b] == '\t')) {
+                b++;
+            }
+            if (b < end && s[b] == '\n') {
+                if (b > a && a - line < need) {
+                    break;
+                }
+                breaks++;
+                line = b + 1;
+                continue;
+            }
+            if (b >= end || a - line < need) {
+                break;
+            }
+            unsigned char d = (unsigned char)s[b];
+            bool colon = d == ':' && !yaml_safe(yaml_at(r, b + 1), in);
+            if (d != '#' && !colon && !(in && yaml_flow_indicator(d))) {
+                next = b;
+            }
+            break;
+        }
+        if (next < 0) {
+            break;
+        }
+        if (breaks == 0) {
+            smart_str_appendc(&r->text, ' ');
+        } else {
+            yaml_repeat(&r->text, '\n', breaks);
+        }
+        q = next;
+    }
+    if (reached && r->trunc && !yaml_line_ends(r, end)) {
+        return end;
+    }
+    *p = q;
+    return -1;
+}
+
+/* A line of the content of a block scalar: an empty line (no text), a line of spaces only beyond the content indentation, or the
+ * text of a line from start. */
+typedef struct {
+    int kind;
+    zend_long start;
+    zend_long len;
+} yaml_block_line;
+
+#define Y_LINE_EMPTY 0
+#define Y_LINE_SPACES 1
+#define Y_LINE_TEXT 2
+
+static void yaml_block_line_add(yaml_block_line **lines, size_t *count, size_t *cap, int kind, zend_long start, zend_long len)
+{
+    if (*count == *cap) {
+        *cap = *cap == 0 ? 8 : *cap * 2;
+        *lines = safe_erealloc(*lines, *cap, sizeof(yaml_block_line), 0);
+    }
+    (*lines)[*count].kind = kind;
+    (*lines)[*count].start = start;
+    (*lines)[*count].len = len;
+    (*count)++;
+}
+
+static void yaml_block_line_append(const yaml_reader *r, const yaml_block_line *line, smart_str *out)
+{
+    if (line->kind == Y_LINE_SPACES) {
+        yaml_repeat(out, ' ', line->len);
+    } else if (line->kind == Y_LINE_TEXT) {
+        smart_str_appendl(out, r->s + line->start, (size_t)line->len);
+    }
+}
+
+/* A block scalar from its indicator at the place of the reader ([162] to [182]) inside a block collection indented by n spaces
+ * (-1 for the node of a document): its header, its content lines by the content indentation of 8.1.1.1, the folding of a folded
+ * scalar and the chomping of 8.1.1.2, as Codec::yamlBlockScalar. The reader then stands at the start of the line that ends it. */
+static bool yaml_block_scalar(yaml_reader *r, zend_long n, zval *out)
+{
+    const char *s = r->s;
+    zend_long end = r->end, p = r->p;
+    bool folded = s[p] == '>';
+    p++;
+    zend_long indicator = 0;
+    unsigned char chomp = '\0';
+    for (int i = 0; i < 2; i++) {
+        unsigned char c = yaml_at(r, p);
+        if (indicator == 0 && c >= '1' && c <= '9') {
+            indicator = c - '0';
+            p++;
+        } else if (chomp == '\0' && (c == '-' || c == '+')) {
+            chomp = c;
+            p++;
+        }
+    }
+    bool white = false;
+    while (p < end && (s[p] == ' ' || s[p] == '\t')) {
+        p++;
+        white = true;
+    }
+    if (p < end && s[p] == '#' && white) {
+        p = yaml_line_stop(r, p);
+    }
+    if (p < end && s[p] != '\n') {
+        return yaml_fail_parse(r, p);
+    }
+    p = p < end ? p + 1 : p;
+    /* The content indentation: the indicator, or the spaces of the first line that is not empty (8.1.1.1). */
+    zend_long indent;
+    if (indicator > 0) {
+        indent = n + indicator;
+    } else {
+        indent = -1;
+        zend_long longest = 0, q = p;
+        while (q < end) {
+            zend_long a = q;
+            while (a < end && s[a] == ' ') {
+                a++;
+            }
+            if (a < end && s[a] == '\n') {
+                longest = MAX(longest, a - q);
+                q = a + 1;
+                continue;
+            }
+            if (a < end && a - q > n && !(a == q && yaml_marker(r, q) != '\0')) {
+                indent = a - q;
+                if (longest > indent) {
+                    return yaml_fail_parse(r, a);
+                }
+            }
+            break;
+        }
+        if (indent < 0) {
+            indent = MAX(longest, n + 1);
+        }
+    }
+    yaml_block_line *lines = NULL;
+    size_t count = 0, cap = 0;
+    bool final = false;
+    while (p < end) {
+        if (yaml_marker(r, p) != '\0') {
+            break;
+        }
+        zend_long a = p;
+        while (a < end && s[a] == ' ') {
+            a++;
+        }
+        zend_long spaces = a - p;
+        if (a < end && s[a] == '\n') {
+            if (spaces > indent) {
+                yaml_block_line_add(&lines, &count, &cap, Y_LINE_SPACES, 0, spaces - indent);
+                final = true;
+            } else {
+                yaml_block_line_add(&lines, &count, &cap, Y_LINE_EMPTY, 0, 0);
+            }
+            p = a + 1;
+            continue;
+        }
+        if (a >= end) {
+            if (spaces > indent) {
+                yaml_block_line_add(&lines, &count, &cap, Y_LINE_SPACES, 0, spaces - indent);
+                final = false;
+                p = a;
+            }
+            break;
+        }
+        if (spaces < indent) {
+            break;
+        }
+        zend_long stop = yaml_line_stop(r, a);
+        yaml_block_line_add(&lines, &count, &cap, Y_LINE_TEXT, p + indent, stop - p - indent);
+        final = stop < end;
+        p = final ? stop + 1 : stop;
+    }
+    r->p = p;
+    zend_long last = -1;
+    for (size_t i = 0; i < count; i++) {
+        if (lines[i].kind != Y_LINE_EMPTY) {
+            last = (zend_long)i;
+        }
+    }
+    zend_long trailing = (zend_long)count - last - 1;
+    smart_str body = {0};
+    if (last < 0) {
+        if (chomp == '+') {
+            yaml_repeat(&body, '\n', trailing);
+        }
+    } else {
+        if (folded) {
+            zend_long empty = 0;
+            int previous = -1;
+            for (zend_long i = 0; i <= last; i++) {
+                const yaml_block_line *line = &lines[i];
+                if (line->kind == Y_LINE_EMPTY) {
+                    empty++;
+                    continue;
+                }
+                bool spaced = line->kind == Y_LINE_SPACES
+                    || (line->len > 0 && (s[line->start] == ' ' || s[line->start] == '\t'));
+                if (previous < 0) {
+                    yaml_repeat(&body, '\n', empty);
+                } else if (!previous && !spaced) {
+                    if (empty == 0) {
+                        smart_str_appendc(&body, ' ');
+                    } else {
+                        yaml_repeat(&body, '\n', empty);
+                    }
+                } else {
+                    yaml_repeat(&body, '\n', empty + 1);
+                }
+                yaml_block_line_append(r, line, &body);
+                previous = spaced ? 1 : 0;
+                empty = 0;
+            }
+        } else {
+            for (zend_long i = 0; i <= last; i++) {
+                if (i > 0) {
+                    smart_str_appendc(&body, '\n');
+                }
+                yaml_block_line_append(r, &lines[i], &body);
+            }
+        }
+        if (chomp != '-') {
+            if (final) {
+                smart_str_appendc(&body, '\n');
+            }
+            if (chomp == '+') {
+                yaml_repeat(&body, '\n', trailing);
+            }
+        }
+    }
+    if (lines != NULL) {
+        efree(lines);
+    }
+    ZVAL_STR(out, smart_str_extract(&body));
+    return true;
+}
+
+/* Whether text[*i..n) starts with one or more ASCII decimal digits; *i moves past them. */
+static bool yaml_digits(const char *text, size_t n, size_t *i)
+{
+    size_t start = *i;
+    while (*i < n && text[*i] >= '0' && text[*i] <= '9') {
+        (*i)++;
+    }
+    return *i > start;
+}
+
+/* Whether the whole text is a float of the core schema, [-+]?(\.[0-9]+|[0-9]+(\.[0-9]*)?)([eE][-+]?[0-9]+)? (10.3.2). */
+static bool yaml_float_text(const char *text, size_t n)
+{
+    size_t i = 0;
+    if (i < n && (text[i] == '-' || text[i] == '+')) {
+        i++;
+    }
+    if (i < n && text[i] == '.') {
+        i++;
+        if (!yaml_digits(text, n, &i)) {
+            return false;
+        }
+    } else {
+        if (!yaml_digits(text, n, &i)) {
+            return false;
+        }
+        if (i < n && text[i] == '.') {
+            i++;
+            yaml_digits(text, n, &i);
+        }
+    }
+    if (i < n && (text[i] == 'e' || text[i] == 'E')) {
+        i++;
+        if (i < n && (text[i] == '-' || text[i] == '+')) {
+            i++;
+        }
+        if (!yaml_digits(text, n, &i)) {
+            return false;
+        }
+    }
+    return i == n;
+}
+
+/* Whether the whole text is a float that is not finite of the core schema, [-+]?(\.inf|\.Inf|\.INF) or \.nan|\.NaN|\.NAN. */
+static bool yaml_infinite_text(const char *text, size_t n)
+{
+    static const char *const names[] = {".inf", ".Inf", ".INF", "+.inf", "+.Inf", "+.INF", "-.inf", "-.Inf", "-.INF",
+                                        ".nan", ".NaN", ".NAN"};
+    for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); i++) {
+        if (n == strlen(names[i]) && memcmp(text, names[i], n) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* The digits of text[from..n) with their leading zeros removed and one digit kept, each of which digit accepts, or false. */
+static bool yaml_integer_digits(const char *text, size_t n, size_t from, bool (*digit)(unsigned char), size_t *start)
+{
+    if (from >= n) {
+        return false;
+    }
+    for (size_t i = from; i < n; i++) {
+        if (!digit((unsigned char)text[i])) {
+            return false;
+        }
+    }
+    while (from + 1 < n && text[from] == '0') {
+        from++;
+    }
+    *start = from;
+    return true;
+}
+
+static bool yaml_decimal_digit(unsigned char c)
+{
+    return c >= '0' && c <= '9';
+}
+
+static bool yaml_octal_digit(unsigned char c)
+{
+    return c >= '0' && c <= '7';
+}
+
+/* The text is a key: a value that is not a string or an integer is no key of the value model (yaml-key-scalar). */
+#define YAML_KEY_SCALAR "map keys must be strings or integers"
+#define YAML_INT_RANGE "integer is outside the i64 range"
+
+/* A plain scalar by the core schema (10.3.2, COD-79), as Codec::yamlResolve: a value, or, as a map key, its string, an integer by
+ * its value; the rules of its content are met here, once it is read whole (COD-80). */
+static bool yaml_resolve(yaml_reader *r, bool key, zval *out)
+{
+    smart_str_0(&r->text);
+    const char *text = r->text.s != NULL ? ZSTR_VAL(r->text.s) : "";
+    size_t n = r->text.s != NULL ? ZSTR_LEN(r->text.s) : 0;
+#define YAML_IS(lit) (n == sizeof(lit) - 1 && memcmp(text, lit, n) == 0)
+    if (n == 0 || YAML_IS("~") || YAML_IS("null") || YAML_IS("Null") || YAML_IS("NULL")) {
+        if (key) {
+            return yaml_fail_rule(r, YAML_KEY_SCALAR);
+        }
+        ZVAL_NULL(out);
+        return true;
+    }
+    if (YAML_IS("true") || YAML_IS("True") || YAML_IS("TRUE") || YAML_IS("false") || YAML_IS("False") || YAML_IS("FALSE")) {
+        if (key) {
+            return yaml_fail_rule(r, YAML_KEY_SCALAR);
+        }
+        ZVAL_BOOL(out, text[0] == 't' || text[0] == 'T');
+        return true;
+    }
+#undef YAML_IS
+    size_t start = 0;
+    bool negative = n > 0 && text[0] == '-';
+    size_t from = n > 0 && (text[0] == '-' || text[0] == '+') ? 1 : 0;
+    if (yaml_integer_digits(text, n, from, yaml_decimal_digit, &start)) {
+        size_t digits = n - start;
+        const char *limit = negative ? "9223372036854775808" : "9223372036854775807";
+        if (digits > 19 || (digits == 19 && memcmp(text + start, limit, 19) > 0)) {
+            return yaml_fail_rule(r, YAML_INT_RANGE);
+        }
+        zend_ulong value = 0;
+        for (size_t i = start; i < n; i++) {
+            value = value * 10 + (zend_ulong)(text[i] - '0');
+        }
+        if (negative) {
+            ZVAL_LONG(out, value == (zend_ulong)ZEND_LONG_MAX + 1 ? ZEND_LONG_MIN : -(zend_long)value);
+        } else {
+            ZVAL_LONG(out, (zend_long)value);
+        }
+        return true;
+    }
+    bool octal = n > 2 && text[0] == '0' && text[1] == 'o' && yaml_integer_digits(text, n, 2, yaml_octal_digit, &start);
+    bool hex = !octal && n > 2 && text[0] == '0' && text[1] == 'x' && yaml_integer_digits(text, n, 2, yaml_hex_digit, &start);
+    if (octal || hex) {
+        /* 2^63 - 1 is 21 octal digits and 7fffffffffffffff. */
+        size_t digits = n - start;
+        if (hex ? digits > 16 || (digits == 16 && (unsigned char)text[start] > '7') : digits > 21) {
+            return yaml_fail_rule(r, YAML_INT_RANGE);
+        }
+        zend_ulong value = 0;
+        for (size_t i = start; i < n; i++) {
+            unsigned char d = (unsigned char)text[i];
+            value = value * (hex ? 16 : 8) + (zend_ulong)(d <= '9' ? d - '0' : (d | 0x20) - 'a' + 10);
+        }
+        ZVAL_LONG(out, (zend_long)value);
+        return true;
+    }
+    bool isfloat = yaml_float_text(text, n);
+    if (isfloat || yaml_infinite_text(text, n)) {
+        if (key) {
+            return yaml_fail_rule(r, YAML_KEY_SCALAR);
+        }
+        /* The binary64 nearest to the decimal text, (float) of Codec.php; one that rounds to an infinity is not finite (COD-79). */
+        double value = isfloat ? zend_strtod(text, NULL) : INFINITY;
+        if (!zend_finite(value)) {
+            return yaml_fail_rule(r, "number is not finite");
+        }
+        ZVAL_DOUBLE(out, value);
+        return true;
+    }
+    ZVAL_STRINGL(out, text, n);
+    return true;
+}
+
+/* The scratch text of the reader as a string value. */
+static void yaml_text_value(yaml_reader *r, zval *out)
+{
+    if (r->text.s == NULL) {
+        ZVAL_EMPTY_STRING(out);
+    } else {
+        ZVAL_STRINGL(out, ZSTR_VAL(r->text.s), ZSTR_LEN(r->text.s));
+    }
+}
+
+/* Opens a collection at the level after the open ones, Codec::yamlOpen: its nesting rule, then, for a key, yaml-key-collection. */
+static bool yaml_open(yaml_reader *r, bool key)
+{
+    if (r->level >= DEPTH) {
+        return yaml_fail_rule(r, DEPTH_RULE);
+    }
+    if (key) {
+        return yaml_fail_rule(r, "map keys must be scalar strings");
+    }
+    r->level++;
+    return true;
+}
+
+/* Pushes a frame on the stack of the reader, in heap memory (Codec::yamlFrame); a pointer to a frame is not kept across it. */
+static void yaml_push(yaml_reader *r, int type, int state, zend_long indent)
+{
+    if (r->count == r->cap) {
+        r->cap = r->cap == 0 ? 16 : r->cap * 2;
+        r->frames = safe_erealloc(r->frames, r->cap, sizeof(yaml_frame), 0);
+    }
+    yaml_frame *f = &r->frames[r->count++];
+    f->t = type;
+    f->st = state;
+    f->m = indent;
+    if (type == Y_PAIR || type == Y_TRAIL) {
+        ZVAL_UNDEF(&f->v);
+    } else {
+        array_init(&f->v);
+    }
+    ZVAL_UNDEF(&f->k);
+    f->j = false;
+    f->f = 0;
+    f->known = false;
+}
+
+static yaml_frame *yaml_top(yaml_reader *r)
+{
+    return &r->frames[r->count - 1];
+}
+
+/* Sets the member key of the array to value, as $array[$key] = $value of PHP: a string key that is a decimal integer is that
+ * integer. It takes the value. */
+static void yaml_member(zval *array, zval *key, zval *value)
+{
+    if (Z_TYPE_P(key) == IS_LONG) {
+        zend_hash_index_update(Z_ARRVAL_P(array), (zend_ulong)Z_LVAL_P(key), value);
+    } else {
+        zend_symtable_update(Z_ARRVAL_P(array), Z_STR_P(key), value);
+    }
+}
+
+/* Records the key of a map entry, Codec::yamlKey, met where it repeats an earlier one (yaml-duplicate). It takes the key. */
+static bool yaml_key(yaml_reader *r, yaml_frame *f, zval *key, bool json)
+{
+    bool repeated = Z_TYPE_P(key) == IS_LONG
+        ? zend_hash_index_exists(Z_ARRVAL(f->v), (zend_ulong)Z_LVAL_P(key))
+        : zend_symtable_exists(Z_ARRVAL(f->v), Z_STR_P(key));
+    if (repeated) {
+        zval_ptr_dtor(key);
+        ZVAL_UNDEF(key);
+        return yaml_fail_rule(r, "duplicate map key");
+    }
+    zval_ptr_dtor(&f->k);
+    ZVAL_COPY_VALUE(&f->k, key);
+    ZVAL_UNDEF(key);
+    f->j = json;
+    return true;
+}
+
+/* The end of the URI characters from p (ns-uri-char [39]), a `%` with two hexadecimal digits among them; with tag, of one tag
+ * character at most (ns-tag-char [40]: no `!` and no flow indicator). */
+static zend_long yaml_uri(const yaml_reader *r, zend_long p, bool tag)
+{
+    const char *s = r->s;
+    zend_long end = r->end;
+    while (p < end) {
+        unsigned char c = (unsigned char)s[p];
+        if (c == '%') {
+            if (p + 2 >= end || !yaml_hex_digit((unsigned char)s[p + 1]) || !yaml_hex_digit((unsigned char)s[p + 2])) {
+                break;
+            }
+            p += 3;
+        } else if (yaml_word_char(c) || yaml_one_of(c, "-#;/?:@&=+$,_.!~*'()[]")) {
+            if (tag && (c == '!' || yaml_flow_indicator(c))) {
+                break;
+            }
+            p++;
+        } else {
+            break;
+        }
+        if (tag) {
+            break;
+        }
+    }
+    return p;
+}
+
+/* The directives of a document ([82] to [98], COD-75), which its `---` follows, Codec::yamlDirectives: `%YAML 1.2` once, `%TAG`
+ * once for a handle, and no other. The reader then stands at the marker. */
+static bool yaml_directives(yaml_reader *r)
+{
+    const char *s = r->s;
+    zend_long end = r->end, indent;
+    bool version = false, ok = true;
+    HashTable handles;
+    zend_hash_init(&handles, 4, NULL, NULL, 0);
+    while (true) {
+        indent = yaml_next_line(r);
+        zend_long p = r->p;
+        if (indent != 0 || s[p] != '%') {
+            break;
+        }
+        zend_long q = p + 1;
+        while (q < end && !yaml_sep((unsigned char)s[q])) {
+            q++;
+        }
+        bool yaml = q - p - 1 == 4 && memcmp(s + p + 1, "YAML", 4) == 0;
+        if (!yaml && !(q - p - 1 == 3 && memcmp(s + p + 1, "TAG", 3) == 0)) {
+            ok = yaml_fail_parse(r, p);
+            break;
+        }
+        if (q >= end || (s[q] != ' ' && s[q] != '\t')) {
+            ok = yaml_fail_parse(r, q);
+            break;
+        }
+        while (q < end && (s[q] == ' ' || s[q] == '\t')) {
+            q++;
+        }
+        zend_long start = q;
+        if (yaml) {
+            while (q < end && !yaml_sep((unsigned char)s[q])) {
+                q++;
+            }
+            if (version || !(q - start == 3 && memcmp(s + start, "1.2", 3) == 0)) {
+                ok = yaml_fail_parse(r, start);
+                break;
+            }
+            version = true;
+        } else {
+            /* c-tag-handle: !, !! or ! word characters !, then ns-tag-prefix. */
+            q = start + 1;
+            if (yaml_at(r, start) != '!') {
+                ok = yaml_fail_parse(r, start);
+                break;
+            }
+            while (q < end && (yaml_word_char((unsigned char)s[q]) || s[q] == '-')) {
+                q++;
+            }
+            if (yaml_at(r, q) == '!') {
+                q++;
+            } else if (q > start + 1) {
+                ok = yaml_fail_parse(r, q);
+                break;
+            }
+            if (zend_hash_str_exists(&handles, s + start, (size_t)(q - start)) || (q < end && s[q] != ' ' && s[q] != '\t')
+                || q >= end) {
+                ok = yaml_fail_parse(r, start);
+                break;
+            }
+            zend_hash_str_add_empty_element(&handles, s + start, (size_t)(q - start));
+            while (q < end && (s[q] == ' ' || s[q] == '\t')) {
+                q++;
+            }
+            zend_long prefix = q;
+            if (yaml_at(r, q) == '!') {
+                q++;
+            } else if ((q = yaml_uri(r, q, true)) == prefix) {
+                ok = yaml_fail_parse(r, prefix);
+                break;
+            }
+            q = yaml_uri(r, q, false);
+            if (!yaml_sep(yaml_at(r, q))) {
+                ok = yaml_fail_parse(r, q);
+                break;
+            }
+        }
+        r->p = q;
+        if (!yaml_line_end(r)) {
+            ok = false;
+            break;
+        }
+    }
+    zend_hash_destroy(&handles);
+    if (!ok) {
+        return false;
+    }
+    if (indent != 0 || yaml_marker(r, r->p) != '-') {
+        return yaml_fail_parse(r, r->p + MAX(indent, 0));
+    }
+    return true;
+}
+
+/* A frame of an open flow collection of the read ahead: its closing bracket, its state, and whether its key is a JSON node. States:
+ * 0 the first entry or the end, 1 an entry after a comma, 2 after `?`, 3 after a key, 4 after `:`, 5 after an entry. */
+typedef struct {
+    unsigned char close;
+    int state;
+    bool key_json;
+} yaml_ahead_frame;
+
+/* A node of the read ahead is read: the node itself, or the key or the value of the open entry of the top frame. */
+static void yaml_ahead_read(yaml_ahead_frame *top, bool json)
+{
+    if (top->state == 4) {
+        top->state = 5;
+    } else {
+        top->state = 3;
+        top->key_json = json;
+    }
+}
+
+/* The end of the properties and the node at p that the read ahead reads (COD-80), on one line before the end of what the reader
+ * reads, as the grammar holds it ([96] to [104], [137] to [161]), Codec::yamlAheadNode; *json is whether the node is a quoted
+ * scalar or a flow collection. Returns -1, or the place where the node leaves the grammar. Its frames are an explicit stack in
+ * heap memory. */
+static zend_long yaml_ahead_node(yaml_reader *r, zend_long p, bool in, zend_long *out, bool *json)
+{
+    const char *s = r->s;
+    zend_long end = r->end, result = -1;
+    yaml_ahead_frame *stack = NULL;
+    size_t count = 0, cap = 0;
+    bool node = true;
+    while (true) {
+        if (node) {
+            node = false;
+            bool inside = in || count > 0, properties = false, alias = false, node_json = false;
+            while (true) {
+                unsigned char c = yaml_at(r, p);
+                if (c == '&' || c == '*') {
+                    if (c == '*' && properties) {
+                        result = p;
+                        goto done;
+                    }
+                    alias = c == '*';
+                    zend_long q = p + 1;
+                    while (q < end && !yaml_sep((unsigned char)s[q]) && !yaml_flow_indicator((unsigned char)s[q])) {
+                        q++;
+                    }
+                    if (q == p + 1) {
+                        result = q;
+                        goto done;
+                    }
+                    p = q;
+                } else if (c == '!') {
+                    zend_long q = p + 1;
+                    if (yaml_at(r, q) == '<') {
+                        q = yaml_uri(r, q + 1, false);
+                        if (q == p + 2 || yaml_at(r, q) != '>') {
+                            result = q;
+                            goto done;
+                        }
+                        q++;
+                    } else {
+                        zend_long w = q, next;
+                        while (w < end && (yaml_word_char((unsigned char)s[w]) || s[w] == '-')) {
+                            w++;
+                        }
+                        if (yaml_at(r, w) == '!') {
+                            q = w + 1;
+                            zend_long start = q;
+                            while ((next = yaml_uri(r, q, true)) > q) {
+                                q = next;
+                            }
+                            if (q == start) {
+                                result = q;
+                                goto done;
+                            }
+                        } else {
+                            while ((next = yaml_uri(r, q, true)) > q) {
+                                q = next;
+                            }
+                        }
+                    }
+                    p = q;
+                } else {
+                    break;
+                }
+                properties = true;
+                if (alias) {
+                    break;
+                }
+                c = yaml_at(r, p);
+                if (c != ' ' && c != '\t') {
+                    break;
+                }
+                while (p < end && (s[p] == ' ' || s[p] == '\t')) {
+                    p++;
+                }
+            }
+            unsigned char c = yaml_at(r, p);
+            if (alias) {
+                node_json = false;
+            } else if (c == '[' || c == '{') {
+                if (count == cap) {
+                    cap = cap == 0 ? 8 : cap * 2;
+                    stack = safe_erealloc(stack, cap, sizeof(yaml_ahead_frame), 0);
+                }
+                stack[count].close = c == '[' ? ']' : '}';
+                stack[count].state = 0;
+                stack[count].key_json = false;
+                count++;
+                p++;
+                continue;
+            } else if (c == '"' || c == '\'') {
+                zend_long fail = c == '"' ? yaml_double_quoted(r, &p, false, 0) : yaml_single_quoted(r, &p, false, 0);
+                if (fail >= 0) {
+                    result = fail;
+                    goto done;
+                }
+                node_json = true;
+            } else if (yaml_plain_first(r, p, inside)) {
+                yaml_plain(r, &p, inside, false, 0);
+                node_json = false;
+            } else if (properties) {
+                node_json = false;
+            } else {
+                result = p;
+                goto done;
+            }
+            if (count == 0) {
+                *out = p;
+                *json = node_json;
+                result = -1;
+                goto done;
+            }
+            yaml_ahead_read(&stack[count - 1], node_json);
+        }
+        bool white = false;
+        while (p < end && (s[p] == ' ' || s[p] == '\t')) {
+            p++;
+            white = true;
+        }
+        if (p >= end || s[p] == '#' || s[p] == '\n') {
+            result = p;
+            goto done;
+        }
+        yaml_ahead_frame *top = &stack[count - 1];
+        unsigned char close = top->close, c = (unsigned char)s[p];
+        int state = top->state;
+        bool key_json = top->key_json;
+        if (state == 0 || state == 1) {
+            if (c == close) {
+                count--;
+                p++;
+                if (count == 0) {
+                    *out = p;
+                    *json = true;
+                    result = -1;
+                    goto done;
+                }
+                yaml_ahead_read(&stack[count - 1], true);
+                continue;
+            }
+            if (c == ',') {
+                result = p;
+                goto done;
+            }
+            if (c == '?' && yaml_sep(yaml_at(r, p + 1))) {
+                top->state = 2;
+                p++;
+                continue;
+            }
+            if (c == ':' && !yaml_safe(yaml_at(r, p + 1), true)) {
+                top->state = 4;
+                top->key_json = false;
+                p++;
+                continue;
+            }
+            node = true;
+            continue;
+        }
+        if (state == 2) {
+            if (c == ':' && !yaml_safe(yaml_at(r, p + 1), true)) {
+                top->state = 4;
+                top->key_json = false;
+                p++;
+                continue;
+            }
+            if (c == ',' || c == close) {
+                top->state = 5;
+                continue;
+            }
+            node = true;
+            continue;
+        }
+        if (state == 3) {
+            if (c == ':' && (key_json || !yaml_safe(yaml_at(r, p + 1), true))) {
+                top->state = 4;
+                p++;
+                continue;
+            }
+            top->state = 5;
+            continue;
+        }
+        if (state == 4) {
+            if (c == ',' || c == close || (!key_json && !white)) {
+                top->state = 5;
+                continue;
+            }
+            node = true;
+            continue;
+        }
+        if (c == ',') {
+            top->state = 1;
+            p++;
+            continue;
+        }
+        if (c == close) {
+            top->state = 1;
+            continue;
+        }
+        result = p;
+        goto done;
+    }
+done:
+    if (stack != NULL) {
+        efree(stack);
+    }
+    return result;
+}
+
+/* The read ahead of COD-80, Codec::yamlAhead: whether the node at p is an implicit key, a node on its line that the grammar holds,
+ * of at most 1024 characters before the `:` that follows it (COD-76, COD-77); in is a key of a flow sequence. It applies no rule.
+ * For a node that is no key, *fail is the place where the read ahead stops. */
+static bool yaml_ahead(yaml_reader *r, zend_long p, bool in, zend_long *fail)
+{
+    const char *s = r->s;
+    zend_long end = r->end, line_end = yaml_line_stop(r, p), limit = p;
+    for (int chars = 0; limit < line_end && chars < 1024; chars++) {
+        limit += yaml_char_length((unsigned char)s[limit]);
+    }
+    bool trunc = r->trunc;
+    r->end = limit;
+    r->trunc = false;
+    zend_long after = p;
+    bool json = false;
+    zend_long stop = yaml_ahead_node(r, p, in, &after, &json);
+    r->end = end;
+    r->trunc = trunc;
+    if (stop >= 0) {
+        *fail = stop;
+        return false;
+    }
+    while (after < line_end && (s[after] == ' ' || s[after] == '\t')) {
+        after++;
+    }
+    if (after > limit || after >= line_end || s[after] != ':') {
+        *fail = MIN(after, limit);
+        return false;
+    }
+    unsigned char next = yaml_at(r, after + 1);
+    if (in ? json || !yaml_safe(next, true) : yaml_sep(next)) {
+        return true;
+    }
+    *fail = after;
+    return false;
+}
+
+/* The first character after the spaces and tabs from p, where a line of content leaves the grammar. */
+static zend_long yaml_text_start(const yaml_reader *r, zend_long p)
+{
+    while (p < r->end && (r->s[p] == ' ' || r->s[p] == '\t')) {
+        p++;
+    }
+    return p;
+}
+
+static void yaml_ask(yaml_request *request, bool block, zend_long n, bool flag, int mode, bool key)
+{
+    request->set = true;
+    request->block = block;
+    request->n = n;
+    request->flag = flag;
+    request->mode = mode;
+    request->key = key;
+}
+
+/* The properties and the alias, which the codec refuses at the character that starts them (COD-79), Codec::yamlProperty. */
+static bool yaml_property(yaml_reader *r, unsigned char c)
+{
+    if (c == '&') {
+        return yaml_fail_rule(r, "anchors are not supported");
+    }
+    if (c == '!') {
+        return yaml_fail_rule(r, "explicit tags are not supported");
+    }
+    if (c == '*') {
+        return yaml_fail_rule(r, "aliases are not supported");
+    }
+    return true;
+}
+
+/* The block node that starts at the place of the reader on its line, Codec::yamlBlockContent: its properties, which the codec
+ * refuses where they stand; with compact, after an indicator and spaces, a compact sequence or mapping (s-l+block-indented
+ * [185]); a block scalar; or a flow node and the rest of its line (s-l+flow-in-block [197]). */
+static int yaml_block_content(yaml_reader *r, zend_long n, bool compact, bool key, yaml_request *request, zval *value, bool *json)
+{
+    const char *s = r->s;
+    zend_long p = r->p;
+    unsigned char c = (unsigned char)s[p];
+    if (!yaml_property(r, c)) {
+        return Y_ERROR;
+    }
+    if (compact) {
+        zend_long column = p;
+        while (column > 0 && s[column - 1] != '\n') {
+            column--;
+        }
+        column = p - column;
+        unsigned char next = yaml_at(r, p + 1);
+        zend_long fail = 0;
+        if (c == '-' && yaml_sep(next)) {
+            if (!yaml_open(r, key)) {
+                return Y_ERROR;
+            }
+            yaml_push(r, Y_BLOCK_SEQUENCE, 0, column);
+            return Y_NONE;
+        }
+        bool indicator = (c == '?' || c == ':') && yaml_sep(next);
+        if (indicator || yaml_ahead(r, p, false, &fail)) {
+            if (!yaml_open(r, key)) {
+                return Y_ERROR;
+            }
+            yaml_push(r, Y_BLOCK_MAPPING, 0, column);
+            yaml_top(r)->known = !indicator;
+            return Y_NONE;
+        }
+    }
+    if (c == '|' || c == '>') {
+        if (!yaml_block_scalar(r, n, value)) {
+            return Y_ERROR;
+        }
+        *json = true;
+        return Y_DONE;
+    }
+    yaml_push(r, Y_TRAIL, 0, 0);
+    yaml_ask(request, false, n + 1, false, false, key);
+    return Y_NONE;
+}
+
+/* A block node (s-l+block-node [196]) inside a block collection indented by n spaces, Codec::yamlBlockNode; out for the value of
+ * a map entry (block-out, where a sequence may stand at the indentation of its key, seq-space [201]): on the line where it
+ * starts, after an indicator, a `:` of an implicit key or `---`, or on the next lines. Gives Y_DONE when it is read as *value;
+ * otherwise it has opened a frame or asked for a flow node. */
+static int yaml_block_node(yaml_reader *r, zend_long n, bool out, int where, bool key, yaml_request *request, zval *value,
+                           bool *json)
+{
+    const char *s = r->s;
+    zend_long end = r->end;
+    if (where != Y_AT_LINES) {
+        zend_long p = r->p;
+        bool spaces = true;
+        while (p < end && (s[p] == ' ' || s[p] == '\t')) {
+            spaces = spaces && s[p] == ' ';
+            p++;
+        }
+        if (p < end && s[p] != '#' && s[p] != '\n') {
+            r->p = p;
+            bool compact = where == Y_AT_INDICATOR && spaces;
+            return yaml_block_content(r, n, compact, key, request, value, json);
+        }
+        p = yaml_line_stop(r, p);
+        r->p = p < end ? p + 1 : p;
+    }
+    zend_long indent = yaml_next_line(r);
+    if (indent >= 0 && !(indent == 0 && yaml_marker(r, r->p) != '\0')) {
+        zend_long q = r->p + indent;
+        unsigned char c = (unsigned char)s[q], next = yaml_at(r, q + 1);
+        if (c == '-' && yaml_sep(next) && (indent > n || (out && indent == n))) {
+            if (!yaml_open(r, key)) {
+                return Y_ERROR;
+            }
+            r->p = q;
+            yaml_push(r, Y_BLOCK_SEQUENCE, 0, indent);
+            return Y_NONE;
+        }
+        if (indent > n) {
+            zend_long fail = 0;
+            bool indicator = (c == '?' || c == ':') && yaml_sep(next);
+            if (indicator || yaml_ahead(r, q, false, &fail)) {
+                if (!yaml_open(r, key)) {
+                    return Y_ERROR;
+                }
+                r->p = q;
+                yaml_push(r, Y_BLOCK_MAPPING, 0, indent);
+                yaml_top(r)->known = !indicator;
+                return Y_NONE;
+            }
+            r->p = yaml_text_start(r, q);
+            return yaml_block_content(r, n, false, key, request, value, json);
+        }
+    }
+    if (key) {
+        yaml_fail_rule(r, YAML_KEY_SCALAR);
+        return Y_ERROR;
+    }
+    ZVAL_NULL(value);
+    *json = false;
+    return Y_DONE;
+}
+
+/* A flow node at the place of the reader (ns-flow-node [161]) whose lines are indented by need spaces, Codec::yamlFlowNode; in
+ * inside a flow collection, single for an implicit key, which is one line: a collection opens its frame, and a scalar is read
+ * as *value, by the rules of a key with key. Gives Y_DONE when it is read. */
+static int yaml_flow_node(yaml_reader *r, zend_long need, bool in, bool single, bool key, zval *value, bool *json)
+{
+    zend_long p = r->p, fail;
+    unsigned char c = yaml_at(r, p);
+    if (!yaml_property(r, c)) {
+        return Y_ERROR;
+    }
+    if (c == '[' || c == '{') {
+        if (!yaml_open(r, key)) {
+            return Y_ERROR;
+        }
+        yaml_push(r, c == '[' ? Y_FLOW_SEQUENCE : Y_FLOW_MAPPING, 0, need);
+        r->p = p + 1;
+        return Y_NONE;
+    }
+    if (c == '"' || c == '\'') {
+        fail = c == '"' ? yaml_double_quoted(r, &p, !single, need) : yaml_single_quoted(r, &p, !single, need);
+        if (fail < 0) {
+            yaml_text_value(r, value);
+        }
+        *json = true;
+    } else if (yaml_plain_first(r, p, in)) {
+        fail = yaml_plain(r, &p, in, !single, need);
+        if (fail < 0 && !yaml_resolve(r, key, value)) {
+            return Y_ERROR;
+        }
+        *json = false;
+    } else {
+        fail = p;
+    }
+    if (fail >= 0) {
+        yaml_fail_parse(r, fail);
+        return Y_ERROR;
+    }
+    r->p = p;
+    return Y_DONE;
+}
+
+/* A step of an open block mapping, Codec::yamlBlockMappingStep; gives Y_DONE when it ends. */
+static int yaml_block_mapping_step(yaml_reader *r, yaml_frame *f, yaml_request *request)
+{
+    const char *s = r->s;
+    if (f->st == 0) {
+        zend_long p = r->p;
+        unsigned char c = (unsigned char)s[p], next = yaml_at(r, p + 1);
+        if (c == '?' && yaml_sep(next)) {
+            r->p = p + 1;
+            yaml_ask(request, true, f->m, true, Y_AT_INDICATOR, true);
+            f->st = 2;
+            return Y_NONE;
+        }
+        if (c == ':' && yaml_sep(next)) {
+            yaml_fail_rule(r, YAML_KEY_SCALAR);
+            return Y_ERROR;
+        }
+        zend_long fail = 0;
+        if (f->known || yaml_ahead(r, p, false, &fail)) {
+            yaml_ask(request, false, f->m + 1, false, true, true);
+            f->st = 1;
+        } else {
+            /* A node that is no key: the rules of the nodes before the place where it leaves the grammar, or where the read
+             * ahead ends with no `:`, then yaml-parse there (COD-80). */
+            r->trunc = true;
+            r->end = MIN(r->end, fail);
+            f->f = fail;
+            yaml_ask(request, false, f->m + 1, false, true, false);
+            f->st = 6;
+        }
+        f->known = false;
+        return Y_NONE;
+    }
+    zend_long indent = yaml_next_line(r);
+    if (f->st == 3) {
+        zend_long q = r->p + indent;
+        if (indent == f->m && s[q] == ':' && yaml_sep(yaml_at(r, q + 1))) {
+            r->p = q + 1;
+            yaml_ask(request, true, f->m, true, Y_AT_INDICATOR, false);
+            f->st = 4;
+            return Y_NONE;
+        }
+        zval null;
+        ZVAL_NULL(&null);
+        yaml_member(&f->v, &f->k, &null);
+        f->st = 5;
+    }
+    if (indent < 0 || (indent == 0 && yaml_marker(r, r->p) != '\0') || indent < f->m) {
+        return Y_DONE;
+    }
+    zend_long q = r->p + indent;
+    if (indent > f->m || s[q] == '\t') {
+        yaml_fail_parse(r, yaml_text_start(r, q));
+        return Y_ERROR;
+    }
+    r->p = q;
+    f->st = 0;
+    return Y_NONE;
+}
+
+/* The `,` or the closing bracket after an entry of a flow collection, or its first entry (state 0), Codec.php: a `,` with no
+ * entry before it is yaml-parse. Gives Y_DONE at the closing bracket, which it moves past. */
+static int yaml_flow_entry(yaml_reader *r, zend_long need, bool after, unsigned char close)
+{
+    if (!yaml_flow_space(r, need)) {
+        return Y_ERROR;
+    }
+    unsigned char c = yaml_at(r, r->p);
+    if (after) {
+        if (c != ',' && c != close) {
+            yaml_fail_parse(r, r->p);
+            return Y_ERROR;
+        }
+        if (c == ',') {
+            r->p++;
+            if (!yaml_flow_space(r, need)) {
+                return Y_ERROR;
+            }
+            c = yaml_at(r, r->p);
+        }
+    } else if (c == ',') {
+        yaml_fail_parse(r, r->p);
+        return Y_ERROR;
+    }
+    if (c == close) {
+        r->p++;
+        return Y_DONE;
+    }
+    if (c == ',') {
+        yaml_fail_parse(r, r->p);
+        return Y_ERROR;
+    }
+    return Y_NONE;
+}
+
+/* A step of an open flow sequence ([137] to [139]), Codec::yamlFlowSequenceStep; an entry that is an implicit key, an explicit `?`
+ * or an empty key is a pair, a map of one entry that opens its own frame (ns-flow-pair [150]). Gives Y_DONE when it ends. */
+static int yaml_flow_sequence_step(yaml_reader *r, yaml_frame *f, yaml_request *request)
+{
+    zend_long m = f->m;
+    if (f->st == 0 || f->st == 3) {
+        int entry = yaml_flow_entry(r, m, f->st == 3, ']');
+        if (entry != Y_NONE) {
+            return entry;
+        }
+        f->st = 1;
+    }
+    zend_long p = r->p, fail = 0;
+    unsigned char c = yaml_at(r, p), next = yaml_at(r, p + 1);
+    f->st = 2;
+    /* f is not used after a push, which may move the frames. */
+    if (c == '?' && yaml_sep(next)) {
+        if (!yaml_open(r, false)) {
+            return Y_ERROR;
+        }
+        r->p = p + 1;
+        yaml_push(r, Y_PAIR, 0, m);
+        return Y_NONE;
+    }
+    if (c == ':' && !yaml_safe(next, true)) {
+        if (yaml_open(r, false)) {
+            yaml_fail_rule(r, YAML_KEY_SCALAR);
+        }
+        return Y_ERROR;
+    }
+    if (c != '\0' && yaml_ahead(r, p, true, &fail)) {
+        if (!yaml_open(r, false)) {
+            return Y_ERROR;
+        }
+        yaml_push(r, Y_PAIR, 1, m);
+        yaml_ask(request, false, m, true, true, true);
+        return Y_NONE;
+    }
+    yaml_ask(request, false, m, true, false, false);
+    return Y_NONE;
+}
+
+/* A step of an open flow mapping ([140] to [149]), Codec::yamlFlowMappingStep; gives Y_DONE when it ends. */
+static int yaml_flow_mapping_step(yaml_reader *r, yaml_frame *f, yaml_request *request)
+{
+    if (f->st == 5) {
+        if (!yaml_flow_space(r, f->m)) {
+            return Y_ERROR;
+        }
+        zend_long p = r->p;
+        unsigned char c = yaml_at(r, p);
+        if (c == ':' && (f->j || !yaml_safe(yaml_at(r, p + 1), true))) {
+            r->p = p + 1;
+            if (f->j || yaml_sep(yaml_at(r, p + 1))) {
+                if (!yaml_flow_space(r, f->m)) {
+                    return Y_ERROR;
+                }
+                c = yaml_at(r, r->p);
+                if (c != ',' && c != '}') {
+                    yaml_ask(request, false, f->m, true, false, false);
+                    f->st = 3;
+                    return Y_NONE;
+                }
+            }
+        } else if (c != ',' && c != '}') {
+            yaml_fail_parse(r, p);
+            return Y_ERROR;
+        }
+        zval null;
+        ZVAL_NULL(&null);
+        yaml_member(&f->v, &f->k, &null);
+        f->st = 4;
+    }
+    if (f->st == 0 || f->st == 4) {
+        int entry = yaml_flow_entry(r, f->m, f->st == 4, '}');
+        if (entry != Y_NONE) {
+            return entry;
+        }
+    }
+    zend_long p = r->p;
+    unsigned char c = yaml_at(r, p), next = yaml_at(r, p + 1);
+    if (c == '?' && yaml_sep(next)) {
+        r->p = p + 1;
+        if (!yaml_flow_space(r, f->m)) {
+            return Y_ERROR;
+        }
+        p = r->p;
+        c = yaml_at(r, p);
+        next = yaml_at(r, p + 1);
+        if (c == ',' || c == '}') {
+            yaml_fail_rule(r, YAML_KEY_SCALAR);
+            return Y_ERROR;
+        }
+    }
+    if (c == ':' && !yaml_safe(next, true)) {
+        yaml_fail_rule(r, YAML_KEY_SCALAR);
+        return Y_ERROR;
+    }
+    yaml_ask(request, false, f->m, true, false, true);
+    f->st = 2;
+    return Y_NONE;
+}
+
+/* A step of the pair of a flow sequence, Codec::yamlPairStep: after `?`, its key; after its key, the `:` and the value, which is
+ * empty when nothing follows (e-node). Gives Y_DONE when the pair ends with a null value. */
+static int yaml_pair_step(yaml_reader *r, yaml_frame *f, yaml_request *request)
+{
+    if (f->st == 0) {
+        if (!yaml_flow_space(r, f->m)) {
+            return Y_ERROR;
+        }
+        zend_long p = r->p;
+        unsigned char c = yaml_at(r, p);
+        if ((c == ':' && !yaml_safe(yaml_at(r, p + 1), true)) || c == ',' || c == ']' || c == '}') {
+            yaml_fail_rule(r, YAML_KEY_SCALAR);
+            return Y_ERROR;
+        }
+        yaml_ask(request, false, f->m, true, false, true);
+        f->st = 2;
+        return Y_NONE;
+    }
+    if (f->st == 5) {
+        if (!yaml_flow_space(r, f->m)) {
+            return Y_ERROR;
+        }
+        zend_long p = r->p;
+        if (yaml_at(r, p) != ':' || !(f->j || !yaml_safe(yaml_at(r, p + 1), true))) {
+            return Y_DONE;
+        }
+        r->p = p + 1;
+    }
+    /* The value after the `:`, which follows a key that is no JSON node only after white space (c-ns-flow-map-separate-value). */
+    if (!f->j && !yaml_sep(yaml_at(r, r->p))) {
+        return Y_DONE;
+    }
+    if (!yaml_flow_space(r, f->m)) {
+        return Y_ERROR;
+    }
+    unsigned char c = yaml_at(r, r->p);
+    if (c == ',' || c == ']' || c == '}') {
+        return Y_DONE;
+    }
+    yaml_ask(request, false, f->m, true, false, false);
+    f->st = 3;
+    return Y_NONE;
+}
+
+/* Pops the top frame: its array, or a map of its one pair, which takes pair, for a pair, is the value read; with no value, as for
+ * the rest of a line, nothing is. Its open key is freed. */
+static void yaml_pop(yaml_reader *r, zval *value, zval *pair)
+{
+    yaml_frame f = r->frames[--r->count];
+    if (value == NULL) {
+        zval_ptr_dtor(&f.v);
+    } else if (f.t == Y_PAIR) {
+        array_init(value);
+        yaml_member(value, &f.k, pair);
+    } else {
+        ZVAL_COPY_VALUE(value, &f.v);
+    }
+    zval_ptr_dtor(&f.k);
+}
+
+/* The `:` after the key of an implicit entry, met on the line of the key. */
+static bool yaml_colon(yaml_reader *r)
+{
+    zend_long p = r->p;
+    while (p < r->end && (r->s[p] == ' ' || r->s[p] == '\t')) {
+        p++;
+    }
+    if (yaml_at(r, p) != ':') {
+        return yaml_fail_parse(r, p);
+    }
+    r->p = p + 1;
+    return true;
+}
+
+/* Gives the node read, *value, to the top frame, Codec::yamlRead; *have stays true when a frame ends with it. */
+static bool yaml_give(yaml_reader *r, zval *value, bool *json, bool *have, yaml_request *request)
+{
+    yaml_frame *f = yaml_top(r);
+    switch (f->t) {
+        case Y_TRAIL:
+            if (!yaml_line_end(r)) {
+                return false;
+            }
+            yaml_pop(r, NULL, NULL);
+            *have = true;
+            return true;
+        case Y_BLOCK_SEQUENCE:
+            zend_hash_next_index_insert(Z_ARRVAL(f->v), value);
+            ZVAL_UNDEF(value);
+            f->st = 2;
+            return true;
+        case Y_BLOCK_MAPPING:
+            if (f->st == 1) {
+                if (!yaml_key(r, f, value, *json) || !yaml_colon(r)) {
+                    return false;
+                }
+                yaml_ask(request, true, f->m, true, Y_AT_COLON, false);
+                f->st = 4;
+            } else if (f->st == 2) {
+                if (!yaml_key(r, f, value, *json)) {
+                    return false;
+                }
+                f->st = 3;
+            } else if (f->st == 4) {
+                yaml_member(&f->v, &f->k, value);
+                ZVAL_UNDEF(value);
+                f->st = 5;
+            } else {
+                return yaml_fail_parse(r, f->f);
+            }
+            return true;
+        case Y_FLOW_SEQUENCE:
+            zend_hash_next_index_insert(Z_ARRVAL(f->v), value);
+            ZVAL_UNDEF(value);
+            f->st = 3;
+            return true;
+        case Y_FLOW_MAPPING:
+            if (f->st == 2) {
+                if (!yaml_key(r, f, value, *json)) {
+                    return false;
+                }
+                f->st = 5;
+            } else {
+                yaml_member(&f->v, &f->k, value);
+                ZVAL_UNDEF(value);
+                f->st = 4;
+            }
+            return true;
+        default:
+            if (f->st == 3) {
+                zval item;
+                ZVAL_COPY_VALUE(&item, value);
+                r->level--;
+                yaml_pop(r, value, &item);
+                *json = true;
+                *have = true;
+                return true;
+            }
+            zval_ptr_dtor(&f->k);
+            ZVAL_COPY_VALUE(&f->k, value);
+            ZVAL_UNDEF(value);
+            f->j = *json;
+            if (f->st == 1) {
+                if (!yaml_colon(r)) {
+                    return false;
+                }
+                f->st = 4;
+            } else {
+                f->st = 5;
+            }
+            return true;
+    }
+}
+
+/* The node of a document, read by the frames of the open collections in an explicit stack in heap memory, so that no depth of the
+ * stream and no depth of the caller decides the read (COD-70), Codec::yamlRead. where is where the node starts: on the next lines,
+ * or on the line of `---`. */
+static bool yaml_read_node(yaml_reader *r, int where, zval *out)
+{
+    yaml_request request;
+    yaml_ask(&request, true, -1, false, where, false);
+    bool have = false, json = false;
+    zval value;
+    ZVAL_UNDEF(&value);
+    while (true) {
+        if (request.set) {
+            yaml_request asked = request;
+            request.set = false;
+            zval_ptr_dtor(&value);
+            ZVAL_UNDEF(&value);
+            int read = asked.block
+                ? yaml_block_node(r, asked.n, asked.flag, asked.mode, asked.key, &request, &value, &json)
+                : yaml_flow_node(r, asked.n, asked.flag, asked.mode != 0, asked.key, &value, &json);
+            if (read == Y_ERROR) {
+                break;
+            }
+            have = read == Y_DONE;
+            continue;
+        }
+        if (r->count == 0) {
+            ZVAL_COPY_VALUE(out, &value);
+            return true;
+        }
+        if (have) {
+            have = false;
+            if (!yaml_give(r, &value, &json, &have, &request)) {
+                break;
+            }
+            continue;
+        }
+        yaml_frame *f = yaml_top(r);
+        int close = Y_NONE;
+        switch (f->t) {
+            case Y_BLOCK_SEQUENCE:
+                if (f->st == 0) {
+                    r->p++;
+                    yaml_ask(&request, true, f->m, false, Y_AT_INDICATOR, false);
+                    f->st = 1;
+                    break;
+                }
+                {
+                    zend_long indent = yaml_next_line(r);
+                    if (indent < 0 || (indent == 0 && yaml_marker(r, r->p) != '\0')) {
+                        close = Y_DONE;
+                        break;
+                    }
+                    zend_long q = r->p + indent;
+                    if (indent == f->m && r->s[q] == '-' && yaml_sep(yaml_at(r, q + 1))) {
+                        r->p = q;
+                        f->st = 0;
+                    } else if (indent > f->m) {
+                        yaml_fail_parse(r, yaml_text_start(r, q));
+                        close = Y_ERROR;
+                    } else {
+                        close = Y_DONE;
+                    }
+                }
+                break;
+            case Y_BLOCK_MAPPING:
+                close = yaml_block_mapping_step(r, f, &request);
+                break;
+            case Y_FLOW_SEQUENCE:
+                close = yaml_flow_sequence_step(r, f, &request);
+                break;
+            case Y_FLOW_MAPPING:
+                close = yaml_flow_mapping_step(r, f, &request);
+                break;
+            default: {
+                int pair = yaml_pair_step(r, f, &request);
+                if (pair == Y_DONE) {
+                    zval null;
+                    ZVAL_NULL(&null);
+                    r->level--;
+                    zval_ptr_dtor(&value);
+                    yaml_pop(r, &value, &null);
+                    json = true;
+                    have = true;
+                } else if (pair == Y_ERROR) {
+                    close = Y_ERROR;
+                }
+                break;
+            }
+        }
+        if (close == Y_ERROR) {
+            break;
+        }
+        if (close == Y_DONE) {
+            r->level--;
+            zval_ptr_dtor(&value);
+            yaml_pop(r, &value, NULL);
+            json = true;
+            have = true;
+        }
+    }
+    zval_ptr_dtor(&value);
+    return false;
+}
+
+/* The documents of the stream ([202] to [211], COD-75), Codec::yamlDocuments: directives, markers, comments and one document,
+ * whose node is the value; a second document is met where it starts, and the reader reads nothing of it. */
+static bool yaml_documents(yaml_reader *r, zval *out)
+{
+    bool read = false;
+    ZVAL_NULL(out);
+    while (true) {
+        zend_long indent = yaml_next_line(r);
+        if (indent < 0) {
+            break;
+        }
+        zend_long p = r->p;
+        if (read && (indent > 0 || yaml_marker(r, p) != '.')) {
+            return yaml_fail_rule(r, "multiple documents are not supported");
+        }
+        if (indent == 0 && r->s[p] == '%') {
+            if (!yaml_directives(r)) {
+                return false;
+            }
+            p = r->p;
+        }
+        unsigned char marker = indent == 0 ? yaml_marker(r, p) : '\0';
+        if (marker == '.') {
+            r->p = p + 3;
+            if (!yaml_line_end(r)) {
+                return false;
+            }
+            continue;
+        }
+        if (marker == '-') {
+            r->p = p + 3;
+        }
+        if (!yaml_read_node(r, marker == '-' ? Y_AT_DOCUMENT : Y_AT_LINES, out)) {
+            return false;
+        }
+        read = true;
+        indent = yaml_next_line(r);
+        if (indent < 0) {
+            break;
+        }
+        marker = indent == 0 ? yaml_marker(r, r->p) : '\0';
+        if (marker == '-') {
+            return yaml_fail_rule(r, "multiple documents are not supported");
+        }
+        if (marker != '.') {
+            return yaml_fail_parse(r, r->p + indent);
+        }
+        r->p += 3;
+        if (!yaml_line_end(r)) {
+            return false;
+        }
+    }
+    if (!read) {
+        return yaml_fail_rule(r, "no document");
+    }
+    return true;
+}
+
+/* Codec::yamlDecode: one YAML document read with the YAML reader of orm (docs/spec/codec.md COD-74 to COD-80), the stream rules
+ * first, then the stream by the grammar of YAML 1.2.2 in one pass, in its order, with the rules of COD-70 met where their node
+ * starts. No library parses on this path; a stream that the grammar does not hold is yaml-parse, whose cause, a RuntimeException
+ * as in Codec.php, names the line and the column where the stream leaves the grammar (COD-71, COD-80). Every allocation of the
+ * read is freed on every path. */
+static bool yaml_decode(zend_string *text, zval *out)
 {
     if (!yaml_stream(text)) {
         return false;
     }
-    zend_class_entry *stream_ce = class_named("Purr\\Yaml\\YamlStream");
-    zend_class_entry *schema_ce = stream_ce != NULL ? class_named("Purr\\Yaml\\Schema\\CoreSchema") : NULL;
-    if (schema_ce == NULL) {
-        return false;
+    const char *in = ZSTR_VAL(text);
+    size_t n = ZSTR_LEN(text);
+    if (n >= 3 && memcmp(in, "\xEF\xBB\xBF", 3) == 0) {
+        in += 3;
+        n -= 3;
     }
-    zval stream, docs, arg, count, doc, root, schema;
-    if (!new_object(&stream, stream_ce)) {
-        return false;
+    /* A line break is CR LF, CR or LF, and each is one LF inside scalar content (COD-75); the lines and the columns of the text
+     * are those of the stream. */
+    yaml_reader r = {0};
+    r.s = emalloc(n + 1);
+    size_t len = 0;
+    for (size_t i = 0; i < n; i++) {
+        if (in[i] == '\r') {
+            r.s[len++] = '\n';
+            if (i + 1 < n && in[i + 1] == '\n') {
+                i++;
+            }
+        } else {
+            r.s[len++] = in[i];
+        }
     }
-    ZVAL_STR_COPY(&arg, text);
-    bool ok = call_method(&stream, "fromString", &docs, 1, &arg);
-    zval_ptr_dtor(&arg);
-    zval_ptr_dtor(&stream);
-    if (!ok) {
-        return false;
+    r.s[len] = '\0';
+    r.len = r.end = (zend_long)len;
+    r.at = -1;
+    bool ok = yaml_documents(&r, out);
+    while (r.count > 0) {
+        yaml_frame *f = &r.frames[--r.count];
+        zval_ptr_dtor(&f->v);
+        zval_ptr_dtor(&f->k);
     }
-    ok = call_fn("count", &count, 1, &docs);
-    zend_long n = ok ? zval_get_long(&count) : 0;
-    if (!ok) {
-        zval_ptr_dtor(&docs);
-        return false;
+    if (r.frames != NULL) {
+        efree(r.frames);
     }
-    if (n == 0 || n > 1) {
-        zval_ptr_dtor(&docs);
-        return yaml_rule(n == 0 ? "no document" : "multiple documents are not supported");
-    }
-    zval index;
-    ZVAL_LONG(&index, 0);
-    ok = call_method(&docs, "at", &doc, 1, &index);
-    zval_ptr_dtor(&docs);
-    if (!ok) {
-        return false;
-    }
-    ok = call_method(&doc, "getRoot", &root, 0, NULL);
-    zval_ptr_dtor(&doc);
-    if (!ok) {
-        return false;
-    }
-    if (!new_object(&schema, schema_ce)) {
-        zval_ptr_dtor(&root);
-        return false;
-    }
-    ok = yaml_node(&root, &schema, out, 0);
-    zval_ptr_dtor(&root);
-    zval_ptr_dtor(&schema);
-    return ok;
-}
-
-/* Codec::yamlDecode: the read, whose rules pass as they are; the parser resolves an alias as it reads it and refuses one whose
- * anchor is not in the stream with a ReferenceException, which is yaml-alias, and any other failure of the library is yaml-parse,
- * with the failure as the previous exception (COD-71). */
-static bool yaml_decode(zend_string *text, zval *out)
-{
-    if (yaml_read(text, out)) {
+    smart_str_free(&r.text);
+    if (ok) {
+        efree(r.s);
         return true;
     }
-    if (EG(exception) == NULL || exception_is("Polyspec\\Orm\\OrmException")) {
-        return false;
+    zval_ptr_dtor(out);
+    ZVAL_UNDEF(out);
+    if (r.rule != NULL) {
+        efree(r.s);
+        return yaml_rule(r.rule);
     }
-    bool alias = exception_is("Purr\\Yaml\\Exception\\ReferenceException");
-    zend_object *cause = take_exception();
-    return orm_failf_previous("CODEC_DECODE", cause, "yaml: %s", alias ? "aliases are not supported" : "the stream does not parse");
+    /* The line and the column of the place, each from 1, the column in Unicode characters, Codec::yamlParseError. */
+    zend_long at = MIN(r.at, r.len), line = 1, start = 0, column = 1;
+    for (zend_long i = 0; i < at; i++) {
+        if (r.s[i] == '\n') {
+            line++;
+            start = i + 1;
+        }
+    }
+    for (zend_long i = start; i < at; i++) {
+        if (((unsigned char)r.s[i] & 0xC0) != 0x80) {
+            column++;
+        }
+    }
+    efree(r.s);
+    zend_object *cause = library_cause("the stream leaves the YAML grammar at line " ZEND_LONG_FMT ", column " ZEND_LONG_FMT, line,
+                                       column);
+    return orm_failf_previous("CODEC_DECODE", cause, "yaml: the stream does not parse");
 }
+
+/* ---- YAML: the writer, the node model of purr and its Dumper, through the PHP library calls of the client ---- */
 
 /* A new object of the class, built as `new` builds it with the arguments; it takes no ownership of them. */
 static bool new_with(zval *obj, const char *cls, uint32_t argc, zval *argv)
