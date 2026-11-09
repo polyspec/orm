@@ -9,7 +9,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// Requirements: COD-20.
+// Requirements: COD-20, COD-73.
 func TestStyledColumnStateFixture(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	data, err := os.ReadFile("../../../contracts/fixtures/styled_column_states.json")
@@ -23,8 +23,11 @@ func TestStyledColumnStateFixture(t *testing.T) {
 			StoredText *string        `json:"stored_text"`
 			Output     map[string]any `json:"output"`
 			Input      map[string]any `json:"input"`
+			Getter     map[string]any `json:"getter"`
+			Nullable   bool           `json:"nullable"`
 			WriteText  *string        `json:"write_text"`
 			Error      string         `json:"error"`
+			Message    string         `json:"message"`
 		} `json:"cases"`
 	}
 	if err := json.Unmarshal(data, &fixture); err != nil {
@@ -44,13 +47,53 @@ func TestStyledColumnStateFixture(t *testing.T) {
 			})
 			continue
 		case "nonnull_sql_null":
-			// SQL NULL written to a column that is not nullable is refused.
+			// SQL NULL written to a column that is not nullable is refused with the name of the column (COD-73).
 			t.Run(c.ID, func(t *testing.T) {
-				if _, err := NormalizeStyled(codecStages([]string{c.Style}), false, SqlNull()); err == nil || !strings.Contains(err.Error(), c.Error) {
-					t.Fatalf("non-null SQL NULL error = %v; want %s", err, c.Error)
+				_, err := NormalizeStyled("payload", codecStages([]string{c.Style}), false, SqlNull())
+				if want := c.Error + ": payload does not accept SQL NULL"; err == nil || err.Error() != want {
+					t.Fatalf("non-null SQL NULL error = %v; want %s", err, want)
 				}
 			})
 			continue
+		}
+		if strings.HasPrefix(c.ID, "setter_") {
+			// The setter encodes its input by the codec stages of its column and fails with the whole text of the first
+			// rule that the input meets, or keeps the value that the getter returns (COD-73).
+			t.Run(c.ID+"/setter", func(t *testing.T) {
+				var styled StyledValue
+				switch c.Input["kind"] {
+				case "sql-null":
+					styled = SqlNull()
+				case "value":
+					styled = Value(c.Input["value"])
+				default:
+					t.Fatalf("unknown fixture input kind %v", c.Input["kind"])
+				}
+				got, err := NormalizeStyled("payload", codecStages([]string{c.Style}), c.Nullable, styled)
+				if c.Message != "" {
+					if err == nil || err.Error() != c.Message {
+						t.Fatalf("setter error = %v; want %s", err, c.Message)
+					}
+					return
+				}
+				if err != nil {
+					t.Fatal(err)
+				}
+				gotJSON, err := json.Marshal(got)
+				if err != nil {
+					t.Fatal(err)
+				}
+				wantJSON, err := json.Marshal(c.Getter)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if string(gotJSON) != string(wantJSON) {
+					t.Fatalf("getter = %s; want %s", gotJSON, wantJSON)
+				}
+			})
+			if c.StoredText == nil {
+				continue
+			}
 		}
 		t.Run(c.ID, func(t *testing.T) {
 			var raw any
