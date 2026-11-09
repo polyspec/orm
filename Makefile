@@ -58,6 +58,10 @@ TEST_ENV ?= .runtime/servers/env
 # features.json) pass it as TEST_ENV="$$ORM_TEST_ENV". make owner-check
 # (scripts/features/owners.mts) changes it to the environment file of its own run.
 export ORM_TEST_ENV = $(abspath $(TEST_ENV))
+# MARIADB_BIN holds the folders of the MariaDB that make orm-install-mariadb builds (scripts/mariadb-build.mts), bin and
+# scripts, the folder of mariadb-install-db.
+MARIADB_VERSION := $(shell sed -n "s/^export const MARIADB_VERSION = '\(.*\)';$$/\1/p" scripts/mariadb-build.mts)
+MARIADB_BIN := $(CURDIR)/var/mariadb/$(MARIADB_VERSION)/bin:$(CURDIR)/var/mariadb/$(MARIADB_VERSION)/scripts
 # DECIMAL_ENV is the file that holds the DSN of the decimal database. The decimal check and the decimal command of feature-check
 # read it. No decimal database is shared: make orm-check, make owner-check, and make run-databases
 # create their own databases and files for each run (scripts/check/databases.mts) and pass them with this variable and TEST_ENV. The bench
@@ -1531,6 +1535,10 @@ orm-test-servers:
 	$(BUILD_STOP_PROCESS)
 	$(MAKE) -s $(LEASE)
 	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) scripts/test-servers.mts start
+# make orm-install-mariadb builds the MariaDB of the test servers from its pinned source release into var/mariadb (scripts/mariadb-build.mts).
+.PHONY: orm-install-mariadb
+orm-install-mariadb:
+	$(ONLINE) $(NODE) scripts/mariadb-build.mts
 
 # The dialect-facts probe needs its own writable MySQL server with binary logging and trust-function-creators disabled.
 .PHONY: orm-test-mysql-privilege-start

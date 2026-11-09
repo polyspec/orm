@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2912b22d16758aa33f1636a597a6cb524d319759c27a9aca3509c9abb3c731f0 -->
+<!-- source-sha256: efc9bc6d8c5be3ae591640a680dd7db6a771c62970c5d03428f82d92bd9cb085 -->
 # 변경 이력
 
 ## Unreleased
+
+- MariaDB 11.8.6이 MySQL dialect의 서버인 database `mariadb`로 database 검사에 들어온다(DIA-200, FCV-3). `make orm-install-mariadb`는 MariaDB Foundation의 source release를 version과 sha256으로 고정해 build한다(`scripts/mariadb-build.mts`).
 
 ## 0.0.27
 
