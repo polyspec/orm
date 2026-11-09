@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 0b4029e85e243497a63f873762bd0d8ee9fda2ff55f003d504c36e7f8aa54fbc -->
+<!-- source-sha256: 401a8df5da1a659870d2ae5c2453c2a4d634d0e2d7804d22517ad850e8c5692c -->
 # 변경 이력
 
 ## Unreleased
 
+- 여러 행 insert를 batch로 나누는 것(PRT-41)은 모든 runtime이 모든 database에서 실행하는 recipe `model_writes`의 사례 `creates_runs_rows_in_batches_*`이다(T400-1): 각 사례는 자기 batch 크기로 행을 만들고 statement event에서 begin, batch마다의 multi-row INSERT, commit을 읽으며, 행이 없는 사례는 statement를 하나도 읽지 않으므로 `model.creates`는 빈 행 목록을 받는다. contracts/fixtures/insert_parts.json과 이를 비공개 분할 함수에 넘기던 native 시험인 Go `TestInsertPartsFixture`, PHP와 PHP extension의 InsertPartsTest, Python test_insert_parts.py, TypeScript insert-parts.mjs, model.rs의 Rust `insert_parts_cases`를 target client-unit-check/insert-parts, dbspec-php-extension-check/planner/insert-parts와 함께 지운다.
 - percent-decode한 SQLite 경로(CFG-11)는 모든 runtime이 실행하는 recipe `dsn_connection`의 사례 `sqlite_path_opens_the_percent_decoded_file`와 `sqlite_invalid_path_is_config_and_creates_no_file`이다(T400-1): op `dsn.sqlite_file`은 query를 선택으로 받고 디렉터리에 있는 어느 파일의 journal도 빼며, Rust runner는 디렉터리 경로에 escape가 필요 없도록 디렉터리 이름을 번호로 짓는다. tests/dsn/sqlite-paths.json과 이를 읽던 native 시험인 Go `TestSQLitePathCases`, PHP `testSqlitePath`, Python test_sqlite_paths.py, TypeScript dsn.mjs, Rust sqlite_file_name.rs를 지운다.
 - `make repo-check`는 config/parity.json을 대신한 contracts/implementations.json의 inventory로 FCV-2 규칙을 다시 검사한다(T400-1): contracts/features.json의 기능이나 helper가 나열하고 recipe를 실행하지 않는 inventory의 시험은 native test이며, 둘 이상의 구현의 시험을 나열하는 기능의 native test는 FCV-2의 한 줄이 In `<file>`, `<test>`로 그 파일과 시험을 이름 짓고 콜론 뒤에 이유를 밝히지 않으면 finding이다. native test를 하나도 이름 짓지 않거나 그 파일에 없는 시험을 이름 짓는 FCV-2의 줄도 finding이다(scripts/repo/native-tests.mts). config/parity.json의 unit을 유지하거나 파일 없이 시험을 이름 짓던 FCV-2의 줄은 그 시험을 파일과 함께 이름 짓는다(68줄에서 시험 381개). FCV-2는 또한 packages/rust/tests/tests/all/recipe_keys.rs로 옮긴 Rust recipe key 시험의 경로를 적는다. FCV-2는 한 runtime만 가진 native test를 그 이유와 함께 적는다: generator, test 진입점의 packaging, 한 언어의 표면, 한 package의 요구사항을 지키는 시험 168개를 파일별 88줄과 그 기능의 5줄에 적는다.
 

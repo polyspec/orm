@@ -1895,50 +1895,6 @@ fn missing_output_column(c: &Core, name: &str) -> Error {
     }
 }
 
-// The shared cases of contracts/fixtures/insert_parts.json, one test for each case named by its id: every client splits
-// the same row count into the same parts.
-// Requirements: PLN-44.
-#[cfg(test)]
-mod insert_parts_cases {
-    use super::insert_parts;
-
-    const FIXTURE: &str = include_str!("../../../../contracts/fixtures/insert_parts.json");
-
-    /// The ids of the cases that this module has a test for, in file order.
-    pub(super) const IDS: &[&str] = &["empty", "one_row", "exact_batches", "last_batch_smaller", "batch_over_rows", "batch_of_one"];
-
-    pub(super) fn cases() -> Vec<serde_json::Value> {
-        let doc: serde_json::Value = serde_json::from_str(FIXTURE).expect("insert_parts.json");
-        doc["cases"].as_array().expect("cases").clone()
-    }
-
-    fn check(id: &str) {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let case = cases().into_iter().find(|case| case["id"] == id).unwrap_or_else(|| panic!("insert_parts.json has no case {id}"));
-        assert_eq!(case["operation"], "insert_parts");
-        let input = &case["input"];
-        let number = |key: &str| input[key].as_u64().unwrap_or_else(|| panic!("{key}")) as usize;
-        let want: Vec<usize> = case["expected"].as_array().expect("expected").iter().map(|p| p.as_u64().expect("part") as usize).collect();
-        assert_eq!(insert_parts(number("rows"), number("batch")), want);
-    }
-
-    macro_rules! cases {
-        ($($id:ident),* $(,)?) => { $( #[test] fn $id() { check(stringify!($id)); } )* };
-    }
-    cases!(empty, one_row, exact_batches, last_batch_smaller, batch_over_rows, batch_of_one);
-}
-
-#[cfg(test)]
-mod insert_parts_tests {
-    // Every case of insert_parts.json has a test of insert_parts_cases, and every test names a case.
-    #[test]
-    fn every_case_has_a_test() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let ids: Vec<String> = super::insert_parts_cases::cases().iter().map(|case| case["id"].as_str().expect("id").to_owned()).collect();
-        assert_eq!(ids, super::insert_parts_cases::IDS);
-    }
-}
-
 #[cfg(test)]
 mod column_decode_tests {
     use super::column_decode_error;

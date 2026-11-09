@@ -829,14 +829,12 @@
         "packages/go/orm/collection_key_test.go",
         "packages/go/orm/collection_key_internal_test.go",
         "packages/php/tests/ModelTest.php",
-        "packages/php/tests/InsertPartsTest.php",
         "packages/php/tests/ClientGenericsTest.php",
         "packages/php/tests/GroupRowsTest.php",
         "packages/php-ext/tests/ModelAssemblyTest.php",
         "packages/php-ext/tests/ModelNativeTest.php",
         "packages/php/tests/AggregateNumericTest.php",
         "packages/ts/tests/model.mjs",
-        "packages/ts/tests/insert-parts.mjs",
         "packages/ts/tests/group_rows.mjs",
         "packages/ts/tests/group_rows.types.ts",
         "packages/ts/tests/aggregate_numeric.mjs",
@@ -914,7 +912,6 @@
         "packages/php-ext/tests/CollectionIdentityTestExtensionTest.php",
         "packages/php-ext/tests/DecimalModelTestExtensionTest.php",
         "packages/php-ext/tests/GroupRowsTestExtensionTest.php",
-        "packages/php-ext/tests/InsertPartsTestExtensionTest.php",
         "packages/php-ext/tests/ModelTestExtensionTest.php",
         "packages/rust/orm/src/value.rs",
         "packages/php-ext/tests/InvalidDateReadNativeTest.php",
@@ -1264,7 +1261,7 @@
         },
         {
           "id": "queries-orm-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestCollectionLookupRejectsUnsupportedKey|TestDecimalModelFixture|TestExpandInKeepsBareDollar|TestGroupColumnDeclarationRejectsMissingAndDuplicateCount|TestInsertPartsFixture|TestJoinedByteColumnsAndInvalidValues|TestKeyValuesPreserveTheirTypes|TestModelCollectionKeyRejectsInvalidCallback|TestModelCollectionKeyRejectsMissingColumn|TestRelatedAsReportsMismatch|TestRelationKeyCollectionPropagatesInvalidValue|TestScalarComparisonPreservesTypesAndRejectsInvalidValues|TestSelectedByteKeyPreservesByteType|TestShapeCoversEveryField|TestShapeIgnoresParamValues|TestSplitQueryPropagatesInvalidKey|TestSplitQueryRetainsDistinctTypedValues|TestStyledColumnStateFixture|TestStyledFixturePhysicalCells|TestUnsupportedKeyIsAnError)$' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestCollectionLookupRejectsUnsupportedKey|TestDecimalModelFixture|TestExpandInKeepsBareDollar|TestGroupColumnDeclarationRejectsMissingAndDuplicateCount|TestJoinedByteColumnsAndInvalidValues|TestKeyValuesPreserveTheirTypes|TestModelCollectionKeyRejectsInvalidCallback|TestModelCollectionKeyRejectsMissingColumn|TestRelatedAsReportsMismatch|TestRelationKeyCollectionPropagatesInvalidValue|TestScalarComparisonPreservesTypesAndRejectsInvalidValues|TestSelectedByteKeyPreservesByteType|TestShapeCoversEveryField|TestShapeIgnoresParamValues|TestSplitQueryPropagatesInvalidKey|TestSplitQueryRetainsDistinctTypedValues|TestStyledColumnStateFixture|TestStyledFixturePhysicalCells|TestUnsupportedKeyIsAnError)$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/collection_key_test.go",
@@ -1276,8 +1273,7 @@
             "packages/go/orm/styled_state_test.go",
             "packages/go/orm/styled_state_physical_test.go",
             "packages/go/orm/decimal_model_test.go",
-            "contracts/fixtures/styled_column_states.json",
-            "contracts/fixtures/insert_parts.json"
+            "contracts/fixtures/styled_column_states.json"
           ]
         },
         {
@@ -1668,7 +1664,6 @@
         "contracts/fixtures/clock.dbs",
         "contracts/fixtures/identity_load.dbs",
         "contracts/fixtures/identity_load.json",
-        "contracts/fixtures/insert_parts.json",
         "packages/php/tests/coverage_cases.php",
         "packages/ts/tests/coverage_case.mjs",
         "packages/python/tests/coverage_case.py",
@@ -1732,7 +1727,6 @@
         "packages/rust/orm/tests/cases/identity_load.rs",
         "packages/python/tests/test_mysql_found_rows.py",
         "packages/python/tests/test_new_values.py",
-        "packages/python/tests/test_insert_parts.py",
         "packages/python/tests/test_sqlite.py",
         "packages/php-ext/tests/ModelWriteSurfaceTest.php",
         "packages/rust/orm/tests/unit/time_precision.rs",
@@ -2021,14 +2015,12 @@
         },
         {
           "id": "writes-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_new_values && packages/python/.venv/bin/python -m packages.python.tests.test_insert_parts && packages/python/.venv/bin/python -m packages.python.tests.test_sqlite",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_new_values && packages/python/.venv/bin/python -m packages.python.tests.test_sqlite",
           "shard": "other",
           "inputs": [
             "packages/python/tests/test_new_values.py",
-            "packages/python/tests/test_insert_parts.py",
             "packages/python/tests/test_sqlite.py",
-            "packages/python/src/polyspec/orm/model_exec.py",
-            "contracts/fixtures/insert_parts.json"
+            "packages/python/src/polyspec/orm/model_exec.py"
           ]
         },
         {

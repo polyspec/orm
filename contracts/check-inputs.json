@@ -472,8 +472,6 @@
         "node-modules"
       ],
       "inputs": [
-        "packages/php/tests/InsertPartsTest.php",
-        "packages/ts/tests/insert-parts.mjs",
         "packages/php/tests/DsnTest.php",
         "packages/php/tests/DbspecRunnerTest.php",
         "packages/php/testing/dbspec/apply/runner.php",

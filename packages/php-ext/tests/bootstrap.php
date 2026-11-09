@@ -164,7 +164,6 @@ require_once dirname(__DIR__, 2) . '/php/tests/DbspecSetTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DbspecShowCreateIntrospectTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DsnTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/GroupRowsTest.php';
-require_once dirname(__DIR__, 2) . '/php/tests/InsertPartsTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CollectionRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/BindMessagesRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/BindMessagesDynamicRecipeTest.php';

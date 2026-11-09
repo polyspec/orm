@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: 56297410b73e704dfa0d5490757390767e13ab7af01610cde4aec9e0bdf200ef -->
+<!-- source-sha256: 400523e68daa5a1e0f976970ee3202e68bf339ef047cf37805658bbefaf3a6c0 -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 테스트 명령을 선언한다. 그 명령은 자기 recipe의 entry(FCV-12)이거나 FCV-2의 네이티브 테스트다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-unit-check`가 실패한다.
@@ -221,7 +221,6 @@
   - `packages/rust/orm/src/db/sqlite_version_tests.rs`의 `rejects_malformed_components_as_internal_with_the_raw_value`는 native 시험으로 남는다: 비공개 단계나 대역 driver, session, pool에 닿으며, 어떤 public 호출도 이 값으로 그 단계에 닿지 않는다.
   - `packages/rust/orm/src/dbspec/apply.rs`의 `command_entrypoints_share_sqlite_lock_lifecycle_for_empty_plan_chain`, `invalid_pragma_values_preserve_parse_errors`, `lock_setup_failure_keeps_error_when_unlock_fails`는 native 시험으로 남는다: 비공개 단계나 대역 driver, session, pool에 닿으며, 어떤 public 호출도 이 값으로 그 단계에 닿지 않는다.
   - `packages/rust/orm/src/lib.rs`의 `result_code_names_match_the_table`는 native 시험으로 남는다: 이 언어만의 표면을 읽는다: 언어의 타입이나 값, reflection, 생성된 member, 언어의 compiler나 analyser가 보고하는 것이다.
-  - `packages/rust/orm/src/model.rs`의 `every_case_has_a_test`는 native 시험으로 남는다: recipe helper나 이 시험 파일의 P32 harness 시험이며 client 동작을 담지 않는다.
   - `packages/rust/orm/src/model.rs`의 `decoded_cell_failure_names_the_column`, `relation_results_report_a_mismatched_value`, `split_root_in_count_plans_no_statement_over_the_bind_limit`는 native 시험으로 남는다: 비공개 단계나 대역 driver, session, pool에 닿으며, 어떤 public 호출도 이 값으로 그 단계에 닿지 않는다.
   - `packages/rust/orm/src/request.rs`의 `paged_page_params_follow_sorted_subquery_names_before_the_root_page`, `paged_values_require_nonnegative_offset_and_positive_count`는 native 시험으로 남는다: 비공개 단계나 대역 driver, session, pool에 닿으며, 어떤 public 호출도 이 값으로 그 단계에 닿지 않는다.
   - `packages/rust/orm/src/row.rs`의 `selected_boolean_groups_keep_their_declared_type`는 native 시험으로 남는다: 비공개 단계나 대역 driver, session, pool에 닿으며, 어떤 public 호출도 이 값으로 그 단계에 닿지 않는다.
