@@ -1190,8 +1190,8 @@ test-php-ext: export CASES ?= $(PHP_EXTENSION_NATIVE_CASES)
 # its own timeout (K436); the test bootstrap fails either extension PHPUnit command that loads a userland fallback (T182-6-19).
 PHP_EXTENSION_TESTS = env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) -- --configuration packages/php/phpunit.xml.dist
 PHP_EXTENSION_NATIVE_TESTS = env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) -- --configuration packages/php-ext/phpunit.xml.dist
-PHP_CODEC_CAUSE_TEST_FILTER = testCodecExpectedExceptionCause|testCodecUnexpectedThrowableIdentity
-PHP_CODEC_CAUSE_NATIVE_FILTER = testCodecExpectedExceptionCause|testCodecUnexpectedThrowableIdentity
+PHP_CODEC_CAUSE_TEST_FILTER = testCodecExpectedExceptionCause|testYamlParseKeepsThePositionOfTheReader|testCodecUnexpectedThrowableIdentity
+PHP_CODEC_CAUSE_NATIVE_FILTER = testCodecExpectedExceptionCause|testYamlParseKeepsThePositionOfTheReader|testCodecUnexpectedThrowableIdentity
 PHP_CODEC_CAUSE_NATIVE_YAML_FILTER = testYamlExpectedCauseIdentity|testYamlEveryLibraryThrowableIsItsRule
 .PHONY: php-codec-causes-check
 php-codec-causes-check: php-models build-php-ext

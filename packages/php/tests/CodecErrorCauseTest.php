@@ -46,7 +46,7 @@ class CodecErrorCauseTest extends TestCase
             'YAML undefined alias' => [
                 fn() => Codec::decode(['yaml'], "value: *missing\n"),
                 'CODEC_DECODE: yaml: aliases are not supported',
-                true,
+                false,
             ],
             'YAML codec policy' => [
                 fn() => Codec::decode(['yaml'], "value: &x 1\nother: *x\n"),
@@ -95,6 +95,34 @@ class CodecErrorCauseTest extends TestCase
         } catch (OrmException $exception) {
             self::assertSame(Code::CODEC_ENCODE, $exception->code_);
             self::assertSame($cause, $exception->getPrevious());
+        }
+    }
+
+    public function testYamlParseKeepsThePositionOfTheReader(): void
+    {
+        // The cause of yaml-parse is the error of the reader, which names the line and the column where the stream
+        // leaves the grammar, each from 1, the column in Unicode characters and the byte order mark not counted
+        // (COD-80).
+        $cases = [
+            ["a: 'b'#c\n", 1, 7],
+            ["\u{FEFF}한: [\n b,\n,]\n", 3, 1],
+            ["a: 1\r\nb: \"\\q\"\n", 2, 6],
+            ['[a', 1, 3],
+        ];
+        foreach ($cases as [$stream, $line, $column]) {
+            try {
+                Codec::decode(['yaml'], $stream);
+                self::fail('a stream outside the grammar must fail: ' . json_encode($stream));
+            } catch (OrmException $exception) {
+                self::assertSame('CODEC_DECODE: yaml: the stream does not parse', $exception->getMessage());
+                $cause = $exception->getPrevious();
+                self::assertInstanceOf(\RuntimeException::class, $cause);
+                self::assertSame(
+                    "the stream leaves the YAML grammar at line $line, column $column",
+                    $cause->getMessage(),
+                    (string) json_encode($stream)
+                );
+            }
         }
     }
 

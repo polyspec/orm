@@ -358,7 +358,6 @@
         "packages/php/tests/dbspec_verify_errors_case.php",
         "packages/php/tests/extension_run_guard.php",
         "packages/php/tests/fixtures/CodecProbeDumper.php",
-        "packages/php/tests/fixtures/CodecProbeYamlStream.php",
         "packages/php/tests/generated_classes.php",
         "packages/php/tests/generated_fixture.php",
         "packages/php/tests/limit_columns_peak.php",

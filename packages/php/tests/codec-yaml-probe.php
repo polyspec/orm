@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 namespace {
-    require __DIR__ . '/fixtures/CodecProbeYamlStream.php';
     require __DIR__ . '/fixtures/CodecProbeDumper.php';
     require dirname(__DIR__, 3) . '/vendor-php/autoload.php';
 
@@ -11,29 +10,21 @@ namespace {
     $failure = $argv[2] ?? '';
     $mode = $argv[3] ?? 'library';
     $previous = match ($failure) {
-        'parse' => new \Purr\Yaml\Exception\ParseException('parse sentinel', 1, 'value: ['),
-        'reference' => \Purr\Yaml\Exception\ReferenceException::undefinedAnchor('missing', 1),
         'policy' => new \InvalidArgumentException('policy sentinel'),
         'runtime' => new \RuntimeException('runtime sentinel'),
         'type' => new \TypeError('type sentinel'),
         'error' => new \Error('error sentinel'),
         default => throw new \InvalidArgumentException("unknown probe failure $failure"),
     };
-    $expectedCode = $operation === 'dump' ? \Polyspec\Orm\Code::CODEC_ENCODE : \Polyspec\Orm\Code::CODEC_DECODE;
-    if ($operation === 'decode') {
-        \Purr\Yaml\YamlStream::$failure = $previous;
-    } elseif ($operation === 'dump') {
-        \Purr\Yaml\Dumper\Dumper::$failure = $previous;
-    } else {
+    // No library parses on the read path (COD-74), so only the writer has a failure to inject.
+    $expectedCode = \Polyspec\Orm\Code::CODEC_ENCODE;
+    if ($operation !== 'dump') {
         throw new \InvalidArgumentException("unknown probe operation $operation");
     }
+    \Purr\Yaml\Dumper\Dumper::$failure = $previous;
 
     try {
-        if ($operation === 'decode') {
-            \Polyspec\Orm\Codec::decode(['yaml'], 'ignored');
-        } else {
-            \Polyspec\Orm\Codec::encode(['yaml'], \Polyspec\Orm\StyledValue::value('value'));
-        }
+        \Polyspec\Orm\Codec::encode(['yaml'], \Polyspec\Orm\StyledValue::value('value'));
         fwrite(STDERR, 'the codec returned instead of propagating the configured YAML failure');
         exit(1);
     } catch (\Throwable $actual) {
